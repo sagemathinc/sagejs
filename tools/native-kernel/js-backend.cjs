@@ -540,6 +540,9 @@ function emitExactStatement(operation, indent, resourceStack = null) {
   if (operation.kind === "int64.from_integer_checked") {
     return `${indent}${operation.target} = checkedInt64(${operation.source});`;
   }
+  if (operation.kind === "int64.from_uint64_checked") {
+    return `${indent}${operation.target} = checkedInt64(${operation.source});`;
+  }
   if (operation.kind === "uint64.from_integer_checked") {
     return `${indent}if (${operation.source} < 0n || ` +
       `${operation.source} > 18446744073709551615n) ` +

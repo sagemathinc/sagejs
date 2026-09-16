@@ -39,6 +39,7 @@ function operationInputs(operation) {
     case "integer.round_sqrt":
     case "uint64.from_integer_checked":
     case "int64.from_integer_checked":
+    case "int64.from_uint64_checked":
     case "float64.from_integer_checked":
     case "float64.from_integer":
     case "float64.log":
@@ -1359,6 +1360,7 @@ const FMPZ_OPERATION_KINDS = new Set([
   "int64.constant",
   "int64.copy",
   "int64.from_integer_checked",
+  "int64.from_uint64_checked",
   "int64.neg",
   "int64.truth",
   "value.discard",

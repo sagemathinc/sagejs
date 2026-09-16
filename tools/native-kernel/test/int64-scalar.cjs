@@ -104,6 +104,16 @@ test("int64 lowers to checked signed-word IR and isolated C", async () => {
   ).body);
   assert.ok(exactBuffer.some((op) => op.kind === "int64.buffer.get" &&
     op.valueType === "Integer"));
+  const checkedLiteral = operations(ir.functions.find(
+    (fn) => fn.name === "checked_int64_literal",
+  ).body);
+  assert.ok(checkedLiteral.some((op) => op.kind === "int64.constant"));
+  assert.equal(checkedLiteral.some((op) => op.kind.startsWith("integer.")), false);
+  const checkedLength = operations(ir.functions.find(
+    (fn) => fn.name === "checked_int64_length",
+  ).body);
+  assert.ok(checkedLength.some((op) => op.kind === "int64.from_uint64_checked"));
+  assert.equal(checkedLength.some((op) => op.kind === "integer.from_uint64"), false);
 
   const core = generateHostCore(ir, { moduleIdentity: "0123456789abcdef" });
   assert.equal(core.audit.isolated, true);
@@ -140,6 +150,8 @@ values = int64_buffer([-7, 11, 23])
 assert int64_buffer_roundtrip(values, -2, 5) == 16
 assert values[-2] == 16
 assert int64_buffer_exact(values, 0) == (1 << 80) - 7
+assert checked_int64_literal() == -1
+assert checked_int64_length(values) == 3
 for rejected in (-(1 << 63) - 1, 1 << 63):
     try:
         exact_to_int64(rejected)

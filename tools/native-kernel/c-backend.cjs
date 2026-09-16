@@ -1218,6 +1218,15 @@ function emitExactOperation(operation, context, indent) {
       `${indent}    goto fail;`, `${indent}}`,
     ].join("\n");
   }
+  if (operation.kind === "int64.from_uint64_checked") {
+    const source = exactValue(operation.source, context);
+    return [
+      `${indent}if (${source} > (uint64_t) INT64_MAX)`, `${indent}{`,
+      statusFailure("range", "integer is outside signed 64-bit", `${indent}    `),
+      `${indent}    goto fail;`, `${indent}}`,
+      `${indent}${target} = (int64_t) ${source};`,
+    ].join("\n");
+  }
   if (operation.kind === "uint64.from_integer_checked") {
     return [
       `${indent}if (!mpz_to_uint64(` +
