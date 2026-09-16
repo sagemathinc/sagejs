@@ -93,15 +93,16 @@
     }
   ],
   "handoff": {
-    "summary": "Implemented an opt-in, compiler-authorized scalar replacement for local nonescaping fixed UInt64Buffer views in checked private variants. The proof is program-point aware, group-atomic, mutation-sensitive, and retains the ordinary checked public path. Focused hostile tests compile and execute portable C11 for int64, uint64, and Integer indices. Full build, architecture checks, strict baselib, and focused tests passed. The readable frozen catalog currently qualifies zero views, so this commit makes no catalog performance claim.",
+    "summary": "Implemented opt-in, compiler-authorized scalar replacement for local nonescaping UInt64Buffer views in checked private variants. Fixed views can omit proved construction; dynamic views retain exact construction-time validation and snapshot their data pointer and logical length. Proof groups are atomic and mutation-sensitive, while unsupported cases retain the ordinary checked path. Focused hostile and runtime tests pass for int64, uint64, and arbitrary-precision Integer inputs. The independent frozen Stage-E harness reached all 11 readable catalog views and matched 12 valid plus 27 malformed executions exactly, but timing was neutral at 1.002790x and 1.005683x the same-tip Stage-D control.",
     "risks": [
-      "The theorem deliberately handles only direct top-level views whose root minimum and fixed start/length interval prove containment; it does not yet consume workspace layout relations across helper calls.",
+      "Validated virtualization deliberately handles only top-level local views rooted directly in UInt64Buffer parameters; nested roots, escaping views, and structured construction retain ordinary checked descriptors.",
       "pnpm test:changed stopped on unrelated native-cache lifecycle environment-key instability. pnpm test:compiler had pre-existing missing-FLINT-addon and generated Any ReferenceError failures; 17 compiler fixtures passed.",
-      "pnpm test:native reaches the IR-version ratchets but fails because the new capability advances generated IR from version 45 to 46; shared ratchet updates are deliberately excluded from this lane. With temporary local 46 expectations, all affected compiler-shape tests passed before the remaining native-kernel.cjs ratchet stopped the run."
+      "pnpm test:native reaches the IR-version ratchets but fails because the new capability advances generated IR from version 45 to 46; shared ratchet updates are deliberately excluded from this lane. With temporary local 46 expectations, all affected compiler-shape tests passed before the remaining native-kernel.cjs ratchet stopped the run.",
+      "The frozen catalog eliminated 22 UInt64 descriptor locals and all 11 descriptor data/length/offset assignments, reducing generated core by 2013 bytes, but did not reduce 67 signed index checks, 68 UInt64 bounds failures, or 275 checked int64 arithmetic sites. Addon size and ELF text were unchanged, explaining the neutral timing result."
     ],
     "next_steps": [
-      "Extend checked-region facts with authenticated workspace-layout relations for the readable Flx helper graph, then qualify the eleven surviving view constructions without weakening fallback behavior.",
-      "Re-run the independent frozen readable-view catalog harness only after at least one real view qualifies, comparing same-tip capability-off and capability-on artifacts."
+      "Do not pursue descriptor virtualization as the next performance campaign: it is semantically sound but the frozen result rejects it as the dominant remaining cost.",
+      "Target the unchanged logical index checks, checked int64 arithmetic, or private call/status ABI overhead with a separately proved transformation and a same-tip frozen benchmark."
     ]
   }
 }
