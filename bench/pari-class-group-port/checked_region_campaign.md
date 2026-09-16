@@ -256,3 +256,69 @@ code-size pressure. The production compiler must therefore virtualize and
 eliminate proved views, or prove affine accesses directly against an enclosing
 checked view; repeatedly constructing source-visible inner-loop views is not a
 viable optimization.
+
+## Private-graph inlining budget
+
+The outer-region diagnostic also permits a controlled test of the final GCC
+inlining decisions. The ordinary and candidate addons were rebuilt from the
+same generated source with GCC `-O3`. The candidate added only:
+
+```text
+--param=max-inline-insns-auto=5000
+--param=large-function-growth=1000
+--param=inline-unit-growth=1000
+```
+
+A single process loaded both addons, warmed each for three batches, and then
+ran nine alternating pairs of 1,800 complete catalogs per implementation. Each
+call asserted the successful result; the source artifact had already passed
+the complete four-packet output, post-call-buffer, adversarial-fallback, and
+UBSan checks described above. The paired result was:
+
+| private graph | geometric mean (ms/catalog) |
+| --- | ---: |
+| ordinary `-O3` budget | 1.61675 |
+| enlarged inlining budget | **1.53931** |
+
+The paired geometric-mean ratio is 0.95210, a 4.79% improvement. Individual
+ordinary samples spanned 1.61525--1.61975 ms and candidate samples spanned
+1.53811--1.54182 ms. The candidate is about 10.7% above the 1.39 ms
+same-algorithm mechanical-C ceiling.
+
+The improvement is not free. `size` reports 193,807 bytes of text in the
+ordinary relocatable object and 474,473 bytes in the candidate, a 2.45x
+increase. The ordinary build retains eight private region symbols totaling
+33,743 bytes:
+
+| surviving ordinary private symbol | bytes |
+| --- | ---: |
+| `tagged_int64_pari_flxq_sqr_region.constprop.0` | 954 |
+| `tagged_int64_pari_flxq_mul_region` | 1,424 |
+| `tagged_int64_pari_flx_gcd_region` | 1,744 |
+| `tagged__int64_pari_flx_divrem_region` | 1,879 |
+| `tagged_int64_pari_prime_degree_catalog_region` | 4,415 |
+| `tagged_int64_pari_flxq_powu_region.constprop.0` | 5,438 |
+| `tagged_int64_pari_flx_small_degfact_region.constprop.0` | 8,497 |
+| `tagged__int64_pari_flx_small_ddf_region.constprop.0` | 9,392 |
+
+The enlarged budget retains five: copy (341 bytes), normalize (886), quotient
+squaring (3,133), GCD (3,237), and a 36,693-byte catalog body. Thus it removes
+three more boundaries while concentrating much more code in the entry body.
+
+An independent rebuild with `-fopt-info-inline-all` identifies the important
+ordinary misses as budget decisions, not ABI impossibilities. They include
+catalog to `get_fs`, `get_fs` to small-degree factorization, factorization to
+squarefree/sort/DDF, DDF to its internal DDF and power/evaluation routines,
+powering to quotient multiply/square, and remainder/division to the internal
+division loop. GCC cites `max-inline-insns-auto` or `large-function-growth` for
+the surviving late misses. This agrees with the symbol table and with the
+measured benefit of increasing those limits.
+
+This is evidence for a **targeted private-graph inlining budget**, not for
+globally enlarging GCC's limits. The compiler knows which graph is guarded,
+closed, hot, and has no externally callable private members; it can mark or
+emit that graph as one optimization unit while leaving public checked paths
+and unrelated generated code at normal size. The function/status ABI remains
+useful for public and fallback paths. Within the proved private graph, the
+compiler should first allow selective flattening of the measured missed edges,
+then ratchet both time and code growth against this result.
