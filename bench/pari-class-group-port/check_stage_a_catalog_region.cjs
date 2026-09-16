@@ -7,7 +7,8 @@
  * a compiler-owned declaration, emits a private checked graph, and builds the
  * result in a disposable directory. Pass `stage-a` to retain every check,
  * `stage-d` to enable only the capabilities proved from the full guard, or
- * `stage-e` to additionally virtualize validated nonescaping UInt64 views.
+ * `stage-e` to additionally virtualize validated nonescaping UInt64 views, or
+ * `stage-f` to add the bounded local copy variant to Stage E.
  *
  * Usage:
  *   node check_stage_a_catalog_region.cjs \
@@ -35,8 +36,8 @@ if (!fixturesArgument || !baselineArgument || !compilerArgument) {
       "FIXTURES_JSON BASELINE_BUILD_DIRECTORY COMPILER_WORKTREE MODE",
   );
 }
-if (!["stage-a", "stage-d", "stage-e"].includes(mode)) {
-  throw new Error("MODE must be stage-a, stage-d, or stage-e");
+if (!["stage-a", "stage-d", "stage-e", "stage-f"].includes(mode)) {
+  throw new Error("MODE must be stage-a, stage-d, stage-e, or stage-f");
 }
 
 const fixturesPath = resolve(fixturesArgument);
@@ -160,11 +161,24 @@ const STAGE_E_CAPABILITIES = Object.freeze([
   ...STAGE_D_CAPABILITIES,
   "virtual-fixed-uint64-views",
 ]);
+const STAGE_F_LOCAL_VARIANTS = Object.freeze([Object.freeze({
+  function: "int64_pari_flx_copy",
+  guard: Object.freeze([Object.freeze({
+    kind: "int64-range",
+    parameter: "da",
+    minimum: -1,
+    maximum: 8,
+  })]),
+  capabilities: Object.freeze(["interval-view-access"]),
+})]);
 const CAPABILITIES = mode === "stage-a"
   ? Object.freeze([])
   : mode === "stage-d"
     ? STAGE_D_CAPABILITIES
     : STAGE_E_CAPABILITIES;
+const LOCAL_VARIANTS = mode === "stage-f"
+  ? STAGE_F_LOCAL_VARIANTS
+  : Object.freeze([]);
 
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
@@ -214,6 +228,18 @@ function geometricMean(values) {
   return Math.exp(
     values.reduce((sum, value) => sum + Math.log(value), 0) / values.length,
   );
+}
+
+function functionText(source, name) {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = new RegExp(
+    `(?:static|SAGEJS_CHECKED_REGION_(?:HOT_INLINE|COLD)) int ` +
+      `tagged_${escaped}\\([^;]+\\)\\n\\{`,
+  ).exec(source);
+  assert(match, `missing ${name}`);
+  const end = source.indexOf("\n}\n", match.index);
+  assert.notEqual(end, -1, `unterminated ${name}`);
+  return source.slice(match.index, end + 3);
 }
 
 function elfTextBytes(filename) {
@@ -286,10 +312,27 @@ installCheckedRegionDeclarations(manifest.ir, [
     functions: GRAPH,
     guard: GUARD,
     capabilities: CAPABILITIES,
+    localVariants: LOCAL_VARIANTS,
   },
 ]);
 const [prepared] = prepareCheckedRegions(manifest.ir);
-assert.equal(prepared.variants.length, GRAPH.length);
+assert.equal(prepared.variants.length, GRAPH.length + LOCAL_VARIANTS.length);
+const localIntervalProofs = [];
+for (const variant of prepared.variants) {
+  if (!variant.checkedRegionLocalCapabilities?.includes("interval-view-access")) {
+    continue;
+  }
+  const visit = (value) => {
+    if (value === null || typeof value !== "object") return;
+    const proof = value.checkedRegionVirtualUInt64ViewProof?.logicalIndexProof;
+    if (proof !== undefined) localIntervalProofs.push(proof);
+    for (const [key, child] of Object.entries(value)) {
+      if (key !== "provenance") visit(child);
+    }
+  };
+  visit(variant.body);
+}
+assert.equal(localIntervalProofs.length, mode === "stage-f" ? 5 : 0);
 
 const artifacts = generateArtifacts(manifest.ir, {
   moduleIdentity: manifest.moduleIdentity,
@@ -299,7 +342,7 @@ assert.equal(
   (artifacts.coreSource.match(
     /(?:static|SAGEJS_CHECKED_REGION_HOT_INLINE) int tagged_sagejs_checked_r0_[A-Za-z0-9_]+\(/g,
   ) || []).length,
-  GRAPH.length * 2,
+  (GRAPH.length + LOCAL_VARIANTS.length) * 2,
   "expected one prototype and one definition for every private function",
 );
 const dispatchNeedle = `return ${privatePrefix}${ENTRY}(`;
@@ -370,6 +413,54 @@ if (mode === "stage-e") {
   assert.equal(privateSiteCounts.viewDataAssignments, 0);
   assert.equal(privateSiteCounts.viewLengthAssignments, 0);
   assert.equal(privateSiteCounts.viewOffsetAdjustments, 0);
+}
+if (mode === "stage-f") {
+  assert.equal(privateSiteCounts.viewValidationFailures, 11);
+  assert.equal(privateSiteCounts.checkedInt64Arithmetic, 273);
+  assert.equal(privateSiteCounts.bufferBoundsFailures, 63);
+  assert.equal(privateSiteCounts.signedBufferIndexCalls, 62);
+  assert.equal(privateSiteCounts.uint64BoundsFailures, 63);
+  assert.equal(privateSiteCounts.uint64BufferLocalDeclarations, 0);
+  assert.equal(privateSiteCounts.viewDataAssignments, 0);
+  assert.equal(privateSiteCounts.viewLengthAssignments, 0);
+  assert.equal(privateSiteCounts.viewOffsetAdjustments, 0);
+
+  const copyWrapper = functionText(
+    artifacts.coreSource,
+    "sagejs_checked_r0_int64_pari_flx_copy",
+  );
+  const copyFast = functionText(
+    artifacts.coreSource,
+    "sagejs_checked_r0_int64_pari_flx_copy__local_fast_0",
+  );
+  assert.match(copyWrapper, /sagejs_tagged_arg_da >= \(-INT64_C\(1\)\)/);
+  assert.match(copyWrapper, /sagejs_tagged_arg_da <= INT64_C\(8\)/);
+  assert.match(copyWrapper, /int64_pari_flx_copy__local_fast_0/);
+  assert.match(copyWrapper, /return tagged_int64_pari_flx_copy\(/);
+  assert.equal(
+    count(copyFast, /UInt64Buffer view is outside its buffer/g),
+    2,
+    "the local copy clone did not retain both view validations",
+  );
+  assert.equal(
+    count(copyFast, /UInt64Buffer index out of range/g),
+    0,
+    "the local copy clone retained a UInt64 element bounds failure",
+  );
+  assert.equal(
+    localIntervalProofs.every(
+      (proof) =>
+        proof.authority === "checked-region-virtual-view-range-v1" &&
+        proof.indexMinimum === "0" &&
+        proof.indexMaximum === "8" &&
+        proof.logicalLength === "9",
+    ),
+    true,
+  );
+  assert.deepEqual(
+    new Set(localIntervalProofs.map((proof) => proof.step)),
+    new Set(["-1", "1"]),
+  );
 }
 
 const outputDirectory = mkdtempSync(join(tmpdir(), "sagejs-stage-a-catalog-"));
@@ -538,6 +629,7 @@ const result = {
   frozenPackets: fixtures.packets.length,
   activeOutputs: 7081,
   privateVariantCount: prepared.variants.length,
+  localIntervalProofs,
   privateDispatchPresent: true,
   privateCheckCounts,
   malformedPackets,
