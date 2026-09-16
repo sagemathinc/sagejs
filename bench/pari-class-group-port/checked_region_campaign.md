@@ -112,3 +112,49 @@ should eliminate the repeated 103,173 helper preflights and target the measured
 2.25 ms four-routine ceiling.  This is also the natural compiler form of a
 borrowed workspace bundle: one checked lease, many source-readable arithmetic
 operations, no per-access sacrifice of Python safety.
+
+## Outer checked-region result
+
+A final generated-C diagnostic implemented that boundary directly:
+
+- every public helper export retained its original checked implementation;
+- the catalog entry retained a complete checked slow path;
+- the catalog wrapper checked degree, multiplication overflow, and every input,
+  scratch, metadata, state, and output capacity once; and
+- only a successful preflight entered a private fixed-width clone graph.
+
+The private graph is not callable through the host module. Calls failing the
+outer contract enter the original implementation, so this is materially
+different from compiling the public API with bounds checks disabled.
+
+Alternating timings were:
+
+| implementation | geometric mean (ms/catalog) |
+| --- | ---: |
+| current safe tagged compiler | 3.2915 |
+| outer checked region | **1.6307** |
+| global unchecked diagnostic | 2.1663 |
+| matched PARI output contract | about 2.03 |
+| mechanical-C ceiling | about 1.39 |
+
+The region beats the broad unchecked diagnostic because its closed private call
+graph is substantially easier for GCC to optimize. It is about 20% faster than
+the matched PARI output contract and only about 17% above the mechanical-C
+ceiling.
+
+Validation was deliberately independent of the timing loop:
+
+- all four frozen packets matched their complete CPython-derived result and
+  post-call buffer snapshots (including the 7,081 active outputs in the large
+  packet);
+- short state, bad degree, short coefficients, short primes, short word
+  workspace, short output, nonmonic input, invalid prime, and oversized-prime
+  calls matched the original safe kernel in result or exception, error text,
+  and every post-call buffer value; and
+- a `-fsanitize=undefined -fno-sanitize-recover=all` build replayed all four
+  packets exactly without a sanitizer report.
+
+This establishes the central language/runtime answer for the experiment: the
+readable translated Python graph can execute in the PARI performance regime.
+The remaining engineering task is to make the checked-region proof a normal,
+inspectable compiler artifact rather than a generated-C diagnostic.
