@@ -79,6 +79,22 @@ is `4d8d67a541b1d176f155d9e0a4b3ad85e8da5fbd5c521221df8ce078ad363cde`.
 Empty construction and keyword construction remain performance cliffs; these
 results do not label either closed.
 
+## Empty-construction follow-up
+
+The inherited-initializer cache record now also retains whether the class has
+the custom allocator that permits skipping `object.__init__`. The decision is
+valid only at the record's existing descriptor epoch, so Python class mutation
+and deletion invalidate initializer and allocator resolution together. This
+removes a full Python `__new__` lookup from every steady-state empty allocation.
+
+An alternating source-current comparison on the same idle host used ten paired
+processes per artifact and discarded the first three pairs. Empty construction
+fell from 293.94 ms to 42.15 ms per 100,000 operations, **85.7% faster** and
+about **5.6x CPython** rather than 39x. The other six medians remained within
+1.5%; the optimization is isolated to the intended path. The artifact SHA-256
+is `e1a7d9fc8cc55b0139f99ecde8918b90570268140db40920e43e0839d11f323b`.
+The residual ~5.6x penalty remains visible rather than being called closed.
+
 ## Qualification
 
 - The final source-current build passed in 7m 36s.
@@ -95,6 +111,10 @@ results do not label either closed.
   focused dynamic-initializer/default checks, and the pinned `attrs` 25.4.0
   workflow. Its final source-current build completed in 7m 25s.
 - Core runtime remains inside its unchanged budget at 902,981 / 903,000 bytes.
+- The empty-construction follow-up passes 23 focused initializer, metadata and
+  namespace checks, all 224 portable files, strict qualification, and the
+  pinned `attrs` workflow. Core runtime is 902,915 / 903,000 bytes; its
+  source-current build completed in 7m 36s.
 
 The checked benchmark source is `bench/python-call-construction.py`.
 Browser/platform CI remains merge-owned qualification; no release is implied.

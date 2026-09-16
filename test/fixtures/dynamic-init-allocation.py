@@ -36,6 +36,7 @@ class NewOnly:
 
 
 assert NewOnly(value=9).value == 9
+assert NewOnly(value=10).value == 10
 
 
 class Foreign:

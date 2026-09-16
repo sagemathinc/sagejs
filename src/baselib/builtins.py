@@ -271,10 +271,7 @@ _builtins_cleared_exception = runtime.reflect.get(
     runtime.global_object, "ρσ_cleared_exception"
 )
 if _builtins_cleared_exception is runtime.undefined:
-    # ``builtins`` can be initialized before ``internal`` in a freshly
-    # compiled runtime.  Establish the shared identity here as well so the
-    # cached missing-binding predicate never captures ``undefined`` while a
-    # later module creates the real process-wide marker.
+    # Establish the marker before internal imports it.
     _builtins_cleared_exception = runtime.object.create(None)
     runtime.reflect.set(
         runtime.global_object,
@@ -292,9 +289,7 @@ if _builtins_deleted_builtin is runtime.undefined:
         runtime.global_object, "ρσ_deleted_builtin", _builtins_deleted_builtin
     )
 _BUILTINS_DELETED_BUILTIN = _builtins_deleted_builtin
-# Compiler-emitted attribute reads use this reserved alias when calling the
-# fixed-arity lookup primitive.  Keeping it in the runtime namespace avoids a
-# collision with an ordinary user binding named ``_BUILTINS_MISSING``.
+# Reserved compiler alias for fixed-arity lookup.
 ρσ_getattr_missing = _BUILTINS_MISSING
 _builtins_float_prototype = runtime.undefined
 _builtins_object_init = runtime.undefined
@@ -6674,11 +6669,22 @@ def ρσ_skip_init_for_custom_new(cls: Any, initializer: Any) -> _Bool:
     """Implement CPython's custom-new/object-init exception."""
     if not _builtins_synthetic_init_ends_at_object(initializer):
         return False
+    cached = _builtins_initializer_cache.get(cls)
+    cacheable = (
+        cached is not runtime.undefined
+        and cached[0] == _builtins_descriptor_epoch
+        and cached[1] is initializer
+    )
+    if cacheable and cached.length > 2:
+        return cached[2]
     allocator = ρσ_getattr(cls, "__new__", None)
-    return (
+    answer = (
         runtime.strict_equal(runtime.jstype(allocator), "function")
         and allocator is not _builtins_object_new
     )
+    if cacheable:
+        cached[2] = answer
+    return answer
 
 
 def ρσ_apply_custom_new_signature(cls: Any, initializer: Any) -> None:
