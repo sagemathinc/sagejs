@@ -55,6 +55,30 @@ The common-case candidate artifact is
 the expanded candidate artifact is
 `9207d413fa52505c77666dc20d248ec56777d15d0ad64f2749a4a4658220d394`.
 
+## Construction follow-up
+
+Explicit initializers now reject the custom-`__new__`/`object.__init__`
+exception before resolving `__new__`. Generated forwarding initializers cache
+their MRO result against the existing descriptor-mutation epoch, so assignment
+or deletion on any class invalidates inherited results. Finally, initialization
+consumes the original ephemeral keyword packet after allocation has consumed
+its independent copy; this avoids a second keyword-object clone without
+mutating the caller's `**kwargs` mapping.
+
+The same idle host and sampling contract measured the source-current follow-up:
+
+| Case | Immediate-call candidate | Construction follow-up | Change | Follow-up / CPython |
+| --- | ---: | ---: | ---: | ---: |
+| empty construction | 327.36 | 291.20 | 11.0% faster | 38.6x |
+| explicit no-op initializer | 279.31 | 60.83 | 78.2% faster | 5.2x |
+| positional `Point` construction and method | 914.52 | 674.74 | 26.2% faster | 30.0x |
+| keyword `Point` construction and method | 1613.04 | 1123.25 | 30.4% faster | 30.2x |
+
+Times are milliseconds for 100,000 operations. The follow-up artifact SHA-256
+is `4d8d67a541b1d176f155d9e0a4b3ad85e8da5fbd5c521221df8ce078ad363cde`.
+Empty construction and keyword construction remain performance cliffs; these
+results do not label either closed.
+
 ## Qualification
 
 - The final source-current build passed in 7m 36s.
@@ -67,6 +91,10 @@ the expanded candidate artifact is
   import and notification/failure transcript.
 - The pinned `decorator` 5.2.1 workflow passes its source-current package
   qualification.
+- The construction follow-up passes the full 224-file portable tier, all 17
+  focused dynamic-initializer/default checks, and the pinned `attrs` 25.4.0
+  workflow. Its final source-current build completed in 7m 25s.
+- Core runtime remains inside its unchanged budget at 902,981 / 903,000 bytes.
 
 The checked benchmark source is `bench/python-call-construction.py`.
 Browser/platform CI remains merge-owned qualification; no release is implied.

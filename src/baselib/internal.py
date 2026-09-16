@@ -22,31 +22,6 @@ def ρσ_register_keyword_constructor(cls: Any) -> None:
     _internal_keyword_constructor_prototypes.add(runtime.reflect.get(cls, "prototype"))
 
 
-def ρσ_live_initializer(cls: Any) -> Any:
-    """Resolve past generated forwarding initializers using the current MRO."""
-    original = _internal_get_member(runtime.reflect.get(cls, "prototype"), "__init__")
-    if _internal_get_member(original, "__sagejs_synthetic_init__") is not True:
-        return original
-    mro = _internal_get_member(cls, "__mro__")
-    if not runtime.array.isArray(mro):
-        return original
-    for owner in mro:
-        prototype = runtime.reflect.get(owner, "prototype")
-        if prototype is runtime.undefined:
-            continue
-        descriptor = runtime.object.getOwnPropertyDescriptor(prototype, "__init__")
-        if descriptor is runtime.undefined:
-            continue
-        initializer = runtime.reflect.get(descriptor, "value")
-        if (
-            initializer is not runtime.undefined
-            and _internal_get_member(initializer, "__sagejs_synthetic_init__")
-            is not True
-        ):
-            return initializer
-    return original
-
-
 def _internal_copy_constructor_arguments(supplied_args: Any) -> Any:
     """Copy a marked call packet before a binding pass consumes its fields."""
     call_args = runtime.reflect.apply(runtime.array.prototype.slice, supplied_args, [])
@@ -80,7 +55,8 @@ def _internal_initializer_needs_self(initializer: Any) -> bool:
 def ρσ_call_keyword_initializer(
     initializer: Any, instance: Any, supplied_args: Any
 ) -> Any:
-    call_args = _internal_copy_constructor_arguments(supplied_args)
+    # Allocation copied its packet; initialization is the final consumer.
+    call_args = runtime.reflect.apply(runtime.array.prototype.slice, supplied_args, [])
     receiver = instance
     if _internal_initializer_needs_self(initializer):
         call_args.unshift(instance)
