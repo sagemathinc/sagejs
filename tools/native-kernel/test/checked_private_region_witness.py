@@ -298,6 +298,27 @@ def checked_region_repeated_copy_entry(
     return checked_region_repeated_copy_helper(storage, start, degree, output)
 
 
+def checked_region_repeated_range_helper(
+    storage: UInt64Buffer, start: int64
+) -> int64:
+    view: UInt64Buffer = uint64_buffer_view(storage, 0, 4)
+    index: int64 = 0
+    stop: int64 = -1
+    step: int64 = -1
+    value: uint64 = 0
+    for index in range(start, stop, step):
+        value = view[index]
+    result: int64 = start + 1
+    return result
+
+
+@native
+def checked_region_repeated_range_entry(
+    storage: UInt64Buffer, start: int64
+) -> int64:
+    return checked_region_repeated_range_helper(storage, start)
+
+
 @native
 def checked_region_direct_copy_entry(
     storage: UInt64Buffer, start: int64, degree: int64, output: int64

@@ -73,6 +73,46 @@
       "result": "pass",
       "exit_code": 0,
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/checked-private-region.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 36.324,
+      "started_at": "2026-09-16T19:18:14.804Z",
+      "commit": "d5414248972ae98b102eac96b97e69dbf0c31ca7",
+      "workspace_fingerprint": "8c74f994318a7f0c1812dfeab979fed7b5b109774cd4cf005a5df5b7fdb1e7c6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.555,
+      "started_at": "2026-09-16T19:18:54.827Z",
+      "commit": "d5414248972ae98b102eac96b97e69dbf0c31ca7",
+      "workspace_fingerprint": "8c74f994318a7f0c1812dfeab979fed7b5b109774cd4cf005a5df5b7fdb1e7c6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 57.043,
+      "started_at": "2026-09-16T19:19:12.086Z",
+      "commit": "d5414248972ae98b102eac96b97e69dbf0c31ca7",
+      "workspace_fingerprint": "8c74f994318a7f0c1812dfeab979fed7b5b109774cd4cf005a5df5b7fdb1e7c6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 211.732,
+      "started_at": "2026-09-16T19:20:14.242Z",
+      "commit": "d5414248972ae98b102eac96b97e69dbf0c31ca7",
+      "workspace_fingerprint": "a417a872a16d1fbccbb0a612a09fec85f4e4f9d317e6414521648e9b18a56376",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {

@@ -184,6 +184,22 @@ const repeatedCopyDeclaration = {
   }],
 };
 
+const repeatedRangeDeclaration = {
+  entry: "checked_region_repeated_range_entry",
+  functions: [
+    "checked_region_repeated_range_entry",
+    "checked_region_repeated_range_helper",
+  ],
+  capabilities: [
+    "int64-arithmetic",
+    "interval-view-access",
+    "virtual-fixed-uint64-views",
+  ],
+  guard: [
+    { kind: "buffer-min-length", parameter: "storage", minimum: 4 },
+  ],
+};
+
 async function preparedRepeatedCopy(source = witnessSource) {
   const ir = await witness(
     "/tmp/checked_region_repeated_copy.py", source,
@@ -3314,6 +3330,133 @@ test("normal-completion evidence does not cross a call boundary", async () => {
   assert.equal(addition.checkedRegionProof, undefined);
 });
 
+test("negative-range completion matches checked endpoints", async () => {
+  const ir = await witness();
+  installCheckedRegionDeclarations(ir, [repeatedRangeDeclaration]);
+  const [region] = prepareCheckedRegions(ir);
+  const helper = region.variants.find(fn =>
+    fn.checkedRegionVariant.original ===
+      "checked_region_repeated_range_helper"
+  );
+  assert.ok(helper);
+  const addition = helper.body.find(operation =>
+    operation.kind === "int64.binary" && operation.operation === "add"
+  );
+  assert.equal(
+    addition?.checkedRegionProof?.authority,
+    "checked-region-int64-repeated-success-v1",
+  );
+
+  if (process.platform === "win32") return;
+  const core = generateHostCore(ir, { moduleIdentity: "0123456789abcdef" });
+  const temporary = mkdtempSync(join(tmpdir(), "sagejs-repeated-range-"));
+  try {
+    writeFileSync(join(temporary, "kernel_core.h"), core.header);
+    const runtimeSource = `${core.source}
+#include <string.h>
+static int same_message(const char *left, const char *right)
+{
+    if (left == NULL || right == NULL) return left == right;
+    return strcmp(left, right) == 0;
+}
+static int check_case(int64_t start, int expected_ok, int64_t expected)
+{
+    uint64_t checked_words[4] = {2, 3, 5, 7};
+    uint64_t private_words[4] = {2, 3, 5, 7};
+    sagejs_uint64_buffer checked_storage = {checked_words, 4};
+    sagejs_uint64_buffer private_storage = {private_words, 4};
+    sagejs_native_status checked_status = {SAGEJS_NATIVE_OK, NULL};
+    sagejs_native_status private_status = {SAGEJS_NATIVE_OK, NULL};
+    int64_t checked_output = INT64_C(91);
+    int64_t private_output = INT64_C(91);
+    int checked_ok = tagged_sagejs_checked_fallback_checked_region_repeated_range_entry(
+        &checked_status, &checked_output, checked_storage, start);
+    int private_ok = tagged_checked_region_repeated_range_entry(
+        &private_status, &private_output, private_storage, start);
+    int result = 0;
+    if (checked_ok != expected_ok || private_ok != expected_ok) result = 1;
+    else if (checked_status.code != private_status.code ||
+             !same_message(checked_status.message, private_status.message)) result = 2;
+    else if (checked_output != private_output) result = 3;
+    else if (memcmp(checked_words, private_words, sizeof(checked_words)) != 0) result = 4;
+    else if (expected_ok && checked_output != expected) result = 5;
+    sagejs_native_status_reset(&checked_status);
+    sagejs_native_status_reset(&private_status);
+    return result;
+}
+int main(void)
+{
+    int result = 0;
+    if ((result = check_case(INT64_C(-1), 1, INT64_C(0))) != 0) return 10 + result;
+    if ((result = check_case(INT64_MIN, 1, INT64_MIN + INT64_C(1))) != 0) return 20 + result;
+    if ((result = check_case(INT64_C(3), 1, INT64_C(4))) != 0) return 30 + result;
+    if ((result = check_case(INT64_C(4), 0, INT64_C(0))) != 0) return 40 + result;
+    return 0;
+}
+`;
+    writeFileSync(join(temporary, "runtime.c"), runtimeSource);
+    const linked = spawnSync(process.env.CC || "cc", [
+      "-std=c11",
+      "-Werror",
+      "-I",
+      temporary,
+      join(temporary, "runtime.c"),
+      "-lgmp",
+      "-lm",
+      "-o",
+      join(temporary, "runtime"),
+    ], { encoding: "utf8" });
+    assert.equal(linked.status, 0, linked.stderr || linked.stdout);
+    const executed = spawnSync(join(temporary, "runtime"), [], {
+      encoding: "utf8",
+    });
+    assert.equal(executed.status, 0, executed.stderr || executed.stdout);
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+test("branch joins require repeated success on every continuing arm", async () => {
+  const definition = (alternative) => `${witnessSource}\n\n` + [
+    "@native",
+    "def checked_region_repeated_branch_join_entry(value: int64, choose: bool) -> int64:",
+    "    first: int64 = 0",
+    "    if choose:",
+    "        first = value + 1",
+    "    else:",
+    `        first = value + ${alternative}`,
+    "    result: int64 = value + 1",
+    "    return result",
+    "",
+  ].join("\n");
+  async function tailProof(alternative) {
+    const ir = await witness(
+      "/tmp/checked_region_repeated_branch_join.py",
+      definition(alternative),
+    );
+    installCheckedRegionDeclarations(ir, [{
+      entry: "checked_region_repeated_branch_join_entry",
+      functions: ["checked_region_repeated_branch_join_entry"],
+      capabilities: ["int64-arithmetic"],
+      guard: [{
+        kind: "int64-range",
+        parameter: "value",
+        minimum: "-9223372036854775808",
+        maximum: "9223372036854775807",
+      }],
+    }]);
+    const [region] = prepareCheckedRegions(ir);
+    const fn = region.variants[0];
+    return fn.body.filter(operation =>
+      operation.kind === "int64.binary" && operation.operation === "add"
+    ).at(-1)?.checkedRegionProof;
+  }
+  const proved = await tailProof(1);
+  assert.equal(proved?.authority, "checked-region-int64-repeated-success-v1");
+  assert.equal(proved.evidence.length, 2);
+  assert.equal(await tailProof(2), undefined);
+});
+
 test("repeated successor proof rejects hostile completion shapes", async () => {
   const descending = [
     "        for index in range(degree, descending_stop, descending_step):",
@@ -3351,6 +3494,20 @@ test("repeated successor proof rejects hostile completion shapes", async () => {
       descending,
       descending.replace(
         descendingAccess, `            return degree\n${descendingAccess}`,
+      ),
+    ),
+    mutateRepeated(
+      descending,
+      descending.replace(
+        descendingAccess,
+        `${descendingAccess}\n            if degree == 0:\n                raise ValueError("hostile")`,
+      ),
+    ),
+    mutateRepeated(
+      descending,
+      descending.replace(
+        descendingAccess,
+        `${descendingAccess}\n            if degree == 0:\n                continue`,
       ),
     ),
     mutateRepeated(

@@ -90,3 +90,9 @@ Focused tests reject or revoke the proof for:
 - branch/order changes that prevent every reaching path from establishing the
   same expression.
 
+An executable generated-C differential compares the optimized and ordinary
+checked entries at range starts `-1`, `INT64_MIN`, fixed-view `length - 1`,
+and the out-of-range `length`.  The two paths agree on success/failure, result,
+status message, and storage.  Separate join tests require both continuing
+branches to establish the same expression; changing either branch revokes the
+later proof.  Nested explicit raise and continue cases are also rejected.
