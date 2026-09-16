@@ -1,0 +1,53 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "powu-six-edge-integration",
+  "title": "Short-power six-edge Stage G integration",
+  "lane": "native-compiler",
+  "status": "active",
+  "owner": "user",
+  "objective": "Rebuild the frozen splitting-degree catalog with the pending short-power loop proofs; require exactly six authenticated direct copy sites; replay all valid and malformed fixtures; and record paired timing and code-size evidence",
+  "base_commit": "696c0bb472ec7e2aaf63ead93951f7eedcb32be7",
+  "claims": [
+    "bench/pari-class-group-port/check_stage_g_six_copy_edges.cjs",
+    "bench/pari-class-group-port/stage_g_six_copy_edges_evidence.json",
+    "bench/pari-class-group-port/stage_g_six_copy_edges_report.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "/home/user/sagejs-worktrees/virtual-u64-fixed-views"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "The isolated driver proves and requires exactly six authenticated unconditional direct-copy origins and replays all four frozen packets plus nine malformed controls. The first same-tip integration is deliberately rejected: whole-state scalar-summary provenance materializes 22 descriptor locals across four ordinary private helpers, adds 13,448 linked text bytes, and is 6.22% slower over 14/14 unfavorable paired measurements. Raw samples, artifact hashes, source snapshot hashes, diagnosis, and exact reproduction commands are checked in.",
+    "risks": [
+      "The compiler input was an intentionally dirty integration worktree. Generated core, object, and addon hashes are authoritative; the evidence records the captured dirty source hashes and explicitly notes that the live worktree later changed.",
+      "The --record-rejected-materialization option exists only to reproduce the exact rejected 22/11/11/11 descriptor/data/length/offset census. The default path retains and currently fails the zero-descriptor acceptance gate.",
+      "No cross-platform claim is made for the benchmark numbers; this is a Linux x64 rejection diagnostic."
+    ],
+    "next_steps": [
+      "After the compiler tracks summary provenance per scalar fact or argument, rerun the default driver without --record-rejected-materialization and require zero descriptor locals before timing.",
+      "Replace this negative evidence with a same-tip qualified six-edge report only if exact replay, code-shape gates, and paired timing all pass."
+    ]
+  }
+}
