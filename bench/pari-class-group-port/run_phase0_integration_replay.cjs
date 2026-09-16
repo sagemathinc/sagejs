@@ -228,10 +228,10 @@ stage("splitting-replay", {
     assert(fs.existsSync(path.join(baseline, "manifest.json")),
       "splitting producer did not retain its baseline build manifest");
     return commandNode("check_stage_a_catalog_region.cjs", fixture, baseline, root,
-      "stage-h");
+      "stage-a");
   },
   validate: (summary) => {
-    assert.equal(summary.mode, "stage-h");
+    assert.equal(summary.mode, "stage-a");
     assert.equal(summary.frozenPackets, 4);
     assert.equal(summary.activeOutputs, 7081);
     assert.equal(summary.malformedPackets.length, 9);

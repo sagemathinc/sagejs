@@ -39,9 +39,13 @@ The default run ends at `cubic-candidate`:
    PARI 2.17.4 source/build.
 2. `splitting-fixture` checks all four int64 splitting catalogs under CPython,
    JavaScript, GMP, and tagged execution.
-3. `splitting-replay` reconstructs the integrated private Stage-H graph,
-   checks four packets, all 7,081 active outputs, and nine malformed controls,
-   and retains its unqualified alternating timing receipt.
+3. `splitting-replay` reconstructs the current modular graph through the
+   checked private Stage-A dispatcher and replays every exact catalog output.
+   The historical Stage-G/H driver remains an artifact-specific optimization
+   experiment for its original monolithic lowered IR; its call-fact counts are
+   not asserted for the later source-transparent imported-module graph. This
+   stage checks four packets, all 7,081 active outputs, and nine malformed
+   controls, and retains its unqualified alternating timing receipt.
 4. `cubic-collector`, `cubic-driver`, and `cubic-acceptance` regenerate the
    field-1 relation/HNF inputs, unmodified PARI driver trace, and matched
    post-HNF decision.
