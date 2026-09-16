@@ -1,0 +1,84 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "status-unlikely-evidence-report",
+  "title": "Private status unlikely benchmark evidence",
+  "lane": "optimizer-development",
+  "status": "active",
+  "owner": "user",
+  "objective": "Check in a reproducible benchmark evidence report for the private-status-unlikely optimization experiment at commit 59927bb, including frozen replay measurements, ratios, pooled geometric mean, code sizes, provenance commits, and artifact hashes",
+  "base_commit": "696c0bb472ec7e2aaf63ead93951f7eedcb32be7",
+  "claims": [
+    "bench/pari-class-group-port/private_status_unlikely_evidence.md",
+    "bench/pari-class-group-port/private_status_unlikely_evidence.json"
+  ],
+  "dependencies": [],
+  "references": [
+    "/tmp/status-unlikely-integrated-2.json",
+    "/tmp/status-unlikely-integrated-3.json",
+    "/tmp/sagejs-stage-a-catalog-GZXmyu",
+    "/tmp/sagejs-stage-a-catalog-fqbpBy"
+  ],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Authoritative raw benchmark JSON and generated workload artifacts"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm architecture:check"
+  ],
+  "runs": [
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 458.315,
+      "started_at": "2026-09-16T10:54:56.207Z",
+      "commit": "696c0bb472ec7e2aaf63ead93951f7eedcb32be7",
+      "workspace_fingerprint": "dab90c68662b8366f7d1f89b313b3ad3abfa948a604fc4c69949ac3f3c75320b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 210.608,
+      "started_at": "2026-09-16T11:02:38.291Z",
+      "commit": "696c0bb472ec7e2aaf63ead93951f7eedcb32be7",
+      "workspace_fingerprint": "dab90c68662b8366f7d1f89b313b3ad3abfa948a604fc4c69949ac3f3c75320b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.352,
+      "started_at": "2026-09-16T11:06:21.606Z",
+      "commit": "696c0bb472ec7e2aaf63ead93951f7eedcb32be7",
+      "workspace_fingerprint": "dab90c68662b8366f7d1f89b313b3ad3abfa948a604fc4c69949ac3f3c75320b",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added concise Markdown and machine-readable JSON evidence for compiler candidate 59927bb against the frozen Stage G catalog. The report preserves both raw-run hashes, all 14 paired ratios, pooled geometric means, semantic replay outcomes, source/compiler identities, generated artifact hashes, code sizes, exact replay commands, and the missing environment-identity limitation.",
+    "risks": [
+      "The timing is shared-host diagnostic evidence. The raw records did not capture hostname, OS, CPU, Node, C compiler, linker, or binutils identities, so the original environment cannot be reconstructed.",
+      "pnpm test:compiler is not green on the 696c0bb experiment base: fixtures encounter the pre-existing undefined $rho$sigma$py$Any emission, and native extension fixtures cannot load the optional unbuilt FLINT addon. The report changes no compiler or runtime source."
+    ],
+    "next_steps": [
+      "Integrate the evidence alongside compiler commit 59927bb and retain its diagnostic-only qualification.",
+      "Repair the experiment branch's RealNumberBuffer type emission and provision optional native fixtures before expecting its full compiler suite to pass."
+    ]
+  }
+}

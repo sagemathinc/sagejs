@@ -1,0 +1,175 @@
+{
+  "schema": "sagejs.checked-region/private-status-unlikely-evidence-v1",
+  "diagnosticOnly": true,
+  "source": {
+    "commit": "696c0bb472ec7e2aaf63ead93951f7eedcb32be7",
+    "tree": "d23ccac09c3edb39e897956daceca1bf4670931e",
+    "driver": {
+      "path": "bench/pari-class-group-port/check_stage_a_catalog_region.cjs",
+      "gitBlob": "c62803975929bdd0ad35c2b05bc19434224ff4ee",
+      "sha256": "68b51c4685824c2f1838ed170ecdf8a930b565a741fda2ec1a09057ae65f7bcb"
+    },
+    "catalog": {
+      "path": "bench/pari-class-group-port/prime_degree_catalog.py",
+      "gitBlob": "05e0c99d0a9f3ba1b57389f8d0b553c64c6a2e87",
+      "sha256": "80246196f0e463fb38ac675dca7059e5898bc0378ad53cef0d0300b04365c267"
+    }
+  },
+  "compiler": {
+    "candidateCommit": "59927bb2f85354068dd86ad739506b5ffd6b62f4",
+    "candidateTree": "dc4418f38f0d79444b4633137c049d885731bb8b",
+    "baseCommit": "f690969b9744e14b72145c4f14898ed095305b77",
+    "capturedMetadata": {
+      "commit": "f690969b9744e14b72145c4f14898ed095305b77",
+      "worktreeClean": false
+    },
+    "changedSources": [
+      {
+        "path": "tools/native-kernel/tagged-backend.cjs",
+        "gitBlob": "c191f271e74fc1e53e15403b3e77c868e364cb0c",
+        "sha256": "94322f1515e134f64dd85fce291079c42eef0f11b201ab47d35d74712606a4fe"
+      },
+      {
+        "path": "tools/native-kernel/test/checked-private-region.cjs",
+        "gitBlob": "a17b3aefdb955e9765b87e010ee5799187f18ea1",
+        "sha256": "4797c9d59fe03d7dd639263b079095e79f0cde99177070b150adcead354170c8"
+      }
+    ]
+  },
+  "fixture": {
+    "path": "/tmp/sagejs-int64-prime-degree-catalog-fcTr9K/fixtures.json",
+    "sha256": "f61f6aed8d229a2fc10a6336559e97a23d58758151481fb1dfc09fb84a906312",
+    "packets": 4,
+    "activeOutputsInTimedPacket": 7081
+  },
+  "reproduction": {
+    "workingDirectoryCommit": "696c0bb472ec7e2aaf63ead93951f7eedcb32be7",
+    "compilerDirectoryCommit": "59927bb2f85354068dd86ad739506b5ffd6b62f4",
+    "commands": [
+      "node bench/pari-class-group-port/check_stage_a_catalog_region.cjs /tmp/sagejs-int64-prime-degree-catalog-fcTr9K/fixtures.json /tmp/sagejs-stage-a-catalog-XFCs0p /home/user/sagejs-worktrees/private-status-unlikely stage-g > /tmp/status-unlikely-integrated-2.json",
+      "node bench/pari-class-group-port/check_stage_a_catalog_region.cjs /tmp/sagejs-int64-prime-degree-catalog-fcTr9K/fixtures.json /tmp/sagejs-stage-a-catalog-XFCs0p /home/user/sagejs-worktrees/private-status-unlikely stage-g > /tmp/status-unlikely-integrated-3.json"
+    ],
+    "protocol": {
+      "freshNodeProcesses": 2,
+      "warmupBatchesPerArm": 2,
+      "alternatingPairsPerProcess": 7,
+      "firstArmByPair": ["baseline", "candidate", "baseline", "candidate", "baseline", "candidate", "baseline"],
+      "calibrationTargetMilliseconds": 1000
+    }
+  },
+  "semanticReplay": {
+    "validPacketsExact": 4,
+    "activeOutputsExact": 7081,
+    "malformedPacketsExact": 9,
+    "malformedOutcomes": [
+      {"name": "short-state", "entersPrivateGraph": false, "outcome": {"kind": "exception", "name": "RangeError", "message": "short degree catalog state"}},
+      {"name": "bad-degree", "entersPrivateGraph": false, "outcome": {"kind": "result", "value": "-4"}},
+      {"name": "short-coefficients", "entersPrivateGraph": false, "outcome": {"kind": "result", "value": "-6"}},
+      {"name": "short-primes", "entersPrivateGraph": false, "outcome": {"kind": "result", "value": "-6"}},
+      {"name": "short-word-workspace", "entersPrivateGraph": false, "outcome": {"kind": "result", "value": "-6"}},
+      {"name": "short-output", "entersPrivateGraph": false, "outcome": {"kind": "result", "value": "-6"}},
+      {"name": "nonmonic", "entersPrivateGraph": true, "outcome": {"kind": "exception", "name": "RangeError", "message": "degree catalog requires monic polynomial"}},
+      {"name": "invalid-prime", "entersPrivateGraph": true, "outcome": {"kind": "exception", "name": "RangeError", "message": "invalid degree catalog prime"}},
+      {"name": "oversized-prime", "entersPrivateGraph": true, "outcome": {"kind": "result", "value": "-5"}}
+    ],
+    "allPassed": true
+  },
+  "rawRuns": [
+    {
+      "path": "/tmp/status-unlikely-integrated-2.json",
+      "sha256": "ba6b483cb51f3fdc90fc901a1dc0749e2aa1ea0f08c24d0be7b687915e8d2d88",
+      "outputDirectory": "/tmp/sagejs-stage-a-catalog-GZXmyu",
+      "baselineRepetitions": 439,
+      "candidateRepetitions": 457,
+      "baselineMilliseconds": [2.1600194350797266, 2.1605563599088837, 2.1617931708428246, 2.157963854214123, 2.1613202072892936, 2.1603609817767655, 2.158123307517084],
+      "candidateMilliseconds": [2.105468135667396, 2.1103109803063456, 2.1117553785557988, 2.1091464726477023, 2.108111135667396, 2.1089424026258206, 2.109633934354486],
+      "pairedRatios": [0.974744996028095, 0.97674424026381, 0.9768535709327283, 0.9773780355629734, 0.9753812177194087, 0.9761990798830961, 0.9775316947860662],
+      "baselineGeometricMeanMilliseconds": 2.1600191845841428,
+      "candidateGeometricMeanMilliseconds": 2.1090518556413826,
+      "candidateToBaselineRatio": 0.976404223950181
+    },
+    {
+      "path": "/tmp/status-unlikely-integrated-3.json",
+      "sha256": "b756d43563310e93b380f3622373d786d4be037ef812e699d07ed182ad4589d3",
+      "outputDirectory": "/tmp/sagejs-stage-a-catalog-fqbpBy",
+      "baselineRepetitions": 440,
+      "candidateRepetitions": 452,
+      "baselineMilliseconds": [2.1675364545454547, 2.1545947545454545, 2.157040959090909, 2.164020797727273, 2.160288209090909, 2.1574277295454545, 2.162226252272727],
+      "candidateMilliseconds": [2.1167202876106193, 2.117674157079646, 2.1133235619469026, 2.1179011703539823, 2.1156833163716815, 2.1181855088495576, 2.1183462168141594],
+      "pairedRatios": [0.9765557959460055, 0.9828642498140688, 0.9797326995763532, 0.9786879925452995, 0.979352341723886, 0.981810644148824, 0.979706085146064],
+      "baselineGeometricMeanMilliseconds": 2.160443874211458,
+      "candidateGeometricMeanMilliseconds": 2.116832797485377,
+      "candidateToBaselineRatio": 0.9798138349037192
+    }
+  ],
+  "timing": {
+    "boundary": "tagged packet zero; packing/build/assertions excluded",
+    "freshProcesses": 2,
+    "alternatingPairsPerProcess": 7,
+    "totalAlternatingPairs": 14,
+    "pooledBaselineGeometricMeanMilliseconds": 2.1602315189613446,
+    "pooledCandidateGeometricMeanMilliseconds": 2.1129387448809474,
+    "pooledCandidateToBaselineRatio": 0.9781075437214545,
+    "pooledImprovementFraction": 0.021892456278545525,
+    "pairsFaster": 14,
+    "pairsSlowerOrEqual": 0,
+    "smallestPairedRatio": 0.974744996028095,
+    "largestPairedRatio": 0.9828642498140688,
+    "qualified": false
+  },
+  "artifacts": {
+    "baseline": {
+      "directory": "/tmp/sagejs-stage-a-catalog-XFCs0p",
+      "bindingGypSha256": "9521eb22d6b3f5d293115c36606daebd91f7c953e5f11c9a63ecd3bf08893c43",
+      "coreSha256": "1db8d76a096ff7076f1811f0beb0ccdf4064685e280f6a35cb09cd7026213252",
+      "objectSha256": "016ce9fce6fa46fc140da4b145932d61b13695d38617d92ff9f1b153a9a8f73e",
+      "addonSha256": "ccb5adfd23d2652b401b23608a48a0c86dc79fa7c8bd8fedfb5fd8c806bf6bbf",
+      "coreBytes": 6322765,
+      "objectBytes": 347176,
+      "objectTextBytes": 212843,
+      "addonBytes": 354880,
+      "elfTextBytes": 347455
+    },
+    "candidate": {
+      "directories": ["/tmp/sagejs-stage-a-catalog-GZXmyu", "/tmp/sagejs-stage-a-catalog-fqbpBy"],
+      "bindingGypSha256": "b3df75004262ae7800b85f4e75596bd6f5ada6c0a62e74dd0359a1746e7e72a4",
+      "adapterSha256": "4587ba3852ca5774e6d3ac80327f80d7ca452e32039c33e58c403c6143cd6f7f",
+      "coreSha256": "7c4f789106c56c4e62ef46534892a92ef3a4f382cadb47c1f9910c46d6726bfe",
+      "headerSha256": "a08ecd76b7e0b2d081c67c435541ce846c93b0233d7f8190eeea24a669e7cf17",
+      "manifestSha256": "5294654d534a40d6bb0fe6782f6bffa53ced20344732da89b8a351e6da088d6a",
+      "indexSha256": "c2b34c9053a1a8594cc5092ddf244de0b290a6c4498d9b9261972b7fe1a8f924",
+      "objectSha256": "12ae2f7d2a10107c5905d40faa2eb4f4547fe7735bb48b0f004d0822f4339045",
+      "addonSha256": "bfe1cafe0877dfae61262f22f6c16b3ef86478bd7393a57c9576d2af5ffe7eb3",
+      "coreBytes": 6326308,
+      "adapterBytes": 161062,
+      "objectBytes": 347264,
+      "objectTextBytes": 212370,
+      "addonBytes": 354880,
+      "elfTextBytes": 347031
+    },
+    "deltas": {
+      "coreBytes": 3543,
+      "objectBytes": 88,
+      "objectTextBytes": -473,
+      "addonBytes": 0,
+      "elfTextBytes": -424
+    }
+  },
+  "decision": {
+    "accepted": true,
+    "outcome": "All 14 paired measurements favored the checked-private unlikely-status hint; pooled kernel time improved 2.19% and linked ELF text decreased 424 bytes."
+  },
+  "limitations": {
+    "capturedHostIdentity": false,
+    "capturedToolchainIdentity": false,
+    "missingFields": [
+      "hostname",
+      "operating-system release",
+      "CPU model and topology",
+      "Node.js version",
+      "C compiler identity and version",
+      "linker and binutils versions"
+    ],
+    "consequence": "The hashes authenticate the retained raw records and binaries, but the original execution environment cannot be reconstructed from them."
+  }
+}
