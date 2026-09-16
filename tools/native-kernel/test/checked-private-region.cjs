@@ -74,6 +74,25 @@ const logicalViewIndexDeclaration = {
   ],
 };
 
+const validatedViewDeclaration = {
+  entry: "checked_region_validated_view_entry",
+  functions: ["checked_region_validated_view_entry"],
+  capabilities: ["virtual-fixed-uint64-views"],
+  guard: [
+    { kind: "buffer-min-length", parameter: "storage", minimum: 0 },
+    { kind: "buffer-min-length", parameter: "other", minimum: 0 },
+  ],
+};
+
+const validatedIntegerViewDeclaration = {
+  entry: "checked_region_validated_integer_view_entry",
+  functions: ["checked_region_validated_integer_view_entry"],
+  capabilities: ["virtual-fixed-uint64-views"],
+  guard: [
+    { kind: "buffer-min-length", parameter: "storage", minimum: 0 },
+  ],
+};
+
 function fixedViewIndexDeclaration(entry) {
   return {
     entry,
@@ -723,7 +742,8 @@ int main(void)
     "sagejs_checked_r0_checked_region_rebound_root_entry",
   );
   assert.match(reboundBody, /UInt64Buffer view is outside its buffer/);
-  assert.match(reboundBody, /sagejs_local_tagged_view/);
+  assert.doesNotMatch(reboundBody, /sagejs_local_tagged_view/);
+  assert.match(reboundBody, /sagejs_virtual_uint64_data_0/);
 
   for (const mutation of ["later", "conditional"]) {
     const redefined = await witness();
@@ -758,8 +778,8 @@ int main(void)
     assert.equal(
       checkedRegionVirtualUInt64Emission(redefinedRegion.variants[0])
         .isVirtualLocal("view"),
-      false,
-      `${mutation} redefinition must revoke view virtualization`,
+      true,
+      `${mutation} redefinition is captured at the view program point`,
     );
   }
 
@@ -799,7 +819,7 @@ int main(void)
   assert.equal(
     checkedRegionVirtualUInt64Emission(iteratorRegion.variants[0])
       .isVirtualLocal("view"),
-    false,
+    true,
   );
 
   const oversizedLength = await witness();
@@ -819,7 +839,7 @@ int main(void)
   assert.equal(
     checkedRegionVirtualUInt64Emission(oversizedRegion.variants[0])
       .isVirtualLocal("view"),
-    false,
+    true,
   );
 
   const forged = await witness();
@@ -843,6 +863,205 @@ int main(void)
     "sagejs_checked_r0_checked_region_fixed_view_entry",
   );
   assert.match(forgedBody, /UInt64Buffer view is outside its buffer/);
+});
+
+test("validated local UInt64 views snapshot checked construction", async () => {
+  const ir = await witness();
+  installCheckedRegionDeclarations(ir, [
+    validatedViewDeclaration,
+    validatedIntegerViewDeclaration,
+  ]);
+  const regions = prepareCheckedRegions(ir);
+  const region = regions.find(candidate =>
+    candidate.entry === validatedViewDeclaration.entry
+  );
+  const variant = region.variants[0];
+  const authorized = checkedRegionVirtualUInt64Emission(variant);
+  assert.equal(authorized.isVirtualLocal("view"), true);
+  assert.equal(authorized.isVirtualLocal("alias"), true);
+  assert.equal(authorized.validatedViews().length, 1);
+
+  const core = generateHostCore(ir, { moduleIdentity: "0123456789abcdef" });
+  const body = functionText(
+    core.source,
+    "sagejs_checked_r0_checked_region_validated_view_entry",
+  );
+  assert.doesNotMatch(body, /sagejs_uint64_buffer sagejs_local_tagged_(?:view|alias)/);
+  assert.match(body, /UInt64Buffer view is outside its buffer/);
+  assert.match(body, /sagejs_virtual_uint64_data_0/);
+  assert.match(body, /sagejs_virtual_uint64_length_0/);
+  assert.match(body, /sagejs_tagged_to_int64/);
+  assert.match(body, /sagejs_signed_buffer_index/);
+  assert.doesNotMatch(body, /sagejs_local_tagged_storage\.data\[/);
+  assert.match(body, /sagejs_local_tagged_sagejs_virtual_uint64_data_0/);
+  assert.match(body, /sagejs_local_tagged_sagejs_virtual_uint64_length_0/);
+
+  const integerBody = functionText(
+    core.source,
+    "sagejs_checked_r1_checked_region_validated_integer_view_entry",
+  );
+  const startConversion = integerBody.indexOf(
+    "sagejs_tagged_to_int64(sagejs_tagged_arg_start",
+  );
+  const lengthConversion = integerBody.indexOf(
+    "sagejs_tagged_to_int64(sagejs_tagged_arg_length",
+  );
+  assert.ok(startConversion >= 0 && startConversion < lengthConversion);
+  assert.doesNotMatch(integerBody, /sagejs_local_tagged_view/);
+
+  const fallback = functionText(
+    core.source,
+    "sagejs_checked_fallback_checked_region_validated_view_entry",
+  );
+  assert.match(fallback, /sagejs_uint64_buffer sagejs_local_tagged_view/);
+  assert.match(fallback, /sagejs_uint64_buffer sagejs_local_tagged_alias/);
+
+  if (process.platform !== "win32") {
+    const temporary = mkdtempSync(join(tmpdir(), "sagejs-validated-view-"));
+    try {
+      writeFileSync(join(temporary, "kernel_core.h"), core.header);
+      const runtimeSource = `${core.source}
+#include <string.h>
+int main(void)
+{
+    sagejs_native_status status = {SAGEJS_NATIVE_OK, NULL};
+    uint64_t words[4] = {UINT64_C(2), UINT64_C(3), UINT64_C(5), UINT64_C(7)};
+    uint64_t other_words[2] = {UINT64_C(11), UINT64_C(13)};
+    sagejs_uint64_buffer storage = {words, 4};
+    sagejs_uint64_buffer other = {other_words, 2};
+    uint64_t output = UINT64_C(99);
+    if (!tagged_sagejs_checked_r0_checked_region_validated_view_entry(
+            &status, &output, storage, other, INT64_C(1), INT64_C(2),
+            INT64_C(1), UINT64_C(17)))
+        return 1;
+    if (status.code != SAGEJS_NATIVE_OK || output != UINT64_C(17) ||
+        words[2] != UINT64_C(17) || other_words[1] != UINT64_C(13))
+        return 2;
+    sagejs_native_status_reset(&status);
+    if (tagged_sagejs_checked_r0_checked_region_validated_view_entry(
+            &status, &output, storage, other, INT64_C(4), INT64_C(0),
+            INT64_C(0), UINT64_C(19)))
+        return 3;
+    if (status.code != SAGEJS_NATIVE_RANGE_ERROR || status.message == NULL ||
+        strcmp(status.message, "UInt64Buffer index out of range") != 0)
+        return 4;
+    sagejs_native_status_reset(&status);
+    if (tagged_sagejs_checked_r0_checked_region_validated_view_entry(
+            &status, &output, storage, other, INT64_C(5), INT64_C(0),
+            INT64_C(0), UINT64_C(19)))
+        return 5;
+    if (status.code != SAGEJS_NATIVE_RANGE_ERROR || status.message == NULL ||
+        strcmp(status.message, "UInt64Buffer view is outside its buffer") != 0)
+        return 6;
+    sagejs_native_status_reset(&status);
+    sagejs_uint64_buffer empty = {NULL, 0};
+    if (tagged_sagejs_checked_r0_checked_region_validated_view_entry(
+            &status, &output, empty, other, INT64_C(0), INT64_C(0),
+            INT64_C(0), UINT64_C(19)))
+        return 7;
+    if (status.code != SAGEJS_NATIVE_RANGE_ERROR || status.message == NULL ||
+        strcmp(status.message, "UInt64Buffer index out of range") != 0)
+        return 8;
+    sagejs_native_status_reset(&status);
+    sagejs_tagged_int integer_start;
+    sagejs_tagged_int integer_length;
+    sagejs_tagged_init(&integer_start);
+    sagejs_tagged_init(&integer_length);
+    sagejs_tagged_set_small(&integer_start, INT64_C(1));
+    sagejs_tagged_set_small(&integer_length, INT64_C(2));
+    if (!tagged_sagejs_checked_r1_checked_region_validated_integer_view_entry(
+            &status, &output, storage, &integer_start, &integer_length,
+            INT64_C(1)) || output != UINT64_C(17))
+        return 9;
+    sagejs_native_status_reset(&status);
+    sagejs_tagged_set_small(&integer_start, -INT64_C(1));
+    if (tagged_sagejs_checked_r1_checked_region_validated_integer_view_entry(
+            &status, &output, storage, &integer_start, &integer_length,
+            INT64_C(0)))
+        return 10;
+    if (status.code != SAGEJS_NATIVE_RANGE_ERROR || status.message == NULL ||
+        strcmp(status.message, "UInt64Buffer view is outside its buffer") != 0)
+        return 11;
+    sagejs_native_status_reset(&status);
+    sagejs_tagged_set_small(&integer_start, INT64_C(1));
+    sagejs_tagged_set_small(&integer_length, INT64_C(1));
+    sagejs_tagged_make_big(&integer_start);
+    mpz_mul_2exp(integer_start.big, integer_start.big, 100);
+    if (tagged_sagejs_checked_r1_checked_region_validated_integer_view_entry(
+            &status, &output, storage, &integer_start, &integer_length,
+            INT64_C(0)))
+        return 12;
+    if (status.code != SAGEJS_NATIVE_RANGE_ERROR || status.message == NULL ||
+        strcmp(status.message, "UInt64Buffer view is outside its buffer") != 0)
+        return 13;
+    sagejs_tagged_clear(&integer_length);
+    sagejs_tagged_clear(&integer_start);
+    return 0;
+}
+`;
+      writeFileSync(join(temporary, "runtime.c"), runtimeSource);
+      const linked = spawnSync(process.env.CC || "cc", [
+        "-std=c11", "-Werror", "-I", temporary,
+        join(temporary, "runtime.c"), "-lgmp", "-lm", "-o",
+        join(temporary, "runtime"),
+      ], { encoding: "utf8" });
+      assert.equal(linked.status, 0, linked.stderr || linked.stdout);
+      const executed = spawnSync(join(temporary, "runtime"), [], {
+        encoding: "utf8",
+      });
+      assert.equal(executed.status, 0, executed.stderr || executed.stdout);
+    } finally {
+      rmSync(temporary, { recursive: true, force: true });
+    }
+  }
+});
+
+test("validated view snapshots do not trust operation-id uniqueness", async () => {
+  const ir = await witness();
+  const original = ir.functions.find(fn =>
+    fn.name === "checked_region_two_validated_views_entry"
+  );
+  const views = original.body.filter(operation =>
+    operation.kind === "uint64.buffer.view"
+  );
+  assert.equal(views.length, 2);
+  views[1].id = views[0].id;
+  installCheckedRegionDeclarations(ir, [{
+    entry: original.name,
+    functions: [original.name],
+    capabilities: ["virtual-fixed-uint64-views"],
+    guard: [
+      { kind: "buffer-min-length", parameter: "storage", minimum: 0 },
+    ],
+  }]);
+  const source = generateHostCore(ir).source;
+  const body = functionText(
+    source,
+    "sagejs_checked_r0_checked_region_two_validated_views_entry",
+  );
+  assert.match(body, /sagejs_virtual_uint64_data_0/);
+  assert.match(body, /sagejs_virtual_uint64_data_1/);
+  assert.match(body, /sagejs_virtual_uint64_length_0/);
+  assert.match(body, /sagejs_virtual_uint64_length_1/);
+  assert.doesNotMatch(
+    body,
+    /sagejs_uint64_buffer sagejs_local_tagged_(?:first|second)(?:\s|=)/,
+  );
+  if (process.platform !== "win32") {
+    const temporary = mkdtempSync(join(tmpdir(), "sagejs-duplicate-view-id-"));
+    try {
+      writeFileSync(join(temporary, "kernel_core.h"),
+        generateHostCore(ir).header);
+      writeFileSync(join(temporary, "kernel_core.c"), source);
+      const compiled = spawnSync(process.env.CC || "cc", [
+        "-std=c11", "-Werror", "-I", temporary, "-c",
+        join(temporary, "kernel_core.c"), "-o", join(temporary, "kernel_core.o"),
+      ], { encoding: "utf8" });
+      assert.equal(compiled.status, 0, compiled.stderr || compiled.stdout);
+    } finally {
+      rmSync(temporary, { recursive: true, force: true });
+    }
+  }
 });
 
 test("relational guards prove only matching scalar, affine, and product loops", async () => {

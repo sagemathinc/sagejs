@@ -720,6 +720,7 @@ function virtualFixedUInt64ViewGroups(fn, entryState) {
     }
   }
   const groups = [];
+  const groupedViews = new Set();
   for (const [viewIndex, view] of fn.body.entries()) {
     if (view.kind !== "uint64.buffer.view") continue;
     const inputs = fixedIntegerInputsAt(fn, entryState, viewIndex);
@@ -769,13 +770,70 @@ function virtualFixedUInt64ViewGroups(fn, entryState) {
       aliases,
       fact: Object.freeze({
         authority: "checked-region-virtual-fixed-uint64-view-v1",
+        mode: "fixed",
         root: view.buffer,
+        viewTarget: view.target,
         startKind: start.kind,
         startExpression: start.expression,
         startMinimum: start.minimum.toString(),
         startMaximum: start.maximum.toString(),
         length: length.minimum.toString(),
         rootMinimumLength: rootMinimum.toString(),
+        viewOperation: view.id,
+      }),
+      view,
+    });
+    groupedViews.add(view);
+  }
+  // A checked view construction is itself sufficient authority to replace
+  // the descriptor when the view remains local and nonescaping.  Unlike the
+  // fixed theorem above, this form retains the ordinary validation at the
+  // construction program point and snapshots the resulting data pointer and
+  // logical length.  Limit the first generic slice to direct parameter roots;
+  // nested virtual roots and structured view construction remain checked.
+  const parameterTypes = new Map((fn.params || []).map(value => [
+    value.name, value.type,
+  ]));
+  for (const [viewIndex, view] of fn.body.entries()) {
+    if (view.kind !== "uint64.buffer.view" || groupedViews.has(view) ||
+        parameterTypes.get(view.buffer) !== "UInt64Buffer") continue;
+    const aliases = new Set([view.target]);
+    const aliasDefinition = new Map([[view.target, viewIndex]]);
+    for (let index = viewIndex + 1; index < fn.body.length; index += 1) {
+      const operation = fn.body[index];
+      if (operation.kind !== "uint64.buffer.copy" ||
+          !aliases.has(operation.source) || aliases.has(operation.target)) continue;
+      aliases.add(operation.target);
+      aliasDefinition.set(operation.target, index);
+    }
+    if (Array.from(aliases).some((name) => assignments.get(name) !== 1)) continue;
+    let valid = true;
+    for (const [topLevelIndex, topLevel] of fn.body.entries()) {
+      visitOperations([topLevel], (operation) => {
+        for (const name of aliases) {
+          if (!operationReferencesName(operation, name)) continue;
+          const dominated = topLevelIndex >= aliasDefinition.get(name);
+          const allowed = dominated && ((
+            operation === topLevel &&
+            operation.kind === "uint64.buffer.copy" &&
+            aliases.has(operation.source) && aliases.has(operation.target)
+          ) || (
+            [
+              "uint64.buffer.get", "uint64.buffer.set", "uint64.buffer.length",
+            ].includes(operation.kind) && operation.buffer === name
+          ));
+          if (!allowed) valid = false;
+        }
+      });
+    }
+    if (!valid) continue;
+    groups.push({
+      aliases,
+      fact: Object.freeze({
+        authority: "checked-region-virtual-fixed-uint64-view-v1",
+        mode: "validated",
+        root: view.buffer,
+        viewTarget: view.target,
         viewOperation: view.id,
       }),
       view,
@@ -1258,13 +1316,17 @@ function checkedRegionVirtualUInt64Emission(fn) {
   const verifier = virtualUInt64ViewAuthority.emissionVerifier(fn);
   const localClaims = new Map();
   const operationClaims = new WeakMap();
+  const viewClaims = [];
   visitOperations(fn.body, (operation) => {
     const claim = operation[VIRTUAL_UINT64_VIEW_PROOF];
     if (claim === undefined ||
         claim.authority !== "checked-region-virtual-fixed-uint64-view-v1" ||
         !verifier.isAuthorized(operation, claim)) return;
     operationClaims.set(operation, claim);
-    if (claim.role === "view") localClaims.set(claim.target, claim);
+    if (claim.role === "view") {
+      localClaims.set(claim.target, claim);
+      viewClaims.push(claim);
+    }
     if (claim.role === "alias") localClaims.set(claim.target, claim);
   });
   return Object.freeze({
@@ -1274,6 +1336,11 @@ function checkedRegionVirtualUInt64Emission(fn) {
     },
     isVirtualLocal(name) {
       return localClaims.has(name);
+    },
+    validatedViews() {
+      return viewClaims.filter(claim =>
+        claim.role === "view" && claim.mode === "validated"
+      );
     },
   });
 }

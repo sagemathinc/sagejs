@@ -166,6 +166,52 @@ def checked_region_fixed_view_integer_index_entry(
 
 
 @native
+def checked_region_validated_view_entry(
+    storage: UInt64Buffer,
+    other: UInt64Buffer,
+    start: int64,
+    length: int64,
+    index: int64,
+    value: uint64,
+) -> uint64:
+    sagejs_virtual_uint64_data_0: uint64 = 0
+    sagejs_virtual_uint64_length_0: uint64 = 0
+    view: UInt64Buffer = uint64_buffer_view(storage, start, length)
+    alias = view
+    storage = other
+    start = 0
+    length = 0
+    alias[index] = value
+    return (
+        view[index]
+        + sagejs_virtual_uint64_data_0
+        + sagejs_virtual_uint64_length_0
+    )
+
+
+@native
+def checked_region_validated_integer_view_entry(
+    storage: UInt64Buffer, start: Integer, length: Integer, index: int64
+) -> uint64:
+    view: UInt64Buffer = uint64_buffer_view(storage, start, length)
+    return view[index]
+
+
+@native
+def checked_region_two_validated_views_entry(
+    storage: UInt64Buffer,
+    first_start: int64,
+    second_start: int64,
+    value: uint64,
+) -> uint64:
+    first: UInt64Buffer = uint64_buffer_view(storage, first_start, 1)
+    second: UInt64Buffer = uint64_buffer_view(storage, second_start, 1)
+    first[0] = value
+    second[0] = value
+    return first[0] + second[0]
+
+
+@native
 def checked_region_mutated_view_entry(
     storage: UInt64Buffer, other: UInt64Buffer, value: uint64
 ) -> uint64:
