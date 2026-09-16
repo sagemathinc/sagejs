@@ -70,6 +70,36 @@
       "commit": "e48766134a040087074c0fd5d8ada0eb31d5aa92",
       "workspace_fingerprint": "f5448905fcada624dcb6019ce8916e55655d4f8e1d00b616915de53c868e5eaf",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/hnf_fused_reuse_benchmark.cjs --verify-only",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 17.794,
+      "started_at": "2026-09-16T18:41:26.452Z",
+      "commit": "6e68e6e431ad31dd2ccfa271ec78585ccc96693d",
+      "workspace_fingerprint": "efc403483b914b208d75902c378571e5ddf705d01d682e0efa2a0405fab4985e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 55.478,
+      "started_at": "2026-09-16T18:41:44.885Z",
+      "commit": "6e68e6e431ad31dd2ccfa271ec78585ccc96693d",
+      "workspace_fingerprint": "efc403483b914b208d75902c378571e5ddf705d01d682e0efa2a0405fab4985e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 768.468,
+      "started_at": "2026-09-16T18:42:44.569Z",
+      "commit": "6e68e6e431ad31dd2ccfa271ec78585ccc96693d",
+      "workspace_fingerprint": "efc403483b914b208d75902c378571e5ddf705d01d682e0efa2a0405fab4985e",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
