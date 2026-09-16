@@ -53,6 +53,7 @@
     "sagejs.modular_abelian_varieties.lattices",
     "sagejs.modular_abelian_varieties.products",
     "sagejs.modular_abelian_varieties.degeneracy",
+    "sagejs.modular_abelian_varieties.homspace",
     "sagejs.modular_forms",
     "sagejs.modular_forms.brandt",
     "sagejs.modular_forms.character_hecke",

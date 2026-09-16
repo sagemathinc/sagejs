@@ -45,6 +45,13 @@ assert events == ["receiver", "lookup", "argument", ("call", 7)]
 events.clear()
 
 
+def literal_keywords(__proto__, ordinary):
+    return __proto__, ordinary
+
+
+assert literal_keywords(__proto__=3, ordinary=5) == (3, 5)
+
+
 class NotCallable:
     target = 3
 
@@ -86,6 +93,32 @@ assert child.method(value=3) == ("replacement", 3)
 assert saved(value=5) == 5
 del child.method
 assert child.method(value=3) == 3
+
+
+def replacement_method(self, value=0):
+    return "class-replacement", value
+
+
+original_method = Child.method
+Child.method = replacement_method
+assert child.method(value=6) == ("class-replacement", 6)
+Child.method = original_method
+assert child.method(value=6) == 6
+events.clear()
+
+
+class Hooked:
+    def __getattribute__(self, name):
+        events.append(("getattribute", name))
+        return object.__getattribute__(self, name)
+
+    def method(self, value=0):
+        return value
+
+
+assert Hooked().method(value=8) == 8
+assert events == [("getattribute", "method")]
+events.clear()
 
 
 class Descriptor:

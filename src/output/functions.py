@@ -1319,6 +1319,22 @@ def print_function_call(self, output):
                     output.print(")")
 
     def print_kwargs():
+        if not has_kwarg_items:
+            output.print("({[ρσ_kwargs_symbol]:true")
+            for pair in self.args.kwargs:
+                output.comma()
+                # A computed key keeps ``__proto__`` an ordinary keyword;
+                # quoted keys are smaller for every other static name.
+                computed = pair[0].name == "__proto__"
+                if computed:
+                    output.print("[")
+                output.print_string(pair[0].name)
+                output.print("]" if computed else "")
+                output.print(":")
+                output.space()
+                pair[1].print(output)
+            output.print("})")
+            return
         output.print(
             "ρσ_desugar_kwargs(["
             if output.options.python_attributes
@@ -1493,8 +1509,21 @@ def print_function_call(self, output):
             output.comma(),
         )
 
+    prepared_keywords = has_kwargs and resolved_python_attribute
+    if prepared_keywords:
+        for argument in self.args:
+            if argument.is_array:
+                prepared_keywords = False
+                break
+
     if has_kwargs:
-        if is_new:
+        if prepared_keywords:
+            output.print("ρσ_interpolate_kwargs(ρσ_prepare_method_call(")
+            self.expression.expression.print(output)
+            output.comma()
+            output.print(JSON.stringify(self.expression.property))
+            output.print("), undefined")
+        elif is_new:
             print_new(False)
         else:
             output.print(
@@ -1503,7 +1532,8 @@ def print_function_call(self, output):
                 else "ρσ_interpolate_kwargs_legacy("
             )
             do_print_this()
-        print_function_name(True)
+        if not prepared_keywords:
+            print_function_name(True)
         output.comma()
     else:
         if is_new:

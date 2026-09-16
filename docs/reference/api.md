@@ -1320,6 +1320,28 @@ sage: 10 * E([0,0])
 
 - `sage-derived` — [SageMath elliptic curves API](https://doc.sagemath.org/html/en/reference/arithmetic_curves/); license GPL-2.0-or-later
 
+## `End`
+
+```sage
+End(variety: Any) -> Any
+```
+
+Return the full endomorphism order of a modular abelian variety over QQ.
+
+```sage
+sage: End(J0(23)).rank()
+2
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.modular.abvar.homspace`
+- Tags: modular abelian varieties, endomorphism rings
+- Backends: Sage.js complete integral Hom lattice
+- Sage compatibility: partial — Full endomorphism order over QQ, including repeated factors and integral gluing.
+- Limitations: Does not compute geometric endomorphisms over an algebraic closure.
+
 ## `eta_product`
 
 ```sage
@@ -5065,6 +5087,28 @@ Graphics object consisting of 1 graphics primitive
 ### References
 
 - [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
+## `Hom`
+
+```sage
+Hom(domain: Any, codomain: Any) -> Any
+```
+
+Return the complete integral Hom group of modular abelian varieties over QQ.
+
+```sage
+sage: Hom(J0(11), J0(22)).rank()
+2
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.modular.abvar.homspace`
+- Tags: modular abelian varieties, homomorphisms, integral homology
+- Backends: Sage.js exact newform decomposition, FLINT integral saturation
+- Sage compatibility: partial — Complete Hom over QQ for the supported weight-two Gamma0 varieties.
+- Limitations: Only supported modular abelian varieties over QQ; not a generic categorical Hom constructor.
 
 ## `hue`
 

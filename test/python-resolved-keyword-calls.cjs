@@ -15,9 +15,9 @@ const source = readFileSync(fixture, "utf8");
 
 test("resolved keyword lowering keeps native and legacy receiver conventions", () => {
   const compiler = createCompiler();
-  const emit = (receiver, member, pythonAttributes) => {
+  const emit = (receiver, member, pythonAttributes, keyword = "value") => {
     const args = [];
-    args.kwargs = [[new compiler.AST_SymbolRef({ name: "value" }), new compiler.AST_Number({ value: 1 })]];
+    args.kwargs = [[new compiler.AST_SymbolRef({ name: keyword }), new compiler.AST_Number({ value: 1 })]];
     const call = new compiler.AST_Call({
       expression: new compiler.AST_Dot({
         expression: new compiler.AST_SymbolRef({ name: receiver }), property: member,
@@ -29,8 +29,20 @@ test("resolved keyword lowering keeps native and legacy receiver conventions", (
     call.print(output);
     return output.get();
   };
-  assert.match(emit("obj", "method", true), /ρσ_interpolate_kwargs\(undefined, ρσ_getattr_internal\(/u);
-  assert.match(emit("obj", "method", false), /ρσ_interpolate_kwargs_legacy\(obj,/u);
+  const pythonMethod = emit("obj", "method", true);
+  assert.match(
+    pythonMethod,
+    /ρσ_interpolate_kwargs\(ρσ_prepare_method_call\(obj,\s*"method"\),\s*undefined/u,
+  );
+  assert.match(pythonMethod, /\{\[ρσ_kwargs_symbol\]:true,\s*"value":\s*1\}/u);
+  assert.doesNotMatch(pythonMethod, /ρσ_desugar_kwargs/u);
+  assert.match(
+    emit("obj", "method", true, "__proto__"),
+    /\{\[ρσ_kwargs_symbol\]:true,\s*\["__proto__"\]:\s*1\}/u,
+  );
+  const legacyMethod = emit("obj", "method", false);
+  assert.match(legacyMethod, /ρσ_interpolate_kwargs_legacy\(obj,/u);
+  assert.doesNotMatch(legacyMethod, /ρσ_desugar_kwargs/u);
   assert.match(emit("Object", "keys", true), /ρσ_interpolate_kwargs\(Object,/u);
   assert.match(emit("obj", "ρσ_internal", true), /ρσ_interpolate_kwargs\(obj,/u);
 });

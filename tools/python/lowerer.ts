@@ -1544,6 +1544,7 @@ export class PythonCstLowerer {
         value: integer ? raw.replaceAll("_", "") : raw,
       })],
       direct_call: constructor === "ρσ_float",
+      numeric_literal: true,
     });
   }
 

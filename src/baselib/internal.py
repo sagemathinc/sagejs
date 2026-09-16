@@ -22,31 +22,6 @@ def ρσ_register_keyword_constructor(cls: Any) -> None:
     _internal_keyword_constructor_prototypes.add(runtime.reflect.get(cls, "prototype"))
 
 
-def ρσ_live_initializer(cls: Any) -> Any:
-    """Resolve past generated forwarding initializers using the current MRO."""
-    original = _internal_get_member(runtime.reflect.get(cls, "prototype"), "__init__")
-    if _internal_get_member(original, "__sagejs_synthetic_init__") is not True:
-        return original
-    mro = _internal_get_member(cls, "__mro__")
-    if not runtime.array.isArray(mro):
-        return original
-    for owner in mro:
-        prototype = runtime.reflect.get(owner, "prototype")
-        if prototype is runtime.undefined:
-            continue
-        descriptor = runtime.object.getOwnPropertyDescriptor(prototype, "__init__")
-        if descriptor is runtime.undefined:
-            continue
-        initializer = runtime.reflect.get(descriptor, "value")
-        if (
-            initializer is not runtime.undefined
-            and _internal_get_member(initializer, "__sagejs_synthetic_init__")
-            is not True
-        ):
-            return initializer
-    return original
-
-
 def _internal_copy_constructor_arguments(supplied_args: Any) -> Any:
     """Copy a marked call packet before a binding pass consumes its fields."""
     call_args = runtime.reflect.apply(runtime.array.prototype.slice, supplied_args, [])
@@ -80,7 +55,8 @@ def _internal_initializer_needs_self(initializer: Any) -> bool:
 def ρσ_call_keyword_initializer(
     initializer: Any, instance: Any, supplied_args: Any
 ) -> Any:
-    call_args = _internal_copy_constructor_arguments(supplied_args)
+    # Allocation copied its packet; initialization is the final consumer.
+    call_args = runtime.reflect.apply(runtime.array.prototype.slice, supplied_args, [])
     receiver = instance
     if _internal_initializer_needs_self(initializer):
         call_args.unshift(instance)
@@ -958,15 +934,20 @@ def ρσ_interpolate_kwargs(
     target_function: Any,
     supplied_args: Any,
 ) -> Any:
-    if (
+    if target_function is runtime.undefined and runtime.array.isArray(receiver):
+        context = receiver
+        target_function = context[0]
+        receiver = context[1]
+        if receiver is runtime.undefined:
+            return ρσ_interpolate_kwargs(receiver, target_function, supplied_args)
+        if context[2] is True:
+            supplied_args.unshift(receiver)
+            receiver = runtime.undefined
+    elif (
         _internal_class_instance_function(receiver, target_function)
         and _internal_get_member(target_function, "__self__") is runtime.undefined
     ):
-        # Accessing ``Class.method`` applies the function descriptor but does
-        # not bind an instance.  The explicit first argument in calls such as
-        # ``Base.__init__(self, **kwargs)`` must therefore remain first rather
-        # than having the class injected ahead of it as a JavaScript receiver.
-        # A classmethod has an explicit ``__self__`` and remains bound.
+        # `Class.method` is unbound; classmethods carry an explicit `__self__`.
         receiver = runtime.undefined
     elif _internal_owns_function_value(receiver, target_function):
         receiver = runtime.undefined
@@ -977,82 +958,72 @@ def ρσ_interpolate_kwargs(
         receiver = target_function
         target_function = _internal_callable_slot(target_function)
     elif _internal_has_own(target_function, "__bases__"):
-        # A class obtained through ``obj.factory`` is a callable value, not a
-        # function descriptor.  The simple-call lowering already removes the
-        # JavaScript property receiver with ``ρσ_resolve_callable``; preserve
-        # the same Python rule for the keyword/star-argument path.  Traitlets
-        # relies on this when an Instance trait calls ``self.klass(*args,
-        # **kwargs)`` to construct a dynamic default.
+        # A class obtained through an attribute is a value, not a descriptor.
         receiver = runtime.undefined
         if _internal_keyword_constructor_prototypes.has(
             runtime.reflect.get(target_function, "prototype")
         ):
-            # Bind independently at the allocator and actual initializer,
-            # not against definition-time copies of a class signature.
+            # Bind against the live allocator and initializer.
             return runtime.reflect.apply(
                 target_function, runtime.undefined, supplied_args
             )
     elif (
-        not _internal_get_member(target_function, "__argnames__")
-        and not _internal_get_member(target_function, "__kwonly__")
+        not runtime.native_get(target_function, "__argnames__")
+        and not runtime.native_get(target_function, "__kwonly__")
         and _internal_get_member(target_function, "__sagejs_callable_instance_class__")
         is not True
         and not _internal_has_own(target_function, "__bases__")
     ):
-        # Descriptor lookup can expose a callable-instance adapter as another
-        # host function (for example ``pytest.hookimpl``).  Such an adapter has
-        # no meaningful signature of its own; its bound ``__call__`` method
-        # carries the Python keyword metadata.
+        # Callable adapters carry their Python signature on bound `__call__`.
         callable_method = runtime.reflect.apply(
             _internal_builtin("ρσ_getattr"),
             runtime.undefined,
             [target_function, "__call__", None],
         )
         if callable_method is not None and (
-            _internal_get_member(callable_method, "__argnames__")
-            or _internal_get_member(callable_method, "__kwonly__")
+            runtime.native_get(callable_method, "__argnames__")
+            or runtime.native_get(callable_method, "__kwonly__")
         ):
             receiver = target_function
             target_function = callable_method
-    keyword_object = supplied_args[-1]
-    argnames = _internal_get_member(target_function, "__argnames__")
-    keyword_only = _internal_get_member(target_function, "__kwonly__")
-    # An empty argument-name array is meaningful metadata: it describes a
-    # callable that accepts no named arguments.  Only the complete absence of
-    # signature metadata means this is an opaque host callable that should be
-    # invoked without Python keyword validation.
+    # Signature slots are live data, not descriptors.
+    argnames = runtime.native_get(target_function, "__argnames__")
+    keyword_only = runtime.native_get(target_function, "__kwonly__")
+    # An empty name array is a signature; absence denotes an opaque host call.
     if argnames is runtime.undefined and keyword_only is runtime.undefined:
         return runtime.reflect.apply(target_function, receiver, supplied_args)
     if argnames is runtime.undefined:
         argnames = runtime.reflect.construct(runtime.array, [0])
-    positional_only = _internal_get_member(target_function, "__positional_only__")
+    positional_only = runtime.native_get(target_function, "__positional_only__")
     if positional_only is True:
         positional_only = argnames.length
     elif positional_only is runtime.undefined:
         positional_only = 0
 
     keyword_object = supplied_args.pop()
-    if _internal_get_member(target_function, "__handles_kwarg_interpolation__"):
-        argument_count = runtime.math.max(supplied_args.length, argnames.length)
+    if runtime.native_get(target_function, "__handles_kwarg_interpolation__"):
+        supplied_count = supplied_args.length
+        named_count = argnames.length
+        argument_count = supplied_count if supplied_count > named_count else named_count
         call_args = runtime.reflect.construct(runtime.array, [argument_count + 1])
         call_args[argument_count] = keyword_object
         for index in range(argument_count):
-            if index < argnames.length:
+            if index < named_count:
                 property_name = argnames[index]
                 if index >= positional_only and _internal_has_own(
                     keyword_object, property_name
                 ):
-                    if index < supplied_args.length:
+                    if index < supplied_count:
                         raise TypeError(
                             "multiple values for argument '" + property_name + "'"
                         )
                     call_args[index] = keyword_object[property_name]
                     runtime.reflect.deleteProperty(keyword_object, property_name)
-                elif index < supplied_args.length:
+                elif index < supplied_count:
                     call_args[index] = supplied_args[index]
             else:
                 call_args[index] = supplied_args[index]
-        if not _internal_get_member(target_function, "__varkw__"):
+        if not runtime.native_get(target_function, "__varkw__"):
             for unexpected in runtime.object.keys(keyword_object):
                 if not keyword_only or keyword_only.indexOf(unexpected) == -1:
                     raise TypeError("unexpected keyword argument '" + unexpected + "'")

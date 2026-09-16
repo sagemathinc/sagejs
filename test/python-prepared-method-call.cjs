@@ -34,7 +34,10 @@ test("only immediate Python dot calls use prepared method lookup", () => {
     new compiler.AST_SymbolRef({ name: "value" }),
     new compiler.AST_Number({ value: 1 }),
   ]];
-  assert.doesNotMatch(emit(call("obj", "method", keywordArgs)), /prepared_method|prepare_method/u);
+  assert.match(
+    emit(call("obj", "method", keywordArgs)),
+    /ρσ_interpolate_kwargs\(ρσ_prepare_method_call\(obj,\s*"method"\),\s*undefined/u,
+  );
   const spread = new compiler.AST_SymbolRef({ name: "values" });
   spread.is_array = true;
   const starArgs = [spread];
@@ -196,6 +199,41 @@ class Caller:
         return a.method(18)
 assert Caller().call() == ('new', 18)
 
+# A warm prepared-call cache must not bypass later attribute hooks.
+class Hooked:
+    def method(self, value):
+        return ('ordinary', value)
+h = Hooked()
+assert h.method(1) == ('ordinary', 1)
+assert h.method(2) == ('ordinary', 2)
+def hooked_getattribute(self, name):
+    if name == 'method':
+        return lambda value: ('hooked', value)
+    return object.__getattribute__(self, name)
+Hooked.__getattribute__ = hooked_getattribute
+assert h.method(3) == ('hooked', 3)
+del Hooked.__getattribute__
+assert h.method(4) == ('ordinary', 4)
+
+# Inherited cache entries follow deletion and replacement on their owner.
+class CacheBase:
+    def method(self, value):
+        return ('base', value)
+class CacheChild(CacheBase):
+    pass
+cached_child = CacheChild()
+assert cached_child.method(5) == ('base', 5)
+assert cached_child.method(6) == ('base', 6)
+del CacheBase.method
+try:
+    cached_child.method(7)
+except AttributeError:
+    pass
+else:
+    assert False
+CacheBase.method = lambda self, value: ('replacement', value)
+assert cached_child.method(8) == ('replacement', 8)
+
 # Assigned namespace functions are values, never implicit-self methods.
 a.__dict__ = {'method': own}
 assert a.method(19) == ('own', 19)
@@ -232,6 +270,19 @@ def replacement(self, value):
 Callable.__call__ = replacement
 assert c(20) == ('new', 20)
 print('callable-slot-replacement-ok')
+`],
+  ["super binds metaclass-produced methods before keyword interpolation", `
+class Meta(type):
+    def __new__(mcls, name, bases, namespace):
+        return super().__new__(mcls, name, bases, namespace)
+class Base(metaclass=Meta):
+    def method(self, /, *args, **kwargs):
+        return (self.__class__.__name__, args, kwargs)
+class Child(Base, metaclass=Meta):
+    def method(self, /, *args, **kwargs):
+        return super(Child, self).method(*args, **kwargs)
+assert Child().method(20, key=21) == ('Child', (20,), {'key': 21})
+print('super-metaclass-binding-ok')
 `],
 ]) {
   test(name, async (context) => {

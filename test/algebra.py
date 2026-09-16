@@ -328,7 +328,7 @@ assrt.ok(a9**8 == 1)
 assrt.ok(1 + a9 == a9 + 1)
 assrt.ok(a9 + GF(3)(2) == a9 + 2)
 assrt.ok(F9(QQ(1, 2)) == 2)
-assrt.equal(repr(list(F9)), "[0, a, a + 1, 2*a + 1, 2, 2*a, 2*a + 2, a + 2, 1]")
+assrt.equal(repr(list(F9)), "[0, 1, 2, a, a + 1, a + 2, 2*a, 2*a + 1, 2*a + 2]")
 assrt.equal(GF(9).variable_name(), "z2")
 assrt.equal(repr(GF(8, "b").modulus()), "x^3 + x + 1")
 

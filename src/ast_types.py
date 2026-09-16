@@ -816,6 +816,7 @@ class AST_Call(AST_BaseCall):
     properties = {
         "expression": "[AST_Node] expression to invoke as function",
         "direct_call": "[boolean] call a compiler-known JavaScript function directly",
+        "numeric_literal": "[boolean] constructor call lowered from a numeric source token",
         "inferred_type": "[string?] compiler-inferred primitive result type",
     }
 

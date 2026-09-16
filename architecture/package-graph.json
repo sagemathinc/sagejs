@@ -789,7 +789,7 @@
       "id": "modular-forms",
       "layer": 4,
       "startup": "bootstrap",
-      "max_source_bytes": 351000,
+      "max_source_bytes": 353000,
       "depends_on": ["core-runtime", "native-integration", "arithmetic", "linear-algebra"],
       "files": [
         "src/baselib/dirichlet.py",
@@ -894,7 +894,7 @@
       "id": "modular-abelian-varieties",
       "layer": 6,
       "startup": "lazy",
-      "max_source_bytes": 86500,
+      "max_source_bytes": 113000,
       "depends_on": [
         "core-runtime",
         "python-stdlib",
@@ -913,7 +913,8 @@
         "src/lib/sagejs/modular_abelian_varieties/lattices.py",
         "src/lib/sagejs/modular_abelian_varieties/morphisms.py",
         "src/lib/sagejs/modular_abelian_varieties/products.py",
-        "src/lib/sagejs/modular_abelian_varieties/degeneracy.py"
+        "src/lib/sagejs/modular_abelian_varieties/degeneracy.py",
+        "src/lib/sagejs/modular_abelian_varieties/homspace.py"
       ],
       "typescript_files": ["tools/serialization-codecs/modular-abelian-varieties.ts"],
       "prefixes": []

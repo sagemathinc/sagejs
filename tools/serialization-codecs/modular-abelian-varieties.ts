@@ -40,6 +40,14 @@ function canonicalHomologyMap(
 
 export function encodeModularAbelianParent(value: unknown, context: EncodeContext): WireValue {
   switch (kind(value)) {
+    case "ModularAbelianHomSpace": {
+      if (callMethod(value, "verify") !== true) {
+        throw new SageSerializationError("invalid complete Hom lattice");
+      }
+      return context.encode({ kind: "ModularAbelianHomSpace",
+        domain: callMethod(value, "domain"), codomain: callMethod(value, "codomain"),
+        basis: callMethod(value, "basis_matrix") });
+    }
     case "ModularAbelianVariety": {
       const construction = String(callMethod(value, "construction"));
       const newform = Reflect.get(Object(value), "_newform");
@@ -76,6 +84,13 @@ export function encodeModularAbelianParent(value: unknown, context: EncodeContex
 
 export function decodeModularAbelianParent(data: Record<string, unknown>): unknown {
   switch (data.kind) {
+    case "ModularAbelianHomSpace": {
+      const parent = callMethod(data.domain, "Hom", [data.codomain]);
+      if (callMethod(callMethod(parent, "basis_matrix"), "__eq__", [data.basis]) !== true) {
+        throw new SageSerializationError("Hom lattice does not match complete geometric construction");
+      }
+      return parent;
+    }
     case "ModularAbelianVariety":
       if (data.construction === "product") {
         return callGlobal("AbelianVariety", [data.factors]);

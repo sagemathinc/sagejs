@@ -1187,60 +1187,99 @@ def set_wrap(native_set: Any) -> SageSet:
     return answer
 
 
-def _dict_normalize_key(key: Any) -> Any:
-    # Attribute dictionaries, keyword arguments, globals, and most JSON-like
-    # Python mappings overwhelmingly use primitive string keys.  Their native
-    # identity is already exactly Python's hash/equality identity, so avoid
-    # the generic unhashable, numeric, and structural-key checks.  In
-    # particular, metaclass-heavy packages construct many class dictionaries;
-    # sending every class member name through ``isinstance`` made that work
-    # needlessly quadratic in runtime-dispatch cost.
-    key_type = runtime.jstype(key)
-    if runtime.strict_equal(key_type, "string"):
-        return key
-    if isinstance(key, SageSet):
-        raise TypeError("unhashable type: 'set'")
-    if key is True:
-        return 1
-    if key is False:
-        return 0
-    if _is_boxed_float(key):
-        return _numeric_key(key)
-    if runtime.strict_equal(key_type, "number"):
-        return _numeric_key(key)
-    if runtime.is_exact_integer(key):
-        return runtime.normalize_integer(runtime.bigint(key))
+def _dict_structural_key(key: Any) -> Any:
     structural_key = _get_member(key, "__sagejs_dict_key__")
     if runtime.strict_equal(runtime.jstype(structural_key), "function"):
-        return structural_key()
-    return key
+        return _call_member(key, "__sagejs_dict_key__", [])
+    return _CONTAINERS_MISSING
 
 
 def _dict_resolve_key(mapping: Any, key: Any) -> Any:
-    """Return the stored identity for an equal Python key.
+    key_type = runtime.jstype(key)
+    structural = False
+    if runtime.strict_equal(key_type, "string"):
+        normalized_key = key
+    elif isinstance(key, SageSet):
+        raise TypeError("unhashable type: 'set'")
+    elif key is True:
+        normalized_key = 1
+    elif key is False:
+        normalized_key = 0
+    elif _is_boxed_float(key):
+        normalized_key = _numeric_key(key)
+    elif runtime.strict_equal(key_type, "number"):
+        normalized_key = _numeric_key(key)
+    elif runtime.is_exact_integer(key):
+        normalized_key = runtime.normalize_integer(runtime.bigint(key))
+    else:
+        structural_key = _dict_structural_key(key)
+        if structural_key is _CONTAINERS_MISSING:
+            normalized_key = key
+        else:
+            normalized_key = structural_key
+            structural = True
 
-    Native JavaScript `Map` compares objects by identity, whereas Python
-    dictionaries use `__hash__` followed by `__eq__`.  Keep the fast
-    primitive and identity paths, then scan existing keys for an equal object
-    only after an identity miss.  Besides structural tuple keys, this is
-    required for cross-type numeric equality such as `mpf(0) == 0`.  This
-    is intentionally a correctness-first fallback; a hash-bucket index can
-    replace the scan when object-key workloads warrant it.
-    """
-    normalized_key = _dict_normalize_key(key)
     if mapping.jsmap.has(normalized_key):
         return normalized_key
-    key_type = runtime.jstype(key)
-    if (
+
+    object_key = (
         (runtime.array.isArray(key) and runtime.object.isFrozen(key))
         or runtime.strict_equal(key_type, "object")
         or runtime.strict_equal(key_type, "function")
-    ):
-        for candidate in mapping.jsmap.keys():
-            original = mapping.keymap.get(candidate)
-            if equals(original, key):
-                return candidate
+    )
+    if structural:
+        candidates = (
+            mapping.jsmap.keys()
+            if mapping.structural_keys is runtime.undefined
+            else mapping.fallback_keys.values()
+        )
+    elif object_key or mapping.structural_keys is not runtime.undefined:
+        candidates = mapping.jsmap.keys()
+    else:
+        return normalized_key
+
+    for candidate in candidates:
+        original = mapping.keymap.get(candidate)
+        if equals(original, key):
+            return candidate
     return normalized_key
+
+
+def _dict_key_needs_fallback(key: Any) -> bool:
+    key_type = runtime.jstype(key)
+    if (
+        runtime.strict_equal(key_type, "string")
+        or runtime.strict_equal(key_type, "number")
+        or runtime.strict_equal(key_type, "bigint")
+        or runtime.strict_equal(key_type, "boolean")
+    ):
+        return True
+    if isinstance(key, SageSet):
+        raise TypeError("unhashable type: 'set'")
+    return _dict_structural_key(key) is _CONTAINERS_MISSING
+
+
+def _dict_track_new_key(mapping: Any, key: Any, normalized_key: Any) -> None:
+    if _dict_key_needs_fallback(key):
+        if mapping.structural_keys is not runtime.undefined:
+            mapping.fallback_keys.add(normalized_key)
+        return
+    if mapping.structural_keys is runtime.undefined:
+        mapping.structural_keys = _new_set()
+        mapping.fallback_keys = runtime.reflect.construct(
+            runtime.set_class, [mapping.jsmap.keys()]
+        )
+    mapping.structural_keys.add(normalized_key)
+
+
+def _dict_forget_key(mapping: Any, normalized_key: Any) -> None:
+    if mapping.structural_keys is runtime.undefined:
+        return
+    _native_delete(mapping.fallback_keys, normalized_key)
+    if _native_delete(mapping.structural_keys, normalized_key):
+        if mapping.structural_keys.size == 0:
+            mapping.structural_keys = runtime.undefined
+            mapping.fallback_keys = runtime.undefined
 
 
 class _DictView:
@@ -1329,18 +1368,20 @@ class _DictView:
 def _dict_storage_setitem(mapping: Any, key: Any, value: Any) -> None:
     """Set an item without dispatching to a dict subclass override."""
     key_type = runtime.jstype(key)
-    if runtime.strict_equal(key_type, "string"):
+    has_structural_keys = mapping.structural_keys is not runtime.undefined
+    if runtime.strict_equal(key_type, "string") and not has_structural_keys:
         normalized_key = key
-    elif runtime.strict_equal(key_type, "number"):
+    elif runtime.strict_equal(key_type, "number") and not has_structural_keys:
         normalized_key = _numeric_key(key)
-    elif runtime.strict_equal(key_type, "bigint"):
+    elif runtime.strict_equal(key_type, "bigint") and not has_structural_keys:
         normalized_key = runtime.normalize_integer(key)
-    elif runtime.strict_equal(key_type, "boolean"):
+    elif runtime.strict_equal(key_type, "boolean") and not has_structural_keys:
         normalized_key = 1 if key else 0
     else:
         normalized_key = _dict_resolve_key(mapping, key)
     if not mapping.jsmap.has(normalized_key):
         mapping.keymap.set(normalized_key, key)
+        _dict_track_new_key(mapping, key, normalized_key)
     mapping.jsmap.set(normalized_key, value)
 
 
@@ -1368,6 +1409,8 @@ class SageDict:
         if not _has_own(self, "jsmap"):
             self.jsmap = _new_map()
             self.keymap = _new_map()
+            self.structural_keys = runtime.undefined
+            self.fallback_keys = runtime.undefined
         if iterable is not runtime.undefined:
             _dict_update(self, iterable)
         if len(keywords):
@@ -1413,6 +1456,7 @@ class SageDict:
             raise KeyError(key)
         _native_delete(self.jsmap, normalized_key)
         _native_delete(self.keymap, normalized_key)
+        _dict_forget_key(self, normalized_key)
 
     def __getitem__(self, key: Any) -> Any:
         normalized_key = _dict_resolve_key(self, key)
@@ -1427,11 +1471,23 @@ class SageDict:
     def clear(self) -> None:
         self.jsmap.clear()
         self.keymap.clear()
+        self.structural_keys = runtime.undefined
+        self.fallback_keys = runtime.undefined
 
     def copy(self) -> SageDict:
         answer = runtime.object.create(runtime.object.getPrototypeOf(self))
         answer.jsmap = runtime.reflect.construct(runtime.map_class, [self.jsmap])
         answer.keymap = runtime.reflect.construct(runtime.map_class, [self.keymap])
+        if self.structural_keys is runtime.undefined:
+            answer.structural_keys = runtime.undefined
+            answer.fallback_keys = runtime.undefined
+        else:
+            answer.structural_keys = runtime.reflect.construct(
+                runtime.set_class, [self.structural_keys]
+            )
+            answer.fallback_keys = runtime.reflect.construct(
+                runtime.set_class, [self.fallback_keys]
+            )
         return answer
 
     def keys(self) -> Any:
@@ -1464,6 +1520,7 @@ class SageDict:
         normalized_key = _dict_resolve_key(self, key)
         if not self.jsmap.has(normalized_key):
             self.keymap.set(normalized_key, key)
+            _dict_track_new_key(self, key, normalized_key)
             self.jsmap.set(normalized_key, default_value)
             return default_value
         return self.jsmap.get(normalized_key)
@@ -1494,6 +1551,7 @@ class SageDict:
             return default_value
         _native_delete(self.jsmap, normalized_key)
         _native_delete(self.keymap, normalized_key)
+        _dict_forget_key(self, normalized_key)
         return answer
 
     def popitem(self) -> Any:
@@ -1503,6 +1561,7 @@ class SageDict:
         _native_delete(self.jsmap, result.value[0])
         key = self.keymap.get(result.value[0])
         _native_delete(self.keymap, result.value[0])
+        _dict_forget_key(self, result.value[0])
         return runtime.math_tuple([key, result.value[1]])
 
     def update(
@@ -1636,6 +1695,8 @@ class _LiveScopeDict(SageDict):
     def _refresh(self) -> None:
         self.jsmap.clear()
         self.keymap.clear()
+        self.structural_keys = runtime.undefined
+        self.fallback_keys = runtime.undefined
         for key in runtime.object.keys(self._scope):
             value = runtime.reflect.get(self._scope, key)
             if not _containers_is_missing_binding(value):
@@ -1824,6 +1885,8 @@ def ρσ_dict(
     answer = runtime.object.create(runtime.reflect.get(SageDict, "prototype"))
     answer.jsmap = _new_map()
     answer.keymap = _new_map()
+    answer.structural_keys = runtime.undefined
+    answer.fallback_keys = runtime.undefined
     if iterable is not runtime.undefined:
         SageDict.update(answer, iterable)
     if len(keywords):
@@ -1836,6 +1899,8 @@ def ρσ_dict_literal(items: Any) -> SageDict:
     answer = runtime.object.create(runtime.reflect.get(SageDict, "prototype"))
     answer.jsmap = _new_map()
     answer.keymap = _new_map()
+    answer.structural_keys = runtime.undefined
+    answer.fallback_keys = runtime.undefined
     index = 0
     while index < items.length:
         _dict_storage_setitem(
