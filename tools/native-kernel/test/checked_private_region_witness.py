@@ -269,6 +269,36 @@ def checked_region_local_copy_entry(
 
 
 @native
+def checked_region_repeated_copy_helper(
+    storage: UInt64Buffer, start: int64, degree: int64, output: int64
+) -> int64:
+    source: UInt64Buffer = uint64_buffer_view(storage, start, 4)
+    target: UInt64Buffer = uint64_buffer_view(storage, output, 4)
+    index: int64 = 0
+    if output > start:
+        descending_stop: int64 = -1
+        descending_step: int64 = -1
+        for index in range(degree, descending_stop, descending_step):
+            target[index] = source[index]
+    else:
+        prefix_stop: int64 = degree + 1
+        for index in range(prefix_stop):
+            target[index] = source[index]
+    tail_start: int64 = degree + 1
+    tail_stop: int64 = 4
+    for index in range(tail_start, tail_stop):
+        target[index] = 0
+    return degree
+
+
+@native
+def checked_region_repeated_copy_entry(
+    storage: UInt64Buffer, start: int64, degree: int64, output: int64
+) -> int64:
+    return checked_region_repeated_copy_helper(storage, start, degree, output)
+
+
+@native
 def checked_region_direct_copy_entry(
     storage: UInt64Buffer, start: int64, degree: int64, output: int64
 ) -> int64:

@@ -461,6 +461,26 @@ function intersectSets(left, right) {
   return new Set(Array.from(left || []).filter((value) => right?.has(value)));
 }
 
+function mergeSuccessEvidence(left, right) {
+  const combined = [...(left || []), ...(right || [])];
+  return combined.filter((evidence, index) =>
+    combined.findIndex(candidate =>
+      JSON.stringify(candidate) === JSON.stringify(evidence)
+    ) === index
+  ).map(evidence => ({ ...evidence }));
+}
+
+function intersectSuccessfulInt64Expressions(left, right) {
+  const result = new Map();
+  for (const [expression, evidence] of left || []) {
+    const other = right?.get(expression);
+    if (other !== undefined) {
+      result.set(expression, mergeSuccessEvidence(evidence, other));
+    }
+  }
+  return result;
+}
+
 function intervalResult(operation, left, right) {
   if (left === undefined || right === undefined) return undefined;
   if (operation === "add") {
@@ -674,9 +694,11 @@ function initialFacts(entry, guard) {
     buffers,
     bufferMaximums,
     expressions,
+    localScalarExpressions: new Map(),
     rangeUpper,
     bufferRelations,
     safeInt64Expressions,
+    successfulInt64Expressions: new Map(),
     summaryDependencies: new Set(),
     scalarBounds: new Map(),
     pathConditions: [],
@@ -690,12 +712,22 @@ function mergeFacts(target, incoming) {
     target.buffers = new Map(incoming.buffers);
     target.bufferMaximums = new Map(incoming.bufferMaximums || []);
     target.expressions = new Map(incoming.expressions);
+    target.localScalarExpressions = new Map(
+      incoming.localScalarExpressions || [],
+    );
     target.rangeUpper = new Map(incoming.rangeUpper);
     target.bufferRelations = new Map(Array.from(
       incoming.bufferRelations,
       ([name, relations]) => [name, new Set(relations)],
     ));
     target.safeInt64Expressions = new Set(incoming.safeInt64Expressions);
+    target.successfulInt64Expressions = new Map(Array.from(
+      incoming.successfulInt64Expressions || [],
+      ([expression, evidence]) => [
+        expression,
+        evidence.map(item => ({ ...item })),
+      ],
+    ));
     target.summaryDependencies = new Set(incoming.summaryDependencies || []);
     target.scalarBounds = new Map(incoming.scalarBounds || []);
     target.pathConditions = [...(incoming.pathConditions || [])];
@@ -755,6 +787,13 @@ function mergeFacts(target, incoming) {
       changed = true;
     }
   }
+  for (const name of Array.from(target.localScalarExpressions?.keys() || [])) {
+    if (target.localScalarExpressions.get(name) !==
+        incoming.localScalarExpressions?.get(name)) {
+      target.localScalarExpressions.delete(name);
+      changed = true;
+    }
+  }
   for (const name of Array.from(target.rangeUpper.keys())) {
     if (target.rangeUpper.get(name) !== incoming.rangeUpper.get(name)) {
       target.rangeUpper.delete(name);
@@ -780,6 +819,15 @@ function mergeFacts(target, incoming) {
   );
   if (safeExpressions.size !== target.safeInt64Expressions.size) {
     target.safeInt64Expressions = safeExpressions;
+    changed = true;
+  }
+  const successfulExpressions = intersectSuccessfulInt64Expressions(
+    target.successfulInt64Expressions,
+    incoming.successfulInt64Expressions,
+  );
+  if (JSON.stringify(Array.from(successfulExpressions)) !==
+      JSON.stringify(Array.from(target.successfulInt64Expressions || []))) {
+    target.successfulInt64Expressions = successfulExpressions;
     changed = true;
   }
   for (const dependency of incoming.summaryDependencies || []) {
@@ -816,12 +864,20 @@ function cloneState(state) {
     buffers: new Map(state.buffers),
     bufferMaximums: new Map(state.bufferMaximums || []),
     expressions: new Map(state.expressions),
+    localScalarExpressions: new Map(state.localScalarExpressions || []),
     rangeUpper: new Map(state.rangeUpper),
     bufferRelations: new Map(Array.from(
       state.bufferRelations,
       ([name, relations]) => [name, new Set(relations)],
     )),
     safeInt64Expressions: new Set(state.safeInt64Expressions),
+    successfulInt64Expressions: new Map(Array.from(
+      state.successfulInt64Expressions || [],
+      ([expression, evidence]) => [
+        expression,
+        evidence.map(item => ({ ...item })),
+      ],
+    )),
     summaryDependencies: new Set(state.summaryDependencies || []),
     scalarBounds: new Map(Array.from(state.scalarBounds || [], ([name, bounds]) =>
       [name, bounds.map((bound) => ({ ...bound }))]
@@ -832,16 +888,37 @@ function cloneState(state) {
   };
 }
 
+function functionEntryState(fn, state) {
+  const result = cloneState(state);
+  // A parameter remains a stable symbolic value within one invocation even
+  // when different callers provide unrelated expressions.  Shared caller
+  // facts therefore need not agree on provenance for a local repeated-value
+  // proof; mutations still replace or delete this mapping normally.
+  for (const parameter of fn.params || []) {
+    if (!["int64", "uint64"].includes(parameter.type) ||
+        result.localScalarExpressions.has(parameter.name)) continue;
+    result.localScalarExpressions.set(
+      parameter.name, parameterExpression(parameter.name),
+    );
+  }
+  return result;
+}
+
 function joinStates(left, right) {
   const joined = {
     intervals: new Map(), buffers: new Map(), bufferMaximums: new Map(),
   };
   joined.expressions = new Map();
+  joined.localScalarExpressions = new Map();
   joined.rangeUpper = new Map();
   joined.bufferRelations = new Map();
   joined.safeInt64Expressions = intersectSets(
     left.safeInt64Expressions,
     right.safeInt64Expressions,
+  );
+  joined.successfulInt64Expressions = intersectSuccessfulInt64Expressions(
+    left.successfulInt64Expressions,
+    right.successfulInt64Expressions,
   );
   joined.summaryDependencies = new Set([
     ...(left.summaryDependencies || []),
@@ -888,6 +965,11 @@ function joinStates(left, right) {
   for (const [name, expression] of left.expressions) {
     if (right.expressions.get(name) === expression) {
       joined.expressions.set(name, expression);
+    }
+  }
+  for (const [name, expression] of left.localScalarExpressions || []) {
+    if (right.localScalarExpressions?.get(name) === expression) {
+      joined.localScalarExpressions.set(name, expression);
     }
   }
   for (const [name, expression] of left.rangeUpper) {
@@ -1130,9 +1212,11 @@ function summaryIndependentValidatedViewState(state) {
     buffers: new Map(),
     bufferMaximums: new Map(),
     expressions: new Map(),
+    localScalarExpressions: new Map(),
     rangeUpper: new Map(),
     bufferRelations: new Map(),
     safeInt64Expressions: new Set(),
+    successfulInt64Expressions: new Map(),
     summaryDependencies: new Set(),
     scalarBounds: new Map(),
     pathConditions: [],
@@ -1391,6 +1475,7 @@ function refineConditionState(operation, state, truth, fn, structured = true) {
           if (!conditionAssignments.has(name)) continue;
           result.intervals.delete(name);
           result.expressions.delete(name);
+          result.localScalarExpressions.delete(name);
           result.rangeUpper.delete(name);
           result.scalarBounds.delete(name);
         }
@@ -1557,9 +1642,11 @@ function invalidateNestedCalls(operation, context) {
       buffers: new Map(),
       bufferMaximums: new Map(),
       expressions: new Map(),
+      localScalarExpressions: new Map(),
       rangeUpper: new Map(),
       bufferRelations: new Map(),
       safeInt64Expressions: new Set(),
+      successfulInt64Expressions: new Map(),
       summaryDependencies: new Set(),
       scalarBounds: new Map(),
       pathConditions: [],
@@ -1792,6 +1879,7 @@ function analyzeAffineCheckedWhile(operation, entryState, context) {
       maximum: item.postMaximum,
     });
     result.expressions.delete(item.update.target);
+    result.localScalarExpressions.delete(item.update.target);
     result.rangeUpper.delete(item.update.target);
     result.scalarBounds.delete(item.update.target);
   }
@@ -1909,9 +1997,19 @@ function abstractStatesEqual(left, right) {
     mapsEqual(left.expressions, right.expressions, (a, b) => a === b) &&
     mapsEqual(left.rangeUpper, right.rangeUpper, (a, b) => a === b) &&
     mapsEqual(left.bufferRelations, right.bufferRelations, setsEqual) &&
+    mapsEqual(
+      left.localScalarExpressions || new Map(),
+      right.localScalarExpressions || new Map(),
+      (a, b) => a === b,
+    ) &&
     mapsEqual(left.scalarBounds, right.scalarBounds, (a, b) =>
       JSON.stringify(a) === JSON.stringify(b)
     ) && setsEqual(left.safeInt64Expressions, right.safeInt64Expressions) &&
+    mapsEqual(
+      left.successfulInt64Expressions || new Map(),
+      right.successfulInt64Expressions || new Map(),
+      (a, b) => JSON.stringify(a) === JSON.stringify(b),
+    ) &&
     setsEqual(left.summaryDependencies, right.summaryDependencies) &&
     JSON.stringify(left.pathConditions) === JSON.stringify(right.pathConditions);
 }
@@ -1989,6 +2087,7 @@ function forgetScalarAndBufferFacts(state, names) {
     state.buffers.delete(name);
     state.bufferMaximums?.delete(name);
     state.expressions.delete(name);
+    state.localScalarExpressions.delete(name);
     state.rangeUpper.delete(name);
     state.bufferRelations.delete(name);
     state.scalarBounds.delete(name);
@@ -2008,9 +2107,11 @@ function unsupportedWhileLocalSeed(operation, entryState) {
       entryState.bufferMaximums || [],
     ).filter(([name]) => !assigned.has(name))),
     expressions: new Map(),
+    localScalarExpressions: new Map(),
     rangeUpper: new Map(),
     bufferRelations: new Map(),
     safeInt64Expressions: new Set(),
+    successfulInt64Expressions: new Map(),
     summaryDependencies: new Set(entryState.summaryDependencies || []),
     scalarBounds: new Map(),
     pathConditions: [],
@@ -2126,6 +2227,75 @@ function analyzeUnsupportedWhileSuccessChains(operation, entryState, context) {
   scan(operation.body);
 }
 
+/*
+ * A normally completed negative range can certify a repeated successor.
+ *
+ *     for i in range(start, -1, negative_step):
+ *         fixed_view[i]
+ *     later = start + 1
+ *
+ * If the loop is empty then `start <= -1`, so the successor cannot overflow.
+ * Otherwise its first iteration uses `i == start`; successful signed access
+ * to a fixed view of int64-sized length proves `start <= length - 1`, again
+ * making the successor safe.  Keep the theorem deliberately narrow: the
+ * checked access must be the first body operation and every iteration must
+ * reach normal completion.  Any branch, mutation before the access, break,
+ * continue, return, or explicit raise disables it.
+ */
+function completedNegativeRangeSuccess(operation, state, context) {
+  if (operation.kind !== "loop.range_int64" ||
+      !context.enabled.has("int64-arithmetic") ||
+      !Array.isArray(operation.body) || operation.body.length === 0) {
+    return undefined;
+  }
+  let hasControlTransfer = false;
+  visitOperations(operation.body, (nested) => {
+    if (["loop.break", "loop.continue", "return", "raise"].includes(
+      nested.kind,
+    )) hasControlTransfer = true;
+  });
+  if (hasControlTransfer || operation.body.some(nested => nested.kind === "if")) {
+    return undefined;
+  }
+  const stop = state.intervals.get(operation.stop);
+  const step = state.intervals.get(operation.step);
+  const startExpression = state.localScalarExpressions.get(operation.start);
+  if (stop?.minimum !== -1n || stop.maximum !== -1n ||
+      step === undefined || step.minimum !== step.maximum ||
+      step.minimum >= 0n || startExpression === undefined) return undefined;
+
+  const access = operation.body[0];
+  if (![
+    "uint64.buffer.get", "uint64.buffer.set",
+    "int64.buffer.get", "int64.buffer.set",
+  ].includes(access.kind) || access.index !== operation.index ||
+      access.indexType !== "int64") return undefined;
+  const virtual = context.virtualViewAliases?.get(access.buffer);
+  const rawLength = virtual?.fact.mode === "fixed"
+    ? virtual.fact.length
+    : virtual?.fact.logicalLength;
+  if (rawLength === undefined) return undefined;
+  let length;
+  try {
+    length = BigInt(rawLength);
+  } catch (_error) {
+    return undefined;
+  }
+  if (length < 0n || length > INT64_MAXIMUM) return undefined;
+  return {
+    expression: binaryExpression(
+      "add", startExpression, constantExpression(1n),
+    ),
+    evidence: Object.freeze({
+      kind: "completed-negative-range-access",
+      loop: operation.id,
+      access: access.id,
+      index: operation.index,
+      length: length.toString(),
+    }),
+  };
+}
+
 function analyzeStatements(statements, state, context) {
   for (const operation of statements || []) {
     if (operation.kind === "if") {
@@ -2184,6 +2354,7 @@ function analyzeStatements(statements, state, context) {
         state.buffers.delete(target);
         state.bufferMaximums?.delete(target);
         state.expressions.delete(target);
+        state.localScalarExpressions.delete(target);
         state.rangeUpper.delete(target);
         state.bufferRelations.delete(target);
         state.scalarBounds.delete(target);
@@ -2191,6 +2362,9 @@ function analyzeStatements(statements, state, context) {
       continue;
     }
     if (operation.kind === "loop.range_int64") {
+      const completedRangeSuccess = completedNegativeRangeSuccess(
+        operation, state, context,
+      );
       const assigned = assignedNames(operation.body);
       const bodyState = cloneState(state);
       for (const name of assigned) {
@@ -2198,6 +2372,7 @@ function analyzeStatements(statements, state, context) {
         bodyState.buffers.delete(name);
         bodyState.bufferMaximums?.delete(name);
         bodyState.expressions.delete(name);
+        bodyState.localScalarExpressions.delete(name);
         bodyState.rangeUpper.delete(name);
         bodyState.bufferRelations.delete(name);
         bodyState.scalarBounds.delete(name);
@@ -2206,6 +2381,7 @@ function analyzeStatements(statements, state, context) {
       bodyState.buffers.delete(operation.index);
       bodyState.bufferMaximums?.delete(operation.index);
       bodyState.expressions.delete(operation.index);
+      bodyState.localScalarExpressions.delete(operation.index);
       bodyState.rangeUpper.delete(operation.index);
       bodyState.bufferRelations.delete(operation.index);
       bodyState.scalarBounds.delete(operation.index);
@@ -2214,6 +2390,7 @@ function analyzeStatements(statements, state, context) {
         bodyState.buffers.delete(operation.iterator);
         bodyState.bufferMaximums?.delete(operation.iterator);
         bodyState.expressions.delete(operation.iterator);
+        bodyState.localScalarExpressions.delete(operation.iterator);
         bodyState.rangeUpper.delete(operation.iterator);
         bodyState.bufferRelations.delete(operation.iterator);
         bodyState.scalarBounds.delete(operation.iterator);
@@ -2261,9 +2438,16 @@ function analyzeStatements(statements, state, context) {
         state.buffers.delete(name);
         state.bufferMaximums?.delete(name);
         state.expressions.delete(name);
+        state.localScalarExpressions.delete(name);
         state.rangeUpper.delete(name);
         state.bufferRelations.delete(name);
         state.scalarBounds.delete(name);
+      }
+      if (completedRangeSuccess?.expression !== undefined) {
+        state.successfulInt64Expressions.set(
+          completedRangeSuccess.expression,
+          [completedRangeSuccess.evidence],
+        );
       }
       continue;
     }
@@ -2336,6 +2520,7 @@ function analyzeStatements(statements, state, context) {
       state.buffers.delete(target);
       state.bufferMaximums?.delete(target);
       state.expressions.delete(target);
+      state.localScalarExpressions.delete(target);
       state.rangeUpper.delete(target);
       state.bufferRelations.delete(target);
       state.scalarBounds.delete(target);
@@ -2344,11 +2529,20 @@ function analyzeStatements(statements, state, context) {
       const value = BigInt(operation.value);
       state.intervals.set(operation.target, { minimum: value, maximum: value });
       state.expressions.set(operation.target, constantExpression(value));
+      state.localScalarExpressions.set(
+        operation.target, constantExpression(value),
+      );
     } else if (["int64.copy", "uint64.copy"].includes(operation.kind)) {
       const value = previous.intervals.get(operation.source);
       if (value !== undefined) state.intervals.set(operation.target, { ...value });
       const expression = previous.expressions.get(operation.source);
       if (expression !== undefined) state.expressions.set(operation.target, expression);
+      const localExpression = previous.localScalarExpressions.get(
+        operation.source,
+      );
+      if (localExpression !== undefined) {
+        state.localScalarExpressions.set(operation.target, localExpression);
+      }
       const upper = previous.rangeUpper.get(operation.source);
       if (upper !== undefined) state.rangeUpper.set(operation.target, upper);
       const bounds = previous.scalarBounds.get(operation.source);
@@ -2375,6 +2569,11 @@ function analyzeStatements(statements, state, context) {
         previous.expressions.get(operation.left),
         previous.expressions.get(operation.right),
       );
+      const localExpression = binaryExpression(
+        operation.operation,
+        previous.localScalarExpressions.get(operation.left),
+        previous.localScalarExpressions.get(operation.right),
+      );
       const result = intervalResult(
         operation.operation,
         previous.intervals.get(operation.left),
@@ -2384,27 +2583,58 @@ function analyzeStatements(statements, state, context) {
         result.minimum >= INT64_MINIMUM && result.maximum <= INT64_MAXIMUM;
       const relationalSafe = expression !== undefined &&
         previous.safeInt64Expressions.has(expression);
-      if (intervalSafe || relationalSafe) {
+      const completionEvidence = localExpression === undefined
+        ? undefined
+        : previous.successfulInt64Expressions?.get(localExpression);
+      const completionSafe = completionEvidence !== undefined;
+      if (intervalSafe || relationalSafe || completionSafe) {
         const provedRange = intervalSafe
           ? result
           : { minimum: 0n, maximum: INT64_MAXIMUM };
+        if (completionSafe && !intervalSafe && !relationalSafe) {
+          provedRange.minimum = INT64_MINIMUM;
+        }
         state.intervals.set(operation.target, provedRange);
         if (context.enabled.has("int64-arithmetic") &&
-            (context.directResult === true ||
+            (completionSafe || context.directResult === true ||
               previous.summaryDependencies.size === 0)) {
-          operation.checkedRegionProof = Object.freeze({
-            authority: "checked-region-int64-interval-v1",
-            operation: operation.id,
-            minimum: provedRange.minimum.toString(),
-            maximum: provedRange.maximum.toString(),
-            ...(relationalSafe ? { relation: expression } : {}),
-          });
+          operation.checkedRegionProof = completionSafe && !intervalSafe &&
+              !relationalSafe
+            ? Object.freeze({
+              authority: "checked-region-int64-repeated-success-v1",
+              operation: operation.id,
+              expression: localExpression,
+              evidence: Object.freeze(completionEvidence.map(item =>
+                Object.freeze({ ...item })
+              )),
+            })
+            : Object.freeze({
+              authority: "checked-region-int64-interval-v1",
+              operation: operation.id,
+              minimum: provedRange.minimum.toString(),
+              maximum: provedRange.maximum.toString(),
+              ...(relationalSafe ? { relation: expression } : {}),
+            });
           Object.defineProperty(operation, CHECKED_REGION_INT64_ARITHMETIC, {
             value: true,
           });
         }
       }
-      if (expression !== undefined) state.expressions.set(operation.target, expression);
+      if (expression !== undefined) {
+        state.expressions.set(operation.target, expression);
+      }
+      if (localExpression !== undefined) {
+        state.localScalarExpressions.set(operation.target, localExpression);
+        if (context.enabled.has("int64-arithmetic")) {
+          state.successfulInt64Expressions.set(
+            localExpression,
+            [Object.freeze({
+              kind: "completed-int64-operation",
+              operation: operation.id,
+            })],
+          );
+        }
+      }
     } else if (context.directResult === true &&
         operation.kind === "range.validate_step" &&
         operation.stepType === "int64") {
@@ -2498,9 +2728,13 @@ function analyzeStatements(statements, state, context) {
         buffers: new Map(),
         bufferMaximums: new Map(),
         expressions: new Map(),
+        localScalarExpressions: new Map(),
         rangeUpper: new Map(),
         bufferRelations: new Map(),
         safeInt64Expressions: new Set(previous.safeInt64Expressions),
+        // A successful expression is a local normal-completion fact. It does
+        // not cross a call boundary unless a separate return theorem says so.
+        successfulInt64Expressions: new Map(),
         summaryDependencies: new Set(previous.summaryDependencies || []),
         scalarBounds: new Map(),
         pathConditions: [],
@@ -2802,8 +3036,10 @@ function directResultFailureFree(fn) {
     }
     if (operation.kind === "int64.binary" &&
         ["add", "sub", "mul"].includes(operation.operation)) {
-      if (operation.checkedRegionProof?.authority !==
-          "checked-region-int64-interval-v1") safe = false;
+      if (![
+        "checked-region-int64-interval-v1",
+        "checked-region-int64-repeated-success-v1",
+      ].includes(operation.checkedRegionProof?.authority)) safe = false;
       return;
     }
     if (operation.kind === "int64.binary") {
@@ -2852,8 +3088,10 @@ function scalarSummaryInitialState(fn) {
   const state = {
     intervals: new Map(), buffers: new Map(), bufferMaximums: new Map(),
     expressions: new Map(),
+    localScalarExpressions: new Map(),
     rangeUpper: new Map(), bufferRelations: new Map(),
-    safeInt64Expressions: new Set(), summaryDependencies: new Set(),
+    safeInt64Expressions: new Set(), successfulInt64Expressions: new Map(),
+    summaryDependencies: new Set(),
     scalarBounds: new Map(),
     pathConditions: [],
   };
@@ -2982,8 +3220,10 @@ function attachDirectResultVariants(context) {
     const joined = {
       intervals: new Map(), buffers: new Map(), bufferMaximums: new Map(),
       expressions: new Map(),
+      localScalarExpressions: new Map(),
       rangeUpper: new Map(), bufferRelations: new Map(),
-      safeInt64Expressions: new Set(), initialized: false,
+      safeInt64Expressions: new Set(), successfulInt64Expressions: new Map(),
+      initialized: false,
       summaryDependencies: new Set(),
       scalarBounds: new Map(),
       pathConditions: [],
@@ -3028,7 +3268,7 @@ function attachDirectResultVariants(context) {
       Array.from(group.aliases, (alias) => [alias, group])
     ));
     const intervalViewAccesses = new Map();
-    analyzeStatements(spec.fast.body, cloneState(directState), {
+    analyzeStatements(spec.fast.body, functionEntryState(spec.fast, directState), {
       byName: context.byName,
       enabled: functionEnabled,
       facts: context.facts,
@@ -3142,9 +3382,11 @@ function attachCapabilities(
     buffers: new Map(),
     bufferMaximums: new Map(),
     expressions: new Map(),
+    localScalarExpressions: new Map(),
     rangeUpper: new Map(),
     bufferRelations: new Map(),
     safeInt64Expressions: new Set(),
+    successfulInt64Expressions: new Map(),
     summaryDependencies: new Set(),
     scalarBounds: new Map(),
     pathConditions: [],
@@ -3181,7 +3423,7 @@ function attachCapabilities(
       Array.from(group.aliases, (alias) => [alias, group])
     ));
     const intervalViewAccesses = new Map();
-    const finalState = analyzeStatements(fn.body, cloneState(state), {
+    const finalState = analyzeStatements(fn.body, functionEntryState(fn, state), {
       byName,
       enabled: functionEnabled,
       facts,
@@ -3213,9 +3455,11 @@ function attachCapabilities(
       buffers: new Map(),
       bufferMaximums: new Map(),
       expressions: new Map(),
+      localScalarExpressions: new Map(),
       rangeUpper: new Map(),
       bufferRelations: new Map(),
       safeInt64Expressions: new Set(),
+      successfulInt64Expressions: new Map(),
       summaryDependencies: new Set(),
       scalarBounds: new Map(),
       pathConditions: [],
@@ -3249,7 +3493,7 @@ function attachCapabilities(
       const state = independentFacts.get(name);
       if (fn === undefined || state?.initialized !== true) continue;
       const changedFacts = new Set();
-      analyzeStatements(fn.body, cloneState(state), {
+      analyzeStatements(fn.body, functionEntryState(fn, state), {
         byName,
         changedFacts,
         enabled: new Set(),
@@ -3285,7 +3529,7 @@ function attachCapabilities(
           Array.from(group.aliases, (alias) => [alias, group])
         ));
         const intervalViewAccesses = new Map();
-        const finalState = analyzeStatements(fn.body, cloneState(state), {
+        const finalState = analyzeStatements(fn.body, functionEntryState(fn, state), {
           byName,
           enabled: functionEnabled,
           facts: undefined,
@@ -3408,6 +3652,7 @@ function authorizeGraphInt64Arithmetic(variants) {
           ![
             "checked-region-int64-interval-v1",
             "checked-region-int64-affine-while-v1",
+            "checked-region-int64-repeated-success-v1",
           ].includes(claim?.authority)) return;
       graphInt64ArithmeticAuthority.authorize(
         functions, fn, operation, claim,
@@ -3743,6 +3988,7 @@ function checkedRegionInt64ArithmeticEmission(fn, functions) {
           ![
             "checked-region-int64-interval-v1",
             "checked-region-int64-affine-while-v1",
+            "checked-region-int64-repeated-success-v1",
           ].includes(claim?.authority) ||
           claim.operation !== operation.id ||
           operation.kind !== "int64.binary" ||

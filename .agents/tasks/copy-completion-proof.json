@@ -1,0 +1,89 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "copy-completion-proof",
+  "title": "Copy Completion Proof",
+  "lane": "native-compiler",
+  "status": "active",
+  "owner": "user",
+  "objective": "Prove and authenticate normal-completion repeated-expression bounds for flx_copy da + 1, preserving checked fallbacks and measuring the frozen splitting-degree corpus",
+  "base_commit": "ba523edecbd5630eb597fc23347049f1332b70f7",
+  "claims": [
+    "tools/native-kernel/checked-regions.cjs",
+    "tools/native-kernel/tagged-backend.cjs",
+    "tools/native-kernel/test/checked-private-region.cjs",
+    "tools/native-kernel/test/checked_private_region_witness.py",
+    "bench/pari-class-group-port",
+    "bench/pari-class-group-port/repeated-int64-success-report.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "tested-capability",
+    "oracles": [
+      "ordinary checked function remains unchanged for every public or unproved call",
+      "frozen 7,081-output splitting-degree replay plus nine malformed-input gates",
+      "generated private C contains raw arithmetic only under graph-authenticated normal-completion proofs"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test tools/native-kernel/test/checked-private-region.cjs",
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "pnpm parallel:check"
+  ],
+  "runs": [
+    {
+      "command": "node --test tools/native-kernel/test/checked-private-region.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 36.46,
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 53.23,
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed",
+      "result": "fail",
+      "exit_code": 1,
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check",
+      "result": "pass",
+      "exit_code": 0,
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a fail-closed normal-completion theorem for repeated checked int64 expressions within one private invocation. Local symbolic scalar identities are killed by mutation and intersected at joins; successful-expression evidence does not cross into callees. A deliberately narrow negative-range theorem proves the final flx_copy `da + 1` from either an empty range or the normally completed first fixed-view access. Complete-graph authentication governs emission and leaves public/unproved paths checked. The frozen catalog is exact on 7,081 outputs and nine malformed gates, removes four static and at least 43,072 dynamic checks per catalog, and improves the pinned tagged-boundary geometric mean from 2.12863 ms to 2.10145 ms (ratio 0.98723).",
+    "risks": [
+      "The negative-range theorem intentionally recognizes only a fixed int64-sized view, exact stop -1, constant negative step, first-operation signed access, and no loop control transfer; all other shapes fall back.",
+      "`pnpm test:changed` cannot complete on this base: `test/module-cache.cjs` reproducibly fails because generated JavaScript references undefined `$ρσ$py$Any`; the compiler suite also has that same baseline failure and absent optional FLINT addon failures. Focused checked-region tests, architecture, strict baselib, build, and frozen replay pass."
+    ],
+    "next_steps": [
+      "Independently audit the normal-completion theorem, especially premise failure accounting in direct-result selection and mutation/call boundaries.",
+      "Compose this commit with ea21370a1 and rerun the frozen catalog census and pinned timing before integration."
+    ]
+  }
+}

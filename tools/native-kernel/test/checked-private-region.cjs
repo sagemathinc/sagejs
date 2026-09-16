@@ -164,6 +164,40 @@ const directCopyDeclaration = {
   }],
 };
 
+const repeatedCopyDeclaration = {
+  entry: "checked_region_repeated_copy_entry",
+  functions: [
+    "checked_region_repeated_copy_entry",
+    "checked_region_repeated_copy_helper",
+  ],
+  capabilities: ["int64-arithmetic", "virtual-fixed-uint64-views"],
+  guard: [
+    { kind: "buffer-min-length", parameter: "storage", minimum: 8 },
+  ],
+  localVariants: [{
+    function: "checked_region_repeated_copy_helper",
+    mode: "direct-result",
+    guard: [
+      { kind: "int64-range", parameter: "degree", minimum: -1, maximum: 3 },
+    ],
+    capabilities: ["int64-arithmetic", "interval-view-access"],
+  }],
+};
+
+async function preparedRepeatedCopy(source = witnessSource) {
+  const ir = await witness(
+    "/tmp/checked_region_repeated_copy.py", source,
+  );
+  installCheckedRegionDeclarations(ir, [repeatedCopyDeclaration]);
+  const [region] = prepareCheckedRegions(ir);
+  const functions = new Map(region.variants.map(fn => [fn.name, fn]));
+  const helper = region.variants.find(fn =>
+    fn.checkedRegionVariant.original === "checked_region_repeated_copy_helper"
+  );
+  assert.ok(helper);
+  return { ir, region, functions, helper };
+}
+
 test("force-inline selection uses only authenticated direct edges", async () => {
   const original = [
     "    result: int64 = checked_region_local_copy_helper(storage, 0, 3, 4)",
@@ -3189,6 +3223,195 @@ test("checked affine while induction removes arithmetic checks but keeps its lat
     core.source,
     /sagejs_tagged_arg_storage\.length <=\s*UINT64_C\(2305843009213693951\)/,
   );
+});
+
+test("normal completion proves only the repeated copy successor", async () => {
+  const { ir, region, functions, helper } = await preparedRepeatedCopy();
+  const additions = [];
+  function visit(value) {
+    if (value === null || typeof value !== "object") return;
+    if (value.kind === "int64.binary" && value.operation === "add") {
+      additions.push(value);
+    }
+    for (const [key, child] of Object.entries(value)) {
+      if (key !== "provenance") visit(child);
+    }
+  }
+  visit(helper.body);
+  assert.equal(additions.length, 2);
+  const [prefix, tail] = additions;
+  assert.equal(prefix.checkedRegionProof, undefined);
+  assert.equal(
+    tail.checkedRegionProof?.authority,
+    "checked-region-int64-repeated-success-v1",
+  );
+  assert.deepEqual(
+    new Set(tail.checkedRegionProof.evidence.map(value => value.kind)),
+    new Set([
+      "completed-int64-operation",
+      "completed-negative-range-access",
+    ]),
+  );
+  const emission = checkedRegionInt64ArithmeticEmission(helper, functions);
+  assert.equal(emission.isAuthorized(prefix), false);
+  assert.equal(emission.isAuthorized(tail), true);
+
+  const core = generateHostCore(ir, { moduleIdentity: "0123456789abcdef" });
+  const privateBody = executableText(functionText(core.source, helper.name));
+  const ordinaryBody = executableText(functionText(
+    core.source, "checked_region_repeated_copy_helper",
+  ));
+  const privateAdds = (privateBody.match(/sagejs_word_add_int64/g) || []).length;
+  const ordinaryAdds = (ordinaryBody.match(/sagejs_word_add_int64/g) || []).length;
+  assert.equal(privateAdds, 4);
+  assert.ok(ordinaryAdds > privateAdds);
+  assert.equal(
+    region.variants.some(fn =>
+      checkedRegionDirectResultEmission(fn) !== undefined
+    ),
+    false,
+    "a repeated proof must not hide its earlier fallible premise",
+  );
+});
+
+test("normal-completion evidence does not cross a call boundary", async () => {
+  const source = `${witnessSource}\n\n` + [
+    "def checked_region_repeated_call_callee(value: int64) -> int64:",
+    "    result: int64 = value + 1",
+    "    return result",
+    "",
+    "@native",
+    "def checked_region_repeated_call_entry(value: int64) -> int64:",
+    "    completed: int64 = value + 1",
+    "    return checked_region_repeated_call_callee(value)",
+    "",
+  ].join("\n");
+  const ir = await witness("/tmp/checked_region_repeated_call.py", source);
+  installCheckedRegionDeclarations(ir, [{
+    entry: "checked_region_repeated_call_entry",
+    functions: [
+      "checked_region_repeated_call_entry",
+      "checked_region_repeated_call_callee",
+    ],
+    capabilities: ["int64-arithmetic"],
+    guard: [{
+      kind: "int64-range",
+      parameter: "value",
+      minimum: "-9223372036854775808",
+      maximum: "9223372036854775807",
+    }],
+  }]);
+  const [region] = prepareCheckedRegions(ir);
+  const callee = region.variants.find(fn =>
+    fn.checkedRegionVariant.original ===
+      "checked_region_repeated_call_callee"
+  );
+  assert.ok(callee);
+  const addition = callee.body.find(operation =>
+    operation.kind === "int64.binary" && operation.operation === "add"
+  );
+  assert.ok(addition);
+  assert.equal(addition.checkedRegionProof, undefined);
+});
+
+test("repeated successor proof rejects hostile completion shapes", async () => {
+  const descending = [
+    "        for index in range(degree, descending_stop, descending_step):",
+    "            target[index] = source[index]",
+  ].join("\n");
+  const descendingAccess = "            target[index] = source[index]";
+  const sourceView =
+    "    source: UInt64Buffer = uint64_buffer_view(storage, start, 4)";
+  function mutateRepeated(needle, replacement) {
+    const start = witnessSource.indexOf(
+      "def checked_region_repeated_copy_helper(",
+    );
+    const stop = witnessSource.indexOf(
+      "def checked_region_repeated_copy_entry(", start,
+    );
+    assert.ok(start >= 0 && stop > start);
+    const prefix = witnessSource.slice(0, start);
+    const body = witnessSource.slice(start, stop);
+    const suffix = witnessSource.slice(stop);
+    assert.equal(body.split(needle).length - 1, 1);
+    return prefix + body.replace(needle, replacement) + suffix;
+  }
+  const hostileSources = [
+    mutateRepeated(
+      descending,
+      descending.replace(descendingAccess, `            break\n${descendingAccess}`),
+    ),
+    mutateRepeated(
+      descending,
+      descending.replace(
+        descendingAccess, `            continue\n${descendingAccess}`,
+      ),
+    ),
+    mutateRepeated(
+      descending,
+      descending.replace(
+        descendingAccess, `            return degree\n${descendingAccess}`,
+      ),
+    ),
+    mutateRepeated(
+      descending,
+      descending.replace(
+        descendingAccess, `            marker: uint64 = 0\n${descendingAccess}`,
+      ),
+    ),
+    mutateRepeated(
+      descending,
+      `${descending}\n            degree = 9223372036854775807`,
+    ),
+    mutateRepeated(
+      sourceView,
+      "    source: UInt64Buffer = uint64_buffer_view(storage, start, degree)",
+    ),
+  ];
+  for (const source of hostileSources) {
+    const { functions, helper } = await preparedRepeatedCopy(source);
+    const additions = [];
+    const visit = value => {
+      if (value === null || typeof value !== "object") return;
+      if (value.kind === "int64.binary" && value.operation === "add") {
+        additions.push(value);
+      }
+      for (const [key, child] of Object.entries(value)) {
+        if (key !== "provenance") visit(child);
+      }
+    };
+    visit(helper.body);
+    const repeated = additions.filter(operation =>
+      operation.checkedRegionProof?.authority ===
+        "checked-region-int64-repeated-success-v1"
+    );
+    assert.equal(repeated.length, 0);
+    const emission = checkedRegionInt64ArithmeticEmission(helper, functions);
+    assert.equal(additions.some(operation => emission.isAuthorized(operation)), false);
+  }
+});
+
+test("repeated successor graph authority revokes witness mutations", async () => {
+  const mutations = [
+    loop => { loop.step = loop.stop; },
+    loop => { loop.body[0].buffer = "hostile_storage"; },
+    loop => { loop.body.unshift({ kind: "loop.continue", id: "hostile" }); },
+  ];
+  for (const mutate of mutations) {
+    const { functions, helper } = await preparedRepeatedCopy();
+    const descending = helper.body.find(operation => operation.kind === "if")
+      .body.find(operation => operation.kind === "loop.range_int64");
+    const tail = helper.body.filter(operation =>
+      operation.kind === "int64.binary" && operation.operation === "add"
+    ).at(-1);
+    assert.equal(
+      tail.checkedRegionProof?.authority,
+      "checked-region-int64-repeated-success-v1",
+    );
+    mutate(descending);
+    const emission = checkedRegionInt64ArithmeticEmission(helper, functions);
+    assert.equal(emission.isAuthorized(tail), false);
+  }
 });
 
 test("buffer maxima cross calls and compose two synchronized scans", async () => {
