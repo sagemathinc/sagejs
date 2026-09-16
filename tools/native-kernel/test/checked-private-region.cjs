@@ -1523,6 +1523,13 @@ test("graph fixed views authenticate the public dispatch guard root", async () =
       .claim(view, "view")?.mode,
     "fixed",
   );
+  const partialFunctions = new Map(functions);
+  partialFunctions.delete(helper.name);
+  assert.equal(
+    checkedRegionVirtualUInt64Emission(helper, partialFunctions)
+      .claim(view, "view"),
+    undefined,
+  );
 
   const originalRoot = entry.checkedRegionGraphRoot;
   entry.checkedRegionGraphRoot = Object.freeze({
