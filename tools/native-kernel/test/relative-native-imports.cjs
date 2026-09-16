@@ -82,6 +82,20 @@ test("multiple entries from one source share a helper but distinct sources still
   const changedDiamond=await compileKernel({sourcePath:source});assert.notEqual(changedDiamond.modulePath,diamond.modulePath);
   for(const backend of ['javascript','gmp','tagged'])assert.equal(require(changedDiamond.modulePath).entry[backend](5n),72n);
 });
+test("same-source proof-bearing imports tolerate analysis key reordering",async()=>{
+  const dir=mkdtempSync(join(tmpdir(),"sagejs-import-proof-order-")),pkg=join(dir,"example");
+  mkdirSync(pkg);writeFileSync(join(pkg,"__init__.py"),"");
+  const leaf=join(pkg,"leaf.py"),bridge=join(pkg,"bridge.py"),source=join(pkg,"entry.py");
+  writeFileSync(leaf,"from sagejs.native import native\n@native\ndef looped(x:int)->int:\n    total=0\n    for i in range(9):\n        total += x+i\n    return total\n");
+  writeFileSync(bridge,"from sagejs.native import native\nfrom .leaf import looped\n@native\ndef bridged(x:int)->int:\n    return looped(x)+1\n");
+  const body="from sagejs.native import native\nfrom .leaf import looped\nfrom .bridge import bridged\n@native\ndef entry(x:int)->int:\n    return looped(x)+bridged(x)\n";
+  writeFileSync(source,body);
+  const resolver=createNativeImportResolver({root:dir,initialSourcePath:source,lowerSource});
+  const ir=await lowerSource(body,source,{resolveNativeImport:resolver});
+  assert.equal(ir.functions.filter(fn=>fn.name==="looped").length,1);
+  const built=await compileKernel({sourcePath:source}),mod=require(built.modulePath);
+  for(const backend of ["javascript","gmp","tagged"])assert.equal(mod.entry[backend](5n),163n);
+});
 test("relative native calls preserve source closure, fallback and dependency identity", async () => {
   const dir=mkdtempSync(join(tmpdir(),"sagejs-relative-")),pkg=join(dir,"example"),sub=join(pkg,"nested");
   mkdirSync(sub,{recursive:true});

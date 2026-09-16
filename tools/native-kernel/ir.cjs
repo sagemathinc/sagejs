@@ -72,6 +72,17 @@ function array(value) {
   return Array.from(value || []);
 }
 
+function canonicalDefinition(value) {
+  return JSON.stringify(value, (_key, item) => {
+    if (item === null || Array.isArray(item) || typeof item !== "object") {
+      return item;
+    }
+    return Object.fromEntries(
+      Object.keys(item).sort().map((key) => [key, item[key]]),
+    );
+  });
+}
+
 function assignment(statement, description) {
   expect(
     nodeType(statement) === "AST_SimpleStatement" &&
@@ -1255,6 +1266,7 @@ async function lowerSource(source, filename, options = {}) {
     const imported = importedNativeFunctions.get(name);
     for (const fn of imported.ir.functions || []) {
       const previous = importedDefinitions.get(fn.name);
+      const definition = canonicalDefinition(fn);
       const origins = [
         {path: imported.sourcePath, sha256: imported.sourceHash},
         ...(imported.ir.nativeSourceDependencies || []),
@@ -1265,7 +1277,7 @@ async function lowerSource(source, filename, options = {}) {
       // may reach one pinned helper through different intermediate modules.
       if (previous && origin && previous.path === origin.path &&
           previous.hash === origin.sha256 &&
-          previous.definition === JSON.stringify(fn)) continue;
+          previous.definition === definition) continue;
       expect(
         !combinedNames.has(fn.name),
         `${filename}: imported native function conflicts with ${fn.name}`,
@@ -1274,7 +1286,7 @@ async function lowerSource(source, filename, options = {}) {
       importedDefinitions.set(fn.name, {
         path: origin?.path,
         hash: origin?.sha256,
-        definition: JSON.stringify(fn),
+        definition,
       });
       importedLowered.push(fn.kernelKind !== "integer" || fn.lexicallyNative ? fn : {
         ...fn,
