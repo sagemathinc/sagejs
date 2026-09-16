@@ -29,11 +29,18 @@ function operationInputs(operation) {
     case "integer.copy":
     case "integer.neg":
     case "integer.abs":
+    case "integer.from_int64":
+    case "int64.copy":
+    case "int64.neg":
+    case "int64.abs":
     case "integer.bit_length":
     case "integer.isqrt":
     case "integer.truth":
     case "integer.round_sqrt":
     case "uint64.from_integer_checked":
+    case "uint64.from_int64_checked":
+    case "int64.from_integer_checked":
+    case "int64.from_uint64_checked":
     case "float64.from_integer_checked":
     case "float64.from_integer":
     case "float64.log":
@@ -47,6 +54,7 @@ function operationInputs(operation) {
     case "integer.round_float64":
     case "bool.not":
     case "uint64.truth":
+    case "int64.truth":
     case "value.discard":
       return [operation.source];
     case "float64.ldexp":
@@ -61,9 +69,11 @@ function operationInputs(operation) {
     case "float64.binary":
     case "float64.pow":
     case "uint64.binary":
+    case "int64.binary":
     case "integer.divmod":
     case "integer.compare":
     case "uint64.compare":
+    case "int64.compare":
     case "float64.compare":
     case "bool.compare":
     case "bool.binary":
@@ -76,6 +86,7 @@ function operationInputs(operation) {
       return [operation.buffer];
     case "int64.record.view":
     case "integer.buffer.view":
+    case "uint64.buffer.view":
       return [operation.buffer, operation.start, operation.length];
     case "int64.buffer.get":
       return [operation.buffer, operation.index];
@@ -253,6 +264,7 @@ function walkStatements(statements, handlers) {
       continue;
     }
     if (statement.kind === "loop.range" ||
+        statement.kind === "loop.range_int64" ||
         statement.kind === "loop.range_exact") {
       handlers.loop("range", statement);
       handlers.enterLoop?.("range");
@@ -325,6 +337,7 @@ function introduceResidentBorrows(fn) {
         rewrite(statement.body);
       } else if (
         statement.kind === "loop.range" ||
+        statement.kind === "loop.range_int64" ||
         statement.kind === "loop.range_exact"
       ) {
         rewrite(statement.body);
@@ -644,6 +657,9 @@ function localEffects(fn) {
       if (operation.kind === "uint64.from_integer_checked") {
         mayRaise.add("OverflowError");
       }
+      if (operation.kind === "uint64.from_int64_checked") {
+        mayRaise.add("OverflowError");
+      }
       if (operation.kind === "float64.from_integer_checked") {
         mayRaise.add("OverflowError");
       }
@@ -675,6 +691,7 @@ function localEffects(fn) {
         operation.kind === "int64.buffer.set" ||
         operation.kind === "int64.record.view" ||
         operation.kind === "integer.buffer.view" ||
+        operation.kind === "uint64.buffer.view" ||
         operation.kind === "integer.buffer.get" ||
         operation.kind === "integer.buffer.set" ||
         operation.kind === "uint64.buffer.get" ||
@@ -809,7 +826,8 @@ function bufferWrites(fn, dependencyEffects) {
           statement.kind === "float64.buffer.copy") {
         changed = addAlias(statement.target, roots(statement.source)) || changed;
       } else if (statement.kind === "int64.record.view" ||
-          statement.kind === "integer.buffer.view") {
+          statement.kind === "integer.buffer.view" ||
+          statement.kind === "uint64.buffer.view") {
         changed = addAlias(statement.target, roots(statement.buffer)) || changed;
       } else if (statement.kind === "int64.buffer.set" ||
           statement.kind === "integer.buffer.set" ||
@@ -849,6 +867,7 @@ function bufferWrites(fn, dependencyEffects) {
         changed = visit(statement.alternative) || changed;
       } else if (statement.kind === "while" ||
           statement.kind === "loop.range" ||
+          statement.kind === "loop.range_int64" ||
           statement.kind === "loop.range_exact" ||
           statement.kind === "integer.vector.scope" ||
           statement.kind === "integer.matrix.scope" ||
@@ -1314,6 +1333,7 @@ const FMPZ_OPERATION_KINDS = new Set([
   "integer.copy",
   "integer.divmod",
   "integer.from_uint64",
+  "integer.from_int64",
   "integer.mod_uint64",
   "integer.neg",
   "integer.pow_uint",
@@ -1336,11 +1356,22 @@ const FMPZ_OPERATION_KINDS = new Set([
   "uint64.buffer.get",
   "uint64.buffer.length",
   "uint64.buffer.set",
+  "uint64.buffer.view",
   "uint64.compare",
   "uint64.constant",
   "uint64.copy",
   "uint64.from_integer_checked",
+  "uint64.from_int64_checked",
   "uint64.truth",
+  "int64.abs",
+  "int64.binary",
+  "int64.compare",
+  "int64.constant",
+  "int64.copy",
+  "int64.from_integer_checked",
+  "int64.from_uint64_checked",
+  "int64.neg",
+  "int64.truth",
   "value.discard",
 ]);
 
@@ -1373,6 +1404,115 @@ const FMPZ_RESOURCE_IDS = new Set([
   "fmpz_polynomial",
   "number_field_analysis_resource",
 ]);
+
+const INT64_MINIMUM = -(1n << 63n);
+const INT64_MAXIMUM = (1n << 63n) - 1n;
+
+function constantInt64RangeProof(start, stop, step) {
+  if (step === 0n) return undefined;
+  let count = 0n;
+  if (step > 0n && start < stop) {
+    count = (stop - start + step - 1n) / step;
+  } else if (step < 0n && start > stop) {
+    const magnitude = -step;
+    count = (start - stop + magnitude - 1n) / magnitude;
+  }
+  if (count === 0n) {
+    return {
+      authority: "constant-int64-range-v1",
+      start: start.toString(),
+      stop: stop.toString(),
+      step: step.toString(),
+      iterations: "0",
+    };
+  }
+  const last = start + (count - 1n) * step;
+  const next = last + step;
+  if (next < INT64_MINIMUM || next > INT64_MAXIMUM) return undefined;
+  return {
+    authority: "constant-int64-range-v1",
+    start: start.toString(),
+    stop: stop.toString(),
+    step: step.toString(),
+    iterations: count.toString(),
+    last: last.toString(),
+    next: next.toString(),
+  };
+}
+
+function assignedOperationNames(statements, assigned = new Set()) {
+  for (const statement of statements || []) {
+    for (const target of operationTargets(statement)) assigned.add(target);
+    if (statement.kind?.startsWith("loop.")) {
+      if (typeof statement.index === "string") assigned.add(statement.index);
+      if (typeof statement.iterator === "string") {
+        assigned.add(statement.iterator);
+      }
+    }
+    assignedOperationNames(statement.condition?.operations, assigned);
+    assignedOperationNames(statement.body, assigned);
+    assignedOperationNames(statement.alternative, assigned);
+    assignedOperationNames(statement.right?.operations, assigned);
+  }
+  return assigned;
+}
+
+function annotateConstantInt64Ranges(fn) {
+  function visit(statements, inherited = new Map(), activeRangeProof) {
+    const constants = new Map(inherited);
+    for (const statement of statements || []) {
+      // This analysis may be rerun over already annotated or externally
+      // mutated IR. Never let authority from an earlier shape survive.
+      delete statement.incrementProof;
+      if (statement.range !== null && typeof statement.range === "object") {
+        delete statement.range.incrementProof;
+      }
+      if (statement.kind === "int64.constant") {
+        constants.set(statement.target, BigInt(statement.value));
+        continue;
+      }
+      if (statement.kind === "int64.copy" && constants.has(statement.source)) {
+        constants.set(statement.target, constants.get(statement.source));
+        continue;
+      }
+      if (statement.kind === "loop.continue" &&
+          statement.range?.kind === "loop.range_int64" &&
+          activeRangeProof !== undefined) {
+        statement.range.incrementProof = activeRangeProof;
+      }
+      if (statement.kind === "loop.range_int64") {
+        const start = constants.get(statement.start);
+        const stop = constants.get(statement.stop);
+        const step = constants.get(statement.step);
+        const proof = start === undefined || stop === undefined || step === undefined
+          ? undefined : constantInt64RangeProof(start, stop, step);
+        if (proof !== undefined) statement.incrementProof = proof;
+        visit(statement.body, constants, proof);
+      } else if (statement.kind === "if") {
+        visit(statement.condition.operations, constants, activeRangeProof);
+        visit(statement.body, constants, activeRangeProof);
+        visit(statement.alternative, constants, activeRangeProof);
+      } else if (statement.kind === "while") {
+        visit(statement.condition.operations, constants, activeRangeProof);
+        visit(statement.body, constants, activeRangeProof);
+      } else if (statement.kind === "loop.range" ||
+          statement.kind === "loop.range_exact") {
+        visit(statement.body, constants, undefined);
+      } else if (statement.kind === "bool.short_circuit") {
+        visit(statement.right.operations, constants, activeRangeProof);
+      }
+      // Recursive visits intentionally use a copy so they can prove ranges
+      // inside the nested control structure. On return, however, every value
+      // assigned on any nested path is unknown. Keeping the pre-structure
+      // constant would be unsound for subsequent ranges, especially after a
+      // while loop that executes at least once.
+      for (const target of assignedOperationNames([statement])) {
+        constants.delete(target);
+      }
+    }
+  }
+  visit(fn.body);
+}
 
 /**
  * Preserve the ownership proof needed to move the fmpz allocation checkpoint.
@@ -1409,6 +1549,7 @@ function fmpzEarlyCheckpointLifetime(scope, backend) {
         visit(statement.body);
       } else if (
         statement.kind === "loop.range" ||
+        statement.kind === "loop.range_int64" ||
         statement.kind === "loop.range_exact"
       ) {
         visit(statement.body);
@@ -1450,7 +1591,7 @@ function fmpzEarlyCheckpointLifetime(scope, backend) {
  */
 function fmpzReturnTypeSupported(type) {
   return (tupleElementTypes(type) || [type]).every((element) =>
-    ["Integer", "uint64", "bool"].includes(element)
+    ["Integer", "uint64", "int64", "bool"].includes(element)
   );
 }
 
@@ -1462,7 +1603,7 @@ function inspectFmpzFunction(fn) {
       .map((resource) => resource.compiler_type || resource.python_name),
   );
   const scalarParameter = (param) =>
-    ["Integer", "uint64", "bool", "IntegerBuffer", "UInt64Buffer"]
+    ["Integer", "uint64", "int64", "bool", "IntegerBuffer", "UInt64Buffer"]
       .includes(param.type);
   const borrowedAggregateParameter = (param) =>
     param.type === "IntegerBuffer" ||
@@ -1473,7 +1614,7 @@ function inspectFmpzFunction(fn) {
   )) return null;
   if (!fn.locals.every((local) =>
     [
-      "Integer", "uint64", "bool", "UInt64Buffer", "NativeExactArena",
+      "Integer", "uint64", "int64", "bool", "UInt64Buffer", "NativeExactArena",
       "NativeIntegerVector",
     ].includes(local.type) ||
     (fn.foreignResources || []).some((resource) =>
@@ -1500,6 +1641,7 @@ function inspectFmpzFunction(fn) {
         continue;
       }
       if (statement.kind === "loop.range" ||
+          statement.kind === "loop.range_int64" ||
           statement.kind === "loop.range_exact") {
         visit(statement.body);
         continue;
@@ -1540,7 +1682,8 @@ function inspectFmpzFunction(fn) {
       }
       if (statement.kind.startsWith("uint64.buffer.")) {
         if (statement.bufferType !== "UInt64Buffer" &&
-            statement.kind !== "uint64.buffer.copy") eligible = false;
+            statement.kind !== "uint64.buffer.copy" &&
+            statement.kind !== "uint64.buffer.view") eligible = false;
         if (["uint64.buffer.get", "uint64.buffer.set"].includes(statement.kind) &&
             !["Integer", "uint64"].includes(statement.indexType)) {
           eligible = false;
@@ -1579,11 +1722,11 @@ function inspectFmpzFunction(fn) {
   if (
     arenas === 0 && vectors === 0 &&
     fn.params.every((param) =>
-      ["Integer", "uint64", "bool"].includes(param.type) ||
+      ["Integer", "uint64", "int64", "bool"].includes(param.type) ||
       borrowedAggregateParameter(param)
     ) &&
     fn.locals.every((local) =>
-      ["Integer", "uint64", "bool", "UInt64Buffer"].includes(local.type) ||
+      ["Integer", "uint64", "int64", "bool", "UInt64Buffer"].includes(local.type) ||
       (fmpzResourceTypes.has(local.type) && fn.params.some((param) =>
         param.type === local.type &&
         param.name === (fn.resourceAliases || {})[local.name]
@@ -1905,6 +2048,7 @@ function backendPolicy(fn, profile, recursive, fmpzPolicies = new Map()) {
 function analyzeExactModule(functions) {
   for (const fn of functions) {
     if (fn.kernelKind === "integer") introduceResidentBorrows(fn);
+    annotateConstantInt64Ranges(fn);
   }
   const recursive = recursiveFunctions(functions);
   const fmpzPolicies = fmpzClosedCallGraphPolicies(functions, recursive);
@@ -2042,4 +2186,6 @@ module.exports = {
   taggedIntegerProof,
   fmpzBackendPolicy,
   residentCodeQualityAnalysis,
+  operationTargets,
+  walkStatements,
 };

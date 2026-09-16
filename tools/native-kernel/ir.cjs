@@ -2,6 +2,9 @@
 
 const { createCompiler } = require("../..");
 const { analyzeExactModule } = require("./exact-analysis.cjs");
+const {
+  attachAndVerifyCheckedBoundsProofs,
+} = require("./checked-bounds-proofs.cjs");
 const { evaluateIntegerConstant } = require("./integer-constants.cjs");
 const {
   canonicalType,
@@ -27,7 +30,7 @@ const {
 const { loadRegistry: loadFfiRegistry } = require("../ffi/declarations.cjs");
 const { isBundleClass, prepareWorkspaceBundles } = require("./workspace-bundles.cjs");
 
-const IR_VERSION = 44;
+const IR_VERSION = 46;
 const MAX_SMALL_POWER = 64n;
 const MAX_SAFE_START = BigInt(Number.MAX_SAFE_INTEGER);
 const PARENT_ELEMENT_TYPES = new Map([
@@ -1010,14 +1013,17 @@ async function lowerSource(source, filename, options = {}) {
       }
     }
   }
-  for (const name of mathFunctions.keys()) {
-    expect(importCounts.get(name) === 1, `${filename}: ambiguous math.${mathFunctions.get(name)} import binding ${name}`);
-  }
   const records = nativeRecordSchemas(topLevel, filename);
   const foreignImports = ffiImports(topLevel, filename);
   const foreignFunctions = foreignImports.functions;
   const foreignResources = foreignImports.resources;
   const workspaces = prepareWorkspaceBundles(topLevel, compiler, foreignResources, filename);
+  // Workspace schemas reserve their base and member-helper names. Diagnose an
+  // import that shadows one of those names as a workspace contract violation
+  // before applying generic imported-math ambiguity checks to the module.
+  for (const name of mathFunctions.keys()) {
+    expect(importCounts.get(name) === 1, `${filename}: ambiguous math.${mathFunctions.get(name)} import binding ${name}`);
+  }
   const definitions = topLevel.filter(
     (statement) => nodeType(statement) === "AST_Function",
   );
@@ -1297,6 +1303,7 @@ async function lowerSource(source, filename, options = {}) {
         )
       : fn,
   );
+  attachAndVerifyCheckedBoundsProofs(selected);
   const selectedForeignLibraryIds = new Set();
   for (const fn of selected) {
     for (const dependency of fn.foreignDependencies || []) {

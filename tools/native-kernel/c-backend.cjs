@@ -1,5 +1,11 @@
 "use strict";
 
+const {
+  isVerifiedFixedSpanAccess,
+  verifyCheckedBoundsProofs,
+} = require("./checked-bounds-proofs.cjs");
+const { prepareCheckedRegions } = require("./checked-regions.cjs");
+
 const { createHash } = require("node:crypto");
 const { exactArenaRetryable } = require("./exact-analysis.cjs");
 
@@ -65,8 +71,9 @@ const {
   isUint64Shift,
   uint64COperator,
 } = require("./uint64-operations.cjs");
+const { int64CComparison } = require("./int64-operations.cjs");
 
-const NATIVE_ABI_VERSION = 23;
+const NATIVE_ABI_VERSION = 24;
 const RESOURCE_FINALIZATION_CAPABILITY = Object.freeze({
   model: "node-api-basic-post-finalizer-v1",
   self_finalizing: true,
@@ -284,6 +291,16 @@ function emitOperation(operation, locals, indent) {
       `${nativeValue(locals.get(operation.target))}, ` +
       `${cName(operation.source)});`;
   }
+  if (operation.kind === "uint64.from_int64_checked") {
+    const source = cName(operation.source);
+    const target = nativeValue(locals.get(operation.target));
+    return [
+      `${indent}if (${source} < 0)`, `${indent}{`,
+      statusFailure("range", "integer is outside unsigned 64-bit", `${indent}    `),
+      `${indent}    goto fail;`, `${indent}}`,
+      `${indent}${target} = (uint64_t) ${source};`,
+    ].join("\n");
+  }
   if (operation.kind === "uint64.from_integer_checked") {
     return [
       `${indent}if (!mpz_to_uint64(` +
@@ -337,6 +354,7 @@ function internalArgument(fn, param) {
   const name = `sagejs_arg_${param.name}`;
   if (param.type === "Integer") return `const mpz_t ${name}`;
   if (param.type === "uint64") return `uint64_t ${name}`;
+  if (param.type === "int64") return `int64_t ${name}`;
   if (param.type === "bool") return `int ${name}`;
   if (param.type === "Float64") return `double ${name}`;
   if (isInt64BufferType(param.type)) return `sagejs_int64_buffer ${name}`;
@@ -363,6 +381,9 @@ function internalResults(fn, type) {
       if (elementType === "uint64") {
         return `uint64_t *sagejs_native_output_${index}`;
       }
+      if (elementType === "int64") {
+        return `int64_t *sagejs_native_output_${index}`;
+      }
       if (elementType === "bool") {
         return `int *sagejs_native_output_${index}`;
       }
@@ -374,6 +395,7 @@ function internalResults(fn, type) {
   }
   if (type === "Integer") return ["mpz_t sagejs_native_output"];
   if (type === "uint64") return ["uint64_t *sagejs_native_output"];
+  if (type === "int64") return ["int64_t *sagejs_native_output"];
   if (type === "bool") return ["int *sagejs_native_output"];
   if (type === "Float64") return ["double *sagejs_native_output"];
   const resource = resourceForFunctionType(fn, type);
@@ -632,6 +654,9 @@ function emitExactOperation(operation, context, indent) {
   if (operation.kind === "uint64.constant") {
     return `${indent}${target} = UINT64_C(${operation.value});`;
   }
+  if (operation.kind === "int64.constant") {
+    return `${indent}${target} = ${int64Constant(operation.value)};`;
+  }
   if (operation.kind === "bool.constant") {
     return `${indent}${target} = ${operation.value ? 1 : 0};`;
   }
@@ -656,7 +681,7 @@ function emitExactOperation(operation, context, indent) {
     return `${indent}mpz_set(${target}, ` +
       `${exactValue(operation.source, context)});`;
   }
-  if (operation.kind === "bool.copy" || operation.kind === "uint64.copy") {
+  if (["bool.copy", "uint64.copy", "int64.copy"].includes(operation.kind)) {
     return `${indent}${target} = ${exactValue(operation.source, context)};`;
   }
   if (operation.kind === "value.discard") {
@@ -744,12 +769,21 @@ function emitExactOperation(operation, context, indent) {
       operation.kind === "uint64.buffer.set") {
     const buffer = exactValue(operation.buffer, context);
     const index = exactValue(operation.index, context);
-    const position = operation.indexType === "Integer"
+    const signedIndex = operation.indexType === "Integer" ||
+      operation.indexType === "int64";
+    const position = signedIndex
       ? "sagejs_buffer_position" : `(size_t) ${index}`;
     const access = operation.kind === "uint64.buffer.get"
       ? `${target} = ${buffer}.data[${position}];`
       : `${buffer}.data[${position}] = ` +
         `${exactValue(operation.value, context)};`;
+    if (isVerifiedFixedSpanAccess(operation)) {
+      const verifiedAccess = operation.kind === "uint64.buffer.get"
+        ? `${target} = ${buffer}.data[(size_t) ${index}];`
+        : `${buffer}.data[(size_t) ${index}] = ` +
+          `${exactValue(operation.value, context)};`;
+      return `${indent}${verifiedAccess}`;
+    }
     if (operation.indexType === "Integer") {
       return [
         `${indent}{`,
@@ -758,6 +792,22 @@ function emitExactOperation(operation, context, indent) {
         `${indent}    if (!mpz_to_int64(${index}, &sagejs_buffer_index) ||`,
         `${indent}        !sagejs_signed_buffer_index(${buffer}.length, ` +
           `sagejs_buffer_index, &sagejs_buffer_position))`,
+        `${indent}    {`,
+        statusFailure(
+          "range", "UInt64Buffer index out of range", `${indent}        `,
+        ),
+        `${indent}        goto fail;`,
+        `${indent}    }`,
+        `${indent}    ${access}`,
+        `${indent}}`,
+      ].join("\n");
+    }
+    if (operation.indexType === "int64") {
+      return [
+        `${indent}{`,
+        `${indent}    size_t sagejs_buffer_position;`,
+        `${indent}    if (!sagejs_signed_buffer_index(${buffer}.length, ` +
+          `${index}, &sagejs_buffer_position))`,
         `${indent}    {`,
         statusFailure(
           "range", "UInt64Buffer index out of range", `${indent}        `,
@@ -786,8 +836,11 @@ function emitExactOperation(operation, context, indent) {
     return `${indent}${target} = (uint64_t) ` +
       `${exactValue(operation.buffer, context)}.length;`;
   }
-  if (operation.kind === "int64.record.view" || operation.kind === "integer.buffer.view") {
+  if (operation.kind === "int64.record.view" ||
+      operation.kind === "integer.buffer.view" ||
+      operation.kind === "uint64.buffer.view") {
     const exactView = operation.kind === "integer.buffer.view";
+    const uint64View = operation.kind === "uint64.buffer.view";
     const buffer = exactValue(operation.buffer, context);
     const start = exactValue(operation.start, context);
     const length = exactValue(operation.length, context);
@@ -805,7 +858,7 @@ function emitExactOperation(operation, context, indent) {
         `(uint64_t) ${buffer}.length - ` +
         `(uint64_t) sagejs_record_start)`,
       `${indent}    {`,
-      statusFailure("range", exactView ? "IntegerBuffer view is outside its buffer" : "Int64Record is outside its buffer", `${indent}        `),
+      statusFailure("range", exactView ? "IntegerBuffer view is outside its buffer" : uint64View ? "UInt64Buffer view is outside its buffer" : "Int64Record is outside its buffer", `${indent}        `),
       `${indent}        goto fail;`,
       `${indent}    }`,
       ...(exactView ? [
@@ -815,8 +868,9 @@ function emitExactOperation(operation, context, indent) {
         `${indent}        ${target}.limbs += (size_t) sagejs_record_start * ${buffer}.word_capacity;`,
         `${indent}    }`,
       ] : [
-      `${indent}    ${target}.data = ${buffer}.data + ` +
-        `(size_t) sagejs_record_start;`,
+      `${indent}    ${target}.data = ${buffer}.data;`,
+      `${indent}    if ((size_t) sagejs_record_start != 0)`,
+      `${indent}        ${target}.data += (size_t) sagejs_record_start;`,
       ]),
       `${indent}    ${target}.length = (size_t) sagejs_record_length;`,
       `${indent}}`,
@@ -824,42 +878,62 @@ function emitExactOperation(operation, context, indent) {
   }
   if (operation.kind === "int64.buffer.get") {
     const buffer = exactValue(operation.buffer, context);
+    const index = exactValue(operation.index, context);
+    const indexCheck = operation.indexType === "int64"
+      ? `sagejs_int64_buffer_index(&${buffer}, ${index}, ` +
+        `&sagejs_buffer_position)`
+      : operation.indexType === "uint64"
+      ? `${index} < (uint64_t) ${buffer}.length`
+      : `sagejs_mpz_buffer_index(&${buffer}, ${index}, ` +
+        `&sagejs_buffer_position)`;
     return [
       `${indent}{`,
-      `${indent}    size_t sagejs_buffer_position;`,
-      `${indent}    if (!sagejs_mpz_buffer_index(&${buffer}, ` +
-        `${exactValue(operation.index, context)}, ` +
-        `&sagejs_buffer_position))`,
+      `${indent}    size_t sagejs_buffer_position = ` +
+        `${operation.indexType === "uint64" ? `(size_t) ${index}` : "0"};`,
+      `${indent}    if (!${indexCheck})`,
       `${indent}    {`,
       statusFailure("range", "Int64 buffer index out of range", `${indent}        `),
       `${indent}        goto fail;`,
       `${indent}    }`,
-      `${indent}    set_mpz_int64(${target}, ` +
-        `${buffer}.data[sagejs_buffer_position]);`,
+      operation.valueType === "int64"
+        ? `${indent}    ${target} = ${buffer}.data[sagejs_buffer_position];`
+        : `${indent}    set_mpz_int64(${target}, ` +
+          `${buffer}.data[sagejs_buffer_position]);`,
       `${indent}}`,
     ].join("\n");
   }
   if (operation.kind === "int64.buffer.set") {
     const buffer = exactValue(operation.buffer, context);
+    const index = exactValue(operation.index, context);
+    const indexCheck = operation.indexType === "int64"
+      ? `sagejs_int64_buffer_index(&${buffer}, ${index}, ` +
+        `&sagejs_buffer_position)`
+      : operation.indexType === "uint64"
+      ? `${index} < (uint64_t) ${buffer}.length`
+      : `sagejs_mpz_buffer_index(&${buffer}, ${index}, ` +
+        `&sagejs_buffer_position)`;
+    const value = exactValue(operation.value, context);
+    const valueSetup = operation.valueType === "int64"
+      ? []
+      : [
+        `${indent}    int64_t sagejs_buffer_value;`,
+        `${indent}    if (!mpz_to_int64(${value}, &sagejs_buffer_value))`,
+        `${indent}    {`,
+        statusFailure("range", "Int64Buffer value is outside signed 64-bit", `${indent}        `),
+        `${indent}        goto fail;`, `${indent}    }`,
+      ];
     return [
       `${indent}{`,
-      `${indent}    size_t sagejs_buffer_position;`,
-      `${indent}    int64_t sagejs_buffer_value;`,
-      `${indent}    if (!sagejs_mpz_buffer_index(&${buffer}, ` +
-        `${exactValue(operation.index, context)}, ` +
-        `&sagejs_buffer_position))`,
+      `${indent}    size_t sagejs_buffer_position = ` +
+        `${operation.indexType === "uint64" ? `(size_t) ${index}` : "0"};`,
+      ...valueSetup,
+      `${indent}    if (!${indexCheck})`,
       `${indent}    {`,
       statusFailure("range", "Int64 buffer index out of range", `${indent}        `),
       `${indent}        goto fail;`,
       `${indent}    }`,
-      `${indent}    if (!mpz_to_int64(` +
-        `${exactValue(operation.value, context)}, &sagejs_buffer_value))`,
-      `${indent}    {`,
-      statusFailure("range", "Int64Buffer value is outside signed 64-bit", `${indent}        `),
-      `${indent}        goto fail;`,
-      `${indent}    }`,
       `${indent}    ${buffer}.data[sagejs_buffer_position] = ` +
-        `sagejs_buffer_value;`,
+        `${operation.valueType === "int64" ? value : "sagejs_buffer_value"};`,
       `${indent}}`,
     ].join("\n");
   }
@@ -1177,6 +1251,36 @@ function emitExactOperation(operation, context, indent) {
     return `${indent}set_mpz_uint64(${target}, ` +
       `${exactValue(operation.source, context)});`;
   }
+  if (operation.kind === "integer.from_int64") {
+    return `${indent}set_mpz_int64(${target}, ` +
+      `${exactValue(operation.source, context)});`;
+  }
+  if (operation.kind === "int64.from_integer_checked") {
+    return [
+      `${indent}if (!mpz_to_int64(` +
+        `${exactValue(operation.source, context)}, &${target}))`, `${indent}{`,
+      statusFailure("range", "integer is outside signed 64-bit", `${indent}    `),
+      `${indent}    goto fail;`, `${indent}}`,
+    ].join("\n");
+  }
+  if (operation.kind === "int64.from_uint64_checked") {
+    const source = exactValue(operation.source, context);
+    return [
+      `${indent}if (${source} > (uint64_t) INT64_MAX)`, `${indent}{`,
+      statusFailure("range", "integer is outside signed 64-bit", `${indent}    `),
+      `${indent}    goto fail;`, `${indent}}`,
+      `${indent}${target} = (int64_t) ${source};`,
+    ].join("\n");
+  }
+  if (operation.kind === "uint64.from_int64_checked") {
+    const source = exactValue(operation.source, context);
+    return [
+      `${indent}if (${source} < 0)`, `${indent}{`,
+      statusFailure("range", "integer is outside unsigned 64-bit", `${indent}    `),
+      `${indent}    goto fail;`, `${indent}}`,
+      `${indent}${target} = (uint64_t) ${source};`,
+    ].join("\n");
+  }
   if (operation.kind === "uint64.from_integer_checked") {
     return [
       `${indent}if (!mpz_to_uint64(` +
@@ -1196,6 +1300,17 @@ function emitExactOperation(operation, context, indent) {
   if (operation.kind === "integer.abs") {
     return `${indent}mpz_abs(${target}, ` +
       `${exactValue(operation.source, context)});`;
+  }
+  if (operation.kind === "int64.neg" || operation.kind === "int64.abs") {
+    const source = exactValue(operation.source, context);
+    const expression = operation.kind === "int64.neg"
+      ? `-${source}` : `${source} < 0 ? -${source} : ${source}`;
+    return [
+      `${indent}if (${source} == INT64_MIN)`, `${indent}{`,
+      statusFailure("range", "int64 arithmetic overflow", `${indent}    `),
+      `${indent}    goto fail;`, `${indent}}`,
+      `${indent}${target} = ${expression};`,
+    ].join("\n");
   }
   if (operation.kind === "integer.bit_length") {
     const source = exactValue(operation.source, context);
@@ -1350,6 +1465,29 @@ function emitExactOperation(operation, context, indent) {
     }
     return `${indent}${target} = ${left} ${operator} ${right};`;
   }
+  if (operation.kind === "int64.binary") {
+    const left = exactValue(operation.left, context);
+    const right = exactValue(operation.right, context);
+    if (["add", "sub", "mul"].includes(operation.operation)) {
+      return [
+        `${indent}if (!sagejs_word_${operation.operation}_int64(` +
+          `${left}, ${right}, &${target}))`, `${indent}{`,
+        statusFailure("range", "int64 arithmetic overflow", `${indent}    `),
+        `${indent}    goto fail;`, `${indent}}`,
+      ].join("\n");
+    }
+    const quotient = operation.operation === "floordiv";
+    return [
+      `${indent}if (${right} == 0)`, `${indent}{`,
+      statusFailure("range", "integer division or modulo by zero", `${indent}    `),
+      `${indent}    goto fail;`, `${indent}}`,
+      `${indent}if (${left} == INT64_MIN && ${right} == -1)`, `${indent}{`,
+      statusFailure("range", "int64 arithmetic overflow", `${indent}    `),
+      `${indent}    goto fail;`, `${indent}}`,
+      `${indent}sagejs_word_fdiv_int64(${left}, ${right}, ` +
+        `${quotient ? `&${target}, NULL` : `NULL, &${target}`});`,
+    ].join("\n");
+  }
   if (operation.kind === "integer.compare") {
     const comparison = {
       eq: "== 0",
@@ -1369,6 +1507,11 @@ function emitExactOperation(operation, context, indent) {
     }[operation.operation];
     return `${indent}${target} = ${exactValue(operation.left, context)} ` +
       `${operator} ${exactValue(operation.right, context)};`;
+  }
+  if (operation.kind === "int64.compare") {
+    return `${indent}${target} = ${exactValue(operation.left, context)} ` +
+      `${int64CComparison(operation.operation)} ` +
+      `${exactValue(operation.right, context)};`;
   }
   if (operation.kind === "bool.compare") {
     const operator = {
@@ -1409,6 +1552,10 @@ function emitExactOperation(operation, context, indent) {
       `${exactValue(operation.source, context)}) != 0;`;
   }
   if (operation.kind === "uint64.truth") {
+    return `${indent}${target} = ` +
+      `${exactValue(operation.source, context)} != 0;`;
+  }
+  if (operation.kind === "int64.truth") {
     return `${indent}${target} = ` +
       `${exactValue(operation.source, context)} != 0;`;
   }
@@ -1592,6 +1739,10 @@ function emitExactStatements(statements, context, indent) {
         const stop = exactValue(statement.range.stop, context);
         if (kind === "loop.range") {
           lines.push(`${indent}if (${step} >= ${stop} - ${iterator}) break;`, `${indent}${iterator} += ${step};`);
+        } else if (kind === "loop.range_int64") {
+          lines.push(statement.range.incrementProof !== undefined
+            ? `${indent}${iterator} += ${step};`
+            : `${indent}if (!sagejs_word_add_int64(${iterator}, ${step}, &${iterator})) break;`);
         } else lines.push(`${indent}mpz_add(${iterator}, ${iterator}, ${step});`);
       }
       lines.push(`${indent}${statement.kind.slice(5)};`);
@@ -1628,6 +1779,28 @@ function emitExactStatements(statements, context, indent) {
         `${indent}    if (${step} >= ${stop} - ${iterator})`,
         `${indent}        break;`,
         `${indent}    ${iterator} += ${step};`,
+        `${indent}}`,
+      );
+      continue;
+    }
+    if (statement.kind === "loop.range_int64") {
+      const index = exactValue(statement.index, context);
+      const iterator = exactValue(statement.iterator, context);
+      const start = exactValue(statement.start, context);
+      const stop = exactValue(statement.stop, context);
+      const step = exactValue(statement.step, context);
+      lines.push(
+        `${indent}${iterator} = ${start};`, `${indent}for (;;)`, `${indent}{`,
+        `${indent}    if (${step} > 0 ? ${iterator} >= ${stop} : ${iterator} <= ${stop})`,
+        `${indent}        break;`, `${indent}    ${index} = ${iterator};`,
+        `${indent}    (void) ${index};`,
+        emitExactStatements(statement.body, context, `${indent}    `),
+        ...(statement.incrementProof !== undefined
+          ? [`${indent}    ${iterator} += ${step};`]
+          : [
+            `${indent}    if (!sagejs_word_add_int64(${iterator}, ${step}, &${iterator}))`,
+            `${indent}        break;`,
+          ]),
         `${indent}}`,
       );
       continue;
@@ -1858,6 +2031,8 @@ function exactDeclarations(fn) {
     if (resourceForFunctionType(fn, param.type) !== undefined) continue;
     const type = param.type === "uint64"
       ? "uint64_t"
+      : param.type === "int64"
+        ? "int64_t"
       : param.type === "Float64"
         ? "double"
       : exactBufferCType(param.type) !== undefined
@@ -1960,6 +2135,8 @@ function exactDeclarations(fn) {
     }
     const type = local.type === "uint64"
       ? "uint64_t"
+      : local.type === "int64"
+        ? "int64_t"
       : local.type === "Float64"
         ? "double"
       : exactBufferCType(local.type) !== undefined
@@ -2269,6 +2446,12 @@ function emitTaggedWrapper(fn, options = {}) {
       parse = `if (!get_uint64(env, args[${index}], &${value}))\n` +
         "            goto fail;";
       defaultValue = `${value} = UINT64_C(${param.default});`;
+    } else if (param.type === "int64") {
+      declarations.push(`    int64_t ${value};`);
+      parse = `if (!get_int64(env, args[${index}], &${value}))\n` +
+        "            goto fail;";
+      defaultValue = param.default === undefined ? "" :
+        `${value} = ${int64Constant(param.default)};`;
     } else if (param.type === "Float64") {
       declarations.push(`    double ${value};`);
       parse = `if (!sagejs_native_check_napi(env, ` +
@@ -2366,13 +2549,16 @@ function emitTaggedWrapper(fn, options = {}) {
         : `    result = create_tagged_bigint(env, &${value});`);
     } else {
       declarations.push(
-        `    ${type === "Float64" ? "double" : type === "uint64" ? "uint64_t" : "int"} ${value};`,
+        `    ${type === "Float64" ? "double" : type === "uint64" ? "uint64_t" : type === "int64" ? "int64_t" : "int"} ${value};`,
       );
       resultArguments.push(`&${value}`);
       const create = type === "Float64"
         ? `napi_create_double(env, ${value}, ${tupleResult ? `&${wrapperItem}` : "&result"})`
         : type === "bool"
         ? `napi_get_boolean(env, ${value} != 0, ` +
+          `${tupleResult ? `&${wrapperItem}` : "&result"})`
+        : type === "int64"
+        ? `napi_create_bigint_int64(env, ${value}, ` +
           `${tupleResult ? `&${wrapperItem}` : "&result"})`
         : `napi_create_bigint_uint64(env, ${value}, ` +
           `${tupleResult ? `&${wrapperItem}` : "&result"})`;
@@ -2488,6 +2674,12 @@ function emitExactWrapper(fn, options = {}) {
       parse = `if (!get_uint64(env, args[${index}], &${value}))\n` +
         "            goto fail;";
       defaultValue = `${value} = UINT64_C(${param.default});`;
+    } else if (param.type === "int64") {
+      declarations.push(`    int64_t ${value};`);
+      parse = `if (!get_int64(env, args[${index}], &${value}))\n` +
+        "            goto fail;";
+      defaultValue = param.default === undefined ? "" :
+        `${value} = ${int64Constant(param.default)};`;
     } else if (param.type === "Float64") {
       declarations.push(`    double ${value};`);
       parse = `if (!sagejs_native_check_napi(env, ` +
@@ -2586,13 +2778,16 @@ function emitExactWrapper(fn, options = {}) {
         : `    result = create_bigint(env, ${value});`);
     } else {
       declarations.push(
-        `    ${type === "Float64" ? "double" : type === "uint64" ? "uint64_t" : "int"} ${value};`,
+        `    ${type === "Float64" ? "double" : type === "uint64" ? "uint64_t" : type === "int64" ? "int64_t" : "int"} ${value};`,
       );
       resultArguments.push(`&${value}`);
       const create = type === "Float64"
         ? `napi_create_double(env, ${value}, ${tupleResult ? `&${wrapperItem}` : "&result"})`
         : type === "bool"
         ? `napi_get_boolean(env, ${value} != 0, ` +
+          `${tupleResult ? `&${wrapperItem}` : "&result"})`
+        : type === "int64"
+        ? `napi_create_bigint_int64(env, ${value}, ` +
           `${tupleResult ? `&${wrapperItem}` : "&result"})`
         : `napi_create_bigint_uint64(env, ${value}, ` +
           `${tupleResult ? `&${wrapperItem}` : "&result"})`;
@@ -4362,6 +4557,8 @@ ${functions.map((fn) => fn.kernelKind === "integer"
 }
 
 function generateHostCore(ir, options = {}) {
+  verifyCheckedBoundsProofs(ir.functions);
+  const checkedRegions = prepareCheckedRegions(ir);
   const supported = new Set([
     "integer", "float64", "real-field", "complex-field",
     "prime-field-source", "prime-field-matrix",
@@ -4427,9 +4624,15 @@ function generateHostCore(ir, options = {}) {
     !fn.params.some((param) => isLiveExactOwnerType(param.type)) &&
     fn.analysis?.fmpzExact?.hostBoundary !== "none-internal-borrowed-aggregate-only"
   );
-  const tagged = generateTaggedFunctions(bridgeFunctions, {
-    functions: ir.functions,
+  const checkedVariants = checkedRegions.flatMap((region) => region.variants);
+  const checkedRegionEntries = new Map(
+    checkedRegions.map((region) => [region.entry, region]),
+  );
+  const tagged = generateTaggedFunctions(
+    [...bridgeFunctions, ...checkedVariants], {
+    functions: [...ir.functions, ...checkedVariants],
     emitMixedOperation: emitExactOperation,
+    checkedRegionEntries,
   });
   const wordFunctions = bridgeFunctions.filter((fn) =>
     !usesMixedFloat64(fn) &&

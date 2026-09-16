@@ -14,6 +14,8 @@ const {
   isUint64Shift,
   uint64COperator,
 } = require("./uint64-operations.cjs");
+const { int64CComparison, int64Constant } =
+  require("./int64-operations.cjs");
 
 function cName(name) {
   return `sagejs_${name}`;
@@ -53,6 +55,7 @@ function fmpzArgument(fn, param) {
   const name = `sagejs_arg_${param.name}`;
   if (param.type === "Integer") return `const fmpz_t ${name}`;
   if (param.type === "uint64") return `uint64_t ${name}`;
+  if (param.type === "int64") return `int64_t ${name}`;
   if (param.type === "bool") return `int ${name}`;
   if (param.type === "IntegerBuffer") {
     return `sagejs_integer_buffer ${name}`;
@@ -76,6 +79,9 @@ function fmpzResults(type) {
     if (element === "Integer") return `fmpz_t sagejs_native_output${suffix}`;
     if (element === "uint64") {
       return `uint64_t *sagejs_native_output${suffix}`;
+    }
+    if (element === "int64") {
+      return `int64_t *sagejs_native_output${suffix}`;
     }
     if (element === "bool") return `int *sagejs_native_output${suffix}`;
     throw new Error(`unsupported fmpz native return element ${element}`);
@@ -122,6 +128,9 @@ function emitFmpzOperation(operation, context, indent) {
   if (operation.kind === "uint64.constant") {
     return `${indent}${target} = UINT64_C(${operation.value});`;
   }
+  if (operation.kind === "int64.constant") {
+    return `${indent}${target} = ${int64Constant(operation.value)};`;
+  }
   if (operation.kind === "bool.constant") {
     return `${indent}${target} = ${operation.value ? 1 : 0};`;
   }
@@ -146,7 +155,7 @@ function emitFmpzOperation(operation, context, indent) {
     return `${indent}fmpz_set(${target}, ` +
       `${fmpzValue(operation.source, context)});`;
   }
-  if (operation.kind === "bool.copy" || operation.kind === "uint64.copy") {
+  if (["bool.copy", "uint64.copy", "int64.copy"].includes(operation.kind)) {
     return `${indent}${target} = ${fmpzValue(operation.source, context)};`;
   }
   if (operation.kind === "value.discard") {
@@ -353,6 +362,44 @@ function emitFmpzOperation(operation, context, indent) {
       "#endif",
     ].join("\n");
   }
+  if (operation.kind === "integer.from_int64") {
+    const source = fmpzValue(operation.source, context);
+    return [
+      "#if FLINT_BITS == 64",
+      `${indent}fmpz_set_si(${target}, (slong) ${source});`,
+      "#else",
+      `${indent}fmpz_set_signed_uiui(${target}, ` +
+        `(ulong) ((uint64_t) ${source} >> 32), (ulong) ${source});`,
+      "#endif",
+    ].join("\n");
+  }
+  if (operation.kind === "int64.from_integer_checked") {
+    return [
+      `${indent}if (!sagejs_fmpz_to_int64_checked(` +
+        `${fmpzValue(operation.source, context)}, &${target}))`,
+      `${indent}{`,
+      statusFailure("range", "integer is outside signed 64-bit", `${indent}    `),
+      `${indent}    goto fail;`, `${indent}}`,
+    ].join("\n");
+  }
+  if (operation.kind === "int64.from_uint64_checked") {
+    const source = fmpzValue(operation.source, context);
+    return [
+      `${indent}if (${source} > (uint64_t) INT64_MAX)`, `${indent}{`,
+      statusFailure("range", "integer is outside signed 64-bit", `${indent}    `),
+      `${indent}    goto fail;`, `${indent}}`,
+      `${indent}${target} = (int64_t) ${source};`,
+    ].join("\n");
+  }
+  if (operation.kind === "uint64.from_int64_checked") {
+    const source = fmpzValue(operation.source, context);
+    return [
+      `${indent}if (${source} < 0)`, `${indent}{`,
+      statusFailure("range", "integer is outside unsigned 64-bit", `${indent}    `),
+      `${indent}    goto fail;`, `${indent}}`,
+      `${indent}${target} = (uint64_t) ${source};`,
+    ].join("\n");
+  }
   if (operation.kind === "uint64.from_integer_checked") {
     return [
       `${indent}if (!sagejs_fmpz_to_uint64_checked(` +
@@ -522,6 +569,29 @@ function emitFmpzOperation(operation, context, indent) {
     }
     return `${indent}${target} = ${left} ${operator} ${right};`;
   }
+  if (operation.kind === "int64.binary") {
+    const left = fmpzValue(operation.left, context);
+    const right = fmpzValue(operation.right, context);
+    if (["add", "sub", "mul"].includes(operation.operation)) {
+      return [
+        `${indent}if (!sagejs_word_${operation.operation}_int64(` +
+          `${left}, ${right}, &${target}))`, `${indent}{`,
+        statusFailure("range", "int64 arithmetic overflow", `${indent}    `),
+        `${indent}    goto fail;`, `${indent}}`,
+      ].join("\n");
+    }
+    const quotient = operation.operation === "floordiv";
+    return [
+      `${indent}if (${right} == 0)`, `${indent}{`,
+      statusFailure("range", "integer division or modulo by zero", `${indent}    `),
+      `${indent}    goto fail;`, `${indent}}`,
+      `${indent}if (${left} == INT64_MIN && ${right} == -1)`, `${indent}{`,
+      statusFailure("range", "int64 arithmetic overflow", `${indent}    `),
+      `${indent}    goto fail;`, `${indent}}`,
+      `${indent}sagejs_word_fdiv_int64(${left}, ${right}, ` +
+        `${quotient ? `&${target}, NULL` : `NULL, &${target}`});`,
+    ].join("\n");
+  }
   if (operation.kind === "integer.compare") {
     const comparison = {
       eq: "== 0", ne: "!= 0", lt: "< 0", le: "<= 0", gt: "> 0", ge: ">= 0",
@@ -536,6 +606,22 @@ function emitFmpzOperation(operation, context, indent) {
     }[operation.operation];
     return `${indent}${target} = ${fmpzValue(operation.left, context)} ` +
       `${operator} ${fmpzValue(operation.right, context)};`;
+  }
+  if (operation.kind === "int64.compare") {
+    return `${indent}${target} = ${fmpzValue(operation.left, context)} ` +
+      `${int64CComparison(operation.operation)} ` +
+      `${fmpzValue(operation.right, context)};`;
+  }
+  if (operation.kind === "int64.neg" || operation.kind === "int64.abs") {
+    const source = fmpzValue(operation.source, context);
+    const expression = operation.kind === "int64.neg"
+      ? `-${source}` : `${source} < 0 ? -${source} : ${source}`;
+    return [
+      `${indent}if (${source} == INT64_MIN)`, `${indent}{`,
+      statusFailure("range", "int64 arithmetic overflow", `${indent}    `),
+      `${indent}    goto fail;`, `${indent}}`,
+      `${indent}${target} = ${expression};`,
+    ].join("\n");
   }
   if (operation.kind === "bool.binary") {
     const operator = operation.operation === "and" ? "&&" : "||";
@@ -561,7 +647,7 @@ function emitFmpzOperation(operation, context, indent) {
     return `${indent}${target} = !fmpz_is_zero(` +
       `${fmpzValue(operation.source, context)});`;
   }
-  if (operation.kind === "uint64.truth") {
+  if (operation.kind === "uint64.truth" || operation.kind === "int64.truth") {
     return `${indent}${target} = ` +
       `${fmpzValue(operation.source, context)} != 0;`;
   }
@@ -669,6 +755,23 @@ function emitFmpzStatements(statements, context, indent) {
         `${indent}        break;`,
         `${indent}    ${iterator} += ${step};`,
         `${indent}}`,
+      );
+      continue;
+    }
+    if (statement.kind === "loop.range_int64") {
+      const index = fmpzValue(statement.index, context);
+      const iterator = fmpzValue(statement.iterator, context);
+      const start = fmpzValue(statement.start, context);
+      const stop = fmpzValue(statement.stop, context);
+      const step = fmpzValue(statement.step, context);
+      lines.push(
+        `${indent}${iterator} = ${start};`, `${indent}for (;;)`, `${indent}{`,
+        `${indent}    if (${step} > 0 ? ${iterator} >= ${stop} : ${iterator} <= ${stop})`,
+        `${indent}        break;`, `${indent}    ${index} = ${iterator};`,
+        `${indent}    (void) ${index};`,
+        emitFmpzStatements(statement.body, context, `${indent}    `),
+        `${indent}    if (!sagejs_word_add_int64(${iterator}, ${step}, &${iterator}))`,
+        `${indent}        break;`, `${indent}}`,
       );
       continue;
     }
@@ -879,7 +982,7 @@ function fmpzDeclarations(fn) {
         param.type === "NativeIntegerVector" ||
         resourceForFunctionType(fn, param.type) !== undefined) continue;
     declarations.push(
-      `    ${param.type === "uint64" ? "uint64_t" : "int"} ` +
+      `    ${param.type === "uint64" ? "uint64_t" : param.type === "int64" ? "int64_t" : "int"} ` +
         `${cName(param.name)} = sagejs_arg_${param.name};`,
     );
   }
@@ -924,11 +1027,11 @@ function fmpzDeclarations(fn) {
       continue;
     }
     if (local.type === "Integer") continue;
-    if (!["uint64", "bool"].includes(local.type)) {
+    if (!["uint64", "int64", "bool"].includes(local.type)) {
       throw new Error(`${fn.name}: unsupported fmpz local ${local.type}`);
     }
     declarations.push(
-      `    ${local.type === "uint64" ? "uint64_t" : "int"} ` +
+      `    ${local.type === "uint64" ? "uint64_t" : local.type === "int64" ? "int64_t" : "int"} ` +
         `${cName(local.name)} = 0;`,
     );
   }

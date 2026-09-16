@@ -179,6 +179,11 @@ function emitStatement(operation, indent) {
   if (operation.kind === "integer.from_uint64") {
     return `${indent}${operation.target} = BigInt(${operation.source});`;
   }
+  if (operation.kind === "uint64.from_int64_checked") {
+    return `${indent}if (${operation.source} < 0n) ` +
+      `nativeRaise("OverflowError", "integer is outside unsigned 64-bit");\n` +
+      `${indent}${operation.target} = ${operation.source};`;
+  }
   if (operation.kind === "uint64.from_integer_checked") {
     return `${indent}if (${operation.source} < 0n || ` +
       `${operation.source} > 18446744073709551615n) ` +
@@ -313,6 +318,9 @@ function emitExactStatement(operation, indent, resourceStack = null) {
   if (operation.kind === "uint64.constant") {
     return `${indent}${operation.target} = ${operation.value}n;`;
   }
+  if (operation.kind === "int64.constant") {
+    return `${indent}${operation.target} = ${operation.value}n;`;
+  }
   if (operation.kind === "integer.constant") {
     return `${indent}${operation.target} = BigInt(${jsString(operation.value)});`;
   }
@@ -327,6 +335,7 @@ function emitExactStatement(operation, indent, resourceStack = null) {
     operation.kind === "integer.copy" ||
     operation.kind === "bool.copy" ||
     operation.kind === "uint64.copy" ||
+    operation.kind === "int64.copy" ||
     operation.kind === "float64.copy" ||
     operation.kind === "float64.buffer.copy"
   ) {
@@ -390,6 +399,10 @@ function emitExactStatement(operation, indent, resourceStack = null) {
   }
   if (operation.kind === "integer.buffer.view") {
     return `${indent}${operation.target} = integerBufferSubview(` +
+      `${operation.buffer}, ${operation.start}, ${operation.length});`;
+  }
+  if (operation.kind === "uint64.buffer.view") {
+    return `${indent}${operation.target} = uint64BufferSubview(` +
       `${operation.buffer}, ${operation.start}, ${operation.length});`;
   }
   if (operation.kind === "int64.buffer.get") {
@@ -529,6 +542,20 @@ function emitExactStatement(operation, indent, resourceStack = null) {
   }
   if (operation.kind === "integer.from_uint64") {
     return `${indent}${operation.target} = BigInt(${operation.source});`;
+  }
+  if (operation.kind === "integer.from_int64") {
+    return `${indent}${operation.target} = ${operation.source};`;
+  }
+  if (operation.kind === "int64.from_integer_checked") {
+    return `${indent}${operation.target} = checkedInt64(${operation.source});`;
+  }
+  if (operation.kind === "int64.from_uint64_checked") {
+    return `${indent}${operation.target} = checkedInt64(${operation.source});`;
+  }
+  if (operation.kind === "uint64.from_int64_checked") {
+    return `${indent}if (${operation.source} < 0n) ` +
+      `nativeRaise("OverflowError", "integer is outside unsigned 64-bit");\n` +
+      `${indent}${operation.target} = ${operation.source};`;
   }
   if (operation.kind === "uint64.from_integer_checked") {
     return `${indent}if (${operation.source} < 0n || ` +
@@ -686,7 +713,11 @@ ${indent}}`;
       `${jsString(operation.operation)}, ${operation.left}, ` +
       `${operation.right});`;
   }
-  if (["integer.compare", "uint64.compare", "bool.compare", "float64.compare"].includes(
+  if (operation.kind === "int64.binary") {
+    return `${indent}${operation.target} = int64Binary(` +
+      `${jsString(operation.operation)}, ${operation.left}, ${operation.right});`;
+  }
+  if (["integer.compare", "uint64.compare", "int64.compare", "bool.compare", "float64.compare"].includes(
     operation.kind
   )) {
     const operator = {
@@ -727,6 +758,14 @@ ${indent}}`;
   }
   if (operation.kind === "uint64.truth") {
     return `${indent}${operation.target} = ${operation.source} !== 0n;`;
+  }
+  if (operation.kind === "int64.truth") {
+    return `${indent}${operation.target} = ${operation.source} !== 0n;`;
+  }
+  if (operation.kind === "int64.neg" || operation.kind === "int64.abs") {
+    const expression = operation.kind === "int64.neg"
+      ? `-${operation.source}` : `(${operation.source} < 0n ? -${operation.source} : ${operation.source})`;
+    return `${indent}${operation.target} = checkedInt64(${expression});`;
   }
   if (operation.kind === "native.call") {
     const targets = operation.results === undefined
@@ -794,6 +833,22 @@ ${indent}}`;
         `${operation.stop} - ${operation.iterator}) break;`,
       `${indent}  ${operation.iterator} += ${operation.step};`,
       `${indent}}`,
+    ].join("\n");
+  }
+  if (operation.kind === "loop.range_int64") {
+    return [
+      `${indent}${operation.iterator} = ${operation.start};`,
+      `${indent}while (${operation.step} > 0n ? ` +
+        `${operation.iterator} < ${operation.stop} : ` +
+        `${operation.iterator} > ${operation.stop}) {`,
+      `${indent}  ${operation.index} = ${operation.iterator};`,
+      ...operation.body.map((item) =>
+        emitExactStatement(item, `${indent}  `, resourceStack)
+      ),
+      `${indent}  const $next = ${operation.iterator} + ${operation.step};`,
+      `${indent}  if ($next < -9223372036854775808n || ` +
+        `$next > 9223372036854775807n) break;`,
+      `${indent}  ${operation.iterator} = $next;`, `${indent}}`,
     ].join("\n");
   }
   if (operation.kind === "loop.range_exact") {
@@ -984,6 +1039,7 @@ function exactValidation(param) {
   if (param.type === "uint64") {
     return uint64Validation(param.name);
   }
+  if (param.type === "int64") return int64Validation(param.name);
   if (param.type === "Float64") {
     return `  if (typeof ${param.name} !== "number") {\n` +
       `    throw new TypeError("${param.name} must be a binary64 float");\n` +
@@ -1015,6 +1071,15 @@ function uint64Validation(name) {
     "  }";
 }
 
+function int64Validation(name) {
+  return `  if (!(typeof ${name} === "bigint" || Number.isSafeInteger(${name}))) {\n` +
+    `    nativeRaise("TypeError", "${name} must be an exact integer");\n` +
+    `  }\n` +
+    `  if (${name} < -9223372036854775808n || ${name} > 9223372036854775807n) {\n` +
+    `    nativeRaise("OverflowError", "${name} is outside int64");\n` +
+    "  }";
+}
+
 function normalizedArgument(param) {
   if (param.resourceIdentity !== undefined) {
     return `sagejsFfiPublicResource(${param.name}, ` +
@@ -1022,6 +1087,7 @@ function normalizedArgument(param) {
   }
   if (param.type === "Integer") return `BigInt(${param.name})`;
   if (param.type === "uint64") return `BigInt(${param.name})`;
+  if (param.type === "int64") return `BigInt(${param.name})`;
   if (param.type === "Int64Buffer" || param.type === "Int64Record") {
     return `int64BufferView(${param.name}, ${jsString(param.name)})`;
   }
@@ -1826,6 +1892,7 @@ ${javascriptRuntime(ir)}
 const float64BufferViewTag = Symbol("sagejs.native.Float64BufferView");
 const int64BufferViewTag = Symbol("sagejs.native.Int64BufferView");
 const integerBufferViewTag = Symbol("sagejs.native.IntegerBufferView");
+const uint64BufferViewTag = Symbol("sagejs.native.UInt64BufferView");
 const immutableUInt64LeaseViewTag =
   Symbol("sagejs.native.ImmutableUInt64LeaseView");
 
@@ -1874,6 +1941,34 @@ function uint64NumberBinary(operation, left, right) {
       "JavaScript fallback cannot represent uint64 beyond Number.MAX_SAFE_INTEGER");
   }
   return Number(result);
+}
+
+function checkedInt64(value) {
+  const exact = BigInt(value);
+  if (exact < -9223372036854775808n || exact > 9223372036854775807n) {
+    nativeRaise("OverflowError", "int64 arithmetic overflow");
+  }
+  return exact;
+}
+
+function int64Binary(operation, left, right) {
+  const a = BigInt(left);
+  const b = BigInt(right);
+  if (["add", "sub", "mul"].includes(operation)) {
+    const result = operation === "add" ? a + b
+      : operation === "sub" ? a - b : a * b;
+    return checkedInt64(result);
+  }
+  if (b === 0n) {
+    nativeRaise("ZeroDivisionError", "integer division or modulo by zero");
+  }
+  let quotient = a / b;
+  let remainder = a % b;
+  if (remainder !== 0n && ((remainder < 0n) !== (b < 0n))) {
+    quotient -= 1n;
+    remainder += b;
+  }
+  return checkedInt64(operation === "floordiv" ? quotient : remainder);
 }
 
 function isTypedArrayKind(value, name) {
@@ -2729,6 +2824,8 @@ function uint64DynamicBufferView(value, argument = "buffer") {
 }
 
 function uint64BufferView(value, argument = "buffer") {
+  if (value !== null && typeof value === "object" &&
+      value[uint64BufferViewTag] === true) return value;
   const immutable = immutableUInt64Borrow(value);
   if (immutable !== null) {
     return Object.freeze({
@@ -2759,6 +2856,23 @@ function uint64BufferView(value, argument = "buffer") {
   return value;
 }
 
+function uint64BufferSubview(buffer, start, length) {
+  const view = uint64BufferView(buffer);
+  const exactStart = typeof start === "bigint" ? start : BigInt(start);
+  const exactLength = typeof length === "bigint" ? length : BigInt(length);
+  if (exactStart < 0n || exactLength < 0n ||
+      exactStart > BigInt(view.length) ||
+      exactLength > BigInt(view.length) - exactStart) {
+    throw new RangeError("UInt64Buffer view is outside its buffer");
+  }
+  return {
+    [uint64BufferViewTag]: true,
+    data: view,
+    offset: Number(exactStart),
+    length: Number(exactLength),
+  };
+}
+
 function uint64BufferGet(buffer, index) {
   const view = uint64BufferView(buffer);
   const exact = typeof index === "bigint" ? index : BigInt(index);
@@ -2766,6 +2880,9 @@ function uint64BufferGet(buffer, index) {
     throw new RangeError("UInt64Buffer index out of range");
   }
   const position = exact < 0n ? BigInt(view.length) + exact : exact;
+  if (view[uint64BufferViewTag] === true) {
+    return uint64BufferGet(view.data, BigInt(view.offset) + position);
+  }
   const data = view[immutableUInt64LeaseViewTag] === true ? view.typed : view;
   return BigInt(Reflect.get(data, String(Number(position))));
 }
@@ -2786,7 +2903,9 @@ function uint64BufferSet(buffer, index, value) {
   }
   const position = exactIndex < 0n
     ? BigInt(view.length) + exactIndex : exactIndex;
-  if (!Reflect.set(view, String(Number(position)), exactValue)) {
+  if (view[uint64BufferViewTag] === true) {
+    uint64BufferSet(view.data, BigInt(view.offset) + position, exactValue);
+  } else if (!Reflect.set(view, String(Number(position)), exactValue)) {
     throw new TypeError("UInt64Buffer is not writable");
   }
 }
@@ -2805,15 +2924,13 @@ function uint64NativeBuffer(value, argument, writable = false) {
   }
   const typed = new BigUint64Array(view.length);
   for (let index = 0; index < view.length; index += 1) {
-    typed[index] = BigInt(Reflect.get(view, String(index)));
+    typed[index] = uint64BufferGet(view, index);
   }
   return {
     typed,
     copyBack() {
       for (let index = 0; index < view.length; index += 1) {
-        if (!Reflect.set(view, String(index), typed[index])) {
-          throw new TypeError("UInt64Buffer is not writable");
-        }
+        uint64BufferSet(view, index, typed[index]);
       }
     },
   };

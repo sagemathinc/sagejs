@@ -64,7 +64,7 @@ const NATIVE_KERNEL_PACK_ABI_VERSION = 1;
 // `tools/native-kernel/c-backend.cjs`. Production-kernel tests ratchet it to
 // both the compiler and runtime-bootstrap values so an ABI bump cannot leave
 // SEA validation silently one version behind.
-export const NATIVE_KERNEL_ASSET_ABI_VERSION = 23;
+export const NATIVE_KERNEL_ASSET_ABI_VERSION = 24;
 const NATIVE_RUNTIME_MODULES = new Set([
   "@sagemath/sagejs-flint",
   "@sagemath/sagejs-fflas",

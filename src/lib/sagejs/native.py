@@ -57,6 +57,7 @@ from typing import Any, TypeAlias
 # Annotation-only marker understood by the source-transparent prime-field
 # compiler experiment.  At runtime its values are ordinary Python lists.
 uint64: TypeAlias = int
+int64: TypeAlias = int
 UInt64Buffer = list[int]
 IntegerBuffer = list[int]
 Int64Buffer = list[int]
@@ -75,18 +76,21 @@ PrimeFieldModulus: TypeAlias = int
 _warned_fallback_sources: set[str] = set()
 
 
-def checked_uint64(value: int) -> uint64:
-    """Return `value` as an unsigned 64-bit integer.
-
-    This explicit conversion is useful in source-transparent native programs
-    when an exact computation determines a resident shape or loop bound.  The
-    dynamic fallback and compiled program both raise `OverflowError` unless
-    `value` is in `0 <= value < 2^64`.
-    """
+def _checked_word(value: int, lower: int, upper: int) -> int:
     exact = int(value)
-    if exact < 0 or exact >= (1 << 64):
-        raise OverflowError("integer is outside unsigned 64-bit")
+    if exact < lower or exact >= upper:
+        raise OverflowError("integer is outside requested 64-bit range")
     return exact
+
+
+def checked_uint64(value: int) -> uint64:
+    """Checked unsigned 64-bit conversion."""
+    return _checked_word(value, 0, 1 << 64)
+
+
+def checked_int64(value: int) -> int64:
+    """Checked signed 64-bit conversion."""
+    return _checked_word(value, -(1 << 63), 1 << 63)
 
 
 def checked_float64(value: int) -> float:
@@ -1472,6 +1476,43 @@ def uint64_buffer(source: Any) -> UInt64Buffer:
     return answer
 
 
+class _UInt64BufferView:
+    """A non-resizing checked view into an unsigned-64-bit buffer."""
+
+    def __init__(self, buffer: Any, start: int, length: int) -> None:
+        if start < 0 or length < 0 or start > len(buffer) - length:
+            raise IndexError("UInt64Buffer view is outside its buffer")
+        self._buffer = buffer
+        self._start = start
+        self._length = length
+
+    def __len__(self) -> int:
+        return self._length
+
+    def __getitem__(self, index: int) -> int:
+        if index < 0:
+            index += self._length
+        if index < 0 or index >= self._length:
+            raise IndexError("UInt64Buffer index out of range")
+        return self._buffer[self._start + index]
+
+    def __setitem__(self, index: int, value: int) -> None:
+        if index < 0:
+            index += self._length
+        if index < 0 or index >= self._length:
+            raise IndexError("UInt64Buffer index out of range")
+        self._buffer[self._start + index] = int(value) & ((1 << 64) - 1)
+
+
+def uint64_buffer_view(
+    buffer: UInt64Buffer,
+    start: int,
+    length: int,
+) -> Any:
+    """Borrow a checked mutable unsigned-word span without copying."""
+    return _UInt64BufferView(buffer, start, length)
+
+
 def uint64_zeros(length: int) -> UInt64Buffer:
     """Allocate a zero-filled unsigned-64-bit fallback buffer."""
     return [0 for _index in range(length)]
@@ -1767,7 +1808,9 @@ __all__ = [
     "PrimeFieldModulus",
     "RationalBuffer",
     "UInt64Buffer",
+    "int64",
     "uint64",
+    "checked_int64",
     "checked_float64",
     "checked_uint64",
     "float64_buffer",
@@ -1803,5 +1846,6 @@ __all__ = [
     "prime_sub",
     "prime_zeros",
     "uint64_buffer",
+    "uint64_buffer_view",
     "uint64_zeros",
 ]
