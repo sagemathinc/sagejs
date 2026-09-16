@@ -1,0 +1,328 @@
+{
+  "qualifiedTiming": false,
+  "diagnosticOnly": true,
+  "backend": "tagged",
+  "cacheKey": "e3e52f8292ef3a1b49215ddbe5b3f7ff01aeabcc69aa55a65f68a37bb7a4b612",
+  "canonical": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/e3e52f8292ef3a1b49215ddbe5b3f7ff01aeabcc69aa55a65f68a37bb7a4b612",
+  "directory": "/tmp/sagejs-phase-profile-bQ8in1",
+  "inputSha256": "37abbff3ea5a0fbbd81d4261a737f19808a2b85220c725417d0f315d15c0e10c",
+  "sourceSha256": "ed72b1e3591c11ed1cdaee378b9a1c234e2478e55dbc9fca5c07a9319c1d6904",
+  "manifestSha256": "5fb56b448558890b3bcb88679fa16cf60c921a4b1b77d066fd6e81af227acf4c",
+  "originalHashes": {
+    "kernel.c": "6a1803352b51ce3f2f69738b68ff8984b181d766661cb6428f749f678bed9e3b",
+    "kernel_core.c": "052512849c16228619410f6c1626b1ed5f32273250e7ddf27b759d56e1c27f10",
+    "kernel_core.h": "7204579721cefc759b801efff21f8edb618a54b2cccc0fcf916564a8824b65fb",
+    "binding.gyp": "312079ee587fd9482d3280097f2cb0e54bf6bf6ddd9b1f9194066aa8439a93fb",
+    "index.cjs": "02434bfed397681b5fd1c91c0709cf7cbe1fb1e30e4ffef1358b34bc5b4581f5"
+  },
+  "instrumentedHashes": {
+    "kernel_core.c": "f1422484b6a195ab96413c34c040f673c8793d7b8cd5e07946782e9467720be6",
+    "kernel.c": "dd74b26951ed9e988d2252318b5f0054f03bfcae7fb940480ebeafeb368ecc19"
+  },
+  "coverage": [
+    {
+      "id": 0,
+      "name": "native_pari_prepared_class_group_attempt",
+      "returnSites": 2
+    },
+    {
+      "id": 1,
+      "name": "tagged_pari_prepared_class_group_attempt",
+      "returnSites": 2
+    },
+    {
+      "id": 2,
+      "name": "native_pari_initialize_owned_relations",
+      "returnSites": 2
+    },
+    {
+      "id": 3,
+      "name": "tagged_pari_initialize_owned_relations",
+      "returnSites": 3
+    },
+    {
+      "id": 4,
+      "name": "native_pari_collect_unreduced_ideals",
+      "returnSites": 2
+    },
+    {
+      "id": 5,
+      "name": "tagged_pari_collect_unreduced_ideals",
+      "returnSites": 2
+    },
+    {
+      "id": 6,
+      "name": "native_pari_append_relation_log_embeddings",
+      "returnSites": 2
+    },
+    {
+      "id": 7,
+      "name": "tagged_pari_append_relation_log_embeddings",
+      "returnSites": 2
+    },
+    {
+      "id": 8,
+      "name": "native_pari_hnfspec_complete",
+      "returnSites": 2
+    },
+    {
+      "id": 9,
+      "name": "tagged_pari_hnfspec_complete",
+      "returnSites": 2
+    },
+    {
+      "id": 10,
+      "name": "native_pari_post_hnf_acceptance",
+      "returnSites": 2
+    },
+    {
+      "id": 11,
+      "name": "tagged_pari_post_hnf_acceptance",
+      "returnSites": 2
+    },
+    {
+      "id": 12,
+      "name": "native_pari_class_invariant_output",
+      "returnSites": 2
+    },
+    {
+      "id": 13,
+      "name": "tagged_pari_class_invariant_output",
+      "returnSites": 6
+    },
+    {
+      "id": 14,
+      "name": "compiled_pari_prepared_class_group_attempt_gmp",
+      "returnSites": 4
+    },
+    {
+      "id": 15,
+      "name": "compiled_pari_prepared_class_group_attempt",
+      "returnSites": 4
+    }
+  ],
+  "binding": {
+    "targets": [
+      {
+        "target_name": "sagejs_native_kernel",
+        "win_delay_load_hook": "true",
+        "sources": [
+          "kernel.c"
+        ],
+        "include_dirs": [
+          "/home/user/sagejs/packages/flint/.native/prefix/include",
+          "/home/user/sagejs-worktrees/pari-class-group-port/packages/flint/include"
+        ],
+        "defines": [
+          "NAPI_VERSION=8"
+        ],
+        "libraries": [
+          "/home/user/sagejs/packages/flint/.native/prefix/lib/libmpc.a",
+          "/home/user/sagejs/packages/flint/.native/prefix/lib/libmpfr.a",
+          "/home/user/sagejs/packages/flint/.native/prefix/lib/libgmp.a",
+          "-lm"
+        ],
+        "cflags": [
+          "-O3",
+          "-fPIC",
+          "-Wall",
+          "-Wextra",
+          "-ffunction-sections",
+          "-fdata-sections",
+          "-ffp-contract=off"
+        ],
+        "ldflags": [
+          "-Wl,--gc-sections",
+          "-Wl,--exclude-libs,ALL",
+          "-Wl,--strip-all",
+          "-Wl,-z,nodelete"
+        ]
+      }
+    ]
+  },
+  "note": "Pinned copied cache artifact, not a claim that all current transitive sources match it; original core and manifest hashes identify the executed graph. Timers perturb code generation. Function timings are inclusive; outermost phase totals suppress same-phase bridge double counts. Includes the probe warmup. No PARI ratio or production performance claim.",
+  "probeSha256": "7f10edc7af976f9e3dc866fb2df2058706a2ea8e8d595feee234b7fb72ae2e9b",
+  "functions": {
+    "native_pari_prepared_class_group_attempt": {
+      "calls": 0,
+      "wallSeconds": 0,
+      "threadCpuSeconds": 0
+    },
+    "tagged_pari_prepared_class_group_attempt": {
+      "calls": 2,
+      "wallSeconds": 0.224235657020472,
+      "threadCpuSeconds": 0.2242136410000004
+    },
+    "native_pari_initialize_owned_relations": {
+      "calls": 0,
+      "wallSeconds": 0,
+      "threadCpuSeconds": 0
+    },
+    "tagged_pari_initialize_owned_relations": {
+      "calls": 2,
+      "wallSeconds": 0.00027036003302782774,
+      "threadCpuSeconds": 0.0002708799999995293
+    },
+    "native_pari_collect_unreduced_ideals": {
+      "calls": 0,
+      "wallSeconds": 0,
+      "threadCpuSeconds": 0
+    },
+    "tagged_pari_collect_unreduced_ideals": {
+      "calls": 2,
+      "wallSeconds": 0.07618581200949848,
+      "threadCpuSeconds": 0.07617670099999962
+    },
+    "native_pari_append_relation_log_embeddings": {
+      "calls": 0,
+      "wallSeconds": 0,
+      "threadCpuSeconds": 0
+    },
+    "tagged_pari_append_relation_log_embeddings": {
+      "calls": 2,
+      "wallSeconds": 0.07778603199403733,
+      "threadCpuSeconds": 0.07777840199999986
+    },
+    "native_pari_hnfspec_complete": {
+      "calls": 0,
+      "wallSeconds": 0,
+      "threadCpuSeconds": 0
+    },
+    "tagged_pari_hnfspec_complete": {
+      "calls": 2,
+      "wallSeconds": 0.06651778402738273,
+      "threadCpuSeconds": 0.06651897700000031
+    },
+    "native_pari_post_hnf_acceptance": {
+      "calls": 0,
+      "wallSeconds": 0,
+      "threadCpuSeconds": 0
+    },
+    "tagged_pari_post_hnf_acceptance": {
+      "calls": 2,
+      "wallSeconds": 0.0032754699932411313,
+      "threadCpuSeconds": 0.0032767599999994346
+    },
+    "native_pari_class_invariant_output": {
+      "calls": 0,
+      "wallSeconds": 0,
+      "threadCpuSeconds": 0
+    },
+    "tagged_pari_class_invariant_output": {
+      "calls": 2,
+      "wallSeconds": 0.000012569944374263287,
+      "threadCpuSeconds": 0.000012659999999442562
+    },
+    "compiled_pari_prepared_class_group_attempt_gmp": {
+      "calls": 0,
+      "wallSeconds": 0,
+      "threadCpuSeconds": 0
+    },
+    "compiled_pari_prepared_class_group_attempt": {
+      "calls": 2,
+      "wallSeconds": 0.22564867709297687,
+      "threadCpuSeconds": 0.225624732
+    }
+  },
+  "phaseTotals": {
+    "attempt": {
+      "calls": 2,
+      "wallSeconds": 0.224235657020472,
+      "threadCpuSeconds": 0.2242136410000004
+    },
+    "relation_initialization": {
+      "calls": 2,
+      "wallSeconds": 0.00027036003302782774,
+      "threadCpuSeconds": 0.0002708799999995293
+    },
+    "collection": {
+      "calls": 2,
+      "wallSeconds": 0.07618581200949848,
+      "threadCpuSeconds": 0.07617670099999962
+    },
+    "logs": {
+      "calls": 2,
+      "wallSeconds": 0.07778603199403733,
+      "threadCpuSeconds": 0.07777840199999986
+    },
+    "hnf": {
+      "calls": 2,
+      "wallSeconds": 0.06651778402738273,
+      "threadCpuSeconds": 0.06651897700000031
+    },
+    "acceptance": {
+      "calls": 2,
+      "wallSeconds": 0.0032754699932411313,
+      "threadCpuSeconds": 0.0032767599999994346
+    },
+    "smith": {
+      "calls": 2,
+      "wallSeconds": 0.000012569944374263287,
+      "threadCpuSeconds": 0.000012659999999442562
+    },
+    "host_adapter": {
+      "calls": 2,
+      "wallSeconds": 0.22564867709297687,
+      "threadCpuSeconds": 0.225624732
+    }
+  },
+  "residual": {
+    "coreOtherWallSeconds": 0.0001876290189102292,
+    "coreOtherThreadCpuSeconds": 0.00017926100000220657,
+    "hostAdapterOtherWallSeconds": 0.001413020072504878,
+    "hostAdapterOtherThreadCpuSeconds": 0.0014110909999995869
+  },
+  "probe": {
+    "qualifiedTiming": false,
+    "comparisonToPari": false,
+    "backend": "tagged",
+    "boundary": "Prepared attempt with resident owners restored before every call; kernel totals exclude preparation, packing, reset, compilation, decoding and assertions. Reset totals reported separately. Diagnostic only; batching does not qualify timing.",
+    "repetitions": 1,
+    "sampleCount": 1,
+    "warmupCalls": 1,
+    "timedCalls": 1,
+    "inputSha256": "37abbff3ea5a0fbbd81d4261a737f19808a2b85220c725417d0f315d15c0e10c",
+    "coreBytes": 58210018,
+    "sourceSha256": "ed72b1e3591c11ed1cdaee378b9a1c234e2478e55dbc9fca5c07a9319c1d6904",
+    "coreSha256": "f1422484b6a195ab96413c34c040f673c8793d7b8cd5e07946782e9467720be6",
+    "ownerBytes": 271240904,
+    "resetSnapshotBytes": 271240904,
+    "setupMilliseconds": 857.9204050000117,
+    "largeInputCapacities": {
+      "admission_products": 1470
+    },
+    "samples": [
+      {
+        "repetitions": 1,
+        "milliseconds": 112.5073529999936,
+        "cpuMilliseconds": 112.518,
+        "resetMilliseconds": 29.304833000001963,
+        "resetCpuMilliseconds": 31.629
+      }
+    ],
+    "answer": {
+      "action": 0,
+      "state": [
+        4,
+        0,
+        1,
+        1
+      ],
+      "invariants": [
+        "3"
+      ],
+      "classNumber": "3",
+      "regulator": [
+        "3895441961913051012156655978319959870688113589397982850906",
+        "192",
+        "17"
+      ],
+      "relations": "58",
+      "work": {
+        "smallElements": 491,
+        "factorAttempts": 54,
+        "ideals": 12
+      }
+    }
+  }
+}

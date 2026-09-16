@@ -1,0 +1,45 @@
+{
+  "qualified": false,
+  "checkedCases": 228,
+  "timedCases": 32,
+  "repetitions": 1000,
+  "cpu": 15,
+  "results": [
+    {
+      "round": 0,
+      "name": "pari",
+      "seconds": 0.0009309899999999998
+    },
+    {
+      "round": 0,
+      "name": "native",
+      "seconds": 0.10999170400000001
+    },
+    {
+      "round": 1,
+      "name": "native",
+      "seconds": 0.09949090799999999
+    },
+    {
+      "round": 1,
+      "name": "pari",
+      "seconds": 0.0008328829999999998
+    },
+    {
+      "round": 2,
+      "name": "pari",
+      "seconds": 0.00086541
+    },
+    {
+      "round": 2,
+      "name": "native",
+      "seconds": 0.10083853700000002
+    }
+  ],
+  "fixtureSha256": "a4e857718da278666a3ab05c6a247fc9c591521dbbe9ea659d3f9aacda2bdb6c",
+  "coreSha256": "17859875f5f6ef7a415cfb91d90fbbdb0d0e79f808a88eb854faf344cf789b67",
+  "nativeDriver": "fd302780d78fe55b2f92b4ce48f73ae806f1038cf37ce275030e238238ddb078",
+  "pariDriver": "c39f8768e02abc9864d80fa2a53c842fb51c16a84d5af3965a936f162ce45ebd",
+  "boundary": "Prepared operand multiplication; parsing/conversion/checks excluded. No warmups; short diagnostic samples. PARI stack reset included; generated function owns temporary lifetimes.",
+  "core": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/d328b06a76b31d109360ddf0096a6b8881c2022e0a74737f1cdce22968bfca74/kernel_core.c"
+}

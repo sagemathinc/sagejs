@@ -1,0 +1,1306 @@
+{
+  "qualifiedTiming": false,
+  "attribution": "exclusive sampled PCs, not inclusive call stacks",
+  "totalSamples": 2782,
+  "resolvedSamples": 2728,
+  "unresolvedSamples": 54,
+  "binaries": [
+    {
+      "file": "/opt/cocalc/bin/node",
+      "sha256": "19235a9b678f84729464c52623f92de130a165452747c6826d3fdc13df3abcc3",
+      "matchesRecordedHash": true
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "sha256": "8b3f807c957722adf3849898113cc3c6b893b59d6598ac12a685405110a49a59",
+      "matchesRecordedHash": true
+    },
+    {
+      "file": "/usr/lib/x86_64-linux-gnu/libc.so.6",
+      "sha256": "d763925433ff9b757390549e1b20c085f5e6de27ae700fe89194178d96a8a2b0",
+      "matchesRecordedHash": true
+    },
+    {
+      "file": "/usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2",
+      "sha256": "223b94a42758f2434da331cc0aa62db1af5b456481762c5caceefa1a2d1eb8fb",
+      "matchesRecordedHash": true
+    }
+  ],
+  "runs": [
+    {
+      "cpuNanoseconds": "96761990",
+      "intervalNanoseconds": 1000000,
+      "dropped": 0,
+      "timerOverruns": 0,
+      "tid": 871067,
+      "pageSize": 4096,
+      "sampleCount": 96
+    },
+    {
+      "cpuNanoseconds": "90363947",
+      "intervalNanoseconds": 1000000,
+      "dropped": 0,
+      "timerOverruns": 0,
+      "tid": 871067,
+      "pageSize": 4096,
+      "sampleCount": 90
+    },
+    {
+      "cpuNanoseconds": "89946537",
+      "intervalNanoseconds": 1000000,
+      "dropped": 0,
+      "timerOverruns": 0,
+      "tid": 871067,
+      "pageSize": 4096,
+      "sampleCount": 89
+    },
+    {
+      "cpuNanoseconds": "90208546",
+      "intervalNanoseconds": 1000000,
+      "dropped": 0,
+      "timerOverruns": 0,
+      "tid": 871067,
+      "pageSize": 4096,
+      "sampleCount": 89
+    },
+    {
+      "cpuNanoseconds": "90297656",
+      "intervalNanoseconds": 1000000,
+      "dropped": 0,
+      "timerOverruns": 0,
+      "tid": 871067,
+      "pageSize": 4096,
+      "sampleCount": 89
+    },
+    {
+      "cpuNanoseconds": "90999559",
+      "intervalNanoseconds": 1000000,
+      "dropped": 0,
+      "timerOverruns": 0,
+      "tid": 871067,
+      "pageSize": 4096,
+      "sampleCount": 90
+    },
+    {
+      "cpuNanoseconds": "90471617",
+      "intervalNanoseconds": 1000000,
+      "dropped": 0,
+      "timerOverruns": 0,
+      "tid": 871067,
+      "pageSize": 4096,
+      "sampleCount": 89
+    },
+    {
+      "cpuNanoseconds": "90208087",
+      "intervalNanoseconds": 1000000,
+      "dropped": 0,
+      "timerOverruns": 0,
+      "tid": 871067,
+      "pageSize": 4096,
+      "sampleCount": 90
+    },
+    {
+      "cpuNanoseconds": "90524327",
+      "intervalNanoseconds": 1000000,
+      "dropped": 0,
+      "timerOverruns": 0,
+      "tid": 871067,
+      "pageSize": 4096,
+      "sampleCount": 89
+    },
+    {
+      "cpuNanoseconds": "91174107",
+      "intervalNanoseconds": 1000000,
+      "dropped": 0,
+      "timerOverruns": 0,
+      "tid": 871067,
+      "pageSize": 4096,
+      "sampleCount": 90
+    },
+    {
+      "cpuNanoseconds": "91313947",
+      "intervalNanoseconds": 1000000,
+      "dropped": 0,
+      "timerOverruns": 0,
+      "tid": 871067,
+      "pageSize": 4096,
+      "sampleCount": 90
+    },
+    {
+      "cpuNanoseconds": "90662048",
+      "intervalNanoseconds": 1000000,
+      "dropped": 0,
+      "timerOverruns": 0,
+      "tid": 871067,
+      "pageSize": 4096,
+      "sampleCount": 89
+    },
+    {
+      "cpuNanoseconds": "90752207",
+      "intervalNanoseconds": 1000000,
+      "dropped": 0,
+      "timerOverruns": 0,
+      "tid": 871067,
+      "pageSize": 4096,
+      "sampleCount": 89
+    },
+    {
+      "cpuNanoseconds": "90958257",
+      "intervalNanoseconds": 1000000,
+      "dropped": 0,
+      "timerOverruns": 0,
+      "tid": 871067,
+      "pageSize": 4096,
+      "sampleCount": 90
+    },
+    {
+      "cpuNanoseconds": "91025376",
+      "intervalNanoseconds": 1000000,
+      "dropped": 0,
+      "timerOverruns": 0,
+      "tid": 871067,
+      "pageSize": 4096,
+      "sampleCount": 90
+    },
+    {
+      "cpuNanoseconds": "90774427",
+      "intervalNanoseconds": 1000000,
+      "dropped": 0,
+      "timerOverruns": 0,
+      "tid": 871067,
+      "pageSize": 4096,
+      "sampleCount": 89
+    },
+    {
+      "cpuNanoseconds": "90524417",
+      "intervalNanoseconds": 1000000,
+      "dropped": 0,
+      "timerOverruns": 0,
+      "tid": 871067,
+      "pageSize": 4096,
+      "sampleCount": 90
+    },
+    {
+      "cpuNanoseconds": "89843017",
+      "intervalNanoseconds": 1000000,
+      "dropped": 0,
+      "timerOverruns": 0,
+      "tid": 871067,
+      "pageSize": 4096,
+      "sampleCount": 89
+    },
+    {
+      "cpuNanoseconds": "90139846",
+      "intervalNanoseconds": 1000000,
+      "dropped": 0,
+      "timerOverruns": 0,
+      "tid": 871067,
+      "pageSize": 4096,
+      "sampleCount": 90
+    },
+    {
+      "cpuNanoseconds": "90381647",
+      "intervalNanoseconds": 1000000,
+      "dropped": 0,
+      "timerOverruns": 0,
+      "tid": 871067,
+      "pageSize": 4096,
+      "sampleCount": 89
+    },
+    {
+      "cpuNanoseconds": "90040656",
+      "intervalNanoseconds": 1000000,
+      "dropped": 0,
+      "timerOverruns": 0,
+      "tid": 871067,
+      "pageSize": 4096,
+      "sampleCount": 89
+    },
+    {
+      "cpuNanoseconds": "91512587",
+      "intervalNanoseconds": 1000000,
+      "dropped": 0,
+      "timerOverruns": 0,
+      "tid": 871067,
+      "pageSize": 4096,
+      "sampleCount": 91
+    },
+    {
+      "cpuNanoseconds": "90650467",
+      "intervalNanoseconds": 1000000,
+      "dropped": 0,
+      "timerOverruns": 0,
+      "tid": 871067,
+      "pageSize": 4096,
+      "sampleCount": 89
+    },
+    {
+      "cpuNanoseconds": "90257217",
+      "intervalNanoseconds": 1000000,
+      "dropped": 0,
+      "timerOverruns": 0,
+      "tid": 871067,
+      "pageSize": 4096,
+      "sampleCount": 89
+    },
+    {
+      "cpuNanoseconds": "90245596",
+      "intervalNanoseconds": 1000000,
+      "dropped": 0,
+      "timerOverruns": 0,
+      "tid": 871067,
+      "pageSize": 4096,
+      "sampleCount": 89
+    },
+    {
+      "cpuNanoseconds": "90799368",
+      "intervalNanoseconds": 1000000,
+      "dropped": 0,
+      "timerOverruns": 0,
+      "tid": 871067,
+      "pageSize": 4096,
+      "sampleCount": 90
+    },
+    {
+      "cpuNanoseconds": "90720548",
+      "intervalNanoseconds": 1000000,
+      "dropped": 0,
+      "timerOverruns": 0,
+      "tid": 871067,
+      "pageSize": 4096,
+      "sampleCount": 89
+    },
+    {
+      "cpuNanoseconds": "90615306",
+      "intervalNanoseconds": 1000000,
+      "dropped": 0,
+      "timerOverruns": 0,
+      "tid": 871067,
+      "pageSize": 4096,
+      "sampleCount": 90
+    },
+    {
+      "cpuNanoseconds": "91108817",
+      "intervalNanoseconds": 1000000,
+      "dropped": 0,
+      "timerOverruns": 0,
+      "tid": 871067,
+      "pageSize": 4096,
+      "sampleCount": 90
+    },
+    {
+      "cpuNanoseconds": "91396387",
+      "intervalNanoseconds": 1000000,
+      "dropped": 0,
+      "timerOverruns": 0,
+      "tid": 871067,
+      "pageSize": 4096,
+      "sampleCount": 90
+    },
+    {
+      "cpuNanoseconds": "90461148",
+      "intervalNanoseconds": 1000000,
+      "dropped": 0,
+      "timerOverruns": 0,
+      "tid": 871067,
+      "pageSize": 4096,
+      "sampleCount": 90
+    }
+  ],
+  "functions": [
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "__gmpz_set",
+      "samples": 282,
+      "exampleVirtualAddress": "0x906957",
+      "percentOfAllSamples": 10.136592379583034
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "__gmpz_sizeinbase",
+      "samples": 231,
+      "exampleVirtualAddress": "0x906f44",
+      "percentOfAllSamples": 8.303378864126527
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "__gmpn_copyi_zen",
+      "samples": 155,
+      "exampleVirtualAddress": "0x930900",
+      "percentOfAllSamples": 5.571531272465852
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "sagejs_native_gmp_free",
+      "samples": 142,
+      "exampleVirtualAddress": "0x10d87",
+      "percentOfAllSamples": 5.104241552839683
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "__gmpz_cmp",
+      "samples": 137,
+      "exampleVirtualAddress": "0x90492c",
+      "percentOfAllSamples": 4.92451473759885
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "__gmpz_add",
+      "samples": 134,
+      "exampleVirtualAddress": "0x903414",
+      "percentOfAllSamples": 4.816678648454349
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "sagejs_native_gmp_checkpoint_allocate",
+      "samples": 133,
+      "exampleVirtualAddress": "0x11cf8",
+      "percentOfAllSamples": 4.780733285406183
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "sagejs_native_gmp_realloc",
+      "samples": 108,
+      "exampleVirtualAddress": "0x11f82",
+      "percentOfAllSamples": 3.882099209202013
+    },
+    {
+      "file": "/usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2",
+      "name": "__tls_get_addr@@GLIBC_2.3",
+      "samples": 107,
+      "exampleVirtualAddress": "0x1cc98",
+      "percentOfAllSamples": 3.8461538461538463
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "__gmpz_export",
+      "samples": 105,
+      "exampleVirtualAddress": "0x904c24",
+      "percentOfAllSamples": 3.7742631200575127
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "__gmpz_sub",
+      "samples": 97,
+      "exampleVirtualAddress": "0x907579",
+      "percentOfAllSamples": 3.4867002156721782
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "__gmpz_mul",
+      "samples": 86,
+      "exampleVirtualAddress": "0x90637c",
+      "percentOfAllSamples": 3.0913012221423437
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "sagejs_native_gmp_malloc",
+      "samples": 76,
+      "exampleVirtualAddress": "0x11da6",
+      "percentOfAllSamples": 2.7318475916606757
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "__gmpz_realloc",
+      "samples": 72,
+      "exampleVirtualAddress": "0x906775",
+      "percentOfAllSamples": 2.5880661394680087
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "__gmpz_set_si",
+      "samples": 66,
+      "exampleVirtualAddress": "0x906b12",
+      "percentOfAllSamples": 2.3723939611790077
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "__gmpn_invert_limb",
+      "samples": 55,
+      "exampleVirtualAddress": "0x928076",
+      "percentOfAllSamples": 1.9769949676491732
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "__gmpn_divrem_1_x86_64",
+      "samples": 48,
+      "exampleVirtualAddress": "0x92921a",
+      "percentOfAllSamples": 1.7253774263120059
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "sagejs_mpz_integer_buffer_index",
+      "samples": 48,
+      "exampleVirtualAddress": "0x17e70",
+      "percentOfAllSamples": 1.7253774263120059
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_signed_real_sum",
+      "samples": 32,
+      "exampleVirtualAddress": "0x53fdf",
+      "percentOfAllSamples": 1.150251617541337
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "__gmpz_tdiv_qr",
+      "samples": 29,
+      "exampleVirtualAddress": "0x907b81",
+      "percentOfAllSamples": 1.0424155283968368
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "__gmpz_import",
+      "samples": 29,
+      "exampleVirtualAddress": "0x906061",
+      "percentOfAllSamples": 1.0424155283968368
+    },
+    {
+      "file": "/usr/lib/x86_64-linux-gnu/libc.so.6",
+      "name": "<unresolved>",
+      "samples": 27,
+      "exampleVirtualAddress": "0x198653",
+      "percentOfAllSamples": 0.9705248023005032
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "__gmpz_tdiv_r",
+      "samples": 27,
+      "exampleVirtualAddress": "0x90810f",
+      "percentOfAllSamples": 0.9705248023005032
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "<unresolved>",
+      "samples": 27,
+      "exampleVirtualAddress": "0x71b0",
+      "percentOfAllSamples": 0.9705248023005032
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "__gmpz_set_str",
+      "samples": 25,
+      "exampleVirtualAddress": "0x906ce7",
+      "percentOfAllSamples": 0.8986340762041697
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_positive_real_sum",
+      "samples": 24,
+      "exampleVirtualAddress": "0x52cb1",
+      "percentOfAllSamples": 0.8626887131560029
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_short_product",
+      "samples": 23,
+      "exampleVirtualAddress": "0x10b197",
+      "percentOfAllSamples": 0.8267433501078361
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "__gmpn_add_n_x86_64",
+      "samples": 20,
+      "exampleVirtualAddress": "0x9289c0",
+      "percentOfAllSamples": 0.7189072609633357
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "__gmpz_fdiv_q",
+      "samples": 20,
+      "exampleVirtualAddress": "0x905494",
+      "percentOfAllSamples": 0.7189072609633357
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "__gmpn_mul_1_zen",
+      "samples": 20,
+      "exampleVirtualAddress": "0x930dd6",
+      "percentOfAllSamples": 0.7189072609633357
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_log_matrix_transform",
+      "samples": 17,
+      "exampleVirtualAddress": "0x115405",
+      "percentOfAllSamples": 0.6110711718188354
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "__gmpz_fdiv_q_2exp",
+      "samples": 17,
+      "exampleVirtualAddress": "0x904789",
+      "percentOfAllSamples": 0.6110711718188354
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "__gmpn_tdiv_qr",
+      "samples": 15,
+      "exampleVirtualAddress": "0x90ece5",
+      "percentOfAllSamples": 0.5391804457225018
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "__gmpz_set_ui",
+      "samples": 15,
+      "exampleVirtualAddress": "0x906ee4",
+      "percentOfAllSamples": 0.5391804457225018
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "sagejs_integer_buffer_set_mpz",
+      "samples": 15,
+      "exampleVirtualAddress": "0xf975",
+      "percentOfAllSamples": 0.5391804457225018
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "sagejs_integer_buffer_get_mpz",
+      "samples": 14,
+      "exampleVirtualAddress": "0x10e32",
+      "percentOfAllSamples": 0.503235082674335
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "__gmpz_clear",
+      "samples": 14,
+      "exampleVirtualAddress": "0x9048f9",
+      "percentOfAllSamples": 0.503235082674335
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "__gmpz_init",
+      "samples": 12,
+      "exampleVirtualAddress": "0x9061c4",
+      "percentOfAllSamples": 0.43134435657800146
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "__gmpz_fdiv_r",
+      "samples": 11,
+      "exampleVirtualAddress": "0x905304",
+      "percentOfAllSamples": 0.39539899352983465
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_prepared_embedding_row",
+      "samples": 11,
+      "exampleVirtualAddress": "0xb9bea",
+      "percentOfAllSamples": 0.39539899352983465
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "__gmpz_and",
+      "samples": 9,
+      "exampleVirtualAddress": "0x903c31",
+      "percentOfAllSamples": 0.3235082674335011
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "mpz_to_int64",
+      "samples": 9,
+      "exampleVirtualAddress": "0xfaf7",
+      "percentOfAllSamples": 0.3235082674335011
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_word_integer_real_product",
+      "samples": 8,
+      "exampleVirtualAddress": "0x651eb",
+      "percentOfAllSamples": 0.2875629043853343
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_prepared_qr",
+      "samples": 8,
+      "exampleVirtualAddress": "0x10e4f6",
+      "percentOfAllSamples": 0.2875629043853343
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "__gmpn_sub_n_x86_64",
+      "samples": 8,
+      "exampleVirtualAddress": "0x92a0e1",
+      "percentOfAllSamples": 0.2875629043853343
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "sagejs_native_get_integer_buffer",
+      "samples": 7,
+      "exampleVirtualAddress": "0x14edf",
+      "percentOfAllSamples": 0.2516175413371675
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "__gmpn_bc_set_str",
+      "samples": 7,
+      "exampleVirtualAddress": "0x90d256",
+      "percentOfAllSamples": 0.2516175413371675
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_qr_load",
+      "samples": 7,
+      "exampleVirtualAddress": "0x33519",
+      "percentOfAllSamples": 0.2516175413371675
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_candidate_element",
+      "samples": 7,
+      "exampleVirtualAddress": "0x2ba6c",
+      "percentOfAllSamples": 0.2516175413371675
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "sagejs_mpz_shift_uint64",
+      "samples": 6,
+      "exampleVirtualAddress": "0x9bbd",
+      "percentOfAllSamples": 0.21567217828900073
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_log_entry_sum",
+      "samples": 6,
+      "exampleVirtualAddress": "0x76d62",
+      "percentOfAllSamples": 0.21567217828900073
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "__gmpn_and_n",
+      "samples": 6,
+      "exampleVirtualAddress": "0x927e31",
+      "percentOfAllSamples": 0.21567217828900073
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "sagejs_mpz_shift",
+      "samples": 6,
+      "exampleVirtualAddress": "0xc6cd",
+      "percentOfAllSamples": 0.21567217828900073
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "sagejs_mpz_buffer_index",
+      "samples": 5,
+      "exampleVirtualAddress": "0x1c130",
+      "percentOfAllSamples": 0.17972681524083392
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_prepared_add_relation",
+      "samples": 5,
+      "exampleVirtualAddress": "0x1ab0b5",
+      "percentOfAllSamples": 0.17972681524083392
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_hnfspec_cleanup",
+      "samples": 4,
+      "exampleVirtualAddress": "0x1d24d2",
+      "percentOfAllSamples": 0.14378145219266714
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_real_word_division",
+      "samples": 4,
+      "exampleVirtualAddress": "0xb4749",
+      "percentOfAllSamples": 0.14378145219266714
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "__gmpn_lshift_zen",
+      "samples": 4,
+      "exampleVirtualAddress": "0x930aee",
+      "percentOfAllSamples": 0.14378145219266714
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_hnfspec_sparse_prefix",
+      "samples": 4,
+      "exampleVirtualAddress": "0x1ce1a9",
+      "percentOfAllSamples": 0.14378145219266714
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "__gmpz_mul_2exp",
+      "samples": 4,
+      "exampleVirtualAddress": "0x9066eb",
+      "percentOfAllSamples": 0.14378145219266714
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_log_entry_product",
+      "samples": 4,
+      "exampleVirtualAddress": "0x113839",
+      "percentOfAllSamples": 0.14378145219266714
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_fp_next",
+      "samples": 4,
+      "exampleVirtualAddress": "0x12443a",
+      "percentOfAllSamples": 0.14378145219266714
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "__gmpz_cmp_ui",
+      "samples": 3,
+      "exampleVirtualAddress": "0x904a4f",
+      "percentOfAllSamples": 0.10783608914450037
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_logarithm_series",
+      "samples": 3,
+      "exampleVirtualAddress": "0x7fd694",
+      "percentOfAllSamples": 0.10783608914450037
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "__gmpn_rshift_zen",
+      "samples": 3,
+      "exampleVirtualAddress": "0x9317c4",
+      "percentOfAllSamples": 0.10783608914450037
+    },
+    {
+      "file": "/usr/lib/x86_64-linux-gnu/libc.so.6",
+      "name": "munmap@@GLIBC_2.2.5",
+      "samples": 3,
+      "exampleVirtualAddress": "0x133b9b",
+      "percentOfAllSamples": 0.10783608914450037
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_word_integer_real_sum",
+      "samples": 3,
+      "exampleVirtualAddress": "0x54fb1",
+      "percentOfAllSamples": 0.10783608914450037
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_log_scalar_sum",
+      "samples": 3,
+      "exampleVirtualAddress": "0x76a0f",
+      "percentOfAllSamples": 0.10783608914450037
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_qr_multiply",
+      "samples": 3,
+      "exampleVirtualAddress": "0x10bf56",
+      "percentOfAllSamples": 0.10783608914450037
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_prepared_hnf_valuation",
+      "samples": 3,
+      "exampleVirtualAddress": "0x21d4bc",
+      "percentOfAllSamples": 0.10783608914450037
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "__gmpn_set_str",
+      "samples": 3,
+      "exampleVirtualAddress": "0x90d460",
+      "percentOfAllSamples": 0.10783608914450037
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "sagejs_mpz_shift_uint64.constprop.0",
+      "samples": 3,
+      "exampleVirtualAddress": "0x10fd8",
+      "percentOfAllSamples": 0.10783608914450037
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_real_truncate",
+      "samples": 3,
+      "exampleVirtualAddress": "0x469a1",
+      "percentOfAllSamples": 0.10783608914450037
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "__gmpn_copyd_zen",
+      "samples": 3,
+      "exampleVirtualAddress": "0x9307c3",
+      "percentOfAllSamples": 0.10783608914450037
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_lll_select_full_rank",
+      "samples": 2,
+      "exampleVirtualAddress": "0x170306",
+      "percentOfAllSamples": 0.07189072609633357
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_hnfspec_swap_exact",
+      "samples": 2,
+      "exampleVirtualAddress": "0x13bab",
+      "percentOfAllSamples": 0.07189072609633357
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_validate_log_entries",
+      "samples": 2,
+      "exampleVirtualAddress": "0x3b6ad",
+      "percentOfAllSamples": 0.07189072609633357
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_lll_multiply",
+      "samples": 2,
+      "exampleVirtualAddress": "0x10fe07",
+      "percentOfAllSamples": 0.07189072609633357
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "mpz_to_uint64",
+      "samples": 2,
+      "exampleVirtualAddress": "0xf8a9",
+      "percentOfAllSamples": 0.07189072609633357
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_hnffinal_nonempty",
+      "samples": 2,
+      "exampleVirtualAddress": "0x368d5e",
+      "percentOfAllSamples": 0.07189072609633357
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_flatter_product",
+      "samples": 2,
+      "exampleVirtualAddress": "0x18676",
+      "percentOfAllSamples": 0.07189072609633357
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_hnfspec_swap_words",
+      "samples": 2,
+      "exampleVirtualAddress": "0x126ca",
+      "percentOfAllSamples": 0.07189072609633357
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_hnflll_swap",
+      "samples": 2,
+      "exampleVirtualAddress": "0x167955",
+      "percentOfAllSamples": 0.07189072609633357
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_mulll_words",
+      "samples": 2,
+      "exampleVirtualAddress": "0x1c4ec",
+      "percentOfAllSamples": 0.07189072609633357
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_log_scalar_product",
+      "samples": 2,
+      "exampleVirtualAddress": "0x113331",
+      "percentOfAllSamples": 0.07189072609633357
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_division_set_word",
+      "samples": 2,
+      "exampleVirtualAddress": "0x22231",
+      "percentOfAllSamples": 0.07189072609633357
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_real_resize",
+      "samples": 2,
+      "exampleVirtualAddress": "0xc1bd4",
+      "percentOfAllSamples": 0.07189072609633357
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "__gmpn_sqrtrem",
+      "samples": 2,
+      "exampleVirtualAddress": "0x90c9c7",
+      "percentOfAllSamples": 0.07189072609633357
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_real_square_root_abs",
+      "samples": 2,
+      "exampleVirtualAddress": "0xd5d15",
+      "percentOfAllSamples": 0.07189072609633357
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_integer_real_product",
+      "samples": 2,
+      "exampleVirtualAddress": "0x112954",
+      "percentOfAllSamples": 0.07189072609633357
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_ideal_embedding",
+      "samples": 2,
+      "exampleVirtualAddress": "0x109b7e",
+      "percentOfAllSamples": 0.07189072609633357
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_hnfspec_count",
+      "samples": 2,
+      "exampleVirtualAddress": "0x16d12",
+      "percentOfAllSamples": 0.07189072609633357
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_real_logarithm_multiword",
+      "samples": 2,
+      "exampleVirtualAddress": "0x7fed8b",
+      "percentOfAllSamples": 0.07189072609633357
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_integer_to_real",
+      "samples": 2,
+      "exampleVirtualAddress": "0x760cf",
+      "percentOfAllSamples": 0.07189072609633357
+    },
+    {
+      "file": "/opt/cocalc/bin/node",
+      "name": "_ZN2v88internal10ParserBaseINS0_6ParserEE36ParsePossibleDestructuringSubPatternEPNS0_17AccumulationScopeINS0_11ParserTypesIS2_EEEE",
+      "samples": 1,
+      "exampleVirtualAddress": "0x12b60d4",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/opt/cocalc/bin/node",
+      "name": "_ZN2v88internal11interpreter19BytecodeArrayWriter12EmitBytecodeEPKNS1_12BytecodeNodeE",
+      "samples": 1,
+      "exampleVirtualAddress": "0xff2e08",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/opt/cocalc/bin/node",
+      "name": "_ZN2v88internal11interpreter20BytecodeArrayBuilder13LoadUndefinedEv",
+      "samples": 1,
+      "exampleVirtualAddress": "0xfe56a1",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/opt/cocalc/bin/node",
+      "name": "Builtins_DefineKeyedOwnPropertyInLiteralHandler",
+      "samples": 1,
+      "exampleVirtualAddress": "0x1ba4c0b",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/opt/cocalc/bin/node",
+      "name": "_ZN2v87Context29GetNumberOfEmbedderDataFieldsEv",
+      "samples": 1,
+      "exampleVirtualAddress": "0xc92dff",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "__gmpn_add_n",
+      "samples": 1,
+      "exampleVirtualAddress": "0x909f37",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_real_division",
+      "samples": 1,
+      "exampleVirtualAddress": "0x143ce5",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_regulator_hnf",
+      "samples": 1,
+      "exampleVirtualAddress": "0x2c4bc2",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_next_factor_candidate",
+      "samples": 1,
+      "exampleVirtualAddress": "0x864552",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_prepared_log_embedding",
+      "samples": 1,
+      "exampleVirtualAddress": "0x8217af",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/usr/lib/x86_64-linux-gnu/libc.so.6",
+      "name": "mmap64@@GLIBC_2.2.5",
+      "samples": 1,
+      "exampleVirtualAddress": "0x1331ec",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_ideal_ranked_preparation",
+      "samples": 1,
+      "exampleVirtualAddress": "0x860535",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_catalog_contains",
+      "samples": 1,
+      "exampleVirtualAddress": "0x31c0c",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "__gmpn_mul_basecase_zen",
+      "samples": 1,
+      "exampleVirtualAddress": "0x930f88",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_prepared_can_factor",
+      "samples": 1,
+      "exampleVirtualAddress": "0x22184d",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "__gmpz_cmpabs_d",
+      "samples": 1,
+      "exampleVirtualAddress": "0x904b1b",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "__gmpn_modexact_1c_odd_x86_64",
+      "samples": 1,
+      "exampleVirtualAddress": "0x929dd0",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "__gmpn_sqr_basecase_zen",
+      "samples": 1,
+      "exampleVirtualAddress": "0x931e8c",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_collect_ideal_relations",
+      "samples": 1,
+      "exampleVirtualAddress": "0x8666c0",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_hnfspec_word",
+      "samples": 1,
+      "exampleVirtualAddress": "0xc4b0",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_lll_ranked_basis",
+      "samples": 1,
+      "exampleVirtualAddress": "0x320f77",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_fincke_pohst_bound",
+      "samples": 1,
+      "exampleVirtualAddress": "0x85decf",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_real_integer_division",
+      "samples": 1,
+      "exampleVirtualAddress": "0xb5c3f",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_sqrtrem_integer",
+      "samples": 1,
+      "exampleVirtualAddress": "0xfc59",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_hnflll_reduce",
+      "samples": 1,
+      "exampleVirtualAddress": "0x134b08",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "mpn_divappr_q",
+      "samples": 1,
+      "exampleVirtualAddress": "0x90be25",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "__gmpn_sbpi1_div_qr",
+      "samples": 1,
+      "exampleVirtualAddress": "0x9247c0",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_prepared_matrix_norm",
+      "samples": 1,
+      "exampleVirtualAddress": "0x16da7c",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_next_smooth_candidate",
+      "samples": 1,
+      "exampleVirtualAddress": "0x864ffc",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_prime_to_part",
+      "samples": 1,
+      "exampleVirtualAddress": "0xcc2d",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_babai_fast",
+      "samples": 1,
+      "exampleVirtualAddress": "0x2b1363",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "__gmpn_gcd_11_zen",
+      "samples": 1,
+      "exampleVirtualAddress": "0x930a71",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/opt/cocalc/bin/node",
+      "name": "_ZNK2v88internal8compiler12_GLOBAL__N_124FieldConstnessDependency7IsValidEPNS1_12JSHeapBrokerE",
+      "samples": 1,
+      "exampleVirtualAddress": "0x290fd01",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_word_factor_front",
+      "samples": 1,
+      "exampleVirtualAddress": "0x9af0f",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_qr_store",
+      "samples": 1,
+      "exampleVirtualAddress": "0x17fa2",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_hnflll_normalize",
+      "samples": 1,
+      "exampleVirtualAddress": "0xb09fa",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_one_word_product",
+      "samples": 1,
+      "exampleVirtualAddress": "0x7b17c",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_prepared_real_norm",
+      "samples": 1,
+      "exampleVirtualAddress": "0x121388",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_prepared_ideal_valuation",
+      "samples": 1,
+      "exampleVirtualAddress": "0xcdf2d",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_short_square",
+      "samples": 1,
+      "exampleVirtualAddress": "0x10b4c3",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "mpn_sqrtrem2",
+      "samples": 1,
+      "exampleVirtualAddress": "0x90c029",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_prepare_enumeration",
+      "samples": 1,
+      "exampleVirtualAddress": "0x85edaa",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_float_to_real",
+      "samples": 1,
+      "exampleVirtualAddress": "0x57205",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_regulator_abs_real_compare",
+      "samples": 1,
+      "exampleVirtualAddress": "0xc8a4",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_lll_exponent",
+      "samples": 1,
+      "exampleVirtualAddress": "0x33b50",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "__gmpn_divrem_2",
+      "samples": 1,
+      "exampleVirtualAddress": "0x943dd7",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_division_word",
+      "samples": 1,
+      "exampleVirtualAddress": "0x14390",
+      "percentOfAllSamples": 0.035945363048166784
+    },
+    {
+      "file": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/build/Release/sagejs_native_kernel.node",
+      "name": "native_pari_qr_enumeration_batch",
+      "samples": 1,
+      "exampleVirtualAddress": "0x863249",
+      "percentOfAllSamples": 0.035945363048166784
+    }
+  ]
+}

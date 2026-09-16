@@ -1,0 +1,88 @@
+{
+  "probe": {
+    "qualifiedTiming": false,
+    "comparisonToPari": false,
+    "backend": "gmp",
+    "boundary": "Prepared attempt with resident owners restored before every call; kernel totals exclude preparation, packing, reset, compilation, decoding and assertions. Reset totals reported separately. Diagnostic only; batching does not qualify timing.",
+    "repetitions": 1,
+    "sampleCount": 1,
+    "warmupCalls": 1,
+    "timedCalls": 1,
+    "inputSha256": "37abbff3ea5a0fbbd81d4261a737f19808a2b85220c725417d0f315d15c0e10c",
+    "coreBytes": 58293116,
+    "sourceSha256": "7edf8e9ab8608e9d871fc4c8f29ddffff6cc765036e4571fa75572ab15857c2a",
+    "coreSha256": "5286a0ffe9630de1f8d8caca0b315315ccb98232845a243349279f201cc7ab9e",
+    "generatedModulePath": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/92ce5dae70070a698821a99782c6e445181f3964d45bbd1c14922d186bbde505/index.cjs",
+    "generatedCorePath": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/92ce5dae70070a698821a99782c6e445181f3964d45bbd1c14922d186bbde505/kernel_core.c",
+    "ownerBytes": 271240904,
+    "resetSnapshotBytes": 271240904,
+    "setupMilliseconds": 924.2977219999884,
+    "ordinaryWordCapacity": 64,
+    "cupWordCapacity": 4,
+    "profileSymbols": true,
+    "arenaBytes": 134217728,
+    "arenaBaseline": false,
+    "largeInputCapacities": {
+      "admission_products": 1470
+    },
+    "samples": [
+      {
+        "repetitions": 1,
+        "milliseconds": 146.13543199998094,
+        "cpuMilliseconds": 146.142,
+        "resetMilliseconds": 29.083764000039082,
+        "resetCpuMilliseconds": 30.929
+      }
+    ],
+    "answer": {
+      "action": 0,
+      "state": [
+        4,
+        0,
+        1,
+        1
+      ],
+      "invariants": [
+        "3"
+      ],
+      "classNumber": "3",
+      "regulator": [
+        "3895441961913051012156655978319959870688113589397982850906",
+        "192",
+        "17"
+      ],
+      "relations": "58",
+      "work": {
+        "smallElements": 491,
+        "factorAttempts": 54,
+        "ideals": 12
+      }
+    }
+  },
+  "resources": {
+    "command": [
+      "prlimit",
+      "--as=4294967296",
+      "node",
+      "bench/pari-class-group-port/probe_resident_class_attempt.cjs",
+      "/tmp/sagejs-prepared-class-inputs-JXLwHg/inputs.json",
+      "--backend",
+      "gmp",
+      "--arena-bytes",
+      "134217728",
+      "--profile-symbols",
+      "--samples",
+      "1",
+      "--repetitions",
+      "1",
+      "--reference-fixtures",
+      "/tmp/sagejs-prepared-attempt-reference-r6W2XO/fixtures.json"
+    ],
+    "exit_code": 0,
+    "wall_seconds": 301.09640770300757,
+    "child_user_seconds": 305.663068,
+    "child_system_seconds": 8.179213,
+    "peak_child_rss_platform_units": 3200928,
+    "includes_compilation": true
+  }
+}

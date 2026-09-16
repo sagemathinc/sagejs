@@ -1,0 +1,46 @@
+{
+  "qualified": false,
+  "diagnostic": "Remove redundant GMP buffer-slot clearing only",
+  "cpu": 15,
+  "repetitions": 64,
+  "warmups": 3,
+  "source": "f1411502c80a1ea29505fec7270555e9e3aa0f55ad93c82181a0fc419dd4266d",
+  "variant": "aaff969122dc8ec2e5b38d1b5e481e107390b6b215302651cefc7387c84de0a3",
+  "variantBinary": "1cc20f38466407c794234592a2cb902b9c01cd164f59a5923370a4884b372092",
+  "rows": [
+    {
+      "round": 0,
+      "variant": false,
+      "seconds": 3.7369250110000003
+    },
+    {
+      "round": 0,
+      "variant": true,
+      "seconds": 3.698341141
+    },
+    {
+      "round": 1,
+      "variant": true,
+      "seconds": 3.6954363619999997
+    },
+    {
+      "round": 1,
+      "variant": false,
+      "seconds": 3.691234604
+    },
+    {
+      "round": 2,
+      "variant": false,
+      "seconds": 3.709659052
+    },
+    {
+      "round": 2,
+      "variant": true,
+      "seconds": 3.711792716
+    }
+  ],
+  "limitations": [
+    "Generated representation control, not a compiler patch or complete regression test.",
+    "No exclusive host reservation."
+  ]
+}

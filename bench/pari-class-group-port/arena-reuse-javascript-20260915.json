@@ -1,0 +1,52 @@
+[
+  {
+    "javascriptReplay": "pass",
+    "arena": false,
+    "modulePath": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/index.cjs",
+    "qualifiedTiming": false,
+    "milliseconds": 561.654023,
+    "actual": {
+      "action": 0,
+      "state": [
+        4,
+        0,
+        1,
+        1
+      ],
+      "invariants": [
+        "3"
+      ],
+      "classNumber": "3",
+      "regulator": [
+        "3895441961913051012156655978319959870688113589397982850906",
+        "192",
+        "17"
+      ]
+    }
+  },
+  {
+    "javascriptReplay": "pass",
+    "arena": true,
+    "modulePath": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/index.cjs",
+    "qualifiedTiming": false,
+    "milliseconds": 436.6508570000001,
+    "actual": {
+      "action": 0,
+      "state": [
+        4,
+        0,
+        1,
+        1
+      ],
+      "invariants": [
+        "3"
+      ],
+      "classNumber": "3",
+      "regulator": [
+        "3895441961913051012156655978319959870688113589397982850906",
+        "192",
+        "17"
+      ]
+    }
+  }
+]
