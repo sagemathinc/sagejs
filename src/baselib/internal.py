@@ -977,30 +977,6 @@ def ρσ_interpolate_kwargs_legacy(
     return runtime.reflect.apply(target_function, receiver, supplied_args)
 
 
-def ρσ_interpolate_kwargs_constructor(
-    receiver: Any,
-    use_apply: bool,
-    target_function: Any,
-    supplied_args: Any,
-) -> Any:
-    if use_apply:
-        result = runtime.reflect.apply(target_function, receiver, supplied_args)
-    else:
-        result = ρσ_interpolate_kwargs(  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
-            receiver, target_function, supplied_args
-        )
-    if (
-        result is not None
-        and result is not runtime.undefined
-        and (
-            runtime.strict_equal(runtime.jstype(result), "object")
-            or runtime.strict_equal(runtime.jstype(result), "function")
-        )
-    ):
-        return result
-    return receiver
-
-
 def ρσ_interpolate_kwargs_constructor_legacy(
     receiver: Any,
     use_apply: bool,
