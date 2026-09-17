@@ -2634,28 +2634,17 @@ def ρσ_operator_bitxor(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_lshift(left: Any, right: Any) -> Any:
-    left_type = runtime.jstype(left)
-    right_type = runtime.jstype(right)
-    if (
-        runtime.strict_equal(left_type, "number")
-        and runtime.strict_equal(right_type, "number")
-        and runtime.number.isSafeInteger(left)
-        and runtime.number.isSafeInteger(right)
-        and right >= 0
-        and right <= 53
-    ):
-        result = left * runtime.math.pow(2, right)
-        if runtime.number.isSafeInteger(result):
-            return result
+    result = runtime.reflect.apply(
+        ρσ_exact_shift,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        runtime.undefined,
+        [left, right, 0, _BUILTINS_MISSING],
+    )
+    if result is not _BUILTINS_MISSING:
+        return result
     if _builtins_exact_integer_primitive(left) and _builtins_exact_integer_primitive(
         right
     ):
-        right_bigint = runtime.bigint(right)
-        if right_bigint < 0:
-            raise ValueError("negative shift count")
-        return runtime.normalize_integer(
-            runtime.native_lshift(runtime.bigint(left), right_bigint)
-        )
+        raise ValueError("negative shift count")
     if _builtins_member_is_function(left, "__lshift__"):
         return _builtins_call_member(left, "__lshift__", [right])
     if _builtins_member_is_function(right, "__rlshift__"):
@@ -2664,27 +2653,17 @@ def ρσ_operator_lshift(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_rshift(left: Any, right: Any) -> Any:
-    left_type = runtime.jstype(left)
-    right_type = runtime.jstype(right)
-    if (
-        runtime.strict_equal(left_type, "number")
-        and runtime.strict_equal(right_type, "number")
-        and runtime.number.isSafeInteger(left)
-        and runtime.number.isSafeInteger(right)
-        and right >= 0
-    ):
-        if right > 53:
-            return -1 if left < 0 else 0
-        return runtime.math.floor(runtime.native_div(left, runtime.math.pow(2, right)))
+    result = runtime.reflect.apply(
+        ρσ_exact_shift,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        runtime.undefined,
+        [left, right, 1, _BUILTINS_MISSING],
+    )
+    if result is not _BUILTINS_MISSING:
+        return result
     if _builtins_exact_integer_primitive(left) and _builtins_exact_integer_primitive(
         right
     ):
-        right_bigint = runtime.bigint(right)
-        if right_bigint < 0:
-            raise ValueError("negative shift count")
-        return runtime.normalize_integer(
-            runtime.native_rshift(runtime.bigint(left), right_bigint)
-        )
+        raise ValueError("negative shift count")
     if _builtins_member_is_function(left, "__rshift__"):
         return _builtins_call_member(left, "__rshift__", [right])
     if _builtins_member_is_function(right, "__rrshift__"):
