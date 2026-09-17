@@ -89,3 +89,57 @@ test("exact integer in-place addition preserves object and primitive dispatch", 
     ].join("\n"),
   );
 });
+
+test("exact subtraction and multiplication preserve overflow and in-place dispatch", async (t) => {
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+  const result = await session.evaluate(
+    [
+      "boundary = 9007199254740991",
+      "print(repr(-boundary - 2), type(-boundary - 2) is int)",
+      "print(repr(3037000500 * 3037000500), type(3037000500 * 3037000500) is int)",
+      "print(repr(True - 2), repr(False * boundary))",
+      "print(repr(4.0 - 1), type(4.0 - 1) is float)",
+      "print(repr(2.0 * 3), type(2.0 * 3) is float)",
+      "print('ab' * 3, 3 * 'cd')",
+      "class UsesInPlace:",
+      "    def __init__(self):",
+      "        self.calls = []",
+      "    def __isub__(self, other):",
+      "        self.calls.append(('isub', other))",
+      "        return self",
+      "    def __imul__(self, other):",
+      "        self.calls.append(('imul', other))",
+      "        return self",
+      "item = UsesInPlace()",
+      "same = item",
+      "item -= 7",
+      "item *= 8",
+      "print(item is same, item.calls)",
+      "class UsesFallback:",
+      "    def __sub__(self, other):",
+      "        return ('sub', other)",
+      "    def __mul__(self, other):",
+      "        return ('mul', other)",
+      "left = UsesFallback()",
+      "subtracted = left",
+      "subtracted -= 9",
+      "multiplied = left",
+      "multiplied *= 10",
+      "print(subtracted, multiplied)",
+    ].join("\n"),
+  );
+  assert.equal(
+    result.stdout.trim(),
+    [
+      "-9007199254740993 True",
+      "9223372037000250000 True",
+      "-1 0",
+      "3.0 True",
+      "6.0 True",
+      "ababab cdcdcd",
+      "True [('isub', 7), ('imul', 8)]",
+      "('sub', 9) ('mul', 10)",
+    ].join("\n"),
+  );
+});

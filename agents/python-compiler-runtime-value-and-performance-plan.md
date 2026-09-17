@@ -424,6 +424,21 @@ checks, traitlets, focused dispatch checks, a full build, and the unchanged
 `agents/python-exact-integer-iadd.md`. PR #309 is now merged, and the qualified
 commits are replayed on the resulting `origin/main` for integration.
 
+**2026-09-17 exact subtraction/multiplication checkpoint:** a queued follow-up
+adds a compact primitive boundary for `-`, `*`, `-=`, and `*=`. A first unified
+add/subtract/multiply helper was rejected after it reproducibly slowed `+` by
+5.15% and `+=` by 4.22%; the corrected design leaves the qualified addition
+helper unchanged. In a controlled one-million-operation comparison,
+subtraction improves 85.67%, multiplication 81.07%, `-=` 83.90%, and `*=`
+89.35%. Their remaining gaps are 0.81-1.54x CPython, while addition controls
+remain flat within 1.19%. The candidate standalone shrinks by 358 bytes. All
+225 portable files, the 508-case differential baseline, strict checks,
+traitlets/pyparsing workflows, docs, merge invariants, and the unchanged
+902,700/903,000 core budget pass. Evidence is in
+`agents/python-exact-integer-binary.md`; PR #311 remains the prerequisite. Do
+not confuse these closed arithmetic micro-cliffs with the open keyword,
+construction, or cold-compiler cliffs.
+
 Continue next with integration-aware qualification, the receiver-lookup campaign,
 and true handled-exception ownership. Generator/coroutine suspension makes a
 single global active-exception pointer unsafe: preserve owned handlers while

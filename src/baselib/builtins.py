@@ -1714,6 +1714,13 @@ def _builtins_operator_sub_slow(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_sub_exact(left: Any, right: Any) -> Any:
+    result = runtime.reflect.apply(
+        ρσ_exact_integer_submul,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        runtime.undefined,
+        [left, right, False, _BUILTINS_MISSING],
+    )
+    if result is not _BUILTINS_MISSING:
+        return result
     result = runtime.fast_closed_binary(left, right, "sub", _BUILTINS_MISSING)
     if result is not _BUILTINS_MISSING:
         return result
@@ -1739,18 +1746,7 @@ def _builtins_operator_sub_exact_slow(left: Any, right: Any) -> Any:
             and result >= runtime.number.MIN_SAFE_INTEGER
         ):
             return result
-        if runtime.number.isSafeInteger(left) and runtime.number.isSafeInteger(right):
-            return runtime.native_sub(runtime.bigint(left), runtime.bigint(right))
         return result
-    if (
-        (
-            runtime.strict_equal(left_type, "bigint")
-            or runtime.strict_equal(right_type, "bigint")
-        )
-        and _builtins_exact_integer_primitive(left)
-        and _builtins_exact_integer_primitive(right)
-    ):
-        return runtime.native_sub(runtime.bigint(left), runtime.bigint(right))
     if runtime.is_math_element(left) or runtime.is_math_element(right):
         return runtime.coercion_model.binOp("sub", left, right)
     if _builtins_special_is_function(left, "__sub__"):
@@ -1768,10 +1764,6 @@ def _builtins_operator_sub_exact_slow(left: Any, right: Any) -> Any:
     if runtime.strict_equal(left_type, "bigint") or runtime.strict_equal(
         right_type, "bigint"
     ):
-        if _builtins_exact_integer_primitive(
-            left
-        ) and _builtins_exact_integer_primitive(right):
-            return runtime.native_sub(runtime.bigint(left), runtime.bigint(right))
         if runtime.strict_equal(left_type, "number") or runtime.strict_equal(
             right_type, "number"
         ):
@@ -1796,8 +1788,6 @@ def _builtins_operator_sub_exact_slow(left: Any, right: Any) -> Any:
         and result >= runtime.number.MIN_SAFE_INTEGER
     ):
         return result
-    if runtime.number.isSafeInteger(left) and runtime.number.isSafeInteger(right):
-        return runtime.native_sub(runtime.bigint(left), runtime.bigint(right))
     return result
 
 
@@ -1875,6 +1865,13 @@ def _builtins_operator_mul_slow(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_mul_exact(left: Any, right: Any) -> Any:
+    result = runtime.reflect.apply(
+        ρσ_exact_integer_submul,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        runtime.undefined,
+        [left, right, True, _BUILTINS_MISSING],
+    )
+    if result is not _BUILTINS_MISSING:
+        return result
     result = runtime.fast_closed_binary(left, right, "mul", _BUILTINS_MISSING)
     if result is not _BUILTINS_MISSING:
         return result
@@ -1906,18 +1903,7 @@ def _builtins_operator_mul_exact_slow(left: Any, right: Any) -> Any:
             and result >= runtime.number.MIN_SAFE_INTEGER
         ):
             return result
-        if runtime.number.isSafeInteger(left) and runtime.number.isSafeInteger(right):
-            return runtime.native_mul(runtime.bigint(left), runtime.bigint(right))
         return result
-    if (
-        (
-            runtime.strict_equal(left_type, "bigint")
-            or runtime.strict_equal(right_type, "bigint")
-        )
-        and _builtins_exact_integer_primitive(left)
-        and _builtins_exact_integer_primitive(right)
-    ):
-        return runtime.native_mul(runtime.bigint(left), runtime.bigint(right))
     if runtime.is_math_element(left) or runtime.is_math_element(right):
         return runtime.coercion_model.binOp("mul", left, right)
     if runtime.strict_equal(left_type, "string") and _builtins_exact_integer_primitive(
@@ -1939,10 +1925,6 @@ def _builtins_operator_mul_exact_slow(left: Any, right: Any) -> Any:
     if runtime.strict_equal(left_type, "bigint") or runtime.strict_equal(
         right_type, "bigint"
     ):
-        if _builtins_exact_integer_primitive(
-            left
-        ) and _builtins_exact_integer_primitive(right):
-            return runtime.native_mul(runtime.bigint(left), runtime.bigint(right))
         if runtime.strict_equal(left_type, "number") or runtime.strict_equal(
             right_type, "number"
         ):
@@ -1967,8 +1949,6 @@ def _builtins_operator_mul_exact_slow(left: Any, right: Any) -> Any:
         and result >= runtime.number.MIN_SAFE_INTEGER
     ):
         return result
-    if runtime.number.isSafeInteger(left) and runtime.number.isSafeInteger(right):
-        return runtime.native_mul(runtime.bigint(left), runtime.bigint(right))
     return result
 
 
@@ -2263,10 +2243,24 @@ def ρσ_operator_iadd_exact(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_isub_exact(left: Any, right: Any) -> Any:
+    result = runtime.reflect.apply(
+        ρσ_exact_integer_submul,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        runtime.undefined,
+        [left, right, False, _BUILTINS_MISSING],
+    )
+    if result is not _BUILTINS_MISSING:
+        return result
     return _builtins_inplace(left, right, "__isub__", ρσ_operator_sub_exact)
 
 
 def ρσ_operator_imul_exact(left: Any, right: Any) -> Any:
+    result = runtime.reflect.apply(
+        ρσ_exact_integer_submul,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        runtime.undefined,
+        [left, right, True, _BUILTINS_MISSING],
+    )
+    if result is not _BUILTINS_MISSING:
+        return result
     return _builtins_inplace(left, right, "__imul__", ρσ_operator_mul_exact)
 
 
