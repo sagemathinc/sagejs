@@ -1767,9 +1767,9 @@ stage("final-state", {
     "scratch-falsification-ledger"],
   command: () => commandNode("check_class_group_final_state.cjs"),
   validate: (summary) => {
-    assert.equal(summary.schema, "sagejs.pari-class-group/connected-final-state-v2");
-    assert.equal(summary.sourceRequiredRejections, 13);
-    assert.equal(summary.authenticatedMutations, 23);
+    assert.equal(summary.schema, "sagejs.pari-class-group/connected-final-state-v3");
+    assert.equal(summary.sourceRequiredRejections, 16);
+    assert.equal(summary.authenticatedMutations, 24);
     assert.equal(summary.semanticMutations, 6);
     assert.equal(summary.linkedWitnessMutations, 3);
     assert.equal(summary.publicComplete, false);
