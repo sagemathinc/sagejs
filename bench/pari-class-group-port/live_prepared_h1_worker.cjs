@@ -353,7 +353,10 @@ async function runPreparedH1({ implementation, seed, preparedInput, switchStage 
   const final = allocateFinal();
   trace("allocated-candidate");
 
-  switchStage("relation-retry");
+  // This compiled root contains relation collection, retry, HNF/Smith, and the
+  // owner bridge.  It has no reviewed internal timing hooks, so the outer
+  // exclusive timer must leave the complete call in its residual bucket.
+  // Post-call state counters do not justify subdividing elapsed time.
   const action = nativeRoot.gmp(
     ...preparedInput.names.map(([name]) => live[name]),
     ...BRIDGE_NAMES.slice(11).map(name => final[name]),
@@ -363,24 +366,23 @@ async function runPreparedH1({ implementation, seed, preparedInput, switchStage 
   assert.deepEqual(decimals(live.attempt_state, 4), ["4", "0", "0", "1"]);
   assert.deepEqual(decimals(live.class_number, 1), ["1"]);
 
-  switchStage("sparse-hnf-snf-transform");
   assert.equal(decimals(live.relation_state, 6)[0], "73");
   assert.equal(decimals(live.hnf_state, 9)[0], "0");
 
-  switchStage("unit-regulator");
   assert.deepEqual(decimals(final.bridge_state, 16),
     ["0","0","0","0","0","7","1","0","73","8","48","48","2","7","7","0"]);
 
-  switchStage("honesty-generators-final");
   const polynomial = decimals(live.prep_polynomial, 4);
   assert.deepEqual(polynomial, ["20034", "-20018", "0", "1"]);
   const compact = decimals(final.compact_provenance, 14);
+  switchStage("unit-regulator");
   const exactUnits = reconstructExactUnits(live, final.compact_provenance);
   trace("exact-units-returned");
   if (process.env.SAGEJS_H1_TRACE)
     console.error("live-h1:exact-units-sha256:" + digest(exactUnits.powerCoordinates));
   const p2176 = rebuildP2176(live, exactUnits);
   trace("p2176-returned");
+  switchStage("honesty-generators-final");
   const cleaned = decimals(final.cleaned_arch, 147);
   const driver = decimals(final.driver_state, 10);
   assert.deepEqual(driver, ["0","1","1","48","48","7","7","73","8","0"]);

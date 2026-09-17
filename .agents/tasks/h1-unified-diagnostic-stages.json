@@ -11,7 +11,10 @@
   "claims": [
     "bench/pari-class-group-port/h1_unified_diagnostic_stages.cjs",
     "bench/pari-class-group-port/check_h1_unified_diagnostic_stages.cjs",
-    "bench/pari-class-group-port/h1_unified_diagnostic_stages_audit.md"
+    "bench/pari-class-group-port/h1_unified_diagnostic_stages_audit.md",
+    "bench/pari-class-group-port/live_prepared_h1_worker.cjs",
+    "bench/pari-class-group-port/check_live_prepared_h1_worker.cjs",
+    "bench/pari-class-group-port/live_prepared_h1_worker_audit.md"
   ],
   "dependencies": [],
   "references": [],
