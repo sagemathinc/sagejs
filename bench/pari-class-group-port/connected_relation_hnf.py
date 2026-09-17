@@ -275,7 +275,10 @@ def pari_connected_relation_hnf(
         raise ValueError("connected relation HNF requires a fresh collector")
     if len(log_completed) < 1 or log_completed[0] != 0:
         raise ValueError("connected relation HNF requires fresh logs")
-    if len(hnf_original) < rows * capacity:
+    # The HNF copy contains only live relation columns, never the cache's
+    # overallocated record reserve. `initial_target` is an authenticated upper
+    # bound on every column this one-pass root can publish.
+    if len(hnf_original) < rows * initial_target:
         raise ValueError("short connected HNF relation words")
     chain_state[0] = 1
     chain_state[2] = pari_prepared_initialize_relations(
@@ -293,9 +296,8 @@ def pari_connected_relation_hnf(
         relation,
         relation_scratch,
     )
-    # Keep relation_insertion.pari_initialize_owned_relations semantics inline:
-    # the compiler admits this cache initializer as a direct dependency, while
-    # the wrapper's transitive import is not a callable signature in this root.
+    # Keep relation_insertion.pari_initialize_owned_relations semantics inline
+    # so initial generator ownership is explicit in this fused lifetime root.
     for initial_row in range(chain_state[2]):
         generators[initial_row * n] = relation_metadata[3 * initial_row]
         for initial_coordinate in range(1, n):
