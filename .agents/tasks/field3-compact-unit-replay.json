@@ -1,0 +1,84 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "field3-compact-unit-replay",
+  "title": "Exact field3 compact unit replay",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Replay live compact unit exponents through all retained exact principal generators and verify exact unit identities without PARI",
+  "base_commit": "bd4cb35181869dd84eedded591662243cf8ecae1",
+  "claims": [
+    "bench/pari-class-group-port/field3_compact_unit_replay.py",
+    "bench/pari-class-group-port/check_field3_compact_unit_replay.cjs",
+    "bench/pari-class-group-port/field3-compact-unit-replay-audit.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Exact quartic arithmetic replay from durable live owners",
+      "Coordinated mutation rejection"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node bench/pari-class-group-port/check_field3_compact_unit_replay.cjs"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_field3_compact_unit_replay.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.429,
+      "started_at": "2026-09-17T09:09:28.540Z",
+      "commit": "bd4cb35181869dd84eedded591662243cf8ecae1",
+      "workspace_fingerprint": "0e1151a9d6a59f9f906bba9c90ebc01158039d9b210e1e6ed1591ed5a010898e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 10.475,
+      "started_at": "2026-09-17T09:09:49.742Z",
+      "commit": "bd4cb35181869dd84eedded591662243cf8ecae1",
+      "workspace_fingerprint": "0e1151a9d6a59f9f906bba9c90ebc01158039d9b210e1e6ed1591ed5a010898e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_field3_compact_unit_replay.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.397,
+      "started_at": "2026-09-17T09:18:43.036Z",
+      "commit": "bd4cb35181869dd84eedded591662243cf8ecae1",
+      "workspace_fingerprint": "1e00104f8e67e20fa89b31871547ec31c2d7341aab7fa61eca6e02336ab3a70c",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Replayed all 301 principal-relation norm identities, 26 independent scalar generator/log bindings, the selected compact-log support, and U1/U2/U/finalU composition without PARI. The result honestly remains partial because the live run did not retain the 301x13 raw-to-accepted HNF transform; pristine unused suffix columns 7-12 also come from a different relation generation.",
+    "risks": [
+      "No exact unit or principal-ideal-one result can be published until the 3,913-entry raw-to-accepted transform and a same-run retained suffix are captured.",
+      "The 301 per-relation checks currently prove exact norm consequences, not equality of full ideal HNF products.",
+      "A branch-wide strict formatting attempt was blocked by doubled-backtick docstrings in field3_full_owner_authority.py, an upstream file outside this lane's claims; integration has fixed those docstrings."
+    ],
+    "next_steps": [
+      "Thread a 301x13 column-operation ancestry owner through the live hnfspec/hnfadd path and check relationRecords*T=0 and packedRelationLogs*T=A.",
+      "Capture L/U1/U2/U/finalU from that same 301-relation generation, then expand only the final two compact words and verify norm plus principal ideal one."
+    ]
+  }
+}
