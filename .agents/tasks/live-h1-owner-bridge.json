@@ -1,0 +1,48 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "live-h1-owner-bridge",
+  "title": "Live H1 Owner Bridge",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement or precisely specify a live-owner bridge from resident generated h1 candidate owners toward the final root without JSON or fixture joins",
+  "base_commit": "f0d3cfe24d58e46492635fd20c6a24dd5e0c0772",
+  "claims": [
+    "bench/pari-class-group-port/live_h1_owner_bridge.py",
+    "bench/pari-class-group-port/check_live_h1_owner_bridge.cjs",
+    "bench/pari-class-group-port/live_h1_owner_bridge_audit.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "sage"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Implemented one source-transparent native live-owner edge from the resident h=1 candidate through unit-lattice preparation, pre-getfu factor/provenance composition, and equal-bound cleanarch final-driver status. The bridge consumes no unit/final fixture or PARI oracle and agrees in CPython, JavaScript, GMP, and tagged execution.",
+    "risks": [
+      "The focused checker currently reads the qualified resident JSON only to stand in for the live owners; the native function itself performs no serialization.",
+      "Exact eager unit reconstruction still needs the legitimate high-precision embedding/log rebuild and is explicitly not claimed."
+    ],
+    "next_steps": [
+      "Call pari_live_h1_owner_bridge directly at the bottom of the shared resident root using its already allocated owners.",
+      "Connect a source-transparent precision rebuild to signed cubic getfu, then use resident-derived factor materialization for the internal final publication."
+    ]
+  }
+}
