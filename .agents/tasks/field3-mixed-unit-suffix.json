@@ -1,0 +1,61 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "field3-mixed-unit-suffix",
+  "title": "Field3 Mixed Unit Suffix",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Join authenticated live field-3 A=C[:13], L, and retained owners through existing rank-two lattice and mixed-quartic getfu leaves with source-faithful cleanarchunit status, precision retry, and legitimate not_given handling",
+  "base_commit": "ed25a5d8133ffbc47e9d53182cfa057d6a38ae49",
+  "claims": [
+    "bench/pari-class-group-port/field3_mixed_unit_suffix.py",
+    "bench/pari-class-group-port/check_field3_mixed_unit_suffix.cjs",
+    "bench/pari-class-group-port/field3_mixed_unit_suffix_replay.cjs",
+    "bench/pari-class-group-port/README-field3-mixed-unit-suffix.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "PARI 2.17.4"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node bench/pari-class-group-port/check_field3_mixed_unit_suffix.cjs --authority /tmp/f3-retained.json"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_field3_mixed_unit_suffix.cjs --authority /tmp/f3-retained.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.012,
+      "started_at": "2026-09-17T08:05:19.878Z",
+      "commit": "ed25a5d8133ffbc47e9d53182cfa057d6a38ae49",
+      "workspace_fingerprint": "8efe7bd212b25e8776247b47a7c14223c9f32310990975845f0c5c37996bc95e",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Authenticated field-3 A=C[:13], L, and retained NF owners now traverse the rank-two integer/real lattice, source-faithful mixed cleanarchunit, fixarch, and mixed-quartic getfu; the 192-bit outcome is legitimate PRECI rather than a Buchall retry.",
+    "risks": [
+      "The draft stops at the authentic 192-bit getfu PRECI result and publishes no algebraic units."
+    ],
+    "next_steps": [
+      "Run the same live producer corridor at sufficient precision, then integrate successful units in the shared final composer."
+    ]
+  }
+}
