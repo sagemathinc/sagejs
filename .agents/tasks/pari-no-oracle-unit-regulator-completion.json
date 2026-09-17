@@ -1,0 +1,92 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-no-oracle-unit-regulator-completion",
+  "title": "No-oracle unit and regulator completion",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Compose exact relation-derived units with rebuilt embedding and logarithm authority into an independently replayable internal PARI-correspondence completion while retaining false public saturation and completion",
+  "base_commit": "269540b913a4b005e0431497787e041e52e54306",
+  "claims": [
+    "bench/pari-class-group-port/no_oracle_unit_regulator_completion.py",
+    "bench/pari-class-group-port/check_no_oracle_unit_regulator_completion.cjs",
+    "bench/pari-class-group-port/no_oracle_unit_regulator_completion_audit.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Qualified resident class-group artifact and independent rigorous Sage.js RealBall replay"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "python3 -m py_compile bench/pari-class-group-port/no_oracle_unit_regulator_completion.py",
+    "node --check bench/pari-class-group-port/check_no_oracle_unit_regulator_completion.cjs",
+    "SAGEJS_REPLAY_RUNTIME_ROOT=/home/user/sagejs-worktrees/pari-class-group-e2e-integration node bench/pari-class-group-port/check_no_oracle_unit_regulator_completion.cjs"
+  ],
+  "runs": [
+    {
+      "command": "env SAGEJS_REPLAY_RUNTIME_ROOT=/home/user/sagejs-worktrees/pari-class-group-e2e-integration node bench/pari-class-group-port/check_no_oracle_unit_regulator_completion.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.686,
+      "started_at": "2026-09-17T03:29:25.360Z",
+      "commit": "269540b913a4b005e0431497787e041e52e54306",
+      "workspace_fingerprint": "c3e07b44766c00cdb94dbfd74c2ad80e65d0f765c81547456f579c5c9b652943",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -m py_compile bench/pari-class-group-port/no_oracle_unit_regulator_completion.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.088,
+      "started_at": "2026-09-17T03:29:43.171Z",
+      "commit": "269540b913a4b005e0431497787e041e52e54306",
+      "workspace_fingerprint": "c3e07b44766c00cdb94dbfd74c2ad80e65d0f765c81547456f579c5c9b652943",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check bench/pari-class-group-port/check_no_oracle_unit_regulator_completion.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.035,
+      "started_at": "2026-09-17T03:29:44.014Z",
+      "commit": "269540b913a4b005e0431497787e041e52e54306",
+      "workspace_fingerprint": "c3e07b44766c00cdb94dbfd74c2ad80e65d0f765c81547456f579c5c9b652943",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_REPLAY_RUNTIME_ROOT=/home/user/sagejs-worktrees/pari-class-group-e2e-integration node bench/pari-class-group-port/check_no_oracle_unit_regulator_completion.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.284,
+      "started_at": "2026-09-17T03:30:38.806Z",
+      "commit": "269540b913a4b005e0431497787e041e52e54306",
+      "workspace_fingerprint": "c1156c8e2cab2386f4e1716f65383a1434ab9be068f190c7655b105d59048323",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Reconstructs two exact units from the qualified 73 principal relations, rebuilds the 2176-bit embedding and logarithms without PARI or answer-derived archimedean data, rigorously replays the rank-two regulator, and seals internal correspondence completion while preserving false public and saturation flags.",
+    "risks": [
+      "The result deliberately assumes PARI 2.17.4 heuristic bounds and acceptance correspondence; it does not prove unit-lattice saturation or public class-unit completeness.",
+      "The focused replay uses the already-built integration runtime because this isolated lane has no dist tree. A direct pnpm architecture:check therefore stopped at the missing dist/tools/cli prerequisite before architecture checks ran."
+    ],
+    "next_steps": [
+      "Integrate this leaf into the durable phase replay and replace the older live-oracle internal correspondence stage.",
+      "Add an independent unit-saturation/index-one certificate before enabling any public completion adapter."
+    ]
+  }
+}
