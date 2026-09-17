@@ -178,17 +178,17 @@ def ρσ_interpolate_kwargs(receiver, target_function, supplied_args):
                  })){
             receiver=undefined;
         }
-        if(!prepared&&(!_internal_type_is(ρσ_native_jstype(target_function),"function")||
-           _internal_get_member(target_function,"__sagejs_callable_instance__")===true)){
+        if(!prepared&&(typeof target_function!=="function"||
+           target_function.__sagejs_callable_instance__===true)){
             receiver=target_function;
             target_function=_internal_callable_slot(target_function);
-        }else if(!prepared&&_internal_has_own(target_function,"__bases__")){
+        }else if(!prepared&&Object.hasOwn(target_function,"__bases__")){
             receiver=undefined;
             if(_internal_keyword_constructor_prototypes.has(target_function.prototype))
                 return Reflect.apply(target_function,undefined,supplied_args);
         }else if(!prepared&&!target_function.__argnames__&&!target_function.__kwonly__&&
-                 _internal_get_member(target_function,"__sagejs_callable_instance_class__")!==true&&
-                 !_internal_has_own(target_function,"__bases__")){
+                 target_function.__sagejs_callable_instance_class__!==true&&
+                 !Object.hasOwn(target_function,"__bases__")){
             const callable_method=Reflect.apply(_internal_builtin("ρσ_getattr"),
                 undefined,[target_function,"__call__",null]);
             if(callable_method!==null&&(callable_method.__argnames__||callable_method.__kwonly__)){
