@@ -1,0 +1,50 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-getfu-mixed-complex",
+  "title": "Mixed-complex getfu prerequisite",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Freeze the smallest PARI 2.17.4 mixed-signature quartic getfu complex-exponential boundary and implement the connected multiprecision mpsincosm1/mpsincos prerequisite in ordinary source-transparent Python, or produce a precise compiler/resource blocker with executable fixtures.",
+  "base_commit": "0988a1bca0ad71bc75e47a8056fa0705905bd938",
+  "claims": [
+    "bench/pari-class-group-port/getfu_mixed_complex.py",
+    "bench/pari-class-group-port/check_getfu_mixed_complex.cjs"
+  ],
+  "dependencies": [
+    "pari-getfu-sign-phases"
+  ],
+  "references": [
+    "PARI 2.17.4 src/basemath/trans1.c:mpcosm1,mpaut,mpsincosm1,mpsincos,cxexp",
+    "PARI 2.17.4 src/basemath/buch2.c:getfu"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "gmp",
+      "tagged",
+      "Pinned pristine PARI 2.17.4 stage-local source wrapper"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
