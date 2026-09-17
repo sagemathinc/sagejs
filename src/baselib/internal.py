@@ -36,7 +36,9 @@ def _internal_copy_constructor_arguments(supplied_args: Any) -> Any:
 def ρσ_call_keyword_allocator(allocator: Any, cls: Any, supplied_args: Any) -> Any:
     call_args = _internal_copy_constructor_arguments(supplied_args)
     call_args.unshift(cls)
-    return ρσ_interpolate_kwargs(runtime.undefined, allocator, call_args)
+    return ρσ_interpolate_kwargs(  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        runtime.undefined, allocator, call_args
+    )
 
 
 def _internal_initializer_needs_self(initializer: Any) -> bool:
@@ -61,7 +63,9 @@ def ρσ_call_keyword_initializer(
     if _internal_initializer_needs_self(initializer):
         call_args.unshift(instance)
         receiver = runtime.undefined
-    return ρσ_interpolate_kwargs(receiver, initializer, call_args)
+    return ρσ_interpolate_kwargs(  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        receiver, initializer, call_args
+    )
 
 
 def _internal_type_is(actual: Any, expected: str) -> bool:
@@ -174,7 +178,9 @@ def ρσ_call_assigned_initializer(
         and _internal_type_is(runtime.jstype(final_argument), "object")
         and runtime.reflect.get(final_argument, runtime.kwargs_symbol) is True
     ):
-        return ρσ_interpolate_kwargs(runtime.undefined, initializer, explicit_args)
+        return ρσ_interpolate_kwargs(  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+            runtime.undefined, initializer, explicit_args
+        )
     return runtime.reflect.apply(initializer, runtime.undefined, explicit_args)
 
 
@@ -858,7 +864,9 @@ def ρσ_forward_kwargs(
             supplied_args,
             [keyword_object],
         )
-    return ρσ_interpolate_kwargs(receiver, target_function, supplied_args)
+    return ρσ_interpolate_kwargs(  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        receiver, target_function, supplied_args
+    )
 
 
 def _internal_has_own(value: Any, name: Any) -> bool:
@@ -867,29 +875,6 @@ def _internal_has_own(value: Any, name: Any) -> bool:
         value,
         [name],
     )
-
-
-def _internal_owns_function_value(receiver: Any, target_function: Any) -> bool:
-    """Return whether an unbound function is stored in `receiver` itself.
-
-    Python only applies the function descriptor protocol to attributes found
-    on a class.  A function stored in an instance dictionary remains a plain
-    callable and must not receive that instance as an implicit first argument.
-    """
-    if (
-        receiver is None
-        or receiver is runtime.undefined
-        or _internal_get_member(target_function, "__self__") is not runtime.undefined
-    ):
-        return False
-    for property_name in runtime.object.getOwnPropertyNames(receiver):
-        descriptor = runtime.object.getOwnPropertyDescriptor(receiver, property_name)
-        if (
-            descriptor is not runtime.undefined
-            and runtime.reflect.get(descriptor, "value") is target_function
-        ):
-            return True
-    return False
 
 
 def _internal_class_instance_function(receiver: Any, target_function: Any) -> bool:
@@ -927,119 +912,6 @@ def _internal_class_instance_function(receiver: Any, target_function: Any) -> bo
             ):
                 return True
     return False
-
-
-def ρσ_interpolate_kwargs(
-    receiver: Any,
-    target_function: Any,
-    supplied_args: Any,
-) -> Any:
-    if target_function is runtime.undefined and runtime.array.isArray(receiver):
-        context = receiver
-        target_function = context[0]
-        receiver = context[1]
-        if receiver is runtime.undefined:
-            return ρσ_interpolate_kwargs(receiver, target_function, supplied_args)
-        if context[2] is True:
-            supplied_args.unshift(receiver)
-            receiver = runtime.undefined
-    elif (
-        _internal_class_instance_function(receiver, target_function)
-        and _internal_get_member(target_function, "__self__") is runtime.undefined
-    ):
-        # `Class.method` is unbound; classmethods carry an explicit `__self__`.
-        receiver = runtime.undefined
-    elif _internal_owns_function_value(receiver, target_function):
-        receiver = runtime.undefined
-    if (
-        not _internal_type_is(runtime.jstype(target_function), "function")
-        or _internal_get_member(target_function, "__sagejs_callable_instance__") is True
-    ):
-        receiver = target_function
-        target_function = _internal_callable_slot(target_function)
-    elif _internal_has_own(target_function, "__bases__"):
-        receiver = runtime.undefined
-        if _internal_keyword_constructor_prototypes.has(
-            runtime.reflect.get(target_function, "prototype")
-        ):
-            return runtime.reflect.apply(
-                target_function, runtime.undefined, supplied_args
-            )
-    elif (
-        not runtime.native_get(target_function, "__argnames__")
-        and not runtime.native_get(target_function, "__kwonly__")
-        and _internal_get_member(target_function, "__sagejs_callable_instance_class__")
-        is not True
-        and not _internal_has_own(target_function, "__bases__")
-    ):
-        callable_method = runtime.reflect.apply(
-            _internal_builtin("ρσ_getattr"),
-            runtime.undefined,
-            [target_function, "__call__", None],
-        )
-        if callable_method is not None and (
-            runtime.native_get(callable_method, "__argnames__")
-            or runtime.native_get(callable_method, "__kwonly__")
-        ):
-            receiver = target_function
-            target_function = callable_method
-    argnames = runtime.native_get(target_function, "__argnames__")
-    keyword_only = runtime.native_get(target_function, "__kwonly__")
-    if argnames is runtime.undefined and keyword_only is runtime.undefined:
-        return runtime.reflect.apply(target_function, receiver, supplied_args)
-    if argnames is runtime.undefined:
-        argnames = runtime.reflect.construct(runtime.array, [0])
-    positional_only = runtime.native_get(target_function, "__positional_only__")
-    if positional_only is True:
-        positional_only = argnames.length
-    elif positional_only is runtime.undefined:
-        positional_only = 0
-
-    keyword_object = supplied_args[supplied_args.length - 1]
-    if runtime.native_get(target_function, "__handles_kwarg_interpolation__"):
-        supplied_count = supplied_args.length - 1
-        named_count = argnames.length
-        direct = True
-        for property_name in runtime.object.keys(keyword_object):
-            index = argnames.indexOf(property_name)
-            if index >= positional_only:
-                if index < supplied_count:
-                    raise TypeError(
-                        "multiple values for argument '" + property_name + "'"
-                    )
-                direct = False
-            elif keyword_only and keyword_only.indexOf(property_name) != -1:
-                continue
-            elif not runtime.native_get(target_function, "__varkw__"):
-                raise TypeError("unexpected keyword argument '" + property_name + "'")
-        if direct:
-            return runtime.reflect.apply(target_function, receiver, supplied_args)
-
-        supplied_args.pop()
-        for index in range(named_count):
-            property_name = argnames[index]
-            if index >= positional_only and _internal_has_own(
-                keyword_object, property_name
-            ):
-                supplied_args[index] = keyword_object[property_name]
-                runtime.reflect.deleteProperty(keyword_object, property_name)
-        supplied_args.push(keyword_object)
-        return runtime.reflect.apply(target_function, receiver, supplied_args)
-
-    supplied_args.pop()
-    for index in range(argnames.length):
-        property_name = argnames[index]
-        if index >= positional_only and _internal_has_own(
-            keyword_object, property_name
-        ):
-            if index < supplied_args.length:
-                raise TypeError("multiple values for argument '" + property_name + "'")
-            supplied_args[index] = keyword_object[property_name]
-            runtime.reflect.deleteProperty(keyword_object, property_name)
-    for unexpected in runtime.object.keys(keyword_object):
-        if not keyword_only or keyword_only.indexOf(unexpected) == -1:
-            raise TypeError("unexpected keyword argument '" + unexpected + "'")
-    return runtime.reflect.apply(target_function, receiver, supplied_args)
 
 
 def ρσ_interpolate_kwargs_legacy(
@@ -1114,7 +986,9 @@ def ρσ_interpolate_kwargs_constructor(
     if use_apply:
         result = runtime.reflect.apply(target_function, receiver, supplied_args)
     else:
-        result = ρσ_interpolate_kwargs(receiver, target_function, supplied_args)
+        result = ρσ_interpolate_kwargs(  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+            receiver, target_function, supplied_args
+        )
     if (
         result is not None
         and result is not runtime.undefined
@@ -1306,12 +1180,8 @@ def ρσ_generic_alias(origin: Any, type_arguments: Any) -> Any:
         runtime.reflect.set(keywords, runtime.kwargs_symbol, True)
         call_args = list(args)
         runtime.reflect.apply(runtime.array.prototype.push, call_args, [keywords])
-        interpolate = runtime.reflect.get(
-            runtime.global_object,
-            "ρσ_interpolate_kwargs",
-        )
         return runtime.reflect.apply(
-            interpolate,
+            ρσ_interpolate_kwargs,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
             runtime.undefined,
             [runtime.undefined, origin, call_args],
         )

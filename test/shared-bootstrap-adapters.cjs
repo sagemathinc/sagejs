@@ -9,7 +9,8 @@ const test = require("node:test");
 const root = join(__dirname, "..");
 const source = readFileSync(join(root, "src/baselib/bootstrap_shared.py"), "utf8");
 const names = ["ρσ_copy_method_metadata", "ρσ_native_method_adapter", "ρσ_unbound_method_adapter",
-  "ρσ_check_interrupt", "ρσ_normalize_exception", "ρσ_prepare_method_call"];
+  "ρσ_check_interrupt", "ρσ_normalize_exception", "ρσ_prepare_method_call",
+  "ρσ_interpolate_kwargs"];
 
 // Exercise the native ABI bodies directly; full self-hosted/module
 // linkage remains a separate build qualification, not implied by this test.
@@ -58,6 +59,37 @@ test("prepared method calls use and invalidate the shared prototype cache", () =
   assert.deepEqual(Array.from(api.ρσ_prepare_method_call(receiver, "method")),
     ["fallback", undefined, false]);
   assert.equal(fallbacks, 2);
+});
+
+test("shared keyword binding consumes literal packets without Python operators", () => {
+  const receiver = {};
+  function target(left, middle, right, keywords) {
+    return [this, left, middle, right, keywords];
+  }
+  target.__argnames__ = ["left", "middle", "right"];
+  target.__handles_kwarg_interpolation__ = true;
+  const api = context({
+    _internal_class_instance_function: () => false,
+    _internal_get_member: (value, name) => value[name],
+    _internal_type_is: (value, expected) => value === expected,
+    _internal_has_own: (value, name) => Object.hasOwn(value, name),
+    _internal_keyword_constructor_prototypes: new WeakSet(),
+    ρσ_native_jstype: (value) => typeof value,
+    ρσ_exception_value: (value) => value,
+  });
+  const packet = { left: 3, right: 5 };
+  const result = api.ρσ_interpolate_kwargs([target, receiver, false], undefined, [packet]);
+  assert.deepEqual(Array.from(result).slice(0, 4), [receiver, 3, undefined, 5]);
+  assert.deepEqual(Object.keys(result[4]), []);
+
+  assert.throws(
+    () => api.ρσ_interpolate_kwargs(undefined, target, [1, { left: 2 }]),
+    /multiple values for argument 'left'/,
+  );
+  assert.throws(
+    () => api.ρσ_interpolate_kwargs(undefined, target, [{ unknown: 2 }]),
+    /unexpected keyword argument 'unknown'/,
+  );
 });
 
 test("shared bootstrap owns its low-level adapters and metadata copier", () => {

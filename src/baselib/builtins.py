@@ -6708,12 +6708,6 @@ def ρσ_apply_custom_new_signature(cls: Any, initializer: Any) -> None:
 
 def _builtins_type_call(cls: Any, *args: Any, **keywords: Any) -> Any:
     """Implement `type.__call__` after a custom metaclass delegates."""
-    interpolate = runtime.reflect.get(runtime.global_object, "ρσ_interpolate_kwargs")
-    if not runtime.strict_equal(runtime.jstype(interpolate), "function"):
-        internal = __import__(
-            "sagejs._baselib.internal", fromlist=["ρσ_interpolate_kwargs"]
-        )
-        interpolate = internal.ρσ_interpolate_kwargs
     call_args = list(args)
     runtime.reflect.apply(runtime.array.prototype.push, call_args, [keywords])
     allocator = ρσ_getattr(cls, "__new__", None)
@@ -6725,7 +6719,7 @@ def _builtins_type_call(cls: Any, *args: Any, **keywords: Any) -> Any:
         allocator_args = [cls]
         allocator_args.extend(call_args)
         instance = runtime.reflect.apply(
-            interpolate,
+            ρσ_interpolate_kwargs,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
             runtime.undefined,
             [runtime.undefined, allocator, allocator_args],
         )
@@ -6745,7 +6739,7 @@ def _builtins_type_call(cls: Any, *args: Any, **keywords: Any) -> Any:
         # the compiler's generic callable fallback would resolve ``__call__``
         # a second time and lose the keyword packet.
         runtime.reflect.apply(
-            interpolate,
+            ρσ_interpolate_kwargs,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
             runtime.undefined,
             [runtime.undefined, initializer, call_args],
         )
