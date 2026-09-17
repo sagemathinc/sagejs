@@ -3,8 +3,10 @@
 This checkpoint records the honest state of
 `pari-class-group-end-to-end-native-plan.md` after integration of the first
 complete prepared real-cubic H1 root, the native diagnostic stage clock, and
-the first authentic field-3 mixed-quartic C1--C7 owner chain. It is not a
-qualification result and does not weaken any plan gate.
+the first authentic field-3 mixed-quartic C1--C7 owner chain. It now also
+records frozen panel row 8's authentic C5 v2, C6, exact terminal closure, and
+field-neutral C7 chain. It is not a qualification result and does not weaken
+any plan gate.
 
 ## Current result
 
@@ -50,6 +52,24 @@ The honest predeclared campaign outcome at this checkpoint is therefore **D**.
 The correctness prerequisite for Outcome C exists, but the required 80% gap
 attribution does not.
 
+Frozen panel row 8, `x^4 - 20018*x - 20034`, has now closed its authentic
+192-bit C5--C7 internal correspondence chain at commits `0e54e771f`,
+`88ec9584c`, and `1fe2a113c`. Corrected C5 v2 retains the exact 9-by-2 compact
+unit transform and the non-symmetric private `getfu` factor. C6 executes the
+full translated exponential, solve, and rounding graph and exactly reproduces
+PARI's terminal `PRECI` state with worst rounding error 69863. Under flag zero,
+that means `not_given(PRECI)`: the public pre-`getfu` `U` and `A` remain the C5
+owners, no expanded unit is published, and the result is not a successful
+exact-unit C6 case.
+
+The terminal closure independently replays the authentic 150+1+1 HNF schedule,
+all 152 principal ideals and norms, and every cell of the exact equations
+`R*T = 0` and `R*Q = I_143`. C7 joins that closure to the trivial class group,
+rank-two compact unit evidence, accepted regulator, and torsion order two. Its
+immutable result is `correspondenceComplete=true`, `publicComplete=false`.
+This closes panel row 8 internally without changing Outcome D, supplying
+independent Sage.js certification, or satisfying any qualification gate.
+
 The newer authentic field-3 experiment has now crossed a different frontier.
 Starting from immutable exact relation and log owners for
 `x^4 - 2000022*x - 2000042`, it executes the high-precision HNF transform,
@@ -75,30 +95,31 @@ completion or certification.
 | 0 — canonical spine | Partial | Required compiler and port histories are ancestors; pinned PARI 2.17.4 replay driver exists; architecture gate passes at `ba140b214`. | Publish a fresh durable full Phase-0 receipt at the combined commit and record the toolchain/resource ledger. |
 | 1 — observability and ladder | Partial | Four-plus-twelve identities and the 24-field qualification population are frozen; all 16 development PARI traces are exported and hashed. | Natural random-relation, successful honesty, and precision coverage are absent from the performance population; Sage.js does not execute all 16 end to end. |
 | 2 — relation/retry | Partial | Exact cubic collection, quartic repeated nonempty-`W` HNF appends, and isolated random-relation corridors exist. | Generic capacity growth, factor-base enlargement, natural random fallback, and all-sentinel closure remain. |
-| 3 — exact envelope | Partial | H1 full Smith replay and field-3 `[2,2]` relation/Smith state exist. The field-3 live process retains and independently cold-replays all 186,560 exact cells. All 301 principal relations replay exactly against the 288 retained factor-base ideals. A bounded canonical-HNF route proves rank 288, invariant factors `[2,2]`, order 4, exact suffix alignment, and an arbitrary-ideal receipt with an independently checked principal quotient. The exact 301-by-13 transform has been bound into the immutable field-3 composer: all 3,744 relation-kernel entries vanish, source-order packed replay matches every HNF/append checkpoint and terminal `A`, and both compact unit columns have exact kernel witnesses. | Generalize beyond the one field and close the 12-field envelope. |
-| 4 — units/precision | Partial | The real H1 cubic performs exact source-derived units and retries from 192 to 2304 bits. For field 3, all 301 real and complex log columns join into an immutable 6,321-cell raw owner; the authentic C3 transform, C4 analytic acceptance, C5 `cleanarch`, and native C6 embedding/`getfu` stages execute at 153088 bits. C5 retains a 301-by-2 compact transform with supports 227/227; all 602 entries replay as the full15 first-13-column transform composed with C5's final transform, and the exact relation basis proves norms `+1,+1`. C6 faithfully terminates as `not_given(PRECI)` with state `[3,153088,1,0,0,1,16385,301,0,-2,0,0]`. A one-guard-limb source fix admits PARI's retained 153152-bit logarithms while continuing to reject 153216-bit input. | The authentic flag-zero case does not publish expanded exact units. Exercise successful exact C6/factorback on the predeclared unit tier and generalize the precision path to the sentinels and 12 development fields. |
-| 5 — honesty/final | Partial | One atomic H1 internal final result and mutation/replay contract exist. The field-3 relation authority independently replays all 301 principal relations; the corrected class suffix independently replays all 572 terminal `B` cells, antiuniformizer descriptors, generator ideals, and order-principal factorbacks. The immutable live owner binds those exact witnesses, class `[2,2]`/order 4, and torsion 2. The authentic PRECI unit owner retains the compact 301-by-2 unit transform and exact relation authority. C7 publishes and independently cold-replays a correspondence-complete, public-incomplete result. A separate predeclared unequal-bound degree-five path authentically executes successful `be_honest`. | Exact expanded-unit C7, the compact flag-one tier, independent Sage.js certification, remaining sentinels/development fields, and general final replay remain open. |
+| 3 — exact envelope | Partial | H1 full Smith replay and field-3 `[2,2]` relation/Smith state exist. The field-3 live process retains and independently cold-replays all 186,560 exact cells. All 301 principal relations replay exactly against the 288 retained factor-base ideals. A bounded canonical-HNF route proves rank 288, invariant factors `[2,2]`, order 4, exact suffix alignment, and an arbitrary-ideal receipt with an independently checked principal quotient. The exact 301-by-13 transform has been bound into the immutable field-3 composer: all 3,744 relation-kernel entries vanish, source-order packed replay matches every HNF/append checkpoint and terminal `A`, and both compact unit columns have exact kernel witnesses. Panel row 8 now replays its authentic 150+1+1 schedule, all 152 principal ideals and norms, and the exact `R*T=0` and `R*Q=I_143` equations. | Generalize beyond these fields and close the 12-field envelope. |
+| 4 — units/precision | Partial | The real H1 cubic performs exact source-derived units and retries from 192 to 2304 bits. For field 3, all 301 real and complex log columns join into an immutable 6,321-cell raw owner; the authentic C3 transform, C4 analytic acceptance, C5 `cleanarch`, and native C6 embedding/`getfu` stages execute at 153088 bits. C5 retains a 301-by-2 compact transform with supports 227/227; all 602 entries replay as the full15 first-13-column transform composed with C5's final transform, and the exact relation basis proves norms `+1,+1`. C6 faithfully terminates as `not_given(PRECI)` with state `[3,153088,1,0,0,1,16385,301,0,-2,0,0]`. A one-guard-limb source fix admits PARI's retained 153152-bit logarithms while continuing to reject 153216-bit input. Panel row 8's corrected C5 v2 retains its 9-by-2 compact transform, and its full authentic C6 graph exactly reaches flag-zero `not_given(PRECI)` at 192 bits with worst rounding error 69863. | Neither authentic flag-zero case publishes expanded exact units. Exercise successful exact C6/factorback on predeclared row 20, run the compact flag-one tier, and generalize the precision path to the remaining sentinels and 12 development fields. |
+| 5 — honesty/final | Partial | One atomic H1 internal final result and mutation/replay contract exist. The field-3 relation authority independently replays all 301 principal relations; the corrected class suffix independently replays all 572 terminal `B` cells, antiuniformizer descriptors, generator ideals, and order-principal factorbacks. The immutable live owner binds those exact witnesses, class `[2,2]`/order 4, and torsion 2. The authentic PRECI unit owner retains the compact 301-by-2 unit transform and exact relation authority. Field-3 C7 publishes and independently cold-replays a correspondence-complete, public-incomplete result. Panel-row-8 C7 likewise cold-replays a trivial-class-group envelope containing its exact closure and compact C5 units while preserving `publicComplete=false` and `not_given(PRECI)`. A separate predeclared unequal-bound degree-five path authentically executes successful `be_honest`. | Exact expanded-unit C7, the compact flag-one tier, independent Sage.js certification, remaining sentinels/development fields, and general final replay remain open. |
 | 6 — qualification | Partial | A real mutually exclusive seven-pair matched diagnostic conserves each root and leaves only `0.011 ms` median unattributed in Sage.js. Compiler campaign 1 preserved the exact result while removing 99.52% of callback allocation events; only 1.26x–1.69x stage gains prove allocation count is not the dominant residual gap. | Source stage cuts are not cross-implementation-identical, the 80% cross-source gap attribution gate remains unmet, and the frozen 24-field qualification has not run. |
 
 ## Next falsifiable cuts
 
-1. Close frozen sentinel panel row 8, the mixed quartic
-   `x^4 - 20018*x - 20034`, without answer fixtures. Authenticate its existing
-   150/151/152-relation two-retry path, reproduce its 9-by-2 compact unit
-   lattice and matched 192-bit `PRECI` result, then publish and cold-replay the
-   trivial-class-group C7 envelope.
-2. Exercise a predeclared successful C6 case through exact factorback, unit
-   norms/principality, and C7. Then run the separately timed compact flag-one
-   unit tier; this field's legitimate flag-zero `PRECI` is not evidence for
-   exact fundamental units.
-3. Extend the sealed owner/result machinery to the remaining predeclared
-   development sentinels without field-specific answer fixtures. Preserve the
-   exact relation kernel, source-order packed replay, separate publication
-   authority, and `public_complete=false` certification boundary.
-4. Preserve the full relation/HNF provenance and exact generator-order
-   witnesses. A compact identity witness or a rebuilt final-answer fixture is
-   not a valid substitute. After those cuts, reassess the next development
-   field from the frozen ladder. Do not broaden by selecting easier fields.
+1. Close the resident polynomial-to-result path for panel row 1. Preserve its
+   authenticated cyclic class group of order 3 while implementing the missing
+   equation-index-divisor `idealprimedec` frontier; the existing downstream
+   replay is not evidence that the resident collector can regenerate it.
+2. Close panel row 14 under its qualified capacity protocol, including the
+   authentic 806-relation/HNF `[24,8]`/class-number-192 acceptance. Keep the
+   4-GiB ceiling and use packed or reused relation storage if measured native
+   capacity approaches it; do not enlarge the acceptance machine.
+3. Complete the predeclared successful exact-unit C6 path on panel row 20,
+   including factorback, exact unit norms/principality, and C7. Then run the
+   separately timed compact flag-one unit tier; panel row 8's legitimate
+   flag-zero `PRECI` is not evidence for exact fundamental units.
+4. Extend the sealed owner/result machinery across the remaining frozen
+   development ladder without field-specific answer fixtures, preserving full
+   relation/HNF provenance, exact generator-order witnesses, source-order
+   replay, and the `public_complete=false` certification boundary. Only after
+   those gates close may the unchanged frozen 24-field qualification run and
+   Outcome C versus D be reassessed. Do not broaden by selecting easier fields.
 
 The bounded full-presentation checker at integration commit `e635ce176` used
 2,637,224 KiB peak aggregate RSS. It reduced the 301-by-288 source lattice to
@@ -218,10 +239,43 @@ transform and relation authority needed for C7, but still publishes no expanded
 unit. This one chain cannot satisfy the plan's successful exact-unit, compact
 flag-one, all-sentinel, 12-field, or frozen-qualification gates by itself.
 
+## Authentic panel-row-8 C5 v2--C7 chain
+
+Commits `0e54e771f`, `88ec9584c`, and `1fe2a113c` close the frozen row-8
+C5 v2/C6/terminal-closure/C7 sequence. The following active mode-0444 owners
+were rehashed directly from project scratch at integration commit `1fe2a113c`;
+each recomputed SHA-256 equals its content-addressed file name.
+
+| Boundary | Immutable owner SHA-256 | Bytes | Evidence |
+| --- | --- | ---: | --- |
+| Accepted retry | `b2e1a6a0d737880627d8829569c24447557c389690d2ec5a35a9e1c6c0430591` | 467,766 | Authenticates the accepted 152-relation log/lattice boundary and pristine W0 ancestry. |
+| Corrected C5 v2 | `f93fa0ff5f68531646f213d799339e87a7b2d338e18457399fe81d6b0fb1df21` | 6,139 | Retains public 9-by-2 `U`, public 3-by-2 `A`, private getfu candidate, and the authentic non-symmetric factor `[1,0,-2,1]`. |
+| C6 `not_given(PRECI)` | `d1f4e9e2ce4ae987952cbce8e8af9d6c9ede318f5ffa89b185fbd003ab5e28df` | 3,098 | Exact terminal state `[3,15,-185,0,69863,0,0,1]`, where status 3 is `PRECI`; no unit, log, or adjusted-factor material is published. |
+| Exact terminal closure | `2e7a8a896f68e80093e3e5a5e198597569e804e4dc53f888869138a97710919d` | 261,786 | Replays all 152 principal ideals and norms, all three HNF states, the 152-by-9 `T`, and the 152-by-143 `Q`; proves `R*T=0` and `R*Q=I_143`. |
+| Field-neutral C7 | `5626e6e186f481f94c7e1752daab96d04753b864a42cda45faca0607f565e27b` | 264,058 | Trivial class group, unit rank two, torsion order two, compact C5 evidence, `correspondenceComplete=true`, and `publicComplete=false`. |
+
+The five active owners total 1,002,847 bytes. C6 additionally reauthenticates
+the mode-0644 W0 artifact at SHA-256
+`4f7535622072f1350787ca8caab417cce4023aea4ef68c67c3fb20ef65d01ca1`
+and prepared-number-field authority
+`f36824d6417ced98e5d18529489801f687d61c78f9f9fdabb96d6d19099b0e01`;
+only the prepared embedding and multiplication tensor cross that boundary.
+The W0 event arrays and precision-corridor answer tape do not.
+
+At `1fe2a113c`, `check_panel8_c7_result_composer.cjs` passed against the real
+owners, performed two cold compositions, and rejected all 12 tested ancestry,
+matrix, principal-generator, `PRECI`, compact-unit, closure-tier, and coordinated
+reseal mutations. It returned class number 1, empty invariant factors, torsion
+order 2, `unitMaterialization="not_given(PRECI)"`,
+`correspondenceComplete=true`, and `publicComplete=false`. The full
+`pnpm architecture:check` gate also passed at the same commit.
+
 ## Resource state
 
 Rebuildable caches and inactive generated worktree products were cleaned before
 this checkpoint. Active integration and lane artifacts were preserved. Bulky
 corpus and replay artifacts remain under project-scoped `/scratch` storage. At
-the evidence rehash, the project-scoped scratch tree occupied 426 MiB. After C7,
-the 16 retained immutable owners total 75,123,368 bytes.
+the current evidence rehash, the project-scoped scratch tree occupied 443 MiB.
+The field-3 16 retained immutable owners total 75,123,368 bytes; the five active
+panel-row-8 owners add 1,002,847 bytes. Superseded row-8 owners remain as
+historical evidence and are not counted in that active total.
