@@ -819,10 +819,10 @@ stage("honesty-quintic-collector-boundary", {
   validate: (summary) => {
     assert.equal(summary.quinticExporterComplete, true);
     assert.deepEqual(summary.pariOracleStatuses, [1, 1, 1, 1, 1, 1]);
-    assert.deepEqual(summary.sageCollectorStatuses, [1, 0, 0, 1, 1, 1]);
+    assert.deepEqual(summary.sageCollectorStatuses, [1, 1, 1, 1, 1, 1]);
     assert.equal(summary.sageCollectorProbesExecuted, 6);
-    assert.equal(summary.matchingProbes, 4);
-    assert.equal(summary.mismatches.length, 2);
+    assert.equal(summary.matchingProbes, 6);
+    assert.deepEqual(summary.mismatches, []);
     assert.equal(summary.blockedInputs, 0);
     assert.equal(summary.rankedPreparationClosed, true);
     assert.deepEqual(summary.backendsAttempted, ["cpython"]);
@@ -833,6 +833,22 @@ stage("honesty-quintic-collector-boundary", {
     "oracle-source": path.join(summary.oracleDirectory, "oracle.c"),
     "oracle-binary": path.join(summary.oracleDirectory, "oracle"),
   }),
+});
+
+stage("honesty-quintic-collector-downstream", {
+  dependencies: ["honesty-quintic-collector-boundary"],
+  requiresPari: true,
+  command: (context) => commandNode("check_quintic_collector_downstream.cjs",
+    context.pariRoot, context.pariArchive),
+  validate: (summary) => {
+    assert.equal(summary.exactQuinticCollectorClosure, true);
+    assert.deepEqual(summary.statuses, [1, 1, 1, 1, 1, 1]);
+    assert.deepEqual(summary.attempts, [35, 157, 41, 1, 3, 23]);
+    assert.equal(summary.pariSearchScale, summary.sageSearchScale);
+    assert.equal(summary.successfulElements.length, 6);
+    assert.equal(summary.successfulFactors.length, 6);
+  },
+  noFixture: true,
 });
 
 stage("relation-hnf-witness", {
