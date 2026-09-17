@@ -9,19 +9,58 @@ const test = require("node:test");
 const root = join(__dirname, "..");
 const source = readFileSync(join(root, "src/baselib/bootstrap_shared.py"), "utf8");
 const names = ["ρσ_copy_method_metadata", "ρσ_native_method_adapter", "ρσ_unbound_method_adapter",
-  "ρσ_check_interrupt", "ρσ_normalize_exception"];
+  "ρσ_check_interrupt", "ρσ_normalize_exception", "ρσ_prepare_method_call"];
 
 // Exercise the native ABI bodies directly; full self-hosted/module
 // linkage remains a separate build qualification, not implied by this test.
-function context() {
+function context(overrides = {}) {
   const declarations = [...source.matchAll(/^def (\S+)\(([^)]*)\):[^]*?return r"""%js ([^]*?)"""/gm)]
     .map((match) => `function ${match[1]}(${match[2]}) {return ${match[3]};}`);
   class KeyboardInterrupt extends Error {}
-  const globals = { KeyboardInterrupt, ρσ_exception_value: (value) => value };
+  const globals = { KeyboardInterrupt, ρσ_exception_value: (value) => value, ...overrides };
   return runInNewContext(`${declarations.join("\n")}; ({${names.join(",")}, globalThis})`, globals);
 }
 
-test("shared bootstrap has four adapters and one shared metadata copier", () => {
+test("prepared method calls use and invalidate the shared prototype cache", () => {
+  const prototype = {};
+  const receiver = Object.create(prototype);
+  const target = function target() {};
+  const epoch = { value: 7 };
+  const descriptorCache = new WeakMap([
+    [prototype, new Map([["method", [7, undefined, undefined, target, true, false]]])],
+  ]);
+  const namespaces = new WeakMap();
+  let fallbacks = 0;
+  const api = context({
+    _builtins_descriptor_cache: descriptorCache,
+    _builtins_descriptor_epoch: epoch,
+    _builtins_instance_namespaces: namespaces,
+    _builtins_attribute_owner: () => { throw new Error("warm prototype cache missed"); },
+    _builtins_public_getattr: (_value, _name, _missing, result) => {
+      fallbacks += 1;
+      result[0] = "fallback";
+      return "fallback";
+    },
+    _BUILTINS_MISSING: {},
+  });
+
+  assert.deepEqual(Array.from(api.ρσ_prepare_method_call(receiver, "method")),
+    [target, receiver, false]);
+  assert.equal(fallbacks, 0);
+
+  epoch.value += 1;
+  assert.deepEqual(Array.from(api.ρσ_prepare_method_call(receiver, "method")),
+    ["fallback", undefined, false]);
+  assert.equal(fallbacks, 1);
+
+  epoch.value -= 1;
+  Object.defineProperty(receiver, "method", { value: "assigned", configurable: true });
+  assert.deepEqual(Array.from(api.ρσ_prepare_method_call(receiver, "method")),
+    ["fallback", undefined, false]);
+  assert.equal(fallbacks, 2);
+});
+
+test("shared bootstrap owns its low-level adapters and metadata copier", () => {
   assert.deepEqual([...source.matchAll(/^def (\S+)\(/gm)].map((match) => match[1]), names);
   for (const filename of ["compiler_bootstrap.py", "sagejs_bootstrap.py"]) {
     const previous = readFileSync(join(root, "src/baselib", filename), "utf8");

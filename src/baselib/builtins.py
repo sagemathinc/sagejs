@@ -303,7 +303,8 @@ _builtins_class_namespace_cache = runtime.reflect.construct(
     runtime.reflect.get(runtime.global_object, "WeakMap"), []
 )
 _builtins_data_descriptor_names = runtime.reflect.construct(runtime.set_class, [])
-_builtins_descriptor_epoch = 0
+_builtins_descriptor_epoch = runtime.object.create(None)
+_builtins_descriptor_epoch.value = 0
 _builtins_initializer_cache = runtime.reflect.construct(
     runtime.reflect.get(runtime.global_object, "WeakMap"), []
 )
@@ -800,7 +801,7 @@ def _builtins_class_attribute_resolution(
     if owner_cache is not runtime.undefined:
         cached = owner_cache.get(name)
         if cached is not runtime.undefined and runtime.strict_equal(
-            cached[0], _builtins_descriptor_epoch
+            cached[0], _builtins_descriptor_epoch.value
         ):
             return (
                 runtime.undefined
@@ -838,7 +839,7 @@ def _builtins_class_attribute_resolution(
         if _builtins_member_is_function(class_value, "__get__"):
             class_kind = _BUILTINS_DESCRIPTOR_NONDATA
         cache_entry = runtime.reflect.construct(runtime.array, [])
-        cache_entry.push(_builtins_descriptor_epoch)
+        cache_entry.push(_builtins_descriptor_epoch.value)
         cache_entry.push(class_descriptor)
         cache_entry.push(class_kind)
         cache_entry.push(class_value)
@@ -909,7 +910,7 @@ def _builtins_class_attribute_resolution(
                 # attributes as well as immutable primitives.
                 descriptor_kind = _BUILTINS_DESCRIPTOR_DIRECT
             cache_entry = runtime.reflect.construct(runtime.array, [])
-            cache_entry.push(_builtins_descriptor_epoch)
+            cache_entry.push(_builtins_descriptor_epoch.value)
             cache_entry.push(descriptor)
             cache_entry.push(descriptor_kind)
             cache_entry.push(descriptor_target)
@@ -917,7 +918,7 @@ def _builtins_class_attribute_resolution(
             return cache_entry
         prototype = runtime.object.getPrototypeOf(prototype)
     cache_entry = runtime.reflect.construct(runtime.array, [])
-    cache_entry.push(_builtins_descriptor_epoch)
+    cache_entry.push(_builtins_descriptor_epoch.value)
     cache_entry.push(_BUILTINS_DESCRIPTOR_MISSING)
     owner_cache.set(name, cache_entry)
     return runtime.undefined
@@ -939,7 +940,6 @@ def ρσ_call_set_names(
     values: list[Any],
 ) -> None:
     """Register descriptors and call `__set_name__` from a namespace."""
-    global _builtins_descriptor_epoch
     # Class construction first writes its namespace to the native prototype
     # and constructor, then calls this finalizer.  Earlier class-body/default
     # evaluation may already have cached an inherited attribute under the new
@@ -947,7 +947,7 @@ def ρσ_call_set_names(
     # can reuse that provisional lookup (notably for ``staticmethod`` aliases
     # that replace an inherited instance method).
     if _builtins_get_member(names, "length"):
-        _builtins_descriptor_epoch += 1
+        _builtins_descriptor_epoch.value += 1
     index = 0
     while index < _builtins_get_member(names, "length"):
         value = values[index]
@@ -3549,7 +3549,6 @@ def _builtins_layout_anchor(owner: Any) -> Any:
 
 def ρσ_install_instance_dict(owner: Any, explicit_dict: _Bool = False) -> None:
     """Finalize heap namespace ownership after the class body and MRO exist."""
-    global _builtins_descriptor_epoch
     if not _builtins_heap_class_keys.has(owner):
         return
     inherited = False
@@ -3585,7 +3584,7 @@ def ρσ_install_instance_dict(owner: Any, explicit_dict: _Bool = False) -> None
             anchor = candidate_anchor
     introduces = not _builtins_instance_dict_owners.has(selected)
     _builtins_instance_dict_owners.set(owner, explicit_dict or introduces)
-    _builtins_descriptor_epoch += 1
+    _builtins_descriptor_epoch.value += 1
     if introduces and not explicit_dict:
         runtime.reflect.set(
             prototype, "__dict__", _BuiltinsInstanceDictDescriptor(owner)
@@ -5037,30 +5036,6 @@ def _builtins_public_getattr(
         raise
 
 
-def ρσ_prepare_method_call(value: Any, name: _Str) -> Any:
-    """Capture lookup before arguments without materializing ordinary methods."""
-    owner = _builtins_attribute_owner(value)
-    owner_cache = _builtins_descriptor_cache.get(owner)
-    cached = (
-        runtime.undefined if owner_cache is runtime.undefined else owner_cache.get(name)
-    )
-    if (
-        cached is not runtime.undefined
-        and cached[0] == _builtins_descriptor_epoch
-        and cached[4] is True
-    ):
-        namespace = _builtins_instance_namespaces.get(value)
-        if (
-            namespace is runtime.undefined or not namespace.jsmap.has(name)
-        ) and not runtime.reflect.get(runtime.object, "hasOwn")(value, name):
-            return runtime.array.of(cached[3], value, cached[5])
-    context = runtime.array.of(runtime.undefined, runtime.undefined, False)
-    member = _builtins_public_getattr(value, name, _BUILTINS_MISSING, context)
-    if context[0] is runtime.undefined:
-        context[0] = member
-    return context
-
-
 def ρσ_invoke_prepared_method(context: Any, call_args: Any) -> Any:
     """Invoke a captured call after all positional arguments are evaluated."""
     target = context[0]
@@ -5582,7 +5557,6 @@ def ρσ_getattr(
 
 
 def ρσ_setattr(value: Any, name: _Str, member: Any) -> None:
-    global _builtins_descriptor_epoch
     if not runtime.strict_equal(runtime.jstype(name), "string"):
         raise TypeError("attribute name must be string")
     if runtime.strict_equal(name, "__annotations__"):
@@ -5662,7 +5636,7 @@ def ρσ_setattr(value: Any, name: _Str, member: Any) -> None:
         if _builtins_member_is_function(descriptor, "__set__"):
             return _builtins_call_member(descriptor, "__set__", [value, member])
     if _builtins_is_python_class(value):
-        _builtins_descriptor_epoch += 1
+        _builtins_descriptor_epoch.value += 1
         prototype_member = member
         if (
             runtime.strict_equal(runtime.jstype(member), "function")
@@ -6264,7 +6238,6 @@ def _builtins_native_property_deleter(value: Any, name: _Str) -> Any:
 
 
 def ρσ_delattr(value: Any, name: _Str) -> None:
-    global _builtins_descriptor_epoch
     if not runtime.strict_equal(runtime.jstype(name), "string"):
         raise TypeError("attribute name must be string")
     if name == "__dict__" and _builtins_is_python_class(value):
@@ -6319,7 +6292,7 @@ def ρσ_delattr(value: Any, name: _Str) -> None:
         if prototype_has_own:
             runtime.reflect.deleteProperty(prototype, name)
             runtime.reflect.deleteProperty(prototype, "ρσ_property_deleter_" + name)
-        _builtins_descriptor_epoch += 1
+        _builtins_descriptor_epoch.value += 1
         return
     if not runtime.strict_equal(
         runtime.jstype(value), "function"
@@ -6638,7 +6611,10 @@ def _builtins_synthetic_init_ends_at_object(initializer: Any) -> _Bool:
 def ρσ_live_initializer(cls: Any) -> Any:
     """Resolve and cache the current non-forwarding initializer."""
     cached = _builtins_initializer_cache.get(cls)
-    if cached is not runtime.undefined and cached[0] == _builtins_descriptor_epoch:
+    if (
+        cached is not runtime.undefined
+        and cached[0] == _builtins_descriptor_epoch.value
+    ):
         return cached[1]
     original = _builtins_get_member(runtime.reflect.get(cls, "prototype"), "__init__")
     initializer = original
@@ -6663,7 +6639,7 @@ def ρσ_live_initializer(cls: Any) -> Any:
                     initializer = candidate
                     break
     record = runtime.reflect.construct(runtime.array, [])
-    record.push(_builtins_descriptor_epoch)
+    record.push(_builtins_descriptor_epoch.value)
     record.push(initializer)
     _builtins_initializer_cache.set(cls, record)
     return initializer
@@ -6676,7 +6652,7 @@ def ρσ_skip_init_for_custom_new(cls: Any, initializer: Any) -> _Bool:
     cached = _builtins_initializer_cache.get(cls)
     cacheable = (
         cached is not runtime.undefined
-        and cached[0] == _builtins_descriptor_epoch
+        and cached[0] == _builtins_descriptor_epoch.value
         and cached[1] is initializer
     )
     if cacheable and cached.length > 2:

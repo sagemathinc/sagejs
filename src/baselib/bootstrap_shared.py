@@ -100,3 +100,24 @@ def ρσ_normalize_exception(error):
         }
         return ρσ_exception_value(new KeyboardInterrupt());
     })()"""
+
+
+def ρσ_prepare_method_call(value, name):
+    return r"""%js (() => {
+        const p=value==null?undefined:Object.getPrototypeOf(value);
+        let c=p===undefined?undefined:_builtins_descriptor_cache.get(p);
+        if(c===undefined){
+            c=_builtins_descriptor_cache.get(_builtins_attribute_owner(value));
+            if(c!==undefined&&p!==undefined)_builtins_descriptor_cache.set(p,c);
+        }
+        const m=c===undefined?undefined:c.get(name);
+        if(m!==undefined&&m[0]===_builtins_descriptor_epoch.value&&m[4]===true){
+            const n=_builtins_instance_namespaces.get(value);
+            if((n===undefined||!n.jsmap.has(name))&&!Object.hasOwn(value,name))
+                return [m[3],value,m[5]];
+        }
+        const x=[undefined,undefined,false];
+        const member=_builtins_public_getattr(value,name,_BUILTINS_MISSING,x);
+        if(x[0]===undefined)x[0]=member;
+        return x;
+    })()"""
