@@ -1,0 +1,84 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-e2e-no-oracle-h1-root",
+  "title": "Pari E2e No Oracle H1 Root",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement a no-oracle prepared h1 composition root connecting resident candidate, precision rebuild, compact unit/getfu, cleanarch, torsion/regulator, and immutable final evidence through neutral component APIs",
+  "base_commit": "625d0cdb14d360d95da8042f59ec3fdad1a5421e",
+  "claims": [
+    "bench/pari-class-group-port/prepared_h1_no_oracle_root.py",
+    "bench/pari-class-group-port/check_prepared_h1_no_oracle_root.cjs",
+    "bench/pari-class-group-port/prepared_h1_no_oracle_root_audit.md"
+  ],
+  "dependencies": [
+    "pari-e2e-v2-authority-bind"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Cold replay of resident-derived exact authorities without fixture or external process access inside the composition boundary"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node bench/pari-class-group-port/check_prepared_h1_no_oracle_root.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_prepared_h1_no_oracle_root.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.606,
+      "started_at": "2026-09-17T03:35:08.530Z",
+      "commit": "625d0cdb1ec667ae0ae094844ba2dcd5ee217fe7",
+      "workspace_fingerprint": "4a07c7b7d52434239cbd4c32043fc4bed7c0918a823bc79b027dcd590646f78b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_prepared_h1_no_oracle_root.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.875,
+      "started_at": "2026-09-17T03:35:44.418Z",
+      "commit": "625d0cdb1ec667ae0ae094844ba2dcd5ee217fe7",
+      "workspace_fingerprint": "4615b461b5712662378950f8283e49188c8bf1ff9dc87406bf2e50807682c87d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 10.751,
+      "started_at": "2026-09-17T03:36:06.179Z",
+      "commit": "625d0cdb1ec667ae0ae094844ba2dcd5ee217fe7",
+      "workspace_fingerprint": "4615b461b5712662378950f8283e49188c8bf1ff9dc87406bf2e50807682c87d",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Adds the first connected prepared h=1 root whose computation boundary rebuilds the 2176-bit embedding and unit logs from qualified resident roots and exact relation products, binds them to detached exact-unit/regulator/torsion authorities, and publishes an immutable internally correspondence-complete but publicly incomplete result.",
+    "risks": [
+      "The detached unit and regulator authorities are prepared outside the root and retain pinned fixture provenance; no fixture or live oracle is available inside the root itself.",
+      "The 2176-bit and historical 192-bit logarithm evaluations agree for at least 176 leading bits rather than being bit-identical.",
+      "Unit saturation and global factor-base/relation completeness remain explicit public blockers."
+    ],
+    "next_steps": [
+      "Integrate this root after the neutral embedding component and invoke it from the shared final driver.",
+      "Replace detached fixture provenance with a fully live unit-selection authority when that upstream component is available.",
+      "Supply independent saturation and global completeness evidence before enabling a public class/unit result."
+    ]
+  }
+}
