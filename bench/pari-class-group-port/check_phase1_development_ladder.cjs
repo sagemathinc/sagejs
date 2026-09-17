@@ -1,6 +1,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const { execFileSync } = require("node:child_process");
 const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -18,6 +19,10 @@ const qualification = json(ladder.sources.qualificationManifest.path);
 
 const frozen = {
   baseCommit: "1196fd4fdc5fdaa2a3fd1273d32c594bfb299ffa",
+  planPath: "agents/pari-class-group-end-to-end-native-plan.md",
+  planCommit: "1196fd4fdc5fdaa2a3fd1273d32c594bfb299ffa",
+  planGitBlob: "19a0e56c38b4af8e3230235495a02fa1796f7a8f",
+  planSha256: "88a47911bcba3007f82e4ff2d426a2760afab136118ed5cb0922104f19303fad",
   panelSha256: "7c6515240940db971cff3bc28819f9e6547adae9305643b0f6274eeafe6ec3a5",
   qualificationSha256: "3821a5a51390ca25b3110e7a8058d73cd9945d0ab6ad254c07186e0ac19c1c50",
   pariVersion: "2.17.4",
@@ -34,7 +39,35 @@ assert.equal(hashFile(ladder.sources.panel.path), frozen.panelSha256);
 assert.equal(ladder.sources.panel.sha256, frozen.panelSha256);
 assert.equal(hashFile(ladder.sources.qualificationManifest.path), frozen.qualificationSha256);
 assert.equal(ladder.sources.qualificationManifest.sha256, frozen.qualificationSha256);
-assert.equal(hashFile(ladder.sources.plan.path), ladder.sources.plan.sha256);
+assert.deepEqual(ladder.sources.plan, {
+  path: frozen.planPath,
+  commit: frozen.planCommit,
+  gitBlob: frozen.planGitBlob,
+  sha256: frozen.planSha256,
+});
+assert.equal(ladder.sources.plan.commit, ladder.baseCommit);
+const planRevision = `${frozen.planCommit}:${frozen.planPath}`;
+let planBlob;
+let planBytes;
+try {
+  planBlob = execFileSync(
+    "git",
+    ["-C", root, "rev-parse", "--verify", planRevision],
+    { encoding: "utf8" },
+  ).trim();
+  planBytes = execFileSync(
+    "git",
+    ["-C", root, "show", planRevision],
+    { encoding: null, maxBuffer: 2 * 1024 * 1024 },
+  );
+} catch (error) {
+  throw new Error(
+    `missing frozen Phase-1 plan object ${planRevision}; fetch the pinned history`,
+    { cause: error },
+  );
+}
+assert.equal(planBlob, frozen.planGitBlob);
+assert.equal(sha256(planBytes), frozen.planSha256);
 assert.deepEqual(ladder.pristinePari, {
   version: frozen.pariVersion,
   archiveSha256: frozen.archiveSha256,

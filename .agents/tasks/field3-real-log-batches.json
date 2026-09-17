@@ -40,12 +40,63 @@
   },
   "validation": [
     "pnpm test:baselib:strict",
-    "pnpm test:native"
+    "pnpm test:native",
+    "node --check bench/pari-class-group-port/check_field3_real_log_batches.cjs",
+    "node --check bench/pari-class-group-port/merge_field3_real_log_batches.cjs"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node -e const fs=require(\"fs\"),crypto=require(\"crypto\"),path=require(\"path\"),m=require(\"./bench/pari-class-group-port/merge_field3_real_log_batches.cjs\");const d=\"/scratch/sagejs-runtime/pari-class-group-e2e-20260917/field3-authority\";const files=fs.readdirSync(d).filter(x=>/^real-log-batch-[0-9]+-[0-9]+-[0-9a-f]{64}\\.json$/.test(x)).sort((a,b)=>Number(a.split(\"-\")[3])-Number(b.split(\"-\")[3])).map(x=>path.join(d,x));const v=m.verifyCompleteBatches(files);const p=path.join(d,\"real-log-columns-complete-e9976e50b13c0ec5775a0f0449ac21bd82dd6d80e6717dabbe1d3ea37825d7ef.json\");if(files.length!==11||v.batches.length!==11||crypto.createHash(\"sha256\").update(fs.readFileSync(p)).digest(\"hex\")!==\"e9976e50b13c0ec5775a0f0449ac21bd82dd6d80e6717dabbe1d3ea37825d7ef\"||(fs.statSync(p).mode&0o777)!==0o444)process.exit(1);const x=JSON.parse(fs.readFileSync(p));if(x.packedTriples.length!==1806||x.sourceCount!==301)process.exit(1);console.log(JSON.stringify({status:\"pass\",batches:11,columns:301,triples:602,cells:1806,sha256:\"e9976e50b13c0ec5775a0f0449ac21bd82dd6d80e6717dabbe1d3ea37825d7ef\"}))",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.317,
+      "started_at": "2026-09-17T12:56:37.651Z",
+      "commit": "4cd815a50db3a3b9f44db7c77374cd76763af453",
+      "workspace_fingerprint": "1fd198cfec4a7b4481d050e6901ed5f2097f7621a9dc0f4bc6ba18c874e5f47e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 60.678,
+      "started_at": "2026-09-17T12:56:43.605Z",
+      "commit": "4cd815a50db3a3b9f44db7c77374cd76763af453",
+      "workspace_fingerprint": "1fd198cfec4a7b4481d050e6901ed5f2097f7621a9dc0f4bc6ba18c874e5f47e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check bench/pari-class-group-port/check_field3_real_log_batches.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.035,
+      "started_at": "2026-09-17T12:58:31.143Z",
+      "commit": "4cd815a50db3a3b9f44db7c77374cd76763af453",
+      "workspace_fingerprint": "1fd198cfec4a7b4481d050e6901ed5f2097f7621a9dc0f4bc6ba18c874e5f47e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check bench/pari-class-group-port/merge_field3_real_log_batches.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.037,
+      "started_at": "2026-09-17T12:58:31.910Z",
+      "commit": "4cd815a50db3a3b9f44db7c77374cd76763af453",
+      "workspace_fingerprint": "1fd198cfec4a7b4481d050e6901ed5f2097f7621a9dc0f4bc6ba18c874e5f47e",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Generalized the translated field3 real-log graph to deterministic fail-atomic source_start,count batches of at most 28 columns. Executed all eleven canonical batches under 4 GiB/600-second limits, matched all 602 packed triples bit-for-bit with pristine PARI 2.17.4, proved the generalized 0:28 path reconstructs the qualified legacy capsule byte-for-byte, retained every batch and raw receipt as hash-named mode-0444 artifacts, and atomically merged exact ordered coverage [0,301) into the 1,806-cell owner e9976e50b13c0ec5775a0f0449ac21bd82dd6d80e6717dabbe1d3ea37825d7ef.",
+    "risks": [
+      "This owner contains only the two real places; the weighted complex place must be joined before the retained 301x13 transform can run.",
+      "The complete owner and raw batch receipts live under /scratch and are intentionally not backed up by git.",
+      "The full native suite was not rerun in this lane; integration owns that broad gate after joining concurrently developed compiler and arithmetic changes."
+    ],
+    "next_steps": [
+      "Join this complete real owner with the independently authenticated complex-log owner in identical source order.",
+      "Apply the retained exact 301x13 transform only after both raw owners and their shared source authority agree.",
+      "Run pnpm test:native and architecture checks in the integration lane."
+    ]
   }
 }

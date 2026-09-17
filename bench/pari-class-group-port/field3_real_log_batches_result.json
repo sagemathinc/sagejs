@@ -1,0 +1,159 @@
+{
+  "schema": "sagejs-field3-real-log-batches-result-v1",
+  "field": "x^4-2000022*x-2000042",
+  "runIdentity": "pari-2.17.4:nfinit192->nfnewprec153088:field3",
+  "targetBits": 153088,
+  "complete": true,
+  "sourceColumns": 301,
+  "realPlaces": 2,
+  "exactPackedTriples": 602,
+  "exactPackedCells": 1806,
+  "scalarColumns": 26,
+  "nonscalarColumns": 275,
+  "pariExactBatches": 11,
+  "transactionalRejectionsPerBatch": 5,
+  "legacyPrefix": {
+    "sha256": "09b0a20f1f059757ee3ed347f693fed92fb6749c2d46aac872abcffdd244fde8",
+    "byteIdentical": true,
+    "semanticCells": 168
+  },
+  "completeOwner": {
+    "path": "/scratch/sagejs-runtime/pari-class-group-e2e-20260917/field3-authority/real-log-columns-complete-e9976e50b13c0ec5775a0f0449ac21bd82dd6d80e6717dabbe1d3ea37825d7ef.json",
+    "sha256": "e9976e50b13c0ec5775a0f0449ac21bd82dd6d80e6717dabbe1d3ea37825d7ef",
+    "bytes": 27769857,
+    "mode": "0444"
+  },
+  "resources": {
+    "totalNativeMilliseconds": 1553698.842198,
+    "totalWallMilliseconds": 1893682,
+    "maximumBatchNativeMilliseconds": 381459.263655,
+    "maximumBatchWallMilliseconds": 440930,
+    "maximumPeakAggregateRssKiB": 2334412,
+    "abortGiB": 3.5,
+    "hardGiB": 4,
+    "timeoutSeconds": 600
+  },
+  "dispatch": {
+    "agmLogs": 600,
+    "seriesLogs": 2
+  },
+  "batches": [
+    {
+      "sourceStart": 0,
+      "sourceCount": 28,
+      "capsuleSha256": "683c1e4bc4559085dccf94282c393048c79c230fe2a2f9093642eeb371097de4",
+      "receiptSha256": "f540072523c68ae3b4473c63a3142212347af60bd95f06b4b3f61b9a9415e52c",
+      "nativeMilliseconds": 381459.263655,
+      "wallMilliseconds": 440930,
+      "peakAggregateRssKiB": 2226416,
+      "pariExactTriples": 56
+    },
+    {
+      "sourceStart": 28,
+      "sourceCount": 28,
+      "capsuleSha256": "dac284078cf2b8b2e2412a7de64d08607cde919dda7bafc501ad3156e11de164",
+      "receiptSha256": "82ba8b189ba30b0231a87816a6f855fd986dd47f23a8d774a6437814d71f2b5f",
+      "nativeMilliseconds": 94132.119022,
+      "wallMilliseconds": 122429,
+      "peakAggregateRssKiB": 2309988,
+      "pariExactTriples": 56
+    },
+    {
+      "sourceStart": 56,
+      "sourceCount": 28,
+      "capsuleSha256": "5ef768ff1c2943afbc99456bebc0f9fc2cd4db5518c4633ccbd28f12240b602d",
+      "receiptSha256": "90010765d56d20ed58dfea3ee8997afaad2f2e73f35f1b51563c6d582126301a",
+      "nativeMilliseconds": 95602.382115,
+      "wallMilliseconds": 124089,
+      "peakAggregateRssKiB": 2327568,
+      "pariExactTriples": 56
+    },
+    {
+      "sourceStart": 84,
+      "sourceCount": 28,
+      "capsuleSha256": "5131fb3d16511b65810abeef43c484fba60670f6544d84e1b67d199f9d5d2aa8",
+      "receiptSha256": "12fce49993bd6c730145a9f4724006e940d2e5f8980f00467d73926e0fd8d939",
+      "nativeMilliseconds": 101452.157444,
+      "wallMilliseconds": 129116,
+      "peakAggregateRssKiB": 2314764,
+      "pariExactTriples": 56
+    },
+    {
+      "sourceStart": 112,
+      "sourceCount": 28,
+      "capsuleSha256": "948b3ac43c4fcf0b553eaba8f6e3c79e3aa29e2e2bd0beff669ce2b3bde8dfb9",
+      "receiptSha256": "9d8adbae4153a8a337bbed8e08731ff6d6673dbf82cd583bd73ac35e08bd1174",
+      "nativeMilliseconds": 215117.511998,
+      "wallMilliseconds": 243313,
+      "peakAggregateRssKiB": 2321460,
+      "pariExactTriples": 56
+    },
+    {
+      "sourceStart": 140,
+      "sourceCount": 28,
+      "capsuleSha256": "50cbfe9b09569e8540a600f3b71e8d456c2e043322d97df16df8041508e5c941",
+      "receiptSha256": "eb30d52640d21ab28613a58d60f3799066ac9ee17d4d662f33233b19f69f49b0",
+      "nativeMilliseconds": 95178.550145,
+      "wallMilliseconds": 122921,
+      "peakAggregateRssKiB": 2318432,
+      "pariExactTriples": 56
+    },
+    {
+      "sourceStart": 168,
+      "sourceCount": 28,
+      "capsuleSha256": "72f5db7058035f54c659b7da54ec1231e4265276ef139329a62c60e0455ca900",
+      "receiptSha256": "90d0f99d1d21beedc39c5c0086352570e0d26a64d517beddabeea3bfbadb045c",
+      "nativeMilliseconds": 95585.20289,
+      "wallMilliseconds": 123580,
+      "peakAggregateRssKiB": 2313080,
+      "pariExactTriples": 56
+    },
+    {
+      "sourceStart": 196,
+      "sourceCount": 28,
+      "capsuleSha256": "3e1e13c5ba8852a31e64acb21a3fc5a98accd8aa8c4a87badcea4bc1f940a485",
+      "receiptSha256": "27a7aaecb4be7fdfec8bd7fba755c42621958f2ca64b7eb5dd268deaca58003b",
+      "nativeMilliseconds": 97899.147542,
+      "wallMilliseconds": 126024,
+      "peakAggregateRssKiB": 2311016,
+      "pariExactTriples": 56
+    },
+    {
+      "sourceStart": 224,
+      "sourceCount": 28,
+      "capsuleSha256": "357564621f909df6846614b0306e129220d6d7d36fea869942d8d5480d7dd19d",
+      "receiptSha256": "4d4823586bde114e6da52a0c5b7cd792f905564b1f9aa5d8a96a306077cf50ad",
+      "nativeMilliseconds": 92006.284009,
+      "wallMilliseconds": 119851,
+      "peakAggregateRssKiB": 2334412,
+      "pariExactTriples": 56
+    },
+    {
+      "sourceStart": 252,
+      "sourceCount": 28,
+      "capsuleSha256": "e3f315d5553ea5d287bc5334a9155c2666a6c39e1ab2e99c7b4ac817b58514c3",
+      "receiptSha256": "83088faf848b8e30b2bbeea030533e533b80903a2770bd9887f1531ce4e4294b",
+      "nativeMilliseconds": 187645.719301,
+      "wallMilliseconds": 216161,
+      "peakAggregateRssKiB": 2313636,
+      "pariExactTriples": 56
+    },
+    {
+      "sourceStart": 280,
+      "sourceCount": 21,
+      "capsuleSha256": "3aa73526f223f7e416e497cf3797759eef4d68aa701edab029d16cbdad3af12d",
+      "receiptSha256": "487336dba1cccb57b94c7253755ca27723d68f0f215899fe6cac9df2dbad08d5",
+      "nativeMilliseconds": 97620.504077,
+      "wallMilliseconds": 125268,
+      "peakAggregateRssKiB": 2117516,
+      "pariExactTriples": 42
+    }
+  ],
+  "exclusions": [
+    "weighted complex place",
+    "301x13 retained transform",
+    "accepted logarithm matrix",
+    "regulator and unit reconstruction",
+    "class-group final assembly"
+  ]
+}
