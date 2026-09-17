@@ -9,7 +9,7 @@ const test = require("node:test");
 const root = join(__dirname, "..");
 const source = readFileSync(join(root, "src/baselib/bootstrap_shared.py"), "utf8");
 const names = ["ρσ_copy_method_metadata", "ρσ_native_method_adapter", "ρσ_unbound_method_adapter",
-  "ρσ_exact_integer_binary",
+  "ρσ_exact_integer_add", "ρσ_exact_integer_submul",
   "ρσ_check_interrupt", "ρσ_normalize_exception", "ρσ_prepare_method_call",
   "ρσ_attr", "ρσ_interpolate_kwargs"];
 
@@ -157,24 +157,23 @@ test("shared bootstrap owns its low-level adapters and metadata copier", () => {
 });
 
 test("shared exact integer arithmetic preserves primitive Python integers", () => {
-  const { ρσ_exact_integer_binary: binary } = context();
+  const { ρσ_exact_integer_add: add, ρσ_exact_integer_submul: submul } = context();
   const missing = {};
-  const add = (left, right) => binary(left, right, 0, missing);
-  const subtract = (left, right) => binary(left, right, 1, missing);
-  const multiply = (left, right) => binary(left, right, 2, missing);
-  assert.equal(add(1, 2), 3);
-  assert.equal(add(true, true), 2);
-  assert.equal(add(Number.MAX_SAFE_INTEGER, true), 9007199254740992n);
-  assert.equal(add(Number.MAX_SAFE_INTEGER, false), Number.MAX_SAFE_INTEGER);
-  assert.equal(add(4n, true), 5n);
-  assert.equal(Object.is(add(-0, false), 0), true);
+  const subtract = (left, right) => submul(left, right, false, missing);
+  const multiply = (left, right) => submul(left, right, true, missing);
+  assert.equal(add(1, 2, missing), 3);
+  assert.equal(add(true, true, missing), 2);
+  assert.equal(add(Number.MAX_SAFE_INTEGER, true, missing), 9007199254740992n);
+  assert.equal(add(Number.MAX_SAFE_INTEGER, false, missing), Number.MAX_SAFE_INTEGER);
+  assert.equal(add(4n, true, missing), 5n);
+  assert.equal(Object.is(add(-0, false, missing), 0), true);
   assert.equal(subtract(-Number.MAX_SAFE_INTEGER, true), -9007199254740992n);
   assert.equal(subtract(4n, true), 3n);
   assert.equal(multiply(3037000500, 3037000500), 9223372037000250000n);
   assert.equal(multiply(4n, true), 4n);
-  assert.equal(add(1.5, 2), missing);
-  assert.equal(add(Number.MAX_SAFE_INTEGER + 1, 1), missing);
-  assert.equal(add({}, 1), missing);
+  assert.equal(add(1.5, 2, missing), missing);
+  assert.equal(add(Number.MAX_SAFE_INTEGER + 1, 1, missing), missing);
+  assert.equal(add({}, 1, missing), missing);
 });
 
 test("shared receiver adapters preserve binding, metadata getters, and cache identity", () => {

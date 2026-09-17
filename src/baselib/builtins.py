@@ -1420,9 +1420,9 @@ def _builtins_operator_add_slow(left: Any, right: Any) -> Any:
 
 def ρσ_operator_add_exact(left: Any, right: Any) -> Any:
     result = runtime.reflect.apply(
-        ρσ_exact_integer_binary,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        ρσ_exact_integer_add,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
         runtime.undefined,
-        [left, right, 0, _BUILTINS_MISSING],
+        [left, right, _BUILTINS_MISSING],
     )
     if result is not _BUILTINS_MISSING:
         return result
@@ -1715,9 +1715,9 @@ def _builtins_operator_sub_slow(left: Any, right: Any) -> Any:
 
 def ρσ_operator_sub_exact(left: Any, right: Any) -> Any:
     result = runtime.reflect.apply(
-        ρσ_exact_integer_binary,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        ρσ_exact_integer_submul,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
         runtime.undefined,
-        [left, right, 1, _BUILTINS_MISSING],
+        [left, right, False, _BUILTINS_MISSING],
     )
     if result is not _BUILTINS_MISSING:
         return result
@@ -1866,9 +1866,9 @@ def _builtins_operator_mul_slow(left: Any, right: Any) -> Any:
 
 def ρσ_operator_mul_exact(left: Any, right: Any) -> Any:
     result = runtime.reflect.apply(
-        ρσ_exact_integer_binary,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        ρσ_exact_integer_submul,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
         runtime.undefined,
-        [left, right, 2, _BUILTINS_MISSING],
+        [left, right, True, _BUILTINS_MISSING],
     )
     if result is not _BUILTINS_MISSING:
         return result
@@ -2227,9 +2227,9 @@ def ρσ_operator_ipow(left: Any, right: Any) -> Any:
 
 def ρσ_operator_iadd_exact(left: Any, right: Any) -> Any:
     result = runtime.reflect.apply(
-        ρσ_exact_integer_binary,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        ρσ_exact_integer_add,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
         runtime.undefined,
-        [left, right, 0, _BUILTINS_MISSING],
+        [left, right, _BUILTINS_MISSING],
     )
     if result is not _BUILTINS_MISSING:
         return result
@@ -2244,9 +2244,9 @@ def ρσ_operator_iadd_exact(left: Any, right: Any) -> Any:
 
 def ρσ_operator_isub_exact(left: Any, right: Any) -> Any:
     result = runtime.reflect.apply(
-        ρσ_exact_integer_binary,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        ρσ_exact_integer_submul,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
         runtime.undefined,
-        [left, right, 1, _BUILTINS_MISSING],
+        [left, right, False, _BUILTINS_MISSING],
     )
     if result is not _BUILTINS_MISSING:
         return result
@@ -2255,9 +2255,9 @@ def ρσ_operator_isub_exact(left: Any, right: Any) -> Any:
 
 def ρσ_operator_imul_exact(left: Any, right: Any) -> Any:
     result = runtime.reflect.apply(
-        ρσ_exact_integer_binary,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        ρσ_exact_integer_submul,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
         runtime.undefined,
-        [left, right, 2, _BUILTINS_MISSING],
+        [left, right, True, _BUILTINS_MISSING],
     )
     if result is not _BUILTINS_MISSING:
         return result

@@ -77,24 +77,22 @@ def ρσ_unbound_method_adapter(target_function):
     })()"""
 
 
-def ρσ_exact_integer_binary(left, right, operation, missing):
+def ρσ_exact_integer_add(left, right, missing):
     return r"""%js (() => {
         const leftType = typeof left, rightType = typeof right;
         const exact = (type, value) => type === "boolean" || type === "bigint" ||
             (type === "number" && Number.isSafeInteger(value));
         if (!exact(leftType, left) || !exact(rightType, right)) return missing;
         if (leftType !== "bigint" && rightType !== "bigint") {
-            const leftNumber = Number(left), rightNumber = Number(right);
-            const result = operation === 0 ? leftNumber + rightNumber :
-                operation === 1 ? leftNumber - rightNumber :
-                leftNumber * rightNumber;
+            const result = Number(left) + Number(right);
             if (Number.isSafeInteger(result)) return result === 0 ? 0 : result;
         }
-        const leftBigint = BigInt(left), rightBigint = BigInt(right);
-        return operation === 0 ? leftBigint + rightBigint :
-            operation === 1 ? leftBigint - rightBigint :
-            leftBigint * rightBigint;
+        return BigInt(left) + BigInt(right);
     })()"""
+
+
+def ρσ_exact_integer_submul(left, right, multiply, missing):
+    return r"""%js (()=>{const a=typeof left,b=typeof right,e=(t,v)=>t==="boolean"||t==="bigint"||t==="number"&&Number.isSafeInteger(v);if(!e(a,left)||!e(b,right))return missing;if(a!=="bigint"&&b!=="bigint"){const v=multiply?Number(left)*Number(right):Number(left)-Number(right);if(Number.isSafeInteger(v))return v===0?0:v}return multiply?BigInt(left)*BigInt(right):BigInt(left)-BigInt(right)})()"""
 
 
 def ρσ_check_interrupt():
