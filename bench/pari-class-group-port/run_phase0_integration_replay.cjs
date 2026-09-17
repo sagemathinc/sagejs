@@ -724,8 +724,11 @@ stage("rnd-collector", {
 });
 
 stage("post-rnd-lie-terminal", {
-  dependencies: ["rnd-collector"],
-  command: () => commandNode("check_post_rnd_lie_iteration.cjs"),
+  dependencies: ["rnd-collector", "initial-kummer", "analytic"],
+  requiresPari: true,
+  command: (context) => commandNode("check_post_rnd_lie_iteration.cjs",
+    context.pariRoot, context.pariArchive,
+    outputPath(context, "initial-kummer"), outputPath(context, "analytic")),
   validate: (summary) => {
     assert.equal(summary.field, 3);
     assert.equal(summary.cpython.counts.randomLast, 295);
@@ -964,6 +967,24 @@ stage("final-state", {
     assert.equal(summary.linkedWitnessMutations, 3);
     assert.equal(summary.publicComplete, false);
     assert.equal(summary.phase5Complete, false);
+  },
+  noFixture: true,
+  allowNoArtifactDirectory: true,
+});
+
+stage("final-state-mutations", {
+  dependencies: ["final-state"],
+  command: () => commandNode("check_class_group_final_mutations.cjs"),
+  validate: (summary) => {
+    assert.equal(summary.schema,
+      "sagejs.pari-class-group/final-mutation-replay-v1");
+    assert.equal(summary.connectedSchema,
+      "sagejs.pari-class-group/connected-final-state-v3");
+    assert.equal(summary.mutationCount, 11);
+    assert.equal(summary.independentlyReplayed, 10);
+    assert.equal(summary.publisherPinnedRetained, 1);
+    assert.equal(summary.phase5Complete, false);
+    assert.equal(summary.publicComplete, false);
   },
   noFixture: true,
   allowNoArtifactDirectory: true,
