@@ -52,30 +52,39 @@ attribution does not.
 | 0 — canonical spine | Partial | Required compiler and port histories are ancestors; pinned PARI 2.17.4 replay driver exists; architecture gate passes at `ba140b214`. | Publish a fresh durable full Phase-0 receipt at the combined commit and record the toolchain/resource ledger. |
 | 1 — observability and ladder | Partial | Four-plus-twelve identities and the 24-field qualification population are frozen; all 16 development PARI traces are exported and hashed. | Natural random-relation, successful honesty, and precision coverage are absent from the performance population; Sage.js does not execute all 16 end to end. |
 | 2 — relation/retry | Partial | Exact cubic collection, quartic repeated nonempty-`W` HNF appends, and isolated random-relation corridors exist. | Generic capacity growth, factor-base enlargement, natural random fallback, and all-sentinel closure remain. |
-| 3 — exact envelope | Partial | H1 full Smith replay and field-3 `[2,2]` relation/Smith state exist. The field-3 live process retains and independently cold-replays all 186,560 exact cells required for the 288-by-301 presentation, factor-base ideals, generators, logs, provenance, permutations, and RNG/control state. | Decode those owners into a replayed full presentation, align it with the compact suffix, and publish exact generator-order and arbitrary-ideal witnesses; the 12-field envelope is open. |
+| 3 — exact envelope | Partial | H1 full Smith replay and field-3 `[2,2]` relation/Smith state exist. The field-3 live process retains and independently cold-replays all 186,560 exact cells. All 301 principal relations now replay exactly against the 288 retained factor-base ideals. A bounded canonical-HNF route proves rank 288, invariant factors `[2,2]`, order 4, exact suffix alignment, and an arbitrary-ideal receipt with an independently checked principal quotient. | Retain and replay the missing 301-by-13 raw-relation-to-accepted-unit transform, join the exact leaves into one transactional result, and close the 12-field envelope. |
 | 4 — units/precision | Partial | The real H1 cubic performs exact source-derived units and retries from 192 to 2304 bits. The authentic mixed-quartic class logs now pass packed `cleanarch` across CPython, JavaScript, GMP, tagged, and pristine PARI. | The mixed-quartic `getfu` path still returns PRECI at 192 bits. Pristine PARI succeeds by 153024 bits, so a neutral high-precision owner/re-log retry and the development panel remain open. |
 | 5 — honesty/final | Partial | One atomic H1 internal final result and mutation/replay contract exist. A field-neutral immutable correspondence envelope now provides canonical encoding, independent mathematical authority, tagged exact/PRECI/LARGE unit outcomes, honesty outcomes, atomic publication, and 15 adversarial mutations. A separate predeclared unequal-bound degree-five path authentically executes the successful six-ideal `be_honest` schedule with transactional rejection. | The envelope deliberately has no H1 adapter until Python replay has a trusted data-only cross-runtime identity. The H1 class group is trivial and its honesty path is an equal-bound skip. Nontrivial generator witnesses, mixed units, and a joined general final replay remain. |
 | 6 — qualification | Partial | A real mutually exclusive seven-pair matched diagnostic conserves each root and leaves only `0.011 ms` median unattributed in Sage.js. | Source stage cuts are not cross-implementation-identical, the 80% cross-source gap attribution gate remains unmet, and the frozen 24-field qualification has not run. |
 
 ## Next falsifiable cuts
 
-1. Decode and replay the newly authenticated full field-3 owners, reconstruct
-   the full relation presentation, align its Smith coordinates with the
-   published `[2,2]` suffix, and publish exact generator-order plus one
-   arbitrary-ideal receipt.
-2. Connect the live nontrivial mixed quartic
+1. Retain the bounded 301-by-13 `hnfspec`/`hnfadd` ancestry transform in the
+   same live field-3 run and prove both `relationRecords * T == 0` and
+   `packedRelationLogs * T == terminalAcceptedA`. The direct generic
+   301-row transform exceeded 7 GiB and is excluded from this campaign.
+2. Join the exact field-3 class presentation, compact units, torsion, and
+   tagged `PRECI/not_given` outcome in the immutable transactional result
+   envelope without manufacturing exact expanded units.
+3. Connect the live nontrivial mixed quartic
    `x^4 - 2000022*x - 2000042` through its existing signed `genback`, Smith,
    mixed `nf_cxlog`/`getfu`, class-generator, `cleanarch`, and final replay
    leaves. Its authenticated live endpoint has 288 factor-base rows, 301
    relations, `H = diag(2,2)`, and class invariants `[2,2]`.
-3. Lift the neutral precision-resource graph to at least the proved PARI
+4. Lift the neutral precision-resource graph to at least the proved PARI
    success bound of 153024 bits, regenerate precision-dependent embeddings and
    logs from the retained exact owners, and rerun `cleanarch`/`getfu` without
    answer-derived transformations.
-4. Preserve the full relation/HNF provenance and exact generator-order
+5. Preserve the full relation/HNF provenance and exact generator-order
    witnesses. A compact identity witness or a rebuilt final-answer fixture is
    not a valid substitute. After those cuts, reassess the next development field from the frozen
    ladder. Do not broaden by selecting easier fields.
+
+The bounded full-presentation checker at integration commit `e635ce176` used
+2,637,224 KiB peak aggregate RSS. It reduced the 301-by-288 source lattice to
+288 canonical HNF rows with 555 nonzero entries, then verified the presentation
+invariants and order. The generic source-transform route is not an alternative:
+it exceeded the four-GiB campaign ceiling before reaching a result.
 
 ## Resource state
 
