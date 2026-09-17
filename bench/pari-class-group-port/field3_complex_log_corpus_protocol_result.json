@@ -1,6 +1,6 @@
 {
   "schema": "sagejs-field3-complex-log-corpus-protocol-result-v1",
-  "status": "paused-at-88-timeout-fragment-recovery-ready",
+  "status": "column-88-qualified-awaiting-column-89",
   "baseCommit": "56324f09872e235b20207f46aa83e4cadebde898",
   "schedule": {
     "batches": 76,
@@ -27,7 +27,7 @@
     "immutableMergeArtifacts": 2,
     "immutableColumnFragments": 4,
     "fragmentAssemblyCapsuleSha256": "bc4e95ba3970b4350c702f914119e338ead2f0995c76c54c9ee72f1e6a39ecf6",
-    "negativeTests": 13
+    "negativeTests": 14
   },
   "estimateFromQualifiedPrefixRun": {
     "warmBatchSeconds": [190, 230],
@@ -104,7 +104,22 @@
     "kernelSourceChanged": false,
     "ordinaryBatchPublishedByFragment": false,
     "assemblyProducesOrdinaryV1Batch": true,
-    "heavyFragmentsExecuted": 0
+    "heavyFragmentsExecuted": 1,
+    "fragmentResumeState": {
+      "complete": 1,
+      "missing": 3,
+      "fragmentOnly": 0
+    },
+    "authenticColumn88": {
+      "outputSha256": "ecd1113dea6bbaea032af2b8754aa2ee793880a3b576849d3f4f336c88b3500d",
+      "runMilliseconds": 94019.560459,
+      "wallMilliseconds": 102620,
+      "peakAggregateRssKiB": 1354600,
+      "fragmentSha256": "da8c242a3453e4d5c38e262ad5ee91669fa8a8aad6003c89619814d56f2a67a8",
+      "excludedReceiptSha256": "90b179d79f297aa76c9b174ca1eb85cf9c928df7ff1273c35af155b0ac838986",
+      "replacementReceiptSha256": "1171272bda08e8654ae21bfd308e8823be80d96b632b8c294ef20116f6b5621d",
+      "supersessionSha256": "b6d671e883357f17599fe602a921c32638565a5b1fcbc25553f52b6dddbfb3d0"
+    }
   },
   "resumeState": {
     "complete": 22,

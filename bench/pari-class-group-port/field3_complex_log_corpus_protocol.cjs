@@ -29,6 +29,8 @@ const FRAGMENT_SCHEMA =
   "sagejs.pari-class-group/field3-complex-log-column-fragment-v1";
 const FRAGMENT_RECEIPT_SCHEMA =
   "sagejs.pari-class-group/field3-complex-log-column-fragment-receipt-v1";
+const FRAGMENT_RECEIPT_SUPERSESSION_SCHEMA =
+  "sagejs.pari-class-group/field3-complex-log-fragment-receipt-supersession-v1";
 const LAYOUT =
   "source-column-major [kind, weighted-2logabs triple, weighted-2arg triple]";
 const AUTHORITY_SHA =
@@ -60,6 +62,8 @@ const FRAGMENT_NAME =
   /^complex-log-fragment-([0-9]+)-([0-9]+)-column-([0-9]+)-([0-9a-f]{64})\.json$/;
 const FRAGMENT_RECEIPT_NAME =
   /^complex-log-fragment-receipt-([0-9]+)-([0-9]+)-column-([0-9]+)-([0-9a-f]{64})\.json$/;
+const FRAGMENT_RECEIPT_SUPERSESSION_NAME =
+  /^complex-log-fragment-receipt-supersession-([0-9]+)-([0-9]+)-column-([0-9]+)-([0-9a-f]{64})\.json$/;
 const sha = (value) => crypto.createHash("sha256").update(value).digest("hex");
 const packedSha = (entries) => sha(entries.map(String).join("\n"));
 const root = path.resolve(__dirname, "../..");
@@ -398,7 +402,8 @@ function readFragment(fragmentPath) {
   return { path: path.resolve(fragmentPath), bytes, digest, value };
 }
 
-function readFragmentReceipt(receiptPath) {
+function readFragmentReceipt(receiptPath, options = {}) {
+  const allowMissingSourceDigests = options.allowMissingSourceDigests === true;
   const bytes = fs.readFileSync(receiptPath);
   const digest = sha(bytes);
   const match = FRAGMENT_RECEIPT_NAME.exec(path.basename(receiptPath));
@@ -413,7 +418,17 @@ function readFragmentReceipt(receiptPath) {
   assert.equal(value.schema, FRAGMENT_RECEIPT_SCHEMA);
   const expected = commonIdentity();
   for (const key of Object.keys(expected)) {
+    if (
+      key === "sourceDigests" &&
+      allowMissingSourceDigests &&
+      value.sourceDigests === undefined
+    ) {
+      continue;
+    }
     assert.deepEqual(value[key], expected[key], `mismatched fragment receipt ${key}`);
+  }
+  if (!allowMissingSourceDigests) {
+    assert.deepEqual(value.sourceDigests, SOURCE_DIGESTS);
   }
   scheduledRange(value.parentSourceStart, value.parentSourceCount);
   assert.equal(
@@ -464,6 +479,143 @@ function readFragmentReceipt(receiptPath) {
     String(TOTAL_COLUMNS - value.column - 1),
   ]);
   return { path: path.resolve(receiptPath), bytes, digest, value, fragment };
+}
+
+function publishFragmentReceiptSupersession(
+  outputDirectory,
+  excluded,
+  replacement,
+) {
+  const value = {
+    schema: FRAGMENT_RECEIPT_SUPERSESSION_SCHEMA,
+    ...commonIdentity(),
+    parentSourceStart: replacement.value.parentSourceStart,
+    parentSourceCount: replacement.value.parentSourceCount,
+    column: replacement.value.column,
+    reason: "legacy fragment receipt omitted authenticated sourceDigests",
+    repairChanges: ["add sourceDigests from commonIdentity"],
+    excludedReceipt: {
+      path: excluded.path,
+      sha256: excluded.digest,
+      bytes: excluded.bytes.length,
+      mode: "0444",
+    },
+    replacementReceipt: {
+      path: replacement.path,
+      sha256: replacement.digest,
+      bytes: replacement.bytes.length,
+      mode: "0444",
+    },
+  };
+  const bytes = Buffer.from(`${JSON.stringify(value, null, 2)}\n`);
+  const digest = sha(bytes);
+  return publishImmutable(
+    outputDirectory,
+    `complex-log-fragment-receipt-supersession-${value.parentSourceStart}-${value.parentSourceCount}-column-${value.column}-${digest}.json`,
+    bytes,
+  );
+}
+
+function readFragmentReceiptSupersession(supersessionPath) {
+  const bytes = fs.readFileSync(supersessionPath);
+  const digest = sha(bytes);
+  const match = FRAGMENT_RECEIPT_SUPERSESSION_NAME.exec(
+    path.basename(supersessionPath),
+  );
+  assert(match, `invalid fragment receipt supersession filename: ${supersessionPath}`);
+  assert.equal(match[4], digest, "fragment receipt supersession filename hash mismatch");
+  assert.equal(
+    fs.statSync(supersessionPath).mode & 0o777,
+    0o444,
+    "fragment receipt supersession is not 0444",
+  );
+  const value = JSON.parse(bytes);
+  assert.equal(value.schema, FRAGMENT_RECEIPT_SUPERSESSION_SCHEMA);
+  const expected = commonIdentity();
+  for (const key of Object.keys(expected)) {
+    assert.deepEqual(
+      value[key],
+      expected[key],
+      `mismatched fragment receipt supersession ${key}`,
+    );
+  }
+  assert.equal(Number(match[1]), value.parentSourceStart);
+  assert.equal(Number(match[2]), value.parentSourceCount);
+  assert.equal(Number(match[3]), value.column);
+  assert.equal(value.reason, "legacy fragment receipt omitted authenticated sourceDigests");
+  assert.deepEqual(value.repairChanges, ["add sourceDigests from commonIdentity"]);
+  assert.equal(value.excludedReceipt.mode, "0444");
+  assert.equal(value.replacementReceipt.mode, "0444");
+  const excluded = readFragmentReceipt(value.excludedReceipt.path, {
+    allowMissingSourceDigests: true,
+  });
+  const replacement = readFragmentReceipt(value.replacementReceipt.path);
+  assert.equal(excluded.digest, value.excludedReceipt.sha256);
+  assert.equal(excluded.bytes.length, value.excludedReceipt.bytes);
+  assert.equal(replacement.digest, value.replacementReceipt.sha256);
+  assert.equal(replacement.bytes.length, value.replacementReceipt.bytes);
+  assert.equal(excluded.value.sourceDigests, undefined);
+  const replacementWithoutRepair = { ...replacement.value };
+  delete replacementWithoutRepair.sourceDigests;
+  assert.deepEqual(
+    replacementWithoutRepair,
+    excluded.value,
+    "receipt repair altered a mathematical, resource, or provenance field",
+  );
+  assert.equal(replacement.value.parentSourceStart, value.parentSourceStart);
+  assert.equal(replacement.value.parentSourceCount, value.parentSourceCount);
+  assert.equal(replacement.value.column, value.column);
+  return {
+    path: path.resolve(supersessionPath),
+    bytes,
+    digest,
+    value,
+    excluded,
+    replacement,
+  };
+}
+
+function repairOmittedSourceDigests(receiptPath, outputDirectory) {
+  const excluded = readFragmentReceipt(receiptPath, {
+    allowMissingSourceDigests: true,
+  });
+  assert.equal(
+    excluded.value.sourceDigests,
+    undefined,
+    "receipt repair requires sourceDigests to be the sole omitted field",
+  );
+  const repairedValue = {
+    ...excluded.value,
+    sourceDigests: SOURCE_DIGESTS,
+  };
+  const preserved = { ...repairedValue };
+  delete preserved.sourceDigests;
+  assert.deepEqual(
+    preserved,
+    excluded.value,
+    "receipt repair altered a mathematical, resource, or provenance field",
+  );
+  const repairedBytes = Buffer.from(`${JSON.stringify(repairedValue, null, 2)}\n`);
+  const repairedDigest = sha(repairedBytes);
+  const published = publishImmutable(
+    outputDirectory,
+    `complex-log-fragment-receipt-${repairedValue.parentSourceStart}-${repairedValue.parentSourceCount}-column-${repairedValue.column}-${repairedDigest}.json`,
+    repairedBytes,
+  );
+  const replacement = readFragmentReceipt(published.path);
+  const supersession = publishFragmentReceiptSupersession(
+    outputDirectory,
+    excluded,
+    replacement,
+  );
+  const verifiedSupersession = readFragmentReceiptSupersession(supersession.path);
+  return {
+    excludedReceipt: verifiedSupersession.value.excludedReceipt,
+    replacementReceipt: verifiedSupersession.value.replacementReceipt,
+    supersession,
+    preservedFields: Object.keys(excluded.value).sort(),
+    addedFields: ["sourceDigests"],
+  };
 }
 
 function readCapsule(capsulePath) {
@@ -898,7 +1050,6 @@ function publishFragmentReceipt(outputDirectory, result) {
     ...commonIdentity(),
     ...result,
   };
-  delete receipt.sourceDigests;
   delete receipt.packedWeightedComplex;
   const receiptBytes = Buffer.from(`${JSON.stringify(receipt, null, 2)}\n`);
   const receiptSha256 = sha(receiptBytes);
@@ -1054,8 +1205,42 @@ function findFragmentReceipts(directory) {
     .map((name) => path.join(directory, name));
 }
 
+function findFragmentReceiptSupersessions(directory) {
+  if (!fs.existsSync(directory)) return [];
+  return fs.readdirSync(directory)
+    .filter((name) => FRAGMENT_RECEIPT_SUPERSESSION_NAME.test(name))
+    .map((name) => path.join(directory, name));
+}
+
 function fragmentResumePlan(parentSourceStart, parentSourceCount, directory) {
   const schedule = scheduledRange(parentSourceStart, parentSourceCount);
+  const supersessions = [];
+  const excludedReceiptPaths = new Map();
+  for (const supersessionPath of findFragmentReceiptSupersessions(directory)) {
+    const match = FRAGMENT_RECEIPT_SUPERSESSION_NAME.exec(
+      path.basename(supersessionPath),
+    );
+    assert(match);
+    if (
+      Number(match[1]) !== parentSourceStart ||
+      Number(match[2]) !== parentSourceCount
+    ) {
+      continue;
+    }
+    const supersession = readFragmentReceiptSupersession(supersessionPath);
+    const excludedPath = path.resolve(
+      supersession.value.excludedReceipt.path,
+    );
+    assert(
+      !excludedReceiptPaths.has(excludedPath),
+      `duplicate receipt supersession for ${excludedPath}`,
+    );
+    excludedReceiptPaths.set(
+      excludedPath,
+      supersession.value.excludedReceipt.sha256,
+    );
+    supersessions.push(supersession);
+  }
   const fragments = new Map();
   for (const fragmentPath of findFragments(directory)) {
     const match = FRAGMENT_NAME.exec(path.basename(fragmentPath));
@@ -1081,6 +1266,15 @@ function fragmentResumePlan(parentSourceStart, parentSourceCount, directory) {
       Number(match[1]) !== parentSourceStart ||
       Number(match[2]) !== parentSourceCount
     ) {
+      continue;
+    }
+    const excludedDigest = excludedReceiptPaths.get(path.resolve(receiptPath));
+    if (excludedDigest !== undefined) {
+      assert.equal(
+        sha(fs.readFileSync(receiptPath)),
+        excludedDigest,
+        "superseded receipt path changed content",
+      );
       continue;
     }
     const receipt = readFragmentReceipt(receiptPath);
@@ -1132,6 +1326,12 @@ function fragmentResumePlan(parentSourceStart, parentSourceCount, directory) {
     parentSourceCount,
     parentSourceStop: parentSourceStart + parentSourceCount,
     directory: path.resolve(directory),
+    supersessions: supersessions.map((entry) => ({
+      path: entry.path,
+      sha256: entry.digest,
+      excludedReceiptSha256: entry.value.excludedReceipt.sha256,
+      replacementReceiptSha256: entry.value.replacementReceipt.sha256,
+    })),
     columns,
     complete: columns.filter((entry) => entry.status === "complete").length,
     missing: columns.filter((entry) => entry.status === "missing").length,
@@ -1232,6 +1432,7 @@ function lightweightSelfTest() {
     syntheticReceiptBytes,
   ).path;
   assert.equal(readReceipt(syntheticReceiptPath).value.capsule.sha256, firstCapsule.digest);
+  let negativeTests = 0;
   const fragmentDirectory = fs.mkdtempSync(
     path.join(os.tmpdir(), "field3-complex-fragments-"),
   );
@@ -1273,6 +1474,7 @@ function lightweightSelfTest() {
       peakAggregateRssKiB: 3,
       resourcePolicy: { abortGiB: 3.5, hardGiB: 4, timeoutSeconds: 600 },
     };
+    if (column === 88) delete fragmentReceipt.sourceDigests;
     const bytes = Buffer.from(`${JSON.stringify(fragmentReceipt, null, 2)}\n`);
     fragmentReceiptPaths.push(
       publishImmutable(
@@ -1282,6 +1484,27 @@ function lightweightSelfTest() {
       ).path,
     );
   }
+  const omittedReceiptPath = fragmentReceiptPaths[0];
+  negativeTests += expectFailure(
+    () => readFragmentReceipt(omittedReceiptPath),
+    /sourceDigests/,
+  );
+  const omittedValue = readFragmentReceipt(omittedReceiptPath, {
+    allowMissingSourceDigests: true,
+  }).value;
+  const repair = repairOmittedSourceDigests(
+    omittedReceiptPath,
+    fragmentDirectory,
+  );
+  fragmentReceiptPaths[0] = repair.replacementReceipt.path;
+  const repairedValue = readFragmentReceipt(fragmentReceiptPaths[0]).value;
+  const repairedWithoutAddedField = { ...repairedValue };
+  delete repairedWithoutAddedField.sourceDigests;
+  assert.deepEqual(repairedWithoutAddedField, omittedValue);
+  assert.deepEqual(repair.addedFields, ["sourceDigests"]);
+  assert(repair.preservedFields.includes("runMilliseconds"));
+  assert(repair.preservedFields.includes("wallMilliseconds"));
+  assert(repair.preservedFields.includes("peakAggregateRssKiB"));
   assert.equal(
     findCapsules(fragmentDirectory).length,
     0,
@@ -1307,7 +1530,6 @@ function lightweightSelfTest() {
     readCapsule(capsulePaths[22]).digest,
     "fragment assembly must reproduce the canonical direct 88:4 capsule bytes",
   );
-  let negativeTests = 0;
   negativeTests += expectFailure(
     () => verifyCompleteCapsules(capsulePaths.slice(1), selectedPrefix),
     /76/,
@@ -1465,6 +1687,17 @@ async function commandLine() {
     );
     return;
   }
+  if (process.argv.includes("--repair-fragment-receipt")) {
+    const receiptPath = path.resolve(argument("--repair-fragment-receipt"));
+    console.log(
+      JSON.stringify(
+        repairOmittedSourceDigests(receiptPath, outputDirectory),
+        null,
+        2,
+      ),
+    );
+    return;
+  }
   if (process.argv.includes("--assemble-fragments")) {
     const parentSourceStart = Number(argument("--fragment-parent-start"));
     const parentSourceCount = Number(argument("--fragment-parent-count"));
@@ -1541,6 +1774,7 @@ module.exports = {
   OWNER_SCHEMA,
   FRAGMENT_SCHEMA,
   FRAGMENT_RECEIPT_SCHEMA,
+  FRAGMENT_RECEIPT_SUPERSESSION_SCHEMA,
   EXPECTED_SCHEDULE,
   commonIdentity,
   makeCapsule,
@@ -1552,6 +1786,8 @@ module.exports = {
   readReceipt,
   readFragment,
   readFragmentReceipt,
+  readFragmentReceiptSupersession,
+  repairOmittedSourceDigests,
   verifyCompleteCapsules,
   ownerFromCapsules,
   mergeCapsules,

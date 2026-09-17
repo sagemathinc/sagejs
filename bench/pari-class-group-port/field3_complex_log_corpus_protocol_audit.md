@@ -180,3 +180,38 @@ node bench/pari-class-group-port/field3_complex_log_corpus_protocol.cjs \
 
 The assembler requires the receipt paths after `--assemble-fragments` in exact
 source-column order.
+
+## Authentic column 88 and deterministic receipt repair
+
+The first authentic one-column invocation, column 88 of parent range `88:4`,
+completed successfully. Native execution took 94,019.560459 ms, monitored wall
+time was 102,620 ms, and peak aggregate RSS was 1,354,600 KiB. Its seven packed
+cells have digest
+`ecd1113dea6bbaea032af2b8754aa2ee793880a3b576849d3f4f336c88b3500d`.
+The 93,422-byte mode-0444 fragment has SHA-256
+`da8c242a3453e4d5c38e262ad5ee91669fa8a8aad6003c89619814d56f2a67a8`.
+
+The first receipt publisher mistakenly deleted `sourceDigests` after spreading
+the common identity. The strict fragment planner rejected that receipt, so the
+column was not initially treated as complete. The erroneous 2,058-byte receipt
+remains immutable at SHA-256
+`90b179d79f297aa76c9b174ca1eb85cf9c928df7ff1273c35af155b0ac838986`.
+No arithmetic was rerun.
+
+The repair accepts an old receipt only when every mathematical, resource, and
+provenance field validates and `sourceDigests` is the sole absent common field.
+It adds exactly the authenticated common source digests, proves that deleting
+the added field reproduces the old parsed object, and publishes a new
+content-addressed receipt. The corrected 2,379-byte mode-0444 receipt has
+SHA-256
+`1171272bda08e8654ae21bfd308e8823be80d96b632b8c294ef20116f6b5621d`.
+A separate 1,992-byte mode-0444 supersession record permanently binds the bad
+and corrected hashes and has SHA-256
+`b6d671e883357f17599fe602a921c32638565a5b1fcbc25553f52b6dddbfb3d0`.
+
+The resume planner excludes the bad receipt only after independently replaying
+that exact supersession chain. It now reports column 88 complete, columns
+89--91 missing, and zero fragment-only entries. The self-test has 14 negative
+controls, including rejection of the missing field and proof that repair
+preserves all old mathematical and resource values. No ordinary `88:4`
+capsule or receipt has been published.

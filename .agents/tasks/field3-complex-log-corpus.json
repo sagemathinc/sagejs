@@ -72,17 +72,22 @@
     {
       "command": "node --check bench/pari-class-group-port/field3_complex_log_corpus_protocol.cjs && node bench/pari-class-group-port/field3_complex_log_corpus_protocol.cjs --self-test",
       "status": "passed",
-      "summary": "Proved four immutable one-column fragments publish no ordinary batch before ordered assembly, reproduce the canonical v1 88:4 capsule bytes, and pass 13 protocol negative controls"
+      "summary": "Proved four immutable one-column fragments publish no ordinary batch before ordered assembly, reproduce the canonical v1 88:4 capsule bytes, and pass 14 protocol negative controls including omitted-digest repair"
+    },
+    {
+      "command": "node bench/pari-class-group-port/field3_complex_log_corpus_protocol.cjs --fragment-parent-start 88 --fragment-parent-count 4 --column 88",
+      "status": "passed-after-receipt-repair",
+      "summary": "Qualified authentic column 88 without recomputing arithmetic: native 94019.560459 ms, wall 102620 ms, peak 1354600 KiB; retained the rejected receipt and authenticated its corrected replacement through an immutable supersession"
     }
   ],
   "handoff": {
-    "summary": "Qualified authentic deterministic batches 0:4 through 84:4, then stopped fail-atomically when 88:4 exceeded the fixed 600-second limit. Added a JS-only authenticated one-column fragment and ordered assembly protocol that leaves the mathematical kernel and common identity unchanged and reproduces the ordinary canonical v1 parent batch.",
+    "summary": "Qualified authentic deterministic batches 0:4 through 84:4, then stopped fail-atomically when 88:4 exceeded the fixed 600-second limit. Added a JS-only authenticated one-column fragment and ordered assembly protocol. Authentic column 88 is now complete after a deterministic provenance-preserving receipt repair; columns 89--91 remain unstarted.",
     "risks": [
-      "No authentic one-column fragment has yet run, so the slow column among 88--91 and its isolated runtime remain unknown",
+      "Only authentic column 88 has run; the slow column among 89--91 and each isolated runtime remain unknown",
       "The killed v1 worker emits native timing only after return; its >591-second native attribution is inferred from measured setup overhead in adjacent batches rather than a completed timer"
     ],
     "next_steps": [
-      "After explicit resource authorization, run columns 88, 89, 90, and 91 as separately supervised authenticated fragments, stopping on the first failure",
+      "After explicit resource authorization, run column 89 as the next separately supervised authenticated fragment, stopping on failure",
       "If all four fragments pass, assemble their receipt paths in exact source order and verify the resulting ordinary 88:4 capsule/receipt through the unchanged resume planner",
       "Resume later deterministic batches only after the 88:4 recovery is qualified",
       "Integration owns broad native and strict suites"
