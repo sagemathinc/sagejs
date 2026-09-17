@@ -397,6 +397,18 @@ differential, package, strict, and merge gates pass at 902,612/903,000 core
 bytes. Exact evidence is in `agents/python-constructor-new-guard-native.md`.
 Keep this candidate behind the existing integration queue and keep M5 open.
 
+**2026-09-17 prepared-method keyword checkpoint:** the mutation-safe warm
+method lookup already authenticates an ordinary callable target, but the
+keyword binder repeated callable/class/callable-instance classification. A
+single internal bit on only that proven tuple now skips classification while
+retaining binding, errors, and all cold/custom/mutated paths. Controlled
+exact-artifact measurements improve immediate keyword methods by 2.9%; all
+other matrix rows remain within 1.7%. The residual gap is still 24.5x CPython.
+The 108-byte artifact/source cost leaves core runtime at 902,720/903,000.
+Differential, mutation, traitlets, attrs/decorator, strict, and merge gates pass.
+Exact evidence is in `agents/python-prepared-method-keyword-context.md`. Keep
+this candidate behind its prerequisites and M5 open.
+
 Continue next with integration-aware qualification, the receiver-lookup campaign,
 and true handled-exception ownership. Generator/coroutine suspension makes a
 single global active-exception pointer unsafe: preserve owned handlers while

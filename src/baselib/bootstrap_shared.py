@@ -114,7 +114,7 @@ def ρσ_prepare_method_call(value, name):
         if(m!==undefined&&m[0]===_builtins_descriptor_epoch.value&&m[4]===true){
             const n=_builtins_instance_namespaces.get(value);
             if((n===undefined||!n.jsmap.has(name))&&!Object.hasOwn(value,name))
-                return [m[3],value,m[5]];
+                return [m[3],value,m[5],true];
         }
         const x=[undefined,undefined,false];
         const member=_builtins_public_getattr(value,name,_BUILTINS_MISSING,x);
@@ -129,6 +129,7 @@ def ρσ_attr(value, name, member):
 
 def ρσ_interpolate_kwargs(receiver, target_function, supplied_args):
     return r"""%js (() => {
+        let prepared=false;
         if(target_function===undefined&&Array.isArray(receiver)){
             const context=receiver;
             target_function=context[0];
@@ -136,6 +137,7 @@ def ρσ_interpolate_kwargs(receiver, target_function, supplied_args):
             if(receiver===undefined)
                 return ρσ_interpolate_kwargs(receiver,target_function,supplied_args);
             if(context[2]===true){supplied_args.unshift(receiver);receiver=undefined;}
+            prepared=context[3]===true;
         }else if(_internal_class_instance_function(receiver,target_function)&&
                  _internal_get_member(target_function,"__self__")===undefined){
             receiver=undefined;
@@ -147,15 +149,15 @@ def ρσ_interpolate_kwargs(receiver, target_function, supplied_args):
                  })){
             receiver=undefined;
         }
-        if(!_internal_type_is(ρσ_native_jstype(target_function),"function")||
-           _internal_get_member(target_function,"__sagejs_callable_instance__")===true){
+        if(!prepared&&(!_internal_type_is(ρσ_native_jstype(target_function),"function")||
+           _internal_get_member(target_function,"__sagejs_callable_instance__")===true)){
             receiver=target_function;
             target_function=_internal_callable_slot(target_function);
-        }else if(_internal_has_own(target_function,"__bases__")){
+        }else if(!prepared&&_internal_has_own(target_function,"__bases__")){
             receiver=undefined;
             if(_internal_keyword_constructor_prototypes.has(target_function.prototype))
                 return Reflect.apply(target_function,undefined,supplied_args);
-        }else if(!target_function.__argnames__&&!target_function.__kwonly__&&
+        }else if(!prepared&&!target_function.__argnames__&&!target_function.__kwonly__&&
                  _internal_get_member(target_function,"__sagejs_callable_instance_class__")!==true&&
                  !_internal_has_own(target_function,"__bases__")){
             const callable_method=Reflect.apply(_internal_builtin("ρσ_getattr"),

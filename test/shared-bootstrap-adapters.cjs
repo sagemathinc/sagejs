@@ -56,7 +56,7 @@ test("prepared method calls use and invalidate the shared prototype cache", () =
   });
 
   assert.deepEqual(Array.from(api.ρσ_prepare_method_call(receiver, "method")),
-    [target, receiver, false]);
+    [target, receiver, false, true]);
   assert.equal(fallbacks, 0);
 
   epoch.value += 1;
@@ -182,6 +182,19 @@ test("shared keyword binding consumes literal packets without Python operators",
   const result = api.ρσ_interpolate_kwargs([target, receiver, false], undefined, [packet]);
   assert.deepEqual(Array.from(result).slice(0, 4), [receiver, 3, undefined, 5]);
   assert.deepEqual(Object.keys(result[4]), []);
+
+  const preparedPacket = { left: 7, right: 11 };
+  const preparedApi = context({
+    _internal_class_instance_function: () => { throw new Error("reclassified"); },
+    _internal_get_member: () => { throw new Error("reclassified"); },
+    _internal_type_is: () => { throw new Error("reclassified"); },
+    _internal_has_own: (value, name) => Object.hasOwn(value, name),
+    ρσ_exception_value: value => value,
+  });
+  const prepared = preparedApi.ρσ_interpolate_kwargs(
+    [target, receiver, false, true], undefined, [preparedPacket]);
+  assert.deepEqual(Array.from(prepared).slice(0, 4), [receiver, 7, undefined, 11]);
+  assert.deepEqual(Object.keys(prepared[4]), []);
 
   assert.throws(
     () => api.ρσ_interpolate_kwargs(undefined, target, [1, { left: 2 }]),
