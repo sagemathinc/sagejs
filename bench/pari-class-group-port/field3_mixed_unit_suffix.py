@@ -201,24 +201,28 @@ def pari_field3_prepare_getfu(
         sm, sp, se = clean[base + 1], clean[base + 2], clean[base + 3]
         for row in range(1, 3):
             at = base + 7 * row
-            sm, sp, se = pari_regulator_scalar_add(
-                sm, sp, se, clean[at + 1], clean[at + 2], clean[at + 3]
-            )
+            xm, xp, xe = clean[at + 1], clean[at + 2], clean[at + 3]
+            sm, sp, se = pari_regulator_scalar_add(sm, sp, se, xm, xp, xe)
         sm, sp, se = pari_real_integer_division(-4, sm, sp, se)
         for row in range(3):
             at = base + 7 * row
             addm, addp, adde = sm, sp, se
+            xm, xp, xe = clean[at + 1], clean[at + 2], clean[at + 3]
+            im, ip, ie = clean[at + 4], clean[at + 5], clean[at + 6]
             if row == 2:
-                addm, addp, adde = pari_real_integer_division(2, sm, sp, se)
-            rm, rp, re = pari_regulator_scalar_add(
-                clean[at + 1], clean[at + 2], clean[at + 3], addm, addp, adde
-            )
+                # For a complex place fixarch stores `s + x/2`, including
+                # halving the imaginary component.  The correction `s`
+                # itself is not halved.
+                xm, xp, xe = pari_real_integer_division(2, xm, xp, xe)
+                im, ip, ie = pari_real_integer_division(2, im, ip, ie)
+            rm, rp, re = pari_regulator_scalar_add(xm, xp, xe, addm, addp, adde)
             matep[at] = clean[at]
             matep[at + 1] = rm
             matep[at + 2] = rp
             matep[at + 3] = re
-            for t in range(3):
-                matep[at + 4 + t] = clean[at + 4 + t]
+            matep[at + 4] = im
+            matep[at + 5] = ip
+            matep[at + 6] = ie
     pari_log_matrix_transform(matep, factor, 3, 2, 2, False, arch)
     pari_log_matrix_transform(clean, factor, 3, 2, 2, False, factored_clean)
     for i in range(6):

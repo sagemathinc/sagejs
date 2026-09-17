@@ -7,7 +7,7 @@ const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 
 const ROOT = path.resolve(__dirname, "../..");
-const SCHEMA = "sagejs.pari-class-group/panel8-c5-unit-lattice-cleanarch-v1";
+const SCHEMA = "sagejs.pari-class-group/panel8-c5-unit-lattice-cleanarch-v2";
 
 function fail(message) { throw new Error(`panel-8 C5 unit lattice: ${message}`); }
 function digest(bytes) { return crypto.createHash("sha256").update(bytes).digest("hex"); }
@@ -47,6 +47,7 @@ function verifyOwner(owner) {
       owner.selection.result !== "NULL" || owner.selection.selectedColumns.length !== 0 ||
       owner.u1.length !== 18 || owner.u2.length !== 4 || owner.u.length !== 18 ||
       owner.au.length !== 42 || owner.cleanA.length !== 42 || owner.a.length !== 42 ||
+      owner.getfuCandidateA.length !== 42 ||
       owner.getfuFactor.length !== 4 ||
       owner.ancestry.acceptedRetryOwnerSha256 !== owner.acceptedRetryOwnerSha256 ||
       owner.ancestry.pristineW0Sha256 !== owner.pristineW0Sha256 ||

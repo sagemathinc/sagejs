@@ -30,7 +30,7 @@ from .unit_lattice_selection import pari_unit_lattice_selection
 
 
 ACCEPTED_SCHEMA = "sagejs.pari-class-group/panel8-accepted-retry-owner-v1"
-OUTPUT_SCHEMA = "sagejs.pari-class-group/panel8-c5-unit-lattice-cleanarch-v1"
+OUTPUT_SCHEMA = "sagejs.pari-class-group/panel8-c5-unit-lattice-cleanarch-v2"
 ACCEPTED_OWNER_SHA256 = (
     "b2e1a6a0d737880627d8829569c24447557c389690d2ec5a35a9e1c6c0430591"
 )
@@ -130,6 +130,7 @@ def pari_panel8_c5_unit_lattice_cleanarch(
     output_clean: IntegerBuffer,
     output_factor: IntegerBuffer,
     output_final_a: IntegerBuffer,
+    output_getfu_candidate_a: IntegerBuffer,
     state: Int64Buffer,
 ) -> int:
     """Compute the rank-two suffix and transactionally publish exact states.
@@ -197,6 +198,7 @@ def pari_panel8_c5_unit_lattice_cleanarch(
         or len(output_clean) < 42
         or len(output_factor) < 4
         or len(output_final_a) < 42
+        or len(output_getfu_candidate_a) < 42
         or len(state) < 16
     ):
         raise ValueError("short panel-8 C5 owner")
@@ -382,6 +384,12 @@ def pari_panel8_c5_unit_lattice_cleanarch(
     if determinant != 1 and determinant != -1:
         state[0] = 7
         return 7
+    # `pari_unit_real_lattice_rank_two` exposes its small transform row-major,
+    # while RgM_ZM_mul and the retained PARI owner are column-major.  The first
+    # reduction happened to be symmetric on this field; getfu's factor is not.
+    temporary = factor_work[1]
+    factor_work[1] = factor_work[2]
+    factor_work[2] = temporary
     pari_field3_prepare_getfu(
         clean_work,
         factor_work,
@@ -397,14 +405,21 @@ def pari_panel8_c5_unit_lattice_cleanarch(
     state[2] = 3
     for index in range(18):
         output_u1[index] = u1_work[index]
-        output_u[index] = final_u_work[index]
+        # With flag zero, getfu receives ptU == NULL.  Its private factor is
+        # not committed to Buchall's public U when reconstruction returns
+        # PRECI.
+        output_u[index] = composed_work[index]
     for index in range(4):
         output_u2[index] = u2_work[index]
         output_factor[index] = factor_work[index]
     for index in range(42):
         output_au[index] = au_work[index]
         output_clean[index] = clean_work[index]
-        output_final_a[index] = final_a_work[index]
+        # Likewise, `*ptA` is assigned only after solve and rounding succeed.
+        # Retain both the public pre-getfu A and the private candidate A used
+        # by the getfu solve.
+        output_final_a[index] = clean_work[index]
+        output_getfu_candidate_a[index] = final_a_work[index]
     state[0] = 0
     state[11] = 1
     return 0
@@ -548,6 +563,7 @@ def compose_authenticated_panel8_c5(
     clean = _zeros(42)
     factor = _zeros(4)
     final_a = _zeros(42)
+    getfu_candidate_a = _zeros(42)
     state = _zeros(16)
     status = pari_panel8_c5_unit_lattice_cleanarch(
         packed_a,
@@ -636,6 +652,7 @@ def compose_authenticated_panel8_c5(
         clean,
         factor,
         final_a,
+        getfu_candidate_a,
         state,
     )
     if status != 0 or state[11] != 1:
@@ -668,8 +685,10 @@ def compose_authenticated_panel8_c5(
         != regulator
     ):
         raise Panel8C5Failure("computed boundary regulator differs from pristine W0")
-    if factor != [1, 0, 0, 1]:
-        raise Panel8C5Failure("computed getfu second factor is not identity")
+    if factor != [1, 0, -2, 1]:
+        raise Panel8C5Failure(
+            "computed getfu factor differs from matched PARI: " + str(factor)
+        )
 
     return {
         "schema": OUTPUT_SCHEMA,
@@ -700,6 +719,8 @@ def compose_authenticated_panel8_c5(
         "getfuFactor": [str(value) for value in factor],
         "aShape": [3, 2],
         "a": [str(value) for value in final_a],
+        "getfuCandidateAShape": [3, 2],
+        "getfuCandidateA": [str(value) for value in getfu_candidate_a],
         "state": state,
         "pristineComparison": {
             "event": 489,

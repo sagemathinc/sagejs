@@ -40,7 +40,7 @@ try {
   const owner = JSON.parse(fs.readFileSync(first.path));
   verifyOwner(owner);
   assert.deepEqual(owner.state, [0, 192, 3, 0, 0, 0, 0, -1, 0, 0, 1, 1, 9, 3, 2, 9]);
-  assert.deepEqual(owner.getfuFactor, ["1", "0", "0", "1"]);
+  assert.deepEqual(owner.getfuFactor, ["1", "0", "-2", "1"]);
 
   // Capture the exact CPython call packet after a successful authenticated
   // composition.  Reference event 489 is not included in this packet.
@@ -85,7 +85,7 @@ const runtimeRoot=process.argv[1],sourcePath=process.argv[2],fixture=JSON.parse(
   }
   const status=f[backend](...fixture.names.map(([name])=>values[name]));assert.equal(status,0n,backend);
   const expected=fixture.result;
-  for(const [name,key]of [['output_u1','u1'],['output_u2','u2'],['output_u','u'],['output_au','au'],['output_clean','cleanA'],['output_factor','getfuFactor'],['output_final_a','a']])
+  for(const [name,key]of [['output_u1','u1'],['output_u2','u2'],['output_u','u'],['output_au','au'],['output_clean','cleanA'],['output_factor','getfuFactor'],['output_final_a','a'],['output_getfu_candidate_a','getfuCandidateA']])
    assert.deepEqual(view(values[name]).map(String),expected[key],backend+': '+name);
   assert.deepEqual(view(values.state).map(Number),expected.state,backend+': state');
   const shortened=fixture.names.map(([name])=>values[name]);const at=fixture.names.findIndex(([name])=>name==='output_final_a');
