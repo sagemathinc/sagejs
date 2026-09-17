@@ -12,6 +12,7 @@ explicitly rather than being replaced by an answer-derived value.
 
 from sagejs.native import IntegerBuffer, Int64Buffer, native
 
+from .live_retry_control import pari_live_retry_transition
 from .regulator_approx_zero import pari_regulator_exponent
 from .regulator_bestappr import (
     pari_regulator_bestappr_fraction,
@@ -28,6 +29,50 @@ from .regulator_scalar import (
     pari_regulator_scalar_add,
     pari_regulator_scalar_multiply,
 )
+
+
+@native
+def pari_field3_precision_outcome(
+    compute_r_status: int,
+    getfu_status: int,
+    current_precision: int,
+    retry_work: Int64Buffer,
+    state: Int64Buffer,
+) -> int:
+    """Separate Buchall `compute_R` retry from terminal `getfu` PRECI.
+
+    State is compute-R retry flag/target, getfu terminal flag/reason, and
+    current precision. A `compute_R` PRECI follows `myprecdbl`; a later
+    `getfu` PRECI is returned as `not_given` and does not restart Buchall.
+    """
+    if len(retry_work) < 6 or len(state) < 5:
+        raise ValueError("short field-3 precision outcome state")
+    if (compute_r_status != 0 and compute_r_status != 3) or (
+        getfu_status != 0 and getfu_status != 3
+    ):
+        raise ValueError("unsupported field-3 precision outcome")
+    if (
+        current_precision < 64
+        or current_precision > 1048576
+        or current_precision % 64 != 0
+        or (compute_r_status == 3 and getfu_status == 3)
+    ):
+        raise ValueError("invalid field-3 precision outcome protocol")
+    state[0] = 0
+    state[1] = 0
+    state[2] = 0
+    state[3] = 0
+    state[4] = current_precision
+    if compute_r_status == 3:
+        pari_live_retry_transition(3, current_precision, 0, 0, 0, retry_work)
+        state[0] = 1
+        state[1] = retry_work[3]
+        return 3
+    if getfu_status == 3:
+        state[2] = 1
+        state[3] = 3
+        return 3
+    return 0
 
 
 @native
@@ -200,11 +245,11 @@ def pari_field3_high_precision_regulator_schedule(
     polynomial: IntegerBuffer,
     signature: Int64Buffer,
     c3_state: Int64Buffer,
-    retry_protocol: Int64Buffer,
+    precision_protocol: Int64Buffer,
     c3_hash: Int64Buffer,
     expected_hash: Int64Buffer,
     expected_latches: IntegerBuffer,
-    denominator_bound: int,
+    diagnostic_denominator_bound: int,
     prepared: IntegerBuffer,
     selected: Int64Buffer,
     prep_state: Int64Buffer,
@@ -261,7 +306,7 @@ def pari_field3_high_precision_regulator_schedule(
         len(state) < 7
         or len(signature) < 8
         or len(c3_state) < 8
-        or len(retry_protocol) < 4
+        or len(precision_protocol) < 4
         or len(c3_hash) < 4
         or len(expected_hash) < 4
         or len(published_hash) < 4
@@ -288,31 +333,24 @@ def pari_field3_high_precision_regulator_schedule(
     ):
         raise ValueError("wrong field-3 C4 signature protocol")
     precision = c3_state[4]
-    if precision != 192 and precision != 153088 and precision != 153152:
+    if precision != 192 and precision != 153088:
         raise ValueError("unsupported field-3 C4 precision")
     if precision == 192:
         if (
-            retry_protocol[0] != 0
-            or retry_protocol[1] != 1
-            or retry_protocol[2] != 0
-            or retry_protocol[3] != 0
+            precision_protocol[0] != 192
+            or precision_protocol[1] != 192
+            or precision_protocol[2] != 384
+            or precision_protocol[3] != 1
         ):
-            raise ValueError("wrong low-precision C4 retry protocol")
-    elif precision == 153088:
+            raise ValueError("wrong low-precision C4 precision protocol")
+    else:
         if (
-            retry_protocol[0] != 0
-            or retry_protocol[1] != 2
-            or retry_protocol[2] != 0
-            or retry_protocol[3] != 153152
+            precision_protocol[0] != 153088
+            or precision_protocol[1] != 153152
+            or precision_protocol[2] != 229632
+            or precision_protocol[3] != 1
         ):
-            raise ValueError("wrong initial field-3 C4 retry protocol")
-    elif (
-        retry_protocol[0] != 1
-        or retry_protocol[1] != 2
-        or retry_protocol[2] != 153088
-        or retry_protocol[3] != 0
-    ):
-        raise ValueError("wrong escalated field-3 C4 retry protocol")
+            raise ValueError("wrong field-3 C4 precision protocol")
     if (
         c3_state[0] != 0
         or c3_state[1] != 1
@@ -405,7 +443,7 @@ def pari_field3_high_precision_regulator_schedule(
     status = pari_field3_reconstruct_with_bound(
         coordinates,
         multiple,
-        denominator_bound,
+        diagnostic_denominator_bound,
         rational_work,
         lattice,
         hnf_work,
@@ -433,6 +471,7 @@ def pari_field3_high_precision_regulator_schedule(
 
 __all__ = [
     "pari_field3_high_precision_regulator_schedule",
+    "pari_field3_precision_outcome",
     "pari_field3_reconstruct_with_bound",
     "pari_field3_regulator_owner_latches",
 ]

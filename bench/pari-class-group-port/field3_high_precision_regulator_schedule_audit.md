@@ -16,10 +16,12 @@ hash words, and two independently recomputed modular owner latches. The hash is
 authority supplied by C3; the latches bind that authority to the 273 integers
 actually presented to C4.
 
-Precision retry authority is explicit rather than inferred: attempt zero at
-153,088 bits may request 153,152 bits, and attempt one must name 153,088 as its
-predecessor and has no further authorized step. The 192-bit synthetic
-differential has a separate one-attempt protocol.
+The precision protocol keeps three different meanings separate. C3 logarithm
+scalars have 153,088-bit precision; 153,152 is only `make_M`'s internal root
+guard precision; and a genuine `compute_R` PRECI at 153,088 would authorize
+PARI's `myprecdbl` target 229,632. A later `getfu` PRECI is terminal
+`not_given`, not a Buchall retry. The 192-bit synthetic differential records
+the corresponding low-precision doubling target 384.
 
 The coordinator extracts the real rows without reassociation, calls the
 source-ordered regulator-multiple graph, then replays the denominator-bound
@@ -46,9 +48,11 @@ the already reviewed 154,112-bit packed-real corridor. Operations needing a
 guard word stop at 154,048 bits. Thus both requested C3 precisions, 153,088 and
 153,152 bits, remain within the same bounded primitive corridor.
 
-The test intentionally runs the reconstruction source at both target
-precisions using synthetic identity coordinates. This is a dynamic fallback
-test, not a performance claim and not a substitute for the missing C3 owner.
+The test intentionally runs the reconstruction arithmetic at the 153,088-bit
+scalar precision and the separate 153,152-bit internal guard precision using
+synthetic identity coordinates. This is a dynamic fallback test, not a claim
+that C3 publishes 153,152-bit logarithms, not a performance claim, and not a
+substitute for the missing C3 owner.
 No heavy native build was run in this lane.
 
 ## Independent replay
@@ -72,17 +76,24 @@ The checker also covers:
 
 - both target precisions through the ordinary Python fallback;
 - incomplete-C3 rejection with complete owner immutability;
-- polynomial, signature/order, retry schedule, hash, and packed-owner
+- polynomial, signature/order, precision protocol, hash, and packed-owner
   mutations;
 - a complete synthetic rank-zero C3 owner that cannot publish any candidate.
+- distinct `compute_R` PRECI retry and terminal `getfu` PRECI outcomes,
+  including the exact 153,088 to 229,632 transition.
 
 ## Deliberately missing cut
 
-There is no authentic complete 153,088/153,152-bit C3 `A` owner yet. Therefore
+There is no authentic complete 153,088-bit C3 `A` owner yet. Therefore
 this lane does not publish a real field-3 regulator or relation matrix and does
 not use any frozen 192-bit `A`, `L`, regulator, lattice, or unit checkpoint.
 
-Moreover, PARI's final acceptance is not only the denominator reconstruction.
+Moreover, the externally supplied denominator bound in this preparation lane
+is diagnostic only and is not acceptable as eventual mathematical authority.
+The authentic route must derive `invhr` from the field data, `h` from the
+authenticated terminal HNF, and then `z=h*invhr` before deriving the bound.
+
+PARI's final acceptance is not only the denominator reconstruction.
 It applies the analytic `bad_check(z*R)` condition, where `z` contains the
 field-derived `h*invhr` factor, and may request greater precision. That owner is
 not among the permitted C3 inputs. The coordinator consequently marks every
@@ -94,8 +105,9 @@ The exact remaining dependency chain is:
 1. C3 publishes the complete high-precision 273-word `A` owner with its hash,
    generation, dimensions, precision, and ordering.
 2. A separate authenticated field-derived analytic owner supplies `h*invhr`
-   (or an equivalently replayable derivation) and the precision retry authority
-   needed for PARI's `bad_check`.
+   (or an equivalently replayable derivation), derives the denominator bound,
+   and runs PARI's `bad_check`. A live `compute_R` PRECI uses `myprecdbl`; a
+   later `getfu` PRECI remains terminal.
 3. Only after that gate may the candidate be promoted and consumed by
    `cleanarch`/`getfu`. Those stages are explicitly outside this C4 lane.
 
