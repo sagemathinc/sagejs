@@ -357,16 +357,19 @@ integration queue; ordinary reads/stores and call binding remain M5 cliffs.
 
 **2026-09-17 ordinary-store update checkpoint:** a guarded follow-up replaces
 repeated `Object.defineProperty` calls only after the mutation-safe store proof
-has selected ordinary instance storage. Tracked data properties and verified
-new own fields use native assignment; `__proto__`, accessors, non-extensible
-objects, stale epochs, namespaces, hooks, descriptors, and native receivers
-retain authoritative paths. On idle `bench-1`, two warmed stores improve 53.4%
-and fall from 18.3x to 8.5x CPython. Positional construction plus a method
-improves 9.3% and keyword construction 5.5%; remaining gaps are 12.6x and
-14.3x. All 225 portable files, 87 focused checks, strict checks, and traitlets
-pass at 902,948/903,000 core bytes. Exact evidence is in
-`agents/python-attribute-store-assignment.md`. Keep this candidate behind the
-store/read integration queue and do not describe the broader M5 cliff as closed.
+has selected ordinary instance storage. Tracked writable data properties and
+verified new own fields use native assignment; `__proto__`, accessors, frozen
+or non-extensible objects, stale epochs, namespaces, hooks, descriptors, and
+native receivers
+retain authoritative paths. Regression tests preserve the original frozen-field
+`TypeError` and replace configurable own accessors without invoking setters. On
+idle `bench-1`, two warmed stores improve 54.1% and fall from 18.5x to 8.49x
+CPython. Positional construction plus a method improves 9.6% and keyword
+construction 5.7%; remaining gaps are 9.48x and 12.08x. All 225 portable files,
+the 508-case differential baseline, strict checks, and traitlets pass at
+902,923/903,000 core bytes. Exact evidence is in
+`agents/python-attribute-store-assignment.md`. Do not describe the broader M5
+cliff as closed.
 
 **2026-09-17 lazy-identity checkpoint:** a fresh-main candidate removes the
 redundant `Object.defineProperty` that eagerly allocated `ρσ_object_id` on every
