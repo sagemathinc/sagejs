@@ -72,6 +72,26 @@ function array(value) {
   return Array.from(value || []);
 }
 
+function importLevel(item) {
+  if (Number.isInteger(item.level)) return item.level;
+  // Older generated compiler ASTs do not declare `AST_Import.level`, so their
+  // constructor drops the field supplied by the Tree-sitter lowerer. The
+  // authoritative frontend still preserves the original relative spelling on
+  // the module token. Recover only its leading dots; never infer a relative
+  // import from the resolved module key.
+  const spelling = item.start?.type === "relative_import"
+    ? item.start.value : undefined;
+  return typeof spelling === "string"
+    ? spelling.match(/^\.+/)?.[0].length || 0
+    : 0;
+}
+
+function importedModuleName(item) {
+  return typeof item.key === "string"
+    ? ".".repeat(importLevel(item)) + item.key
+    : item.key;
+}
+
 function canonicalDefinition(value) {
   return JSON.stringify(value, (_key, item) => {
     if (item === null || Array.isArray(item) || typeof item !== "object") {
@@ -736,7 +756,7 @@ function supportedModulePreamble(statement) {
     const moduleName = item.module?.name;
     const names = array(item.argnames).map((arg) => arg.name);
     return (
-      !item.level && moduleName === "math" && names.every((name) => ["sqrt", "isqrt", "gcd", "log", "log2", "atan", "exp", "pow", "ldexp", "frexp", "copysign"].includes(name))
+      importLevel(item) === 0 && moduleName === "math" && names.every((name) => ["sqrt", "isqrt", "gcd", "log", "log2", "atan", "exp", "pow", "ldexp", "frexp", "copysign"].includes(name))
     ) || (
       moduleName === "typing" && names.every((name) => name === "Tuple")
     ) || (
@@ -819,7 +839,7 @@ function ffiImports(topLevel, filename) {
   for (const statement of topLevel) {
     if (nodeType(statement) !== "AST_Imports") continue;
     for (const item of array(statement.imports)) {
-      const moduleName = item.level ? null : item.key;
+      const moduleName = importLevel(item) ? null : item.key;
       if (typeof moduleName !== "string" ||
           !moduleName.startsWith("sagejs.ffi.")) continue;
       const library = registry.byModule.get(moduleName);
@@ -973,8 +993,7 @@ async function lowerSource(source, filename, options = {}) {
     for (const statement of topLevel) {
       if (nodeType(statement) !== "AST_Imports") continue;
       for (const item of array(statement.imports)) {
-        const moduleName = typeof item.key === "string"
-          ? ".".repeat(item.level || 0) + item.key : item.key;
+        const moduleName = importedModuleName(item);
         if (typeof moduleName !== "string" ||
             (!moduleName.startsWith("sagejs.") && !moduleName.startsWith(".")) ||
             moduleName === "sagejs.native" ||
@@ -1018,7 +1037,7 @@ async function lowerSource(source, filename, options = {}) {
         const local = imported.alias?.name || imported.name;
         importCounts.set(local, (importCounts.get(local) || 0) + 1);
       }
-      if (item.level || item.module?.name !== "math") continue;
+      if (importLevel(item) || item.module?.name !== "math") continue;
       for (const imported of array(item.argnames)) {
         if (["sqrt", "isqrt", "gcd", "log", "log2", "atan", "exp", "pow", "ldexp", "frexp", "copysign"].includes(imported.name)) mathFunctions.set(imported.alias?.name || imported.name, imported.name);
       }

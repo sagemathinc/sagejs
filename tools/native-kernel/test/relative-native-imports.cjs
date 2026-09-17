@@ -44,6 +44,40 @@ test("shared native import layers lower once per entry, not once per graph path"
   const ir=await lowerSource(body,source,{resolveNativeImport:resolver});
   assert.equal(calls,10);assert.equal(ir.nativeSourceDependencies.length,5);
 });
+test("relative imported native calls are reachable as statements and expressions",async()=>{
+  const dir=mkdtempSync(join(tmpdir(),"sagejs-imported-call-")),pkg=join(dir,"example");
+  mkdirSync(pkg);writeFileSync(join(pkg,"__init__.py"),"");
+  const helper=join(pkg,"helper.py"),source=join(pkg,"entry.py");
+  writeFileSync(helper,`from sagejs.native import IntegerBuffer, native
+@native
+def update(values: IntegerBuffer, amount: int) -> int:
+    values[0] += amount
+    return values[0]
+`);
+  const body=`from sagejs.native import IntegerBuffer, native
+from .helper import update
+@native
+def entry(values: IntegerBuffer, amount: int) -> int:
+    update(values, amount)
+    return update(values, amount + 1)
+`;
+  writeFileSync(source,body);
+  const resolver=createNativeImportResolver({root:dir,lowerSource,initialSourcePath:source});
+  const ir=await lowerSource(body,source,{resolveNativeImport:resolver});
+  assert.deepEqual(ir.callGraph.entry,["update"]);
+  assert.equal(ir.functions.filter(fn=>fn.name==="update").length,1);
+  assert.equal(ir.nativeSourceDependencies.length,1);
+  const entry=ir.functions.find(fn=>fn.name==="entry"),operations=[];
+  const visit=value=>{if(value===null||typeof value!=="object")return;if(value.kind)operations.push(value.kind);for(const child of Object.values(value))if(Array.isArray(child))child.forEach(visit);else visit(child);};
+  visit(entry.body);
+  assert.equal(operations.filter(kind=>kind==="native.call").length,2);
+  assert.equal(operations.filter(kind=>kind==="value.discard").length,1);
+  assert.equal(ir.functions.find(fn=>fn.name==="update").provenance.file,helper);
+  const py=spawnSync("python3",["-c",`import sys;sys.path[:0]=[${JSON.stringify(dir)},${JSON.stringify(join(__dirname,"../../../src/lib"))}];from example.entry import entry;values=[1];assert entry(values,2)==6 and values==[6]`],{encoding:"utf8",timeout:30000});
+  assert.equal(py.status,0,py.stderr);
+  const built=await compileKernel({sourcePath:source}),mod=require(built.modulePath);
+  for(const backend of ["javascript","gmp","tagged"]){const values=[1n];assert.equal(mod.entry[backend](values,2n),6n);assert.deepEqual(values,[6n]);}
+});
 test("portable root provenance may differ from imported dependency display paths",async()=>{
   const dir=mkdtempSync(join(tmpdir(),"sagejs-portable-relative-")),pkg=join(dir,"src","lib","example");
   mkdirSync(pkg,{recursive:true});writeFileSync(join(pkg,"__init__.py"),"");
