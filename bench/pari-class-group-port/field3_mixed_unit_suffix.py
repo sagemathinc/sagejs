@@ -49,7 +49,7 @@ def pari_cleanarchunit_mixed_quartic(
     published columns, maximum log-norm exponent, regulator-difference
     exponent, and failing row.
     """
-    if precision < 64 or precision > 4352 or precision % 64 != 0:
+    if precision < 64 or precision > 153152 or precision % 64 != 0:
         raise ValueError("unsupported mixed cleanarchunit precision")
     if (
         len(source) < 42
