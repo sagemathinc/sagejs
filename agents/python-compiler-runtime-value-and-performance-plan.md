@@ -355,6 +355,19 @@ invariants pass at 902,665/903,000 core bytes. The common standalone shrinks by
 in `agents/python-attribute-read-cache.md`. Keep this branch behind the same
 integration queue; ordinary reads/stores and call binding remain M5 cliffs.
 
+**2026-09-17 ordinary-store update checkpoint:** a guarded follow-up replaces
+repeated `Object.defineProperty` calls only after the mutation-safe store proof
+has selected ordinary instance storage. Tracked data properties and verified
+new own fields use native assignment; `__proto__`, accessors, non-extensible
+objects, stale epochs, namespaces, hooks, descriptors, and native receivers
+retain authoritative paths. On idle `bench-1`, two warmed stores improve 53.4%
+and fall from 18.3x to 8.5x CPython. Positional construction plus a method
+improves 9.3% and keyword construction 5.5%; remaining gaps are 12.6x and
+14.3x. All 225 portable files, 87 focused checks, strict checks, and traitlets
+pass at 902,948/903,000 core bytes. Exact evidence is in
+`agents/python-attribute-store-assignment.md`. Keep this candidate behind the
+store/read integration queue and do not describe the broader M5 cliff as closed.
+
 Continue next with integration-aware qualification, the receiver-lookup campaign,
 and true handled-exception ownership. Generator/coroutine suspension makes a
 single global active-exception pointer unsafe: preserve owned handlers while
