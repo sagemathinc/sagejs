@@ -385,6 +385,24 @@ traitlets, full build, and the unchanged 902,922/903,000 core budget pass.
 Exact artifacts and measurements are recorded in
 `agents/python-exact-integer-add.md`.
 
+**2026-09-17 default-construction checkpoint:** a follow-up omits the live
+`object.__init__` call only when a class without a declared initializer is
+called with an empty argument vector and its resolved initializer is still the
+captured original. Declared initializers retain the original emitted dispatch;
+mutation, inheritance, custom allocation, nonempty calls, and assigned
+initializers retain the general path. Controlled exact-artifact measurements
+improve empty construction another 60.4%, from 15.949 ms to 6.318 ms per
+100,000 checked constructions; the same CPython run is 7.819 ms. Call-only and
+initialized-construction rows remain within 1.6% and their large 3.3-25.1x
+CPython gaps remain open. The candidate is 162 standalone bytes larger while
+shorter internal names reduce counted core source to 902,846/903,000 bytes.
+Focused mutation/lowering tests, the full differential baseline, strict checks,
+traitlets, attrs, decorator, documentation, merge, and architecture gates pass.
+The campaign separately exposed the pre-existing acceptance of unexpected
+positional arguments by an empty class; repair that semantic defect without
+mixing it into the empty-call speed path. Exact evidence is in
+`agents/python-default-construction.md`.
+
 Continue next with integration-aware qualification, the receiver-lookup campaign,
 and true handled-exception ownership. Generator/coroutine suspension makes a
 single global active-exception pointer unsafe: preserve owned handlers while

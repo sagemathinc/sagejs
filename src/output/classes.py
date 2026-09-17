@@ -695,14 +695,22 @@ def _print_legacy_class(self, output):
             output.indent()
             output.print("var ρσ_init_result = ")
             if output.options.python_attributes:
-                output.print("ρσ_skip_init_for_custom_new(")
+
+                def print_initializer():
+                    if live_keyword_constructor:
+                        output.print("ρσ_initializer")
+                    else:
+                        self.name.print(output)
+                        output.print(".prototype.__init__")
+
+                if not self.init:
+                    output.print("arguments.length === 0 && ")
+                    print_initializer()
+                    output.print(" === ρσ_object_init || ")
+                output.print("ρσ_skip_init(")
                 self.name.print(output)
                 output.comma()
-                if live_keyword_constructor:
-                    output.print("ρσ_initializer")
-                else:
-                    self.name.print(output)
-                    output.print(".prototype.__init__")
+                print_initializer()
                 output.print(") ? undefined : ")
             if live_keyword_constructor:
                 output.print(
