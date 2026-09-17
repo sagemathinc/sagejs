@@ -17,6 +17,66 @@ from .unified_live_h1_root import pari_unified_live_h1_root
 
 
 MISSING_LIVE_PRECISION_SUFFIX = 4
+INVALID_LIVE_DIMENSIONS = 5
+
+
+@native
+def pari_authenticate_h1_live_dimensions(
+    unified_state: Int64Buffer,
+    bridge_state: Int64Buffer,
+    hnf_state: Int64Buffer,
+    hnf_assembly_state: Int64Buffer,
+) -> int:
+    """Authenticate the logical shapes produced by the resident prefix.
+
+    No successful-field dimension is an argument.  The equalities below bind
+    the assembly's active relation block to the independently published HNF,
+    bridge, and unified-prefix states.  A caller may allocate larger backing
+    buffers, but padding cannot become a logical matrix dimension.
+    """
+    if (
+        len(unified_state) < 12
+        or len(bridge_state) < 16
+        or len(hnf_state) < 9
+        or len(hnf_assembly_state) < 6
+    ):
+        raise ValueError("short h1 dimension authority")
+    relation_count = hnf_state[7]
+    class_rows = hnf_assembly_state[0]
+    dependent_rows = hnf_assembly_state[1]
+    active_columns = hnf_assembly_state[2]
+    b_rows = hnf_assembly_state[3]
+    deferred_columns = hnf_assembly_state[4]
+    compact_factor_count = hnf_state[1]
+    if (
+        unified_state[0] != 0
+        or unified_state[3] != 1
+        or bridge_state[0] != 0
+        or hnf_state[0] != 0
+        or relation_count < 1
+        or class_rows < 1
+        or dependent_rows < 0
+        or active_columns < class_rows
+        or deferred_columns < 0
+        or compact_factor_count < 1
+        or hnf_assembly_state[5] != 0
+        or class_rows + dependent_rows != hnf_state[5]
+        or b_rows != hnf_state[5]
+        or active_columns + deferred_columns != relation_count
+        or hnf_state[2] + compact_factor_count != relation_count
+        or bridge_state[5] != compact_factor_count
+        or bridge_state[8] != relation_count
+        or bridge_state[9] != hnf_state[5]
+        or bridge_state[12] != 2
+        or bridge_state[13] != compact_factor_count
+        or unified_state[5] != compact_factor_count
+        or unified_state[6] != relation_count
+        or unified_state[7] != hnf_state[5]
+        or unified_state[10] != bridge_state[12]
+        or unified_state[11] != compact_factor_count
+    ):
+        return 1
+    return 0
 
 
 @native
@@ -673,99 +733,14 @@ def pari_unified_complete_h1_root(
     last, after the prefix, class witness, precision retry, relation-to-unit
     replay, regulator, and torsion stages all publish successfully.
     """
+    # Only fixed protocol headers are checked before the live prefix runs.
+    # Mathematical workspaces are checked against dimensions authenticated
+    # from that prefix below; observed successful-field sizes never become an
+    # admission oracle here.
     if (
         len(final_state) < 16
-        or len(final_polynomial) < 4
-        or len(final_presentation) < 64
-        or len(final_smith) < 64
-        or len(final_left) < 64
-        or len(final_left_inverse) < 64
-        or len(final_right) < 64
-        or len(final_right_inverse) < 64
-        or len(final_relation_to_presentation) < 120
-        or len(final_presentation_to_relation) < 120
-        or len(final_compact_provenance) < 14
-        or len(final_retained_relation_map) < 146
-        or len(final_exact_units) < 6
-        or len(final_exact_norms) < 2
-        or len(final_regulator) < 3
-        or len(final_torsion_order) < 1
-        or len(final_torsion_generator) < 3
-        or len(final_invariants) < 8
-        or len(precision_kernel_relation_map) < 511
-        or len(precision_retained_relation_map) < 146
-        or len(precision_kernel_factors) < 21
-        or len(precision_exact_units_integral) < 6
-        or len(precision_exact_units_power) < 6
-        or len(precision_exact_norms) < 2
-        or len(precision_root_m) < 6
-        or len(precision_root_p) < 6
-        or len(precision_root_e) < 6
-        or len(precision_embedding_m) < 9
-        or len(precision_embedding_p) < 9
-        or len(precision_embedding_e) < 9
-        or len(precision_embedding_state) < 4
-        or len(precision_atom_logs) < 1533
-        or len(precision_transformed_logs) < 42
-        or len(precision_clean_scratch) < 42
-        or len(precision_clean_result) < 42
-        or len(precision_rebuilt_logs) < 42
-        or len(precision_phase_scratch) < 6
-        or len(precision_rebuilt_phases) < 6
-        or len(precision_log_cache) < 3
-        or len(precision_pi_cache) < 3
-        or len(precision_transcendental_a) < 512
-        or len(precision_transcendental_b) < 512
-        or len(precision_transcendental_p) < 512
-        or len(precision_transcendental_q) < 512
-        or len(precision_transcendental_stack) < 128
-        or len(precision_clean_state) < 4
-        or len(precision_precision_state) < 5
-        or len(precision_determinant_values) < 12
-        or len(precision_determinant_work) < 12
-        or len(precision_determinant_output) < 3
-        or len(precision_determinant_pivots) < 1
-        or len(precision_determinant_state) < 5
-        or len(precision_authority_state) < 16
         or precision_resource_cap < precision
         or precision_resource_cap % 64 != 0
-        or len(precision_resident_root_m) < 3
-        or len(precision_resident_root_p) < 3
-        or len(precision_resident_root_e) < 3
-        or len(precision_staged_retry_relations) < 146
-        or len(precision_embedding_packed) < 27
-        or len(precision_getfu_clean_logs) < 18
-        or len(precision_getfu_clean_phases) < 6
-        or len(precision_getfu_factor) < 4
-        or len(precision_getfu_matep) < 18
-        or len(precision_getfu_transformed_arch) < 18
-        or len(precision_getfu_transformed_clean) < 18
-        or len(precision_getfu_transformed_phases) < 6
-        or len(precision_getfu_exponentials) < 18
-        or len(precision_getfu_solve_work) < 27
-        or len(precision_getfu_solve_rhs) < 18
-        or len(precision_getfu_solved) < 18
-        or len(precision_getfu_rounded) < 6
-        or len(precision_getfu_multiplication) < 9
-        or len(precision_getfu_inverse) < 3
-        or len(precision_getfu_candidate_units) < 6
-        or len(precision_getfu_normalized_factor) < 4
-        or len(precision_staged_getfu_units) < 6
-        or len(precision_staged_getfu_logs) < 18
-        or len(precision_staged_getfu_phases) < 6
-        or len(precision_staged_getfu_factor) < 4
-        or len(precision_getfu_state) < 8
-        or len(precision_getfu_pivots) < 3
-        or len(precision_getfu_exp_cache) < 512
-        or len(precision_getfu_exp_a) < 512
-        or len(precision_getfu_exp_b) < 512
-        or len(precision_getfu_exp_p) < 512
-        or len(precision_getfu_exp_q) < 512
-        or len(precision_getfu_exp_stack) < 128
-        or len(precision_retry_state) < 6
-        or len(precision_published_retained_relations) < 146
-        or len(precision_published_logs) < 18
-        or len(precision_published_phases) < 6
     ):
         raise ValueError("short unified complete h1 owner")
     if final_state[14] == 1:
@@ -1250,10 +1225,48 @@ def pari_unified_complete_h1_root(
         final_state[5] = 1
         return 1
 
+    dimension_status = pari_authenticate_h1_live_dimensions(
+        unified_state, bridge_state, hnf_state, hnf_assembly_state
+    )
+    if dimension_status != 0:
+        final_state[0] = INVALID_LIVE_DIMENSIONS
+        final_state[5] = INVALID_LIVE_DIMENSIONS
+        return INVALID_LIVE_DIMENSIONS
+    relation_count = bridge_state[8]
+    class_rows = hnf_assembly_state[0]
+    class_columns = hnf_assembly_state[2]
+    compact_factor_count = bridge_state[13]
+    unit_rank = bridge_state[12]
+    presentation_size = class_rows * class_rows
+    relation_presentation_size = class_rows * class_columns
+    compact_size = unit_rank * compact_factor_count
+    retained_size = unit_rank * relation_count
+    unit_size = n * unit_rank
+    if (
+        len(final_polynomial) < n + 1
+        or len(final_presentation) < presentation_size
+        or len(final_smith) < presentation_size
+        or len(final_left) < presentation_size
+        or len(final_left_inverse) < presentation_size
+        or len(final_right) < presentation_size
+        or len(final_right_inverse) < presentation_size
+        or len(final_relation_to_presentation) < relation_presentation_size
+        or len(final_presentation_to_relation) < relation_presentation_size
+        or len(final_compact_provenance) < compact_size
+        or len(final_retained_relation_map) < retained_size
+        or len(final_exact_units) < unit_size
+        or len(final_exact_norms) < unit_rank
+        or len(final_regulator) < 3
+        or len(final_torsion_order) < 1
+        or len(final_torsion_generator) < n
+        or len(final_invariants) < class_rows
+    ):
+        raise ValueError("short derived-shape final h1 owner")
+
     class_status = pari_live_h1_class_witness_suffix(
         hnf_matbnew,
-        8,
-        15,
+        class_rows,
+        class_columns,
         hnf_full_h,
         hnf_hnf_transform,
         class_hnf_transform_inverse,
@@ -1295,7 +1308,14 @@ def pari_unified_complete_h1_root(
         class_published_state,
     )
     final_state[2] = class_status
-    if class_status != 0 or class_published_state[0] != 0:
+    if (
+        class_status != 0
+        or class_published_state[0] != 0
+        or class_published_state[1] != class_rows
+        or class_published_state[2] != class_columns
+        or class_published_state[4] != relation_presentation_size
+        or class_published_state[6] != presentation_size
+    ):
         final_state[0] = 2
         final_state[5] = 2
         return 2
@@ -1321,13 +1341,13 @@ def pari_unified_complete_h1_root(
         compact_provenance,
         getfu_factor,
         n,
-        bridge_state[8],
-        bridge_state[8],
-        15,
-        15,
-        bridge_state[13],
-        bridge_state[13],
-        bridge_state[12],
+        relation_count,
+        relation_count,
+        class_columns,
+        class_columns,
+        compact_factor_count,
+        compact_factor_count,
+        unit_rank,
         precision,
         precision_resource_cap,
         0,
@@ -1428,37 +1448,37 @@ def pari_unified_complete_h1_root(
     # Publish every fixed-shape owner only after all components succeed.  No
     # operation below can fail because capacities were preflighted above; the
     # final state and publication bit are committed last.
-    for index in range(4):
+    for index in range(n + 1):
         final_polynomial[index] = prep_polynomial[index]
-    for index in range(64):
+    for index in range(presentation_size):
         final_presentation[index] = class_published_presentation[index]
         final_smith[index] = class_published_smith[index]
         final_left[index] = class_published_left[index]
         final_left_inverse[index] = class_published_left_inverse[index]
         final_right[index] = class_published_right[index]
         final_right_inverse[index] = class_published_right_inverse[index]
-    for index in range(120):
+    for index in range(relation_presentation_size):
         final_relation_to_presentation[index] = (
             class_published_relation_to_presentation[index]
         )
         final_presentation_to_relation[index] = (
             class_published_presentation_to_relation[index]
         )
-    for index in range(14):
+    for index in range(compact_size):
         final_compact_provenance[index] = compact_provenance[index]
-    for index in range(146):
+    for index in range(retained_size):
         final_retained_relation_map[index] = precision_published_retained_relations[
             index
         ]
-    for index in range(6):
+    for index in range(unit_size):
         final_exact_units[index] = precision_exact_units_power[index]
-    for index in range(2):
+    for index in range(unit_rank):
         final_exact_norms[index] = precision_exact_norms[index]
     for index in range(3):
         final_regulator[index] = precision_determinant_output[index]
         final_torsion_generator[index] = torsion_generator[index]
     final_torsion_order[0] = torsion_order[0]
-    for index in range(8):
+    for index in range(class_rows):
         # The class group is trivial, so its logical invariant count is zero;
         # clear the fixed-capacity owner instead of preserving caller bytes.
         final_invariants[index] = 0
@@ -1472,10 +1492,27 @@ def pari_unified_complete_h1_root(
     final_state[10] = bridge_state[12]
     final_state[11] = torsion_order[0]
     final_state[12] = 1
-    final_state[13] = 811
+    final_state[13] = (
+        n
+        + 1
+        + 6 * presentation_size
+        + 2 * relation_presentation_size
+        + compact_size
+        + retained_size
+        + unit_size
+        + unit_rank
+        + 3
+        + 1
+        + n
+        + class_rows
+    )
     final_state[14] = 1
     final_state[15] = 0
     return 0
 
 
-__all__ = ["pari_exact_real_cubic_torsion", "pari_unified_complete_h1_root"]
+__all__ = [
+    "pari_authenticate_h1_live_dimensions",
+    "pari_exact_real_cubic_torsion",
+    "pari_unified_complete_h1_root",
+]

@@ -27,53 +27,69 @@ function values(value) {
     : value.toArray ? value.toArray() : Array.from(value);
 }
 
+// Deliberately independent storage ceilings.  None equals the successful
+// field's 8 x 15 class block, 73 relations, or seven compact factors.  The
+// kernel must obtain logical extents from its authenticated live states and
+// leave all padded cells untouched.
+const storagePolicy = Object.freeze({
+  degree: 3,
+  classRows: 12,
+  classColumns: 24,
+  relations: 96,
+  compactFactors: 12,
+  unitRank: 4,
+});
+const classSquareCapacity = storagePolicy.classRows ** 2;
+const classRelationCapacity = storagePolicy.classRows * storagePolicy.classColumns;
+const classTransformCapacity = storagePolicy.classColumns ** 2;
+
 const classSizes = Object.freeze({
-  class_hnf_transform_inverse: 225,
-  class_hnf_inverse_augmented: 450,
+  class_hnf_transform_inverse: classTransformCapacity,
+  class_hnf_inverse_augmented: 2 * classTransformCapacity,
   class_hnf_inverse_state: 5,
-  class_relation_to_presentation_scratch: 120,
-  class_presentation_to_relation_scratch: 120,
+  class_relation_to_presentation_scratch: classRelationCapacity,
+  class_presentation_to_relation_scratch: classRelationCapacity,
   class_relation_witness_state: 8,
-  class_presentation_scratch: 64,
-  class_smith_scratch: 64,
-  class_left_scratch: 64,
-  class_left_inverse_scratch: 64,
-  class_right_scratch: 64,
-  class_ur_scratch: 64,
-  class_y_scratch: 64,
-  class_uir_scratch: 64,
-  class_x_scratch: 64,
-  class_m1_scratch: 64,
-  class_m2_scratch: 64,
-  class_invariants_scratch: 8,
+  class_presentation_scratch: classSquareCapacity,
+  class_smith_scratch: classSquareCapacity,
+  class_left_scratch: classSquareCapacity,
+  class_left_inverse_scratch: classSquareCapacity,
+  class_right_scratch: classSquareCapacity,
+  class_ur_scratch: classSquareCapacity,
+  class_y_scratch: classSquareCapacity,
+  class_uir_scratch: classSquareCapacity,
+  class_x_scratch: classSquareCapacity,
+  class_m1_scratch: classSquareCapacity,
+  class_m2_scratch: classSquareCapacity,
+  class_invariants_scratch: storagePolicy.classRows,
   class_class_number_scratch: 1,
-  class_smith_column_scratch: 8,
-  class_right_inverse_scratch: 64,
-  class_smith_augmented_scratch: 128,
+  class_smith_column_scratch: storagePolicy.classRows,
+  class_right_inverse_scratch: classSquareCapacity,
+  class_smith_augmented_scratch: 2 * classSquareCapacity,
   class_left_inverse_state: 5,
   class_right_inverse_state: 5,
   class_first_division_state: 6,
   class_second_division_state: 6,
   class_smith_state: 7,
   class_binding_state: 9,
-  class_published_presentation: 64,
-  class_published_smith: 64,
-  class_published_left: 64,
-  class_published_left_inverse: 64,
-  class_published_right: 64,
-  class_published_right_inverse: 64,
-  class_published_relation_to_presentation: 120,
-  class_published_presentation_to_relation: 120,
+  class_published_presentation: classSquareCapacity,
+  class_published_smith: classSquareCapacity,
+  class_published_left: classSquareCapacity,
+  class_published_left_inverse: classSquareCapacity,
+  class_published_right: classSquareCapacity,
+  class_published_right_inverse: classSquareCapacity,
+  class_published_relation_to_presentation: classRelationCapacity,
+  class_published_presentation_to_relation: classRelationCapacity,
   class_published_state: 16,
 });
 
 const precisionSizes = Object.freeze({
-  precision_kernel_relation_map: 511,
-  precision_retained_relation_map: 146,
-  precision_kernel_factors: 21,
-  precision_exact_units_integral: 6,
-  precision_exact_units_power: 6,
-  precision_exact_norms: 2,
+  precision_kernel_relation_map: storagePolicy.compactFactors * storagePolicy.relations,
+  precision_retained_relation_map: storagePolicy.unitRank * storagePolicy.relations,
+  precision_kernel_factors: storagePolicy.degree * storagePolicy.compactFactors,
+  precision_exact_units_integral: storagePolicy.degree * storagePolicy.unitRank,
+  precision_exact_units_power: storagePolicy.degree * storagePolicy.unitRank,
+  precision_exact_norms: storagePolicy.unitRank,
   precision_root_m: 6,
   precision_root_p: 6,
   precision_root_e: 6,
@@ -81,13 +97,13 @@ const precisionSizes = Object.freeze({
   precision_embedding_p: 9,
   precision_embedding_e: 9,
   precision_embedding_state: 4,
-  precision_atom_logs: 1533,
-  precision_transformed_logs: 42,
-  precision_clean_scratch: 42,
-  precision_clean_result: 42,
-  precision_rebuilt_logs: 42,
-  precision_phase_scratch: 6,
-  precision_rebuilt_phases: 6,
+  precision_atom_logs: 21 * storagePolicy.relations,
+  precision_transformed_logs: 7 * storagePolicy.degree * storagePolicy.unitRank,
+  precision_clean_scratch: 7 * storagePolicy.degree * storagePolicy.unitRank,
+  precision_clean_result: 7 * storagePolicy.degree * storagePolicy.unitRank,
+  precision_rebuilt_logs: 7 * storagePolicy.degree * storagePolicy.unitRank,
+  precision_phase_scratch: storagePolicy.degree * storagePolicy.unitRank,
+  precision_rebuilt_phases: storagePolicy.degree * storagePolicy.unitRank,
   precision_log_cache: 3,
   precision_pi_cache: 3,
   precision_transcendental_a: 512,
@@ -97,8 +113,8 @@ const precisionSizes = Object.freeze({
   precision_transcendental_stack: 128,
   precision_clean_state: 4,
   precision_precision_state: 5,
-  precision_determinant_values: 12,
-  precision_determinant_work: 12,
+  precision_determinant_values: 3 * storagePolicy.unitRank ** 2,
+  precision_determinant_work: 3 * storagePolicy.unitRank ** 2,
   precision_determinant_output: 3,
   precision_determinant_pivots: 1,
   precision_determinant_state: 5,
@@ -106,7 +122,7 @@ const precisionSizes = Object.freeze({
   precision_resident_root_m: 3,
   precision_resident_root_p: 3,
   precision_resident_root_e: 3,
-  precision_staged_retry_relations: 146,
+  precision_staged_retry_relations: storagePolicy.unitRank * storagePolicy.relations,
   precision_embedding_packed: 27,
   precision_getfu_clean_logs: 18,
   precision_getfu_clean_phases: 6,
@@ -137,7 +153,7 @@ const precisionSizes = Object.freeze({
   precision_getfu_exp_q: 512,
   precision_getfu_exp_stack: 128,
   precision_retry_state: 6,
-  precision_published_retained_relations: 146,
+  precision_published_retained_relations: storagePolicy.unitRank * storagePolicy.relations,
   precision_published_logs: 18,
   precision_published_phases: 6,
 });
@@ -147,22 +163,22 @@ const finalSizes = Object.freeze({
   torsion_generator: 3,
   torsion_state: 6,
   final_polynomial: 4,
-  final_presentation: 64,
-  final_smith: 64,
-  final_left: 64,
-  final_left_inverse: 64,
-  final_right: 64,
-  final_right_inverse: 64,
-  final_relation_to_presentation: 120,
-  final_presentation_to_relation: 120,
-  final_compact_provenance: 14,
-  final_retained_relation_map: 146,
-  final_exact_units: 6,
-  final_exact_norms: 2,
+  final_presentation: classSquareCapacity,
+  final_smith: classSquareCapacity,
+  final_left: classSquareCapacity,
+  final_left_inverse: classSquareCapacity,
+  final_right: classSquareCapacity,
+  final_right_inverse: classSquareCapacity,
+  final_relation_to_presentation: classRelationCapacity,
+  final_presentation_to_relation: classRelationCapacity,
+  final_compact_provenance: storagePolicy.unitRank * storagePolicy.compactFactors,
+  final_retained_relation_map: storagePolicy.unitRank * storagePolicy.relations,
+  final_exact_units: storagePolicy.degree * storagePolicy.unitRank,
+  final_exact_norms: storagePolicy.unitRank,
   final_regulator: 3,
   final_torsion_order: 1,
   final_torsion_generator: 3,
-  final_invariants: 8,
+  final_invariants: storagePolicy.classRows,
   final_state: 16,
 });
 
@@ -265,6 +281,34 @@ async function main() {
       `${name} changed before final publication`);
   }
 
+  // The root's shape authority is a conjunction of independently produced
+  // prefix states.  Every forged logical dimension is rejected without
+  // rewriting the supplied authority buffers.
+  const authenticate = require(built.modulePath).pari_authenticate_h1_live_dimensions;
+  assert(authenticate.nativeAvailable);
+  const liveDimensionState = {
+    unified_state: values(input.unified_state).slice(0, 12).map(BigInt),
+    bridge_state: values(input.bridge_state).slice(0, 16).map(BigInt),
+    hnf_state: values(input.hnf_state).slice(0, 9).map(BigInt),
+    hnf_assembly_state: values(input.hnf_assembly_state).slice(0, 6).map(BigInt),
+  };
+  assert.equal(authenticate.gmp(...Object.values(liveDimensionState)), 0n);
+  for (const [owner, index] of [
+    ["unified_state", 6],
+    ["bridge_state", 8],
+    ["hnf_state", 7],
+    ["hnf_assembly_state", 0],
+    ["hnf_assembly_state", 2],
+    ["hnf_assembly_state", 4],
+  ]) {
+    const forged = structuredClone(liveDimensionState);
+    forged[owner][index] += 1n;
+    const before = structuredClone(forged);
+    assert.equal(authenticate.gmp(...Object.values(forged)), 1n,
+      `forged ${owner}[${index}] accepted`);
+    assert.deepEqual(forged, before, `dimension authority mutated ${owner}`);
+  }
+
   // Mutation after the prefix/class boundary cannot be hidden by successful
   // caller-shaped authority bytes: exact relation replay rejects it and the
   // terminal owners remain unchanged.
@@ -293,12 +337,47 @@ async function main() {
   assert.deepEqual(values(input.precision_authority_state).map(BigInt).slice(0, 5),
     [0n, 5n, 2304n, 0n, 3n]);
   assert.equal(values(input.precision_authority_state)[14], 1n);
-  assert.deepEqual(values(input.final_exact_norms).map(BigInt), [-1n, -1n]);
+  const classRows = Number(values(input.class_published_state)[1]);
+  const classColumns = Number(values(input.class_published_state)[2]);
+  const relationCount = Number(values(input.final_state)[6]);
+  const unitRank = Number(values(input.final_state)[10]);
+  const compactFactors = Number(values(input.bridge_state)[13]);
+  assert.deepEqual(values(input.final_exact_norms).slice(0, unitRank).map(BigInt),
+    [-1n, -1n]);
   assert.deepEqual(values(input.final_torsion_order).map(BigInt), [2n]);
   assert.deepEqual(values(input.final_torsion_generator).map(BigInt), [-1n, 0n, 0n]);
-  assert(values(input.final_exact_units).some(value => BigInt(value) !== 0n));
-  assert(values(input.final_regulator).some(value => BigInt(value) !== 0n));
-  assert.notDeepEqual(values(input.final_polynomial).map(BigInt), finalBefore.final_polynomial);
+  assert(values(input.final_exact_units).slice(0, storagePolicy.degree * unitRank)
+    .some(value => BigInt(value) !== 0n));
+  assert(values(input.final_regulator).slice(0, 3)
+    .some(value => BigInt(value) !== 0n));
+  assert.notDeepEqual(values(input.final_polynomial).slice(0, storagePolicy.degree + 1)
+    .map(BigInt), finalBefore.final_polynomial.slice(0, storagePolicy.degree + 1));
+
+  // Successful publication writes only live logical prefixes.  Policy-sized
+  // padding is neither interpreted as a dimension nor overwritten.
+  const logicalFinalSizes = {
+    final_polynomial: storagePolicy.degree + 1,
+    final_presentation: classRows ** 2,
+    final_smith: classRows ** 2,
+    final_left: classRows ** 2,
+    final_left_inverse: classRows ** 2,
+    final_right: classRows ** 2,
+    final_right_inverse: classRows ** 2,
+    final_relation_to_presentation: classRows * classColumns,
+    final_presentation_to_relation: classRows * classColumns,
+    final_compact_provenance: unitRank * compactFactors,
+    final_retained_relation_map: unitRank * relationCount,
+    final_exact_units: storagePolicy.degree * unitRank,
+    final_exact_norms: unitRank,
+    final_regulator: 3,
+    final_torsion_order: 1,
+    final_torsion_generator: storagePolicy.degree,
+    final_invariants: classRows,
+  };
+  for (const [name, logicalSize] of Object.entries(logicalFinalSizes)) {
+    assert.deepEqual(values(input[name]).slice(logicalSize).map(BigInt),
+      finalBefore[name].slice(logicalSize), `${name} padding was overwritten`);
+  }
 
   // The new torsion leaf is independently differential-tested and fails
   // transactionally for reducible/non-real mutations.
