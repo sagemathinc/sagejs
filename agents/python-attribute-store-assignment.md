@@ -12,7 +12,8 @@ more expensive than updating an ordinary writable data property.
 The fast path now distinguishes three cases after the existing prototype/name,
 descriptor-epoch, namespace, and `__setattr__` proof succeeds:
 
-- a tracked own writable data property is updated directly;
+- a tracked own writable, enumerable, configurable data property is updated
+  directly;
 - a new extensible ordinary field is assigned directly and accepted only after
   its own data-property descriptor is observed; and
 - `__proto__`, accessors, non-extensible receivers, and any unexpected layout
@@ -25,7 +26,10 @@ Focused tests additionally prove exact property flags, `__proto__` isolation,
 accessor replacement, and non-extensible failure behavior. In particular, a
 tracked property that is later frozen retains the original `TypeError`, message,
 and stored value; a configurable own accessor is replaced without invoking its
-setter, matching the prior `Object.defineProperty` path.
+setter, matching the prior `Object.defineProperty` path. A writable but
+non-configurable tracked property also retains the original redefinition error,
+and an externally changed non-enumerable property is restored to the ordinary
+enumerable layout rather than silently preserving that mutation.
 
 Merging current main initially put the core runtime 179 bytes over its unchanged
 budget. Compacting the existing private exact-integer-add JavaScript boundary,

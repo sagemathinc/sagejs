@@ -144,6 +144,23 @@ test("shared ordinary stores preserve exceptional host layouts", () => {
   assert.match(writeError?.message ?? "", /Cannot redefine property: field/);
   assert.equal(receiver.field, 2);
 
+  const nonconfigurable = Object.create(prototype);
+  api.ρσ_attr(nonconfigurable, "field", 1);
+  Object.defineProperty(nonconfigurable, "field", { configurable: false });
+  assert.throws(
+    () => api.ρσ_attr(nonconfigurable, "field", 2),
+    /Cannot redefine property: field/,
+  );
+  assert.equal(nonconfigurable.field, 1);
+
+  const nonenumerable = Object.create(prototype);
+  api.ρσ_attr(nonenumerable, "field", 1);
+  Object.defineProperty(nonenumerable, "field", { enumerable: false });
+  api.ρσ_attr(nonenumerable, "field", 2);
+  assert.deepEqual(Object.getOwnPropertyDescriptor(nonenumerable, "field"), {
+    value: 2, writable: true, enumerable: true, configurable: true,
+  });
+
   const replacementPrototype = { changed: true };
   api.ρσ_attr(receiver, "__proto__", replacementPrototype);
   assert.equal(Object.getPrototypeOf(receiver), prototype);
