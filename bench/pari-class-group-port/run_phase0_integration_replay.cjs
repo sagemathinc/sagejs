@@ -881,6 +881,30 @@ stage("presentation-authority", {
   allowNoArtifactDirectory: true,
 });
 
+stage("h1-class-correspondence", {
+  dependencies: ["presentation-authority", "resident-cubic-gmp"],
+  command: (context) => commandNode("check_class_group_h1_correspondence.cjs",
+    outputPath(context, "resident-cubic-gmp", "output")),
+  validate: (summary) => {
+    assert.equal(summary.schema,
+      "sagejs.pari-class-group/h1-class-correspondence-v1");
+    assert.equal(summary.factorBaseSize, 66);
+    assert.equal(summary.principalRelations, 73);
+    assert.equal(summary.classNumber, 1);
+    assert.deepEqual(summary.invariantFactors, []);
+    assert.equal(summary.classGeneratorCount, 0);
+    assert.equal(summary.generatorOrderWitnessesVacuous, true);
+    assert.equal(summary.exactPresentationSaturated, true);
+    assert.equal(summary.globalFactorBaseGeneration, "assumed");
+    assert.equal(summary.classCorrespondenceComplete, true);
+    assert.equal(summary.publicClassComplete, false);
+    assert.equal(summary.publicClassUnitComplete, false);
+    assert.equal(summary.mutationsRejected, 20);
+  },
+  noFixture: true,
+  allowNoArtifactDirectory: true,
+});
+
 stage("unit-bridge-preci", {
   dependencies: ["relation-hnf-witness", "unit-getfu"],
   requiresPari: true,
@@ -1237,7 +1261,8 @@ stage("scratch-falsification-ledger", {
 stage("final-state", {
   dependencies: ["immutable-result", "rnd-collector", "honesty", "honesty-success",
     "honesty-quintic-collector-downstream", "relation-hnf-witness",
-    "presentation-authority", "unit-bridge-preci", "unit-component-cubic",
+    "presentation-authority", "h1-class-correspondence", "unit-bridge-preci",
+    "unit-component-cubic",
     "compact-unit-result", "torsion-authority", "class-relation-cleanarch",
     "regulator-acceptance-replay", "authentic-h1-unit-success",
     "mixed-getfu-quartic", "mixed-getfu-hard-precision",
