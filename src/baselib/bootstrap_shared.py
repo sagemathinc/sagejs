@@ -91,6 +91,27 @@ def ρσ_exact_integer_add(left, right, missing):
     })()"""
 
 
+def ρσ_exact_shift(left, right, op, missing):
+    return r"""%js (() => {
+        const e = v => typeof v === "boolean" || typeof v === "bigint" ||
+            typeof v === "number" && Number.isSafeInteger(v);
+        if (!e(left) || !e(right) || right < 0) return missing;
+        if (typeof left !== "bigint" && typeof right !== "bigint") {
+            if (op) {
+                const v = right > 53 ? left < 0 ? -1 : 0 :
+                    Math.floor(left / 2 ** right);
+                return v === 0 ? 0 : v;
+            }
+            const v = left * 2 ** right;
+            if (Number.isSafeInteger(v)) return v === 0 ? 0 : v;
+        }
+        const v = op ? BigInt(left) >> BigInt(right) :
+            BigInt(left) << BigInt(right);
+        const n = Number(v);
+        return Number.isSafeInteger(n) ? n === 0 ? 0 : n : v;
+    })()"""
+
+
 def ρσ_exact_integer_submul(left, right, multiply, missing):
     return r"""%js (()=>{const a=typeof left,b=typeof right,e=(t,v)=>t==="boolean"||t==="bigint"||t==="number"&&Number.isSafeInteger(v);if(!e(a,left)||!e(b,right))return missing;if(a!=="bigint"&&b!=="bigint"){const v=multiply?Number(left)*Number(right):Number(left)-Number(right);if(Number.isSafeInteger(v))return v===0?0:v}return multiply?BigInt(left)*BigInt(right):BigInt(left)-BigInt(right)})()"""
 
