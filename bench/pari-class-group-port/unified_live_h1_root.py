@@ -859,7 +859,6 @@ def pari_unified_live_h1_root(
         accept_acceptance_state,
         attempt_state,
         class_number,
-        columns,
         precision,
         unit_transform,
         getfu_factor,
