@@ -4,7 +4,7 @@
   "id": "pari-authentic-compact-success",
   "title": "Bind genuine compact units into authentic h1 success",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Compose the authentic h1 success authority with the resident-derived compact unit factor pool, proving exact factor provenance and materialization without answer-derived factors",
   "base_commit": "f0d3cfe24d58e46492635fd20c6a24dd5e0c0772",
@@ -54,6 +54,26 @@
       "started_at": "2026-09-17T03:28:18.444Z",
       "commit": "f0d3cfe24d58e46492635fd20c6a24dd5e0c0772",
       "workspace_fingerprint": "52d27965f886e59f4f0441f15b2c9f92593f760f85c29b406c63e4054da9b716",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1095.185,
+      "started_at": "2026-09-17T03:29:31.930Z",
+      "commit": "d5b5f4c5fd1fae2607033a76b1145fad6cfe0358",
+      "workspace_fingerprint": "c529e1fd747c34464e3b59a0849985dacb4abb4af9b94ea33ce98d16ee42dd56",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 58.168,
+      "started_at": "2026-09-17T03:48:18.887Z",
+      "commit": "d5b5f4c5fd1fae2607033a76b1145fad6cfe0358",
+      "workspace_fingerprint": "c529e1fd747c34464e3b59a0849985dacb4abb4af9b94ea33ce98d16ee42dd56",
       "platform": "linux-x64"
     }
   ],
