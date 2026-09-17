@@ -65,7 +65,7 @@ try {
     fullTerminalOwnerSha256: fullOwner.sha256, c3OwnerSha256: c3Owner.sha256,
     analytic: { status: "accepted", badCheckStatus: 0, fieldDerived: true,
       precisionRetryComplete: true }, candidatePublished: true, analyticPending: false,
-    precision: "64", generation: "1", retryProtocol: ["0", "1", "0", "0"],
+    precision: "64", generation: "1", acceptanceState: ["0", "1", "64", "1"],
     candidateRelations: relations, candidateRegulator: [String(1n << 63n), "64", "0"],
     c3Hash: ["0", "0", "0", "0"], c3Latches: latches(packedA) };
   const c4Owner = immutableOwner(temporary, "c4.json", c4);
@@ -116,7 +116,7 @@ console.log(JSON.stringify({native:true,core:built.coreSourcePath}));})().catch(
   const core = fs.readFileSync(native.core, "utf8");
   assert.doesNotMatch(core, /napi_call_function|PyObject_Call|v8::/);
   console.log(JSON.stringify({ schema: "field3-c5-unit-lattice-check-v1", cpython: true,
-    javascriptPreflight: true, precisionCap: 153152, publication: "atomic-idempotent-0444",
+    javascriptPreflight: true, precisionCap: 153088, publication: "atomic-idempotent-0444",
     syntheticOnly: true }));
 } finally {
   fs.rmSync(temporary, { recursive: true, force: true });

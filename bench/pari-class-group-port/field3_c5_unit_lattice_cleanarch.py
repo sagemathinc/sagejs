@@ -136,7 +136,7 @@ def pari_field3_c5_unit_lattice_cleanarch(
     unit rank, clean columns, and source terminal columns.
     """
 
-    if precision < 64 or precision > 153152 or precision % 64 != 0:
+    if precision < 64 or precision > 153088 or precision % 64 != 0:
         raise ValueError("unsupported field3 C5 precision")
     if (
         len(packed_terminal) < PACKED_TERMINAL
@@ -511,9 +511,16 @@ def compose_authenticated_c5(
         raise Field3C5Failure("C4 generation is not positive")
     if _integer(c3.get("targetBits"), "C3 target bits") != precision:
         raise Field3C5Failure("C3 and C4 precision differ")
-    retry = _integers(c4.get("retryProtocol"), 4, "C4 retry protocol")
-    if retry[0] < 0 or retry[1] <= retry[0] or retry[3] != 0:
-        raise Field3C5Failure("C4 retry protocol is not terminal")
+    acceptance_state = _integers(
+        c4.get("acceptanceState"), 4, "C4 analytic acceptance state"
+    )
+    if (
+        acceptance_state[0] != 0
+        or acceptance_state[1] < 1
+        or acceptance_state[2] != precision
+        or acceptance_state[3] != 1
+    ):
+        raise Field3C5Failure("C4 analytic acceptance state is not terminal")
     c3_hash = _integers(c4.get("c3Hash"), 4, "C3 hash words")
     c3_latches = _integers(c4.get("c3Latches"), 2, "C3 latches")
     packed_a = _integers(c3.get("packedA"), PACKED_A, "C3 packed A")
@@ -643,7 +650,7 @@ def compose_authenticated_c5(
         "acceptedC4OwnerSha256": accepted_c4_sha256,
         "c3Hash": [str(value) for value in c3_hash],
         "c3Latches": [str(value) for value in c3_latches],
-        "retryProtocol": retry,
+        "acceptanceState": acceptance_state,
         "u1Shape": [13, 2],
         "u1": [str(value) for value in u1],
         "u2Shape": [2, 2],
