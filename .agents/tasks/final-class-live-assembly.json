@@ -1,0 +1,86 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "final-class-live-assembly",
+  "title": "Final Class Live Assembly",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Compose transactional class cleanarch and Buchall final-result assembly solely from live authenticated owners for the authentic h=1 root, without fixtures or external oracles and without public completion",
+  "base_commit": "f0d3cfe24d58e46492635fd20c6a24dd5e0c0772",
+  "claims": [
+    "bench/pari-class-group-port/class_group_live_result_assembly.py",
+    "bench/pari-class-group-port/check_class_group_live_result_assembly.cjs",
+    "bench/pari-class-group-port/class_group_live_result_assembly_audit.md"
+  ],
+  "dependencies": [
+    "final-driver-live-status"
+  ],
+  "references": [
+    "pari-2.17.4/src/basemath/buch2.c:4134-4190"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "generated native backends"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node bench/pari-class-group-port/check_class_group_live_result_assembly.cjs"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_class_group_live_result_assembly.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.865,
+      "started_at": "2026-09-17T03:26:14.804Z",
+      "commit": "f0d3cfe24d58e46492635fd20c6a24dd5e0c0772",
+      "workspace_fingerprint": "9f68a8d6a40d910063b2831907e0182581502bb84375754ee070f3497e1fff9f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 59.26,
+      "started_at": "2026-09-17T03:26:36.227Z",
+      "commit": "f0d3cfe24d58e46492635fd20c6a24dd5e0c0772",
+      "workspace_fingerprint": "9f68a8d6a40d910063b2831907e0182581502bb84375754ee070f3497e1fff9f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_class_group_live_result_assembly.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.832,
+      "started_at": "2026-09-17T03:42:41.760Z",
+      "commit": "f0d3cfe24d58e46492635fd20c6a24dd5e0c0772",
+      "workspace_fingerprint": "7a36cfe3171967a0d8fc0d0927f746c79fff92c03c297f229797a9140e1de40c",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Adds an atomic class-only result publisher driven solely by the qualified resident owner and immutable h=1 correspondence owner. It reruns relation/HNF, Smith, logarithm transform, equal-bound honesty, and transactional cleanarch before publishing exact Buchall arrays; CPython and generated JavaScript/GMP/tagged cleanup agree.",
+    "risks": [
+      "The completed class result is internal and conditional on the pinned PARI class-correspondence assumption.",
+      "Unit assembly, Phase 5, and public class or class-and-unit completeness remain explicitly false."
+    ],
+    "next_steps": [
+      "Integrate the live class-result publisher as the class-only final edge after the h=1 correspondence owner.",
+      "Compose a separately authenticated live unit owner before considering a combined class-and-unit result."
+    ]
+  }
+}
