@@ -219,3 +219,42 @@ capacity failure and is intentionally excluded. A conservative prediction is
 that loader overhead is below 64 MiB RSS, leaving more than 4.1 GiB of the
 fixed process-tree envelope for authenticated owners and mathematical work.
 No new heavy correctness or timing run has yet been attempted.
+
+## Thin-loader correctness gate
+
+The one authorized thin-loader correctness gate passed under the unchanged
+4 GiB/600 s process-tree envelope. It exited zero after `15.346 s`, produced
+no stderr, and peaked at `1,794,924 KiB` aggregate RSS. This is
+`2,432,972 KiB` below the failed generated-module gate and leaves more than
+2.3 GiB of headroom beneath the fixed cap. The resource receipt is
+`/scratch/sagejs-runtime/h1-matched-flag-zero-fused/native-check-thin-resource.json`
+with SHA-256
+`47c033e2d27ee3702f5da18928dc6201cfd5d1c1ee023d9a3368be7ca91d5149`.
+The full correctness receipt is `native-check-thin.json` in the same directory,
+with SHA-256
+`3632a784297565d44db83f574e9149fba88113f3d191ba3b5c820831fc71aa78`.
+
+The gate authenticated the exact 2,970,787-byte prepared input at SHA-256
+`22a997866388571cd3c12e1a3ea5c5cc3a7fe89217b253bb0e779007f6fe9b77`.
+One fused native call returned zero and reproduced the qualified relation SHA
+`b0c647186a5fed5317c7135ccf16623a930631382ad7963e12af4ded2db7259a`,
+compact SHA
+`80cec2acce5b95ec48beff67b800410eedb5e580e25029aa79d4d63dc40b1c2d`,
+and combined owner-evidence SHA
+`a0ae8b44555295c035a3603ce4c18dde8dd174bff80b79d34f61d86423a13b5e`.
+The published root was exactly
+`[0,1,3,192,1,0,0,7,73,8,0,1]`; the one non-retrying getfu attempt ended in
+PARI-compatible `not_given(PRECI)` state
+`[3,10,-186,0,1923,0,0,1]`.
+
+All frozen relation counters agree: catalog 1230, degree groups 1833, factor
+slots 2270, C1=C2=333, KC=66, KCZ=KCZ2=48, decomposition calls 48,
+descriptors 66, subfactor trials 4, relations 12 to 73, visited ideals 16,
+small elements 1046, factor attempts 96, and random relations 0. Separate
+degree and precision mutation children both failed before getfu, left the
+publication marker clear, and preserved getfu storage byte-for-byte.
+
+The observed `3.160 s` fused-call interval belongs to a correctness run with
+oversized 4096-word defensive buffers. It is not a qualified performance
+measurement and must not be compared to PARI. No seven-pair timing series has
+been run.

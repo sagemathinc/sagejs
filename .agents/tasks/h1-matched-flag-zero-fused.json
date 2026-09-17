@@ -43,7 +43,26 @@
     "pnpm test:baselib:strict",
     "pnpm test:native"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_h1_matched_flag_zero_fused.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node /tmp/h1_thin_monitor.cjs",
+      "result": "pass; fixed 4 GiB/600 s thin-addon correctness gate; peak aggregate RSS 1794924 KiB",
+      "exit_code": 0,
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check",
+      "result": "pass",
+      "exit_code": 0,
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
     "summary": "",
     "risks": [],
