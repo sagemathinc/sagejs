@@ -40,12 +40,13 @@ static GEN oim(GEN x){return typ(x)==t_COMPLEX?gel(x,2):gen_0;}
 static void scalar(GEN x){long e=0;x=ore(x);if(typ(x)==t_INT)pari_printf("[\"%Ps\",-1,0]",x);else if(!signe(x))printf("[\"0\",0,%ld]",expo(x));else pari_printf("[\"%Ps\",%ld,%ld]",mantissa_real(x,&e),bit_prec(x),expo(x));}
 static long phase(GEN x){GEN y=oim(x);if(gequal0(y))return 0;long n=lround(gtodouble(y)/M_PI);n%=2;if(n<0)n+=2;return n;}
 static void smat(GEN x){putchar('[');for(long j=1;j<lg(x);j++)for(long i=1;i<lgcols(x);i++){if(j>1||i>1)putchar(',');scalar(gcoeff(x,i,j));}putchar(']');}
+static void svec(GEN x){putchar('[');for(long i=1;i<lg(x);i++){if(i>1)putchar(',');scalar(gel(x,i));}putchar(']');}
 static void pmat(GEN x){putchar('[');for(long j=1;j<lg(x);j++)for(long i=1;i<lgcols(x);i++){if(j>1||i>1)putchar(',');printf("%ld",phase(gcoeff(x,i,j)));}putchar(']');}
 static void zmat(GEN x){putchar('[');for(long j=1;j<lg(x);j++)for(long i=1;i<lgcols(x);i++){if(j>1||i>1)putchar(',');pari_printf("\"%Ps\"",gcoeff(x,i,j));}putchar(']');}
 static void atoms(GEN nf,GEN X){putchar('[');for(long k=1;k<lg(X);k++){GEN x=gel(X,k),c;if(k>1)putchar(',');if(typ(x)==t_INT)c=mkcol3(x,gen_0,gen_0);else c=algtobasis(nf,x);for(long i=1;i<=3;i++){if(i>1)putchar(',');pari_printf("\"%Ps\"",gel(c,i));}}putchar(']');}
 int main(void){
- pari_init(512000000,10000);long resident=nbits2prec(192),retry=nbits2prec(2048);GEN b0=bnfinit0(gp_read_str("x^3-20018*x+20034"),1,NULL,resident),S=bnf_get_sunits(b0),X=gel(S,1),U=gel(S,2),b=bnfnewprec(b0,retry),nf=bnf_get_nf(b),A=bnf_get_logfu(b),L=cgetg(lg(X),t_MAT);for(long k=1;k<lg(X);k++)gel(L,k)=nf_cxlog(nf,gel(X,k),gprecision(A));GEN T=RgM_ZM_mul(L,U);
- printf("{\"generators\":");atoms(nf,X);printf(",\"transform\":");zmat(U);printf(",\"generatorCount\":%ld,\"precision\":%ld,\"embedding\":",lg(X)-1,gprecision(A));smat(nf_get_M(nf));printf(",\"atomLogs\":");smat(L);printf(",\"transformed\":");smat(T);printf(",\"input\":");smat(A);printf(",\"phases\":");pmat(A);puts("}");pari_close();return 0;
+ pari_init(512000000,10000);long resident=nbits2prec(192),retry=nbits2prec(2048);GEN b0=bnfinit0(gp_read_str("x^3-20018*x+20034"),1,NULL,resident),nf0=bnf_get_nf(b0),M0=gcopy(nf_get_M(nf0)),R0=gcopy(nf_get_roots(nf0)),S=bnf_get_sunits(b0),X=gel(S,1),U=gel(S,2),b=bnfnewprec(b0,retry),nf=bnf_get_nf(b),A=bnf_get_logfu(b),L=cgetg(lg(X),t_MAT);for(long k=1;k<lg(X);k++)gel(L,k)=nf_cxlog(nf,gel(X,k),gprecision(A));GEN T=RgM_ZM_mul(L,U);
+ printf("{\"generators\":");atoms(nf,X);printf(",\"transform\":");zmat(U);printf(",\"generatorCount\":%ld,\"precision\":%ld,\"residentEmbedding\":",lg(X)-1,gprecision(A));smat(M0);printf(",\"residentRoots\":");svec(R0);printf(",\"embedding\":");smat(nf_get_M(nf));printf(",\"roots\":");svec(nf_get_roots(nf));printf(",\"atomLogs\":");smat(L);printf(",\"transformed\":");smat(T);printf(",\"input\":");smat(A);printf(",\"phases\":");pmat(A);puts("}");pari_close();return 0;
 }
 `;
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-cubic-rebuild-"));
@@ -96,7 +97,7 @@ function packedRealAndPhases(entries) {
   return { real, phases };
 }
 
-function argumentsFor(f, fixture, backend, held = false) {
+function argumentsFor(f, fixture, backend, held = false, rebuilt = undefined) {
   const I = (length, data = Array(length).fill(0n)) =>
     backend === "javascript"
       ? data.slice()
@@ -105,7 +106,7 @@ function argumentsFor(f, fixture, backend, held = false) {
     backend === "javascript"
       ? Array(length).fill(0n)
       : f.createInt64Buffer(Array(length).fill(0n));
-  const [matrixM, matrixP, matrixE] = splitEmbedding(fixture.embedding);
+  const [matrixM, matrixP, matrixE] = rebuilt || splitEmbedding(fixture.embedding);
   const count = fixture.generatorCount;
   const generators = fixture.generators.map(BigInt);
   if (held) generators.splice(0, 3, 0n, 0n, 0n);
@@ -119,6 +120,29 @@ function argumentsFor(f, fixture, backend, held = false) {
     I(512), I(512), I(128), S(4), S(5),
   ];
   return { args, output: args[11], phases: args[13], state: args[22] };
+}
+
+function rootArguments(f, fixture, backend, held = false) {
+  const I = (length, data = Array(length).fill(0n)) =>
+    backend === "javascript"
+      ? data.slice()
+      : f.createIntegerBuffer(length, 16384, data);
+  const S = (length) =>
+    backend === "javascript"
+      ? Array(length).fill(0n)
+      : f.createInt64Buffer(Array(length).fill(0n));
+  const roots = fixture.residentRoots;
+  const resident = [0, 1, 2].map((index) =>
+    roots.map((entry) => BigInt(entry[index])),
+  );
+  if (held) resident[0][0] = 0n;
+  const args = [
+    I(3, resident[0]), I(3, resident[1]), I(3, resident[2]), 2176n,
+    I(6), I(6), I(6),
+    I(9, Array(9).fill(777n)), I(9, Array(9).fill(777n)),
+    I(9, Array(9).fill(777n)), S(4),
+  ];
+  return { args, matrix: args.slice(7, 10), state: args[10] };
 }
 
 (async () => {
@@ -145,14 +169,17 @@ function argumentsFor(f, fixture, backend, held = false) {
   );
   assert.equal(
     sha(oracle.text),
-    "97f4b52b4aec474c965a84d63ca14130238e4e9ca10b324ea3f7a0999edc216b",
+    "f3f8054a12e31dded8dbb701d3f41e274bd079cdec2d1fc2a738f4417920be89",
   );
 
   const python = JSON.parse(run("python3", ["-c", String.raw`
 import importlib,json,sys
 sys.set_int_max_str_digits(100000);sys.path[:0]=sys.argv[1:3];d=json.load(sys.stdin)
-m=importlib.import_module('bench.pari-class-group-port.cubic_precision_rebuild');I=lambda n:[0]*n;S=lambda n:[0]*n
-E=d['embedding'];M=[[int(E[3*j+i][k]) for i in range(3) for j in range(3)] for k in range(3)];c=d['generatorCount'];out=[777]*42
+m=importlib.import_module('bench.pari-class-group-port.cubic_precision_rebuild');e=importlib.import_module('bench.pari-class-group-port.cubic_embedding_precision_rebuild');I=lambda n:[0]*n;S=lambda n:[0]*n
+E=d['embedding'];wantM=[[int(E[3*j+i][k]) for i in range(3) for j in range(3)] for k in range(3)];R=d['residentRoots'];resident=[[int(x[k]) for x in R] for k in range(3)];M=[I(9),I(9),I(9)];es=S(4)
+status=e.pari_cubic_embedding_precision_rebuild(*resident,2176,I(6),I(6),I(6),*M,es)
+assert status==0,(status,es);assert M==wantM,next((k,i,M[k][i],wantM[k][i]) for k in range(3) for i in range(9) if M[k][i]!=wantM[k][i]);assert es==[0,3,3,2176]
+c=d['generatorCount'];out=[777]*42
 a=[M[0],M[1],M[2],list(map(int,d['generators'])),list(map(int,d['transform'])),c,d['precision'],I(21*c),I(42),I(42),I(42),out,I(6),I(6),I(3),I(3),I(512),I(512),I(512),I(512),I(128),S(4),S(5)]
 status=m.pari_cubic_sunit_precision_rebuild(*a)
 assert status==0,(status,a[22]);assert a[22]==[0,c,2,2,d['precision']],a[22]
@@ -175,9 +202,18 @@ try:m.pari_cubic_sunit_precision_rebuild(*bad);raise AssertionError('zero atom a
 except ValueError:pass
 assert held==[777]*42
 assert heldp==[777]*6
-print(json.dumps({'status':'exact','generators':c,'transactionalFailure':True}))
+badM=[[777]*9 for _ in range(3)];badR=[x[:] for x in resident];badR[0][0]=0
+try:e.pari_cubic_embedding_precision_rebuild(*badR,2176,I(6),I(6),I(6),*badM,S(4));raise AssertionError('zero resident root accepted')
+except ValueError:pass
+assert badM==[[777]*9 for _ in range(3)]
+print(json.dumps({'status':'exact','generators':c,'embeddingRebuilt':True,'transactionalFailure':True}))
 `, root, path.join(root, "src/lib")], { input: JSON.stringify(fixture) }));
 
+  const embeddingBuilt = await compileKernel({
+    sourcePath: path.join(__dirname, "cubic_embedding_precision_rebuild.py"),
+  });
+  const ef = require(embeddingBuilt.modulePath).pari_cubic_embedding_precision_rebuild;
+  assert.equal(ef.nativeAvailable, true);
   const built = await compileKernel({
     sourcePath: path.join(__dirname, "cubic_precision_rebuild.py"),
   });
@@ -185,7 +221,12 @@ print(json.dumps({'status':'exact','generators':c,'transactionalFailure':True}))
   assert.equal(f.nativeAvailable, true);
   let expected;
   for (const backend of ["javascript", "gmp", "tagged"]) {
-    const call = argumentsFor(f, fixture, backend);
+    const rootCall = rootArguments(ef, fixture, backend);
+    assert.equal(ef[backend](...rootCall.args), 0n, backend);
+    const rebuilt = rootCall.matrix.map(values);
+    assert.deepEqual(rebuilt, splitEmbedding(fixture.embedding), backend);
+    assert.deepEqual(values(rootCall.state), [0n, 3n, 3n, 2176n]);
+    const call = argumentsFor(f, fixture, backend, false, rebuilt);
     assert.equal(f[backend](...call.args), 0n, backend);
     const packed = packedRealAndPhases(values(call.output));
     assert.deepEqual(packed.real, flattenTriples(fixture.input), backend);
@@ -197,6 +238,11 @@ print(json.dumps({'status':'exact','generators':c,'transactionalFailure':True}))
     assert.throws(() => f[backend](...failed.args), /zero retained S-unit atom/);
     assert.deepEqual(values(failed.output), Array(42).fill(777n));
     assert.deepEqual(values(failed.phases), Array(6).fill(777n));
+    const rootFailed = rootArguments(ef, fixture, backend, true);
+    assert.throws(() => ef[backend](...rootFailed.args), /invalid resident cubic root/);
+    for (const output of rootFailed.matrix) {
+      assert.deepEqual(values(output), Array(9).fill(777n));
+    }
   }
   console.log(JSON.stringify({
     cases: 1,
@@ -210,7 +256,9 @@ print(json.dumps({'status':'exact','generators':c,'transactionalFailure':True}))
     python,
     backends: ["cpython", "javascript", "gmp", "tagged"],
     highPrecisionLogsInjected: false,
-    highPrecisionEmbeddingInjected: true,
+    highPrecisionEmbeddingInjected: false,
+    residentPrecisionBits: Math.max(...fixture.residentRoots.map((x) => Number(x[1]))),
+    rootCoreSha256: sha(fs.readFileSync(embeddingBuilt.coreSourcePath)),
     transactionalFailure: true,
     coreSha256: sha(fs.readFileSync(built.coreSourcePath)),
     artifactDirectory: oracle.directory,
