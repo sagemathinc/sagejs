@@ -28,6 +28,30 @@ assert.equal(authority.A.length, 273);
 assert.equal(authority.L.length, 26);
 assert.equal(authority.terminalColumns, 301);
 assert.equal(authority.retainedBColumns, 286);
+const authorityDigest = (value) => {
+  const payload = structuredClone(value);
+  delete payload.authoritySha256;
+  return hash(JSON.stringify(payload));
+};
+assert.equal(authorityDigest(authority), authority.authoritySha256);
+assert.match(authority.pristineFinalASha256, /^[0-9a-f]{64}$/);
+assert.match(authority.pristineFinalUSha256, /^[0-9a-f]{64}$/);
+assert(authority.pristineFinalALength > 0);
+assert(authority.pristineFinalULength > 0);
+
+function assertPristineGetfuBranch(value, translatedStatus) {
+  const mapping = new Map([
+    [0, 0],
+    [2, 2], // fupb_LARGE
+    [3, 3], // fupb_PRECI
+  ]);
+  assert(mapping.has(translatedStatus), "unsupported translated getfu status");
+  assert.equal(
+    value.pristineGetfuReason,
+    mapping.get(translatedStatus),
+    "translated getfu branch differs from pristine PARI not_given reason",
+  );
+}
 
 const python = String.raw`
 import importlib,json,sys
@@ -59,6 +83,15 @@ const expected = JSON.parse(
   run("python3", ["-c", python, root, path.join(root, "src/lib")], {
     input: JSON.stringify(authority),
   }),
+);
+assertPristineGetfuBranch(authority, expected.getfuStatus);
+const mutatedAuthority = structuredClone(authority);
+mutatedAuthority.pristineGetfuReason =
+  authority.pristineGetfuReason === 2 ? 3 : 2;
+assert.notEqual(authorityDigest(mutatedAuthority), authority.authoritySha256);
+assert.throws(
+  () => assertPristineGetfuBranch(mutatedAuthority, expected.getfuStatus),
+  /differs from pristine PARI/,
 );
 
 const ints = (n) => Array(n).fill(0n);
@@ -104,5 +137,5 @@ const realRows = (x) => {
     const held=[...clean],bad=[...AU];bad[3]=0n;const bs=ints(6);assert.equal(mixed.pari_cleanarchunit_mixed_quartic[backend](bad,R,192n,ints(3),ints(512),ints(512),ints(512),ints(512),ints(1024),ints(42),clean,bs),1n);assert.deepEqual(clean,held);assert.deepEqual(bs.map(String),expected.negativeState.map(String));
     assert.deepEqual([0n,2n,3n].map(x=>mixed.pari_field3_unit_suffix_action[backend](0n,x)),[0n,3n,4n]);results.push(backend);
   }
-  console.log(JSON.stringify({field:3,authoritySha256:authority.authoritySha256,preparedOwnerSha256:authority.preparedOwnerSha256,terminalColumns:301,retainedBColumns:286,unitColumns:13,cpython:true,backends:results,cleanState:expected.cleanState,getfuFactor:expected.getfuFactor,getfuStatus:expected.getfuStatus,getfuState:expected.getfuState,legitimateNotGiven:expected.getfuStatus===2?"LARGE":expected.getfuStatus===3?"PRECI":null,transactionalNegative:true,outputSha256:hash(JSON.stringify(expected))}));
+  console.log(JSON.stringify({field:3,authoritySha256:authority.authoritySha256,preparedOwnerSha256:authority.preparedOwnerSha256,pristineGetfuReason:authority.pristineGetfuReason,pristineFinalALength:authority.pristineFinalALength,pristineFinalULength:authority.pristineFinalULength,terminalColumns:301,retainedBColumns:286,unitColumns:13,cpython:true,backends:results,cleanState:expected.cleanState,getfuFactor:expected.getfuFactor,getfuStatus:expected.getfuStatus,getfuState:expected.getfuState,legitimateNotGiven:expected.getfuStatus===2?"LARGE":expected.getfuStatus===3?"PRECI":null,authorityMutationRejected:true,transactionalNegative:true,outputSha256:hash(JSON.stringify(expected))}));
 })().catch((error)=>{console.error(error);process.exitCode=1;});
