@@ -28,7 +28,7 @@ for (const pythonAttributes of [false, true]) {
       const instance = vm.runInNewContext(`(${output.get()})`, {
         namespace: { Thing },
         ρσ_getattr_missing: {},
-        ρσ_getattr_internal(object, key) {
+        ρσ_attr(object, key) {
           assert.equal(new.target, undefined, "attribute lookup is not a constructor");
           lookups++;
           return object[key];

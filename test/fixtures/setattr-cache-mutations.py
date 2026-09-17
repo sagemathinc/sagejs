@@ -58,6 +58,35 @@ plain.value = 10
 assert type(plain) is Other and plain.value == 10
 
 
+class ReadMutation:
+    def __init__(self):
+        self.value = 2
+
+
+read_mutation = ReadMutation()
+assert read_mutation.value == 2
+assert read_mutation.value == 2
+
+
+def changed_getattribute(self, name):
+    value = object.__getattribute__(self, name)
+    return value + 20 if name == "value" else value
+
+
+ReadMutation.__getattribute__ = changed_getattribute
+assert read_mutation.value == 22
+del ReadMutation.__getattribute__
+read_mutation.value = 3
+assert read_mutation.value == 3
+del read_mutation.value
+try:
+    read_mutation.value
+except AttributeError:
+    pass
+else:
+    raise AssertionError("deleted cached field remained readable")
+
+
 order = []
 
 

@@ -859,21 +859,21 @@ test("observable chained assignments use Python hooks from left to right", async
       "first", "second", "marker",
     ]);
     assert.match(javascript, /function\(ρσ_chain_assign_temp\)/);
-    assert.equal((javascript.match(/ρσ_store_attr/g) ?? []).length, 2);
+    assert.equal((javascript.match(/ρσ_attr/g) ?? []).length, 4);
     assert.match(
       javascript,
-      /ρσ_getattr_internal\(first, "child", ρσ_getattr_missing\)/,
+      /ρσ_attr\(first, "child"\)/,
     );
     assert.match(
       javascript,
-      /ρσ_getattr_internal\(second, "child", ρσ_getattr_missing\)/,
+      /ρσ_attr\(second, "child"\)/,
     );
     assert.ok(
       javascript.indexOf(
-        'ρσ_getattr_internal(first, "child", ρσ_getattr_missing)',
+        'ρσ_attr(first, "child")',
       ) <
         javascript.indexOf(
-          'ρσ_getattr_internal(second, "child", ρσ_getattr_missing)',
+          'ρσ_attr(second, "child")',
         ),
     );
 
@@ -1238,7 +1238,7 @@ test("Python bindings shadow JavaScript native namespace names", async () => {
     const javascript = output.get();
     assert.match(
       javascript,
-      /ρσ_getattr_internal\(ρσ_getattr_internal\(\$ρσ\$py\$Number, "Integer", ρσ_getattr_missing\), "Long", ρσ_getattr_missing\)/,
+      /ρσ_attr\(ρσ_attr\(\$ρσ\$py\$Number, "Integer"\), "Long"\)/,
     );
     assert.doesNotMatch(javascript, /Number\.Integer\.Long/);
   } finally {
