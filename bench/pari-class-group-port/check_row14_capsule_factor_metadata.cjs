@@ -25,6 +25,12 @@ const ROWS = 799;
 const DEGREE = 4;
 const TARGET = 806;
 const RECORD_RESERVE = 8110;
+// Comparison-only W0 events[7].ideal export for jid 799. It is never emitted
+// as host input; the native packet must match after column-to-row conversion.
+const W0_JID799_IDEAL_COLUMN_MAJOR = [
+  5953n, 0n, 0n, 0n, 1517n, 1n, 0n, 0n,
+  1005n, 0n, 1n, 0n, 4996n, 0n, 0n, 1n,
+];
 const sha = bytes => crypto.createHash("sha256").update(bytes).digest("hex");
 
 function capsule(directory) {
@@ -78,6 +84,18 @@ function descriptors(value) {
 
 function strings(value) {
   return Array.from(value, entry => String(entry));
+}
+
+function columnToRowMatrices(value, degree) {
+  const square = degree * degree;
+  assert.equal(value.length % square, 0);
+  const out = Array(value.length);
+  for (let matrix = 0; matrix < value.length / square; matrix += 1)
+    for (let row = 0; row < degree; row += 1)
+      for (let column = 0; column < degree; column += 1)
+        out[matrix * square + row * degree + column] =
+          value[matrix * square + column * degree + row];
+  return out;
 }
 
 function expectedInitialRelations(primes, offsets, counts, complete, e) {
@@ -162,8 +180,11 @@ async function main() {
     assert.deepEqual(output.relationPrimes.toArray(), p);
     assert.deepEqual(derivedE, e);
     assert.deepEqual(output.relationF.toArray(), f);
-    assert.deepEqual(output.tau.toArray(), sourceTau);
+    assert.deepEqual(output.tau.toArray(), columnToRowMatrices(sourceTau, DEGREE));
     assert.deepEqual(output.searchIdeals.toArray(), permutation);
+    assert.deepEqual(output.packetIdeals.toArray().slice(-square),
+      columnToRowMatrices(W0_JID799_IDEAL_COLUMN_MAJOR, DEGREE),
+      "live jid 799 packet changed from the frozen source ideal");
     assert.deepEqual(expectedInitialRelations(rationalPrimes, offsets, counts, complete, derivedE),
       value.initialRelations, "fresh complete-group initialization changed");
 
@@ -175,7 +196,7 @@ async function main() {
       schema: "sagejs.pari-class-group/row14-connected-factor-metadata-v1",
       authority: { capsuleSha256: CAPSULE_SHA256,
         preparedAuthoritySha256: preparedAuthority.sha256,
-        tauAuthority: "authenticated-initial-factor-descriptor" },
+        tauAuthority: "authenticated-initial-factor-descriptor-column-to-row" },
       policy: {
         degree: DEGREE, precision: Number(prepared.precision), rows: ROWS,
         target: TARGET, additional: TARGET - ROWS, recordReserve: RECORD_RESERVE,

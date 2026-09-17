@@ -3,8 +3,10 @@
 The capsule supplies only the authenticated prepared number field, the initial
 factor-base descriptors, and the pre-search schedule.  Ideal HNFs are
 recomputed from the prepared multiplication table and descriptor generators.
-The authenticated descriptor tau is preserved: reconstructing PARI's exact
-ramified antiuniformizer choice requires the omitted prime-decomposition path.
+The authenticated descriptor tau is preserved and transposed from PARI's
+column-major export into the row-major kernel representation. Reconstructing
+PARI's exact ramified antiuniformizer choice requires the omitted
+prime-decomposition path.
 No later relation, HNF, class, or unit data is accepted by this boundary.
 """
 
@@ -147,7 +149,10 @@ def pari_row14_capsule_factor_metadata(
             packet_ideals[position * square + i] = packet_ideal[i]
 
         for i in range(square):
-            group_tau[position * square + i] = source_tau[position * square + i]
+            # Exported matrices are flattened by PARI columns. Native matrix
+            # kernels use row-major owners throughout this port.
+            source = (i % degree) * degree + i // degree
+            group_tau[position * square + i] = source_tau[position * square + source]
     return rows, complete_groups
 
 
