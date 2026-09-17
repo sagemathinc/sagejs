@@ -35,10 +35,28 @@
     "pnpm test:native",
     "node bench/pari-class-group-port/check_h1_exclusive_stage_timing.cjs"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_h1_exclusive_stage_timing.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.387,
+      "started_at": "2026-09-17T03:01:52.726Z",
+      "commit": "647eaad0bd85d5a912e92c6b47fb6dcf5cc8b4fb",
+      "workspace_fingerprint": "af9fcce59a67954b762badfe1598d85bdcbd2a79eee0e6e70b7a7859d81996db",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Defined an instrumentation-ready single-active-stage wall-clock timer and strict diagnostic receipt for the authentic h=1 prepared root. Every arm retains contiguous root-relative segments in four named stages plus an explicit residual; validation proves those segments are positive, gap-free, nonoverlapping, cover the root exactly, and reproduce the claimed totals. Per-pair Sage.js-minus-PARI gaps use exact cross multiplication despite unequal repetition counts, and the five stage gaps must sum exactly to the root gap. The attributed-gap fraction is the predeclared median of positive-root-gap pair fractions, with faster stages unable to cancel an unexplained positive residual. Seven alternating synthetic pairs and eleven negative cases pass; no real timing was run.",
+    "risks": [
+      "The timer is ready for adapters but is not yet inserted at the four authentic Sage.js/PARI stage transitions; this lane intentionally performs no benchmark.",
+      "The diagnostic schema fixes qualified timing to false. The final runner must embed validated diagnostics into the existing pinned-core, quiet-host, locked qualification protocol rather than relabel these receipts."
+    ],
+    "next_steps": [
+      "Add one integration adapter per implementation that switches the same timer at the four source-corresponding stage boundaries and emits matched digests.",
+      "After the authentic root and artifacts are frozen, run at least seven alternating AB/BA diagnostic pairs on the approved quiet Linux host.",
+      "Copy the validated median attributed-gap fraction into the prepared-kernel qualification receipt only after checking provenance and matched outputs."
+    ]
   }
 }
