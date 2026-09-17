@@ -12,7 +12,9 @@
     "bench/pari-class-group-port/h1_unified_complete_adapter.cjs",
     "bench/pari-class-group-port/run_h1_complete_matched_diagnostic.cjs",
     "bench/pari-class-group-port/check_h1_complete_real_runner.cjs",
-    "bench/pari-class-group-port/h1_complete_real_runner.md"
+    "bench/pari-class-group-port/h1_complete_real_runner.md",
+    "bench/pari-class-group-port/check_pari_unified_complete_h1_root.cjs",
+    "bench/pari-class-group-port/pari_unified_complete_h1_root.py"
   ],
   "dependencies": [],
   "references": [],
@@ -40,8 +42,16 @@
   ],
   "runs": [],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Added a real seven-pair alternating diagnostic that executes the corrected unified prepared H1 native root and authentic pinned PARI 2.17.4 bnfinit0(nf,0). Every arm authenticates the same prepared input and common mathematical projection. On the development host Sage.js measured a 2492.960 ms median versus PARI's 75.674 ms, or 32.94x; both monolithic roots remain entirely explicit residual and the receipt is unqualified and non-final.",
+    "risks": [
+      "The common digest intentionally excludes source-specific floating, expanded-unit, terminal-RNG, and detailed work representations; each source validates richer state before projection.",
+      "The Sage.js root and PARI helper lack internal clocks here, so the honest attributed-gap fraction is zero and this lane does not satisfy the campaign's 80% attribution gate.",
+      "Development-host timing includes adapter validation and PARI helper IPC/serialization; a quiet-host promoted timing run has not been performed."
+    ],
+    "next_steps": [
+      "Integrate benchmark-only native and PARI stage clocks, prove they conserve each inclusive root, and rerun this same matched protocol.",
+      "Strengthen the matched projection to compare regulator/log evidence when a representation-normalization audit is available.",
+      "Run final quiet-host promotion only after the attribution and output-boundary gates pass."
+    ]
   }
 }
