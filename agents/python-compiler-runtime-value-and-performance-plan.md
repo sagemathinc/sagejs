@@ -540,6 +540,25 @@ differential, focused, traitlets, attrs/decorator, strict, docs, and merge gates
 pass at 902,348/903,000 core bytes. Evidence is folded into
 `agents/python-keyword-single-pass-binding.md`; M5 remains open.
 
+**2026-09-17 generated default-tail ownership checkpoint:** generated function
+prologues already read source-defaulted positional parameters from keyword
+packets, but the shared binder first copied/deleted the same values into sparse
+positional arrays. The existing internal handler slot now encodes a one-based
+count of the trailing parameters owned by that prologue; counts survive
+bound/unbound and constructor adapters, while handwritten boolean handlers
+retain the complete path. Controlled exact-artifact measurements improve
+keyword functions by 48.3%, immediate keyword methods by 31.7%, and keyword
+construction plus a method by 10.6%; positional rows remain flat and the
+artifact shrinks 3,335 bytes. Residual gaps are still 4.2x, 9.3x, and 10.6x
+CPython, so M5 remains open. The audit also fixes positional-only defaults being
+incorrectly consumed from `**kwargs`; `f(a=2)` for
+`def f(a=1, /, **kw)` now agrees with CPython as `(1, {"a": 2})`. Full
+differential, 49 focused/traitlets checks, attrs/decorator, strict, docs, merge,
+and source budgets pass at 902,583/903,000 core bytes. Compiler tests not
+requiring the absent optional FLINT addon pass. Exact evidence is in
+`agents/python-default-tail-keyword-prologue.md`; keep the candidate behind its
+prerequisites.
+
 Continue next with integration-aware qualification, the receiver-lookup campaign,
 and true handled-exception ownership. Generator/coroutine suspension makes a
 single global active-exception pointer unsafe: preserve owned handlers while

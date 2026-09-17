@@ -226,14 +226,18 @@ def ρσ_interpolate_kwargs(receiver, target_function, supplied_args):
         if(positional_only===true)positional_only=argnames.length;
         else if(positional_only===undefined)positional_only=0;
         const keyword_object=supplied_args[supplied_args.length-1];
-        if(target_function.__handles_kwarg_interpolation__){
+        const keyword_handler=target_function.__handles_kwarg_interpolation__;
+        if(keyword_handler){
             const supplied_count=supplied_args.length-1;
+            const handled_start=typeof keyword_handler==="number"?
+                argnames.length-keyword_handler+1:argnames.length;
             let direct=true;
             for(const property_name of Object.keys(keyword_object)){
                 const index=argnames.indexOf(property_name);
                 if(index>=positional_only){
                     if(index<supplied_count)
                         throw ρσ_exception_value(new TypeError("multiple values for argument '"+property_name+"'"));
+                    if(index>=handled_start)continue;
                     if(direct){supplied_args.pop();direct=false;}
                     supplied_args[index]=keyword_object[property_name];
                     Reflect.deleteProperty(keyword_object,property_name);

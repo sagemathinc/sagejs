@@ -224,6 +224,16 @@ test("shared keyword binding consumes literal packets without Python operators",
     undefined, target, [receiverlessPacket]);
   assert.deepEqual(Array.from(receiverless).slice(1, 4), [4, undefined, 6]);
   assert.deepEqual(Object.keys(receiverless[4]), []);
+  function defaultTailTarget(required, keywordPacket) {
+    return [required, keywordPacket.optional, keywordPacket];
+  }
+  defaultTailTarget.__argnames__ = ["required", "optional"];
+  defaultTailTarget.__handles_kwarg_interpolation__ = 2;
+  const defaultTailPacket = { required: 8, optional: 9 };
+  const defaultTail = receiverlessApi.ρσ_interpolate_kwargs(
+    undefined, defaultTailTarget, [defaultTailPacket]);
+  assert.deepEqual(Array.from(defaultTail).slice(0, 2), [8, 9]);
+  assert.deepEqual(defaultTail[2], { optional: 9 });
   assert.throws(
     () => api.ρσ_interpolate_kwargs(undefined, target, [1, { left: 2 }]),
     /multiple values for argument 'left'/,
