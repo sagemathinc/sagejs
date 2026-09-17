@@ -21,7 +21,9 @@ function argumentsOf(argv) {
   const result = {};
   for (let index = 2; index < argv.length; index += 2) {
     if (!argv[index].startsWith("--") || index + 1 >= argv.length) fail("invalid arguments");
-    result[argv[index].slice(2)] = argv[index + 1];
+    const key = argv[index].slice(2);
+    if (Object.hasOwn(result, key)) fail(`duplicate --${key}`);
+    result[key] = argv[index + 1];
   }
   return result;
 }

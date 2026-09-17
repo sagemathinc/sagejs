@@ -24,6 +24,12 @@ per-column inverse, torsion-sign, and norm correspondence. It independently
 checks that C6 applies the inverse choice as the same sign to all 301 raw
 transform entries and both exact factor entries.
 
+The factorback source must also name the authenticated C6, embedding, and
+relation owners. The receipt binds the complete source bytes and independently
+repeats all three digests. The adapter requires both copies to agree with the
+actual C6 and embedding owners, then propagates the links into the unit owner's
+ancestry and proof records for C7 cross-owner validation.
+
 Successful C6 produces
 `sagejs.pari-class-group/field3-c5-c6-unit-owner-v1`, with the exact materialized
 power-basis units, 301-by-2 adjusted factored transform, factorback column
@@ -68,6 +74,11 @@ schema string and true-valued booleans as mathematical authority. Once the
 real serializers exist, the retained validation design can be enabled and will
 yield exactly `sagejs.pari-class-group/field3-live-final-owner-v1`. A compact
 fingerprint will not be admitted in place of the exact arrays.
+
+In particular, terminal `B` authority depends on that authenticated class
+serializer. C7 validates the resulting array and its ancestry but does not
+claim that caller-authored `B` bytes are authoritative; `composeLive` remains
+fail-closed until the serializer exists.
 
 The C7 consumer was tightened independently of that pending edge. It now
 validates the successful unit terminal state, precision/generation, both

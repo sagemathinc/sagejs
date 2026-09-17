@@ -86,7 +86,9 @@ try {
   const factorbackSourceValue = {
     schema: "sagejs.pari-class-group/field3-c6-factorback-source-v1",
     field, runIdentity, precision: 384, generation: 1,
-    c5OwnerSha256: c5.sha256,
+    c5OwnerSha256: c5.sha256, c6OwnerSha256: c6.sha256,
+    embeddingOwnerSha256: c6Value.embeddingOwnerSha256,
+    relationOwnerSha256: "9".repeat(64),
     principalGenerators: Array(1204).fill("0"),
     relationRecords: Array(86688).fill("0"),
     multiplicationBasis: Array(64).fill("0"),
@@ -103,7 +105,10 @@ try {
     schema: "sagejs.pari-class-group/field3-c6-factorback-receipt-v1",
     field, runIdentity, precision: 384, generation: 1,
     sourceOwnerSha256: factorbackSource.sha256, c5OwnerSha256: c5.sha256,
-    c6OwnerSha256: c6.sha256, inverseMask: mask,
+    c6OwnerSha256: c6.sha256,
+    embeddingOwnerSha256: factorbackSourceValue.embeddingOwnerSha256,
+    relationOwnerSha256: factorbackSourceValue.relationOwnerSha256,
+    inverseMask: mask,
     columns: [
       { column: 0, inverseChosen: true, factorbackNorm: -1,
         materializedNorm: -1, torsionSign: -1 },
@@ -227,13 +232,22 @@ try {
   const changedC6Value = structuredClone(c6.value);
   changedC6Value.adjustedWraw[0] = "99";
   const changedC6 = immutable(temporary, "bad-c6-sign", changedC6Value);
+  const changedSignSourceValue = structuredClone(factorbackSource.value);
+  changedSignSourceValue.c6OwnerSha256 = changedC6.sha256;
+  const changedSignSource = immutable(temporary, "bad-c6-sign-source",
+    changedSignSourceValue);
   const changedFactorbackValue = structuredClone(factorback.value);
   changedFactorbackValue.c6OwnerSha256 = changedC6.sha256;
+  changedFactorbackValue.sourceOwnerSha256 = changedSignSource.sha256;
   const changedFactorback = immutable(temporary, "bad-c6-sign-factorback",
     changedFactorbackValue);
   const changedSignArgs = unitArgs.slice();
   changedSignArgs[changedSignArgs.indexOf("--c6") + 1] = changedC6.path;
   changedSignArgs[changedSignArgs.indexOf("--c6-sha256") + 1] = changedC6.sha256;
+  changedSignArgs[changedSignArgs.indexOf("--factorback-source") + 1] =
+    changedSignSource.path;
+  changedSignArgs[changedSignArgs.indexOf("--factorback-source-sha256") + 1] =
+    changedSignSource.sha256;
   changedSignArgs[changedSignArgs.indexOf("--factorback") + 1] = changedFactorback.path;
   changedSignArgs[changedSignArgs.indexOf("--factorback-sha256") + 1] =
     changedFactorback.sha256;
@@ -241,6 +255,21 @@ try {
   assert.deepEqual(fs.readdirSync(output).sort(), before, "C5/C6 sign identity");
   rejectedOwner("bad-factorback-proof", factorback,
     (v) => { v.verified.exactFactorback = false; }, unitArgs,
+    "--factorback", "--factorback-sha256");
+  for (const [name, mutate] of [
+    ["wrong-factorback-receipt-embedding", (value) => {
+      value.embeddingOwnerSha256 = "f".repeat(64);
+    }],
+    ["missing-factorback-receipt-embedding", (value) => {
+      delete value.embeddingOwnerSha256;
+    }],
+    ["wrong-factorback-receipt-relation", (value) => {
+      value.relationOwnerSha256 = "f".repeat(64);
+    }],
+    ["missing-factorback-receipt-relation", (value) => {
+      delete value.relationOwnerSha256;
+    }],
+  ]) rejectedOwner(name, factorback, mutate, unitArgs,
     "--factorback", "--factorback-sha256");
   const changedSource = structuredClone(factorbackSource.value);
   changedSource.rawUnitTransform[0] = "99";
@@ -251,6 +280,38 @@ try {
     changedSourceOwner.sha256;
   run(badSourceArgs, false); rejected += 1;
   assert.deepEqual(fs.readdirSync(output).sort(), before, "factorback source ancestry");
+  for (const [name, mutate] of [
+    ["wrong-factorback-source-c6", (value) => { value.c6OwnerSha256 = "f".repeat(64); }],
+    ["missing-factorback-source-c6", (value) => { delete value.c6OwnerSha256; }],
+    ["wrong-factorback-source-embedding", (value) => {
+      value.embeddingOwnerSha256 = "f".repeat(64);
+    }],
+    ["missing-factorback-source-embedding", (value) => {
+      delete value.embeddingOwnerSha256;
+    }],
+    ["invalid-factorback-source-relation", (value) => {
+      value.relationOwnerSha256 = "wrong";
+    }],
+    ["missing-factorback-source-relation", (value) => {
+      delete value.relationOwnerSha256;
+    }],
+  ]) {
+    const sourceValue = structuredClone(factorbackSource.value);
+    mutate(sourceValue);
+    const sourceOwner = immutable(temporary, name, sourceValue);
+    const receiptValue = structuredClone(factorback.value);
+    receiptValue.sourceOwnerSha256 = sourceOwner.sha256;
+    const receiptOwner = immutable(temporary, `${name}-receipt`, receiptValue);
+    const changedArgs = unitArgs.slice();
+    changedArgs[changedArgs.indexOf("--factorback-source") + 1] = sourceOwner.path;
+    changedArgs[changedArgs.indexOf("--factorback-source-sha256") + 1] =
+      sourceOwner.sha256;
+    changedArgs[changedArgs.indexOf("--factorback") + 1] = receiptOwner.path;
+    changedArgs[changedArgs.indexOf("--factorback-sha256") + 1] =
+      receiptOwner.sha256;
+    run(changedArgs, false); rejected += 1;
+    assert.deepEqual(fs.readdirSync(output).sort(), before, name);
+  }
   const duplicate = Buffer.from('{"schema":"x","schema":"y"}\n');
   const duplicateOwner = immutable(temporary, "duplicate", null, duplicate);
   const duplicateArgs = unitArgs.slice();

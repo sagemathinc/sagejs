@@ -31,6 +31,7 @@ REGULATOR_SCHEMA = "sagejs.pari-class-group/field3-analytic-accepted-owner-v1"
 UNIT_SCHEMA = "sagejs.pari-class-group/field3-c5-c6-unit-owner-v1"
 LIVE_SCHEMA = "sagejs.pari-class-group/field3-live-final-owner-v1"
 FIELD = "x^4-2000022*x-2000042"
+RUN = "pari-2.17.4:nfinit192->nfnewprec153088:field3"
 LOG_CELLS = 7
 PLACES = 3
 _SHA256 = re.compile(r"[0-9a-f]{64}\Z")
@@ -81,7 +82,11 @@ def _digest_words(value: str) -> list[int]:
 
 
 def _field(owner: Mapping[str, Any], schema: str, label: str) -> None:
-    if owner.get("schema") != schema or owner.get("field") != FIELD:
+    if (
+        owner.get("schema") != schema
+        or owner.get("field") != FIELD
+        or owner.get("runIdentity") != RUN
+    ):
         raise Field3C7Failure(f"{label} identity changed")
 
 
@@ -431,6 +436,7 @@ def assemble_authenticated_owners(
         "acceptedC4OwnerSha256",
         "embeddingOwnerSha256",
         "candidateSha256",
+        "relationOwnerSha256",
         "factorbackSourceOwnerSha256",
         "factorbackReceiptSha256",
     ):
@@ -462,6 +468,17 @@ def assemble_authenticated_owners(
     inverse_mask = _integer(unit_proof.get("inverseMask"), "unit inverse mask")
     if inverse_mask < 0 or inverse_mask > 3:
         raise Field3C7Failure("unit inverse mask changed")
+    proof_ancestry = {
+        "sourceOwnerSha256": "factorbackSourceOwnerSha256",
+        "sourceC6OwnerSha256": "c6OwnerSha256",
+        "sourceEmbeddingOwnerSha256": "embeddingOwnerSha256",
+        "sourceRelationOwnerSha256": "relationOwnerSha256",
+    }
+    for proof_key, ancestry_key in proof_ancestry.items():
+        if _digest(
+            unit_proof.get(proof_key), f"unit proof {proof_key}"
+        ) != unit_ancestry.get(ancestry_key):
+            raise Field3C7Failure("unit proof/source ancestry diverged")
     proof_columns = unit_proof.get("columns")
     if not isinstance(proof_columns, list) or len(proof_columns) != 2:
         raise Field3C7Failure("unit proof columns changed")
@@ -545,6 +562,14 @@ def assemble_authenticated_owners(
         _digest(live_ancestry.get(key), f"live ancestry {key}")
     if full15_sha256 != live_ancestry.get("full15OwnerSha256"):
         raise Field3C7Failure("live owner is detached from authenticated full15")
+    if unit_ancestry.get("relationOwnerSha256") != live_ancestry.get(
+        "relationAuthoritySha256"
+    ):
+        raise Field3C7Failure("unit and live relation authorities diverged")
+    if _integer(torsion.get("order"), "torsion order") != 2 or _integers(
+        torsion.get("generator"), 4, "torsion generator"
+    ) != [-1, 0, 0, 0]:
+        raise Field3C7Failure("torsion authority changed")
 
     witness_exponents = [0] * (301 * 2)
     witness_images = [0] * (288 * 2)

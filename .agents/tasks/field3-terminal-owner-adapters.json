@@ -97,10 +97,30 @@
       "commit": "2d290bb86b1bbe76ac18f62f1f9bd54826b0f574",
       "workspace_fingerprint": "dba3d33cde4058b5da77a67951176c809a986f22eb7d39a8b737e935128b6394",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_field3_terminal_owner_adapters.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.698,
+      "started_at": "2026-09-17T16:29:51.245Z",
+      "commit": "73176723670e324b218f2bb91e77180895dcac5e",
+      "workspace_fingerprint": "2d4002ea1978bde8fea4babf5e6fd248db327d876a503fe21d6735c110a70d92",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env FIELD3_C7_SKIP_NATIVE=1 node bench/pari-class-group-port/check_field3_c7_final_assembly.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.196,
+      "started_at": "2026-09-17T16:29:56.660Z",
+      "commit": "73176723670e324b218f2bb91e77180895dcac5e",
+      "workspace_fingerprint": "2d4002ea1978bde8fea4babf5e6fd248db327d876a503fe21d6735c110a70d92",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Adds a strict immutable C7 unit producer that authenticates C5, C6, the exact factorback source, and its replay receipt; validates all terminal state words; and preserves C6 not_given honestly. C7 now cross-links the accepted C4, C3, full15, unit, and live ancestry; validates complete unit/proof provenance and all 301 exact principal records. Live publication explicitly fails closed until real immutable relation/class serializers exist.",
+    "summary": "Adds a strict immutable C7 unit producer that authenticates C5, C6, the exact factorback source, and its replay receipt, including exact C6/embedding/relation ancestry; validates all terminal state words; and preserves C6 not_given honestly. C7 now cross-links the accepted C4, C3, full15, unit, relation, and live ancestry; validates fixed run identity, torsion, complete unit/proof provenance, and all 301 exact principal records. Live publication explicitly fails closed until real immutable relation/class serializers exist.",
     "risks": [
       "The authentic 153088-bit owners were intentionally not run in this lane.",
       "The real relation and class serialization producers do not exist yet, so live-final publication intentionally remains unavailable.",

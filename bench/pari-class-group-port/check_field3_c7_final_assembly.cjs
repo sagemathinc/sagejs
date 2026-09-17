@@ -12,6 +12,7 @@ const root = path.resolve(__dirname, "../..");
 const sourcePath = path.join(__dirname, "field3_c7_final_assembly.py");
 const coordinator = path.join(__dirname, "field3_c7_final_assembly_coordinator.cjs");
 const field = "x^4-2000022*x-2000042";
+const runIdentity = "pari-2.17.4:nfinit192->nfnewprec153088:field3";
 const hash = (bytes) => crypto.createHash("sha256").update(bytes).digest("hex");
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
@@ -53,7 +54,7 @@ function owners() {
   const Ce = packedCe();
   const full15 = {
     schema: "sagejs.pari-class-group/field3-full-terminal-ancestry-v1",
-    field,
+    field, runIdentity,
     transform,
     terminalH: ["2", "0", "0", "2"],
     terminalPermutation: permutation.map(String),
@@ -73,7 +74,7 @@ function owners() {
   const acceptanceState = ["0", "1", "192", "1"];
   const regulator = {
     schema: "sagejs.pari-class-group/field3-analytic-accepted-owner-v1",
-    field,
+    field, runIdentity,
     accepted: true,
     precision: "192", generation: "1",
     regulator: ["7", "192", "-3"],
@@ -92,7 +93,7 @@ function owners() {
   };
   const unit = {
     schema: "sagejs.pari-class-group/field3-c5-c6-unit-owner-v1",
-    field,
+    field, runIdentity,
     accepted: true,
     status: "success",
     reason: null,
@@ -116,12 +117,16 @@ function owners() {
       c6OwnerSha256: "3".repeat(64), embeddingOwnerSha256: "4".repeat(64),
       c3OwnerSha256, acceptedC4OwnerSha256,
       candidateSha256: "5".repeat(64), factorbackSourceOwnerSha256: "6".repeat(64),
-      factorbackReceiptSha256: "7".repeat(64),
+      factorbackReceiptSha256: "7".repeat(64), relationOwnerSha256: "9".repeat(64),
     },
     proof: {
       relationKernel: true, exactFactorback: true, principalIdealOne: true,
       torsionPlusMinusOne: true, normAndInverse: true, logLattice: true,
       inverseMask: 2,
+      sourceOwnerSha256: "6".repeat(64),
+      sourceC6OwnerSha256: "3".repeat(64),
+      sourceEmbeddingOwnerSha256: "4".repeat(64),
+      sourceRelationOwnerSha256: "9".repeat(64),
       columns: [
         { column: 0, inverseChosen: false, factorbackNorm: 1,
           materializedNorm: 1, torsionSign: 1 },
@@ -146,7 +151,7 @@ function owners() {
   }
   const live = {
     schema: "sagejs.pari-class-group/field3-live-final-owner-v1",
-    field,
+    field, runIdentity,
     precision: "192",
     W: ["2", "0", "0", "2"],
     packedC: Ce,
@@ -227,14 +232,24 @@ function coordinatorArgs(files, output) {
     );
     assert.notEqual(rejectedDigest.status, 0);
     assert.deepEqual(new Set(fs.readdirSync(output)), before);
+    const duplicateFlag = spawnSync(
+      process.execPath,
+      [...coordinatorArgs(files, output), "--live", files.live.file],
+      { cwd: root, encoding: "utf8" },
+    );
+    assert.notEqual(duplicateFlag.status, 0);
+    assert.match(duplicateFlag.stderr, /duplicate --live/);
+    assert.deepEqual(new Set(fs.readdirSync(output)), before);
 
     // Semantic mutations use newly authenticated files and exercise linkage,
     // exact-principal, analytic-acceptance, and descriptor rejection.
     const mutations = [
       ["Tclass", "full15", (value) => { value.transform[13 * 301] = "2"; }],
+      ["full15 run", "full15", (value) => { value.runIdentity = "wrong"; }],
       ["H", "full15", (value) => { value.terminalH[0] = "3"; }],
       ["Ce", "full15", (value) => { value.packedCe[1] = String(BigInt(value.packedCe[1]) + 1n); }],
       ["regulator", "regulator", (value) => { value.accepted = false; }],
+      ["regulator run", "regulator", (value) => { value.runIdentity = "wrong"; }],
       ["regulator C4 ancestry", "regulator", (value) => { value.acceptedC4OwnerSha256 = "0".repeat(64); }],
       ["regulator full15 ancestry", "regulator", (value) => { value.fullTerminalOwnerSha256 = "0".repeat(64); }],
       ["regulator C3 ancestry", "regulator", (value) => { value.c3OwnerSha256 = "0".repeat(64); }],
@@ -243,15 +258,25 @@ function coordinatorArgs(files, output) {
       ["regulator acceptance", "regulator", (value) => { value.acceptanceState[3] = "0"; }],
       ["regulator compute_R", "regulator", (value) => { value.computeRState[4] = "0"; }],
       ["unit A", "unit", (value) => { value.packedA[0] = "2"; }],
+      ["unit run", "unit", (value) => { value.runIdentity = "wrong"; }],
       ["unit C4 ancestry", "unit", (value) => { value.ancestry.acceptedC4OwnerSha256 = "0".repeat(64); }],
       ["unit status", "unit", (value) => { value.status = "not_given"; }],
       ["unit norm", "unit", (value) => { value.norms[0] = "2"; }],
       ["unit transform", "unit", (value) => { value.factoredTransform.pop(); }],
       ["unit ancestry", "unit", (value) => { value.ancestry.full15OwnerSha256 = "f".repeat(64); }],
       ["unit proof", "unit", (value) => { value.proof.exactFactorback = false; }],
+      ["unit source C6", "unit", (value) => { value.proof.sourceC6OwnerSha256 = "b".repeat(64); }],
+      ["unit source embedding", "unit", (value) => { value.proof.sourceEmbeddingOwnerSha256 = "b".repeat(64); }],
+      ["unit live relation", "unit", (value) => {
+        value.ancestry.relationOwnerSha256 = "b".repeat(64);
+        value.proof.sourceRelationOwnerSha256 = "b".repeat(64);
+      }],
       ["principal divisor", "live", (value) => { value.relationPrincipals[0].divisor[0] = "1"; }],
       ["principal factor", "live", (value) => { value.relationPrincipals[0].exactFactor.powerBasis[0] = "0"; }],
       ["live ancestry", "live", (value) => { value.ancestry.full15OwnerSha256 = "b".repeat(64); }],
+      ["live run", "live", (value) => { value.runIdentity = "wrong"; }],
+      ["torsion order", "live", (value) => { value.torsion.order = "4"; }],
+      ["torsion generator", "live", (value) => { value.torsion.generator[0] = "1"; }],
       ["Vbase", "live", (value) => { value.Vbase[0].prime = "1"; }],
     ];
     for (const [label, ownerName, mutate] of mutations) {
@@ -301,7 +326,7 @@ function coordinatorArgs(files, output) {
       schema: "field3-c7-final-assembly-check-v1",
       cpython: true,
       javascript: process.env.FIELD3_C7_SKIP_NATIVE !== "1",
-      mutations: mutations.length + 1,
+      mutations: mutations.length + 2,
       publication: "atomic-idempotent-0444",
       coldReplay: true,
       publicComplete: false,
