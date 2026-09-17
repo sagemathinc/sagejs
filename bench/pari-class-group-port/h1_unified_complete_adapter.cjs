@@ -161,17 +161,27 @@ function sageAuthority(input) {
 
 function validateSageResult(status, input) {
   assert.equal(status, 0n, "unified complete H1 root did not succeed");
-  assert.deepEqual(asStrings(input.final_state, 16), [
+  const finalState = asStrings(input.final_state, 16);
+  assert.deepEqual(finalState, [
     "0", "0", "0", "0", "0", "0", "73", "8",
     "1", "0", "2", "2", "0", "811", "1", "0",
   ]);
-  assert.deepEqual(asStrings(input.final_exact_norms), ["-1", "-1"]);
+  const unitRank = Number(finalState[10]);
+  const exactNorms = asStrings(input.final_exact_norms);
+  assert.deepEqual(exactNorms.slice(0, unitRank), ["-1", "-1"]);
+  assert(exactNorms.slice(unitRank).every(value => value === "777"),
+    "unpublished exact-norm capacity was modified");
   assert.deepEqual(asStrings(input.final_torsion_order), ["2"]);
   assert.deepEqual(asStrings(input.final_torsion_generator), ["-1", "0", "0"]);
   assert.deepEqual(asStrings(input.precision_authority_state, 5),
     ["0", "5", "2304", "0", "3"]);
   assert.equal(asStrings(input.precision_authority_state, 16)[14], "1");
-  assert(values(input.final_exact_units).some(value => BigInt(value) !== 0n));
+  const exactUnits = asStrings(input.final_exact_units);
+  const logicalUnitCells = 3 * unitRank;
+  assert(exactUnits.slice(0, logicalUnitCells)
+    .some(value => BigInt(value) !== 0n));
+  assert(exactUnits.slice(logicalUnitCells).every(value => value === "777"),
+    "unpublished exact-unit capacity was modified");
   assert(values(input.final_regulator).some(value => BigInt(value) !== 0n));
 }
 
