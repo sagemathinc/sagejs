@@ -29,7 +29,9 @@ The v2 live composition additionally includes:
 - the independently rigorous regulator envelope; and
 - an exact back-map through the retained `73 x 73` cleanup transform. Multiplying
   the 73 captured principal generators with those exponents reproduces both
-  selected retry units up to the verified order-two torsion element.
+  rigorous-regulator units up to the verified order-two torsion element. The
+  live retry's factor units and `getfu` matrix are independently composed, and
+  give those same two power-basis units exactly.
 
 The equal-bound status is retained only because the pinned resident HNF state
 is exactly `[0,7,66,0,7,8,0,73,0]`, matching the unit fixture's resident
@@ -39,12 +41,11 @@ component. No final-driver output exists, so the result explicitly records
 
 The terminal status is `authentic-internal-authority-composition-published`.
 Both `phase5_complete` and `public_complete` remain false. In particular, this
-result does **not** call itself correspondence-complete: the successful unit
-component still consumes a live PARI retry oracle, and its selected units are
-not yet exactly identified with the separately rigorous regulator units.
+result does **not** call the driver complete: although exact unit
+correspondence is now closed, the successful unit component still consumes a
+live PARI retry oracle rather than a resident prepared-root reconstruction.
 These requirements remain:
 
-- link the successful component's units to the rigorous regulator units;
 - remove the live PARI unit-oracle input;
 - independently certify unit saturation/index one; and
 - independently certify factor-base/relation completeness.
