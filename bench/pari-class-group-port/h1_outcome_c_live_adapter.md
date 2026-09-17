@@ -23,8 +23,8 @@ its call. Forged capabilities fail closed.
 ## Deliberately split authorities
 
 Native publication is necessary but is not independent verification. The root
-currently sets an internal correspondence bit, but that bit and the published
-owners share the same computation. Consequently the default adapter returns:
+therefore leaves its internal correspondence bit false until a detached replay
+authority exists. Consequently the default adapter returns:
 
 - `correspondenceComplete: false`;
 - terminal status `native-final-publication-awaiting-cold-replay`; and
