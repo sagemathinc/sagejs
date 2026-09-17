@@ -951,6 +951,25 @@ stage("class-relation-cleanarch", {
   allowNoArtifactDirectory: true,
 });
 
+stage("regulator-acceptance-replay", {
+  dependencies: ["unit-component-cubic", "torsion-authority"],
+  command: () => commandNode("check_regulator_acceptance_replay.cjs"),
+  validate: (summary) => {
+    assert.equal(summary.schema,
+      "sagejs.pari-class-group.regulator-acceptance-replay.v1");
+    assert.equal(summary.field, "x^3-20018*x+20034");
+    assert.deepEqual(summary.unit_norms, ["-1", "-1"]);
+    assert.equal(summary.regulator.rigorous, true);
+    assert.equal(summary.regulator.full_rank_certified, true);
+    assert.deepEqual(summary.regulator.precision_history, [128]);
+    assert.equal(summary.mutations_rejected, 6);
+    assert.equal(summary.pari_correspondence_assumed, true);
+    assert.equal(summary.public_certification, false);
+  },
+  noFixture: true,
+  allowNoArtifactDirectory: true,
+});
+
 stage("mixed-getfu-prerequisite", {
   dependencies: ["nf-cxlog", "unit-lattice-reduction"],
   requiresPari: true,
@@ -1052,6 +1071,24 @@ stage("signed-genback-computed-t2", {
     assert.equal(summary.classNumber, 24);
     assert.deepEqual(summary.backends,
       ["PARI", "CPython", "javascript", "gmp", "tagged"]);
+  },
+  noFixture: true,
+  allowNoArtifactDirectory: true,
+});
+
+stage("generator-order-witness", {
+  dependencies: ["signed-genback-computed-t2"],
+  requiresPari: true,
+  command: (context) => commandNode("check_generator_order_witness.cjs",
+    context.pariRoot, context.pariArchive),
+  validate: (summary) => {
+    assert.equal(summary.field, "x^3 - 200*x + 7");
+    assert.equal(summary.invariant, 24);
+    assert.equal(summary.products, 6);
+    assert.equal(summary.retainedFactors, 4);
+    assert.deepEqual(summary.backends,
+      ["PARI-2.17.4", "cpython", "javascript", "gmp", "tagged"]);
+    assert.equal(summary.qualifiedTiming, false);
   },
   noFixture: true,
   allowNoArtifactDirectory: true,
