@@ -11,7 +11,26 @@
   "claims": [
     "bench/pari-class-group-port/h1_precision_retry_driver.cjs",
     "bench/pari-class-group-port/check_h1_precision_retry_driver.cjs",
-    "bench/pari-class-group-port/h1_precision_retry_driver_audit.md"
+    "bench/pari-class-group-port/h1_precision_retry_driver_audit.md",
+    "bench/pari-class-group-port/binary_splitting.py",
+    "bench/pari-class-group-port/class_relation_cleanarch.py",
+    "bench/pari-class-group-port/cubic_embedding_precision_rebuild.py",
+    "bench/pari-class-group-port/cubic_precision_rebuild.py",
+    "bench/pari-class-group-port/exponential.py",
+    "bench/pari-class-group-port/exponential_entry.py",
+    "bench/pari-class-group-port/float_conversion.py",
+    "bench/pari-class-group-port/integer_real_product.py",
+    "bench/pari-class-group-port/integer_real_sum.py",
+    "bench/pari-class-group-port/log_matrix_transform.py",
+    "bench/pari-class-group-port/logarithm_constant.py",
+    "bench/pari-class-group-port/pi_constant.py",
+    "bench/pari-class-group-port/real_conversion.py",
+    "bench/pari-class-group-port/real_division.py",
+    "bench/pari-class-group-port/real_square_root.py",
+    "bench/pari-class-group-port/regulator_scalar.py",
+    "bench/pari-class-group-port/short_product.py",
+    "bench/pari-class-group-port/unit_reconstruction_cubic.py",
+    "bench/pari-class-group-port/unit_reconstruction_signed.py"
   ],
   "dependencies": [],
   "references": [],
@@ -41,12 +60,12 @@
   ],
   "runs": [],
   "handoff": {
-    "summary": "Added an answer-independent native H1 precision retry owner that rebuilds only numerical owners, advances via the translated PARI retry policy, preserves exact-owner identity, and publishes nothing on failure.",
+    "summary": "Added an answer-independent signed native H1 precision retry owner. It rebuilds only numerical owners, advances via the translated PARI policy, preserves exact-owner identity, and succeeds honestly at p2304 after live PRECI results at p192, p384, p768, and p1536.",
     "risks": [
-      "The translated cubic embedding/logarithm corridor stops at 2176 bits; the actual getfu leaf is still PRECI there with its recorded deficit reduced to -2."
+      "The expanded p4096/p4352 corridor is focused Linux qualification for this authentic real cubic; broader platform and generalized-field qualification remains integration work."
     ],
     "next_steps": [
-      "Extend the reviewed embedding and wide-log corridors through the next live PARI transition (3264 bits), then rerun this unchanged driver to seek live success."
+      "Compose the successful signed retry driver into the unified suffix root and replay its units, logs, phases, and normalized factor through final result publication."
     ]
   }
 }

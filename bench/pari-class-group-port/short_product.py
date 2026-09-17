@@ -162,7 +162,7 @@ def pari_real_integer_division(
         return 0, 0, e - bits + 1
     if bits < 64:
         return pari_real_word_division(integer, m, p, e)
-    if p < 64 or p > 2496 or p % 64 != 0 or abs(m).bit_length() != p:
+    if p < 64 or p > 4352 or p % 64 != 0 or abs(m).bit_length() != p:
         raise ValueError("invalid prepared real")
     limbs = (bits + 63) // 64
     kept = limbs
@@ -208,7 +208,7 @@ def pari_real_word_division(
         raise ValueError("big ideal norm divisor is not translated")
     if m == 0:
         return 0, 0, e - bits + 1
-    if p < 64 or p > 2496 or p % 64 != 0 or abs(m).bit_length() != p:
+    if p < 64 or p > 4352 or p % 64 != 0 or abs(m).bit_length() != p:
         raise ValueError("invalid prepared real")
     signed = m
     if integer < 0:
@@ -251,7 +251,7 @@ def pari_short_product(
     """
     if mx == 0 or my == 0:
         return 0, 0, ex + ey
-    if px < 64 or py < 64 or px > 2496 or py > 2496:
+    if px < 64 or py < 64 or px > 4352 or py > 4352:
         raise ValueError("short-product prototype precision out of range")
     if px % 64 != 0 or py % 64 != 0:
         raise ValueError("short-product prototype requires 64-bit words")
@@ -361,7 +361,7 @@ def pari_positive_real_sum(
         if precision > px:
             precision = px
         return mx >> (px - precision), precision, ex
-    if px < 64 or py < 64 or px > 2496 or py > 2496:
+    if px < 64 or py < 64 or px > 4352 or py > 4352:
         raise ValueError("positive real sum prototype precision out of range")
     if px % 64 != 0 or py % 64 != 0:
         raise ValueError("positive real sum requires 64-bit words")
@@ -410,7 +410,7 @@ def pari_short_square(mx: int, px: int, ex: int) -> tuple[int, int, int]:
     """
     if mx == 0:
         return 0, 0, 2 * ex
-    if px < 64 or px > 2496 or px % 64 != 0 or abs(mx).bit_length() != px:
+    if px < 64 or px > 4352 or px % 64 != 0 or abs(mx).bit_length() != px:
         raise ValueError("short square prototype precision out of range")
     if px <= 512:
         return pari_short_product(mx, px, ex, mx, px, ex)
@@ -475,7 +475,7 @@ def pari_signed_real_sum(
         if mx < 0 or my < 0:
             m = -m
         return m, p, e
-    if px < 64 or py < 64 or px > 2496 or py > 2496:
+    if px < 64 or py < 64 or px > 4352 or py > 4352:
         raise ValueError("signed real sum prototype precision out of range")
     if px % 64 != 0 or py % 64 != 0:
         raise ValueError("signed real sum requires 64-bit words")

@@ -36,7 +36,7 @@ def pari_validate_regulator_values(values: IntegerBuffer, count: int) -> int:
         elif m == 0:
             if p != 0:
                 raise ValueError("invalid real zero")
-        elif p < 64 or p > 2368 or p % 64 != 0 or abs(m).bit_length() != p:
+        elif p < 64 or p > 4352 or p % 64 != 0 or abs(m).bit_length() != p:
             raise ValueError("invalid regulator real")
     return 0
 
@@ -167,7 +167,7 @@ def pari_regulator_divir(n: int, m: int, p: int, e: int) -> tuple[int, int, int]
     """Raw divir, distinct from gdiv's integer +/-1 inverse shortcut."""
     if m == 0:
         raise ZeroDivisionError("zero real denominator")
-    if p < 64 or p > 2304 or p % 64 != 0:
+    if p < 64 or p > 4096 or p % 64 != 0:
         raise ValueError("division outside basecase window")
     if n == 0:
         return 0, 0, -p - e
@@ -196,7 +196,7 @@ def pari_regulator_scalar_divide(
             g = gcd(am, bm)
             return pari_regulator_qmake((am // g) * be, bm // g)
         if abs(am) == 1:
-            if bp < 64 or bp > 2304 or bp % 64 != 0:
+            if bp < 64 or bp > 4096 or bp % 64 != 0:
                 raise ValueError("reciprocal outside basecase window")
             if am < 0:
                 bm = -bm
