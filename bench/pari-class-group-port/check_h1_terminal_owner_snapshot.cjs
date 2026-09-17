@@ -102,12 +102,16 @@ ulp_exponent=reg[2]-(reg[1]-1)
 interval=[reg[0]-1,ulp_exponent,reg[0]+1,ulp_exponent]
 
 owners=s.H1TerminalNumericOwners(
-    terminal_state=I(8),
+    terminal_state=[0,0,0,0,0,0,73,8,1,0,2,2,0,811,1,0],
     polynomial=q["prep_polynomial"],integral_basis=q["prep_zk"],
     multiplication_tensor=q["basis_table"],
     factor_base_ideals=q["packet_ideals"],factor_base_norms=q["packet_norms"],
     relation_records=q["relation_records"],principal_generators=q["generators"],
     cleanup_transform=q["hnf_transform"],initial_permutation=q["search_ideals"],
+    collector_state=q["state"],collector_increment=q["inc"],
+    collector_cursor=q["cursor_output"],relation_hashes=q["relation_hashes"],
+    relation_metadata=q["relation_metadata"],relation_progress=q["progress"],
+    relation_schedule=q["schedule"],kummer_random_state=q["prep_kummer_random_state"],
     original_relation_logs=q["log_embeddings"],active_relation=q["hnf_matbnew"],
     full_hnf=q["hnf_full_h"],active_hnf_transform=q["hnf_hnf_transform"],
     transformed_relation_logs=q["hnf_result_c"],
@@ -115,11 +119,19 @@ owners=s.H1TerminalNumericOwners(
     presentation=presentation,smith=smith,left=left,left_inverse=left_inverse,
     right=right,right_inverse=product,ur=ur,y=y,uir=uir,x=x,m2=m2,
     generator_arch=generator_arch,compact_unit_provenance=compact,
+    compact_unit_factor=factor[1],
     retained_relation_provenance=component.retained_relation_provenance,
-    exact_units_integral_basis=integral,exact_units_power_basis=power,
+    exact_units_integral_basis=integral,published_exact_units_integral_basis=integral,
+    exact_unit_norms=component.unit_norms,
     rebuilt_unit_logs=logs,unit_phases=[0,0,1,1,1,1],packed_regulator=reg,
     regulator_interval=interval,regulator_state=[0,1,1,1,2176],
-    torsion_state=[0,2,-1,1],torsion_generator=[-1,0,0],
+    acceptance_state=[2,0,0],reconstruction_state=[0,5,188,2],
+    attempt_state=[4,0,0,1],unified_state=[0,0,0,1,0,7,73,8,48,48,2,7],
+    bridge_state=[0]*16,
+    precision_authority_state=[0,5,2304,0,3,73,15,7,2,7,2,0,0,0,1,4096],
+    precision_retry_state=[3,1536,2304,2304,768,1],
+    torsion_state=[0,3,1,1,2,1],torsion_order=[2],
+    torsion_generator=[-1,0,0],invariant_factor_capacity=[0]*8,
     assumption_flags=s.EXPECTED_ASSUMPTION_FLAGS,
 )
 snapshot=s.capture_h1_terminal_owner_snapshot(owners)
@@ -145,7 +157,7 @@ changed=copy.deepcopy(payload);changed["presentation"]["relation_records"]["entr
 changed=copy.deepcopy(payload);changed["presentation"]["active_relation"]["entries"][0]=str(int(changed["presentation"]["active_relation"]["entries"][0])+1);mutations.append(changed)
 changed=copy.deepcopy(payload);changed["class_group"]["smith"]["entries"][0]="2";mutations.append(changed)
 changed=copy.deepcopy(payload);changed["unit_group"]["compact_provenance"]["entries"][0]=str(int(changed["unit_group"]["compact_provenance"]["entries"][0])+1);mutations.append(changed)
-changed=copy.deepcopy(payload);changed["unit_group"]["exact_units_power_basis"]["entries"][0]=str(int(changed["unit_group"]["exact_units_power_basis"]["entries"][0])+1);mutations.append(changed)
+changed=copy.deepcopy(payload);changed["unit_group"]["published_exact_units_integral_basis"]["entries"][0]=str(int(changed["unit_group"]["published_exact_units_integral_basis"]["entries"][0])+1);mutations.append(changed)
 changed=copy.deepcopy(payload);changed["unit_group"]["rebuilt_logs"]["entries"][0]=str(int(changed["unit_group"]["rebuilt_logs"]["entries"][0])+(1 << 1024));mutations.append(changed)
 changed=copy.deepcopy(payload);changed["regulator"]["packed"]["entries"][0]=str(int(changed["regulator"]["packed"]["entries"][0])+2);mutations.append(changed)
 changed=copy.deepcopy(payload);changed["torsion"]["generator"]["entries"][0]="1";mutations.append(changed)
