@@ -6,18 +6,14 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
-const { spawnSync } = require("node:child_process");
 const runtimeRoot = path.resolve(process.env.SAGEJS_REPLAY_RUNTIME_ROOT ||
   "/home/user/sagejs-worktrees/pari-class-group-e2e-integration");
 const { compileKernel } = require(path.join(runtimeRoot,
   "tools/native-kernel/compiler.cjs"));
-const { canonical, digest } = require("./h1_outcome_c_worker.cjs");
-
-const root = path.resolve(__dirname, "../..");
+const { digest } = require("./h1_outcome_c_worker.cjs");
 const inputPath = path.resolve(process.argv[2] ||
   "/tmp/sagejs-resident-generated-class-3qtnS5/inputs.json");
 const adapterPath = path.join(__dirname, "live_prepared_h1_worker.cjs");
-const workerPath = path.join(__dirname, "h1_outcome_c_worker.cjs");
 
 function preparedInput() {
   const raw = JSON.parse(fs.readFileSync(inputPath, "utf8"));
@@ -75,51 +71,53 @@ async function main() {
   const precisionBuild = await build("cubic_precision_rebuild.py");
   const determinantBuild = await build("regulator_determinant.py");
   const prepared = preparedInput();
-  const request = {
-    schema: 1,
-    fieldId: prepared.fieldId,
-    seed: "20260917",
-    pairIndex: 0,
-    repetitions: 2,
-    implementation: "sagejs",
-    preparedInputSha256: digest(prepared),
-    preparedInput: prepared,
-  };
-  const run = spawnSync(process.execPath, [workerPath,
-    "--implementation", "sagejs", "--adapter", adapterPath], {
-    cwd: root,
-    input: JSON.stringify(canonical(request)),
-    encoding: "utf8",
-    timeout: 900_000,
-    maxBuffer: 128 * 1024 * 1024,
-    env: {
-      ...process.env,
-      SAGEJS_H1_UNIFIED_MODULE: unifiedBuild.modulePath,
-      SAGEJS_H1_EMBEDDING_MODULE: embeddingBuild.modulePath,
-      SAGEJS_H1_PRECISION_MODULE: precisionBuild.modulePath,
-      SAGEJS_H1_DETERMINANT_MODULE: determinantBuild.modulePath,
-    },
-  });
-  assert.equal(run.status, 0, run.stderr || JSON.stringify({
-    error: run.error && String(run.error), signal: run.signal,
-    stdoutTail: run.stdout && run.stdout.slice(-1000),
-  }));
-  const receipt = JSON.parse(run.stdout);
-  assert.equal(receipt.arm.terminalStatus,
-    "pari-correspondence-complete-internal-h1");
-  assert.equal(receipt.arm.repetitions, 2);
-  assert.match(receipt.arm.resultDigest, /^[0-9a-f]{64}$/);
-  for (const stage of ["relation-retry", "sparse-hnf-snf-transform",
-    "unit-regulator", "honesty-generators-final"]) {
-    assert(BigInt(receipt.arm.stageTotalsNanoseconds[stage]) > 0n);
+  process.env.SAGEJS_H1_UNIFIED_MODULE = unifiedBuild.modulePath;
+  process.env.SAGEJS_H1_EMBEDDING_MODULE = embeddingBuild.modulePath;
+  process.env.SAGEJS_H1_PRECISION_MODULE = precisionBuild.modulePath;
+  process.env.SAGEJS_H1_DETERMINANT_MODULE = determinantBuild.modulePath;
+  const adapter = require(adapterPath);
+  const calls = [];
+  for (let repetition = 0; repetition < 2; repetition += 1) {
+    const stages = [];
+    const started = process.hrtime.bigint();
+    const output = await adapter.runPreparedH1({
+      implementation: "sagejs",
+      seed: "20260917",
+      preparedInput: structuredClone(prepared),
+      switchStage: stage => stages.push(stage),
+    });
+    calls.push({ output, stages, elapsedNanoseconds: process.hrtime.bigint() - started });
   }
+  const expectedStatus = "experimental-specialized-live-h1-incomplete";
+  for (const { output, stages } of calls) {
+    assert.equal(output.correspondenceComplete, false);
+    assert.equal(output.terminalStatus, expectedStatus);
+    assert.equal(output.result.terminal.status, expectedStatus);
+    assert.equal(output.result.terminal.correspondence_complete, false);
+    assert.equal(output.result.terminal.composition_driver_published, false);
+    assert.deepEqual(output.result.terminal.missing_live_authorities, [
+      "live-logical-relation-active-and-kernel-lengths",
+      "live-precision-retry-policy",
+      "rigorous-regulator-enclosure-authority",
+    ]);
+    assert.deepEqual(output.result.assumptions.frozen_diagnostic_controls,
+      adapter.DIAGNOSTIC_CONTROLS);
+    assert.equal(output.work.serializedIntermediates, "0");
+    assert.equal(output.work.externalOracleCalls, "0");
+    assert.deepEqual(stages, ["relation-retry", "sparse-hnf-snf-transform",
+      "unit-regulator", "honesty-generators-final"]);
+  }
+  const resultDigest = digest(calls[0].output);
+  assert.equal(digest(calls[1].output), resultDigest);
+  assert.match(resultDigest, /^[0-9a-f]{64}$/);
   console.log(JSON.stringify({
     schema: "sagejs.pari-class-group/live-prepared-h1-worker-check-v1",
-    terminalStatus: receipt.arm.terminalStatus,
-    freshCalls: receipt.arm.repetitions,
-    resultDigest: receipt.arm.resultDigest,
-    rootNanoseconds: receipt.arm.rootNanoseconds,
-    stageTotalsNanoseconds: receipt.arm.stageTotalsNanoseconds,
+    terminalStatus: expectedStatus,
+    correspondenceComplete: false,
+    freshCalls: calls.length,
+    resultDigest,
+    rootNanoseconds: calls.map(call => call.elapsedNanoseconds.toString()),
+    frozenDiagnosticControls: adapter.DIAGNOSTIC_CONTROLS,
     unifiedCacheKey: unifiedBuild.cacheKey,
     serializedIntermediatesInsideRoot: 0,
     externalOracleCallsInsideRoot: 0,

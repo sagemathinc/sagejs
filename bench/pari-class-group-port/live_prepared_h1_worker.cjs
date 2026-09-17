@@ -11,6 +11,14 @@ const crypto = require("node:crypto");
 
 const nativeModule = require(process.env.SAGEJS_H1_UNIFIED_MODULE);
 const nativeRoot = nativeModule.pari_live_prepared_h1_native;
+const EXPERIMENTAL_STATUS = "experimental-specialized-live-h1-incomplete";
+const DIAGNOSTIC_CONTROLS = Object.freeze({
+  precisionBits: "2176",
+  relationCount: "73",
+  activeColumns: "15",
+  kernelColumns: "7",
+  regulatorUlpCorridor: "4",
+});
 
 const BRIDGE_NAMES = [
   "accepted_arch", "relation_lattice", "expected_regulator",
@@ -242,9 +250,9 @@ function requireP2176RegulatorCorrespondence(computedValue, residentValue) {
     "p2176 rebuilt regulator scale left the accepted regulator");
   const ulpError = computed[0] >= expected[0]
     ? computed[0] - expected[0] : expected[0] - computed[0];
-  // This qualified field's independently rebuilt p2176 and resident p192
-  // evaluation paths differ by four final p192 ulps.  This is a measured,
-  // pinned correspondence corridor, not a general regulator certificate.
+  // Frozen diagnostic only: this field's independently rebuilt p2176 and
+  // resident p192 paths differ by four final p192 ulps. It supplies neither a
+  // live retry policy nor a general regulator enclosure authority.
   assert(ulpError <= 4n,
     "p2176 rebuilt log determinant left the accepted regulator enclosure");
   return { computed, ulpError };
@@ -374,7 +382,7 @@ async function runPreparedH1({ implementation, seed, preparedInput, switchStage 
   const driver = decimals(final.driver_state, 10);
   assert.deepEqual(driver, ["0","1","1","48","48","7","7","73","8","0"]);
   const result = {
-    schema: "sagejs.pari-class-group/internal-correspondence-completion-v1",
+    schema: "sagejs.pari-class-group/experimental-specialized-h1-v1",
     field: { id: "x^3-20018*x+20034", polynomial_ascending: polynomial },
     class_group: {
       class_number: "1", invariant_factors: [], generator_ideals: [],
@@ -404,25 +412,32 @@ async function runPreparedH1({ implementation, seed, preparedInput, switchStage 
     assumptions: {
       scope: "internal-PARI-correspondence-only", pari_correspondence_assumed: true,
       independent_unit_index_one: false,
+      frozen_diagnostic_controls: { ...DIAGNOSTIC_CONTROLS },
     },
     terminal: {
-      status: "pari-correspondence-complete-internal-h1",
-      correspondence_complete: true, composition_driver_published: true,
+      status: EXPERIMENTAL_STATUS,
+      correspondence_complete: false, composition_driver_published: false,
       public_complete: false, class_unit_computation_complete: false,
       unit_saturation_certified: false,
+      missing_live_authorities: [
+        "live-logical-relation-active-and-kernel-lengths",
+        "live-precision-retry-policy",
+        "rigorous-regulator-enclosure-authority",
+      ],
     },
   };
   const resultSha256 = digest(result);
   return {
-    correspondenceComplete: true,
+    correspondenceComplete: false,
     result,
-    replay: { status: "cold-replay-authenticated", resultSha256,
+    replay: { status: "experimental-digest-replay-only", resultSha256,
       authoritySha256: digest({ resultSha256, seed, polynomial }) },
     rng: { seed, terminalState: decimals(live.prep_kummer_random_state, 66) },
     work: { candidateCalls: "1", bridgeCalls: "1", acceptedRelations: "73",
       cleanedColumns: "7", serializedIntermediates: "0", externalOracleCalls: "0" },
-    terminalStatus: "pari-correspondence-complete-internal-h1",
+    terminalStatus: EXPERIMENTAL_STATUS,
   };
 }
 
-module.exports = { requireP2176RegulatorCorrespondence, runPreparedH1 };
+module.exports = { DIAGNOSTIC_CONTROLS, EXPERIMENTAL_STATUS,
+  requireP2176RegulatorCorrespondence, runPreparedH1 };

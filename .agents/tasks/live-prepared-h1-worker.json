@@ -60,13 +60,14 @@
     }
   ],
   "handoff": {
-    "summary": "Unified the resident candidate and live owner bridge into one compiled ownership domain, then composed exact relation-derived units, p2176 embedding/log replay, bounded regulator correspondence, class, honesty, compact provenance, and torsion into a deterministic correspondence-complete worker result.",
+    "summary": "Unified the resident candidate and live owner bridge into one compiled ownership domain, then exercised exact relation-derived units, a frozen p2176 embedding/log replay, diagnostic regulator comparison, class, honesty, compact provenance, and torsion. The worker is deliberately terminal-incomplete and does not claim correspondence completion.",
     "risks": [
-      "The four-ulp regulator corridor is pinned correspondence evidence for this qualified field, not general regulator certification.",
+      "The p2176 precision, 73/15/7 logical dimensions, and four-ulp regulator corridor are result-derived controls for this qualified field, not live authorities or general regulator certification.",
       "The p2176 replay kernels remain separate addon calls after the unified candidate/bridge call; their inputs are copied in memory because addon buffer ownership is local."
     ],
     "next_steps": [
-      "Integrate the adapter into the Outcome-C paired benchmark and run the authenticated cold replay outside the exclusive timer.",
+      "Replace frozen logical dimensions with live authenticated lengths and implement the live precision-retry policy.",
+      "Supply a rigorous regulator enclosure authority before setting correspondenceComplete or publishing Outcome C.",
       "Generalize the unified ownership-domain compiler mechanism so callers do not need a mechanical wrapper signature."
     ]
   }
