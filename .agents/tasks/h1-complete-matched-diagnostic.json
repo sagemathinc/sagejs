@@ -1,0 +1,44 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "h1-complete-matched-diagnostic",
+  "title": "Complete H1 matched diagnostic harness",
+  "lane": "integration",
+  "status": "active",
+  "owner": "final_mutation_replay",
+  "objective": "Prepare a seven-pair alternating matched diagnostic timing and attribution harness for the complete Sage.js H1 root and authentic PARI prepared-nf adapter without making a final timing claim",
+  "base_commit": "82470f3ea9c209386d6f8daa6437f1a303c75b92",
+  "claims": [
+    "bench/pari-class-group-port/h1_complete_matched_diagnostic.cjs",
+    "bench/pari-class-group-port/check_h1_complete_matched_diagnostic.cjs",
+    "bench/pari-class-group-port/h1_complete_matched_diagnostic_audit.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Exact digest matching and independently derived exclusive-root attribution"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "not-applicable",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "not-applicable"
+  },
+  "validation": [
+    "node bench/pari-class-group-port/check_h1_complete_matched_diagnostic.cjs",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
