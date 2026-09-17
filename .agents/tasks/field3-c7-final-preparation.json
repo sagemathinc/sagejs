@@ -1,0 +1,74 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "field3-c7-final-preparation",
+  "title": "Field3 C7 final assembly preparation",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Prepare authenticated fail-atomic field3 class/unit final assembly from full15, regulator, unit, and live exact owners with cold replay",
+  "base_commit": "2a24b622f9ecdd20dd8bd41ea844ef0cec97d192",
+  "claims": [
+    "bench/pari-class-group-port/field3_c7_final_assembly.py",
+    "bench/pari-class-group-port/field3_c7_final_assembly_coordinator.cjs",
+    "bench/pari-class-group-port/check_field3_c7_final_assembly.cjs",
+    "bench/pari-class-group-port/field3_c7_final_assembly_audit.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "authenticated synthetic full15 and live exact owner replay"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "env SAGEJS_REPLAY_RUNTIME_ROOT=/home/user/sagejs node bench/pari-class-group-port/check_field3_c7_final_assembly.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.918,
+      "started_at": "2026-09-17T15:16:03.476Z",
+      "commit": "2a24b622f9ecdd20dd8bd41ea844ef0cec97d192",
+      "workspace_fingerprint": "5e4cba69b41fc9b8d5cf469304764aba750df747c1bca4a7279be0cff453ebc0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 61.205,
+      "started_at": "2026-09-17T15:16:08.107Z",
+      "commit": "2a24b622f9ecdd20dd8bd41ea844ef0cec97d192",
+      "workspace_fingerprint": "5e4cba69b41fc9b8d5cf469304764aba750df747c1bca4a7279be0cff453ebc0",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Active preparation lane publishes an authenticated, content-addressed, fail-atomic field3 C7 correspondence envelope. It joins full15 A/Ce/T/H/permutation, analytic regulator, C5/C6 unit, and live W/C/B/Vbase/exact-principal owners; runs packed cleanarch and the existing mixed-quartic Smith/ideal assembly; and retains exact terminal generator-square ancestry. Focused CPython, generated-JavaScript, eight mutation, cold-replay, atomic/idempotent mode-0444, and strict-library checks pass.",
+    "risks": [
+      "Authentic Ce is 153088-bit while the current packed cleanarch explicitly supports at most 4352 bits; no authentic high-precision replay was attempted.",
+      "The final C5/C6 unit owner schema is a staging contract and still needs its authentic producer.",
+      "Full pnpm test:native, pnpm architecture:check, and non-Linux platform gates are deliberately deferred to integration; this task remains active and is not a review claim."
+    ],
+    "next_steps": [
+      "Extend the source-transparent packed cleanarch to the authentic precision and replay this exact coordinator against immutable authentic owners.",
+      "Connect the eventual C5/C6 unit producer without weakening the packed-A or assumption joins.",
+      "Run full native, architecture, and required platform gates after integration and record receipts before changing this task to review."
+    ]
+  }
+}
