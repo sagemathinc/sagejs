@@ -50,7 +50,7 @@ int main(void){
  GEN nf=nfinit(gp_read_str("36+930*x-305*x^2-90*x^3+x^5"),nbits2prec(192));
  long n=nf_get_degree(nf),r1=nf_get_r1(nf);double ld=dbllog2(absi_shallow(nf_get_disc(nf)))*M_LN2;
  GRHcheck_t S;init_GRHcheck(&S,n,r1,ld);FB_t F={0};FBgen(&F,nf,n,5,31,&S);GEN cyclic,auts=automorphism_matrices(nf,&cyclic);subFBgen(&F,auts,cyclic,5.,MINSFB);
- printf("{\\\"n\\\":%ld,\\\"real\\\":%ld,\\\"precision\\\":192,\\\"support\\\":",n,r1);integer(F.prodZ);
+ printf("{\\\"n\\\":%ld,\\\"real\\\":%ld,\\\"precision\\\":192,\\\"ballvol\\\":%.17g,\\\"scale\\\":%.17g,\\\"support\\\":",n,r1,F.ballvol,4.*maxtry_FACT/F.ballvol);integer(F.prodZ);
  printf(",\\\"factorlimit\\\":%lu,\\\"primeLimit\\\":%lu,",GP_DATA->factorlimit,maxprimelim());
  matrix("G0",nf_get_roundG(nf),0);matrix("embedding",nf_get_G(nf),1);
  printf("\\\"M\\\":[");GEN M=nf_get_M(nf);for(long i=0;i<n;i++)for(long j=1;j<=n;j++){if(i||j!=1)printf(",");triple(component(gel(M,j),i,r1));}
@@ -92,7 +92,7 @@ function makeInput(raw, probe, names) {
   assert.equal(size, raw.KC);
   const capacity = 10 * (size + 2) + 50;
   const values = {
-    matrix: z(3 * n * n), ideal: z(n * n), n: String(n), precision: "192", scale: 4,
+    matrix: z(3 * n * n), ideal: z(n * n), n: String(n), precision: "192", scale: 0,
     track_small: "0", reduction: z(3 * n * n), vectors: z(3 * n * n),
     betas: z(3 * n), norms: z(3 * n), column: z(3 * n),
     float_q: Array((n + 1) ** 2).fill(0), float_v: Array(n + 1).fill(0),
@@ -172,16 +172,21 @@ import decimal,importlib,json,sys
 sys.set_int_max_str_digits(100000)
 sys.path[:0]=sys.argv[1:3];d=json.load(sys.stdin)
 f=importlib.import_module('bench.pari-class-group-port.unreduced_ideal_collector').pari_collect_unreduced_ideal
+volume=importlib.import_module('bench.pari-class-group-port.ball_volume')
 out=[]
 for raw in d['inputs']:
  v={}
  for name,kind in d['names']:
   x=raw[name];conv=float if kind in ('float','Float64Buffer') else int
   v[name]=list(map(conv,x)) if isinstance(x,list) else conv(x)
+ v['scale']=volume.pari_small_norm_scale(v['n'])
  before=json.dumps(v,sort_keys=True,separators=(',',':'))
  try:
   status=f(*(v[name] for name,kind in d['names']))
-  out.append({'status':status,'blocked':False})
+  out.append({'status':status,'blocked':False,'scale':v['scale'],'attempts':v['counters'][0],
+              'element':v['element'],'factorCount':v['counters'][2],
+              'indices':v['admission_indices'][:v['counters'][2]],
+              'exponents':v['admission_exponents'][:v['counters'][2]]})
  except ValueError as error:
   after=json.dumps(v,sort_keys=True,separators=(',',':'))
   out.append({'blocked':True,'error':str(error),'transactional':before==after})
@@ -189,16 +194,49 @@ print(json.dumps(out))`, path.resolve(__dirname, "../.."), path.resolve(__dirnam
     { input: JSON.stringify(payload) }));
   assert.deepEqual(python.map(row => row.blocked), Array(6).fill(false));
   const sageStatuses = python.map(row => row.status);
-  assert.deepEqual(sageStatuses, [1, 0, 0, 1, 1, 1]);
+  assert.deepEqual(sageStatuses, Array(6).fill(1));
+  for (const row of python) assert.ok(Math.abs(row.scale - raw.scale) < 1e-12);
   const pariStatuses = raw.probes.map(row => row.status);
   const mismatches = sageStatuses.flatMap((status, index) =>
     status === pariStatuses[index]
       ? []
       : [{ index, pari: pariStatuses[index], sage: status }]);
-  assert.deepEqual(mismatches, [
-    { index: 1, pari: 1, sage: 0 },
-    { index: 2, pari: 1, sage: 0 },
-  ]);
+  assert.deepEqual(mismatches, []);
+  const native = [];
+  if (process.argv.includes("--native")) {
+    const { compileKernel } = require("../../tools/native-kernel/compiler.cjs");
+    const collectorBuild = await compileKernel({ sourcePath });
+    const volumeBuild = await compileKernel({ sourcePath: path.join(__dirname, "ball_volume.py") });
+    const collector = require(collectorBuild.modulePath).pari_collect_unreduced_ideal;
+    const volume = require(volumeBuild.modulePath);
+    assert.equal(collector.nativeAvailable, true);
+    for (const backend of ["javascript", "gmp"]) {
+      const rows = [];
+      for (let index = 0; index < inputs.length; index += 1) {
+        const values = {};
+        for (const [name, kind] of names) {
+          const conversion = kind === "float" || kind === "Float64Buffer" ? Number : BigInt;
+          values[name] = Array.isArray(inputs[index][name])
+            ? inputs[index][name].map(conversion)
+            : conversion(inputs[index][name]);
+        }
+        values.scale = volume.pari_small_norm_scale[backend](BigInt(raw.n));
+        const status = collector[backend](...names.map(([name]) => values[name]));
+        const count = Number(values.counters[2]);
+        const row = {
+          status: Number(status), scale: values.scale, attempts: Number(values.counters[0]),
+          element: values.element.map(Number), factorCount: count,
+          indices: values.admission_indices.slice(0, count).map(Number),
+          exponents: values.admission_exponents.slice(0, count).map(Number),
+        };
+        const { blocked, ...expected } = python[index];
+        assert.equal(blocked, false);
+        assert.deepEqual(row, expected);
+        rows.push(row);
+      }
+      native.push({ backend, rows });
+    }
+  }
   console.log(JSON.stringify({
     quinticExporterComplete: true,
     pariOracleStatuses: pariStatuses,
@@ -207,12 +245,15 @@ print(json.dumps(out))`, path.resolve(__dirname, "../.."), path.resolve(__dirnam
     matchingProbes: python.length - mismatches.length,
     mismatches,
     blockedInputs: 0,
-    blocker: "two downstream collector decisions remain after exact degree-five ranked preparation",
+    pariSearchScale: raw.scale,
+    sageSearchScale: python[0].scale,
+    candidateAttempts: python.map(row => row.attempts),
+    blocker: null,
     rankedPreparationClosed: true,
     transcriptSha256: sha256(JSON.stringify(python)),
-    backendsAttempted: ["cpython"],
-    nativeAttempted: false,
-    nativeReason: "two same-source CPython collector decisions still diverge downstream",
+    backendsAttempted: ["cpython", ...native.map(row => row.backend)],
+    nativeAttempted: native.length !== 0,
+    nativeReason: native.length === 0 ? "pass --native after building compiler artifacts" : null,
     oracleDirectory: oracle.directory,
   }));
 }

@@ -1,0 +1,68 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "quintic-collector-downstream",
+  "title": "Quintic Collector Downstream",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Trace and close the two downstream degree-five collector divergences after ranked preparation, with fresh pristine-PARI six-probe controls and no oracle-fed decisions",
+  "base_commit": "81a71d75580d6204b8f07a5dfed3f2ae3ab1bea6",
+  "claims": [
+    "bench/pari-class-group-port/check_quintic_collector_fixture.cjs",
+    "bench/pari-class-group-port/check_quintic_collector_downstream.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "PARI 2.17.4 authenticated six-probe quintic collector",
+      "cpython",
+      "javascript"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_quintic_collector_downstream.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.998,
+      "started_at": "2026-09-17T02:45:30.000Z",
+      "commit": "81a71d75580d6204b8f07a5dfed3f2ae3ab1bea6",
+      "workspace_fingerprint": "a7ffbe01c1044c9193228f3fd9d17ffbf8662025717dad3e104206438ef49729",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_quintic_collector_fixture.cjs /home/user/upstream/pari-2.17.4 /home/user/upstream/pari-2.17.4.tar.gz --native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 16.95,
+      "started_at": "2026-09-17T02:45:37.669Z",
+      "commit": "81a71d75580d6204b8f07a5dfed3f2ae3ab1bea6",
+      "workspace_fingerprint": "a7ffbe01c1044c9193228f3fd9d17ffbf8662025717dad3e104206438ef49729",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Closed both apparent downstream quintic collector mismatches by deriving PARI's degree-dependent small-norm scale through the existing ordinary-Python ball-volume policy. A pristine-PARI trace and fresh CPython, JavaScript, and GMP calls now agree on all six statuses and exact successful attempt counts.",
+    "risks": [
+      "This lane intentionally ran focused authenticated replays rather than the broad arithmetic and native suites."
+    ],
+    "next_steps": [
+      "Integrate the caller-policy fix before extending the authenticated quintic collector into relation scheduling."
+    ]
+  }
+}
