@@ -297,7 +297,29 @@ def pari_getfu_mixed_quartic(
     stack: IntegerBuffer,
 ) -> int:
     """Run the connected signature `(2,1)` quartic reconstruction suffix."""
-    if precision < 64 or precision > 768 or precision % 64 != 0:
+    if precision < 64 or precision > 153088 or precision % 64 != 0:
+        raise ValueError("unsupported mixed quartic getfu precision")
+    # The translated elementary-function graph has a deliberately explicit
+    # high-precision storage contract.  Up through the original 768-bit cut,
+    # 512 coefficient cells are ample.  The reviewed 153088-bit corridor uses
+    # the same bounded arrays as the independently qualified packed probes.
+    # Reject before touching state or public outputs when the caller has not
+    # supplied that storage; the inner binary-splitting leaves therefore never
+    # discover capacity halfway through a getfu attempt.
+    required_coefficients = 512
+    required_stack = 91
+    if precision > 768:
+        required_coefficients = 16385
+        required_stack = 105
+    if (
+        len(exp_cache) < 3
+        or len(pi_cache) < 3
+        or len(a) < required_coefficients
+        or len(b) < required_coefficients
+        or len(p) < required_coefficients
+        or len(q) < required_coefficients
+        or len(stack) < required_stack
+    ):
         raise ValueError("unsupported mixed quartic getfu precision")
     if (
         len(arch_real) < 18
