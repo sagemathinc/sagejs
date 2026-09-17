@@ -737,10 +737,10 @@ stage("post-rnd-lie-terminal", {
     assert.equal(summary.cpython.counts.action296, 5);
     assert.equal(summary.cpython.counts.terminalAction, 0);
     assert.deepEqual(summary.native, ["javascript", "gmp"]);
-    assert.deepEqual(summary.source.acceptanceCodes, [5, 0]);
+    assert.deepEqual(summary.source.acceptanceCodes, [1, 1, 0]);
     assert.equal(summary.source.postFact === summary.source.lieFact, false);
     assert.equal(summary.source.residentBasis,
-      "b20c7ee3b216cf041e556283a6380d0a0442a4a5db23378a0364fedc7d3e9ec1");
+      "b20c7ee3c3b01a4ab11bae2742f0a47569e27de9fd9df7e38dd4c8809bcbcd50");
   },
   noFixture: true,
 });
@@ -848,6 +848,22 @@ stage("unit-component-cubic", {
     assert.equal(summary.provenanceEntries, 14);
     assert.deepEqual(summary.retryLinkState, [6, 12, 1]);
     assert.equal(summary.atomicFailures, 3);
+  },
+  noFixture: true,
+  allowNoArtifactDirectory: true,
+});
+
+stage("compact-unit-result", {
+  dependencies: ["unit-component-cubic"],
+  command: () => commandNode("check_compact_unit_result.cjs"),
+  validate: (summary) => {
+    assert.equal(summary.field, "x^3-20018*x+20034");
+    assert.equal(summary.rank, 2);
+    assert.equal(summary.relationFactors, 7);
+    assert.equal(summary.expandedOnlyAfterExplicitReplay, true);
+    assert.equal(summary.exactUnitsMatchPristinePari, true);
+    assert.equal(summary.semanticMutationsRejected, 24);
+    assert.equal(summary.materializationMutationsRejected, 4);
   },
   noFixture: true,
   allowNoArtifactDirectory: true,
