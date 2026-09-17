@@ -2,11 +2,11 @@
   "$schema": "../task.schema.json",
   "schema_version": 2,
   "id": "h1-preparation-shape",
-  "title": "Test authenticated preparation shape",
+  "title": "Qualify private IntegerBuffer state layouts",
   "lane": "native-compiler",
   "status": "review",
   "owner": "user",
-  "objective": "Measure preparation loop traffic for the five largest authenticated buffers and retain only a general authenticated-logical-shape compiler correction that improves the phase by at least 10% with identical fused H1 evidence",
+  "objective": "Derive a complete authenticated private IntegerBuffer layout from the fused H1 call graph, activate capacity-reuse only for proven nonescaping owners, and retain canonical public boundaries and fail-closed fallback",
   "base_commit": "42efed5871d7db3d334ecfbf77db8c2762ab1fce",
   "claims": [
     "bench/pari-class-group-port/check_h1_preparation_shape.cjs",
@@ -15,10 +15,16 @@
     "bench/pari-class-group-port/h1_preparation_shape_audit.md",
     "tools/native-kernel/private-integer-buffer-authority.cjs",
     "tools/native-kernel/private-integer-buffer-emitter.cjs",
+    "tools/native-kernel/private-integer-buffer-layout.cjs",
     "tools/native-kernel/c-backend.cjs",
     "tools/native-kernel/test/private-integer-buffer-authority.cjs",
     "tools/native-kernel/test/private-integer-buffer-emitter.cjs",
-    "tools/native-kernel/test/private-integer-buffer-host-core.cjs"
+    "tools/native-kernel/test/private-integer-buffer-host-core.cjs",
+    "tools/native-kernel/test/private-integer-buffer-layout.cjs",
+    "bench/pari-class-group-port/check_h1_private_integer_buffer_candidates.cjs",
+    "bench/pari-class-group-port/h1_private_integer_buffer_layout.json",
+    "bench/pari-class-group-port/h1_private_integer_buffer_candidates.json",
+    "bench/pari-class-group-port/h1_private_integer_buffer_candidates_audit.md"
   ],
   "dependencies": [],
   "references": [],
@@ -112,18 +118,51 @@
       "commit": "87cc02df95fad2d9c8989d4d566f5625643c1c86",
       "workspace_fingerprint": "94c8f4bd48f1d56ce90a74a678edef588ea77d352f91fae29575e84b56b3edde",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_h1_private_integer_buffer_candidates.cjs plus frozen-result consistency check",
+      "result": "passed; 348 IntegerBuffers classified as 328 private candidates, 20 public/read-only buffers, and zero rejected; authenticated inventory and candidate hashes exact"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/private-integer-buffer-authority.cjs tools/native-kernel/test/private-integer-buffer-layout.cjs tools/native-kernel/test/private-integer-buffer-emitter.cjs tools/native-kernel/test/private-integer-buffer-host-core.cjs",
+      "result": "passed; 14 authority, layout mutation, alias/raw/escape revocation, canonicalization, public ABI, and target-C probes"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "passed after full-layout wiring"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/private-integer-buffer-authority.cjs tools/native-kernel/test/private-integer-buffer-layout.cjs tools/native-kernel/test/private-integer-buffer-emitter.cjs tools/native-kernel/test/private-integer-buffer-host-core.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.884,
+      "started_at": "2026-09-17T15:20:52.409Z",
+      "commit": "f29195caed3d4cc6027f36bc6ea87dfdc1df2afe",
+      "workspace_fingerprint": "3eb41f24d97300434d7bd2e49f1611c7afce96baa9bdb49d41af13cb5de425bb",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.161,
+      "started_at": "2026-09-17T15:20:54.105Z",
+      "commit": "f29195caed3d4cc6027f36bc6ea87dfdc1df2afe",
+      "workspace_fingerprint": "3eb41f24d97300434d7bd2e49f1611c7afce96baa9bdb49d41af13cb5de425bb",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Confirmed capacity-scaled spare-limb clearing dominates H1 preparation: 582 logical writes trigger 4,866,048 cleared words. The unsafe global setter change was reverted. Wired fail-closed private-buffer authority into real host-core generation: reachable calls propagate authority through renamed parameters, registered private stores omit spare clears, and root success/failure canonicalize before publication. The exact authority-wired fused replay improves preparation 16.95% and the inclusive root 13.51%, with every frozen hash/counter/root/getfu unchanged and rejected authority producing byte-identical ordinary canonical C.",
+    "summary": "Generalized private IntegerBuffer authority from one named buffer to an authenticated state-layout manifest derived from the complete fused H1 call graph. The static audit classifies all 348 root IntegerBuffers as 328 written private candidates, 20 public/read-only buffers, and zero rejected, with authenticated inventory and candidate hashes. Generated storage uses a root-local 1024-slot pointer table, preserves the ordinary clearing path for unregistered or revoked owners, and canonicalizes all dirty private owners exactly once at root success/failure publication. The full 100,275,455-byte target was inspected without compiling; focused tests prove manifest mutations, raw access, aliases, returns, unknown calls, and fallback fail closed.",
     "risks": [
       "Global no-clear violates the public canonical IntegerBuffer ABI and must not be restored.",
-      "Results are a single diagnostic profile, not a seven-pair qualification timing series.",
-      "Broader raw-buffer cross-backend qualification is still required before enabling private authority generally."
+      "Only five candidates have prior cleared-word counters; 323 candidate contributions remain unmeasured.",
+      "The 328-buffer layout has passed static and focused tests but not a bounded fused native replay.",
+      "Broader raw-buffer cross-backend qualification remains required before enabling private authority beyond authenticated private roots."
     ],
     "next_steps": [
-      "Poison spare limbs and compare full raw buffers across GMP, FLINT, JavaScript, and Wasm before broader promotion.",
-      "After promotion review, measure a seven-pair qualified timing series rather than extrapolating this one sample."
+      "Run one authorized 600-second/4-GiB fused H1 build and exact profile with all 328 candidates, requiring every frozen relation, compact-owner, RNG, root, and getfu hash/counter plus canonical public buffers.",
+      "Retain the full layout only if the bounded replay is exact and improves the declared phase threshold; otherwise record the rejected hypothesis without weakening public ABI semantics."
     ]
   }
 }

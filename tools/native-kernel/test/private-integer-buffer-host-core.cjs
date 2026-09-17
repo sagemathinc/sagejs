@@ -5,6 +5,9 @@ const test = require("node:test");
 
 const { generateHostCore } = require("../c-backend.cjs");
 const { lowerSource } = require("../ir.cjs");
+const {
+  privateIntegerBufferLayoutDigest,
+} = require("../private-integer-buffer-layout.cjs");
 
 const source = String.raw`
 from sagejs.native import IntegerBuffer, native
@@ -20,6 +23,25 @@ def private_root(scratch: IntegerBuffer, value: int) -> int:
 
 async function lower() {
   return lowerSource(source, "private-integer-buffer-host-core.py");
+}
+
+function layout(root = "private_root") {
+  return {
+    schema: "sagejs.private-integer-buffer-layout/v1",
+    name: "private-host-core-test-v1",
+    root,
+    selection: "written-proven-private",
+    expected: {
+      parameterSha256: privateIntegerBufferLayoutDigest([
+        ["scratch", "IntegerBuffer"],
+      ]),
+      candidateSha256: privateIntegerBufferLayoutDigest(["scratch"]),
+      integerBuffers: 1,
+      candidates: 1,
+      rejected: 0,
+      public: 0,
+    },
+  };
 }
 
 function emittedFunction(text, marker) {
@@ -39,18 +61,26 @@ function emittedFunction(text, marker) {
 test("host core emits private stores and canonical root boundaries visibly", async () => {
   const ir = await lower();
   const core = generateHostCore(ir, {
-    privateIntegerBuffers: { root: "private_root", buffers: ["scratch"] },
+    privateIntegerBufferLayout: layout(),
   });
   assert.deepEqual(core.audit.privateIntegerBuffers, {
     authority: "private-integer-buffer-v1",
+    layout: "private-host-core-test-v1",
     root: "private_root",
     buffers: ["scratch"],
+    publicBuffers: [],
+    rejected: [],
+    expected: layout().expected,
     canonicalizeAt: ["public-output", "raw-hash", "resume", "ffi", "fallback"],
     failurePublication: "canonicalize-before-publish",
   });
   assert.match(core.source, /sagejs_private_integer_buffer_lookup\(buffer\)/);
+  assert.match(core.source, /sagejs_private_integer_buffer_hash/);
+  assert.match(core.source, /sagejs_private_integer_buffer_context_end/);
   assert.match(core.source,
-    /sagejs_private_integer_buffer_begin\(&sagejs_private_scratch, &sagejs_arg_scratch\)/);
+    /sagejs_private_integer_buffer_state \*sagejs_private_table\[2\] = \{0\}/);
+  assert.match(core.source,
+    /sagejs_private_integer_buffer_begin\(&sagejs_private_context, &sagejs_private_scratch, &sagejs_arg_scratch\)/);
   assert.match(core.source,
     /sagejs_private_integer_buffer_state sagejs_private_scratch = \{0\}/);
   assert.match(core.source,
@@ -82,7 +112,7 @@ test("invalid or escaped authority fails closed to the public ABI", async () => 
   // compiled program valid. The call is then unknown to the proof authority.
   ir.callGraph.private_root = [];
   const core = generateHostCore(ir, {
-    privateIntegerBuffers: { root: "private_root", buffers: ["scratch"] },
+    privateIntegerBufferLayout: layout(),
   });
   const ordinary = generateHostCore(ir);
   assert.equal(core.audit.privateIntegerBuffers, null);
@@ -92,13 +122,12 @@ test("invalid or escaped authority fails closed to the public ABI", async () => 
     /static int sagejs_integer_buffer_set_mpz[\s\S]*memset\(slot, 0, buffer->word_capacity \* sizeof\(\*slot\)\)/);
 });
 
-test("unknown roots and buffers do not activate private storage", async () => {
-  for (const privateIntegerBuffers of [
-    { root: "unknown", buffers: ["scratch"] },
-    { root: "private_root", buffers: ["unknown"] },
-  ]) {
+test("unknown roots and mutated layouts do not activate private storage", async () => {
+  const wrongShape = layout();
+  wrongShape.expected.candidateSha256 = "0".repeat(64);
+  for (const privateIntegerBufferLayout of [layout("unknown"), wrongShape]) {
     const ir = await lower();
-    const core = generateHostCore(ir, { privateIntegerBuffers });
+    const core = generateHostCore(ir, { privateIntegerBufferLayout });
     const ordinary = generateHostCore(ir);
     assert.equal(core.audit.privateIntegerBuffers, null);
     assert.equal(core.source, ordinary.source);

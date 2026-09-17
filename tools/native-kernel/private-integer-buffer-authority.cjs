@@ -55,86 +55,120 @@ function referencedNames(operation) {
   return answer;
 }
 
-function privateIntegerBufferPlan(functions, root, requested) {
+function privateIntegerBufferClassification(functions, root, requested) {
   if (!Array.isArray(functions) || functions[0] !== root ||
       new Set(functions).size !== functions.length) return undefined;
-  const names = [...new Set(requested)].sort();
-  if (names.length === 0) return undefined;
   const params = new Map(root.params.map((param) => [param.name, param.type]));
-  if (names.some((name) => params.get(name) !== "IntegerBuffer")) return undefined;
+  const names = requested === undefined
+    ? root.params.filter((param) => param.type === "IntegerBuffer")
+      .map((param) => param.name).sort()
+    : [...new Set(requested)].sort();
+  if (names.length === 0 ||
+      names.some((name) => params.get(name) !== "IntegerBuffer")) return undefined;
   const graphNames = new Set(functions.map((fn) => fn.name));
   const byName = new Map(functions.map((fn) => [fn.name, fn]));
-  const trackedByFunction = new Map(functions.map((fn) => [fn.name, new Set()]));
-  for (const name of names) trackedByFunction.get(root.name).add(name);
-  let rejected = false;
+  const trackedByFunction = new Map(functions.map((fn) => [fn.name, new Map()]));
+  const rootTracked = trackedByFunction.get(root.name);
+  for (const name of names) rootTracked.set(name, new Set([name]));
+  const rejected = new Map();
+  const writes = new Map(names.map((name) => [name, new Set()]));
+  function labels(fn, value) {
+    const tracked = trackedByFunction.get(fn.name);
+    const result = new Set();
+    for (const name of referencedNames(value)) {
+      for (const label of tracked.get(name) || []) result.add(label);
+    }
+    return result;
+  }
+  function reject(found, reason) {
+    for (const name of found) if (!rejected.has(name)) rejected.set(name, reason);
+  }
+  function addLabels(target, found) {
+    let answer = target;
+    if (answer === undefined) answer = new Set();
+    const before = answer.size;
+    for (const name of found) answer.add(name);
+    return { answer, changed: answer.size !== before };
+  }
   let changed = true;
-  while (changed && !rejected) {
+  while (changed) {
     changed = false;
     for (const fn of functions) {
       const tracked = trackedByFunction.get(fn.name);
       visit(fn.body, (operation) => {
-        if (rejected) return;
-        const references = referencedNames(operation);
-        if (![...references].some((name) => tracked.has(name))) return;
-        if (!SAFE_OPERATIONS.has(operation.kind)) { rejected = true; return; }
+        const found = labels(fn, operation);
+        if (found.size === 0) return;
+        if (!SAFE_OPERATIONS.has(operation.kind)) {
+          reject(found, `operation:${operation.kind}`);
+          return;
+        }
+        if (operation.kind === "integer.buffer.set") {
+          for (const name of labels(fn, operation.buffer)) {
+            writes.get(name).add(operation);
+          }
+        }
         if (operation.kind === "integer.buffer.copy" ||
             operation.kind === "integer.buffer.view") {
-          if (typeof operation.target !== "string") { rejected = true; return; }
-          if (!tracked.has(operation.target)) {
-            tracked.add(operation.target);
-            changed = true;
+          if (typeof operation.target !== "string") {
+            reject(found, `${operation.kind}:missing-target`);
+            return;
           }
+          const added = addLabels(tracked.get(operation.target), found);
+          tracked.set(operation.target, added.answer);
+          changed ||= added.changed;
         }
         if (operation.kind !== "native.call") return;
         const calleeName = operation.function || operation.callee || operation.name;
         const callee = byName.get(calleeName);
         if (!graphNames.has(calleeName) || callee === undefined) {
-          rejected = true;
+          reject(found, `native.call:unknown:${calleeName}`);
           return;
         }
         const args = operation.arguments || operation.args;
         if (!Array.isArray(args) || args.length !== callee.params.length) {
-          rejected = true;
+          reject(found, `native.call:signature:${calleeName}`);
           return;
         }
         const calleeTracked = trackedByFunction.get(calleeName);
         for (let index = 0; index < args.length; index += 1) {
-          if (![...referencedNames(args[index])].some((name) => tracked.has(name))) continue;
+          const forwarded = labels(fn, args[index]);
+          if (forwarded.size === 0) continue;
           const param = callee.params[index];
-          if (param?.type !== "IntegerBuffer") { rejected = true; return; }
-          if (!calleeTracked.has(param.name)) {
-            calleeTracked.add(param.name);
-            changed = true;
+          if (param?.type !== "IntegerBuffer") {
+            reject(forwarded, `native.call:non-buffer:${calleeName}:${index}`);
+            continue;
           }
+          const added = addLabels(calleeTracked.get(param.name), forwarded);
+          calleeTracked.set(param.name, added.answer);
+          changed ||= added.changed;
         }
       });
     }
   }
   for (const fn of functions) {
-    const tracked = trackedByFunction.get(fn.name);
-    visit(fn.body, (operation) => {
-      if (rejected) return;
-      const references = referencedNames(operation);
-      if (![...references].some((name) => tracked.has(name))) return;
-      if (!SAFE_OPERATIONS.has(operation.kind)) { rejected = true; return; }
-      if (operation.kind === "integer.buffer.copy" ||
-          operation.kind === "integer.buffer.view") {
-        if (typeof operation.target !== "string") { rejected = true; return; }
-        tracked.add(operation.target);
-      }
-      if (operation.kind === "native.call") {
-        const callee = operation.function || operation.callee || operation.name;
-        if (!graphNames.has(callee)) rejected = true;
-      }
-    });
     visit(fn.body, (operation) => {
       if (operation.kind !== "return") return;
-      if ([...referencedNames(operation)].some((name) => tracked.has(name))) {
-        rejected = true;
-      }
+      reject(labels(fn, operation), `return:${fn.name}`);
     });
   }
-  if (rejected) return undefined;
+  return Object.freeze(names.map((name) => Object.freeze({
+    name,
+    classification: rejected.has(name)
+      ? "rejected" : writes.get(name).size === 0 ? "public" : "private",
+    writeSites: writes.get(name).size,
+    reason: rejected.get(name) || null,
+  })));
+}
+
+function privateIntegerBufferPlan(functions, root, requested) {
+  const classification = privateIntegerBufferClassification(
+    functions, root, requested,
+  );
+  if (classification === undefined ||
+      classification.some((entry) => entry.classification === "rejected")) {
+    return undefined;
+  }
+  const names = classification.map((entry) => entry.name);
   const claim = Object.freeze({
     authority: "private-integer-buffer-v1",
     buffers: Object.freeze(names),
@@ -152,6 +186,7 @@ function privateIntegerBufferPlanAuthorized(functions, root, claim) {
 }
 
 module.exports = {
+  privateIntegerBufferClassification,
   privateIntegerBufferPlan,
   privateIntegerBufferPlanAuthorized,
 };

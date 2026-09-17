@@ -3,6 +3,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const {
+  privateIntegerBufferClassification,
   privateIntegerBufferPlan,
   privateIntegerBufferPlanAuthorized,
 } = require("../private-integer-buffer-authority.cjs");
@@ -37,6 +38,19 @@ test("authorizes only the complete closed private graph", () => {
   assert.equal(privateIntegerBufferPlanAuthorized(functions, root, claim), true);
   leaf.body[0].index = "one";
   assert.equal(privateIntegerBufferPlanAuthorized(functions, root, claim), false);
+});
+
+test("classification reports deterministic rejection reasons", () => {
+  const { functions, root } = fixture();
+  root.body[0] = { kind: "ffi.call", argument: "scratch" };
+  assert.deepEqual(privateIntegerBufferClassification(
+    functions, root, ["scratch"],
+  ), [{
+    name: "scratch",
+    classification: "rejected",
+    writeSites: 0,
+    reason: "operation:ffi.call",
+  }]);
 });
 
 test("revokes on unknown calls, raw access, alias escape, and fallback", () => {
