@@ -1,0 +1,85 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "field-neutral-result-envelope",
+  "title": "Field-neutral class-unit result envelope",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Define and verify a canonical immutable field-neutral class-and-unit correspondence result without self-granting mathematical authority",
+  "base_commit": "bd4cb35181869dd84eedded591662243cf8ecae1",
+  "claims": [
+    "bench/pari-class-group-port/class_unit_correspondence_result.cjs",
+    "bench/pari-class-group-port/check_class_unit_correspondence_result.cjs",
+    "bench/pari-class-group-port/field-neutral-result-envelope.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "PARI class-group end-to-end native plan"
+  ],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Existing H1 mathematical cold replay and independently supplied authority digest",
+      "Transactional adversarial mutation suite"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node bench/pari-class-group-port/check_class_unit_correspondence_result.cjs",
+    "pnpm merge:check",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_class_unit_correspondence_result.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.067,
+      "started_at": "2026-09-17T08:59:33.894Z",
+      "commit": "bd4cb35181869dd84eedded591662243cf8ecae1",
+      "workspace_fingerprint": "6611ce05aef2258c568ca14a5df08db17d0d7abf250fbca54f0e87f4184eb3d8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.991,
+      "started_at": "2026-09-17T08:59:34.725Z",
+      "commit": "bd4cb35181869dd84eedded591662243cf8ecae1",
+      "workspace_fingerprint": "6611ce05aef2258c568ca14a5df08db17d0d7abf250fbca54f0e87f4184eb3d8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.72,
+      "started_at": "2026-09-17T08:59:39.408Z",
+      "commit": "bd4cb35181869dd84eedded591662243cf8ecae1",
+      "workspace_fingerprint": "6611ce05aef2258c568ca14a5df08db17d0d7abf250fbca54f0e87f4184eb3d8",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a versioned canonical field-neutral class-and-unit correspondence envelope, immutable detached verification, externally rooted mathematical replay authority, authenticated owner lengths/capacities, exact-units and PRECI/LARGE tagged outcomes, honesty/assumption/terminal tiers, atomic publication, and adversarial mutation coverage.",
+    "risks": [
+      "The existing H1 cold replay remains Python in-process, so no H1 adapter is published until a trusted cross-runtime replay receipt or source-transparent replay port exists.",
+      "pnpm test:changed reached and passed merge/build/architecture gates but its broad origin/main-derived unit suite then failed because this no-install worktree lacks the optional sagejs_flint.node addon."
+    ],
+    "next_steps": [
+      "Expose a data-only independently authenticated H1 replay receipt, then map the replayed H1 logical owners into this envelope without granting authority from the envelope itself.",
+      "Generalize field-specific replay providers for nontrivial class groups and unit not_given outcomes while retaining public_complete=false."
+    ]
+  }
+}
