@@ -41,16 +41,25 @@
     "pnpm test:baselib:strict",
     "pnpm test:native"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_getfu_mixed_complex.cjs /home/user/upstream/pari-2.17.4 /home/user/upstream/pari-2.17.4.tar.gz",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.215,
+      "started_at": "2026-09-17T01:12:22.729Z",
+      "commit": "10b4437bdef90a0aa42250c2ba883e7df15ecbc2",
+      "workspace_fingerprint": "2e4e5a86d7447a6fa29fdc078299748dcefa29eb8f7e11217aff13f63a4b4ce7",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "Pinned two actual mixed-signature quartic getfu boundaries and translated the connected PARI 2.17.4 mpcosm1, mpaut, mpsincos, mpsincosm1, and cxexp real-component graph into ordinary Python. The CPython path agrees bit-for-bit on all 12 boundary entries for each function, including exact-zero, 64-bit, ordinary Taylor, and severe pi-cancellation cases whose outputs grow to 640 bits.",
+    "summary": "Pinned two actual mixed-signature quartic getfu boundaries and translated the connected PARI 2.17.4 mpcosm1, mpaut, mpsincos, mpsincosm1, and cxexp real-component graph into ordinary Python. CPython, JavaScript, GMP, and tagged paths agree bit-for-bit on all 12 boundary entries for each function, including exact-zero, 64-bit, ordinary Taylor, and severe pi-cancellation cases whose outputs grow to 640 bits. The focused native graph compiles to a 5,373,955-byte core.",
     "risks": [
-      "The shared host was compile-saturated, so JavaScript/GMP/tagged native receipts remain pending even though the executable checker is ready.",
       "The prepared mpcosm1 cut explicitly rejects the source's exponent-greater-than-30 quotient branch and working precision beyond 2048 bits; neither occurs in the frozen getfu boundary.",
       "This prerequisite stops at exact complex exponentiation. General 4x4 RgM_solve_realimag and quartic algebraic reconstruction/inverse/norm authentication remain downstream."
     ],
     "next_steps": [
-      "Run check_getfu_mixed_complex.cjs once a native compiler slot opens and record exact JavaScript, GMP, and tagged receipts.",
       "Compose the exact cxexp boundary with a separately frozen 4x4 real/imag solve and quartic unit reconstruction lane."
     ]
   }

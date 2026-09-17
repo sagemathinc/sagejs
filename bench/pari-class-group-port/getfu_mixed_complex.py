@@ -105,7 +105,7 @@ def pari_mpcosm1(
                 reduced_exponent = xe
             mantissa, precision, exponent = xm, xp, xe
             if mantissa == 0 and reduced_exponent >= 0:
-                raise ArithmeticError("mpcosm1 argument reduction lost all precision")
+                raise ValueError("mpcosm1 argument reduction lost all precision")
             quadrant = quotient % 4
     mod8 = quadrant
     if mantissa < 0:
