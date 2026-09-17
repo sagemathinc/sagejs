@@ -22,6 +22,7 @@ from .field3_full_terminal_ancestry import (
     UNIT_COLUMNS,
 )
 from .field3_packed_class_cleanarch import pari_field3_packed_class_cleanarch
+from .pi_constant import pari_pi_workspace_capacity
 from .quartic_class_group_assembly import pari_mixed_quartic_class_group_assembly
 
 
@@ -148,6 +149,7 @@ def pari_field3_retain_generator_square_witnesses(
 
 def _clean_class_logs(source: list[int], precision: int) -> tuple[list[int], list[int]]:
     size = PLACES * CLASS_COLUMNS * LOG_CELLS
+    coefficient_cells, stack_cells = pari_pi_workspace_capacity(precision)
     output = [0] * size
     state = [0] * 7
     status = pari_field3_packed_class_cleanarch(
@@ -155,11 +157,11 @@ def _clean_class_logs(source: list[int], precision: int) -> tuple[list[int], lis
         CLASS_COLUMNS,
         precision,
         [0] * 3,
-        [0] * 512,
-        [0] * 512,
-        [0] * 512,
-        [0] * 512,
-        [0] * 1024,
+        [0] * coefficient_cells,
+        [0] * coefficient_cells,
+        [0] * coefficient_cells,
+        [0] * coefficient_cells,
+        [0] * stack_cells,
         [0] * size,
         output,
         state,

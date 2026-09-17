@@ -12,7 +12,7 @@ from sagejs.native import IntegerBuffer, Int64Buffer, native
 
 from .integer_real_product import pari_integer_real_product
 from .log_matrix_transform import pari_validate_log_entries
-from .pi_constant import pari_pi_constant
+from .pi_constant import pari_pi_constant, pari_pi_workspace_capacity
 from .real_division import pari_real_division
 from .short_product import (
     pari_real_integer_division,
@@ -42,6 +42,10 @@ def pari_field3_packed_class_cleanarch(
     is status, completed scratch columns, published columns, source maximum
     exponent, real-place reductions, complex-place reductions, and failed
     zero-based column. Return one on PARI's argument-reduction accuracy gate.
+    `precision` is the whole-word bit target from which PARI's `PRECI` is
+    constructed and admits the authentic 153088-bit owner. A cold pi cache
+    requires exactly the capacity reported by `pari_pi_workspace_capacity`;
+    capacity failure occurs before any state or output mutation.
     """
 
     places = 3
@@ -56,6 +60,19 @@ def pari_field3_packed_class_cleanarch(
         or len(state) < 7
     ):
         raise ValueError("short field3 cleanarch storage")
+    if precision < 64 or precision > 153088 or precision % 64 != 0:
+        raise ValueError("unsupported field3 cleanarch PRECI")
+    coefficient_cells, stack_cells = pari_pi_workspace_capacity(precision)
+    if len(pi_cache) < 3:
+        raise ValueError("short field3 cleanarch pi cache")
+    if pi_cache[1] < precision and (
+        len(a) < coefficient_cells
+        or len(b) < coefficient_cells
+        or len(p) < coefficient_cells
+        or len(q) < coefficient_cells
+        or len(stack) < stack_cells
+    ):
+        raise ValueError("field3 cleanarch pi workspace exhausted")
     state[0] = -1
     state[1] = 0
     state[2] = 0
@@ -80,7 +97,7 @@ def pari_field3_packed_class_cleanarch(
             if rp < 0:
                 raise ValueError("field3 logarithm real part must be packed")
             if rm != 0:
-                if rp < 64 or rp > 4352 or rp % 64 != 0:
+                if rp < 64 or rp > 153088 or rp % 64 != 0:
                     raise ValueError("unsupported field3 class-log precision")
                 if abs(rm).bit_length() != rp:
                     raise ValueError("unnormalized field3 class logarithm")
