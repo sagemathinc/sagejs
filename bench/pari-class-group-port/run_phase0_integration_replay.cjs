@@ -724,11 +724,11 @@ stage("rnd-collector", {
 });
 
 stage("post-rnd-lie-terminal", {
-  dependencies: ["rnd-collector", "initial-kummer", "analytic"],
+  dependencies: ["rnd-collector", "field3-collector", "analytic"],
   requiresPari: true,
   command: (context) => commandNode("check_post_rnd_lie_iteration.cjs",
     context.pariRoot, context.pariArchive,
-    outputPath(context, "initial-kummer"), outputPath(context, "analytic")),
+    outputPath(context, "field3-collector"), outputPath(context, "analytic")),
   validate: (summary) => {
     assert.equal(summary.field, 3);
     assert.equal(summary.cpython.counts.randomLast, 295);
@@ -824,7 +824,10 @@ stage("unit-bridge-preci", {
     context.pariRoot, context.pariArchive),
   validate: (summary) => {
     assert.equal(summary.cases, 1);
-    assert.equal(summary.residentGetfuStatus, "PRECI");
+    assert.equal(summary.residentGetfuStatus,
+      "PRECI then successful p2240-capacity retry");
+    assert.equal(summary.exactNorms, true);
+    assert.equal(summary.composedProvenance, true);
     assert.deepEqual(summary.backends, ["cpython", "javascript", "gmp", "tagged"]);
   },
   noFixture: true,
@@ -832,6 +835,22 @@ stage("unit-bridge-preci", {
     "oracle-source": path.join(summary.artifactDirectory, "oracle.c"),
     "oracle-binary": path.join(summary.artifactDirectory, "oracle"),
   }),
+});
+
+stage("unit-component-cubic", {
+  dependencies: ["unit-bridge-preci"],
+  command: () => commandNode("check_unit_component_cubic.cjs"),
+  validate: (summary) => {
+    assert.equal(summary.cases, 1);
+    assert.equal(summary.terminal, "getfu-and-cleanarch-complete");
+    assert.equal(summary.rank, "2");
+    assert.deepEqual(summary.norms.map(String), ["-1", "-1"]);
+    assert.equal(summary.provenanceEntries, 14);
+    assert.deepEqual(summary.retryLinkState, [6, 12, 1]);
+    assert.equal(summary.atomicFailures, 3);
+  },
+  noFixture: true,
+  allowNoArtifactDirectory: true,
 });
 
 stage("mixed-getfu-prerequisite", {
@@ -866,6 +885,45 @@ stage("mixed-getfu-quartic", {
   additionalOutputs: (summary) => ({
     "oracle-source": path.join(summary.artifactDirectory, "oracle.c"),
     "oracle-binary": path.join(summary.artifactDirectory, "oracle"),
+  }),
+});
+
+stage("quartic-signed-genback", {
+  dependencies: ["smith-transform"],
+  requiresPari: true,
+  command: (context) => commandNode("check_quartic_signed_genback.cjs",
+    context.pariRoot, context.pariArchive),
+  validate: (summary) => {
+    assert.equal(summary.polynomial, "x^4-200000002*x-200000002");
+    assert.deepEqual(summary.smithColumn, ["-2", "-1", "-1"]);
+    assert.equal(summary.reductions, 7);
+    assert.equal(summary.finalFactors, 7);
+    assert.deepEqual(summary.backends,
+      ["pristine PARI 2.17.4", "CPython", "javascript", "gmp", "tagged"]);
+  },
+  noFixture: true,
+  additionalOutputs: (summary) => ({
+    "oracle-source": path.join(summary.directory, "oracle.c"),
+    "oracle-binary": path.join(summary.directory, "oracle"),
+  }),
+});
+
+stage("quartic-nf-cxlog", {
+  dependencies: ["quartic-signed-genback", "nf-cxlog"],
+  requiresPari: true,
+  command: (context) => commandNode("check_quartic_nf_cxlog.cjs",
+    context.pariRoot, context.pariArchive),
+  validate: (summary) => {
+    assert.equal(summary.polynomial, "x^4-200000002*x-200000002");
+    assert.equal(summary.factors, 7);
+    assert.deepEqual(summary.embeddingPrecisionBits, [448, 384, 448, 384]);
+    assert.deepEqual(summary.backends,
+      ["pristine PARI 2.17.4", "CPython", "javascript", "gmp", "tagged"]);
+  },
+  noFixture: true,
+  additionalOutputs: (summary) => ({
+    "oracle-source": path.join(summary.directory, "oracle.c"),
+    "oracle-binary": path.join(summary.directory, "oracle"),
   }),
 });
 
