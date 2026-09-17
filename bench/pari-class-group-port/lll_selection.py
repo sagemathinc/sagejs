@@ -1,4 +1,4 @@
-"""PARI 2.17.4 `ZM_lll_norms` FLATTER selection for full-rank degrees 3/4.
+"""PARI 2.17.4 `ZM_lll_norms` FLATTER selection through degree 5.
 
 Copyright (C) The PARI group. GPL-2.0-or-later, without warranty.
 Rank is supplied at this explicit boundary; computing it is not omitted from
@@ -34,7 +34,7 @@ def pari_lll_select_full_rank(
     Diagnostic slots: QR status (-1 if not called), threshold branch taken,
     size, threshold, spread. Size/threshold/spread are undefined unless taken.
     """
-    if (n != 3 and n != 4) or len(basis) != n * n or len(diagnostic) < 5:
+    if (n < 3 or n > 5) or len(basis) != n * n or len(diagnostic) < 5:
         raise ValueError("unsupported LLL selector boundary")
     upper = 1
     for i in range(n):
@@ -92,13 +92,20 @@ def pari_lll_select_full_rank(
         exponent = pari_lll_exponent(reduction, i)
         if exponent > size:
             size = exponent
+    # `thre[n - 3]` and `thsn[n - 3]` in PARI 2.17.4.  Keep these
+    # literal values visible: the degree-five entry is what lets the
+    # authenticated quintic collector prove that FLATTER is not selected.
     threshold = 31783
     if n == 4:
         threshold = 34393
+    if n == 5:
+        threshold = 20894
     if knapsack != 0:
         threshold = 23280
         if n == 4:
             threshold = 30486
+        if n == 5:
+            threshold = 50077
     diagnostic[1] = 1
     diagnostic[2] = size
     diagnostic[3] = threshold

@@ -83,7 +83,10 @@ def pari_ideal_ranked_preparation(
 ) -> int:
     """Fincke_Pohst_ideal preparation with no supplied LLL transformation.
 
-    All scratch buffers are disjoint. QR storage is reused after LLL has
+    Degrees three through five are accepted.  The authenticated quintic
+    collector has full rank and stays below PARI's degree-five FLATTER
+    threshold, so it follows the ordinary fast/DPE path.  All scratch buffers
+    are disjoint. QR storage is reused after LLL has
     finished. On success qr_input is G*ideal and qr is its Gauss reduction.
     Return 0 on success, 1..4 for the ranked LLL dependency statuses, 5 for
     subsequent QR failure, 6 for float conversion rejection, 7 for unresolved
@@ -92,7 +95,7 @@ def pari_ideal_ranked_preparation(
     """
     if (
         n < 3
-        or n > 4
+        or n > 5
         or len(flags) < 2
         or len(rounded_embedding) < n * n
         or len(original_ideal) < n * n

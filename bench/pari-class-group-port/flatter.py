@@ -2,7 +2,10 @@
 
 Copyright (C) The PARI group. GPL-2.0-or-later, without warranty.
 The selected dimensions split into the already translated 1D/2D LLL leaves.
-This is FLATTER preparation, not the subsequent verified LLL dispatcher.
+Degree five would require a 3D recursive LLL leaf and remains rejected here.
+The authenticated quintic collector is nevertheless connected exactly: its
+PARI selector result is `useflatter=0`, so this function is not entered.  This
+is FLATTER preparation, not the subsequent verified LLL dispatcher.
 """
 
 from sagejs.native import IntegerBuffer, native
