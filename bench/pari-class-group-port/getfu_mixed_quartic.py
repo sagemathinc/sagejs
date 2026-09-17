@@ -297,7 +297,7 @@ def pari_getfu_mixed_quartic(
     stack: IntegerBuffer,
 ) -> int:
     """Run the connected signature `(2,1)` quartic reconstruction suffix."""
-    if precision < 64 or precision > 384 or precision % 64 != 0:
+    if precision < 64 or precision > 768 or precision % 64 != 0:
         raise ValueError("unsupported mixed quartic getfu precision")
     if (
         len(arch_real) < 18

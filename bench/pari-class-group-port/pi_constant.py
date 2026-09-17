@@ -26,10 +26,11 @@ def pari_pi_constant(
 ) -> tuple[int, int, int]:
     """Return mppi at a word precision, reusing a computed resident cache.
 
-    Scratch buffers and cache are disjoint. The prototype precision limit
-    leaves the upstream 64-bit guard word within existing arithmetic limits.
+    Scratch buffers and cache are disjoint. The input precision limit leaves
+    the upstream 64-bit guard word within the coordinated 2,496-bit arithmetic
+    boundary.
     """
-    if precision < 64 or precision > 1024 or precision % 64 != 0:
+    if precision < 64 or precision > 2432 or precision % 64 != 0:
         raise ValueError("unsupported pi precision")
     if len(cache) < 3:
         raise ValueError("pi cache requires three entries")

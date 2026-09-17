@@ -401,18 +401,28 @@ def pari_positive_real_sum(
 
 @native
 def pari_short_square(mx: int, px: int, ex: int) -> tuple[int, int, int]:
-    """Use the shared short-product word sum below the square crossover.
+    """Use PARI's short or full-integer square across its square crossover.
 
     `sqrz_i` uses the same truncated word sum at these precisions, but switches
-    to a full square earlier than multiplication. Limit this prototype to 512
-    bits, below the pinned 64-bit GMP square crossover, rather than silently
-    applying the short algorithm beyond it.
+    to `sqrispec_mirror` above the pinned 64-bit GMP square crossover.  The
+    latter computes the full positive integer square and `mulrrz_end` rounds
+    it back to the input precision.
     """
     if mx == 0:
         return 0, 0, 2 * ex
-    if px > 512:
+    if px < 64 or px > 2496 or px % 64 != 0 or abs(mx).bit_length() != px:
         raise ValueError("short square prototype precision out of range")
-    return pari_short_product(mx, px, ex, mx, px, ex)
+    if px <= 512:
+        return pari_short_product(mx, px, ex, mx, px, ex)
+    product = mx * mx
+    bits = product.bit_length()
+    exponent = 2 * ex + bits - 2 * px + 1
+    discard = bits - px
+    result = (product + (1 << (discard - 1))) >> discard
+    if result.bit_length() > px:
+        result >>= 1
+        exponent += 1
+    return result, px, exponent
 
 
 @native
