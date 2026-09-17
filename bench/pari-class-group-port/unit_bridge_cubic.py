@@ -10,6 +10,7 @@ real-place sign phases, and prepares PARI's rank-two `getfu` factor.
 
 from sagejs.native import Float64Buffer, IntegerBuffer, Int64Buffer, native
 
+from .exponential import pari_real_resize
 from .float_conversion import pari_real_to_float
 from .lll_dpe_pass import pari_lll_dpe
 from .lll_fast import pari_lll_fast
@@ -26,6 +27,58 @@ from .unit_lattice_reduction import (
     pari_unit_integer_lattice_rank_two,
     pari_unit_real_lattice_rank_two,
 )
+
+
+@native
+def pari_cubic_unit_retry_link(
+    resident_logs: IntegerBuffer,
+    retry_logs: IntegerBuffer,
+    state: Int64Buffer,
+) -> int:
+    """Prove that a high-precision retry refreshes the six resident logs.
+
+    Each retry value is rounded with PARI's `affrr` rule to the resident
+    precision. Independently accumulated source logs may differ in their final
+    sixteen mantissa bits; the exponent and precision must agree exactly and
+    the leading 176 bits remain fixed. Return 1 at the first violation and
+    record the largest observed low-bit difference in `state`.
+    """
+    if len(resident_logs) < 18 or len(retry_logs) < 18 or len(state) < 3:
+        raise ValueError("short cubic unit retry-link storage")
+    state[0] = 0
+    state[1] = 0
+    state[2] = 0
+    for i in range(6):
+        at = 3 * i
+        low_m = resident_logs[at]
+        low_p = resident_logs[at + 1]
+        low_e = resident_logs[at + 2]
+        high_m = retry_logs[at]
+        high_p = retry_logs[at + 1]
+        high_e = retry_logs[at + 2]
+        if low_m == 0 or high_m == 0 or low_p < 64 or high_p < low_p:
+            raise ValueError("unsupported cubic unit retry value")
+        resized_m, resized_p, resized_e = pari_real_resize(
+            high_m, high_p, high_e, low_p
+        )
+        difference_bits = abs(resized_m - low_m).bit_length()
+        if difference_bits > state[1]:
+            state[1] = difference_bits
+        if difference_bits > 16:
+            state[0] = i
+            state[2] = 0
+            return 1
+        if resized_p != low_p:
+            state[0] = i
+            state[2] = 1
+            return 1
+        if resized_e != low_e:
+            state[0] = i
+            state[2] = 2
+            return 1
+    state[0] = 6
+    state[2] = 1
+    return 0
 
 
 @native

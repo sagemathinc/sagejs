@@ -1,0 +1,119 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-cubic-unit-retry",
+  "title": "PARI cubic unit precision retry",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Carry the authentic resident totally-real cubic unit bridge through the p2240 precision retry to exact reconstructed units and expose a final-state-compatible UnitComponent.",
+  "base_commit": "0aa980609a0ca1df273389d201540e8137d1b5ee",
+  "claims": [
+    "bench/pari-class-group-port/unit_bridge_cubic.py",
+    "bench/pari-class-group-port/check_unit_bridge_cubic.cjs",
+    "bench/pari-class-group-port/unit-bridge-cubic-fixtures.json",
+    "bench/pari-class-group-port/unit_bridge_cubic_audit.md",
+    "bench/pari-class-group-port/unit_component_cubic.py",
+    "bench/pari-class-group-port/check_unit_component_cubic.cjs",
+    "bench/pari-class-group-port/unit_component_cubic_audit.md"
+  ],
+  "dependencies": [
+    "pari-cubic-unit-bridge",
+    "packed-real-getfu-capacity"
+  ],
+  "references": [
+    "/home/user/upstream/pari-2.17.4/src/basemath/buch2.c"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "gmp",
+      "tagged",
+      "Pinned PARI 2.17.4 trace",
+      "Exact unit inverse and norm replay"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node bench/pari-class-group-port/check_unit_bridge_cubic.cjs",
+    "node bench/pari-class-group-port/check_unit_component_cubic.cjs",
+    "python3 -m py_compile bench/pari-class-group-port/unit_bridge_cubic.py bench/pari-class-group-port/unit_component_cubic.py",
+    "node --check bench/pari-class-group-port/check_unit_bridge_cubic.cjs",
+    "node --check bench/pari-class-group-port/check_unit_component_cubic.cjs"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_unit_bridge_cubic.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.008,
+      "started_at": "2026-09-17T02:10:50.635Z",
+      "commit": "0aa980609a0ca1df273389d201540e8137d1b5ee",
+      "workspace_fingerprint": "dd1a601fb9077410ca52152580e213b360b0a403558181949aa1588750369a03",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_unit_component_cubic.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.107,
+      "started_at": "2026-09-17T02:11:15.964Z",
+      "commit": "0aa980609a0ca1df273389d201540e8137d1b5ee",
+      "workspace_fingerprint": "dd1a601fb9077410ca52152580e213b360b0a403558181949aa1588750369a03",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -m py_compile bench/pari-class-group-port/unit_bridge_cubic.py bench/pari-class-group-port/unit_component_cubic.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.085,
+      "started_at": "2026-09-17T02:11:20.747Z",
+      "commit": "0aa980609a0ca1df273389d201540e8137d1b5ee",
+      "workspace_fingerprint": "dd1a601fb9077410ca52152580e213b360b0a403558181949aa1588750369a03",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check bench/pari-class-group-port/check_unit_bridge_cubic.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.026,
+      "started_at": "2026-09-17T02:11:21.485Z",
+      "commit": "0aa980609a0ca1df273389d201540e8137d1b5ee",
+      "workspace_fingerprint": "dd1a601fb9077410ca52152580e213b360b0a403558181949aa1588750369a03",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check bench/pari-class-group-port/check_unit_component_cubic.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.029,
+      "started_at": "2026-09-17T02:11:22.188Z",
+      "commit": "0aa980609a0ca1df273389d201540e8137d1b5ee",
+      "workspace_fingerprint": "dd1a601fb9077410ca52152580e213b360b0a403558181949aa1588750369a03",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "The frozen 73-relation real cubic now preserves an atomic resident PRECI stop, links all six resident logs to authentic p2176 retry inputs through 176 leading bits, and reconstructs both exact fundamental units at p2240 embedding capacity. CPython, JavaScript, GMP, and tagged paths equal the instrumented pristine PARI 2.17.4 getfu output for units, logs, phases, factor transform, and composed provenance. A host-side producer validates exact norms, inverses, retry linkage, provenance, regulator evidence, and returns the exact UnitComponentOutput shape accepted by class_group_final_state.",
+    "risks": [
+      "The retry-to-resident linkage is frozen and measured for one totally real cubic; the independently accumulated values differ in at most 12 low mantissa bits and the bounded adapter permits at most 16.",
+      "The final-state evidence schema cannot directly retain the composed relation exponent matrix, so the producer validates it atomically before publication while candidate hashes and packed-log ranges provide the schema-level linkage.",
+      "Mixed signatures and general wide unit lattices are outside this lane."
+    ],
+    "next_steps": [
+      "Wire make_real_cubic_unit_component into the integration lane's authentic prepared candidate and transform fingerprint.",
+      "Retain the pristine source trace and focused retry test when extending beyond the frozen real cubic."
+    ]
+  }
+}
