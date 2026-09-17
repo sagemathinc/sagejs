@@ -115,7 +115,7 @@ for ix,(r,e) in enumerate(zip(*json.load(sys.stdin))):
   else:raise AssertionError('invalid input accepted')
   assert str(bad)==before
  if c:
-  bad=args[:];bad[0]=[1<<1919,1920,0]+args[0][3:];before=str(bad)
+  bad=args[:];bad[0]=[1<<2304,2305,0]+args[0][3:];before=str(bad)
   try:f(*bad)
   except ValueError:pass
   else:raise AssertionError('out-of-window precision accepted')
@@ -134,7 +134,7 @@ for ix,(r,e) in enumerate(zip(*json.load(sys.stdin))):
   assert.equal(status,BigInt(e.state[0]),backend+' '+ix);assert.deepEqual(args[32],e.state.map(BigInt),backend+' '+ix);assert.deepEqual(view(args[30]),status===0n?e.multiple.map(BigInt):[77n,77n,77n]);assert.deepEqual(view(args[31]),status===0n?e.coordinates.map(BigInt):Array(lengths.at(-1)).fill(77n));
   if(e.inverse.length)assert.deepEqual(view(args[25]),e.inverse.map(BigInt));
   for(const [index,value]of [[1,1n],[4,make(0,4)],[30,make(0,30)],[32,[]]]){const bad=args.slice();bad[index]=value;const snap=a=>a.map(x=>typeof x==='bigint'?x:view(x).slice()),before=snap(bad);assert.throws(()=>f[backend](...bad));assert.deepEqual(snap(bad),before);}
-  if(c){const bad=args.slice();bad[0]=[1n<<1919n,1920n,0n,...args[0].slice(3)];const snap=a=>a.map(x=>typeof x==='bigint'?x:view(x).slice()),before=snap(bad);assert.throws(()=>f[backend](...bad));assert.deepEqual(snap(bad),before);}
+  if(c){const bad=args.slice();bad[0]=[1n<<2304n,2305n,0n,...args[0].slice(3)];const snap=a=>a.map(x=>typeof x==='bigint'?x:view(x).slice()),before=snap(bad);assert.throws(()=>f[backend](...bad));assert.deepEqual(snap(bad),before);}
  }
  console.log(JSON.stringify({...summary,coreBytes:fs.statSync(built.coreSourcePath).size,cacheKey:built.cacheKey,sourceSha256:hash(fs.readFileSync(path.join(__dirname,'regulator_multiple.py')))}));
 })().catch(e=>{console.error(e);process.exitCode=1;});
