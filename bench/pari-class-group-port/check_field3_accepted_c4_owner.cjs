@@ -170,6 +170,53 @@ function derivedInputs(directory, catalogData, output) {
   };
 }
 
+function productionCatalogRegression(oracle) {
+  const result = JSON.parse(run("python3", ["-c", String.raw`
+import copy,importlib,json,sys
+sys.path.append('src/lib');sys.path.append('src/baselib')
+m=importlib.import_module('bench.pari-class-group-port.field3_accepted_c4_owner')
+polynomial=[-2000042,-2000022,0,0,1]
+source={'admission_primes':json.load(sys.stdin)['primes']}
+owners={
+ 'packetIds':['1','2','3'],
+ 'packetPrimes':['37','37','37'],
+ 'packetNorms':['37','37','1369'],
+ 'relationPrimes':['37','37','37'],
+ 'ramification':['1','1','1'],
+}
+catalog=m._production_prime_catalog(polynomial,37,6144,source,owners)
+def row(prime):
+ i=catalog[0].index(prime); start=catalog[1][i]; stop=start+catalog[2][i]
+ return [catalog[3][start:stop],catalog[4][start:stop]]
+mutations=0
+def rejects(changed_source,changed_owners):
+ global mutations
+ try:m._production_prime_catalog(polynomial,37,37,changed_source,changed_owners)
+ except m.Field3AcceptedC4Failure:mutations+=1
+ else:raise AssertionError('accepted detached production catalog authority')
+bad=copy.deepcopy(owners);bad['packetNorms'][2]='38';rejects(source,bad)
+bad=copy.deepcopy(owners);bad['ramification'][2]='2';rejects(source,bad)
+bad=copy.deepcopy(owners);bad['relationPrimes'][2]='41';rejects(source,bad)
+bad=copy.deepcopy(source);bad['admission_primes'][2:4]=reversed(bad['admission_primes'][2:4]);rejects(bad,owners)
+print(json.dumps({'catalog':catalog,'two':row(2),'three':row(3),'thirtySeven':row(37),'mutations':mutations}))
+`], { input: JSON.stringify({ primes: oracle.primes }) }));
+  const comparedPrimeCount = result.catalog[0].length;
+  assert.deepEqual(result.catalog[0], oracle.primes.slice(0, comparedPrimeCount).map(Number));
+  assert.deepEqual(result.two, [[1], [1]]);
+  assert.deepEqual(result.three, [[2], [2]]);
+  assert.deepEqual(result.thirtySeven, [[1,2], [2,1]]);
+  const expectedOffsets = oracle.offsets.slice(0, comparedPrimeCount).map(Number);
+  const expectedCounts = oracle.counts.slice(0, comparedPrimeCount).map(Number);
+  const expectedCells = expectedOffsets.at(-1) + expectedCounts.at(-1);
+  const expectedDegrees = oracle.degrees.slice(0, expectedCells).map(Number);
+  const expectedMultiplicities = oracle.multiplicities.slice(0, expectedCells).map(Number);
+  assert.deepEqual(result.catalog.slice(1), [
+    expectedOffsets, expectedCounts, expectedDegrees, expectedMultiplicities,
+  ]);
+  assert.equal(result.mutations, 4);
+  return result.mutations;
+}
+
 function acceptArgs(owners, output) {
   return [coordinator, "--operation", "accept",
     "--full-terminal-owner", owners.full.file, "--full-terminal-sha256", owners.full.sha256,
@@ -182,6 +229,7 @@ function acceptArgs(owners, output) {
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "field3-accepted-c4-"));
 try {
   const catalogData = sourceCatalog(temporary);
+  const productionCatalogMutations = productionCatalogRegression(catalogData);
   assert.equal(catalogData.bound, 6144);
   const output = path.join(temporary, "out");
   const analyticInputs = derivedInputs(temporary, catalogData, output);
@@ -290,6 +338,7 @@ try {
     pariArchiveSha256: archiveSha,
     lowPrecisionAccepted: true,
     mutationCases,
+    productionCatalogMutations,
     genuinePreciTransition: [64, 128],
     publications: [first.acceptedC4.schema, first.analyticAccepted.schema],
     publication: "content-addressed-idempotent-mode0444",

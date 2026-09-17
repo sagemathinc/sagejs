@@ -20,6 +20,19 @@ embedding identity (`bc0dfb...7cf`). From these it derives:
 - the complete prime decomposition catalog through the analytic bound,
   including the required sentinel prime beyond the bound.
 
+The frozen collector's `admission_prime_offsets`, `admission_prime_counts`,
+and `admission_group_*` arrays are deliberately not treated as that catalog.
+They describe the sparse factor-base admission schedule: its first live prime
+is 5, after the preinstalled 2/3 factor-base prefix, while the terminal
+relation authority begins 2, 3, 3, 5. Production reuses only the authenticated,
+increasing rational-prime stream. It recomputes ordinary residue-degree
+patterns from the defining polynomial through the source-transparent
+`pari_prime_degree_catalog`. The defining equation has index 37, so the
+polynomial-mod-37 path is invalid; the three exact authority packets above 37
+have norms 37, 37, and 1369 and independently yield grouped degrees
+`1^2, 2^1`. Their authenticated ramification weights must sum to degree four.
+No expected analytic catalog fixture participates in publication.
+
 The acceptance operation then authenticates four immutable, content-addressed
 predecessors:
 
@@ -127,6 +140,9 @@ record directly.
 authorities from a freshly compiled, UBSan-enabled PARI 2.17.4 source oracle,
 then exercises `derive-inputs`; it never handcrafts an accepted analytic
 owner. A
+focused production-shaped regression separately exercises the ordinary-prime
+factorization/index-prime packet join and rejects altered packet norms,
+ramification, relation-prime authority, and rational-prime order. A
 generated 64-bit rank-two C3 control and generated terminal HNF exercise the
 complete accepted path. The test checks both schemas, digest ancestry,
 mode-0444 publication, idempotency, and the independent projection CLI.

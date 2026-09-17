@@ -24,6 +24,8 @@ from .field3_analytic_acceptance import (
 from .field3_high_precision_regulator_schedule import (
     pari_field3_regulator_owner_latches,
 )
+from .flx_small_factor import pari_flx_small_factor_workspace_size
+from .prime_degree_catalog import pari_prime_degree_catalog
 from .regulator_multiple import pari_regulator_multiple
 
 
@@ -182,6 +184,164 @@ def _tensor_discriminant(tensor: Sequence[int]) -> int:
     return -discriminant
 
 
+def _prime_power_degree(norm: int, prime: int) -> int:
+    """Return `f` for an authenticated prime-ideal norm `prime**f`."""
+    degree = 0
+    while norm > 1 and norm % prime == 0:
+        norm //= prime
+        degree += 1
+    if norm != 1 or degree < 1:
+        raise Field3AcceptedC4Failure("authority packet norm is not a prime power")
+    return degree
+
+
+def _production_prime_catalog(
+    polynomial: Sequence[int],
+    equation_index: int,
+    residue_bound: int,
+    source: Mapping[str, Any],
+    owners: Mapping[str, Any],
+) -> tuple[list[int], list[int], list[int], list[int], list[int]]:
+    """Derive the GRH catalog from source code plus exact bad-prime packets.
+
+    The collector's `admission_*` outputs are a factor-base admission
+    schedule, not the analytic prime catalog. Only its authenticated rational
+    prime stream is reused here. Ordinary splitting patterns are recomputed
+    from the defining polynomial. Primes dividing the equation index cannot
+    use that polynomial-mod-p path, so their residue degrees are independently
+    recovered from the authority's exact prime-ideal norms.
+    """
+    all_primes = [
+        _integer(value, "catalog rational prime")
+        for value in source.get("admission_primes", [])
+    ]
+    if not all_primes or all_primes[0] != 2:
+        raise Field3AcceptedC4Failure("authenticated rational-prime stream changed")
+    for index in range(1, len(all_primes)):
+        if all_primes[index - 1] >= all_primes[index]:
+            raise Field3AcceptedC4Failure("rational-prime stream is not increasing")
+    prime_count = 0
+    while prime_count < len(all_primes) and all_primes[prime_count] <= residue_bound:
+        prime_count += 1
+    if prime_count == len(all_primes):
+        raise Field3AcceptedC4Failure("catalog lacks a prime beyond the residue bound")
+    primes = all_primes[: prime_count + 1]
+
+    packet_primes = _integers(
+        owners.get("packetPrimes"), len(owners.get("packetPrimes", [])), "packet primes"
+    )
+    packet_norms = _integers(
+        owners.get("packetNorms"), len(owners.get("packetNorms", [])), "packet norms"
+    )
+    relation_primes = _integers(
+        owners.get("relationPrimes"),
+        len(owners.get("relationPrimes", [])),
+        "authority primes",
+    )
+    ramification = _integers(
+        owners.get("ramification"),
+        len(owners.get("ramification", [])),
+        "authority ramification",
+    )
+    packet_ids = _integers(
+        owners.get("packetIds"), len(owners.get("packetIds", [])), "packet ids"
+    )
+    if (
+        len(packet_primes) != len(packet_norms)
+        or packet_primes != relation_primes
+        or len(packet_primes) != len(ramification)
+        or packet_ids != list(range(1, len(packet_ids) + 1))
+        or len(packet_ids) != len(packet_primes)
+    ):
+        raise Field3AcceptedC4Failure("prime-ideal packet authority detached")
+
+    ordinary_primes = [prime for prime in primes if equation_index % prime != 0]
+    ordinary_count = len(ordinary_primes)
+    degree = len(polynomial) - 1
+    capacity = ordinary_count * degree
+    workspace = [0] * (9 + pari_flx_small_factor_workspace_size())
+    factor_degrees = [0] * degree
+    factor_exponents = [0] * degree
+    group_degrees = [0] * degree
+    group_counts = [0] * degree
+    local_state = [0] * 3
+    pattern_offsets = [0] * ordinary_count
+    pattern_counts = [0] * ordinary_count
+    pattern_degrees = [0] * capacity
+    pattern_multiplicities = [0] * capacity
+    full_offsets = [0] * ordinary_count
+    full_counts = [0] * ordinary_count
+    full_degrees = [0] * capacity
+    state = [0] * 4
+    status = pari_prime_degree_catalog(
+        list(polynomial),
+        degree,
+        equation_index,
+        ordinary_primes,
+        ordinary_count,
+        workspace,
+        factor_degrees,
+        factor_exponents,
+        group_degrees,
+        group_counts,
+        local_state,
+        pattern_offsets,
+        pattern_counts,
+        pattern_degrees,
+        pattern_multiplicities,
+        full_offsets,
+        full_counts,
+        full_degrees,
+        state,
+    )
+    if status != 0 or state[0] != 0 or state[1] != ordinary_count:
+        raise Field3AcceptedC4Failure("source-derived prime catalog failed")
+    ordinary_patterns: dict[int, tuple[list[int], list[int]]] = {}
+    for index, prime in enumerate(ordinary_primes):
+        start = pattern_offsets[index]
+        stop = start + pattern_counts[index]
+        ordinary_patterns[prime] = (
+            pattern_degrees[start:stop],
+            pattern_multiplicities[start:stop],
+        )
+
+    offsets: list[int] = []
+    counts: list[int] = []
+    degrees: list[int] = []
+    multiplicities: list[int] = []
+    for prime in primes:
+        if equation_index % prime != 0:
+            local_degrees, local_counts = ordinary_patterns[prime]
+        else:
+            factors = []
+            weighted_degree = 0
+            for packet_prime, packet_norm, exponent in zip(
+                packet_primes, packet_norms, ramification
+            ):
+                if packet_prime == prime:
+                    residue_degree = _prime_power_degree(packet_norm, prime)
+                    factors.append(residue_degree)
+                    weighted_degree += exponent * residue_degree
+            if not factors or weighted_degree != degree:
+                raise Field3AcceptedC4Failure(
+                    "index-prime packets do not give a complete decomposition"
+                )
+            factors.sort()
+            local_degrees = []
+            local_counts = []
+            for residue_degree in factors:
+                if local_degrees and local_degrees[-1] == residue_degree:
+                    local_counts[-1] += 1
+                else:
+                    local_degrees.append(residue_degree)
+                    local_counts.append(1)
+        offsets.append(len(degrees))
+        counts.append(len(local_degrees))
+        degrees.extend(local_degrees)
+        multiplicities.extend(local_counts)
+    return primes, offsets, counts, degrees, multiplicities
+
+
 def derive_analytic_inputs(
     prepared_owner: Mapping[str, Any],
     initial_owner: Mapping[str, Any],
@@ -263,8 +423,7 @@ def derive_analytic_inputs(
             3000,
         ]:
             raise Field3AcceptedC4Failure("frozen authority state changed")
-        authority_primes = owners.get("relationPrimes")
-        authority_e = owners.get("ramification")
+        equation_index = _integer(prepared.get("zkden"), "prepared equation index")
     elif profile == "synthetic-test":
         if (
             prepared.get("schema") != TEST_PREPARED_SCHEMA
@@ -306,50 +465,57 @@ def derive_analytic_inputs(
     residue_bound = _integer(expected.get("residueBound"), "residue bound")
     if residue_bound != 6144:
         raise Field3AcceptedC4Failure("analytic residue bound changed")
-    all_primes = [
-        _integer(x, "admission prime") for x in source.get("admission_primes", [])
-    ]
-    prime_count = sum(prime <= residue_bound for prime in all_primes) + 1
-    if prime_count > len(all_primes):
-        raise Field3AcceptedC4Failure("catalog lacks a prime beyond the residue bound")
-    primes = all_primes[:prime_count]
-    offsets = _integers(
-        source.get("admission_prime_offsets"),
-        len(source.get("admission_prime_offsets", [])),
-        "prime offsets",
-    )[:prime_count]
-    counts = _integers(
-        source.get("admission_prime_counts"),
-        len(source.get("admission_prime_counts", [])),
-        "prime counts",
-    )[:prime_count]
-    ideal_count = max(offset + count for offset, count in zip(offsets, counts))
-    degrees = _integers(
-        source.get("admission_group_f"),
-        len(source.get("admission_group_f", [])),
-        "residue degrees",
-    )[:ideal_count]
-    multiplicities = _integers(
-        source.get("admission_group_e"),
-        len(source.get("admission_group_e", [])),
-        "ramification multiplicities",
-    )[:ideal_count]
-    relation_primes = _integers(
-        authority_primes, len(authority_primes or []), "authority primes"
-    )
-    ramification = _integers(
-        authority_e, len(authority_e or []), "authority ramification"
-    )
-    expanded_primes = [
-        prime
-        for prime, offset, count in zip(primes, offsets, counts)
-        for _ in range(count)
-    ]
-    if (
-        relation_primes[:ideal_count] != expanded_primes
-        or ramification[:ideal_count] != multiplicities
-    ):
-        raise Field3AcceptedC4Failure("catalog detached from relation authority")
+    if profile == "production":
+        primes, offsets, counts, degrees, multiplicities = _production_prime_catalog(
+            polynomial, equation_index, residue_bound, source, owners
+        )
+    else:
+        all_primes = [
+            _integer(x, "admission prime") for x in source.get("admission_primes", [])
+        ]
+        prime_count = sum(prime <= residue_bound for prime in all_primes) + 1
+        if prime_count > len(all_primes):
+            raise Field3AcceptedC4Failure(
+                "catalog lacks a prime beyond the residue bound"
+            )
+        primes = all_primes[:prime_count]
+        offsets = _integers(
+            source.get("admission_prime_offsets"),
+            len(source.get("admission_prime_offsets", [])),
+            "prime offsets",
+        )[:prime_count]
+        counts = _integers(
+            source.get("admission_prime_counts"),
+            len(source.get("admission_prime_counts", [])),
+            "prime counts",
+        )[:prime_count]
+        ideal_count = max(offset + count for offset, count in zip(offsets, counts))
+        degrees = _integers(
+            source.get("admission_group_f"),
+            len(source.get("admission_group_f", [])),
+            "residue degrees",
+        )[:ideal_count]
+        multiplicities = _integers(
+            source.get("admission_group_e"),
+            len(source.get("admission_group_e", [])),
+            "ramification multiplicities",
+        )[:ideal_count]
+        relation_primes = _integers(
+            authority_primes, len(authority_primes or []), "authority primes"
+        )
+        ramification = _integers(
+            authority_e, len(authority_e or []), "authority ramification"
+        )
+        expanded_primes = [
+            prime
+            for prime, offset, count in zip(primes, offsets, counts)
+            for _ in range(count)
+        ]
+        if (
+            relation_primes[:ideal_count] != expanded_primes
+            or ramification[:ideal_count] != multiplicities
+        ):
+            raise Field3AcceptedC4Failure("catalog detached from relation authority")
     field_schema = FIELD_SCHEMA if profile == "production" else TEST_FIELD_SCHEMA
     catalog_schema = CATALOG_SCHEMA if profile == "production" else TEST_CATALOG_SCHEMA
     run_identity = prepared.get("runIdentity")
