@@ -147,7 +147,7 @@
       "path": "bench/pari-class-group-port/pari_h1_outcome_c_adapter.c",
       "category": "benchmark-reference",
       "review_status": "accepted",
-      "lane": "arithmetic-algebra",
+      "lane": "integration",
       "rationale": "Linux-only benchmark adapter for the pinned PARI 2.17.4 prepared-nf bnfinit flag-zero Outcome-C reference. It links PARI only in a disposable helper process, is never linked into Sage.js, and keeps the mathematical implementation in the independently maintained upstream library."
     },
     {

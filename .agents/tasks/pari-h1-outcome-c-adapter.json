@@ -3,7 +3,7 @@
   "schema_version": 2,
   "id": "pari-h1-outcome-c-adapter",
   "title": "Pari H1 Outcome C Adapter",
-  "lane": "arithmetic-algebra",
+  "lane": "integration",
   "status": "active",
   "owner": "final_mutation_replay",
   "objective": "Implement an authentic PARI 2.17.4 prepared-nf bnfinit(flag=0) Outcome-C worker adapter with full-root timing and authenticated standardized evidence",
@@ -38,8 +38,9 @@
     "macos-arm64": "not-applicable"
   },
   "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
     "pnpm test:baselib:strict",
-    "pnpm test:native",
     "node bench/pari-class-group-port/check_pari_h1_outcome_c_adapter.cjs",
     "node bench/pari-class-group-port/check_h1_outcome_c_adapter.cjs",
     "pnpm merge:check"
