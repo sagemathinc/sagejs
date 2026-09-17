@@ -355,6 +355,22 @@ invariants pass at 902,665/903,000 core bytes. The common standalone shrinks by
 in `agents/python-attribute-read-cache.md`. Keep this branch behind the same
 integration queue; ordinary reads/stores and call binding remain M5 cliffs.
 
+**2026-09-17 lazy-identity checkpoint:** a fresh-main candidate removes the
+redundant `Object.defineProperty` that eagerly allocated `ρσ_object_id` on every
+ordinary construction. Stable identity already belongs to the runtime `id()`
+map and is now acquired only by `id`, identity hashing, or synthetic repr.
+Subscription fallback uses the inherited immutable class marker, preserving
+Python errors even if foreign code spoofs the writable host `constructor`.
+Controlled exact-artifact measurements improve empty construction by 56.6%,
+no-op initialization by 38.5%, positional construction plus a method by 7.2%,
+and keyword construction plus a method by 8.5%; call-only rows remain flat.
+Empty construction is 2.05x CPython, while initialized construction remains
+12.7-14.1x and the call cliffs remain open. All 225 portable files, the full
+differential baseline, traitlets/attrs/decorator workflows, strict checks,
+documentation, merge, architecture, and the unchanged 902,888/903,000 core
+budget pass. Exact artifacts and qualification are in
+`agents/python-lazy-instance-identity.md`.
+
 Continue next with integration-aware qualification, the receiver-lookup campaign,
 and true handled-exception ownership. Generator/coroutine suspension makes a
 single global active-exception pointer unsafe: preserve owned handlers while

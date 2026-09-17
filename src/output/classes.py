@@ -678,18 +678,6 @@ def _print_legacy_class(self, output):
                 self.name.print(output)
                 output.print(")) return " + instance_name)
                 output.end_statement()
-            if not self.lightweight:
-                output.indent()
-                output.spaced(
-                    "if",
-                    "(" + instance_name + ".ρσ_object_id",
-                    "===",
-                    "undefined)",
-                    "Object.defineProperty(" + instance_name + ",",
-                    '"ρσ_object_id",',
-                    '{"value":++ρσ_object_counter})',
-                )
-                output.end_statement()
             if live_keyword_constructor:
                 output.indent()
                 output.print("var ρσ_initializer = ")
@@ -1324,7 +1312,7 @@ def _print_legacy_class(self, output):
                     "return", '"<"', "+", class_module, "+", '"."', "+", class_name, ""
                 ),
             )
-            output.spaced("+", '" #"', "+", "this.ρσ_object_id", "+", '">"')
+            output.spaced("+", '" #"', "+", "ρσ_id(this)", "+", '">"')
             output.end_statement()
 
         define_default_method("__repr__", f_repr)
