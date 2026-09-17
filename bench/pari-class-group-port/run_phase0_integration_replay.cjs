@@ -723,8 +723,27 @@ stage("rnd-collector", {
   noFixture: true,
 });
 
-stage("honesty-scheduler", {
+stage("post-rnd-lie-terminal", {
   dependencies: ["rnd-collector"],
+  command: () => commandNode("check_post_rnd_lie_iteration.cjs"),
+  validate: (summary) => {
+    assert.equal(summary.field, 3);
+    assert.equal(summary.cpython.counts.randomLast, 295);
+    assert.equal(summary.cpython.counts.postRandomLast, 296);
+    assert.equal(summary.cpython.counts.lieLast, 301);
+    assert.equal(summary.cpython.counts.action296, 5);
+    assert.equal(summary.cpython.counts.terminalAction, 0);
+    assert.deepEqual(summary.native, ["javascript", "gmp"]);
+    assert.deepEqual(summary.source.acceptanceCodes, [5, 0]);
+    assert.equal(summary.source.postFact === summary.source.lieFact, false);
+    assert.equal(summary.source.residentBasis,
+      "b20c7ee3b216cf041e556283a6380d0a0442a4a5db23378a0364fedc7d3e9ec1");
+  },
+  noFixture: true,
+});
+
+stage("honesty-scheduler", {
+  dependencies: ["post-rnd-lie-terminal"],
   requiresPari: true,
   command: (context) => commandNode("check_honesty_scheduler.cjs",
     context.pariRoot, context.pariArchive),
