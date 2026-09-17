@@ -2,7 +2,7 @@
 
 This module intentionally has no terminal-A or low-precision checkpoint input.
 The retained integer ancestry and the floating replay are two views of the same
-local PARI ``hnffinal``/``hnfadd_i`` owners.  Packed logarithms are accumulated
+local PARI `hnffinal`/`hnfadd_i` owners.  Packed logarithms are accumulated
 in source order; multiplying the raw matrix by the final ancestry is not an
 equivalent floating-point operation.
 """
