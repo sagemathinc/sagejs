@@ -150,7 +150,6 @@ function retainedField3(pari, archive, initial, analytic) {
   assert.equal(retained.L.length, 26);
   assert.equal(value.cpython.bridgeState[2], 301);
   assert.equal(value.cpython.bridgeState[4], 286);
-  retained.authoritySha256 = hash(JSON.stringify(retained));
   retained.terminalColumns = 301;
   retained.retainedBColumns = 286;
   const prepared = liveField3();
@@ -164,6 +163,12 @@ function retainedField3(pari, archive, initial, analytic) {
       retained.multiplicationBasis,
     ]),
   );
+  retained.pristineGetfuReason = prepared.reason;
+  retained.pristineFinalALength = prepared.finalA.length;
+  retained.pristineFinalULength = prepared.finalU.length;
+  retained.pristineFinalASha256 = hash(JSON.stringify(prepared.finalA));
+  retained.pristineFinalUSha256 = hash(JSON.stringify(prepared.finalU));
+  retained.authoritySha256 = hash(JSON.stringify(retained));
   return retained;
 }
 

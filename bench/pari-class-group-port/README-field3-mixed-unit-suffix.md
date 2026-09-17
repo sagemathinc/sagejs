@@ -17,7 +17,10 @@ columns, 286 retained `B` columns, hence `A = C[:13]`.
 The replay obtains `A`, `L`, and `R` from the existing authenticated resident
 producer rather than a frozen answer.  Number-field embedding and
 multiplication-table owners come from a separately instrumented pristine PARI
-2.17.4 `nfinit`/Buchall process and do not determine any lattice factor.  The
+2.17.4 `nfinit`/Buchall process and do not determine any lattice factor. Its
+actual `not_given` reason plus final factored-log and transform presence are
+part of the hashed authority; the checker rejects a mutated source reason and
+requires the explicit LARGE/PRECI source-to-translation mapping. The
 focused checker derives both lattice transforms live, compares exact CPython,
 JavaScript, and GMP results, runs the translated mixed-quartic reconstruction,
 and checks transactional rejection.  At 192 bits this field reaches a
