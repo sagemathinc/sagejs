@@ -418,7 +418,12 @@ stage("quartic-driver", {
     context.pariRoot, context.pariArchive, "--field2"),
   validate: (summary, fixture) => {
     assert.equal(summary.field, 2);
-    assert(Array.isArray(fixture) && fixture.some((entry) => entry.event === "hnfadd_input"));
+    // This checker records the driver's summarized HNF boundary as `hnf`.
+    // The lower-level `hnfadd_input` event belongs to the separate append and
+    // continuation checkers below.  Requiring it here made a successful fresh
+    // driver trace fail replay validation after the historical diagnostics
+    // were split into their current source-transparent checkers.
+    assert(Array.isArray(fixture) && fixture.some((entry) => entry.event === "hnf"));
   },
   fixtureName: "trace.json",
   fixtureKey: "trace",
