@@ -33,18 +33,25 @@ workspace after capture and then reauthenticates and consumes the retained
 owners successfully. This models exactly what the composed native root needs
 before arena/workspace reuse.
 
-## Authority and scope
+## Freshness, diagnostic digest, and scope
 
-The owner record is pinned by the out-of-band digest
+The runtime boundary does **not** compare its live inputs with a frozen digest.
+Doing so would make a regression artifact control an in-bound computation.
+Instead it validates the owner shapes, run/generation freshness, and both
+algebraic kernel identities, then computes and returns the live owner digest.
+
+The external checker alone records the regression digest
 
 ```text
 7eed284b9a90e00bb27feea24fbbed30b9d1a9196ce4bddc5ead5e854b0eb6e9
 ```
 
-and by run id `authentic-real-cubic-h1-p2304`, generation 1. Requiring the handoff
-again recomputes the owner digest and the derived kernel map. It rejects stale
-generations, altered alphas, altered transforms, altered relation owners, and
-coordinated replacement of a derived map.
+for the qualified evidence. It does not participate in capture or require
+control flow. Runtime freshness is established by run id
+`authentic-real-cubic-h1-p2304`, generation 1. Requiring the handoff again
+recomputes its live digest and derived kernel map. It rejects stale
+generations, post-capture owner changes, altered transforms, invalid relation
+owners, and coordinated replacement of a derived map.
 
 This is an internal handoff only. It preserves enough exact information for a
 downstream root to reconstruct compact relation factors and unit products
