@@ -9,7 +9,7 @@ const test = require("node:test");
 const root = join(__dirname, "..");
 const source = readFileSync(join(root, "src/baselib/bootstrap_shared.py"), "utf8");
 const names = ["ρσ_copy_method_metadata", "ρσ_native_method_adapter", "ρσ_unbound_method_adapter",
-  "ρσ_exact_integer_add", "ρσ_exact_integer_submul", "ρσ_int_pow",
+  "ρσ_exact_integer_add", "ρσ_exact_integer_submul", "ρσ_int_pow", "ρσ_int_bit",
   "ρσ_check_interrupt", "ρσ_normalize_exception", "ρσ_prepare_method_call",
   "ρσ_attr", "ρσ_interpolate_kwargs"];
 
@@ -161,6 +161,7 @@ test("shared exact integer arithmetic preserves primitive Python integers", () =
     ρσ_exact_integer_add: add,
     ρσ_exact_integer_submul: submul,
     ρσ_int_pow: power,
+    ρσ_int_bit: bitwise,
   } = context();
   const missing = {};
   const subtract = (left, right) => submul(left, right, false, missing);
@@ -171,6 +172,9 @@ test("shared exact integer arithmetic preserves primitive Python integers", () =
   assert.equal(add(Number.MAX_SAFE_INTEGER, false, missing), Number.MAX_SAFE_INTEGER);
   assert.equal(add(4n, true, missing), 5n);
   assert.equal(Object.is(add(-0, false, missing), 0), true);
+  const bitand = (left, right) => bitwise(left, right, 0, missing);
+  const bitor = (left, right) => bitwise(left, right, 1, missing);
+  const bitxor = (left, right) => bitwise(left, right, 2, missing);
   assert.equal(subtract(-Number.MAX_SAFE_INTEGER, true), -9007199254740992n);
   assert.equal(subtract(4n, true), 3n);
   assert.equal(multiply(3037000500, 3037000500), 9223372037000250000n);
@@ -179,6 +183,13 @@ test("shared exact integer arithmetic preserves primitive Python integers", () =
   assert.equal(power(2, 53, missing), 9007199254740992n);
   assert.equal(power(-2n, 3, missing), -8n);
   assert.equal(power(2, -1, missing), missing);
+  assert.equal(bitand(12345, 37), 33);
+  assert.equal(bitor(12345, 37), 12349);
+  assert.equal(bitxor(12345, 37), 12316);
+  assert.equal(bitand(true, false), false);
+  assert.equal(bitor(true, false), true);
+  assert.equal(bitxor(true, true), false);
+  assert.equal(bitxor(2n ** 60n, 3), 1152921504606846979n);
   assert.equal(add(1.5, 2, missing), missing);
   assert.equal(add(Number.MAX_SAFE_INTEGER + 1, 1, missing), missing);
   assert.equal(add({}, 1, missing), missing);

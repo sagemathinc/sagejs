@@ -2425,14 +2425,35 @@ def ρσ_operator_imod(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_ibitand(left: Any, right: Any) -> Any:
+    result = runtime.reflect.apply(
+        ρσ_int_bit,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        runtime.undefined,
+        [left, right, 0, _BUILTINS_MISSING],
+    )
+    if result is not _BUILTINS_MISSING:
+        return result
     return _builtins_inplace(left, right, "__iand__", ρσ_operator_bitand)
 
 
 def ρσ_operator_ibitor(left: Any, right: Any) -> Any:
+    result = runtime.reflect.apply(
+        ρσ_int_bit,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        runtime.undefined,
+        [left, right, 1, _BUILTINS_MISSING],
+    )
+    if result is not _BUILTINS_MISSING:
+        return result
     return _builtins_inplace(left, right, "__ior__", ρσ_operator_bitor)
 
 
 def ρσ_operator_ibitxor(left: Any, right: Any) -> Any:
+    result = runtime.reflect.apply(
+        ρσ_int_bit,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        runtime.undefined,
+        [left, right, 2, _BUILTINS_MISSING],
+    )
+    if result is not _BUILTINS_MISSING:
+        return result
     return _builtins_inplace(left, right, "__ixor__", ρσ_operator_bitxor)
 
 
@@ -2483,26 +2504,13 @@ def ρσ_native_uint64_binary(
 
 
 def ρσ_operator_bitand(left: Any, right: Any) -> Any:
-    if left is True or left is False:
-        if right is True or right is False:
-            return left and right
-    left_type = runtime.jstype(left)
-    right_type = runtime.jstype(right)
-    if (
-        runtime.strict_equal(left_type, "number")
-        and runtime.strict_equal(right_type, "number")
-        and runtime.number.isSafeInteger(left)
-        and runtime.number.isSafeInteger(right)
-        and -2147483648 <= left <= 2147483647
-        and -2147483648 <= right <= 2147483647
-    ):
-        return runtime.native_bitand(left, right)
-    if _builtins_exact_integer_primitive(left) and _builtins_exact_integer_primitive(
-        right
-    ):
-        return runtime.normalize_integer(
-            runtime.native_bitand(runtime.bigint(left), runtime.bigint(right))
-        )
+    result = runtime.reflect.apply(
+        ρσ_int_bit,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        runtime.undefined,
+        [left, right, 0, _BUILTINS_MISSING],
+    )
+    if result is not _BUILTINS_MISSING:
+        return result
     if _builtins_member_is_function(left, "__and__"):
         return _builtins_call_member(left, "__and__", [right])
     if _builtins_member_is_function(right, "__rand__"):
@@ -2511,26 +2519,13 @@ def ρσ_operator_bitand(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_bitor(left: Any, right: Any) -> Any:
-    if left is True or left is False:
-        if right is True or right is False:
-            return left or right
-    left_type = runtime.jstype(left)
-    right_type = runtime.jstype(right)
-    if (
-        runtime.strict_equal(left_type, "number")
-        and runtime.strict_equal(right_type, "number")
-        and runtime.number.isSafeInteger(left)
-        and runtime.number.isSafeInteger(right)
-        and -2147483648 <= left <= 2147483647
-        and -2147483648 <= right <= 2147483647
-    ):
-        return runtime.native_bitor(left, right)
-    if _builtins_exact_integer_primitive(left) and _builtins_exact_integer_primitive(
-        right
-    ):
-        return runtime.normalize_integer(
-            runtime.native_bitor(runtime.bigint(left), runtime.bigint(right))
-        )
+    result = runtime.reflect.apply(
+        ρσ_int_bit,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        runtime.undefined,
+        [left, right, 1, _BUILTINS_MISSING],
+    )
+    if result is not _BUILTINS_MISSING:
+        return result
     # PEP 604's union path applies only when *both* operands are types, union
     # objects, or ``None``.  Treating one type operand as sufficient steals
     # ordinary ``__or__``/``__ror__`` dispatch from the other value.
@@ -2606,26 +2601,13 @@ def _builtins_is_union_type_operand(value: Any) -> _Bool:
 
 
 def ρσ_operator_bitxor(left: Any, right: Any) -> Any:
-    if left is True or left is False:
-        if right is True or right is False:
-            return left is not right
-    left_type = runtime.jstype(left)
-    right_type = runtime.jstype(right)
-    if (
-        runtime.strict_equal(left_type, "number")
-        and runtime.strict_equal(right_type, "number")
-        and runtime.number.isSafeInteger(left)
-        and runtime.number.isSafeInteger(right)
-        and -2147483648 <= left <= 2147483647
-        and -2147483648 <= right <= 2147483647
-    ):
-        return runtime.native_bitxor(left, right)
-    if _builtins_exact_integer_primitive(left) and _builtins_exact_integer_primitive(
-        right
-    ):
-        return runtime.normalize_integer(
-            runtime.native_bitxor(runtime.bigint(left), runtime.bigint(right))
-        )
+    result = runtime.reflect.apply(
+        ρσ_int_bit,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        runtime.undefined,
+        [left, right, 2, _BUILTINS_MISSING],
+    )
+    if result is not _BUILTINS_MISSING:
+        return result
     if _builtins_member_is_function(left, "__xor__"):
         return _builtins_call_member(left, "__xor__", [right])
     if _builtins_member_is_function(right, "__rxor__"):

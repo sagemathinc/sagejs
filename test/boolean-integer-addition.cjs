@@ -189,3 +189,48 @@ test("exact power preserves Python negatives and in-place dispatch", async (t) =
     ].join("\n"),
   );
 });
+
+test("exact bitwise operators preserve bools, wide integers, and in-place dispatch", async (t) => {
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+  const result = await session.evaluate(
+    [
+      "print(True & False, True | False, True ^ True)",
+      "print(type(True & False) is bool, type(True | 2) is int)",
+      "wide = 2 ** 60",
+      "print(wide & (wide + 3), wide | 3, wide ^ 3)",
+      "print(-1 & 5, -8 | 3, -8 ^ 3)",
+      "a = 12345",
+      "a &= 37",
+      "b = 12345",
+      "b |= 37",
+      "c = 12345",
+      "c ^= 37",
+      "print(a, b, c)",
+      "class UsesIand:",
+      "    def __iand__(self, other):",
+      "        return ('iand', other)",
+      "item = UsesIand()",
+      "item &= 9",
+      "print(item)",
+      "class UsesXor:",
+      "    def __xor__(self, other):",
+      "        return ('xor', other)",
+      "fallback = UsesXor()",
+      "fallback ^= 10",
+      "print(fallback)",
+    ].join("\n"),
+  );
+  assert.equal(
+    result.stdout.trim(),
+    [
+      "False True False",
+      "True True",
+      "1152921504606846976 1152921504606846979 1152921504606846979",
+      "5 -5 -5",
+      "33 12349 12316",
+      "('iand', 9)",
+      "('xor', 10)",
+    ].join("\n"),
+  );
+});
