@@ -31,6 +31,8 @@ const FRAGMENT_RECEIPT_SCHEMA =
   "sagejs.pari-class-group/field3-complex-log-column-fragment-receipt-v1";
 const FRAGMENT_RECEIPT_SUPERSESSION_SCHEMA =
   "sagejs.pari-class-group/field3-complex-log-fragment-receipt-supersession-v1";
+const BATCH_EPOCH_TRANSITION_SCHEMA =
+  "sagejs.pari-class-group/field3-complex-log-batch-epoch-transition-v1";
 const LAYOUT =
   "source-column-major [kind, weighted-2logabs triple, weighted-2arg triple]";
 const AUTHORITY_SHA =
@@ -64,6 +66,16 @@ const FRAGMENT_RECEIPT_NAME =
   /^complex-log-fragment-receipt-([0-9]+)-([0-9]+)-column-([0-9]+)-([0-9a-f]{64})\.json$/;
 const FRAGMENT_RECEIPT_SUPERSESSION_NAME =
   /^complex-log-fragment-receipt-supersession-([0-9]+)-([0-9]+)-column-([0-9]+)-([0-9a-f]{64})\.json$/;
+const BATCH_EPOCH_TRANSITION_NAME =
+  /^complex-log-batch-epoch-transition-([0-9]+)-to-([0-9]+)-([0-9a-f]{64})\.json$/;
+const EPOCH_152_TO_156 = Object.freeze({
+  fromCommit: "fd6ea9d769dbbdd2ddeb4b4f285d60782636e007",
+  toCommit: "679c510266c7925f046f3354671a2ff7a41f6cef",
+  path: "bench/pari-class-group-port/pi_constant.py",
+  fromSha256: "32b2ce4ff2d06ae5cdc187d8e7ed14144701388254cb7d784b1720ad4f7d925c",
+  toSha256: "ab96de0b5b796f80b43b9397a6c58c9d13024f79a0bb95503588e7b002e3a46a",
+  diffSha256: "68963ab5c4a5d8d7b042c6f7105644c8958143a5403c9fd9ac252d9fc5468555",
+});
 const sha = (value) => crypto.createHash("sha256").update(value).digest("hex");
 const packedSha = (entries) => sha(entries.map(String).join("\n"));
 const root = path.resolve(__dirname, "../..");
@@ -744,6 +756,138 @@ function readReceipt(receiptPath) {
   return { path: path.resolve(receiptPath), bytes, digest, value };
 }
 
+function receiptReference(receipt) {
+  return {
+    path: receipt.path,
+    sha256: receipt.digest,
+    bytes: receipt.bytes.length,
+    mode: "0444",
+  };
+}
+
+function publishBatchEpochTransition(fromReceiptPath, toReceiptPath, outputDirectory) {
+  const from = readReceipt(fromReceiptPath);
+  const to = readReceipt(toReceiptPath);
+  assert.equal(from.value.sourceStart, 152);
+  assert.equal(from.value.sourceStop, 156);
+  assert.equal(to.value.sourceStart, 156);
+  assert.equal(to.value.sourceCount, 4);
+  assert.notEqual(from.value.cacheKey, to.value.cacheKey);
+  const value = {
+    schema: BATCH_EPOCH_TRANSITION_SCHEMA,
+    ...commonIdentity(),
+    fromSourceStart: 152,
+    toSourceStart: 156,
+    reason: "reachable pi workspace API changed after batch 152",
+    fromCommit: EPOCH_152_TO_156.fromCommit,
+    toCommit: EPOCH_152_TO_156.toCommit,
+    fromCacheKey: from.value.cacheKey,
+    toCacheKey: to.value.cacheKey,
+    changedReachableSources: [{
+      path: EPOCH_152_TO_156.path,
+      fromSha256: EPOCH_152_TO_156.fromSha256,
+      toSha256: EPOCH_152_TO_156.toSha256,
+      diffSha256: EPOCH_152_TO_156.diffSha256,
+    }],
+    unchangedMathematicalIdentity: commonIdentity(),
+    fromReceipt: receiptReference(from),
+    toReceipt: receiptReference(to),
+  };
+  const bytes = Buffer.from(`${JSON.stringify(value, null, 2)}\n`);
+  const digest = sha(bytes);
+  return publishImmutable(
+    outputDirectory,
+    `complex-log-batch-epoch-transition-152-to-156-${digest}.json`,
+    bytes,
+  );
+}
+
+function readBatchEpochTransition(transitionPath) {
+  const bytes = fs.readFileSync(transitionPath);
+  const digest = sha(bytes);
+  const match = BATCH_EPOCH_TRANSITION_NAME.exec(path.basename(transitionPath));
+  assert(match, `invalid batch epoch transition filename: ${transitionPath}`);
+  assert.equal(match[3], digest, "batch epoch transition filename hash mismatch");
+  assert.equal(fs.statSync(transitionPath).mode & 0o777, 0o444);
+  const value = JSON.parse(bytes);
+  assert.equal(value.schema, BATCH_EPOCH_TRANSITION_SCHEMA);
+  assert.equal(Number(match[1]), value.fromSourceStart);
+  assert.equal(Number(match[2]), value.toSourceStart);
+  assert.deepEqual(value.unchangedMathematicalIdentity, commonIdentity());
+  assert.equal(value.fromSourceStart, 152);
+  assert.equal(value.toSourceStart, 156);
+  assert.equal(value.reason, "reachable pi workspace API changed after batch 152");
+  assert.equal(value.fromCommit, EPOCH_152_TO_156.fromCommit);
+  assert.equal(value.toCommit, EPOCH_152_TO_156.toCommit);
+  assert.deepEqual(value.changedReachableSources, [{
+    path: EPOCH_152_TO_156.path,
+    fromSha256: EPOCH_152_TO_156.fromSha256,
+    toSha256: EPOCH_152_TO_156.toSha256,
+    diffSha256: EPOCH_152_TO_156.diffSha256,
+  }]);
+  const from = readReceipt(value.fromReceipt.path);
+  const to = readReceipt(value.toReceipt.path);
+  for (const [entry, receipt] of [[value.fromReceipt, from], [value.toReceipt, to]]) {
+    assert.equal(entry.mode, "0444");
+    assert.equal(entry.sha256, receipt.digest);
+    assert.equal(entry.bytes, receipt.bytes.length);
+  }
+  assert.equal(from.value.sourceStart, 152);
+  assert.equal(from.value.sourceStop, 156);
+  assert.equal(to.value.sourceStart, 156);
+  assert.equal(value.fromCacheKey, from.value.cacheKey);
+  assert.equal(value.toCacheKey, to.value.cacheKey);
+  assert.notEqual(value.fromCacheKey, value.toCacheKey);
+  return { path: path.resolve(transitionPath), bytes, digest, value, from, to };
+}
+
+function findBatchEpochTransitions(directory) {
+  return fs.readdirSync(directory)
+    .filter((name) => BATCH_EPOCH_TRANSITION_NAME.test(name))
+    .map((name) => path.join(directory, name));
+}
+
+function verifyBatchEpochs(directory) {
+  const plan = resumablePlan(directory);
+  assert.equal(plan.complete, EXPECTED_SCHEDULE.length, "epoch audit requires complete corpus");
+  assert.equal(plan.capsuleOnly, 0);
+  const receipts = plan.batches.map((batch) => readReceipt(batch.receipt.path));
+  const transitions = findBatchEpochTransitions(directory).map(readBatchEpochTransition);
+  const byBoundary = new Map();
+  for (const transition of transitions) {
+    const key = `${transition.value.fromSourceStart}:${transition.value.toSourceStart}`;
+    assert(!byBoundary.has(key), `duplicate batch epoch transition ${key}`);
+    byBoundary.set(key, transition);
+  }
+  const audited = [];
+  for (let index = 39; index < receipts.length; index += 1) {
+    const from = receipts[index - 1];
+    const to = receipts[index];
+    const key = `${from.value.sourceStart}:${to.value.sourceStart}`;
+    if (from.value.cacheKey === to.value.cacheKey) {
+      assert(!byBoundary.has(key), `spurious batch epoch transition ${key}`);
+      continue;
+    }
+    const transition = byBoundary.get(key);
+    assert(transition, `missing batch epoch transition ${key}`);
+    assert.equal(transition.value.fromReceipt.sha256, from.digest);
+    assert.equal(transition.value.toReceipt.sha256, to.digest);
+    audited.push({
+      fromSourceStart: from.value.sourceStart,
+      toSourceStart: to.value.sourceStart,
+      transitionSha256: transition.digest,
+    });
+    byBoundary.delete(key);
+  }
+  assert.equal(byBoundary.size, 0, "unused batch epoch transition");
+  return {
+    schema: "sagejs.pari-class-group/field3-complex-log-batch-epoch-audit-v1",
+    legacyCompleteThroughSourceStart: 148,
+    auditedFromSourceStart: 152,
+    transitions: audited,
+  };
+}
+
 function readPrefix(selectedPrefixPath = prefixPath) {
   const bytes = fs.readFileSync(selectedPrefixPath);
   assert.equal(sha(bytes), PREFIX_SHA);
@@ -819,7 +963,12 @@ function ownerFromCapsules(verified) {
   };
 }
 
-function mergeCapsules(capsulePaths, outputDirectory, selectedPrefix = readPrefix()) {
+function mergeCapsules(
+  capsulePaths,
+  outputDirectory,
+  selectedPrefix = readPrefix(),
+  epochAudit = null,
+) {
   const verified = verifyCompleteCapsules(capsulePaths, selectedPrefix);
   const owner = ownerFromCapsules(verified);
   const ownerBytes = Buffer.from(`${JSON.stringify(owner)}\n`);
@@ -840,6 +989,7 @@ function mergeCapsules(capsulePaths, outputDirectory, selectedPrefix = readPrefi
     selectedPrefixColumns: owner.selectedPrefixColumns,
     prefixCompatibilitySha256: owner.prefixCompatibilitySha256,
     batches: owner.batches,
+    ...(epochAudit === null ? {} : { epochAudit }),
   };
   const receiptBytes = Buffer.from(`${JSON.stringify(receipt, null, 2)}\n`);
   const receiptSha256 = sha(receiptBytes);
@@ -1792,6 +1942,60 @@ function lightweightSelfTest() {
     () => readFragmentReceiptSupersession(invalidSupersession.path),
     /altered coreBytes/,
   );
+  const epochDirectory = fs.mkdtempSync(
+    path.join(os.tmpdir(), "field3-complex-epoch-transition-"),
+  );
+  const epochReceipts = [];
+  for (const originalCapsulePath of capsulePaths) {
+    const original = readCapsule(originalCapsulePath);
+    const capsule = publishCapsule(epochDirectory, original.value);
+    const receiptValue = {
+      schema: RECEIPT_SCHEMA,
+      ...commonIdentity(),
+      capsule,
+      sourceStart: original.value.sourceStart,
+      sourceCount: original.value.sourceCount,
+      sourceStop: original.value.sourceStop,
+      outputSha256: packedSha(original.value.packedWeightedComplex),
+      packedCells: CELLS_PER_COLUMN * original.value.sourceCount,
+      cacheKey: original.value.sourceStart <= 152 ? "epoch-old" : "epoch-new",
+    };
+    const receiptBytes = Buffer.from(`${JSON.stringify(receiptValue, null, 2)}\n`);
+    epochReceipts.push(
+      publishImmutable(
+        epochDirectory,
+        `complex-log-batch-receipt-${receiptValue.sourceStart}-${receiptValue.sourceCount}-${sha(receiptBytes)}.json`,
+        receiptBytes,
+      ),
+    );
+  }
+  negativeTests += expectFailure(
+    () => verifyBatchEpochs(epochDirectory),
+    /missing batch epoch transition 152:156/,
+  );
+  const epochTransition = publishBatchEpochTransition(
+    epochReceipts[38].path,
+    epochReceipts[39].path,
+    epochDirectory,
+  );
+  const epochAudit = verifyBatchEpochs(epochDirectory);
+  assert.deepEqual(epochAudit.transitions, [{
+    fromSourceStart: 152,
+    toSourceStart: 156,
+    transitionSha256: epochTransition.sha256,
+  }]);
+  const mutatedEpoch = JSON.parse(fs.readFileSync(epochTransition.path));
+  mutatedEpoch.changedReachableSources[0].diffSha256 = "0".repeat(64);
+  const mutatedEpochBytes = Buffer.from(`${JSON.stringify(mutatedEpoch, null, 2)}\n`);
+  const mutatedEpochPath = publishImmutable(
+    epochDirectory,
+    `complex-log-batch-epoch-transition-152-to-156-${sha(mutatedEpochBytes)}.json`,
+    mutatedEpochBytes,
+  ).path;
+  negativeTests += expectFailure(
+    () => readBatchEpochTransition(mutatedEpochPath),
+    /diffSha256/,
+  );
   return {
     schema: "sagejs-field3-complex-log-corpus-protocol-self-test-v1",
     scheduleBatches: EXPECTED_SCHEDULE.length,
@@ -1820,12 +2024,40 @@ async function commandLine() {
     console.log(JSON.stringify(resumablePlan(outputDirectory), null, 2));
     return;
   }
+  if (process.argv.includes("--publish-epoch-transition")) {
+    const fromReceipt = path.resolve(argument("--from-receipt"));
+    const toReceipt = path.resolve(argument("--to-receipt"));
+    const published = publishBatchEpochTransition(
+      fromReceipt,
+      toReceipt,
+      outputDirectory,
+    );
+    const verified = readBatchEpochTransition(published.path);
+    console.log(JSON.stringify({
+      transition: {
+        path: verified.path,
+        sha256: verified.digest,
+        bytes: verified.bytes.length,
+        mode: "0444",
+      },
+      fromCacheKey: verified.value.fromCacheKey,
+      toCacheKey: verified.value.toCacheKey,
+    }, null, 2));
+    return;
+  }
   if (process.argv.includes("--merge")) {
     const offset = process.argv.indexOf("--merge");
     const paths = process.argv.slice(offset + 1).filter((entry, index, all) =>
       entry !== "--output-directory" && (index === 0 || all[index - 1] !== "--output-directory"));
     assert(paths.length === 76, "merge requires exactly 76 ordered capsule paths");
-    console.log(JSON.stringify(mergeCapsules(paths, outputDirectory), null, 2));
+    const epochAudit = verifyBatchEpochs(outputDirectory);
+    console.log(
+      JSON.stringify(
+        mergeCapsules(paths, outputDirectory, readPrefix(), epochAudit),
+        null,
+        2,
+      ),
+    );
     return;
   }
   if (process.argv.includes("--fragment-plan")) {
@@ -1957,6 +2189,7 @@ module.exports = {
   FRAGMENT_SCHEMA,
   FRAGMENT_RECEIPT_SCHEMA,
   FRAGMENT_RECEIPT_SUPERSESSION_SCHEMA,
+  BATCH_EPOCH_TRANSITION_SCHEMA,
   EXPECTED_SCHEDULE,
   commonIdentity,
   makeCapsule,
@@ -1971,6 +2204,9 @@ module.exports = {
   readFragmentReceiptSupersession,
   repairOmittedSourceDigests,
   supersedeRecomputedFragmentReceipt,
+  publishBatchEpochTransition,
+  readBatchEpochTransition,
+  verifyBatchEpochs,
   verifyCompleteCapsules,
   ownerFromCapsules,
   mergeCapsules,
