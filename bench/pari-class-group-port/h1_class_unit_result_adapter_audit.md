@@ -227,3 +227,39 @@ The adapter had stale expectations which incorrectly reused the group count
 it does not relax equality or accept submitted status. A coordinated mutation
 back to the stale `relation_bound=48` is now explicitly rejected alongside the
 existing checking-group mutation.
+
+## Qualified targeted replay
+
+The corrected targeted replay completed successfully against integration
+commit `4388f0347` and adapter commit `ae9d35f01`. It used the restored lane
+runtime with the parser lifecycle fix, the qualified FLINT `.native` and addon
+trees, one thread for OpenBLAS/OpenMP/MKL/BLIS, no virtual-address limit, a
+4 GiB aggregate process-tree RSS ceiling, and a 600-second timeout. The durable
+receipt is:
+
+```text
+/scratch/sagejs-runtime/pari-class-group-e2e-20260917/
+  h1-result-envelope-adapter-ae9d35f01/receipt.json
+```
+
+It records:
+
+```text
+coldReplaySha256          = a3fa985c68cdac0473a69c258eac04d3769b47e9470e7dd5274c2598f9360f2b
+regulatorAuthoritySha256  = da3f4be71de267442d1d6e91eecc67cdae778078cb0617246b681f6b4658a28a
+mathematicalAuthoritySha256 = ce3c98ff7f8be22990989c41535048e939bce786f0963639a35f4799fb19ef66
+envelopeSha256            = dbf645dd5bdf4eb2f27dbaa769d1c08d454c551318a32611b47a1a232754da58
+candidateCacheKey = trustedCacheKey
+  = 7ceebc404ed01d52887cb60f892e55fec7ffd738bf2d4ba47f47f5c5977dd263
+```
+
+Both independent native captures agreed. The detached replay retained all 57
+raw owner prefixes, two exact units, class number one, and the source-derived
+equal-bound honesty result. Nine coordinated mutations were rejected.
+Publication was atomic and idempotent, `correspondence_complete=true`,
+`public_complete=false`, and no PARI call occurred after the prepared boundary.
+
+The run completed in 122.98 seconds with 1,250,536 KiB peak aggregate tree RSS
+and 1,293,160 KiB maximum per-process RSS. Its exact command, runtime bindings,
+preflight results, thread limits, and resource measurements are retained beside
+the receipt in `resource.json`; the complete output is in `checker.log`.
