@@ -16,7 +16,7 @@ def pari_integer_real_sum(
 ) -> tuple[int, int, int]:
     """Add with upstream precision/error semantics, not exact final rounding.
 
-    Any required conversion above 2,368 bits remains explicitly unsupported.
+    Conversions retain one guard word inside the reviewed packed-real corridor.
     The zero integer is an identity, including the real zero's error exponent.
     """
     if integer == 0:
@@ -28,7 +28,7 @@ def pari_integer_real_sum(
         return pari_integer_to_real(integer, 64 * ((-gap + 63) // 64))
     if (
         precision < 64
-        or precision > 4352
+        or precision > 154048
         or precision % 64 != 0
         or abs(mantissa).bit_length() != precision
     ):

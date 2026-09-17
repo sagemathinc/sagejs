@@ -98,7 +98,7 @@ def pari_regulator_bestappr_real(
         if p != 0:
             raise ValueError("invalid bestappr real zero")
         return 0, 0, -1, 0
-    if p < 64 or p > 2304 or p % 64 != 0 or abs(m).bit_length() != p:
+    if p < 64 or p > 154048 or p % 64 != 0 or abs(m).bit_length() != p:
         raise ValueError("invalid bestappr real")
     if p <= e:
         return 1, 0, -1, 0
