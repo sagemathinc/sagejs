@@ -1,10 +1,10 @@
-"""One-call prepared cubic class/unit frontier with honest final publication.
+"""One-call prepared cubic class/unit computation with internal publication.
 
-This experimental root keeps the live candidate, exact class witness, exact
-real-cubic torsion, and the reserved precision-retry suffix in one native ABI.
-The precision suffix is not yet connected at this revision.  Therefore the
-root exposes the exact missing stage and never publishes a final correspondence
-record, even if a caller pre-fills the reserved suffix authority owner.
+This experimental root keeps the live candidate, exact class witness, live
+precision retry, exact real-cubic torsion, and fixed-shape result publication
+in one native ABI.  It establishes internal correspondence for the prepared
+`h = 1` sentinel, but deliberately does not claim public completion: general
+saturation and a stable public result contract remain outside this experiment.
 
 Copyright (C) The PARI group. GPL-2.0-or-later, without warranty.
 """
@@ -12,6 +12,7 @@ Copyright (C) The PARI group. GPL-2.0-or-later, without warranty.
 from sagejs.native import Float64Buffer, Int64Buffer, IntegerBuffer, native
 
 from .live_h1_class_witness_suffix import pari_live_h1_class_witness_suffix
+from .unified_full_h1_root import pari_live_retrying_h1_suffix
 from .unified_live_h1_root import pari_unified_live_h1_root
 
 
@@ -599,6 +600,44 @@ def pari_unified_complete_h1_root(
     precision_determinant_pivots: Int64Buffer,
     precision_determinant_state: Int64Buffer,
     precision_authority_state: Int64Buffer,
+    precision_resource_cap: int,
+    precision_resident_root_m: IntegerBuffer,
+    precision_resident_root_p: IntegerBuffer,
+    precision_resident_root_e: IntegerBuffer,
+    precision_staged_retry_relations: IntegerBuffer,
+    precision_embedding_packed: IntegerBuffer,
+    precision_getfu_clean_logs: IntegerBuffer,
+    precision_getfu_clean_phases: Int64Buffer,
+    precision_getfu_factor: IntegerBuffer,
+    precision_getfu_matep: IntegerBuffer,
+    precision_getfu_transformed_arch: IntegerBuffer,
+    precision_getfu_transformed_clean: IntegerBuffer,
+    precision_getfu_transformed_phases: Int64Buffer,
+    precision_getfu_exponentials: IntegerBuffer,
+    precision_getfu_solve_work: IntegerBuffer,
+    precision_getfu_solve_rhs: IntegerBuffer,
+    precision_getfu_solved: IntegerBuffer,
+    precision_getfu_rounded: IntegerBuffer,
+    precision_getfu_multiplication: IntegerBuffer,
+    precision_getfu_inverse: IntegerBuffer,
+    precision_getfu_candidate_units: IntegerBuffer,
+    precision_getfu_normalized_factor: IntegerBuffer,
+    precision_staged_getfu_units: IntegerBuffer,
+    precision_staged_getfu_logs: IntegerBuffer,
+    precision_staged_getfu_phases: Int64Buffer,
+    precision_staged_getfu_factor: IntegerBuffer,
+    precision_getfu_state: Int64Buffer,
+    precision_getfu_pivots: Int64Buffer,
+    precision_getfu_exp_cache: IntegerBuffer,
+    precision_getfu_exp_a: IntegerBuffer,
+    precision_getfu_exp_b: IntegerBuffer,
+    precision_getfu_exp_p: IntegerBuffer,
+    precision_getfu_exp_q: IntegerBuffer,
+    precision_getfu_exp_stack: IntegerBuffer,
+    precision_retry_state: Int64Buffer,
+    precision_published_retained_relations: IntegerBuffer,
+    precision_published_logs: IntegerBuffer,
+    precision_published_phases: Int64Buffer,
     torsion_order: IntegerBuffer,
     torsion_generator: IntegerBuffer,
     torsion_state: Int64Buffer,
@@ -621,7 +660,7 @@ def pari_unified_complete_h1_root(
     final_invariants: IntegerBuffer,
     final_state: Int64Buffer,
 ) -> int:
-    """Reach the exact live-precision frontier without accepting answers.
+    """Compute and atomically publish the prepared `h = 1` internal result.
 
     `final_state` is status, prefix status, class-witness status, torsion
     status, precision-suffix status, missing stage, accepted relation count,
@@ -629,10 +668,10 @@ def pari_unified_complete_h1_root(
     order, internal correspondence complete, published final cells, final
     publication, and public completion.
 
-    The suffix workspace ABI is already reserved.  Until this body itself
-    invokes the live precision-retry suffix, its authority owner is cleared and
-    the root returns `MISSING_LIVE_PRECISION_SUFFIX`.  Caller-provided suffix
-    status is never authority.
+    Every mathematical owner is produced below this native call.  The resource
+    cap is caller policy, not answer data.  A successful final state is written
+    last, after the prefix, class witness, precision retry, relation-to-unit
+    replay, regulator, and torsion stages all publish successfully.
     """
     if (
         len(final_state) < 16
@@ -659,9 +698,9 @@ def pari_unified_complete_h1_root(
         or len(precision_exact_units_integral) < 6
         or len(precision_exact_units_power) < 6
         or len(precision_exact_norms) < 2
-        or len(precision_root_m) < 3
-        or len(precision_root_p) < 3
-        or len(precision_root_e) < 3
+        or len(precision_root_m) < 6
+        or len(precision_root_p) < 6
+        or len(precision_root_e) < 6
         or len(precision_embedding_m) < 9
         or len(precision_embedding_p) < 9
         or len(precision_embedding_e) < 9
@@ -687,7 +726,46 @@ def pari_unified_complete_h1_root(
         or len(precision_determinant_output) < 3
         or len(precision_determinant_pivots) < 1
         or len(precision_determinant_state) < 5
-        or len(precision_authority_state) < 8
+        or len(precision_authority_state) < 16
+        or precision_resource_cap < precision
+        or precision_resource_cap % 64 != 0
+        or len(precision_resident_root_m) < 3
+        or len(precision_resident_root_p) < 3
+        or len(precision_resident_root_e) < 3
+        or len(precision_staged_retry_relations) < 146
+        or len(precision_embedding_packed) < 27
+        or len(precision_getfu_clean_logs) < 18
+        or len(precision_getfu_clean_phases) < 6
+        or len(precision_getfu_factor) < 4
+        or len(precision_getfu_matep) < 18
+        or len(precision_getfu_transformed_arch) < 18
+        or len(precision_getfu_transformed_clean) < 18
+        or len(precision_getfu_transformed_phases) < 6
+        or len(precision_getfu_exponentials) < 18
+        or len(precision_getfu_solve_work) < 27
+        or len(precision_getfu_solve_rhs) < 18
+        or len(precision_getfu_solved) < 18
+        or len(precision_getfu_rounded) < 6
+        or len(precision_getfu_multiplication) < 9
+        or len(precision_getfu_inverse) < 3
+        or len(precision_getfu_candidate_units) < 6
+        or len(precision_getfu_normalized_factor) < 4
+        or len(precision_staged_getfu_units) < 6
+        or len(precision_staged_getfu_logs) < 18
+        or len(precision_staged_getfu_phases) < 6
+        or len(precision_staged_getfu_factor) < 4
+        or len(precision_getfu_state) < 8
+        or len(precision_getfu_pivots) < 3
+        or len(precision_getfu_exp_cache) < 512
+        or len(precision_getfu_exp_a) < 512
+        or len(precision_getfu_exp_b) < 512
+        or len(precision_getfu_exp_p) < 512
+        or len(precision_getfu_exp_q) < 512
+        or len(precision_getfu_exp_stack) < 128
+        or len(precision_retry_state) < 6
+        or len(precision_published_retained_relations) < 146
+        or len(precision_published_logs) < 18
+        or len(precision_published_phases) < 6
     ):
         raise ValueError("short unified complete h1 owner")
     if final_state[14] == 1:
@@ -1222,6 +1300,119 @@ def pari_unified_complete_h1_root(
         final_state[5] = 2
         return 2
 
+    # The resident preparation stores rows [1, x, b_2] at each of the three
+    # real embeddings.  Snapshot the x row into private exact-real owners;
+    # precision reconstruction overwrites its distinct output owners.
+    for embedding in range(3):
+        source = 9 * embedding + 3
+        precision_resident_root_m[embedding] = preparation_embedding[source]
+        precision_resident_root_p[embedding] = preparation_embedding[source + 1]
+        precision_resident_root_e[embedding] = preparation_embedding[source + 2]
+
+    precision_status = pari_live_retrying_h1_suffix(
+        precision_resident_root_m,
+        precision_resident_root_p,
+        precision_resident_root_e,
+        basis_table,
+        generators,
+        hnf_transform,
+        hnf_hnf_transform,
+        compact_provenance,
+        compact_provenance,
+        getfu_factor,
+        n,
+        bridge_state[8],
+        bridge_state[8],
+        15,
+        15,
+        bridge_state[13],
+        bridge_state[13],
+        bridge_state[12],
+        precision,
+        precision_resource_cap,
+        0,
+        precision_kernel_relation_map,
+        precision_retained_relation_map,
+        precision_staged_retry_relations,
+        precision_kernel_factors,
+        precision_exact_units_integral,
+        precision_root_m,
+        precision_root_p,
+        precision_root_e,
+        precision_embedding_m,
+        precision_embedding_p,
+        precision_embedding_e,
+        precision_embedding_packed,
+        precision_embedding_state,
+        precision_atom_logs,
+        precision_transformed_logs,
+        precision_clean_scratch,
+        precision_clean_result,
+        precision_rebuilt_logs,
+        precision_phase_scratch,
+        precision_rebuilt_phases,
+        precision_log_cache,
+        precision_pi_cache,
+        precision_transcendental_a,
+        precision_transcendental_b,
+        precision_transcendental_p,
+        precision_transcendental_q,
+        precision_transcendental_stack,
+        precision_clean_state,
+        precision_precision_state,
+        precision_getfu_clean_logs,
+        precision_getfu_clean_phases,
+        precision_getfu_factor,
+        precision_getfu_matep,
+        precision_getfu_transformed_arch,
+        precision_getfu_transformed_clean,
+        precision_getfu_transformed_phases,
+        precision_getfu_exponentials,
+        precision_getfu_solve_work,
+        precision_getfu_solve_rhs,
+        precision_getfu_solved,
+        precision_getfu_rounded,
+        precision_getfu_multiplication,
+        precision_getfu_inverse,
+        precision_getfu_candidate_units,
+        precision_getfu_normalized_factor,
+        precision_staged_getfu_units,
+        precision_staged_getfu_logs,
+        precision_staged_getfu_phases,
+        precision_staged_getfu_factor,
+        precision_getfu_state,
+        precision_getfu_pivots,
+        precision_getfu_exp_cache,
+        precision_getfu_exp_a,
+        precision_getfu_exp_b,
+        precision_getfu_exp_p,
+        precision_getfu_exp_q,
+        precision_getfu_exp_stack,
+        precision_determinant_values,
+        precision_determinant_work,
+        precision_determinant_output,
+        precision_determinant_pivots,
+        precision_determinant_state,
+        precision_retry_state,
+        precision_published_retained_relations,
+        precision_exact_units_power,
+        precision_exact_norms,
+        precision_published_logs,
+        precision_published_phases,
+        precision_determinant_output,
+        precision_authority_state,
+    )
+    final_state[4] = precision_status
+    if precision_status != 0 or precision_authority_state[14] != 1:
+        final_state[0] = MISSING_LIVE_PRECISION_SUFFIX
+        final_state[5] = MISSING_LIVE_PRECISION_SUFFIX
+        final_state[6] = bridge_state[8]
+        final_state[7] = class_published_state[1]
+        final_state[8] = class_published_state[8]
+        final_state[9] = class_published_state[9]
+        final_state[10] = bridge_state[12]
+        return MISSING_LIVE_PRECISION_SUFFIX
+
     exact_torsion_status = pari_exact_real_cubic_torsion(
         prep_polynomial,
         torsion_order,
@@ -1234,27 +1425,57 @@ def pari_unified_complete_h1_root(
         final_state[5] = 3
         return 3
 
-    # This buffer is output workspace reserved for the forthcoming internally
-    # invoked suffix.  Erasing it is essential: a caller cannot submit a
-    # successful status as an answer input.
+    # Publish every fixed-shape owner only after all components succeed.  No
+    # operation below can fail because capacities were preflighted above; the
+    # final state and publication bit are committed last.
+    for index in range(4):
+        final_polynomial[index] = prep_polynomial[index]
+    for index in range(64):
+        final_presentation[index] = class_published_presentation[index]
+        final_smith[index] = class_published_smith[index]
+        final_left[index] = class_published_left[index]
+        final_left_inverse[index] = class_published_left_inverse[index]
+        final_right[index] = class_published_right[index]
+        final_right_inverse[index] = class_published_right_inverse[index]
+    for index in range(120):
+        final_relation_to_presentation[index] = (
+            class_published_relation_to_presentation[index]
+        )
+        final_presentation_to_relation[index] = (
+            class_published_presentation_to_relation[index]
+        )
+    for index in range(14):
+        final_compact_provenance[index] = compact_provenance[index]
+    for index in range(146):
+        final_retained_relation_map[index] = precision_published_retained_relations[
+            index
+        ]
+    for index in range(6):
+        final_exact_units[index] = precision_exact_units_power[index]
+    for index in range(2):
+        final_exact_norms[index] = precision_exact_norms[index]
+    for index in range(3):
+        final_regulator[index] = precision_determinant_output[index]
+        final_torsion_generator[index] = torsion_generator[index]
+    final_torsion_order[0] = torsion_order[0]
     for index in range(8):
-        precision_authority_state[index] = 0
-    precision_authority_state[0] = -1
+        # The class group is trivial, so its logical invariant count is zero;
+        # clear the fixed-capacity owner instead of preserving caller bytes.
+        final_invariants[index] = 0
 
-    final_state[0] = MISSING_LIVE_PRECISION_SUFFIX
-    final_state[4] = -1
-    final_state[5] = MISSING_LIVE_PRECISION_SUFFIX
+    final_state[0] = 0
+    final_state[5] = 0
     final_state[6] = bridge_state[8]
     final_state[7] = class_published_state[1]
     final_state[8] = class_published_state[8]
     final_state[9] = class_published_state[9]
     final_state[10] = bridge_state[12]
     final_state[11] = torsion_order[0]
-    final_state[12] = 0
-    final_state[13] = 0
-    final_state[14] = 0
+    final_state[12] = 1
+    final_state[13] = 811
+    final_state[14] = 1
     final_state[15] = 0
-    return MISSING_LIVE_PRECISION_SUFFIX
+    return 0
 
 
 __all__ = ["pari_exact_real_cubic_torsion", "pari_unified_complete_h1_root"]

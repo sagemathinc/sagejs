@@ -1,62 +1,60 @@
-# Unified prepared-`h = 1` completion frontier
+# Unified prepared-`h = 1` internal completion
 
 ## Boundary
 
 `pari_unified_complete_h1_root.py` is one source-transparent native entry that
-currently composes three live computations without host serialization:
+composes five live computations without host serialization or expected-answer
+inputs:
 
-1. `pari_unified_live_h1_root`, which constructs and accepts the resident
-   class candidate and publishes compact rank-two unit provenance;
-2. `pari_live_h1_class_witness_suffix`, which derives the `8 x 15` relation to
-   `8 x 8` presentation maps and proves the Smith quotient is trivial; and
-3. `pari_exact_real_cubic_torsion`, which proves that the roots of unity of the
-   irreducible totally real cubic are exactly `{+1, -1}`.
+1. `pari_unified_live_h1_root` constructs and accepts the 73-relation resident
+   class candidate;
+2. `pari_live_h1_class_witness_suffix` proves the connected `8 x 8`
+   presentation has trivial Smith quotient;
+3. `pari_live_retrying_h1_suffix` derives unit relations from the live HNF
+   transforms, retries exact embeddings/getfu to caller-bounded precision,
+   replays its units against the exact relation products, and computes the
+   regulator;
+4. `pari_exact_real_cubic_torsion` proves that the roots of unity are
+   `{+1, -1}`; and
+5. the root copies a fixed 811-cell numeric bundle and commits its terminal
+   publication state last.
 
-The root reserves the complete workspace/output ABI of
-`pari_unified_full_h1_suffix` arguments 8 through 42.  Its first eight inputs
-are intentionally absent from the public ABI: a connected suffix must receive
-the live polynomial, basis, multiplication tensor, relation generators,
-cleanup transform, active HNF transform, compact provenance, and accepted
-regulator directly from prefix owners.
+The resource cap is policy, not mathematical answer data. Relation counts,
+ranks, generators, HNF transforms, compact provenance, and factor transforms
+all come directly from live owners below the one native call.
 
-## Honest stopping point
+## Completion claim
 
-The current root does not invoke the forthcoming live precision-retry suffix.
-It therefore returns status `4`, records missing stage
-`MISSING_LIVE_PRECISION_SUFFIX`, keeps correspondence and public-completion
-bits zero, and leaves every final fixed-shape output owner unchanged.  The
-reserved suffix authority state is erased and marked `-1`; a caller cannot
-turn a detached or expected suffix status into authority.
-
-The component publications from the prefix, exact class witness, and torsion
-leaf remain available for inspection.  They are not mislabeled as the final
-immutable result.
+For the prepared equal-bound sentinel, the root sets internal
+`correspondence_complete = published = 1` only after all component authorities
+succeed. It deliberately keeps `public_complete = 0`: general saturation and
+a stable public class/unit API are separate work.
 
 ## Answer-shaped inputs
 
-The inherited resident prefix presently accepts analytic discriminant and
-roots-of-unity scalars.  Before calling it, this root recomputes the cubic
-discriminant from `prep_polynomial`, requires positive discriminant, and
-requires the real-cubic roots-of-unity value two.  Thus neither scalar can be
-used to inject an expected final answer.  The precision authority, exact
-units, regulator replay, and final output buffers are all output-only owners.
+The inherited resident prefix accepts analytic discriminant and roots-of-unity
+scalars. Before calling it, this root recomputes the cubic discriminant from
+`prep_polynomial`, requires positive discriminant, and requires the real-cubic
+roots-of-unity value two. Precision authority, exact units, regulator, and
+final result owners are output-only.
 
 ## Transactionality and mutations
 
-The focused checker initializes every final mathematical owner to sentinel
-`777`, initializes the reserved precision authority to an apparently
-successful transcript, and invokes the one native root.  The computation
-reaches 73 accepted relations, the exact trivial Smith quotient, and exact
-torsion order two, but it destroys the submitted precision status and leaves
-all final sentinels unchanged.
+The focused checker first sets the retry ceiling to 192 bits. The precision
+suffix reports cap exhaustion and every final mathematical owner remains at
+its sentinel value. It then mutates a live principal-relation generator after
+the prefix/class boundary; exact quotient or unit replay rejects the mutation,
+again without final publication. Restoring the generator and setting the cap
+to 4096 permits the source-policy sequence to succeed at 2304 bits.
 
-The checker also mutates the defining polynomial to reducible and non-real
-cubics.  Both the generated native leaf and ordinary CPython fallback reject
-without changing the torsion outputs or publication state.
+The exact torsion leaf is separately differential-tested under ordinary
+CPython and generated native code, including reducible and non-real mutation
+cases. The generated core contains no Node-API, V8, JavaScript, or Python
+callback.
 
 ## Focused receipt
 
-On Linux x86-64 at integration base `c461638a3`, the command
+On Linux x86-64 at integration base `82470f3ea`, the command
 
 ```text
 node bench/pari-class-group-port/check_pari_unified_complete_h1_root.cjs \
@@ -66,17 +64,6 @@ node bench/pari-class-group-port/check_pari_unified_complete_h1_root.cjs \
 ```
 
 passed with native cache key
-`db674bd650efe021a3a671b70ccf08725be4043835ed7dfb91ed3ecc6d1f08b2`.
-The isolated core contains all three intended calls and no Node-API, V8,
-JavaScript, or Python callback.  The checker separately exercised the new
-torsion leaf under CPython.
-
-## Next insertion
-
-The live precision component should be inserted immediately after torsion and
-must write the already-reserved `precision_*` owners itself.  Only after its
-terminal authority state validates exact unit reconstruction, p2,176 log
-rebuild, and regulator replay may the root copy the class, unit, regulator,
-and torsion evidence to the `final_*` owners and atomically set
-`correspondence_complete = published = 1`.  Public saturation remains a
-separate false bit.
+`c5d58f068391abe511c65da923daf9b71e72c540b30653a1064fbe70bdc43bf3`.
+The terminal transcript records five precision attempts and success at 2304
+bits; the published unit norms are both `-1` and torsion order is two.

@@ -6,8 +6,8 @@
   "lane": "arithmetic-algebra",
   "status": "active",
   "owner": "user",
-  "objective": "Compose the live h1 prefix, exact class witness, exact torsion, and an honest fixed-shape final frontier with a reserved live precision-suffix ABI",
-  "base_commit": "c461638a3a91ee0f64bfeea913e87754ff59f007",
+  "objective": "Compose the live h1 prefix, exact class witness, live retrying precision suffix, exact torsion, and atomic fixed-shape internal result publication",
+  "base_commit": "82470f3ea9c209386d6f8daa6437f1a303c75b92",
   "claims": [
     "bench/pari-class-group-port/pari_unified_complete_h1_root.py",
     "bench/pari-class-group-port/check_pari_unified_complete_h1_root.cjs",
@@ -41,21 +41,21 @@
       "command": "node bench/pari-class-group-port/check_pari_unified_complete_h1_root.cjs /tmp/sagejs-prepared-class-inputs-MRFSOe/inputs.json /tmp/sagejs-analytic-invhr-d88QqB/fixtures.json /tmp/sagejs-initial-kummer-catalog-Kc48PL/fixtures.json",
       "result": "pass",
       "exit_code": 0,
-      "seconds": 50.666,
-      "started_at": "2026-09-17T05:28:00.180Z",
-      "commit": "c461638a3a91ee0f64bfeea913e87754ff59f007",
-      "workspace_fingerprint": "200df9b07486268072340b90fe735736e063636691680ff46ae341d2fc596405",
+      "seconds": 55.693,
+      "started_at": "2026-09-17T05:58:28.890Z",
+      "commit": "82470f3ea9c209386d6f8daa6437f1a303c75b92",
+      "workspace_fingerprint": "257c9534766970cb4129a38adfc548a4b6500eb0c193d255a110a3eb6c726452",
       "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Adds one source-transparent native root joining the authentic prepared h1 prefix, exact relation/HNF/Smith class witness, and exact real-cubic torsion derivation. The forthcoming precision-retry ABI is reserved, but detached suffix status is erased and final publication remains transactionally false until that suffix is invoked internally.",
+    "summary": "Connects the authentic prepared h1 prefix and exact class witness directly to the live retrying precision suffix, exact real-cubic torsion, and atomic fixed-shape internal result publication.",
     "risks": [
-      "The root intentionally stops at status 4 because the live precision-retry suffix is not yet a native component in this call graph.",
+      "Public completion remains deliberately false because general saturation is outside this prepared h=1 correspondence experiment.",
       "The large inherited flat ABI remains an experimental prepared-field boundary."
     ],
     "next_steps": [
-      "Insert the live precision-retry suffix using the reserved owners and direct prefix aliases, then publish final owners only after its terminal authority succeeds.",
+      "Extend the root beyond the prepared h=1 sentinel without weakening exact relation-to-unit replay.",
       "Keep public saturation and theorem-level completion separate from internal PARI correspondence."
     ]
   }
