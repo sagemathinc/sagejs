@@ -116,6 +116,10 @@ def ρσ_exact_integer_submul(left, right, multiply, missing):
     return r"""%js (()=>{const a=typeof left,b=typeof right,e=(t,v)=>t==="boolean"||t==="bigint"||t==="number"&&Number.isSafeInteger(v);if(!e(a,left)||!e(b,right))return missing;if(a!=="bigint"&&b!=="bigint"){const v=multiply?Number(left)*Number(right):Number(left)-Number(right);if(Number.isSafeInteger(v))return v===0?0:v}return multiply?BigInt(left)*BigInt(right):BigInt(left)-BigInt(right)})()"""
 
 
+def ρσ_int_pow(left, right, missing):
+    return r"""%js (()=>{const a=typeof left,b=typeof right,e=(t,v)=>t==="boolean"||t==="bigint"||t==="number"&&Number.isSafeInteger(v);if(!e(a,left)||!e(b,right)||right<0)return missing;if(a!=="bigint"&&b!=="bigint"){const v=Number(left)**Number(right);if(Number.isSafeInteger(v))return v===0?0:v}return BigInt(left)**BigInt(right)})()"""
+
+
 def ρσ_check_interrupt():
     return r"""%js (() => {
         const state = globalThis.__sagejs_interrupt_state__;
