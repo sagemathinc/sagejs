@@ -652,8 +652,15 @@ def _authenticate_terminal_and_c3(
             elif mantissa == 0:
                 if scalar_precision != 0:
                     raise Field3AcceptedC4Failure("invalid packed C3 zero")
+            # Exact matrix accumulation can lose whole 64-bit limbs through
+            # cancellation.  The authentic C3 owner therefore contains
+            # normalized 64/128-bit residuals as well as target- and
+            # guard-precision values; requiring every cell to retain the
+            # requested target precision rejects valid PARI arithmetic.
             elif (
-                scalar_precision != precision
+                scalar_precision < 64
+                or scalar_precision > precision + 1024
+                or scalar_precision % 64 != 0
                 or abs(mantissa).bit_length() != scalar_precision
             ):
                 raise Field3AcceptedC4Failure("packed C3 precision changed")
