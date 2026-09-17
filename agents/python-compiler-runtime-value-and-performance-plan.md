@@ -435,6 +435,23 @@ the unchanged budget and is not a receipt. Exact evidence is in
 `agents/python-positional-default-native.md`; keep this candidate behind its
 prerequisites.
 
+**2026-09-17 exact-integer-add checkpoint:** source-current profiles showed the
+checked call/construction matrix spending much of its residual time in the
+generic exact-add slow path for ordinary loop counters and return values. A
+guarded raw boundary now handles only booleans, safe integer Numbers, and
+BigInts, preserving safe results, canonical zero, and overflow promotion while
+delegating floats, strings, objects, custom methods, and Sage parents unchanged.
+Controlled exact-artifact measurements improve positional functions by 77.6%,
+keyword functions 43.9%, immediate keyword methods 32.3%, positional
+construction plus a method 18.3%, and keyword construction 11.8%. The checked
+positional function is now 2.1x CPython; residual keyword/method/construction
+gaps remain 9.3x, 14.9x, and 10.2–12.1x, so M5 remains open. Differential,
+integer-boundary, arithmetic-float, operator, mutation, traitlets, attrs/decorator, strict,
+docs, and merge gates pass at 902,792/903,000 core bytes. Exact evidence and
+the two explicitly recorded unrelated/environment test limitations are in
+`agents/python-exact-integer-add-native.md`. Keep the candidate behind its
+prerequisites.
+
 Continue next with integration-aware qualification, the receiver-lookup campaign,
 and true handled-exception ownership. Generator/coroutine suspension makes a
 single global active-exception pointer unsafe: preserve owned handlers while

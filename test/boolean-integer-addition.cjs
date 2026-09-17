@@ -6,9 +6,43 @@
 // of the same statements.
 
 const assert = require("node:assert/strict");
+const { readFileSync } = require("node:fs");
+const { join } = require("node:path");
 const test = require("node:test");
+const { runInNewContext } = require("node:vm");
 
 const { createSage } = require("../dist/tools/kernel.js");
+
+test("native exact-add fast path preserves integers and delegates other values", () => {
+  const source = readFileSync(join(__dirname, "..", "src", "baselib", "builtins.py"), "utf8");
+  const match = source.match(
+    /^def ρσ_operator_add_exact\(([^)]*)\)\s*->\s*Any:[^]*?return r"""%js ([^]*?)"""/m,
+  );
+  assert.ok(match);
+  const parameters = match[1].replace(/:\s*[^,]+/g, "");
+  const missing = {};
+  const delegated = [];
+  const exactAdd = runInNewContext(
+    `(function(${parameters}) {return ${match[2]};})`,
+    {
+      _BUILTINS_MISSING: missing,
+      ρσ_fast_closed_binary: () => missing,
+      _builtins_operator_add_exact_slow: (left, right) => {
+        delegated.push([left, right]);
+        return "delegated";
+      },
+    },
+  );
+  assert.equal(exactAdd(2, 3), 5);
+  assert.equal(exactAdd(true, true), 2);
+  assert.equal(exactAdd(false, -0), 0);
+  assert.equal(Object.is(exactAdd(false, -0), -0), false);
+  assert.equal(exactAdd(Number.MAX_SAFE_INTEGER, 1), 9007199254740992n);
+  assert.equal(exactAdd(3n, 4), 7n);
+  assert.equal(exactAdd(1.5, 2), "delegated");
+  assert.equal(exactAdd("a", "b"), "delegated");
+  assert.deepEqual(delegated, [[1.5, 2], ["a", "b"]]);
+});
 
 test("adding a boolean keeps the sum an exact integer", async (t) => {
   const session = await createSage({ mode: "python" });

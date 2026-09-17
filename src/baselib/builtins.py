@@ -1419,13 +1419,21 @@ def _builtins_operator_add_slow(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_add_exact(left: Any, right: Any) -> Any:
-    result = runtime.fast_closed_binary(left, right, "add", _BUILTINS_MISSING)
-    if result is not _BUILTINS_MISSING:
-        return result
-    return _builtins_operator_add_exact_slow(left, right)
+    return r"""%js (()=>{
+let a=typeof left,b=typeof right;
+if((a==="number"?Number.isSafeInteger(left):a==="bigint"||a==="boolean")&&
+(b==="number"?Number.isSafeInteger(right):b==="bigint"||b==="boolean")){
+if(a==="boolean"){left=left?1:0;a="number"}if(b==="boolean"){right=right?1:0;b="number"}
+if(a==="number"&&b==="number"){let r=left+right;if(Number.isSafeInteger(r))return r===0?0:r}
+return BigInt(left)+BigInt(right)}
+let r=ρσ_fast_closed_binary(left,right,"add",_BUILTINS_MISSING);
+return r!==_BUILTINS_MISSING?r:_builtins_operator_add_exact_slow(left,right)
+})()"""
 
 
-def _builtins_operator_add_exact_slow(left: Any, right: Any) -> Any:
+def _builtins_operator_add_exact_slow(  # pyright: ignore[reportUnusedFunction]
+    left: Any, right: Any
+) -> Any:
     # Primitive values cannot override Python's arithmetic methods. Handle
     # them before the general parent/coercion and special-method machinery;
     # overflowing safe integers still promote to BigInt below.
