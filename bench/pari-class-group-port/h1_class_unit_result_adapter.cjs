@@ -205,12 +205,12 @@ function validateHonesty(honesty) {
   const input = structuredClone(plain(honesty, "equal-bound honesty evidence"));
   const expected = {
     accepted_relations: 73,
-    checking_bound: 48,
+    checking_bound: 333,
     checking_groups: 48,
     class_number: 1,
     honesty_status: "equal-bound-source-skip",
     invariant_count: 0,
-    relation_bound: 48,
+    relation_bound: 333,
     relation_groups: 48,
   };
   equal(input, expected, "equal-bound honesty evidence");

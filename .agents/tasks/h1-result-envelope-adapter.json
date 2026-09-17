@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Bind the exact H1 cold replay to independent data-only authority and adapt the internally correspondence-complete H1 class-and-unit result into the field-neutral immutable envelope with honest nonpublic publication",
-  "base_commit": "f50c44e0799b4d48a17be23a31a3eb9e1fc6cdd8",
+  "base_commit": "4388f03473da2cbc89aaa4d2c8498997c87a8d22",
   "claims": [
     "bench/pari-class-group-port/h1_class_unit_result_adapter.cjs",
     "bench/pari-class-group-port/check_h1_class_unit_result_adapter.cjs",
@@ -59,14 +59,14 @@
     }
   ],
   "handoff": {
-    "summary": "Unqualified checkpoint: implemented the data-only H1 adapter into the immutable field-neutral class/unit envelope, retaining all 57 replay-owner prefixes plus eight exact class/unit/torsion/regulator/honesty/workload projections. Candidate bytes cannot grant their own authority; the checker requires an independent second live/native capture, detached exact cold replay, rigorous regulator reconstruction, equal-bound honesty replay, and a separate publication authority. The result remains correspondence_complete=true and public_complete=false. Host prerequisites were isolated and proven coherent, but recursive multi-module lowering fails in Tree-sitter Parser initialization before mathematical replay, so this checkpoint claims no authentic authority receipt.",
+    "summary": "Unqualified checkpoint: implemented the data-only H1 adapter into the immutable field-neutral class/unit envelope, retaining all 57 replay-owner prefixes plus eight exact class/unit/torsion/regulator/honesty/workload projections. Candidate bytes cannot grant their own authority; the checker requires an independent second live/native capture, detached exact cold replay, rigorous regulator reconstruction, equal-bound honesty replay, and a separate publication authority. The result remains correspondence_complete=true and public_complete=false. Integration commit 4388f0347 closes the recursive parser blocker. The resulting replay exposed and this checkpoint corrects a stale adapter expectation: authenticated C1=C2=333 are bounds, while KCZ=KCZ2=48 are group counts. No authentic authority receipt is claimed until the corrected replay is authorized and completes.",
     "risks": [
       "The focused authentic checker has not completed; no envelope, regulator-authority, or mathematical-authority receipt hash is claimed.",
-      "A single-parser preflight passes, but recursive native import lowering raises `table index is out of bounds` during a later Tree-sitter Parser initialization on the real H1 call graph.",
+      "The corrected exact honesty tuple has not yet completed the full independent replay; its targeted checker rerun requires authorization.",
       "The exact-unit/regulator replay is intentionally stronger than and outside the matched PARI flag-zero p192 compact/log workload."
     ],
     "next_steps": [
-      "Fix or serialize Tree-sitter frontend lifecycle/reentrancy in the native compiler lane, then rerun the focused checker against the receipt-verified lane runtime and qualified FLINT host trees.",
+      "Rerun the focused checker against the receipt-verified lane runtime and qualified FLINT host trees under the 4 GiB/600-second limits.",
       "Accept this adapter for integration only after the independent second live/native capture and all coordinated mutation/publication checks produce a complete receipt under the 4 GiB aggregate RSS ceiling.",
       "Keep public_complete=false; unit saturation and final public certification remain separate authority work."
     ]
