@@ -30,7 +30,6 @@ def pari_live_h1_owner_bridge(
     acceptance_state: Int64Buffer,
     attempt_state: Int64Buffer,
     class_number: IntegerBuffer,
-    columns: int,
     precision: int,
     unit_transform: IntegerBuffer,
     getfu_factor: IntegerBuffer,
@@ -116,21 +115,27 @@ def pari_live_h1_owner_bridge(
 ) -> int:
     """Publish the live compact-unit and final-driver handoff.
 
+    The compact-factor column count comes from the connected HNF owner.  Its
+    accepted-relation total must independently agree with the factor-base
+    count plus that prefix, so no answer-shaped scalar controls publication.
+
     `bridge_state` is status, unit-prepare status, factor status, provenance
     status, driver status, columns, class number, invariant count, accepted
     relation count, HNF rank, KCZ, KCZ2, unit rank, compact-factor count,
-    cleaned columns, and public-complete.  Outputs are transactional.
+    cleaned columns, and public-complete. Outputs are transactional. Status 6
+    rejects inconsistent live dimension authority before touching the compact
+    or cleaned owners.
     """
     if (
-        columns != 7
-        or precision != 192
+        precision != 192
         or len(bridge_state) < 16
+        or len(prep_base_state) < 7
+        or len(prep_state) < 8
+        or len(hnf_state) < 9
+        or len(acceptance_state) < 3
         or len(attempt_state) < 4
         or len(class_number) < 1
-        or len(unit_transform) < 2 * columns
         or len(getfu_factor) < 4
-        or len(compact_provenance) < 2 * columns
-        or len(cleaned_arch) < 21 * columns
     ):
         raise ValueError("short live h1 owner bridge input")
     for i in range(16):
@@ -145,6 +150,30 @@ def pari_live_h1_owner_bridge(
     ):
         bridge_state[0] = 1
         return 1
+
+    columns = hnf_state[1]
+    kc = prep_base_state[2]
+    if (
+        columns < 2
+        or columns >= 199
+        or kc <= 0
+        or prep_state[0] != 7
+        or prep_state[2] != kc
+        or prep_state[7] != kc
+        or hnf_state[0] != 0
+        or hnf_state[2] != kc
+        or hnf_state[7] != kc + columns
+    ):
+        bridge_state[0] = 6
+        return 6
+    if (
+        len(accepted_arch) < 21 * columns
+        or len(relation_lattice) < 2 * columns
+        or len(unit_transform) < 2 * columns
+        or len(compact_provenance) < 2 * columns
+        or len(cleaned_arch) < 21 * columns
+    ):
+        raise ValueError("short live h1 logical-prefix storage")
 
     status = pari_cubic_unit_bridge_prepare(
         accepted_arch,
