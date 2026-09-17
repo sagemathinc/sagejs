@@ -16,12 +16,16 @@ inputs:
    regulator;
 4. `pari_exact_real_cubic_torsion` proves that the roots of unity are
    `{+1, -1}`; and
-5. the root copies a fixed 811-cell numeric bundle and commits its terminal
+5. the root derives the logical result sizes from authenticated live state,
+   copies the resulting 811-cell H1 projection, and commits its terminal
    publication state last.
 
-The resource cap is policy, not mathematical answer data. Relation counts,
-ranks, generators, HNF transforms, compact provenance, and factor transforms
-all come directly from live owners below the one native call.
+The resource cap and oversized backing capacities are policy, not mathematical
+answer data. Relation counts, ranks, class dimensions, generators, HNF
+transforms, compact provenance, factor transforms, and publication size all
+come directly from mutually authenticated live owners below the one native
+call. The focused checker deliberately supplies larger independent capacities
+and proves their unused tails remain untouched.
 
 ## Publication claim
 
@@ -57,8 +61,9 @@ again without final publication. Restoring the generator and setting the cap
 to 4096 permits the source-policy sequence to succeed at 2304 bits.
 
 The checker additionally proves that a caller cannot obtain success by
-re-entering with published terminal status but without cold replay. The exact
-torsion leaf is separately differential-tested under ordinary
+re-entering with published terminal status but without cold replay. Six forged
+live-dimension authorities also fail transactionally. The exact torsion leaf
+is separately differential-tested under ordinary
 CPython and generated native code, including reducible and non-real mutation
 cases. The generated core contains no Node-API, V8, JavaScript, or Python
 callback.
