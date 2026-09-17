@@ -1,89 +1,47 @@
-# Successful unequal-bound honesty audit
+# Quintic honesty collector audit
 
-This correctness-only lane closes the successful state transition that the
-earlier all-failure honesty fixture could not exercise. Its authority is the
-pinned PARI 2.17.4 `src/basemath/buch2.c` `be_honest` implementation:
+This lane tests whether the six successful observations used by the frozen
+unequal-bound honesty fixture can be produced by the Sage.js collector rather
+than copied from PARI's answer.
 
-- archive SHA-256
-  `02651d99c391007d384b3fadbc20abc6916b77036f9e496c99e9ce8688ca4b53`;
-- `buch2.c` SHA-256
-  `904ced8034732c7fcfe1da393e23950aac0862b085150fdc24ce1e31beb7d1ac`.
+## Frozen identity and oracle
 
-PARI copyright and GPL-2.0-or-later terms apply to the translated scheduler.
+The input is performance-panel row 21,
+`36 + 930*x - 305*x^2 - 90*x^3 + x^5`, with `C1 = 5` and `C2 = 31`.
+`check_quintic_collector_fixture.cjs` builds a small oracle against pristine
+PARI 2.17.4 and authenticates both the release archive and `buch2.c`. It calls
+the actual `FBgen`, `subFBgen`, and `Fincke_Pohst_ideal` routines. The exact
+schedule is `(11,1), (11,2), (11,3), (13,1), (29,1), (29,2)`; all six PARI
+calls return success.
 
-## Deterministic selection before implementation
+The exporter now provides the complete raw input accepted by
+`pari_collect_unreduced_ideal`: prepared number-field matrices, factor-base
+groups and offsets, prime ideals, norms, support product, prime tables, and
+fresh disjoint workspaces. No scheduler observation is derived from the PARI
+answer.
 
-No previously frozen identity exercised a nontrivial successful honesty
-schedule. `check_honesty_success.cjs` therefore scans only the 16 already
-predeclared tuning identities, in their frozen Phase-1 development order, with
-`C1=5`, `C2=31`, and `setrand(1)`. It accepts the first identity for which:
+## Exact blocker
 
-1. pristine PARI returns success;
-2. the unequal bounds create a nonempty outer interval;
-3. at least one actual Fincke--Pohst probe runs; and
-4. at least one temporary `KCZ` increment occurs.
+Each fresh CPython call reaches `pari_ranked_ideal_preparation`, which rejects
+degree five with `ValueError("invalid ranked ideal preparation input")` before
+executing a collector probe. The calls are transactional: every observable
+input and workspace is byte-for-byte unchanged after rejection.
 
-The first match is panel row 21, LMFDB identity `5.3.1009349859375.3`, with
+This is a connected primitive boundary, not one guard that can safely be
+deleted:
 
-```text
-36 + 930*x - 305*x^2 - 90*x^3 + x^5.
-```
+- `ideal_ranked_preparation.py` rejects `n > 4`.
+- `lll_rank.py::pari_initial_integer_rank` rejects `n > 4`.
+- `lll_selection.py::pari_lll_select_full_rank` accepts only degrees 3 and 4.
+- `flatter.py::pari_flatter` accepts only degrees 3 and 4.
 
-The fixture records every preceding selection result. It neither changes the
-performance panel nor opens the reserve.
+Consequently the six inputs in `honesty_success.py` have **not** been replaced.
+Doing so would make PARI's observed answers into runtime probe bits, violating
+the experiment's independence requirement. Native compilation was not attempted
+after the ordinary same-source Python path proved unable to enter the collector.
 
-## Exact source trace
-
-Pristine source reports `KC=6`, `KCZ=3`, and `KCZ2=10`. The seven outer rows
-are retained as `(iz, p, raw J, last e, effective J)`. Four rational primes are
-skipped because removing the final unramified prime leaves no check. Six prime
-ideal representatives remain:
-
-```text
-(4,11,1), (4,11,2), (4,11,3),
-(5,13,1),
-(9,29,1), (9,29,2).
-```
-
-All six no-cache Fincke--Pohst probes succeed on their first attempt. PARI
-therefore increments the transient `KCZ` after the complete groups over 11,
-13, and 29, observing `4,5,6`, then restores the original value `3` after the
-outer loop. No random word is drawn and the complete resident RNG integer is
-identical before and after the call.
-
-The selected identity has no nonidentity automorphisms. Because no probe
-fails, retry products do not run, so neither `Q_primpart` nor the high-bit
-`idealred` branch runs. Those branches are explicitly inactive, not silently
-claimed or approximated.
-
-## Implemented scheduler
-
-`honesty_success.py` is ordinary CPython-parseable source with two `@native`
-functions. It authenticates the exact outer and probe schedules, publishes the
-six exact prime-ideal HNFs, applies each temporary increment only after all
-representatives over that rational prime succeed, and restores `KCZ` only
-after all six probes. A failed or malformed observation rejects before
-publishing scheduler state, ideal state, or RNG state.
-
-The checker rebuilds the instrumentation from the pristine archive on every
-run, repeats deterministic selection, compares the complete fixture, then
-replays the scheduler through CPython, JavaScript, GMP, and tagged native
-backends. Dynamic and native transcripts, ideals, terminal state, and RNG
-preservation agree exactly.
-
-## Boundary and remaining generic work
-
-This is a complete scheduler for one successful frozen unequal-bound case,
-not a generic `be_honest` implementation. The existing shared driver remains
-unchanged. Generic work still needs separately authenticated cases for:
-
-- a failed probe followed by a successful retry within a complete schedule;
-- nontrivial `pr_orbit_fill` automorphism orbits;
-- retry arithmetic that takes outer `Q_primpart`;
-- retry ideals whose leading entry crosses the `idealred` threshold; and
-- general field preparation connecting arbitrary panel identities to the
-  resident no-cache collector. The current collector fixture exporter prepares
-  only its four historical fields, so this quintic's six success decisions are
-  pristine-PARI observations rather than Sage.js collector outputs.
-
-No equal-bound skip, inferred class-group result, or performance claim is used.
+The next implementation unit is therefore a degree-5 generalization of the
+ranked integer-rank, LLL selection, FLATTER, and ranked-basis graph, tested first
+against the exported row-21 preparation. Only after that graph produces six
+actual Sage.js collector observations may they be connected to the honesty
+scheduler.
