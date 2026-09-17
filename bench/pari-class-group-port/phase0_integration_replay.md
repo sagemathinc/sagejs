@@ -103,6 +103,31 @@ The post-Phase-0 focused gates are also individually resumable:
     all new focused gates while deliberately asserting that neither the public
     API nor Phase 5 is complete.
 
+The connected completion gates continue that graph rather than presenting a
+bag of independent demonstrations:
+
+13. `rnd-scheduler` follows the authenticated field-3 collector, and
+    `rnd-collector` joins that scheduler with the field-3 driver and initial
+    collector. `honesty-scheduler` consumes this random-relation corridor;
+    `honesty` retains the all-failure outcome while `honesty-success` freezes
+    the distinct successful restoration schedule.
+14. `relation-hnf-witness` consumes the exact resident-cubic GMP output and
+    verifies both directions of the relation/presentation maps.
+    `unit-bridge-preci` connects those witnesses and the earlier cubic `getfu`
+    work while retaining the authentic `PRECI` frontier.
+15. `mixed-getfu-prerequisite` joins `nf_cxlog` and lattice reduction;
+    `mixed-getfu-quartic` proves the successful mixed-signature quartic suffix.
+    In parallel, `signed-genback-assembly` joins signed ideal reduction, Smith
+    transforms and complex logarithms, and `signed-genback-computed-t2` adds
+    internally computed T2 candidates.
+16. `get-clg2` joins the signed and mixed-unit suffixes. `precision-bridge`
+    checks retry publication while retaining exact owners. The
+    `scratch-falsification-ledger` hashes the rejected resident-mpz experiment
+    as negative evidence rather than silently reviving it.
+17. `final-state` joins every preceding corridor and verifies the connected,
+    immutable final-state schema and its mutation/replay controls. It still
+    asserts that Phase 5 and the public API are incomplete.
+
 Focused checkers which produce no standalone fixture are still durable: their
 JSON summary is retained in the receipt, stdout and stderr are hashed, and the
 checker, runner, dependency, repository tree, PARI archive, `libpari`, and
@@ -154,6 +179,16 @@ node bench/pari-class-group-port/run_phase0_integration_replay.cjs run \
   --pari-root /scratch/sagejs/pari-2.17.4 \
   --pari-archive /scratch/sagejs/pari-2.17.4.tar.gz \
   --stage immutable-result
+```
+
+Run the complete connected focused-gate closure with:
+
+```bash
+node bench/pari-class-group-port/run_phase0_integration_replay.cjs run \
+  --artifact-root /scratch/sagejs/pari-class-group-phase0 \
+  --pari-root /scratch/sagejs/pari-2.17.4 \
+  --pari-archive /scratch/sagejs/pari-2.17.4.tar.gz \
+  --stage final-state
 ```
 
 Verify stored evidence without invoking mathematical code:
