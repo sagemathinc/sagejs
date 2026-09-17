@@ -224,6 +224,8 @@ async function preparePreparedH1({ implementation, seed, preparedInput }) {
     };
   }
   assert.equal(implementation, "sagejs");
+  assert.equal(seed, "1",
+    "the frozen prepared owner graph authenticates only the seed-1 stream");
   const built = await sageBuild();
   validatePreparedInput(preparedInput, built.specification);
   const replayInput = makeInputs(preparedInput, built.specification, built.fn);
