@@ -1,0 +1,62 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "unified-complete-h1-root",
+  "title": "Unified Complete H1 Root",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Compose the live h1 prefix, exact class witness, exact torsion, and an honest fixed-shape final frontier with a reserved live precision-suffix ABI",
+  "base_commit": "c461638a3a91ee0f64bfeea913e87754ff59f007",
+  "claims": [
+    "bench/pari-class-group-port/pari_unified_complete_h1_root.py",
+    "bench/pari-class-group-port/check_pari_unified_complete_h1_root.cjs",
+    "bench/pari-class-group-port/pari_unified_complete_h1_root_audit.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "gmp"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node bench/pari-class-group-port/check_pari_unified_complete_h1_root.cjs /tmp/sagejs-prepared-class-inputs-MRFSOe/inputs.json /tmp/sagejs-analytic-invhr-d88QqB/fixtures.json /tmp/sagejs-initial-kummer-catalog-Kc48PL/fixtures.json",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_pari_unified_complete_h1_root.cjs /tmp/sagejs-prepared-class-inputs-MRFSOe/inputs.json /tmp/sagejs-analytic-invhr-d88QqB/fixtures.json /tmp/sagejs-initial-kummer-catalog-Kc48PL/fixtures.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 50.666,
+      "started_at": "2026-09-17T05:28:00.180Z",
+      "commit": "c461638a3a91ee0f64bfeea913e87754ff59f007",
+      "workspace_fingerprint": "200df9b07486268072340b90fe735736e063636691680ff46ae341d2fc596405",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Adds one source-transparent native root joining the authentic prepared h1 prefix, exact relation/HNF/Smith class witness, and exact real-cubic torsion derivation. The forthcoming precision-retry ABI is reserved, but detached suffix status is erased and final publication remains transactionally false until that suffix is invoked internally.",
+    "risks": [
+      "The root intentionally stops at status 4 because the live precision-retry suffix is not yet a native component in this call graph.",
+      "The large inherited flat ABI remains an experimental prepared-field boundary."
+    ],
+    "next_steps": [
+      "Insert the live precision-retry suffix using the reserved owners and direct prefix aliases, then publish final owners only after its terminal authority succeeds.",
+      "Keep public saturation and theorem-level completion separate from internal PARI correspondence."
+    ]
+  }
+}
