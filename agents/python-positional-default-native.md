@@ -1,7 +1,7 @@
 # Native omitted-positional default lookup
 
-Base: `aafe94c52` (`agent/python-keyword-target-native-classification`, queued
-behind the attribute, construction, and method-binding integration).
+Base: `d16167c43` (`agent/python-keyword-target-native-main`, queued behind the
+reviewer-repaired attribute, construction, and method-binding integration).
 
 ## Change
 
@@ -46,15 +46,17 @@ this result removes one measured layer without closing the common-call cliff.
 
 ## Qualification
 
-- The exact-source build converged in two self-hosting passes and completed.
+- The replayed prerequisite-source build converged in two self-hosting passes
+  and completed in 7m 34s.
 - The CPython differential corpus passes 505 cases with the same three
   intentional incompatibilities and no baseline drift.
-- Thirty focused default, prepared-method, resolved-keyword, and raw-boundary
-  tests pass; dynamic initializer and pinned traitlets checks also pass.
+- All 104 selected lowering, runtime-hotpath, constructor, prepared-method, and
+  raw-boundary tests pass; the earlier qualification additionally covers the
+  dynamic initializer and pinned traitlets checks.
 - The pinned decorator 5.2.1 and attrs 25.4.0 workflows pass.
 - Strict CPython syntax, Ruff 0.16.0, and Pyright pass for 404 modules; docs and
   merge invariants pass.
-- Core runtime falls from 902,633 to 902,367 bytes against the unchanged
+- Core runtime falls from 902,497 to 902,231 bytes against the unchanged
   903,000-byte budget. No source, startup, browser, or performance budget
   changed.
 - The local startup result is not a passing receipt: 424.8 ms normalized exceeds
