@@ -9,7 +9,7 @@ const test = require("node:test");
 const root = join(__dirname, "..");
 const source = readFileSync(join(root, "src/baselib/bootstrap_shared.py"), "utf8");
 const names = ["ρσ_copy_method_metadata", "ρσ_native_method_adapter", "ρσ_unbound_method_adapter",
-  "ρσ_exact_integer_add", "ρσ_exact_integer_submul", "ρσ_int_pow", "ρσ_int_bit",
+  "ρσ_exact_integer_add", "ρσ_exact_integer_submul", "ρσ_int_pow", "ρσ_bit",
   "ρσ_check_interrupt", "ρσ_normalize_exception", "ρσ_prepare_method_call",
   "ρσ_attr", "ρσ_interpolate_kwargs"];
 
@@ -161,7 +161,7 @@ test("shared exact integer arithmetic preserves primitive Python integers", () =
     ρσ_exact_integer_add: add,
     ρσ_exact_integer_submul: submul,
     ρσ_int_pow: power,
-    ρσ_int_bit: bitwise,
+    ρσ_bit: bitwise,
   } = context();
   const missing = {};
   const subtract = (left, right) => submul(left, right, false, missing);

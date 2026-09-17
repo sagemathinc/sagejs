@@ -2426,7 +2426,7 @@ def ρσ_operator_imod(left: Any, right: Any) -> Any:
 
 def ρσ_operator_ibitand(left: Any, right: Any) -> Any:
     result = runtime.reflect.apply(
-        ρσ_int_bit,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        ρσ_bit,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
         runtime.undefined,
         [left, right, 0, _BUILTINS_MISSING],
     )
@@ -2437,7 +2437,7 @@ def ρσ_operator_ibitand(left: Any, right: Any) -> Any:
 
 def ρσ_operator_ibitor(left: Any, right: Any) -> Any:
     result = runtime.reflect.apply(
-        ρσ_int_bit,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        ρσ_bit,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
         runtime.undefined,
         [left, right, 1, _BUILTINS_MISSING],
     )
@@ -2448,7 +2448,7 @@ def ρσ_operator_ibitor(left: Any, right: Any) -> Any:
 
 def ρσ_operator_ibitxor(left: Any, right: Any) -> Any:
     result = runtime.reflect.apply(
-        ρσ_int_bit,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        ρσ_bit,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
         runtime.undefined,
         [left, right, 2, _BUILTINS_MISSING],
     )
@@ -2505,7 +2505,7 @@ def ρσ_native_uint64_binary(
 
 def ρσ_operator_bitand(left: Any, right: Any) -> Any:
     result = runtime.reflect.apply(
-        ρσ_int_bit,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        ρσ_bit,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
         runtime.undefined,
         [left, right, 0, _BUILTINS_MISSING],
     )
@@ -2520,7 +2520,7 @@ def ρσ_operator_bitand(left: Any, right: Any) -> Any:
 
 def ρσ_operator_bitor(left: Any, right: Any) -> Any:
     result = runtime.reflect.apply(
-        ρσ_int_bit,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        ρσ_bit,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
         runtime.undefined,
         [left, right, 1, _BUILTINS_MISSING],
     )
@@ -2602,7 +2602,7 @@ def _builtins_is_union_type_operand(value: Any) -> _Bool:
 
 def ρσ_operator_bitxor(left: Any, right: Any) -> Any:
     result = runtime.reflect.apply(
-        ρσ_int_bit,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        ρσ_bit,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
         runtime.undefined,
         [left, right, 2, _BUILTINS_MISSING],
     )
