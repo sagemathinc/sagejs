@@ -159,7 +159,7 @@ async function main() {
     columnCapacity: 16,
   });
   const sizes = { ...bridgeSizes, ...classSizes, ...precisionSizes, ...finalSizes,
-    bridge_prep_state: 8, unified_state: 12 };
+    unified_state: 12 };
   const candidate = sanitized.input;
   const input = {};
   const finalNames = new Set(Object.keys(finalSizes).filter(name => name.startsWith("final_")));
