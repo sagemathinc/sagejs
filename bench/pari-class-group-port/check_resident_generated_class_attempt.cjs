@@ -187,7 +187,11 @@ print(json.dumps(dict(action=action,output=v)))
     sourceHash: hash(source), checkerHash: hash(fs.readFileSync(__filename)),
     inputHashes: paths.map(p => hash(fs.readFileSync(p))), outputHash: hash(encode(output)),
     oneNativeCall: backend === "gmp" || backend === "tagged", qualifiedTiming: false, earlyGuardCases: 5,
-    paddedCapacity: process.argv.includes("--padded"), lateFailureAndPartialReentry: true,
+    paddedCapacity: process.argv.includes("--padded"),
+    capacityPolicy: "degree-times-prime-count",
+    factorBaseOwnerCapacity: output.prep_full_degrees.length +
+      (process.argv.includes("--padded") ? 7 : 0),
+    lateFailureAndPartialReentry: true,
     analyticHandoffFailureCases: 2,
     preparedValueAllowlist: [...nfNames, ...runtimeNames, "n", "precision", "admission_real_count",
       "admission_factorlimit", "admission_prime_limit", "analytic_discriminant", "analytic_roots_of_unity",
@@ -207,15 +211,16 @@ function makeInput(context) {
   const runtimePrimes = Array.from(sieve.keys()).filter(p => sieve[p]);
   assert.deepEqual(raw.admission_primes.map(Number), runtimePrimes);
   const primes = runtimePrimes.filter(p => p <= 10007), P = primes.length, D = n * P, B = primes.at(-1) + 1;
-  // K inherits the earlier fixture's workspace capacity, not a new sizing bound.
-  // The padding control proves that active counts do not come from these lengths.
+  // Every factor-base entry comes from one of at most `degree * prime_count`
+  // catalog slots. Size the owners from that live input bound: importing the
+  // old fixture's observed KC here would make allocation depend on the answer.
   const padding = process.argv.includes("--padded") ? 7 : 0;
-  const K = capacities.relation + padding;
+  const K = D + padding;
   for (const name of ["relation", "packet_ids", "packet_norms", "ramification", "admission_group_f",
     "admission_group_e", "admission_group_inert", "relation_primes", "search_ideals", "hnf_perm", "class_invariants"])
-    capacities[name] += padding;
+    capacities[name] = K;
   for (const name of ["initial_primes", "initial_offsets", "initial_counts", "initial_complete"])
-    capacities[name] += padding;
+    capacities[name] = K;
   const sizes = {
     prep_degree_workspace: 393, prep_factor_degrees: n, prep_factor_exponents: n,
     prep_group_degrees: n, prep_group_counts: n, prep_local_state: 3, prep_degree_state: 4,

@@ -1,0 +1,52 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "live-h1-generic-controls",
+  "title": "Live H1 Generic Controls",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Remove answer-derived workspace capacity and preselected retry precision from the authentic h1 experimental root controls, replacing them with live-shape capacity bounds and the pinned PARI 2.17.4 retry transition.",
+  "base_commit": "9ebfc1647a7af9d688a070923a2d93d0db120976",
+  "claims": [
+    "bench/pari-class-group-port/check_resident_generated_class_attempt.cjs",
+    "bench/pari-class-group-port/live_retry_control.py",
+    "bench/pari-class-group-port/check_live_retry_control.cjs",
+    "bench/pari-class-group-port/live_retry_control_audit.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Pinned PARI 2.17.4 buch2.c capacity and precision-transition policy"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "The resident cubic root now sizes factor-base owners from degree times the live prime count rather than an observed fixture KC. A source-transparent retry controller computes one next attempt from a live PRECI or cleanarch failure using pinned PARI 2.17.4 policy; it contains no known-success precision. CPython, generated JavaScript, GMP, and tagged focused checks agree.",
+    "risks": [
+      "The full precision-dependent logarithm/getfu suffix is not yet connected as an iterative root, so this component deliberately makes no terminal-precision or end-to-end completion claim.",
+      "Historical HNF and acceptance scratch caps outside the factor-base K owners remain experimental resource bounds documented by the resident-root audit."
+    ],
+    "next_steps": [
+      "Have the integration root allocate using pari_live_root_capacity_policy and call pari_live_retry_transition only after each executed attempt reports its live reason.",
+      "Connect precision-dependent embedding, logarithm, cleanarch, and getfu owners so runtime success, rather than 2176/2240 fixture knowledge, terminates the retry loop."
+    ]
+  }
+}
