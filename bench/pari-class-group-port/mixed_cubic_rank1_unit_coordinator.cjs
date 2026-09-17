@@ -23,6 +23,22 @@ function integers(value, length, label) {
     return String(entry);
   });
 }
+function multiply(left, right, tensor) {
+  const matrix = Array(9).fill(0n);
+  for (let basis = 0; basis < 3; basis += 1) for (let index = 0; index < 9; index += 1)
+    matrix[index] += left[basis] * tensor[9 * basis + index];
+  return Array.from({ length: 3 }, (_, row) =>
+    Array.from({ length: 3 }, (_, column) => matrix[3 * column + row] * right[column])
+      .reduce((sum, value) => sum + value, 0n));
+}
+function norm(value, tensor) {
+  const matrix = Array(9).fill(0n);
+  for (let basis = 0; basis < 3; basis += 1) for (let index = 0; index < 9; index += 1)
+    matrix[index] += value[basis] * tensor[9 * basis + index];
+  return matrix[0] * (matrix[4] * matrix[8] - matrix[7] * matrix[5]) -
+    matrix[3] * (matrix[1] * matrix[8] - matrix[7] * matrix[2]) +
+    matrix[6] * (matrix[1] * matrix[5] - matrix[4] * matrix[2]);
+}
 function argumentsOf(argv) {
   const values = {};
   for (let index = 2; index < argv.length; index += 2) {
@@ -45,16 +61,30 @@ function verifyOwner(owner, ancestry = null) {
   if (!expected) fail("unsupported mixed-cubic unit field");
   const clean = owner.cleanarch || {};
   integers(clean.kernelLogMultiples, expected.kernel, "log multiples");
+  integers(clean.acceptedRelationLattice, expected.kernel, "accepted relation lattice");
   integers(clean.bezoutTransform, expected.kernel, "Bezout transform");
   if (JSON.stringify(clean.kernelLogMultiples) !== JSON.stringify(expected.multiples) ||
+      JSON.stringify(clean.acceptedRelationLattice) !== JSON.stringify(clean.kernelLogMultiples) ||
+      clean.relationLatticeMatched !== true ||
       clean.gcd !== "1" || clean.primitiveRegulatorMultiple !== "1" ||
       clean.residualBound !== "2^-128" || !clean.allResidualsCertified)
     fail("rank-one cleanarch evidence changed");
   const factorback = owner.factorback || {};
+  const tensor = integers(factorback.multiplicationTensor, 27, "multiplication tensor").map(BigInt);
   integers(factorback.rawRelationCoefficients, expected.relations, "raw unit coefficients");
-  integers(factorback.exactUnit, 3, "exact unit");
-  integers(factorback.exactUnitBits, 3, "exact unit bit sizes");
-  if (!factorback.relationDependencyVerified || !["-1", "1"].includes(factorback.unitNorm))
+  const unit = integers(factorback.exactUnit, 3, "exact unit").map(BigInt);
+  const unitBits = integers(factorback.exactUnitBits, 3, "exact unit bit sizes");
+  const inverse = integers(factorback.exactInverse, 3, "exact inverse").map(BigInt);
+  integers(factorback.inverseProduct, 3, "unit inverse product");
+  if (!factorback.relationDependencyVerified || !["-1", "1"].includes(factorback.unitNorm) ||
+      factorback.inverseNorm !== factorback.unitNorm ||
+      norm(unit, tensor).toString() !== factorback.unitNorm ||
+      norm(inverse, tensor).toString() !== factorback.inverseNorm ||
+      JSON.stringify(unit.map(value => (value < 0n ? -value : value).toString(2).length.toString())) !==
+        JSON.stringify(unitBits) ||
+      multiply(unit, inverse, tensor).map(String).join(",") !== "1,0,0" ||
+      JSON.stringify(factorback.inverseProduct) !== '["1","0","0"]' ||
+      factorback.inverseVerified !== true)
     fail("exact unit factorback changed");
   if (JSON.stringify(owner.outcome) !== JSON.stringify({status: "success", precisionBits: 192,
       precisionRetry: false, fundamentalUnitDerived: true, usedFrozenFundamentalUnit: false}))

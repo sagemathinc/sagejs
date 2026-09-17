@@ -123,6 +123,29 @@ def _factorback(
     return _divide_exact(positive, negative, tensor)
 
 
+def _unit_inverse(
+    unit: tuple[int, int, int], tensor: list[int]
+) -> tuple[tuple[int, int, int], int]:
+    """Return the exact integral inverse and replay its defining product."""
+    matrix = [
+        sum(unit[k] * tensor[9 * k + index] for k in range(3)) for index in range(9)
+    ]
+    norm = _determinant3(matrix)
+    if norm not in (-1, 1):
+        raise MixedCubicRank1UnitFailure("factorback result is not a unit")
+    inverse = (
+        (matrix[4] * matrix[8] - matrix[7] * matrix[5]) // norm,
+        (matrix[2] * matrix[7] - matrix[1] * matrix[8]) // norm,
+        (matrix[1] * matrix[5] - matrix[2] * matrix[4]) // norm,
+    )
+    if _multiply(unit, inverse, tensor) != (1, 0, 0):
+        raise MixedCubicRank1UnitFailure("exact unit inverse did not replay")
+    inverse_norm = _norm(inverse, tensor)
+    if inverse_norm != norm:
+        raise MixedCubicRank1UnitFailure("exact unit inverse norm changed")
+    return inverse, inverse_norm
+
+
 def compose_mixed_cubic_rank1_unit(
     owner: dict[str, Any], ancestry: dict[str, Any]
 ) -> dict[str, Any]:
@@ -158,6 +181,13 @@ def compose_mixed_cubic_rank1_unit(
             )
         ratios.append(ratio)
         residuals.append(residual)
+    relation_lattice = _integers(
+        presentation.get("relationLattice"), kernel, "rank-one relation lattice"
+    )
+    if relation_lattice != ratios:
+        raise MixedCubicRank1UnitFailure(
+            "derived log multiples disagree with the accepted relation lattice"
+        )
     divisor, transform = _bezout(ratios)
     if divisor != 1 or sum(a * b for a, b in zip(ratios, transform, strict=True)) != 1:
         raise MixedCubicRank1UnitFailure("kernel log multiples are not primitive")
@@ -197,12 +227,15 @@ def compose_mixed_cubic_rank1_unit(
     norm = _norm(unit, tensor)
     if abs(norm) != 1:
         raise MixedCubicRank1UnitFailure("factorback result is not a unit")
+    inverse, inverse_norm = _unit_inverse(unit, tensor)
     return {
         "schema": SCHEMA,
         "fieldId": field_id,
         "ancestry": dict(ancestry),
         "cleanarch": {
             "kernelLogMultiples": _strings(ratios),
+            "acceptedRelationLattice": _strings(relation_lattice),
+            "relationLatticeMatched": True,
             "bezoutTransform": _strings(transform),
             "gcd": str(divisor),
             "residualBound": "2^-128",
@@ -212,11 +245,16 @@ def compose_mixed_cubic_rank1_unit(
             "primitiveRegulatorMultiple": "1",
         },
         "factorback": {
+            "multiplicationTensor": _strings(tensor),
             "rawRelationCoefficients": _strings(raw),
             "relationDependencyVerified": True,
             "exactUnit": _strings(list(unit)),
             "unitNorm": str(norm),
             "exactUnitBits": [abs(value).bit_length() for value in unit],
+            "exactInverse": _strings(list(inverse)),
+            "inverseNorm": str(inverse_norm),
+            "inverseProduct": ["1", "0", "0"],
+            "inverseVerified": True,
         },
         "outcome": {
             "status": "success",

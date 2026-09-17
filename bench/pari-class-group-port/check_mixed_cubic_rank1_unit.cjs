@@ -5,6 +5,7 @@
 // sagejs-test-platform: linux
 
 const assert = require("node:assert/strict");
+const crypto = require("node:crypto");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
@@ -44,6 +45,12 @@ try {
     assert(api.verifyOwner(owner, owner.ancestry));
     assert.deepEqual(owner.factorback.exactUnitBits, entry.bits);
     assert.equal(owner.factorback.unitNorm, "1");
+    assert.deepEqual(owner.cleanarch.acceptedRelationLattice,
+      owner.cleanarch.kernelLogMultiples);
+    assert.equal(owner.cleanarch.relationLatticeMatched, true);
+    assert.equal(owner.factorback.inverseNorm, owner.factorback.unitNorm);
+    assert.deepEqual(owner.factorback.inverseProduct, ["1", "0", "0"]);
+    assert.equal(owner.factorback.inverseVerified, true);
     let mutations = 0;
     const reject = mutation => {
       const changed = structuredClone(owner); mutation(changed);
@@ -51,15 +58,34 @@ try {
     };
     reject(value => { value.cleanarch.gcd = "2"; });
     reject(value => { value.cleanarch.kernelLogMultiples[0] = "1"; });
+    reject(value => { value.cleanarch.acceptedRelationLattice[0] = "1"; });
     reject(value => { value.factorback.unitNorm = "2"; });
+    reject(value => { value.factorback.multiplicationTensor[0] = "0"; });
+    reject(value => { value.factorback.exactUnit[0] = "0"; });
+    reject(value => { value.factorback.exactInverse[0] = "0"; });
+    reject(value => { value.factorback.inverseProduct[0] = "0"; });
     reject(value => { value.outcome.usedFrozenFundamentalUnit = true; });
     const bad = [...args]; bad[bad.indexOf("--presentation-sha256") + 1] = "0".repeat(64);
     assert.match(run(bad, 1).stderr, /presentation owner digest or mode changed/);
+    const changedPresentation = JSON.parse(fs.readFileSync(presentation.path));
+    changedPresentation.presentation.relationLattice[0] = "1";
+    const changedBytes = Buffer.from(`${JSON.stringify(changedPresentation)}\n`);
+    const changedPath = path.join(temporary, `changed-presentation-${entry.row}.json`);
+    fs.writeFileSync(changedPath, changedBytes, { mode: 0o444 });
+    const changedArgs = [...args];
+    changedArgs[changedArgs.indexOf("--presentation-owner") + 1] = changedPath;
+    changedArgs[changedArgs.indexOf("--presentation-sha256") + 1] =
+      crypto.createHash("sha256").update(changedBytes).digest("hex");
+    assert.match(run(changedArgs, 1).stderr,
+      /derived log multiples disagree with the accepted relation lattice/);
     summaries.push({ row: entry.row, presentationSha256: presentation.sha256,
       unitSha256: first.sha256, ownerBytes: first.bytes,
       kernelLogMultiples: owner.cleanarch.kernelLogMultiples,
       bezoutTransform: owner.cleanarch.bezoutTransform,
       exactUnitBits: owner.factorback.exactUnitBits, norm: owner.factorback.unitNorm,
+      exactInverseBits: owner.factorback.exactInverse.map(value =>
+        (BigInt(value) < 0n ? -BigInt(value) : BigInt(value)).toString(2).length),
+      inverseNorm: owner.factorback.inverseNorm,
       status: owner.outcome.status, precisionRetry: owner.outcome.precisionRetry,
       mutations });
   }
