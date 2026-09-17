@@ -1,0 +1,162 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "resident-exact-lifetime-campaign",
+  "title": "Resident exact scratch lifetime",
+  "lane": "native-compiler",
+  "status": "review",
+  "owner": "user",
+  "objective": "Coalesce and reuse exact scalar scratch across authenticated private call graphs, prove fallback and cleanup safety, and test the real prepared H1 root without changing its algorithm or outputs",
+  "base_commit": "4bcd3a1349a543e5080ea9fbac5f5a8108d9833a",
+  "claims": [
+    "tools/native-kernel/exact-analysis.cjs",
+    "tools/native-kernel/c-backend.cjs",
+    "tools/native-kernel/fmpz-backend.cjs",
+    "test/native-kernel.cjs",
+    "test/native-resident-exact-scratch-frame.cjs",
+    "bench/native_resident_exact_scratch_frame.py",
+    "bench/pari-class-group-port/h1_resident_exact_lifetime_benchmark.cjs",
+    "bench/NATIVE-COMPILER.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/pari-class-group-end-to-end-native-plan.md",
+    "bench/pari-class-group-port/pari_unified_complete_h1_root.py"
+  ],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "CPython and JavaScript dynamic same-source execution",
+      "GMP/fmpz native differential with exact H1 owner digests",
+      "malformed capacity alias overflow and exception controls"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "env SAGEJS_FLINT_PREFIX=/home/user/sagejs-worktrees/pari-class-group-e2e-integration/packages/flint/.native/prefix SAGEJS_TEST_FFI_ROOT=/home/user/sagejs-worktrees/pari-class-group-e2e-integration/packages/flint node --test test/native-resident-exact-scratch-frame.cjs"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/native-resident-exact-scratch-frame.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 0.775,
+      "started_at": "2026-09-17T10:25:20.054Z",
+      "commit": "4bcd3a1349a543e5080ea9fbac5f5a8108d9833a",
+      "workspace_fingerprint": "6f530c58d91f360ba43ec718c56eb6a1f59b3c84c22486f7c4c787dc6d79c5b8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_FLINT_PREFIX=/home/user/sagejs-worktrees/pari-class-group-e2e-integration/packages/flint/.native/prefix SAGEJS_TEST_FFI_ROOT=/home/user/sagejs-worktrees/pari-class-group-e2e-integration/packages/flint node --test test/native-resident-exact-scratch-frame.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.973,
+      "started_at": "2026-09-17T10:25:30.104Z",
+      "commit": "4bcd3a1349a543e5080ea9fbac5f5a8108d9833a",
+      "workspace_fingerprint": "6f530c58d91f360ba43ec718c56eb6a1f59b3c84c22486f7c4c787dc6d79c5b8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.857,
+      "started_at": "2026-09-17T10:25:38.451Z",
+      "commit": "4bcd3a1349a543e5080ea9fbac5f5a8108d9833a",
+      "workspace_fingerprint": "6f530c58d91f360ba43ec718c56eb6a1f59b3c84c22486f7c4c787dc6d79c5b8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 62.442,
+      "started_at": "2026-09-17T10:25:55.166Z",
+      "commit": "4bcd3a1349a543e5080ea9fbac5f5a8108d9833a",
+      "workspace_fingerprint": "6f530c58d91f360ba43ec718c56eb6a1f59b3c84c22486f7c4c787dc6d79c5b8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "prlimit --as=4294967296 pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 444.809,
+      "started_at": "2026-09-17T10:27:45.799Z",
+      "commit": "4bcd3a1349a543e5080ea9fbac5f5a8108d9833a",
+      "workspace_fingerprint": "6f530c58d91f360ba43ec718c56eb6a1f59b3c84c22486f7c4c787dc6d79c5b8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 635.699,
+      "started_at": "2026-09-17T10:36:04.110Z",
+      "commit": "4bcd3a1349a543e5080ea9fbac5f5a8108d9833a",
+      "workspace_fingerprint": "6f530c58d91f360ba43ec718c56eb6a1f59b3c84c22486f7c4c787dc6d79c5b8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 799.224,
+      "started_at": "2026-09-17T10:48:25.645Z",
+      "commit": "4bcd3a1349a543e5080ea9fbac5f5a8108d9833a",
+      "workspace_fingerprint": "edec28157ed71b195e907b71e570d5295bf7dd0671c538215845374cbedd675f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.223,
+      "started_at": "2026-09-17T11:02:11.797Z",
+      "commit": "4bcd3a1349a543e5080ea9fbac5f5a8108d9833a",
+      "workspace_fingerprint": "edec28157ed71b195e907b71e570d5295bf7dd0671c538215845374cbedd675f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 64.771,
+      "started_at": "2026-09-17T11:02:29.763Z",
+      "commit": "4bcd3a1349a543e5080ea9fbac5f5a8108d9833a",
+      "workspace_fingerprint": "edec28157ed71b195e907b71e570d5295bf7dd0671c538215845374cbedd675f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_FLINT_PREFIX=/home/user/sagejs-worktrees/pari-class-group-e2e-integration/packages/flint/.native/prefix SAGEJS_TEST_FFI_ROOT=/home/user/sagejs-worktrees/pari-class-group-e2e-integration/packages/flint node --test test/native-resident-exact-scratch-frame.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.998,
+      "started_at": "2026-09-17T11:03:40.461Z",
+      "commit": "4bcd3a1349a543e5080ea9fbac5f5a8108d9833a",
+      "workspace_fingerprint": "edec28157ed71b195e907b71e570d5295bf7dd0671c538215845374cbedd675f",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added authenticated acyclic private-call-graph GMP scratch frames with root-only flat allocation, borrower zeroing, whole-graph emitter validation, and unchanged dynamic fallback. Focused differential/error/fallback tests pass and H1 digest is unchanged. The allocation gate passed (99.52% fewer malloc+realloc events), but all fixed stage timing gates failed (1.26x to 1.69x versus the required 2x), so the campaign stopped without further tuning.",
+    "risks": [
+      "The mechanism is implemented only in the GMP C backend; fmpz parity was intentionally not attempted after the fixed performance gate failed.",
+      "test:changed completed merge/build/architecture checks but its unit tier initially stopped before native preparation because this lane had no local optional sagejs_flint.node. A subsequent full test:native prepared the addon but cannot run under the campaign's hard 4 GiB address-space cap: ASan needs a multi-terabyte shadow mapping and arena tests reserve a 64 GiB virtual envelope. The focused native test passes under the 4 GiB cap against the pinned FLINT prefix.",
+      "Linux x64 is measured; other supported targets retain ordinary generated fallback but were not built in this stopped campaign."
+    ],
+    "next_steps": [
+      "Reassess the dominant H1 costs before authorizing another campaign; allocation event count is not the main wall-time mechanism.",
+      "If this mechanism is retained, integrate it independently of its failed speed gate and add platform CI plus fmpz parity as separate bounded work."
+    ]
+  }
+}
