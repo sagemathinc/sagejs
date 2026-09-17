@@ -1,0 +1,86 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-internal-correspondence-completion",
+  "title": "Authentic h1 internal correspondence completion",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Compose the authentic h=1 presentation, exact units, torsion, and rigorous regulator into an honestly PARI-assumed internal-correspondence-complete replay while preserving public incompleteness and exact saturation requirements",
+  "base_commit": "176ee7b8bab3f86e54d6b32d1ac5a4123c49f776",
+  "claims": [
+    "bench/pari-class-group-port/internal_correspondence_completion.py",
+    "bench/pari-class-group-port/check_internal_correspondence_completion.cjs",
+    "bench/pari-class-group-port/internal_correspondence_completion_audit.md"
+  ],
+  "dependencies": [
+    "pari-regulator-acceptance-replay"
+  ],
+  "references": [
+    "agents/pari-class-group-end-to-end-native-plan.md"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Presentation authority, authentic h1 unit success, exact torsion authority, and rigorous regulator cold replay"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --check bench/pari-class-group-port/check_internal_correspondence_completion.cjs",
+    "env SAGEJS_REPLAY_RUNTIME_ROOT=/home/user/sagejs-worktrees/pari-class-group-e2e-integration node bench/pari-class-group-port/check_internal_correspondence_completion.cjs",
+    "python3 -m py_compile bench/pari-class-group-port/internal_correspondence_completion.py",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --check bench/pari-class-group-port/check_internal_correspondence_completion.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.029,
+      "started_at": "2026-09-17T03:03:59.040Z",
+      "commit": "176ee7b8bab3f86e54d6b32d1ac5a4123c49f776",
+      "workspace_fingerprint": "a92d2f2adb86e44ab0a4842b3415a32e94044c98ffab689c7a6ec653b1a82adc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -m py_compile bench/pari-class-group-port/internal_correspondence_completion.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.06,
+      "started_at": "2026-09-17T03:03:59.710Z",
+      "commit": "176ee7b8bab3f86e54d6b32d1ac5a4123c49f776",
+      "workspace_fingerprint": "a92d2f2adb86e44ab0a4842b3415a32e94044c98ffab689c7a6ec653b1a82adc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_REPLAY_RUNTIME_ROOT=/home/user/sagejs-worktrees/pari-class-group-e2e-integration node bench/pari-class-group-port/check_internal_correspondence_completion.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.64,
+      "started_at": "2026-09-17T03:04:00.411Z",
+      "commit": "176ee7b8bab3f86e54d6b32d1ac5a4123c49f776",
+      "workspace_fingerprint": "a92d2f2adb86e44ab0a4842b3415a32e94044c98ffab689c7a6ec653b1a82adc",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Composed the exact 66-ideal/73-relation presentation, h=1 Smith state, exact rank-two units, exact torsion, and rigorous regulator into one cold-replayable PARI-assumed internal correspondence completion. The terminal schema makes correspondence_complete true while public completion, standard-adapter eligibility, and unit saturation remain false.",
+    "risks": [
+      "The claim is limited to the qualified h=1 sentinel and explicitly inherits PARI 2.17.4's GRH-dependent factor-base policy and heuristic floating acceptance.",
+      "A full-rank rigorous regulator is not an index-one certificate; public unit and class-unit completion remain unavailable."
+    ],
+    "next_steps": [
+      "Gate this focused composition after presentation-authority, torsion-authority, regulator-acceptance-replay, and authentic-h1-unit-success in the integration replay graph.",
+      "For public completion, produce and replay a UnitSaturationIndexCertificate/ClassUnitSaturationRecord with unique hR index one and the standard proof-stage payload."
+    ]
+  }
+}
