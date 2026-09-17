@@ -161,3 +161,61 @@ negative controls independently mutate the source, cache, core, and addon
 identities and must all fail. Backend and mutation owner sets remain isolated
 in sequential child processes. This uses the one already-built fused artifact;
 it neither rebuilds nor changes the mathematical/timed boundary.
+
+The authorized direct-addon correctness gate also hit the same fixed cap. It
+performed no compile or relowering, but exited `-9` after `6.043 s` at
+`4,227,896 KiB`; stdout and stderr were empty. Its resource receipt is
+`/scratch/sagejs-runtime/h1-matched-flag-zero-fused/native-check-direct-resource.json`
+with SHA-256
+`5694ceabc7d3cc77ed9ec14bb85ef8ba55971e337de16c796c2f7d772c3df415`.
+The rapid failure localizes the remaining capacity problem to loading/compiling
+the generated 15,146,245-byte JavaScript wrapper/fallback module (or entering
+its first backend child), not C compilation or mathematical execution. The
+14 MB native addon itself is already linked and authenticated, but the current
+generated module couples it to a very large ordinary-JavaScript fallback.
+
+No further correctness rerun or paired timing was attempted. A subsequent
+compiler change must separate the lightweight native-addon loader/ABI wrapper
+from the generated JavaScript fallback so native-only validation can load the
+fused addon without asking V8 to compile the complete private graph.
+
+## Authenticated thin-cache loader
+
+The capacity diagnosis is now conclusive at load-only scope. Requiring the
+14.0 MB addon through the new general
+`tools/native-kernel/thin-cache-loader.cjs` path leaves the process at only
+`54,744 KiB` RSS. The 15.1 MB generated `index.cjs` is absent from
+`require.cache`. In contrast, the prior generated-module process crossed
+`4,227,896 KiB` in 6.043 seconds before producing output. Thus the generated
+JavaScript fallback parse/compile, rather than the addon, accounts for
+essentially the entire observed 4 GiB spike.
+
+The thin loader is not an H1-specific mathematical wrapper. It implements the
+compiler's existing packed boundary generically: `IntegerBuffer` is the public
+`Int32Array` sizes plus `BigUint64Array` limbs record; fixed-width buffers are
+the corresponding typed arrays; scalar and arity checks precede one raw N-API
+`$gmp` call. The source-identical generated JavaScript fallback remains
+available through an explicitly lazy `loadDynamicFallback` method, but native
+loading does not parse it.
+
+Before loading an addon, the loader authenticates the ordinary-Python source,
+small cache discovery index, native ABI, full manifest, addon, and normalized
+entry signature. File hashes are streamed through a fixed 1 MB buffer, so the
+116 MB manifest is never materialized as a JavaScript string. Focused negative
+controls independently mutate the source hash, cache key, manifest hash, addon
+hash, and 460-parameter signature hash; all five are rejected. The pinned
+identities are:
+
+- manifest SHA-256
+  `2e17ea617106bcfe30d64e35bde06b1649d49d034bc2540c9aa28104ba592235`;
+- signature SHA-256
+  `127398018f82c3171e40b25a9d5dbbcb5f4661437395dda53203952c8d3eaf81`.
+
+The next bounded correctness gate should therefore use only the thin native
+entry for the GMP success and fail-atomic mutation children. CPython fallback
+semantics remain covered by the source-level fallback audit; parsing the giant
+generated JavaScript fallback in that gate would recreate the diagnosed
+capacity failure and is intentionally excluded. A conservative prediction is
+that loader overhead is below 64 MiB RSS, leaving more than 4.1 GiB of the
+fixed process-tree envelope for authenticated owners and mathematical work.
+No new heavy correctness or timing run has yet been attempted.
