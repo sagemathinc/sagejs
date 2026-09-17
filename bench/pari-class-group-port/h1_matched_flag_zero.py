@@ -85,9 +85,18 @@ def serialize_pre_hnf_relation_prefix(
     relation_count: int,
     relation_width: int,
     relations: Sequence[Any],
+    factor_descriptor_count: int,
+    factor_descriptor_degree: int,
+    factor_descriptors: Sequence[Any],
     generator_count: int,
     generator_degree: int,
     generators: Sequence[Any],
+    metadata_count: int,
+    metadata_width: int,
+    relation_metadata: Sequence[Any],
+    log_count: int,
+    log_place_count: int,
+    log_embeddings: Sequence[Any],
     counters: Mapping[str, Any],
     terminal_rng_state: Sequence[Any],
 ) -> dict[str, Any]:
@@ -104,16 +113,55 @@ def serialize_pre_hnf_relation_prefix(
         raise ValueError("run_id must be nonempty")
     relation_count = _integer(relation_count, "relation_count")
     relation_width = _integer(relation_width, "relation_width")
+    descriptor_count = _integer(factor_descriptor_count, "factor_descriptor_count")
+    descriptor_degree = _integer(factor_descriptor_degree, "factor_descriptor_degree")
     generator_count = _integer(generator_count, "generator_count")
     generator_degree = _integer(generator_degree, "generator_degree")
-    if min(relation_count, relation_width, generator_count, generator_degree) < 1:
+    metadata_count = _integer(metadata_count, "metadata_count")
+    metadata_width = _integer(metadata_width, "metadata_width")
+    log_count = _integer(log_count, "log_count")
+    log_place_count = _integer(log_place_count, "log_place_count")
+    if (
+        min(
+            relation_count,
+            relation_width,
+            descriptor_count,
+            descriptor_degree,
+            generator_count,
+            generator_degree,
+            metadata_count,
+            metadata_width,
+            log_count,
+            log_place_count,
+        )
+        < 1
+    ):
         raise ValueError("relation-prefix dimensions must be positive")
+    if descriptor_count != relation_width:
+        raise ValueError("factor descriptors must cover every relation row")
+    if generator_count != relation_count or metadata_count != relation_count:
+        raise ValueError("relation sidecars must cover every relation")
+    if log_count != relation_count:
+        raise ValueError("log embeddings must cover every relation")
     relation_cells = relation_count * relation_width
+    descriptor_width = 1 + descriptor_degree * descriptor_degree
+    descriptor_cells = descriptor_count * descriptor_width
     generator_cells = generator_count * generator_degree
-    if relation_cells + generator_cells > _MAX_SERIALIZED_CELLS:
+    metadata_cells = metadata_count * metadata_width
+    log_width = 7 * log_place_count
+    log_cells = log_count * log_width
+    if (
+        relation_cells + descriptor_cells + generator_cells + metadata_cells + log_cells
+        > _MAX_SERIALIZED_CELLS
+    ):
         raise ValueError("relation prefix exceeds its cell cap")
     relation_values = _integers(relations, relation_cells, "relations")
+    descriptor_values = _integers(
+        factor_descriptors, descriptor_cells, "factor_descriptors"
+    )
     generator_values = _integers(generators, generator_cells, "generators")
+    metadata_values = _integers(relation_metadata, metadata_cells, "relation_metadata")
+    log_values = _integers(log_embeddings, log_cells, "log_embeddings")
     if not isinstance(counters, Mapping) or not counters:
         raise ValueError("relation counters must be a nonempty mapping")
     canonical_counters: dict[str, str] = {}
@@ -134,11 +182,32 @@ def serialize_pre_hnf_relation_prefix(
             [str(value) for value in relation_values[start : start + relation_width]]
             for start in range(0, relation_cells, relation_width)
         ],
+        "factor_descriptor_shape": [str(descriptor_count), str(descriptor_width)],
+        "factor_descriptor_layout": "factor-major; norm then row-major ideal",
+        "factor_descriptors": [
+            [
+                str(value)
+                for value in descriptor_values[start : start + descriptor_width]
+            ]
+            for start in range(0, descriptor_cells, descriptor_width)
+        ],
         "generator_shape": [str(generator_count), str(generator_degree)],
         "generator_layout": "relation-major",
         "generators": [
             [str(value) for value in generator_values[start : start + generator_degree]]
             for start in range(0, generator_cells, generator_degree)
+        ],
+        "metadata_shape": [str(metadata_count), str(metadata_width)],
+        "metadata_layout": "relation-major; token, relorig, relaut",
+        "relation_metadata": [
+            [str(value) for value in metadata_values[start : start + metadata_width]]
+            for start in range(0, metadata_cells, metadata_width)
+        ],
+        "log_shape": [str(log_count), str(log_place_count), "7"],
+        "log_layout": "relation-major; place-major packed real/complex",
+        "log_embeddings": [
+            [str(value) for value in log_values[start : start + log_width]]
+            for start in range(0, log_cells, log_width)
         ],
         "counters": canonical_counters,
         "terminal_rng_state": [str(value) for value in rng],
