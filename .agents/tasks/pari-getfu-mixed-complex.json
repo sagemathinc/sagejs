@@ -43,8 +43,15 @@
   ],
   "runs": [],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Pinned two actual mixed-signature quartic getfu boundaries and translated the connected PARI 2.17.4 mpcosm1, mpaut, mpsincos, mpsincosm1, and cxexp real-component graph into ordinary Python. The CPython path agrees bit-for-bit on all 12 boundary entries for each function, including exact-zero, 64-bit, ordinary Taylor, and severe pi-cancellation cases whose outputs grow to 640 bits.",
+    "risks": [
+      "The shared host was compile-saturated, so JavaScript/GMP/tagged native receipts remain pending even though the executable checker is ready.",
+      "The prepared mpcosm1 cut explicitly rejects the source's exponent-greater-than-30 quotient branch and working precision beyond 2048 bits; neither occurs in the frozen getfu boundary.",
+      "This prerequisite stops at exact complex exponentiation. General 4x4 RgM_solve_realimag and quartic algebraic reconstruction/inverse/norm authentication remain downstream."
+    ],
+    "next_steps": [
+      "Run check_getfu_mixed_complex.cjs once a native compiler slot opens and record exact JavaScript, GMP, and tagged receipts.",
+      "Compose the exact cxexp boundary with a separately frozen 4x4 real/imag solve and quartic unit reconstruction lane."
+    ]
   }
 }
