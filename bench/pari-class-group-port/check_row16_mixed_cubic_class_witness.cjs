@@ -17,7 +17,7 @@ const presentationCoordinator = path.join(__dirname, "row16_mixed_cubic_owner_co
 const witnessCoordinator = path.join(__dirname, "row16_mixed_cubic_class_witness_coordinator.cjs");
 const w0 = "/scratch/sagejs-pari-development-panel-a998/panel-16-aabb93f0d6139f93.json";
 const w0Sha = "8ec0387525e4e3f34eb6431ede35b7438b19c4a8f208dc76da682821a14756ce";
-const presentationSha = "86bba65707bcf7a9a6615531d2cb0b7d8be967d4b5346df567df728d4fe732ad";
+const presentationSha = "e51d45b7a994f09bbb14ff7a707ca71d053b94bf924596f435e0f84debc97185";
 const sha = bytes => crypto.createHash("sha256").update(bytes).digest("hex");
 
 function run(args, expected = 0) {

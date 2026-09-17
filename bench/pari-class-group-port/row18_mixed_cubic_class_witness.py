@@ -85,9 +85,10 @@ def compose_row18_cyclic_class_witness(
     owner: dict[str, Any], ancestry: dict[str, Any]
 ) -> dict[str, Any]:
     """Select and prove one source factor of exact order 18."""
-    if owner.get("schema") != PRESENTATION_SCHEMA or owner.get("field", {}).get(
-        "id"
-    ) != FIELD_ID:
+    if (
+        owner.get("schema") != PRESENTATION_SCHEMA
+        or owner.get("field", {}).get("id") != FIELD_ID
+    ):
         raise Row18ClassWitnessFailure("wrong row-18 presentation owner")
     dimensions = owner.get("dimensions", {})
     rows = int(dimensions.get("factorBaseSize", 0))
@@ -112,7 +113,9 @@ def compose_row18_cyclic_class_witness(
             chosen = source
             inverse_column = solution
     if chosen < 0:
-        raise Row18ClassWitnessFailure("presentation has no factor coordinate of order 18")
+        raise Row18ClassWitnessFailure(
+            "presentation has no factor coordinate of order 18"
+        )
     presentation_coefficients = [int(ORDER * value) for value in inverse_column]
     target = [ORDER if row == chosen else 0 for row in range(rows)]
     if [
@@ -150,9 +153,7 @@ def compose_row18_cyclic_class_witness(
         for row in range(rows)
     ] != target:
         raise Row18ClassWitnessFailure("raw order relation failed")
-    table = _integers(
-        owner.get("field", {}).get("multiplicationTensor"), 27, "tensor"
-    )
+    table = _integers(owner.get("field", {}).get("multiplicationTensor"), 27, "tensor")
     generators = _integers(
         owner.get("relations", {}).get("principalGenerators"),
         3 * columns,

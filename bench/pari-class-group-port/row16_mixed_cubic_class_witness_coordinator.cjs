@@ -10,7 +10,7 @@ const presentationApi = require("./row16_mixed_cubic_owner_coordinator.cjs");
 const ROOT = path.resolve(__dirname, "../..");
 const SOURCE = path.join(__dirname, "row16_mixed_cubic_class_witness.py");
 const SCHEMA = "sagejs.pari-class-group/row16-mixed-cubic-class-witness-v1";
-const PRESENTATION_SHA256 = "86bba65707bcf7a9a6615531d2cb0b7d8be967d4b5346df567df728d4fe732ad";
+const PRESENTATION_SHA256 = "e51d45b7a994f09bbb14ff7a707ca71d053b94bf924596f435e0f84debc97185";
 const INTEGER = /^-?(0|[1-9][0-9]*)$/;
 const DIGEST = /^[0-9a-f]{64}$/;
 

@@ -79,9 +79,7 @@ def _raw_relations_and_logs(
             generators.extend([_exported_integer(alpha, "principal generator"), 0, 0])
             scalar_prefix += 1
         else:
-            generators.extend(
-                _exported_vector(alpha, DEGREE, "principal generator")
-            )
+            generators.extend(_exported_vector(alpha, DEGREE, "principal generator"))
     matrix_m: list[int] = []
     matrix_p: list[int] = []
     matrix_e: list[int] = []
@@ -216,7 +214,9 @@ def _factor_base_and_relations_dynamic(
         product = identity
         row = records[rows * column : rows * (column + 1)]
         if any(exponent < 0 or exponent > 16 for exponent in row):
-            raise MixedCubicPresentationFailure("relation exponent left retained domain")
+            raise MixedCubicPresentationFailure(
+                "relation exponent left retained domain"
+            )
         for index, exponent in enumerate(row):
             for _ in range(exponent):
                 product = _multiply_ideals(
@@ -379,8 +379,7 @@ def _source_presentation(
     for column in range(kernel):
         for row in range(rows):
             if sum(
-                records[source * rows + row]
-                * raw_to_kernel[column * columns + source]
+                records[source * rows + row] * raw_to_kernel[column * columns + source]
                 for source in range(columns)
             ):
                 raise MixedCubicPresentationFailure("raw-to-kernel map is not a kernel")
@@ -391,8 +390,7 @@ def _source_presentation(
     ]
     presentation = [
         sum(
-            records[source * rows + row]
-            * relation_map[column * columns + source]
+            records[source * rows + row] * relation_map[column * columns + source]
             for source in range(columns)
         )
         for column in range(rows)
@@ -542,14 +540,12 @@ def _retry_raw_transform(
     for target in range(targets):
         work_base = target * (width + old_b)
         previous_base = target * old_columns
-        previous[
-            previous_base + zero_prefix : previous_base + zero_prefix + old_h
-        ] = work[work_base + new_columns : work_base + new_columns + old_h]
-        previous[
-            previous_base + zero_prefix + old_h : previous_base + old_columns
-        ] = work[
-            work_base + new_columns + old_h : work_base + width + old_b
-        ]
+        previous[previous_base + zero_prefix : previous_base + zero_prefix + old_h] = (
+            work[work_base + new_columns : work_base + new_columns + old_h]
+        )
+        previous[previous_base + zero_prefix + old_h : previous_base + old_columns] = (
+            work[work_base + new_columns + old_h : work_base + width + old_b]
+        )
         for appended in range(new_columns):
             coefficient = work[work_base + appended]
             raw[target * columns + old_columns + appended] = coefficient
@@ -648,7 +644,9 @@ def compose_one_pass_mixed_cubic_presentation(
         raise MixedCubicPresentationFailure("W0 is not a one-pass accepted owner")
     prepared = _event(events, "prepared")
     factor = _event(events, "factor_base")
-    rows = len(_exported_vector(factor.get("perm"), len(factor["perm"]["values"]), "perm"))
+    rows = len(
+        _exported_vector(factor.get("perm"), len(factor["perm"]["values"]), "perm")
+    )
     records, generators, logs, scalar_prefix = _raw_relations_and_logs(
         hnfs[0], prepared, rows
     )
@@ -659,7 +657,10 @@ def compose_one_pass_mixed_cubic_presentation(
     )
     expected_c = _packed_matrix(hnfs[0].get("exactC"), PLACES, columns, "HNF C")
     expected_perm = _exported_vector(hnfs[0].get("perm"), rows, "HNF perm")
-    if replay["transformedLogs"] != expected_c or replay["terminalPermutation"] != expected_perm:
+    if (
+        replay["transformedLogs"] != expected_c
+        or replay["terminalPermutation"] != expected_perm
+    ):
         raise MixedCubicPresentationFailure("translated HNF differs from retained W0")
     exact_w_value = hnfs[0].get("exactW")
     smith_dimension = len(exact_w_value.get("values", []))
@@ -683,7 +684,9 @@ def compose_one_pass_mixed_cubic_presentation(
     }
     computed_answer = {"classNumber": replay["classNumber"], "invariants": invariants}
     if computed_answer != expected_answer:
-        raise MixedCubicPresentationFailure("computed presentation differs from final answer")
+        raise MixedCubicPresentationFailure(
+            "computed presentation differs from final answer"
+        )
     embedding_m = _prepared_triples(prepared.get("embeddingM"), 9, "embeddingM")
     embedding_g = _prepared_triples(prepared.get("embeddingG"), 9, "embeddingG")
     kernel = columns - rows
@@ -796,7 +799,9 @@ def compose_two_pass_mixed_cubic_presentation(
         or len(acceptances) != 2
         or [entry.get("code") for entry in acceptances] != [1, 0]
     ):
-        raise MixedCubicPresentationFailure("W0 is not one rejected and one accepted pass")
+        raise MixedCubicPresentationFailure(
+            "W0 is not one rejected and one accepted pass"
+        )
     prepared = _event(events, "prepared")
     factor = _event(events, "factor_base")
     rows = len(factor.get("perm", {}).get("values", []))
@@ -814,7 +819,9 @@ def compose_two_pass_mixed_cubic_presentation(
         or initial_logs != logs[: LOG_STRIDE * initial_columns]
         or initial_scalars != scalar_prefix
     ):
-        raise MixedCubicPresentationFailure("retry does not extend the first exact prefix")
+        raise MixedCubicPresentationFailure(
+            "retry does not extend the first exact prefix"
+        )
     initial = _source_presentation(
         initial_records,
         initial_logs,
@@ -822,26 +829,22 @@ def compose_two_pass_mixed_cubic_presentation(
         rows,
         subfactor_count,
     )
-    if (
-        initial["transformedLogs"]
-        != _packed_matrix(hnfs[0].get("exactC"), PLACES, initial_columns, "first C")
-        or initial["terminalPermutation"]
-        != _exported_vector(hnfs[0].get("perm"), rows, "first perm")
+    if initial["transformedLogs"] != _packed_matrix(
+        hnfs[0].get("exactC"), PLACES, initial_columns, "first C"
+    ) or initial["terminalPermutation"] != _exported_vector(
+        hnfs[0].get("perm"), rows, "first perm"
     ):
         raise MixedCubicPresentationFailure("first rejected HNF differs from W0")
     stage = _append_hnf(initial, records, logs, rows)
-    if (
-        stage[42]
-        != _packed_matrix(hnfs[1].get("exactC"), PLACES, columns, "terminal C")
-        or stage[8] != _exported_vector(hnfs[1].get("perm"), rows, "terminal perm")
-    ):
+    if stage[42] != _packed_matrix(
+        hnfs[1].get("exactC"), PLACES, columns, "terminal C"
+    ) or stage[8] != _exported_vector(hnfs[1].get("perm"), rows, "terminal perm"):
         raise MixedCubicPresentationFailure("accepted retry HNF differs from W0")
     kernel_map, relation_map, _ = _retry_raw_transform(initial, stage, records, rows)
     kernel = columns - rows
     presentation = [
         sum(
-            records[source * rows + row]
-            * relation_map[column * columns + source]
+            records[source * rows + row] * relation_map[column * columns + source]
             for source in range(columns)
         )
         for column in range(rows)
