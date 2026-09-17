@@ -4,13 +4,13 @@ Derived from `src/kernel/none/mp_indep.c:mulrrz_i`, `mulrrz_3`, and
 `mulrrz_end`. Copyright (C) The PARI group. GPL-2.0-or-later; without
 warranty. See repository LICENSE.
 
-This represents only the short-product branch with 64-bit words. It is not
-a general PARI real runtime. The one-word branch uses portable half-word
-machine arithmetic; longer products still use exact Python integers rather
-than PARI's machine carry intrinsics. That representation difference must be
-measured, not called compiler overhead
-without a same-representation control. Squares have a separate upstream
-algorithm and must not be routed here merely because their values agree.
+This represents PARI's short-product branch with 64-bit words and the
+full-integer product selected above the pinned host's 3,520-bit crossover. It is not a
+general PARI real runtime. The one-word branch uses portable half-word machine
+arithmetic; the large branch deliberately spells the backend multiplication as
+ordinary Python integer multiplication, then performs PARI's normalization and
+rounding in readable Python. Squares have a separate upstream algorithm and
+must not be routed here merely because their values agree.
 """
 
 from sagejs.native import IntegerBuffer, checked_uint64, native, uint64
@@ -245,9 +245,13 @@ def pari_short_product(
 
     Nonzero inputs represent `m * 2**(expo + 1 - precision)` with a full
     normalized mantissa. Zero retains its stored exponent and uses precision
-    zero. The prototype admits at most 2,048 bits per operand, below the pinned
-    short-product crossover. The final 64 bits are reserved for the log(2)
-    construction guard; unsupported inputs fail explicitly.
+    zero. Above the pristine x86-64 build's 3,520-bit `MULRR_MULII_LIMIT`,
+    translate `mulrrz_int`: multiply the shorter
+    mantissa by either the equally sized mantissa or the leading shorter-width
+    plus one guard word of the longer mantissa, then apply `mulrrz_end`'s
+    normalization and round-to-nearest guard-bit rule. The final 1,024 bits of
+    the admitted range are reserved for the log(2) construction guard;
+    unsupported inputs fail explicitly.
     """
     if mx == 0 or my == 0:
         return 0, 0, ex + ey
@@ -272,12 +276,33 @@ def pari_short_product(
         if negative:
             result = -result
         return result, precision, exponent
-    # Validation above bounds these word counts by 38. Keep loop bookkeeping
-    # machine-sized, as in PARI; mantissas/products remain exact integers.
     nx = checked_uint64(px // 64)
     ny = checked_uint64(py // 64)
     one = checked_uint64(1)
     word_bits = checked_uint64(64)
+    full_product_limit = checked_uint64(3520)
+    if px > full_product_limit:
+        # PARI's `mulrrz_int` asks `muliispec_mirror` for all shorter words and,
+        # for unequal precisions, exactly one additional leading word of the
+        # longer operand.  Bits below that word cannot affect the retained
+        # mantissa or its guard word and are intentionally not multiplied.
+        unequal = 0
+        if px < py:
+            unequal = 1
+            my >>= py - px - 64
+        product = mx * my
+        bits = product.bit_length()
+        exponent = ex + ey + bits - 2 * px + 1 - 64 * unequal
+        discard = bits - px
+        result = (product + (1 << (discard - 1))) >> discard
+        if result.bit_length() > px:
+            result >>= 1
+            exponent += 1
+        if negative:
+            result = -result
+        return result, px, exponent
+    # Keep short-branch loop bookkeeping machine-sized, as in PARI;
+    # mantissas/products remain exact integers.
     # Select the same unsigned word as remainder modulo 2**64, without
     # requesting general integer division from the native backend.
     word_mask = (1 << 64) - 1
