@@ -20,12 +20,17 @@ One prepared totally real cubic,
 The last distinction is essential. PARI agreement and its assumed analytic
 policy do not constitute Sage.js completion or certification.
 
-The saved seven-pair development-host diagnostic has median times
-`2492.960 ms` for Sage.js and `75.674 ms` for PARI 2.17.4, a `32.94x` ratio.
-It is explicitly unqualified. Both arms were then charged wholly to residual,
-so its attributed-gap fraction is zero. Commit `df3cad1fc` added a real native
-exclusive stage clock, but no matched native/PARI stage receipt has yet been
-published.
+The newer seven-pair development-host diagnostic has 14 samples per
+implementation and median complete-root times of `942.830 ms` for Sage.js and
+`11.488 ms` for PARI 2.17.4, an `82.07x` ratio. It is explicitly unqualified.
+Its raw receipt has SHA-256
+`45f778c300a0a51a6b3a039693d1a3b9a423afe9c5e4e7bde8f2a8eab1e1306f`
+and records clean commit `68a90847708e2fe49ac9b07c13e51d5c53b31969`.
+Both implementations now have real exclusive source-local duration partitions,
+but their source cuts are not proved to be identical and therefore must not be
+compared stage by stage. Within the Sage.js root, the median partitions are
+`626.123 ms` for unit/regulator, `251.142 ms` for relation/retry, `64.037 ms`
+for sparse HNF/SNF, `0.100 ms` for honesty/final, and `0.011 ms` unattributed.
 
 The honest predeclared campaign outcome at this checkpoint is therefore **D**.
 The correctness prerequisite for Outcome C exists, but the required 80% gap
@@ -38,26 +43,29 @@ attribution does not.
 | 0 — canonical spine | Partial | Required compiler and port histories are ancestors; pinned PARI 2.17.4 replay driver exists; architecture gate passes at `ba140b214`. | Publish a fresh durable full Phase-0 receipt at the combined commit and record the toolchain/resource ledger. |
 | 1 — observability and ladder | Partial | Four-plus-twelve identities and the 24-field qualification population are frozen; all 16 development PARI traces are exported and hashed. | Natural random-relation, successful honesty, and precision coverage are absent from the performance population; Sage.js does not execute all 16 end to end. |
 | 2 — relation/retry | Partial | Exact cubic collection, quartic repeated nonempty-`W` HNF appends, and isolated random-relation corridors exist. | Generic capacity growth, factor-base enlargement, natural random fallback, and all-sentinel closure remain. |
-| 3 — exact envelope | Partial | H1 full Smith replay and field-3 `[2,2]` relation/Smith state exist with provenance. | The full 301-column nontrivial transform and live class-generator suffix are not yet published; the 12-field envelope is open. |
-| 4 — units/precision | Partial | The real H1 cubic performs exact source-derived units and retries from 192 to 2304 bits. | Mixed-quartic unit leaves are not joined to the live field-3 owners, and the development panel is open. |
-| 5 — honesty/final | Partial | One atomic H1 internal final result and mutation/replay contract exist. | Its class group is trivial and honesty is an equal-bound skip. Nontrivial generators, mixed units, unequal-bound successful honesty, and general final replay remain. |
-| 6 — qualification | Missing | Residual-only unqualified seven-pair diagnostic is reproducible. | Mutually exclusive matched stage attribution and the frozen 24-field qualification have not run. |
+| 3 — exact envelope | Partial | H1 full Smith replay and field-3 `[2,2]` relation/Smith state exist. The field-3 live process retains and independently cold-replays all 186,560 exact cells required for the 288-by-301 presentation, factor-base ideals, generators, logs, provenance, permutations, and RNG/control state. | Decode those owners into a replayed full presentation, align it with the compact suffix, and publish exact generator-order and arbitrary-ideal witnesses; the 12-field envelope is open. |
+| 4 — units/precision | Partial | The real H1 cubic performs exact source-derived units and retries from 192 to 2304 bits. The authentic mixed-quartic class logs now pass packed `cleanarch` across CPython, JavaScript, GMP, tagged, and pristine PARI. | The mixed-quartic `getfu` path still returns PRECI at 192 bits. Pristine PARI succeeds by 153024 bits, so a neutral high-precision owner/re-log retry and the development panel remain open. |
+| 5 — honesty/final | Partial | One atomic H1 internal final result and mutation/replay contract exist. A separate predeclared unequal-bound degree-five path authentically executes the successful six-ideal `be_honest` schedule with transactional rejection. | The H1 class group is trivial and its honesty path is an equal-bound skip. Nontrivial generator witnesses, mixed units, and a joined general final replay remain. |
+| 6 — qualification | Partial | A real mutually exclusive seven-pair matched diagnostic conserves each root and leaves only `0.011 ms` median unattributed in Sage.js. | Source stage cuts are not cross-implementation-identical, the 80% cross-source gap attribution gate remains unmet, and the frozen 24-field qualification has not run. |
 
 ## Next falsifiable cuts
 
-1. Finish the PARI 2.17.4 derivative clock with ordered exclusive visits, wire
-   the native clock into the matched runner, and publish a seven-pair receipt.
-   The receipt must conserve each inclusive root exactly and must not invent
-   ordered segments from aggregate totals.
+1. Decode and replay the newly authenticated full field-3 owners, reconstruct
+   the full relation presentation, align its Smith coordinates with the
+   published `[2,2]` suffix, and publish exact generator-order plus one
+   arbitrary-ideal receipt.
 2. Connect the live nontrivial mixed quartic
    `x^4 - 2000022*x - 2000042` through its existing signed `genback`, Smith,
    mixed `nf_cxlog`/`getfu`, class-generator, `cleanarch`, and final replay
    leaves. Its authenticated live endpoint has 288 factor-base rows, 301
    relations, `H = diag(2,2)`, and class invariants `[2,2]`.
-3. Preserve the full relation/HNF provenance and exact generator-order
+3. Lift the neutral precision-resource graph to at least the proved PARI
+   success bound of 153024 bits, regenerate precision-dependent embeddings and
+   logs from the retained exact owners, and rerun `cleanarch`/`getfu` without
+   answer-derived transformations.
+4. Preserve the full relation/HNF provenance and exact generator-order
    witnesses. A compact identity witness or a rebuilt final-answer fixture is
-   not a valid substitute.
-4. After those cuts, reassess the next development field from the frozen
+   not a valid substitute. After those cuts, reassess the next development field from the frozen
    ladder. Do not broaden by selecting easier fields.
 
 ## Resource state
@@ -65,4 +73,3 @@ attribution does not.
 Rebuildable caches and inactive generated worktree products were cleaned before
 this checkpoint. Active integration and lane artifacts were preserved. Bulky
 corpus and replay artifacts remain under project-scoped `/scratch` storage.
-
