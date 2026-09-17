@@ -6,7 +6,29 @@ const assert = require("node:assert/strict");
 const { readFileSync } = require("node:fs");
 const { join } = require("node:path");
 const test = require("node:test");
+const { runInNewContext } = require("node:vm");
 const { createSage } = require("../dist/tools/kernel.js");
+
+test("native positional defaults stay live and preserve missing errors", () => {
+  const source = readFileSync(join(__dirname, "..", "src", "baselib", "errors.py"), "utf8");
+  const match = source.match(
+    /^def ρσ_positional_default\(([^)]*)\)\s*->\s*Any:[^]*?return r"""%js ([^]*?)"""/m,
+  );
+  assert.ok(match);
+  const parameters = match[1].replace(/:\s*[^,]+/g, "");
+  const positionalDefault = runInNewContext(
+    `(function(${parameters}) {return ${match[2]};})`,
+    { ρσ_function_argument_error: message => new TypeError(message) },
+  );
+  const target = { __defaults__: [3, 5] };
+  assert.equal(positionalDefault(target, 2, "left"), 3);
+  assert.equal(positionalDefault(target, 1, "right"), 5);
+  target.__defaults__ = [7];
+  assert.equal(positionalDefault(target, 1, "right"), 7);
+  target.__defaults__ = null;
+  assert.throws(() => positionalDefault(target, 1, "right"),
+    /missing required argument: right/);
+});
 
 test("positional default resolution is shared behind the omitted-argument guard", async () => {
   const compiler = require("../dist/tools/compiler.js").default();
