@@ -3,7 +3,7 @@
 This checkpoint records the honest state of
 `pari-class-group-end-to-end-native-plan.md` after integration of the first
 complete prepared real-cubic H1 root, the native diagnostic stage clock, and
-the first authentic field-3 mixed-quartic C1--C6 owner chain. It is not a
+the first authentic field-3 mixed-quartic C1--C7 owner chain. It is not a
 qualification result and does not weaken any plan gate.
 
 ## Current result
@@ -56,13 +56,16 @@ Starting from immutable exact relation and log owners for
 analytic acceptance, unit-lattice cleanup, embedding reconstruction, and
 native translated `getfu` graph. The graph terminates with PARI's legitimate
 flag-zero `not_given(PRECI)` at 153088 bits. This is successful source-policy
-correspondence, not expanded fundamental-unit reconstruction: C5 retains the
-exact 301-by-2 compact transform, but the published C6/unit owners contain no
-power-basis units and explicitly say `exactUnitsPublished=false`.
-The current C7 exact-success assembler consequently cannot yet consume this
-terminal owner. The exact field-3 class group is `[2,2]`, of order 4, with
-authenticated class-generator and order-principal witnesses, but there is no
-joined authentic C7 result and no public completion or certification.
+correspondence, not expanded fundamental-unit reconstruction. The authenticated
+terminal adapter now retains C5's exact 301-by-2 compact transform, proves
+`W=T*U`, `R*W=0`, principal ideal one, and exact norms `(+1,+1)`, while
+publishing no power-basis units and explicitly saying
+`exactUnitsPublished=false`. C7 joins that compact unit authority to the exact
+field-3 class group `[2,2]`, of order 4, and its class-generator and
+order-principal witnesses. The immutable result has
+`correspondenceComplete=true`, `publicComplete=false`, and independently cold
+replays. It is the first authentic hard-quartic correspondence-complete
+sentinel, not public Sage.js completion or certification.
 
 ## Phase coverage
 
@@ -73,16 +76,16 @@ joined authentic C7 result and no public completion or certification.
 | 2 — relation/retry | Partial | Exact cubic collection, quartic repeated nonempty-`W` HNF appends, and isolated random-relation corridors exist. | Generic capacity growth, factor-base enlargement, natural random fallback, and all-sentinel closure remain. |
 | 3 — exact envelope | Partial | H1 full Smith replay and field-3 `[2,2]` relation/Smith state exist. The field-3 live process retains and independently cold-replays all 186,560 exact cells. All 301 principal relations replay exactly against the 288 retained factor-base ideals. A bounded canonical-HNF route proves rank 288, invariant factors `[2,2]`, order 4, exact suffix alignment, and an arbitrary-ideal receipt with an independently checked principal quotient. The exact 301-by-13 transform has been bound into the immutable field-3 composer: all 3,744 relation-kernel entries vanish, source-order packed replay matches every HNF/append checkpoint and terminal `A`, and both compact unit columns have exact kernel witnesses. | Generalize beyond the one field and close the 12-field envelope. |
 | 4 — units/precision | Partial | The real H1 cubic performs exact source-derived units and retries from 192 to 2304 bits. For field 3, all 301 real and complex log columns join into an immutable 6,321-cell raw owner; the authentic C3 transform, C4 analytic acceptance, C5 `cleanarch`, and native C6 embedding/`getfu` stages execute at 153088 bits. C5 retains a 301-by-2 compact transform with supports 227/227; all 602 entries replay as the full15 first-13-column transform composed with C5's final transform, and the exact relation basis proves norms `+1,+1`. C6 faithfully terminates as `not_given(PRECI)` with state `[3,153088,1,0,0,1,16385,301,0,-2,0,0]`. A one-guard-limb source fix admits PARI's retained 153152-bit logarithms while continuing to reject 153216-bit input. | The authentic flag-zero case does not publish expanded exact units. Exercise successful exact C6/factorback on the predeclared unit tier and generalize the precision path to the sentinels and 12 development fields. |
-| 5 — honesty/final | Partial | One atomic H1 internal final result and mutation/replay contract exist. The field-3 relation authority independently replays all 301 principal relations; the corrected class suffix independently replays all 572 terminal `B` cells, antiuniformizer descriptors, generator ideals, and order-principal factorbacks. The immutable live owner binds those exact witnesses, class `[2,2]`/order 4, and torsion 2. A separately published C5/C6 unit owner faithfully records `not_given(PRECI)` and publishes no expanded units. A separate predeclared unequal-bound degree-five path authentically executes successful `be_honest`. | The current C7 assembler accepts only a successful expanded-unit owner. This is an adapter/ancestry gap, not missing compact-unit mathematics: the terminal unit owner drops C5's compact transform and lacks the relation-owner digest, so C7 must authenticate C5 and relation/live or retain those links in the not-given unit owner. Exact expanded-unit C7, the compact flag-one tier, independent Sage.js certification, and general final replay remain open. |
+| 5 — honesty/final | Partial | One atomic H1 internal final result and mutation/replay contract exist. The field-3 relation authority independently replays all 301 principal relations; the corrected class suffix independently replays all 572 terminal `B` cells, antiuniformizer descriptors, generator ideals, and order-principal factorbacks. The immutable live owner binds those exact witnesses, class `[2,2]`/order 4, and torsion 2. The authentic PRECI unit owner retains the compact 301-by-2 unit transform and exact relation authority. C7 publishes and independently cold-replays a correspondence-complete, public-incomplete result. A separate predeclared unequal-bound degree-five path authentically executes successful `be_honest`. | Exact expanded-unit C7, the compact flag-one tier, independent Sage.js certification, remaining sentinels/development fields, and general final replay remain open. |
 | 6 — qualification | Partial | A real mutually exclusive seven-pair matched diagnostic conserves each root and leaves only `0.011 ms` median unattributed in Sage.js. Compiler campaign 1 preserved the exact result while removing 99.52% of callback allocation events; only 1.26x–1.69x stage gains prove allocation count is not the dominant residual gap. | Source stage cuts are not cross-implementation-identical, the 80% cross-source gap attribution gate remains unmet, and the frozen 24-field qualification has not run. |
 
 ## Next falsifiable cuts
 
-1. Make C7 faithfully join the now-authentic flag-zero `not_given(PRECI)` unit
-   decision, C5 compact transform, and exact class/live owners without inventing
-   expanded unit material. Retain and authenticate C5 and relation ancestry;
-   the current terminal unit owner alone is insufficient. Keep exact-success C7
-   strict, atomic, and independently replayable.
+1. Close frozen sentinel panel row 8, the mixed quartic
+   `x^4 - 20018*x - 20034`, without answer fixtures. Authenticate its existing
+   150/151/152-relation two-retry path, reproduce its 9-by-2 compact unit
+   lattice and matched 192-bit `PRECI` result, then publish and cold-replay the
+   trivial-class-group C7 envelope.
 2. Exercise a predeclared successful C6 case through exact factorback, unit
    norms/principality, and C7. Then run the separately timed compact flag-one
    unit tier; this field's legitimate flag-zero `PRECI` is not evidence for
@@ -183,6 +186,8 @@ recomputed file SHA-256 equals the digest shown in every row.
 | C6 native candidate | `d2d1798c4ae619debe30ffce5377987b702de8946b9d04c5d41075409a6ff91c` | Native status word 3 and exact terminal state `[3,153088,1,0,0,1,16385,301,0,-2,0,0]`. |
 | C6 publication | `8fa75f15da623f809951df429e7f6f6d6f3d6fe879818c2d62e4b9bd8496d3f9` | Canonical `not_given(PRECI)` publication; no unit material. |
 | Terminal unit owner | `c8474c87009165ae64401f28436170e851884402c7010f9726120e9ea8557186` | Binds C3--C6, embedding, candidate, and full15 ancestry; `accepted=false`, `exactUnitsPublished=false`. |
+| Compact PRECI unit owner | `04bc6ad74bf0cf55d6385bad6a0e58a39ae29b324518af98a450656b4d8ea115` | Retains the 301-by-2 compact transform and relation authority; proves transform composition, relation kernel, principal ideal one, and norms `+1,+1`; 2,082,026 bytes. |
+| Authentic C7 envelope | `2ecc26edb8249022d47bfdaaae12ee799b36a1bb5db23d8be870aaf22d4e8615` | Joins class `[2,2]`, class number 4, torsion, exact class witnesses, and compact units; `correspondenceComplete=true`, `publicComplete=false`; 5,733,727 bytes. |
 
 The first authentic C6 attempt exposed an artificial translated precision cap:
 PARI retains one guard limb, so the first nonzero exponential input has 153152
@@ -207,16 +212,15 @@ Two limitations must remain visible. First, terminal `getfu` `PRECI` is not a
 Buchall precision retry: it is PARI's flag-zero `not_given` result after accepted
 `compute_R`. Second, the authentic C6 run therefore proves source-policy and
 language/runtime execution but does not prove expanded exact-unit
-reconstruction. The compact transform is already authenticated in C5, but the
-terminal unit owner drops that transform and does not name the relation owner;
-it cannot by itself support the new C7 join. This one chain cannot satisfy the
-plan's successful exact-unit, compact flag-one, C7, sentinel, 12-field, or
-frozen-qualification gates by itself.
+reconstruction. The replacement compact unit owner deliberately retains the
+transform and relation authority needed for C7, but still publishes no expanded
+unit. This one chain cannot satisfy the plan's successful exact-unit, compact
+flag-one, all-sentinel, 12-field, or frozen-qualification gates by itself.
 
 ## Resource state
 
 Rebuildable caches and inactive generated worktree products were cleaned before
 this checkpoint. Active integration and lane artifacts were preserved. Bulky
 corpus and replay artifacts remain under project-scoped `/scratch` storage. At
-the evidence rehash, the project-scoped scratch tree occupied 426 MiB; the 14
-immutable owners listed in the authentic C1--C6 table total 67,307,615 bytes.
+the evidence rehash, the project-scoped scratch tree occupied 426 MiB. After C7,
+the 16 retained immutable owners total 75,123,368 bytes.
