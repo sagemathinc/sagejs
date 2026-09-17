@@ -1,0 +1,73 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "generic-prepared-auth",
+  "title": "Generic prepared number-field authentication",
+  "lane": "integration",
+  "status": "active",
+  "owner": "generic_prepared_auth",
+  "objective": "Generalize prepared number-field exact authentication from the cubic sentinel to degree/signature-generic frozen development fields in degrees 3 through 5, with explicit unsupported cases and adversarial mutation coverage",
+  "base_commit": "a998fc1bd2ae554af0fa21a287344446f217ff69",
+  "claims": [
+    "bench/pari-class-group-port/prepared_nf_authentication.cjs",
+    "bench/pari-class-group-port/check_prepared_nf_authentication.cjs",
+    "bench/pari-class-group-port/prepared_nf_authentication_audit.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Exact prepared-number-field identities and frozen exporter data"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "node bench/pari-class-group-port/check_prepared_nf_authentication.cjs /tmp/sagejs-resident-generated-class-HfHeZG/inputs.json",
+    "node bench/pari-class-group-port/check_prepared_nf_authentication.cjs /scratch/sagejs-pari-development-panel-a998",
+    "pnpm merge:check"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_prepared_nf_authentication.cjs /tmp/sagejs-resident-generated-class-HfHeZG/inputs.json",
+      "result": "pass: legacy cubic authority, typed-export round trip, and 17 mutations",
+      "exit_code": 0,
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_prepared_nf_authentication.cjs /scratch/sagejs-pari-development-panel-a998",
+      "result": "pass: all 16 manifest-bound development exports and 42 cross-degree mutations",
+      "exit_code": 0,
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Generalized prepared-field authentication from the real-cubic sentinel to the complete frozen 16-field development export across degrees 3, 4, and 5. Exact checks now cover resultant discriminants, Sturm signatures, modular irreducibility certificates, arbitrary n-by-n basis and inverse data, all n-cubed multiplication constants, real and complex embedding identities, PARI M-to-G realification, rounded embeddings, and runtime tables. The directory checker binds 608 MB of external payloads to manifest abe10f55..., confirms no reserve was opened and no answer-bearing event affects authority, and rejects 42 representative mutations. The legacy resident cubic and its 17 mutations still pass.",
+    "risks": [
+      "The exact irreducibility proof is deliberately a bounded modular certificate: a valid irreducible polynomial with no irreducible reduction through prime 257 is explicitly unsupported.",
+      "W0 requires at least one real embedding so roots of unity are exactly plus/minus one; totally imaginary fields need a different exact torsion certificate.",
+      "Focused Linux validation passed. Cross-platform broad suites were deferred because this host-only JavaScript verifier has no product runtime or native-code change; a full build was still running at handoff."
+    ],
+    "next_steps": [
+      "Cherry-pick this commit after the development exporter commit so the compact manifest and verifier land together.",
+      "Call authenticatePreparedBundle before allocating or invoking every generalized development-field native root.",
+      "Keep the eight reserve payloads unopened until the frozen candidate gate."
+    ]
+  }
+}
