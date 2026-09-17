@@ -1,0 +1,47 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "real-h1-matched-diagnostic",
+  "title": "Real H1 Matched Diagnostic",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Run a real unqualified matched diagnostic for the unified complete H1 native root against authentic PARI 2.17.4",
+  "base_commit": "a998fc1bd2ae554af0fa21a287344446f217ff69",
+  "claims": [
+    "bench/pari-class-group-port/h1_unified_complete_adapter.cjs",
+    "bench/pari-class-group-port/run_h1_complete_matched_diagnostic.cjs",
+    "bench/pari-class-group-port/check_h1_complete_real_runner.cjs",
+    "bench/pari-class-group-port/h1_complete_real_runner.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "PARI 2.17.4 bnfinit0(nf,0) at the same prepared field boundary"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "not-applicable",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "not-applicable"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node bench/pari-class-group-port/check_h1_complete_real_runner.cjs",
+    "node bench/pari-class-group-port/check_h1_complete_real_runner.cjs /tmp/h1-real-matched.json"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
