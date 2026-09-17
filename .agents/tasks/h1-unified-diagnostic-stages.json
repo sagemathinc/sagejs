@@ -38,10 +38,29 @@
     "pnpm test:portable",
     "pnpm test:baselib:strict"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_h1_unified_diagnostic_stages.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.08,
+      "started_at": "2026-09-17T05:17:09.113Z",
+      "commit": "e672b5113209cff8e9ce0ee7d34ecbe501a082c6",
+      "workspace_fingerprint": "85b9e3ba8f6d8f5973d5077851eeace4ff66eef9eca95ca17e6f40cb2f7fbef1",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Added a diagnostic-only unified H1 stage recorder with one inclusive root, four mutually exclusive named stages, explicit residual, stage-owned counters, independent conservation validation, and a whole-root-only PARI path. Corrected the live prepared worker so its opaque native relation/HNF/bridge call stays residual; only separately executed unit/regulator replay and final assembly enter named stages.",
+    "risks": [
+      "The monolithic compiled Sage.js root has no reviewed internal clock hooks, so relation/retry and HNF/Smith time remain intentionally unattributed rather than inferred from post-call counters.",
+      "The inherited integration head classifies pari_h1_outcome_c_adapter.c but has a stale native-boundary inventory; merge:check fails before reaching this lane's files.",
+      "The inherited live prepared checker currently fails while compiling the integration source with its default external runtime root because pari_live_h1_owner_bridge expects 91 arguments and the caller supplies 92."
+    ],
+    "next_steps": [
+      "Add audited compiler-emitted source-boundary hooks inside the monolithic native root before attributing relation/retry or HNF/Smith elapsed time.",
+      "Refresh the integration native-boundary inventory and reconcile the live owner-bridge ABI, then rerun the live worker and broad validation suites.",
+      "Keep all stage receipts diagnostic-only; do not use this instrumentation in final paired timing."
+    ]
   }
 }
