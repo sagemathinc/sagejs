@@ -1,0 +1,88 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-e2e-signed-genback",
+  "title": "Signed cubic ideal scheduling and genback",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "signed_ideal_inventory",
+  "objective": "Implement PARI 2.17.4 generic signed cubic extended-ideal multiply square invert power scheduling and bounded genback over compact ordered factors with exact source replay",
+  "base_commit": "dc534fa05e68c330871fd3720718bdfa7c03e8db",
+  "claims": [
+    "bench/pari-class-group-port/signed_prime_ideal_reduction.py",
+    "bench/pari-class-group-port/check_signed_ideal_genback.cjs",
+    "bench/pari-class-group-port/signed_ideal_genback.md"
+  ],
+  "dependencies": [
+    "pari-e2e-signed-prime-reduction"
+  ],
+  "references": [
+    "PARI 2.17.4 base4.c idealpowred/idealred0/idealHNF_inv_Z and buch2.c genback"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "gmp",
+      "Pinned pristine PARI 2.17.4 idealpow/genback witnesses"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_signed_ideal_genback.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.327,
+      "started_at": "2026-09-17T00:16:37.948Z",
+      "commit": "dc534fa05e68c330871fd3720718bdfa7c03e8db",
+      "workspace_fingerprint": "2298d181988a9382926dddc6b778129e82691708c40079154d2ac7279df13e5d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 62.557,
+      "started_at": "2026-09-17T00:16:45.653Z",
+      "commit": "dc534fa05e68c330871fd3720718bdfa7c03e8db",
+      "workspace_fingerprint": "2298d181988a9382926dddc6b778129e82691708c40079154d2ac7279df13e5d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 19.757,
+      "started_at": "2026-09-17T00:19:06.287Z",
+      "commit": "dc534fa05e68c330871fd3720718bdfa7c03e8db",
+      "workspace_fingerprint": "2298d181988a9382926dddc6b778129e82691708c40079154d2ac7279df13e5d",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added ordinary source-transparent Python for ordered compact-factor square/append, exact cubic ideal-HNF multiply and scaled inverse, PARI-style signed idealpowred scheduling for exponents -3..3, and connected two-prime genback. Frozen controls reproduce six signed powers and P_191^3*P_193^-2 exactly against pristine PARI 2.17.4, CPython, JavaScript, GMP, and tagged native backends, including independent principal-ideal identities.",
+    "risks": [
+      "T2/LLL candidate selection remains an explicit exact tape boundary rather than direct wiring to the existing connected selector.",
+      "Exponents are deliberately restricted to -3..3 and HNF product/inverse moduli must fit below 2^64.",
+      "The implementation is specialized to the frozen totally real cubic; arbitrary degree and final class-group/unit result construction remain integration work."
+    ],
+    "next_steps": [
+      "Wire the existing T2/LLL selector to the candidate boundary and replay the same exact fixtures without a tape.",
+      "Lift exponent and modulus bounds only when an authenticated class_group_gen trace demonstrates the required range.",
+      "Use the connected genback result in final unit reconstruction and immutable result replay."
+    ]
+  }
+}
