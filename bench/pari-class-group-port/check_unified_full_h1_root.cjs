@@ -8,12 +8,15 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const { compileKernel } = require("../../tools/native-kernel/compiler.cjs");
+const { authenticatePreparedNf } = require("./prepared_nf_authentication.cjs");
 
 const root = path.resolve(__dirname, "../..");
 const sourcePath = path.join(__dirname, "unified_full_h1_root.py");
 const residentPath = path.resolve(process.argv[2] ||
   "/tmp/sagejs-resident-generated-class-3qtnS5/output.json");
 const resident = JSON.parse(fs.readFileSync(residentPath, "utf8"));
+const preparedNfAuthority = authenticatePreparedNf(resident);
+assert.deepEqual(preparedNfAuthority.polynomial, ["20034", "-20018", "0", "1"]);
 const compact = [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, -1];
 
 const sizes = Object.freeze({
@@ -178,6 +181,7 @@ print(json.dumps({'status':status,'authority':S(v['authority_state']),'integralU
     fiveUlpMutationRecordedDiagnosticOnly: true,
     p2176State: reference.precision.map(String),
     regulatorTriplet: reference.determinant.map(String),
+    preparedNfAuthoritySha256: preparedNfAuthority.sha256,
     terminalAuthorityComplete: false,
     hostJavascriptExactArithmeticInsideNativeCall: false,
     cacheKey: built.cacheKey,

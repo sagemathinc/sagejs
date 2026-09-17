@@ -9,6 +9,7 @@ const path = require("node:path");
 const vm = require("node:vm");
 const { spawnSync } = require("node:child_process");
 const { compileKernel } = require("../../tools/native-kernel/compiler.cjs");
+const { authenticatePreparedNf } = require("./prepared_nf_authentication.cjs");
 
 const root = path.resolve(__dirname, "../..");
 const sourcePath = path.join(__dirname, "unified_live_h1_root.py");
@@ -59,6 +60,8 @@ async function main() {
   assert(sizesLiteral, "missing bridge workspace size contract");
   const bridgeSizes = vm.runInNewContext(`(${sizesLiteral[1]})`, Object.create(null));
   const candidate = sanitized.input;
+  const preparedNfAuthority = authenticatePreparedNf(candidate);
+  assert.deepEqual(preparedNfAuthority.polynomial, ["20034", "-20018", "0", "1"]);
   const input = {};
   for (const [name, kind] of rootNames) {
     if (Object.hasOwn(candidate, name)) {
@@ -130,6 +133,7 @@ async function main() {
     fixtureInputsInsideComputation: [],
     pariCallsInsideComputation: [],
     cacheKey: built.cacheKey,
+    preparedNfAuthoritySha256: preparedNfAuthority.sha256,
   }));
 }
 

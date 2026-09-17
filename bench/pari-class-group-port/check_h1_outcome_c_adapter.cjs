@@ -17,6 +17,11 @@ const {
   sanitizePreparedInput,
   validateAdapterReceipt,
 } = require("./h1_outcome_c_adapter.cjs");
+const {
+  ANALYTIC_PRIME_LIMIT,
+  pariPrimeProducts,
+  primesThrough,
+} = require("./prepared_nf_authentication.cjs");
 
 const root = path.resolve(__dirname, "../..");
 const sourcePath = path.join(__dirname, "resident_generated_class_attempt.py");
@@ -30,13 +35,56 @@ function zeroValue(kind) {
   return "0";
 }
 
-const input = Object.fromEntries(names.map(([name, kind]) => [name, zeroValue(kind)]));
-for (const [name, kind] of names) {
-  if (!NONZERO_PREPARED_OWNERS.has(name)) continue;
-  input[name] = kind.endsWith("Buffer")
-    ? (kind === "Float64Buffer" ? [1.25] : ["1"])
-    : (kind === "float" ? 1.25 : kind === "bool" ? true : "1");
+function isZeroForFixture(value) {
+  if (Array.isArray(value)) return value.length === 0 || value.every(isZeroForFixture);
+  return value === false || value === 0 || value === "0";
 }
+
+const input = Object.fromEntries(names.map(([name, kind]) => [name, zeroValue(kind)]));
+const embeddingM = [
+  "1", "-64220622658290921474614259608772358154490258151036621226745219643078923784188",
+  "92302015032297609695055164358819071366354768453111042135463374329450518436604",
+  "1", "57945219381778474872138477550907651803358380939644151129898804145490596828229",
+  "-1739400132739360487830145484889220728662458499115252291979575924919276490247086424478317711196160",
+  "1", "63767925631870777139675677752905892124776520799945651296042885235692278496468",
+  "96298260017979560155034980799315031917298618721805538957464847651221402344269",
+];
+const embeddingP = ["-1", "256", "256", "-1", "256", "320", "-1", "256", "256"];
+const embeddingE = ["0", "7", "12", "0", "0", "13", "0", "7", "12"];
+const admissionPrimes = primesThrough(65537);
+Object.assign(input, {
+  admission_matrix_m: embeddingM,
+  admission_matrix_p: embeddingP,
+  admission_matrix_e: embeddingE,
+  preparation_embedding: embeddingM.flatMap((m, i) => [m, embeddingP[i], embeddingE[i]]),
+  preparation_rounded_embedding: ["16", "-2272", "104482", "16", "16", "-213472", "16", "2256", "109006"],
+  admission_primes: admissionPrimes.map(String),
+  admission_products: pariPrimeProducts(admissionPrimes, 1048576n).map(String),
+  n: "3",
+  precision: "192",
+  admission_real_count: "3",
+  admission_factorlimit: "1048576",
+  admission_prime_limit: "65537",
+  analytic_discriminant: "32075641032116",
+  analytic_roots_of_unity: "2",
+  prep_index: "1",
+  prep_zkden: "1",
+  prep_polynomial: ["20034", "-20018", "0", "1"],
+  prep_invzk: ["1", "0", "0", "0", "1", "0", "13345", "-2", "1"],
+  prep_zk: ["1", "0", "0", "0", "1", "0", "-13345", "2", "1"],
+  prep_zk_degrees: ["0", "1", "2"],
+  basis_table: [
+    "1", "0", "0", "0", "1", "0", "0", "0", "1",
+    "0", "1", "0", "13345", "-2", "1", "6656", "6669", "2",
+    "0", "0", "1", "6656", "6669", "2", "89024429", "19994", "-6668",
+  ],
+  analytic_primes: primesThrough(ANALYTIC_PRIME_LIMIT).map(String),
+});
+assert.deepEqual(
+  [...NONZERO_PREPARED_OWNERS].filter(name => isZeroForFixture(input[name])),
+  [],
+  "self-test fixture omitted an authenticated owner",
+);
 for (const [name, value] of Object.entries(SENTINEL_OWNERS)) input[name] = value;
 const rawPreparedInput = { names, input };
 const sanitized = sanitizePreparedInput(rawPreparedInput, sourceText);

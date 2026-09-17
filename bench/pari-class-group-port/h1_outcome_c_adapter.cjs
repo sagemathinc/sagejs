@@ -11,6 +11,7 @@ const {
   validateReceipt: validateDiagnosticReceipt,
 } = require("./h1_exclusive_stage_timing.cjs");
 const { canonical, digest } = require("./h1_outcome_c_worker.cjs");
+const { authenticatePreparedNf } = require("./prepared_nf_authentication.cjs");
 
 const HERE = __dirname;
 const WORKER_PATH = path.join(HERE, "h1_outcome_c_worker.cjs");
@@ -129,6 +130,12 @@ function sanitizePreparedInput(raw, sourceText) {
   for (const name of NONZERO_PREPARED_OWNERS) {
     assert(Object.hasOwn(input, name), `prepared allowlist owner disappeared: ${name}`);
   }
+  const preparedAuthority = authenticatePreparedNf(input);
+  assert.deepEqual(
+    preparedAuthority.polynomial,
+    ["20034", "-20018", "0", "1"],
+    "prepared number field does not match the selected H1 field",
+  );
   const record = {
     schema: PREPARED_SCHEMA,
     fieldId: FIELD_ID,
