@@ -32,6 +32,15 @@ compared stage by stage. Within the Sage.js root, the median partitions are
 `626.123 ms` for unit/regulator, `251.142 ms` for relation/retry, `64.037 ms`
 for sparse HNF/SNF, `0.100 ms` for honesty/final, and `0.011 ms` unattributed.
 
+A read-only allocator-count profile localizes a concrete compiler/runtime
+frontier. The unit/regulator visits perform about 2.09 million `malloc` and
+2.26 million `realloc` calls; relation/retry performs about 1.35 million and
+0.54 million; sparse HNF/SNF performs about 0.67 million and 0.30 million. The
+generated root is one native call, so the public JavaScript/native boundary is
+not a plausible explanation. The first permitted compiler campaign will test
+root-lifetime `fmpz` scratch/limb reuse; it must reduce allocation events by at
+least 80% and target-stage time by at least 2x without changing any authority.
+
 The honest predeclared campaign outcome at this checkpoint is therefore **D**.
 The correctness prerequisite for Outcome C exists, but the required 80% gap
 attribution does not.
@@ -45,7 +54,7 @@ attribution does not.
 | 2 — relation/retry | Partial | Exact cubic collection, quartic repeated nonempty-`W` HNF appends, and isolated random-relation corridors exist. | Generic capacity growth, factor-base enlargement, natural random fallback, and all-sentinel closure remain. |
 | 3 — exact envelope | Partial | H1 full Smith replay and field-3 `[2,2]` relation/Smith state exist. The field-3 live process retains and independently cold-replays all 186,560 exact cells required for the 288-by-301 presentation, factor-base ideals, generators, logs, provenance, permutations, and RNG/control state. | Decode those owners into a replayed full presentation, align it with the compact suffix, and publish exact generator-order and arbitrary-ideal witnesses; the 12-field envelope is open. |
 | 4 — units/precision | Partial | The real H1 cubic performs exact source-derived units and retries from 192 to 2304 bits. The authentic mixed-quartic class logs now pass packed `cleanarch` across CPython, JavaScript, GMP, tagged, and pristine PARI. | The mixed-quartic `getfu` path still returns PRECI at 192 bits. Pristine PARI succeeds by 153024 bits, so a neutral high-precision owner/re-log retry and the development panel remain open. |
-| 5 — honesty/final | Partial | One atomic H1 internal final result and mutation/replay contract exist. A separate predeclared unequal-bound degree-five path authentically executes the successful six-ideal `be_honest` schedule with transactional rejection. | The H1 class group is trivial and its honesty path is an equal-bound skip. Nontrivial generator witnesses, mixed units, and a joined general final replay remain. |
+| 5 — honesty/final | Partial | One atomic H1 internal final result and mutation/replay contract exist. A field-neutral immutable correspondence envelope now provides canonical encoding, independent mathematical authority, tagged exact/PRECI/LARGE unit outcomes, honesty outcomes, atomic publication, and 15 adversarial mutations. A separate predeclared unequal-bound degree-five path authentically executes the successful six-ideal `be_honest` schedule with transactional rejection. | The envelope deliberately has no H1 adapter until Python replay has a trusted data-only cross-runtime identity. The H1 class group is trivial and its honesty path is an equal-bound skip. Nontrivial generator witnesses, mixed units, and a joined general final replay remain. |
 | 6 — qualification | Partial | A real mutually exclusive seven-pair matched diagnostic conserves each root and leaves only `0.011 ms` median unattributed in Sage.js. | Source stage cuts are not cross-implementation-identical, the 80% cross-source gap attribution gate remains unmet, and the frozen 24-field qualification has not run. |
 
 ## Next falsifiable cuts
