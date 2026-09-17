@@ -388,7 +388,7 @@ def pari_resident_generated_class_attempt(
     are constructed from generated KC/KCZ. Owners must be disjoint, except the
     internal views and their backing owners, which are used sequentially.
 
-    This entry is explicitly restricted to the frozen nongalois real cubic.
+    This entry is explicitly restricted to a prepared totally real cubic.
     No general automorphism/cyclotomic-unit prelude, retry or honesty branch is
     implemented. Eager degree-cache fill and analytic preparation ordering are
     diagnostic boundaries, not a claim of full Buchall scheduling parity.
@@ -411,21 +411,27 @@ def pari_resident_generated_class_attempt(
         raise ValueError("cannot reuse a partial resident preparation")
     if n != 3 or admission_real_count != 3 or precision != 192:
         raise ValueError("resident generated fixed real cubic frontier")
+    if len(prep_polynomial) != 4:
+        raise ValueError("resident generated cubic polynomial shape")
+    pa0 = prep_polynomial[0]
+    pa1 = prep_polynomial[1]
+    pa2 = prep_polynomial[2]
+    pa3 = prep_polynomial[3]
+    derived_discriminant = (
+        pa2 * pa2 * pa1 * pa1
+        - 4 * pa3 * pa1 * pa1 * pa1
+        - 4 * pa2 * pa2 * pa2 * pa0
+        - 27 * pa3 * pa3 * pa0 * pa0
+        + 18 * pa3 * pa2 * pa1 * pa0
+    )
     if (
-        prep_index != 1
-        or analytic_discriminant != 32075641032116
+        prep_index < 1
+        or pa3 != 1
+        or derived_discriminant <= 0
+        or analytic_discriminant * prep_index * prep_index != derived_discriminant
         or analytic_roots_of_unity != 2
     ):
-        raise ValueError("resident generated fixed field metadata frontier")
-    if len(prep_polynomial) != 4:
-        raise ValueError("resident generated fixed polynomial shape")
-    if (
-        prep_polynomial[0] != 20034
-        or prep_polynomial[1] != -20018
-        or prep_polynomial[2] != 0
-        or prep_polynomial[3] != 1
-    ):
-        raise ValueError("resident generated fixed polynomial frontier")
+        raise ValueError("resident generated real-cubic metadata frontier")
     if (
         len(prep_base_configuration) < 3
         or len(prep_base_state) < 7
