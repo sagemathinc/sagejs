@@ -2,7 +2,7 @@
 
 Copyright (C) The PARI group. GPL-2.0-or-later, without warranty.
 
-The post-``rnd_rel``/LIE diagnostic reaches an accepted 301-column relation
+The post-`rnd_rel`/LIE diagnostic reaches an accepted 301-column relation
 system before reducing it to the two-dimensional class presentation. This
 leaf authenticates that exact live state and publishes bounded integrity
 latches for its logical prefixes. It does not reconstruct relations from HNF,
@@ -103,11 +103,11 @@ def pari_field3_full_owner_authority(
 
     Every capacity, terminal-state, descriptor, provenance, and permutation
     check precedes the first output write. Thus rejection leaves both compact
-    outputs untouched. ``authority_state`` records status followed by rows,
+    outputs untouched. `authority_state` records status followed by rows,
     columns, degree, places, factor-base count, relation cells, cache-basis
     cells, metadata cells, generator cells, log cells, ideal cells, descriptor
     cells, RNG words, random subfactor count, H rows, B columns, HNF columns,
-    driver pass, absolute ``done_small``, authenticated permutation cells,
+    driver pass, absolute `done_small`, authenticated permutation cells,
     authenticated scheduler cells, fingerprint count, and cache capacity.
     """
     rows = 288
