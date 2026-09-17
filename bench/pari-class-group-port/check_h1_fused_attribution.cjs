@@ -21,6 +21,7 @@ const {
   createIntegerBuffer,
   sha256File,
 } = require("../../tools/native-kernel/thin-cache-loader.cjs");
+const { generateArtifacts } = require("../../tools/native-kernel/c-backend.cjs");
 
 const HERE = __dirname;
 const ENTRY = "pari_fused_h1_matched_flag_zero_root";
@@ -38,6 +39,7 @@ const INPUT = process.env.SAGEJS_FUSED_INPUT ||
   "sagejs-resident-generated-class-11G1wH/inputs.json";
 const OUTPUT = process.env.SAGEJS_FUSED_ATTRIBUTION_OUTPUT ||
   "/scratch/sagejs-runtime/h1-fused-attribution";
+const PRIVATE_BUFFER = process.env.SAGEJS_FUSED_PRIVATE_BUFFER === "1";
 const EXPECTED = Object.freeze({
   input: "22a997866388571cd3c12e1a3ea5c5cc3a7fe89217b253bb0e779007f6fe9b77",
   core: "7cd618f435f215f520a92798fc44594dda83c3143b5af34045296ca7d29d33ae",
@@ -411,14 +413,47 @@ function prepareDiagnostic() {
   assert.equal(sha256File(path.join(BASE_CACHE, "build/Release/sagejs_native_kernel.node")),
     EXPECTED.addon);
   fs.mkdirSync(OUTPUT, { recursive: true });
-  const core = patchCore(fs.readFileSync(path.join(BASE_CACHE, "kernel_core.c"), "utf8"));
-  const adapter = patchAdapter(fs.readFileSync(path.join(BASE_CACHE, "kernel.c"), "utf8"));
+  let coreInput = fs.readFileSync(path.join(BASE_CACHE, "kernel_core.c"), "utf8");
+  let adapterInput = fs.readFileSync(path.join(BASE_CACHE, "kernel.c"), "utf8");
+  let headerInput = fs.readFileSync(path.join(BASE_CACHE, "kernel_core.h"), "utf8");
+  let hostIsolation = null;
+  if (PRIVATE_BUFFER) {
+    assert.notEqual(process.env.SAGEJS_FUSED_SKIP_SPARE_CLEAR, "1",
+      "private authority run must not use the diagnostic no-clear patch");
+    const manifest = JSON.parse(
+      fs.readFileSync(path.join(BASE_CACHE, "manifest.json"), "utf8"),
+    );
+    const generated = generateArtifacts(manifest.ir, {
+      moduleIdentity: manifest.moduleIdentity,
+      privateIntegerBuffers: {
+        root: ENTRY,
+        buffers: ["prep_kummer_catalog_tau"],
+      },
+    });
+    assert.deepEqual(generated.hostIsolation.privateIntegerBuffers, {
+      authority: "private-integer-buffer-v1",
+      root: ENTRY,
+      buffers: ["prep_kummer_catalog_tau"],
+      canonicalizeAt: ["public-output", "raw-hash", "resume", "ffi", "fallback"],
+      failurePublication: "canonicalize-before-publish",
+    });
+    coreInput = generated.coreSource;
+    adapterInput = generated.adapterSource;
+    headerInput = generated.coreHeader;
+    hostIsolation = generated.hostIsolation;
+  }
+  const core = patchCore(coreInput);
+  const adapter = patchAdapter(adapterInput);
   fs.writeFileSync(path.join(OUTPUT, "kernel_core.c"), core);
   fs.writeFileSync(path.join(OUTPUT, "kernel.c"), adapter);
-  for (const name of ["kernel_core.h", "binding.gyp"]) {
-    fs.copyFileSync(path.join(BASE_CACHE, name), path.join(OUTPUT, name));
-  }
-  return staticPatchAudit();
+  fs.writeFileSync(path.join(OUTPUT, "kernel_core.h"), headerInput);
+  fs.copyFileSync(path.join(BASE_CACHE, "binding.gyp"), path.join(OUTPUT, "binding.gyp"));
+  return {
+    ...staticPatchAudit(coreInput, adapterInput),
+    privateBufferAuthority: hostIsolation?.privateIntegerBuffers || null,
+    generatedCoreSha256: sha256(coreInput),
+    generatedAdapterSha256: sha256(adapterInput),
+  };
 }
 
 function buildDiagnostic() {
@@ -438,12 +473,15 @@ function buildDiagnostic() {
   };
 }
 
-function staticPatchAudit() {
+function staticPatchAudit(
+  coreInput = fs.readFileSync(path.join(BASE_CACHE, "kernel_core.c"), "utf8"),
+  adapterInput = fs.readFileSync(path.join(BASE_CACHE, "kernel.c"), "utf8"),
+) {
   assert.equal(sha256File(path.join(BASE_CACHE, "kernel_core.c")), EXPECTED.core);
   assert.equal(sha256File(path.join(BASE_CACHE, "build/Release/sagejs_native_kernel.node")),
     EXPECTED.addon);
-  const core = patchCore(fs.readFileSync(path.join(BASE_CACHE, "kernel_core.c"), "utf8"));
-  const adapter = patchAdapter(fs.readFileSync(path.join(BASE_CACHE, "kernel.c"), "utf8"));
+  const core = patchCore(coreInput);
+  const adapter = patchAdapter(adapterInput);
   return { coreBytes: Buffer.byteLength(core), adapterBytes: Buffer.byteLength(adapter),
     coreSha256: sha256(core), adapterSha256: sha256(adapter), stages: STAGES };
 }
@@ -614,13 +652,14 @@ function main() {
   const profile = profiled.profile;
   const result = {
     schema: "sagejs.pari-class-group/h1-fused-attribution-v1",
-    diagnosticOnly: true, optimized: false,
+    diagnosticOnly: true, optimized: PRIVATE_BUFFER,
     boundary: "prepared H1 through one compact p192 PRECI publication",
     stages: STAGES,
     baseArtifact: {
       cachePath: BASE_CACHE, coreSha256: EXPECTED.core, addonSha256: EXPECTED.addon,
     },
     diagnosticArtifact: { ...prepare, ...build },
+    privateBufferAuthority: prepare.privateBufferAuthority,
     profile,
     attribution: profiled.attribution,
     reference: { pariMedianNanoseconds: PARI_MEDIAN_NS.toString(),

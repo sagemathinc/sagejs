@@ -39,14 +39,19 @@ function visit(value, callback, seen = new Set()) {
 
 function referencedNames(operation) {
   const answer = new Set();
-  function gather(value, key = "") {
+  function gather(value, key = "", root = false) {
+    // Structured control-flow nodes contain complete child operations. Each
+    // child is visited independently; attributing all descendant names to the
+    // container would reject an otherwise safe loop/branch as an escape.
+    if (!root && value !== null && typeof value === "object" &&
+        typeof value.kind === "string") return;
     if (key !== "kind" && typeof value === "string") answer.add(value);
     else if (Array.isArray(value)) value.forEach((child) => gather(child));
     else if (value !== null && typeof value === "object") {
       for (const [childKey, child] of Object.entries(value)) gather(child, childKey);
     }
   }
-  gather(operation);
+  gather(operation, "", true);
   return answer;
 }
 
