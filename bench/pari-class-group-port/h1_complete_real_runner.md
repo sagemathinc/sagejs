@@ -35,7 +35,8 @@ separate equivalence audit.
 
 The input is the 351-owner sanitized prepared state emitted by
 `check_resident_generated_class_attempt.cjs`, not an answer-bearing final
-fixture. Generate it using the same prepared, analytic, and Kummer fixtures as
+fixture. This frozen owner graph authenticates the seed-1 stream, so the runner
+rejects other seed labels. Generate it using the same prepared, analytic, and Kummer fixtures as
 the unified-root checker, then pass the emitted `inputs.json` path:
 
 ```text

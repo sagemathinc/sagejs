@@ -46,6 +46,8 @@ function parseArguments(argv) {
   assert(answer.input, "--input <sanitized-owner-input.json> is required");
   assert(Number.isInteger(answer.pairs) && answer.pairs >= 7);
   assert.match(answer.seed, /^(0|[1-9][0-9]*)$/);
+  assert.equal(answer.seed, "1",
+    "the frozen prepared owner graph authenticates only the seed-1 stream");
   return answer;
 }
 
