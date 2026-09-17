@@ -23,6 +23,10 @@ const exactSuffixPath = path.join(directory, "unified_full_h1_root.py");
 const entry = "pari_fused_h1_matched_flag_zero_root";
 const liveEntry = "pari_unified_live_h1_root";
 const compactEntry = "pari_h1_compact_flag_zero_root";
+const FUSED_SOURCE_SHA256 = "bec6c2fb1c17ba44b3d25ca43e06130ae667548d75e899ee5b87096ebd906a9a";
+const FUSED_CACHE_KEY = "2a65d69bf9c475e1378673d9829ffed16ba84dea4e503a7668b4ba59b970e6f1";
+const FUSED_CORE_SHA256 = "7cd618f435f215f520a92798fc44594dda83c3143b5af34045296ca7d29d33ae";
+const FUSED_ADDON_SHA256 = "6f6198906aba59940a994ee8aeff6e79e43e956690c9235060c59cb7e52d7251";
 const aliases = Object.freeze({
   multiplication_tensor: "basis_table",
   clean_phases: "signs",
@@ -422,6 +426,39 @@ function artifact(filename) {
     sha256: sha256(fs.readFileSync(filename)) };
 }
 
+function authenticateArtifactIdentity(identity) {
+  assert.equal(identity.sourceHash, FUSED_SOURCE_SHA256, "fused source identity changed");
+  assert.equal(identity.cacheKey, FUSED_CACHE_KEY, "fused cache identity changed");
+  assert.equal(identity.coreSha256, FUSED_CORE_SHA256, "fused generated core changed");
+  assert.equal(identity.addonSha256, FUSED_ADDON_SHA256, "fused addon changed");
+  return true;
+}
+
+function negativeIdentityAudit() {
+  const cacheRoot = path.join(directory, ".sagejs-native-kernels");
+  const index = JSON.parse(fs.readFileSync(path.join(cacheRoot, "index.json"), "utf8"));
+  const discovery = index.sources[path.resolve(fusedPath)];
+  assert(discovery);
+  const outputPath = path.join(cacheRoot, discovery.cacheKey);
+  const identity = {
+    sourceHash: sha256(fs.readFileSync(fusedPath)),
+    cacheKey: discovery.cacheKey,
+    coreSha256: sha256(fs.readFileSync(path.join(outputPath, "kernel_core.c"))),
+    addonSha256: sha256(fs.readFileSync(
+      path.join(outputPath, "build/Release/sagejs_native_kernel.node"))),
+  };
+  assert(authenticateArtifactIdentity(identity));
+  for (const key of Object.keys(identity)) {
+    const mutated = { ...identity };
+    mutated[key] = (mutated[key][0] === "0" ? "1" : "0") + mutated[key].slice(1);
+    assert.throws(() => authenticateArtifactIdentity(mutated), /identity|changed/,
+      `mutated ${key} accepted`);
+  }
+  assert(!fs.existsSync(path.join(cacheRoot,
+    "0" + discovery.cacheKey.slice(1))), "mutated cache key unexpectedly exists");
+  return { ...identity, rejectedMutations: Object.keys(identity) };
+}
+
 async function compileOnly() {
   const compilerPath = process.env.SAGEJS_REPLAY_RUNTIME_ROOT
     ? path.join(process.env.SAGEJS_REPLAY_RUNTIME_ROOT, "tools/native-kernel/compiler.cjs")
@@ -453,6 +490,59 @@ async function compileOnly() {
       strongerRetrySuffix: true, precisionResourceLoop: true,
       dynamicPythonCalls: true, oneCompactGetfuSourceLeaf: true,
     },
+    publicComplete: false,
+  };
+}
+
+function cachedArtifactOnly() {
+  const cacheRoot = path.join(directory, ".sagejs-native-kernels");
+  const indexPath = path.join(cacheRoot, "index.json");
+  const indexRecord = JSON.parse(fs.readFileSync(indexPath, "utf8"));
+  assert.equal(indexRecord.schema, "sagejs.native-cache/v3");
+  const sourcePath = path.resolve(fusedPath);
+  const discovery = indexRecord.sources[sourcePath];
+  assert(discovery, "fused source is absent from authenticated native cache index");
+  const sourceHash = sha256(fs.readFileSync(fusedPath));
+  assert.equal(discovery.sourceHash, sourceHash, "cached fused source is stale");
+  assert.equal(discovery.nativeAbi, 24);
+  const outputPath = path.join(cacheRoot, discovery.cacheKey);
+  const modulePath = path.join(outputPath, "index.cjs");
+  const corePath = path.join(outputPath, "kernel_core.c");
+  const addonPath = path.join(outputPath, "build/Release/sagejs_native_kernel.node");
+  for (const filename of [modulePath, corePath, addonPath]) {
+    assert(fs.statSync(filename).isFile(), `cached artifact missing: ${filename}`);
+  }
+  const core = fs.readFileSync(corePath, "utf8");
+  for (const forbidden of [
+    "pari_live_retrying_h1_suffix", "precision_resource_cap",
+    "napi_call_function", "PyObject_Call", "v8::",
+  ]) assert(!core.includes(forbidden), `generated core contains ${forbidden}`);
+  assert.match(core, /pari_getfu_signed_real_cubic/);
+  const files = walkFiles(outputPath);
+  const objects = files.filter((filename) => filename.endsWith(".o"));
+  assert(objects.length >= 1, "compiled object missing");
+  const coreRecord = artifact(corePath);
+  const addonRecord = artifact(addonPath);
+  authenticateArtifactIdentity({
+    sourceHash, cacheKey: discovery.cacheKey,
+    coreSha256: coreRecord.sha256, addonSha256: addonRecord.sha256,
+  });
+  return {
+    cacheKey: discovery.cacheKey,
+    sourceHash,
+    nativeAbi: discovery.nativeAbi,
+    modulePath,
+    outputPath,
+    cacheDiscoveryIndex: artifact(indexPath),
+    artifacts: {
+      core: coreRecord, addon: addonRecord,
+      objects: objects.map(artifact).sort((left, right) => right.bytes - left.bytes),
+    },
+    generatedExclusions: {
+      strongerRetrySuffix: true, precisionResourceLoop: true,
+      dynamicPythonCalls: true, oneCompactGetfuSourceLeaf: true,
+    },
+    cachePolicy: "authenticated discovery index; no compiler lowering",
     publicComplete: false,
   };
 }
@@ -520,7 +610,7 @@ async function nativeDifferential(inputPath) {
   // processes. This is a compilation-unit policy, not an algorithm split: the
   // measured native entry remains one fused call. Sequential workers prevent
   // retained compiler IR or a previous backend's exact buffers from stacking.
-  const build = worker(["--compile-only"]);
+  const build = worker(["--cached-artifact"]);
   const started = process.hrtime.bigint();
   const javascript = worker(["--validate-artifact", build.modulePath, inputPath,
     "javascript", "none"]);
@@ -544,6 +634,10 @@ async function main() {
     process.stdout.write(`${JSON.stringify(await compileOnly())}\n`);
     return;
   }
+  if (process.argv[2] === "--cached-artifact") {
+    process.stdout.write(`${JSON.stringify(cachedArtifactOnly())}\n`);
+    return;
+  }
   if (process.argv[2] === "--validate-artifact") {
     assert.equal(process.argv.length, 7);
     process.stdout.write(`${JSON.stringify(validateArtifact(
@@ -558,6 +652,7 @@ async function main() {
     static: staticAudit(),
     fallback: fallbackAudit(),
     estimate: sizeEstimate(),
+    cacheIdentity: negativeIdentityAudit(),
     nativeValidation: "pending-heavy-slot",
   };
   const nativeIndex = process.argv.indexOf("--native");
