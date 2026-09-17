@@ -9,14 +9,16 @@ answer-derived unit coordinates, logarithms, or embeddings.
 
 The replay has three independently checked leaves:
 
-1. `derive_relation_unit_leaf` verifies the qualified resident presentation,
-   composes the seven HNF-kernel factors back through all 73 principal
-   relations, reads only the accepted 2-by-7 compact exponent handoff, and
-   materializes two exact units. The compact fixture's legacy
-   `archimedean`, `expected_materialized_units`, and `replay_factor_pool`
-   fields are not read.
-2. The checker refines the three resident roots to 2,176 bits, reconstructs
-   the integral-basis embedding, evaluates all 73 exact principal generators,
+1. The checker runs `pari_cubic_unit_bridge_prepare`, the rank-two `getfu`
+   factor step, and provenance composition directly on the live resident
+   owners. `derive_relation_unit_leaf` consumes that live 2-by-7 map and uses
+   `live_exact_units_cubic` to compose the seven HNF-kernel factors back
+   through all 73 principal relations and materialize two exact units. The
+   compact fixture is consulted afterward only as a differential oracle and
+   never enters any authority-producing API.
+2. The checker reconstructs the three ordered roots from the exact polynomial
+   and exact integral basis at 2,176 bits, builds the embedding, evaluates all
+   73 exact principal generators,
    and applies the exact 2-by-73 relation transform. This uses the ordinary
    Python sources in `cubic_embedding_precision_rebuild.py` and
    `cubic_precision_rebuild.py`, compiled through the normal native compiler.
