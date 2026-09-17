@@ -17,9 +17,11 @@ and GRH-dependent factor-base policy. It does not claim a new proof of those
 choices. Translation, ownership, exact arithmetic, and output correspondence must
 nevertheless be correct.
 
-Status: **plan only**. Writing this document starts no implementation campaign,
-does not make an experimental PR ready for merge, and does not turn the current
-candidate result into a complete class-group result.
+Status: **active experimental campaign**. The current honest implementation and
+qualification state is recorded in
+`agents/pari-class-group-e2e-checkpoint-2026-09-17.md`. No experimental PR is
+thereby ready for merge, and the current internal correspondence results are not
+publicly complete or certified class-and-unit computations.
 
 ## Exact starting point
 
