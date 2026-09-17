@@ -409,6 +409,17 @@ Differential, mutation, traitlets, attrs/decorator, strict, and merge gates pass
 Exact evidence is in `agents/python-prepared-method-keyword-context.md`. Keep
 this candidate behind its prerequisites and M5 open.
 
+**2026-09-17 native keyword-target checkpoint:** the raw binder still called
+compiled wrappers for JavaScript `typeof`, plain metadata reads, and own-property
+tests while classifying ordinary targets. Replacing those exact wrapper
+operations with native primitives improves keyword functions by 2.3% in a
+controlled exact-artifact comparison; the other six matrix rows remain flat.
+The artifact and core source both shrink 87 bytes to 902,633/903,000. The
+residual keyword-function gap is 19.4x CPython. Differential, target-kind,
+mutation, traitlets, attrs/decorator, strict, and merge gates pass. Exact
+evidence is in `agents/python-keyword-target-native-classification.md`. Keep the
+candidate behind its prerequisites and M5 open.
+
 Continue next with integration-aware qualification, the receiver-lookup campaign,
 and true handled-exception ownership. Generator/coroutine suspension makes a
 single global active-exception pointer unsafe: preserve owned handlers while
