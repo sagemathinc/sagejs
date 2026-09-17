@@ -122,6 +122,9 @@ function emitFmpzOperation(operation, context, indent) {
   const target = operation.target === undefined
     ? undefined
     : fmpzValue(operation.target, context);
+  if (operation.kind === "diagnostic.stage.switch") {
+    return `${indent}(void) ${fmpzValue(operation.stage, context)};`;
+  }
   if (operation.kind === "integer.constant") {
     return fmpzConstant(target, operation.value, indent);
   }

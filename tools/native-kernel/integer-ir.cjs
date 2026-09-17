@@ -1705,6 +1705,26 @@ function lowerCall(node, context, operations) {
     return { name: target, type: "uint64" };
   }
 
+  if (name === "diagnostic_stage_switch") {
+    expect(
+      context,
+      node,
+      args.length === 1 && array(node.args?.kwarg_items).length === 0 &&
+        !node.args?.starargs,
+      "diagnostic_stage_switch() requires one positional stage literal",
+    );
+    const stage = integerLiteral(args[0]);
+    expect(
+      context,
+      args[0],
+      stage !== undefined && stage >= 0n && stage <= 63n,
+      "diagnostic_stage_switch() requires a literal stage in 0..63",
+    );
+    const value = emitUint64Constant(context, args[0], operations, stage);
+    operations.push({ kind: "diagnostic.stage.switch", stage: value.name });
+    return value;
+  }
+
   if (name === "checked_int64") {
     expect(
       context,
@@ -3830,10 +3850,12 @@ function lowerStatements(statements, context) {
           expect(
             context,
             statement,
-            (last?.kind === "ffi.call" ||
+            (last?.kind === "diagnostic.stage.switch" &&
+              last.stage === value.name) ||
+            ((last?.kind === "ffi.call" ||
               (last?.kind === "native.call" &&
                 ["Integer", "Float64", "uint64", "int64", "bool"].includes(value.type))) &&
-              last.target === value.name,
+              last.target === value.name),
             "native expression statements require a declared FFI call or scalar native call; " +
               "host callbacks are prohibited",
           );
