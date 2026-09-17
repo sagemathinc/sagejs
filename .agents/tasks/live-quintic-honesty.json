@@ -1,0 +1,69 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "live-quintic-honesty",
+  "title": "Live Quintic Honesty",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Prove the frozen row21 quintic successful be_honest corridor from neutral live inputs through actual no-cache collector, including forced-failure rejection and state ownership",
+  "base_commit": "de20591df620dfc435ca81316fc55d0bb9dc2310",
+  "claims": [
+    "bench/pari-class-group-e2e/live_quintic_honesty.py",
+    "bench/pari-class-group-e2e/check_live_quintic_honesty.cjs",
+    "bench/pari-class-group-e2e/live_quintic_honesty_audit.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "PARI 2.17.4 pristine row21 be_honest",
+      "cpython"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node bench/pari-class-group-e2e/check_live_quintic_honesty.cjs"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-e2e/check_live_quintic_honesty.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.234,
+      "started_at": "2026-09-17T08:23:37.618Z",
+      "commit": "de20591df620dfc435ca81316fc55d0bb9dc2310",
+      "workspace_fingerprint": "c32007ea8b85ff74b932bac711a2d144aaa0a872e588ed0eeaa5472c60932fd5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-e2e/check_live_quintic_honesty.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.969,
+      "started_at": "2026-09-17T08:24:36.893Z",
+      "commit": "de20591df620dfc435ca81316fc55d0bb9dc2310",
+      "workspace_fingerprint": "48aad0bd5f60ec076f0513919598d8a10aed7eeaee9aa72c96c8143130b9b6a3",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Live row-21 schedule derives six degree-five pr_hnf ideals and norms from neutral owners, calls the actual no-cache collector, and exactly matches authenticated pristine PARI success, RNG, and KCZ restoration. A post-collector fourth-status mutation is rejected without changing owner inputs.",
+    "risks": [
+      "This is deliberately the immediate-success correctness corridor only; retry/random-product semantics remain outside the claim."
+    ],
+    "next_steps": [
+      "Integration may compose this root after the frozen row-21 prepared factor-base owners; no shared prime_ideal_hnf edit is needed."
+    ]
+  }
+}
