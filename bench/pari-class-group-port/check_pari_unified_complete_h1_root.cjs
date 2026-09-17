@@ -288,7 +288,7 @@ async function main() {
   assert.equal(status, 0n);
   assert.deepEqual(values(input.final_state).map(BigInt), [
     0n, 0n, 0n, 0n, 0n, 0n, 73n, 8n,
-    1n, 0n, 2n, 2n, 1n, 811n, 1n, 0n,
+    1n, 0n, 2n, 2n, 0n, 811n, 1n, 0n,
   ]);
   assert.deepEqual(values(input.precision_authority_state).map(BigInt).slice(0, 5),
     [0n, 5n, 2304n, 0n, 3n]);
@@ -298,6 +298,12 @@ async function main() {
   assert.deepEqual(values(input.final_torsion_generator).map(BigInt), [-1n, 0n, 0n]);
   assert(values(input.final_exact_units).some(value => BigInt(value) !== 0n));
   assert(values(input.final_regulator).some(value => BigInt(value) !== 0n));
+
+  // Caller-writable terminal flags are never sufficient authority for an
+  // already-published result.  Cold replay must produce a separate sealed
+  // receipt before any higher layer can call the result complete.
+  assert.throws(() => fn.gmp(...names.map(([name]) => input[name])),
+    /requires cold replay/);
   assert.notDeepEqual(values(input.final_polynomial).map(BigInt), finalBefore.final_polynomial);
 
   // The new torsion leaf is independently differential-tested and fails
@@ -344,7 +350,7 @@ print('cpython torsion differential and mutations passed')
     exactTorsionPublished: true,
     cappedFinalOutputsUnchanged: true,
     generatorMutationRejected: true,
-    internalCorrespondenceComplete: true,
+    internalCorrespondenceComplete: false,
     finalPublication: true,
     publicComplete: false,
     cpython: dynamic.stdout.trim(),
