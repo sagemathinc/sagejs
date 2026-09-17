@@ -46,8 +46,11 @@
       "c7PayloadSha256": "7e10bce72a5b41f036dcc7834131a4b095e541889055a3586f431d53fa23dd98"
     },
     "pari": {
-      "status": "blocked-unexecuted",
-      "reason": "No pristine PARI 2.17.4 row20 bnfinit0(nf,1) authority exists; producing one executes the heavy target workload. The existing W0 is an instrumented development trace, not a pristine timing adapter."
+      "status": "untimed-pristine-authority",
+      "authorityPath": "pristine-row20-flag-one-authority.json",
+      "authoritySha256": "772caa06af410de7ec071ca879765a859238e0c74263c50b4c8dbc374d8777dc",
+      "outputSha256": "ea40bb397941f6fec98881c1d0ce2402a33c02c82c0d1bab3face46b13ae36c2",
+      "boundary": "bnfinit0(prepared_nf,1,NULL,nbits2prec(192))"
     }
   }
 }

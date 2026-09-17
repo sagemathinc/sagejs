@@ -14,11 +14,16 @@ const c6Authority = require("./row20_successful_c6_coordinator.cjs");
 const HERE = __dirname;
 const MANIFEST_PATH = path.join(HERE, "compact-flag-one-manifest.json");
 const COMMON_SCHEMA = "sagejs.pari-class-group/compact-flag-one-common-output-v1";
-const RECEIPT_SCHEMA = "sagejs.pari-class-group/compact-flag-one-row20-seed-v1";
+const RECEIPT_SCHEMA = "sagejs.pari-class-group/compact-flag-one-row20-authority-v2";
 const FIELD_ID = "5.1.1000000.1";
 const C6_SHA256 = "5449d3812514fa9aad06364e6b5ba0c18d10ee66225d0baa4fc5ea7d39f7ea1d";
 const C7_SHA256 = "3d0b7e2fdb43e70a9f6e6be4c50c50ca6d5e4414e05812b58f6ce049b3496052";
 const C7_PAYLOAD_SHA256 = "7e10bce72a5b41f036dcc7834131a4b095e541889055a3586f431d53fa23dd98";
+const PARI_AUTHORITY_SHA256 = "772caa06af410de7ec071ca879765a859238e0c74263c50b4c8dbc374d8777dc";
+const PARI_SOURCE_SHA256 = "b4f52dfc8be212b0b069f48214a869255bff4d8e07252c8f6f52f7de30617a33";
+const PARI_ARCHIVE_SHA256 = "02651d99c391007d384b3fadbc20abc6916b77036f9e496c99e9ce8688ca4b53";
+const PARI_BUCH2_SHA256 = "904ced8034732c7fcfe1da393e23950aac0862b085150fdc24ce1e31beb7d1ac";
+const PARI_LIBRARY_SHA256 = "fdc8f2d7ff050c8e8c6cb8994b0f9dc971267ac763eaf5cd927454937d37357f";
 
 class CompactFlagOneSeedFailure extends Error {}
 function fail(message) { throw new CompactFlagOneSeedFailure(message); }
@@ -96,6 +101,51 @@ function validateC7(raw, envelope) {
   return envelope.payload;
 }
 
+function validatePristinePariAuthority(filename, manifest) {
+  const authenticated = authenticateFile(filename, PARI_AUTHORITY_SHA256,
+    "pristine PARI row20 authority");
+  const authority = authenticated.value;
+  if (!Buffer.concat([canonicalBytes(authority), Buffer.from("\n")]).equals(authenticated.raw))
+    fail("pristine PARI authority is not canonical JSON");
+  exactKeys(authority, ["diagnosticOnly", "execution", "provenance", "qualifiedTiming", "run",
+    "schema"], "pristine PARI authority");
+  if (authority.schema !== "sagejs.pari-class-group/pristine-row20-flag-one-authority-v1" ||
+      authority.diagnosticOnly !== true || authority.qualifiedTiming !== false)
+    fail("pristine PARI authority mode changed");
+  assert.deepEqual(authority.execution, { addressSpaceLimitBytes: "4294967296", calls: 1,
+    coldProcess: true, cpuLimitSeconds: "600", wallTimeoutSeconds: "600" });
+  exactKeys(authority.provenance, ["archiveSha256", "buch2Sha256", "compiler",
+    "compilerArguments", "executableSha256", "librarySha256", "producerSourceSha256"],
+  "pristine PARI provenance");
+  if (authority.provenance.archiveSha256 !== PARI_ARCHIVE_SHA256 ||
+      authority.provenance.buch2Sha256 !== PARI_BUCH2_SHA256 ||
+      authority.provenance.librarySha256 !== PARI_LIBRARY_SHA256 ||
+      authority.provenance.producerSourceSha256 !== PARI_SOURCE_SHA256 ||
+      sha256(fs.readFileSync(path.join(HERE, "pari_compact_flag_one_row20_authority.c"))) !==
+        PARI_SOURCE_SHA256 ||
+      !/^[0-9a-f]{64}$/.test(authority.provenance.executableSha256))
+    fail("pristine PARI provenance changed");
+  const run = authority.run;
+  exactKeys(run, ["call", "output", "rng", "schema", "work"], "pristine PARI run");
+  if (run.schema !== "sagejs.pari-class-group/pristine-row20-flag-one-run-v1")
+    fail("pristine PARI run schema changed");
+  assert.deepEqual(run.call, { boundary: "bnfinit0(prepared_nf,1,NULL,nbits2prec(192))",
+    pariVersion: ["2", "17", "4"], precisionBits: "192",
+    preparation: "nfinit0(polynomial,0,nbits2prec(192))", timed: false });
+  assert.deepEqual(run.work, { degree: "5", expandedUnitCount: "2", factorBaseSize: "7",
+    logEmbeddingColumns: "2", logEmbeddingRows: "3", retainedClassRows: "0",
+    schema: "sagejs.pari-class-group/pristine-row20-flag-one-work-v1" });
+  exactKeys(run.rng, ["algorithm", "seed", "terminalState"], "pristine PARI RNG");
+  if (run.rng.algorithm !== "pari-xorshift1024star-2.17.4" || run.rng.seed !== "1" ||
+      !Array.isArray(run.rng.terminalState) || run.rng.terminalState.length !== 66 ||
+      !run.rng.terminalState.every(word => /^(0|[1-9][0-9]*)$/.test(word)))
+    fail("pristine PARI RNG changed");
+  const outputDigest = canonicalDigest(run.output);
+  if (outputDigest !== manifest.commonOutput.row20Sha256)
+    fail("pristine PARI common output digest changed");
+  return { authority, outputDigest };
+}
+
 function commonOutput(payload) {
   return {
     schema: COMMON_SCHEMA,
@@ -107,12 +157,21 @@ function commonOutput(payload) {
   };
 }
 
-function prepareRow20({ manifestPath = MANIFEST_PATH, c6Owner, c7Envelope, pristineW0 }) {
+function prepareRow20({ manifestPath = MANIFEST_PATH, c6Owner, c7Envelope, pristineW0,
+  pariAuthority }) {
   const manifest = validateManifest(manifestPath);
   const seed = manifest.row20Seed?.sagejs;
   if (seed?.status !== "untimed-authority-adapter" || seed.c6OwnerSha256 !== C6_SHA256 ||
       seed.c7EnvelopeSha256 !== C7_SHA256 || seed.c7PayloadSha256 !== C7_PAYLOAD_SHA256 ||
       seed.pristineW0Sha256 !== c6Authority.W0_SHA256) fail("row20 seed authority changed");
+  const pariSeed = manifest.row20Seed?.pari;
+  if (pariSeed?.status !== "untimed-pristine-authority" ||
+      pariSeed.authoritySha256 !== PARI_AUTHORITY_SHA256 ||
+      pariSeed.outputSha256 !== manifest.commonOutput.row20Sha256 ||
+      pariSeed.boundary !== "bnfinit0(prepared_nf,1,NULL,nbits2prec(192))")
+    fail("row20 pristine PARI seed changed");
+  const pariPath = pariAuthority || path.join(HERE, pariSeed.authorityPath);
+  const pari = validatePristinePariAuthority(pariPath, manifest);
   const w0 = authenticateFile(pristineW0, c6Authority.W0_SHA256, "pristine W0");
   const c6 = authenticateFile(c6Owner, C6_SHA256, "C6 owner", true);
   c6Authority.verifyOwner(c6.value);
@@ -131,17 +190,20 @@ function prepareRow20({ manifestPath = MANIFEST_PATH, c6Owner, c7Envelope, prist
   const output = commonOutput(payload);
   const outputDigest = canonicalDigest(output);
   if (outputDigest !== manifest.commonOutput.row20Sha256) fail("common output digest changed");
+  if (outputDigest !== pari.outputDigest) fail("Sage.js/PARI common output disagrees");
   return {
     schema: RECEIPT_SCHEMA,
     diagnosticOnly: true,
     qualifiedTiming: false,
     executionEnabled: false,
     tier: "compact-flag-one",
-    implementation: "sagejs",
+    implementation: "sagejs-pari-matched",
     fieldId: FIELD_ID,
     authority: { pristineW0Sha256: c6Authority.W0_SHA256,
       c6OwnerSha256: C6_SHA256, c7EnvelopeSha256: C7_SHA256,
-      c7PayloadSha256: C7_PAYLOAD_SHA256 },
+      c7PayloadSha256: C7_PAYLOAD_SHA256,
+      pristinePariAuthoritySha256: PARI_AUTHORITY_SHA256 },
+    matchedImplementations: ["pari-2.17.4", "sagejs"],
     output,
     outputDigest,
     timing: { eagerExpansionExecuted: false, measurements: [] },
@@ -170,8 +232,8 @@ function main(argv = process.argv) {
 }
 
 module.exports = { C6_SHA256, C7_PAYLOAD_SHA256, C7_SHA256, COMMON_SCHEMA, CompactFlagOneSeedFailure,
-  MANIFEST_PATH, RECEIPT_SCHEMA, canonicalBytes, canonicalDigest, commonOutput, prepareRow20,
-  validateManifest };
+  MANIFEST_PATH, PARI_AUTHORITY_SHA256, RECEIPT_SCHEMA, canonicalBytes, canonicalDigest,
+  commonOutput, prepareRow20, validateManifest, validatePristinePariAuthority };
 
 if (require.main === module) {
   try { main(); } catch (error) { process.stderr.write(`${error.message}\n`); process.exitCode = 1; }
