@@ -745,6 +745,21 @@ stage("post-rnd-lie-terminal", {
   noFixture: true,
 });
 
+stage("terminal-candidate-final-bridge", {
+  dependencies: ["post-rnd-lie-terminal", "smith-transform", "immutable-result"],
+  command: () => commandNode("check_terminal_candidate_final_bridge.cjs"),
+  validate: (summary) => {
+    assert.deepEqual(summary.backends, ["javascript", "gmp", "tagged"]);
+    assert.equal(summary.transactionalRejections, 3);
+    assert.equal(summary.classNumber, "4");
+    assert.deepEqual(summary.invariants, ["2", "2"]);
+    assert.deepEqual(summary.compactShape, [2, 2]);
+    assert.deepEqual(summary.originalShape, [288, 301]);
+  },
+  noFixture: true,
+  allowNoArtifactDirectory: true,
+});
+
 stage("honesty-scheduler", {
   dependencies: ["post-rnd-lie-terminal"],
   requiresPari: true,
@@ -864,6 +879,24 @@ stage("compact-unit-result", {
     assert.equal(summary.exactUnitsMatchPristinePari, true);
     assert.equal(summary.semanticMutationsRejected, 24);
     assert.equal(summary.materializationMutationsRejected, 4);
+  },
+  noFixture: true,
+  allowNoArtifactDirectory: true,
+});
+
+stage("torsion-authority", {
+  dependencies: ["unit-component-cubic", "resident-cubic-input"],
+  command: (context) => commandNode("check_torsion_authority.cjs",
+    "--pari-gp", path.join(context.pariRoot, "Olinux-x86_64", "gp-dyn")),
+  requiresPari: true,
+  validate: (summary) => {
+    assert.equal(summary.field, "x^3-20018*x+20034");
+    assert.deepEqual(summary.preparedInput, ["20034", "-20018", "0", "1"]);
+    assert.equal(summary.realPlaces, 3);
+    assert.equal(summary.torsionOrder, 2);
+    assert.deepEqual(summary.torsionGenerator, ["-1", "0", "0"]);
+    assert.equal(summary.torsionNorm, -1);
+    assert.equal(summary.coordinatedRehashedMutations, 10);
   },
   noFixture: true,
   allowNoArtifactDirectory: true,
