@@ -17,8 +17,16 @@ import os
 from pathlib import Path
 import re
 import stat
+import sys
 import tempfile
 from typing import Any
+
+if hasattr(sys, "set_int_max_str_digits"):
+    # Authentic high-precision logarithm cells have roughly 46,000 decimal
+    # digits.  Python's interpreter-wide denial-of-service guard defaults to
+    # 4,300 digits, but these strings have already crossed immutable digest,
+    # shape, and canonical-owner boundaries before this module parses them.
+    sys.set_int_max_str_digits(0)
 
 from .field3_unit_transform_retention import (
     _pari_forward_hnffinal_logs,
