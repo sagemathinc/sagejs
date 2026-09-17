@@ -2033,7 +2033,7 @@ def ρσ_operator_pow(left: Any, right: Any) -> Any:
 def ρσ_operator_pow_python_exact(left: Any, right: Any) -> Any:
     """Use exact Python integers without giving them Sage rational powers."""
     result = runtime.reflect.apply(
-        ρσ_exact_integer_power,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        ρσ_int_pow,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
         runtime.undefined,
         [left, right, _BUILTINS_MISSING],
     )
@@ -2050,7 +2050,7 @@ def ρσ_operator_pow_python_exact(left: Any, right: Any) -> Any:
 
 def ρσ_operator_pow_exact(left: Any, right: Any) -> Any:
     result = runtime.reflect.apply(
-        ρσ_exact_integer_power,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        ρσ_int_pow,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
         runtime.undefined,
         [left, right, _BUILTINS_MISSING],
     )
@@ -2247,7 +2247,7 @@ def ρσ_operator_imul_exact(left: Any, right: Any) -> Any:
 
 def ρσ_operator_ipow_exact(left: Any, right: Any) -> Any:
     result = runtime.reflect.apply(
-        ρσ_exact_integer_power,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        ρσ_int_pow,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
         runtime.undefined,
         [left, right, _BUILTINS_MISSING],
     )
@@ -2258,7 +2258,7 @@ def ρσ_operator_ipow_exact(left: Any, right: Any) -> Any:
 
 def ρσ_operator_ipow_python_exact(left: Any, right: Any) -> Any:
     result = runtime.reflect.apply(
-        ρσ_exact_integer_power,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        ρσ_int_pow,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
         runtime.undefined,
         [left, right, _BUILTINS_MISSING],
     )

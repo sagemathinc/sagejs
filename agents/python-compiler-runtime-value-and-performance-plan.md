@@ -429,18 +429,19 @@ traitlets/pyparsing workflows, docs, merge invariants, and the unchanged
 not confuse these closed arithmetic micro-cliffs with the open keyword,
 construction, or cold-compiler cliffs.
 
-**2026-09-17 exact-power checkpoint:** a further queued follow-up extends the
-same primitive boundary to nonnegative integer power while leaving negative
-Python floats, negative Sage rationals, floats, and object dispatch on their
-authoritative paths. One million `3 ** 7` operations improve 98.69%, from
-4,562.224 ms to 59.791 ms (3.88x CPython rather than about 296x); positive
-`**=` measures 0.99x CPython. It also repairs a pre-existing Python augmented-
-power error: `2 **= -1` now produces float `0.5`, while Sage retains rational
-`1/2`. Exact overflow and dispatch checks pass, existing optimized arithmetic
-stays flat in direct overlap measurements, and core source remains under its
-unchanged budget at 902,766/903,000 bytes. Evidence is in
-`agents/python-exact-integer-power.md`; this remains behind the exact-arithmetic
-integration queue rather than becoming a PR against a feature branch.
+**2026-09-17 exact-power checkpoint:** a further queued follow-up uses a
+separate compact primitive boundary for nonnegative integer power while leaving
+negative Python floats, negative Sage rationals, floats, and object dispatch on
+their authoritative paths. One million `3 ** 7` operations improve 98.95%,
+from 4,485.977 ms to 46.894 ms (2.45x CPython rather than 234x); positive `**=`
+improves 98.99% and measures 0.76x CPython. It also repairs a pre-existing
+Python augmented-power error: `2 **= -1` now produces float `0.5`, while Sage
+retains rational `1/2`. All six existing arithmetic controls remain within
+-1.29% to +1.17%. A full build, 72 focused tests, all 225 portable files, the
+508-case differential baseline, strict checks, traitlets/pyparsing, docs, merge
+invariants, and the unchanged 902,946/903,000 core budget pass. Evidence is in
+`agents/python-exact-integer-power.md`; PR #314 remains the prerequisite, so
+this stays out of the merge-ready queue until that PR reaches `origin/main`.
 
 Continue next with integration-aware qualification, the receiver-lookup campaign,
 and true handled-exception ownership. Generator/coroutine suspension makes a
