@@ -53,6 +53,14 @@ an allocation-free shape that V8 already optimizes effectively.  The paired
 receipt is
 `cf64cf3fd11ee610ad3e7dd4da48526c3c4b239bf7efe0a92c03594b6f44c1b9`.
 
+A second exact-artifact probe replaced both fixed-arity `Reflect.apply` calls
+with direct JavaScript calls.  It changed positional time by +0.4%, keyword
+function and method times by +2.2% and +2.0%, and construction rows by -0.1%
+to +1.6%.  This shape is also rejected: V8 already optimizes the fixed-arity
+apply boundary, while the direct form provides no measured benefit.  Its raw
+paired receipt is
+`c3894217014dd1379c748e7d3660e7dbd11446a53246a54ab63fa406a213b9e3`.
+
 ## Qualification
 
 - A source-current eight-stage build passed in 7m 59s.
