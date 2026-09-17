@@ -15,7 +15,8 @@ const runtimeRoot = path.resolve(
     "/home/user/sagejs-worktrees/pari-class-group-e2e-integration",
 );
 const resident = path.resolve(
-  process.env.SAGEJS_RESIDENT_CUBIC ||
+  process.argv[2] ||
+    process.env.SAGEJS_RESIDENT_CUBIC ||
     "/tmp/sagejs-resident-generated-class-3qtnS5/output.json",
 );
 const compactOracleFixture = path.join(

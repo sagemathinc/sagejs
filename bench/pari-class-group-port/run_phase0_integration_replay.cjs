@@ -956,6 +956,20 @@ stage("h1-class-correspondence", {
   allowNoArtifactDirectory: true,
 });
 
+stage("h1-live-class-binding", {
+  dependencies: ["h1-class-correspondence", "resident-cubic-gmp"],
+  command: (context) => commandNode("check_h1_live_class_binding.cjs",
+    outputPath(context, "resident-cubic-gmp", "output")),
+  validate: (summary) => {
+    assert.deepEqual(summary.backends, ["javascript", "gmp", "tagged"]);
+    assert.equal(summary.nativeMutationsRejected, 3);
+    assert.match(summary.replay, /'class_number': 1/);
+    assert.match(summary.replay, /'class_generators': 0/);
+  },
+  noFixture: true,
+  allowNoArtifactDirectory: true,
+});
+
 stage("live-h1-authority-handoff", {
   dependencies: ["h1-class-correspondence", "resident-cubic-gmp"],
   command: (context) => commandNode("check_live_h1_authority_handoff.cjs",
@@ -1145,6 +1159,22 @@ stage("compact-unit-resident-pool", {
   allowNoArtifactDirectory: true,
 });
 
+stage("authentic-compact-success", {
+  dependencies: ["compact-unit-resident-pool", "authentic-h1-unit-success"],
+  command: (context) => commandNode("check_authentic_compact_success.cjs",
+    outputPath(context, "resident-cubic-gmp", "output")),
+  validate: (summary) => {
+    assert.equal(summary.classNumber, 1);
+    assert.equal(summary.unitRank, 2);
+    assert.equal(summary.genuineKernelFactors, 7);
+    assert.equal(summary.answerDerivedFactors, false);
+    assert.equal(summary.expandedInsideMatchedWorkload, false);
+    assert.match(summary.resultSha256, /^[0-9a-f]{64}$/);
+  },
+  noFixture: true,
+  allowNoArtifactDirectory: true,
+});
+
 stage("unit-relation-authority-frontier", {
   dependencies: ["compact-unit-result", "presentation-authority"],
   command: () => commandNode("check_unit_relation_authority_cubic.cjs"),
@@ -1237,6 +1267,25 @@ stage("regulator-acceptance-replay", {
   allowNoArtifactDirectory: true,
 });
 
+stage("no-oracle-unit-regulator-completion", {
+  dependencies: ["cubic-embedding-rebuild", "live-exact-units-cubic",
+    "regulator-acceptance-replay"],
+  command: (context) => commandNode(
+    "check_no_oracle_unit_regulator_completion.cjs",
+    outputPath(context, "resident-cubic-gmp", "output")),
+  validate: (summary) => {
+    assert.equal(summary.correspondenceComplete, true);
+    assert.equal(summary.pariInvoked, false);
+    assert.equal(summary.liveUnitTransform, true);
+    assert.equal(summary.exactPolynomialEmbedding, true);
+    assert.equal(summary.compactFixtureIsExternalOracleOnly, true);
+    assert.equal(summary.rigorousRegulator, true);
+    assert.equal(summary.publicComplete, false);
+  },
+  noFixture: true,
+  allowNoArtifactDirectory: true,
+});
+
 stage("authentic-h1-unit-success", {
   dependencies: ["presentation-authority", "unit-relation-authority",
     "real-cubic-getfu-honesty", "cubic-precision-rebuild",
@@ -1286,7 +1335,8 @@ stage("prepared-h1-no-oracle-root", {
   dependencies: ["cubic-embedding-rebuild", "cubic-precision-rebuild",
     "live-exact-units-cubic", "regulator-acceptance-replay",
     "torsion-authority"],
-  command: () => commandNode("check_prepared_h1_no_oracle_root.cjs"),
+  command: (context) => commandNode("check_prepared_h1_no_oracle_root.cjs",
+    outputPath(context, "resident-cubic-gmp", "output")),
   validate: (summary) => {
     assert.equal(summary.status,
       "prepared-h1-no-oracle-correspondence-complete");
@@ -1361,6 +1411,24 @@ stage("h1-live-final-driver-status", {
     assert.equal(summary.transactional, true);
     assert.equal(summary.phase5Complete, false);
     assert.equal(summary.publicComplete, false);
+  },
+  noFixture: true,
+  allowNoArtifactDirectory: true,
+});
+
+stage("live-class-result-assembly", {
+  dependencies: ["h1-live-class-binding", "h1-live-final-driver-status",
+    "h1-honesty-terminal"],
+  command: () => commandNode("check_class_group_live_result_assembly.cjs"),
+  validate: (summary) => {
+    assert.equal(summary.schema,
+      "sagejs.pari-class-group/live-class-result-assembly-v1");
+    assert.equal(summary.liveOwnersOnly, true);
+    assert.equal(summary.externalOracleCalls, 0);
+    assert.equal(summary.classNumber, 1);
+    assert.equal(summary.classGeneratorCount, 0);
+    assert.deepEqual(summary.backends,
+      ["cpython", "javascript", "gmp", "tagged"]);
   },
   noFixture: true,
   allowNoArtifactDirectory: true,
@@ -1613,17 +1681,21 @@ stage("final-state", {
     "honesty-equal-bound", "honesty-quintic-collector-downstream",
     "relation-hnf-witness",
     "presentation-authority", "h1-class-correspondence",
+    "h1-live-class-binding",
     "live-h1-authority-handoff", "unit-bridge-preci",
     "unit-component-cubic", "live-exact-units-cubic", "live-h1-owner-bridge",
     "compact-unit-result", "compact-unit-resident-pool",
+    "authentic-compact-success",
     "unit-relation-authority-frontier",
     "unit-relation-authority", "cubic-embedding-rebuild",
     "cubic-precision-rebuild",
     "torsion-authority", "class-relation-cleanarch",
     "regulator-acceptance-replay", "authentic-h1-unit-success",
+    "no-oracle-unit-regulator-completion",
     "prepared-h1-root-boundary", "prepared-h1-no-oracle-root",
     "internal-correspondence-completion",
     "torsion-final-binding", "h1-honesty-terminal", "live-generic-controls",
+    "live-class-result-assembly",
     "h1-live-final-driver-status", "h1-exclusive-stage-timing-contract",
     "mixed-getfu-quartic", "mixed-getfu-hard-precision",
     "quartic-direct-composition", "signed-genback-computed-t2",

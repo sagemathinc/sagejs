@@ -2,7 +2,7 @@
 "use strict";
 const assert=require("node:assert/strict"),fs=require("node:fs"),path=require("node:path"),{spawnSync}=require("node:child_process");
 const root=path.resolve(__dirname,"../.."),runtimeRoot=path.resolve(process.env.SAGEJS_REPLAY_RUNTIME_ROOT||"/home/user/sagejs");
-const resident=path.resolve(process.env.SAGEJS_RESIDENT_CUBIC||"/tmp/sagejs-resident-generated-class-3qtnS5/output.json");
+const resident=path.resolve(process.argv[2]||process.env.SAGEJS_RESIDENT_CUBIC||"/tmp/sagejs-resident-generated-class-3qtnS5/output.json");
 const fixturePath=path.join(__dirname,"regulator-acceptance-replay-fixture.json");
 function run(command,args,options={}){const result=spawnSync(command,args,{cwd:root,encoding:"utf8",maxBuffer:128*1024*1024,timeout:300000,...options});assert.equal(result.status,0,result.stderr||String(result.error));return result.stdout;}
 async function buildRegulator(){
