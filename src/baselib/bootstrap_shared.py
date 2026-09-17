@@ -91,6 +91,25 @@ def ρσ_exact_integer_add(left, right, missing):
     })()"""
 
 
+def ρσ_exact_integer_divmod(left, right, op, missing):
+    return r"""%js (() => {
+        const leftType = typeof left, rightType = typeof right;
+        const exact = (type, value) => type === "boolean" || type === "bigint" || (type === "number" && Number.isSafeInteger(value));
+        if (!exact(leftType, left) || !exact(rightType, right) || right === 0 || right === 0n) return missing;
+        if (leftType !== "bigint" && rightType !== "bigint") {
+            const a = Number(left), b = Number(right), remainder = a % b;
+            let value = op ? remainder : Math.floor(a / b);
+            if (op && value !== 0 && (a < 0) !== (b < 0)) value += b;
+            return value === 0 ? 0 : value;
+        }
+        const a = BigInt(left), b = BigInt(right), remainder = a % b;
+        let value = op ? remainder : a / b;
+        if (remainder !== 0n && (a < 0n) !== (b < 0n)) value += op ? b : -1n;
+        const number = Number(value);
+        return Number.isSafeInteger(number) ? number === 0 ? 0 : number : value;
+    })()"""
+
+
 def ρσ_check_interrupt():
     return r"""%js (() => {
         const state = globalThis.__sagejs_interrupt_state__;
