@@ -12,7 +12,8 @@
     "bench/pari-class-group-port/h1_matched_flag_zero_fused.py",
     "bench/pari-class-group-port/check_h1_matched_flag_zero_fused.cjs",
     "bench/pari-class-group-port/time_h1_matched_flag_zero_fused.cjs",
-    "bench/pari-class-group-port/h1_matched_flag_zero_fused_audit.md"
+    "bench/pari-class-group-port/h1_matched_flag_zero_fused_audit.md",
+    "tools/native-kernel/thin-cache-loader.cjs"
   ],
   "dependencies": [
     "h1-matched-flag-zero"

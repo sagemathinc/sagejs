@@ -14,6 +14,11 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const { spawnSync } = require("node:child_process");
+const {
+  loadThinCachedKernel,
+  sha256File,
+  signatureSha256,
+} = require("../../tools/native-kernel/thin-cache-loader.cjs");
 
 const directory = __dirname;
 const fusedPath = path.join(directory, "h1_matched_flag_zero_fused.py");
@@ -27,6 +32,8 @@ const FUSED_SOURCE_SHA256 = "bec6c2fb1c17ba44b3d25ca43e06130ae667548d75e899ee5b8
 const FUSED_CACHE_KEY = "2a65d69bf9c475e1378673d9829ffed16ba84dea4e503a7668b4ba59b970e6f1";
 const FUSED_CORE_SHA256 = "7cd618f435f215f520a92798fc44594dda83c3143b5af34045296ca7d29d33ae";
 const FUSED_ADDON_SHA256 = "6f6198906aba59940a994ee8aeff6e79e43e956690c9235060c59cb7e52d7251";
+const FUSED_MANIFEST_SHA256 = "2e17ea617106bcfe30d64e35bde06b1649d49d034bc2540c9aa28104ba592235";
+const FUSED_SIGNATURE_SHA256 = "127398018f82c3171e40b25a9d5dbbcb5f4661437395dda53203952c8d3eaf81";
 const aliases = Object.freeze({
   multiplication_tensor: "basis_table",
   clean_phases: "signs",
@@ -431,6 +438,10 @@ function authenticateArtifactIdentity(identity) {
   assert.equal(identity.cacheKey, FUSED_CACHE_KEY, "fused cache identity changed");
   assert.equal(identity.coreSha256, FUSED_CORE_SHA256, "fused generated core changed");
   assert.equal(identity.addonSha256, FUSED_ADDON_SHA256, "fused addon changed");
+  assert.equal(identity.manifestSha256, FUSED_MANIFEST_SHA256,
+    "fused manifest changed");
+  assert.equal(identity.signatureSha256, FUSED_SIGNATURE_SHA256,
+    "fused signature changed");
   return true;
 }
 
@@ -443,9 +454,11 @@ function negativeIdentityAudit() {
   const identity = {
     sourceHash: sha256(fs.readFileSync(fusedPath)),
     cacheKey: discovery.cacheKey,
-    coreSha256: sha256(fs.readFileSync(path.join(outputPath, "kernel_core.c"))),
-    addonSha256: sha256(fs.readFileSync(
-      path.join(outputPath, "build/Release/sagejs_native_kernel.node"))),
+    coreSha256: sha256File(path.join(outputPath, "kernel_core.c")),
+    addonSha256: sha256File(
+      path.join(outputPath, "build/Release/sagejs_native_kernel.node")),
+    manifestSha256: sha256File(path.join(outputPath, "manifest.json")),
+    signatureSha256: signatureSha256(signature(fs.readFileSync(fusedPath, "utf8"), entry)),
   };
   assert(authenticateArtifactIdentity(identity));
   for (const key of Object.keys(identity)) {
@@ -509,7 +522,8 @@ function cachedArtifactOnly() {
   const modulePath = path.join(outputPath, "index.cjs");
   const corePath = path.join(outputPath, "kernel_core.c");
   const addonPath = path.join(outputPath, "build/Release/sagejs_native_kernel.node");
-  for (const filename of [modulePath, corePath, addonPath]) {
+  const manifestPath = path.join(outputPath, "manifest.json");
+  for (const filename of [modulePath, corePath, addonPath, manifestPath]) {
     assert(fs.statSync(filename).isFile(), `cached artifact missing: ${filename}`);
   }
   const core = fs.readFileSync(corePath, "utf8");
@@ -526,6 +540,8 @@ function cachedArtifactOnly() {
   authenticateArtifactIdentity({
     sourceHash, cacheKey: discovery.cacheKey,
     coreSha256: coreRecord.sha256, addonSha256: addonRecord.sha256,
+    manifestSha256: sha256File(manifestPath),
+    signatureSha256: signatureSha256(signature(fs.readFileSync(fusedPath, "utf8"), entry)),
   });
   return {
     cacheKey: discovery.cacheKey,
@@ -542,36 +558,71 @@ function cachedArtifactOnly() {
       strongerRetrySuffix: true, precisionResourceLoop: true,
       dynamicPythonCalls: true, oneCompactGetfuSourceLeaf: true,
     },
-    cachePolicy: "authenticated discovery index; no compiler lowering",
+    cachePolicy: "authenticated discovery index and thin addon loader; no compiler lowering or generated-JavaScript parse",
     publicComplete: false,
   };
 }
 
-function validateArtifact(modulePath, inputPath, backend, mutation) {
-  assert(["javascript", "gmp"].includes(backend));
+function thinOptions(names, mutation = null) {
+  const mutate = (value) => mutation === null ? value
+    : (value[0] === "0" ? "1" : "0") + value.slice(1);
+  const expected = {
+    sourceHash: FUSED_SOURCE_SHA256,
+    cacheKey: FUSED_CACHE_KEY,
+    nativeAbi: 24,
+    manifestHash: FUSED_MANIFEST_SHA256,
+    addonHash: FUSED_ADDON_SHA256,
+    signatureHash: FUSED_SIGNATURE_SHA256,
+  };
+  if (mutation !== null) expected[mutation] = mutate(expected[mutation]);
+  return {
+    sourcePath: path.resolve(fusedPath),
+    cacheRoot: path.join(directory, ".sagejs-native-kernels"),
+    entry, signature: names, expected,
+  };
+}
+
+function thinLoaderMutationAudit() {
+  const names = signature(fs.readFileSync(fusedPath, "utf8"), entry);
+  const rejected = [];
+  for (const key of ["sourceHash", "cacheKey", "manifestHash", "addonHash"]) {
+    assert.throws(() => loadThinCachedKernel(thinOptions(names, key)),
+      /identity changed|cache source is stale/, `thin loader accepted mutated ${key}`);
+    rejected.push(key);
+  }
+  const changedSignature = names.map((parameter) => [...parameter]);
+  changedSignature[0][1] = "Int64Buffer";
+  assert.throws(() => loadThinCachedKernel(thinOptions(changedSignature)),
+    /signature identity changed/, "thin loader accepted mutated signature");
+  rejected.push("signature");
+  return { rejected, generatedFallbackLoaded: false };
+}
+
+function validateArtifact(inputPath, mutation) {
   assert(["none", "degree", "precision"].includes(mutation));
   const source = fs.readFileSync(fusedPath, "utf8");
   const names = signature(source, entry);
-  const fn = require(modulePath)[entry];
+  const fn = loadThinCachedKernel(thinOptions(names));
   assert(fn.nativeAvailable);
+  assert.equal(fn.executionMode, "native-thin-cache");
   const mutate = mutation === "degree"
     ? (input) => { input.n = 4n; }
     : mutation === "precision"
       ? (input) => { input.precision = 191n; }
       : null;
   const plain = plainInputs(inputPath, names, mutate);
-  const input = backend === "gmp" ? nativeInputs(fn, names, plain) : plain;
+  const input = nativeInputs(fn, names, plain);
   const beforeGetfu = strings(input.getfu_state, 8);
   const started = process.hrtime.bigint();
   let status;
-  try { status = fn[backend](...names.map(([name]) => input[name])); }
+  try { status = fn.gmp(...names.map(([name]) => input[name])); }
   catch (error) { status = "exception:" + error.message; }
   const wallNs = process.hrtime.bigint() - started;
   if (mutation !== "none") {
     assert.notEqual(status, 0n, `${mutation} mutation accepted`);
     assert.equal(strings(input.root_state, 12)[11], "0", `${mutation} published root`);
     assert.deepEqual(strings(input.getfu_state, 8), beforeGetfu, `${mutation} reached getfu`);
-    return { backend, mutation, status: String(status), wallNs: wallNs.toString(),
+    return { backend: "gmp-thin", mutation, status: String(status), wallNs: wallNs.toString(),
       publicationCommitted: false, getfuReached: false };
   }
   assert.equal(status, 0n);
@@ -586,7 +637,7 @@ function validateArtifact(modulePath, inputPath, backend, mutation) {
     "b0c647186a5fed5317c7135ccf16623a930631382ad7963e12af4ded2db7259a");
   const compact = compactEvidence(input, relation.sha256);
   return {
-    backend, mutation, wallNs: wallNs.toString(),
+    backend: "gmp-thin", mutation, wallNs: wallNs.toString(),
     relationSha256: relation.sha256,
     compactSha256: compact.sha256,
     root: compact.root,
@@ -606,26 +657,23 @@ function worker(command) {
 }
 
 async function nativeDifferential(inputPath) {
-  // Compilation/lowering and each large backend owner set live in separate
-  // processes. This is a compilation-unit policy, not an algorithm split: the
+  // Cache authentication and each large native owner set live in separate
+  // processes. This is a runtime-artifact policy, not an algorithm split: the
   // measured native entry remains one fused call. Sequential workers prevent
-  // retained compiler IR or a previous backend's exact buffers from stacking.
+  // retained artifact records or a previous run's exact buffers from stacking.
   const build = worker(["--cached-artifact"]);
   const started = process.hrtime.bigint();
-  const javascript = worker(["--validate-artifact", build.modulePath, inputPath,
-    "javascript", "none"]);
-  const gmp = worker(["--validate-artifact", build.modulePath, inputPath, "gmp", "none"]);
-  assert.deepEqual(gmp, { ...javascript, backend: "gmp", wallNs: gmp.wallNs });
+  const gmp = worker(["--validate-artifact", inputPath, "none"]);
   const mutations = [
-    worker(["--validate-artifact", build.modulePath, inputPath, "gmp", "degree"]),
-    worker(["--validate-artifact", build.modulePath, inputPath, "gmp", "precision"]),
+    worker(["--validate-artifact", inputPath, "degree"]),
+    worker(["--validate-artifact", inputPath, "precision"]),
   ];
   return {
     inputPath: path.resolve(inputPath), ...build,
     validationWallNs: (process.hrtime.bigint() - started).toString(),
-    snapshots: { javascript, gmp }, mutations,
+    snapshots: { gmp }, mutations,
     mutationFailures: mutations.length,
-    validationProcessPolicy: "compile, JavaScript, GMP, and mutations sequentially isolated",
+    validationProcessPolicy: "cache authentication, thin GMP, and mutations sequentially isolated; dynamic fallback audited separately",
   };
 }
 
@@ -639,10 +687,8 @@ async function main() {
     return;
   }
   if (process.argv[2] === "--validate-artifact") {
-    assert.equal(process.argv.length, 7);
-    process.stdout.write(`${JSON.stringify(validateArtifact(
-      process.argv[3], process.argv[4], process.argv[5], process.argv[6],
-    ))}\n`);
+    assert.equal(process.argv.length, 5);
+    process.stdout.write(`${JSON.stringify(validateArtifact(process.argv[3], process.argv[4]))}\n`);
     return;
   }
   const receipt = {
@@ -653,6 +699,7 @@ async function main() {
     fallback: fallbackAudit(),
     estimate: sizeEstimate(),
     cacheIdentity: negativeIdentityAudit(),
+    thinLoaderIdentity: thinLoaderMutationAudit(),
     nativeValidation: "pending-heavy-slot",
   };
   const nativeIndex = process.argv.indexOf("--native");
