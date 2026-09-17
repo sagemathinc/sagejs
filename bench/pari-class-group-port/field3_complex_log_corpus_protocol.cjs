@@ -485,15 +485,21 @@ function publishFragmentReceiptSupersession(
   outputDirectory,
   excluded,
   replacement,
+  options = {},
 ) {
+  const recomputed = options.reason === "recomputed under frozen cache identity";
   const value = {
     schema: FRAGMENT_RECEIPT_SUPERSESSION_SCHEMA,
     ...commonIdentity(),
     parentSourceStart: replacement.value.parentSourceStart,
     parentSourceCount: replacement.value.parentSourceCount,
     column: replacement.value.column,
-    reason: "legacy fragment receipt omitted authenticated sourceDigests",
-    repairChanges: ["add sourceDigests from commonIdentity"],
+    reason: recomputed
+      ? "recomputed under frozen cache identity"
+      : "legacy fragment receipt omitted authenticated sourceDigests",
+    repairChanges: recomputed
+      ? ["replace execution resource provenance; preserve mathematical fragment"]
+      : ["add sourceDigests from commonIdentity"],
     excludedReceipt: {
       path: excluded.path,
       sha256: excluded.digest,
@@ -506,6 +512,13 @@ function publishFragmentReceiptSupersession(
       bytes: replacement.bytes.length,
       mode: "0444",
     },
+    ...(recomputed
+      ? {
+          cacheAuthorityReceipt: options.cacheAuthorityReceipt,
+          excludedCacheKey: excluded.value.cacheKey,
+          replacementCacheKey: replacement.value.cacheKey,
+        }
+      : {}),
   };
   const bytes = Buffer.from(`${JSON.stringify(value, null, 2)}\n`);
   const digest = sha(bytes);
@@ -542,26 +555,62 @@ function readFragmentReceiptSupersession(supersessionPath) {
   assert.equal(Number(match[1]), value.parentSourceStart);
   assert.equal(Number(match[2]), value.parentSourceCount);
   assert.equal(Number(match[3]), value.column);
-  assert.equal(value.reason, "legacy fragment receipt omitted authenticated sourceDigests");
-  assert.deepEqual(value.repairChanges, ["add sourceDigests from commonIdentity"]);
+  assert([
+    "legacy fragment receipt omitted authenticated sourceDigests",
+    "recomputed under frozen cache identity",
+  ].includes(value.reason));
   assert.equal(value.excludedReceipt.mode, "0444");
   assert.equal(value.replacementReceipt.mode, "0444");
-  const excluded = readFragmentReceipt(value.excludedReceipt.path, {
-    allowMissingSourceDigests: true,
-  });
+  const recomputed = value.reason === "recomputed under frozen cache identity";
+  assert.deepEqual(
+    value.repairChanges,
+    recomputed
+      ? ["replace execution resource provenance; preserve mathematical fragment"]
+      : ["add sourceDigests from commonIdentity"],
+  );
+  const excluded = readFragmentReceipt(
+    value.excludedReceipt.path,
+    recomputed ? {} : { allowMissingSourceDigests: true },
+  );
   const replacement = readFragmentReceipt(value.replacementReceipt.path);
   assert.equal(excluded.digest, value.excludedReceipt.sha256);
   assert.equal(excluded.bytes.length, value.excludedReceipt.bytes);
   assert.equal(replacement.digest, value.replacementReceipt.sha256);
   assert.equal(replacement.bytes.length, value.replacementReceipt.bytes);
-  assert.equal(excluded.value.sourceDigests, undefined);
-  const replacementWithoutRepair = { ...replacement.value };
-  delete replacementWithoutRepair.sourceDigests;
-  assert.deepEqual(
-    replacementWithoutRepair,
-    excluded.value,
-    "receipt repair altered a mathematical, resource, or provenance field",
-  );
+  if (recomputed) {
+    assert.notEqual(excluded.value.cacheKey, replacement.value.cacheKey);
+    assert.equal(value.excludedCacheKey, excluded.value.cacheKey);
+    assert.equal(value.replacementCacheKey, replacement.value.cacheKey);
+    assert.equal(excluded.value.fragment.sha256, replacement.value.fragment.sha256);
+    assert.equal(excluded.value.fragment.path, replacement.value.fragment.path);
+    for (const key of [
+      "sourceStart", "sourceCount", "sourceStop", "outputSha256", "packedCells",
+      "state", "coreBytes", "addonBytes", "resourcePolicy", "sourceDigests",
+    ]) {
+      assert.deepEqual(
+        replacement.value[key],
+        excluded.value[key],
+        `recomputed receipt altered ${key}`,
+      );
+    }
+    assert(value.cacheAuthorityReceipt);
+    assert.equal(value.cacheAuthorityReceipt.mode, "0444");
+    const authority = readFragmentReceipt(value.cacheAuthorityReceipt.path);
+    assert.equal(authority.digest, value.cacheAuthorityReceipt.sha256);
+    assert.equal(authority.bytes.length, value.cacheAuthorityReceipt.bytes);
+    assert.equal(authority.value.cacheKey, replacement.value.cacheKey);
+    assert.equal(authority.value.coreBytes, replacement.value.coreBytes);
+    assert.equal(authority.value.addonBytes, replacement.value.addonBytes);
+  } else {
+    assert.equal(excluded.value.sourceDigests, undefined);
+    const replacementWithoutRepair = { ...replacement.value };
+    delete replacementWithoutRepair.sourceDigests;
+    assert.deepEqual(
+      replacementWithoutRepair,
+      excluded.value,
+      "receipt repair altered a mathematical, resource, or provenance field",
+    );
+  }
   assert.equal(replacement.value.parentSourceStart, value.parentSourceStart);
   assert.equal(replacement.value.parentSourceCount, value.parentSourceCount);
   assert.equal(replacement.value.column, value.column);
@@ -573,6 +622,33 @@ function readFragmentReceiptSupersession(supersessionPath) {
     excluded,
     replacement,
   };
+}
+
+function supersedeRecomputedFragmentReceipt(
+  excludedReceiptPath,
+  replacementReceiptPath,
+  cacheAuthorityReceiptPath,
+  outputDirectory,
+) {
+  const excluded = readFragmentReceipt(excludedReceiptPath);
+  const replacement = readFragmentReceipt(replacementReceiptPath);
+  const authority = readFragmentReceipt(cacheAuthorityReceiptPath);
+  const cacheAuthorityReceipt = {
+    path: authority.path,
+    sha256: authority.digest,
+    bytes: authority.bytes.length,
+    mode: "0444",
+  };
+  const published = publishFragmentReceiptSupersession(
+    outputDirectory,
+    excluded,
+    replacement,
+    {
+      reason: "recomputed under frozen cache identity",
+      cacheAuthorityReceipt,
+    },
+  );
+  return readFragmentReceiptSupersession(published.path);
 }
 
 function repairOmittedSourceDigests(receiptPath, outputDirectory) {
@@ -1635,6 +1711,87 @@ function lightweightSelfTest() {
     () => readFragmentReceipt(mutatedFragmentReceiptPath),
     /outputSha256/,
   );
+  const recomputeDirectory = fs.mkdtempSync(
+    path.join(os.tmpdir(), "field3-complex-recomputed-receipt-"),
+  );
+  const recomputeCells = ["2", "0", "0", "0", "0", "0", "0"];
+  const recomputeFragment = publishFragment(
+    recomputeDirectory,
+    makeFragment(124, 4, 124, recomputeCells),
+  );
+  const baseRecomputeReceipt = {
+    schema: FRAGMENT_RECEIPT_SCHEMA,
+    ...commonIdentity(),
+    fragment: recomputeFragment,
+    parentSourceStart: 124,
+    parentSourceCount: 4,
+    parentSourceStop: 128,
+    column: 124,
+    sourceStart: 124,
+    sourceCount: 1,
+    sourceStop: 125,
+    outputSha256: packedSha(recomputeCells),
+    packedCells: CELLS_PER_COLUMN,
+    state: ["0", String(TARGET_BITS), "124", "1", "0", "0", "1", "125", "176"],
+    runMilliseconds: 1,
+    phaseMilliseconds: { nativeKernel: 1 },
+    cacheKey: "old-cache-key",
+    coreBytes: 11,
+    addonBytes: 12,
+    wallMilliseconds: 2,
+    peakAggregateRssKiB: 13,
+    resourcePolicy: { abortGiB: 3.5, hardGiB: 4, timeoutSeconds: 600 },
+  };
+  const publishSyntheticFragmentReceipt = (value) => {
+    const bytes = Buffer.from(`${JSON.stringify(value, null, 2)}\n`);
+    return publishImmutable(
+      recomputeDirectory,
+      `complex-log-fragment-receipt-124-4-column-124-${sha(bytes)}.json`,
+      bytes,
+    );
+  };
+  const oldRecomputeReceipt = publishSyntheticFragmentReceipt(baseRecomputeReceipt);
+  const replacementRecomputeReceipt = publishSyntheticFragmentReceipt({
+    ...baseRecomputeReceipt,
+    cacheKey: "new-cache-key",
+    runMilliseconds: 3,
+    phaseMilliseconds: { nativeKernel: 3 },
+    wallMilliseconds: 4,
+    peakAggregateRssKiB: 15,
+  });
+  const recomputeSupersession = supersedeRecomputedFragmentReceipt(
+    oldRecomputeReceipt.path,
+    replacementRecomputeReceipt.path,
+    replacementRecomputeReceipt.path,
+    recomputeDirectory,
+  );
+  assert.equal(recomputeSupersession.value.excludedCacheKey, "old-cache-key");
+  assert.equal(recomputeSupersession.value.replacementCacheKey, "new-cache-key");
+  const recomputePlan = fragmentResumePlan(124, 4, recomputeDirectory);
+  assert.equal(recomputePlan.complete, 1);
+  assert.equal(recomputePlan.missing, 3);
+  assert.equal(recomputePlan.fragmentOnly, 0);
+  const mutatedResourceReceipt = publishSyntheticFragmentReceipt({
+    ...baseRecomputeReceipt,
+    cacheKey: "mutated-cache-key",
+    coreBytes: 99,
+  });
+  const invalidSupersession = publishFragmentReceiptSupersession(
+    recomputeDirectory,
+    readFragmentReceipt(oldRecomputeReceipt.path),
+    readFragmentReceipt(mutatedResourceReceipt.path),
+    {
+      reason: "recomputed under frozen cache identity",
+      cacheAuthorityReceipt: {
+        ...mutatedResourceReceipt,
+        mode: "0444",
+      },
+    },
+  );
+  negativeTests += expectFailure(
+    () => readFragmentReceiptSupersession(invalidSupersession.path),
+    /altered coreBytes/,
+  );
   return {
     schema: "sagejs-field3-complex-log-corpus-protocol-self-test-v1",
     scheduleBatches: EXPECTED_SCHEDULE.length,
@@ -1696,6 +1853,31 @@ async function commandLine() {
         2,
       ),
     );
+    return;
+  }
+  if (process.argv.includes("--supersede-recomputed-fragment-receipt")) {
+    const excludedPath = path.resolve(
+      argument("--supersede-recomputed-fragment-receipt"),
+    );
+    const replacementPath = path.resolve(argument("--replacement-fragment-receipt"));
+    const authorityPath = path.resolve(argument("--cache-authority-receipt"));
+    const result = supersedeRecomputedFragmentReceipt(
+      excludedPath,
+      replacementPath,
+      authorityPath,
+      outputDirectory,
+    );
+    console.log(JSON.stringify({
+      supersession: {
+        path: result.path,
+        sha256: result.digest,
+        bytes: result.bytes.length,
+        mode: "0444",
+      },
+      excludedReceipt: result.value.excludedReceipt,
+      replacementReceipt: result.value.replacementReceipt,
+      cacheAuthorityReceipt: result.value.cacheAuthorityReceipt,
+    }, null, 2));
     return;
   }
   if (process.argv.includes("--assemble-fragments")) {
@@ -1788,6 +1970,7 @@ module.exports = {
   readFragmentReceipt,
   readFragmentReceiptSupersession,
   repairOmittedSourceDigests,
+  supersedeRecomputedFragmentReceipt,
   verifyCompleteCapsules,
   ownerFromCapsules,
   mergeCapsules,
