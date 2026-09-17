@@ -1,0 +1,76 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "field3-tau-antiuniformizer-fix",
+  "title": "Field3 Tau Antiuniformizer Fix",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Correct authentic field3 live class suffix to derive PARI pr_get_tau from the antiuniformizer, preserve published column-major tau, feed row-major tau_work to quartic assembly, and prove inverse-ideal identities with focused mutation tests",
+  "base_commit": "49e1b4fb757042ad108971b79e2f7ea7b6514092",
+  "claims": [
+    "bench/pari-class-group-port/field3_live_class_suffix.py",
+    "bench/pari-class-group-port/check_field3_live_class_suffix.cjs",
+    "bench/pari-class-group-port/field3_live_class_suffix_audit.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "PARI pr_get_tau antiuniformizer construction",
+      "independent quartic inverse-scaled ideal and ideal-product identities",
+      "CPython, JavaScript, GMP, and tagged differential execution"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "pnpm build",
+    "node bench/pari-class-group-port/check_field3_live_class_suffix.cjs /tmp/sagejs-actual-initial-collector-4CUNyo/fixtures.json /tmp/sagejs-analytic-invhr-jIeusU/fixtures.json /tmp/sagejs-default-driver-Bpi4kv/trace.json"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_field3_live_class_suffix.cjs /tmp/sagejs-actual-initial-collector-4CUNyo/fixtures.json /tmp/sagejs-analytic-invhr-jIeusU/fixtures.json /tmp/sagejs-default-driver-Bpi4kv/trace.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 38.732,
+      "started_at": "2026-09-17T17:12:56.571Z",
+      "commit": "49e1b4fb757042ad108971b79e2f7ea7b6514092",
+      "workspace_fingerprint": "69fac122dcf5e248253f7a2ac0f18474ad93688f667fe8c553721927574e25ff",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.062,
+      "started_at": "2026-09-17T17:13:41.010Z",
+      "commit": "49e1b4fb757042ad108971b79e2f7ea7b6514092",
+      "workspace_fingerprint": "69fac122dcf5e248253f7a2ac0f18474ad93688f667fe8c553721927574e25ff",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Corrects the authentic field3 live class suffix to derive pr_get_tau from the prepared antiuniformizer, stage published column-major tau separately from row-major tau_work, retain the antiuniformizer, and pass only tau_work to quartic genback. Focused CPython/JavaScript/GMP/tagged regression and mutation tests prove both selected G matrices equal HNFmodid(tau,p) and p P^-1, multiply back to (p), and differ from the former uniformizer-multiplication construction.",
+    "risks": [
+      "The requested bounded run excluded pnpm test:portable and pnpm test:baselib:strict; pnpm build, pnpm architecture:check, and the focused authentic checker passed.",
+      "The live suffix still intentionally admits only the frozen unramified two-generator field3 branch and calls the descriptor suffix with ramified=0."
+    ],
+    "next_steps": [
+      "Merge beside field3-terminal-source-owners commit a9740a2f4, whose independent serializer replay produced the same antiuniformizers, layouts, inverse-scaled ideals, and principal products.",
+      "Run the two broad integration-lane checks in the integration spine if its handoff gate requires them."
+    ]
+  }
+}
