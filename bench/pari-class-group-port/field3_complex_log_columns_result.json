@@ -1,0 +1,52 @@
+{
+  "schema": "sagejs-field3-complex-log-columns-v1",
+  "status": "passed",
+  "field": "x^4-2000022*x-2000042",
+  "targetBits": 153088,
+  "authoritySha256": "246bfe2af51c8be732308719773fc7d696f7dc1bf21958c91d96cd8fc448954c",
+  "initialOwnerSha256": "81b9d3b237e781a697f0ae170554426b363ec2235297407be1deed38ebbbc6fe",
+  "normConsequences": 301,
+  "normConsequencesSha256": "65e1bbd5c05b89b63d08d91e137c2ac68116db3df66073080d89ca4a55275f53",
+  "exactPariDifferentialColumns": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 32, 34, 184, 300],
+  "exactPariDifferentialCount": 32,
+  "scalarAxisColumnsCovered": 26,
+  "nonAxisQuadrantsCovered": 4,
+  "nearAxisCancellationColumns": [184],
+  "terminalColumnsCovered": [300],
+  "oracleTraceSha256": "81ea6f34796cec5e944773d56da3fcf85786fb691f818e5b628e1984ed4717fd",
+  "outputSha256": "d256d2a4f2f2251a8cd6902206de37387b60fe27dd4bf44f0e7d771d00b6236d",
+  "durablePrefixOwner": {
+    "path": "/scratch/sagejs-runtime/pari-class-group-e2e-20260917/field3-authority/translated-log-columns/complex-log-prefix-f0a842ef820888e76b4421684a98a3cfd4654c47dee8896d63f204df7e7174fd.json",
+    "sha256": "f0a842ef820888e76b4421684a98a3cfd4654c47dee8896d63f204df7e7174fd"
+  },
+  "dynamicOracles": { "cpythonColumns": 1, "javascriptColumns": 1 },
+  "native": {
+    "backend": "gmp",
+    "runMilliseconds": 303107.764737,
+    "cacheKey": "f1035ae7e031a46727f4c8180ab5e3a5c0c927f526e73ef6c375380e5611b5cd"
+  },
+  "transactionalRejections": 2,
+  "fullSchedule": {
+    "columns": 301,
+    "batchWidth": 4,
+    "batches": 76,
+    "starts": "0,4,...,300",
+    "finalCount": 1
+  },
+  "command": "node bench/pari-class-group-port/check_field3_complex_log_columns.cjs",
+  "wallMilliseconds": 320241,
+  "peakAggregateRssKiB": 1489284,
+  "resourcePolicy": { "abortGiB": 3.5, "hardGiB": 4, "timeoutSeconds": 600 },
+  "priorStoppedAttempts": [
+    {
+      "stage": "selected-nonscalar-differential",
+      "peakAggregateRssKiB": 1426732,
+      "outcome": "revealed PARI complex dispatch retains the prepared 153152-bit precision"
+    },
+    {
+      "stage": "cpython-same-source-control",
+      "peakAggregateRssKiB": 1417144,
+      "outcome": "repository src/lib/decimal.py shadowed Python 3.14 stdlib decimal; no owner published"
+    }
+  ]
+}
