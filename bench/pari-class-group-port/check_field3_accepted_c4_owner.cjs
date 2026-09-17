@@ -14,7 +14,13 @@ const pari = path.resolve(process.argv[2] || "/home/user/upstream/pari-2.17.4");
 const archive = path.resolve(process.argv[3] || "/home/user/upstream/pari-2.17.4.tar.gz");
 const archiveSha = "02651d99c391007d384b3fadbc20abc6916b77036f9e496c99e9ce8688ca4b53";
 const fieldName = "x^4-2000022*x-2000042";
-const runIdentity = "pari-2.17.4:nfinit192->nfnewprec153088:field3";
+const runIdentity = "synthetic-c4-low-64:field3";
+const basisTable = [
+  1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1,
+  0,1,0,0, 0,1,1,0, 1499998,48,-15,37, 621622,13531,-7,14,
+  0,0,1,0, 1499998,48,-15,37, -999954,1999925,29,-74, -2418900,810720,13545,-77,
+  0,0,0,1, 621622,13531,-7,14, -2418900,810720,13545,-77, 546040180,257065,21935,-27074,
+].map(String);
 const sha = (bytes) => crypto.createHash("sha256").update(bytes).digest("hex");
 
 function run(command, args, options = {}) {
@@ -109,36 +115,58 @@ function predecessors(directory, catalogData, h = 1n << 35n) {
     packedA: packedA(),
     transform: transform.slice(0, 301 * 13),
   };
-  const preparedOwnerSha256 = "b".repeat(64);
-  const field = {
-    ...common,
-    schema: "sagejs.pari-class-group/field3-analytic-field-v1",
-    polynomial: ["-2000042", "-2000022", "0", "0", "1"],
-    discriminant: catalogData.discriminant,
-    degree: "4",
-    realPlaces: "2",
-    complexPlaces: "1",
-    rootsOfUnity: catalogData.rootsOfUnity,
-    preparedOwnerSha256,
-  };
-  const fieldFile = immutableOwner(directory, `field-${h}.json`, field);
-  const catalog = {
-    ...common,
-    schema: "sagejs.pari-class-group/field3-analytic-prime-catalog-v1",
-    fieldOwnerSha256: fieldFile.sha256,
-    preparedOwnerSha256,
-    primes: catalogData.primes,
-    offsets: catalogData.offsets,
-    counts: catalogData.counts,
-    degrees: catalogData.degrees,
-    multiplicities: catalogData.multiplicities,
-  };
+  const fieldFile = catalogData.owners.field;
+  const catalog = catalogData.values.catalog;
   return {
     full: immutableOwner(directory, `full-${h}.json`, full),
     c3: immutableOwner(directory, `c3-${h}.json`, c3),
     field: fieldFile,
-    catalog: immutableOwner(directory, `catalog-${h}.json`, catalog),
-    values: { full, c3, field, catalog },
+    catalog: catalogData.owners.catalog,
+    values: { full, c3, field: catalogData.values.field, catalog },
+  };
+}
+
+function derivedInputs(directory, catalogData, output) {
+  const prepared = immutableOwner(directory, "prepared-test.json", {
+    schema: "sagejs.pari-class-group/test-field3-prepared-embedding-owner-v1",
+    field: fieldName, runIdentity, testOnly: true, requestedBits: 64,
+    polynomial: ["-2000042", "-2000022", "0", "0", "1"],
+    signature: ["2", "1"], tensor: basisTable,
+  });
+  const initial = immutableOwner(directory, "initial-test.json", {
+    schema: "sagejs.pari-class-group/test-field3-initial-catalog-consequences-v1",
+    field: fieldName, runIdentity, testOnly: true, basisTable, residueBound: 6144,
+    admission_primes: catalogData.primes,
+    admission_prime_offsets: catalogData.offsets,
+    admission_prime_counts: catalogData.counts,
+    admission_group_f: catalogData.degrees,
+    admission_group_e: catalogData.multiplicities,
+  });
+  const expandedPrimes = [];
+  for (let i = 0; i < catalogData.primes.length; i += 1) {
+    for (let j = 0; j < Number(catalogData.counts[i]); j += 1) expandedPrimes.push(catalogData.primes[i]);
+  }
+  const authority = immutableOwner(directory, "authority-test.json", {
+    schema: "sagejs.pari-class-group/test-field3-catalog-authority-v1",
+    field: fieldName, runIdentity, testOnly: true,
+    relationPrimes: expandedPrimes, ramification: catalogData.multiplicities,
+  });
+  const result = JSON.parse(run(process.execPath, [coordinator, "--operation", "derive-inputs",
+    "--profile", "synthetic-test", "--prepared-owner", prepared.file,
+    "--prepared-sha256", prepared.sha256, "--initial-owner", initial.file,
+    "--initial-sha256", initial.sha256, "--authority-owner", authority.file,
+    "--authority-sha256", authority.sha256, "--output-dir", output]));
+  return {
+    owners: {
+      field: { file: result.field.path, sha256: result.field.sha256 },
+      catalog: { file: result.catalog.path, sha256: result.catalog.sha256 },
+    },
+    values: {
+      field: JSON.parse(fs.readFileSync(result.field.path)),
+      catalog: JSON.parse(fs.readFileSync(result.catalog.path)),
+    },
+    sources: { prepared, initial, authority },
+    result,
   };
 }
 
@@ -156,7 +184,13 @@ try {
   const catalogData = sourceCatalog(temporary);
   assert.equal(catalogData.bound, 6144);
   const output = path.join(temporary, "out");
-  const owners = predecessors(temporary, catalogData);
+  const analyticInputs = derivedInputs(temporary, catalogData, output);
+  assert.equal(analyticInputs.values.field.discriminant, catalogData.discriminant);
+  for (const published of [analyticInputs.result.field, analyticInputs.result.catalog]) {
+    assert.equal(fs.statSync(published.path).mode & 0o777, 0o444);
+    assert.equal(sha(fs.readFileSync(published.path)), published.sha256);
+  }
+  const owners = predecessors(temporary, analyticInputs);
   const first = JSON.parse(run(process.execPath, acceptArgs(owners, output)));
   const second = JSON.parse(run(process.execPath, acceptArgs(owners, output)));
   assert.deepEqual(second, first);
@@ -170,6 +204,8 @@ try {
   assert.equal(c4.analyticPending, false);
   assert.equal(c4.candidateClassNumber, String(1n << 35n));
   assert.deepEqual(c4.acceptanceState, ["0", "1", "64", "1"]);
+  assert.equal(c4.schema, "sagejs.pari-class-group/test-field3-accepted-c4-v1");
+  assert.equal(analytic.schema, "sagejs.pari-class-group/test-field3-analytic-accepted-owner-v1");
   assert.deepEqual(c4.candidateRelations.slice(0, 4), ["1", "0", "0", "1"]);
   assert.equal(c4.analyticOwnerState[0], "6144");
   assert.equal(analytic.acceptedC4OwnerSha256, first.acceptedC4.sha256);
@@ -179,7 +215,9 @@ try {
 
   const projection = JSON.parse(run(process.execPath, [coordinator,
     "--operation", "project-c7", "--accepted-c4-owner", first.acceptedC4.path,
-    "--accepted-c4-sha256", first.acceptedC4.sha256, "--output-dir", output]));
+    "--accepted-c4-sha256", first.acceptedC4.sha256,
+    ...acceptArgs(owners, output).slice(3),
+  ]));
   assert.deepEqual(projection, first.analyticAccepted);
 
   let mutationCases = 0;
@@ -192,7 +230,7 @@ try {
     assert.equal(fs.readdirSync(output).some((name) => name.startsWith(".")), false);
     mutationCases += 1;
   };
-  const retry = predecessors(temporary, catalogData, 1n);
+  const retry = predecessors(temporary, analyticInputs, 1n);
   reject(acceptArgs(retry, output), /PRECI at 64 bits requests retry at 128 bits/);
   const detached = structuredClone(owners.values.catalog);
   detached.fieldOwnerSha256 = "0".repeat(64);
@@ -208,7 +246,26 @@ try {
   const alteredAcceptedOwner = immutableOwner(temporary, "accepted-altered.json", alteredAccepted);
   reject([coordinator, "--operation", "project-c7", "--accepted-c4-owner",
     alteredAcceptedOwner.file, "--accepted-c4-sha256", alteredAcceptedOwner.sha256,
-    "--output-dir", output], /analytic gate was not accepted/);
+    ...acceptArgs(owners, output).slice(3)], /analytic gate was not accepted/);
+  const forgedField = structuredClone(owners.values.field);
+  forgedField.schema = "sagejs.pari-class-group/field3-analytic-field-v1";
+  forgedField.testOnly = false;
+  forgedField.runIdentity = "pari-2.17.4:nfinit192->nfnewprec153088:field3";
+  const forgedFieldOwner = immutableOwner(temporary, "field-forged-production.json", forgedField);
+  const forgedCatalog = structuredClone(owners.values.catalog);
+  forgedCatalog.schema = "sagejs.pari-class-group/field3-analytic-prime-catalog-v1";
+  forgedCatalog.testOnly = false;
+  forgedCatalog.runIdentity = forgedField.runIdentity;
+  forgedCatalog.fieldOwnerSha256 = forgedFieldOwner.sha256;
+  const forgedCatalogOwner = immutableOwner(temporary, "catalog-forged-production.json", forgedCatalog);
+  reject(acceptArgs({ ...owners, field: forgedFieldOwner, catalog: forgedCatalogOwner }, output),
+    /predecessor field identity diverged|production identity requires 153088 bits/);
+  const alteredLatch = structuredClone(c4);
+  alteredLatch.c3Latches[0] = String(BigInt(alteredLatch.c3Latches[0]) + 1n);
+  const alteredLatchOwner = immutableOwner(temporary, "accepted-altered-latch.json", alteredLatch);
+  reject([coordinator, "--operation", "project-c7", "--accepted-c4-owner",
+    alteredLatchOwner.file, "--accepted-c4-sha256", alteredLatchOwner.sha256,
+    ...acceptArgs(owners, output).slice(3)], /C4 C3 latches changed/);
   fs.chmodSync(owners.catalog.file, 0o644);
   reject(acceptArgs(owners, output), /not an immutable mode-0444 file/);
   fs.chmodSync(owners.catalog.file, 0o444);
