@@ -1434,6 +1434,27 @@ stage("live-class-result-assembly", {
   allowNoArtifactDirectory: true,
 });
 
+stage("final-class-unit-completion-composer", {
+  dependencies: ["live-class-result-assembly",
+    "no-oracle-unit-regulator-completion", "authentic-compact-success",
+    "torsion-final-binding"],
+  command: () => commandNode(
+    "check_final_class_unit_completion_composer.cjs"),
+  validate: (summary) => {
+    assert.equal(summary.schema,
+      "sagejs.pari-class-group/final-internal-completion-v1");
+    assert.equal(summary.correspondenceComplete, true);
+    assert.equal(summary.public, false);
+    assert.equal(summary.classNumber, 1);
+    assert.equal(summary.unitRank, 2);
+    assert.equal(summary.compactFactors, 7);
+    assert.equal(summary.torsionOrder, 2);
+    assert.match(summary.sha256, /^[0-9a-f]{64}$/);
+  },
+  noFixture: true,
+  allowNoArtifactDirectory: true,
+});
+
 stage("h1-exclusive-stage-timing-contract", {
   dependencies: ["prepared-h1-root-boundary"],
   command: () => commandNode("check_h1_exclusive_stage_timing.cjs"),
@@ -1712,7 +1733,7 @@ stage("final-state", {
     "prepared-h1-root-boundary", "prepared-h1-no-oracle-root",
     "internal-correspondence-completion",
     "torsion-final-binding", "h1-honesty-terminal", "live-generic-controls",
-    "live-class-result-assembly",
+    "live-class-result-assembly", "final-class-unit-completion-composer",
     "h1-live-final-driver-status", "h1-exclusive-stage-timing-contract",
     "h1-outcome-c-adapter-contract",
     "mixed-getfu-quartic", "mixed-getfu-hard-precision",
