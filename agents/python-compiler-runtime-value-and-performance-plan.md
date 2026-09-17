@@ -328,6 +328,20 @@ for both baseline and candidate and is not a qualification receipt. Exact
 artifacts, measurements, and the corrected standalone boundary are recorded in
 `agents/python-keyword-binder-native.md`.
 
+**2026-09-17 attribute-store checkpoint:** the construction follow-up caches a
+prototype/name proof only after the complete Python assignment protocol has
+successfully selected ordinary instance storage. Epoch invalidation, explicit
+instance hooks, exposed/replaced namespaces, descriptor installation/deletion,
+class reassignment, native fallbacks, and evaluation order retain authoritative
+paths. Against the keyword-binder artifact, positional construction plus a
+method improves by 30.1% and keyword construction by 21.4%; unrelated call rows
+remain flat. The remaining construction gaps are still 18.8–19.6x CPython.
+All 225 portable files, strict checks, traitlets, decorator, and attrs workflows
+pass at 902,699/903,000 core bytes. Exact artifacts and qualification are in
+`agents/python-attribute-store-cache.md`. Keep this branch behind its binder
+dependency until PR #301 and the binder slice reach `origin/main`; do not let a
+stacked PR merge into a feature branch.
+
 Continue next with integration-aware qualification, the receiver-lookup campaign,
 and true handled-exception ownership. Generator/coroutine suspension makes a
 single global active-exception pointer unsafe: preserve owned handlers while

@@ -859,7 +859,7 @@ test("observable chained assignments use Python hooks from left to right", async
       "first", "second", "marker",
     ]);
     assert.match(javascript, /function\(ρσ_chain_assign_temp\)/);
-    assert.equal((javascript.match(/ρσ_setattr/g) ?? []).length, 2);
+    assert.equal((javascript.match(/ρσ_store_attr/g) ?? []).length, 2);
     assert.match(
       javascript,
       /ρσ_getattr_internal\(first, "child", ρσ_getattr_missing\)/,

@@ -811,7 +811,7 @@ def print_assignment(self, output):
         and not left.property.startswith("ρσ_")
         and "." not in left.property
     ):
-        output.print("ρσ_setattr(")
+        output.print("ρσ_store_attr(")
         left.expression.print(output)
         output.comma()
         output.print(JSON.stringify(left.property))
