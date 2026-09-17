@@ -465,6 +465,21 @@ decorator/attrs, strict, docs, and merge gates remain green. Evidence is folded
 into `agents/python-exact-integer-add-native.md` so the coherent arithmetic
 slice can integrate together.
 
+**2026-09-17 single-pass keyword-binding checkpoint:** the authenticated
+generated-function path validated keyword packet keys, then scanned every
+positional parameter again to copy and delete recognized values. It now
+consumes each recognized named property during the validation pass while
+retaining keyword-only and `**kwargs` entries for the generated prologue.
+Controlled exact-artifact measurements improve keyword functions by 4.9% and
+immediate keyword methods by 2.8%; unrelated rows remain within run dispersion.
+The artifact and core source both shrink 282 bytes to 902,332/903,000. Residual
+keyword-function, keyword-method, and keyword-construction gaps remain 8.6x,
+13.8x, and 11.6x CPython, so M5 remains open. Differential, direct-boundary,
+default, mutation, traitlets, attrs/decorator, strict, docs, and merge gates
+pass. The unchanged local startup gate remains above budget and is not called a
+receipt. Exact evidence is in `agents/python-keyword-single-pass-binding.md`;
+keep this candidate behind its prerequisites.
+
 Continue next with integration-aware qualification, the receiver-lookup campaign,
 and true handled-exception ownership. Generator/coroutine suspension makes a
 single global active-exception pointer unsafe: preserve owned handlers while

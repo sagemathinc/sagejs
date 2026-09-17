@@ -204,6 +204,19 @@ test("shared keyword binding consumes literal packets without Python operators",
     () => api.ρσ_interpolate_kwargs(undefined, target, [{ unknown: 2 }]),
     /unexpected keyword argument 'unknown'/,
   );
+
+  function targetWithResidual(left, keywords) {
+    return [left, keywords];
+  }
+  targetWithResidual.__argnames__ = ["left"];
+  targetWithResidual.__kwonly__ = ["option"];
+  targetWithResidual.__varkw__ = true;
+  targetWithResidual.__handles_kwarg_interpolation__ = true;
+  const residualPacket = { left: 13, option: 17, extra: 19 };
+  const residual = api.ρσ_interpolate_kwargs(
+    undefined, targetWithResidual, [residualPacket]);
+  assert.equal(residual[0], 13);
+  assert.deepEqual(residual[1], { option: 17, extra: 19 });
 });
 
 test("branded keyword constructors reuse prepared allocation", () => {
