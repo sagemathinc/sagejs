@@ -66,7 +66,7 @@ if operation=='prepare':
 elif operation=='replay':
  envelope=load(sys.argv[10],sys.argv[11])
  if envelope!=json.loads(encoded,object_pairs_hook=strict): raise ValueError('cold replay correspondence changed')
- print(json.dumps({'schema':'sagejs.pari-class-group/field3-c7-replay-v1','envelopeSha256':sys.argv[11],'coldReplay':True,'publicComplete':False},separators=(',',':'),sort_keys=True))
+ print(json.dumps({'schema':'sagejs.pari-class-group/field3-c7-replay-v1','envelopeSha256':sys.argv[11],'coldReplay':True,'correspondenceComplete':True,'publicComplete':False},separators=(',',':'),sort_keys=True))
 else: raise ValueError('unknown operation')
 `;
 
@@ -107,7 +107,8 @@ function main() {
   }
   const bytes = runPython(operation, owners, hashes);
   const shallow = JSON.parse(bytes.toString("utf8"));
-  if (shallow.schema !== SCHEMA || shallow.publicComplete !== false) {
+  if (shallow.schema !== SCHEMA || shallow.correspondenceComplete !== true ||
+      shallow.publicComplete !== false) {
     fail("Python returned an invalid C7 envelope");
   }
   const sha256 = digest(bytes);

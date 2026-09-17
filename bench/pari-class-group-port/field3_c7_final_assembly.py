@@ -365,16 +365,34 @@ def assemble_authenticated_owners(
     analytic_assumptions = _mapping(
         regulator_owner.get("assumptions"), "analytic assumptions"
     )
-    if unit_owner.get("accepted") is not True:
-        raise Field3C7Failure("unit owner is not accepted")
-    if unit_owner.get("status") != "success" or unit_owner.get("reason") is not None:
-        raise Field3C7Failure("unit owner is not a successful C6 publication")
+    materialized_units = (
+        unit_owner.get("accepted") is True
+        and unit_owner.get("status") == "success"
+        and unit_owner.get("reason") is None
+    )
+    compact_preci = (
+        unit_owner.get("accepted") is False
+        and unit_owner.get("compactAccepted") is True
+        and unit_owner.get("status") == "not_given"
+        and unit_owner.get("reason") == "PRECI"
+    )
+    if not materialized_units and not compact_preci:
+        raise Field3C7Failure("unit owner is neither materialized nor compact PRECI")
     if _integers(unit_owner.get("packedA"), 273, "unit packed A") != packed_a:
         raise Field3C7Failure("unit/full15 A owners diverged")
     unit_assumptions = _mapping(unit_owner.get("assumptions"), "unit assumptions")
+    materialized_assumptions = (
+        unit_assumptions.get("exactFactorbackVerified") is True
+        and unit_assumptions.get("signInverseMaterializationVerified") is True
+    )
+    compact_assumptions = (
+        unit_assumptions.get("flagZeroNotGiven") is True
+        and unit_assumptions.get("exactCompactUnitsVerified") is True
+        and unit_assumptions.get("exactUnitsPublished") is False
+    )
     if (
-        unit_assumptions.get("exactFactorbackVerified") is not True
-        or unit_assumptions.get("signInverseMaterializationVerified") is not True
+        (materialized_units and not materialized_assumptions)
+        or (compact_preci and not compact_assumptions)
         or unit_assumptions.get("publicCompletion") is not False
     ):
         raise Field3C7Failure("unit assumptions overstate or omit verification")
@@ -398,21 +416,24 @@ def assemble_authenticated_owners(
     if factored_shape != [301, 2]:
         raise Field3C7Failure("factored transform shape changed")
     _integers(unit_owner.get("factoredTransform"), 602, "factored transform")
-    adjusted_shape = _integers(
-        unit_owner.get("adjustedFactorShape"), 2, "adjusted factor shape"
+    factor_shape_key = (
+        "adjustedFactorShape" if materialized_units else "getfuFactorShape"
     )
+    factor_key = "adjustedFactor" if materialized_units else "getfuFactor"
+    adjusted_shape = _integers(unit_owner.get(factor_shape_key), 2, "unit factor shape")
     if adjusted_shape != [2, 2]:
         raise Field3C7Failure("adjusted factor shape changed")
-    adjusted_factor = _integers(unit_owner.get("adjustedFactor"), 4, "adjusted factor")
+    adjusted_factor = _integers(unit_owner.get(factor_key), 4, "unit factor")
     if adjusted_factor[0] * adjusted_factor[3] - adjusted_factor[1] * adjusted_factor[
         2
     ] not in (-1, 1):
         raise Field3C7Failure("adjusted factor is not unimodular")
     norms = _integers(unit_owner.get("norms"), 2, "unit norms")
-    if any(abs(value) != 1 for value in norms):
-        raise Field3C7Failure("materialized unit norm changed")
+    if any((abs(value) != 1 if materialized_units else value != 1) for value in norms):
+        raise Field3C7Failure("unit norm changed")
     units = unit_owner.get("units")
-    if not isinstance(units, list) or len(units) != 2:
+    expected_unit_count = 2 if materialized_units else 0
+    if not isinstance(units, list) or len(units) != expected_unit_count:
         raise Field3C7Failure("materialized unit count changed")
     for column, unit_value in enumerate(units):
         unit = _mapping(unit_value, f"unit {column}")
@@ -437,10 +458,14 @@ def assemble_authenticated_owners(
         "embeddingOwnerSha256",
         "candidateSha256",
         "relationOwnerSha256",
-        "factorbackSourceOwnerSha256",
-        "factorbackReceiptSha256",
     ):
         _digest(unit_ancestry.get(key), f"unit ancestry {key}")
+    for key in ("factorbackSourceOwnerSha256", "factorbackReceiptSha256"):
+        value = unit_ancestry.get(key)
+        if materialized_units:
+            _digest(value, f"unit ancestry {key}")
+        elif value is not None:
+            raise Field3C7Failure("compact PRECI claimed factorback materialization")
     full15_sha256 = full15_owner.get("_authenticatedSha256")
     if full15_sha256 is None:
         raise Field3C7Failure("full15 owner lacks authenticated digest")
@@ -455,25 +480,32 @@ def assemble_authenticated_owners(
     ):
         raise Field3C7Failure("regulator and unit owner ancestry diverged")
     unit_proof = _mapping(unit_owner.get("proof"), "unit proof")
-    for key in (
+    proof_keys = [
         "relationKernel",
         "exactFactorback",
         "principalIdealOne",
-        "torsionPlusMinusOne",
-        "normAndInverse",
         "logLattice",
-    ):
+    ]
+    if materialized_units:
+        proof_keys.extend(("normAndInverse", "torsionPlusMinusOne"))
+    else:
+        proof_keys.extend(("normOne", "transformComposition"))
+    for key in proof_keys:
         if unit_proof.get(key) is not True:
             raise Field3C7Failure(f"unit proof {key} is absent")
-    inverse_mask = _integer(unit_proof.get("inverseMask"), "unit inverse mask")
-    if inverse_mask < 0 or inverse_mask > 3:
-        raise Field3C7Failure("unit inverse mask changed")
-    proof_ancestry = {
-        "sourceOwnerSha256": "factorbackSourceOwnerSha256",
-        "sourceC6OwnerSha256": "c6OwnerSha256",
-        "sourceEmbeddingOwnerSha256": "embeddingOwnerSha256",
-        "sourceRelationOwnerSha256": "relationOwnerSha256",
-    }
+    inverse_mask = 0
+    proof_ancestry = {"sourceRelationOwnerSha256": "relationOwnerSha256"}
+    if materialized_units:
+        inverse_mask = _integer(unit_proof.get("inverseMask"), "unit inverse mask")
+        if inverse_mask < 0 or inverse_mask > 3:
+            raise Field3C7Failure("unit inverse mask changed")
+        proof_ancestry.update(
+            {
+                "sourceOwnerSha256": "factorbackSourceOwnerSha256",
+                "sourceC6OwnerSha256": "c6OwnerSha256",
+                "sourceEmbeddingOwnerSha256": "embeddingOwnerSha256",
+            }
+        )
     for proof_key, ancestry_key in proof_ancestry.items():
         if _digest(
             unit_proof.get(proof_key), f"unit proof {proof_key}"
@@ -484,15 +516,27 @@ def assemble_authenticated_owners(
         raise Field3C7Failure("unit proof columns changed")
     for column, proof_value in enumerate(proof_columns):
         proof_column = _mapping(proof_value, f"unit proof column {column}")
-        if (
-            _integer(proof_column.get("column"), "unit proof column index") != column
-            or proof_column.get("inverseChosen") != bool(inverse_mask & (1 << column))
-            or _integer(proof_column.get("materializedNorm"), "proof materialized norm")
-            != norms[column]
-            or _integer(proof_column.get("torsionSign"), "proof torsion sign")
-            != _integer(units[column].get("torsionSign"), "unit torsion sign")
-        ):
+        if _integer(proof_column.get("column"), "unit proof column index") != column:
             raise Field3C7Failure("unit proof/materialization correspondence changed")
+        if materialized_units:
+            if (
+                proof_column.get("inverseChosen") != bool(inverse_mask & (1 << column))
+                or _integer(
+                    proof_column.get("materializedNorm"), "proof materialized norm"
+                )
+                != norms[column]
+                or _integer(proof_column.get("torsionSign"), "proof torsion sign")
+                != _integer(units[column].get("torsionSign"), "unit torsion sign")
+            ):
+                raise Field3C7Failure(
+                    "unit proof/materialization correspondence changed"
+                )
+        elif (
+            _integer(proof_column.get("norm"), "compact proof norm") != norms[column]
+            or proof_column.get("representation")
+            != "authenticated-principal-generator-product"
+        ):
+            raise Field3C7Failure("compact unit proof correspondence changed")
 
     w = _integers(live_owner.get("W"), 4, "live W")
     live_c = _integers(live_owner.get("packedC"), 42, "live C")
@@ -618,6 +662,7 @@ def assemble_authenticated_owners(
         "schema": OUTPUT_SCHEMA,
         "field": FIELD,
         "publicComplete": False,
+        "correspondenceComplete": True,
         "status": "authenticated-correspondence-prepared",
         "precision": precision,
         "terminal": {
@@ -645,6 +690,11 @@ def assemble_authenticated_owners(
             key: value
             for key, value in unit_owner.items()
             if key != "_authenticatedSha256"
+        },
+        "unitMaterialization": {
+            "status": "success" if materialized_units else "not_given",
+            "reason": None if materialized_units else "PRECI",
+            "compactFactoredUnitsRetained": True,
         },
         "torsion": dict(torsion),
         "assumptions": {

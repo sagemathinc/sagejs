@@ -123,7 +123,9 @@ assert held==[777]*len(high) and held_state==[77]*7
 try:m.pari_field3_packed_class_cleanarch(high,2,153152,I(3),I(cells),I(cells),I(cells),I(cells),I(stack_cells),I(len(high)),held,held_state);raise AssertionError('invalid PRECI accepted')
 except ValueError:pass
 assert held==[777]*len(high) and held_state==[77]*7
-bad=high[:];bad[2]=153152;bad[1]=1<<153151;held=[777]*len(high)
+guard=high[:];guard[2]=153152;guard[1]=1<<153151;guard_out=[777]*len(high)
+assert m.pari_field3_packed_class_cleanarch(guard,2,precision,cache,I(0),I(0),I(0),I(0),I(0),I(len(high)),guard_out,I(7))==0
+bad=high[:];bad[2]=153216;bad[1]=1<<153215;held=[777]*len(high)
 try:m.pari_field3_packed_class_cleanarch(bad,2,precision,cache,I(0),I(0),I(0),I(0),I(0),I(len(high)),held,I(7));raise AssertionError('oversized packed input accepted')
 except ValueError:pass
 assert held==[777]*len(high)

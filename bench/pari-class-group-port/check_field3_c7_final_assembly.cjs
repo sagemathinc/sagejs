@@ -202,6 +202,7 @@ function coordinatorArgs(files, output) {
     assert.equal(fs.statSync(first.path).mode & 0o777, 0o444);
     const envelope = JSON.parse(fs.readFileSync(first.path));
     assert.equal(envelope.publicComplete, false);
+    assert.equal(envelope.correspondenceComplete, true);
     assert.equal(envelope.coldReplayCapable, true);
     assert.deepEqual(envelope.classGroup.invariants, [2, 2]);
     assert.equal(envelope.classGroup.classNumber, 4);
@@ -220,7 +221,69 @@ function coordinatorArgs(files, output) {
     ];
     const replay = JSON.parse(run(process.execPath, replayArgs));
     assert.equal(replay.coldReplay, true);
+    assert.equal(replay.correspondenceComplete, true);
     assert.equal(replay.publicComplete, false);
+
+    // A legitimate flag-zero PRECI result retains authenticated compact units
+    // while honestly omitting their enormous eager power-basis expansion.
+    const compactUnit = structuredClone(values.unit);
+    compactUnit.accepted = false;
+    compactUnit.compactAccepted = true;
+    compactUnit.status = "not_given";
+    compactUnit.reason = "PRECI";
+    compactUnit.units = [];
+    compactUnit.getfuFactorShape = compactUnit.adjustedFactorShape;
+    compactUnit.getfuFactor = compactUnit.adjustedFactor;
+    delete compactUnit.adjustedFactorShape;
+    delete compactUnit.adjustedFactor;
+    compactUnit.ancestry.factorbackSourceOwnerSha256 = null;
+    compactUnit.ancestry.factorbackReceiptSha256 = null;
+    compactUnit.proof = {
+      relationKernel: true, transformComposition: true, exactFactorback: true,
+      principalIdealOne: true, normOne: true, logLattice: true,
+      sourceRelationOwnerSha256: compactUnit.ancestry.relationOwnerSha256,
+      factorDeterminant: "-1",
+      columns: [
+        { column: 0, norm: "1",
+          representation: "authenticated-principal-generator-product" },
+        { column: 1, norm: "1",
+          representation: "authenticated-principal-generator-product" },
+      ],
+    };
+    compactUnit.assumptions = { pari2174Correspondence: true,
+      flagZeroNotGiven: true, exactCompactUnitsVerified: true,
+      exactUnitsPublished: false, publicCompletion: false };
+    const compactFile = immutableOwner(temporary, "compact-unit", compactUnit);
+    const compactFiles = { ...files, unit: compactFile };
+    const compact = JSON.parse(run(process.execPath,
+      coordinatorArgs(compactFiles, output)));
+    const compactEnvelope = JSON.parse(fs.readFileSync(compact.path));
+    assert.equal(compactEnvelope.correspondenceComplete, true);
+    assert.equal(compactEnvelope.publicComplete, false);
+    assert.deepEqual(compactEnvelope.unitMaterialization, {
+      status: "not_given", reason: "PRECI", compactFactoredUnitsRetained: true,
+    });
+    assert.equal(compactEnvelope.unitOwner.factoredTransform.length, 602);
+    const beforeCompactMutation = new Set(fs.readdirSync(output));
+    for (const [label, mutate] of [
+      ["compact proof", (value) => { value.proof.principalIdealOne = false; }],
+      ["compact relation ancestry", (value) => {
+        value.proof.sourceRelationOwnerSha256 = "b".repeat(64);
+      }],
+      ["compact status", (value) => { value.reason = "LARGE"; }],
+    ]) {
+      const changed = structuredClone(compactUnit);
+      mutate(changed);
+      const changedFile = immutableOwner(temporary,
+        `bad-${label.replaceAll(" ", "-")}`, changed);
+      const rejected = spawnSync(process.execPath,
+        coordinatorArgs({ ...files, unit: changedFile }, output), {
+          cwd: root, encoding: "utf8", timeout: 240_000,
+        });
+      assert.notEqual(rejected.status, 0, `${label} mutation accepted`);
+      assert.deepEqual(new Set(fs.readdirSync(output)), beforeCompactMutation,
+        `${label} published output`);
+    }
 
     // Authentication mutation: changed bytes under the admitted digest fail
     // before Python runs and cannot publish a partial envelope.

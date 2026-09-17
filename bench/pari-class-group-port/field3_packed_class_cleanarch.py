@@ -97,7 +97,9 @@ def pari_field3_packed_class_cleanarch(
             if rp < 0:
                 raise ValueError("field3 logarithm real part must be packed")
             if rm != 0:
-                if rp < 64 or rp > 153088 or rp % 64 != 0:
+                # PARI's live 153088-bit owner legitimately carries a
+                # one-limb guard precision in selected packed entries.
+                if rp < 64 or rp > 153152 or rp % 64 != 0:
                     raise ValueError("unsupported field3 class-log precision")
                 if abs(rm).bit_length() != rp:
                     raise ValueError("unnormalized field3 class logarithm")

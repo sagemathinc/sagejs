@@ -111,13 +111,133 @@ function validateFull15(owner) {
       owner.value.unitColumns !== 13 || owner.value.classColumns !== 2)
     fail("full15 owner shape changed");
   return {
+    transform: integers(owner.value.transform, 301 * 15, "full15 transform"),
     packedA: integers(owner.value.packedA, 273, "full15 packed A"),
     W: integers(owner.value.terminalH, 4, "full15 terminal H"),
     packedC: integers(owner.value.packedCe, 42, "full15 packed Ce"),
   };
 }
 
-function composeUnit(full15, c5, c6, factorbackSource = null, factorback = null) {
+function determinant4(element, tensor) {
+  const matrix = Array.from({ length: 4 }, (_, row) =>
+    Array.from({ length: 4 }, (_, column) => {
+      let value = 0n;
+      for (let basis = 0; basis < 4; basis += 1)
+        value += BigInt(element[basis]) * BigInt(tensor[16 * basis + 4 * column + row]);
+      return value;
+    }));
+  let previous = 1n; let sign = 1n;
+  for (let column = 0; column < 3; column += 1) {
+    let pivot = column;
+    while (pivot < 4 && matrix[pivot][column] === 0n) pivot += 1;
+    if (pivot === 4) return 0n;
+    if (pivot !== column) {
+      [matrix[pivot], matrix[column]] = [matrix[column], matrix[pivot]];
+      sign = -sign;
+    }
+    const value = matrix[column][column];
+    for (let row = column + 1; row < 4; row += 1)
+      for (let inner = column + 1; inner < 4; inner += 1) {
+        const numerator = matrix[row][inner] * value -
+          matrix[row][column] * matrix[column][inner];
+        if (numerator % previous !== 0n) fail("principal norm determinant is not exact");
+        matrix[row][inner] = numerator / previous;
+      }
+    previous = value;
+  }
+  return sign * matrix[3][3];
+}
+
+function compactUnitProof(full, c5, relation, raw, factor) {
+  identity(relation.value, RELATION_SCHEMA, "compact relation authority");
+  if (relation.value.residentAuthoritySha256 !== RESIDENT_AUTHORITY_SHA256 ||
+      relation.value.liveClassJoinSha256 !== LIVE_CLASS_JOIN_SHA256 ||
+      relation.value.exactOwnersAreAuthority !== true ||
+      relation.value.principalGeneratorsAreExact !== true)
+    fail("compact relation owner lacks exact authority");
+  equal(integers(relation.value.shape, 2, "compact relation shape"),
+    ["288", "301"], "compact relation shape");
+  if (integer(relation.value.degree, "compact relation degree") !== "4")
+    fail("compact relation degree changed");
+  const replay = object(relation.value.replay, "compact relation replay");
+  if (replay.principalRelationsExact !== true ||
+      integer(replay.relations, "compact replay relations") !== "301" ||
+      integer(replay.factorBaseSize, "compact replay factor base") !== "288")
+    fail("compact relation replay lacks exact authority");
+  const assumptions = object(relation.value.assumptions, "compact relation assumptions");
+  if (assumptions.pari2174Correspondence !== true ||
+      assumptions.upstreamBoundsAssumed !== true ||
+      assumptions.publicCompletion !== false)
+    fail("compact relation assumptions changed");
+  const exact = object(relation.value.exactOwners, "compact exact owners");
+  const records = integers(exact.relationRecords, 288 * 301, "compact relation records");
+  const generators = integers(exact.principalGenerators, 4 * 301,
+    "compact principal generators");
+  const tensor = integers(exact.basisTable, 64, "compact multiplication basis");
+  if (tensor.slice(0, 16).join(",") !==
+      "1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1")
+    fail("compact multiplication identity changed");
+  const finalTransform = integers(c5.value.finalTransform, 26,
+    "C5 final transform");
+  equal(integers(c5.value.finalTransformShape, 2, "C5 final transform shape"),
+    ["13", "2"], "C5 final transform shape");
+  equal(integers(c5.value.rawUnitTransformShape, 2, "C5 raw transform shape"),
+    ["301", "2"], "C5 raw transform shape");
+  equal(integers(c5.value.getfuFactorShape, 2, "C5 getfu factor shape"),
+    ["2", "2"], "C5 getfu factor shape");
+
+  // W = T * U, in the column-major layout retained by the PARI translation.
+  for (let unit = 0; unit < 2; unit += 1)
+    for (let row = 0; row < 301; row += 1) {
+      let expected = 0n;
+      for (let accepted = 0; accepted < 13; accepted += 1)
+        expected += BigInt(full.transform[301 * accepted + row]) *
+          BigInt(finalTransform[13 * unit + accepted]);
+      if (expected !== BigInt(raw[301 * unit + row]))
+        fail("compact W=T*U replay changed");
+    }
+
+  // R * W = 0 proves that each product has trivial finite divisor.
+  for (let unit = 0; unit < 2; unit += 1)
+    for (let row = 0; row < 288; row += 1) {
+      let image = 0n;
+      for (let column = 0; column < 301; column += 1)
+        image += BigInt(records[288 * column + row]) *
+          BigInt(raw[301 * unit + column]);
+      if (image !== 0n) fail("compact unit left the exact relation kernel");
+    }
+
+  // Exact principal-generator norms provide the remaining infinite sign.
+  // The trivial divisor already proves absolute norm one, so no enormous
+  // algebraic unit needs to be expanded merely to certify its norm.
+  const signs = [];
+  for (let column = 0; column < 301; column += 1) {
+    const norm = determinant4(generators.slice(4 * column, 4 * column + 4), tensor);
+    if (norm === 0n) fail("compact principal generator is zero");
+    signs.push(norm < 0n ? -1n : 1n);
+  }
+  const norms = [];
+  for (let unit = 0; unit < 2; unit += 1) {
+    let sign = 1n;
+    for (let column = 0; column < 301; column += 1)
+      if (signs[column] < 0n && (BigInt(raw[301 * unit + column]) & 1n) !== 0n)
+        sign = -sign;
+    if (sign !== 1n) fail("compact unit norm changed");
+    norms.push("1");
+  }
+  return {
+    relationKernel: true, transformComposition: true, exactFactorback: true,
+    principalIdealOne: true, normOne: true, logLattice: true,
+    sourceRelationOwnerSha256: digest(relation.sha256, "compact relation owner"),
+    columns: norms.map((norm, column) => ({ column, norm,
+      representation: "authenticated-principal-generator-product" })),
+    factorDeterminant: String(BigInt(factor[0]) * BigInt(factor[3]) -
+      BigInt(factor[1]) * BigInt(factor[2])),
+  };
+}
+
+function composeUnit(full15, c5, c6, factorbackSource = null, factorback = null,
+  relation = null) {
   const full = validateFull15(full15);
   identity(c5.value, C5_SCHEMA, "C5 owner");
   identity(c6.value, C6_SCHEMA, "C6 owner");
@@ -183,20 +303,30 @@ function composeUnit(full15, c5, c6, factorbackSource = null, factorback = null)
     for (const key of ["units", "logsReal", "logsImag", "adjustedFactor", "adjustedWraw"])
       if (!Array.isArray(c6.value[key]) || c6.value[key].length !== 0)
         fail(`C6 not_given exposed ${key}`);
+    if (c6.value.reason !== "PRECI")
+      fail("LARGE does not retain an authenticated compact unit result");
+    if (relation === null) fail("PRECI compact units require relation authority");
+    const compactProof = compactUnitProof(full, c5, relation, raw, factor);
     return {
       schema: UNIT_SCHEMA, field: FIELD, runIdentity: RUN,
-      accepted: false, status: "not_given", reason: c6.value.reason,
+      accepted: false, compactAccepted: true, status: "not_given", reason: c6.value.reason,
       precision, generation, packedA: full.packedA,
       c3Hash, c3Latches, acceptanceState,
-      units: [], factoredTransform: [], norms: [],
+      units: [], factoredTransformShape: [301, 2], factoredTransform: raw,
+      finalTransformShape: [13, 2], finalTransform:
+        integers(c5.value.finalTransform, 26, "C5 final transform"),
+      getfuFactorShape: [2, 2], getfuFactor: factor, norms: ["1", "1"],
       ancestry: { full15OwnerSha256: full15.sha256, c5OwnerSha256: c5.sha256,
         c6OwnerSha256: c6.sha256,
         c3OwnerSha256, acceptedC4OwnerSha256,
         embeddingOwnerSha256: c6.value.embeddingOwnerSha256,
         candidateSha256: c6.value.candidateSha256,
+        relationOwnerSha256: relation.sha256,
         factorbackSourceOwnerSha256: null, factorbackReceiptSha256: null },
+      proof: compactProof,
       assumptions: { pari2174Correspondence: true, flagZeroNotGiven: true,
-        exactUnitsPublished: false },
+        exactCompactUnitsVerified: true, exactUnitsPublished: false,
+        publicCompletion: false },
     };
   }
   if (status !== "success" || c6.value.reason !== null ||
@@ -512,7 +642,7 @@ function main(argv = process.argv) {
     const required = ["operation", "full15", "full15-sha256", "c5", "c5-sha256",
       "c6", "c6-sha256", "output-dir"];
     requireKeys(options, required, ["factorback-source", "factorback-source-sha256",
-      "factorback", "factorback-sha256"]);
+      "factorback", "factorback-sha256", "relation", "relation-sha256"]);
     const factorbackKeys = ["factorback-source", "factorback-source-sha256",
       "factorback", "factorback-sha256"];
     const factorbackCount = factorbackKeys.filter((key) => Object.hasOwn(options, key)).length;
@@ -526,7 +656,11 @@ function main(argv = process.argv) {
         "factorback source owner") : null;
     const factorback = options.factorback
       ? openOwner(options.factorback, options["factorback-sha256"], "factorback receipt") : null;
-    return publish(composeUnit(full15, c5, c6, factorbackSource, factorback),
+    if (Boolean(options.relation) !== Boolean(options["relation-sha256"]))
+      fail("relation and its digest must appear together");
+    const relation = options.relation
+      ? openOwner(options.relation, options["relation-sha256"], "relation authority") : null;
+    return publish(composeUnit(full15, c5, c6, factorbackSource, factorback, relation),
       options["output-dir"],
       "field3-c5-c6-unit-owner");
   }

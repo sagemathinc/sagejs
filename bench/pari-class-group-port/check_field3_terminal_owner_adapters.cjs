@@ -62,6 +62,9 @@ try {
   assert.match(serializerQualification.relationOwnerSha256, /^[0-9a-f]{64}$/);
   assert.match(serializerQualification.classOwnerSha256, /^[0-9a-f]{64}$/);
   const transform = Array(301 * 15).fill("0");
+  const raw = Array.from({ length: 602 }, (_, index) => String((index % 11) - 5));
+  transform.splice(0, 301, ...raw.slice(0, 301));
+  transform.splice(301, 301, ...raw.slice(301));
   const rawOwnerSha256 = "d".repeat(64);
   const full15Value = {
     schema: "sagejs.pari-class-group/field3-full-terminal-ancestry-v1",
@@ -74,7 +77,6 @@ try {
     packedCe: Array.from({ length: 42 }, (_, index) => String(1000 + index)),
   };
   const full15 = immutable(temporary, "full15", full15Value);
-  const raw = Array.from({ length: 602 }, (_, index) => String((index % 11) - 5));
   const c3OwnerSha256 = "8".repeat(64);
   const c3Hash = Array.from({ length: 4 }, (_, index) => {
     const word = BigInt(`0x${c3OwnerSha256.slice(16 * index, 16 * index + 16)}`);
@@ -88,7 +90,12 @@ try {
     c3Hash, c3Latches: ["23", "29"],
     state: [0, 384, 3, 0, 0, 0, 0, 1, -1, 1, 301, 13, 2, 2, 15],
     acceptanceState: [0, 1, 384, 1],
-    rawUnitTransform: raw, getfuFactor: ["1", "2", "0", "-1"],
+    u1Shape: [13, 2], u1: ["1", ...Array(12).fill("0"), "0", "1", ...Array(11).fill("0")],
+    u2Shape: [2, 2], u2: ["1", "0", "0", "1"],
+    finalTransformShape: [13, 2],
+    finalTransform: ["1", ...Array(12).fill("0"), "0", "1", ...Array(11).fill("0")],
+    rawUnitTransformShape: [301, 2], rawUnitTransform: raw,
+    getfuFactorShape: [2, 2], getfuFactor: ["1", "2", "0", "-1"],
   };
   const c5 = immutable(temporary, "c5", c5Value);
   const mask = 1;
@@ -188,17 +195,59 @@ try {
     inverseMask: 0, unitNorms: [], units: [], logsReal: [], logsImag: [],
     adjustedFactor: [], adjustedWraw: [] };
   const notGiven = immutable(temporary, "c6-not-given", notGivenValue);
+  const compactIdentity = Array.from({ length: 64 }, (_, index) =>
+    index < 16 && index % 5 === 0 ? "1" : "0");
+  const compactRelationValue = {
+    schema: "sagejs.pari-class-group/field3-full-owner-authority-v1",
+    field, runIdentity, residentAuthoritySha256, liveClassJoinSha256,
+    shape: [288, 301], degree: 4, exactOwnersAreAuthority: true,
+    principalGeneratorsAreExact: true,
+    exactOwners: {
+      relationRecords: Array(288 * 301).fill("0"),
+      principalGenerators: Array.from({ length: 4 * 301 }, (_, index) =>
+        index % 4 === 0 ? "1" : "0"),
+      basisTable: compactIdentity,
+    },
+    replay: { principalRelationsExact: true, relations: 301, factorBaseSize: 288 },
+    assumptions: { pari2174Correspondence: true, upstreamBoundsAssumed: true,
+      publicCompletion: false },
+  };
+  const compactRelation = immutable(temporary, "compact-relation", compactRelationValue);
   const notGivenResult = readReceipt(run([...commonArgs("unit", full15, output),
     "--c5", c5.path, "--c5-sha256", c5.sha256,
-    "--c6", notGiven.path, "--c6-sha256", notGiven.sha256]));
+    "--c6", notGiven.path, "--c6-sha256", notGiven.sha256,
+    "--relation", compactRelation.path, "--relation-sha256", compactRelation.sha256]));
   assert.equal(notGivenResult.value.accepted, false);
   assert.equal(notGivenResult.value.status, "not_given");
   assert.equal(notGivenResult.value.reason, "PRECI");
   assert.deepEqual(notGivenResult.value.units, []);
+  assert.equal(notGivenResult.value.compactAccepted, true);
+  assert.deepEqual(notGivenResult.value.factoredTransform, raw);
+  assert.deepEqual(notGivenResult.value.norms, ["1", "1"]);
+  assert.equal(notGivenResult.value.proof.principalIdealOne, true);
   {
     const changed = wrap(notGiven); changed.value.state[0] = 2;
-    assert.throws(() => composeUnit(wrap(full15), wrap(c5), changed),
+    assert.throws(() => composeUnit(wrap(full15), wrap(c5), changed,
+      null, null, wrap(compactRelation)),
       /not_given state/);
+  }
+  {
+    const changed = wrap(compactRelation);
+    changed.value.exactOwners.relationRecords[0] = "1";
+    assert.throws(() => composeUnit(wrap(full15), wrap(c5), wrap(notGiven),
+      null, null, changed), /relation kernel/);
+  }
+  {
+    const changed = wrap(c5);
+    changed.value.finalTransform[0] = "2";
+    assert.throws(() => composeUnit(wrap(full15), changed, wrap(notGiven),
+      null, null, wrap(compactRelation)), /W=T\*U/);
+  }
+  {
+    const changed = wrap(compactRelation);
+    changed.value.exactOwners.principalGenerators[0] = "0";
+    assert.throws(() => composeUnit(wrap(full15), wrap(c5), wrap(notGiven),
+      null, null, changed), /principal generator is zero/);
   }
 
   const records = Array(288 * 301).fill("0");
