@@ -4,7 +4,7 @@
   "id": "h1-preparation-shape",
   "title": "Test authenticated preparation shape",
   "lane": "native-compiler",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Measure preparation loop traffic for the five largest authenticated buffers and retain only a general authenticated-logical-shape compiler correction that improves the phase by at least 10% with identical fused H1 evidence",
   "base_commit": "42efed5871d7db3d334ecfbf77db8c2762ab1fce",
@@ -82,8 +82,8 @@
       "platform": "linux-x64"
     },
     {
-      "command": "cc -std=c11 -fsyntax-only on generated authorized private-buffer host core",
-      "result": "passed; generated private runtime and root cleanup are valid C11"
+      "command": "cc -std=gnu11 -fsyntax-only on generated authorized private-buffer fused host core",
+      "result": "passed; 100159479-byte instrumented core is syntactically valid"
     },
     {
       "command": "pnpm architecture:check",
@@ -100,6 +100,10 @@
       "platform": "linux-x64"
     },
     {
+      "command": "one-job authority-wired fused H1 build plus profile-only exact replay",
+      "result": "passed; build 333s/2441448 KiB, profile 5s/1006424 KiB; preparation improved 16.95%; all frozen evidence exact"
+    },
+    {
       "command": "pnpm architecture:check",
       "result": "pass",
       "exit_code": 0,
@@ -111,15 +115,15 @@
     }
   ],
   "handoff": {
-    "summary": "Confirmed capacity-scaled spare-limb clearing dominates H1 preparation: 582 logical writes trigger 4,866,048 cleared words. Diagnostic controls improve preparation by 20.91% with right-sizing and 91.43% without private spare clearing, with all frozen evidence exact. The unsafe global setter change was reverted. Wired fail-closed private-buffer authority into real host-core generation: reachable calls propagate authority through renamed parameters, registered private stores omit spare clears, and root success/failure canonicalize before publication. Rejected authority emits byte-identical ordinary canonical C.",
+    "summary": "Confirmed capacity-scaled spare-limb clearing dominates H1 preparation: 582 logical writes trigger 4,866,048 cleared words. The unsafe global setter change was reverted. Wired fail-closed private-buffer authority into real host-core generation: reachable calls propagate authority through renamed parameters, registered private stores omit spare clears, and root success/failure canonicalize before publication. The exact authority-wired fused replay improves preparation 16.95% and the inclusive root 13.51%, with every frozen hash/counter/root/getfu unchanged and rejected authority producing byte-identical ordinary canonical C.",
     "risks": [
       "Global no-clear violates the public canonical IntegerBuffer ABI and must not be restored.",
-      "Results are single diagnostic profiles, not seven-pair qualification timings.",
-      "The authority-wired fused H1 replay remains intentionally unrun pending explicit heavy-build authorization."
+      "Results are a single diagnostic profile, not a seven-pair qualification timing series.",
+      "Broader raw-buffer cross-backend qualification is still required before enabling private authority generally."
     ],
     "next_steps": [
-      "Run one bounded authority-wired fused H1 correctness/profile replay and compare all frozen owner/counter hashes.",
-      "Poison spare limbs and compare full raw buffers across GMP, FLINT, JavaScript, and Wasm before broader promotion."
+      "Poison spare limbs and compare full raw buffers across GMP, FLINT, JavaScript, and Wasm before broader promotion.",
+      "After promotion review, measure a seven-pair qualified timing series rather than extrapolating this one sample."
     ]
   }
 }
