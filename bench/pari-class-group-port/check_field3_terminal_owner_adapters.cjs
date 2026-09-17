@@ -10,9 +10,17 @@ const { spawnSync } = require("node:child_process");
 const { composeUnit } = require("./field3_terminal_owner_adapters.cjs");
 
 const script = path.join(__dirname, "field3_terminal_owner_adapters.cjs");
+const sourceChecker = path.join(__dirname, "check_field3_terminal_source_owners.cjs");
 const field = "x^4-2000022*x-2000042";
 const runIdentity = "pari-2.17.4:nfinit192->nfnewprec153088:field3";
 const hash = (bytes) => crypto.createHash("sha256").update(bytes).digest("hex");
+const arrayHash = (values) => hash(Buffer.from(values.join("\n")));
+const residentAuthoritySha256 =
+  "246bfe2af51c8be732308719773fc7d696f7dc1bf21958c91d96cd8fc448954c";
+const liveClassJoinSha256 =
+  "b8df9b99acb501d8ea0faf3034c1059d451ffd84180735c89c982b0f014da814";
+const protocolOwnerSha256 =
+  "892afa9a63da8353cce50eead03b12f031812182a3229a48ed8fbdfa60b94e72";
 
 function immutable(directory, name, value, bytes = null) {
   const selected = path.join(directory, `${name}.json`);
@@ -42,10 +50,25 @@ function readReceipt(result) {
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "field3-terminal-adapters-"));
 try {
   const output = path.join(temporary, "out");
+  const serializerCheck = spawnSync(process.execPath, [sourceChecker], {
+    cwd: path.resolve(__dirname, "../.."), encoding: "utf8", timeout: 600_000,
+    maxBuffer: 256 * 1024 * 1024,
+  });
+  assert.equal(serializerCheck.status, 0, serializerCheck.stderr);
+  const serializerQualification = JSON.parse(serializerCheck.stdout);
+  assert.equal(serializerQualification.schema,
+    "field3-terminal-source-owners-check-v1");
+  assert.equal(serializerQualification.authenticHighPrecisionRun, false);
+  assert.match(serializerQualification.relationOwnerSha256, /^[0-9a-f]{64}$/);
+  assert.match(serializerQualification.classOwnerSha256, /^[0-9a-f]{64}$/);
+  const transform = Array(301 * 15).fill("0");
+  const rawOwnerSha256 = "d".repeat(64);
   const full15Value = {
     schema: "sagejs.pari-class-group/field3-full-terminal-ancestry-v1",
     field, runIdentity, transformShape: [301, 15], terminalShape: [3, 15],
-    unitColumns: 13, classColumns: 2,
+    unitColumns: 13, classColumns: 2, targetBits: 153088,
+    rawOwnerSha256, protocolOwnerSha256,
+    authorityOwnerSha256: residentAuthoritySha256, transform,
     packedA: Array.from({ length: 273 }, (_, index) => String(index - 136)),
     terminalH: ["2", "0", "0", "2"],
     packedCe: Array.from({ length: 42 }, (_, index) => String(1000 + index)),
@@ -183,31 +206,80 @@ try {
     records[288 * column + (column % 288)] = String(column + 1);
   const generators = Array.from({ length: 4 * 301 }, (_, index) =>
     index % 4 === 0 ? String(Math.floor(index / 4) + 1) : "0");
+  const metadata = Array.from({ length: 903 }, (_, index) => String(index));
+  const outerPermutation = ["11", "2", ...Array.from({ length: 286 },
+    (_, index) => String(index + 1))];
   const relationValue = {
     schema: "sagejs.pari-class-group/field3-full-owner-authority-v1",
-    field, runIdentity, exactOwnersAreAuthority: true,
+    field, runIdentity, residentAuthoritySha256, liveClassJoinSha256,
+    shape: [288, 301], degree: 4, exactOwnersAreAuthority: true,
     principalGeneratorsAreExact: true,
-    exactOwners: { relationRecords: records, principalGenerators: generators },
+    exactOwners: { relationRecords: records, principalGenerators: generators,
+      packetIdeals: Array(288 * 16).fill("0"), packetNorms: Array(288).fill("1"),
+      packetIds: Array.from({ length: 288 }, (_, index) => String(index)),
+      relationMetadata: metadata, outerPermutation, basisTable: Array(64).fill("0") },
+    replay: { principalRelationsExact: true, relations: 301, factorBaseSize: 288,
+      nonzeroRelationEntries: 301, maximumRelationSupport: 1,
+      selectedPermutationPrefix: outerPermutation.slice(0, 2),
+      relationRecordsSha256: arrayHash(records),
+      principalGeneratorsSha256: arrayHash(generators),
+      relationMetadataSha256: arrayHash(metadata) },
+    assumptions: { pari2174Correspondence: true, upstreamBoundsAssumed: true,
+      publicCompletion: false },
   };
   const relation = immutable(temporary, "relation", relationValue);
   const identity = Array.from({ length: 16 }, (_, index) =>
     index % 5 === 0 ? "1" : "0");
+  const descriptorGenerators = ["1", "0", "0", "0", "0", "1", "0", "0"];
+  const antiuniformizers = ["0", "1", "0", "0", "0", "0", "1", "0"];
+  const retainedWitness = {
+    indices: ["11", "2"], primes: ["13", "3"], generators: descriptorGenerators,
+    antiuniformizers, tau: [...identity, ...identity],
+    order: ["2", "0", "0", "2"], m1: ["-1", "0", "0", "-1"],
+    offsets: ["0", "1", "2"], kinds: ["0", "0"],
+    numerators: ["1", "1"], denominators: ["13", "3"], exponents: ["1", "1"],
+    generatorIdeals: Array(32).fill("0"), generatedIdeals: Array(32).fill("0"),
+    relationExponents: ["2", "0", "0", "2"], invariants: ["2", "2"],
+    classNumber: ["4"], state: ["0", ...Array(11).fill("1")],
+    uir: ["-1", "0", "0", "-1"], computedM1: ["-1", "0", "0", "-1"],
+  };
+  const B = Array.from({ length: 572 }, (_, index) => String(index % 19));
   const classValue = {
     schema: "sagejs.pari-class-group/field3-live-class-suffix-owner-v1",
     field, runIdentity, fullTerminalOwnerSha256: full15.sha256,
-    relationAuthoritySha256: relation.sha256, precision: 153088,
+    relationAuthoritySha256: relation.sha256, residentAuthoritySha256,
+    liveClassJoinSha256, rawOwnerSha256, protocolOwnerSha256, precision: 153088,
     W: full15Value.terminalH, packedC: full15Value.packedCe,
-    B: Array.from({ length: 572 }, (_, index) => String(index % 19)),
+    B,
     invariants: ["2", "2"], classNumber: "4",
-    Vbase: [{ packetIndex: "11", prime: "13", tau: identity },
-      { packetIndex: "2", prime: "3", tau: identity }],
-    replay: { smithExact: true, descriptorReplay: true, principalFactorsExact: true },
+    Vbase: [{ packetIndex: "11", prime: "13",
+      generator: descriptorGenerators.slice(0, 4),
+      antiuniformizer: antiuniformizers.slice(0, 4), tau: identity },
+      { packetIndex: "2", prime: "3", generator: descriptorGenerators.slice(4),
+        antiuniformizer: antiuniformizers.slice(4), tau: identity }],
+    orderPrincipalFactorback: [{ packetIndex: "11", packetExponent: "2",
+      relationExponents: transform.slice(13 * 301, 14 * 301) },
+      { packetIndex: "2", packetExponent: "2",
+        relationExponents: transform.slice(14 * 301, 15 * 301) }],
+    retainedWitness,
+    replay: { smithExact: true, descriptorReplay: true, principalFactorsExact: true,
+      selectedPermutationPrefix: ["11", "2"], wholePermutationCompared: false,
+      terminalBExact: true, selectedIdealsExact: true, orderPrincipalIdealsExact: true },
+    BDefinition: { layout: "column-major 2x286 reduced trailing block",
+      equation: "C_B[j] = g_perm[2+j] + sum_i B[i,j]*g_perm[i]",
+      checkpointSha256: arrayHash(B) },
+    assumptions: { pari2174Correspondence: true, upstreamBoundsAssumed: true,
+      publicCompletion: false },
   };
   const classOwner = immutable(temporary, "class", classValue);
   const liveArgs = [...commonArgs("live", full15, output),
     "--relation", relation.path, "--relation-sha256", relation.sha256,
     "--class", classOwner.path, "--class-sha256", classOwner.sha256];
-  run(liveArgs, false);
+  const live = readReceipt(run(liveArgs));
+  assert.equal(live.value.relationPrincipals.length, 301);
+  assert.deepEqual(live.value.Vbase[0].antiuniformizer,
+    antiuniformizers.slice(0, 4));
+  assert.equal(live.value.proof.BDefinition.checkpointSha256, arrayHash(B));
 
   const before = fs.readdirSync(output).sort();
   let rejected = 0;
@@ -229,6 +301,39 @@ try {
     run(replaced, false); rejected += 1;
     assert.deepEqual(fs.readdirSync(output).sort(), before, name);
   }
+  rejectedOwner("live-terminal-B", classOwner,
+    (v) => { v.B[0] = String(BigInt(v.B[0]) + 1n); }, liveArgs,
+    "--class", "--class-sha256");
+  rejectedOwner("live-raw-ancestry", classOwner,
+    (v) => { v.rawOwnerSha256 = "e".repeat(64); }, liveArgs,
+    "--class", "--class-sha256");
+  rejectedOwner("live-antiuniformizer", classOwner,
+    (v) => { v.Vbase[0].antiuniformizer[0] = "2"; }, liveArgs,
+    "--class", "--class-sha256");
+  rejectedOwner("live-tau", classOwner,
+    (v) => { v.Vbase[0].tau[0] = "2"; }, liveArgs,
+    "--class", "--class-sha256");
+  rejectedOwner("live-order-factorback", classOwner,
+    (v) => { v.orderPrincipalFactorback[0].relationExponents[0] = "1"; },
+    liveArgs, "--class", "--class-sha256");
+  rejectedOwner("live-replay", classOwner,
+    (v) => { v.replay.terminalBExact = false; }, liveArgs,
+    "--class", "--class-sha256");
+  rejectedOwner("live-relation", relation,
+    (v) => { v.exactOwners.relationRecords[0] = "2"; }, liveArgs,
+    "--relation", "--relation-sha256");
+  rejectedOwner("live-source", relation,
+    (v) => { v.residentAuthoritySha256 = "e".repeat(64); }, liveArgs,
+    "--relation", "--relation-sha256");
+  rejectedOwner("live-missing-B-definition", classOwner,
+    (v) => { delete v.BDefinition; }, liveArgs,
+    "--class", "--class-sha256");
+  rejectedOwner("live-missing-antiuniformizer", classOwner,
+    (v) => { delete v.Vbase[0].antiuniformizer; }, liveArgs,
+    "--class", "--class-sha256");
+  rejectedOwner("live-missing-protocol-ancestry", classOwner,
+    (v) => { delete v.protocolOwnerSha256; }, liveArgs,
+    "--class", "--class-sha256");
   const changedC6Value = structuredClone(c6.value);
   changedC6Value.adjustedWraw[0] = "99";
   const changedC6 = immutable(temporary, "bad-c6-sign", changedC6Value);
@@ -323,8 +428,11 @@ try {
 
   console.log(JSON.stringify({
     schema: "field3-terminal-owner-adapters-check-v1",
-    unitSuccess: true, unitNotGiven: "PRECI", liveStatus: "serializer-pending",
+    unitSuccess: true, unitNotGiven: "PRECI", liveStatus: "success",
     mutationsRejected: rejected,
+    serializerQualification: { relationOwnerSha256:
+      serializerQualification.relationOwnerSha256,
+    classOwnerSha256: serializerQualification.classOwnerSha256 },
     publication: "atomic-idempotent-content-addressed-mode0444",
     fixtureAnswersUsed: false,
   }));

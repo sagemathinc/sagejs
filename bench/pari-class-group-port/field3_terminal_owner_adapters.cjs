@@ -18,7 +18,15 @@ const FACTORBACK_SOURCE_SCHEMA =
   "sagejs.pari-class-group/field3-c6-factorback-source-v1";
 const FACTORBACK_SCHEMA = "sagejs.pari-class-group/field3-c6-factorback-receipt-v1";
 const UNIT_SCHEMA = "sagejs.pari-class-group/field3-c5-c6-unit-owner-v1";
+const RELATION_SCHEMA = "sagejs.pari-class-group/field3-full-owner-authority-v1";
+const CLASS_SCHEMA = "sagejs.pari-class-group/field3-live-class-suffix-owner-v1";
 const LIVE_SCHEMA = "sagejs.pari-class-group/field3-live-final-owner-v1";
+const RESIDENT_AUTHORITY_SHA256 =
+  "246bfe2af51c8be732308719773fc7d696f7dc1bf21958c91d96cd8fc448954c";
+const LIVE_CLASS_JOIN_SHA256 =
+  "b8df9b99acb501d8ea0faf3034c1059d451ffd84180735c89c982b0f014da814";
+const PROTOCOL_SHA256 =
+  "892afa9a63da8353cce50eead03b12f031812182a3229a48ed8fbdfa60b94e72";
 const DIGEST = /^[0-9a-f]{64}$/;
 const INTEGER = /^-?(0|[1-9][0-9]*)$/;
 
@@ -86,6 +94,10 @@ function digestWords(value) {
     const word = BigInt(`0x${value.slice(16 * index, 16 * index + 16)}`);
     return String(word >= (1n << 63n) ? word - (1n << 64n) : word);
   });
+}
+function arrayDigest(values) { return sha(Buffer.from(values.join("\n"))); }
+function equal(left, right, label) {
+  if (JSON.stringify(left) !== JSON.stringify(right)) fail(`${label} changed`);
 }
 function identity(owner, schema, label) {
   if (owner.schema !== schema || owner.field !== FIELD || owner.runIdentity !== RUN)
@@ -282,8 +294,177 @@ function composeUnit(full15, c5, c6, factorbackSource = null, factorback = null)
   };
 }
 
-function composeLive() {
-  fail("live owner publication awaits authenticated relation/class serializers");
+function composeLive(full15, relation, classOwner) {
+  const full = validateFull15(full15);
+  identity(relation.value, RELATION_SCHEMA, "relation authority");
+  identity(classOwner.value, CLASS_SCHEMA, "class authority");
+  for (const source of [relation.value, classOwner.value]) {
+    if (source.residentAuthoritySha256 !== RESIDENT_AUTHORITY_SHA256 ||
+        source.liveClassJoinSha256 !== LIVE_CLASS_JOIN_SHA256)
+      fail("terminal serializer source identity changed");
+  }
+  const rawOwnerSha256 = digest(full15.value.rawOwnerSha256, "full15 raw owner");
+  const protocolOwnerSha256 = digest(full15.value.protocolOwnerSha256,
+    "full15 protocol owner");
+  if (full15.value.authorityOwnerSha256 !== RESIDENT_AUTHORITY_SHA256 ||
+      protocolOwnerSha256 !== PROTOCOL_SHA256 ||
+      classOwner.value.fullTerminalOwnerSha256 !== full15.sha256 ||
+      classOwner.value.relationAuthoritySha256 !== relation.sha256 ||
+      classOwner.value.rawOwnerSha256 !== rawOwnerSha256 ||
+      classOwner.value.protocolOwnerSha256 !== protocolOwnerSha256)
+    fail("live owner ancestry changed");
+  equal(integers(relation.value.shape, 2, "relation shape"), ["288", "301"],
+    "relation shape");
+  if (integer(relation.value.degree, "relation degree") !== "4" ||
+      relation.value.exactOwnersAreAuthority !== true ||
+      relation.value.principalGeneratorsAreExact !== true)
+    fail("relation owner lacks exact authority");
+  const exact = object(relation.value.exactOwners, "relation exact owners");
+  const records = integers(exact.relationRecords, 288 * 301, "relation records");
+  const generators = integers(exact.principalGenerators, 4 * 301,
+    "principal generators");
+  integers(exact.packetIdeals, 288 * 16, "packet ideals");
+  integers(exact.packetNorms, 288, "packet norms");
+  integers(exact.packetIds, 288, "packet ids");
+  const metadata = integers(exact.relationMetadata, 903, "relation metadata");
+  const outerPermutation = integers(exact.outerPermutation, 288,
+    "relation outer permutation");
+  integers(exact.basisTable, 64, "relation basis table");
+  const relationReplay = object(relation.value.replay, "relation replay");
+  let nonzero = 0; let maximumSupport = 0;
+  for (let column = 0; column < 301; column += 1) {
+    let support = 0;
+    for (let row = 0; row < 288; row += 1)
+      if (records[288 * column + row] !== "0") { support += 1; nonzero += 1; }
+    if (support > maximumSupport) maximumSupport = support;
+  }
+  if (relationReplay.principalRelationsExact !== true ||
+      integer(relationReplay.relations, "replayed relations") !== "301" ||
+      integer(relationReplay.factorBaseSize, "replayed factor base") !== "288" ||
+      Number(integer(relationReplay.nonzeroRelationEntries,
+        "nonzero relation entries")) !== nonzero ||
+      Number(integer(relationReplay.maximumRelationSupport,
+        "maximum relation support")) !== maximumSupport)
+    fail("relation replay changed");
+  equal(integers(relationReplay.selectedPermutationPrefix, 2,
+    "relation selected prefix"), outerPermutation.slice(0, 2),
+  "relation selected prefix");
+  if (digest(relationReplay.relationRecordsSha256, "relation records digest") !==
+        arrayDigest(records) ||
+      digest(relationReplay.principalGeneratorsSha256,
+        "principal generators digest") !== arrayDigest(generators) ||
+      digest(relationReplay.relationMetadataSha256, "relation metadata digest") !==
+        arrayDigest(metadata)) fail("relation replay digest changed");
+  const relationAssumptions = object(relation.value.assumptions,
+    "relation assumptions");
+  if (relationAssumptions.pari2174Correspondence !== true ||
+      relationAssumptions.upstreamBoundsAssumed !== true ||
+      relationAssumptions.publicCompletion !== false)
+    fail("relation assumptions changed");
+
+  if (Number(integer(classOwner.value.precision, "class precision")) !== 153088 ||
+      Number(integer(full15.value.targetBits, "full15 target bits")) !== 153088)
+    fail("class precision changed");
+  const W = integers(classOwner.value.W, 4, "class W");
+  const packedC = integers(classOwner.value.packedC, 42, "class packed C");
+  equal(W, full.W, "class/full15 W"); equal(packedC, full.packedC,
+    "class/full15 packed C");
+  const B = integers(classOwner.value.B, 572, "terminal B");
+  const definition = object(classOwner.value.BDefinition, "terminal B definition");
+  if (definition.layout !== "column-major 2x286 reduced trailing block" ||
+      definition.equation !==
+        "C_B[j] = g_perm[2+j] + sum_i B[i,j]*g_perm[i]" ||
+      digest(definition.checkpointSha256, "terminal B checkpoint") !== arrayDigest(B))
+    fail("terminal B definition changed");
+  const invariants = integers(classOwner.value.invariants, 2, "class invariants");
+  equal(invariants, [W[0], W[3]], "class invariant diagonal");
+  if (BigInt(integer(classOwner.value.classNumber, "class number")) !==
+      BigInt(invariants[0]) * BigInt(invariants[1])) fail("class number changed");
+  const retained = object(classOwner.value.retainedWitness, "retained class witness");
+  const lengths = { indices: 2, primes: 2, generators: 8, antiuniformizers: 8,
+    tau: 32, order: 4, m1: 4, offsets: 3, kinds: 2, numerators: 2,
+    denominators: 2, exponents: 2, generatorIdeals: 32, generatedIdeals: 32,
+    relationExponents: 4, invariants: 2, classNumber: 1, state: 12,
+    uir: 4, computedM1: 4 };
+  const witness = {};
+  for (const [name, length] of Object.entries(lengths))
+    witness[name] = integers(retained[name], length, `retained ${name}`);
+  equal(witness.indices, outerPermutation.slice(0, 2), "relation/class packet prefix");
+  equal(witness.invariants, invariants, "retained invariants");
+  equal(witness.classNumber, [classOwner.value.classNumber], "retained class number");
+  equal(witness.order, witness.relationExponents, "retained relation exponents");
+  equal(witness.m1, witness.uir, "retained Uir");
+  equal(witness.m1, witness.computedM1, "retained computed M1");
+  if (witness.state[0] !== "0") fail("retained class state changed");
+  const descriptors = classOwner.value.Vbase;
+  if (!Array.isArray(descriptors) || descriptors.length !== 2)
+    fail("class descriptor count changed");
+  const Vbase = descriptors.map((value, index) => {
+    const entry = object(value, `Vbase[${index}]`);
+    const descriptor = { packetIndex: integer(entry.packetIndex,
+      `Vbase[${index}].packetIndex`), prime: integer(entry.prime,
+      `Vbase[${index}].prime`), generator: integers(entry.generator, 4,
+      `Vbase[${index}].generator`), antiuniformizer: integers(entry.antiuniformizer,
+      4, `Vbase[${index}].antiuniformizer`), tau: integers(entry.tau, 16,
+      `Vbase[${index}].tau`) };
+    if (descriptor.packetIndex !== witness.indices[index] ||
+        descriptor.prime !== witness.primes[index]) fail("Vbase identity changed");
+    equal(descriptor.generator, witness.generators.slice(4 * index, 4 * index + 4),
+      "Vbase generator");
+    equal(descriptor.antiuniformizer,
+      witness.antiuniformizers.slice(4 * index, 4 * index + 4),
+      "Vbase antiuniformizer");
+    equal(descriptor.tau, witness.tau.slice(16 * index, 16 * index + 16),
+      "Vbase tau");
+    return descriptor;
+  });
+  const transform = integers(full15.value.transform, 301 * 15, "full15 transform");
+  const factorback = classOwner.value.orderPrincipalFactorback;
+  if (!Array.isArray(factorback) || factorback.length !== 2)
+    fail("order principal factorback changed");
+  for (let index = 0; index < 2; index += 1) {
+    const entry = object(factorback[index], `order factorback[${index}]`);
+    if (integer(entry.packetIndex, "order packet index") !== witness.indices[index] ||
+        integer(entry.packetExponent, "order packet exponent") !== invariants[index])
+      fail("order factorback identity changed");
+    equal(integers(entry.relationExponents, 301, "order relation exponents"),
+      transform.slice((13 + index) * 301, (14 + index) * 301),
+      "order principal factorback");
+  }
+  const classReplay = object(classOwner.value.replay, "class replay");
+  for (const name of ["smithExact", "descriptorReplay", "principalFactorsExact",
+    "terminalBExact", "selectedIdealsExact", "orderPrincipalIdealsExact"])
+    if (classReplay[name] !== true) fail(`class ${name} was not verified`);
+  if (classReplay.wholePermutationCompared !== false) fail("class replay scope changed");
+  equal(integers(classReplay.selectedPermutationPrefix, 2, "class selected prefix"),
+    witness.indices, "class selected prefix");
+  const classAssumptions = object(classOwner.value.assumptions, "class assumptions");
+  if (classAssumptions.pari2174Correspondence !== true ||
+      classAssumptions.upstreamBoundsAssumed !== true ||
+      classAssumptions.publicCompletion !== false)
+    fail("class assumptions changed");
+  const principals = [];
+  for (let column = 0; column < 301; column += 1) principals.push({
+    relation: column, divisor: records.slice(288 * column, 288 * (column + 1)),
+    exactFactor: { powerBasis: generators.slice(4 * column, 4 * (column + 1)),
+      source: "authenticated-principal-generator" },
+  });
+  return { schema: LIVE_SCHEMA, field: FIELD, runIdentity: RUN, precision: 153088,
+    W, packedC, B, Vbase, relationRecords: records, relationPrincipals: principals,
+    torsion: { order: "2", generator: ["-1", "0", "0", "0"],
+      proof: "mixed-signature characteristic-zero field has a real embedding" },
+    ancestry: { full15OwnerSha256: full15.sha256,
+      relationAuthoritySha256: relation.sha256, classAuthoritySha256: classOwner.sha256,
+      residentAuthoritySha256: RESIDENT_AUTHORITY_SHA256,
+      liveClassJoinSha256: LIVE_CLASS_JOIN_SHA256, rawOwnerSha256,
+      protocolOwnerSha256 },
+    proof: { relationReplay: { ...relationReplay }, classReplay: { ...classReplay },
+      BDefinition: { ...definition }, retainedWitness: witness,
+      orderPrincipalFactorback: factorback.map((entry) => ({ ...entry })) },
+    assumptions: { pari2174Correspondence: true, upstreamBoundsAssumed: true,
+      exactRelationAuthority: true, exactClassReplay: true,
+      authenticatedTerminalSerializers: true,
+      torsionDerivedFromRealEmbedding: true, publicCompletion: false } };
 }
 
 function publish(payload, outputDirectory, prefix) {
@@ -369,6 +550,7 @@ if (require.main === module) {
   catch (error) { process.stderr.write(`${error.message}\n`); process.exitCode = 1; }
 }
 
-module.exports = { FACTORBACK_SCHEMA, FACTORBACK_SOURCE_SCHEMA, LIVE_SCHEMA,
+module.exports = { CLASS_SCHEMA, FACTORBACK_SCHEMA, FACTORBACK_SOURCE_SCHEMA,
+  LIVE_SCHEMA, RELATION_SCHEMA,
   TerminalOwnerFailure, UNIT_SCHEMA, composeLive, composeUnit, main, openOwner,
   publish };
