@@ -14,7 +14,9 @@
     "bench/pari-class-group-port/h1_preparation_shape_result.json",
     "bench/pari-class-group-port/h1_preparation_shape_audit.md",
     "tools/native-kernel/private-integer-buffer-authority.cjs",
-    "tools/native-kernel/test/private-integer-buffer-authority.cjs"
+    "tools/native-kernel/private-integer-buffer-emitter.cjs",
+    "tools/native-kernel/test/private-integer-buffer-authority.cjs",
+    "tools/native-kernel/test/private-integer-buffer-emitter.cjs"
   ],
   "dependencies": [],
   "references": [],
@@ -62,10 +64,14 @@
     {
       "command": "node --test tools/native-kernel/test/private-integer-buffer-authority.cjs",
       "result": "passed; closed graph authority and all required revocations"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/private-integer-buffer-authority.cjs tools/native-kernel/test/private-integer-buffer-emitter.cjs",
+      "result": "passed; six authority, history, hash, boundary, revocation, and unchanged-public-path probes"
     }
   ],
   "handoff": {
-    "summary": "Confirmed capacity-scaled spare-limb clearing dominates H1 preparation: 582 logical writes trigger 4,866,048 cleared words. Diagnostic controls improve preparation by 20.91% with right-sizing and 91.43% without private spare clearing, with all frozen evidence exact. The unsafe global setter change was reverted. Added fail-closed structural authority for a future private noncanonical buffer region; it emits no behavior change.",
+    "summary": "Confirmed capacity-scaled spare-limb clearing dominates H1 preparation: 582 logical writes trigger 4,866,048 cleared words. Diagnostic controls improve preparation by 20.91% with right-sizing and 91.43% without private spare clearing, with all frozen evidence exact. The unsafe global setter change was reverted. Added fail-closed structural authority and a dormant authority-gated emitter/runtime canonicalizer; standard public setters remain unchanged.",
     "risks": [
       "Global no-clear violates the public canonical IntegerBuffer ABI and must not be restored.",
       "Results are single diagnostic profiles, not seven-pair qualification timings."

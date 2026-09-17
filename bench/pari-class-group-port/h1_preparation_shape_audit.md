@@ -64,3 +64,13 @@ claim names every mandatory canonicalization boundary and atomic publication
 rule.  It intentionally emits no no-clear code yet; emission must wait until a
 reviewed canonicalizer can consume this authority.  Thus this checkpoint cannot
 weaken public behavior even if used incorrectly.
+
+The next checkpoint adds the corresponding dormant emitter/runtime fragment.
+It can emit only while the structural authority verifies.  Private stores keep
+all range/capacity checks but defer spare clearing; one canonicalizer clears
+the dirty interval before every boundary named by the claim, on failure, and
+before publication.  The ordinary public GMP/FLINT setters are unchanged.
+Focused probes cover poisoned spare limbs, big-to-small-to-zero history,
+post-canonicalization raw-hash equality, revoked authority, every escape label,
+and continued full clearing in the standard public path.  Wiring this fragment
+into H1 remains a separate reviewed step; no fused artifact was rebuilt.
