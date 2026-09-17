@@ -24,15 +24,18 @@ def pari_abpq_sum(
     """Return P,Q,B,T for the half-open upstream interval [first,last).
 
     Seven stack entries per frame hold bounds, traversal state and the left
-    child's four results. The 4096-term boundary needs at most 13 frames.
+    child's four results. The 16,384-term boundary needs at most 15 frames.
     Input buffers and scratch must be distinct; no input is mutated.
     """
-    if first < 0 or last <= first or last - first > 4096:
+    if first < 0 or last <= first or last - first > 16384:
         raise ValueError("unsupported binary splitting interval")
     if last > len(a) or last > len(b) or last > len(p) or last > len(q):
         raise ValueError("binary splitting input exhausted")
-    if len(stack) < 91:
-        raise ValueError("binary splitting stack requires 91 entries")
+    if last - first <= 4096:
+        if len(stack) < 91:
+            raise ValueError("binary splitting stack requires 91 entries")
+    elif len(stack) < 105:
+        raise ValueError("binary splitting stack requires 105 entries")
     stack[0] = first
     stack[1] = last
     stack[2] = 0
@@ -121,14 +124,14 @@ def pari_atanhuu(
     """
     if u <= 0 or v <= u or v > 9007199254740992:
         raise ValueError("unsupported atanhuu rational argument")
-    # The reviewed p4,096 corridor retains PARI's extra series guard words.
-    if precision < 64 or precision > 4352 or precision % 64 != 0:
+    # The reviewed 153,088-bit corridor retains PARI's series guard words.
+    if precision < 64 or precision > 154112 or precision % 64 != 0:
         raise ValueError("unsupported atanhuu precision")
     d = 2.0 * log2(checked_float64(v) / checked_float64(u))
     if d == 0.0:
         raise ValueError("atanhuu term selection overflow")
     target = checked_float64(precision) / d
-    if target > 4096.0:
+    if target > 16384.0:
         raise ValueError("atanhuu term boundary exceeded")
     nmax = int(target)
     if checked_float64(nmax) < target:

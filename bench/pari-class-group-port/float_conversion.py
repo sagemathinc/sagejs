@@ -49,7 +49,7 @@ def pari_real_to_float(mantissa: int, precision: int, exponent: int) -> float:
     """
     if mantissa == 0:
         return 0.0
-    if precision < 64 or precision > 4352 or precision % 64 != 0:
+    if precision < 64 or precision > 154112 or precision % 64 != 0:
         raise ValueError("unsupported real-to-float precision")
     magnitude = abs(mantissa)
     if magnitude.bit_length() != precision:

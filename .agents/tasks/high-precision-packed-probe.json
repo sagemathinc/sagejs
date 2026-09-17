@@ -1,0 +1,91 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "high-precision-packed-probe",
+  "title": "High-precision packed arithmetic feasibility",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Determine whether ordinary CPython-parseable packed Python/GMP arithmetic safely handles neutral 152512/153088-bit real and complex constant/log/exp probes under a 4GiB hard cap",
+  "base_commit": "bd4cb35181869dd84eedded591662243cf8ecae1",
+  "claims": [
+    "bench/pari-class-group-port/binary_splitting.py",
+    "bench/pari-class-group-port/pi_constant.py",
+    "bench/pari-class-group-port/logarithm_constant.py",
+    "bench/pari-class-group-port/real_conversion.py",
+    "bench/pari-class-group-port/real_square_root.py",
+    "bench/pari-class-group-port/integer_real_product.py",
+    "bench/pari-class-group-port/short_product.py",
+    "bench/pari-class-group-port/real_division.py",
+    "bench/pari-class-group-port/exponential.py",
+    "bench/pari-class-group-port/exponential_entry.py",
+    "bench/pari-class-group-port/getfu_mixed_complex.py",
+    "bench/pari-class-group-port/float_conversion.py",
+    "bench/pari-class-group-port/high_precision_packed_probe.py",
+    "bench/pari-class-group-port/check_high_precision_packed_probe.cjs",
+    "bench/pari-class-group-port/high_precision_packed_probe_audit.md",
+    "bench/pari-class-group-port/high_precision_packed_probe_result.json"
+  ],
+  "dependencies": [],
+  "references": [
+    "PARI 2.17.4 trans1.c SHA-256 287fbc089af72e8abcae073ea059880fdb138d7b4cd3c2bea39be547f3ca7835",
+    "PARI 2.17.4 buch2.c SHA-256 904ced8034732c7fcfe1da393e23950aac0862b085150fdc24ce1e31beb7d1ac"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Pristine PARI 2.17.4 exact packed triples",
+      "Independent MPFR/Arb refinement where available"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "fallback",
+    "windows-x64": "fallback",
+    "macos-arm64": "fallback"
+  },
+  "validation": [
+    "node bench/pari-class-group-port/check_compiled_binary_splitting.cjs /home/user/upstream/pari-2.17.4",
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_compiled_binary_splitting.cjs /home/user/upstream/pari-2.17.4",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.808,
+      "started_at": "2026-09-17T09:31:25.672Z",
+      "commit": "bd4cb35181869dd84eedded591662243cf8ecae1",
+      "workspace_fingerprint": "abceb4e36768b4f30b0c1689dfec2c0786b14ee3b2993e2e4bdddd74e55dc700",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.324,
+      "started_at": "2026-09-17T09:31:31.358Z",
+      "commit": "bd4cb35181869dd84eedded591662243cf8ecae1",
+      "workspace_fingerprint": "abceb4e36768b4f30b0c1689dfec2c0786b14ee3b2993e2e4bdddd74e55dc700",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Neutral 153088-bit real and complex packed Python/GMP probes match pristine PARI exactly under the 4GiB/10-minute envelope; binary splitting and transitive arithmetic caps are coherently widened without claiming getfu closure.",
+    "risks": [
+      "The result establishes neutral primitive feasibility only, not field-owner, relation, regulator, or getfu closure.",
+      "Legacy standalone benchmark checkers with hard-coded historical upper-bound rejection cases need integration-lane expectation updates before they can validate the widened corridor.",
+      "The repository-wide Python formatting check has a pre-existing failure in unclaimed field3_full_owner_authority.py doubled-backtick docstrings."
+    ],
+    "next_steps": [
+      "Integrate the widened packed corridor and update historical guard-only benchmark expectations.",
+      "Use the same explicit resource envelope for the first field-specific owner/reconstruction probe; pivot narrowly to an Arb/Acb adapter only if that probe exceeds it."
+    ]
+  }
+}
