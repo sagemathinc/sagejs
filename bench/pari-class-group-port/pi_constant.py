@@ -15,6 +15,23 @@ from .short_product import pari_real_integer_division, pari_short_product
 
 
 @native
+def pari_pi_workspace_capacity(precision: int) -> tuple[int, int]:
+    """Return coefficient cells and binary-split stack cells for `mppi`.
+
+    The coefficient count includes index zero and the final Ramanujan term.
+    It is therefore the exact lower bound accepted by `pari_pi_constant`, not
+    an empirical allocation margin.
+    """
+    if precision < 64 or precision > 154112 or precision % 64 != 0:
+        raise ValueError("unsupported pi precision")
+    terms = int(1.0 + checked_float64(precision) / 47.11041314)
+    required_stack = 91
+    if terms > 4096:
+        required_stack = 105
+    return terms + 1, required_stack
+
+
+@native
 def pari_pi_constant(
     precision: int,
     cache: IntegerBuffer,
@@ -30,20 +47,16 @@ def pari_pi_constant(
     the upstream 64-bit guard word within the coordinated 154,112-bit probe
     boundary.
     """
-    if precision < 64 or precision > 154112 or precision % 64 != 0:
-        raise ValueError("unsupported pi precision")
+    coefficient_cells, required_stack = pari_pi_workspace_capacity(precision)
     if len(cache) < 3:
         raise ValueError("pi cache requires three entries")
     if cache[1] < precision:
-        terms = int(1.0 + checked_float64(precision) / 47.11041314)
-        required_stack = 91
-        if terms > 4096:
-            required_stack = 105
+        terms = coefficient_cells - 1
         if (
-            len(a) <= terms
-            or len(b) <= terms
-            or len(p) <= terms
-            or len(q) <= terms
+            len(a) < coefficient_cells
+            or len(b) < coefficient_cells
+            or len(p) < coefficient_cells
+            or len(q) < coefficient_cells
             or len(stack) < required_stack
         ):
             raise ValueError("pi coefficient workspace exhausted")
