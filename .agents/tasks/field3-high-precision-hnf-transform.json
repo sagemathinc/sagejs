@@ -16,7 +16,8 @@
   ],
   "dependencies": [],
   "references": [
-    "PARI 2.17.4 src/basemath/buch2.c accepted-column HNF schedule"
+    "PARI 2.17.4 src/basemath/buch2.c accepted-column HNF schedule",
+    "field3-local-hnf-protocol SHA-256 892afa9a63da8353cce50eead03b12f031812182a3229a48ed8fbdfa60b94e72"
   ],
   "architecture": {
     "strategy": "dynamic-python",
@@ -24,7 +25,8 @@
     "oracles": [
       "cpython",
       "javascript",
-      "synthetic high-precision packed-log prefix controls"
+      "synthetic high-precision packed-log prefix controls",
+      "immutable resident authority and initial-capsule HNF checkpoint replay"
     ],
     "exceptions": []
   },
@@ -92,17 +94,56 @@
       "commit": "012579fac7400b04b2decf946af50b16bcd17aa5",
       "workspace_fingerprint": "ee900a6768ad24cd8640a69d349dd230adfa705023fd4171bb4b9f6fe32687f8",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_field3_high_precision_hnf_transform.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 31.994,
+      "started_at": "2026-09-17T14:04:23.458Z",
+      "commit": "4940c509102b9609dcc2be3d1bc8bd5b8fb49a36",
+      "workspace_fingerprint": "80c772fc4cc6022889ddf82f33b1f385e26ff6902cd7e16cbf0c9e09111d65ea",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec ruff check bench/pari-class-group-port/field3_high_precision_hnf_transform.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.55,
+      "started_at": "2026-09-17T14:05:06.039Z",
+      "commit": "4940c509102b9609dcc2be3d1bc8bd5b8fb49a36",
+      "workspace_fingerprint": "80c772fc4cc6022889ddf82f33b1f385e26ff6902cd7e16cbf0c9e09111d65ea",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright bench/pari-class-group-port/field3_high_precision_hnf_transform.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.749,
+      "started_at": "2026-09-17T14:05:07.405Z",
+      "commit": "4940c509102b9609dcc2be3d1bc8bd5b8fb49a36",
+      "workspace_fingerprint": "80c772fc4cc6022889ddf82f33b1f385e26ff6902cd7e16cbf0c9e09111d65ea",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check bench/pari-class-group-port/field3_high_precision_hnf_transform_coordinator.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.034,
+      "started_at": "2026-09-17T14:05:09.891Z",
+      "commit": "4940c509102b9609dcc2be3d1bc8bd5b8fb49a36",
+      "workspace_fingerprint": "80c772fc4cc6022889ddf82f33b1f385e26ff6902cd7e16cbf0c9e09111d65ea",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Prepared an ordinary-CPython, content-addressed C2/C3 protocol which reconstructs exact 301x13 T from authentic local HNF owners, requires exact R*T=0, and replays the accepted-column log schedule at C1 precision without any 192-bit checkpoint or terminal-A input.",
+    "summary": "Prepared an ordinary-CPython, content-addressed C2/C3 protocol which reconstructs exact 301x13 T from authentic local HNF owners, requires exact R*T=0, and replays the accepted-column log schedule at C1 precision without any 192-bit checkpoint or terminal-A input. Captured and published the immutable authentic local-HNF owner as SHA-256 892afa9a63da8353cce50eead03b12f031812182a3229a48ed8fbdfa60b94e72.",
     "risks": [
-      "No real complete A was produced: the authentic complete joined C1 owner and an immutable protocol owner captured directly from the resident run are still external dependencies.",
-      "The full 153088-bit 301-column replay is intentionally unmeasured until both authenticated owners exist; focused controls cover the arithmetic schedule and mutation boundaries only."
+      "No real complete A was produced: the authentic complete joined C1 owner is still the sole external dependency.",
+      "The full 153088-bit 301-column replay is intentionally unmeasured until the authenticated C1 owner exists; focused controls cover the arithmetic schedule and mutation boundaries."
     ],
     "next_steps": [
-      "Capture and content-address the local-HNF protocol owner directly from v['hnf_transform'] and ancestry_stages in the authentic resident field-3 run.",
-      "After the complete C1 joined owner exists, invoke the coordinator with both immutable paths and independently recorded SHA-256 values, then archive the resulting complete-A receipt."
+      "After the complete C1 joined owner exists, invoke the coordinator with it and field3-local-hnf-protocol SHA-256 892afa9a63da8353cce50eead03b12f031812182a3229a48ed8fbdfa60b94e72, then archive the resulting complete-A receipt."
     ]
   }
 }

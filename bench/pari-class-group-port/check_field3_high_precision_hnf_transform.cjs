@@ -12,7 +12,7 @@ const ROOT = path.resolve(__dirname, "../..");
 const MODULE = "bench.pari-class-group-port.field3_high_precision_hnf_transform";
 
 const python = String.raw`
-import importlib,sys
+import copy,importlib,os,stat,sys,tempfile
 sys.set_int_max_str_digits(0);sys.path.append('src/lib');sys.path.append('src/baselib')
 m=importlib.import_module('${MODULE}')
 r=importlib.import_module('bench.pari-class-group-port.field3_unit_transform_retention')
@@ -51,12 +51,15 @@ short=dict(base);short['sourceCount']=28;short['sourceStop']=28;short['packedLog
 try:m._raw_logs(short);raise AssertionError('qualified prefix published A')
 except m.Field3HighPrecisionTransformFailure:pass
 
-keys=('rawRelations','initialCleanupTransform','initialTransform','initialFullH',
- 'initialFullDep','initialTrailing','initialDiagonal','appendMetadata','appendTransform',
- 'appendFullH','appendFullDep','appendTrailing','appendDiagonal','appendPermutations',
- 'appendRelations')
-protocol={'schema':m.PROTOCOL_SCHEMA,'field':m.FIELD,
- 'sourceRunId':'field3-post-rnd-live-unit-transform',**{key:[] for key in keys}}
+protocol={'schema':m.PROTOCOL_SCHEMA,'field':m.FIELD,'sourceRunId':m.SOURCE_RUN_ID,
+ 'authoritySha256':m.AUTHORITY_SHA256,'initialOwnerSha256':m.INITIAL_SHA256,
+ 'preparedOwnerSha256':m.PREPARED_SHA256,
+ 'relationRecordsSha256':m.SOURCE_DIGESTS['relationRecordsSha256'],
+ 'dimensions':{'relationShape':[288,301],'transformShape':[301,13],
+  'initial':[293,41,34,2,252],'appendColumns':[[293,2],[295,1],[296,5]],
+  'transformSha256':'0'*64,'kernelState':[0,288,301,13,3744]},
+ 'schedule':m.LOCAL_SCHEDULE,'ownerHashes':{key:'0'*64 for key in m.PROTOCOL_ARRAYS},
+ 'checkpointHashes':{},**{key:[] for key in m.PROTOCOL_ARRAYS}}
 protocol['appendMetadata']=[293,2,0,0,0,0,0,0,0,0,0,0,288,0,0,0,
  295,1,0,0,0,0,0,0,0,0,0,0,288,0,0,0,
  296,5,0,0,0,0,0,0,0,0,0,0,288,0,0,0]
@@ -65,6 +68,27 @@ try:m._protocol_arrays(bad);raise AssertionError('stage order mutation accepted'
 except m.Field3HighPrecisionTransformFailure:pass
 try:m._protocol_arrays(protocol);raise AssertionError('owner dimension mutation accepted')
 except m.Field3HighPrecisionTransformFailure:pass
+
+# When the qualified frozen owners are mounted, recapture them rather than
+# accepting a copied answer fixture and exercise all exact mutation gates.
+authority_root='/scratch/sagejs-runtime/pari-class-group-e2e-20260917/field3-authority'
+authority=os.path.join(authority_root,'authority-'+m.AUTHORITY_SHA256+'.json')
+initial=os.path.join(authority_root,'initial-collector-fixtures-'+m.INITIAL_SHA256+'.json')
+if os.path.exists(authority) and os.path.exists(initial):
+ captured=m.capture_local_hnf_protocol(authority,initial)
+ arrays=m._protocol_arrays(captured)
+ assert captured['dimensions']['kernelState']==[0,288,301,13,3744]
+ changed=copy.deepcopy(captured);changed['appendTransform'][0]=str(int(changed['appendTransform'][0])+1)
+ try:m._protocol_arrays(changed);raise AssertionError('local-owner hash mutation accepted')
+ except m.Field3HighPrecisionTransformFailure:pass
+ changed=copy.deepcopy(captured);changed['appendMetadata'][16]=str(int(changed['appendMetadata'][16])-1)
+ changed['ownerHashes']['appendMetadata']=m._packed_sha256(changed['appendMetadata'])
+ try:m._protocol_arrays(changed);raise AssertionError('authentic stage-order mutation accepted')
+ except m.Field3HighPrecisionTransformFailure:pass
+ with tempfile.TemporaryDirectory() as directory:
+  receipt=m.publish_local_hnf_protocol(directory,captured)
+  assert stat.S_IMODE(os.stat(receipt['durablePath']).st_mode)==0o444
+  assert m.publish_local_hnf_protocol(directory,captured)==receipt
 
 # Exact R*T failure is transactional: the caller's certificate remains held.
 relations=[0]*(288*301);transform=[0]*(301*13)
@@ -93,6 +117,7 @@ try {
     process.execPath,
     [
       path.join(__dirname, "field3_high_precision_hnf_transform_coordinator.cjs"),
+      "--operation", "transform",
       "--raw-owner", raw,
       "--raw-sha256", "0".repeat(64),
       "--protocol-owner", protocol,
