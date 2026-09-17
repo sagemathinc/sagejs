@@ -1,0 +1,72 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "h1-preparation-shape",
+  "title": "Test authenticated preparation shape",
+  "lane": "native-compiler",
+  "status": "review",
+  "owner": "user",
+  "objective": "Measure preparation loop traffic for the five largest authenticated buffers and retain only a general authenticated-logical-shape compiler correction that improves the phase by at least 10% with identical fused H1 evidence",
+  "base_commit": "42efed5871d7db3d334ecfbf77db8c2762ab1fce",
+  "claims": [
+    "bench/pari-class-group-port/check_h1_preparation_shape.cjs",
+    "bench/pari-class-group-port/check_h1_fused_attribution.cjs",
+    "bench/pari-class-group-port/h1_preparation_shape_result.json",
+    "bench/pari-class-group-port/h1_preparation_shape_audit.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "authenticated fused H1 hashes, counters, RNG, root, and p192 getfu",
+      "checked dynamic fallback"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "bounded instrumented addon build and exact baseline profile",
+      "result": "passed; 323.165s build, 2390424 KiB peak, frozen evidence exact"
+    },
+    {
+      "command": "authenticated capacity-one exact control",
+      "result": "passed; preparation improved 20.91%, frozen evidence exact"
+    },
+    {
+      "command": "bounded noncanonical no-clear diagnostic build and exact profile",
+      "result": "passed; 315.816s build, 2390268 KiB peak, preparation improved 91.43%, frozen evidence exact"
+    },
+    {
+      "command": "node --check bench/pari-class-group-port/check_h1_fused_attribution.cjs",
+      "result": "passed"
+    },
+    {
+      "command": "python3 -m json.tool bench/pari-class-group-port/h1_preparation_shape_result.json",
+      "result": "passed"
+    }
+  ],
+  "handoff": {
+    "summary": "Confirmed capacity-scaled spare-limb clearing dominates H1 preparation: 582 logical writes trigger 4,866,048 cleared words. Diagnostic controls improve preparation by 20.91% with right-sizing and 91.43% without private spare clearing, with all frozen evidence exact. The unsafe global setter change was reverted.",
+    "risks": [
+      "Global no-clear violates the public canonical IntegerBuffer ABI and must not be restored.",
+      "Results are single diagnostic profiles, not seven-pair qualification timings."
+    ],
+    "next_steps": [
+      "Implement a separately reviewed private noncanonical IntegerBuffer proof with mandatory canonicalization at every escape boundary.",
+      "Poison spare limbs and compare full raw buffers across GMP, FLINT, JavaScript, and Wasm before using the mode in H1."
+    ]
+  }
+}

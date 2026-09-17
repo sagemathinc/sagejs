@@ -1,0 +1,52 @@
+{
+  "schema": "sagejs.pari-class-group/h1-preparation-shape-v1",
+  "diagnostic_only": true,
+  "retained_public_change": false,
+  "hypothesis_supported": true,
+  "input_sha256": "22a997866388571cd3c12e1a3ea5c5cc3a7fe89217b253bb0e779007f6fe9b77",
+  "tracked_buffers": [
+    "hnf_cup_arena",
+    "relation_records",
+    "prep_kummer_catalog_tau",
+    "hnf_work_c",
+    "hnf_work_b"
+  ],
+  "baseline": {
+    "inclusive_nanoseconds": "2753604486",
+    "preparation_nanoseconds": "1845356805",
+    "profile_sha256": "46a80b2920342084e7de13f0b59aabc0a80ef7bf6510e687f1993f2b92e5a809",
+    "build_peak_aggregate_rss_kib": 2390424,
+    "build_wall_seconds": 323.165300072,
+    "prep_kummer_catalog_tau": {
+      "reads": "594",
+      "writes": "1188",
+      "logical_read_words": "582",
+      "logical_write_words": "582",
+      "cleared_capacity_words": "4866048"
+    }
+  },
+  "authenticated_capacity_one_control": {
+    "inclusive_nanoseconds": "2311335786",
+    "preparation_nanoseconds": "1459513403",
+    "preparation_improvement": 0.2090887794460974,
+    "profile_sha256": "e6c55bcc461a6d77eb534700f31142a0ab9a6560a5067d0d88269439b7f0ded9",
+    "cleared_capacity_words": "1188"
+  },
+  "noncanonical_no_clear_control": {
+    "inclusive_nanoseconds": "283280637",
+    "preparation_nanoseconds": "158077473",
+    "preparation_improvement": 0.9143377190949259,
+    "inclusive_improvement": 0.8971237015191295,
+    "profile_sha256": "f6fb674f763bc3b07d9ae7a65fe3991485afe3c5f41d60f964c376a0f8e10520",
+    "build_peak_aggregate_rss_kib": 2390268,
+    "build_wall_seconds": 315.81611177
+  },
+  "exact_evidence": {
+    "relation_sha256": "b0c647186a5fed5317c7135ccf16623a930631382ad7963e12af4ded2db7259a",
+    "compact_sha256": "80cec2acce5b95ec48beff67b800410eedb5e580e25029aa79d4d63dc40b1c2d",
+    "owner_sha256": "a0ae8b44555295c035a3603ce4c18dde8dd174bff80b79d34f61d86423a13b5e",
+    "terminal_rng_sha256": "9b90d634807d362bf99925a13ecb99eb54b867a16f9f3acb335fffcf085e401b",
+    "public_complete": false
+  },
+  "release_blocker": "Skipping spare-limb clearing globally violates the public canonical packed-IntegerBuffer ABI and raw cross-backend equality."
+}
