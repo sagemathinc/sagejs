@@ -1,0 +1,71 @@
+{
+  "schema": "sagejs.pari-class-group/pari-stage-clock-local-evidence-v2",
+  "date": "2026-09-17",
+  "qualifiedTiming": false,
+  "caveat": "Shared-host implementation evidence only; this is not the quiet-host <=2% perturbation gate or a final PARI/Sage.js timing claim.",
+  "pariVersion": "2.17.4",
+  "archiveSha256": "02651d99c391007d384b3fadbc20abc6916b77036f9e496c99e9ce8688ca4b53",
+  "pristineBuch2Sha256": "904ced8034732c7fcfe1da393e23950aac0862b085150fdc24ce1e31beb7d1ac",
+  "instrumentedBuch2Sha256": "61ada96ac5214d2fdec0c4aed5b0855b522ecbcb69dee1e882cfd7830198b2be",
+  "pristineLibrarySha256": "fdc8f2d7ff050c8e8c6cb8994b0f9dc971267ac763eaf5cd927454937d37357f",
+  "derivativeLibrarySha256": "17d1dcb56c99cc4ef480cc704b3c60dd9259d7eefe5ccb1f61b374ed31f16a2a",
+  "derivativeExecutableSha256": "f3c48d35e26799dd4d45bca0a60c8450cccfddcd9453b97bd906f8a7250cf98c",
+  "pristineControlExecutableSha256": "3c3e4c0000f76e88b8be771d753ff0ef7159902b42ef3541835f265216312c53",
+  "exactRecordSha256": "0b705538f639175df9b1a41b2196303378ee843d18fdad2392e2ee7635b67400",
+  "exactResultWorkRngMatch": true,
+  "exclusiveConservation": true,
+  "monotonicClock": true,
+  "repeatedVisitsObserved": true,
+  "orderedSegmentsReconstructTotals": true,
+  "diagnosticProtocol": {
+    "pairs": 7,
+    "order": "alternating ABBA/BAAB",
+    "repetitionsPerArm": 8,
+    "medianActiveOverPristine": 1.0317667270084256,
+    "medianInactiveOverPristine": 1.0678243329387476,
+    "medianPerturbationFraction": 0.031766727008425644
+  },
+  "representativeActiveSample": {
+    "schema": "sagejs.pari-class-group/pari-stage-clock-sample-v2",
+    "clockEnabled": true,
+    "kernelNanoseconds": "17820396",
+    "inclusiveRootNanoseconds": "17805766",
+    "monotonic": true,
+    "stageTotalsNanoseconds": {
+      "relation-retry": "4023779",
+      "sparse-hnf-snf-transform": "10179498",
+      "unit-regulator": "1833929",
+      "honesty-generators-final": "63462",
+      "unattributed-remainder": "1705098"
+    },
+    "stageVisits": {
+      "relation-retry": "1",
+      "sparse-hnf-snf-transform": "1",
+      "unit-regulator": "2",
+      "honesty-generators-final": "3",
+      "unattributed-remainder": "3"
+    },
+    "orderedSegmentsComplete": true,
+    "orderedSegments": [
+      { "stage": "unattributed-remainder", "nanoseconds": "1573140" },
+      { "stage": "relation-retry", "nanoseconds": "4023779" },
+      { "stage": "sparse-hnf-snf-transform", "nanoseconds": "10179498" },
+      { "stage": "unit-regulator", "nanoseconds": "95970" },
+      { "stage": "honesty-generators-final", "nanoseconds": "180" },
+      { "stage": "unit-regulator", "nanoseconds": "1737959" },
+      { "stage": "honesty-generators-final", "nanoseconds": "15371" },
+      { "stage": "unattributed-remainder", "nanoseconds": "2069" },
+      { "stage": "honesty-generators-final", "nanoseconds": "47911" },
+      { "stage": "unattributed-remainder", "nanoseconds": "129889" }
+    ]
+  },
+  "perturbationGate": {
+    "evaluated": false,
+    "thresholdFraction": 0.02,
+    "minimumPairs": 11,
+    "order": "alternating ABBA/BAAB",
+    "minimumKernelNanosecondsPerModePerPair": "1000000000",
+    "modes": ["ACTIVE", "INACTIVE", "PRISTINE"],
+    "reasonNotEvaluated": "The shared development host is not the campaign timing authority."
+  }
+}
