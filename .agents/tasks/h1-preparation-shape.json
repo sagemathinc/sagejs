@@ -15,8 +15,10 @@
     "bench/pari-class-group-port/h1_preparation_shape_audit.md",
     "tools/native-kernel/private-integer-buffer-authority.cjs",
     "tools/native-kernel/private-integer-buffer-emitter.cjs",
+    "tools/native-kernel/c-backend.cjs",
     "tools/native-kernel/test/private-integer-buffer-authority.cjs",
-    "tools/native-kernel/test/private-integer-buffer-emitter.cjs"
+    "tools/native-kernel/test/private-integer-buffer-emitter.cjs",
+    "tools/native-kernel/test/private-integer-buffer-host-core.cjs"
   ],
   "dependencies": [],
   "references": [],
@@ -68,17 +70,56 @@
     {
       "command": "node --test tools/native-kernel/test/private-integer-buffer-authority.cjs tools/native-kernel/test/private-integer-buffer-emitter.cjs",
       "result": "passed; six authority, history, hash, boundary, revocation, and unchanged-public-path probes"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/private-integer-buffer-authority.cjs tools/native-kernel/test/private-integer-buffer-emitter.cjs tools/native-kernel/test/private-integer-buffer-host-core.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.827,
+      "started_at": "2026-09-17T14:45:22.484Z",
+      "commit": "87cc02df95fad2d9c8989d4d566f5625643c1c86",
+      "workspace_fingerprint": "1adb449889b8d2e760f4f3f8d3c5bc9c0fa994710a5be057788efa5198c72123",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "cc -std=c11 -fsyntax-only on generated authorized private-buffer host core",
+      "result": "passed; generated private runtime and root cleanup are valid C11"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "passed"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/private-integer-buffer-authority.cjs tools/native-kernel/test/private-integer-buffer-emitter.cjs tools/native-kernel/test/private-integer-buffer-host-core.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.774,
+      "started_at": "2026-09-17T14:46:42.796Z",
+      "commit": "87cc02df95fad2d9c8989d4d566f5625643c1c86",
+      "workspace_fingerprint": "94c8f4bd48f1d56ce90a74a678edef588ea77d352f91fae29575e84b56b3edde",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.069,
+      "started_at": "2026-09-17T14:47:10.738Z",
+      "commit": "87cc02df95fad2d9c8989d4d566f5625643c1c86",
+      "workspace_fingerprint": "94c8f4bd48f1d56ce90a74a678edef588ea77d352f91fae29575e84b56b3edde",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Confirmed capacity-scaled spare-limb clearing dominates H1 preparation: 582 logical writes trigger 4,866,048 cleared words. Diagnostic controls improve preparation by 20.91% with right-sizing and 91.43% without private spare clearing, with all frozen evidence exact. The unsafe global setter change was reverted. Added fail-closed structural authority and a dormant authority-gated emitter/runtime canonicalizer; standard public setters remain unchanged.",
+    "summary": "Confirmed capacity-scaled spare-limb clearing dominates H1 preparation: 582 logical writes trigger 4,866,048 cleared words. Diagnostic controls improve preparation by 20.91% with right-sizing and 91.43% without private spare clearing, with all frozen evidence exact. The unsafe global setter change was reverted. Wired fail-closed private-buffer authority into real host-core generation: reachable calls propagate authority through renamed parameters, registered private stores omit spare clears, and root success/failure canonicalize before publication. Rejected authority emits byte-identical ordinary canonical C.",
     "risks": [
       "Global no-clear violates the public canonical IntegerBuffer ABI and must not be restored.",
-      "Results are single diagnostic profiles, not seven-pair qualification timings."
+      "Results are single diagnostic profiles, not seven-pair qualification timings.",
+      "The authority-wired fused H1 replay remains intentionally unrun pending explicit heavy-build authorization."
     ],
     "next_steps": [
-      "Implement a separately reviewed private noncanonical IntegerBuffer proof with mandatory canonicalization at every escape boundary.",
-      "Poison spare limbs and compare full raw buffers across GMP, FLINT, JavaScript, and Wasm before using the mode in H1."
+      "Run one bounded authority-wired fused H1 correctness/profile replay and compare all frozen owner/counter hashes.",
+      "Poison spare limbs and compare full raw buffers across GMP, FLINT, JavaScript, and Wasm before broader promotion."
     ]
   }
 }

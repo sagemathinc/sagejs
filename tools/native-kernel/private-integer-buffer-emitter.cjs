@@ -20,31 +20,55 @@ function emitPrivateIntegerBufferRuntime(functions, root, claim) {
   if (!privateIntegerBufferPlanAuthorized(functions, root, claim)) return undefined;
   const buffers = claim.buffers.map(identifier);
   const declarations = buffers.map((name) =>
-    `    sagejs_private_integer_buffer_state sagejs_private_${name};`,
+    `    sagejs_private_integer_buffer_state sagejs_private_${name} = {0};`,
   ).join("\n");
   const opens = buffers.map((name) =>
     `    sagejs_private_integer_buffer_begin(&sagejs_private_${name}, &sagejs_arg_${name});`,
   ).join("\n");
-  const closes = buffers.map((name) =>
+  const closes = [...buffers].reverse().map((name) =>
     `    sagejs_private_integer_buffer_canonicalize(&sagejs_private_${name});`,
   ).join("\n");
   return Object.freeze({
     support: String.raw`
-typedef struct {
+typedef struct sagejs_private_integer_buffer_state {
     sagejs_integer_buffer *buffer;
+    struct sagejs_private_integer_buffer_state *previous;
     size_t first_dirty;
     size_t last_dirty;
     int dirty;
 } sagejs_private_integer_buffer_state;
+
+#if defined(_MSC_VER)
+#define SAGEJS_PRIVATE_BUFFER_TLS __declspec(thread)
+#else
+#define SAGEJS_PRIVATE_BUFFER_TLS _Thread_local
+#endif
+static SAGEJS_PRIVATE_BUFFER_TLS sagejs_private_integer_buffer_state
+    *sagejs_private_integer_buffer_top = NULL;
 
 static void sagejs_private_integer_buffer_begin(
     sagejs_private_integer_buffer_state *state,
     sagejs_integer_buffer *buffer)
 {
     state->buffer = buffer;
+    state->previous = sagejs_private_integer_buffer_top;
     state->first_dirty = buffer->length;
     state->last_dirty = 0;
     state->dirty = 0;
+    sagejs_private_integer_buffer_top = state;
+}
+
+static sagejs_private_integer_buffer_state *
+sagejs_private_integer_buffer_lookup(const sagejs_integer_buffer *buffer)
+{
+    sagejs_private_integer_buffer_state *state =
+        sagejs_private_integer_buffer_top;
+    while (state != NULL)
+    {
+        if (state->buffer->sizes == buffer->sizes) return state;
+        state = state->previous;
+    }
+    return NULL;
 }
 
 static void sagejs_private_integer_buffer_mark(
@@ -87,18 +111,24 @@ static void sagejs_private_integer_buffer_canonicalize(
     sagejs_private_integer_buffer_state *state)
 {
     sagejs_integer_buffer *buffer = state->buffer;
-    if (!state->dirty) return;
-    for (size_t position = state->first_dirty;
-         position <= state->last_dirty; position += 1)
+    if (state->dirty)
     {
-        const int32_t signed_size = buffer->sizes[position];
-        const size_t count = signed_size < 0
-            ? (size_t) (-(int64_t) signed_size) : (size_t) signed_size;
-        uint64_t *slot = buffer->limbs + position * buffer->word_capacity;
-        memset(slot + count, 0,
-            (buffer->word_capacity - count) * sizeof(*slot));
+        for (size_t position = state->first_dirty;
+             position <= state->last_dirty; position += 1)
+        {
+            const int32_t signed_size = buffer->sizes[position];
+            const size_t count = signed_size < 0
+                ? (size_t) (-(int64_t) signed_size) : (size_t) signed_size;
+            uint64_t *slot = buffer->limbs + position * buffer->word_capacity;
+            memset(slot + count, 0,
+                (buffer->word_capacity - count) * sizeof(*slot));
+        }
     }
     state->dirty = 0;
+    /* Generated cleanup is reverse-LIFO; mismatch fails closed by retaining
+       the registration, so an ordinary public store continues to clear. */
+    if (sagejs_private_integer_buffer_top == state)
+        sagejs_private_integer_buffer_top = state->previous;
 }
 `,
     declarations,
