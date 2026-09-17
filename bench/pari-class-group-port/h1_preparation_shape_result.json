@@ -41,6 +41,38 @@
     "build_peak_aggregate_rss_kib": 2390268,
     "build_wall_seconds": 315.81611177
   },
+  "authority_wired_private_buffer_control": {
+    "compiler_commits": [
+      "8827d22d2",
+      "866dbced1",
+      "2df5a1997"
+    ],
+    "authority": "private-integer-buffer-v1",
+    "root": "pari_fused_h1_matched_flag_zero_root",
+    "buffers": [
+      "prep_kummer_catalog_tau"
+    ],
+    "generated_core_sha256": "fbdec56981b2795c06a71bc1027b1b5b87d970387cad2c91db047b013028089b",
+    "instrumented_core_sha256": "3b9b29b3072b3b3ccc6d3880f620ed71265450ac25c4e3ed3f26156646bfcb8f",
+    "adapter_sha256": "6ada9c1e949d9b361fe7b2a7c516bffdc1349d7e26ff9062ed853b4db23719ab",
+    "addon_sha256": "42129744a234327af62eb3b9382e6d6b57e78c6ec023bbb26537209426a412af",
+    "profile_sha256": "af01046a2e136d73854c56904c6b1b88d629e131e965fb2cd049eb39a5f22ed9",
+    "build_wall_seconds": 333,
+    "build_peak_aggregate_rss_kib": 2441448,
+    "profile_wall_seconds": 5,
+    "profile_peak_aggregate_rss_kib": 1006424,
+    "inclusive_nanoseconds": "2381579814",
+    "preparation_nanoseconds": "1532522604",
+    "preparation_improvement": 0.16952504802993912,
+    "inclusive_improvement": 0.13510461429426943,
+    "tracked_writes": "1188",
+    "tracked_logical_write_words": "582",
+    "tracked_cleared_capacity_words": "0",
+    "partition_closure": 1,
+    "external_closure": 0.9998995746531973,
+    "public_canonicalization": "generated on both root success and failure; focused big-to-small-to-zero raw-hash probe passes",
+    "diagnostic_global_no_clear_patch": false
+  },
   "exact_evidence": {
     "relation_sha256": "b0c647186a5fed5317c7135ccf16623a930631382ad7963e12af4ded2db7259a",
     "compact_sha256": "80cec2acce5b95ec48beff67b800410eedb5e580e25029aa79d4d63dc40b1c2d",
@@ -48,5 +80,5 @@
     "terminal_rng_sha256": "9b90d634807d362bf99925a13ecb99eb54b867a16f9f3acb335fffcf085e401b",
     "public_complete": false
   },
-  "release_blocker": "Skipping spare-limb clearing globally violates the public canonical packed-IntegerBuffer ABI and raw cross-backend equality."
+  "release_blocker": "The safe private authority passes this one fused correctness/profile sample, but broader cross-backend qualification remains required before promotion."
 }
