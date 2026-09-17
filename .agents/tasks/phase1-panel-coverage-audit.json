@@ -1,0 +1,72 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "phase1-panel-coverage-audit",
+  "title": "Phase 1 Panel Coverage Audit",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Freeze the deterministic four-sentinel and twelve-development identity ladder and audit existing pinned PARI 2.17.4 evidence for required retry branches without altering the frozen panel",
+  "base_commit": "dc534fa05e68c330871fd3720718bdfa7c03e8db",
+  "claims": [
+    "bench/pari-class-group-port/phase1-development-ladder.json",
+    "bench/pari-class-group-port/phase1_development_ladder_audit.md",
+    "bench/pari-class-group-port/check_phase1_development_ladder.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Frozen panel and qualification manifest identities plus pristine PARI 2.17.4 source/archive hashes"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node bench/pari-class-group-port/check_phase1_development_ladder.cjs",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_phase1_development_ladder.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.058,
+      "started_at": "2026-09-17T00:13:05.253Z",
+      "commit": "dc534fa05e68c330871fd3720718bdfa7c03e8db",
+      "workspace_fingerprint": "7bd611529dbc15cacc5f8d344a4734862cc0a02332f752f08771ea98e29ae03c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 59.954,
+      "started_at": "2026-09-17T00:13:09.590Z",
+      "commit": "dc534fa05e68c330871fd3720718bdfa7c03e8db",
+      "workspace_fingerprint": "7bd611529dbc15cacc5f8d344a4734862cc0a02332f752f08771ea98e29ae03c",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Froze the existing 4-sentinel/12-development ladder without changing panel.json, pinned pristine PARI 2.17.4 source identities, and added a checker plus an evidence audit that distinguishes observed nonempty-W/rank deficiencies from missing random-relation, precision-rebuild, and full-honesty coverage.",
+    "risks": [
+      "Only 4/16 identities have existing tracked default-driver trace evidence; no branch behavior is inferred for the other 12.",
+      "Repository-wide architecture and portable checks could not be qualified because this exact integration base's generated dist does not recognize AST_AnnotatedAssignment (and the changed-file dispatcher was stopped when it selected an out-of-scope full self-hosting build); the focused checker and strict library validation pass."
+    ],
+    "next_steps": [
+      "Trace the remaining twelve identities with pristine PARI 2.17.4 before implementation claims.",
+      "Create correctness-only fixtures for rnd_rel, precision rebuild, and a successful full honesty branch without opening or replacing reserve fields.",
+      "Rerun architecture and portable checks from a fully converged integration build."
+    ]
+  }
+}
