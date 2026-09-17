@@ -1,7 +1,7 @@
 # Native keyword-target classification
 
-Base: `207a35333` (`agent/python-prepared-method-keyword-context`, queued behind
-the attribute, construction, and method-binding integration).
+Base: `99abbfc55` (`agent/python-prepared-method-keyword-main`, queued behind
+the reviewer-repaired attribute, construction, and method-binding integration).
 
 ## Change
 
@@ -49,15 +49,17 @@ boundary cleanup and does not close the argument-binding cliff.
 
 ## Qualification
 
-- The final exact-source build converged in two passes and completed in 7m 30s.
+- The replayed prerequisite-source build converged in two passes and completed
+  in 7m 31s.
 - The CPython differential corpus passes 505 cases with the same three
   intentional incompatibilities and no baseline drift.
-- Twenty-two focused prepared-method, resolved-keyword, and raw-ABI checks pass;
-  another 23 dynamic initializer/default and traitlets checks pass.
+- All 104 selected lowering, runtime-hotpath, constructor, prepared-method, and
+  raw-ABI checks pass; the earlier qualification additionally covers the
+  dynamic initializer/default and traitlets workflows.
 - The pinned decorator 5.2.1 and attrs 25.4.0 workflows pass.
 - Strict CPython syntax, Ruff 0.16.0, and Pyright pass for 404 modules; merge
   invariants pass.
-- Core runtime falls from 902,720 to 902,633 bytes against the unchanged
+- Core runtime falls from 902,584 to 902,497 bytes against the unchanged
   903,000-byte budget. No source, startup, browser, or performance budget
   changed.
 - The local startup gate is not a passing receipt: the candidate measured
