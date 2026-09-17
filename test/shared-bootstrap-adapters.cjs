@@ -162,6 +162,7 @@ test("shared exact integer arithmetic preserves primitive Python integers", () =
   const add = (left, right) => binary(left, right, 0, missing);
   const subtract = (left, right) => binary(left, right, 1, missing);
   const multiply = (left, right) => binary(left, right, 2, missing);
+  const power = (left, right) => binary(left, right, 3, missing);
   assert.equal(add(1, 2), 3);
   assert.equal(add(true, true), 2);
   assert.equal(add(Number.MAX_SAFE_INTEGER, true), 9007199254740992n);
@@ -172,6 +173,10 @@ test("shared exact integer arithmetic preserves primitive Python integers", () =
   assert.equal(subtract(4n, true), 3n);
   assert.equal(multiply(3037000500, 3037000500), 9223372037000250000n);
   assert.equal(multiply(4n, true), 4n);
+  assert.equal(power(3, 7), 2187);
+  assert.equal(power(2, 53), 9007199254740992n);
+  assert.equal(power(-2n, 3), -8n);
+  assert.equal(power(2, -1), missing);
   assert.equal(add(1.5, 2), missing);
   assert.equal(add(Number.MAX_SAFE_INTEGER + 1, 1), missing);
   assert.equal(add({}, 1), missing);

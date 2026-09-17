@@ -83,17 +83,20 @@ def ρσ_exact_integer_binary(left, right, operation, missing):
         const exact = (type, value) => type === "boolean" || type === "bigint" ||
             (type === "number" && Number.isSafeInteger(value));
         if (!exact(leftType, left) || !exact(rightType, right)) return missing;
+        if (operation === 3 && right < 0) return missing;
         if (leftType !== "bigint" && rightType !== "bigint") {
             const leftNumber = Number(left), rightNumber = Number(right);
             const result = operation === 0 ? leftNumber + rightNumber :
                 operation === 1 ? leftNumber - rightNumber :
-                leftNumber * rightNumber;
+                operation === 2 ? leftNumber * rightNumber :
+                leftNumber ** rightNumber;
             if (Number.isSafeInteger(result)) return result === 0 ? 0 : result;
         }
         const leftBigint = BigInt(left), rightBigint = BigInt(right);
         return operation === 0 ? leftBigint + rightBigint :
             operation === 1 ? leftBigint - rightBigint :
-            leftBigint * rightBigint;
+            operation === 2 ? leftBigint * rightBigint :
+            leftBigint ** rightBigint;
     })()"""
 
 

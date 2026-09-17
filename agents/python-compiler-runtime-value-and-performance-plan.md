@@ -408,6 +408,19 @@ focused checks at 902,660/903,000 core bytes. Evidence is in
 integration queue and do not confuse these closed arithmetic micro-cliffs with
 the open keyword, construction, or cold-compiler cliffs.
 
+**2026-09-17 exact-power checkpoint:** a further queued follow-up extends the
+same primitive boundary to nonnegative integer power while leaving negative
+Python floats, negative Sage rationals, floats, and object dispatch on their
+authoritative paths. One million `3 ** 7` operations improve 98.69%, from
+4,562.224 ms to 59.791 ms (3.88x CPython rather than about 296x); positive
+`**=` measures 0.99x CPython. It also repairs a pre-existing Python augmented-
+power error: `2 **= -1` now produces float `0.5`, while Sage retains rational
+`1/2`. Exact overflow and dispatch checks pass, existing optimized arithmetic
+stays flat in direct overlap measurements, and core source remains under its
+unchanged budget at 902,766/903,000 bytes. Evidence is in
+`agents/python-exact-integer-power.md`; this remains behind the exact-arithmetic
+integration queue rather than becoming a PR against a feature branch.
+
 Continue next with integration-aware qualification, the receiver-lookup campaign,
 and true handled-exception ownership. Generator/coroutine suspension makes a
 single global active-exception pointer unsafe: preserve owned handlers while

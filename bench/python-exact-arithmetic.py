@@ -30,6 +30,13 @@ def run(name, count):
         for _ in range(count):
             value = left
             value *= right
+    elif name == "pow":
+        for _ in range(count):
+            value = 3**7
+    elif name == "ipow":
+        for _ in range(count):
+            value = 3
+            value **= 7
     else:
         raise ValueError(name)
     elapsed = time.perf_counter() - started
@@ -40,6 +47,8 @@ def run(name, count):
         "iadd": 12382,
         "isub": 12308,
         "imul": 456765,
+        "pow": 2187,
+        "ipow": 2187,
     }[name]
     assert value == expected
     print(name + " " + str(elapsed * 1000))
@@ -49,5 +58,5 @@ try:
     iterations = int(sys.argv[-1])
 except ValueError:
     iterations = 1_000_000
-for case in ["add", "sub", "mul", "iadd", "isub", "imul"]:
+for case in ["add", "sub", "mul", "pow", "iadd", "isub", "imul", "ipow"]:
     run(case, iterations)

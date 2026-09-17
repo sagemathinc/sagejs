@@ -911,7 +911,11 @@ def print_assign(self, output):
         "+=": "ρσ_operator_iadd",
         "-=": "ρσ_operator_isub",
         "*=": "ρσ_operator_imul",
-        "**=": "ρσ_operator_ipow",
+        "**=": (
+            "ρσ_operator_ipow"
+            if output.options.rational_division or not output.options.exact_integers
+            else "ρσ_operator_ipow_python"
+        ),
         "/=": (
             "ρσ_operator_idiv"
             if output.options.rational_division
