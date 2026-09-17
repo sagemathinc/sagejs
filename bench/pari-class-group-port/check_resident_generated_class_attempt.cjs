@@ -7,6 +7,7 @@ const path = require("node:path");
 const os = require("node:os");
 const { spawnSync } = require("node:child_process");
 const { createHash } = require("node:crypto");
+const ownerManifest = require("./resident_candidate_owner_manifest.cjs");
 const encode = (x) => JSON.stringify(x, (_, v) => typeof v === "bigint" ? String(v) : v);
 const hash = (x) => createHash("sha256").update(x).digest("hex");
 const root = path.resolve(__dirname, "../..");
@@ -48,8 +49,12 @@ async function main() {
   assert.equal(String(a.discriminant), "32075641032116");
   const nfNames = ["admission_matrix_m", "admission_matrix_p", "admission_matrix_e", "preparation_embedding", "preparation_rounded_embedding"];
   const runtimeNames = ["admission_primes", "admission_products"];
-  const capacities = Object.fromEntries(Object.entries(raw).filter(([, v]) => Array.isArray(v)).map(([k, v]) => [k, v.length]));
-  for (const [k, v] of Object.entries(a)) if (Array.isArray(v)) capacities["analytic_" + k] = v.length;
+  const capacities = {};
+  for (const group of ownerManifest.owner_groups) {
+    const length = ownerManifest.length_rules[group.length_rule].length;
+    for (const name of group.owners)
+      if (group.kind.endsWith("Buffer")) capacities[name] = length;
+  }
   // Additional preparation capacities are filled from explicit bounds, never oracle outputs.
   const input = makeInput({ names, raw, nf, a, capacities, nfNames, runtimeNames });
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-resident-generated-class-"));
@@ -215,36 +220,15 @@ function makeInput(context) {
   // catalog slots. Size the owners from that live input bound: importing the
   // old fixture's observed KC here would make allocation depend on the answer.
   const padding = process.argv.includes("--padded") ? 7 : 0;
-  const K = D + padding;
-  for (const name of ["relation", "packet_ids", "packet_norms", "ramification", "admission_group_f",
-    "admission_group_e", "admission_group_inert", "relation_primes", "search_ideals", "hnf_perm", "class_invariants"])
-    capacities[name] = K;
-  for (const name of ["initial_primes", "initial_offsets", "initial_counts", "initial_complete"])
-    capacities[name] = K;
-  const sizes = {
-    prep_degree_workspace: 393, prep_factor_degrees: n, prep_factor_exponents: n,
-    prep_group_degrees: n, prep_group_counts: n, prep_local_state: 3, prep_degree_state: 4,
-    prep_full_offsets: P, prep_full_counts: P, prep_full_degrees: D,
-    prep_base_norms: n + 1, prep_selected_primes: P, prep_prime_offsets: B,
-    prep_prime_counts: B, prep_complete_groups: B, prep_selected_indices: D,
-    prep_base_state: 7, prep_bad: K, prep_sub_order: K, prep_sub_scratch: K,
-    prep_sub_stack: 3 * K + 3, prep_sub_chosen: K, prep_sub_rejected: K,
-    prep_sub_state: 3, prep_state: 8, prep_base_configuration: 3,
-    prep_base_constants_logs: P + 2, prep_base_sums: 2, prep_base_factor_logs: P + 1,
-    prep_sub_configuration: 1,
-  };
-  // Explicit inherited scratch contracts; these values do not depend on oracle factors.
-  const ks = { random_state: 66, factorwork: 16994, factor: n + 1, diagnostic: 3,
-    minpoly_diagnostic: 1, polywork: 36, u: n, t: n, rational: 2 * n, primitive: n,
-    column: n, resultant_work: n * n + n, resultant_trace: 25, u_output: n,
-    tau_output: n * n, descriptor_state: 12, unsorted: n * (4 + n + n * n),
-    generators: n * n, residue_degrees: n, order: n, sort_diagnostic: 2,
-    decomposition_output: n * (4 + n + n * n), decomposition_state: 3,
-    catalog_primes: D, catalog_e: D, catalog_f: D, catalog_inert: D,
-    catalog_generators: D * n, catalog_tau: D * n * n, requested_counts: P, state: 4 };
-  for (const [name, size] of Object.entries(ks)) sizes["prep_kummer_" + name] = size;
-  Object.assign(capacities, sizes, { analytic_offsets: P, analytic_counts: P,
-    analytic_degrees: D, analytic_multiplicities: D, analytic_state: 2 });
+  assert.equal(P, 1230);
+  assert.equal(D, ownerManifest.length_rules.catalog_slots.length);
+  assert.equal(B, ownerManifest.dimensions.catalog_prime_ceiling + 1);
+  if (padding) {
+    for (const group of ownerManifest.owner_groups)
+      if (group.length_rule === "catalog_slots")
+        for (const name of group.owners) capacities[name] += padding;
+    capacities.prep_sub_stack = 3 * (D + padding) + 3;
+  }
   const explicit = { n, precision: 192, admission_real_count: 3,
     admission_factorlimit: 1048576, admission_prime_limit: 65537,
     analytic_discriminant: a.discriminant, analytic_roots_of_unity: 2,

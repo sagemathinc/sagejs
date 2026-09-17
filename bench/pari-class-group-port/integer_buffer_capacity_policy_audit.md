@@ -42,3 +42,20 @@ the representations have different precisions, raw triplet equality cannot
 establish agreement; the replay must first use the representation's intended
 normalization/rounding rule, after which a remaining mismatch would be a
 mathematical replay defect rather than an allocation defect.
+
+## Logical owner lengths
+
+`resident_candidate_owner_manifest.cjs` is the allocation authority for all
+351 parameters of `pari_resident_generated_class_attempt`.  Its focused gate
+parses the source signature, rejects missing, duplicate, stale-type, or unknown
+entries, independently recomputes both prime-catalog counts, and requires zero
+`fixture_derived_capacity` rules.  The resident checker now seeds its capacity
+map exclusively from this manifest rather than from `raw[name].length` or the
+analytic fixture arrays.
+
+The successful fixture's 73-entry relation arrays and 55-entry initial arrays
+are occupancies, not capacities.  The manifest sizes each of them from the
+source frontier `degree * pi(10007) = 3690`; the dependent subfactor stack is
+`3 * 3690 + 3 = 11073`.  Fixed HNF, relation-record, acceptance, CUP, Kummer,
+and analytic workspaces have named predeclared resource budgets.  Prepared NF
+matrices and catalogs use degree or prime-ceiling formulas.

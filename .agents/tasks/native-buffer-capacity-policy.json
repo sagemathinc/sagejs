@@ -11,7 +11,10 @@
   "claims": [
     "bench/pari-class-group-port/integer_buffer_capacity_policy.cjs",
     "bench/pari-class-group-port/check_integer_buffer_capacity_policy.cjs",
-    "bench/pari-class-group-port/integer_buffer_capacity_policy_audit.md"
+    "bench/pari-class-group-port/integer_buffer_capacity_policy_audit.md",
+    "bench/pari-class-group-port/resident_candidate_owner_manifest.cjs",
+    "bench/pari-class-group-port/check_resident_candidate_owner_manifest.cjs",
+    "bench/pari-class-group-port/check_resident_generated_class_attempt.cjs"
   ],
   "dependencies": [],
   "references": [],
