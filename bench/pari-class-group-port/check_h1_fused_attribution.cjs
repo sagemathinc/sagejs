@@ -132,6 +132,7 @@ const CORE_SUPPORT = String.raw`
 /* Diagnostic-only fused-H1 attribution support. */
 #include <time.h>
 #define SAGEJS_ATTR_STAGES 8
+#define SAGEJS_ATTR_TRACKED_BUFFERS 5
 typedef struct {
     uint64_t started, segment_started, inclusive, totals[SAGEJS_ATTR_STAGES];
     uint64_t entries[SAGEJS_ATTR_STAGES], allocs[SAGEJS_ATTR_STAGES];
@@ -141,6 +142,12 @@ typedef struct {
     uint64_t integer_buffers, integer_slots, logical_words, capacity_words;
     uint64_t int64_words, float64_words, outstanding_bytes, peak_live_bytes;
     uint64_t visits, current_stage;
+    const int32_t *tracked_sizes[SAGEJS_ATTR_TRACKED_BUFFERS];
+    uint64_t tracked_reads[SAGEJS_ATTR_TRACKED_BUFFERS];
+    uint64_t tracked_writes[SAGEJS_ATTR_TRACKED_BUFFERS];
+    uint64_t tracked_read_words[SAGEJS_ATTR_TRACKED_BUFFERS];
+    uint64_t tracked_write_words[SAGEJS_ATTR_TRACKED_BUFFERS];
+    uint64_t tracked_cleared_words[SAGEJS_ATTR_TRACKED_BUFFERS];
     int active, ready, failed, clock_failed;
 } sagejs_fused_attr_record;
 static sagejs_fused_attr_record sagejs_fused_attr;
@@ -224,6 +231,27 @@ static void sagejs_attr_gmp_free(size_t old_size) {
     if ((uint64_t)old_size <= sagejs_fused_attr.outstanding_bytes)
         sagejs_fused_attr.outstanding_bytes -= (uint64_t)old_size;
 }
+static int sagejs_attr_buffer_id(const int32_t *sizes) {
+    int index;
+    if (!sagejs_fused_attr.active || sagejs_fused_attr.current_stage != 1) return -1;
+    for (index = 0; index < SAGEJS_ATTR_TRACKED_BUFFERS; index += 1)
+        if (sizes == sagejs_fused_attr.tracked_sizes[index]) return index;
+    return -1;
+}
+static void sagejs_attr_buffer_read(const int32_t *sizes, size_t words) {
+    int index = sagejs_attr_buffer_id(sizes);
+    if (index < 0) return;
+    sagejs_fused_attr.tracked_reads[index] += 1;
+    sagejs_fused_attr.tracked_read_words[index] += (uint64_t)words;
+}
+static void sagejs_attr_buffer_write(
+    const int32_t *sizes, size_t words, size_t cleared) {
+    int index = sagejs_attr_buffer_id(sizes);
+    if (index < 0) return;
+    sagejs_fused_attr.tracked_writes[index] += 1;
+    sagejs_fused_attr.tracked_write_words[index] += (uint64_t)words;
+    sagejs_fused_attr.tracked_cleared_words[index] += (uint64_t)cleared;
+}
 `;
 
 const SNAPSHOT_ADAPTER = String.raw`
@@ -237,7 +265,7 @@ static napi_value sagejs_fused_attr_snapshot_node(
     if (napi_get_cb_info(env, info, &argc, args, NULL, NULL) != napi_ok ||
         argc != 1 || !sagejs_native_get_int64_buffer(
             env, args[0], &output, "attribution output must be BigInt64Array") ||
-        output.length < 81)
+        output.length < 106)
         return NULL;
 #define SAGEJS_ATTR_WRITE(value) output.data[position++] = (int64_t)(value)
     for (stage = 0; stage < SAGEJS_ATTR_STAGES; stage += 1)
@@ -265,6 +293,13 @@ static napi_value sagejs_fused_attr_snapshot_node(
     SAGEJS_ATTR_WRITE(0); /* packed buffers are borrowed, never copied */
     SAGEJS_ATTR_WRITE(sagejs_fused_attr.peak_live_bytes);
     SAGEJS_ATTR_WRITE(sagejs_fused_attr.outstanding_bytes);
+    for (stage = 0; stage < SAGEJS_ATTR_TRACKED_BUFFERS; stage += 1) {
+        SAGEJS_ATTR_WRITE(sagejs_fused_attr.tracked_reads[stage]);
+        SAGEJS_ATTR_WRITE(sagejs_fused_attr.tracked_writes[stage]);
+        SAGEJS_ATTR_WRITE(sagejs_fused_attr.tracked_read_words[stage]);
+        SAGEJS_ATTR_WRITE(sagejs_fused_attr.tracked_write_words[stage]);
+        SAGEJS_ATTR_WRITE(sagejs_fused_attr.tracked_cleared_words[stage]);
+    }
 #undef SAGEJS_ATTR_WRITE
     if (napi_get_boolean(env, true, &answer) != napi_ok) return NULL;
     return answer;
@@ -299,6 +334,31 @@ function patchCore(original) {
     "static void sagejs_native_gmp_free(void *pointer, size_t old_size)\n{\n    sagejs_native_gmp_checkpoint *checkpoint =\n        sagejs_native_gmp_owner(pointer);\n    (void) old_size;\n    if (checkpoint == NULL)",
     "static void sagejs_native_gmp_free(void *pointer, size_t old_size)\n{\n    sagejs_native_gmp_checkpoint *checkpoint =\n        sagejs_native_gmp_owner(pointer);\n    sagejs_attr_gmp_free(old_size);\n    if (checkpoint == NULL)",
     "GMP free counter");
+  source = replaceOnce(source,
+    "    if (count == 0)\n    {\n        mpz_set_ui(result, 0);",
+    "    sagejs_attr_buffer_read(buffer->sizes, count);\n    if (count == 0)\n    {\n        mpz_set_ui(result, 0);",
+    "tracked mpz read");
+  source = replaceOnce(source,
+    "    memset(slot, 0, buffer->word_capacity * sizeof(*slot));",
+    "    sagejs_attr_buffer_write(buffer->sizes, count, buffer->word_capacity);\n" +
+      "    memset(slot, 0, buffer->word_capacity * sizeof(*slot));",
+    "tracked mpz write");
+  source = replaceOnce(source,
+    "    const uint64_t magnitude =\n        buffer->limbs[position * buffer->word_capacity];",
+    "    sagejs_attr_buffer_read(buffer->sizes, 1);\n    const uint64_t magnitude =\n" +
+      "        buffer->limbs[position * buffer->word_capacity];",
+    "tracked int64 read");
+  source = replaceOnce(source,
+    "    slot[0] = magnitude;\n    buffer->sizes[position] = magnitude == 0",
+    "    sagejs_attr_buffer_write(buffer->sizes, 1, 0);\n    slot[0] = magnitude;\n" +
+      "    buffer->sizes[position] = magnitude == 0",
+    "tracked int64 write");
+  if (process.env.SAGEJS_FUSED_SKIP_SPARE_CLEAR === "1") {
+    source = replaceOnce(source,
+      "    memset(slot, 0, buffer->word_capacity * sizeof(*slot));",
+      "    /* authenticated sizes make spare limbs unobservable */",
+      "skip unobservable spare-limb clear");
+  }
   return source;
 }
 
@@ -324,7 +384,11 @@ function patchAdapter(original) {
   const callMarker = "    if (!native_pari_fused_h1_matched_flag_zero_root(";
   const call = source.indexOf(callMarker, info);
   assert(call > info, "missing fused wrapper native call");
-  source = source.slice(0, call) + "    sagejs_attr_switch(1);\n" + source.slice(call);
+  const tracked = ["hnf_cup_arena", "relation_records", "prep_kummer_catalog_tau",
+    "hnf_work_c", "hnf_work_b"];
+  const registration = tracked.map((name, index) =>
+    `    sagejs_fused_attr.tracked_sizes[${index}] = sagejs_wrapper_${name}.sizes;`).join("\n");
+  source = source.slice(0, call) + `${registration}\n    sagejs_attr_switch(1);\n` + source.slice(call);
   const success = source.indexOf("\n\n\n\n    result = create_bigint", call);
   assert(success > call, "missing fused wrapper success tail");
   source = source.slice(0, success) + "\n    sagejs_attr_switch(7);" + source.slice(success);
@@ -388,6 +452,15 @@ function checkerInternals() {
   const filename = path.join(HERE, "check_h1_matched_flag_zero_fused.cjs");
   let source = fs.readFileSync(filename, "utf8");
   const marker = "main().catch((error) => {";
+  if (process.env.SAGEJS_FUSED_AUTHENTICATED_SHAPE === "1") {
+    const allocation =
+      "else answer[name] = fn.createIntegerBuffer(data.length, 4096, data.map(BigInt));";
+    const replacement =
+      "else answer[name] = fn.createIntegerBuffer(data.length, " +
+      "name === 'prep_kummer_catalog_tau' ? 1 : 4096, data.map(BigInt));";
+    assert.equal(source.split(allocation).length, 2, "native input allocation changed");
+    source = source.replace(allocation, replacement);
+  }
   const cut = source.indexOf(marker);
   assert(cut >= 0, "fused checker entry changed");
   source = source.slice(0, cut) + String.raw`
@@ -432,7 +505,15 @@ function decodeSnapshot(raw) {
     peakLiveGmpBytes: words[position++].toString(),
     terminalLiveGmpBytes: words[position++].toString(),
   };
-  assert.equal(position, 81);
+  const names = ["hnf_cup_arena", "relation_records", "prep_kummer_catalog_tau",
+    "hnf_work_c", "hnf_work_b"];
+  const trackedBuffers = names.map((name) => ({
+    name,
+    reads: words[position++].toString(), writes: words[position++].toString(),
+    readWords: words[position++].toString(), writeWords: words[position++].toString(),
+    clearedWords: words[position++].toString(),
+  }));
+  assert.equal(position, 106);
   const inclusive = words[5];
   const sum = words[6];
   assert.equal(stages.reduce((value, stage) => value + BigInt(stage.nanoseconds), 0n), sum);
@@ -440,7 +521,7 @@ function decodeSnapshot(raw) {
   return {
     schema: Number(words[0]), inclusiveNanoseconds: inclusive.toString(),
     partitionSumNanoseconds: sum.toString(), closure: Number(sum) / Number(inclusive),
-    stages, storage,
+    stages, storage, trackedBuffers,
   };
 }
 
@@ -461,7 +542,7 @@ function runProfile(addonPath) {
   const status = invoke(...names.map(([name]) => input[name]));
   const externalNs = process.hrtime.bigint() - started;
   assert.equal(status, 0n);
-  const raw = new BigInt64Array(81);
+  const raw = new BigInt64Array(106);
   assert.equal(snapshot(raw), true);
   const timing = decodeSnapshot(raw);
   const externalClosure = Number(BigInt(timing.inclusiveNanoseconds)) / Number(externalNs);
