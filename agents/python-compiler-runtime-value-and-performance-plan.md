@@ -315,6 +315,19 @@ common call/construction gaps are still roughly 26–28x CPython, so M5 remains
 open. Exact artifacts and polymorphic/mutation measurements are recorded in
 `agents/python-method-call-prototype-cache.md`.
 
+**2026-09-17 keyword-binder checkpoint:** the stacked shared-bootstrap binder
+candidate removes generic Python operations from literal keyword packet
+interpolation while preserving the existing call protocol. Controlled exact-
+artifact measurements improve keyword functions by 33.6%, keyword methods by
+30.7%, and keyword construction by 15.3%; positional and empty construction
+remain flat. All 224 portable files, strict checks, standalone construction,
+and the pinned traitlets notification/failure workflow pass. Counted core source
+falls to 901,616/903,000 bytes. Keyword calls still take roughly 18–23x CPython,
+so this is not M5 closure. The local startup host exceeded the unchanged budget
+for both baseline and candidate and is not a qualification receipt. Exact
+artifacts, measurements, and the corrected standalone boundary are recorded in
+`agents/python-keyword-binder-native.md`.
+
 Continue next with integration-aware qualification, the receiver-lookup campaign,
 and true handled-exception ownership. Generator/coroutine suspension makes a
 single global active-exception pointer unsafe: preserve owned handlers while

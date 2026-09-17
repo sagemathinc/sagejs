@@ -121,3 +121,96 @@ def ρσ_prepare_method_call(value, name):
         if(x[0]===undefined)x[0]=member;
         return x;
     })()"""
+
+
+def ρσ_interpolate_kwargs(receiver, target_function, supplied_args):
+    return r"""%js (() => {
+        if(target_function===undefined&&Array.isArray(receiver)){
+            const context=receiver;
+            target_function=context[0];
+            receiver=context[1];
+            if(receiver===undefined)
+                return ρσ_interpolate_kwargs(receiver,target_function,supplied_args);
+            if(context[2]===true){supplied_args.unshift(receiver);receiver=undefined;}
+        }else if(_internal_class_instance_function(receiver,target_function)&&
+                 _internal_get_member(target_function,"__self__")===undefined){
+            receiver=undefined;
+        }else if(receiver!==null&&receiver!==undefined&&
+                 _internal_get_member(target_function,"__self__")===undefined&&
+                 Object.getOwnPropertyNames(receiver).some(name=>{
+                     const descriptor=Object.getOwnPropertyDescriptor(receiver,name);
+                     return descriptor!==undefined&&descriptor.value===target_function;
+                 })){
+            receiver=undefined;
+        }
+        if(!_internal_type_is(ρσ_native_jstype(target_function),"function")||
+           _internal_get_member(target_function,"__sagejs_callable_instance__")===true){
+            receiver=target_function;
+            target_function=_internal_callable_slot(target_function);
+        }else if(_internal_has_own(target_function,"__bases__")){
+            receiver=undefined;
+            if(_internal_keyword_constructor_prototypes.has(target_function.prototype))
+                return Reflect.apply(target_function,undefined,supplied_args);
+        }else if(!target_function.__argnames__&&!target_function.__kwonly__&&
+                 _internal_get_member(target_function,"__sagejs_callable_instance_class__")!==true&&
+                 !_internal_has_own(target_function,"__bases__")){
+            const callable_method=Reflect.apply(_internal_builtin("ρσ_getattr"),
+                undefined,[target_function,"__call__",null]);
+            if(callable_method!==null&&(callable_method.__argnames__||callable_method.__kwonly__)){
+                receiver=target_function;
+                target_function=callable_method;
+            }
+        }
+        let argnames=target_function.__argnames__;
+        const keyword_only=target_function.__kwonly__;
+        if(argnames===undefined&&keyword_only===undefined)
+            return Reflect.apply(target_function,receiver,supplied_args);
+        if(argnames===undefined)argnames=[];
+        let positional_only=target_function.__positional_only__;
+        if(positional_only===true)positional_only=argnames.length;
+        else if(positional_only===undefined)positional_only=0;
+        const keyword_object=supplied_args[supplied_args.length-1];
+        if(target_function.__handles_kwarg_interpolation__){
+            const supplied_count=supplied_args.length-1;
+            const named_count=argnames.length;
+            let direct=true;
+            for(const property_name of Object.keys(keyword_object)){
+                const index=argnames.indexOf(property_name);
+                if(index>=positional_only){
+                    if(index<supplied_count)
+                        throw ρσ_exception_value(new TypeError("multiple values for argument '"+property_name+"'"));
+                    direct=false;
+                }else if(keyword_only&&keyword_only.indexOf(property_name)!==-1){
+                    continue;
+                }else if(!target_function.__varkw__){
+                    throw ρσ_exception_value(new TypeError("unexpected keyword argument '"+property_name+"'"));
+                }
+            }
+            if(direct)return Reflect.apply(target_function,receiver,supplied_args);
+            supplied_args.pop();
+            for(let index=0;index<named_count;index++){
+                const property_name=argnames[index];
+                if(index>=positional_only&&_internal_has_own(keyword_object,property_name)){
+                    supplied_args[index]=keyword_object[property_name];
+                    Reflect.deleteProperty(keyword_object,property_name);
+                }
+            }
+            supplied_args.push(keyword_object);
+            return Reflect.apply(target_function,receiver,supplied_args);
+        }
+        supplied_args.pop();
+        for(let index=0;index<argnames.length;index++){
+            const property_name=argnames[index];
+            if(index>=positional_only&&_internal_has_own(keyword_object,property_name)){
+                if(index<supplied_args.length)
+                    throw ρσ_exception_value(new TypeError("multiple values for argument '"+property_name+"'"));
+                supplied_args[index]=keyword_object[property_name];
+                Reflect.deleteProperty(keyword_object,property_name);
+            }
+        }
+        for(const unexpected of Object.keys(keyword_object)){
+            if(!keyword_only||keyword_only.indexOf(unexpected)===-1)
+                throw ρσ_exception_value(new TypeError("unexpected keyword argument '"+unexpected+"'"));
+        }
+        return Reflect.apply(target_function,receiver,supplied_args);
+    })()"""
