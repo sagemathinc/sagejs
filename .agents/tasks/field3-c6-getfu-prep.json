@@ -1,0 +1,102 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "field3-c6-getfu-prep",
+  "title": "Field3 C6 Getfu Prep",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Prepare the authenticated C6 high-precision mixed-quartic getfu corridor without running the authentic 153088-bit workload",
+  "base_commit": "a56b433be796df561eed89998f0fce2592d3a512",
+  "claims": [
+    "bench/pari-class-group-port/getfu_mixed_quartic.py",
+    "bench/pari-class-group-port/field3_high_precision_getfu.py",
+    "bench/pari-class-group-port/field3_high_precision_getfu_coordinator.cjs",
+    "bench/pari-class-group-port/check_field3_high_precision_getfu.cjs",
+    "bench/pari-class-group-port/field3_high_precision_getfu_audit.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "sage"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node bench/pari-class-group-port/check_field3_high_precision_getfu.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_field3_high_precision_getfu.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.329,
+      "started_at": "2026-09-17T15:02:21.264Z",
+      "commit": "a56b433be796df561eed89998f0fce2592d3a512",
+      "workspace_fingerprint": "4f86c1d4c95aafee3198f492eb79a2d8b2e3ef446e4bf465b7291e8d1027c4d6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 66.466,
+      "started_at": "2026-09-17T15:02:32.921Z",
+      "commit": "a56b433be796df561eed89998f0fce2592d3a512",
+      "workspace_fingerprint": "4f86c1d4c95aafee3198f492eb79a2d8b2e3ef446e4bf465b7291e8d1027c4d6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_field3_high_precision_getfu.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.426,
+      "started_at": "2026-09-17T15:05:23.068Z",
+      "commit": "a56b433be796df561eed89998f0fce2592d3a512",
+      "workspace_fingerprint": "51b1c59bd05f0131b9feb696ba7042cd344e80819cd31a18752dd9b0ee697cb6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 61.387,
+      "started_at": "2026-09-17T15:06:19.964Z",
+      "commit": "a56b433be796df561eed89998f0fce2592d3a512",
+      "workspace_fingerprint": "51b1c59bd05f0131b9feb696ba7042cd344e80819cd31a18752dd9b0ee697cb6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_field3_high_precision_getfu.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.102,
+      "started_at": "2026-09-17T15:13:26.565Z",
+      "commit": "a56b433be796df561eed89998f0fce2592d3a512",
+      "workspace_fingerprint": "4bfce60b62b1f5e2356fd5a2aadf4cabb46b26f7a6c164dc4836d744d576ebc7",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Prepared the authenticated C6 getfu corridor through 153088 bits, including atomic success/not_given publication and independent exact unit, inverse, norm, log, factor, and Wraw replay.",
+    "risks": [
+      "The authentic 153088-bit field-3 attempt was intentionally not run; native compilation and the real C5/C6 join remain integration gates.",
+      "Architecture and broad native checks require a trusted complete dist build; this isolated worktree deliberately had none."
+    ],
+    "next_steps": [
+      "Integrate the final C5 schema and run the native C6 root under the 600-second/4-GiB guard.",
+      "Run architecture and broad native gates from a clean trusted integration build."
+    ]
+  }
+}
