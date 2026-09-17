@@ -8,7 +8,7 @@ const path = require("node:path");
 const runner = require("./h1_matched_exclusive_stage_runner.cjs");
 
 function sageOwners() {
-  return { finalOwners: { final_state: ["0", "0", "0", "0", "0", "0", "73", "8", "1", "0", "2", "2", "0", "811", "1", "0"], final_invariants: ["0", "0"], final_torsion_order: ["2"], final_torsion_generator: ["-1", "0", "0"], final_regulator: ["1", "2", "3"] }, precisionAuthority: ["0", "5", "2304", "0", "3"] };
+  return { finalOwners: { final_state: ["0", "0", "0", "0", "0", "0", "73", "8", "1", "0", "2", "2", "0", "811", "1", "0"], final_invariants: ["0", "0", "0", "0", "0", "0", "0", "0", "777", "777", "777", "777"], final_torsion_order: ["2"], final_torsion_generator: ["-1", "0", "0"], final_regulator: ["1", "2", "3"] }, precisionAuthority: ["0", "5", "2304", "0", "3"] };
 }
 function pariRecord() {
   return { result: { field: { id: runner.FIELD_ID }, classGroup: { classNumber: "1", invariantFactors: [] }, unitGroupCorrespondence: { rank: "2", logEmbeddingShape: ["3", "2"], regulatorTriplet: ["1", "2", "3"], torsionOrder: "2", torsionGeneratorPowerBasis: ["-1", "0", "0"] }, terminal: { status: "pari-correspondence-complete-internal-h1", correspondenceComplete: true } }, rng: { algorithm: "pari-xorshift1024star-2.17.4", seed: "1", terminalState: Array(66).fill("1") }, work: { schema: "sagejs.pari-class-group/h1-source-work-v1", degree: "3", factorBaseSize: "66", retainedClassRows: "1", logEmbeddingRows: "3", logEmbeddingColumns: "2" } };

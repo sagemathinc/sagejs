@@ -58,7 +58,9 @@ function sageTerminalShape(authority) {
   for (const name of ["final_state", "final_invariants", "final_torsion_order", "final_torsion_generator", "final_regulator"]) assert(Array.isArray(owners[name]), `missing ${name}`);
   const state = owners.final_state;
   assert.equal(state[0], "0"); assert.equal(state[14], "1");
-  const invariantFactors = owners.final_invariants.filter(value => value !== "0");
+  const invariantCount = Number(state[9]);
+  assert(Number.isSafeInteger(invariantCount) && invariantCount >= 0);
+  const invariantFactors = owners.final_invariants.slice(0, invariantCount);
   assert.equal(invariantFactors.length, 0); assert(owners.final_regulator.some(value => value !== "0"));
   return { fieldId: FIELD_ID, classGroup: { classNumber: state[8], invariantFactors }, unitGroup: { rank: state[10], torsionOrder: owners.final_torsion_order[0], torsionGeneratorPowerBasis: owners.final_torsion_generator.slice(0, 3) }, terminalStatus: "pari-correspondence-complete-internal-h1" };
 }

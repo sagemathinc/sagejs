@@ -167,6 +167,14 @@ function validateSageResult(status, input) {
     "1", "0", "2", "2", "0", "811", "1", "0",
   ]);
   const unitRank = Number(finalState[10]);
+  const classRows = Number(finalState[7]);
+  const invariantCount = Number(finalState[9]);
+  assert.equal(invariantCount, 0);
+  const invariants = asStrings(input.final_invariants);
+  assert(invariants.slice(0, classRows).every(value => value === "0"),
+    "trivial class group published a nonzero logical invariant");
+  assert(invariants.slice(classRows).every(value => value === "777"),
+    "unpublished invariant capacity was modified");
   const exactNorms = asStrings(input.final_exact_norms);
   assert.deepEqual(exactNorms.slice(0, unitRank), ["-1", "-1"]);
   assert(exactNorms.slice(unitRank).every(value => value === "777"),
