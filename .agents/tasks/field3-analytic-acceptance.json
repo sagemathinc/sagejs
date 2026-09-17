@@ -1,0 +1,73 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "field3-analytic-acceptance",
+  "title": "Field3 analytic acceptance owner",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Derive the hard quartic analytic inverse-hR and live regulator acceptance from authenticated prepared-field, prime-catalog, terminal-HNF, and C3 inputs without answer fixtures",
+  "base_commit": "c1a53422dab073cc8d0660f4c7570f66c80122e7",
+  "claims": [
+    "bench/pari-class-group-port/field3_analytic_acceptance.py",
+    "bench/pari-class-group-port/check_field3_analytic_acceptance.cjs",
+    "bench/pari-class-group-port/field3_analytic_acceptance_audit.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "PARI 2.17.4 src/basemath/buch2.c:518-600,2979-3104,3711-3715,3825-3831,4093-4131"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Pristine PARI 2.17.4 low-precision source differential"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_field3_analytic_acceptance.cjs /home/user/upstream/pari-2.17.4 /home/user/upstream/pari-2.17.4.tar.gz --source-only",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.335,
+      "started_at": "2026-09-17T15:01:33.067Z",
+      "commit": "c1a53422dab073cc8d0660f4c7570f66c80122e7",
+      "workspace_fingerprint": "27a9dd0468525358c8b0e73d1aca8d19f93fe724c46ee379b471bbb7d9c978ee",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "bash -lc set -e; ln -s /home/user/sagejs/packages/flint/.native packages/flint/.native; trap \"unlink packages/flint/.native\" EXIT; node bench/pari-class-group-port/check_field3_analytic_acceptance.cjs /home/user/upstream/pari-2.17.4 /home/user/upstream/pari-2.17.4.tar.gz",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 19.033,
+      "started_at": "2026-09-17T15:01:48.431Z",
+      "commit": "c1a53422dab073cc8d0660f4c7570f66c80122e7",
+      "workspace_fingerprint": "27a9dd0468525358c8b0e73d1aca8d19f93fe724c46ee379b471bbb7d9c978ee",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added source-transparent field-3 owners deriving invhr from authenticated prepared data and deriving h*invhr plus regulator acceptance from terminal HNF and completed C3/regulator-multiple provenance. Result publication is atomic; RELAT, compute_R PRECI retry, and terminal getfu PRECI remain distinct. CPython and compiled JavaScript agree with pristine PARI 2.17.4 at low precision.",
+    "risks": [
+      "No 153088-bit authentic arithmetic was run by design.",
+      "The integration lane must populate the documented terminal-HNF and regulator-multiple provenance states from their real owners.",
+      "test:baselib:strict is blocked on a pre-existing doubled-backtick docstring in field3_high_precision_hnf_transform.py outside this lane's claims; test:native preparation rejects the transient shared .native symlink used to avoid another 2.7GB build, while the focused kernel compiled and passed through both CPython and JavaScript."
+    ],
+    "next_steps": [
+      "Wire these owners after the real terminal-HNF and regulator-multiple producers, then exercise the authentic field at the live precision selected by the retry controller."
+    ]
+  }
+}
