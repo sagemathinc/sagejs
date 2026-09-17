@@ -1,0 +1,68 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "field3-live-packed-cleanarch",
+  "title": "Field3 live packed class cleanarch",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Consume the authentic same-run field3 packed class-log owner, apply exact signature-(2,1) PARI cleanarch semantics with retry status, and differentially validate packed output against pristine PARI 2.17.4",
+  "base_commit": "0cee522f80e76d63c2f6e2b5bef9f804c3b9ea8b",
+  "claims": [
+    "bench/pari-class-group-port/field3_packed_class_cleanarch.py",
+    "bench/pari-class-group-port/check_field3_live_packed_cleanarch.cjs",
+    "bench/pari-class-group-port/field3_live_packed_cleanarch_audit.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "PARI 2.17.4 src/basemath/buch2.c lines 899-932 and field3_live_class_suffix"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "PARI 2.17.4 instrumented source cut"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "pnpm format:python --check",
+    "python3 -m py_compile bench/pari-class-group-port/field3_packed_class_cleanarch.py",
+    "node --check bench/pari-class-group-port/check_field3_live_packed_cleanarch.cjs",
+    "focused pristine-PARI/CPython/JavaScript/GMP/tagged differential replay"
+  ],
+  "runs": [
+    {
+      "command": "env SAGEJS_NATIVE_TOOLCHAIN_ROOT=/home/user/sagejs-worktrees/mixed-signature-cleanarch-torsion node bench/pari-class-group-port/check_field3_live_packed_cleanarch.cjs /tmp/sagejs-field3-resident-retry-BHdnZO/live-class-join.json /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.39,
+      "started_at": "2026-09-17T08:16:33.430Z",
+      "commit": "0cee522f80e76d63c2f6e2b5bef9f804c3b9ea8b",
+      "workspace_fingerprint": "8b41369e156f7f698768fc7dfb4099deac3426ecf25fe02b0615a67a7b0af57e",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Consumes the generated same-run field3 class-log owner and exactly matches pristine PARI 2.17.4 cleanarch packed output and retry metadata under CPython, JavaScript, GMP, and tagged execution; negative accuracy failure leaves output unpublished.",
+    "risks": [
+      "The live-class-join input is generated and external rather than a checked-in answer fixture.",
+      "Only linux-x64 was exercised in this lane; other required platforms remain CI responsibilities.",
+      "pnpm architecture:check reaches native classification but is blocked by the base commit's unrelated unclassified bench/pari-class-group-port/pari-stage-clock/pari_stage_clock_driver.c."
+    ],
+    "next_steps": [
+      "The integration/final-composer lane may consume pari_field3_packed_class_cleanarch after regenerating live-class-join.json from field3_live_class_suffix.",
+      "Classify the pre-existing PARI stage-clock C file in its owning lane, then rerun pnpm architecture:check."
+    ]
+  }
+}
