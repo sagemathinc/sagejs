@@ -42,17 +42,13 @@ def ρσ_function_argument_error(
 
 
 def ρσ_positional_default(target_function: Any, from_end: int, name: str) -> Any:
-    """Resolve an omitted argument without duplicating binding code per function."""
-    defaults = runtime.native_get(target_function, "__defaults__")
-    if defaults is None or defaults is runtime.undefined or defaults.length < from_end:
-        # The host Error representation crosses the Python exception boundary.
-        error = runtime.reflect.apply(
-            ρσ_function_argument_error,
-            runtime.undefined,
-            ["missing required argument: " + name, target_function],
-        )
-        raise error
-    return defaults[defaults.length - from_end]
+    return r"""%js (()=>{
+        const defaults=target_function.__defaults__;
+        if(defaults==null||defaults.length<from_end)
+            throw ρσ_function_argument_error(
+                "missing required argument: "+name,target_function);
+        return defaults[defaults.length-from_end];
+    })()"""
 
 
 class BaseException(runtime.error):

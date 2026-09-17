@@ -420,6 +420,21 @@ mutation, traitlets, attrs/decorator, strict, and merge gates pass. Exact
 evidence is in `agents/python-keyword-target-native-classification.md`. Keep the
 candidate behind its prerequisites and M5 open.
 
+**2026-09-17 omitted-positional-default checkpoint:** keyword calls which omit
+a positional parameter repeatedly entered a compiled-Python shared helper to
+read and index the live `__defaults__` tuple. Moving exactly that helper's
+native property/check/index/error boundary to raw JavaScript improves keyword
+functions by 17.0% and immediate keyword methods by 10.7% in controlled exact-
+artifact comparisons; unrelated rows remain flat and the artifact shrinks 354
+bytes. Live default replacement, short/null defaults, and the existing argument
+error path remain tested. Core source falls to 902,367/903,000 bytes. Residual
+keyword-function and keyword-method gaps are still 16.3x and 21.6x CPython, so
+M5 remains open. Differential, default, mutation, traitlets, attrs/decorator,
+strict, docs, and merge gates pass. The local startup measurement remains above
+the unchanged budget and is not a receipt. Exact evidence is in
+`agents/python-positional-default-native.md`; keep this candidate behind its
+prerequisites.
+
 Continue next with integration-aware qualification, the receiver-lookup campaign,
 and true handled-exception ownership. Generator/coroutine suspension makes a
 single global active-exception pointer unsafe: preserve owned handlers while
