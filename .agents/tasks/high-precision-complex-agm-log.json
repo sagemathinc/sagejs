@@ -1,0 +1,89 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "high-precision-complex-agm-log",
+  "title": "High-precision complex AGM logarithm",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement and qualify the bounded PARI 2.17.4 logagmcx and required agm1cx complex AGM logarithm path at 153088 bits in ordinary CPython-parseable Python",
+  "base_commit": "1c9f4eeba8dda26d890aed659b6e5682b20cd073",
+  "claims": [
+    "bench/pari-class-group-port/high_precision_complex_agm_log.py",
+    "bench/pari-class-group-port/check_high_precision_complex_agm_log.cjs",
+    "bench/pari-class-group-port/high_precision_complex_agm_log_audit.md",
+    "bench/pari-class-group-port/high_precision_complex_agm_log_result.json"
+  ],
+  "dependencies": [
+    "high-precision-agm-log"
+  ],
+  "references": [
+    "PARI 2.17.4 src/basemath/trans1.c logagmcx/agm1cx"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Pristine PARI 2.17.4 packed real and imaginary triples for neutral and authentic field-3 complex inputs"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 62.952,
+      "started_at": "2026-09-17T11:47:25.018Z",
+      "commit": "1c9f4eeba8dda26d890aed659b6e5682b20cd073",
+      "workspace_fingerprint": "daad8bb7a7c4cfa8eca1d4a14c2755670086efff1ca13216141552696c1c0f0e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_high_precision_complex_agm_log.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 110.185,
+      "started_at": "2026-09-17T11:48:28.632Z",
+      "commit": "1c9f4eeba8dda26d890aed659b6e5682b20cd073",
+      "workspace_fingerprint": "daad8bb7a7c4cfa8eca1d4a14c2755670086efff1ca13216141552696c1c0f0e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 64.696,
+      "started_at": "2026-09-17T11:50:57.994Z",
+      "commit": "1c9f4eeba8dda26d890aed659b6e5682b20cd073",
+      "workspace_fingerprint": "1422cb1b970faf0ff190dac8a120b2f4fdbe8a8e5aa84484fbdd2de7f039d0d8",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Translated PARI 2.17.4 complex norm/product/scalar division/principal square root, agm1cx, and logagmcx into ordinary Python. Neutral 3+4I and the authentic field-3 complex x embedding agree bit-for-bit in both packed components with pristine PARI at 153088 bits; CPython, generated JavaScript, and generated GMP agree from the same source. The transactional two-entry GMP batch stays below the declared time and memory caps.",
+    "risks": [
+      "The admitted surface is deliberately limited to non-axis complex inputs at the field-3 precision corridor.",
+      "The specialized checker is Linux-only because it compiles and links a pristine PARI oracle.",
+      "The required full pnpm test:native lane check was not started after the integration owner explicitly requested no further heavy run; the focused native checker is passing.",
+      "pnpm architecture:check was attempted after an interrupted full build left the local dist frontend inconsistent; it failed in pre-existing FFI parsing before inspecting this additive lane. The focused checker and strict baselib check passed after restoring the valid same-compiler dist from the dependency lane."
+    ],
+    "next_steps": [
+      "Join two qualified real log rows with twice this result's real component to form the raw weighted 3-by-301 get_log_embed owner.",
+      "Retain the principal-branch imaginary triples for later getfu reconstruction.",
+      "Qualify axis dispatch only if a later field requires it; do not broaden this non-axis kernel implicitly."
+    ]
+  }
+}
