@@ -469,21 +469,27 @@ stage("quartic-continuation", {
     const generatedPath = path.join(attempt, "generated", "continuation-launcher.cjs");
     // Compile the adjusted text with the original filename so Node's relative
     // require and __dirname semantics remain exactly those of the checker.
-    fs.writeFileSync(generatedPath, `"use strict";\n` +
+    const launcher = `"use strict";\n` +
       `const Module = require("node:module");\n` +
       `const path = require("node:path");\n` +
       `const filename = ${JSON.stringify(checker("check_actual_collector_continuation.cjs"))};\n` +
       `const child = new Module(filename, module);\n` +
       `child.filename = filename;\n` +
       `child.paths = Module._nodeModulePaths(path.dirname(filename));\n` +
-      `child._compile(${JSON.stringify(generated)}, filename);\n`);
+      `child._compile(${JSON.stringify(generated)}, filename);\n`;
+    fs.writeFileSync(generatedPath, launcher);
+    const collectorPath = outputPath(context, "quartic-collector");
+    const trace = tracePath(context, "quartic-hnfadd-trace");
     return {
       command: process.execPath,
-      arguments: [generatedPath, outputPath(context, "quartic-collector"),
-        tracePath(context, "quartic-hnfadd-trace"), "--source-only"],
+      arguments: [generatedPath, collectorPath, trace, "--source-only"],
+      identityCommand: [process.execPath, "<generated>/continuation-launcher.cjs",
+        collectorPath, trace, "--source-only"],
+      identityCheckerPath: checker("check_actual_collector_continuation.cjs"),
       generatedChecker: {
         originalSha256: sha256(original),
         generatedSha256: sha256(generated),
+        launcherSha256: sha256(launcher),
       },
     };
   },
@@ -1866,9 +1872,9 @@ function validatePari(context) {
 }
 
 function definitionIdentity(context, specification, command, dependencies) {
-  const checkerPath = command.command === process.execPath
+  const checkerPath = command.identityCheckerPath || (command.command === process.execPath
     ? command.arguments[0]
-    : command.arguments.find((argument) => argument.endsWith(".cjs"));
+    : command.arguments.find((argument) => argument.endsWith(".cjs")));
   const sources = [fs.realpathSync(__filename)];
   if (checkerPath && fs.existsSync(checkerPath)) sources.push(fs.realpathSync(checkerPath));
   for (const filename of specification.identityInputs?.(context) || []) {
@@ -1882,7 +1888,7 @@ function definitionIdentity(context, specification, command, dependencies) {
     stage: specification.name,
     gitCommit: context.gitCommit,
     gitTree: context.gitTree,
-    command: [command.command, ...command.arguments],
+    command: command.identityCommand || [command.command, ...command.arguments],
     sourceHashes,
     dependencies: Object.fromEntries(dependencies.map(({ name, current }) =>
       [name, sha256(current.bytes)])),
@@ -2107,9 +2113,13 @@ function main() {
   for (const name of names) runStage(context, name);
 }
 
-try {
-  main();
-} catch (error) {
-  console.error(error?.stack || error);
-  process.exitCode = 1;
+if (require.main === module) {
+  try {
+    main();
+  } catch (error) {
+    console.error(error?.stack || error);
+    process.exitCode = 1;
+  }
 }
+
+module.exports = { definitionIdentity };

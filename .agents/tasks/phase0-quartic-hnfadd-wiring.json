@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Add a durable field-2 HNF-append trace stage to Phase-0 replay and wire quartic continuation to its exact trace without changing the default-driver contract",
-  "base_commit": "fb6964bfd5a5dfbc5feddbf1c582f0f813c1d88d",
+  "base_commit": "8b33815fe329464360efa3b7642ace5c61b6179b",
   "claims": [
     "bench/pari-class-group-port/run_phase0_integration_replay.cjs",
     "bench/pari-class-group-port/phase0_integration_replay.md",
@@ -96,15 +96,45 @@
       "commit": "fb6964bfd5a5dfbc5feddbf1c582f0f813c1d88d",
       "workspace_fingerprint": "d4c9fa960bf32a9c7ab48ab8519cc5085b158c9f66f17deec249d074b73463ca",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/test_phase0_replay_stage_contract.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.125,
+      "started_at": "2026-09-17T13:23:03.026Z",
+      "commit": "cb7bf865160d36b6f49d46f68ab15d98674aecb9",
+      "workspace_fingerprint": "cbbb182928641eb8a14a832a802f9eadc63f11979b3df99b08d473a21b94b355",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check bench/pari-class-group-port/run_phase0_integration_replay.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.04,
+      "started_at": "2026-09-17T13:23:03.950Z",
+      "commit": "cb7bf865160d36b6f49d46f68ab15d98674aecb9",
+      "workspace_fingerprint": "cbbb182928641eb8a14a832a802f9eadc63f11979b3df99b08d473a21b94b355",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "git diff --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.052,
+      "started_at": "2026-09-17T13:23:04.745Z",
+      "commit": "cb7bf865160d36b6f49d46f68ab15d98674aecb9",
+      "workspace_fingerprint": "cbbb182928641eb8a14a832a802f9eadc63f11979b3df99b08d473a21b94b355",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Adds a separately receipted field-2 HNF-append trace producer, validates its exact event inventory and two CPython matrix replays, retains hnfadd-replay.json, and wires continuation plus all retry backends to the extended trace while preserving the summarized default-driver stage. Focused static stage-graph and trace-consumer coverage passes.",
+    "summary": "Adds a separately receipted field-2 HNF-append trace producer and routes continuation/retries through it. Generated stages now separate attempt-local execution paths from stable logical command identity while authenticating original source, transformed source, and exact launcher bytes. Focused tests prove resume stability and fail-closed argument/source/launcher mutation behavior.",
     "risks": [
-      "The intentionally expensive PARI/native replay was not run in this writer lane; the integration lane must qualify the corrected closure under the existing 4 GiB limit."
+      "The bounded integration replay qualified collector, summarized driver, extended HNF trace, and continuation. The retry suffix remains to be rerun after this identity fix is integrated into the frozen replay checkout."
     ],
     "next_steps": [
-      "Integrate this commit at the next frozen checkpoint, then run the corrected quartic dependency closure and suffix into a fresh durable artifact root."
+      "Integrate the identity fix, then resume the bounded quartic retry suffix from the five immutable current receipts."
     ]
   }
 }
