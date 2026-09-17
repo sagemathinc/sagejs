@@ -256,5 +256,51 @@ publication marker clear, and preserved getfu storage byte-for-byte.
 
 The observed `3.160 s` fused-call interval belongs to a correctness run with
 oversized 4096-word defensive buffers. It is not a qualified performance
-measurement and must not be compared to PARI. No seven-pair timing series has
-been run.
+measurement and must not be compared to PARI.
+
+## Qualified seven-pair matched timing
+
+The predeclared seven alternating pairs have now run against the authenticated
+existing addon and an adapted eager same-work executable built from pinned
+PARI 2.17.4 `buch2.c`. No native compilation or relowering occurred in the
+timed series. The Sage.js clock encloses exactly one raw fused addon call; the
+PARI clock starts after `nfinit` and RNG reset and stops immediately after the
+single p192 `getfu` attempt. Input preparation, evidence hashing, validation,
+and serialization are outside both clocks.
+
+Every one of the fourteen arms reproduced the relation, compact, owner, and
+terminal-RNG hashes above, all frozen counters, the exact root/getfu states,
+PARI-compatible `not_given(PRECI)`, one getfu attempt, zero precision retries,
+zero stronger-suffix calls, and `public_complete=false`. This is therefore a
+qualified same-work comparison, not a comparison of the stronger exact replay.
+
+The raw kernel intervals in pair order were:
+
+- Sage.js: `2,426,413,887`, `2,444,824,443`, `2,458,828,850`,
+  `2,363,156,132`, `2,404,938,192`, `2,236,508,141`, and
+  `2,602,812,935 ns`;
+- PARI: `14,276,382`, `15,245,933`, `14,297,012`, `15,028,583`,
+  `18,217,515`, `15,028,842`, and `14,009,202 ns`.
+
+The Sage.js median is `2,426,413,887 ns` with MAD `32,414,963 ns`; the
+PARI median is `15,028,583 ns` with MAD `731,571 ns`. Peak worker RSS was
+`1,733,980 KiB` for Sage.js and `24,244 KiB` for PARI. The matched remaining
+gap is thus `2,411,385,304 ns`, larger than the frozen `931,341,545 ns`
+baseline gap. Removed gap is clamped to zero, so Outcome C **fails** the fixed
+`745,073,236 ns` attribution threshold.
+
+This failure is informative: host conversion, evidence serialization, and the
+stronger exact-unit retry suffix are not responsible for the original gap.
+The fully fused source-transparent graph still spends roughly 2.43 seconds in
+the native call versus 15.0 milliseconds in matched PARI. The next diagnosis
+must profile the fused generated native graph itself—especially exact-buffer
+representation, private-call ABI/status traffic, and work/storage reuse—rather
+than changing the boundary or acceptance criterion.
+
+The full scratch receipt is
+`/scratch/sagejs-runtime/h1-matched-flag-zero-fused/h1-matched-seven-pairs.json`,
+SHA-256
+`eb1acb5624943cb3c57a476e6f387d7d6da84b78925b4fdd88824fdff5c3d00c`.
+The committed compact receipt preserves all raw samples, order, RSS, evidence,
+toolchain, and artifact identities in
+`h1_matched_flag_zero_timing_result.json`.

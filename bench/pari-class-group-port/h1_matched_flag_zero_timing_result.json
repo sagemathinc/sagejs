@@ -1,0 +1,92 @@
+{
+  "schema": "sagejs.pari-class-group/h1-matched-flag-zero-timing-result-v1",
+  "qualified": true,
+  "boundary": "prepared H1 through one compact p192 PRECI publication",
+  "field": "x^3-20018*x+20034",
+  "schedule": [
+    "sagejs-then-pari",
+    "pari-then-sagejs",
+    "sagejs-then-pari",
+    "pari-then-sagejs",
+    "sagejs-then-pari",
+    "pari-then-sagejs",
+    "sagejs-then-pari"
+  ],
+  "sagejsKernelNs": [
+    "2426413887",
+    "2444824443",
+    "2458828850",
+    "2363156132",
+    "2404938192",
+    "2236508141",
+    "2602812935"
+  ],
+  "pariKernelNs": [
+    "14276382",
+    "15245933",
+    "14297012",
+    "15028583",
+    "18217515",
+    "15028842",
+    "14009202"
+  ],
+  "sagejsPeakRssKiB": [
+    "1733616",
+    "1733332",
+    "1732768",
+    "1733900",
+    "1730440",
+    "1733980",
+    "1731156"
+  ],
+  "pariPeakRssKiB": [
+    "24164",
+    "24120",
+    "23960",
+    "24088",
+    "24192",
+    "24244",
+    "24228"
+  ],
+  "summary": {
+    "sageMedianNs": "2426413887",
+    "pariMedianNs": "15028583",
+    "sageMadNs": "32414963",
+    "pariMadNs": "731571",
+    "matchedGapNs": "2411385304",
+    "frozenBaselineGapNs": "931341545",
+    "removedGapNs": "0",
+    "frozenTargetRemovedNs": "745073236",
+    "outcomeCPass": false
+  },
+  "evidence": {
+    "inputSha256": "22a997866388571cd3c12e1a3ea5c5cc3a7fe89217b253bb0e779007f6fe9b77",
+    "relationPrefixSha256": "b0c647186a5fed5317c7135ccf16623a930631382ad7963e12af4ded2db7259a",
+    "compactSha256": "80cec2acce5b95ec48beff67b800410eedb5e580e25029aa79d4d63dc40b1c2d",
+    "ownerEvidenceSha256": "a0ae8b44555295c035a3603ce4c18dde8dd174bff80b79d34f61d86423a13b5e",
+    "terminalRngSha256": "9b90d634807d362bf99925a13ecb99eb54b867a16f9f3acb335fffcf085e401b",
+    "root": ["0", "1", "3", "192", "1", "0", "0", "7", "73", "8", "0", "1"],
+    "getfuState": ["3", "10", "-186", "0", "1923", "0", "0", "1"],
+    "status": "not_given(PRECI)",
+    "getfuAttempts": "1",
+    "precisionRetries": "0",
+    "strongerExactSuffixCalls": "0",
+    "publicComplete": false
+  },
+  "artifacts": {
+    "fullReceiptSha256": "eb1acb5624943cb3c57a476e6f387d7d6da84b78925b4fdd88824fdff5c3d00c",
+    "sagejsCacheKey": "2a65d69bf9c475e1378673d9829ffed16ba84dea4e503a7668b4ba59b970e6f1",
+    "sagejsAddonSha256": "6f6198906aba59940a994ee8aeff6e79e43e956690c9235060c59cb7e52d7251",
+    "sagejsManifestSha256": "2e17ea617106bcfe30d64e35bde06b1649d49d034bc2540c9aa28104ba592235",
+    "sagejsSourceSha256": "bec6c2fb1c17ba44b3d25ca43e06130ae667548d75e899ee5b87096ebd906a9a",
+    "sagejsSignatureSha256": "127398018f82c3171e40b25a9d5dbbcb5f4661437395dda53203952c8d3eaf81",
+    "node": "v26.9.0",
+    "pariArchiveSha256": "02651d99c391007d384b3fadbc20abc6916b77036f9e496c99e9ce8688ca4b53",
+    "pariBuch2Sha256": "904ced8034732c7fcfe1da393e23950aac0862b085150fdc24ce1e31beb7d1ac",
+    "pariDerivativeSourceSha256": "854adbf8abc82786d1b32d829a3f97c50080df458b022c654285567e648bac9d",
+    "pariExecutableSha256": "b15577f088e8cd88083df08e1a58aac89bc25624f6bfe0d9c63322edf9fdebea",
+    "pariLibrarySha256": "fdc8f2d7ff050c8e8c6cb8994b0f9dc971267ac763eaf5cd927454937d37357f",
+    "compilerVersionSha256": "6c5f103b27bc37f7e40b2b0dfb59d01a91c8ecdf6484916ed356235f83fc0f03",
+    "compilerFlags": ["-O3", "-Wall", "-fno-strict-aliasing", "-DNDEBUG"]
+  }
+}
