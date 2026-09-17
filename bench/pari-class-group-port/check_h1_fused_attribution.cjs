@@ -581,6 +581,25 @@ function decodeSnapshot(raw) {
   };
 }
 
+function assertCanonicalIntegerBuffers(input, names) {
+  let count = 0;
+  for (const [name, kind] of names) {
+    if (kind !== "IntegerBuffer") continue;
+    const buffer = input[name];
+    for (let index = 0; index < buffer.length; index += 1) {
+      const words = Math.abs(buffer.sizes[index]);
+      assert(words <= buffer.wordCapacity, `${name}[${index}] exceeds capacity`);
+      const base = index * buffer.wordCapacity;
+      for (let word = words; word < buffer.wordCapacity; word += 1) {
+        assert.equal(buffer.limbs[base + word], 0n,
+          `${name}[${index}] has a noncanonical spare limb ${word}`);
+      }
+    }
+    count += 1;
+  }
+  return count;
+}
+
 function runProfile(addonPath) {
   assert.equal(sha256File(INPUT), EXPECTED.input);
   const helpers = checkerInternals();
@@ -598,6 +617,7 @@ function runProfile(addonPath) {
   const status = invoke(...names.map(([name]) => input[name]));
   const externalNs = process.hrtime.bigint() - started;
   assert.equal(status, 0n);
+  const canonicalIntegerBuffers = assertCanonicalIntegerBuffers(input, names);
   const raw = new BigInt64Array(106);
   assert.equal(snapshot(raw), true);
   const timing = decodeSnapshot(raw);
@@ -621,7 +641,7 @@ function runProfile(addonPath) {
     timing, relationSha256: relation.sha256, compactSha256: compact.sha256,
     ownerEvidenceSha256: owner, terminalRngSha256: rng,
     counters: relation.payload.counters, root: compact.root, getfu: compact.state,
-    publicComplete: false,
+    publicComplete: false, canonicalIntegerBuffers,
   };
 }
 

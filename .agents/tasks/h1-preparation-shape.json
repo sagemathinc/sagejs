@@ -24,7 +24,9 @@
     "bench/pari-class-group-port/check_h1_private_integer_buffer_candidates.cjs",
     "bench/pari-class-group-port/h1_private_integer_buffer_layout.json",
     "bench/pari-class-group-port/h1_private_integer_buffer_candidates.json",
-    "bench/pari-class-group-port/h1_private_integer_buffer_candidates_audit.md"
+    "bench/pari-class-group-port/h1_private_integer_buffer_candidates_audit.md",
+    "bench/pari-class-group-port/h1_private_integer_buffer_qualification.json",
+    "bench/pari-class-group-port/h1_private_integer_buffer_qualification_audit.md"
   ],
   "dependencies": [],
   "references": [],
@@ -132,6 +134,10 @@
       "result": "passed after full-layout wiring"
     },
     {
+      "command": "one-job full-layout fused H1 build plus one exact profile under 600s wall and aggregate 4GiB RSS",
+      "result": "passed; build 350.278s/2396592 KiB, profile 98.065s/2378796 KiB including exhaustive post-timing canonical scan; preparation improved 89.23% and inclusive root 41.24%; all 348 IntegerBuffers canonical and all frozen evidence exact"
+    },
+    {
       "command": "node --test tools/native-kernel/test/private-integer-buffer-authority.cjs tools/native-kernel/test/private-integer-buffer-layout.cjs tools/native-kernel/test/private-integer-buffer-emitter.cjs tools/native-kernel/test/private-integer-buffer-host-core.cjs",
       "result": "pass",
       "exit_code": 0,
@@ -153,16 +159,16 @@
     }
   ],
   "handoff": {
-    "summary": "Generalized private IntegerBuffer authority from one named buffer to an authenticated state-layout manifest derived from the complete fused H1 call graph. The static audit classifies all 348 root IntegerBuffers as 328 written private candidates, 20 public/read-only buffers, and zero rejected, with authenticated inventory and candidate hashes. Generated storage uses a root-local 1024-slot pointer table, preserves the ordinary clearing path for unregistered or revoked owners, and canonicalizes all dirty private owners exactly once at root success/failure publication. The full 100,275,455-byte target was inspected without compiling; focused tests prove manifest mutations, raw access, aliases, returns, unknown calls, and fallback fail closed.",
+    "summary": "Generalized private IntegerBuffer authority from one named buffer to an authenticated state-layout manifest derived from the complete fused H1 call graph. The static audit classifies all 348 root IntegerBuffers as 328 written private candidates, 20 public/read-only buffers, and zero rejected. The bounded full-layout fused replay passes with every frozen relation/compact/owner/RNG/counter/root/getfu value exact and all 348 packed buffers exhaustively canonical after publication. Preparation falls from 1.533s to 165ms (89.23%) and the inclusive root from 2.382s to 1.399s (41.24%); compact/getfu is now the 1.106s dominant stage.",
     "risks": [
       "Global no-clear violates the public canonical IntegerBuffer ABI and must not be restored.",
-      "Only five candidates have prior cleared-word counters; 323 candidate contributions remain unmeasured.",
-      "The 328-buffer layout has passed static and focused tests but not a bounded fused native replay.",
+      "Only five candidates have individual cleared-word counters; the exact full-layout gain is measured but 323 per-buffer contributions remain unattributed.",
+      "The performance result is one diagnostic profile, not a paired qualification timing distribution.",
       "Broader raw-buffer cross-backend qualification remains required before enabling private authority beyond authenticated private roots."
     ],
     "next_steps": [
-      "Run one authorized 600-second/4-GiB fused H1 build and exact profile with all 328 candidates, requiring every frozen relation, compact-owner, RNG, root, and getfu hash/counter plus canonical public buffers.",
-      "Retain the full layout only if the bounded replay is exact and improves the declared phase threshold; otherwise record the rejected hypothesis without weakening public ABI semantics."
+      "Review and integrate the qualified full-layout authority without broadening it beyond authenticated private roots.",
+      "Attack compact/getfu, now 79.04% of the fused root, as a separately measured optimization hypothesis."
     ]
   }
 }
