@@ -200,6 +200,8 @@ function generatedOwners() {
     preparedImag[index] = String(-BigInt(preparedImag[index]));
   }
   const c5OwnerSha256 = "a".repeat(64);
+  const embeddingOwnerSha256 = "b".repeat(64);
+  const relationOwnerSha256 = "c".repeat(64);
   const common = {
     field: "x^4-2",
     runIdentity: "pari-2.17.4:fresh-low-p:x4-2",
@@ -211,6 +213,8 @@ function generatedOwners() {
       schema: "sagejs.pari-class-group/field3-c6-factorback-source-v1",
       ...common,
       c5OwnerSha256,
+      embeddingOwnerSha256,
+      relationOwnerSha256,
       principalGenerators: generators.map(String),
       relationRecords: relations.map(String),
       multiplicationBasis: powerBasisTensor().map(String),
@@ -231,6 +235,7 @@ function generatedOwners() {
       status: "success",
       reason: null,
       c5OwnerSha256,
+      embeddingOwnerSha256,
       inverseMask: 1,
       unitNorms: ["-1", "-1"],
       // First column deliberately differs by torsion -1 from q^-1.
@@ -251,6 +256,12 @@ function owner(name, value, rawBytes = null) {
   fs.writeFileSync(file, bytes, { mode: 0o444 });
   fs.chmodSync(file, 0o444);
   return { file, sha256 };
+}
+function boundOwners(name, values) {
+  const c6 = owner(`${name}-c6`, values.c6);
+  const sourceValue = structuredClone(values.source);
+  sourceValue.c6OwnerSha256 = c6.sha256;
+  return { source: owner(`${name}-source`, sourceValue), c6 };
 }
 function verify(files, expected = 0) {
   return run(
@@ -292,12 +303,16 @@ try {
     }),
   }).stdout);
   assert.deepEqual([0, 1, 2, 21, 22, 29].map((index) => flatReplay[index]), [1, 3, -1, 1, 10, 11]);
-  const files = { source: owner("source", values.source), c6: owner("c6", values.c6) };
+  const files = boundOwners("good", values);
+  values.source.c6OwnerSha256 = files.c6.sha256;
   const first = JSON.parse(verify(files).stdout);
   const second = JSON.parse(verify(files).stdout);
   assert.deepEqual(second, first);
   assert.equal(fs.statSync(first.path).mode & 0o777, 0o444);
   const receipt = JSON.parse(fs.readFileSync(first.path, "utf8"));
+  assert.equal(receipt.c6OwnerSha256, files.c6.sha256);
+  assert.equal(receipt.embeddingOwnerSha256, "b".repeat(64));
+  assert.equal(receipt.relationOwnerSha256, "c".repeat(64));
   assert.deepEqual(receipt.verified, {
     exactFactorback: true,
     logLattice: true,
@@ -326,10 +341,7 @@ try {
     periodValues.c6.logsImag[1],
     periodValues.c6.logsImag[2],
   );
-  const periodFiles = {
-    source: owner("period-source", periodValues.source),
-    c6: owner("period-c6", periodValues.c6),
-  };
+  const periodFiles = boundOwners("period", periodValues);
   const periodReceipt = JSON.parse(verify(periodFiles).stdout);
   assert.notEqual(periodReceipt.sha256, first.sha256);
   const before = fs.readdirSync(output).sort();
@@ -346,6 +358,10 @@ try {
     ["C5 prepared log", "source", (value) => { value.preparedCleanReal[0] = "2"; }],
     ["embedding", "source", (value) => { value.embeddingReal[3] = value.embeddingReal[0]; }],
     ["phase authority", "source", (value) => { value.twoPi = []; }],
+    ["missing C6 ancestry", "source", (value) => { delete value.c6OwnerSha256; }],
+    ["wrong C6 ancestry", "source", (value) => { value.c6OwnerSha256 = "0".repeat(64); }],
+    ["embedding ancestry", "source", (value) => { value.embeddingOwnerSha256 = "0".repeat(64); }],
+    ["relation ancestry", "source", (value) => { value.relationOwnerSha256 = "not-a-digest"; }],
   ];
   for (const [label, selected, mutate] of cases) {
     const changed = structuredClone(values[selected]);
@@ -363,10 +379,7 @@ try {
   const badPhaseValues = structuredClone(values);
   badPhaseValues.c6.logsImag.splice(0, 3, "1", "-1", "0");
   badPhaseValues.source.preparedCleanImag.splice(0, 3, "-1", "-1", "0");
-  const badPhaseFiles = {
-    source: owner("bad-phase-source", badPhaseValues.source),
-    c6: owner("bad-phase-c6", badPhaseValues.c6),
-  };
+  const badPhaseFiles = boundOwners("bad-phase", badPhaseValues);
   assert.notEqual(verify(badPhaseFiles, 1).stderr.length, 0);
   assert.deepEqual(fs.readdirSync(output).sort(), before);
   mutations += 1;

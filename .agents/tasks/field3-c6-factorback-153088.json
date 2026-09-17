@@ -74,6 +74,16 @@
       "commit": "ed9dfec6b764bd3158b9ec4d72eae8aa5e3a2212",
       "workspace_fingerprint": "3c5da845d06c1256691ee35f050c185ed68ab4a8b81e1a0fd26bab86251643f5",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_field3_c6_factorback_verifier.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.983,
+      "started_at": "2026-09-17T16:28:13.514Z",
+      "commit": "65b6bf135d7e1a80990483c1270efb20f9c9085e",
+      "workspace_fingerprint": "4a3644701664e0b99bba39996d32f1a9ea0e7be6808a26622c3de7ded2e3df6f",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {

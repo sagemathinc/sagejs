@@ -14,7 +14,9 @@ logs, the field embeddings, and explicit packed precision, `2*pi`, phase
 period, and rounding authority. The independently authenticated C6 owner
 contains the inverse mask, adjusted transform, two materialized quartic units,
 and their published logs. Both owners must bind the same field, run,
-precision, generation, and C5 hash.
+precision, generation, C5 hash, and embedding-owner hash. The source also
+binds the exact supplied C6 owner hash and the raw relation-owner hash. All
+three terminal ancestry digests are propagated into the receipt.
 
 ## Exact replay
 
@@ -79,7 +81,8 @@ in the checker, not copied from an answer tape. The checker also exercises a
 flat formal packed-log transform solely as an exact synthetic regression. It
 rejects mutations to Wraw, a principal generator, relation entry,
 multiplication tensor, materialized unit, inverse mask, C6 log, adjusted Wraw,
-C5 prepared log, embedding, phase authority, owner digest, and JSON
+C5 prepared log, embedding, phase authority, C6/embedding/relation ancestry,
+owner digest, and JSON
 uniqueness. Every failed case leaves the content-addressed output directory
 unchanged. A second positive case shifts a C6/C5 phase pair by the authenticated
 `2*pi` period and proves that the equivalent phase class is accepted.
@@ -94,7 +97,7 @@ coefficient cells and 105 split-stack cells. A short stack and the neighboring
 changes.
 
 The focused receipt SHA-256 is
-`4d15856ace75611823bc06d9df4ca14b8b479f99a4586764e313b1c8ca4b297a`.
+`ff7e6e52a8de493304a9aa0d82d22ff1981d5984cd7c32fc1590451f2304e5c0`.
 It is synthetic test evidence, not an authentic field-3 answer.
 
 ## Deferred boundary
