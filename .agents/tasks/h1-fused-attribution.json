@@ -1,0 +1,123 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "h1-fused-attribution",
+  "title": "Attribute fused H1 matched gap",
+  "lane": "native-compiler",
+  "status": "review",
+  "owner": "user",
+  "objective": "Instrument the fused H1 matched flag-zero native boundary with mutually exclusive stage timers and storage counters, verify exact evidence under the fixed resource envelope, and rank the measured gap without optimizing",
+  "base_commit": "fcd73b7f1492afdfd3f7f59e67cd45ebfc3bfb26",
+  "claims": [
+    "bench/pari-class-group-port/h1_fused_attribution.py",
+    "bench/pari-class-group-port/check_h1_fused_attribution.cjs",
+    "bench/pari-class-group-port/h1_fused_attribution_result.json",
+    "bench/pari-class-group-port/h1_fused_attribution_audit.md",
+    "tools/native-kernel/diagnostic-stage-timing.ts"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "authenticated fused H1 relation/compact/owner hashes",
+      "pinned PARI 2.17.4 matched control"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --check bench/pari-class-group-port/check_h1_fused_attribution.cjs",
+    "node bench/pari-class-group-port/check_h1_fused_attribution.cjs --static",
+    "python3 -m json.tool bench/pari-class-group-port/h1_fused_attribution_result.json",
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --check bench/pari-class-group-port/check_h1_fused_attribution.cjs",
+      "result": "passed"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_h1_fused_attribution.cjs --static",
+      "result": "passed; all diagnostic patch anchors resolved uniquely"
+    },
+    {
+      "command": "node /scratch/sagejs-runtime/h1-fused-attribution/monitor.cjs",
+      "result": "passed; one-job diagnostic build, 326.629s, 2386308 KiB peak aggregate RSS"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_h1_fused_attribution.cjs --profile",
+      "result": "passed; frozen hashes/counters/root/getfu match, exact internal closure and 99.9895% external closure"
+    },
+    {
+      "command": "python3 -m json.tool bench/pari-class-group-port/h1_fused_attribution_result.json",
+      "result": "passed"
+    },
+    {
+      "command": "pnpm parallel:check --task h1-fused-attribution",
+      "result": "passed"
+    },
+    {
+      "command": "node --check bench/pari-class-group-port/check_h1_fused_attribution.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.032,
+      "started_at": "2026-09-17T13:56:47.215Z",
+      "commit": "fcd73b7f1492afdfd3f7f59e67cd45ebfc3bfb26",
+      "workspace_fingerprint": "065396ac8765846b354014d45be0ddd65347b089eebb794eb779afb0f0c8793c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_h1_fused_attribution.cjs --static",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.549,
+      "started_at": "2026-09-17T13:56:47.943Z",
+      "commit": "fcd73b7f1492afdfd3f7f59e67cd45ebfc3bfb26",
+      "workspace_fingerprint": "065396ac8765846b354014d45be0ddd65347b089eebb794eb779afb0f0c8793c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -m json.tool bench/pari-class-group-port/h1_fused_attribution_result.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.058,
+      "started_at": "2026-09-17T13:56:50.196Z",
+      "commit": "fcd73b7f1492afdfd3f7f59e67cd45ebfc3bfb26",
+      "workspace_fingerprint": "065396ac8765846b354014d45be0ddd65347b089eebb794eb779afb0f0c8793c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1.074,
+      "started_at": "2026-09-17T13:57:03.081Z",
+      "commit": "fcd73b7f1492afdfd3f7f59e67cd45ebfc3bfb26",
+      "workspace_fingerprint": "065396ac8765846b354014d45be0ddd65347b089eebb794eb779afb0f0c8793c",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added diagnostic-only stage and storage attribution for the authenticated fused H1 addon. One exact replay attributes 65.58% to preparation, 22.27% to log/HNF, and 10.97% to relation collection with all frozen evidence unchanged.",
+    "risks": [
+      "This is one profile sample and does not replace the seven-pair timing qualification.",
+      "PARI has no identical internal stage clocks, so proportional gap attribution is a prioritization heuristic rather than a stage-by-stage PARI comparison.",
+      "Aggregate capacity words describe exposed packed storage and do not prove that every capacity word was touched."
+    ],
+    "next_steps": [
+      "Test the three falsifiable hypotheses in the audit one at a time, beginning with preparation loop trip counts and bytes actually written.",
+      "Do not optimize wrapper ingress or compact/getfu before the dominant preparation/log-HNF stages are explained."
+    ]
+  }
+}
