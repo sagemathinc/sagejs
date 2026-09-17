@@ -42,10 +42,14 @@
     {"panelIndex": 23, "role": "additional-development", "id": "5.5.1002836007889.1", "polynomialSha256": "c3077e07c31ac7586ee22c1a57ecfab1883699f8061f850ad75a86d46f23ea73"}
   ],
   "existingDefaultDriverEvidence": {
-    "checker": {"path": "bench/pari-class-group-port/check_default_driver_trace.cjs", "sha256": "bb6dfdcb5868b7505c074d062a9941dc49ecd8967a69a3e51a5daaae4a14a437"},
-    "coveredPanelIndices": [0, 1, 8, 10],
-    "uncoveredPanelIndices": [3, 4, 6, 11, 13, 14, 16, 18, 19, 20, 21, 23],
-    "allSixteenTraced": false
+    "checker": {"path": "bench/pari-class-group-port/check_default_driver_trace.cjs", "sha256": "1767daaa24fbfd1633cae0bacd0040a31233112111d9839bc91e0946dee97b5a"},
+    "exporter": {"path": "bench/pari-class-group-port/export_pari_development_panel.cjs", "sha256": "515e391c3d86a3e1e6504058b3d6b7ea8651df864d9c83113afdec4fed93f31b"},
+    "manifest": {"path": "bench/pari-class-group-port/development-default-driver-manifest.json", "sha256": "abe10f55aa44fbb47560cd23cf8b708268d838720d38b0fc98debbc1b763ef46"},
+    "coveredPanelIndices": [0, 1, 3, 4, 6, 8, 10, 11, 13, 14, 16, 18, 19, 20, 21, 23],
+    "uncoveredPanelIndices": [],
+    "allSixteenTraced": true,
+    "totalPayloadBytes": 608340929,
+    "payloadStorage": "external /scratch artifacts authenticated by the compact manifest"
   },
   "coverage": {
     "nonemptyW": {"performancePopulation": "observed", "panelIndices": [10], "evidence": ["field3_resident_retry_audit.md", "retry_hnf_integration_audit.md"]},

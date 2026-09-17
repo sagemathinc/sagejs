@@ -1,9 +1,11 @@
 # Phase 1 development-ladder audit
 
-This is an identity and existing-evidence audit refreshed at integration commit
-`1196fd4fdc5fdaa2a3fd1273d32c594bfb299ffa`. It performs no timing, build, or
-new PARI execution. In particular, field metadata is never treated as proof
-that a source branch ran.
+This identity and evidence audit began at integration commit
+`1196fd4fdc5fdaa2a3fd1273d32c594bfb299ffa` and now incorporates the complete
+untimed pristine-PARI development export based on `a998fc1bd`. It performs no
+performance qualification. In particular, field metadata is never treated as
+proof that a source branch ran; branch claims come only from the exact source
+traces.
 
 ## Frozen population
 
@@ -30,24 +32,39 @@ The oracle identity is pristine PARI 2.17.4: archive SHA256
 and `pari-2.17.4/src/basemath/buch2.c` SHA256
 `904ced8034732c7fcfe1da393e23950aac0862b085150fdc24ce1e31beb7d1ac`.
 
-## Existing trace evidence
+## Complete development trace evidence
 
-The tracked pristine-source driver checker has selectors for only four of the
-sixteen development identities:
+The pristine-source driver checker now accepts an authoritative
+`--panel-index=N` selector while retaining `--field0` through `--field3` for
+the existing downstream controls. It rejects every `final-reserve` row before
+compilation or execution. `export_pari_development_panel.cjs` selects exactly
+the 16 `tuning` rows in frozen panel order:
 
-| selector | panel row | role | field |
-| --- | ---: | --- | --- |
-| `--field0` | 0 | sentinel | `x^3-20018*x+20034` |
-| `--field1` | 1 | sentinel | `x^3-20010*x+20018` |
-| `--field2` | 8 | sentinel | `x^4-20018*x-20034` |
-| `--field3` | 10 | additional | `x^4-2000022*x-2000042` |
+`0, 1, 3, 4, 6, 8, 10, 11, 13, 14, 16, 18, 19, 20, 21, 23`.
 
-Thus existing evidence covers 4/16 identities. There is no tracked default
-driver trace for rows 3, 4, 6, 11, 13, 14, 16, 18, 19, 20, 21, or 23. Phase
-1's requirement to trace all sixteen candidates before implementation is not
-satisfied. In particular, sentinel row 14 was selected by its class number;
-the current evidence does **not** prove that it exercises retry, precision, or
-honesty work.
+The exact diagnostic payloads occupy 608,340,929 bytes under `/scratch` and
+are authenticated by `development-default-driver-manifest.json`. Only the
+compact 20 KiB manifest is tracked. It records every payload's bytes and
+SHA-256, plus separate hashes of prepared state, complete event sequence, and
+terminal result. The exporter and manifest both keep qualification execution
+disabled and report that zero reserve rows were opened.
+
+Each payload contains neutral exact prepared state: polynomial, discriminant,
+index, signature, roots of unity, integral basis and inverse, multiplication
+tensor, exact mantissa/precision/exponent embeddings, rounded embeddings, and
+runtime prime/product tables. The trace adds exact factor-base state, RNG,
+selected ideals, smooth factorization candidates, accepted relation records,
+HNF/archimedean matrices, regulator decisions, fundamental units, class-group
+transformations, and the final PARI object. Runtime outputs are trace fields,
+never preparation inputs, dimensions, capacities, or control decisions.
+
+An independent payload verifier authenticated all 16 external files and their
+neutral array dimensions. A fresh repeat of row 0 reproduced its payload,
+prepared-state, complete-event, and terminal-result hashes byte for byte.
+
+All 16 identities are therefore traced. Sentinel row 14 nevertheless takes a
+single 192-bit driver pass, so the earlier metadata selection still does
+**not** prove that this sentinel exercises precision or honesty work.
 
 ## Branch coverage audit
 
@@ -56,8 +73,8 @@ honesty work.
 | nonempty `W` | row 10 (`--field3`) | observed; the quartic retry retains nonempty append transactions |
 | rank deficiency | rows 8 and 10 | observed; row 8 has an index-two unit-lattice shortage and row 10 begins with two missing ideal rows |
 | random relations | none | absent from default performance traces; a forced correctness-only `rnd_rel` corridor is closed |
-| precision escalation | none | absent; all four traces remain at 192 bits and avoid precision rebuild |
-| honesty | none | absent from the default performance population; the unequal-bound all-failure correctness corridor is closed |
+| precision escalation | none | absent; all 16 complete traces remain at 192 bits and avoid precision rebuild |
+| honesty | none | absent from all 16 default traces (`extraRequired=false` throughout); the unequal-bound all-failure correctness corridor is closed |
 
 ### Closed correctness-only corridors
 
