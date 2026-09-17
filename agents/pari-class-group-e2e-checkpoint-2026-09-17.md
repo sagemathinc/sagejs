@@ -54,6 +54,44 @@ The honest predeclared campaign outcome at this checkpoint is therefore **D**.
 The correctness prerequisite for Outcome C exists, but the required 80% gap
 attribution does not.
 
+### Live row-14 relation and HNF closure
+
+Commit `2fd1484fb` advances frozen panel row 14 from its authenticated 42-row
+capsule through the complete live relation schedule
+`42 -> 802 -> 804 -> 805 -> 806`. The source-faithful schedule takes eight
+collection passes in total, including four legitimate empty retries while the
+resident state remains at 805 relations. The implementation retains that state
+and invokes incremental HNF only when a pass adds relations.
+
+The final capped cold replay took 110.052 seconds, sampled approximately
+933 MiB peak RSS, and declared a conservative simultaneous-owner upper bound of
+1,633,313,800 bytes. It terminates with relation state
+`[806,8110,0,0,806,806]` and HNF state
+`[3,10,796,0,7,0,0,806,0]`. Only after the complete live computation, the
+checker admits frozen W0 as a differential oracle. All logical prefixes of the
+relation records, logarithms, `H`, `dep`, `B`, `C`, and permutation agree
+cell-for-cell at all four HNF checkpoints.
+
+The immutable accepted-relation owner has SHA-256
+`9a24358fc2846778c7940df1be206a18048780375a60f6e9edf039b36c770b65`;
+its compressed representation has SHA-256
+`85420e260827d8b1dd50bfcf21c3dc33097856856ef17a487e335de5d8734568`
+and sizes 397,276 compressed bytes and 3,580,683 uncompressed bytes. It records
+`previousAcceptanceColumns=0` and `cacheChanged=true` for the terminal handoff.
+It explicitly excludes the analytic acceptance, Smith invariants, `[24,8]`,
+regulator, units, and public-completion claims. Those remain the next connected
+gate rather than being inferred from W0.
+
+Commits `fbbbeb75f` and `b5873397b` separately add honest exact presentation
+boundaries for development rows 3, 4, and 11. Their invariant factors and class
+numbers are respectively `[6]`/6, `[2]`/2, and `[2,2]`/4. These cuts replay the
+authenticated relation presentations but deliberately leave class-order
+witnesses, units, correspondence completion, and public completion false.
+Commit `e7d500d18` adds the fail-closed row-14 terminal-witness verifier: it can
+prove generator orders 24 and 8 once the live raw transform and compact
+principal-factor owner are available, but it publishes no authentic witness
+from generated protocol data alone.
+
 Phase 0 is now proven rather than partial. Evidence commit `a56b433be` records
 the definitive fresh 25-stage replay at clean commit `44807189a`; the complete
 source/toolchain/build/owner/output manifest is
