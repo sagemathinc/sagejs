@@ -1,0 +1,52 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "h1-precision-retry-driver",
+  "title": "H1 Precision Retry Driver",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Build an answer-independent retry driver that starts at the live H1 candidate precision, invokes the actual embedding/log/getfu attempt, advances only through live PARI retry status, retains exact owners, and stops on live success or resource cap.",
+  "base_commit": "754cd041aa3b11daa9dc723e139b5080a3cdfda2",
+  "claims": [
+    "bench/pari-class-group-port/h1_precision_retry_driver.cjs",
+    "bench/pari-class-group-port/check_h1_precision_retry_driver.cjs",
+    "bench/pari-class-group-port/h1_precision_retry_driver_audit.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "actual translated cubic embedding, S-unit log, and getfu leaves"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "node --check bench/pari-class-group-port/h1_precision_retry_driver.cjs",
+    "node --check bench/pari-class-group-port/check_h1_precision_retry_driver.cjs",
+    "node bench/pari-class-group-port/check_h1_precision_retry_driver.cjs"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Added an answer-independent native H1 precision retry owner that rebuilds only numerical owners, advances via the translated PARI retry policy, preserves exact-owner identity, and publishes nothing on failure.",
+    "risks": [
+      "The translated cubic embedding/logarithm corridor stops at 2176 bits; the actual getfu leaf is still PRECI there with its recorded deficit reduced to -2."
+    ],
+    "next_steps": [
+      "Extend the reviewed embedding and wide-log corridors through the next live PARI transition (3264 bits), then rerun this unchanged driver to seek live success."
+    ]
+  }
+}
