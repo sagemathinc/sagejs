@@ -1024,6 +1024,24 @@ stage("compact-unit-result", {
   allowNoArtifactDirectory: true,
 });
 
+stage("compact-unit-resident-pool", {
+  dependencies: ["compact-unit-result", "resident-cubic-gmp"],
+  command: (context) => commandNode("check_compact_unit_resident_pool.cjs",
+    outputPath(context, "resident-cubic-gmp", "output")),
+  validate: (summary) => {
+    assert.equal(summary.field, "x^3-20018*x+20034");
+    assert.equal(summary.originalRelationGenerators, 73);
+    assert.equal(summary.kernelFactors, 7);
+    assert.equal(summary.kernelRelationExponents, 511);
+    assert.equal(summary.exactUnitsMatchIndependentPariOracle, true);
+    assert.equal(summary.answerDerivedFactors, false);
+    assert.equal(summary.expandedInsideMatchedWorkload, false);
+    assert.match(summary.residentPoolSha256, /^[0-9a-f]{64}$/);
+  },
+  noFixture: true,
+  allowNoArtifactDirectory: true,
+});
+
 stage("unit-relation-authority-frontier", {
   dependencies: ["compact-unit-result", "presentation-authority"],
   command: () => commandNode("check_unit_relation_authority_cubic.cjs"),
@@ -1461,7 +1479,8 @@ stage("final-state", {
     "relation-hnf-witness",
     "presentation-authority", "h1-class-correspondence", "unit-bridge-preci",
     "unit-component-cubic",
-    "compact-unit-result", "unit-relation-authority-frontier",
+    "compact-unit-result", "compact-unit-resident-pool",
+    "unit-relation-authority-frontier",
     "unit-relation-authority", "cubic-precision-rebuild",
     "torsion-authority", "class-relation-cleanarch",
     "regulator-acceptance-replay", "authentic-h1-unit-success",
