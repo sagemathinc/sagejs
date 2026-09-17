@@ -1,0 +1,52 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "h1-matched-flag-zero",
+  "title": "Matched H1 compact flag-zero root",
+  "lane": "native-compiler",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement and audit an authenticated non-retrying p192 H1 compact flag-zero root with canonical matched PARI relation-prefix and compact-output evidence while retaining exact-unit expansion as a separate stronger post-pass",
+  "base_commit": "d03aeef7121dbc7e0cc7f056cc2b7477cd99fe38",
+  "claims": [
+    "bench/pari-class-group-port/h1_matched_flag_zero.py",
+    "bench/pari-class-group-port/check_h1_matched_flag_zero.cjs",
+    "bench/pari-class-group-port/h1_matched_flag_zero_control.cjs",
+    "bench/pari-class-group-port/h1_matched_flag_zero_audit.md"
+  ],
+  "dependencies": [
+    "unified-full-h1-suffix",
+    "pari-compact-unit-result"
+  ],
+  "references": [
+    "PARI 2.17.4 src/basemath/buch2.c flag-zero relation and getfu paths"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "PARI 2.17.4 pinned source-instrumented normalized relation-prefix and compact flag-zero control",
+      "authenticated prepared H1 owner at integration base d03aeef71"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
