@@ -14,7 +14,8 @@
     "bench/pari-class-group-port/check_pari_h1_outcome_c_adapter.cjs",
     "bench/pari-class-group-port/pari_h1_outcome_c_adapter.md",
     "bench/pari-class-group-port/h1_outcome_c_worker.cjs",
-    "architecture/native-code.json"
+    "architecture/native-code.json",
+    "architecture/native-boundaries.json"
   ],
   "dependencies": [],
   "references": [
