@@ -89,6 +89,46 @@ reordered pair, a missing final batch, and a final batch with a mismatched
 authority. No native logarithm execution was started while the global heavy
 job slots were occupied.
 
+## Completed execution
+
+All eleven canonical batches subsequently completed under the stated limits.
+Every batch agreed bit-for-bit with a separate pristine PARI 2.17.4 process,
+passed five fail-atomic rejection controls, and was re-read through the merge
+validator after publication. The generalized first batch also reconstructed
+the qualified legacy owner byte-for-byte.
+
+| start | count | native ms | wall ms | peak aggregate RSS KiB | capsule SHA-256 |
+| ---: | ---: | ---: | ---: | ---: | --- |
+| 0 | 28 | 381459.264 | 440930 | 2226416 | `683c1e4bc4559085dccf94282c393048c79c230fe2a2f9093642eeb371097de4` |
+| 28 | 28 | 94132.119 | 122429 | 2309988 | `dac284078cf2b8b2e2412a7de64d08607cde919dda7bafc501ad3156e11de164` |
+| 56 | 28 | 95602.382 | 124089 | 2327568 | `5ef768ff1c2943afbc99456bebc0f9fc2cd4db5518c4633ccbd28f12240b602d` |
+| 84 | 28 | 101452.157 | 129116 | 2314764 | `5131fb3d16511b65810abeef43c484fba60670f6544d84e1b67d199f9d5d2aa8` |
+| 112 | 28 | 215117.512 | 243313 | 2321460 | `948b3ac43c4fcf0b553eaba8f6e3c79e3aa29e2e2bd0beff669ce2b3bde8dfb9` |
+| 140 | 28 | 95178.550 | 122921 | 2318432 | `50cbfe9b09569e8540a600f3b71e8d456c2e043322d97df16df8041508e5c941` |
+| 168 | 28 | 95585.203 | 123580 | 2313080 | `72f5db7058035f54c659b7da54ec1231e4265276ef139329a62c60e0455ca900` |
+| 196 | 28 | 97899.148 | 126024 | 2311016 | `3e1e13c5ba8852a31e64acb21a3fc5a98accd8aa8c4a87badcea4bc1f940a485` |
+| 224 | 28 | 92006.284 | 119851 | 2334412 | `357564621f909df6846614b0306e129220d6d7d36fea869942d8d5480d7dd19d` |
+| 252 | 28 | 187645.719 | 216161 | 2313636 | `e3f315d5553ea5d287bc5334a9155c2666a6c39e1ab2e99c7b4ac817b58514c3` |
+| 280 | 21 | 97620.504 | 125268 | 2117516 | `3aa73526f223f7e416e497cf3797759eef4d68aa701edab029d16cbdad3af12d` |
+
+The batches took 1,553,698.842 ms of native time and 1,893,682 ms of
+monitored wall time in total. Maximum observed aggregate RSS was 2,334,412
+KiB. The dispatch record contains 600 AGM logarithms and two series
+logarithms. No run approached the 3.5 GiB abort threshold, 4 GiB hard limit,
+or 600-second timeout.
+
+The ordered merge verifier ran once after all batches existed. It published:
+
+```text
+/scratch/sagejs-runtime/pari-class-group-e2e-20260917/field3-authority/
+real-log-columns-complete-e9976e50b13c0ec5775a0f0449ac21bd82dd6d80e6717dabbe1d3ea37825d7ef.json
+```
+
+The file is 27,769,857 bytes, mode 0444, and its SHA-256 is
+`e9976e50b13c0ec5775a0f0449ac21bd82dd6d80e6717dabbe1d3ea37825d7ef`.
+It contains exactly 301 source columns, 602 real-log triples, and 1,806 packed
+integer cells, with the eleven batch hashes retained in source order.
+
 ## Deliberate exclusions
 
 This owner contains only the two real logarithm places. It does not contain the
