@@ -58,9 +58,55 @@ function privateIntegerBufferPlan(functions, root, requested) {
   const params = new Map(root.params.map((param) => [param.name, param.type]));
   if (names.some((name) => params.get(name) !== "IntegerBuffer")) return undefined;
   const graphNames = new Set(functions.map((fn) => fn.name));
-  const tracked = new Set(names);
+  const byName = new Map(functions.map((fn) => [fn.name, fn]));
+  const trackedByFunction = new Map(functions.map((fn) => [fn.name, new Set()]));
+  for (const name of names) trackedByFunction.get(root.name).add(name);
   let rejected = false;
+  let changed = true;
+  while (changed && !rejected) {
+    changed = false;
+    for (const fn of functions) {
+      const tracked = trackedByFunction.get(fn.name);
+      visit(fn.body, (operation) => {
+        if (rejected) return;
+        const references = referencedNames(operation);
+        if (![...references].some((name) => tracked.has(name))) return;
+        if (!SAFE_OPERATIONS.has(operation.kind)) { rejected = true; return; }
+        if (operation.kind === "integer.buffer.copy" ||
+            operation.kind === "integer.buffer.view") {
+          if (typeof operation.target !== "string") { rejected = true; return; }
+          if (!tracked.has(operation.target)) {
+            tracked.add(operation.target);
+            changed = true;
+          }
+        }
+        if (operation.kind !== "native.call") return;
+        const calleeName = operation.function || operation.callee || operation.name;
+        const callee = byName.get(calleeName);
+        if (!graphNames.has(calleeName) || callee === undefined) {
+          rejected = true;
+          return;
+        }
+        const args = operation.arguments || operation.args;
+        if (!Array.isArray(args) || args.length !== callee.params.length) {
+          rejected = true;
+          return;
+        }
+        const calleeTracked = trackedByFunction.get(calleeName);
+        for (let index = 0; index < args.length; index += 1) {
+          if (![...referencedNames(args[index])].some((name) => tracked.has(name))) continue;
+          const param = callee.params[index];
+          if (param?.type !== "IntegerBuffer") { rejected = true; return; }
+          if (!calleeTracked.has(param.name)) {
+            calleeTracked.add(param.name);
+            changed = true;
+          }
+        }
+      });
+    }
+  }
   for (const fn of functions) {
+    const tracked = trackedByFunction.get(fn.name);
     visit(fn.body, (operation) => {
       if (rejected) return;
       const references = referencedNames(operation);

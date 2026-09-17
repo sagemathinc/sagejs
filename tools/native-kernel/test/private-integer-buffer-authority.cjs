@@ -22,8 +22,8 @@ function fixture() {
   };
   const leaf = {
     name: "leaf",
-    params: [{ name: "scratch", type: "IntegerBuffer" }],
-    body: [{ kind: "integer.buffer.get", buffer: "scratch", index: "zero", target: "x" }],
+    params: [{ name: "destination", type: "IntegerBuffer" }],
+    body: [{ kind: "integer.buffer.get", buffer: "destination", index: "zero", target: "x" }],
   };
   return { functions: [root, leaf], root, leaf };
 }

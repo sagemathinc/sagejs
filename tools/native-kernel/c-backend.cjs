@@ -5,6 +5,12 @@ const {
   verifyCheckedBoundsProofs,
 } = require("./checked-bounds-proofs.cjs");
 const { prepareCheckedRegions } = require("./checked-regions.cjs");
+const {
+  privateIntegerBufferPlan,
+} = require("./private-integer-buffer-authority.cjs");
+const {
+  emitPrivateIntegerBufferRuntime,
+} = require("./private-integer-buffer-emitter.cjs");
 
 const { createHash } = require("node:crypto");
 const { exactArenaRetryable } = require("./exact-analysis.cjs");
@@ -2349,6 +2355,12 @@ function exactDeclarations(fn) {
 function emitExactInternalFunction(fn, functions, options = {}) {
   const { context, declarations, initialization, cleanup } =
     exactDeclarations(fn);
+  const privateBuffers = options.privateIntegerBuffers;
+  if (privateBuffers?.root === fn) {
+    declarations.push(privateBuffers.emission.declarations);
+    initialization.push(privateBuffers.emission.enter);
+    cleanup.unshift(privateBuffers.emission.beforePublish);
+  }
   context.functions = functions;
   context.diagnosticStageClock = options.diagnosticStageClock !== null &&
     options.diagnosticStageClock !== undefined;
@@ -3724,7 +3736,10 @@ typedef struct
 } sagejs_integer_buffer;`;
 }
 
-function generateIntegerBufferCoreSupport(includeFmpz = false) {
+function generateIntegerBufferCoreSupport(
+  includeFmpz = false,
+  privateBuffers = false,
+) {
   return `
 static int sagejs_integer_buffer_index(
     const sagejs_integer_buffer *buffer,
@@ -3807,7 +3822,13 @@ static int sagejs_integer_buffer_set_fmpz(
             "IntegerBuffer word capacity exceeded");
         return 0;
     }
-    memset(slot, 0, buffer->word_capacity * sizeof(*slot));
+${privateBuffers ? `    sagejs_private_integer_buffer_state *sagejs_private_state =
+        sagejs_private_integer_buffer_lookup(buffer);
+    if (sagejs_private_state == NULL)
+        memset(slot, 0, buffer->word_capacity * sizeof(*slot));
+    else
+        sagejs_private_integer_buffer_mark(sagejs_private_state, position);` :
+    "    memset(slot, 0, buffer->word_capacity * sizeof(*slot));"}
     if (count != 0)
     {
         if (sign > 0)
@@ -3871,7 +3892,13 @@ static int sagejs_integer_buffer_set_mpz(
             "IntegerBuffer word capacity exceeded");
         return 0;
     }
-    memset(slot, 0, buffer->word_capacity * sizeof(*slot));
+${privateBuffers ? `    sagejs_private_integer_buffer_state *sagejs_private_state =
+        sagejs_private_integer_buffer_lookup(buffer);
+    if (sagejs_private_state == NULL)
+        memset(slot, 0, buffer->word_capacity * sizeof(*slot));
+    else
+        sagejs_private_integer_buffer_mark(sagejs_private_state, position);` :
+    "    memset(slot, 0, buffer->word_capacity * sizeof(*slot));"}
     if (count != 0)
         mpz_export(slot, &actual, -1, sizeof(*slot), 0, 0, value);
     buffer->sizes[position] = sign < 0 ? -(int32_t) actual : (int32_t) actual;
@@ -4911,6 +4938,29 @@ static int sagejs_native_diagnostic_stage_snapshot(
 }`;
 }
 
+function configuredPrivateIntegerBuffers(functions, callGraph, configuration) {
+  if (configuration === null || configuration === undefined) return undefined;
+  const byName = new Map(functions.map((fn) => [fn.name, fn]));
+  const root = byName.get(configuration.root);
+  if (root === undefined || !Array.isArray(configuration.buffers)) return undefined;
+  const ordered = [];
+  const seen = new Set();
+  function include(name) {
+    if (seen.has(name)) return;
+    const fn = byName.get(name);
+    if (fn === undefined) return;
+    seen.add(name);
+    ordered.push(fn);
+    for (const callee of callGraph?.[name] || []) include(callee);
+  }
+  include(root.name);
+  const claim = privateIntegerBufferPlan(ordered, root, configuration.buffers);
+  if (claim === undefined) return undefined;
+  const emission = emitPrivateIntegerBufferRuntime(ordered, root, claim);
+  if (emission === undefined) return undefined;
+  return Object.freeze({ root, functions: ordered, claim, emission });
+}
+
 function generateHostCore(ir, options = {}) {
   verifyCheckedBoundsProofs(ir.functions);
   const checkedRegions = prepareCheckedRegions(ir);
@@ -4949,6 +4999,9 @@ function generateHostCore(ir, options = {}) {
         .sort(),
     };
   });
+  const privateBuffers = configuredPrivateIntegerBuffers(
+    functions, ir.callGraph, options.privateIntegerBuffers,
+  );
   validateResidentExactScratch(functions);
   const exact = functions.filter((fn) => fn.kernelKind === "integer");
   const exactEntries = exact.filter(hostCallable);
@@ -5018,8 +5071,11 @@ function generateHostCore(ir, options = {}) {
     exact.length > 0 ? generateExactCoreRuntime() : "",
     fmpz.selected.length > 0 ? FMPZ_EXACT_RUNTIME_C_SOURCE : "",
     usesInt64Buffers ? generateInt64BufferCoreSupport() : "",
+    privateBuffers?.emission.support || "",
     usesIntegerBuffers
-      ? generateIntegerBufferCoreSupport(fmpz.selected.length > 0)
+      ? generateIntegerBufferCoreSupport(
+        fmpz.selected.length > 0, privateBuffers !== undefined,
+      )
       : "",
     exact.map((fn) => internalSignature(fn, true)).join("\n"),
     fmpz.prototypes,
@@ -5028,7 +5084,10 @@ function generateHostCore(ir, options = {}) {
     word.functions,
     tagged.functions,
     fmpz.functions,
-    ...exact.map((fn) => emitExactInternalFunction(fn, functionMap, options)),
+    ...exact.map((fn) => emitExactInternalFunction(fn, functionMap, {
+      ...options,
+      privateIntegerBuffers: privateBuffers,
+    })),
     ...exactEntries.map(publicCoreFunction),
     ...privateCoreAdapters.map((fn) =>
       publicCoreFunction(fn).replace(/^int sagejs_kernel_/m, "static int sagejs_kernel_")
@@ -5078,28 +5137,38 @@ ${exceptionShimInclude(ir)}
 
 ${pieces.join("\n\n")}
 `;
+  const privateIntegerBufferAudit = privateBuffers === undefined ? null : {
+    authority: privateBuffers.claim.authority,
+    root: privateBuffers.root.name,
+    buffers: [...privateBuffers.claim.buffers],
+    canonicalizeAt: [...privateBuffers.claim.canonicalizeAt],
+    failurePublication: privateBuffers.claim.failurePublication,
+  };
   return {
     source,
     header: coreHeader(ir, options),
-    audit: auditHostCore(source, {
-      nativeDependencies: Array.from(new Set([
-        "libc",
-        "libm",
-        ...(exact.length > 0 ? ["GMP"] : []),
-        ...(fields.some((fn) => fn.kernelKind === "real-field")
-          ? ["MPFR"] : []),
-        ...(fields.some((fn) => fn.kernelKind === "complex-field")
-          ? ["MPC"] : []),
-        ...(primeSources.length > 0 ? ["FLINT"] : []),
-        ...(primeFields.length > 0 ? ["FLINT"] : []),
-        ...(exceptionShimInclude(ir) ? ["C++ runtime"] : []),
-        ...foreignDependencies(ir),
-      ])),
-      functions: functions.filter(hostCallable).map((fn) => fn.name),
-      kernelKinds: Array.from(new Set(
-        functions.filter(hostCallable).map((fn) => fn.kernelKind),
-      )),
-    }),
+    audit: {
+      ...auditHostCore(source, {
+        nativeDependencies: Array.from(new Set([
+          "libc",
+          "libm",
+          ...(exact.length > 0 ? ["GMP"] : []),
+          ...(fields.some((fn) => fn.kernelKind === "real-field")
+            ? ["MPFR"] : []),
+          ...(fields.some((fn) => fn.kernelKind === "complex-field")
+            ? ["MPC"] : []),
+          ...(primeSources.length > 0 ? ["FLINT"] : []),
+          ...(primeFields.length > 0 ? ["FLINT"] : []),
+          ...(exceptionShimInclude(ir) ? ["C++ runtime"] : []),
+          ...foreignDependencies(ir),
+        ])),
+        functions: functions.filter(hostCallable).map((fn) => fn.name),
+        kernelKinds: Array.from(new Set(
+          functions.filter(hostCallable).map((fn) => fn.kernelKind),
+        )),
+      }),
+      privateIntegerBuffers: privateIntegerBufferAudit,
+    },
   };
 }
 
