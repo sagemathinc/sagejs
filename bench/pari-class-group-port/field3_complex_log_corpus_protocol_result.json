@@ -1,0 +1,40 @@
+{
+  "schema": "sagejs-field3-complex-log-corpus-protocol-result-v1",
+  "status": "protocol-qualified-heavy-batches-not-started",
+  "baseCommit": "56324f09872e235b20207f46aa83e4cadebde898",
+  "schedule": {
+    "batches": 76,
+    "batchWidth": 4,
+    "starts": "0,4,...,296,300",
+    "finalCount": 1,
+    "sourceColumns": 301,
+    "completeOwnerCells": 2107
+  },
+  "identity": {
+    "authoritySha256": "246bfe2af51c8be732308719773fc7d696f7dc1bf21958c91d96cd8fc448954c",
+    "initialOwnerSha256": "81b9d3b237e781a697f0ae170554426b363ec2235297407be1deed38ebbbc6fe",
+    "preparedOwnerSha256": "bc0dfbca45a575a381ba87371fb27906f68b34cedd025435986fad4c7c6287cf",
+    "kernelSourceSha256": "87d2b07569daa31ebf62ce88c971dd0fbdf4e87e898509b9fe9d59d4da1e2007",
+    "normConsequencesSha256": "65e1bbd5c05b89b63d08d91e137c2ac68116db3df66073080d89ca4a55275f53"
+  },
+  "lightweightSelfTest": {
+    "scheduleBatches": 76,
+    "packedCells": 2107,
+    "selectedPrefixColumns": 32,
+    "prefixCompatibilitySha256": "f4899c83bfb797e61a3fbfc539c107db57eb0ea78e20b9ab1697167d75c3b1cd",
+    "immutableCapsules": 76,
+    "immutableReceipts": 1,
+    "immutableMergeArtifacts": 2,
+    "negativeTests": 7
+  },
+  "estimateFromQualifiedPrefixRun": {
+    "warmBatchSeconds": [190, 230],
+    "coldBatchSeconds": [210, 260],
+    "peakAggregateRssKiB": [1450000, 1600000],
+    "serialCorpusHours": [3.8, 4.8],
+    "qualifiedSourceRunMilliseconds": 303107.764737,
+    "qualifiedSourcePeakAggregateRssKiB": 1489284
+  },
+  "heavyBatchesExecuted": 0,
+  "completeOwnerPublished": false
+}

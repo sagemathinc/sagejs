@@ -1,0 +1,70 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "field3-complex-log-corpus",
+  "title": "Authenticate resumable field3 complex log corpus",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Define a deterministic resumable hash-named capsule protocol for all 301 field3 complex log columns, with ordered authenticated merge into the complete weighted complex owner",
+  "base_commit": "56324f09872e235b20207f46aa83e4cadebde898",
+  "claims": [
+    "bench/pari-class-group-port/field3_complex_log_corpus_protocol.cjs",
+    "bench/pari-class-group-port/field3_complex_log_corpus_protocol_audit.md",
+    "bench/pari-class-group-port/field3_complex_log_corpus_protocol_result.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Qualified selected-prefix field3 complex log owner",
+      "Exact immutable capsule and ordered merge checks"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node --check bench/pari-class-group-port/field3_complex_log_corpus_protocol.cjs",
+    "node bench/pari-class-group-port/field3_complex_log_corpus_protocol.cjs --self-test"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/field3_complex_log_corpus_protocol.cjs --self-test",
+      "status": "passed",
+      "summary": "Built and merged 76 synthetic immutable capsules into 2107 cells, preserved 32 authentic selected-prefix columns byte-identically, and passed seven negative controls"
+    },
+    {
+      "command": "node bench/pari-class-group-port/field3_complex_log_corpus_protocol.cjs --self-test",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.471,
+      "started_at": "2026-09-17T12:50:00.678Z",
+      "commit": "56324f09872e235b20207f46aa83e4cadebde898",
+      "workspace_fingerprint": "ba2706b27cdc910722bf0c57ede389a60cf8de56e2ae4517c67590cddbd01601",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented an authenticated 76-batch resumable protocol for the bounded field3 complex-log kernel, immutable hash-named 0444 capsules and receipts, ordered gap/overlap-resistant merge into 2107 cells, and byte-identical compatibility with all 32 selected-prefix columns. No heavy batch was started.",
+    "risks": [
+      "The batch worker is source-complete but intentionally has not yet been exercised under the heavy native runtime",
+      "The 3.8--4.8 hour serial estimate is extrapolated from the qualified focused run rather than measured across the corpus"
+    ],
+    "next_steps": [
+      "After explicit resource authorization, run one deterministic batch and inspect its immutable capsule/receipt before scheduling the remaining 75",
+      "After all batches exist, pass their paths in schedule order to --merge and independently inspect the complete owner receipt",
+      "Integration owns broad native and strict suites"
+    ]
+  }
+}
