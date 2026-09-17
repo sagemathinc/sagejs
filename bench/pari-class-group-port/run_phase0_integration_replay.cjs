@@ -24,7 +24,8 @@ function usage(error) {
   node bench/pari-class-group-port/run_phase0_integration_replay.cjs list
   node bench/pari-class-group-port/run_phase0_integration_replay.cjs run \\
     --artifact-root DIRECTORY --pari-root DIRECTORY --pari-archive FILE \\
-    [--through STAGE | --stage STAGE] [--force-stage STAGE] [--allow-dirty]
+    [--through STAGE | --stage STAGE | --only-stage STAGE] \\
+    [--force-stage STAGE] [--allow-dirty]
   node bench/pari-class-group-port/run_phase0_integration_replay.cjs verify \\
     --artifact-root DIRECTORY [--stage STAGE]
 
@@ -49,6 +50,7 @@ function parseOptions(arguments_) {
       ["--pari-archive", "pariArchive"],
       ["--through", "through"],
       ["--stage", "stage"],
+      ["--only-stage", "onlyStage"],
       ["--force-stage", "forceStage"],
     ]);
     const name = names.get(argument);
@@ -1900,11 +1902,28 @@ function definitionIdentity(context, specification, command, dependencies) {
   };
 }
 
-function verifyReceipt(context, current) {
+function verifyReceipt(context, current, state = undefined) {
+  const traversal = state || { active: new Set(), verified: new Map() };
   const receipt = current.receipt;
   assert.equal(receipt.schema, schema);
+  assert.equal(typeof receipt.stage, "string");
+  assert.equal(receipt.stage, receipt.identity?.stage);
+  assert.equal(receipt.identity?.schema, schema);
   assert.equal(receipt.complete, true);
   assert.equal(sha256(Buffer.from(JSON.stringify(receipt.identity))), receipt.identitySha256);
+  assert(stages.has(receipt.stage), `unknown receipt stage: ${receipt.stage}`);
+  const declaredDependencies = [...stages.get(receipt.stage).dependencies].sort();
+  const recordedDependencies = Object.keys(receipt.identity.dependencies || {}).sort();
+  assert.deepEqual(recordedDependencies, declaredDependencies,
+    `${receipt.stage} recorded dependencies do not match the current stage graph`);
+  if (traversal.verified.has(receipt.stage)) {
+    assert.equal(traversal.verified.get(receipt.stage).filename, current.filename,
+      `multiple selected receipts for ${receipt.stage}`);
+    return receipt;
+  }
+  assert(!traversal.active.has(receipt.stage),
+    `receipt dependency cycle at ${receipt.stage}`);
+  traversal.active.add(receipt.stage);
   for (const [dependency, expectedHash] of Object.entries(
     receipt.identity.dependencies || {},
   )) {
@@ -1912,23 +1931,41 @@ function verifyReceipt(context, current) {
     assert(selected, `${receipt.stage} dependency is no longer selected: ${dependency}`);
     assert.equal(sha256(selected.bytes), expectedHash,
       `${receipt.stage} dependency changed: ${dependency}`);
+    verifyReceipt(context, selected, traversal);
   }
+  assert(receipt.outputs && typeof receipt.outputs === "object" &&
+    !Array.isArray(receipt.outputs), `${receipt.stage} outputs are malformed`);
   for (const [key, output] of Object.entries(receipt.outputs)) {
     const filename = resolveArtifact(context, output.path);
     assert.equal(fs.statSync(filename).size, output.bytes, `${receipt.stage}/${key} size`);
     assert.equal(hashFile(filename), output.sha256, `${receipt.stage}/${key} hash`);
   }
+  traversal.active.delete(receipt.stage);
+  traversal.verified.set(receipt.stage, current);
   return receipt;
+}
+
+function sealedDependencyReceipts(context, dependencies) {
+  const state = { active: new Set(), verified: new Map() };
+  for (const dependency of dependencies) {
+    const current = currentReceipt(context, dependency);
+    assert(current, `missing sealed dependency stage: ${dependency}`);
+    verifyReceipt(context, current, state);
+  }
+  return [...state.verified].sort(([left], [right]) => left.localeCompare(right))
+    .map(([name, current]) => ({ name, current }));
 }
 
 function runStage(context, name) {
   const specification = stages.get(name);
-  const dependencyReceipts = specification.dependencies.map((dependency) => {
-    const current = currentReceipt(context, dependency);
-    assert(current, `stage ${name} requires ${dependency}`);
-    verifyReceipt(context, current);
-    return { name: dependency, current };
-  });
+  const dependencyReceipts = context.onlyStage
+    ? sealedDependencyReceipts(context, specification.dependencies)
+    : specification.dependencies.map((dependency) => {
+      const current = currentReceipt(context, dependency);
+      assert(current, `stage ${name} requires ${dependency}`);
+      verifyReceipt(context, current);
+      return { name: dependency, current };
+    });
   const stageRoot = path.join(context.artifactRoot, "stages", name);
   const attemptsRoot = path.join(stageRoot, "attempts");
   fs.mkdirSync(attemptsRoot, { recursive: true });
@@ -2064,6 +2101,7 @@ function contextFromOptions(options, needsPari, writePipeline = true) {
     gitTree: context.gitTree,
     host: { platform: process.platform, arch: process.arch, release: os.release(),
       node: process.version },
+    selection: context.onlyStage ? { mode: "only-stage", stage: context.onlyStage } : null,
     pari: needsPari ? { root: context.pariRoot, archive: context.pariArchive,
       archiveSha256, buch2Sha256, library: fs.realpathSync(context.pariLibrary),
       librarySha256: context.pariLibrarySha256,
@@ -2099,9 +2137,14 @@ function main() {
     return;
   }
   if (action !== "run") usage(`unknown action: ${action}`);
-  if (options.stage && options.through) usage("choose --stage or --through, not both");
-  const target = options.stage || options.through || defaultThrough;
-  const names = options.stage ? orderedClosure([target]) : (() => {
+  const selectors = [options.stage, options.through, options.onlyStage]
+    .filter((value) => value !== undefined);
+  if (selectors.length > 1) {
+    usage("choose exactly one of --stage, --through, or --only-stage");
+  }
+  const target = options.stage || options.through || options.onlyStage || defaultThrough;
+  assert(stages.has(target), `unknown stage: ${target}`);
+  const names = options.onlyStage ? [target] : options.stage ? orderedClosure([target]) : (() => {
     const keys = [...stages.keys()];
     const index = keys.indexOf(target);
     assert(index >= 0, `unknown stage: ${target}`);
@@ -2122,4 +2165,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { definitionIdentity };
+module.exports = { definitionIdentity, sealedDependencyReceipts, verifyReceipt };
