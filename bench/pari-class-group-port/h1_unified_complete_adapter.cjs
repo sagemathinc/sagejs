@@ -42,12 +42,12 @@ function parameters(source, entry) {
     .map(line => line.trim().replace(/,$/, "").split(": "));
 }
 
-function objectLiteral(source, name) {
+function objectLiteral(source, name, context = {}) {
   const match = source.match(new RegExp(
     `const ${name} = Object\\.freeze\\((\\{[\\s\\S]*?\\n\\})\\);`,
   ));
   assert(match, `missing ${name} capacity table`);
-  return vm.runInNewContext(`(${match[1]})`);
+  return vm.runInNewContext(`(${match[1]})`, context);
 }
 
 function bridgeSizes() {
@@ -60,6 +60,13 @@ function bridgeSizes() {
 function rootSpecification() {
   const source = fs.readFileSync(ROOT_SOURCE, "utf8");
   const checker = fs.readFileSync(ROOT_CHECKER, "utf8");
+  const storagePolicy = objectLiteral(checker, "storagePolicy");
+  const capacityContext = {
+    storagePolicy,
+    classSquareCapacity: storagePolicy.classRows ** 2,
+    classRelationCapacity: storagePolicy.classRows * storagePolicy.classColumns,
+    classTransformCapacity: storagePolicy.classColumns ** 2,
+  };
   return {
     names: parameters(source, "pari_unified_complete_h1_root"),
     residentNames: parameters(
@@ -68,9 +75,9 @@ function rootSpecification() {
     ),
     sizes: {
       ...bridgeSizes(),
-      ...objectLiteral(checker, "classSizes"),
-      ...objectLiteral(checker, "precisionSizes"),
-      ...objectLiteral(checker, "finalSizes"),
+      ...objectLiteral(checker, "classSizes", capacityContext),
+      ...objectLiteral(checker, "precisionSizes", capacityContext),
+      ...objectLiteral(checker, "finalSizes", capacityContext),
       unified_state: 12,
     },
   };
