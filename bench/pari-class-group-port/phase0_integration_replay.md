@@ -70,8 +70,14 @@ The mixed-quartic retry is intentionally separate because its packed owners and
 native compilation are expensive:
 
 6. `quartic-collector` and `quartic-driver` regenerate the field-2 inputs and
-   unmodified PARI retry trace.
-7. `quartic-continuation` reconstructs the two appended relation batches. The
+   unmodified PARI retry trace. `quartic-hnfadd-trace` independently extends
+   that driver instrumentation with the two exact `hnfadd` inputs and outputs
+   and three collector searches needed by continuation. It also retains the
+   two-stage CPython HNF replay and requires every replayed matrix to agree
+   exactly. The summarized default-driver trace remains a separate receipt and
+   is never substituted for this lower-level trace.
+7. `quartic-continuation` reconstructs the two appended relation batches from
+   the validated `quartic-hnfadd-trace` receipt. The
    historical checker accidentally embedded its author's scratch PARI checkout;
    the runner asserts that exact single source occurrence and emits an
    attempt-local copy with the explicit `--pari-root`. Both original and
@@ -80,9 +86,10 @@ native compilation are expensive:
 8. `quartic-retry-cpython` retains the independent three-pass source oracle.
    `quartic-retry-javascript`, `quartic-retry-gmp`, and
    `quartic-retry-tagged` replay the same readable Python entry through the
-   named generated backend. Native stages run under a 4 GiB address-space limit
-   and a 1536 MiB Node heap. Success requires the exact three-pass 150/151/152
-   relation trace, class number 1, and accepted terminal state.
+   named generated backend, consuming the same extended trace as continuation.
+   Native stages run under a 4 GiB address-space limit and a 1536 MiB Node heap.
+   Success requires the exact three-pass 150/151/152 relation trace, class
+   number 1, and accepted terminal state.
 
 The post-Phase-0 focused gates are also individually resumable:
 

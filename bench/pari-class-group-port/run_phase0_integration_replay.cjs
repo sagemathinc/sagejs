@@ -429,8 +429,32 @@ stage("quartic-driver", {
   fixtureKey: "trace",
 });
 
+stage("quartic-hnfadd-trace", {
+  dependencies: ["quartic-driver"],
+  requiresPari: true,
+  command: (context) => commandNode("check_actual_hnfadd_inputs.cjs",
+    context.pariRoot, context.pariArchive, "--field2"),
+  identityInputs: () => [checker("hnfadd.py")],
+  validate: (summary, fixture) => {
+    assert.equal(summary.field, 2);
+    assert.equal(fixture.filter((entry) => entry.event === "hnfadd_input").length, 2);
+    assert.equal(fixture.filter((entry) => entry.event === "hnfadd_output").length, 2);
+    assert.equal(fixture.filter((entry) => entry.event === "collector_search").length, 3);
+    assert.equal(summary.stages.length, 2);
+    for (const replay of summary.stages) {
+      assert.equal(replay.status, 0);
+      assert.equal(replay.exactMatricesMatch, true);
+    }
+  },
+  fixtureName: "trace.json",
+  fixtureKey: "trace",
+  additionalOutputs: (summary) => ({
+    "hnfadd-replay": path.join(summary.directory, "hnfadd-replay.json"),
+  }),
+});
+
 stage("quartic-continuation", {
-  dependencies: ["quartic-collector", "quartic-driver"],
+  dependencies: ["quartic-collector", "quartic-hnfadd-trace"],
   requiresPari: true,
   command: (context, attempt) => {
     // The historical diagnostic accidentally embedded its author's scratch
@@ -456,7 +480,7 @@ stage("quartic-continuation", {
     return {
       command: process.execPath,
       arguments: [generatedPath, outputPath(context, "quartic-collector"),
-        tracePath(context, "quartic-driver"), "--source-only"],
+        tracePath(context, "quartic-hnfadd-trace"), "--source-only"],
       generatedChecker: {
         originalSha256: sha256(original),
         generatedSha256: sha256(generated),
@@ -472,14 +496,14 @@ stage("quartic-continuation", {
 
 function quarticReplay(backend) {
   return {
-    dependencies: ["analytic", "quartic-collector", "quartic-driver",
+    dependencies: ["analytic", "quartic-collector", "quartic-hnfadd-trace",
       "quartic-continuation"],
     command: (context) => ({
       command: "prlimit",
       arguments: ["--as=4294967296", "--", process.execPath,
         checker("check_prepared_class_group_resumable.cjs"),
         outputPath(context, "quartic-continuation"), outputPath(context, "analytic"),
-        tracePath(context, "quartic-driver"), outputPath(context, "quartic-collector"),
+        tracePath(context, "quartic-hnfadd-trace"), outputPath(context, "quartic-collector"),
         "--backend", backend],
       extraEnvironment: { NODE_OPTIONS: "--max-old-space-size=1536" },
     }),
@@ -494,13 +518,13 @@ function quarticReplay(backend) {
   };
 }
 stage("quartic-retry-cpython", {
-  dependencies: ["analytic", "quartic-collector", "quartic-driver",
+  dependencies: ["analytic", "quartic-collector", "quartic-hnfadd-trace",
     "quartic-continuation"],
   command: (context) => ({
     command: process.execPath,
     arguments: [checker("check_prepared_class_group_resumable.cjs"),
       outputPath(context, "quartic-continuation"), outputPath(context, "analytic"),
-      tracePath(context, "quartic-driver"), outputPath(context, "quartic-collector"),
+      tracePath(context, "quartic-hnfadd-trace"), outputPath(context, "quartic-collector"),
       "--source-only"],
   }),
   validate: (summary, fixture) => {

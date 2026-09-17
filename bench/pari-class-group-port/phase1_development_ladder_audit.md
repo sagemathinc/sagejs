@@ -13,6 +13,11 @@ traces.
 additional development fields already selected by
 `class-unit-qualification-manifest.json`. The deterministic rule is:
 
+The governing plan is authenticated as the historical Git blob at the frozen
+base commit, rather than as the mutable working-tree plan. A shallow checkout
+that lacks that object fails closed; the checker never fetches or substitutes
+the current file.
+
 1. the already-exercised real cubic (panel row 0);
 2. the already-exercised mixed quartic (row 8);
 3. the first remaining tuning row with a known nontrivial class group (row 1);

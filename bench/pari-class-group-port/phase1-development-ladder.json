@@ -3,7 +3,7 @@
   "experiment": "pari-class-group-end-to-end-native-phase1-ladder-audit",
   "baseCommit": "1196fd4fdc5fdaa2a3fd1273d32c594bfb299ffa",
   "sources": {
-    "plan": {"path": "agents/pari-class-group-end-to-end-native-plan.md", "sha256": "88a47911bcba3007f82e4ff2d426a2760afab136118ed5cb0922104f19303fad"},
+    "plan": {"path": "agents/pari-class-group-end-to-end-native-plan.md", "commit": "1196fd4fdc5fdaa2a3fd1273d32c594bfb299ffa", "gitBlob": "19a0e56c38b4af8e3230235495a02fa1796f7a8f", "sha256": "88a47911bcba3007f82e4ff2d426a2760afab136118ed5cb0922104f19303fad"},
     "panel": {"path": "bench/pari-class-group-port/panel.json", "sha256": "7c6515240940db971cff3bc28819f9e6547adae9305643b0f6274eeafe6ec3a5"},
     "qualificationManifest": {"path": "bench/pari-class-group-port/class-unit-qualification-manifest.json", "sha256": "3821a5a51390ca25b3110e7a8058d73cd9945d0ab6ad254c07186e0ac19c1c50"}
   },

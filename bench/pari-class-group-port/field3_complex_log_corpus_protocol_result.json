@@ -1,0 +1,78 @@
+{
+  "schema": "sagejs-field3-complex-log-corpus-protocol-result-v1",
+  "status": "first-authentic-batch-passed",
+  "baseCommit": "56324f09872e235b20207f46aa83e4cadebde898",
+  "schedule": {
+    "batches": 76,
+    "batchWidth": 4,
+    "starts": "0,4,...,296,300",
+    "finalCount": 1,
+    "sourceColumns": 301,
+    "completeOwnerCells": 2107
+  },
+  "identity": {
+    "authoritySha256": "246bfe2af51c8be732308719773fc7d696f7dc1bf21958c91d96cd8fc448954c",
+    "initialOwnerSha256": "81b9d3b237e781a697f0ae170554426b363ec2235297407be1deed38ebbbc6fe",
+    "preparedOwnerSha256": "bc0dfbca45a575a381ba87371fb27906f68b34cedd025435986fad4c7c6287cf",
+    "kernelSourceSha256": "87d2b07569daa31ebf62ce88c971dd0fbdf4e87e898509b9fe9d59d4da1e2007",
+    "normConsequencesSha256": "65e1bbd5c05b89b63d08d91e137c2ac68116db3df66073080d89ca4a55275f53"
+  },
+  "lightweightSelfTest": {
+    "scheduleBatches": 76,
+    "packedCells": 2107,
+    "selectedPrefixColumns": 32,
+    "prefixCompatibilitySha256": "f4899c83bfb797e61a3fbfc539c107db57eb0ea78e20b9ab1697167d75c3b1cd",
+    "immutableCapsules": 76,
+    "immutableReceipts": 1,
+    "immutableMergeArtifacts": 2,
+    "negativeTests": 7
+  },
+  "estimateFromQualifiedPrefixRun": {
+    "warmBatchSeconds": [190, 230],
+    "coldBatchSeconds": [210, 260],
+    "peakAggregateRssKiB": [1450000, 1600000],
+    "serialCorpusHours": [3.8, 4.8],
+    "qualifiedSourceRunMilliseconds": 303107.764737,
+    "qualifiedSourcePeakAggregateRssKiB": 1489284
+  },
+  "authenticFirstBatch": {
+    "sourceStart": 0,
+    "sourceCount": 4,
+    "sourceStop": 4,
+    "packedCells": 28,
+    "outputSha256": "18eb8edf0301fee15c7d189ef67d62dd909fecbc0ea3c8d7f991d8889bf29f74",
+    "state": ["0", "153088", "0", "4", "4", "0", "0", "4", "297"],
+    "capsule": {
+      "path": "/scratch/sagejs-runtime/pari-class-group-e2e-20260917/field3-authority/complex-log-batch-0-4-c461673e730ff53f81cb1e2cccad7cddfb2a22fd5442534e9c8bc3dc16eebb11.json",
+      "sha256": "c461673e730ff53f81cb1e2cccad7cddfb2a22fd5442534e9c8bc3dc16eebb11",
+      "bytes": 185588,
+      "mode": "0444"
+    },
+    "receipt": {
+      "path": "/scratch/sagejs-runtime/pari-class-group-e2e-20260917/field3-authority/complex-log-batch-receipt-0-4-036f120432b3643764b15338ab7fdb3dbd29290a42da1115f6d5df3d9fd831f0.json",
+      "sha256": "036f120432b3643764b15338ab7fdb3dbd29290a42da1115f6d5df3d9fd831f0",
+      "bytes": 1977,
+      "mode": "0444"
+    },
+    "native": {
+      "runMilliseconds": 176388.715505,
+      "cacheKey": "0373a098aba3964394366c13eea899bf1c927c97123d150bd568a9b679492c0a",
+      "coreBytes": 8801671,
+      "addonBytes": 1669792
+    },
+    "wallMilliseconds": 213171,
+    "peakAggregateRssKiB": 1422968,
+    "resourcePolicy": {
+      "abortGiB": 3.5,
+      "hardGiB": 4,
+      "timeoutSeconds": 600
+    }
+  },
+  "resumeState": {
+    "complete": 1,
+    "missing": 75,
+    "capsuleOnly": 0
+  },
+  "heavyBatchesExecuted": 1,
+  "completeOwnerPublished": false
+}
