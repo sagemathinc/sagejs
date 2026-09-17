@@ -37,6 +37,15 @@ def run(name, count):
         for _ in range(count):
             value = 3
             value **= 7
+    elif name == "bitand":
+        for _ in range(count):
+            value = left & right
+    elif name == "bitor":
+        for _ in range(count):
+            value = left | right
+    elif name == "bitxor":
+        for _ in range(count):
+            value = left ^ right
     else:
         raise ValueError(name)
     elapsed = time.perf_counter() - started
@@ -49,6 +58,9 @@ def run(name, count):
         "imul": 456765,
         "pow": 2187,
         "ipow": 2187,
+        "bitand": 33,
+        "bitor": 12349,
+        "bitxor": 12316,
     }[name]
     assert value == expected
     print(name + " " + str(elapsed * 1000))
@@ -58,5 +70,17 @@ try:
     iterations = int(sys.argv[-1])
 except ValueError:
     iterations = 1_000_000
-for case in ["add", "sub", "mul", "pow", "iadd", "isub", "imul", "ipow"]:
+for case in [
+    "add",
+    "sub",
+    "mul",
+    "pow",
+    "bitand",
+    "bitor",
+    "bitxor",
+    "iadd",
+    "isub",
+    "imul",
+    "ipow",
+]:
     run(case, iterations)

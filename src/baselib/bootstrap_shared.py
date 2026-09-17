@@ -100,6 +100,18 @@ def ρσ_exact_integer_binary(left, right, operation, missing):
     })()"""
 
 
+def ρσ_exact_integer_bitwise(left, right, op, missing):
+    return r"""%js (() => {
+        const leftType = typeof left, rightType = typeof right;
+        const exact = (type, value) => type === "boolean" || type === "bigint" || (type === "number" && Number.isSafeInteger(value));
+        if (!exact(leftType, left) || !exact(rightType, right)) return missing;
+        if (leftType === "boolean" && rightType === "boolean") return op === 0 ? left && right : op === 1 ? left || right : left !== right;
+        if (leftType === "number" && rightType === "number" && (left | 0) === left && (right | 0) === right) return op === 0 ? left & right : op === 1 ? left | right : left ^ right;
+        const value = op === 0 ? BigInt(left) & BigInt(right) : op === 1 ? BigInt(left) | BigInt(right) : BigInt(left) ^ BigInt(right), number = Number(value);
+        return Number.isSafeInteger(number) ? number === 0 ? 0 : number : value;
+    })()"""
+
+
 def ρσ_check_interrupt():
     return r"""%js (() => {
         const state = globalThis.__sagejs_interrupt_state__;

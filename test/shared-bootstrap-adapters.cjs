@@ -9,7 +9,7 @@ const test = require("node:test");
 const root = join(__dirname, "..");
 const source = readFileSync(join(root, "src/baselib/bootstrap_shared.py"), "utf8");
 const names = ["ρσ_copy_method_metadata", "ρσ_native_method_adapter", "ρσ_unbound_method_adapter",
-  "ρσ_exact_integer_binary",
+  "ρσ_exact_integer_binary", "ρσ_exact_integer_bitwise",
   "ρσ_check_interrupt", "ρσ_normalize_exception", "ρσ_prepare_method_call",
   "ρσ_attr", "ρσ_interpolate_kwargs"];
 
@@ -157,12 +157,15 @@ test("shared bootstrap owns its low-level adapters and metadata copier", () => {
 });
 
 test("shared exact integer arithmetic preserves primitive Python integers", () => {
-  const { ρσ_exact_integer_binary: binary } = context();
+  const { ρσ_exact_integer_binary: binary, ρσ_exact_integer_bitwise: bitwise } = context();
   const missing = {};
   const add = (left, right) => binary(left, right, 0, missing);
   const subtract = (left, right) => binary(left, right, 1, missing);
   const multiply = (left, right) => binary(left, right, 2, missing);
   const power = (left, right) => binary(left, right, 3, missing);
+  const bitand = (left, right) => bitwise(left, right, 0, missing);
+  const bitor = (left, right) => bitwise(left, right, 1, missing);
+  const bitxor = (left, right) => bitwise(left, right, 2, missing);
   assert.equal(add(1, 2), 3);
   assert.equal(add(true, true), 2);
   assert.equal(add(Number.MAX_SAFE_INTEGER, true), 9007199254740992n);
@@ -177,6 +180,13 @@ test("shared exact integer arithmetic preserves primitive Python integers", () =
   assert.equal(power(2, 53), 9007199254740992n);
   assert.equal(power(-2n, 3), -8n);
   assert.equal(power(2, -1), missing);
+  assert.equal(bitand(12345, 37), 33);
+  assert.equal(bitor(12345, 37), 12349);
+  assert.equal(bitxor(12345, 37), 12316);
+  assert.equal(bitand(true, false), false);
+  assert.equal(bitor(true, false), true);
+  assert.equal(bitxor(true, true), false);
+  assert.equal(bitxor(2n ** 60n, 3), 1152921504606846979n);
   assert.equal(add(1.5, 2), missing);
   assert.equal(add(Number.MAX_SAFE_INTEGER + 1, 1), missing);
   assert.equal(add({}, 1), missing);

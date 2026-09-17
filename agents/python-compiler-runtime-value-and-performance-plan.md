@@ -421,6 +421,20 @@ unchanged budget at 902,766/903,000 bytes. Evidence is in
 `agents/python-exact-integer-power.md`; this remains behind the exact-arithmetic
 integration queue rather than becoming a PR against a feature branch.
 
+**2026-09-17 exact-bitwise checkpoint:** the next queued follow-up moves exact
+primitive `&`, `|`, and `^` into a dedicated low-level boundary while preserving
+boolean results, mixed boolean/integer types, unbounded negative/wide integer
+semantics, union handling, and custom/reflected/in-place dispatch. Per million
+checked operations, `&` improves 89.41% to 1.48x CPython, `|` improves 85.14%
+to 1.64x, and `^` improves 89.97% to 1.00x. A rejected combined-boundary
+version slowed exact power by 9.18%; the split design keeps all overlap rows
+within 0.27% to 1.90%, shrinks the identical-source artifact by 2,061 bytes,
+and remains under the unchanged core ceiling at 902,960/903,000 bytes. The full
+build, 225 portable files, 404 strict modules, 508-case differential baseline,
+pyparsing and traitlets workflows, documentation, and merge gates pass. Evidence
+is in `agents/python-exact-integer-bitwise.md`; it remains queued behind the
+exact-arithmetic integration stack rather than becoming a stacked PR.
+
 Continue next with integration-aware qualification, the receiver-lookup campaign,
 and true handled-exception ownership. Generator/coroutine suspension makes a
 single global active-exception pointer unsafe: preserve owned handlers while
