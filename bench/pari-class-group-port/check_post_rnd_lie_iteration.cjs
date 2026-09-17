@@ -185,9 +185,30 @@ def values(names,source):
   else:out[name]=int(x)
  return out
 v=values(d['driverNames']+d['connectedNames']+d['collectorNames']+d['collectedNames']+d['connectedAppendNames']+d['controllerNames'],raw);z=lambda k:[0]*k
-driver=importlib.import_module('bench.pari-class-group-port.prepared_class_group_resumable').pari_prepared_class_group_resumable
+driver_module=importlib.import_module('bench.pari-class-group-port.prepared_class_group_resumable');driver=driver_module.pari_prepared_class_group_resumable
+source_hnfspec=driver_module.pari_hnfspec_complete;hnfspec_names=list(inspect.signature(source_hnfspec).parameters);hnfspec_captures=[]
+def capturing_hnfspec(*args):
+ columns=int(args[hnfspec_names.index('columns')]);log_rows=int(args[hnfspec_names.index('log_rows')]);logs=args[hnfspec_names.index('logs')];result_c=args[hnfspec_names.index('result_c')];state=args[hnfspec_names.index('state')]
+ raw_snapshot=logs[:columns*log_rows*7];status=source_hnfspec(*args)
+ if status==0:hnfspec_captures.append({'columns':columns,'rawLogs':raw_snapshot,'resultC':result_c[:columns*log_rows*7],'state':state[:9]})
+ return status
+driver_module.pari_hnfspec_complete=capturing_hnfspec
 assert driver(**{name:v[name] for name,kind in d['driverNames']})==-200
 rows=len(v['relation']);n=v['n'];places=(n+v['admission_real_count'])//2;old=v['relation_state'][0];assert old==293
+driver_module.pari_hnfspec_complete=source_hnfspec
+assert hnfspec_captures and hnfspec_captures[-1]['columns']==293
+initial_source_logs=hnfspec_captures[-1]['rawLogs']
+def exact_prefix(name,length):return list(map(str,v[name][:length]))
+def initial_ancestry_stage():
+ retained=int(v['hnf_sparse_state'][0])-1;active=int(v['hnf_assembly_state'][2]);hnf_rows=int(v['hnf_assembly_state'][0]);dep_rows=int(v['hnf_assembly_state'][1]);lig=hnf_rows+dep_rows;tail=retained-active
+ return {
+  'kind':'hnfspec','rawColumns':old,'retained':retained,'active':active,'rows':hnf_rows,'depRows':dep_rows,'tail':tail,
+  'cleanupHasTransform':int(v['hnf_sparse_state'][4]),
+  'transform':exact_prefix('hnf_hnf_transform',active*active),'diagonal':list(map(int,v['hnf_diagonal'][:hnf_rows])),
+  'fullH':exact_prefix('hnf_full_h',hnf_rows*active),'fullDep':exact_prefix('hnf_full_dep',dep_rows*active),
+  'trailing':exact_prefix('hnf_b',lig*tail),'outputState':list(map(int,v['hnf_state'][:9])),
+ }
+ancestry_stages=[initial_ancestry_stage()]
 v['relation_state'][4]=old;v['driver_state'][:]=[3,3,1,old,0,0,0,old];v['driver_trace'][:5]=[old,3,v['outer_state'][12],v['outer_state'][3],v['outer_state'][4]]
 ideals=[dict(p=g['p'],**q) for g in e['groups'] for q in g['ideals']];primes=[q['p'] for q in ideals];degrees=[q['f'] for q in ideals];inert=[q['inert'] for q in ideals];ramification=[q['e'] for q in ideals];descriptors=[int(x) for q in ideals for x in e['descriptorCatalog'][q['index']]['generator']]
 sched=importlib.import_module('bench.pari-class-group-port.rnd_relation_scheduler');ss=[2,0,0,0,len(o['before']['subfactor']),16*len(o['before']['subfactor']),16*len(o['before']['subfactor'])//10,37,1000,0,0,0];current=o['before']['subfactor']+[0]*(rows-len(o['before']['subfactor']))
@@ -217,9 +238,23 @@ def append_args(old_columns,columns):
   elif name.startswith('accept_'):out[name]=v[name]
   else:out[name]=v['append_'+name]
  return out
+def append_ancestry_stage(old_columns,columns,old_h,old_b,input_permutation):
+ new_columns=columns-old_columns;lig=rows-old_b;width=new_columns+old_h;dep_rows=lig-old_h;tail=old_b
+ return {
+  'kind':'hnfadd','oldColumns':old_columns,'newColumns':new_columns,'oldH':old_h,'oldB':old_b,'rows':lig-int(v['append_final_state'][3]),'depRows':int(v['append_final_state'][3]),'tail':tail,
+  'transform':exact_prefix('append_transform',width*width),'diagonal':list(map(int,v['append_diagonal'][:lig-int(v['append_final_state'][3])])),
+  'fullH':exact_prefix('append_full_h',(lig-int(v['append_final_state'][3]))*width),'fullDep':exact_prefix('append_full_dep',int(v['append_final_state'][3])*width),
+  'trailing':exact_prefix('append_permuted_b',lig*tail),'permutation':list(map(int,input_permutation[:rows])),
+  'newRelations':exact_prefix('relation_records',rows*columns)[rows*old_columns:rows*columns],
+  'newLogs':exact_prefix('log_embeddings',places*7*columns)[places*7*old_columns:places*7*columns],
+  'joinedLogs':list(map(int,v['append_joined_logs'][:places*7*(width+tail)])),
+  'workC':list(map(int,v['append_work_c'][:places*7*(width+tail)])),
+  'outputState':list(map(int,v['append_state'][:9])),
+ }
 def publish(action,columns):
  return controller(rows,places,n,columns,action,v['append_attempt_state'],v['append_state'],v['append_result_h'],v['append_result_dep'],v['append_result_b'],v['append_result_c'],v['hnf_state'],v['hnf_result_h'],v['hnf_result_dep'],v['hnf_result_b'],v['hnf_result_c'],v['relation_state'],v['hnf_perm'],v['search_ideals'],v['outer_perm'],v['outer_state'],v['accept_multiple_state'],v['accept_acceptance_state'],v['driver_state'],v['driver_trace'],control)
-columns=target;action=append(**append_args(old,columns))
+assert hnfspec_captures[-1]['resultC']==v['hnf_result_c'][:293*places*7]
+columns=target;old_h=control[3];old_b=control[4];input_permutation=v['hnf_perm'][:];action=append(**append_args(old,columns));ancestry_stages.append(append_ancestry_stage(old,columns,old_h,old_b,input_permutation))
 before=(copy.deepcopy(v['hnf_state']),copy.deepcopy(v['hnf_result_h']),copy.deepcopy(v['hnf_result_dep']),copy.deepcopy(v['hnf_result_b']),copy.deepcopy(v['hnf_result_c']))
 try:
  controller(rows,places,n,columns,action,v['append_attempt_state'],v['append_state'],v['append_result_h'],v['append_result_dep'],v['append_result_b'],v['append_result_c'],v['hnf_state'],v['hnf_result_h'],v['hnf_result_dep'],v['hnf_result_b'],v['hnf_result_c'],v['relation_state'],v['hnf_perm'],v['search_ideals'],v['outer_perm'],v['outer_state'],v['accept_multiple_state'],v['accept_acceptance_state'],v['driver_state'],[0],control);assert False,'short trace accepted'
@@ -244,7 +279,7 @@ observed_records=list(map(str,v['relation_records'][columns*rows:observed*rows])
 observed_generators=list(map(str,v['generators'][columns*n:observed*n]));source_generators=list(map(str,d['appends'][1]['newGenerators']));assert observed_generators[:n]==source_generators
 observed_logs=list(map(str,v['log_embeddings'][columns*7*places:observed*7*places]));source_logs=list(map(str,d['appends'][1]['newLogs']));assert observed_logs[:7*places]==source_logs
 # Publish column 296 through the same resident HNF/acceptance boundary.
-old_columns=columns;columns=observed;action=append(**append_args(old_columns,columns));action_296=publish(action,columns)
+old_columns=columns;columns=observed;old_h=control[3];old_b=control[4];input_permutation=v['hnf_perm'][:];action=append(**append_args(old_columns,columns));ancestry_stages.append(append_ancestry_stage(old_columns,columns,old_h,old_b,input_permutation));action_296=publish(action,columns)
 hnf_296=[list(map(str,v[name][:len(d['outputs'][1][key])])) for key,name in [('H','hnf_result_h'),('D','hnf_result_dep'),('B','hnf_result_b'),('C','hnf_result_c')]]
 for got,key in zip(hnf_296,('H','D','B','C')):assert got==list(map(str,d['outputs'][1][key])),key
 assert action_296==5,(action_296,v['append_attempt_state'],control)
@@ -257,7 +292,7 @@ lie_last=v['relation_state'][0];assert lie_last==d['appends'][2]['last']==301,(l
 lie_records=list(map(str,v['relation_records'][columns*rows:lie_last*rows]));lie_source_records=list(map(str,d['appends'][2]['newRelations']));assert lie_records==lie_source_records
 lie_generators=list(map(str,v['generators'][columns*n:lie_last*n]));lie_source_generators=list(map(str,d['appends'][2]['newGenerators']));assert lie_generators==lie_source_generators
 lie_logs=list(map(str,v['log_embeddings'][columns*7*places:lie_last*7*places]));lie_source_logs=list(map(str,d['appends'][2]['newLogs']));assert lie_logs==lie_source_logs
-old_columns=columns;columns=lie_last;action=append(**append_args(old_columns,columns));terminal_action=publish(action,columns)
+old_columns=columns;columns=lie_last;old_h=control[3];old_b=control[4];input_permutation=v['hnf_perm'][:];action=append(**append_args(old_columns,columns));ancestry_stages.append(append_ancestry_stage(old_columns,columns,old_h,old_b,input_permutation));terminal_action=publish(action,columns)
 hnf_terminal=[list(map(str,v[name][:len(d['outputs'][2][key])])) for key,name in [('H','hnf_result_h'),('D','hnf_result_dep'),('B','hnf_result_b'),('C','hnf_result_c')]]
 for got,key in zip(hnf_terminal,('H','D','B','C')):assert got==list(map(str,d['outputs'][2][key])),key
 assert terminal_action==0,(terminal_action,v['append_attempt_state'],control)
@@ -282,7 +317,38 @@ assumptions=('PARI 2.17.4 heuristic bounds and floating decisions are assumed',)
 partial_payload=internal.make_internal_payload(candidate,assumptions,transforms=transform_component.evidence)
 publisher=internal.AtomicResultPublisher(internal.ReplayAuthority(relation_component.field_id,assumptions));partial=publisher.publish(partial_payload)
 assert partial.detached_payload()['terminal']['missing_components']==['generators','units']
-out={'randomLast':295,'postRandomLast':296,'lieLast':lie_last,'action296':action_296,'terminalAction':terminal_action,'rng':list(map(str,rng)),'control':control,'driverState':v['driver_state'],'outerState':v['outer_state'][:19],'randomRecords':random_records,'randomGenerators':random_generators,'randomLogs':random_logs,'randomHNF':[d['outputs'][0][k] for k in ('H','D','B','C')],'postRecords':observed_records,'postGenerators':observed_generators,'postLogs':observed_logs,'postHNF':hnf_296,'lieRecords':lie_records,'lieGenerators':lie_generators,'lieLogs':lie_logs,'terminalHNF':hnf_terminal,'bridgeState':bridge_state,'terminalInvariants':terminal_invariants[:bridge_state[5]],'terminalClassNumber':terminal_number[0],'candidateSha256':transform_component.candidate_sha256,'transformSha256':final.canonical_component_sha256(transform_component.evidence),'partialSha256':partial.sha256,'partialMissing':partial.detached_payload()['terminal']['missing_components']}
+retain=importlib.import_module('bench.pari-class-group-port.field3_unit_transform_retention').pari_field3_retain_unit_relation_transform
+metadata=[];stage_transform=[];stage_full_h=[];stage_full_dep=[];stage_trailing=[];stage_diagonal=[];stage_permutations=[];stage_relations=[]
+for stage in ancestry_stages[1:]:
+ record=[stage['oldColumns'],stage['newColumns'],stage['oldH'],stage['oldB'],stage['rows'],stage['depRows'],len(stage_transform),len(stage_full_h),len(stage_full_dep),len(stage_trailing),len(stage_diagonal),len(stage_permutations),rows,len(stage_relations),0,0]
+ metadata.extend(record);stage_transform.extend(map(int,stage['transform']));stage_full_h.extend(map(int,stage['fullH']));stage_full_dep.extend(map(int,stage['fullDep']));stage_trailing.extend(map(int,stage['trailing']));stage_diagonal.extend(stage['diagonal']);stage_permutations.extend(stage['permutation']);stage_relations.extend(map(int,stage['newRelations']))
+raw_to_accepted=[77]*(301*13);ancestry_state=[77]*8
+initial_stage=ancestry_stages[0]
+assert retain(v['hnf_transform'],list(map(int,initial_stage['transform'])),list(map(int,initial_stage['fullH'])),list(map(int,initial_stage['fullDep'])),list(map(int,initial_stage['trailing'])),initial_stage['diagonal'],metadata,stage_transform,stage_full_h,stage_full_dep,stage_trailing,stage_diagonal,stage_permutations,stage_relations,z(301*13),z(301*13),z(301*13),z(36*252),z(301*13),raw_to_accepted,ancestry_state)==0
+assert ancestry_state==[0,301,13,293,3,3913,0,0]
+validate=importlib.import_module('bench.pari-class-group-port.field3_unit_transform_retention').pari_field3_validate_unit_relation_kernel
+kernel_state=[77]*5;assert validate(v['relation_records'],raw_to_accepted,kernel_state)==0 and kernel_state==[0,288,301,13,3744]
+changed_relations=list(map(int,v['relation_records']));support_relation=next(i for i in range(301) if raw_to_accepted[i]!=0);changed_relations[support_relation*rows]+=1;held=[77]*5;assert validate(changed_relations,raw_to_accepted,held)==1 and held==[77]*5
+replay=importlib.import_module('bench.pari-class-group-port.field3_unit_transform_retention').pari_field3_replay_packed_unit_logs
+terminal_a=list(map(int,hnf_terminal[3][:13*places*7]));packed_output=[77]*(13*places*7);packed_state=[77]*8
+source_raw_logs=initial_source_logs[:]
+for stage in ancestry_stages[1:]:source_raw_logs.extend(map(int,stage['newLogs']))
+assert len(source_raw_logs)==301*places*7
+packed_checkpoints=hnfspec_captures[-1]['resultC']+list(map(int,d['outputs'][0]['C']))+list(map(int,hnf_296[3]))+list(map(int,hnf_terminal[3]))
+for stage in ancestry_stages[1:]:packed_checkpoints.extend(stage['joinedLogs'])
+for stage in ancestry_stages[1:]:packed_checkpoints.extend(stage['workC'])
+replay_args=[source_raw_logs,v['relation_records'],v['hnf_transform'],list(map(int,initial_stage['transform'])),list(map(int,initial_stage['fullH'])),list(map(int,initial_stage['fullDep'])),list(map(int,initial_stage['trailing'])),initial_stage['diagonal'],metadata,stage_transform,stage_full_h,stage_full_dep,stage_trailing,stage_diagonal,stage_permutations,stage_relations,packed_checkpoints,terminal_a,z(301*places*7),z(301*places*7),z(301*places*7),z(301*places*7),z(36*252),packed_output,packed_state]
+packed_status=replay(*replay_args);assert packed_status==0,(packed_status,packed_state);assert packed_output==terminal_a and packed_state==[0,301,13,273,4,0,0,0]
+changed_logs=source_raw_logs[:];changed_logs[support_relation*places*7+1]+=1;held=[77]*273;held_state=[77]*8;changed_args=replay_args[:];changed_args[0]=changed_logs;changed_args[-2]=held;changed_args[-1]=held_state;assert replay(*changed_args)!=0 and held==[77]*273 and held_state==[77]*8
+changed_terminal=terminal_a[:];changed_terminal[1]+=1;held=[77]*273;held_state=[77]*8;changed_args=replay_args[:];changed_args[17]=changed_terminal;changed_args[-2]=held;changed_args[-1]=held_state;assert replay(*changed_args)!=0 and held==[77]*273 and held_state==[77]*8
+def retained_with(changed_transform,changed_permutations):
+ out=[77]*(301*13);state=[77]*8
+ assert retain(v['hnf_transform'],list(map(int,initial_stage['transform'])),list(map(int,initial_stage['fullH'])),list(map(int,initial_stage['fullDep'])),list(map(int,initial_stage['trailing'])),initial_stage['diagonal'],metadata,changed_transform,stage_full_h,stage_full_dep,stage_trailing,stage_diagonal,changed_permutations,stage_relations,z(301*13),z(301*13),z(301*13),z(36*252),z(301*13),out,state)==0
+ return out
+changed_transform=stage_transform[:];changed_transform[metadata[2*16+6]]+=1;bad=retained_with(changed_transform,stage_permutations);held=[77]*5;assert validate(v['relation_records'],bad,held)==1 and held==[77]*5
+changed_permutations=stage_permutations[:];perm_at=metadata[2*16+11]+metadata[2*16+4]+metadata[2*16+5];changed_permutations[perm_at],changed_permutations[perm_at+1]=changed_permutations[perm_at+1],changed_permutations[perm_at];bad=retained_with(stage_transform,changed_permutations);held=[77]*5;assert validate(v['relation_records'],bad,held)==1 and held==[77]*5
+ancestry_summary={'shape':[301,13],'entries':list(map(str,raw_to_accepted)),'state':ancestry_state,'initial':[ancestry_stages[0][k] for k in ('rawColumns','retained','active','rows','depRows','tail','cleanupHasTransform')],'appendMetadata':metadata,'relationKernelState':kernel_state,'sourceRawLogs':list(map(str,source_raw_logs)),'terminalAcceptedA':hnf_terminal[3][:13*places*7],'packedReplayState':packed_state,'mutationsRejected':['raw-relation','raw-log','terminal-A','local-transform','input-permutation'],'sameRunAuthority':{'runId':'field3-post-rnd-live-unit-transform','fieldId':'x^4-2000022*x-2000042','ownerGeneration':1,'relationRecords':list(map(str,v['relation_records'][:301*rows])),'principalGenerators':list(map(str,v['generators'][:301*n])),'terminalHnfState':list(map(int,v['hnf_state'][:8]))}}
+out={'randomLast':295,'postRandomLast':296,'lieLast':lie_last,'action296':action_296,'terminalAction':terminal_action,'rng':list(map(str,rng)),'control':control,'driverState':v['driver_state'],'outerState':v['outer_state'][:19],'randomRecords':random_records,'randomGenerators':random_generators,'randomLogs':random_logs,'randomHNF':[d['outputs'][0][k] for k in ('H','D','B','C')],'postRecords':observed_records,'postGenerators':observed_generators,'postLogs':observed_logs,'postHNF':hnf_296,'lieRecords':lie_records,'lieGenerators':lie_generators,'lieLogs':lie_logs,'terminalHNF':hnf_terminal,'rawToAcceptedTransform':ancestry_summary,'bridgeState':bridge_state,'terminalInvariants':terminal_invariants[:bridge_state[5]],'terminalClassNumber':terminal_number[0],'candidateSha256':transform_component.candidate_sha256,'transformSha256':final.canonical_component_sha256(transform_component.evidence),'partialSha256':partial.sha256,'partialMissing':partial.detached_payload()['terminal']['missing_components']}
 json.dump(out,open(sys.argv[4],'w'))
 `;
 const cp = run("python3", [
@@ -353,6 +419,7 @@ const summary = {
     transformSha256: expected.transformSha256,
     partialSha256: expected.partialSha256,
     partialMissing: expected.partialMissing,
+    rawToAcceptedTransform: expected.rawToAcceptedTransform,
   },
   source: {
     randomPasses: events.filter((entry) => entry.event === "random_relations")
@@ -428,7 +495,11 @@ async function nativeSmoke() {
   console.log(JSON.stringify(summary));
 }
 
-nativeSmoke().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+if (process.env.FIELD3_TRANSFORM_CAPTURE_ONLY === "1") {
+  console.log(JSON.stringify(summary));
+} else {
+  nativeSmoke().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
+}
