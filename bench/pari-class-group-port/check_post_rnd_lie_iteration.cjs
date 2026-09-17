@@ -172,7 +172,7 @@ const payloadPath = path.join(directory, "payload.json");
 const cpPath = path.join(directory, "cpython.json");
 fs.writeFileSync(payloadPath, JSON.stringify(payload));
 const python = String.raw`
-import copy, decimal, importlib, inspect, json, sys
+import collections.abc, copy, dataclasses, decimal, hashlib, importlib, inspect, json, sys, threading, typing
 sys.set_int_max_str_digits(0);sys.path[:0]=sys.argv[2:4];d=json.load(open(sys.argv[1]));e=d['expectedInitial'];o=d['oracle'];raw=d['raw']
 def values(names,source):
  out={}
@@ -261,7 +261,28 @@ old_columns=columns;columns=lie_last;action=append(**append_args(old_columns,col
 hnf_terminal=[list(map(str,v[name][:len(d['outputs'][2][key])])) for key,name in [('H','hnf_result_h'),('D','hnf_result_dep'),('B','hnf_result_b'),('C','hnf_result_c')]]
 for got,key in zip(hnf_terminal,('H','D','B','C')):assert got==list(map(str,d['outputs'][2][key])),key
 assert terminal_action==0,(terminal_action,v['append_attempt_state'],control)
-out={'randomLast':295,'postRandomLast':296,'lieLast':lie_last,'action296':action_296,'terminalAction':terminal_action,'rng':list(map(str,rng)),'control':control,'driverState':v['driver_state'],'outerState':v['outer_state'][:19],'randomRecords':random_records,'randomGenerators':random_generators,'randomLogs':random_logs,'randomHNF':[d['outputs'][0][k] for k in ('H','D','B','C')],'postRecords':observed_records,'postGenerators':observed_generators,'postLogs':observed_logs,'postHNF':hnf_296,'lieRecords':lie_records,'lieGenerators':lie_generators,'lieLogs':lie_logs,'terminalHNF':hnf_terminal}
+# Continue from the live resident owners.  No terminal HNF, class invariant, or
+# transform fixture crosses this boundary.
+bridge_module=importlib.import_module('bench.pari-class-group-port.terminal_candidate_final_bridge')
+h=int(v['hnf_state'][0]);assert h==2 and int(v['hnf_state'][2])==286
+presentation=z(h*h);candidate_relations=z(h*h);candidate_logs=z(7*places*columns)
+terminal_invariants=z(h);terminal_number=z(1);invariant_work=z(h*h);invariant_column=z(h);invariant_state=z(6);reduced_relation_state=z(5);bridge_state=z(8)
+assert bridge_module.pari_publish_terminal_candidate_tail(terminal_action,rows,places,columns,v['hnf_state'],v['hnf_result_h'],v['hnf_result_b'],v['hnf_result_c'],v['relation_state'],v['accept_regulator'],v['driver_state'],presentation,candidate_relations,candidate_logs,terminal_invariants,terminal_number,invariant_work,invariant_column,invariant_state,reduced_relation_state,bridge_state)==0
+assert terminal_number==[int(d['result']['classNumber'])] and terminal_invariants[:bridge_state[5]]==list(map(int,d['result']['invariants']))
+n2=h*h;smith_outputs=[z(n2) for _ in range(10)];smith_invariants=z(h);smith_number=z(1);smith_column=z(h);smith_product=z(n2);smith_augmented=z(2*n2);smith_states=[z(5),z(5),z(6),z(6),z(7)]
+smith_transform=importlib.import_module('bench.pari-class-group-port.class_group_smith_transform').pari_class_group_smith_transform
+assert smith_transform(presentation,h,*smith_outputs,smith_invariants,smith_number,smith_column,smith_product,smith_augmented,*smith_states)==0
+assert smith_invariants[:smith_states[-1][1]]==terminal_invariants[:bridge_state[5]] and smith_number==terminal_number
+smith_evidence={'diagonal':smith_outputs[0],'left':smith_outputs[1],'left_inverse':smith_outputs[2],'right':smith_outputs[3],'right_inverse':smith_product}
+relation_component,transform_component=bridge_module.build_terminal_candidate_components(run_id='field3-post-rnd-live',field_id='x^4-2000022*x-2000042',owner_generation=1,places=places,presentation=presentation,candidate_relations=candidate_relations,candidate_logs=candidate_logs,class_invariants=terminal_invariants,class_number=terminal_number,accept_regulator=v['accept_regulator'],driver_state=v['driver_state'],reduced_relation_state=reduced_relation_state,bridge_state=bridge_state,smith=smith_evidence)
+internal=importlib.import_module('bench.pari-class-group-port.class_group_internal_result');final=importlib.import_module('bench.pari-class-group-port.class_group_final_state')
+candidate=internal.snapshot_prepared_candidate(relation_component.state,relation_component.layout,relation_component.field_id)
+assert transform_component.candidate_sha256==final.canonical_component_sha256(candidate)
+assumptions=('PARI 2.17.4 heuristic bounds and floating decisions are assumed',)
+partial_payload=internal.make_internal_payload(candidate,assumptions,transforms=transform_component.evidence)
+publisher=internal.AtomicResultPublisher(internal.ReplayAuthority(relation_component.field_id,assumptions));partial=publisher.publish(partial_payload)
+assert partial.detached_payload()['terminal']['missing_components']==['generators','units']
+out={'randomLast':295,'postRandomLast':296,'lieLast':lie_last,'action296':action_296,'terminalAction':terminal_action,'rng':list(map(str,rng)),'control':control,'driverState':v['driver_state'],'outerState':v['outer_state'][:19],'randomRecords':random_records,'randomGenerators':random_generators,'randomLogs':random_logs,'randomHNF':[d['outputs'][0][k] for k in ('H','D','B','C')],'postRecords':observed_records,'postGenerators':observed_generators,'postLogs':observed_logs,'postHNF':hnf_296,'lieRecords':lie_records,'lieGenerators':lie_generators,'lieLogs':lie_logs,'terminalHNF':hnf_terminal,'bridgeState':bridge_state,'terminalInvariants':terminal_invariants[:bridge_state[5]],'terminalClassNumber':terminal_number[0],'candidateSha256':transform_component.candidate_sha256,'transformSha256':final.canonical_component_sha256(transform_component.evidence),'partialSha256':partial.sha256,'partialMissing':partial.detached_payload()['terminal']['missing_components']}
 json.dump(out,open(sys.argv[4],'w'))
 `;
 const cp = run("python3", [
@@ -311,6 +332,13 @@ const actualHashes = {
   terminalHNF: sha256(JSON.stringify(expected.terminalHNF)),
 };
 assert.deepEqual(actualHashes, fixture.hashes);
+assert.deepEqual(expected.bridgeState, [0, 288, 301, 2, 286, 2, 6321, 572]);
+assert.deepEqual(expected.terminalInvariants, [2, 2]);
+assert.equal(expected.terminalClassNumber, 4);
+assert.deepEqual(expected.driverState.slice(0, 6), [4, 0, 4, 301, 1, 2]);
+assert.deepEqual(expected.partialMissing, ["generators", "units"]);
+for (const key of ["candidateSha256", "transformSha256", "partialSha256"])
+  assert.match(expected[key], /^[0-9a-f]{64}$/);
 const summary = {
   field: 3,
   cpython: {
@@ -318,6 +346,13 @@ const summary = {
     hashes: actualHashes,
     driverState: expected.driverState,
     outerState: expected.outerState,
+    bridgeState: expected.bridgeState,
+    terminalInvariants: expected.terminalInvariants,
+    terminalClassNumber: expected.terminalClassNumber,
+    candidateSha256: expected.candidateSha256,
+    transformSha256: expected.transformSha256,
+    partialSha256: expected.partialSha256,
+    partialMissing: expected.partialMissing,
   },
   source: {
     randomPasses: events.filter((entry) => entry.event === "random_relations")
@@ -329,7 +364,7 @@ const summary = {
     residentBasis: cacheFixture.source.lie.basisHash,
   },
   conclusion:
-    "column 296 publishes exactly and done_small=291 drives exact five-row LIE to terminal action 0",
+    "the live terminal H/B/C state now publishes exact [2,2] Smith data into the immutable final-state interface",
 };
 
 async function nativeSmoke() {
