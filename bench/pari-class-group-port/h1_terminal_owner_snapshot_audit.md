@@ -25,6 +25,14 @@ snapshot = capture_h1_terminal_owner_snapshot(
         principal_generators=principal_generators,
         cleanup_transform=cleanup_transform,
         initial_permutation=initial_permutation,
+        collector_state=collector_state,
+        collector_increment=collector_increment,
+        collector_cursor=collector_cursor,
+        relation_hashes=relation_hashes,
+        relation_metadata=relation_metadata,
+        relation_progress=relation_progress,
+        relation_schedule=relation_schedule,
+        kummer_random_state=kummer_random_state,
         original_relation_logs=original_relation_logs,
         active_relation=active_relation,
         full_hnf=full_hnf,
@@ -45,16 +53,27 @@ snapshot = capture_h1_terminal_owner_snapshot(
         m2=m2,
         generator_arch=generator_arch,
         compact_unit_provenance=compact_unit_provenance,
+        compact_unit_factor=compact_unit_factor,
         retained_relation_provenance=retained_relation_provenance,
         exact_units_integral_basis=exact_units_integral_basis,
-        exact_units_power_basis=exact_units_power_basis,
+        published_exact_units_integral_basis=published_exact_units_integral_basis,
+        exact_unit_norms=exact_unit_norms,
         rebuilt_unit_logs=rebuilt_unit_logs,
         unit_phases=unit_phases,
         packed_regulator=packed_regulator,
         regulator_interval=regulator_interval,
         regulator_state=regulator_state,
+        acceptance_state=acceptance_state,
+        reconstruction_state=reconstruction_state,
+        attempt_state=attempt_state,
+        unified_state=unified_state,
+        bridge_state=bridge_state,
+        precision_authority_state=precision_authority_state,
+        precision_retry_state=precision_retry_state,
         torsion_state=torsion_state,
+        torsion_order=torsion_order,
         torsion_generator=torsion_generator,
+        invariant_factor_capacity=invariant_factor_capacity,
         assumption_flags=assumption_flags,
     )
 )
@@ -82,17 +101,19 @@ cut, rather than only the class invariants:
 - prepared polynomial, integral basis, multiplication tensor, factor-base
   ideals, and norms;
 - all 73 relations and principal generators, cleanup transform and source
-  permutation, original and transformed packed relation logs;
+  permutation, relation hashes/metadata, collector cursor/increment, Kummer RNG
+  state, scheduler/progress state, and original/transformed packed relation logs;
 - active relation matrix, full HNF, HNF transform, bidirectional presentation
   witnesses, and the presentation itself;
 - Smith form and both left/right transforms and inverses, `Ur`, `Y`, `Uir`,
   `X`, `M2`, and the packed generator architecture;
-- compact and retained unit provenance, exact units in integral and power
-  bases, rebuilt logarithms and phases;
-- packed regulator, exact dyadic enclosure and state;
+- compact/factor and retained unit provenance, pre-getfu and published exact
+  integral-basis units, exact norms, rebuilt logarithms and phases;
+- packed regulator, exact dyadic enclosure, analytic acceptance/reconstruction
+  state, complete retry transcript, and final precision authority;
 - torsion order/state and its exact integral-basis generator;
-- explicit assumption flags, including the two deliberately false public
-  completion flags; and
+- explicit PARI 2.17.4 and `buch2.c` source identity plus assumption flags,
+  including the two deliberately false public completion flags; and
 - terminal publication counters proving one atomic snapshot and zero
   intermediate serializations or fixture inputs.
 
@@ -100,23 +121,31 @@ Replay independently checks every principal relation against the factor-base
 ideal product, recomputes the relation HNF, verifies both presentation witness
 directions, checks the Smith identities and inverses, recomputes `Ur`, `Uir`,
 `M2`, and the transformed logarithms, reconstructs the exact units from live
-relation provenance, checks the basis conversion, product formula, regulator
+relation provenance, checks exact unit norms, product formula, regulator
 determinant/enclosure, and the real-cubic torsion state. Thus a coordinated
 attacker that recomputes both hashes after changing a component is still
 rejected by the mathematical replay.
 
 ## Focused evidence and limits
 
-`check_h1_terminal_owner_snapshot.cjs` adapts the existing successful resident
-worker output into the same owner interface as a temporary producer stand-in.
-That file access is confined to the checker; the snapshot implementation has
-no path, environment, expected digest, resident transcript, or answer fixture
-input. The checker builds a self-consistent p2176 logarithm/regulator corridor
-to exercise publication and replay. It is not an oracle claim about production
-embeddings: the unified root must supply its own live rebuilt logs and rigorous
-regulator enclosure.
+`check_unified_h1_terminal_snapshot.cjs` calls the actual
+`pari_unified_complete_h1_root`, copies all logical live prefixes once after
+the native boundary, and cold-replays the detached data in a separate CPython
+process. It also rebuilds a rigorous regulator enclosure from the published
+exact units in an independent Sage.js session; the live regulator and all six
+packed logarithms must lie in those exact-unit enclosures. The older
+`check_h1_terminal_owner_snapshot.cjs` remains only a small component-contract
+test and is not evidence for the actual unified publication.
 
-The focused checker cold-replays the detached bytes and then re-seals ten
+The unified checker exports synchronous `authenticateFinalPublication`. The
+standard adapter supplies its already authenticated result digest plus borrowed
+`replayOwners`; the hook performs the one bulk copy, launches the detached
+exact/regulator replay, and returns only
+`cold-replay-authenticated/resultSha256/authoritySha256`. The native root itself
+leaves correspondence false, and repeated calls are rejected; only this cold
+receipt may promote the experimental adapter's internal correspondence status.
+
+The focused checker cold-replays the detached bytes and then re-seals eleven
 coordinated mutations covering relations, HNF input, Smith data, unit
 provenance, exact units, logarithms, regulator, torsion, assumptions, and
 terminal state. All are rejected by semantic replay rather than by relying only

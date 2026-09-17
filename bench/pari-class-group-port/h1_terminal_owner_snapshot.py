@@ -16,7 +16,11 @@ import hashlib
 import json
 from typing import Any
 
-from .live_exact_units_cubic import reconstruct_live_cubic_units
+from .live_exact_units_cubic import (
+    _norm,
+    _relation_product,
+    reconstruct_live_cubic_units,
+)
 from .log_matrix_transform import pari_log_matrix_transform
 from .presentation_authority import (
     _multiply_ideals,
@@ -27,9 +31,11 @@ from .relation_hnf_witness import pari_relation_hnf_witness
 from .signed_prime_ideal_reduction import pari_cubic_mul_matrix
 
 
-SCHEMA = "sagejs.pari-class-group/h1-terminal-numeric-snapshot-v1"
-ENVELOPE_SCHEMA = "sagejs.pari-class-group/h1-terminal-numeric-envelope-v1"
+SCHEMA = "sagejs.pari-class-group/h1-terminal-numeric-snapshot-v2"
+ENVELOPE_SCHEMA = "sagejs.pari-class-group/h1-terminal-numeric-envelope-v2"
 FIELD_ID = "x^3-20018*x+20034"
+PARI_VERSION = "2.17.4"
+PARI_BUCH2_SHA256 = "904ced8034732c7fcfe1da393e23950aac0862b085150fdc24ce1e31beb7d1ac"
 _MAX_BYTES = 64 * 1024 * 1024
 
 ROWS = 8
@@ -82,6 +88,14 @@ class H1TerminalNumericOwners:
     principal_generators: Sequence[Any]
     cleanup_transform: Sequence[Any]
     initial_permutation: Sequence[Any]
+    collector_state: Sequence[Any]
+    collector_increment: Sequence[Any]
+    collector_cursor: Sequence[Any]
+    relation_hashes: Sequence[Any]
+    relation_metadata: Sequence[Any]
+    relation_progress: Sequence[Any]
+    relation_schedule: Sequence[Any]
+    kummer_random_state: Sequence[Any]
     original_relation_logs: Sequence[Any]
     active_relation: Sequence[Any]
     full_hnf: Sequence[Any]
@@ -102,21 +116,32 @@ class H1TerminalNumericOwners:
     m2: Sequence[Any]
     generator_arch: Sequence[Any]
     compact_unit_provenance: Sequence[Any]
+    compact_unit_factor: Sequence[Any]
     retained_relation_provenance: Sequence[Any]
     exact_units_integral_basis: Sequence[Any]
-    exact_units_power_basis: Sequence[Any]
+    published_exact_units_integral_basis: Sequence[Any]
+    exact_unit_norms: Sequence[Any]
     rebuilt_unit_logs: Sequence[Any]
     unit_phases: Sequence[Any]
     packed_regulator: Sequence[Any]
     regulator_interval: Sequence[Any]
     regulator_state: Sequence[Any]
+    acceptance_state: Sequence[Any]
+    reconstruction_state: Sequence[Any]
+    attempt_state: Sequence[Any]
+    unified_state: Sequence[Any]
+    bridge_state: Sequence[Any]
+    precision_authority_state: Sequence[Any]
+    precision_retry_state: Sequence[Any]
     torsion_state: Sequence[Any]
+    torsion_order: Sequence[Any]
     torsion_generator: Sequence[Any]
+    invariant_factor_capacity: Sequence[Any]
     assumption_flags: Sequence[Any]
 
 
 _PREFIX_LENGTHS = {
-    "terminal_state": 8,
+    "terminal_state": 16,
     "polynomial": 4,
     "integral_basis": 9,
     "multiplication_tensor": 27,
@@ -126,6 +151,14 @@ _PREFIX_LENGTHS = {
     "principal_generators": DEGREE * RELATIONS,
     "cleanup_transform": RELATIONS * RELATIONS,
     "initial_permutation": FACTOR_BASE_SIZE,
+    "collector_state": 5,
+    "collector_increment": 4,
+    "collector_cursor": 4,
+    "relation_hashes": 780,
+    "relation_metadata": 2340,
+    "relation_progress": 4,
+    "relation_schedule": 4,
+    "kummer_random_state": 66,
     "original_relation_logs": LOG_WIDTH * PLACES * RELATIONS,
     "active_relation": ROWS * ACTIVE_COLUMNS,
     "full_hnf": ROWS * ACTIVE_COLUMNS,
@@ -146,16 +179,27 @@ _PREFIX_LENGTHS = {
     "m2": ROWS * ROWS,
     "generator_arch": LOG_WIDTH * PLACES * ROWS,
     "compact_unit_provenance": UNIT_RANK * KERNEL_COLUMNS,
+    "compact_unit_factor": 4,
     "retained_relation_provenance": UNIT_RANK * RELATIONS,
     "exact_units_integral_basis": UNIT_RANK * DEGREE,
-    "exact_units_power_basis": UNIT_RANK * DEGREE,
+    "published_exact_units_integral_basis": UNIT_RANK * DEGREE,
+    "exact_unit_norms": UNIT_RANK,
     "rebuilt_unit_logs": UNIT_RANK * PLACES * 3,
     "unit_phases": UNIT_RANK * PLACES,
     "packed_regulator": 3,
     "regulator_interval": 4,
     "regulator_state": 5,
-    "torsion_state": 4,
+    "acceptance_state": 3,
+    "reconstruction_state": 4,
+    "attempt_state": 4,
+    "unified_state": 12,
+    "bridge_state": 16,
+    "precision_authority_state": 16,
+    "precision_retry_state": 6,
+    "torsion_state": 6,
+    "torsion_order": 1,
     "torsion_generator": DEGREE,
+    "invariant_factor_capacity": ROWS,
     "assumption_flags": len(ASSUMPTION_NAMES),
 }
 
@@ -343,6 +387,14 @@ def _payload_from_snapshot(values: Mapping[str, tuple[int, ...]]) -> dict[str, A
             "principal_generators": matrix("principal_generators", [73, 3]),
             "cleanup_transform": matrix("cleanup_transform", [73, 73]),
             "initial_permutation": matrix("initial_permutation", [66]),
+            "collector_state": matrix("collector_state", [5]),
+            "collector_increment": matrix("collector_increment", [4]),
+            "collector_cursor": matrix("collector_cursor", [4]),
+            "relation_hashes": matrix("relation_hashes", [780]),
+            "relation_metadata": matrix("relation_metadata", [2340]),
+            "relation_progress": matrix("relation_progress", [4]),
+            "relation_schedule": matrix("relation_schedule", [4]),
+            "kummer_random_state": matrix("kummer_random_state", [66]),
             "original_relation_logs": matrix("original_relation_logs", [73, 3, 7]),
             "active_relation": matrix("active_relation", [8, 15]),
             "full_hnf": matrix("full_hnf", [8, 15]),
@@ -371,15 +423,20 @@ def _payload_from_snapshot(values: Mapping[str, tuple[int, ...]]) -> dict[str, A
             "gd": {"shape": [0, 3, 7], "entries": []},
             "generator_arch": matrix("generator_arch", [8, 3, 7]),
             "invariant_factors": [],
+            "invariant_factor_capacity": matrix("invariant_factor_capacity", [8]),
             "class_number": "1",
         },
         "unit_group": {
             "compact_provenance": matrix("compact_unit_provenance", [2, 7]),
+            "compact_factor": matrix("compact_unit_factor", [4]),
             "retained_relation_provenance": matrix(
                 "retained_relation_provenance", [2, 73]
             ),
             "exact_units_integral_basis": matrix("exact_units_integral_basis", [2, 3]),
-            "exact_units_power_basis": matrix("exact_units_power_basis", [2, 3]),
+            "published_exact_units_integral_basis": matrix(
+                "published_exact_units_integral_basis", [2, 3]
+            ),
+            "exact_unit_norms": matrix("exact_unit_norms", [2]),
             "rebuilt_logs": matrix("rebuilt_unit_logs", [2, 3, 3]),
             "phases": matrix("unit_phases", [2, 3]),
         },
@@ -387,17 +444,30 @@ def _payload_from_snapshot(values: Mapping[str, tuple[int, ...]]) -> dict[str, A
             "packed": matrix("packed_regulator", [3]),
             "interval": matrix("regulator_interval", [4]),
             "state": matrix("regulator_state", [5]),
+            "acceptance_state": matrix("acceptance_state", [3]),
+            "reconstruction_state": matrix("reconstruction_state", [4]),
+            "attempt_state": matrix("attempt_state", [4]),
+            "unified_state": matrix("unified_state", [12]),
+            "bridge_state": matrix("bridge_state", [16]),
+            "precision_authority_state": matrix("precision_authority_state", [16]),
+            "precision_retry_state": matrix("precision_retry_state", [6]),
         },
         "torsion": {
-            "state": matrix("torsion_state", [4]),
+            "state": matrix("torsion_state", [6]),
+            "order": matrix("torsion_order", [1]),
             "generator": matrix("torsion_generator", [3]),
         },
         "assumptions": {
+            "upstream": {
+                "system": "PARI",
+                "version": PARI_VERSION,
+                "buch2_sha256": PARI_BUCH2_SHA256,
+            },
             "names": list(ASSUMPTION_NAMES),
             "flags": _decimals(values["assumption_flags"]),
         },
         "terminal": {
-            "state": matrix("terminal_state", [8]),
+            "state": matrix("terminal_state", [16]),
             "atomic_publication": True,
             "single_snapshot": True,
             "intermediate_serializations": 0,
@@ -544,6 +614,11 @@ def _replay_class(
             raise H1TerminalSnapshotFailure("h=1 " + name + " is not empty")
     if payload["invariant_factors"] != [] or payload["class_number"] != "1":
         raise H1TerminalSnapshotFailure("h=1 class result changed")
+    if (
+        _entries(payload["invariant_factor_capacity"], [8], "invariant-factor capacity")
+        != [0] * 8
+    ):
+        raise H1TerminalSnapshotFailure("h=1 invariant-factor capacity changed")
     generator_arch = _entries(payload["generator_arch"], [8, 3, 7], "generator arch")
     expected_arch = [0] * (8 * 3 * 7)
     pari_log_matrix_transform(
@@ -567,6 +642,9 @@ def _replay_units(
         presentation["active_hnf_transform"], [15, 15], "active transform"
     )
     compact = _entries(payload["compact_provenance"], [2, 7], "compact provenance")
+    compact_factor = _entries(payload["compact_factor"], [4], "compact factor")
+    if compact_factor != [1, 0, 0, 1]:
+        raise H1TerminalSnapshotFailure("compact factor is not unimodular rank two")
     try:
         component = reconstruct_live_cubic_units(
             generators, cleanup, active, compact, tensor
@@ -577,22 +655,33 @@ def _replay_units(
         payload["retained_relation_provenance"], [2, 73], "unit provenance"
     )
     integral = _entries(payload["exact_units_integral_basis"], [2, 3], "integral units")
-    if retained != list(component.retained_relation_provenance) or integral != [
-        value for unit in component.exact_units for value in unit
-    ]:
-        raise H1TerminalSnapshotFailure("published exact units changed")
-    power = _entries(payload["exact_units_power_basis"], [2, 3], "power units")
-    converted: list[int] = []
+    if integral != [value for unit in component.exact_units for value in unit]:
+        raise H1TerminalSnapshotFailure("pre-getfu exact units changed")
+    published = _entries(
+        payload["published_exact_units_integral_basis"],
+        [2, 3],
+        "published exact units",
+    )
+    generator_rows = [generators[3 * index : 3 * (index + 1)] for index in range(73)]
+    replayed: list[int] = []
     for unit in range(2):
-        coordinates = integral[3 * unit : 3 * (unit + 1)]
-        for row in range(3):
-            converted.append(
-                sum(
-                    basis[column * 3 + row] * coordinates[column] for column in range(3)
-                )
+        replayed.extend(
+            _relation_product(
+                generator_rows,
+                retained[73 * unit : 73 * (unit + 1)],
+                tensor,
             )
-    if power != converted:
-        raise H1TerminalSnapshotFailure("integral/power unit conversion failed")
+        )
+    if published != replayed:
+        raise H1TerminalSnapshotFailure(
+            "published unit detached from retained relations"
+        )
+    norms = _entries(payload["exact_unit_norms"], [2], "exact unit norms")
+    replayed_norms = [
+        _norm(published[3 * unit : 3 * (unit + 1)], tensor) for unit in range(2)
+    ]
+    if norms != replayed_norms or any(abs(norm) != 1 for norm in norms):
+        raise H1TerminalSnapshotFailure("published exact unit norms changed")
 
 
 def _replay_regulator(payload: Mapping[str, Any]) -> None:
@@ -606,6 +695,29 @@ def _replay_regulator(payload: Mapping[str, Any]) -> None:
     point = _packed_point(packed, "packed regulator")
     if lower <= 0 or upper < lower or not lower <= point <= upper:
         raise H1TerminalSnapshotFailure("packed regulator left its enclosure")
+    if _entries(payload["acceptance_state"], [3], "acceptance state") != [2, 0, 0]:
+        raise H1TerminalSnapshotFailure("analytic acceptance did not succeed")
+    if _entries(payload["reconstruction_state"], [4], "reconstruction state") != [
+        0,
+        5,
+        188,
+        2,
+    ]:
+        raise H1TerminalSnapshotFailure("regulator reconstruction did not succeed")
+    if _entries(payload["attempt_state"], [4], "attempt state") != [4, 0, 0, 1]:
+        raise H1TerminalSnapshotFailure("class attempt did not succeed")
+    unified = _entries(payload["unified_state"], [12], "unified state")
+    bridge = _entries(payload["bridge_state"], [16], "bridge state")
+    precision = _entries(
+        payload["precision_authority_state"], [16], "precision authority state"
+    )
+    retry = _entries(payload["precision_retry_state"], [6], "precision retry state")
+    if unified[0] != 0 or unified[3] != 1 or bridge[0] != 0:
+        raise H1TerminalSnapshotFailure("unified numeric prefix did not succeed")
+    if precision[:5] != [0, 5, 2304, 0, 3] or precision[14] != 1:
+        raise H1TerminalSnapshotFailure("precision authority did not publish")
+    if retry != [3, 1536, 2304, 2304, 768, 1]:
+        raise H1TerminalSnapshotFailure("precision retry terminal state changed")
 
 
 def _validate_payload(payload: Any) -> None:
@@ -684,16 +796,30 @@ def _validate_payload(payload: Any) -> None:
         )
     _replay_regulator(regulator)
 
-    if set(torsion) != {"state", "generator"}:
+    if set(torsion) != {"state", "order", "generator"}:
         raise H1TerminalSnapshotFailure("torsion record has the wrong fields")
-    torsion_state = _entries(torsion["state"], [4], "torsion state")
+    torsion_state = _entries(torsion["state"], [6], "torsion state")
+    torsion_order = _entries(torsion["order"], [1], "torsion order")
     torsion_generator = _entries(torsion["generator"], [3], "torsion generator")
-    if torsion_state != [0, 2, -1, 1] or torsion_generator != [-1, 0, 0]:
+    if (
+        torsion_state[0:3] != [0, 3, 1]
+        or torsion_state[3] <= 0
+        or torsion_state[4:6] != [2, 1]
+        or torsion_order != [2]
+        or torsion_generator != [-1, 0, 0]
+    ):
         raise H1TerminalSnapshotFailure("torsion authority changed")
 
     assumptions = payload["assumptions"]
-    if not isinstance(assumptions, Mapping) or assumptions.get("names") != list(
-        ASSUMPTION_NAMES
+    expected_upstream = {
+        "system": "PARI",
+        "version": PARI_VERSION,
+        "buch2_sha256": PARI_BUCH2_SHA256,
+    }
+    if (
+        not isinstance(assumptions, Mapping)
+        or assumptions.get("upstream") != expected_upstream
+        or assumptions.get("names") != list(ASSUMPTION_NAMES)
     ):
         raise H1TerminalSnapshotFailure("assumption names changed")
     flags = assumptions.get("flags")
@@ -712,7 +838,25 @@ def _validate_payload(payload: Any) -> None:
         "fixture_inputs",
     }:
         raise H1TerminalSnapshotFailure("terminal publication record changed")
-    if _entries(terminal["state"], [8], "terminal state") != [0] * 8 or dict(
+    expected_terminal = [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        73,
+        8,
+        1,
+        0,
+        2,
+        2,
+        0,
+        811,
+        1,
+        0,
+    ]
+    if _entries(terminal["state"], [16], "terminal state") != expected_terminal or dict(
         terminal
     ) != {
         "state": terminal["state"],
@@ -722,6 +866,54 @@ def _validate_payload(payload: Any) -> None:
         "fixture_inputs": 0,
     }:
         raise H1TerminalSnapshotFailure("native terminal state did not publish")
+
+    # The immutable mathematical records above are exactly the 811 cells
+    # committed by `pari_unified_complete_h1_root`; `terminal.state` is the
+    # separate commit/status owner written last.
+    publication_cells = sum(
+        len(_entries(record, shape, name))
+        for record, shape, name in (
+            (field["polynomial"], [4], "published polynomial"),
+            (presentation["presentation"], [8, 8], "published presentation"),
+            (class_group["smith"], [8, 8], "published Smith matrix"),
+            (class_group["left"], [8, 8], "published left transform"),
+            (class_group["left_inverse"], [8, 8], "published left inverse"),
+            (class_group["right"], [8, 8], "published right transform"),
+            (class_group["right_inverse"], [8, 8], "published right inverse"),
+            (
+                presentation["relation_to_presentation"],
+                [15, 8],
+                "published relation witness",
+            ),
+            (
+                presentation["presentation_to_relation"],
+                [8, 15],
+                "published presentation witness",
+            ),
+            (unit_group["compact_provenance"], [2, 7], "published compact units"),
+            (
+                unit_group["retained_relation_provenance"],
+                [2, 73],
+                "published retained relations",
+            ),
+            (
+                unit_group["published_exact_units_integral_basis"],
+                [2, 3],
+                "published exact units",
+            ),
+            (unit_group["exact_unit_norms"], [2], "published unit norms"),
+            (regulator["packed"], [3], "published regulator"),
+            (torsion["order"], [1], "published torsion order"),
+            (torsion["generator"], [3], "published torsion generator"),
+            (
+                class_group["invariant_factor_capacity"],
+                [8],
+                "published invariant capacity",
+            ),
+        )
+    )
+    if publication_cells != 811 or expected_terminal[13] != publication_cells:
+        raise H1TerminalSnapshotFailure("native publication cell count changed")
 
 
 def capture_h1_terminal_owner_snapshot(
