@@ -66,3 +66,14 @@ test("views remain private but any later escape rejects the plan", () => {
   root.body.push({ kind: "return", value: "window", type: "IntegerBuffer" });
   assert.equal(privateIntegerBufferPlan(functions, root, ["scratch"]), undefined);
 });
+
+test("structured control flow attributes nested operations independently", () => {
+  const { functions, root } = fixture();
+  root.body[0] = {
+    kind: "while",
+    condition: "keep_going",
+    body: [root.body[0]],
+  };
+  const claim = privateIntegerBufferPlan(functions, root, ["scratch"]);
+  assert.equal(privateIntegerBufferPlanAuthorized(functions, root, claim), true);
+});
