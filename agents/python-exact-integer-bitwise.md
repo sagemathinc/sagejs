@@ -1,7 +1,7 @@
 # Exact primitive integer bitwise operations
 
-Base: `24c152e76` (source-current exact-power predecessor, including merged
-`origin/main` through PR #311).
+Base: `18de35d58` (source-current PR #315 exact-power predecessor, including
+merged exact binary and shift paths).
 
 ## Change
 
@@ -31,12 +31,13 @@ operations:
 
 | operation | predecessor | candidate | change | candidate / CPython |
 | --- | ---: | ---: | ---: | ---: |
-| `12345 & 37` | 265.694 ms | 36.480 ms | -86.27% | 1.37x |
-| `12345 \| 37` | 253.132 ms | 33.403 ms | -86.80% | 0.95x |
-| `12345 ^ 37` | 264.906 ms | 34.209 ms | -87.09% | 0.95x |
+| `12345 & 37` | 267.327 ms | 35.281 ms | -86.80% | 1.27x |
+| `12345 \| 37` | 255.088 ms | 33.846 ms | -86.73% | 0.94x |
+| `12345 ^ 37` | 264.580 ms | 34.151 ms | -87.09% | 0.94x |
 
-The eight untouched addition, subtraction, multiplication, power, and
-augmented-operation controls move by at most 3.20%; six are within 1.37%.
+No untouched addition, subtraction, multiplication, power, or augmented
+operation regresses more than 1.23%; `+=` improves 3.94% and the other seven
+controls remain within 1.30%.
 This is a hot-loop result, not a universal operation cost: V8 may tier,
 specialize, or deoptimize differently for polymorphic surrounding code.
 
@@ -45,18 +46,18 @@ compiled identical-source artifact shrinks by 2,883 bytes:
 
 - benchmark source: 1,932 bytes,
   `4abb1d99b48f724934c48f9548c6cd1648996e0b6bbef77661fecbdad3583fca`;
-- predecessor: 24,428,500 bytes,
-  `06e998d0abb1d7c7956a8f0541b1e19a455e480280ed69b13c5510908ed106e1`;
-- candidate: 24,425,617 bytes,
-  `b0e98eb024a68b730987b24842f8e6c2de4d076b9543105e16c78981318d149d`.
+- predecessor: 24,428,515 bytes,
+  `3b298d91bc77fd98753dd83d5a7a3930b32ed11161c75ecd8c0b5677685fa3f7`;
+- candidate: 24,425,632 bytes,
+  `67039e9834197ddebd56dfd81e30b3b9fec355dec7b1a07806f96f3d188f4f51`.
 
 The retained remote receipt directory is
-`bench-1:/home/user/python-exact-bitwise-mainline.wH61yD`.
+`bench-1:/home/user/python-exact-bitwise-power-current.6spN5Q`.
 
 ## Qualification
 
-- Commit `10a046c291db78ec07bb8c787f06d072a60ae557` completed all
-  eight build stages in 7m 46s. Its v3 build receipt records Node 26.8.1,
+- Commit `c9bf15cf3` completed all eight build stages in 7m 46s. Its v3 build
+  receipt records Node 26.8.1,
   V8 14.6, and the frozen workspace identity.
 - Focused primitive, boolean, wide/negative integer, augmented, and custom
   dispatch tests pass.
@@ -67,7 +68,7 @@ The retained remote receipt directory is
   modules with zero errors. Generated documentation and merge invariants pass.
 - The pinned pyparsing parse workflow and traitlets import,
   notification/failure workflow pass.
-- Core runtime remains under the unchanged ceiling at 902,686 / 903,000 bytes.
+- Core runtime remains under the unchanged ceiling at 902,724 / 903,000 bytes.
 
 Platform/browser qualification remains CI-owned, and missing optional native
 addons are not counted as passes. No release is implied.
