@@ -74,9 +74,9 @@ const precisionSizes = Object.freeze({
   precision_exact_units_integral: 6,
   precision_exact_units_power: 6,
   precision_exact_norms: 2,
-  precision_root_m: 3,
-  precision_root_p: 3,
-  precision_root_e: 3,
+  precision_root_m: 6,
+  precision_root_p: 6,
+  precision_root_e: 6,
   precision_embedding_m: 9,
   precision_embedding_p: 9,
   precision_embedding_e: 9,
@@ -102,7 +102,44 @@ const precisionSizes = Object.freeze({
   precision_determinant_output: 3,
   precision_determinant_pivots: 1,
   precision_determinant_state: 5,
-  precision_authority_state: 8,
+  precision_authority_state: 16,
+  precision_resident_root_m: 3,
+  precision_resident_root_p: 3,
+  precision_resident_root_e: 3,
+  precision_staged_retry_relations: 146,
+  precision_embedding_packed: 27,
+  precision_getfu_clean_logs: 18,
+  precision_getfu_clean_phases: 6,
+  precision_getfu_factor: 4,
+  precision_getfu_matep: 18,
+  precision_getfu_transformed_arch: 18,
+  precision_getfu_transformed_clean: 18,
+  precision_getfu_transformed_phases: 6,
+  precision_getfu_exponentials: 18,
+  precision_getfu_solve_work: 27,
+  precision_getfu_solve_rhs: 18,
+  precision_getfu_solved: 18,
+  precision_getfu_rounded: 6,
+  precision_getfu_multiplication: 9,
+  precision_getfu_inverse: 3,
+  precision_getfu_candidate_units: 6,
+  precision_getfu_normalized_factor: 4,
+  precision_staged_getfu_units: 6,
+  precision_staged_getfu_logs: 18,
+  precision_staged_getfu_phases: 6,
+  precision_staged_getfu_factor: 4,
+  precision_getfu_state: 8,
+  precision_getfu_pivots: 3,
+  precision_getfu_exp_cache: 512,
+  precision_getfu_exp_a: 512,
+  precision_getfu_exp_b: 512,
+  precision_getfu_exp_p: 512,
+  precision_getfu_exp_q: 512,
+  precision_getfu_exp_stack: 128,
+  precision_retry_state: 6,
+  precision_published_retained_relations: 146,
+  precision_published_logs: 18,
+  precision_published_phases: 6,
 });
 
 const finalSizes = Object.freeze({
@@ -167,6 +204,8 @@ async function main() {
   for (const [name, kind] of names) {
     if (Object.hasOwn(candidate, name)) {
       input[name] = structuredClone(candidate[name]);
+    } else if (name === "precision_resource_cap") {
+      input[name] = 192n;
     } else {
       const size = sizes[name];
       assert(Number.isInteger(size), `missing size for ${name}`);
@@ -175,7 +214,7 @@ async function main() {
     }
     if (name === "precision_authority_state") {
       // An answer-shaped external success must be destroyed, never trusted.
-      input[name] = [0, 7, 2, 1, 1, 1, 0, 1];
+      input[name] = [0, 5, 2304, 0, 3, 73, 15, 7, 2, 7, 2, 0, 0, 0, 1, 4096];
     }
     if (Array.isArray(input[name])) {
       input[name] = kind === "Float64Buffer"
@@ -192,11 +231,24 @@ async function main() {
   const built = await compileKernel({ sourcePath });
   const fn = require(built.modulePath).pari_unified_complete_h1_root;
   assert(fn.nativeAvailable);
-  const status = fn.gmp(...names.map(([name]) => input[name]));
-  assert.equal(status, 4n);
+  // Zero-filled JavaScript arrays are packed with the ordinary eight-word
+  // minimum.  Retry owners hold 2000+-bit exact units, so declare their bound
+  // explicitly just as the standalone live-suffix checker does.
+  for (const [name, kind] of names) {
+    if (kind === "IntegerBuffer" &&
+        (name.startsWith("precision_") || name.startsWith("final_"))) {
+      input[name] = fn.createIntegerBuffer(input[name].length, 128, input[name]);
+    }
+  }
+
+  // A caller cap at the initial 192 bits cannot reach signed getfu success.
+  // Prefix and exact class evidence may publish internally, but the immutable
+  // terminal bundle remains byte-for-byte untouched.
+  const cappedStatus = fn.gmp(...names.map(([name]) => input[name]));
+  assert.equal(cappedStatus, 4n);
   assert.deepEqual(values(input.final_state).map(BigInt), [
-    4n, 0n, 0n, 0n, -1n, 4n, 73n, 8n,
-    1n, 0n, 2n, 2n, 0n, 0n, 0n, 0n,
+    4n, 0n, 0n, -1n, 1n, 4n, 73n, 8n,
+    1n, 0n, 2n, 0n, 0n, 0n, 0n, 0n,
   ]);
   assert.deepEqual(values(input.unified_state).map(BigInt), [
     0n, 0n, 0n, 1n, 0n, 7n, 73n, 8n, 48n, 48n, 2n, 7n,
@@ -205,26 +257,48 @@ async function main() {
     0n, 8n, 15n, 7n, 120n, 450n, 64n, 320n,
     1n, 0n, 0n, 0n, 120n, 120n, 192n, 624n,
   ]);
-  assert.deepEqual(values(input.torsion_order).map(BigInt), [2n]);
-  assert.deepEqual(values(input.torsion_generator).map(BigInt), [-1n, 0n, 0n]);
-  assert.equal(values(input.torsion_state)[5], 1n);
-  assert.deepEqual(values(input.precision_authority_state).map(BigInt),
-    [-1n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]);
+  assert.deepEqual(values(input.precision_authority_state).map(BigInt).slice(0, 5),
+    [1n, 1n, 192n, 3n, 3n]);
+  assert.equal(values(input.precision_authority_state)[14], 0n);
   for (const [name, expected] of Object.entries(finalBefore)) {
     assert.deepEqual(values(input[name]).map(BigInt), expected,
       `${name} changed before final publication`);
   }
 
-  // The inherited analytic scalars are policy inputs only after the native
-  // root authenticates them against the neutral polynomial.
+  // Mutation after the prefix/class boundary cannot be hidden by successful
+  // caller-shaped authority bytes: exact relation replay rejects it and the
+  // terminal owners remain unchanged.
+  const originalGenerator = input.generators[0];
+  input.generators[0] += 1n;
+  input.precision_resource_cap = 4096n;
   input.final_state.fill(0n);
-  input.analytic_discriminant += 1n;
   assert.throws(() => fn.gmp(...names.map(([name]) => input[name])),
-    /analytic scalars are inconsistent/);
+    /nonintegral principal relation quotient|live kernel relation did not reconstruct a unit|getfu unit detached/);
   for (const [name, expected] of Object.entries(finalBefore)) {
     assert.deepEqual(values(input[name]).map(BigInt), expected,
-      `${name} changed after analytic-scalar mutation`);
+      `${name} changed after generator mutation`);
   }
+  input.generators[0] = originalGenerator;
+
+  // With the source-policy cap available, the same in-memory owners retry to
+  // 2304 bits, publish exact units/regulator/torsion, and commit final_state
+  // last.  Public completion deliberately remains false.
+  input.final_state.fill(0n);
+  const status = fn.gmp(...names.map(([name]) => input[name]));
+  assert.equal(status, 0n);
+  assert.deepEqual(values(input.final_state).map(BigInt), [
+    0n, 0n, 0n, 0n, 0n, 0n, 73n, 8n,
+    1n, 0n, 2n, 2n, 1n, 811n, 1n, 0n,
+  ]);
+  assert.deepEqual(values(input.precision_authority_state).map(BigInt).slice(0, 5),
+    [0n, 5n, 2304n, 0n, 3n]);
+  assert.equal(values(input.precision_authority_state)[14], 1n);
+  assert.deepEqual(values(input.final_exact_norms).map(BigInt), [-1n, -1n]);
+  assert.deepEqual(values(input.final_torsion_order).map(BigInt), [2n]);
+  assert.deepEqual(values(input.final_torsion_generator).map(BigInt), [-1n, 0n, 0n]);
+  assert(values(input.final_exact_units).some(value => BigInt(value) !== 0n));
+  assert(values(input.final_regulator).some(value => BigInt(value) !== 0n));
+  assert.notDeepEqual(values(input.final_polynomial).map(BigInt), finalBefore.final_polynomial);
 
   // The new torsion leaf is independently differential-tested and fails
   // transactionally for reducible/non-real mutations.
@@ -258,19 +332,21 @@ print('cpython torsion differential and mutations passed')
   assert.match(core, /pari_unified_live_h1_root/);
   assert.match(core, /pari_live_h1_class_witness_suffix/);
   assert.match(core, /pari_exact_real_cubic_torsion/);
-  assert.doesNotMatch(core, /pari_unified_full_h1_suffix/);
+  assert.match(core, /pari_live_retrying_h1_suffix/);
   assert.doesNotMatch(core, /napi_call_function|PyObject_Call|v8::/);
   console.log(JSON.stringify({
-    schema: "sagejs.pari-class-group/unified-complete-h1-frontier-v1",
+    schema: "sagejs.pari-class-group/unified-complete-h1-internal-v2",
     field: "x^3-20018*x+20034",
     nativeStatus: String(status),
-    missingStage: "live-precision-suffix",
+    retryPrecision: String(values(input.precision_authority_state)[2]),
     prefixPublished: true,
     classWitnessPublished: true,
     exactTorsionPublished: true,
-    externalSuffixAuthorityRejected: true,
-    finalPublication: false,
-    finalOutputsUnchanged: true,
+    cappedFinalOutputsUnchanged: true,
+    generatorMutationRejected: true,
+    internalCorrespondenceComplete: true,
+    finalPublication: true,
+    publicComplete: false,
     cpython: dynamic.stdout.trim(),
     cacheKey: built.cacheKey,
   }));
