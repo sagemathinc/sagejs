@@ -33,36 +33,37 @@ are outside the measured regions. Times are warm medians for 100,000 operations.
 
 | Case | Previous | Candidate | Change | CPython | Candidate / CPython |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| keyword function | 280.073 ms | 279.593 ms | 0.2% faster | 10.657 ms | 26.2x |
-| immediate keyword method | 346.293 ms | 286.310 ms | 17.3% faster | 11.016 ms | 26.0x |
-| empty construction | 42.201 ms | 37.417 ms | 11.3% faster | 8.135 ms | 4.6x |
-| no-op initializer | 61.319 ms | 61.773 ms | 0.7% slower | 12.951 ms | 4.8x |
-| positional construction and method | 710.800 ms | 660.384 ms | 7.1% faster | 24.103 ms | 27.4x |
-| keyword construction and method | 1046.434 ms | 985.151 ms | 5.9% faster | 38.521 ms | 25.6x |
+| keyword function | 302.938 ms | 301.940 ms | 0.3% faster | 10.657 ms | 28.3x |
+| immediate keyword method | 362.677 ms | 305.659 ms | 15.7% faster | 11.016 ms | 27.7x |
+| empty construction | 41.872 ms | 37.410 ms | 10.7% faster | 8.135 ms | 4.6x |
+| no-op initializer | 61.211 ms | 62.140 ms | 1.5% slower | 12.951 ms | 4.8x |
+| positional construction and method | 708.283 ms | 655.838 ms | 7.4% faster | 24.103 ms | 27.2x |
+| keyword construction and method | 1064.571 ms | 994.854 ms | 6.5% faster | 38.521 ms | 25.8x |
 
 The no-op row is unchanged within ordinary run variance; no regression or
 improvement is claimed. The remaining 25–27x call/construction gaps are still
 performance cliffs.
 
-Source-current polymorphic and mutation-heavy medians are 302.384 ms versus
-12.197 ms for CPython (24.8x), and 275.392 ms versus 10.692 ms (25.8x),
-respectively. These rows qualify cache invalidation and changing receiver shapes;
-they are not a before/after speedup claim.
+Polymorphic calls improve from 376.351 to 322.267 ms (14.4%) versus CPython's
+11.989 ms (26.9x). Mutation-heavy calls improve from 358.133 to 299.669 ms
+(16.3%) versus CPython's 10.709 ms (28.0x). These rows exercise four receiver
+shapes and repeated epoch invalidation rather than only a monomorphic cache hit.
 
 The previous standalone SHA-256 is
-`27fbbd48cdab5abc8e1e62beae40300f5e58ab8c7a77a03c37e50feaa7908f5e`.
+`3b8e00597109eaa032a92afe3797e5134e8cbe0ca63925579a1fa004f01ac690`.
 The candidate SHA-256 is
-`2a02571af77a41b134b51e4591ff4a3511b53a3345cab488fd8eac43ca3e25e8`.
-The candidate standalone is 24,517,644 bytes, 121 bytes larger than the
-comparison artifact.
+`f4725e1f21f19e90b96b7408d4784800c73486cb6e518c16c88bb03abf22efe6`.
+The candidate standalone is 24,517,041 bytes, 194 bytes smaller than the
+comparison artifact. Both artifacts were built from the exact parent/candidate
+pair after PR #300 merged.
 
 ## Qualification
 
-- The frozen source-current build completed in 7m 56s.
+- The frozen source-current build completed in 7m 42s.
 - All 37 focused method, mutation, descriptor, runtime, and traitlets checks pass.
 - All 224 portable test files pass, including startup and browser-policy checks.
 - Strict CPython syntax, Ruff 0.16.0 formatting, and Pyright pass for 404 modules.
-- The package graph passes at 902,866 / 903,000 core-runtime bytes; no budget was
+- The package graph passes at 902,439 / 903,000 core-runtime bytes; no budget was
   changed.
 - The pinned upstream traitlets import and notification/failure workflow passes.
 

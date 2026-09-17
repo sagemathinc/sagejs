@@ -305,13 +305,13 @@ collecting more suite names now that the adopted failures are repaired.
 
 **2026-09-17 method-call checkpoint:** after the argument-binding and
 construction series reached main, the source-current prototype-indexed prepared
-method cache reduces immediate keyword-method time by 17.3%, positional
-construction plus a method by 7.1%, keyword construction plus a method by 5.9%,
-and empty construction by 11.3% in controlled alternating-process measurements.
+method cache reduces immediate keyword-method time by 15.7%, positional
+construction plus a method by 7.4%, keyword construction plus a method by 6.5%,
+and empty construction by 10.7% in controlled alternating-process measurements.
 Mutation, deletion, explicit instance assignment, custom lookup, saved methods,
 and traitlets workflows retain their authoritative paths. The candidate passes
-all 224 portable files and the unchanged 902,866/903,000 core budget. Remaining
-common call/construction gaps are still roughly 25–27x CPython, so M5 remains
+all 224 portable files and the unchanged 902,439/903,000 core budget. Remaining
+common call/construction gaps are still roughly 26–28x CPython, so M5 remains
 open. Exact artifacts and polymorphic/mutation measurements are recorded in
 `agents/python-method-call-prototype-cache.md`.
 
