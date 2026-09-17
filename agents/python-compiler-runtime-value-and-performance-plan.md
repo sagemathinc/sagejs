@@ -368,6 +368,22 @@ pass at 902,948/903,000 core bytes. Exact evidence is in
 `agents/python-attribute-store-assignment.md`. Keep this candidate behind the
 store/read integration queue and do not describe the broader M5 cliff as closed.
 
+**2026-09-17 keyword-constructor dispatch checkpoint:** static keyword
+construction previously prepared one receiver, then the generic binder invoked
+the registered generated-class adapter without it and caused a second allocation.
+The guarded shared-bootstrap path now applies only an authenticated registered
+constructor directly to the prepared receiver; unregistered, replaced, custom,
+and explicit-apply paths retain their existing semantics. Controlled
+alternating-process measurements improve keyword construction plus a method by
+7.3%, from 541.702 ms to 502.178 ms per 100,000 operations, while the other six
+call/construction rows remain flat. The residual gap is 13.5x CPython, and
+keyword methods remain 24.4x, so M5 is still open. A preceding prepared-context
+binder experiment was rejected after producing only -0.7% to +1.3% variation.
+The exact artifacts, semantic boundary, and qualification are recorded in
+`agents/python-keyword-constructor-dispatch.md`. Core source falls to
+902,744/903,000 bytes without a budget change. Keep this work behind the
+attribute integration queue.
+
 Continue next with integration-aware qualification, the receiver-lookup campaign,
 and true handled-exception ownership. Generator/coroutine suspension makes a
 single global active-exception pointer unsafe: preserve owned handlers while

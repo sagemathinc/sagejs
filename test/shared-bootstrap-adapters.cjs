@@ -10,7 +10,7 @@ const root = join(__dirname, "..");
 const source = readFileSync(join(root, "src/baselib/bootstrap_shared.py"), "utf8");
 const names = ["ρσ_copy_method_metadata", "ρσ_native_method_adapter", "ρσ_unbound_method_adapter",
   "ρσ_check_interrupt", "ρσ_normalize_exception", "ρσ_prepare_method_call",
-  "ρσ_attr", "ρσ_interpolate_kwargs"];
+  "ρσ_attr", "ρσ_interpolate_kwargs", "ρσ_interpolate_kwargs_constructor"];
 
 // Exercise the native ABI bodies directly; full self-hosted/module
 // linkage remains a separate build qualification, not implied by this test.
@@ -180,6 +180,33 @@ test("shared keyword binding consumes literal packets without Python operators",
   assert.throws(
     () => api.ρσ_interpolate_kwargs(undefined, target, [{ unknown: 2 }]),
     /unexpected keyword argument 'unknown'/,
+  );
+});
+
+test("branded keyword constructors reuse prepared allocation", () => {
+  const prototype = {};
+  const packet = { value: 17 };
+  const calls = [];
+  function target(keywords) {
+    calls.push([this, keywords]);
+    this.value = keywords.value;
+  }
+  target.prototype = prototype;
+  const api = context({
+    _internal_keyword_constructor_prototypes: new WeakSet([prototype]),
+  });
+  const discarded = Object.create(prototype);
+  const result = api.ρσ_interpolate_kwargs_constructor(
+    discarded, false, target, [packet],
+  );
+  assert.equal(result.value, 17);
+  assert.equal(result, discarded);
+  assert.deepEqual(calls, [[discarded, packet]]);
+
+  const receiver = {};
+  assert.equal(
+    api.ρσ_interpolate_kwargs_constructor(receiver, true, () => 3, []),
+    receiver,
   );
 });
 

@@ -218,3 +218,15 @@ def ρσ_interpolate_kwargs(receiver, target_function, supplied_args):
         }
         return Reflect.apply(target_function,receiver,supplied_args);
     })()"""
+
+
+def ρσ_interpolate_kwargs_constructor(
+    receiver, use_apply, target_function, supplied_args
+):
+    return r"""%js (()=>{
+        const result=use_apply||_internal_keyword_constructor_prototypes.has(target_function.prototype)?
+            Reflect.apply(target_function,receiver,supplied_args):
+            ρσ_interpolate_kwargs(receiver,target_function,supplied_args);
+        return result!=null&&(typeof result==="object"||typeof result==="function")?
+            result:receiver;
+    })()"""
