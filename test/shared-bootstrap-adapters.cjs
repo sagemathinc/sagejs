@@ -9,7 +9,7 @@ const test = require("node:test");
 const root = join(__dirname, "..");
 const source = readFileSync(join(root, "src/baselib/bootstrap_shared.py"), "utf8");
 const names = ["ρσ_copy_method_metadata", "ρσ_native_method_adapter", "ρσ_unbound_method_adapter",
-  "ρσ_exact_integer_add",
+  "ρσ_exact_integer_add", "ρσ_exact_shift",
   "ρσ_check_interrupt", "ρσ_normalize_exception", "ρσ_prepare_method_call",
   "ρσ_attr", "ρσ_interpolate_kwargs"];
 
@@ -168,6 +168,25 @@ test("shared exact integer addition preserves primitive Python integers", () => 
   assert.equal(add(1.5, 2, missing), missing);
   assert.equal(add(Number.MAX_SAFE_INTEGER + 1, 1, missing), missing);
   assert.equal(add({}, 1, missing), missing);
+});
+
+test("shared exact integer shifts preserve primitive Python integers", () => {
+  const { ρσ_exact_shift: shift } = context();
+  const missing = {};
+  const left = (value, count) => shift(value, count, 0, missing);
+  const right = (value, count) => shift(value, count, 1, missing);
+  assert.deepEqual([left(7, 3), left(-7, 3), right(7, 2), right(-7, 2)], [56, -56, 1, -2]);
+  assert.equal(left(2n ** 52n, 2), 2n ** 54n);
+  assert.equal(right(-(2n ** 60n), 4), -(2n ** 56n));
+  assert.equal(left(true, true), 2);
+  assert.equal(right(true, true), 0);
+  assert.equal(right(7, 100), 0);
+  assert.equal(right(-7, 100), -1);
+  assert.equal(left(0n, 100000000000000000000n), 0);
+  assert.equal(left(1, -1), missing);
+  assert.equal(right(1n, -1n), missing);
+  assert.equal(left(1.5, 1), missing);
+  assert.equal(right({}, 1), missing);
 });
 
 test("shared receiver adapters preserve binding, metadata getters, and cache identity", () => {

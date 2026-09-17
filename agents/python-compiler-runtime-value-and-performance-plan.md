@@ -403,6 +403,16 @@ positional arguments by an empty class; repair that semantic defect without
 mixing it into the empty-call speed path. Exact evidence is in
 `agents/python-default-construction.md`.
 
+**2026-09-17 exact-shift checkpoint:** a fresh-main candidate classifies
+primitive exact integer operands once in the shared bootstrap while retaining
+negative-count errors, float/object dispatch, reflected methods, augmented
+assignment, wide signed values, and huge-count behavior. Controlled
+exact-artifact measurements improve one million left shifts by 80.50% to 1.85x
+CPython and right shifts by 26.08% to 1.69x CPython. The standalone grows by
+only 15 bytes and neighboring rows remain within 4.5%; core source remains
+inside the unchanged budget at 902,918/903,000 bytes. Exact artifacts and
+qualification are in `agents/python-exact-integer-shifts.md`.
+
 **2026-09-17 exact-in-place-addition checkpoint:** a narrow follow-up reuses
 the shared primitive classifier before generic `+=` dispatch while retaining
 object `__iadd__` precedence, `__add__` fallback, and the existing float/string
