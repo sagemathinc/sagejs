@@ -260,6 +260,52 @@ and `ede2214e838bfab6dc79e433d28faf55d274c72124621460e642bb141fe57e1c`
 in table order. These are correctness replay times, not qualified performance
 measurements.
 
+## Definitive single-commit Phase-0 qualification (2026-09-17)
+
+The entire required 25-stage Phase-0 graph was subsequently regenerated from
+empty receipts at the clean integration commit
+`44807189a4eb8f8c58d9f46519ab9e60dde21a99` (tree
+`19625ced91963a784813f98917cd5a3d41d872f1`). No older receipt was imported.
+Every selected receipt and its complete dependency/output closure reverified
+after the run. The immutable evidence root is
+`/scratch/sagejs-runtime/pari-class-group-phase0-44807189a/`; its comprehensive
+source, toolchain, build-object, owner, output, and resource manifest has
+SHA-256
+`8e0c44d0c480fe8580025f7e337b72fa7023d03a7dbb60f0ddf3aa7cf5a91a27`.
+The corrected resource ledger has SHA-256
+`18c0af1ccdb5a713478e85f60061cb2f543e90a9598e4b34744f3843894be519`.
+
+The first exact-commit build attempt reached production-pack publication after
+passing stages 1–6, but the whole build crossed the normal 600-second threshold
+at 600.169 seconds. Under the plan's explicitly authorized build-only stress
+tier, the clean isolated build passed in 624.570 seconds. Its authenticated
+build receipt has SHA-256
+`0141bdee4d148d163cd5161235670467f497b9fce39c0fa09b5d3e1b474d0a58`.
+The mathematical stages retained the normal serial 600-second, 4-GiB
+address-space, and 1536-MiB Node-heap limits throughout.
+
+Selected final stage identities and runner times were:
+
+| Stage | Runner seconds | Identity SHA-256 |
+| --- | ---: | --- |
+| `splitting-replay` | 29.482 | `12e30f6c845af44bb4b8d6af923b4ad894a50cf388f4f0f569302e33d2368a3a` |
+| `cubic-candidate` | 266.687 | `9c325d0dc8a2614e81303525ae75a631d7c6198a79f14933086329637aa6de53` |
+| `resident-cubic-gmp` | 375.085 | `dffccc21d026daa4a3622b38f3c3ab413b033270dab1e01a76c398a3846cb37b` |
+| `quartic-hnfadd-trace` | 4.311 | `758664018176c45196a1886fbbe36c3b53704f0348fdbea73bcb6ae1d2141626` |
+| `quartic-continuation` | 2.739 | `9996bf6ecc9e1133f2fa91132308bfa01c62d3ff21f43b0a8f94a42714a6b2ba` |
+| `quartic-retry-cpython` | 8.465 | `377196283638fa648eb332ee3f77b12a7bda1bdd81e04ebcf05f6b86b4b5706a` |
+| `quartic-retry-javascript` | 334.848 | `cbe173cd265638339ebd2c7286a81ec4c75e28619f3e85c3644b5e477c6fa2f0` |
+| `quartic-retry-gmp` | 45.831 | `95dc88c676ca530a1f83e8b635927103e09b24985f25f50a057f985a26eddf3d` |
+| `quartic-retry-tagged` | 45.213 | `19049ee59345af15f8102f2af3d248501cf06f75dca5b63d8214cadd5b3c75e2` |
+
+The largest sampled primary-process-group RSS values were 2,259,124 KiB for
+the tagged quartic retry and 2,246,664 KiB for GMP. The ledger labels this
+scope precisely: native build tools may detach their own process groups, so
+these are not asserted as whole-tree maxima; the inherited 4-GiB limit still
+applied separately to every process. This qualification closes the fresh
+single-commit Phase-0 replay gate. It does not claim independent class-group
+certification or a complete public class-and-unit API.
+
 ## Scope and caveats
 
 - Native compiler caches remain content-addressed beside their mathematical
