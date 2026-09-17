@@ -27,21 +27,24 @@ def pari_pi_constant(
     """Return mppi at a word precision, reusing a computed resident cache.
 
     Scratch buffers and cache are disjoint. The input precision limit leaves
-    the upstream 64-bit guard word within the coordinated 2,496-bit arithmetic
+    the upstream 64-bit guard word within the coordinated 154,112-bit probe
     boundary.
     """
-    if precision < 64 or precision > 4096 or precision % 64 != 0:
+    if precision < 64 or precision > 154112 or precision % 64 != 0:
         raise ValueError("unsupported pi precision")
     if len(cache) < 3:
         raise ValueError("pi cache requires three entries")
     if cache[1] < precision:
         terms = int(1.0 + checked_float64(precision) / 47.11041314)
+        required_stack = 91
+        if terms > 4096:
+            required_stack = 105
         if (
             len(a) <= terms
             or len(b) <= terms
             or len(p) <= terms
             or len(q) <= terms
-            or len(stack) < 91
+            or len(stack) < required_stack
         ):
             raise ValueError("pi coefficient workspace exhausted")
         a[0] = 13591409

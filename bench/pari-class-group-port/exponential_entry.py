@@ -35,7 +35,7 @@ def pari_modlog2(
     stack: IntegerBuffer,
 ) -> tuple[int, int, int, int]:
     """Return the centered remainder and integer shift; zero uses a sentinel."""
-    if mantissa == 0 or precision < 64 or precision > 4096 or precision % 64 != 0:
+    if mantissa == 0 or precision < 64 or precision > 153088 or precision % 64 != 0:
         raise ValueError("unsupported exponential range reduction input")
     value = pari_real_to_float(mantissa, precision, exponent)
     quotient = pari_reduction_quotient(value)
@@ -78,7 +78,7 @@ def pari_prepared_exp(
         if exponent >= 0:
             return 0, 0, exponent
         result_precision = ((-exponent + 63) // 64) * 64
-        if result_precision > 4096:
+        if result_precision > 153088:
             raise ValueError("zero exponential precision exceeds arithmetic boundary")
         return 1 << (result_precision - 1), result_precision, 0
     ym, yp, ye, shift = pari_modlog2(
