@@ -1,0 +1,71 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "field3-terminal-owner-adapters",
+  "title": "Field3 Terminal Owner Adapters",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement authenticated C5/C6 unit and live-final owner adapters required by field3 C7 without answer fixtures",
+  "base_commit": "679c510266c7925f046f3354671a2ff7a41f6cef",
+  "claims": [
+    "bench/pari-class-group-port/field3_terminal_owner_adapters.cjs",
+    "bench/pari-class-group-port/check_field3_terminal_owner_adapters.cjs",
+    "bench/pari-class-group-port/field3_terminal_owner_adapters_audit.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Existing authenticated C5, C6, exact factorback, relation, and class owners"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_field3_terminal_owner_adapters.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.317,
+      "started_at": "2026-09-17T15:49:16.988Z",
+      "commit": "679c510266c7925f046f3354671a2ff7a41f6cef",
+      "workspace_fingerprint": "9e6f5ae202f8295612bd43f529d5869661756898491b3086e5e55108023135c5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_field3_terminal_owner_adapters.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.398,
+      "started_at": "2026-09-17T15:50:10.112Z",
+      "commit": "679c510266c7925f046f3354671a2ff7a41f6cef",
+      "workspace_fingerprint": "eb8acf3bf0f3a425ac085c994b66c288e7b540bdaf68bc453ccf3eb4231e4f0e",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Adds strict immutable producers for the C7 unit and live-final schemas. The unit producer preserves C6 not_given honestly and requires exact factorback evidence on success; the live producer derives 301 principal records from exact relation/principal owners and copies class descriptors from the authenticated class suffix.",
+    "risks": [
+      "The authentic 153088-bit owners were intentionally not run in this lane.",
+      "The relation and class serialization producers must use the documented field3-full-owner-authority-v1 and field3-live-class-suffix-owner-v1 interfaces when integration publishes the authentic run."
+    ],
+    "next_steps": [
+      "Integrate after the C6 factorback verifier commit so the exact factorback schema is present.",
+      "Publish the authentic relation/class source owners, invoke both adapter operations, and feed the resulting hashes to C7.",
+      "Run broad repository gates in the integration lane after all active field3 work lands."
+    ]
+  }
+}
