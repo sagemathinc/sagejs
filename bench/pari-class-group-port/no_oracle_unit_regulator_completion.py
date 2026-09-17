@@ -94,115 +94,83 @@ def _mapping(value: Any, keys: set[str], name: str) -> Mapping[str, Any]:
 
 
 def derive_relation_unit_leaf(
-    resident_output: str | Path, compact_fixture_path: str | Path
+    resident_output: str | Path, live_unit_kernel_provenance: Sequence[Any]
 ) -> dict[str, Any]:
-    """Materialize both units solely from qualified resident relations.
+    """Materialize both units from resident relations and a live 2-by-7 map."""
 
-    The compact fixture contributes the accepted 2-by-7 exponent handoff.  Its
-    legacy answer coordinates and factor pool are deliberately not read.
-    """
-
-    from .compact_unit_resident_pool import (
-        _norm_cubic,
-        _relation_product,
-        capture_resident_kernel_pool,
-        replay_resident_kernel_pool,
-    )
+    from .live_exact_units_cubic import reconstruct_live_cubic_units
     from .presentation_authority import (
         capture_presentation_authority,
         replay_presentation_authority,
     )
 
-    resident_pool = capture_resident_kernel_pool(resident_output)
-    if replay_resident_kernel_pool(resident_pool, resident_output) != resident_pool:
-        raise NoOracleCompletionFailure("resident factor pool did not cold replay")
-    pool_payload = resident_pool.detached_payload()
-    factor_pool = pool_payload["factor_pool"]
-    fixture = json.loads(Path(compact_fixture_path).read_text(encoding="utf-8"))
-    # Read only the compact 2-by-7 exponent handoff.  In particular, do not
-    # read the fixture's `archimedean`, `expected_materialized_units`, or
-    # `replay_factor_pool` fields.
-    compact = fixture.get("compact_units")
-    if not isinstance(compact, Mapping):
-        raise NoOracleCompletionFailure("compact unit handoff is missing")
-    provenance = _integers(compact.get("exponents"), 14, "compact unit provenance")
-    if compact.get("exponent_shape") != ["2", "7"]:
-        raise NoOracleCompletionFailure("compact unit handoff shape changed")
-    resident = json.loads(Path(resident_output).read_text(encoding="utf-8"))
-    embedding = _integers(
-        resident.get("preparation_embedding", ())[:27],
-        27,
-        "resident preparation embedding",
+    provenance = _integers(
+        live_unit_kernel_provenance, 14, "live unit kernel provenance"
     )
-    roots = [embedding[offset : offset + 3] for offset in (3, 12, 21)]
+    resident = json.loads(Path(resident_output).read_text(encoding="utf-8"))
     packed_regulator = _integers(
         resident.get("accept_regulator", ())[:3], 3, "resident regulator"
     )
-    kernel_relations = _integers(
-        pool_payload["relation_provenance"]["exponents"],
-        7 * 73,
-        "kernel relation provenance",
-    )
-    retained_provenance = [
-        sum(
-            provenance[7 * unit + kernel] * kernel_relations[73 * kernel + relation]
-            for kernel in range(7)
-        )
-        for unit in range(2)
-        for relation in range(73)
-    ]
     presentation = capture_presentation_authority(resident_output)
-    replay_presentation_authority(presentation)
+    presentation_summary = replay_presentation_authority(presentation)
     tensor = _integers(
         presentation["field"]["multiplication_table"],
         27,
         "field multiplication table",
     )
-    factors = [
-        _integers(row, 3, "resident kernel factor")
-        for row in factor_pool["coordinates"]
+    generators = [
+        _integers(relation["alpha"], 3, "principal generator")
+        for relation in presentation["relations"]
     ]
-    integral_units = [
-        _relation_product(factors, provenance[7 * unit : 7 * (unit + 1)], tensor)
-        for unit in range(2)
-    ]
-    if any(_norm_cubic(unit, tensor) not in (-1, 1) for unit in integral_units):
-        raise NoOracleCompletionFailure("relation-derived element is not a unit")
+    cleanup = _integers(
+        resident.get("hnf_transform", ())[: 73 * 73],
+        73 * 73,
+        "cleanup transform",
+    )
+    active = _integers(
+        presentation["hnf"]["transform"], 15 * 15, "active HNF transform"
+    )
+    component = reconstruct_live_cubic_units(
+        [value for generator in generators for value in generator],
+        cleanup,
+        active,
+        provenance,
+        tensor,
+    )
+    integral_units = component.exact_units
+    retained_provenance = component.retained_relation_provenance
     power_units = [
         [str(a - 13345 * c), str(b + 2 * c), str(c)] for a, b, c in integral_units
     ]
-    generators = [
-        [str(_integer(value, "principal generator")) for value in relation["alpha"]]
-        for relation in presentation["relations"]
-    ]
-    if len(generators) != 73 or any(len(generator) != 3 for generator in generators):
-        raise NoOracleCompletionFailure("principal generator shape changed")
+    polynomial = [str(value) for value in presentation["field"]["polynomial"]]
+    basis = ["1", "0", "0", "0", "1", "0", "-13345", "2", "1"]
     return {
         "schema": "sagejs.pari-class-group/relation-derived-unit-leaf-v1",
         "field": FIELD_ID,
-        "resident_sha256": pool_payload["source"]["resident_sha256"],
-        "resident_pool_sha256": resident_pool.sha256,
-        "compact_handoff_sha256": _sha256(
-            {
-                "exponent_shape": compact["exponent_shape"],
-                "exponents": compact["exponents"],
-            }
-        ),
+        "resident_sha256": presentation["source"]["resident_sha256"],
+        "presentation_sha256": presentation_summary["active_sha256"],
+        "live_unit_output_sha256": component.output_sha256,
+        "live_transform_sha256": component.transforms_sha256,
         "relation_provenance": [str(value) for value in provenance],
         "retained_relation_provenance": [str(value) for value in retained_provenance],
-        "principal_generators_integral_basis": generators,
+        "principal_generators_integral_basis": [
+            [str(value) for value in generator] for generator in generators
+        ],
         "exact_units_integral_basis": [
             [str(value) for value in unit] for unit in integral_units
         ],
         "exact_units_power_basis": power_units,
         "exact_units_sha256": _sha256(power_units),
-        "resident_roots": [[str(value) for value in root] for root in roots],
-        "resident_roots_sha256": _sha256(roots),
+        "polynomial_ascending": polynomial,
+        "polynomial_sha256": _sha256(polynomial),
+        "integral_basis_column_major": basis,
+        "integral_basis_sha256": _sha256(basis),
         "resident_packed_regulator": [str(value) for value in packed_regulator],
         "authority": {
             "answer_coordinates_read": False,
             "answer_derived_factor_pool_read": False,
             "answer_derived_archimedean_read": False,
+            "live_unit_transform": True,
             "principal_relation_materialization": True,
             "unit_saturation_proved": False,
             "public_complete": False,
@@ -223,16 +191,19 @@ def build_no_oracle_unit_regulator_completion(
             "schema",
             "field",
             "resident_sha256",
-            "resident_pool_sha256",
-            "compact_handoff_sha256",
+            "presentation_sha256",
+            "live_unit_output_sha256",
+            "live_transform_sha256",
             "relation_provenance",
             "retained_relation_provenance",
             "principal_generators_integral_basis",
             "exact_units_integral_basis",
             "exact_units_power_basis",
             "exact_units_sha256",
-            "resident_roots",
-            "resident_roots_sha256",
+            "polynomial_ascending",
+            "polynomial_sha256",
+            "integral_basis_column_major",
+            "integral_basis_sha256",
             "resident_packed_regulator",
             "authority",
         },
@@ -244,7 +215,8 @@ def build_no_oracle_unit_regulator_completion(
             "schema",
             "field",
             "resident_sha256",
-            "resident_roots_sha256",
+            "polynomial_sha256",
+            "integral_basis_sha256",
             "exact_units_sha256",
             "relation_transform_sha256",
             "principal_generators_sha256",
@@ -265,12 +237,19 @@ def build_no_oracle_unit_regulator_completion(
         raise NoOracleCompletionFailure("wrong rebuilt archimedean leaf")
     if relation["field"] != FIELD_ID or arch["field"] != FIELD_ID:
         raise NoOracleCompletionFailure("completion field changed")
-    for key in ("resident_sha256", "resident_pool_sha256", "compact_handoff_sha256"):
+    for key in (
+        "resident_sha256",
+        "presentation_sha256",
+        "live_unit_output_sha256",
+        "live_transform_sha256",
+    ):
         _digest(relation[key], key)
     if arch["resident_sha256"] != relation["resident_sha256"]:
         raise NoOracleCompletionFailure("rebuilt embedding left resident authority")
-    if arch["resident_roots_sha256"] != relation["resident_roots_sha256"]:
-        raise NoOracleCompletionFailure("rebuilt roots left resident authority")
+    if arch["polynomial_sha256"] != relation["polynomial_sha256"]:
+        raise NoOracleCompletionFailure("rebuilt embedding used another polynomial")
+    if arch["integral_basis_sha256"] != relation["integral_basis_sha256"]:
+        raise NoOracleCompletionFailure("rebuilt embedding used another integral basis")
     units = relation["exact_units_power_basis"]
     if relation["exact_units_sha256"] != _sha256(units):
         raise NoOracleCompletionFailure("relation-derived unit hash changed")
@@ -311,7 +290,7 @@ def build_no_oracle_unit_regulator_completion(
         "pari_invoked": False,
         "answer_derived_logs_read": False,
         "answer_derived_embedding_read": False,
-        "source": "ordinary-python-neutral-cubic-rebuild",
+        "source": "ordinary-python-exact-polynomial-cubic-rebuild",
     }:
         raise NoOracleCompletionFailure("archimedean producer is not oracle-free")
     if _integer(arch["embedding_precision_bits"], "embedding precision") != 2176:
@@ -327,6 +306,7 @@ def build_no_oracle_unit_regulator_completion(
         "answer_coordinates_read": False,
         "answer_derived_factor_pool_read": False,
         "answer_derived_archimedean_read": False,
+        "live_unit_transform": True,
         "principal_relation_materialization": True,
         "unit_saturation_proved": False,
         "public_complete": False,
@@ -373,8 +353,9 @@ def build_no_oracle_unit_regulator_completion(
         },
         "authorities": {
             "resident_sha256": relation["resident_sha256"],
-            "resident_pool_sha256": relation["resident_pool_sha256"],
-            "compact_handoff_sha256": relation["compact_handoff_sha256"],
+            "presentation_sha256": relation["presentation_sha256"],
+            "live_unit_output_sha256": relation["live_unit_output_sha256"],
+            "live_transform_sha256": relation["live_transform_sha256"],
             "relation_leaf_sha256": _sha256(relation),
             "archimedean_leaf_sha256": _sha256(arch),
             "regulator_payload_sha256": _sha256(regulator_payload),

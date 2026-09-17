@@ -18,7 +18,10 @@ const resident = path.resolve(
   process.env.SAGEJS_RESIDENT_CUBIC ||
     "/tmp/sagejs-resident-generated-class-3qtnS5/output.json",
 );
-const compactFixture = path.join(__dirname, "compact_unit_result_fixture.json");
+const compactOracleFixture = path.join(
+  __dirname,
+  "compact_unit_result_fixture.json",
+);
 const sha = (value) =>
   crypto.createHash("sha256").update(value).digest("hex");
 
@@ -52,10 +55,37 @@ sys.set_int_max_str_digits(100000)
 sys.path[:0] = [sys.argv[1], sys.argv[1] + "/src/lib"]
 from importlib import import_module
 m = import_module("bench.pari-class-group-port.no_oracle_unit_regulator_completion")
-print(json.dumps(m.derive_relation_unit_leaf(sys.argv[2], sys.argv[3]), sort_keys=True))
+b = import_module("bench.pari-class-group-port.unit_bridge_cubic")
+q = json.load(open(sys.argv[2], encoding="utf-8"))
+I = lambda n: [0] * n
+F = lambda n: [0.0] * n
+c = 7
+sq = 49
+prepare = [
+    [int(x) for x in q["hnf_result_c"][:147]],
+    [int(x) for x in q["accept_relations"][:14]],
+    c,
+    [int(x) for x in q["accept_regulator"][:3]],
+    I(14), I(4), I(14), I(42), I(18), I(42), I(18), I(6), I(5), F(5),
+    I(5), I(14), I(sq), I(sq), F(sq), I(sq), F(sq), I(sq), F(c), I(c),
+    F(14), F(sq), I(c), I(c), I(c), F(c), F(c), F(c), I(c), I(6), I(3),
+    I(6), I(4), I(4), F(4), I(4), F(4), I(4), F(2), I(2), F(6), F(4),
+    I(2), I(3), I(3), F(3), F(3), F(3), I(3), I(2),
+]
+assert b.pari_cubic_unit_bridge_prepare(*prepare) == 0
+factor = [
+    prepare[10], I(4), I(18), I(6), I(4), I(2), F(4), I(4), F(4), I(4),
+    F(2), I(2), F(6), F(4), I(2), I(3), I(2), F(3), F(3), I(4),
+]
+assert b.pari_cubic_getfu_factor_rank_two(*factor) == 0
+unit_kernel = I(14)
+assert b.pari_cubic_unit_compose_provenance(
+    prepare[6], c, factor[1], unit_kernel
+) == 0
+print(json.dumps(m.derive_relation_unit_leaf(sys.argv[2], unit_kernel), sort_keys=True))
 `;
   return JSON.parse(
-    run("python3", ["-c", program, root, resident, compactFixture]),
+    run("python3", ["-c", program, root, resident]),
   );
 }
 
@@ -69,10 +99,10 @@ async function rebuildArchimedean(relation) {
     "tools/native-kernel/compiler.cjs",
   ));
   const embeddingBuild = await compileKernel({
-    sourcePath: path.join(__dirname, "cubic_embedding_precision_rebuild.py"),
+    sourcePath: path.join(__dirname, "cubic_embedding_rebuild.py"),
   });
   const embeddingFunction = require(embeddingBuild.modulePath)
-    .pari_cubic_embedding_precision_rebuild;
+    .pari_cubic_embedding_rebuild;
   const logBuild = await compileKernel({
     sourcePath: path.join(__dirname, "cubic_precision_rebuild.py"),
   });
@@ -85,32 +115,34 @@ async function rebuildArchimedean(relation) {
     embeddingFunction.createIntegerBuffer(length, 16384, data.map(BigInt));
   const ES = (length) =>
     embeddingFunction.createInt64Buffer(Array(length).fill(0n));
-  const roots = [0, 1, 2].map((part) =>
-    relation.resident_roots.map((entry) => BigInt(entry[part])),
-  );
-  const matrix = [E(9), E(9), E(9)];
+  const columnMajor = [E(9), E(9), E(9)];
   const embeddingState = ES(4);
   assert.equal(
     embeddingFunction.gmp(
-      E(3, roots[0]),
-      E(3, roots[1]),
-      E(3, roots[2]),
+      E(4, relation.polynomial_ascending),
+      E(9, relation.integral_basis_column_major),
       2176n,
-      E(6),
-      E(6),
-      E(6),
-      ...matrix,
+      E(3), E(3), E(3),
+      ...columnMajor,
       embeddingState,
     ),
     0n,
   );
-  assert.deepEqual(values(embeddingState), [0n, 3n, 3n, 2176n]);
+  assert.deepEqual(values(embeddingState), [3n, 2176n, 2496n, 1n]);
 
   const I = (length, data = Array(length).fill(0n)) =>
     rebuildLogs.createIntegerBuffer(length, 16384, data.map(BigInt));
   const S = (length) =>
     rebuildLogs.createInt64Buffer(Array(length).fill(0n));
-  const matrixBuffers = matrix.map((entry) => I(9, values(entry)));
+  const rowMajor = columnMajor.map((entry) => {
+    const source = values(entry);
+    return Array.from({ length: 9 }, (_, index) => {
+      const row = Math.floor(index / 3);
+      const column = index % 3;
+      return source[3 * column + row];
+    });
+  });
+  const matrixBuffers = rowMajor.map((entry) => I(9, entry));
   const generators = relation.principal_generators_integral_basis
     .flat()
     .map(BigInt);
@@ -156,12 +188,13 @@ async function rebuildArchimedean(relation) {
     packedLogs.push(...records.slice(7 * index + 1, 7 * index + 4).map(String));
   }
   const phases = values(phaseOutput).map(String);
-  const embedding = matrix.flatMap((entry) => values(entry).map(String));
+  const embedding = rowMajor.flatMap((entry) => entry.map(String));
   return {
     schema: "sagejs.pari-class-group/rebuilt-archimedean-leaf-v1",
     field: relation.field,
     resident_sha256: relation.resident_sha256,
-    resident_roots_sha256: relation.resident_roots_sha256,
+    polynomial_sha256: relation.polynomial_sha256,
+    integral_basis_sha256: relation.integral_basis_sha256,
     exact_units_sha256: relation.exact_units_sha256,
     relation_transform_sha256: sha(
       JSON.stringify(relation.retained_relation_provenance),
@@ -180,7 +213,7 @@ async function rebuildArchimedean(relation) {
       pari_invoked: false,
       answer_derived_logs_read: false,
       answer_derived_embedding_read: false,
-      source: "ordinary-python-neutral-cubic-rebuild",
+      source: "ordinary-python-exact-polynomial-cubic-rebuild",
     },
   };
 }
@@ -201,7 +234,7 @@ async function rigorousRegulator(relation, archimedean) {
         "02651d99c391007d384b3fadbc20abc6916b77036f9e496c99e9ce8688ca4b53",
       buch2_sha256:
         "904ced8034732c7fcfe1da393e23950aac0862b085150fdc24ce1e31beb7d1ac",
-      unit_bridge_fixture_sha256: relation.compact_handoff_sha256,
+      unit_bridge_fixture_sha256: relation.live_transform_sha256,
     },
     field: {
       defining_polynomial_coefficients: ["20034", "-20018", "0", "1"],
@@ -216,7 +249,7 @@ async function rigorousRegulator(relation, archimedean) {
       relation_provenance: selected,
       columns: "7",
       accepted_arch_sha256: archimedean.packed_logs_sha256,
-      relation_lattice_sha256: relation.resident_pool_sha256,
+      relation_lattice_sha256: relation.presentation_sha256,
     },
     exact_units_power_coordinates: relation.exact_units_power_basis,
     resident: {
@@ -322,6 +355,13 @@ print(json.dumps({
 
 (async () => {
   const relation = relationLeaf();
+  // This fixture is a differential oracle only. It is never passed to the
+  // relation leaf, the archimedean rebuild, or the final composer.
+  const externalOracle = JSON.parse(fs.readFileSync(compactOracleFixture, "utf8"));
+  assert.deepEqual(
+    relation.relation_provenance,
+    externalOracle.compact_units.exponents,
+  );
   const archimedean = await rebuildArchimedean(relation);
   const regulator = await rigorousRegulator(relation, archimedean);
   const completed = composeAndMutate(relation, archimedean, regulator);
@@ -345,6 +385,9 @@ print(json.dumps({
       pariInvoked: false,
       answerDerivedUnitCoordinatesRead: false,
       answerDerivedLogsRead: false,
+      liveUnitTransform: relation.authority.live_unit_transform,
+      exactPolynomialEmbedding: true,
+      compactFixtureIsExternalOracleOnly: true,
       correspondenceComplete: true,
       publicComplete: false,
       unitSaturationCertified: false,
