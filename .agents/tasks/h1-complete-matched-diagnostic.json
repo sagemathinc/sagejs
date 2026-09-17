@@ -35,10 +35,39 @@
     "pnpm test:portable",
     "pnpm test:baselib:strict"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_h1_complete_matched_diagnostic.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.094,
+      "started_at": "2026-09-17T05:55:31.375Z",
+      "commit": "39f7b8ad84ed453f5afd562f194e857a0fb7243b",
+      "workspace_fingerprint": "529d0d26c15286fe320914b2b5c25215260a02e8c9bf413c7566f8b38cb9645a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.885,
+      "started_at": "2026-09-17T05:55:48.540Z",
+      "commit": "39f7b8ad84ed453f5afd562f194e857a0fb7243b",
+      "workspace_fingerprint": "529d0d26c15286fe320914b2b5c25215260a02e8c9bf413c7566f8b38cb9645a",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Added a diagnostic-only coordinator for at least seven alternating Sage.js/PARI pairs at the identical sanitized prepared-number-field boundary. It authenticates stable matched result/replay/RNG/work digests, conserves each inclusive root across mutually exclusive named stages plus residual, permits Sage stage counters only behind explicit hooks, enforces whole-root-only PARI, and derives normalized attribution without allowing a final timing claim.",
+    "risks": [
+      "The forthcoming complete Sage.js root adapter is not connected in this lane; deterministic arms test the contract, not runtime performance.",
+      "The current draft complete root is monolithic. Its internal work must remain residual unless the integrated adapter exposes genuinely separate operations or audited source-boundary hooks.",
+      "No quiet-host measurement was run, and every receipt produced by this contract remains diagnosticOnly with finalTimingRun false."
+    ],
+    "next_steps": [
+      "Connect pari_unified_complete_h1_root and pari_h1_outcome_c_adapter after the complete root publishes the standardized correspondence-complete result.",
+      "Map only genuinely separate Sage operations to named hooks; leave the monolithic root and all transition overhead residual.",
+      "Run at least seven real alternating pairs on a reviewed quiet host, inspect exact digests and raw arms, and retain finalTimingRun false until separate qualification review."
+    ]
   }
 }
