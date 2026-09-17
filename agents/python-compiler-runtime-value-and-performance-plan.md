@@ -447,11 +447,12 @@ this stays out of the merge-ready queue until that PR reaches `origin/main`.
 primitive `&`, `|`, and `^` into a dedicated low-level boundary while preserving
 boolean results, mixed boolean/integer types, unbounded negative/wide integer
 semantics, union handling, and custom/reflected/in-place dispatch. Per million
-checked operations, `&` improves 89.41% to 1.48x CPython, `|` improves 85.14%
-to 1.64x, and `^` improves 89.97% to 1.00x. A rejected combined-boundary
+checked operations, `&` improves 86.27% to 1.37x CPython, `|` improves 86.80%
+to 0.95x, and `^` improves 87.09% to 0.95x. A rejected combined-boundary
 version slowed exact power by 9.18%; the split design keeps all overlap rows
-within 0.27% to 1.90%, shrinks the identical-source artifact by 2,061 bytes,
-and remains under the unchanged core ceiling at 902,960/903,000 bytes. The full
+within 3.20% (six of eight within 1.37%), shrinks the identical-source artifact
+by 2,883 bytes, and remains under the unchanged core ceiling at
+902,686/903,000 bytes. The full
 build, 225 portable files, 404 strict modules, 508-case differential baseline,
 pyparsing and traitlets workflows, documentation, and merge gates pass. Evidence
 is in `agents/python-exact-integer-bitwise.md`; it remains queued behind the
