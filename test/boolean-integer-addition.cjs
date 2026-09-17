@@ -42,3 +42,50 @@ test("adding a boolean keeps the sum an exact integer", async (t) => {
     ].join("\n"),
   );
 });
+
+test("exact integer in-place addition preserves object and primitive dispatch", async (t) => {
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+  const result = await session.evaluate(
+    [
+      "value = 9007199254740991",
+      "value += True",
+      "print(repr(value), type(value) is int)",
+      "value += 1",
+      "print(repr(value), type(value) is int)",
+      "text = 'ab'",
+      "text += 'cd'",
+      "number = 1.5",
+      "number += 2.5",
+      "print(text, repr(number), type(number) is float)",
+      "class UsesIadd:",
+      "    def __init__(self):",
+      "        self.calls = []",
+      "    def __iadd__(self, other):",
+      "        self.calls.append(('iadd', other))",
+      "        return self",
+      "    def __add__(self, other):",
+      "        raise AssertionError('__add__ must not run')",
+      "item = UsesIadd()",
+      "same = item",
+      "item += 7",
+      "print(item is same, item.calls)",
+      "class UsesAdd:",
+      "    def __add__(self, other):",
+      "        return ('add', other)",
+      "fallback = UsesAdd()",
+      "fallback += 8",
+      "print(fallback)",
+    ].join("\n"),
+  );
+  assert.equal(
+    result.stdout.trim(),
+    [
+      "9007199254740992 True",
+      "9007199254740993 True",
+      "abcd 4.0 True",
+      "True [('iadd', 7)]",
+      "('add', 8)",
+    ].join("\n"),
+  );
+});

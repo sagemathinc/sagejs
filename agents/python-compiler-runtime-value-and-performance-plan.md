@@ -403,6 +403,17 @@ positional arguments by an empty class; repair that semantic defect without
 mixing it into the empty-call speed path. Exact evidence is in
 `agents/python-default-construction.md`.
 
+**2026-09-17 exact-in-place-addition checkpoint:** a narrow follow-up reuses
+the shared primitive classifier before generic `+=` dispatch while retaining
+object `__iadd__` precedence, `__add__` fallback, and the existing float/string
+paths. Against the exact PR #309 artifact, positional calls improve another
+9.5% to 1.90x CPython; keyword functions improve 4.2% and keyword methods 2.9%.
+The remaining 13–18x keyword gaps stay open. All 225 portable files, strict
+checks, traitlets, focused dispatch checks, a full build, and the unchanged
+902,918/903,000 core budget pass. Evidence is in
+`agents/python-exact-integer-iadd.md`. PR #309 is now merged, and the qualified
+commits are replayed on the resulting `origin/main` for integration.
+
 Continue next with integration-aware qualification, the receiver-lookup campaign,
 and true handled-exception ownership. Generator/coroutine suspension makes a
 single global active-exception pointer unsafe: preserve owned handlers while
