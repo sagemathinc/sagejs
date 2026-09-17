@@ -12,6 +12,7 @@ every arithmetic gate succeeds.
 
 from collections.abc import Mapping, Sequence
 import re
+import sys
 from typing import Any
 
 from sagejs.native import Float64Buffer, IntegerBuffer, Int64Buffer, native
@@ -38,6 +39,15 @@ OUTPUT_SCHEMA = "sagejs.pari-class-group/field3-c5-unit-lattice-cleanarch-v1"
 FULL_SCHEMA = "sagejs.pari-class-group/field3-full-terminal-ancestry-v1"
 ACCEPTED_C4_SCHEMA = "sagejs.pari-class-group/field3-accepted-c4-v1"
 C3_SCHEMA = "sagejs.pari-class-group/field3-high-precision-A-v1"
+
+
+# Authentic packed real components at 153,088-bit precision have roughly
+# 46,000 decimal digits.  CPython's generic denial-of-service guard defaults
+# to 4,300 digits, but these strings have already crossed an immutable,
+# digest-authenticated owner boundary and are subject to exact shape and
+# canonical-serialization checks below.
+if hasattr(sys, "set_int_max_str_digits"):
+    sys.set_int_max_str_digits(0)
 
 
 @native

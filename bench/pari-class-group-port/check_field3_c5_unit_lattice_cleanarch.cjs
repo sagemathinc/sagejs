@@ -82,6 +82,18 @@ try {
   assert.deepEqual(output.getfuFactor, ["1", "0", "0", "1"]);
   assert.equal(output.rawUnitTransform.length, 602);
 
+  // The authentic 153,088-bit owner contains canonical packed integers with
+  // about 46,000 decimal digits.  Verify that the authenticated Python
+  // boundary can parse them despite CPython's generic 4,300-digit guard.
+  const largeIntegerProbe = String.raw`
+import importlib,sys
+sys.path.append('src/lib');sys.path.append('src/baselib')
+m=importlib.import_module('bench.pari-class-group-port.field3_c5_unit_lattice_cleanarch')
+value='1'+'0'*46103
+assert m._integers([value],1,'large authenticated integer')[0] == int(value)
+`;
+  run("python3", ["-c", largeIntegerProbe]);
+
   // Every mutation is written as a new immutable owner.  Failure must not
   // create a content-addressed C5 publication.
   for (const [label, mutate] of [
