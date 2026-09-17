@@ -10,6 +10,7 @@ owners describe one correspondence.
 from __future__ import annotations
 
 from collections.abc import Mapping
+import re
 from typing import Any
 
 from sagejs.native import IntegerBuffer, Int64Buffer, native
@@ -18,8 +19,6 @@ from .field3_full_terminal_ancestry import (
     CLASS_COLUMNS,
     RELATION_ROWS,
     RAW_COLUMNS,
-    TERMINAL_COLUMNS,
-    UNIT_COLUMNS,
 )
 from .field3_packed_class_cleanarch import pari_field3_packed_class_cleanarch
 from .pi_constant import pari_pi_workspace_capacity
@@ -34,6 +33,7 @@ LIVE_SCHEMA = "sagejs.pari-class-group/field3-live-final-owner-v1"
 FIELD = "x^4-2000022*x-2000042"
 LOG_CELLS = 7
 PLACES = 3
+_SHA256 = re.compile(r"[0-9a-f]{64}\Z")
 
 
 class Field3C7Failure(ValueError):
@@ -62,6 +62,22 @@ def _mapping(value: Any, label: str) -> Mapping[str, Any]:
     if not isinstance(value, Mapping):
         raise Field3C7Failure(f"{label} is not an object")
     return value
+
+
+def _digest(value: Any, label: str) -> str:
+    if not isinstance(value, str) or _SHA256.fullmatch(value) is None:
+        raise Field3C7Failure(f"{label} is not a SHA-256 digest")
+    return value
+
+
+def _digest_words(value: str) -> list[int]:
+    result: list[int] = []
+    for index in range(4):
+        word = int(value[16 * index : 16 * index + 16], 16)
+        if word >= 1 << 63:
+            word -= 1 << 64
+        result.append(word)
+    return result
 
 
 def _field(owner: Mapping[str, Any], schema: str, label: str) -> None:
@@ -176,7 +192,10 @@ def _class_assembly(
 ) -> dict[str, Any]:
     n = 2
     active = 2
-    zero = lambda length: [0] * length
+
+    def zero(length: int) -> list[int]:
+        return [0] * length
+
     matrices = [[0] * 4 for _ in range(10)]
     generator_ideals = zero(32)
     generated_ideals = zero(32)
@@ -301,14 +320,162 @@ def assemble_authenticated_owners(
     if regulator_owner.get("accepted") is not True:
         raise Field3C7Failure("analytic regulator owner is not accepted")
     regulator = _integers(regulator_owner.get("regulator"), 3, "regulator")
+    regulator_precision = _integer(
+        regulator_owner.get("precision"), "regulator precision"
+    )
+    regulator_generation = _integer(
+        regulator_owner.get("generation"), "regulator generation"
+    )
+    accepted_c4_sha256 = _digest(
+        regulator_owner.get("acceptedC4OwnerSha256"), "accepted C4 owner"
+    )
+    regulator_full15_sha256 = _digest(
+        regulator_owner.get("fullTerminalOwnerSha256"),
+        "regulator full terminal owner",
+    )
+    regulator_c3_sha256 = _digest(
+        regulator_owner.get("c3OwnerSha256"), "regulator C3 owner"
+    )
+    _digest(regulator_owner.get("fieldOwnerSha256"), "regulator field owner")
+    _digest(regulator_owner.get("catalogOwnerSha256"), "regulator catalog owner")
+    regulator_c3_hash = _integers(regulator_owner.get("c3Hash"), 4, "regulator C3 hash")
+    regulator_c3_latches = _integers(
+        regulator_owner.get("c3Latches"), 2, "regulator C3 latches"
+    )
+    if regulator_c3_hash != _digest_words(regulator_c3_sha256):
+        raise Field3C7Failure("regulator C3 digest latch changed")
+    _integers(regulator_owner.get("analyticOwnerState"), 6, "analytic owner state")
+    _integers(regulator_owner.get("multipleState"), 4, "regulator multiple state")
+    regulator_acceptance = _integers(
+        regulator_owner.get("acceptanceState"), 4, "regulator acceptance state"
+    )
+    regulator_compute = _integers(
+        regulator_owner.get("computeRState"), 6, "regulator compute_R state"
+    )
+    if regulator_acceptance != [0, regulator_generation, regulator_precision, 1]:
+        raise Field3C7Failure("regulator acceptance state is not terminal")
+    if regulator_compute != [0, 0, 0, 0, 1, regulator_precision]:
+        raise Field3C7Failure("regulator compute_R state is not terminal")
+    _integers(regulator_owner.get("relations"), 26, "regulator relations")
     analytic_assumptions = _mapping(
         regulator_owner.get("assumptions"), "analytic assumptions"
     )
     if unit_owner.get("accepted") is not True:
         raise Field3C7Failure("unit owner is not accepted")
+    if unit_owner.get("status") != "success" or unit_owner.get("reason") is not None:
+        raise Field3C7Failure("unit owner is not a successful C6 publication")
     if _integers(unit_owner.get("packedA"), 273, "unit packed A") != packed_a:
         raise Field3C7Failure("unit/full15 A owners diverged")
     unit_assumptions = _mapping(unit_owner.get("assumptions"), "unit assumptions")
+    if (
+        unit_assumptions.get("exactFactorbackVerified") is not True
+        or unit_assumptions.get("signInverseMaterializationVerified") is not True
+        or unit_assumptions.get("publicCompletion") is not False
+    ):
+        raise Field3C7Failure("unit assumptions overstate or omit verification")
+    unit_precision = _integer(unit_owner.get("precision"), "unit precision")
+    unit_generation = _integer(unit_owner.get("generation"), "unit generation")
+    if unit_precision < 64 or unit_precision % 64 != 0 or unit_generation < 1:
+        raise Field3C7Failure("unit precision generation changed")
+    if (
+        regulator_precision != unit_precision
+        or regulator_generation != unit_generation
+        or _integers(unit_owner.get("c3Hash"), 4, "unit C3 hash") != regulator_c3_hash
+        or _integers(unit_owner.get("c3Latches"), 2, "unit C3 latches")
+        != regulator_c3_latches
+        or _integers(unit_owner.get("acceptanceState"), 4, "unit acceptance state")
+        != regulator_acceptance
+    ):
+        raise Field3C7Failure("regulator and unit acceptance provenance diverged")
+    factored_shape = _integers(
+        unit_owner.get("factoredTransformShape"), 2, "factored transform shape"
+    )
+    if factored_shape != [301, 2]:
+        raise Field3C7Failure("factored transform shape changed")
+    _integers(unit_owner.get("factoredTransform"), 602, "factored transform")
+    adjusted_shape = _integers(
+        unit_owner.get("adjustedFactorShape"), 2, "adjusted factor shape"
+    )
+    if adjusted_shape != [2, 2]:
+        raise Field3C7Failure("adjusted factor shape changed")
+    adjusted_factor = _integers(unit_owner.get("adjustedFactor"), 4, "adjusted factor")
+    if adjusted_factor[0] * adjusted_factor[3] - adjusted_factor[1] * adjusted_factor[
+        2
+    ] not in (-1, 1):
+        raise Field3C7Failure("adjusted factor is not unimodular")
+    norms = _integers(unit_owner.get("norms"), 2, "unit norms")
+    if any(abs(value) != 1 for value in norms):
+        raise Field3C7Failure("materialized unit norm changed")
+    units = unit_owner.get("units")
+    if not isinstance(units, list) or len(units) != 2:
+        raise Field3C7Failure("materialized unit count changed")
+    for column, unit_value in enumerate(units):
+        unit = _mapping(unit_value, f"unit {column}")
+        if (
+            _integer(unit.get("column"), f"unit {column} index") != column
+            or _integers(unit.get("powerBasis"), 4, f"unit {column} power basis")
+            == [0, 0, 0, 0]
+            or _integer(unit.get("norm"), f"unit {column} norm") != norms[column]
+            or not isinstance(unit.get("inverseChosen"), bool)
+            or _integer(unit.get("torsionSign"), f"unit {column} torsion sign")
+            not in (-1, 1)
+            or unit.get("exactFactorback") is not True
+        ):
+            raise Field3C7Failure("materialized unit correspondence changed")
+    unit_ancestry = _mapping(unit_owner.get("ancestry"), "unit ancestry")
+    for key in (
+        "full15OwnerSha256",
+        "c5OwnerSha256",
+        "c6OwnerSha256",
+        "c3OwnerSha256",
+        "acceptedC4OwnerSha256",
+        "embeddingOwnerSha256",
+        "candidateSha256",
+        "factorbackSourceOwnerSha256",
+        "factorbackReceiptSha256",
+    ):
+        _digest(unit_ancestry.get(key), f"unit ancestry {key}")
+    full15_sha256 = full15_owner.get("_authenticatedSha256")
+    if full15_sha256 is None:
+        raise Field3C7Failure("full15 owner lacks authenticated digest")
+    full15_sha256 = _digest(full15_sha256, "authenticated full15 digest")
+    if full15_sha256 != unit_ancestry.get("full15OwnerSha256"):
+        raise Field3C7Failure("unit owner is detached from authenticated full15")
+    if regulator_full15_sha256 != full15_sha256:
+        raise Field3C7Failure("regulator owner is detached from authenticated full15")
+    if (
+        unit_ancestry.get("acceptedC4OwnerSha256") != accepted_c4_sha256
+        or unit_ancestry.get("c3OwnerSha256") != regulator_c3_sha256
+    ):
+        raise Field3C7Failure("regulator and unit owner ancestry diverged")
+    unit_proof = _mapping(unit_owner.get("proof"), "unit proof")
+    for key in (
+        "relationKernel",
+        "exactFactorback",
+        "principalIdealOne",
+        "torsionPlusMinusOne",
+        "normAndInverse",
+        "logLattice",
+    ):
+        if unit_proof.get(key) is not True:
+            raise Field3C7Failure(f"unit proof {key} is absent")
+    inverse_mask = _integer(unit_proof.get("inverseMask"), "unit inverse mask")
+    if inverse_mask < 0 or inverse_mask > 3:
+        raise Field3C7Failure("unit inverse mask changed")
+    proof_columns = unit_proof.get("columns")
+    if not isinstance(proof_columns, list) or len(proof_columns) != 2:
+        raise Field3C7Failure("unit proof columns changed")
+    for column, proof_value in enumerate(proof_columns):
+        proof_column = _mapping(proof_value, f"unit proof column {column}")
+        if (
+            _integer(proof_column.get("column"), "unit proof column index") != column
+            or proof_column.get("inverseChosen") != bool(inverse_mask & (1 << column))
+            or _integer(proof_column.get("materializedNorm"), "proof materialized norm")
+            != norms[column]
+            or _integer(proof_column.get("torsionSign"), "proof torsion sign")
+            != _integer(units[column].get("torsionSign"), "unit torsion sign")
+        ):
+            raise Field3C7Failure("unit proof/materialization correspondence changed")
 
     w = _integers(live_owner.get("W"), 4, "live W")
     live_c = _integers(live_owner.get("packedC"), 42, "live C")
@@ -337,6 +504,18 @@ def assemble_authenticated_owners(
         ]
         if divisor != expected_divisor:
             raise Field3C7Failure("relation principal divisor changed")
+        exact_factor = _mapping(
+            exact.get("exactFactor"), f"relation principal {index} exact factor"
+        )
+        power_basis = _integers(
+            exact_factor.get("powerBasis"),
+            4,
+            f"relation principal {index} power basis",
+        )
+        if power_basis == [0, 0, 0, 0] or exact_factor.get("source") != (
+            "authenticated-principal-generator"
+        ):
+            raise Field3C7Failure("relation exact principal factor changed")
     vbase = live_owner.get("Vbase")
     if not isinstance(vbase, list) or len(vbase) != 2:
         raise Field3C7Failure("Vbase descriptor count changed")
@@ -349,6 +528,23 @@ def assemble_authenticated_owners(
     torsion = _mapping(live_owner.get("torsion"), "torsion owner")
     live_assumptions = _mapping(live_owner.get("assumptions"), "live assumptions")
     precision = _integer(live_owner.get("precision"), "live precision")
+    if precision != unit_precision:
+        raise Field3C7Failure("live and unit precision differ")
+    if (
+        live_assumptions.get("exactRelationAuthority") is not True
+        or live_assumptions.get("exactClassReplay") is not True
+        or live_assumptions.get("publicCompletion") is not False
+    ):
+        raise Field3C7Failure("live assumptions overstate or omit authority")
+    live_ancestry = _mapping(live_owner.get("ancestry"), "live ancestry")
+    for key in (
+        "full15OwnerSha256",
+        "relationAuthoritySha256",
+        "classAuthoritySha256",
+    ):
+        _digest(live_ancestry.get(key), f"live ancestry {key}")
+    if full15_sha256 != live_ancestry.get("full15OwnerSha256"):
+        raise Field3C7Failure("live owner is detached from authenticated full15")
 
     witness_exponents = [0] * (301 * 2)
     witness_images = [0] * (288 * 2)
@@ -420,7 +616,11 @@ def assemble_authenticated_owners(
             "classNumber": analytic_class_number,
             "denominator": regulator_owner.get("denominator"),
         },
-        "unitOwner": dict(unit_owner),
+        "unitOwner": {
+            key: value
+            for key, value in unit_owner.items()
+            if key != "_authenticatedSha256"
+        },
         "torsion": dict(torsion),
         "assumptions": {
             "analytic": dict(analytic_assumptions),

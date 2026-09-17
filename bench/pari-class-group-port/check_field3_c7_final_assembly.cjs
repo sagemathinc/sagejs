@@ -62,24 +62,75 @@ function owners() {
     packedCe: Ce,
     packedTerminal: [...A, ...Ce],
   };
+  const full15Sha256 = hash(Buffer.from(`${JSON.stringify(full15)}\n`));
+  const c3OwnerSha256 = "8".repeat(64);
+  const c3Hash = Array.from({ length: 4 }, (_, index) => {
+    const word = BigInt(`0x${c3OwnerSha256.slice(16 * index, 16 * index + 16)}`);
+    return String(word >= (1n << 63n) ? word - (1n << 64n) : word);
+  });
+  const c3Latches = ["23", "29"];
+  const acceptedC4OwnerSha256 = "1".repeat(64);
+  const acceptanceState = ["0", "1", "192", "1"];
   const regulator = {
     schema: "sagejs.pari-class-group/field3-analytic-accepted-owner-v1",
     field,
     accepted: true,
+    precision: "192", generation: "1",
     regulator: ["7", "192", "-3"],
     classNumber: "4",
     denominator: "1",
+    relations: Array(26).fill("0"),
+    acceptedC4OwnerSha256,
+    fullTerminalOwnerSha256: full15Sha256,
+    c3OwnerSha256, fieldOwnerSha256: "d".repeat(64),
+    catalogOwnerSha256: "e".repeat(64), c3Hash, c3Latches,
+    analyticOwnerState: ["6144", "1", "2", "3", "4", "5"],
+    multipleState: ["0", "0", "192", "1"],
+    acceptanceState,
+    computeRState: ["0", "0", "0", "0", "1", "192"],
     assumptions: { pariAnalyticBounds: true, grh: false },
   };
   const unit = {
     schema: "sagejs.pari-class-group/field3-c5-c6-unit-owner-v1",
     field,
     accepted: true,
+    status: "success",
+    reason: null,
+    precision: 192,
+    generation: 1,
     packedA: A,
-    units: [{ sourceColumn: 0 }, { sourceColumn: 1 }],
-    factoredTransform: [["1", "0"], ["0", "1"]],
+    c3Hash, c3Latches, acceptanceState,
+    units: [
+      { column: 0, powerBasis: ["1", "1", "0", "0"], norm: "1",
+        inverseChosen: false, torsionSign: 1, exactFactorback: true },
+      { column: 1, powerBasis: ["1", "0", "1", "0"], norm: "1",
+        inverseChosen: true, torsionSign: -1, exactFactorback: true },
+    ],
+    factoredTransformShape: [301, 2],
+    factoredTransform: Array(602).fill("0"),
+    adjustedFactorShape: [2, 2],
+    adjustedFactor: ["1", "0", "0", "-1"],
     norms: ["1", "1"],
-    assumptions: { finalUnitOwnerPendingPublicShape: true },
+    ancestry: {
+      full15OwnerSha256: full15Sha256, c5OwnerSha256: "2".repeat(64),
+      c6OwnerSha256: "3".repeat(64), embeddingOwnerSha256: "4".repeat(64),
+      c3OwnerSha256, acceptedC4OwnerSha256,
+      candidateSha256: "5".repeat(64), factorbackSourceOwnerSha256: "6".repeat(64),
+      factorbackReceiptSha256: "7".repeat(64),
+    },
+    proof: {
+      relationKernel: true, exactFactorback: true, principalIdealOne: true,
+      torsionPlusMinusOne: true, normAndInverse: true, logLattice: true,
+      inverseMask: 2,
+      columns: [
+        { column: 0, inverseChosen: false, factorbackNorm: 1,
+          materializedNorm: 1, torsionSign: 1 },
+        { column: 1, inverseChosen: true, factorbackNorm: 1,
+          materializedNorm: 1, torsionSign: -1 },
+      ],
+    },
+    assumptions: { exactFactorbackVerified: true,
+      signInverseMaterializationVerified: true, publicCompletion: false },
   };
   const identity = Array.from({ length: 16 }, (_, index) =>
     index % 5 === 0 ? "1" : "0",
@@ -89,7 +140,8 @@ function owners() {
     principals.push({
       relation,
       divisor: relations.slice(relation * 288, (relation + 1) * 288),
-      exactFactor: { numerator: String(relation + 1), denominator: "1" },
+      exactFactor: { powerBasis: [String(relation + 1), "0", "0", "0"],
+        source: "authenticated-principal-generator" },
     });
   }
   const live = {
@@ -106,7 +158,10 @@ function owners() {
     relationRecords: relations,
     relationPrincipals: principals,
     torsion: { order: "2", generator: ["-1", "0", "0", "0"] },
-    assumptions: { syntheticQualification: true, source: "generated-low-cost" },
+    ancestry: { full15OwnerSha256: full15Sha256,
+      relationAuthoritySha256: "9".repeat(64), classAuthoritySha256: "a".repeat(64) },
+    assumptions: { exactRelationAuthority: true, exactClassReplay: true,
+      publicCompletion: false, syntheticQualification: true },
   };
   return { full15, regulator, unit, live };
 }
@@ -180,8 +235,23 @@ function coordinatorArgs(files, output) {
       ["H", "full15", (value) => { value.terminalH[0] = "3"; }],
       ["Ce", "full15", (value) => { value.packedCe[1] = String(BigInt(value.packedCe[1]) + 1n); }],
       ["regulator", "regulator", (value) => { value.accepted = false; }],
+      ["regulator C4 ancestry", "regulator", (value) => { value.acceptedC4OwnerSha256 = "0".repeat(64); }],
+      ["regulator full15 ancestry", "regulator", (value) => { value.fullTerminalOwnerSha256 = "0".repeat(64); }],
+      ["regulator C3 ancestry", "regulator", (value) => { value.c3OwnerSha256 = "0".repeat(64); }],
+      ["regulator C3 hash", "regulator", (value) => { value.c3Hash[0] = "0"; }],
+      ["regulator C3 latch", "regulator", (value) => { value.c3Latches[0] = "0"; }],
+      ["regulator acceptance", "regulator", (value) => { value.acceptanceState[3] = "0"; }],
+      ["regulator compute_R", "regulator", (value) => { value.computeRState[4] = "0"; }],
       ["unit A", "unit", (value) => { value.packedA[0] = "2"; }],
+      ["unit C4 ancestry", "unit", (value) => { value.ancestry.acceptedC4OwnerSha256 = "0".repeat(64); }],
+      ["unit status", "unit", (value) => { value.status = "not_given"; }],
+      ["unit norm", "unit", (value) => { value.norms[0] = "2"; }],
+      ["unit transform", "unit", (value) => { value.factoredTransform.pop(); }],
+      ["unit ancestry", "unit", (value) => { value.ancestry.full15OwnerSha256 = "f".repeat(64); }],
+      ["unit proof", "unit", (value) => { value.proof.exactFactorback = false; }],
       ["principal divisor", "live", (value) => { value.relationPrincipals[0].divisor[0] = "1"; }],
+      ["principal factor", "live", (value) => { value.relationPrincipals[0].exactFactor.powerBasis[0] = "0"; }],
+      ["live ancestry", "live", (value) => { value.ancestry.full15OwnerSha256 = "b".repeat(64); }],
       ["Vbase", "live", (value) => { value.Vbase[0].prime = "1"; }],
     ];
     for (const [label, ownerName, mutate] of mutations) {
@@ -198,37 +268,39 @@ function coordinatorArgs(files, output) {
       assert.deepEqual(new Set(fs.readdirSync(output)), before, `${label} published output`);
     }
 
-    // The native leaf is independently executable through generated JS.  Its
-    // inputs are generated above rather than copied from an answer fixture.
-    const compilerRoot = process.env.SAGEJS_REPLAY_RUNTIME_ROOT || root;
-    const { compileKernel } = require(path.join(compilerRoot, "tools/native-kernel/compiler.cjs"));
-    const built = await compileKernel({ sourcePath });
-    const api = require(built.modulePath).pari_field3_retain_generator_square_witnesses;
-    assert(api.nativeAvailable);
-    const relationRecords = values.live.relationRecords.map(BigInt);
-    const transform = values.full15.transform.map(BigInt);
-    const H = values.full15.terminalH.map(BigInt);
-    const permutation = values.full15.terminalPermutation.map(BigInt);
-    const exponentOutput = Array(602).fill(77n);
-    const imageOutput = Array(576).fill(77n);
-    const state = Array(8).fill(77n);
-    assert.equal(api.javascript(
-      relationRecords, transform, H, permutation,
-      Array(602).fill(0n), Array(576).fill(0n), exponentOutput, imageOutput, state,
-    ), 0n);
-    assert.deepEqual(state, [0n, 301n, 288n, 13n, 2n, 602n, 576n, 15n]);
-    const changed = transform.slice(); changed[13 * 301] += 1n;
-    const held = Array(8).fill(77n);
-    assert.equal(api.javascript(
-      relationRecords, changed, H, permutation,
-      Array(602).fill(0n), Array(576).fill(0n), Array(602).fill(77n),
-      Array(576).fill(77n), held,
-    ), 1n);
-    assert.deepEqual(held, Array(8).fill(77n));
+    if (process.env.FIELD3_C7_SKIP_NATIVE !== "1") {
+      // The native leaf is independently executable through generated JS. Its
+      // inputs are generated above rather than copied from an answer fixture.
+      const compilerRoot = process.env.SAGEJS_REPLAY_RUNTIME_ROOT || root;
+      const { compileKernel } = require(path.join(compilerRoot, "tools/native-kernel/compiler.cjs"));
+      const built = await compileKernel({ sourcePath });
+      const api = require(built.modulePath).pari_field3_retain_generator_square_witnesses;
+      assert(api.nativeAvailable);
+      const relationRecords = values.live.relationRecords.map(BigInt);
+      const transform = values.full15.transform.map(BigInt);
+      const H = values.full15.terminalH.map(BigInt);
+      const permutation = values.full15.terminalPermutation.map(BigInt);
+      const exponentOutput = Array(602).fill(77n);
+      const imageOutput = Array(576).fill(77n);
+      const state = Array(8).fill(77n);
+      assert.equal(api.javascript(
+        relationRecords, transform, H, permutation,
+        Array(602).fill(0n), Array(576).fill(0n), exponentOutput, imageOutput, state,
+      ), 0n);
+      assert.deepEqual(state, [0n, 301n, 288n, 13n, 2n, 602n, 576n, 15n]);
+      const changed = transform.slice(); changed[13 * 301] += 1n;
+      const held = Array(8).fill(77n);
+      assert.equal(api.javascript(
+        relationRecords, changed, H, permutation,
+        Array(602).fill(0n), Array(576).fill(0n), Array(602).fill(77n),
+        Array(576).fill(77n), held,
+      ), 1n);
+      assert.deepEqual(held, Array(8).fill(77n));
+    }
     console.log(JSON.stringify({
       schema: "field3-c7-final-assembly-check-v1",
       cpython: true,
-      javascript: true,
+      javascript: process.env.FIELD3_C7_SKIP_NATIVE !== "1",
       mutations: mutations.length + 1,
       publication: "atomic-idempotent-0444",
       coldReplay: true,
