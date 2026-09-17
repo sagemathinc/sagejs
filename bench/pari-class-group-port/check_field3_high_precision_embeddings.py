@@ -1,8 +1,8 @@
 """Independent exact replay for the field-3 prepared owner and embeddings."""
 
-from fractions import Fraction
 import json
 import sys
+from fractions import Fraction
 
 sys.set_int_max_str_digits(200000)
 

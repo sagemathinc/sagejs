@@ -1,0 +1,61 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "field3-pretruncation-make-m",
+  "title": "Close field-3 pre-truncation make_M gap",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "field3_high_precision_embeddings",
+  "objective": "Reproduce the authentic F->prec+F->extraprec quartic root state and source-matched make_M truncation choice so all exported roots and all 16 integral-basis embedding entries match pristine PARI 2.17.4 bit-exactly",
+  "base_commit": "07942bf661ed50f55be507389f30bb45405deead",
+  "claims": [
+    "bench/pari-class-group-port/field3_high_precision_embeddings.py",
+    "bench/pari-class-group-port/check_field3_high_precision_embeddings.py",
+    "bench/pari-class-group-port/check_field3_high_precision_embeddings.cjs",
+    "bench/pari-class-group-port/field3_high_precision_embeddings_audit.md",
+    "bench/pari-class-group-port/field3_high_precision_embeddings_result.json"
+  ],
+  "dependencies": [
+    "high-precision-full-product"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Pristine PARI 2.17.4 pre-truncation and exported packed roots/M",
+      "Independent exact multiplication tensor and embedding homomorphism replay"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "pnpm parallel:check",
+    "prlimit --as=4294967296 -- timeout 600s node bench/pari-class-group-port/check_field3_high_precision_embeddings.cjs"
+  ],
+  "runs": [
+    {
+      "command": "prlimit --as=4294967296 -- timeout 600s node bench/pari-class-group-port/check_field3_high_precision_embeddings.cjs",
+      "status": "passed",
+      "summary": "Four roots and all 16 M entries bit-exact in CPython, JavaScript, and GMP; independent owner/tensor replay passed; GMP positive call 276.7 ms"
+    }
+  ],
+  "handoff": {
+    "summary": "Closed the one-ulp M gap by preserving nf_basden's common 37 through polynomial evaluation and division; all roots and M cells now match pristine PARI bit-exactly.",
+    "risks": [
+      "This is a field-specific 153088-bit quartic cut and does not claim arbitrary make_M inputs."
+    ],
+    "next_steps": [
+      "Integrate the verified field-3 owner cut into the prepared high-precision class-group path."
+    ]
+  }
+}

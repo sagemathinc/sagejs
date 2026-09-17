@@ -51,7 +51,7 @@ int main(void){pari_init(1073741824,10000);GEN p=gp_read_str("x^4-2000022*x-2000
   GEN nf0=nfinit(p,resident),zk=nf_get_zkprimpart(nf0);long n=nf_get_degree(nf0),r1=nf_get_r1(nf0),r2=nf_get_r2(nf0);
   printf("{\"schema\":\"sagejs.pari-class-group/field3-prepared-embedding-owner-v1\",\"runIdentity\":\"pari-2.17.4:nfinit192->nfnewprec153088:field3\",\"polynomial\":");polynomial(nf_get_pol(nf0),n);
   printf(",\"signature\":[%ld,%ld],\"zkden\":",r1,r2);integer(nf_get_zkden(nf0));printf(",\"zk\":");basis(zk,n);printf(",\"tensor\":");tensor(nf0,n);
-  GEN nf=nfnewprec(nf0,target);printf(",\"roots\":");rootvec(nf_get_roots(nf),r1);printf(",\"embedding\":");matrix(nf_get_M(nf),n,r1);puts("}");pari_close();return 0;}
+  GEN nf=nfnewprec(nf0,target);printf(",\"requestedBits\":%ld,\"makeMRootPrecisionBits\":%ld,\"makeMTruncation\":false,\"roots\":",${TARGET},bit_prec(gel(nf_get_roots(nf),1)));rootvec(nf_get_roots(nf),r1);printf(",\"embedding\":");matrix(nf_get_M(nf),n,r1);puts("}");pari_close();return 0;}
 `);
   const library = path.join(pari, "Olinux-x86_64");
   run("cc", ["-O2", `-I${path.join(pari, "src/headers")}`, `-I${library}`, source,
@@ -73,6 +73,10 @@ int main(void){pari_init(1073741824,10000);GEN p=gp_read_str("x^4-2000022*x-2000
     zkden: oracle.value.zkden,
     zk: oracle.value.zk,
     tensor: oracle.value.tensor,
+    requestedBits: oracle.value.requestedBits,
+    makeMRootPrecisionBits: oracle.value.makeMRootPrecisionBits,
+    makeMTruncation: oracle.value.makeMTruncation,
+    makeMRootState: oracle.value.roots,
   };
   const ownerPath = path.join(oracle.directory, "owner.json");
   fs.writeFileSync(ownerPath, oracle.text);
@@ -82,6 +86,35 @@ int main(void){pari_init(1073741824,10000);GEN p=gp_read_str("x^4-2000022*x-2000
       ownerPath,
     ]),
   );
+  const cpython = JSON.parse(
+    run(
+      "python3",
+      [
+        "-c",
+        String.raw`
+import decimal, importlib, json, sys
+sys.set_int_max_str_digits(200000)
+sys.path[:0] = [sys.argv[1], sys.argv[2]]
+q = json.load(open(sys.argv[3], encoding="utf-8"))
+f = importlib.import_module("bench.pari-class-group-port.field3_high_precision_embeddings").pari_field3_high_precision_embeddings
+rm=[777]*4; rp=[777]*4; re=[777]*4; em=[777]*16; ep=[777]*16; ee=[777]*16; scratch=[0]*48; state=[777]*6
+f(list(map(int,q["polynomial"])), list(map(int,q["signature"])), list(map(int,q["zk"])), int(q["zkden"]), list(map(int,q["tensor"])), 153088, scratch, rm, rp, re, em, ep, ee, state)
+roots=[tuple(map(int,row[:3])) for row in q["roots"]]+[tuple(map(int,q["roots"][2][3:6]))]
+embedding=[tuple(map(int,q["embedding"][3*i:3*i+3])) for i in range(16)]
+print(json.dumps({"roots": list(zip(rm,rp,re)) == roots, "embedding": list(zip(em,ep,ee)) == embedding, "state": state}))
+`,
+        root,
+        path.join(root, "src/lib"),
+        ownerPath,
+      ],
+      { env: { ...process.env, PYTHONPATH: "" } },
+    ),
+  );
+  assert.deepEqual(cpython, {
+    roots: true,
+    embedding: true,
+    state: [0, 153088, 153152, 153664, 2, 1],
+  });
 
   const built = await compileKernel({
     sourcePath: path.join(__dirname, "field3_high_precision_embeddings.py"),
@@ -152,13 +185,53 @@ int main(void){pari_init(1073741824,10000);GEN p=gp_read_str("x^4-2000022*x-2000
           exponent: String(entry[2]),
         }],
   );
-  assert.deepEqual(mismatches, [{
-    index: 6,
-    mantissaDifference: "-1",
-    actualPrecision: "153152",
-    expectedPrecision: "153152",
-    exponent: "13",
-  }]);
+  assert.deepEqual(mismatches, []);
+  assert.equal(oracle.value.requestedBits, TARGET);
+  assert.equal(oracle.value.makeMRootPrecisionBits, TARGET + 64);
+  assert.equal(oracle.value.makeMTruncation, false);
+
+  const javascriptRootM = integer(4, Array(4).fill(777n));
+  const javascriptRootP = integer(4, Array(4).fill(777n));
+  const javascriptRootE = integer(4, Array(4).fill(777n));
+  const javascriptEmbeddingM = integer(16, Array(16).fill(777n));
+  const javascriptEmbeddingP = integer(16, Array(16).fill(777n));
+  const javascriptEmbeddingE = integer(16, Array(16).fill(777n));
+  const javascriptState = int64(Array(6).fill(777n));
+  assert.equal(
+    api.javascript(
+      polynomial,
+      signature,
+      basis,
+      37n,
+      tensor,
+      BigInt(TARGET),
+      integer(48, Array(48).fill(0n)),
+      javascriptRootM,
+      javascriptRootP,
+      javascriptRootE,
+      javascriptEmbeddingM,
+      javascriptEmbeddingP,
+      javascriptEmbeddingE,
+      javascriptState,
+    ),
+    0n,
+  );
+  assert.deepEqual(
+    values(javascriptRootM).map((mantissa, index) => [
+      mantissa,
+      values(javascriptRootP)[index],
+      values(javascriptRootE)[index],
+    ]),
+    expectedRoots,
+  );
+  assert.deepEqual(
+    values(javascriptEmbeddingM).map((mantissa, index) => [
+      mantissa,
+      values(javascriptEmbeddingP)[index],
+      values(javascriptEmbeddingE)[index],
+    ]),
+    expectedEmbedding,
+  );
 
   const heldRoots = actualRoots.flat();
   const heldEmbedding = actualEmbedding.flat();
@@ -175,6 +248,14 @@ int main(void){pari_init(1073741824,10000);GEN p=gp_read_str("x^4-2000022*x-2000
       BigInt(TARGET), scratch, rootM, rootP, rootE, embeddingM, embeddingP,
       embeddingE, state),
     /wrong field-3 prepared integral basis/,
+  );
+  const wrongPolynomial = oracle.value.polynomial.map(BigInt);
+  wrongPolynomial[1] -= 1n;
+  assert.throws(
+    () => api.gmp(integer(5, wrongPolynomial), signature, basis, 37n, tensor,
+      BigInt(TARGET), scratch, rootM, rootP, rootE, embeddingM, embeddingP,
+      embeddingE, state),
+    /wrong field-3 prepared owner identity/,
   );
   assert.deepEqual(
     values(rootM).flatMap((mantissa, index) => [mantissa, values(rootP)[index], values(rootE)[index]]),
@@ -193,23 +274,33 @@ int main(void){pari_init(1073741824,10000);GEN p=gp_read_str("x^4-2000022*x-2000
   const core = fs.readFileSync(built.coreSourcePath, "utf8");
   assert.match(core, /mpz_mul/);
   console.log(JSON.stringify({
-    status: "partial-root-subset-complete",
+    status: "pass",
     oracleTraceSha256: oracle.sha256,
     ownerSha256: sha(JSON.stringify(ownerCapsule)),
     runIdentity: oracle.value.runIdentity,
     rootPackedTriplesBitExact: 4,
-    embeddingPackedTriplesBitExact: 15,
+    embeddingPackedTriplesBitExact: 16,
     embeddingPackedTriplesTotal: 16,
     embeddingMismatch: mismatches,
-    missingPrimitive: "pre-truncation get_roots guard-word state used by make_M",
+    preTruncationState: {
+      requestedBits: oracle.value.requestedBits,
+      rootPrecisionBits: oracle.value.makeMRootPrecisionBits,
+      makeMTruncation: oracle.value.makeMTruncation,
+      ownerBound: true,
+      basdenCommonDenominatorRetained: true,
+    },
     independent,
+    dynamicFallbacks: {
+      cpython: cpython.roots && cpython.embedding,
+      javascript: true,
+    },
     native: {
       backend: "gmp",
       elapsedMs: nativeMs,
       cacheKey: built.cacheKey,
       mpzMul: true,
     },
-    transactionalRejections: 2,
+    transactionalRejections: 3,
   }));
 })().catch((error) => {
   console.error(error);
