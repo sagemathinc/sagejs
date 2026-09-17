@@ -78,35 +78,44 @@ try {
   assert.deepEqual(live.live.outerPerm.slice(0, 2), ["11", "2"]);
   assert.notDeepEqual(authority.authority.owners.outerPermutation, live.live.outerPerm);
 
-  const generate = String.raw`import importlib,json,sys
+  const generateRaw = String.raw`import importlib,json,sys
+sys.set_int_max_str_digits(0)
 sys.path.extend(['src/lib','src/baselib'])
-m=importlib.import_module('bench.pari-class-group-port.field3_full_terminal_ancestry')
 h=importlib.import_module('bench.pari-class-group-port.field3_high_precision_hnf_transform')
-a=json.load(open(sys.argv[1]));p=json.load(open(sys.argv[2]));live=json.load(open(sys.argv[3]))
 entry=[1,0,-1,0,0,-1,0]
+logs=entry*(301*3);logs[:7]=[1,1<<153087,153088,0,0,-1,0]
 raw={'schema':h.RAW_SCHEMA,'field':h.FIELD,'runIdentity':h.RUN_IDENTITY,
 'targetBits':h.TARGET_BITS,'sourceStart':0,'sourceCount':301,'sourceStop':301,
 'totalColumns':301,'scalarColumns':26,'nonscalarColumns':275,'places':3,
-'layout':h.RAW_LAYOUT,'packedLogs':[str(x) for x in entry*(301*3)],
+'layout':h.RAW_LAYOUT,'packedLogs':[str(x) for x in logs],
 'authoritySha256':h.AUTHORITY_SHA256,'initialOwnerSha256':h.INITIAL_SHA256,
 'preparedOwnerSha256':h.PREPARED_SHA256,'normConsequencesSha256':h.NORM_SHA256,
 'sourceDigests':h.SOURCE_DIGESTS,'realOwnerSha256':'0'*64,'complexOwnerSha256':'1'*64}
-o=m.transform_authenticated_owners(raw,p,a)
-# The bounded qualification uses the already replayed low-precision Ce only to
-# exercise class_group_gen. Production always copies authentic full15.packedCe.
-o['packedCe']=live['live']['c'];o['packedTerminal']=o['packedA']+o['packedCe']
-o['authorityOwnerSha256']=sys.argv[4]
-json.dump(o,sys.stdout,separators=(',',':'));print()`;
-  const generated = spawnSync("python3", ["-c", generate, authorityPath, protocolPath,
-    livePath, authoritySha], { cwd: root, encoding: "utf8", timeout: 600_000,
+json.dump(raw,sys.stdout,separators=(',',':'));print()`;
+  const generatedRaw = spawnSync("python3", ["-c", generateRaw], {
+    cwd: root, encoding: "utf8", timeout: 600_000,
     maxBuffer: 256 * 1024 * 1024 });
-  assert.equal(generated.status, 0, generated.stderr);
-  const full15Value = JSON.parse(generated.stdout);
+  assert.equal(generatedRaw.status, 0, generatedRaw.stderr);
+  const raw = immutable(temporary, "qualified-raw", JSON.parse(generatedRaw.stdout));
+  const generateFull = String.raw`import importlib,json,sys
+sys.set_int_max_str_digits(0);sys.path.extend(['src/lib','src/baselib'])
+m=importlib.import_module('bench.pari-class-group-port.field3_full_terminal_ancestry')
+raw=json.load(open(sys.argv[1]));protocol=json.load(open(sys.argv[2]));authority=json.load(open(sys.argv[3]))
+o=m.transform_authenticated_owners(raw,protocol,authority)
+o.update(rawOwnerSha256=sys.argv[4],protocolOwnerSha256=sys.argv[5],authorityOwnerSha256=sys.argv[6])
+json.dump(o,sys.stdout,separators=(',',':'));print()`;
+  const generatedFull = spawnSync("python3", ["-c", generateFull, raw.path,
+    protocolPath, authorityPath, raw.sha256, protocolSha, authoritySha], {
+    cwd: root, encoding: "utf8", timeout: 600_000, maxBuffer: 256 * 1024 * 1024 });
+  assert.equal(generatedFull.status, 0, generatedFull.stderr);
+  const full15Value = JSON.parse(generatedFull.stdout);
   const full15 = immutable(temporary, "qualified-full15", full15Value);
 
   const classArgs = [...base("class", output),
     "--full15", full15.path, "--full15-sha256", full15.sha256,
-    "--relation", relation.path, "--relation-sha256", relation.sha256];
+    "--relation", relation.path, "--relation-sha256", relation.sha256,
+    "--raw-owner", raw.path, "--raw-owner-sha256", raw.sha256,
+    "--protocol-owner", protocolPath, "--protocol-owner-sha256", protocolSha];
   // Argument order is irrelevant and duplicate names are forbidden.
   const classOwner = run(classArgs);
   assert.deepEqual(run(classArgs), classOwner, "class publication is not idempotent");
@@ -119,8 +128,16 @@ json.dump(o,sys.stdout,separators=(',',':'));print()`;
     "95d69b0ca992721014b784a38c7a9537192c25049fa4fa1b774c182a0d164717");
   assert.deepEqual(classValue.Vbase.map((entry) => [entry.packetIndex, entry.prime]),
     [["11", "13"], ["2", "3"]]);
-  assert.equal(sha(Buffer.from(classValue.Vbase.flatMap((entry) => entry.tau).join("\n"))),
-    "7f785bd7325d803801015da27b7f565b9f41563531f4bac8ea428648abff2c5d");
+  assert.deepEqual(classValue.retainedWitness.generatorIdeals, [
+    "13", "0", "3", "6", "0", "13", "8", "1",
+    "0", "0", "1", "0", "0", "0", "0", "1",
+    "3", "0", "2", "1", "0", "3", "0", "2",
+    "0", "0", "1", "0", "0", "0", "0", "1",
+  ], "antiuniformizer tau must produce p*P^-1, not the order-two packet P");
+  assert.notDeepEqual(classValue.Vbase.flatMap((entry) => entry.tau),
+    live.expected.retained.tau, "live expected tau must not gate acceptance");
+  assert.equal(classValue.replay.terminalBExact, true);
+  assert.equal(classValue.replay.orderPrincipalIdealsExact, true);
   assert.deepEqual(classValue.invariants, ["2", "2"]);
   assert.equal(classValue.classNumber, "4");
   assert.equal(classValue.replay.wholePermutationCompared, false);
@@ -131,24 +148,30 @@ json.dump(o,sys.stdout,separators=(',',':'));print()`;
   const badPermutation = structuredClone(full15Value);
   badPermutation.terminalPermutation[0] = "2";
   const badPermOwner = immutable(temporary, "bad-prefix", badPermutation);
-  reject([...base("class", output), "--full15", badPermOwner.path,
-    "--full15-sha256", badPermOwner.sha256, "--relation", relation.path,
-    "--relation-sha256", relation.sha256], output, "selected-prefix mutation");
+  reject(classArgs.map((entry, index) => entry === full15.path && index > 0
+    ? badPermOwner.path : entry).map((entry, index) => entry === full15.sha256 && index > 0
+    ? badPermOwner.sha256 : entry), output, "selected-prefix mutation");
 
   const badTransform = structuredClone(full15Value);
   badTransform.transform[13 * 301] = String(BigInt(badTransform.transform[13 * 301]) + 1n);
   const badTransformOwner = immutable(temporary, "bad-transform", badTransform);
-  reject([...base("class", output), "--full15", badTransformOwner.path,
-    "--full15-sha256", badTransformOwner.sha256, "--relation", relation.path,
-    "--relation-sha256", relation.sha256], output, "full15 image mutation");
+  reject(classArgs.map((entry) => entry === full15.path ? badTransformOwner.path :
+    entry === full15.sha256 ? badTransformOwner.sha256 : entry),
+  output, "full15 image mutation");
 
   const badRelation = structuredClone(relationValue);
   badRelation.exactOwners.relationRecords[0] = String(
     BigInt(badRelation.exactOwners.relationRecords[0]) + 1n);
   const badRelationOwner = immutable(temporary, "bad-relation", badRelation);
-  reject([...base("class", output), "--full15", full15.path,
-    "--full15-sha256", full15.sha256, "--relation", badRelationOwner.path,
-    "--relation-sha256", badRelationOwner.sha256], output, "relation mutation");
+  reject(classArgs.map((entry) => entry === relation.path ? badRelationOwner.path :
+    entry === relation.sha256 ? badRelationOwner.sha256 : entry),
+  output, "relation mutation");
+
+  const badRawValue = JSON.parse(fs.readFileSync(raw.path));
+  badRawValue.packedLogs[1] = String(BigInt(badRawValue.packedLogs[1]) + 1n);
+  const badRaw = immutable(temporary, "bad-raw", badRawValue);
+  reject(classArgs.map((entry) => entry === raw.path ? badRaw.path :
+    entry === raw.sha256 ? badRaw.sha256 : entry), output, "raw ancestry mutation");
 
   const duplicateBytes = fs.readFileSync(authorityPath, "utf8").replace(
     /^\{/, '{"authority":null,');
@@ -168,7 +191,7 @@ json.dump(o,sys.stdout,separators=(',',':'));print()`;
     classGroup: [2, 2],
     selectedPrefixOnly: true,
     publication: "atomic-idempotent-0444",
-    mutations: 5,
+    mutations: 6,
     authenticHighPrecisionRun: false,
   }));
 } finally {
