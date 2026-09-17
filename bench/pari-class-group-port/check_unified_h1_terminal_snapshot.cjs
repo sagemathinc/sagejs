@@ -95,11 +95,18 @@ async function produceOwners(fixtures) {
   const bridgeChecker = fs.readFileSync(bridgeCheckerPath, "utf8");
   const bridgeLiteral = bridgeChecker.match(/const sizes = (\{[\s\S]*?\n\});/);
   assert(bridgeLiteral, "missing bridge workspace sizes");
+  const storagePolicy = literal(rootChecker, "storagePolicy");
+  const sizeContext = {
+    storagePolicy,
+    classSquareCapacity: storagePolicy.classRows ** 2,
+    classRelationCapacity: storagePolicy.classRows * storagePolicy.classColumns,
+    classTransformCapacity: storagePolicy.classColumns ** 2,
+  };
   const sizes = {
     ...vm.runInNewContext(`(${bridgeLiteral[1]})`, { columnCapacity: 16 }),
-    ...literal(rootChecker, "classSizes"),
-    ...literal(rootChecker, "precisionSizes"),
-    ...literal(rootChecker, "finalSizes"),
+    ...literal(rootChecker, "classSizes", sizeContext),
+    ...literal(rootChecker, "precisionSizes", sizeContext),
+    ...literal(rootChecker, "finalSizes", sizeContext),
     unified_state: 12,
   };
   const finalNames = new Set(Object.keys(sizes).filter(name => name.startsWith("final_")));
