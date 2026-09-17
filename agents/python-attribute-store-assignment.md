@@ -1,6 +1,6 @@
 # Python ordinary-store assignment fast path
 
-Base: `c6466e8e8` (`origin/main` after PR #309).
+Base: `d317a30b7` (`origin/main` after PR #314).
 
 ## Change
 
@@ -77,15 +77,19 @@ remain open cliffs; this result does not close M5.
 
 ## Qualification
 
-- The final exact-source build converged in two passes and completed in 7m 54s.
+- The reviewer-repaired, current-main build converged in two passes and
+  completed in 7m 28s.
 - All 225 portable files and 18 directly focused/runtime checks pass.
 - The 508-case CPython 3.14.4 differential baseline matches: 505 passes and
   three reviewed intentional incompatibilities.
 - The mutation fixture passes under CPython and Sage.js; all six traitlets
   checks and the pinned attrs 25.4.0/decorator 5.2.1 workflows pass.
 - Strict CPython syntax, Ruff 0.16.0, and Pyright pass for 404 modules.
-- Generated documentation and merge invariants pass. Core runtime is
-  902,923/903,000 bytes. No source, startup, browser, or performance budget
-  changed.
+- Generated documentation and merge invariants pass. The current-main core
+  runtime is 902,811/903,000 bytes. No source, startup, browser, or performance
+  budget changed. The local host lacks the optional FLINT addon, so the broad
+  compiler and integration commands stop only at their native-dependent
+  fixtures; all reached non-native fixtures pass, and CI owns the native
+  four-platform rerun.
 
 The branch is integrated directly onto fresh main and is not a release action.
