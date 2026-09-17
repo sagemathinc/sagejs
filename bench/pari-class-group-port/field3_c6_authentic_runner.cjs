@@ -18,7 +18,10 @@ const C6_CANDIDATE_SCHEMA =
 const C6_SCHEMA = "sagejs.pari-class-group/field3-c6-getfu-v1";
 const SOURCE_SCHEMA =
   "sagejs.pari-class-group/field3-c6-factorback-source-v1";
+const RELATION_SCHEMA =
+  "sagejs.pari-class-group/field3-full-owner-authority-v1";
 const ATTEMPT = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
+const DIGEST = /^[0-9a-f]{64}$/;
 const INTEGER = /^-?(0|[1-9][0-9]*)$/;
 const ROOT = path.resolve(__dirname, "../..");
 
@@ -35,6 +38,20 @@ function integerVector(value, length, label) {
       fail(`${label} contains a noncanonical integer`);
     return BigInt(text);
   });
+}
+
+function serializedIntegerVector(value, length, label) {
+  if (!Array.isArray(value) || value.length !== length)
+    fail(`${label} has the wrong length`);
+  return value.map((entry) => {
+    if (typeof entry !== "string" || !INTEGER.test(entry))
+      fail(`${label} contains a noncanonical serialized integer`);
+    return BigInt(entry);
+  });
+}
+
+function cellsSha256(entries) {
+  return crypto.createHash("sha256").update(entries.join("\n")).digest("hex");
 }
 
 function values(buffer) {
@@ -219,7 +236,9 @@ function allocateC6(api, c5, embedding) {
   };
 }
 
-function runC6(api, c5, embedding, c5Sha256, embeddingSha256, moduleSha256, attemptId) {
+function runC6(api, c5, embedding, c5Sha256, embeddingSha256,
+  relationOwnerSha256, moduleSha256, attemptId) {
+  if (!DIGEST.test(relationOwnerSha256)) fail("relation owner digest is invalid");
   const w = allocateC6(api, c5, embedding);
   const work = [
     w.matep, w.arch, w.factoredClean, w.archReal, w.archImag, w.cleanReal,
@@ -241,6 +260,7 @@ function runC6(api, c5, embedding, c5Sha256, embeddingSha256, moduleSha256, atte
     attemptId,
     c5OwnerSha256: c5Sha256,
     embeddingOwnerSha256: embeddingSha256,
+    relationOwnerSha256,
     nativeModuleSha256: moduleSha256,
     precision: Number(c5.precision),
     generation: Number(c5.generation),
@@ -273,25 +293,64 @@ function coordinateC6(c5Owner, embeddingOwner, candidateOwner, outputDirectory) 
   return JSON.parse(result.stdout);
 }
 
-function relationOwners(relation) {
-  const owners = relation.authority?.owners || relation.owners;
-  if (!owners || typeof owners !== "object") fail("relation authority has no owners");
-  const generators = integerVector(owners.principalGenerators, 1204, "principal generators");
-  const records = integerVector(owners.relationRecords, 86688, "relation records");
-  const metadata = integerVector(owners.relationMetadata, 903, "relation metadata");
+function relationOwners(relationOwner, c5 = null) {
+  if (!relationOwner || !DIGEST.test(relationOwner.sha256))
+    fail("serialized relation owner digest is invalid");
+  const relation = relationOwner.value;
+  if (!relation || typeof relation !== "object" || Array.isArray(relation) ||
+      relation.schema !== RELATION_SCHEMA)
+    fail("wrong serialized relation owner schema");
+  if (c5 && (relation.field !== c5.field || relation.runIdentity !== c5.runIdentity))
+    fail("relation owner field or run identity changed");
+  if (relation.shape?.join(",") !== "288,301" || relation.degree !== 4 ||
+      relation.exactOwnersAreAuthority !== true ||
+      relation.principalGeneratorsAreExact !== true ||
+      relation.replay?.principalRelationsExact !== true ||
+      relation.replay?.relations !== 301 || relation.replay?.factorBaseSize !== 288)
+    fail("serialized relation owner qualification changed");
+  for (const [key, label] of [
+    ["residentAuthoritySha256", "resident authority"],
+    ["liveClassJoinSha256", "live class join"],
+  ]) if (!DIGEST.test(relation[key])) fail(`${label} ancestry is invalid`);
+  const owners = relation.exactOwners;
+  if (!owners || typeof owners !== "object" || Array.isArray(owners))
+    fail("serialized relation owner has no exactOwners");
+  const generators = serializedIntegerVector(
+    owners.principalGenerators, 1204, "principal generators");
+  const records = serializedIntegerVector(
+    owners.relationRecords, 86688, "relation records");
+  const metadata = serializedIntegerVector(
+    owners.relationMetadata, 903, "relation metadata");
+  serializedIntegerVector(owners.packetIdeals, 4608, "factor-base ideals");
+  serializedIntegerVector(owners.packetNorms, 288, "factor-base norms");
+  serializedIntegerVector(owners.packetIds, 288, "factor-base ids");
+  serializedIntegerVector(owners.outerPermutation, 288, "outer permutation");
+  serializedIntegerVector(owners.basisTable, 64, "relation basis table");
   for (let column = 0; column < 301; column++) {
     if (metadata[3 * column] !== BigInt(column + 1) || metadata[3 * column + 1] !== 0n || metadata[3 * column + 2] !== 0n)
       fail("relation source ordering changed");
   }
+  for (const [key, entries, label] of [
+    ["principalGeneratorsSha256", owners.principalGenerators, "principal generator"],
+    ["relationRecordsSha256", owners.relationRecords, "relation record"],
+    ["relationMetadataSha256", owners.relationMetadata, "relation metadata"],
+  ]) {
+    if (relation.replay[key] !== cellsSha256(entries))
+      fail(`${label} serialization latch changed`);
+  }
   return { generators, records };
 }
 
-function factorbackSource(c5Owner, c6Owner, embeddingOwner, relationOwner, piCache) {
+function factorbackSource(c5Owner, c6Owner, embeddingOwner, relationOwner,
+  candidateOwner, piCache) {
   const c5 = c5Owner.value;
   const c6 = c6Owner.value;
   if (c6.schema !== C6_SCHEMA || c6.status !== "success")
     fail("factorback source requires successful C6 publication");
-  const relations = relationOwners(relationOwner.value);
+  if (!candidateOwner || c6.candidateSha256 !== candidateOwner.sha256 ||
+      candidateOwner.value?.relationOwnerSha256 !== relationOwner.sha256)
+    fail("C6 relation ancestry changed");
+  const relations = relationOwners(relationOwner, c5);
   const packed = splitEmbedding(embeddingOwner.value);
   if (piCache.length !== 3 || piCache[0] <= 0n || piCache[1] !== BigInt(c5.precision))
     fail("successful C6 did not retain the required pi authority");
@@ -305,6 +364,7 @@ function factorbackSource(c5Owner, c6Owner, embeddingOwner, relationOwner, piCac
     c6OwnerSha256: c6Owner.sha256,
     embeddingOwnerSha256: embeddingOwner.sha256,
     relationOwnerSha256: relationOwner.sha256,
+    c6CandidateSha256: candidateOwner.sha256,
     principalGenerators: relations.generators.map(String),
     relationRecords: relations.records.map(String),
     multiplicationBasis: integerVector(embeddingOwner.value.tensor, 64, "embedding tensor").map(String),
@@ -346,9 +406,12 @@ function main(argv = process.argv) {
   const outputDirectory = path.resolve(options["output-dir"]);
   const prepared = load(options, "prepared", "prepared owner");
   const c5 = load(options, "c5", "C5 owner");
-  const relation = load(options, "relation", "relation authority");
+  const relation = load(options, "relation", "serialized relation owner");
   if (c5.value.schema !== C5_SCHEMA || c5.value.runIdentity !== embeddingPublisher.RUN || Number(c5.value.precision) !== 153088 || Number(c5.value.generation) < 1)
     fail("C5 owner is not the authentic field3 generation");
+  // This complete serialized-owner check deliberately precedes module loading
+  // and both expensive native calls.
+  relationOwners(relation, c5.value);
   const embeddingModule = moduleApi(options["embedding-module"], "pari_field3_high_precision_embeddings");
   const c6Module = moduleApi(options["c6-module"], "pari_field3_high_precision_getfu");
 
@@ -365,7 +428,8 @@ function main(argv = process.argv) {
 
   const c6Attempt = runC6(
     c6Module.api, c5.value, embeddingOwner.value, c5.sha256,
-    embeddingOwner.sha256, c6Module.sha256, options["attempt-id"],
+    embeddingOwner.sha256, relation.sha256, c6Module.sha256,
+    options["attempt-id"],
   );
   const c6Candidate = publishValue(outputDirectory, "field3-c6-getfu-candidate", c6Attempt.candidate);
   const c6Result = coordinateC6(
@@ -380,7 +444,8 @@ function main(argv = process.argv) {
     source = publishValue(
       outputDirectory,
       "field3-c6-factorback-source",
-      factorbackSource(c5, c6Published, embeddingOwner, relation, c6Attempt.piCache),
+      factorbackSource(c5, c6Published, embeddingOwner, relation, c6Candidate,
+        c6Attempt.piCache),
     );
   }
   process.stdout.write(`${JSON.stringify({
@@ -400,6 +465,7 @@ function main(argv = process.argv) {
 
 module.exports = {
   SOURCE_SCHEMA,
+  RELATION_SCHEMA,
   allocateC6,
   factorbackSource,
   parseArguments,

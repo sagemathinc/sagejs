@@ -58,7 +58,21 @@ retries nor exposes scratch arrays.
 On success only, the runner also emits the immutable
 `field3-c6-factorback-source-v1` owner required by
 `field3_c6_factorback_verifier.py`. It binds the final C5 and C6 hashes, the
-new embedding owner, and the raw relation authority. Its payload contains all
+new embedding owner, and the terminal serialized relation owner. The runner
+accepts only `field3-full-owner-authority-v1`: it checks the field/run identity,
+288-by-301 shape, replay qualification, source-owner ancestry, canonical
+`exactOwners` arrays, exact relation metadata ordering, and the three packed
+serialization latches. The old resident `authority.owners` shape is rejected.
+This entire preflight occurs before either native module is opened, so a raw,
+detached, or malformed relation input cannot start the authentic attempt.
+
+The serialized relation file SHA-256 is recorded in the C6 candidate; the C6
+publication binds that candidate by `candidateSha256`. Factorback publication
+then requires the same candidate and relation digests and records both in its
+source ancestry. This gives the later unit owner a cryptographic path through
+C6/factorback to the identical relation owner consumed by the live C7 branch,
+without making either branch own the other or introducing an ancestry cycle.
+Its payload contains all
 301 principal generators, the 288-by-301 relation matrix, tensor, raw Wraw,
 C5 prepared logs, real/imaginary embeddings, the retained packed `2*pi`, place
 period multipliers, and the source rounding tolerance. No source owner is
@@ -77,7 +91,9 @@ node bench/pari-class-group-port/check_field3_c6_authentic_runner.cjs
 The focused test uses fake native ABIs solely to exercise transport without an
 authentic run. It proves one-call behavior, 16,385/105 storage, immutable and
 idempotent embedding publication, prepared-answer non-use, ancestry mutation
-rejection, success-source construction, exact source dimensions, short-source
+rejection, strict terminal relation schema and serialized-integer ingestion,
+replay-latch checking, native-module preflight ordering, relation/C6 candidate
+joining, success-source construction, exact source dimensions, short-source,
 and pi-authority rejection. It also runs the existing pristine-PARI
 low-precision getfu differential, which covers CPython arithmetic, both
 inverse choices, capacity failure, terminal atomicity, and coordinator replay.
@@ -92,7 +108,7 @@ node bench/pari-class-group-port/field3_c6_authentic_runner.cjs \
   --prepared-sha256 PREPARED_SHA256 \
   --c5-owner /ABS/C5.json \
   --c5-sha256 C5_SHA256 \
-  --relation-owner /ABS/AUTHORITY.json \
+  --relation-owner /ABS/FIELD3-FULL-OWNER-AUTHORITY.json \
   --relation-sha256 RELATION_SHA256 \
   --embedding-module /ABS/field3-high-precision-embeddings.node \
   --c6-module /ABS/field3-high-precision-getfu.node \

@@ -5,6 +5,7 @@
 // sagejs-test-platform: linux
 
 const assert = require("node:assert/strict");
+const crypto = require("node:crypto");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
@@ -164,38 +165,71 @@ const terminalApi = api((...args) => {
 });
 const terminal = runner.runC6(
   terminalApi, c5, embeddingOwner.value, "b".repeat(64), embeddingOwner.sha256,
-  "c".repeat(64), "focused-attempt",
+  "d".repeat(64), "c".repeat(64), "focused-attempt",
 );
 assert.equal(c6Calls, 1);
 assert.equal(terminal.candidate.status, 3);
 assert.deepEqual(terminal.candidate.units, []);
 assert.deepEqual(terminal.candidate.adjustedWraw, []);
+assert.equal(terminal.candidate.relationOwnerSha256, "d".repeat(64));
 
 // The success-side source owner is constructed only after C6 and binds every
 // owner needed by the downstream exact factorback verifier.
 const relationMetadata = [];
 for (let column = 0; column < 301; column++) relationMetadata.push(column + 1, 0, 0);
+const serialized = (entries) => entries.map(String);
+const latch = (entries) => crypto.createHash("sha256").update(entries.join("\n")).digest("hex");
+const principalGenerators = Array(1204).fill("0");
+const relationRecords = Array(86688).fill("0");
+const serializedMetadata = serialized(relationMetadata);
 const relation = {
-  value: { authority: { owners: {
-    principalGenerators: Array(1204).fill("0"),
-    relationRecords: Array(86688).fill("0"),
-    relationMetadata,
-  } } },
+  value: {
+    schema: runner.RELATION_SCHEMA,
+    field: c5.field,
+    runIdentity: c5.runIdentity,
+    residentAuthoritySha256: "1".repeat(64),
+    liveClassJoinSha256: "2".repeat(64),
+    shape: [288, 301],
+    degree: 4,
+    exactOwners: {
+      principalGenerators,
+      relationRecords,
+      relationMetadata: serializedMetadata,
+      packetIdeals: Array(4608).fill("0"),
+      packetNorms: Array(288).fill("0"),
+      packetIds: Array(288).fill("0"),
+      outerPermutation: Array(288).fill("0"),
+      basisTable: Array(64).fill("0"),
+    },
+    exactOwnersAreAuthority: true,
+    principalGeneratorsAreExact: true,
+    replay: {
+      principalRelationsExact: true,
+      relations: 301,
+      factorBaseSize: 288,
+      principalGeneratorsSha256: latch(principalGenerators),
+      relationRecordsSha256: latch(relationRecords),
+      relationMetadataSha256: latch(serializedMetadata),
+    },
+  },
   sha256: "d".repeat(64),
 };
 const c5Owner = { value: c5, sha256: "b".repeat(64) };
+const c6Candidate = { value: terminal.candidate, sha256: "f".repeat(64) };
 const c6Owner = { value: {
   schema: "sagejs.pari-class-group/field3-c6-getfu-v1",
   status: "success",
+  candidateSha256: c6Candidate.sha256,
 }, sha256: "e".repeat(64) };
 const source = runner.factorbackSource(
   c5Owner, c6Owner, embeddingOwner, relation,
-  [unit, 153088n, 1n],
+  c6Candidate, [unit, 153088n, 1n],
 );
 assert.equal(source.schema, runner.SOURCE_SCHEMA);
 assert.equal(source.c5OwnerSha256, c5Owner.sha256);
 assert.equal(source.c6OwnerSha256, c6Owner.sha256);
 assert.equal(source.relationOwnerSha256, relation.sha256);
+assert.equal(source.c6CandidateSha256, c6Candidate.sha256);
 assert.deepEqual(source.phasePeriodMultipliers, ["1", "1", "2"]);
 assert.deepEqual(source.twoPi, [String(unit), "153088", "2"]);
 assert.equal(source.phaseToleranceExponent, -153079);
@@ -204,15 +238,71 @@ assert.equal(source.embeddingImag.length, 36);
 assert.deepEqual(source.embeddingImag.slice(0, 6), ["0", "-1", "0", "0", "-1", "0"]);
 
 const shortRelation = structuredClone(relation);
-shortRelation.value.authority.owners.relationRecords.pop();
+shortRelation.value.exactOwners.relationRecords.pop();
 assert.throws(
-  () => runner.factorbackSource(c5Owner, c6Owner, embeddingOwner, shortRelation, [unit, 153088n, 1n]),
+  () => runner.factorbackSource(c5Owner, c6Owner, embeddingOwner, shortRelation,
+    c6Candidate, [unit, 153088n, 1n]),
   /relation records has the wrong length/,
 );
 assert.throws(
-  () => runner.factorbackSource(c5Owner, c6Owner, embeddingOwner, relation, [unit, 153024n, 1n]),
+  () => runner.factorbackSource(c5Owner, c6Owner, embeddingOwner, relation,
+    c6Candidate, [unit, 153024n, 1n]),
   /pi authority/,
 );
+
+// The old resident authority shape is not the terminal serialized relation
+// owner, even if it happens to expose arrays with familiar names.
+assert.throws(
+  () => runner.relationOwners({ value: { authority: { owners: relation.value.exactOwners } },
+    sha256: relation.sha256 }, c5),
+  /wrong serialized relation owner schema/,
+);
+const numericRelation = structuredClone(relation);
+numericRelation.value.exactOwners.relationMetadata[0] = 1;
+assert.throws(
+  () => runner.relationOwners(numericRelation, c5),
+  /noncanonical serialized integer/,
+);
+const detachedRelation = structuredClone(relation);
+detachedRelation.value.runIdentity = "detached";
+assert.throws(
+  () => runner.relationOwners(detachedRelation, c5),
+  /field or run identity changed/,
+);
+const changedLatch = structuredClone(relation);
+changedLatch.value.replay.relationRecordsSha256 = "0".repeat(64);
+assert.throws(
+  () => runner.relationOwners(changedLatch, c5),
+  /relation record serialization latch changed/,
+);
+const detachedCandidate = structuredClone(c6Candidate);
+detachedCandidate.value.relationOwnerSha256 = "0".repeat(64);
+assert.throws(
+  () => runner.factorbackSource(c5Owner, c6Owner, embeddingOwner, relation,
+    detachedCandidate, [unit, 153088n, 1n]),
+  /C6 relation ancestry changed/,
+);
+
+// Main rejects the obsolete/raw authority before it even stats the requested
+// native modules, making this a genuine preflight blocker for the expensive
+// authentic attempt.
+const rawRelation = writeOwner("raw-relation", {
+  authority: { owners: relation.value.exactOwners },
+});
+const c5Input = writeOwner("c5", c5);
+const preflight = spawnSync(process.execPath, [
+  path.join(__dirname, "field3_c6_authentic_runner.cjs"),
+  "--attempt-id", "preflight",
+  "--prepared-owner", prepared.path, "--prepared-sha256", prepared.sha256,
+  "--c5-owner", c5Input.path, "--c5-sha256", c5Input.sha256,
+  "--relation-owner", rawRelation.path, "--relation-sha256", rawRelation.sha256,
+  "--embedding-module", path.join(temporary, "must-not-be-opened-embedding.node"),
+  "--c6-module", path.join(temporary, "must-not-be-opened-c6.node"),
+  "--output-dir", output,
+], { cwd: root, encoding: "utf8" });
+assert.notEqual(preflight.status, 0);
+assert.match(preflight.stderr, /wrong serialized relation owner schema/);
+assert.doesNotMatch(preflight.stderr, /ENOENT/);
 
 // Retain the genuine low-precision pristine-PARI differential for the exact
 // arithmetic leaf, without compiling or launching the authentic 153088 run.
