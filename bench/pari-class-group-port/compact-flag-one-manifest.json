@@ -1,0 +1,53 @@
+{
+  "schema": "sagejs.pari-class-group/compact-flag-one-manifest-v1",
+  "experiment": "pari-class-group-end-to-end-native-qualification",
+  "targetPariVersion": "2.17.4",
+  "sourcePins": {
+    "panel": {"path": "panel.json", "sha256": "7c6515240940db971cff3bc28819f9e6547adae9305643b0f6274eeafe6ec3a5"},
+    "qualificationManifest": {"path": "class-unit-qualification-manifest.json", "sha256": "3821a5a51390ca25b3110e7a8058d73cd9945d0ab6ad254c07186e0ac19c1c50"},
+    "qualificationRunner": {"path": "run_class_unit_qualification.cjs", "sha256": "ee2aa15e99cde50e4217a6ebe7e38fc94133c0f48fa9ac64112494feec99fb0a"},
+    "receiptSchema": {"path": "class-unit-qualification-receipt.schema.json", "sha256": "afb0c69d742b7e2ec5f308e3fabe855980a4fa0d4e5b41eb8e5911296c579bb8"}
+  },
+  "derivation": {
+    "qualificationRole": "additional-development",
+    "panelIndices": [3, 4, 6, 10, 11, 13, 16, 18, 19, 20, 21, 23]
+  },
+  "execution": {
+    "enabled": false,
+    "timingEnabled": false,
+    "finalRunEnabled": false,
+    "reserveOpeningEnabled": false
+  },
+  "commonOutput": {
+    "schema": "sagejs.pari-class-group/compact-flag-one-common-output-v1",
+    "encoding": "canonical-key-sorted-json-sha256",
+    "row20Sha256": "ea40bb397941f6fec98881c1d0ce2402a33c02c82c0d1bab3face46b13ae36c2"
+  },
+  "fields": [
+    {"panelIndex": 3, "id": "generated-sha256-11997528676ebeb1c0636be2cb828b5ed5a527ea18eb3a4ace953984da507de9", "stratum": "real-cubic", "degree": 3, "signature": [3, 0], "polynomialSha256": "aae73048ee765ce38148539a3abf01dac43ab04427126dae8295211d684d4d15"},
+    {"panelIndex": 4, "id": "generated-sha256-806defcf929c9cfff7467b8e7ea7b9f939cdd042bce8c1f5a310f5688904e3b9", "stratum": "real-cubic", "degree": 3, "signature": [3, 0], "polynomialSha256": "beb19c9584069e8397f9b1d5ddb6d87965aabcc0c788003ea106f3a2f0f566e6"},
+    {"panelIndex": 6, "id": "generated-sha256-55ba15494f03f38bf8f687ff4d2813e81184d71c84dbed9e1adc6af7ba62f0eb", "stratum": "real-cubic", "degree": 3, "signature": [3, 0], "polynomialSha256": "26fed17015f6479f2de7a3544d8e2ac9ef41ec899b18193d997489a0aeafa416"},
+    {"panelIndex": 10, "id": "generated-sha256-984793770b4a15a79fbc9984fe352fbc867491917733c78bdba3b1856c18e3a7", "stratum": "mixed-quartic", "degree": 4, "signature": [2, 1], "polynomialSha256": "205cea0cc9446e959892f4b3cd8dd5e53ff37ae4fd43d335974bffaf3c92ec7a"},
+    {"panelIndex": 11, "id": "generated-sha256-147ddd296edb3764954d6142a499d17edcfecc635aec0181d4beda65d97ad4ab", "stratum": "mixed-quartic", "degree": 4, "signature": [2, 1], "polynomialSha256": "ce2bfa61425aa6816f76d5d4f48e7568a7cca85e7ae408e6ec3cb423cf353b07"},
+    {"panelIndex": 13, "id": "generated-sha256-353468f1887e96f5a2f66e3121564636ed8cdbd75bde6571609627bbe8586e33", "stratum": "mixed-quartic", "degree": 4, "signature": [2, 1], "polynomialSha256": "a0f7253a51b3045aa02d82f0846e4caa390b93ef159b8c1713245f5793d1e06c"},
+    {"panelIndex": 16, "id": "3.1.1002718428660.2", "stratum": "complex-cubic", "degree": 3, "signature": [1, 1], "polynomialSha256": "aabb93f0d6139f9397586e148a87f5444f7da173ef7d1aabc0c8fae15705cf56"},
+    {"panelIndex": 18, "id": "3.1.1005907102200.3", "stratum": "complex-cubic", "degree": 3, "signature": [1, 1], "polynomialSha256": "d48b43b95d82e5e127e939b4625aedac5bbb1f927c9b92e19c583c51c0901c6e"},
+    {"panelIndex": 19, "id": "3.1.1086061775432017340256300.107", "stratum": "complex-cubic", "degree": 3, "signature": [1, 1], "polynomialSha256": "0aab4dadcd4bc7c70dcb017b9f584154d6fd1d98500e7951c71ace3efa5e81db"},
+    {"panelIndex": 20, "id": "5.1.1000000.1", "stratum": "quintic", "degree": 5, "signature": [1, 2], "polynomialSha256": "36db16a4e174ca1a24dc16439e97c3660cb5135b378dcd3c2e86e438fb3bee11"},
+    {"panelIndex": 21, "id": "5.3.1009349859375.3", "stratum": "quintic", "degree": 5, "signature": [3, 1], "polynomialSha256": "6966124ec38a3af183ec7fa9d6cc4f376ef36aa0ba716eeff92bcba0bf7a64bb"},
+    {"panelIndex": 23, "id": "5.5.1002836007889.1", "stratum": "quintic", "degree": 5, "signature": [5, 0], "polynomialSha256": "c3077e07c31ac7586ee22c1a57ecfab1883699f8061f850ad75a86d46f23ea73"}
+  ],
+  "row20Seed": {
+    "sagejs": {
+      "status": "untimed-authority-adapter",
+      "pristineW0Sha256": "6ea7098d80c586a7fbf050f9f650f4a3bff258cd84dd7a2a3c7dab210d1bf468",
+      "c6OwnerSha256": "5449d3812514fa9aad06364e6b5ba0c18d10ee66225d0baa4fc5ea7d39f7ea1d",
+      "c7EnvelopeSha256": "3d0b7e2fdb43e70a9f6e6be4c50c50ca6d5e4414e05812b58f6ce049b3496052",
+      "c7PayloadSha256": "7e10bce72a5b41f036dcc7834131a4b095e541889055a3586f431d53fa23dd98"
+    },
+    "pari": {
+      "status": "blocked-unexecuted",
+      "reason": "No pristine PARI 2.17.4 row20 bnfinit0(nf,1) authority exists; producing one executes the heavy target workload. The existing W0 is an instrumented development trace, not a pristine timing adapter."
+    }
+  }
+}
