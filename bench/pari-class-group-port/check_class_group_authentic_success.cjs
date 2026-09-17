@@ -2,10 +2,13 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const { readFileSync } = require("node:fs");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 
 const root = path.resolve(__dirname, "../..");
+const runtimeRoot = path.resolve(process.env.SAGEJS_REPLAY_RUNTIME_ROOT || root);
+const { createSage } = require(path.join(runtimeRoot, "dist/tools/kernel.js"));
 const resident = path.resolve(
   process.argv[2] || "/tmp/sagejs-resident-generated-class-3qtnS5/output.json",
 );
@@ -23,6 +26,29 @@ function run(command, args, options = {}) {
   return answer.stdout;
 }
 
+async function main() {
+const regulatorSource = readFileSync(path.join(__dirname, "regulator_acceptance_replay.py"), "utf8");
+const regulatorFixture = JSON.parse(readFileSync(path.join(__dirname, "regulator-acceptance-replay-fixture.json"), "utf8"));
+const regulatorSession = await createSage({ mode: "python" });
+let regulatorAuthority;
+try {
+  const regulatorProgram = regulatorSource + String.raw`
+import json
+fixture = json.loads(${JSON.stringify(JSON.stringify(regulatorFixture))})
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x**3 - 20018*x + 20034, "a")
+payload = build_regulator_acceptance_replay(K, fixture)
+raw, authority = seal_regulator_acceptance_replay(payload)
+assert cold_replay_regulator_acceptance(K, raw, authority) == payload
+print(json.dumps({"envelope": json.loads(raw), "sha256": authority.envelope_sha256}, sort_keys=True))
+`;
+  const replay = await regulatorSession.evaluate(regulatorProgram, { filename: "regulator-authority.py" });
+  assert.equal(replay.stderr || "", "");
+  regulatorAuthority = JSON.parse(replay.stdout);
+} finally {
+  regulatorSession.close();
+}
 const oracle = oracleExecutable
   ? JSON.parse(run(oracleExecutable, []))
   : JSON.parse(
@@ -36,19 +62,18 @@ import copy
 import dataclasses
 import decimal
 import hashlib
-import importlib
 import json
 import pathlib
 import sys
-import threading
 import typing
-from concurrent.futures import ThreadPoolExecutor
 
-sys.path[:0] = [sys.argv[1], sys.argv[1] + "/src/lib"]
-m = importlib.import_module("bench.pari-class-group-port.class_group_authentic_success")
-resident, fixture = sys.argv[2:4]
-oracle = json.load(sys.stdin)
-payload = m.build_authentic_success_payload(resident, fixture, oracle)
+sys.path[:0] = [${JSON.stringify(root)}, ${JSON.stringify(root + "/src/lib")}]
+m = __import__("bench.pari-class-group-port.class_group_authentic_success", fromlist=["*"])
+resident = ${JSON.stringify(resident)}
+fixture = ${JSON.stringify(path.join(__dirname, "unit-bridge-cubic-fixtures.json"))}
+oracle = json.loads(${JSON.stringify(JSON.stringify(oracle))})
+regulator_authority = json.loads(${JSON.stringify(JSON.stringify(regulatorAuthority))})
+payload = m.build_authentic_success_payload(resident, fixture, oracle, regulator_authority)
 
 assert payload["candidate"]["class_number"] == "1"
 assert payload["candidate"]["invariant_factors"] == []
@@ -59,9 +84,9 @@ assert payload["generators"] == {"entries": []}
 assert payload["unit_component"]["terminal_status"] == "getfu-and-cleanarch-complete"
 assert payload["unit_component"]["evidence"]["rank"] == "2"
 assert payload["unit_component"]["evidence"]["claimed_norms"] == ["-1", "-1"]
-assert payload["correspondence"]["status"] == "active-hnf-kernel-to-successful-unit-component"
+assert payload["correspondence"]["status"] == "cold-replayed-authorities-linked-unit-regulator-unresolved"
 assert payload["correspondence"]["equal_bound_honesty"] == "equal-bound-source-skip"
-assert payload["correspondence"]["cleanarch_status"] == "accepted-by-successful-unit-component"
+assert payload["correspondence"]["cleanarch_status"] == "cold-replayed-class-relation-cleanarch"
 assert payload["correspondence"]["final_driver_status"] == "not-published"
 assert len(payload["correspondence"]["hnf_kernel_basis"]) == 105
 assert len(payload["correspondence"]["unit_kernel_provenance"]) == 14
@@ -69,16 +94,15 @@ assert len(payload["correspondence"]["active_relation_provenance"]) == 30
 assert payload["terminal"]["phase5_complete"] is False
 assert payload["terminal"]["public_complete"] is False
 assert payload["terminal"]["unverified_requirements"] == [
-    "exact-ideal-arithmetic-replay",
-    "exact-unit-principality-and-norm-replay",
-    "factor-base-authentication",
-    "rigorous-regulator-enclosure-and-acceptance",
+    "successful-unit-component-to-rigorous-regulator-unit-link",
+    "remove-live-pari-unit-oracle-input",
+    "independent-unit-saturation-index-one-certificate",
+    "independent-factor-base-relation-completeness-certificate",
 ]
 
 publisher = m.AuthenticSuccessPublisher()
 assert publisher.current() is None
-with ThreadPoolExecutor(max_workers=16) as pool:
-    published = list(pool.map(lambda _: publisher.publish(payload), range(64)))
+published = [publisher.publish(payload) for _ in range(64)]
 assert len({item.sha256 for item in published}) == 1
 result = published[0]
 assert publisher.current() == result
@@ -133,6 +157,12 @@ mutation(lambda p: p["correspondence"]["active_relation_provenance"].__setitem__
 mutation(lambda p: p["correspondence"].__setitem__("equal_bound_honesty", "verified"))
 mutation(lambda p: p["correspondence"].__setitem__("cleanarch_status", "not-run"))
 mutation(lambda p: p["correspondence"].__setitem__("final_driver_status", "complete"))
+mutation(lambda p: p["authorities"]["presentation"]["relations"][0]["alpha"].__setitem__(0, "3"))
+mutation(lambda p: p["authorities"]["torsion"]["envelope"]["payload"]["torsion"].__setitem__("order", "3"))
+mutation(lambda p: p["authorities"]["cleanarch"]["output"].__setitem__(1, "99"))
+mutation(lambda p: p["authorities"]["regulator"]["envelope"]["payload"]["evidence"]["exact_unit_norms"].__setitem__(0, "1"))
+mutation(lambda p: p["authorities"]["relation_unit"]["cleanup_transform"].__setitem__(0, "2"))
+mutation(lambda p: p["authorities"]["relation_unit"]["relation_exponents"].__setitem__(0, "1"))
 mutation(lambda p: p["terminal"].__setitem__("phase5_complete", True))
 mutation(lambda p: p["terminal"].__setitem__("public_complete", True))
 mutation(lambda p: p["terminal"]["unverified_requirements"].pop())
@@ -180,17 +210,14 @@ print(json.dumps({
 }, sort_keys=True))
 `;
 
-const fixture = path.join(__dirname, "unit-bridge-cubic-fixtures.json");
-const result = spawnSync(
-  "python3",
-  ["-c", program, root, resident, fixture],
-  {
-    cwd: root,
-    input: JSON.stringify(oracle),
-    encoding: "utf8",
-    maxBuffer: 128 * 1024 * 1024,
-    timeout: 240000,
-  },
-);
+const result = spawnSync("python3", ["-c", program], {
+  cwd: root,
+  encoding: "utf8",
+  maxBuffer: 128 * 1024 * 1024,
+  timeout: 240000,
+});
 assert.equal(result.status, 0, result.stderr || String(result.error));
 process.stdout.write(result.stdout);
+}
+
+main().catch((error) => { console.error(error); process.exitCode = 1; });

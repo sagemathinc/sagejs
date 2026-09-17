@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping as MappingABC, Sequence as SequenceABC
 from dataclasses import dataclass
+from fractions import Fraction
 import hashlib
 import json
 from pathlib import Path
@@ -29,6 +30,20 @@ from .class_group_final_state import (
     canonical_component_sha256,
     snapshot_final_source_state,
 )
+from .class_relation_cleanarch import (
+    pari_cleanarch_retry_action,
+    pari_cleanarch_totally_real_cubic,
+)
+from .presentation_authority import (
+    capture_presentation_authority,
+    replay_presentation_authority,
+)
+from .torsion_authority import (
+    TorsionReplayAuthority,
+    cold_replay_torsion,
+    derive_real_cubic_torsion,
+    prepared_polynomial_sha256,
+)
 from .unit_bridge_cubic import (
     pari_cubic_getfu_factor_rank_two,
     pari_cubic_unit_bridge_prepare,
@@ -39,17 +54,21 @@ from .unit_component_cubic import make_real_cubic_unit_component
 from .unit_reconstruction_signed import pari_getfu_signed_real_cubic
 
 
-SUCCESS_SCHEMA = "sagejs.pari-class-group/authentic-unit-correspondence-v1"
+SUCCESS_SCHEMA = "sagejs.pari-class-group/authentic-authority-composition-v2"
 RUN_ID = "authentic-real-cubic-h1-p2304"
 OWNER_GENERATION = 1
 CONNECTED_FIELD_ID = "pari-2.17.4:" + FIELD_ID
 _MAX_BYTES = 64 * 1024 * 1024
 _UNVERIFIED_REQUIREMENTS = (
-    "exact-ideal-arithmetic-replay",
-    "exact-unit-principality-and-norm-replay",
-    "factor-base-authentication",
-    "rigorous-regulator-enclosure-and-acceptance",
+    "successful-unit-component-to-rigorous-regulator-unit-link",
+    "remove-live-pari-unit-oracle-input",
+    "independent-unit-saturation-index-one-certificate",
+    "independent-factor-base-relation-completeness-certificate",
 )
+
+_CLEANARCH_PRECISION = 192
+_CLEANARCH_COLUMNS = 7
+_CLEANARCH_RETRY = [1, 192, 256, 64, 10, 64]
 
 
 class AuthenticSuccessFailure(ValueError):
@@ -416,10 +435,201 @@ def _component_record(component: UnitComponentOutput) -> dict[str, Any]:
     }
 
 
+def _cleanarch_authority(fixture: Mapping[str, Any]) -> dict[str, Any]:
+    source = _integers(fixture["accepted_arch"], "cleanarch source", 147)
+    scratch = [0] * 147
+    output = [0] * 147
+    state = [0] * 6
+    status = pari_cleanarch_totally_real_cubic(
+        source,
+        _CLEANARCH_COLUMNS,
+        _CLEANARCH_PRECISION,
+        [0] * 3,
+        [0] * 512,
+        [0] * 512,
+        [0] * 512,
+        [0] * 512,
+        [0] * 1024,
+        scratch,
+        output,
+        state,
+    )
+    retry = [0] * 6
+    retry_status = pari_cleanarch_retry_action(
+        source, 3 * _CLEANARCH_COLUMNS, _CLEANARCH_PRECISION, retry
+    )
+    if status != 0 or state[:3] != [0, 7, 7]:
+        raise AuthenticSuccessFailure("class-relation cleanarch did not replay")
+    if retry_status != 1 or retry != _CLEANARCH_RETRY:
+        raise AuthenticSuccessFailure("class-relation cleanarch retry changed")
+    return {
+        "source": [str(value) for value in source],
+        "output": [str(value) for value in output],
+        "state": [str(value) for value in state],
+        "retry": [str(value) for value in retry],
+        "precision": str(_CLEANARCH_PRECISION),
+        "columns": str(_CLEANARCH_COLUMNS),
+    }
+
+
+def _torsion_authority() -> dict[str, Any]:
+    polynomial = [20034, -20018, 0, 1]
+    result = derive_real_cubic_torsion(polynomial)
+    replayed = cold_replay_torsion(
+        result,
+        TorsionReplayAuthority(prepared_polynomial_sha256(polynomial), result.sha256),
+    )
+    return {
+        "envelope": _strict_loads(replayed.canonical_json),
+        "sha256": replayed.sha256,
+    }
+
+
+def _regulator_authority(authority: Mapping[str, Any]) -> dict[str, Any]:
+    value = _exact_dict(dict(authority), {"envelope", "sha256"}, "regulator authority")
+    if _sha256(_canonical(value["envelope"])) != value["sha256"]:
+        raise AuthenticSuccessFailure("regulator authority digest changed")
+    return json.loads(_canonical(value))
+
+
+def _cubic_multiply(
+    left: Sequence[Fraction], right: Sequence[Fraction]
+) -> tuple[Fraction, Fraction, Fraction]:
+    product = [Fraction(0)] * 5
+    for i in range(3):
+        for j in range(3):
+            product[i + j] += left[i] * right[j]
+    for degree in (4, 3):
+        leading = product[degree]
+        product[degree] = 0
+        product[degree - 3] -= 20034 * leading
+        product[degree - 2] += 20018 * leading
+    return product[0], product[1], product[2]
+
+
+def _determinant3(entries: Sequence[Fraction]) -> Fraction:
+    return (
+        entries[0] * (entries[4] * entries[8] - entries[5] * entries[7])
+        - entries[1] * (entries[3] * entries[8] - entries[5] * entries[6])
+        + entries[2] * (entries[3] * entries[7] - entries[4] * entries[6])
+    )
+
+
+def _cubic_inverse(value: Sequence[Fraction]) -> tuple[Fraction, Fraction, Fraction]:
+    columns = [
+        _cubic_multiply(value, basis) for basis in ((1, 0, 0), (0, 1, 0), (0, 0, 1))
+    ]
+    matrix = [columns[column][row] for row in range(3) for column in range(3)]
+    determinant = _determinant3(matrix)
+    if determinant == 0:
+        raise AuthenticSuccessFailure("principal generator is zero")
+    answer = []
+    for column in range(3):
+        changed = list(matrix)
+        for row in range(3):
+            changed[3 * row + column] = Fraction(int(row == 0))
+        answer.append(_determinant3(changed) / determinant)
+    return answer[0], answer[1], answer[2]
+
+
+def _cubic_power(
+    value: Sequence[int], exponent: int
+) -> tuple[Fraction, Fraction, Fraction]:
+    base = tuple(Fraction(entry) for entry in value)
+    if exponent < 0:
+        base = _cubic_inverse(base)
+        exponent = -exponent
+    answer = (Fraction(1), Fraction(0), Fraction(0))
+    while exponent:
+        if exponent & 1:
+            answer = _cubic_multiply(answer, base)
+        base = _cubic_multiply(base, base)
+        exponent >>= 1
+    return answer
+
+
+def _integral_to_power(coordinates: Sequence[int]) -> list[int]:
+    return [
+        coordinates[0] - 13345 * coordinates[2],
+        coordinates[1] + 2 * coordinates[2],
+        coordinates[2],
+    ]
+
+
+def _exact_relation_unit_authority(
+    resident: Mapping[str, Any],
+    presentation: Mapping[str, Any],
+    full_provenance: Sequence[int],
+    exact_units: Sequence[int],
+) -> dict[str, Any]:
+    """Map the active 15-column unit kernel back to all 73 principal rows."""
+    cleanup = _integers(
+        resident["hnf_transform"][: 73 * 73], "cleanup transform", 73 * 73
+    )
+    active = _integers(full_provenance, "active unit provenance", 30)
+    relation_exponents: list[int] = []
+    torsion_signs: list[int] = []
+    relations = presentation["relations"]
+    for unit_index in range(2):
+        coefficients = active[15 * unit_index : 15 * (unit_index + 1)] + [0] * 58
+        exponents = [
+            sum(
+                coefficients[column] * cleanup[73 * column + row]
+                for column in range(73)
+            )
+            for row in range(73)
+        ]
+        product = (Fraction(1), Fraction(0), Fraction(0))
+        for exponent, relation in zip(exponents, relations):
+            if exponent:
+                alpha = _integers(relation["alpha"], "principal generator", 3)
+                # Relation generators use the captured integral basis
+                # [1, a, -13345 + 2*a + a^2].
+                product = _cubic_multiply(
+                    product,
+                    _cubic_power(
+                        [
+                            alpha[0] - 13345 * alpha[2],
+                            alpha[1] + 2 * alpha[2],
+                            alpha[2],
+                        ],
+                        exponent,
+                    ),
+                )
+        power_unit = _integral_to_power(
+            exact_units[3 * unit_index : 3 * (unit_index + 1)]
+        )
+        wanted = tuple(Fraction(entry) for entry in power_unit)
+        if product == wanted:
+            torsion_signs.append(1)
+        elif product == tuple(-entry for entry in wanted):
+            torsion_signs.append(-1)
+        else:
+            torsion_signs.append(0)
+        relation_exponents.extend(exponents)
+    return {
+        "cleanup_transform_shape": ["73", "73"],
+        "cleanup_transform": [str(value) for value in cleanup],
+        "relation_exponent_shape": ["2", "73"],
+        "relation_exponents": [str(value) for value in relation_exponents],
+        "torsion_signs": [str(value) for value in torsion_signs],
+        "selected_exact_units_shape": ["2", "3"],
+        "selected_exact_units": [
+            str(value)
+            for unit_index in range(2)
+            for value in _integral_to_power(
+                exact_units[3 * unit_index : 3 * (unit_index + 1)]
+            )
+        ],
+        "status": "exact-principal-relation-product-equals-selected-unit-up-to-torsion",
+    }
+
+
 def build_authentic_success_payload(
     resident_output: str | Path,
     fixture_path: str | Path,
     unit_oracle: Mapping[str, Any],
+    regulator_authority: Mapping[str, Any],
 ) -> dict[str, Any]:
     """Execute live class/unit leaves and join their exact correspondence."""
     if not isinstance(unit_oracle, MappingABC):
@@ -453,6 +663,18 @@ def build_authentic_success_payload(
         ((0, 7), (7, 7), (21, 7), (28, 7)),
     )
     kernel_basis, full_provenance = _full_relation_provenance(resident, provenance)
+    presentation = capture_presentation_authority(resident_output)
+    replay_presentation_authority(presentation)
+    relation_unit = _exact_relation_unit_authority(
+        resident, presentation, full_provenance, units
+    )
+    authorities = {
+        "presentation": presentation,
+        "torsion": _torsion_authority(),
+        "cleanarch": _cleanarch_authority(fixture),
+        "regulator": _regulator_authority(regulator_authority),
+        "relation_unit": relation_unit,
+    }
     payload = {
         "source": {
             "field_id": CONNECTED_FIELD_ID,
@@ -465,8 +687,9 @@ def build_authentic_success_payload(
         "unit_component": _component_record(unit_component),
         "generators": {"entries": []},
         "buchall": class_state["buchall"],
+        "authorities": authorities,
         "correspondence": {
-            "status": "active-hnf-kernel-to-successful-unit-component",
+            "status": "cold-replayed-authorities-linked-unit-regulator-unresolved",
             "active_relation_shape": ["8", "15"],
             "hnf_kernel_shape": ["15", "7"],
             "hnf_kernel_basis": [str(value) for value in kernel_basis],
@@ -475,11 +698,11 @@ def build_authentic_success_payload(
             "active_relation_provenance_shape": ["2", "15"],
             "active_relation_provenance": [str(value) for value in full_provenance],
             "equal_bound_honesty": "equal-bound-source-skip",
-            "cleanarch_status": "accepted-by-successful-unit-component",
+            "cleanarch_status": "cold-replayed-class-relation-cleanarch",
             "final_driver_status": "not-published",
         },
         "terminal": {
-            "status": "authentic-internal-unit-correspondence-published",
+            "status": "authentic-internal-authority-composition-published",
             "phase5_complete": False,
             "public_complete": False,
             "unverified_requirements": list(_UNVERIFIED_REQUIREMENTS),
@@ -571,6 +794,170 @@ def _validate_class_state(payload: Mapping[str, Any]) -> None:
         raise AuthenticSuccessFailure("class checker states changed")
 
 
+def _validate_authorities(value: Mapping[str, Any]) -> None:
+    authorities = _exact_dict(
+        value["authorities"],
+        {"presentation", "torsion", "cleanarch", "regulator", "relation_unit"},
+        "independent authorities",
+    )
+    presentation = authorities["presentation"]
+    replay_presentation_authority(presentation)
+    hnf = presentation["hnf"]
+    candidate = value["candidate"]
+    correspondence = value["correspondence"]
+    if hnf["active_relation"] != candidate["active_relation_matrix"]:
+        raise AuthenticSuccessFailure("presentation authority is detached from A")
+    if hnf["full_hnf"][56:] != candidate["presentation_matrix"]:
+        raise AuthenticSuccessFailure("presentation authority is detached from H")
+    if hnf["transform"][:105] != correspondence["hnf_kernel_basis"]:
+        raise AuthenticSuccessFailure("presentation authority is detached from ker(A)")
+    if hnf["transformed_logs"][:147] != candidate["transformed_logs"]:
+        raise AuthenticSuccessFailure("presentation authority is detached from logs")
+
+    torsion = _exact_dict(
+        authorities["torsion"], {"envelope", "sha256"}, "torsion authority"
+    )
+    torsion_raw = _canonical(torsion["envelope"])
+    replayed_torsion = cold_replay_torsion(
+        torsion_raw,
+        TorsionReplayAuthority(
+            prepared_polynomial_sha256([20034, -20018, 0, 1]),
+            str(torsion["sha256"]),
+        ),
+    )
+    if replayed_torsion.sha256 != torsion["sha256"]:
+        raise AuthenticSuccessFailure("torsion authority digest changed")
+    torsion_payload = torsion["envelope"]["payload"]["torsion"]
+    evidence = value["unit_component"]["evidence"]
+    if (
+        torsion_payload["order"] != evidence["torsion_order"]
+        or torsion_payload["generator_power_basis"] != evidence["torsion_coordinates"]
+        or torsion_payload["generator_norm"] != evidence["torsion_norm"]
+    ):
+        raise AuthenticSuccessFailure("torsion authority is detached from unit output")
+
+    cleanarch = _exact_dict(
+        authorities["cleanarch"],
+        {"source", "output", "state", "retry", "precision", "columns"},
+        "cleanarch authority",
+    )
+    source = _integers(cleanarch["source"], "cleanarch source", 147)
+    expected = _integers(cleanarch["output"], "cleanarch output", 147)
+    if source != _integers(candidate["transformed_logs"], "candidate logs", 147):
+        raise AuthenticSuccessFailure("cleanarch source is detached from candidate")
+    if cleanarch["precision"] != "192" or cleanarch["columns"] != "7":
+        raise AuthenticSuccessFailure("cleanarch dimensions changed")
+    scratch, output, state = [0] * 147, [0] * 147, [0] * 6
+    if (
+        pari_cleanarch_totally_real_cubic(
+            source,
+            7,
+            192,
+            [0] * 3,
+            [0] * 512,
+            [0] * 512,
+            [0] * 512,
+            [0] * 512,
+            [0] * 1024,
+            scratch,
+            output,
+            state,
+        )
+        != 0
+        or output != expected
+        or state != _integers(cleanarch["state"], "cleanarch state", 6)
+    ):
+        raise AuthenticSuccessFailure("cleanarch authority did not replay")
+    retry = [0] * 6
+    if pari_cleanarch_retry_action(source, 21, 192, retry) != 1 or retry != _integers(
+        cleanarch["retry"], "cleanarch retry", 6
+    ):
+        raise AuthenticSuccessFailure("cleanarch retry authority did not replay")
+
+    regulator = _exact_dict(
+        authorities["regulator"], {"envelope", "sha256"}, "regulator authority"
+    )
+    regulator_raw = _canonical(regulator["envelope"])
+    if _sha256(regulator_raw) != regulator["sha256"]:
+        raise AuthenticSuccessFailure("regulator authority digest changed")
+    regulator_payload = regulator["envelope"].get("payload")
+    if not isinstance(regulator_payload, dict):
+        raise AuthenticSuccessFailure("regulator payload is absent")
+    if regulator_payload["evidence"]["exact_unit_norms"] != evidence["claimed_norms"]:
+        raise AuthenticSuccessFailure("regulator authority is detached from unit norms")
+    if not regulator_payload["evidence"]["regulator"]["rigorous"]:
+        raise AuthenticSuccessFailure("regulator authority is not rigorous")
+
+    relation_unit = _exact_dict(
+        authorities["relation_unit"],
+        {
+            "cleanup_transform_shape",
+            "cleanup_transform",
+            "relation_exponent_shape",
+            "relation_exponents",
+            "torsion_signs",
+            "selected_exact_units_shape",
+            "selected_exact_units",
+            "status",
+        },
+        "relation-unit authority",
+    )
+    if (
+        relation_unit["cleanup_transform_shape"] != ["73", "73"]
+        or relation_unit["relation_exponent_shape"] != ["2", "73"]
+        or relation_unit["selected_exact_units_shape"] != ["2", "3"]
+        or relation_unit["status"]
+        != "exact-principal-relation-product-equals-selected-unit-up-to-torsion"
+    ):
+        raise AuthenticSuccessFailure("relation-unit authority shape changed")
+    cleanup = _integers(
+        relation_unit["cleanup_transform"], "cleanup transform", 73 * 73
+    )
+    exponents = _integers(
+        relation_unit["relation_exponents"], "relation exponents", 146
+    )
+    signs = _integers(relation_unit["torsion_signs"], "relation torsion signs", 2)
+    selected_exact_units = _integers(
+        relation_unit["selected_exact_units"], "selected exact units", 6
+    )
+    active = _integers(
+        correspondence["active_relation_provenance"], "active provenance", 30
+    )
+    relations = presentation["relations"]
+    for unit_index in range(2):
+        coefficients = active[15 * unit_index : 15 * (unit_index + 1)] + [0] * 58
+        replayed_exponents = [
+            sum(
+                coefficients[column] * cleanup[73 * column + row]
+                for column in range(73)
+            )
+            for row in range(73)
+        ]
+        if replayed_exponents != exponents[73 * unit_index : 73 * (unit_index + 1)]:
+            raise AuthenticSuccessFailure("relation-unit exponent map changed")
+        product = (Fraction(1), Fraction(0), Fraction(0))
+        for exponent, relation in zip(replayed_exponents, relations):
+            if exponent:
+                alpha = _integers(relation["alpha"], "principal generator", 3)
+                product = _cubic_multiply(
+                    product,
+                    _cubic_power(_integral_to_power(alpha), exponent),
+                )
+        wanted = tuple(
+            Fraction(entry)
+            for entry in selected_exact_units[3 * unit_index : 3 * (unit_index + 1)]
+        )
+        expected_sign = 0
+        if product == wanted:
+            expected_sign = 1
+        elif product == tuple(-entry for entry in wanted):
+            expected_sign = -1
+        if signs[unit_index] != expected_sign:
+            raise AuthenticSuccessFailure("relation-unit replay status changed")
+    if any(sign not in (-1, 1) for sign in signs):
+        raise AuthenticSuccessFailure("exact relation-unit status is stale")
+
+
 def _validate_payload_unchecked(payload: Any) -> None:
     value = _exact_dict(
         payload,
@@ -581,6 +968,7 @@ def _validate_payload_unchecked(payload: Any) -> None:
             "unit_component",
             "generators",
             "buchall",
+            "authorities",
             "correspondence",
             "terminal",
         },
@@ -691,13 +1079,13 @@ def _validate_payload_unchecked(payload: Any) -> None:
         "correspondence",
     )
     fixed = {
-        "status": "active-hnf-kernel-to-successful-unit-component",
+        "status": "cold-replayed-authorities-linked-unit-regulator-unresolved",
         "active_relation_shape": ["8", "15"],
         "hnf_kernel_shape": ["15", "7"],
         "unit_kernel_provenance_shape": ["2", "7"],
         "active_relation_provenance_shape": ["2", "15"],
         "equal_bound_honesty": "equal-bound-source-skip",
-        "cleanarch_status": "accepted-by-successful-unit-component",
+        "cleanarch_status": "cold-replayed-class-relation-cleanarch",
         "final_driver_status": "not-published",
     }
     if any(correspondence[name] != wanted for name, wanted in fixed.items()):
@@ -729,8 +1117,9 @@ def _validate_payload_unchecked(payload: Any) -> None:
                 for column in range(15)
             ):
                 raise AuthenticSuccessFailure("unit provenance left ker(A)")
+    _validate_authorities(value)
     if value["terminal"] != {
-        "status": "authentic-internal-unit-correspondence-published",
+        "status": "authentic-internal-authority-composition-published",
         "phase5_complete": False,
         "public_complete": False,
         "unverified_requirements": list(_UNVERIFIED_REQUIREMENTS),
@@ -743,7 +1132,7 @@ def _validate_payload(payload: Any) -> None:
         _validate_payload_unchecked(payload)
     except AuthenticSuccessFailure:
         raise
-    except (IndexError, KeyError, TypeError) as error:
+    except (IndexError, KeyError, TypeError, ValueError, ArithmeticError) as error:
         raise AuthenticSuccessFailure(
             "success payload is structurally invalid"
         ) from error
