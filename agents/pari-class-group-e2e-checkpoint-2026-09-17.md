@@ -82,6 +82,18 @@ It explicitly excludes the analytic acceptance, Smith invariants, `[24,8]`,
 regulator, units, and public-completion claims. Those remain the next connected
 gate rather than being inferred from W0.
 
+Commit `6578fc785` closes the next connected gate directly from that immutable
+live owner. It constructs the degree catalog through prime 10627, derives the
+analytic bound 10626 and inverse-`hR`, runs post-HNF acceptance, takes the
+authenticated equal-bound honesty skip, and computes Smith invariants `[24,8]`
+with class number 192. The accepted regulator is retained at 256-bit precision,
+and the exact 14-cell rank-two unit-relation owner is published with SHA-256
+`ac3b40e1...aef8`. The final capped checker took 15.534 seconds and sampled
+512,996 KiB maximum RSS. Neither W0 nor a regulator, class number, invariant,
+or inverse-`hR` answer is a runtime input. Full Smith transformations,
+class-generator ideals, order-principal witnesses, compact-unit reconstruction,
+and expanded units remain explicitly incomplete.
+
 Commits `fbbbeb75f` and `b5873397b` separately add honest exact presentation
 boundaries for development rows 3, 4, and 11. Their invariant factors and class
 numbers are respectively `[6]`/6, `[2]`/2, and `[2,2]`/4. These cuts replay the
