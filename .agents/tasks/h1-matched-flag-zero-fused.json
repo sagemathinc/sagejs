@@ -4,7 +4,7 @@
   "id": "h1-matched-flag-zero-fused",
   "title": "Fused H1 matched flag-zero root",
   "lane": "native-compiler",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Generate and validate a single timed native H1 root from prepared input through adapted eager relations, HNF/compact state, and exactly one p192 getfu PRECI publication without host conversion or stronger retry work",
   "base_commit": "ff764a0ff7edc19860922b2914ea84ad9d66d6a1",
@@ -12,6 +12,8 @@
     "bench/pari-class-group-port/h1_matched_flag_zero_fused.py",
     "bench/pari-class-group-port/check_h1_matched_flag_zero_fused.cjs",
     "bench/pari-class-group-port/time_h1_matched_flag_zero_fused.cjs",
+    "bench/pari-class-group-port/h1_matched_flag_zero_timing_worker.cjs",
+    "bench/pari-class-group-port/h1_matched_flag_zero_timing_result.json",
     "bench/pari-class-group-port/h1_matched_flag_zero_fused_audit.md",
     "tools/native-kernel/thin-cache-loader.cjs"
   ],
@@ -61,11 +63,21 @@
       "result": "pass",
       "exit_code": 0,
       "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/time_h1_matched_flag_zero_fused.cjs --paired timing-sage-command.json timing-pari-command.json",
+      "result": "pass; seven qualified alternating pairs; Outcome C threshold not met",
+      "exit_code": 0,
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Qualified the fully fused same-work H1 flag-zero boundary over seven alternating pairs; all evidence agrees, but the 2.426 s Sage.js median versus 15.029 ms PARI median fails Outcome C.",
+    "risks": [
+      "The fused native graph remains about 161x slower and uses about 1.69 GiB peak RSS despite eliminating host conversion and the stronger exact suffix."
+    ],
+    "next_steps": [
+      "Profile the authenticated fused generated graph to localize exact-buffer, private ABI/status, and storage-reuse costs without changing the matched boundary."
+    ]
   }
 }

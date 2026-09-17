@@ -21,6 +21,17 @@ const RECEIPT_SCHEMA = "sagejs.pari-class-group/h1-matched-flag-zero-paired-v1";
 const BOUNDARY = "prepared H1 through one compact p192 PRECI publication";
 const FIELD = "x^3-20018*x+20034";
 const RELATION_SHA = "b0c647186a5fed5317c7135ccf16623a930631382ad7963e12af4ded2db7259a";
+const COMPACT_SHA = "80cec2acce5b95ec48beff67b800410eedb5e580e25029aa79d4d63dc40b1c2d";
+const ROOT = ["0", "1", "3", "192", "1", "0", "0", "7", "73", "8", "0", "1"];
+const GETFU = ["3", "10", "-186", "0", "1923", "0", "0", "1"];
+const COUNTERS = Object.freeze({
+  C1: "333", C2: "333", KC: "66", KCZ: "48", KCZ2: "48",
+  accepted_relations: "73", catalog_entries: "1230",
+  decomposition_calls: "48", degree_groups: "1833", descriptors: "66",
+  factor_attempts: "96", factor_slots: "2270", initial_relations: "12",
+  random_relations: "0", small_elements: "1046", subfactor_trials: "4",
+  visited_ideals: "16",
+});
 const BASELINE_GAP_NS = 931341545n;
 const TARGET_REMOVED_NS = 745073236n;
 const PAIRS = 7;
@@ -67,6 +78,7 @@ function validateWorker(receipt) {
   assert.equal(receipt.boundary, BOUNDARY);
   assert.equal(receipt.field, FIELD);
   assert.equal(receipt.relationPrefixSha256, RELATION_SHA);
+  assert.equal(receipt.compactSha256, COMPACT_SHA);
   assert.match(receipt.ownerEvidenceSha256, /^[0-9a-f]{64}$/);
   assert.match(receipt.terminalRngSha256, /^[0-9a-f]{64}$/);
   assert.equal(receipt.status, "not_given(PRECI)");
@@ -77,6 +89,12 @@ function validateWorker(receipt) {
   assert.equal(receipt.publicComplete, false);
   assert.equal(receipt.nativeCalls, "1");
   assert.equal(receipt.evidenceInsideClock, false);
+  assert.deepEqual(receipt.counters, COUNTERS);
+  assert.deepEqual(receipt.root, ROOT);
+  assert.deepEqual(receipt.getfuState, GETFU);
+  assert.match(receipt.peakRssKiB, /^[1-9][0-9]*$/);
+  assert(BigInt(receipt.peakRssKiB) > 0n);
+  assert(receipt.artifactIdentity && typeof receipt.artifactIdentity === "object");
   assert(BigInt(receipt.kernelNs) > 0n);
   return receipt;
 }
@@ -84,6 +102,14 @@ function validateWorker(receipt) {
 function median(values) {
   const sorted = values.map(BigInt).sort((a, b) => a < b ? -1 : a > b ? 1 : 0);
   return sorted[Math.floor(sorted.length / 2)];
+}
+
+function mad(values) {
+  const center = median(values);
+  return median(values.map((value) => {
+    const delta = BigInt(value) - center;
+    return delta < 0n ? -delta : delta;
+  }));
 }
 
 function paired(sageCommand, pariCommand) {
@@ -99,7 +125,8 @@ function paired(sageCommand, pariCommand) {
     assert(sage && pari);
     for (const key of [
       "boundary", "field", "relationPrefixSha256", "ownerEvidenceSha256",
-      "terminalRngSha256", "status", "precisionBits", "getfuAttempts",
+      "compactSha256", "terminalRngSha256", "counters", "root", "getfuState",
+      "status", "precisionBits", "getfuAttempts",
       "precisionRetries", "strongerExactSuffixCalls", "publicComplete",
     ]) assert.deepEqual(sage[key], pari[key], `pair ${index} disagrees on ${key}`);
     pairs.push({ index, order: order.join("-then-"), arms });
@@ -108,6 +135,16 @@ function paired(sageCommand, pariCommand) {
     pair.arms.find((arm) => arm.implementation === "sagejs").kernelNs));
   const pariMedian = median(pairs.map((pair) =>
     pair.arms.find((arm) => arm.implementation === "pari-2.17.4").kernelNs));
+  const sageSamples = pairs.map((pair) =>
+    pair.arms.find((arm) => arm.implementation === "sagejs"));
+  const pariSamples = pairs.map((pair) =>
+    pair.arms.find((arm) => arm.implementation === "pari-2.17.4"));
+  for (const samples of [sageSamples, pariSamples]) {
+    for (const sample of samples.slice(1)) {
+      assert.deepEqual(sample.artifactIdentity, samples[0].artifactIdentity,
+        `${sample.implementation} artifact identity changed during series`);
+    }
+  }
   const matchedGap = sageMedian > pariMedian ? sageMedian - pariMedian : 0n;
   const removed = BASELINE_GAP_NS > matchedGap ? BASELINE_GAP_NS - matchedGap : 0n;
   return {
@@ -123,11 +160,21 @@ function paired(sageCommand, pariCommand) {
     summary: {
       sageMedianNs: sageMedian.toString(),
       pariMedianNs: pariMedian.toString(),
+      sageMadNs: mad(sageSamples.map((sample) => sample.kernelNs)).toString(),
+      pariMadNs: mad(pariSamples.map((sample) => sample.kernelNs)).toString(),
+      sagePeakRssKiB: sageSamples.reduce((value, sample) =>
+        BigInt(sample.peakRssKiB) > value ? BigInt(sample.peakRssKiB) : value, 0n).toString(),
+      pariPeakRssKiB: pariSamples.reduce((value, sample) =>
+        BigInt(sample.peakRssKiB) > value ? BigInt(sample.peakRssKiB) : value, 0n).toString(),
       matchedGapNs: matchedGap.toString(),
       frozenBaselineGapNs: BASELINE_GAP_NS.toString(),
       removedGapNs: removed.toString(),
       frozenTargetRemovedNs: TARGET_REMOVED_NS.toString(),
       outcomeCPass: removed >= TARGET_REMOVED_NS,
+    },
+    artifactIdentities: {
+      sagejs: sageSamples[0].artifactIdentity,
+      pari: pariSamples[0].artifactIdentity,
     },
   };
 }
@@ -139,6 +186,7 @@ function fakeWorker(implementation, kernelNs) {
     boundary: BOUNDARY,
     field: FIELD,
     relationPrefixSha256: RELATION_SHA,
+    compactSha256: COMPACT_SHA,
     ownerEvidenceSha256: "1".repeat(64),
     terminalRngSha256: "2".repeat(64),
     status: "not_given(PRECI)",
@@ -149,6 +197,11 @@ function fakeWorker(implementation, kernelNs) {
     publicComplete: false,
     nativeCalls: "1",
     evidenceInsideClock: false,
+    counters: COUNTERS,
+    root: ROOT,
+    getfuState: GETFU,
+    peakRssKiB: implementation === "sagejs" ? "100" : "50",
+    artifactIdentity: { fixture: implementation },
     kernelNs: String(kernelNs),
   };
   process.stdout.write(`${JSON.stringify(common)}\n`);

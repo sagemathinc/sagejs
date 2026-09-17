@@ -576,8 +576,9 @@ function thinOptions(names, mutation = null) {
   };
   if (mutation !== null) expected[mutation] = mutate(expected[mutation]);
   return {
-    sourcePath: path.resolve(fusedPath),
-    cacheRoot: path.join(directory, ".sagejs-native-kernels"),
+    sourcePath: path.resolve(process.env.SAGEJS_FUSED_CACHE_SOURCE || fusedPath),
+    cacheRoot: path.resolve(process.env.SAGEJS_FUSED_CACHE_ROOT ||
+      path.join(directory, ".sagejs-native-kernels")),
     entry, signature: names, expected,
   };
 }
@@ -636,6 +637,7 @@ function validateArtifact(inputPath, mutation) {
   assert.equal(relation.sha256,
     "b0c647186a5fed5317c7135ccf16623a930631382ad7963e12af4ded2db7259a");
   const compact = compactEvidence(input, relation.sha256);
+  const processStatus = fs.readFileSync("/proc/self/status", "utf8");
   return {
     backend: "gmp-thin", mutation, wallNs: wallNs.toString(),
     relationSha256: relation.sha256,
@@ -644,6 +646,9 @@ function validateArtifact(inputPath, mutation) {
     getfu: compact.state,
     counters: relation.payload.counters,
     ownerEvidenceSha256: digestCanonical({ relation: relation.payload, compact: compact.payload }),
+    terminalRngSha256: digestCanonical(relation.payload.terminal_rng_state),
+    peakRssKiB: Number(processStatus.match(/^VmHWM:\s+(\d+)\s+kB$/m)?.[1] || 0),
+    artifactIdentity: fn.compatibility,
   };
 }
 
