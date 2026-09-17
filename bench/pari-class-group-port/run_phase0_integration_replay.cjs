@@ -927,6 +927,23 @@ stage("h1-class-correspondence", {
   allowNoArtifactDirectory: true,
 });
 
+stage("live-h1-authority-handoff", {
+  dependencies: ["h1-class-correspondence", "resident-cubic-gmp"],
+  command: (context) => commandNode("check_live_h1_authority_handoff.cjs",
+    outputPath(context, "resident-cubic-gmp", "output")),
+  validate: (summary) => {
+    assert.equal(summary.schema,
+      "sagejs.pari-class-group/live-h1-authority-owners-v1");
+    assert.equal(summary.principalAlphas, 73);
+    assert.deepEqual(summary.kernelRelationMapShape, [7, 73]);
+    assert.equal(summary.downstreamFileJoins, 0);
+    assert.equal(summary.downstreamFixtureJoins, 0);
+    assert.equal(summary.publicCompletion, false);
+  },
+  noFixture: true,
+  allowNoArtifactDirectory: true,
+});
+
 stage("unit-bridge-preci", {
   dependencies: ["relation-hnf-witness", "unit-getfu"],
   requiresPari: true,
@@ -966,8 +983,32 @@ stage("real-cubic-getfu-honesty", {
   allowNoArtifactDirectory: true,
 });
 
+stage("cubic-embedding-rebuild", {
+  dependencies: ["real-cubic-getfu-honesty"],
+  requiresPari: true,
+  command: (context) => commandNode("check_cubic_embedding_rebuild.cjs",
+    context.pariRoot, context.pariArchive),
+  validate: (summary) => {
+    assert.equal(summary.polynomial, "x^3-20018*x+20034");
+    assert.deepEqual(summary.rootPrecisionBits, [2176, 2176, 2176]);
+    assert.deepEqual(summary.embeddingPrecisionBits,
+      [-1, -1, -1, 2176, 2176, 2176, 2176, 2240, 2176]);
+    assert.equal(summary.highPrecisionRootsInjected, false);
+    assert.equal(summary.highPrecisionEmbeddingInjected, false);
+    assert.equal(summary.transactionalFailure, true);
+    assert.deepEqual(summary.backends,
+      ["cpython", "javascript", "gmp", "tagged"]);
+    assert.match(summary.coreSha256, /^[0-9a-f]{64}$/);
+  },
+  noFixture: true,
+  additionalOutputs: (summary) => ({
+    "oracle-source": path.join(summary.artifactDirectory, "oracle.c"),
+    "oracle-binary": path.join(summary.artifactDirectory, "oracle"),
+  }),
+});
+
 stage("cubic-precision-rebuild", {
-  dependencies: ["real-cubic-getfu-honesty", "unit-relation-authority"],
+  dependencies: ["cubic-embedding-rebuild", "unit-relation-authority"],
   requiresPari: true,
   command: (context) => commandNode("check_cubic_precision_rebuild.cjs",
     context.pariRoot, context.pariArchive),
@@ -1005,6 +1046,37 @@ stage("unit-component-cubic", {
     assert.equal(summary.provenanceEntries, 14);
     assert.deepEqual(summary.retryLinkState, [6, 12, 1]);
     assert.equal(summary.atomicFailures, 3);
+  },
+  noFixture: true,
+  allowNoArtifactDirectory: true,
+});
+
+stage("live-exact-units-cubic", {
+  dependencies: ["live-h1-authority-handoff", "unit-component-cubic"],
+  command: (context) => commandNode("check_live_exact_units_cubic.cjs",
+    outputPath(context, "resident-cubic-gmp", "output")),
+  validate: (summary) => {
+    assert.equal(summary.status, "live-exact-units");
+    assert.equal(summary.relations, 73);
+    assert.deepEqual(summary.unitNorms, [-1, -1]);
+    assert.equal(summary.fixtureInputs, false);
+    assert.equal(summary.oracleInputs, false);
+  },
+  noFixture: true,
+  allowNoArtifactDirectory: true,
+});
+
+stage("live-h1-owner-bridge", {
+  dependencies: ["live-h1-authority-handoff", "unit-component-cubic"],
+  command: (context) => commandNode("check_live_h1_owner_bridge.cjs",
+    outputPath(context, "resident-cubic-gmp", "output")),
+  validate: (summary) => {
+    assert.equal(summary.schema, "sagejs.pari-class-group/live-h1-owner-bridge-v1");
+    assert.deepEqual(summary.fixtureInputs, []);
+    assert.deepEqual(summary.oracleInputs, []);
+    assert.deepEqual(summary.backends,
+      ["cpython", "javascript", "gmp", "tagged"]);
+    assert.equal(summary.publicComplete, false);
   },
   noFixture: true,
   allowNoArtifactDirectory: true,
@@ -1209,6 +1281,21 @@ stage("internal-correspondence-completion", {
     assert.equal(summary.standardPublicAdapterEligible, false);
     assert.equal(summary.unitSaturationCertified, false);
     assert.equal(summary.mutationsRejected, 10);
+  },
+  noFixture: true,
+  allowNoArtifactDirectory: true,
+});
+
+stage("torsion-final-binding", {
+  dependencies: ["internal-correspondence-completion", "torsion-authority"],
+  command: () => commandNode("check_torsion_final_binding.cjs"),
+  validate: (summary) => {
+    assert.equal(summary.schema,
+      "sagejs.pari-class-group/final-torsion-binding-v1");
+    assert.deepEqual(summary.fixtureInputs, []);
+    assert.deepEqual(summary.oracleInputs, []);
+    assert.equal(summary.torsionOrder, 2);
+    assert.deepEqual(summary.torsionGenerator, ["-1", "0", "0"]);
   },
   noFixture: true,
   allowNoArtifactDirectory: true,
@@ -1479,14 +1566,17 @@ stage("final-state", {
   dependencies: ["immutable-result", "rnd-collector", "honesty", "honesty-success",
     "honesty-equal-bound", "honesty-quintic-collector-downstream",
     "relation-hnf-witness",
-    "presentation-authority", "h1-class-correspondence", "unit-bridge-preci",
-    "unit-component-cubic",
+    "presentation-authority", "h1-class-correspondence",
+    "live-h1-authority-handoff", "unit-bridge-preci",
+    "unit-component-cubic", "live-exact-units-cubic", "live-h1-owner-bridge",
     "compact-unit-result", "compact-unit-resident-pool",
     "unit-relation-authority-frontier",
-    "unit-relation-authority", "cubic-precision-rebuild",
+    "unit-relation-authority", "cubic-embedding-rebuild",
+    "cubic-precision-rebuild",
     "torsion-authority", "class-relation-cleanarch",
     "regulator-acceptance-replay", "authentic-h1-unit-success",
     "prepared-h1-root-boundary", "internal-correspondence-completion",
+    "torsion-final-binding",
     "h1-live-final-driver-status", "h1-exclusive-stage-timing-contract",
     "mixed-getfu-quartic", "mixed-getfu-hard-precision",
     "quartic-direct-composition", "signed-genback-computed-t2",
