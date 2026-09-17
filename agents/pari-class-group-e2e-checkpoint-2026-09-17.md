@@ -106,6 +106,16 @@ This closes source-policy C5/C6 correspondence but does not invent expanded
 units or claim the compact factored-unit ancestry that the remaining HNF
 source-operation replay must still derive.
 
+These row-14 stage times are not a matched PARI ratio. The frozen panel records
+an historical PARI 2.15.4 discovery cost of 11.248 seconds, and the pristine
+PARI 2.17.4 trace is explicitly untimed. Stock PARI can now be timed from a
+prepared `nfinit` input, but the Sage.js row-14 path still begins later, from an
+authenticated factor-base/42-relation capsule. A valid paired comparison must
+first connect factor-base selection and the initial relation phase into one
+prepared-input Sage.js root and add a row-14 PARI 2.17.4 adapter at the same
+boundary. Dividing the current 110.052-, 15.534-, or 17.3-second stage runs by
+stock `bnfinit(nf,0)` would therefore be invalid.
+
 Commits `fbbbeb75f` and `b5873397b` separately add honest exact presentation
 boundaries for development rows 3, 4, and 11. Their invariant factors and class
 numbers are respectively `[6]`/6, `[2]`/2, and `[2,2]`/4. These cuts replay the
