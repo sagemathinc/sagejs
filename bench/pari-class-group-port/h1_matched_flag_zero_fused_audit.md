@@ -110,3 +110,37 @@ resident rather than silently increasing the envelope.
    prove all evidence outside the timer, and run the seven fixed pairs.
 4. Report Outcome C against the frozen threshold without changing the boundary
    or counting the stronger exact replay as matched work.
+
+## First bounded native gate: capacity failure
+
+The first admitted 4 GiB/600 s, one-job gate compiled and linked the fused
+graph, then was killed by the aggregate RSS monitor before correctness output
+could be serialized. It exited `-9` after `419.637 s` at
+`4,292,332 KiB`, just above the `4,194,304 KiB` limit; stdout and stderr were
+empty. The resource receipt is
+`/scratch/sagejs-runtime/h1-matched-flag-zero-fused/native-check-resource.json`
+with SHA-256
+`e1d73334cde75dfe7c2af23a0b4bbe06925026d0e3c132016c906378e899f752`.
+
+This is a compile/code-size capacity failure, not a mathematical failure. The
+generated artifact completed before the abort:
+
+- cache key
+  `2a65d69bf9c475e1378673d9829ffed16ba84dea4e503a7668b4ba59b970e6f1`;
+- core: `100,149,154` bytes, SHA-256
+  `7cd618f435f215f520a92798fc44594dda83c3143b5af34045296ca7d29d33ae`;
+- object: `19,622,640` bytes;
+- addon: `13,998,880` bytes, SHA-256
+  `6f6198906aba59940a994ee8aeff6e79e43e956690c9235060c59cb7e52d7251`.
+
+The failure came from retaining the compiler's approximately 100 MB generated
+graph/IR and then layering multiple complete JavaScript/GMP owner sets in the
+same Node process. It does not justify increasing the memory cap or splitting
+the mathematical native call.
+
+The follow-up checker uses the narrowest compilation-unit policy: one child
+lowers/loads the existing cache and exits; JavaScript success, GMP success, and
+each GMP mutation run in separate sequential child processes which require the
+same already-built addon directly. The native entry remains the exact single
+fused call. This prevents compiler IR and prior backends' exact buffers from
+coexisting while retaining byte-for-byte cross-backend evidence comparison.
