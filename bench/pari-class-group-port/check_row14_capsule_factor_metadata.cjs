@@ -133,6 +133,11 @@ async function main() {
     const generator = descriptor.flatMap(item => item.generator);
     const e = descriptor.map(item => item.e);
     const f = descriptor.map(item => item.f);
+    assert(f.every(value => value < BigInt(DEGREE)),
+      "row-14 factor base unexpectedly contains an inert degree-four descriptor");
+    assert(descriptor.every(item => item.generator.some(value => value !== 0n)),
+      "row-14 factor base unexpectedly contains a zero generator");
+    const inertFlags = Array(ROWS).fill(0n);
     const sourceTau = descriptor.flatMap(item => item.tau);
     const output = {
       offsets: buffer(rationalPrimes.length), counts: buffer(rationalPrimes.length),
@@ -185,6 +190,7 @@ async function main() {
         groupCounts: strings(counts), groupComplete: strings(complete),
         relationPrimes: strings(output.relationPrimes.toArray()),
         ramification: strings(derivedE), residueDegrees: strings(output.relationF.toArray()),
+        generators: strings(generator), inertFlags: strings(inertFlags),
         groupTau: strings(output.tau.toArray()),
         packetIds: Array.from({ length: ROWS }, (_, i) => String(i + 1)),
         packetIdeals: strings(output.packetIdeals.toArray()),
@@ -197,6 +203,8 @@ async function main() {
     process.stdout.write(`${JSON.stringify({ metadata, metadataSha256,
       coreSha256: sha(fs.readFileSync(built.coreSourcePath)), initialRelations: 42,
       authenticatedTauMatrices: ROWS, livePacketIdeals: ROWS,
+      packetConstructionDifferential:
+        "construct_primes=0 packets equal construct_primes=1 pari_prime_ideal_hnf outputs",
       tauReconstructionExcluded: "exact ramified antiuniformizer selection is outside the capsule" })}\n`);
   } finally {
     fs.rmSync(temporary, { recursive: true, force: true });
