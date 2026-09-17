@@ -134,14 +134,28 @@ test("shared ordinary stores preserve exceptional host layouts", () => {
   api.ρσ_attr(receiver, "field", 2);
   assert.equal(receiver.field, 2);
 
+  Object.defineProperty(receiver, "field", {
+    value: 2, writable: false, enumerable: true, configurable: false,
+  });
+  let writeError;
+  try { api.ρσ_attr(receiver, "field", 3); } catch (error) { writeError = error; }
+  assert.equal(writeError?.name, "TypeError");
+  assert.match(writeError?.message ?? "", /Cannot redefine property: field/);
+  assert.equal(receiver.field, 2);
+
   const replacementPrototype = { changed: true };
   api.ρσ_attr(receiver, "__proto__", replacementPrototype);
   assert.equal(Object.getPrototypeOf(receiver), prototype);
   assert.equal(receiver.__proto__, replacementPrototype);
 
-  Object.defineProperty(receiver, "field", { get: () => 7, configurable: true });
-  api.ρσ_attr(receiver, "field", 3);
-  assert.deepEqual(Object.getOwnPropertyDescriptor(receiver, "field"), {
+  const accessor = Object.create(prototype);
+  let setterCalls = 0;
+  Object.defineProperty(accessor, "field", {
+    get: () => 7, set: () => { setterCalls += 1; }, configurable: true,
+  });
+  api.ρσ_attr(accessor, "field", 3);
+  assert.equal(setterCalls, 0);
+  assert.deepEqual(Object.getOwnPropertyDescriptor(accessor, "field"), {
     value: 3, writable: true, enumerable: true, configurable: true,
   });
 
