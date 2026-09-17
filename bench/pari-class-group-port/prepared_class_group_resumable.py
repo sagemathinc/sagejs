@@ -18,6 +18,10 @@ from .post_hnf_acceptance import pari_post_hnf_acceptance
 from .collector_next_pass import pari_prepare_next_small_norm_pass
 from .connected_hnfadd_acceptance import pari_connected_hnfadd_acceptance
 from .class_invariant_output import pari_class_invariant_output
+from .relation_owner_capacity import (
+    pari_relation_capacity_report,
+    pari_relation_capacity_sufficient,
+)
 
 
 @native
@@ -446,6 +450,7 @@ def pari_prepared_class_group_resumable(
     checking_prime_count: int,
     driver_state: Int64Buffer,
     driver_trace: Int64Buffer,
+    capacity_state: Int64Buffer,
 ) -> int:
     """Run at most pass_limit actual passes, publishing only on acceptance.
 
@@ -470,6 +475,56 @@ def pari_prepared_class_group_resumable(
         raise ValueError("cannot reuse partial resumable driver")
     rows = int(len(relation))
     places = (n + admission_real_count) // 2
+    live_target = rows + initial_additional
+    record_reserve = 10 * live_target + 50
+    pari_relation_capacity_report(
+        rows,
+        n,
+        places,
+        live_target,
+        record_reserve,
+        0,
+        pass_limit,
+        1,
+        capacity_state,
+    )
+    if (
+        pari_relation_capacity_sufficient(
+            rows,
+            n,
+            places,
+            live_target,
+            record_reserve,
+            0,
+            pass_limit,
+            relation_state,
+            relation_basis,
+            relation_records,
+            relation_hashes,
+            relation_metadata,
+            relation,
+            relation_scratch,
+            generators,
+            log_completed,
+            log_embeddings,
+            log_coordinates,
+            log_column,
+            search_ideals,
+            outer_state,
+            outer_minidx,
+            outer_present,
+            outer_live,
+            outer_perm,
+            outer_multiplier,
+            append_new_relations,
+            append_new_logs,
+            class_invariants,
+            driver_state,
+            driver_trace,
+        )
+        == 0
+    ):
+        return -204
     if len(outer_state) < 19 or len(log_completed) < 1 or log_completed[0] != 0:
         raise ValueError("resumable driver requires fresh collection owners")
     if len(class_number) < 1 or len(class_invariants) < rows:
@@ -508,6 +563,24 @@ def pari_prepared_class_group_resumable(
     )
     need = relation_state[5] - relation_state[0]
     if need <= 0 or relation_state[0] + need + automorphism_count >= relation_state[1]:
+        required = relation_state[0] + need + automorphism_count
+        if required < 1:
+            required = 1
+        append_need = need
+        if append_need < 0:
+            append_need = 0
+        reserve = 2 * required
+        pari_relation_capacity_report(
+            rows,
+            n,
+            places,
+            required,
+            reserve,
+            append_need,
+            pass_limit,
+            2,
+            capacity_state,
+        )
         return _pari_resumable_stop(driver_state, -204)
     for i in range(19):
         outer_state[i] = 0
@@ -876,6 +949,24 @@ def pari_prepared_class_group_resumable(
             log_completed,
         )
         if action != 0:
+            outstanding = relation_state[5] - relation_state[0]
+            required = need
+            if required < outstanding:
+                required = outstanding
+            required += relation_state[0] + automorphism_count
+            if outer_state[15] != 0:
+                required += current_h
+            pari_relation_capacity_report(
+                rows,
+                n,
+                places,
+                required,
+                2 * required,
+                need,
+                pass_limit,
+                2,
+                capacity_state,
+            )
             return _pari_resumable_stop(driver_state, -204)
         driver_state[0] = 2
         action = pari_collect_and_log_relations(
@@ -1078,6 +1169,17 @@ def pari_prepared_class_group_resumable(
             len(append_new_relations) < rows * new_columns
             or len(append_new_logs) < 7 * places * new_columns
         ):
+            pari_relation_capacity_report(
+                rows,
+                n,
+                places,
+                columns,
+                relation_state[1],
+                new_columns,
+                pass_limit,
+                3,
+                capacity_state,
+            )
             return _pari_resumable_stop(driver_state, -204)
         for i in range(rows * new_columns):
             append_new_relations[i] = int(relation_records[old_columns * rows + i])
