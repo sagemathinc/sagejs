@@ -6560,28 +6560,25 @@ def ρσ_pow(
     return runtime.normalize_integer(answer)
 
 
-def _builtins_synthetic_init_ends_at_object(initializer: Any) -> _Bool:
-    """Return whether an initializer forwards only to `object.__init__`."""
-    if initializer is ρσ_object_init:
-        return True
-    if _builtins_get_member(initializer, "__sagejs_synthetic_init__") is not True:
-        underlying = _builtins_get_member(initializer, "__func__")
-        if underlying is ρσ_object_init:
-            return True
-        if _builtins_get_member(underlying, "__sagejs_synthetic_init__") is not True:
-            return False
-        initializer = underlying
-    remaining = 100
-    while (
-        remaining > 0
-        and _builtins_get_member(initializer, "__sagejs_synthetic_init__") is True
-    ):
-        initializer = _builtins_get_member(
-            initializer,
-            "__sagejs_synthetic_init_target__",
-        )
-        remaining -= 1
-    return initializer is ρσ_object_init
+def ρσ_synthetic_init_ends_at_object(initializer: Any) -> Any:
+    return r"""%js (()=>{
+        if(initializer===ρσ_object_init)return true;
+        if(_builtins_get_member(initializer,"__sagejs_synthetic_init__")!==true){
+            const underlying=_builtins_get_member(initializer,"__func__");
+            if(underlying===ρσ_object_init)return true;
+            if(_builtins_get_member(underlying,"__sagejs_synthetic_init__")!==true)
+                return false;
+            initializer=underlying;
+        }
+        let remaining=100;
+        while(remaining>0&&
+              _builtins_get_member(initializer,"__sagejs_synthetic_init__")===true){
+            initializer=_builtins_get_member(
+                initializer,"__sagejs_synthetic_init_target__");
+            --remaining;
+        }
+        return initializer===ρσ_object_init;
+    })()"""
 
 
 def ρσ_live_initializer(cls: Any) -> Any:
@@ -6621,26 +6618,19 @@ def ρσ_live_initializer(cls: Any) -> Any:
     return initializer
 
 
-def ρσ_skip_init(cls: Any, initializer: Any) -> _Bool:
-    """Return whether construction can omit initialization."""
-    if not _builtins_synthetic_init_ends_at_object(initializer):
-        return False
-    cached = _builtins_initializer_cache.get(cls)
-    cacheable = (
-        cached is not runtime.undefined
-        and cached[0] == _builtins_descriptor_epoch.value
-        and cached[1] is initializer
-    )
-    if cacheable and cached.length > 2:
-        return cached[2]
-    allocator = ρσ_getattr(cls, "__new__", None)
-    answer = (
-        runtime.strict_equal(runtime.jstype(allocator), "function")
-        and allocator is not _builtins_object_new
-    )
-    if cacheable:
-        cached[2] = answer
-    return answer
+def ρσ_skip_init(cls: Any, initializer: Any) -> Any:
+    return r"""%js (()=>{
+        if(!ρσ_synthetic_init_ends_at_object(initializer))return false;
+        const cached=_builtins_initializer_cache.get(cls);
+        const cacheable=cached!==undefined&&
+            cached[0]===_builtins_descriptor_epoch.value&&cached[1]===initializer;
+        if(cacheable&&cached.length>2)return cached[2];
+        const allocator=ρσ_getattr(cls,"__new__",null);
+        const answer=ρσ_native_jstype(allocator)==="function"&&
+            allocator!==_builtins_object_new;
+        if(cacheable)cached[2]=answer;
+        return answer;
+    })()"""
 
 
 def ρσ_apply_custom_new_signature(cls: Any, initializer: Any) -> None:

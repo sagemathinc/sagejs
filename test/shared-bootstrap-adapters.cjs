@@ -8,16 +8,25 @@ const { runInNewContext } = require("node:vm");
 const test = require("node:test");
 const root = join(__dirname, "..");
 const source = readFileSync(join(root, "src/baselib/bootstrap_shared.py"), "utf8");
-const names = ["ρσ_copy_method_metadata", "ρσ_native_method_adapter", "ρσ_unbound_method_adapter",
+const builtinsSource = readFileSync(join(root, "src/baselib/builtins.py"), "utf8");
+const sharedNames = ["ρσ_copy_method_metadata", "ρσ_native_method_adapter", "ρσ_unbound_method_adapter",
   "ρσ_exact_integer_add", "ρσ_exact_shift", "ρσ_exact_integer_submul",
   "ρσ_check_interrupt", "ρσ_normalize_exception", "ρσ_prepare_method_call",
   "ρσ_attr", "ρσ_interpolate_kwargs", "ρσ_interpolate_kwargs_constructor"];
+const builtinsNames = ["ρσ_synthetic_init_ends_at_object", "ρσ_skip_init"];
+const names = [...sharedNames, ...builtinsNames];
 
 // Exercise the native ABI bodies directly; full self-hosted/module
 // linkage remains a separate build qualification, not implied by this test.
 function context(overrides = {}) {
-  const declarations = [...source.matchAll(/^def (\S+)\(([^)]*)\):[^]*?return r"""%js ([^]*?)"""/gm)]
-    .map((match) => `function ${match[1]}(${match[2]}) {return ${match[3]};}`);
+  const declarations = [[source, sharedNames], [builtinsSource, builtinsNames]]
+    .flatMap(([text, selected]) => selected.map(name => {
+      const match = text.match(new RegExp(
+        `^def ${name}\\(([^)]*)\\)(?:\\s*->[^:]+)?:[^]*?return r"""%js ([^]*?)"""`, "m"));
+      assert.ok(match, `missing raw helper ${name}`);
+      const parameters = match[1].replace(/:\s*[^,]+/g, "");
+      return `function ${name}(${parameters}) {return ${match[2]};}`;
+    }));
   class KeyboardInterrupt extends Error {}
   const globals = { KeyboardInterrupt, ρσ_exception_value: (value) => value, ...overrides };
   return runInNewContext(`${declarations.join("\n")}; ({${names.join(",")}, globalThis})`, globals);
@@ -242,8 +251,52 @@ test("branded keyword constructors reuse prepared allocation", () => {
   );
 });
 
+test("custom-new guard preserves synthetic chains and epoch caching", () => {
+  const objectInit = {};
+  const objectNew = function objectNew() {};
+  const customNew = function customNew() {};
+  const epoch = { value: 7 };
+  const cache = new WeakMap();
+  const allocations = new Map();
+  let lookups = 0;
+  const api = context({
+    ρσ_object_init: objectInit,
+    _builtins_object_new: objectNew,
+    _builtins_descriptor_epoch: epoch,
+    _builtins_initializer_cache: cache,
+    _builtins_get_member: (value, name) => value?.[name],
+    ρσ_getattr: (value, name, fallback) => {
+      ++lookups;
+      return name === "__new__" ? allocations.get(value) : fallback;
+    },
+    ρσ_native_jstype: value => typeof value,
+  });
+
+  assert.equal(api.ρσ_synthetic_init_ends_at_object(objectInit), true);
+  assert.equal(api.ρσ_synthetic_init_ends_at_object({}), false);
+  assert.equal(api.ρσ_synthetic_init_ends_at_object({ __func__: objectInit }), true);
+  const synthetic = { __sagejs_synthetic_init__: true,
+    __sagejs_synthetic_init_target__: objectInit };
+  assert.equal(api.ρσ_synthetic_init_ends_at_object(synthetic), true);
+  const cycle = { __sagejs_synthetic_init__: true };
+  cycle.__sagejs_synthetic_init_target__ = cycle;
+  assert.equal(api.ρσ_synthetic_init_ends_at_object(cycle), false);
+
+  const cls = {};
+  allocations.set(cls, customNew);
+  cache.set(cls, [epoch.value, synthetic]);
+  assert.equal(api.ρσ_skip_init(cls, synthetic), true);
+  assert.equal(lookups, 1);
+  assert.equal(api.ρσ_skip_init(cls, synthetic), true);
+  assert.equal(lookups, 1, "epoch-current answer is reused");
+  epoch.value += 1;
+  allocations.set(cls, objectNew);
+  assert.equal(api.ρσ_skip_init(cls, synthetic), false);
+  assert.equal(lookups, 2, "stale answer is not reused");
+});
+
 test("shared bootstrap owns its low-level adapters and metadata copier", () => {
-  assert.deepEqual([...source.matchAll(/^def (\S+)\(/gm)].map((match) => match[1]), names);
+  assert.deepEqual([...source.matchAll(/^def (\S+)\(/gm)].map((match) => match[1]), sharedNames);
   for (const filename of ["compiler_bootstrap.py", "sagejs_bootstrap.py"]) {
     const previous = readFileSync(join(root, "src/baselib", filename), "utf8");
     for (const name of names) assert.ok(!previous.includes(`def ${name}(`));

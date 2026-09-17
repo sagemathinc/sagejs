@@ -471,6 +471,19 @@ The exact artifacts, semantic boundary, and qualification are recorded in
 902,744/903,000 bytes without a budget change. Keep this work behind the
 attribute integration queue.
 
+**2026-09-17 constructor custom-new checkpoint:** profiling showed every
+generated class construction paying compiled-Python traversal to decide whether
+a synthetic initializer ends at `object.__init__`. The internal bounded chain
+walk and epoch-current custom-allocator cache now use a raw implementation in
+their owning builtins module. Controlled exact-artifact measurements improve
+empty construction by 14.2%, no-op-initializer construction by 9.6%, and
+positional construction plus a method by 2.6%; call-only rows remain flat.
+Empty/no-op construction are now 4.2x/4.6x CPython, while field-heavy
+construction remains 12.4–13.6x and keyword calls remain 20–25x. All semantic,
+differential, package, strict, and merge gates pass at 902,612/903,000 core
+bytes. Exact evidence is in `agents/python-constructor-new-guard-native.md`.
+Keep this candidate behind the existing integration queue and keep M5 open.
+
 Continue next with integration-aware qualification, the receiver-lookup campaign,
 and true handled-exception ownership. Generator/coroutine suspension makes a
 single global active-exception pointer unsafe: preserve owned handlers while
