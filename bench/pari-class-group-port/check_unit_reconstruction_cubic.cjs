@@ -116,6 +116,14 @@ int main(void) {
     for(long kind=0;kind<4;kind++) emit(field,kind,nf,bnf,prec);
     avma=av;
   }
+  {
+    /* The authentic retry frontier: 2,240 input bits, with getfu's
+     * transcendental leaves retaining their 64-bit working guard. */
+    pari_sp av=avma; const long wide=nbits2prec(2240);
+    GEN nf=nfinit(gp_read_str(polys[0]),wide);
+    GEN bnf=Buchall_param(nf,0.,0.,BNF_RELPID,0,wide);
+    emit(4,0,nf,bnf,wide); avma=av;
+  }
   pari_close(); return 0;
 }
 `;
@@ -148,6 +156,7 @@ function makeArguments(f, fixture, backend) {
   const integers = (values) => values.flat(Infinity).map(BigInt);
   const triples = (values) => values.flat().map(BigInt);
   const state = Array(8).fill(0n);
+  const transcendentalScratch = fixture.precision > 1920 ? 320 : 64;
   const args = [
     triples(fixture.input),
     triples(fixture.embedding),
@@ -158,7 +167,9 @@ function makeArguments(f, fixture, backend) {
     Array(3).fill(0n), Array(4).fill(0), Array(4).fill(0), Array(2).fill(0),
     Array(6).fill(0), exact(2), Array(4).fill(0), exact(2), exact(3), exact(3),
     Array(3).fill(0), Array(3).fill(0), exact(4), exact(4), exact(4), exact(2),
-    exact(64), exact(64), exact(64), exact(64), exact(64), exact(128),
+    exact(transcendentalScratch), exact(transcendentalScratch),
+    exact(transcendentalScratch), exact(transcendentalScratch),
+    exact(transcendentalScratch), exact(128),
   ];
   return { args, state, units: args[16], logs: args[17] };
 }
@@ -212,7 +223,8 @@ function validateUnit(unit, tensor) {
     process.argv[3] || "/home/user/upstream/pari-2.17.4.tar.gz",
   );
   const oracle = sourceFixtures(pari, archive);
-  assert.equal(oracle.fixtures.length, 16);
+  assert.equal(oracle.fixtures.length, 17);
+  assert.equal(oracle.fixtures.at(-1).precision, 2240);
   assert(oracle.fixtures.filter((x) => x.reason === 0).length >= 4);
   assert(oracle.fixtures.some((x) => x.reason === 3));
   assert(oracle.fixtures.some((x) => x.reason === 2));
@@ -276,13 +288,14 @@ def flat(x):
 count=0
 for fixture in d['fixtures']:
     exact=lambda n:[0]*n
+    scratch=320 if fixture['precision']>1920 else 64
     state=[0]*8
     args=[flat(fixture['input']),flat(fixture['embedding']),flat(fixture['tensor']),int(fixture['precision']),
           exact(18),exact(6),exact(4),exact(18),exact(18),exact(27),exact(18),exact(18),
           exact(6),exact(9),exact(3),exact(6),exact(6),exact(18),state,
           exact(3),[0.0]*4,[0.0]*4,[0.0]*2,[0.0]*6,exact(2),[0.0]*4,exact(2),exact(3),exact(3),
           [0.0]*3,[0.0]*3,exact(4),exact(4),exact(4),exact(2),
-          exact(64),exact(64),exact(64),exact(64),exact(64),exact(128)]
+          exact(scratch),exact(scratch),exact(scratch),exact(scratch),exact(scratch),exact(128)]
     result=f(*args)
     assert result==fixture['reason'] and state[0]==fixture['reason'],(fixture['field'],fixture['kind'],result,state)
     if result==0:

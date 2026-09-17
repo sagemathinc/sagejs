@@ -106,7 +106,7 @@ def pari_validate_log_entries(entries: IntegerBuffer, count: int) -> int:
             elif m == 0:
                 if p != 0:
                     raise ValueError("invalid zero logarithm precision")
-            elif p < 64 or p > 2048 or p % 64 != 0 or abs(m).bit_length() != p:
+            elif p < 64 or p > 2304 or p % 64 != 0 or abs(m).bit_length() != p:
                 raise ValueError("invalid real logarithm component")
     return inexact
 

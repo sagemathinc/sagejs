@@ -5,13 +5,13 @@ const {spawnSync}=require("node:child_process"),{compileKernel}=require("../../t
   const pari=path.resolve(process.argv[2]),lib=path.join(pari,"Olinux-x86_64"),dir=fs.mkdtempSync(path.join(os.tmpdir(),"sagejs-log2-constant-"));
   const source=path.join(dir,"oracle.c"),exe=path.join(dir,"oracle");
   fs.writeFileSync(source,`#include "pari.h"
-int main(void){pari_init(16000000,10000);long ps[]={64,128,64,192,256,128,512,320,1024,64,1984,128};
-for(long i=0;i<12;i++){pari_sp av=avma;long d;GEN y=mplog2(ps[i]),m=mantissa_real(y,&d),c=constlog2(ps[i]),cm=mantissa_real(c,&d);
+int main(void){pari_init(32000000,10000);long ps[]={64,128,64,192,256,128,512,320,1024,64,1984,2176,2240,2304,2368,128};
+for(long i=0;i<16;i++){pari_sp av=avma;long d;GEN y=mplog2(ps[i]),m=mantissa_real(y,&d),c=constlog2(ps[i]),cm=mantissa_real(c,&d);
 pari_printf("%ld %Ps %ld %ld %Ps %ld %ld\\n",ps[i],m,bit_prec(y),expo(y),cm,bit_prec(c),expo(c));avma=av;}
 pari_close();return 0;}`);
   const cc=spawnSync("cc",["-O2","-I"+path.join(pari,"src/headers"),"-I"+lib,source,"-L"+lib,"-Wl,-rpath,"+lib,"-lpari","-lm","-o",exe],{encoding:"utf8",timeout:30000});assert.equal(cc.status,0,cc.stderr);
   const run=spawnSync(exe,[],{encoding:"utf8",timeout:30000,maxBuffer:1024*1024});assert.equal(run.status,0,run.stderr);
-  const records=run.stdout.trim().split('\n').map(line=>line.split(' '));assert.equal(records.length,12);
+  const records=run.stdout.trim().split('\n').map(line=>line.split(' '));assert.equal(records.length,16);
   const py=spawnSync('python3',['-c',`
 import sys,json,importlib
 sys.path[:0]=[${JSON.stringify(path.resolve(__dirname,'../..'))},${JSON.stringify(path.resolve(__dirname,'../../src/lib'))}]
@@ -29,6 +29,7 @@ for row in json.load(sys.stdin):
     }
     const final=records.at(-1).map(BigInt);
     assert.deepEqual(mod.pari_log2_constant[backend](final[0],cache,[],[],[],[],[]),final.slice(1,4));
+    assert.throws(()=>mod.pari_log2_constant[backend](2432n,cache,...scratch),/unsupported logarithm constant precision/);
   }
-  console.log('12 increasing/decreasing precision requests and cache states match PARI/CPython/JS/GMP; warm calls require no series scratch');
+  console.log('16 increasing/decreasing requests through p2368 and cache states match PARI/CPython/JS/GMP; p2432 rejects; warm calls require no series scratch');
 })().catch(error=>{console.error(error);process.exitCode=1;});

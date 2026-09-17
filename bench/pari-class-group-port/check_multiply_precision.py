@@ -95,9 +95,9 @@ int main(void) {
   GEN ax=gmul2n(itor(mx,nbits2prec(64)),-63);
   GEN ay=gmul2n(itor(my,nbits2prec(192)),-191);
   compare(ax,ay,"near-halfway",1);compare(gneg(ax),ay,"near-halfway",2);
-  const long precisions[]={64,128,192,256,320,512,1024,2048};
+  const long precisions[]={64,128,192,256,320,512,1024,2048,2176,2240,2304,2368,2432,2496};
   long id=0;setrand(stoi(17));
-  for(long i=0;i<8;i++)for(long j=0;j<8;j++)for(long variant=0;variant<3;variant++) {
+  for(long i=0;i<14;i++)for(long j=0;j<14;j++)for(long variant=0;variant<3;variant++) {
     pari_sp av=avma;long px=precisions[i],py=precisions[j];
     GEN bx=int2n(px-1),by=int2n(py-1),u,v;
     if (variant==0) {u=subiu(int2n(px),1);v=subiu(int2n(py),1);}
@@ -165,10 +165,10 @@ with tempfile.TemporaryDirectory(prefix="sagejs-multiply-control-") as tmp:
         sys.exit(0)
     if json_mode:
         records = [r[1:] for r in rows if r[0] == "record"]
-        assert len(records) == 228, len(records)
+        assert len(records) == 624, len(records)
         print(json.dumps(records))
         sys.exit(0)
-    assert len(rows) == 228, len(rows)
+    assert len(rows) == 624, len(rows)
     for label in ("prepared", "halfway", "near-halfway", "short-grid"):
         group = [r for r in rows if r[0] == label]
         print(

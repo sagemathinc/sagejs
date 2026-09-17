@@ -37,13 +37,13 @@ def pari_real_resize(
     minus the target precision, exactly as affrr. Zero triples retain precision
     zero; their allocation length is not represented by this value interchange.
     """
-    if target < 64 or target > 2048 or target % 64 != 0:
+    if target < 64 or target > 2496 or target % 64 != 0:
         raise ValueError("unsupported target real precision")
     if mantissa == 0:
         if exponent > -target:
             exponent = -target
         return 0, 0, exponent
-    if precision < 64 or precision > 2048 or precision % 64 != 0:
+    if precision < 64 or precision > 2496 or precision % 64 != 0:
         raise ValueError("unsupported source real precision")
     magnitude = abs(mantissa)
     if magnitude.bit_length() != precision:
@@ -71,7 +71,7 @@ def pari_real_truncate(
     value operation and is deliberately rejected. The exponential must retain
     its full X value separately when changing temporary working precision.
     """
-    if target < 64 or target > precision or precision > 2048:
+    if target < 64 or target > precision or precision > 2496:
         raise ValueError("unsupported truncating real precision")
     if precision % 64 != 0 or target % 64 != 0:
         raise ValueError("real precision requires whole words")
@@ -95,7 +95,7 @@ def pari_real_reciprocal(
     """
     if mantissa == 0:
         raise ZeroDivisionError("zero reciprocal")
-    if precision < 64 or precision > 2048 or precision % 64 != 0:
+    if precision < 64 or precision > 2496 or precision % 64 != 0:
         raise ValueError("unsupported reciprocal precision")
     magnitude = abs(mantissa)
     if magnitude.bit_length() != precision:
@@ -141,9 +141,9 @@ def pari_exp1r_abs(
 
     This computes exp(abs(x))-1 for a nonzero prepared real. Range reduction
     and the mpexp entry remain separate dependencies. Working precisions are
-    limited to the existing 2048-bit arithmetic boundary, never clamped.
+    limited to the coordinated 2,432-bit internal boundary, never clamped.
     """
-    if precision < 64 or precision > 2048 or precision % 64 != 0:
+    if precision < 64 or precision > 2368 or precision % 64 != 0:
         raise ValueError("unsupported exponential precision")
     magnitude = abs(mantissa)
     if magnitude.bit_length() != precision:
@@ -165,7 +165,7 @@ def pari_exp1r_abs(
         d += 1.0
         m += 1
     working = precision + ((m + 63) // 64) * 64
-    if working > 2048:
+    if working > 2432:
         raise ValueError("exponential working precision exceeds arithmetic boundary")
     b += m
     n = int(checked_float64(b) / d)

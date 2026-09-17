@@ -23,9 +23,9 @@ function run(cmd, args, options = {}) {
 _Static_assert(sizeof(long)==8,"64-bit pinned representation");
 int main(void){pari_init(16000000,10000);setrand(stoi(271828));
 if(MULRR_MULII_LIMIT!=3520)return 2;
-long precisions[]={64,128,192,256,384,512,768,1024,2048};
+long precisions[]={64,128,192,256,384,512,768,1024,2048,2176,2240,2304};
 long sizes[]={0,1,63,64,65,127,128,129,191,192,193,255,256,257,511,512,513,1024,2048,4096};
-for(long pi=0;pi<9;pi++)for(long si=0;si<20;si++)for(long variant=0;variant<8;variant++){
+for(long pi=0;pi<12;pi++)for(long si=0;si<20;si++)for(long variant=0;variant<8;variant++){
 pari_sp av=avma;long p=precisions[pi],b=sizes[si],de,e=(variant%3-1)*107;
 ${sum ? 'if(p>512||b>1024)continue;' : ''}
 GEN a=b?addii(int2n(b-1),randomi(int2n(b-1))):gen_0;
@@ -44,7 +44,7 @@ pari_printf("%Ps %Ps %ld %ld %Ps %ld %ld\\n",a,m,variant==7?0:p,e,zm,zp,ze);avma
 }pari_close();return 0;}`);
   run('cc',['-O2','-I'+path.join(pari,'src/headers'),'-I'+lib,c,'-L'+lib,'-Wl,-rpath,'+lib,'-lpari','-lm','-o',exe]);
   const trace=run(exe,[]), rows=trace.trim().split('\n').map(s=>s.split(' '));
-  assert.equal(rows.length,sum ? 864 : 1440);
+  assert.equal(rows.length,sum ? 864 : 1920);
   run('python3',['-c',`import sys,json,importlib
 sys.path[:0]=sys.argv[1:3]
 f=getattr(importlib.import_module('bench.pari-class-group-port.${moduleName}'),'${entry}')
@@ -55,6 +55,6 @@ for row in json.load(sys.stdin):
   const built=await compileKernel({sourcePath:path.join(__dirname,moduleName+'.py')});
   const f=require(built.modulePath)[entry];assert(f.nativeAvailable);
   for(const backend of ['javascript','gmp'])for(const row of rows){const v=row.map(BigInt);assert.deepEqual(f[backend](...v.slice(0,4)),v.slice(4),backend+': '+row);}
-  for(const backend of ['javascript','gmp'])for(const args of [[2n,1n,64n,0n],[2n,1n<<2111n,2112n,0n]])assert.throws(()=>f[backend](...args));
+  for(const backend of ['javascript','gmp'])for(const args of [[2n,1n,64n,0n],[2n,1n<<2367n,2368n,0n]])assert.throws(()=>f[backend](...args));
   console.log(JSON.stringify({operation:sum?'sum':'product',cases:rows.length,backends:['PARI','CPython','javascript','gmp'],sourceSha256:createHash('sha256').update(source).digest('hex'),traceSha256:createHash('sha256').update(trace).digest('hex'),coreBytes:fs.statSync(built.coreSourcePath).size}));
 })().catch(e=>{console.error(e);process.exitCode=1;});

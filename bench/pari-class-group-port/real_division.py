@@ -17,7 +17,7 @@ def pari_real_division(
         raise ZeroDivisionError("zero real divisor")
     if mx == 0:
         return 0, 0, ex - ey
-    if px < 64 or py < 64 or px > 1920 or py > 1920:
+    if px < 64 or py < 64 or px > 2368 or py > 2368:
         raise ValueError("unsupported real division precision")
     if px % 64 != 0 or py % 64 != 0:
         raise ValueError("real division requires whole words")

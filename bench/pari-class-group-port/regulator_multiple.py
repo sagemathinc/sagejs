@@ -104,7 +104,7 @@ def pari_regulator_multiple(
     for i in range(rows * columns):
         if logs[3 * i + 1] == -1 and logs[3 * i] != 0:
             raise ValueError("nonzero exact regulator logarithm")
-        if logs[3 * i + 1] > 1856:
+        if logs[3 * i + 1] > 2304:
             raise ValueError("regulator logarithm exceeds division window")
     # Validate the complete prepared-log domain before changing any owner.
     pari_regulator_column_preparation(

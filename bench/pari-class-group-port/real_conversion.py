@@ -12,7 +12,7 @@ from .short_product import pari_real_integer_division, pari_real_word_division
 @native
 def pari_integer_to_real(value: int, precision: int) -> tuple[int, int, int]:
     """Convert an exact integer using affir's leading guard-bit rounding."""
-    if precision < 64 or precision > 2048 or precision % 64 != 0:
+    if precision < 64 or precision > 2432 or precision % 64 != 0:
         raise ValueError("unsupported integer-to-real precision")
     if value == 0:
         return 0, 0, -precision
@@ -39,7 +39,7 @@ def pari_rational_to_real(
     """Follow rdiviiz's word, oversized-integer and scaled-quotient branches."""
     if denominator == 0:
         raise ZeroDivisionError("zero rational denominator")
-    if precision < 64 or precision > 2048 or precision % 64 != 0:
+    if precision < 64 or precision > 2432 or precision % 64 != 0:
         raise ValueError("unsupported rational-to-real precision")
     if numerator == 0:
         return 0, 0, -precision

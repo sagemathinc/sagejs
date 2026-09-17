@@ -6,8 +6,8 @@ const { spawnSync } = require("node:child_process"), { compileKernel } = require
   const source = path.join(dir, "oracle.c"), exe = path.join(dir, "oracle");
   fs.writeFileSync(source, `#include "pari.h"
 int main(void){pari_init(16000000,10000);setrand(stoi(1729));
-long precs[]={64,128,192,256,512,1024,1920};
-for(long pi=0;pi<7;pi++)for(long pattern=0;pattern<40;pattern++)for(long parity=0;parity<2;parity++)for(long sign=-1;sign<=1;sign+=2){
+long precs[]={64,128,192,256,512,1024,1920,2176,2240,2304};
+for(long pi=0;pi<10;pi++)for(long pattern=0;pattern<40;pattern++)for(long parity=0;parity<2;parity++)for(long sign=-1;sign<=1;sign+=2){
 pari_sp av=avma;long p=precs[pi],e=2*(pattern-20)+parity,de;
 GEN m=addii(int2n(p-1),randomi(int2n(p-1)));
 if(pattern==0)m=int2n(p-1);if(pattern==1)m=addis(int2n(p-1),1);if(pattern==2)m=subis(int2n(p),1);
@@ -19,18 +19,18 @@ pari_printf("%Ps %ld %ld %Ps %ld %ld\\n",m,p,e,out,bit_prec(y),expo(y));avma=av;
   const run = spawnSync(exe, [], {encoding:"utf8",timeout:30000,maxBuffer:4*1024*1024});
   assert.equal(run.status, 0, run.stderr);
   const records = run.stdout.trim().split("\n").map(line => line.split(" "));
-  assert.equal(records.length, 1120);
+  assert.equal(records.length, 1600);
   // One declared leaf corpus shared by CPython and every compiled backend.
-  // 3967 bits covers the largest real-wrapper radicand (2*1920+127).
+  // 4735 bits covers the largest real-wrapper radicand (2*2304+127).
   const leafValues = new Set(Array.from({length:257},(_,i)=>String(i)));
-  for (const k of [31,32,63,64,127,128,256,1024,3967])
+  for (const k of [31,32,63,64,127,128,256,1024,4351,4479,4607,4735])
     for (const d of [-1n,0n,1n]) leafValues.add(String((1n<<BigInt(k))+d));
-  for (const k of [31,32,63,64,127,1983]) {
+  for (const k of [31,32,63,64,127,2175,2239,2303,2367]) {
     const root=(1n<<BigInt(k))+1n;
     for (const d of [-1n,0n,1n]) leafValues.add(String(root*root+d));
   }
   const leafInputs=[...leafValues];
-  const negativeInputs=["-1","-2",String(-(1n<<63n)),String(-(1n<<3967n))];
+  const negativeInputs=["-1","-2",String(-(1n<<63n)),String(-(1n<<4735n))];
   const py = spawnSync("python3", ["-c", `
 import sys,json,importlib,math
 sys.path[:0]=[${JSON.stringify(path.resolve(__dirname,"../.."))},${JSON.stringify(path.resolve(__dirname,"../../src/lib"))}]
@@ -65,7 +65,7 @@ print(json.dumps(expected))
     for (const value of negativeInputs)
       assert.throws(()=>mod.pari_sqrtrem_integer[backend](BigInt(value)), /negative integer square root/);
     assert.throws(()=>mod.pari_real_square_root_abs[backend](0n,64n,0n), /nonzero full mantissa/);
-    assert.throws(()=>mod.pari_real_square_root_abs[backend](1n,2048n,0n), /unsupported square root precision/);
+    assert.throws(()=>mod.pari_real_square_root_abs[backend](1n<<2367n,2368n,0n), /unsupported square root precision/);
   }
   console.log(`${records.length} square roots match PARI/CPython/JS/GMP/tagged; ${leafInputs.length} exact sqrtrem controls and ${negativeInputs.length} negative controls match CPython/JS/GMP/tagged; integer-root substitution remains explicit`);
 })().catch(error => {console.error(error);process.exitCode=1;});

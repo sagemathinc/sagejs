@@ -23,7 +23,7 @@ def pari_validate_regulator_scalars(values: IntegerBuffer, count: int) -> int:
         elif m == 0:
             if p != 0:
                 raise ValueError("invalid regulator zero")
-        elif p < 64 or p > 2048 or p % 64 != 0 or abs(m).bit_length() != p:
+        elif p < 64 or p > 2304 or p % 64 != 0 or abs(m).bit_length() != p:
             raise ValueError("invalid regulator real")
     # Native signatures currently reject `-> None`; this ignored status keeps
     # validation source-transparent without changing the mathematics.
