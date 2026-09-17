@@ -8,7 +8,10 @@ const assert = require("node:assert/strict");
 const childProcess = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
-const { definitionIdentity } = require("./run_phase0_integration_replay.cjs");
+const {
+  definitionIdentity,
+  sealedDependencyReceipts,
+} = require("./run_phase0_integration_replay.cjs");
 
 const directory = __dirname;
 const runner = path.join(directory, "run_phase0_integration_replay.cjs");
@@ -99,6 +102,98 @@ for (const field of ["originalSha256", "generatedSha256", "launcherSha256"]) {
   changedSource.generatedChecker = { ...generatedChecker, [field]: `changed-${field}` };
   assert.notDeepEqual(definitionIdentity(context, specification, changedSource, []),
     firstIdentity, `${field} mutation changes identity`);
+}
+
+const receiptSchema = "sagejs.pari-class-group/phase0-integration-replay-v1";
+const temporary = fs.mkdtempSync(path.join(require("node:os").tmpdir(),
+  "sagejs-phase0-sealed-test-"));
+const artifactContext = { artifactRoot: temporary };
+function sha256(bytes) {
+  return require("node:crypto").createHash("sha256").update(bytes).digest("hex");
+}
+function writeReceipt(name, dependencies, outputText = name) {
+  const attempt = path.join("stages", name, "attempts", "attempt-test");
+  const outputRelative = path.join(attempt, "output.txt");
+  const output = path.join(temporary, outputRelative);
+  fs.mkdirSync(path.dirname(output), { recursive: true });
+  fs.writeFileSync(output, outputText);
+  const identity = {
+    schema: receiptSchema,
+    stage: name,
+    dependencies: Object.fromEntries(dependencies.map((dependency) => {
+      const pointer = JSON.parse(fs.readFileSync(path.join(temporary,
+        "stages", dependency, "current.json")));
+      const bytes = fs.readFileSync(path.join(temporary, pointer.receipt));
+      return [dependency, sha256(bytes)];
+    })),
+  };
+  const receipt = {
+    schema: receiptSchema,
+    complete: true,
+    stage: name,
+    identity,
+    identitySha256: sha256(Buffer.from(JSON.stringify(identity))),
+    outputs: {
+      output: {
+        path: outputRelative,
+        bytes: Buffer.byteLength(outputText),
+        sha256: sha256(Buffer.from(outputText)),
+      },
+    },
+  };
+  const receiptRelative = path.join(attempt, "receipt.json");
+  const receiptBytes = Buffer.from(`${JSON.stringify(receipt, null, 2)}\n`);
+  fs.writeFileSync(path.join(temporary, receiptRelative), receiptBytes);
+  fs.writeFileSync(path.join(temporary, "stages", name, "current.json"),
+    `${JSON.stringify({
+      schema: receiptSchema,
+      stage: name,
+      receipt: receiptRelative,
+      receiptSha256: sha256(receiptBytes),
+    }, null, 2)}\n`);
+}
+
+try {
+  writeReceipt("quartic-driver", []);
+  writeReceipt("quartic-hnfadd-trace", ["quartic-driver"]);
+  writeReceipt("quartic-collector", []);
+  const sealed = sealedDependencyReceipts(artifactContext,
+    ["quartic-collector", "quartic-hnfadd-trace"]);
+  assert.deepEqual(sealed.map(({ name }) => name),
+    ["quartic-collector", "quartic-driver", "quartic-hnfadd-trace"],
+    "sealed dependency verification returns the complete pinned closure");
+
+  const driverOutput = path.join(temporary, "stages", "quartic-driver",
+    "attempts", "attempt-test", "output.txt");
+  fs.writeFileSync(driverOutput, "mutated");
+  assert.throws(() => sealedDependencyReceipts(artifactContext,
+    ["quartic-hnfadd-trace"]), /quartic-driver\/output (size|hash)/,
+  "mutated transitive output is rejected");
+  fs.writeFileSync(driverOutput, "quartic-driver");
+
+  const driverPointer = path.join(temporary, "stages", "quartic-driver", "current.json");
+  const savedPointer = fs.readFileSync(driverPointer);
+  fs.unlinkSync(driverPointer);
+  assert.throws(() => sealedDependencyReceipts(artifactContext,
+    ["quartic-hnfadd-trace"]), /no longer selected/,
+  "missing transitive selection is rejected");
+  fs.writeFileSync(driverPointer, savedPointer);
+
+  const hnfPointer = path.join(temporary, "stages", "quartic-hnfadd-trace",
+    "current.json");
+  const selected = JSON.parse(fs.readFileSync(hnfPointer));
+  const hnfReceiptPath = path.join(temporary, selected.receipt);
+  const hnfReceipt = JSON.parse(fs.readFileSync(hnfReceiptPath));
+  hnfReceipt.schema = "mutated-schema";
+  const mutatedBytes = Buffer.from(`${JSON.stringify(hnfReceipt, null, 2)}\n`);
+  fs.writeFileSync(hnfReceiptPath, mutatedBytes);
+  selected.receiptSha256 = sha256(mutatedBytes);
+  fs.writeFileSync(hnfPointer, `${JSON.stringify(selected, null, 2)}\n`);
+  assert.throws(() => sealedDependencyReceipts(artifactContext,
+    ["quartic-hnfadd-trace"]), /mutated-schema/,
+  "mutated receipt schema is rejected even with a refreshed pointer hash");
+} finally {
+  fs.rmSync(temporary, { recursive: true, force: true });
 }
 
 console.log("Phase-0 quartic trace stage contract passed.");

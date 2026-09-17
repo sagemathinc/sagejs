@@ -177,6 +177,23 @@ deliberate source/toolchain change, name it explicitly:
 ... run ... --stage quartic-retry-gmp --force-stage quartic-retry-gmp
 ```
 
+When a runner-only repair changes the runner hash after an expensive prefix
+has already been frozen, `--only-stage STAGE` runs exactly the named consumer
+without recomputing its dependencies. This is intentionally stricter than
+`--stage`: it recursively verifies every selected dependency receipt, schema,
+declared edge, receipt hash, and retained-output hash, then pins the complete
+transitive receipt closure into the new consumer identity. Missing, stale, or
+mutated evidence fails closed. Use it only with an independently copied
+artifact root so the historical pipeline manifest remains immutable:
+
+```bash
+node bench/pari-class-group-port/run_phase0_integration_replay.cjs run \
+  --artifact-root /scratch/sagejs/pari-class-group-phase0-suffix \
+  --pari-root /scratch/sagejs/pari-2.17.4 \
+  --pari-archive /scratch/sagejs/pari-2.17.4.tar.gz \
+  --only-stage quartic-retry-cpython
+```
+
 Run the newly added gates through their immutable-result join without selecting
 unrelated earlier stages:
 
