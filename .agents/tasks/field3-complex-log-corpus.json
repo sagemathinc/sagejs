@@ -53,16 +53,21 @@
       "commit": "56324f09872e235b20207f46aa83e4cadebde898",
       "workspace_fingerprint": "ba2706b27cdc910722bf0c57ede389a60cf8de56e2ae4517c67590cddbd01601",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/field3_complex_log_corpus_protocol.cjs --source-start 0 --count 4",
+      "status": "passed",
+      "summary": "Published the authentic mode-0444 batch 0:4 capsule and receipt; native 176388.715505 ms, wall 213171 ms, peak aggregate RSS 1422968 KiB"
     }
   ],
   "handoff": {
-    "summary": "Implemented an authenticated 76-batch resumable protocol for the bounded field3 complex-log kernel, immutable hash-named 0444 capsules and receipts, ordered gap/overlap-resistant merge into 2107 cells, and byte-identical compatibility with all 32 selected-prefix columns. No heavy batch was started.",
+    "summary": "Implemented an authenticated 76-batch resumable protocol for the bounded field3 complex-log kernel, immutable hash-named 0444 capsules and receipts, ordered gap/overlap-resistant merge into 2107 cells, and byte-identical compatibility with all 32 selected-prefix columns. Authentic batch 0:4 passed and is the only completed heavy range.",
     "risks": [
-      "The batch worker is source-complete but intentionally has not yet been exercised under the heavy native runtime",
+      "Only the inexpensive scalar batch 0:4 has been exercised; no nonscalar four-column batch has yet qualified the extrapolated runtime",
       "The 3.8--4.8 hour serial estimate is extrapolated from the qualified focused run rather than measured across the corpus"
     ],
     "next_steps": [
-      "After explicit resource authorization, run one deterministic batch and inspect its immutable capsule/receipt before scheduling the remaining 75",
+      "After explicit resource authorization, run the next deterministic batch 4:4 and inspect its immutable capsule/receipt before any wider scheduling",
       "After all batches exist, pass their paths in schedule order to --merge and independently inspect the complete owner receipt",
       "Integration owns broad native and strict suites"
     ]

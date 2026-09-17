@@ -91,3 +91,20 @@ batch, and roughly 1.45--1.60 million KiB peak aggregate RSS. The complete
 serial corpus is expected to take 3.8--4.8 hours. These are scheduling
 estimates, not new measurements or a performance claim.
 
+## First authentic batch checkpoint
+
+The first and only authorized heavy batch, source range `0:4`, completed under
+the protocol's 4 GiB hard address-space limit, 3.5 GiB aggregate-RSS abort, and
+600-second timeout. Native execution took 176,388.715505 ms; monitored wall
+time was 213,171 ms; peak aggregate RSS was 1,422,968 KiB. The terminal state
+was `[0,153088,0,4,4,0,0,4,297]`, proving that exactly four scalar columns were
+published and that the next source column is four.
+
+The 28-cell output digest is
+`18eb8edf0301fee15c7d189ef67d62dd909fecbc0ea3c8d7f991d8889bf29f74`.
+The immutable capsule is mode 0444, 185,588 bytes, and has SHA-256
+`c461673e730ff53f81cb1e2cccad7cddfb2a22fd5442534e9c8bc3dc16eebb11`.
+Its mode-0444, 1,977-byte receipt has SHA-256
+`036f120432b3643764b15338ab7fdb3dbd29290a42da1115f6d5df3d9fd831f0`.
+Independent resume planning reports one complete range, 75 missing ranges, and
+zero capsule-only interruptions. No later batch or complete owner was started.
