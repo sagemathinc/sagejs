@@ -290,6 +290,13 @@ const rawRelation = writeOwner("raw-relation", {
   authority: { owners: relation.value.exactOwners },
 });
 const c5Input = writeOwner("c5", c5);
+const loadedC5 = runner.load({
+  "c5-owner": c5Input.path,
+  "c5-sha256": c5Input.sha256,
+}, "c5", "C5 owner");
+assert.equal(loadedC5.path, path.resolve(c5Input.path));
+assert.equal(loadedC5.sha256, c5Input.sha256);
+assert.deepEqual(loadedC5.value, c5);
 const preflight = spawnSync(process.execPath, [
   path.join(__dirname, "field3_c6_authentic_runner.cjs"),
   "--attempt-id", "preflight",

@@ -398,7 +398,11 @@ function parseArguments(argv) {
 }
 
 function load(options, name, label) {
-  return embeddingPublisher.loadOwner(options[`${name}-owner`], options[`${name}-sha256`], label);
+  const selected = path.resolve(options[`${name}-owner`]);
+  return {
+    ...embeddingPublisher.loadOwner(selected, options[`${name}-sha256`], label),
+    path: selected,
+  };
 }
 
 function main(argv = process.argv) {
@@ -468,6 +472,7 @@ module.exports = {
   RELATION_SCHEMA,
   allocateC6,
   factorbackSource,
+  load,
   parseArguments,
   relationOwners,
   runC6,
