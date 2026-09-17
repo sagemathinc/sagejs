@@ -52,17 +52,17 @@ attribution does not.
 | 0 — canonical spine | Partial | Required compiler and port histories are ancestors; pinned PARI 2.17.4 replay driver exists; architecture gate passes at `ba140b214`. | Publish a fresh durable full Phase-0 receipt at the combined commit and record the toolchain/resource ledger. |
 | 1 — observability and ladder | Partial | Four-plus-twelve identities and the 24-field qualification population are frozen; all 16 development PARI traces are exported and hashed. | Natural random-relation, successful honesty, and precision coverage are absent from the performance population; Sage.js does not execute all 16 end to end. |
 | 2 — relation/retry | Partial | Exact cubic collection, quartic repeated nonempty-`W` HNF appends, and isolated random-relation corridors exist. | Generic capacity growth, factor-base enlargement, natural random fallback, and all-sentinel closure remain. |
-| 3 — exact envelope | Partial | H1 full Smith replay and field-3 `[2,2]` relation/Smith state exist. The field-3 live process retains and independently cold-replays all 186,560 exact cells. All 301 principal relations now replay exactly against the 288 retained factor-base ideals. A bounded canonical-HNF route proves rank 288, invariant factors `[2,2]`, order 4, exact suffix alignment, and an arbitrary-ideal receipt with an independently checked principal quotient. | Retain and replay the missing 301-by-13 raw-relation-to-accepted-unit transform, join the exact leaves into one transactional result, and close the 12-field envelope. |
-| 4 — units/precision | Partial | The real H1 cubic performs exact source-derived units and retries from 192 to 2304 bits. The authentic mixed-quartic class logs pass packed `cleanarch` across CPython, JavaScript, GMP, tagged, and pristine PARI. Neutral 153088-bit packed Python/GMP probes match pristine PARI exactly for pi, log(2), exp(log(2)), and exp(log(2)+i). A source-matched full-product branch lowers ordinary Python `mx * my` to GMP `mpz_mul` above the pinned host's 3520-bit PARI threshold; the requalified complex probe falls from 380.346 to 170.488 seconds. The first authentic field-3 scalar relation-log column is regenerated from exact owners at 153088 bits and is packed-equal to PARI. A fresh exact prepared-basis owner now supports a field-specific root/embedding rebuild: all four realified roots and 15 of 16 matrix entries match PARI bit-for-bit, while independent exact tensor and embedding-homomorphism identities pass. | The remaining one-ulp matrix discrepancy is localized to PARI's pre-truncation `get_roots` guard-word state used inside `make_M`; it may not be patched from the answer. The high-precision real/complex AGM logarithm branches for the remaining 300 columns, the regulator, and unit solve remain open. |
+| 3 — exact envelope | Partial | H1 full Smith replay and field-3 `[2,2]` relation/Smith state exist. The field-3 live process retains and independently cold-replays all 186,560 exact cells. All 301 principal relations replay exactly against the 288 retained factor-base ideals. A bounded canonical-HNF route proves rank 288, invariant factors `[2,2]`, order 4, exact suffix alignment, and an arbitrary-ideal receipt with an independently checked principal quotient. The live root now retains the exact 301-by-13 raw-to-accepted transform: all 3,744 relation-kernel entries vanish and source-order packed replay matches every HNF/append checkpoint and terminal `A` bit-for-bit. | Bind the new same-run transform authority into the immutable composer, verify the final compact unit correspondence, and close the 12-field envelope. |
+| 4 — units/precision | Partial | The real H1 cubic performs exact source-derived units and retries from 192 to 2304 bits. The authentic mixed-quartic class logs pass packed `cleanarch` across CPython, JavaScript, GMP, tagged, and pristine PARI. Neutral 153088-bit packed Python/GMP probes match pristine PARI exactly for pi, log(2), exp(log(2)), and exp(log(2)+i). A source-matched full-product branch lowers ordinary Python `mx * my` to GMP `mpz_mul` above the pinned host's 3520-bit PARI threshold; the requalified complex probe falls from 380.346 to 170.488 seconds. The first authentic field-3 scalar relation-log column is regenerated from exact owners at 153088 bits and is packed-equal to PARI. A fresh exact prepared-basis owner supports a field-specific root/embedding rebuild: all four realified roots and all 16 `make_M` entries now match PARI bit-for-bit across CPython, JavaScript, and GMP, while independent exact tensor and embedding-homomorphism identities pass. | The high-precision real/complex AGM logarithm branches for the remaining 300 columns, the regulator, and unit solve remain open. |
 | 5 — honesty/final | Partial | One atomic H1 internal final result and mutation/replay contract exist. A field-neutral immutable correspondence envelope provides canonical encoding, independent mathematical authority, tagged exact/PRECI/LARGE unit outcomes, honesty outcomes, atomic publication, and 15 adversarial mutations. The field-3 composer now joins the authentic full `[2,2]` class presentation, exact arbitrary-ideal quotient, torsion order 2, compact rank-two unit state, and matched `not_given(PRECI)` outcome; it rejects 14 mutations. A separate predeclared unequal-bound degree-five path authentically executes the successful six-ideal `be_honest` schedule. | The field-3 composer correctly remains unsealed with `correspondence_complete=false` and `public_complete=false` until the 3,913-entry transform and same-run unit suffix replay exist. The envelope still has no qualified H1 adapter, and a joined general final replay remains open. |
 | 6 — qualification | Partial | A real mutually exclusive seven-pair matched diagnostic conserves each root and leaves only `0.011 ms` median unattributed in Sage.js. | Source stage cuts are not cross-implementation-identical, the 80% cross-source gap attribution gate remains unmet, and the frozen 24-field qualification has not run. |
 
 ## Next falsifiable cuts
 
-1. Retain the bounded 301-by-13 `hnfspec`/`hnfadd` ancestry transform in the
-   same live field-3 run and prove both `relationRecords * T == 0` and
-   `packedRelationLogs * T == terminalAcceptedA`. The direct generic
-   301-row transform exceeded 7 GiB and is excluded from this campaign.
+1. Bind the now-qualified bounded 301-by-13 `hnfspec`/`hnfadd` ancestry
+   transform into the immutable composer. Preserve its exact integer
+   `relationRecords * T == 0` proof and source-order packed checkpoint replay;
+   do not replace that replay with a reassociated flat floating product.
 2. Join the exact field-3 class presentation, compact units, torsion, and
    tagged `PRECI/not_given` outcome in the immutable transactional result
    envelope without manufacturing exact expanded units.
@@ -103,11 +103,12 @@ and 1,228,256 KiB peak RSS, versus 380.346 seconds before the branch.
 
 The field-specific 153088-bit embedding probe atomically retains polynomial,
 signature, exact integral-basis numerator/denominator data, multiplication
-tensor, and run identity. All four exported root components are packed-exact;
-15 of 16 `make_M` entries are packed-exact. The sole mismatch is one mantissa
-ulp at unchanged precision/exponent, and is reproduced by PARI's internal
-extra-word root state before `gprec_w` truncation. The current result therefore
-stops rather than applying an answer-derived correction.
+tensor, and run identity. All four exported root components and all 16
+`make_M` entries are packed-exact. Closing the former one-ulp discrepancy
+required preserving PARI's source operation graph: evaluate the numerator
+basis with its common denominator 37 still present, then divide every column by
+37. Algebraically cancelling that factor earlier changed one rounding decision;
+no answer-derived correction is used.
 
 ## Resource state
 
