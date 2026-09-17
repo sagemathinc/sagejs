@@ -14,7 +14,14 @@ from collections.abc import Mapping, Sequence
 import hashlib
 import json
 import re
+import sys
 from typing import Any
+
+if hasattr(sys, "set_int_max_str_digits"):
+    # The authenticated 153088-bit C3 logarithm owner has canonical decimal
+    # cells with roughly 46,000 digits.  Its immutable digest and exact schema
+    # are verified before this orchestration layer parses those cells.
+    sys.set_int_max_str_digits(0)
 
 from .field3_analytic_acceptance import (
     pari_field3_analytic_acceptance,
