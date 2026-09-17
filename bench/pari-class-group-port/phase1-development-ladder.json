@@ -1,0 +1,86 @@
+{
+  "schema": 1,
+  "experiment": "pari-class-group-end-to-end-native-phase1-ladder-audit",
+  "baseCommit": "dc534fa05e68c330871fd3720718bdfa7c03e8db",
+  "sources": {
+    "plan": {"path": "agents/pari-class-group-end-to-end-native-plan.md", "sha256": "88a47911bcba3007f82e4ff2d426a2760afab136118ed5cb0922104f19303fad"},
+    "panel": {"path": "bench/pari-class-group-port/panel.json", "sha256": "7c6515240940db971cff3bc28819f9e6547adae9305643b0f6274eeafe6ec3a5"},
+    "qualificationManifest": {"path": "bench/pari-class-group-port/class-unit-qualification-manifest.json", "sha256": "3821a5a51390ca25b3110e7a8058d73cd9945d0ab6ad254c07186e0ac19c1c50"}
+  },
+  "pristinePari": {
+    "version": "2.17.4",
+    "archiveSha256": "02651d99c391007d384b3fadbc20abc6916b77036f9e496c99e9ce8688ca4b53",
+    "buch2Path": "pari-2.17.4/src/basemath/buch2.c",
+    "buch2Sha256": "904ced8034732c7fcfe1da393e23950aac0862b085150fdc24ce1e31beb7d1ac"
+  },
+  "selectionRule": {
+    "kind": "deterministic-pari-only-v1",
+    "steps": [
+      "already-exercised real cubic",
+      "already-exercised mixed quartic",
+      "first remaining tuning row with a known nontrivial class group",
+      "remaining tuning row with maximum known class number, tied by field id"
+    ],
+    "additionalDevelopmentOrder": "remaining tuning rows in frozen panel order"
+  },
+  "fields": [
+    {"panelIndex": 0, "role": "sentinel", "id": "generated-sha256-0e970fdb1b4f043d042bd6093172638086e293ad03749215f71f7510a6622ba0", "polynomialSha256": "2d0fa668fad6c929a71eabdee7ebfb7acc1938307a41d4c1b49847cc99c7964d"},
+    {"panelIndex": 8, "role": "sentinel", "id": "generated-sha256-0857fab7114ab0045f1b91601101549c7b8d854c5c999b91afcb190cd2863363", "polynomialSha256": "4184b3a9e86b3cc2f80a3dcaa593cba175263954c0e914b9cc6feaf68e9b0f52"},
+    {"panelIndex": 1, "role": "sentinel", "id": "generated-sha256-dec56e7e41f5f60071249da2e66871ed837a3c6e65d821c328e7b4c57adaff3f", "polynomialSha256": "394cce5d99f0e9f8ba49a12e1542ff41f36c98b535a4535071414a575ded95ba"},
+    {"panelIndex": 14, "role": "sentinel", "id": "generated-sha256-e1d4643ab62bde9546d63340545e5302c2cef517222d569e634fb5e2093f6413", "polynomialSha256": "aa0aa6152d8cf26cfe21b9f0b2e8c25aadb5cd00161a0ca3cf4d81d92df2ea20"},
+    {"panelIndex": 3, "role": "additional-development", "id": "generated-sha256-11997528676ebeb1c0636be2cb828b5ed5a527ea18eb3a4ace953984da507de9", "polynomialSha256": "aae73048ee765ce38148539a3abf01dac43ab04427126dae8295211d684d4d15"},
+    {"panelIndex": 4, "role": "additional-development", "id": "generated-sha256-806defcf929c9cfff7467b8e7ea7b9f939cdd042bce8c1f5a310f5688904e3b9", "polynomialSha256": "beb19c9584069e8397f9b1d5ddb6d87965aabcc0c788003ea106f3a2f0f566e6"},
+    {"panelIndex": 6, "role": "additional-development", "id": "generated-sha256-55ba15494f03f38bf8f687ff4d2813e81184d71c84dbed9e1adc6af7ba62f0eb", "polynomialSha256": "26fed17015f6479f2de7a3544d8e2ac9ef41ec899b18193d997489a0aeafa416"},
+    {"panelIndex": 10, "role": "additional-development", "id": "generated-sha256-984793770b4a15a79fbc9984fe352fbc867491917733c78bdba3b1856c18e3a7", "polynomialSha256": "205cea0cc9446e959892f4b3cd8dd5e53ff37ae4fd43d335974bffaf3c92ec7a"},
+    {"panelIndex": 11, "role": "additional-development", "id": "generated-sha256-147ddd296edb3764954d6142a499d17edcfecc635aec0181d4beda65d97ad4ab", "polynomialSha256": "ce2bfa61425aa6816f76d5d4f48e7568a7cca85e7ae408e6ec3cb423cf353b07"},
+    {"panelIndex": 13, "role": "additional-development", "id": "generated-sha256-353468f1887e96f5a2f66e3121564636ed8cdbd75bde6571609627bbe8586e33", "polynomialSha256": "a0f7253a51b3045aa02d82f0846e4caa390b93ef159b8c1713245f5793d1e06c"},
+    {"panelIndex": 16, "role": "additional-development", "id": "3.1.1002718428660.2", "polynomialSha256": "aabb93f0d6139f9397586e148a87f5444f7da173ef7d1aabc0c8fae15705cf56"},
+    {"panelIndex": 18, "role": "additional-development", "id": "3.1.1005907102200.3", "polynomialSha256": "d48b43b95d82e5e127e939b4625aedac5bbb1f927c9b92e19c583c51c0901c6e"},
+    {"panelIndex": 19, "role": "additional-development", "id": "3.1.1086061775432017340256300.107", "polynomialSha256": "0aab4dadcd4bc7c70dcb017b9f584154d6fd1d98500e7951c71ace3efa5e81db"},
+    {"panelIndex": 20, "role": "additional-development", "id": "5.1.1000000.1", "polynomialSha256": "36db16a4e174ca1a24dc16439e97c3660cb5135b378dcd3c2e86e438fb3bee11"},
+    {"panelIndex": 21, "role": "additional-development", "id": "5.3.1009349859375.3", "polynomialSha256": "6966124ec38a3af183ec7fa9d6cc4f376ef36aa0ba716eeff92bcba0bf7a64bb"},
+    {"panelIndex": 23, "role": "additional-development", "id": "5.5.1002836007889.1", "polynomialSha256": "c3077e07c31ac7586ee22c1a57ecfab1883699f8061f850ad75a86d46f23ea73"}
+  ],
+  "existingDefaultDriverEvidence": {
+    "checker": {"path": "bench/pari-class-group-port/check_default_driver_trace.cjs", "sha256": "bb6dfdcb5868b7505c074d062a9941dc49ecd8967a69a3e51a5daaae4a14a437"},
+    "coveredPanelIndices": [0, 1, 8, 10],
+    "uncoveredPanelIndices": [3, 4, 6, 11, 13, 14, 16, 18, 19, 20, 21, 23],
+    "allSixteenTraced": false
+  },
+  "coverage": {
+    "nonemptyW": {"performancePopulation": "observed", "panelIndices": [10], "evidence": ["field3_resident_retry_audit.md", "retry_hnf_integration_audit.md"]},
+    "randomRelations": {"performancePopulation": "absent", "panelIndices": [], "evidence": ["retry_hnf_integration_audit.md", "resident_attempt_reference_audit.md"]},
+    "rankDeficiency": {"performancePopulation": "observed", "panelIndices": [8, 10], "evidence": ["retry_hnf_integration_audit.md"]},
+    "precisionEscalation": {"performancePopulation": "absent", "panelIndices": [], "evidence": ["retry_hnf_integration_audit.md"]},
+    "honesty": {
+      "performancePopulation": "absent",
+      "panelIndices": [],
+      "evidence": ["end_to_end_frontier.md"],
+      "correctnessOnly": {
+        "status": "partial",
+        "fixture": "honesty_branch_fixture.json",
+        "fixtureSha256": "9b34eca4b40c6af731202e0e6d64727af84c0d1610c6f4368c66fb2df22b4b1d",
+        "audit": "honesty_branch_audit.md",
+        "auditSha256": "c7b0794ec982f39fe52370b42b73875a4f34ff1e8baa2b89c5c2c8c84fec153b",
+        "note": "The fixture covers bounded unequal-bound retry arithmetic and random_bits(4), not rnd_rel or a successful full honesty branch."
+      }
+    }
+  },
+  "evidenceHashes": {
+    "retry_hnf_integration_audit.md": "43b3f577c866f6b76b0270cebe0f5370f29a5c100aad0e047d5271255a35a421",
+    "field3_resident_retry_audit.md": "083a157268afe114169affe388c8cfacc7b1c5c78659e7191ba4f7fb48a9a226",
+    "end_to_end_frontier.md": "9560541f2864a00ecda9699bc238cef8bfd418ade431e47f33cac9811d1e08d0",
+    "resident_attempt_reference_audit.md": "0341df0d88433352673b1bf7e7e9b056eb5d9b8db4abf1e615dd76dff2d4d918"
+  },
+  "correctnessOnlyRequirements": [
+    {"branch": "random-relations", "status": "missing", "requiredObservation": "At least one pristine PARI trace enters rnd_rel; record relation rows, RNG states, and retry decision.", "performanceInput": false},
+    {"branch": "precision-escalation", "status": "missing", "requiredObservation": "At least one pristine PARI trace takes the precision-rebuild path; record owner invalidation, rebuilt logs, and terminal decision.", "performanceInput": false},
+    {"branch": "successful-full-honesty", "status": "partial", "requiredObservation": "Extend the existing unequal-bound fixture with a successful full branch, including KCZ mutation/restoration, orbit selection, ideal reduction, and scheduler state.", "performanceInput": false}
+  ],
+  "reservePolicy": {"panelRows": 24, "developmentRows": 16, "finalReserveRows": 8, "reserveOpened": false, "panelModified": false},
+  "verdict": {
+    "sentinelRetryPrecisionOrHonestyRequirementProven": false,
+    "missingCorrectnessOnlyFixtures": ["random-relations", "precision-escalation", "successful-full-honesty"],
+    "fieldSubstitutionAllowed": false
+  }
+}
