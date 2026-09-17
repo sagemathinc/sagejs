@@ -1005,6 +1005,30 @@ stage("mixed-getfu-quartic", {
   }),
 });
 
+stage("mixed-getfu-hard-precision", {
+  dependencies: ["mixed-getfu-quartic", "precision-bridge"],
+  requiresPari: true,
+  command: (context) => commandNode(
+    "check_getfu_mixed_quartic_precision_corridor.cjs",
+    context.pariRoot, context.pariArchive),
+  validate: (summary) => {
+    assert.equal(summary.field, "x^4-20018*x-20034");
+    assert.deepEqual(summary.translatedPrecisions, [192, 384, 512, 768]);
+    assert.equal(summary.nativeExactComparisons, 12);
+    assert.equal(summary.minimumSuccessfulWholeWordPrecision, 70144);
+    assert.equal(summary.translatedCapacity, 768);
+    assert.equal(summary.arithmeticCapacity, 2496);
+    assert.equal(summary.firstRejectedPrecision, 1024);
+    assert.equal(summary.firstRejectedRequiredRealSumCapacity, 3136);
+    assert.equal(summary.transactionalPreci, true);
+  },
+  noFixture: true,
+  additionalOutputs: (summary) => ({
+    "oracle-source": path.join(summary.artifactDirectory, "oracle.c"),
+    "oracle-binary": path.join(summary.artifactDirectory, "oracle"),
+  }),
+});
+
 stage("quartic-signed-genback", {
   dependencies: ["smith-transform"],
   requiresPari: true,
