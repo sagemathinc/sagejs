@@ -13,6 +13,7 @@ from typing import Any, Mapping, Sequence
 from .class_group_smith_transform import pari_class_group_smith_transform
 from .field3_unit_transform_retention import _pari_reverse_hnffinal_selection
 from .hnfspec_complete import pari_hnfspec_complete
+from .hnfadd import pari_hnfadd
 from .panel1_presentation_authority import (
     _array_digest,
     _bareiss_determinant,
@@ -205,7 +206,8 @@ def _factor_base_and_relations_dynamic(
         )
         ideals.extend(ideal)
         norms.append(norm)
-    if class_input.get("relationRecords") != _event(events, "hnf").get(
+    hnf_events = [entry for entry in events if entry.get("event") == "hnf"]
+    if not hnf_events or class_input.get("relationRecords") != hnf_events[-1].get(
         "relationRecords"
     ):
         raise MixedCubicPresentationFailure("class input detached from relations")
@@ -213,7 +215,7 @@ def _factor_base_and_relations_dynamic(
     for column in range(columns):
         product = identity
         row = records[rows * column : rows * (column + 1)]
-        if any(exponent < 0 or exponent > 8 for exponent in row):
+        if any(exponent < 0 or exponent > 16 for exponent in row):
             raise MixedCubicPresentationFailure("relation exponent left retained domain")
         for index, exponent in enumerate(row):
             for _ in range(exponent):
@@ -411,7 +413,211 @@ def _source_presentation(
         "activeFullHnf": args[29][: active_rows * active_columns],
         "activeTransform": args[30][: active_columns * active_columns],
         "activeDiagonal": args[37][:active_rows],
+        "hnfArguments": args,
     }
+
+
+def _append_hnf(
+    first: Mapping[str, Any],
+    terminal_records: list[int],
+    terminal_logs: list[int],
+    rows: int,
+) -> list[Any]:
+    initial = first["hnfArguments"]
+    state = initial[43]
+    old_columns = state[7]
+    total_columns = len(terminal_records) // rows
+    new_columns = total_columns - old_columns
+    if new_columns <= 0:
+        raise MixedCubicPresentationFailure("retry append is empty")
+    h_rows, b_columns = state[0], state[2]
+    lig = rows - b_columns
+    width = new_columns + h_rows
+    c_width = width + b_columns
+    zero = lambda length: [0] * length
+    args: list[Any] = [
+        initial[38][: h_rows * h_rows],
+        h_rows,
+        initial[39][: (lig - h_rows) * h_rows],
+        initial[40][: lig * b_columns],
+        b_columns,
+        initial[41][: LOG_STRIDE * old_columns],
+        old_columns,
+        PLACES,
+        list(initial[3]),
+        rows,
+        terminal_records[rows * old_columns :],
+        new_columns,
+        terminal_logs[LOG_STRIDE * old_columns :],
+        zero(lig * new_columns),
+        zero(lig * new_columns),
+        zero(LOG_STRIDE * new_columns),
+        zero(LOG_STRIDE * new_columns),
+        zero(lig * width),
+        zero(LOG_STRIDE * c_width),
+        zero(lig * width),
+        zero(width),
+        zero(lig),
+        zero(lig),
+        zero(lig),
+        zero(10),
+        zero(rows),
+        zero(lig * width),
+        zero(lig * width),
+        zero(lig * b_columns),
+        zero(lig * width),
+        zero(width * width),
+        zero(width * width),
+        zero(width + 1),
+        zero(11),
+        zero(lig * width),
+        zero(lig * b_columns),
+        zero(LOG_STRIDE * c_width),
+        zero(lig),
+        zero(LOG_STRIDE * c_width),
+        zero(lig * lig),
+        zero(lig * lig),
+        zero(lig * (b_columns + lig)),
+        zero(LOG_STRIDE * total_columns),
+        zero(7),
+        zero(9),
+    ]
+    if pari_hnfadd(*args) != 0:
+        raise MixedCubicPresentationFailure("source retry HNF append failed")
+    return args
+
+
+def _retry_raw_transform(
+    first: Mapping[str, Any], stage: list[Any], records: list[int], rows: int
+) -> tuple[list[int], list[int], list[int]]:
+    initial = first["hnfArguments"]
+    old_columns = initial[43][7]
+    columns = stage[44][7]
+    targets = columns
+    new_columns = columns - old_columns
+    old_h, old_b = stage[1], stage[4]
+    active_rows = rows - old_b
+    dep_rows = active_rows - old_h
+    width = new_columns + old_h
+    zero_prefix = old_columns - old_h - old_b
+    zero = lambda length: [0] * length
+    selected = zero(columns * targets)
+    raw = zero(columns * targets)
+    for target in range(targets):
+        selected[target * columns + target] = 1
+    previous = zero(old_columns * targets)
+    work = zero((width + old_b) * targets)
+    for target in range(targets):
+        source = target * columns
+        destination = target * old_columns
+        previous[destination : destination + zero_prefix] = selected[
+            source : source + zero_prefix
+        ]
+        work[target * (width + old_b) : (target + 1) * (width + old_b)] = selected[
+            source + zero_prefix : source + columns
+        ]
+    _pari_reverse_hnffinal_selection(
+        work,
+        width + old_b,
+        targets,
+        active_rows,
+        dep_rows,
+        width,
+        old_b,
+        stage[30],
+        0,
+        stage[29],
+        0,
+        stage[34],
+        0,
+        stage[28],
+        0,
+        stage[37],
+        0,
+        selected,
+        zero((active_rows + dep_rows) * old_b),
+    )
+    permutation = stage[8]
+    new_relations = stage[10]
+    for target in range(targets):
+        work_base = target * (width + old_b)
+        previous_base = target * old_columns
+        previous[
+            previous_base + zero_prefix : previous_base + zero_prefix + old_h
+        ] = work[work_base + new_columns : work_base + new_columns + old_h]
+        previous[
+            previous_base + zero_prefix + old_h : previous_base + old_columns
+        ] = work[
+            work_base + new_columns + old_h : work_base + width + old_b
+        ]
+        for appended in range(new_columns):
+            coefficient = work[work_base + appended]
+            raw[target * columns + old_columns + appended] = coefficient
+            if coefficient:
+                for tail in range(old_b):
+                    physical = permutation[active_rows + dep_rows + tail] - 1
+                    previous[previous_base + zero_prefix + old_h + tail] -= (
+                        new_relations[appended * rows + physical] * coefficient
+                    )
+    first_active_rows, _, first_active_columns, _, first_tail, _ = initial[27]
+    scratch = zero(old_columns * targets)
+    _pari_reverse_hnffinal_selection(
+        previous,
+        old_columns,
+        targets,
+        first_active_rows,
+        0,
+        first_active_columns,
+        first_tail,
+        initial[30],
+        0,
+        initial[29],
+        0,
+        initial[34],
+        0,
+        initial[26],
+        0,
+        initial[37],
+        0,
+        scratch,
+        zero(first_active_rows * first_tail),
+    )
+    cleanup = initial[9]
+    for target in range(targets):
+        for source in range(old_columns):
+            raw[target * columns + source] = sum(
+                cleanup[cleaned * old_columns + source]
+                * previous[target * old_columns + cleaned]
+                for cleaned in range(old_columns)
+            )
+    kernel_columns = [
+        column
+        for column in range(columns)
+        if all(
+            sum(
+                records[source * rows + row] * raw[column * columns + source]
+                for source in range(columns)
+            )
+            == 0
+            for row in range(rows)
+        )
+    ]
+    if len(kernel_columns) != columns - rows:
+        raise MixedCubicPresentationFailure("retry kernel dimension changed")
+    presentation_columns = [
+        column for column in range(columns) if column not in kernel_columns
+    ]
+    kernel = [
+        raw[column * columns + source]
+        for column in kernel_columns
+        for source in range(columns)
+    ]
+    relation_map = [
+        raw[column * columns + source]
+        for column in presentation_columns
+        for source in range(columns)
+    ]
+    return kernel, relation_map, raw
 
 
 def compose_one_pass_mixed_cubic_presentation(
@@ -561,8 +767,207 @@ def compose_one_pass_mixed_cubic_presentation(
     }
 
 
+def compose_two_pass_mixed_cubic_presentation(
+    w0: Mapping[str, Any],
+    ancestry: Mapping[str, Any],
+    *,
+    panel_index: int,
+    field_id: str,
+    subfactor_count: int,
+) -> dict[str, Any]:
+    """Compute one rejected pass and its accepted source-derived HNF retry."""
+    field = w0.get("field", {})
+    if (
+        w0.get("schema") != W0_SCHEMA
+        or field.get("id") != field_id
+        or field.get("panelIndex") != panel_index
+        or field.get("degree") != 3
+        or field.get("signature") != [1, 1]
+        or field.get("unitRank") != 1
+    ):
+        raise MixedCubicPresentationFailure("wrong mixed-cubic retry authority")
+    events = w0.get("events")
+    if not isinstance(events, list):
+        raise MixedCubicPresentationFailure("W0 events changed")
+    hnfs = [entry for entry in events if entry.get("event") == "hnf"]
+    acceptances = [entry for entry in events if entry.get("event") == "acceptance"]
+    if (
+        len(hnfs) != 2
+        or len(acceptances) != 2
+        or [entry.get("code") for entry in acceptances] != [1, 0]
+    ):
+        raise MixedCubicPresentationFailure("W0 is not one rejected and one accepted pass")
+    prepared = _event(events, "prepared")
+    factor = _event(events, "factor_base")
+    rows = len(factor.get("perm", {}).get("values", []))
+    initial_records, initial_generators, initial_logs, initial_scalars = (
+        _raw_relations_and_logs(hnfs[0], prepared, rows)
+    )
+    records, generators, logs, scalar_prefix = _raw_relations_and_logs(
+        hnfs[1], prepared, rows
+    )
+    initial_columns = len(initial_generators) // DEGREE
+    columns = len(generators) // DEGREE
+    if (
+        initial_records != records[: rows * initial_columns]
+        or initial_generators != generators[: DEGREE * initial_columns]
+        or initial_logs != logs[: LOG_STRIDE * initial_columns]
+        or initial_scalars != scalar_prefix
+    ):
+        raise MixedCubicPresentationFailure("retry does not extend the first exact prefix")
+    initial = _source_presentation(
+        initial_records,
+        initial_logs,
+        _exported_vector(factor.get("perm"), rows, "initial perm"),
+        rows,
+        subfactor_count,
+    )
+    if (
+        initial["transformedLogs"]
+        != _packed_matrix(hnfs[0].get("exactC"), PLACES, initial_columns, "first C")
+        or initial["terminalPermutation"]
+        != _exported_vector(hnfs[0].get("perm"), rows, "first perm")
+    ):
+        raise MixedCubicPresentationFailure("first rejected HNF differs from W0")
+    stage = _append_hnf(initial, records, logs, rows)
+    if (
+        stage[42]
+        != _packed_matrix(hnfs[1].get("exactC"), PLACES, columns, "terminal C")
+        or stage[8] != _exported_vector(hnfs[1].get("perm"), rows, "terminal perm")
+    ):
+        raise MixedCubicPresentationFailure("accepted retry HNF differs from W0")
+    kernel_map, relation_map, _ = _retry_raw_transform(initial, stage, records, rows)
+    kernel = columns - rows
+    presentation = [
+        sum(
+            records[source * rows + row]
+            * relation_map[column * columns + source]
+            for source in range(columns)
+        )
+        for column in range(rows)
+        for row in range(rows)
+    ]
+    class_number = abs(_bareiss_determinant(presentation, rows))
+    exact_w_value = hnfs[1].get("exactW")
+    smith_dimension = len(exact_w_value.get("values", []))
+    exact_w = _exported_matrix(exact_w_value, smith_dimension, smith_dimension, "W")
+    invariants, smith_order, smith_state = _smith(exact_w, smith_dimension)
+    if smith_order != class_number:
+        raise MixedCubicPresentationFailure("retry Smith order and presentation differ")
+    table = [int(value) for value in prepared.get("multiplicationTensor", [])]
+    descriptors, ideals, norms = _factor_base_and_relations_dynamic(
+        events, table, records, generators, stage[8]
+    )
+    relation_lattice = _exported_matrix(
+        acceptances[1].get("lattice"), 1, kernel, "rank-one lattice"
+    )
+    packed_regulator = _packed_real(acceptances[1].get("exactR"), "accepted regulator")
+    final = _event(events, "result")
+    expected_answer = {
+        "classNumber": int(final.get("classNumber")),
+        "invariants": [int(value) for value in final.get("invariants", [])],
+    }
+    computed_answer = {"classNumber": class_number, "invariants": invariants}
+    if computed_answer != expected_answer:
+        raise MixedCubicPresentationFailure("computed retry differs from final answer")
+    embedding_m = _prepared_triples(prepared.get("embeddingM"), 9, "embeddingM")
+    embedding_g = _prepared_triples(prepared.get("embeddingG"), 9, "embeddingG")
+    return {
+        "schema": SCHEMA,
+        "field": {
+            "id": field_id,
+            "panelIndex": panel_index,
+            "polynomial": list(field.get("coefficients", [])),
+            "signature": [1, 1],
+            "discriminant": str(prepared.get("discriminant")),
+            "index": str(prepared.get("index")),
+            "basisDenominator": str(prepared.get("zkden")),
+            "basis": [str(value) for value in prepared.get("zk", [])],
+            "multiplicationTensor": _strings(table),
+            "embeddingM": _strings(embedding_m),
+            "embeddingG": _strings(embedding_g),
+        },
+        "ancestry": dict(ancestry),
+        "dimensions": {
+            "degree": 3,
+            "places": 2,
+            "factorBaseSize": rows,
+            "relationCount": columns,
+            "kernelRank": kernel,
+            "unitRank": 1,
+            "subfactorCount": subfactor_count,
+        },
+        "retryPasses": [
+            {
+                "relationCount": initial_columns,
+                "acceptanceCode": int(acceptances[0].get("code")),
+                "candidateClassNumber": str(acceptances[0].get("h")),
+                "hnfState": initial["hnfState"],
+                "rawLogsSha256": _array_digest(initial_logs),
+            },
+            {
+                "relationCount": columns,
+                "newRelations": columns - initial_columns,
+                "acceptanceCode": int(acceptances[1].get("code")),
+                "candidateClassNumber": str(acceptances[1].get("h")),
+                "hnfState": stage[44],
+                "rawLogsSha256": _array_digest(logs),
+            },
+        ],
+        "factorBase": {
+            "descriptorWidth": 16,
+            "descriptors": _strings(descriptors),
+            "ideals": _strings(ideals),
+            "norms": _strings(norms),
+            "descriptorsSha256": _array_digest(descriptors),
+            "idealsSha256": _array_digest(ideals),
+        },
+        "relations": {
+            "matrix": _strings(records),
+            "principalGenerators": _strings(generators),
+            "packedLogs": _strings(logs),
+            "scalarPrefixCount": scalar_prefix,
+            "matrixSha256": _array_digest(records),
+            "principalGeneratorsSha256": _array_digest(generators),
+            "packedLogsSha256": _array_digest(logs),
+        },
+        "presentation": {
+            "matrix": _strings(presentation),
+            "relationToPresentation": _strings(relation_map),
+            "rawToKernel": _strings(kernel_map),
+            "kernelLogs": _strings(stage[42][: LOG_STRIDE * kernel]),
+            "relationLattice": _strings(relation_lattice),
+            "packedRegulator": _strings(packed_regulator),
+            "classNumber": str(class_number),
+            "invariants": _strings(invariants),
+            "matrixSha256": _array_digest(presentation),
+            "rawToKernelSha256": _array_digest(kernel_map),
+        },
+        "replay": {
+            "terminalPermutation": _strings(stage[8]),
+            "initialCleanupTransform": _strings(initial["cleanupTransform"]),
+            "initialHnfState": initial["hnfState"],
+            "terminalHnfState": stage[44],
+            "smithState": smith_state,
+            "allDescriptorsReconstructed": True,
+            "allPrincipalRelationsReplayed": True,
+            "rawRelationsTimesKernelZero": True,
+            "computedBeforeExpectedComparison": True,
+        },
+        "comparison": {**expected_answer, "matches": True},
+        "completion": {
+            "presentationComplete": True,
+            "classWitnessesComplete": False,
+            "unitsComplete": False,
+            "correspondenceComplete": False,
+            "publicComplete": False,
+        },
+    }
+
+
 __all__ = [
     "MixedCubicPresentationFailure",
     "SCHEMA",
     "compose_one_pass_mixed_cubic_presentation",
+    "compose_two_pass_mixed_cubic_presentation",
 ]
