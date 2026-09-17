@@ -443,15 +443,15 @@ construction, or cold-compiler cliffs.
 separate compact primitive boundary for nonnegative integer power while leaving
 negative Python floats, negative Sage rationals, floats, and object dispatch on
 their authoritative paths. One million `3 ** 7` operations improve 98.95%,
-from 4,485.977 ms to 46.894 ms (2.45x CPython rather than 234x); positive `**=`
-improves 98.99% and measures 0.76x CPython. It also repairs a pre-existing
+from 4,549.589 ms to 47.164 ms (2.32x CPython rather than 224x); positive `**=`
+improves 99.00% and measures 0.74x CPython. It also repairs a pre-existing
 Python augmented-power error: `2 **= -1` now produces float `0.5`, while Sage
 retains rational `1/2`. All six existing arithmetic controls remain within
--1.29% to +1.17%. A full build, 72 focused tests, all 225 portable files, the
+-1.74% to +0.23%. A full build, 72 focused tests, all 225 portable files, the
 508-case differential baseline, strict checks, traitlets/pyparsing, docs, merge
-invariants, and the unchanged 902,946/903,000 core budget pass. Evidence is in
-`agents/python-exact-integer-power.md`; PR #314 remains the prerequisite, so
-this stays out of the merge-ready queue until that PR reaches `origin/main`.
+invariants, and the unchanged 902,984/903,000 core budget pass. Evidence is in
+`agents/python-exact-integer-power.md`; PR #314 and exact shifts are now in
+`origin/main`, and the candidate has been replayed and remeasured against it.
 
 Continue next with integration-aware qualification, the receiver-lookup campaign,
 and true handled-exception ownership. Generator/coroutine suspension makes a
