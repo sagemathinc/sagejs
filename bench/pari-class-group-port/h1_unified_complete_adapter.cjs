@@ -290,7 +290,6 @@ async function preparePreparedH1({
     replayAuthority: sageAuthority(replayInput),
     replayAuthoritySha256: digest(sageAuthority(replayInput)),
     replayDiagnosticStageTrace,
-    timedInput: makeInputs(preparedInput, built.specification, built.fn),
   };
 }
 
@@ -319,7 +318,13 @@ async function runPreparedH1({
   }
   assert.equal(implementation, "sagejs");
   validatePreparedInput(preparedInput, preparedState.built.specification);
-  const input = preparedState.timedInput;
+  // The root deliberately rejects re-entry on a published owner graph. Build
+  // a fresh graph outside the compiler-owned native clock for every sample;
+  // preparation and compilation remain persistent, while each measured root
+  // receives the same pristine caller-owned storage as the cold replay.
+  const input = makeInputs(
+    preparedInput, preparedState.built.specification, preparedState.built.fn,
+  );
   const status = preparedState.built.fn.gmp(
     ...rootArguments(input, preparedState.built.specification),
   );
