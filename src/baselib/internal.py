@@ -1294,8 +1294,11 @@ def ρσ_getitem(value: Any, key: Any) -> Any:
         if runtime.array.isArray(value) and runtime.object.isFrozen(value):
             return runtime.math_tuple(answer)
         return answer
+    # Generated instances no longer pay for an eager identity property.
+    # Their inherited class marker distinguishes them from native objects;
+    # ``id`` and the synthetic repr allocate identity lazily in the runtime map.
     if _internal_get_member(
-        value, "ρσ_object_id"
+        value, "__bases__"
     ) is not runtime.undefined and not runtime.arraylike(value):
         raise TypeError("object is not subscriptable")
     if runtime.arraylike(value):
