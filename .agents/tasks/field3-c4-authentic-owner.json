@@ -44,6 +44,7 @@
     "node bench/pari-class-group-port/check_field3_accepted_c4_owner.cjs /home/user/upstream/pari-2.17.4 /home/user/upstream/pari-2.17.4.tar.gz",
     "python3 -m py_compile bench/pari-class-group-port/field3_accepted_c4_owner.py",
     "node --check bench/pari-class-group-port/field3_accepted_c4_owner_coordinator.cjs",
+    "node --check bench/pari-class-group-port/check_field3_accepted_c4_owner.cjs",
     "pnpm parallel:check"
   ],
   "runs": [
@@ -96,17 +97,67 @@
       "commit": "679c510266c7925f046f3354671a2ff7a41f6cef",
       "workspace_fingerprint": "2de4fa2ba7fecf6e48ac18e007c5b5a92247bb024f36659f93dc5d60ff3655fb",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_field3_accepted_c4_owner.cjs /home/user/upstream/pari-2.17.4 /home/user/upstream/pari-2.17.4.tar.gz",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.961,
+      "started_at": "2026-09-17T16:09:22.387Z",
+      "commit": "37dca99d698e05404b532c79b4ea7987c5b60565",
+      "workspace_fingerprint": "3b99672514168670447a3cfe6f9596bd3eb5589e543b370faa592a54eb25fae9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -m py_compile bench/pari-class-group-port/field3_accepted_c4_owner.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.069,
+      "started_at": "2026-09-17T16:09:28.059Z",
+      "commit": "37dca99d698e05404b532c79b4ea7987c5b60565",
+      "workspace_fingerprint": "3b99672514168670447a3cfe6f9596bd3eb5589e543b370faa592a54eb25fae9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check bench/pari-class-group-port/field3_accepted_c4_owner_coordinator.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.03,
+      "started_at": "2026-09-17T16:09:28.844Z",
+      "commit": "37dca99d698e05404b532c79b4ea7987c5b60565",
+      "workspace_fingerprint": "3b99672514168670447a3cfe6f9596bd3eb5589e543b370faa592a54eb25fae9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check bench/pari-class-group-port/check_field3_accepted_c4_owner.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.034,
+      "started_at": "2026-09-17T16:09:29.579Z",
+      "commit": "37dca99d698e05404b532c79b4ea7987c5b60565",
+      "workspace_fingerprint": "3b99672514168670447a3cfe6f9596bd3eb5589e543b370faa592a54eb25fae9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 0.684,
+      "started_at": "2026-09-17T16:10:04.173Z",
+      "commit": "37dca99d698e05404b532c79b4ea7987c5b60565",
+      "workspace_fingerprint": "3b99672514168670447a3cfe6f9596bd3eb5589e543b370faa592a54eb25fae9",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Added the production authenticated C4 coordinator. It binds immutable full-terminal, C3, field, and prime-catalog owners; derives inverse-hR, the regulator multiple, h*invhr, relations, regulator, and PARI's analytic decision live; publishes the C5 accepted-C4 schema and an authenticated C7 analytic projection as content-addressed mode-0444 owners; and surfaces genuine compute_R PRECI without publication. A pristine PARI 2.17.4 low-precision oracle qualifies success, idempotency, the 64-to-128 retry, both consumer interfaces, and six fail-atomic mutations.",
+    "summary": "Added the production authenticated C4 coordinator and authentic field/catalog producers. The producers bind the exact frozen authority and initial-collector content addresses plus the prepared embedding's exact semantic identity, derive the discriminant from the integral multiplication tensor's trace pairing, and derive the prime catalog through the live residue bound. Production requires targetBits=153088; low-precision qualification uses disjoint test-only schemas that cannot publish production owners. Acceptance publishes both C5 and C7 owner schemas from one computation, and C7 projection reopens all four predecessors and recomputes C3, analytic-preparation, regulator-multiple, and acceptance latches. A pristine PARI 2.17.4 low-precision oracle qualifies success, idempotency, the genuine 64-to-128 PRECI transition, both interfaces, and eight fail-atomic mutations.",
     "risks": [
       "The real 153088-bit invocation is deliberately deferred until authentic C3, full-terminal, field, and catalog owners are all present.",
       "No heavy build was run by instruction. test:changed was stopped when it selected the repository-wide build; architecture:check subsequently encountered that intentionally incomplete dist rather than a source failure."
     ],
     "next_steps": [
-      "Construct the small immutable analytic field and catalog owners from the existing prepared-field authority, then invoke --operation accept under the authentic 600-second/4-GiB gate.",
-      "Pass acceptedC4 to C5 and analyticAccepted to C7; both outputs name the same accepted computation through the accepted-C4 digest."
+      "Run --operation derive-inputs against the authentic prepared embedding plus the frozen authority and initial collector, then invoke --operation accept under the authentic 600-second/4-GiB gate.",
+      "Have C7 cross-check the projection's exposed accepted-C4/full-terminal/C3/field/catalog digests and C3/analytic/multiple/acceptance latches against its own ancestry."
     ]
   }
 }

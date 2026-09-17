@@ -11,6 +11,8 @@ input.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+import hashlib
+import json
 import re
 from typing import Any
 
@@ -33,6 +35,22 @@ FIELD_SCHEMA = "sagejs.pari-class-group/field3-analytic-field-v1"
 CATALOG_SCHEMA = "sagejs.pari-class-group/field3-analytic-prime-catalog-v1"
 OUTPUT_SCHEMA = "sagejs.pari-class-group/field3-accepted-c4-v1"
 ANALYTIC_SCHEMA = "sagejs.pari-class-group/field3-analytic-accepted-owner-v1"
+TEST_FIELD_SCHEMA = "sagejs.pari-class-group/test-field3-analytic-field-v1"
+TEST_CATALOG_SCHEMA = "sagejs.pari-class-group/test-field3-analytic-prime-catalog-v1"
+TEST_OUTPUT_SCHEMA = "sagejs.pari-class-group/test-field3-accepted-c4-v1"
+TEST_ANALYTIC_SCHEMA = "sagejs.pari-class-group/test-field3-analytic-accepted-owner-v1"
+PREPARED_SCHEMA = "sagejs.pari-class-group/field3-prepared-embedding-owner-v1"
+TEST_PREPARED_SCHEMA = "sagejs.pari-class-group/test-field3-prepared-embedding-owner-v1"
+TEST_INITIAL_SCHEMA = (
+    "sagejs.pari-class-group/test-field3-initial-catalog-consequences-v1"
+)
+TEST_AUTHORITY_SCHEMA = "sagejs.pari-class-group/test-field3-catalog-authority-v1"
+AUTHORITY_SHA256 = "246bfe2af51c8be732308719773fc7d696f7dc1bf21958c91d96cd8fc448954c"
+INITIAL_SHA256 = "81b9d3b237e781a697f0ae170554426b363ec2235297407be1deed38ebbbc6fe"
+PREPARED_IDENTITY_SHA256 = (
+    "bc0dfbca45a575a381ba87371fb27906f68b34cedd025435986fad4c7c6287cf"
+)
+PRODUCTION_BITS = 153088
 _SHA256 = re.compile(r"[0-9a-f]{64}\Z")
 
 
@@ -99,6 +117,281 @@ def _floats(length: int) -> list[float]:
     return [0.0] * length
 
 
+def _semantic_sha256(value: Any) -> str:
+    return hashlib.sha256(
+        json.dumps(value, separators=(",", ":"), ensure_ascii=False).encode()
+    ).hexdigest()
+
+
+def _determinant(matrix: Sequence[Sequence[int]]) -> int:
+    size = len(matrix)
+    work = [list(row) for row in matrix]
+    denominator = 1
+    sign = 1
+    for pivot_index in range(size - 1):
+        if work[pivot_index][pivot_index] == 0:
+            swap = next(
+                (
+                    row
+                    for row in range(pivot_index + 1, size)
+                    if work[row][pivot_index] != 0
+                ),
+                -1,
+            )
+            if swap < 0:
+                return 0
+            work[pivot_index], work[swap] = work[swap], work[pivot_index]
+            sign = -sign
+        pivot = work[pivot_index][pivot_index]
+        for row in range(pivot_index + 1, size):
+            for column in range(pivot_index + 1, size):
+                numerator = (
+                    work[row][column] * pivot
+                    - work[row][pivot_index] * work[pivot_index][column]
+                )
+                if numerator % denominator:
+                    raise Field3AcceptedC4Failure("nonintegral trace determinant")
+                work[row][column] = numerator // denominator
+        denominator = pivot
+    return sign * work[-1][-1]
+
+
+def _tensor_discriminant(tensor: Sequence[int]) -> int:
+    if len(tensor) != 64:
+        raise Field3AcceptedC4Failure("multiplication tensor shape changed")
+    matrices = []
+    for basis in range(4):
+        block = tensor[16 * basis : 16 * basis + 16]
+        matrices.append(
+            [[block[4 * column + row] for column in range(4)] for row in range(4)]
+        )
+    trace_pairing = [
+        [
+            sum(
+                matrices[left][row][inner] * matrices[right][inner][row]
+                for row in range(4)
+                for inner in range(4)
+            )
+            for right in range(4)
+        ]
+        for left in range(4)
+    ]
+    discriminant = _determinant(trace_pairing)
+    if discriminant >= 0:
+        raise Field3AcceptedC4Failure("trace discriminant has the wrong signature")
+    return -discriminant
+
+
+def derive_analytic_inputs(
+    prepared_owner: Mapping[str, Any],
+    initial_owner: Mapping[str, Any],
+    authority_owner: Mapping[str, Any],
+    prepared_file_sha256: str,
+    initial_file_sha256: str,
+    authority_file_sha256: str,
+    profile: str,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Derive analytic field/catalog owners from authenticated consequences."""
+    prepared = _mapping(prepared_owner, "prepared embedding owner")
+    initial_raw = _mapping(initial_owner, "initial collector owner")
+    authority_raw = _mapping(authority_owner, "catalog authority owner")
+    prepared_file_sha = _sha256(prepared_file_sha256, "prepared file digest")
+    initial_sha = _sha256(initial_file_sha256, "initial file digest")
+    authority_sha = _sha256(authority_file_sha256, "authority file digest")
+    if profile == "production":
+        if initial_sha != INITIAL_SHA256 or authority_sha != AUTHORITY_SHA256:
+            raise Field3AcceptedC4Failure("production source content address changed")
+        if prepared.get("schema") != PREPARED_SCHEMA:
+            raise Field3AcceptedC4Failure("wrong production prepared schema")
+        if prepared.get("runIdentity") != RUN_IDENTITY:
+            raise Field3AcceptedC4Failure("wrong production prepared identity")
+        requested = _integer(prepared.get("requestedBits"), "prepared bits")
+        if (
+            requested != PRODUCTION_BITS
+            or _integer(prepared.get("makeMRootPrecisionBits"), "root bits")
+            != PRODUCTION_BITS + 64
+            or prepared.get("makeMTruncation") is not False
+        ):
+            raise Field3AcceptedC4Failure("production prepared precision changed")
+        identity = {
+            "polynomial": prepared.get("polynomial"),
+            "signature": prepared.get("signature"),
+            "zkden": prepared.get("zkden"),
+            "zk": prepared.get("zk"),
+            "tensor": prepared.get("tensor"),
+            "requestedBits": prepared.get("requestedBits"),
+            "makeMRootPrecisionBits": prepared.get("makeMRootPrecisionBits"),
+            "makeMTruncation": prepared.get("makeMTruncation"),
+            "makeMRootState": prepared.get("roots"),
+        }
+        prepared_identity_sha = _semantic_sha256(identity)
+        if prepared_identity_sha != PREPARED_IDENTITY_SHA256:
+            raise Field3AcceptedC4Failure("production prepared identity changed")
+        expected_values = initial_raw.get("expected")
+        native_inputs = initial_raw.get("nativeInputs")
+        if not isinstance(expected_values, list) or not isinstance(native_inputs, list):
+            raise Field3AcceptedC4Failure("initial collector shape changed")
+        expected = _mapping(expected_values[0], "field-3 initial consequence")
+        native = _mapping(native_inputs[0], "field-3 native input")
+        source = _mapping(native.get("input"), "field-3 native input payload")
+        authority = _mapping(authority_raw.get("authority"), "field-3 authority")
+        owners = _mapping(authority.get("owners"), "field-3 authority owners")
+        if authority.get("state") != [
+            0,
+            288,
+            301,
+            4,
+            3,
+            288,
+            86688,
+            82944,
+            903,
+            1204,
+            6321,
+            4608,
+            1152,
+            66,
+            4,
+            2,
+            286,
+            301,
+            4,
+            292,
+            576,
+            62,
+            48,
+            3000,
+        ]:
+            raise Field3AcceptedC4Failure("frozen authority state changed")
+        authority_primes = owners.get("relationPrimes")
+        authority_e = owners.get("ramification")
+    elif profile == "synthetic-test":
+        if (
+            prepared.get("schema") != TEST_PREPARED_SCHEMA
+            or initial_raw.get("schema") != TEST_INITIAL_SCHEMA
+            or authority_raw.get("schema") != TEST_AUTHORITY_SCHEMA
+            or prepared.get("testOnly") is not True
+            or initial_raw.get("testOnly") is not True
+            or authority_raw.get("testOnly") is not True
+        ):
+            raise Field3AcceptedC4Failure("synthetic source is not test-only")
+        run_identity = prepared.get("runIdentity")
+        if not isinstance(run_identity, str) or not run_identity.startswith(
+            "synthetic-c4-low-"
+        ):
+            raise Field3AcceptedC4Failure("wrong synthetic run identity")
+        requested = _integer(prepared.get("requestedBits"), "prepared bits")
+        if requested not in (64, 192):
+            raise Field3AcceptedC4Failure("unsupported synthetic precision")
+        prepared_identity_sha = _semantic_sha256(prepared)
+        expected = initial_raw
+        source = initial_raw
+        owners = authority_raw
+        authority_primes = owners.get("relationPrimes")
+        authority_e = owners.get("ramification")
+    else:
+        raise Field3AcceptedC4Failure("unknown derivation profile")
+
+    polynomial_value = prepared.get("polynomial")
+    signature_value = prepared.get("signature")
+    tensor_value = prepared.get("tensor")
+    polynomial = _integers(polynomial_value, 5, "prepared polynomial")
+    signature = _integers(signature_value, 2, "prepared signature")
+    tensor = _integers(tensor_value, 64, "prepared tensor")
+    basis_table = _integers(expected.get("basisTable"), 64, "initial tensor")
+    if tensor != basis_table or polynomial != [-2000042, -2000022, 0, 0, 1]:
+        raise Field3AcceptedC4Failure("prepared field detached from initial collector")
+    if signature != [2, 1]:
+        raise Field3AcceptedC4Failure("prepared signature changed")
+    residue_bound = _integer(expected.get("residueBound"), "residue bound")
+    if residue_bound != 6144:
+        raise Field3AcceptedC4Failure("analytic residue bound changed")
+    all_primes = [
+        _integer(x, "admission prime") for x in source.get("admission_primes", [])
+    ]
+    prime_count = sum(prime <= residue_bound for prime in all_primes) + 1
+    if prime_count > len(all_primes):
+        raise Field3AcceptedC4Failure("catalog lacks a prime beyond the residue bound")
+    primes = all_primes[:prime_count]
+    offsets = _integers(
+        source.get("admission_prime_offsets"),
+        len(source.get("admission_prime_offsets", [])),
+        "prime offsets",
+    )[:prime_count]
+    counts = _integers(
+        source.get("admission_prime_counts"),
+        len(source.get("admission_prime_counts", [])),
+        "prime counts",
+    )[:prime_count]
+    ideal_count = max(offset + count for offset, count in zip(offsets, counts))
+    degrees = _integers(
+        source.get("admission_group_f"),
+        len(source.get("admission_group_f", [])),
+        "residue degrees",
+    )[:ideal_count]
+    multiplicities = _integers(
+        source.get("admission_group_e"),
+        len(source.get("admission_group_e", [])),
+        "ramification multiplicities",
+    )[:ideal_count]
+    relation_primes = _integers(
+        authority_primes, len(authority_primes or []), "authority primes"
+    )
+    ramification = _integers(
+        authority_e, len(authority_e or []), "authority ramification"
+    )
+    expanded_primes = [
+        prime
+        for prime, offset, count in zip(primes, offsets, counts)
+        for _ in range(count)
+    ]
+    if (
+        relation_primes[:ideal_count] != expanded_primes
+        or ramification[:ideal_count] != multiplicities
+    ):
+        raise Field3AcceptedC4Failure("catalog detached from relation authority")
+    field_schema = FIELD_SCHEMA if profile == "production" else TEST_FIELD_SCHEMA
+    catalog_schema = CATALOG_SCHEMA if profile == "production" else TEST_CATALOG_SCHEMA
+    run_identity = prepared.get("runIdentity")
+    field = {
+        "schema": field_schema,
+        "field": FIELD,
+        "runIdentity": run_identity,
+        "targetBits": str(requested),
+        "testOnly": profile != "production",
+        "polynomial": [str(value) for value in polynomial],
+        "discriminant": str(_tensor_discriminant(tensor)),
+        "degree": "4",
+        "realPlaces": "2",
+        "complexPlaces": "1",
+        "rootsOfUnity": "2",
+        "preparedFileSha256": prepared_file_sha,
+        "preparedIdentitySha256": prepared_identity_sha,
+        "initialOwnerSha256": initial_sha,
+        "authorityOwnerSha256": authority_sha,
+    }
+    # Filled by the coordinator after the field owner receives its content address.
+    catalog = {
+        "schema": catalog_schema,
+        "field": FIELD,
+        "runIdentity": run_identity,
+        "targetBits": str(requested),
+        "testOnly": profile != "production",
+        "fieldOwnerSha256": "",
+        "preparedFileSha256": prepared_file_sha,
+        "preparedIdentitySha256": prepared_identity_sha,
+        "initialOwnerSha256": initial_sha,
+        "authorityOwnerSha256": authority_sha,
+        "residueBound": str(residue_bound),
+        "primes": [str(value) for value in primes],
+        "offsets": [str(value) for value in offsets],
+        "counts": [str(value) for value in counts],
+        "degrees": [str(value) for value in degrees],
+        "multiplicities": [str(value) for value in multiplicities],
+    }
+    return field, catalog
+
+
 def _authenticate_identity(
     full: Mapping[str, Any],
     c3: Mapping[str, Any],
@@ -107,7 +400,14 @@ def _authenticate_identity(
 ) -> tuple[str, str, int]:
     if full.get("schema") != FULL_SCHEMA or c3.get("schema") != C3_SCHEMA:
         raise Field3AcceptedC4Failure("wrong terminal/C3 schema")
-    if field.get("schema") != FIELD_SCHEMA or catalog.get("schema") != CATALOG_SCHEMA:
+    production = (
+        field.get("schema") == FIELD_SCHEMA and catalog.get("schema") == CATALOG_SCHEMA
+    )
+    synthetic = (
+        field.get("schema") == TEST_FIELD_SCHEMA
+        and catalog.get("schema") == TEST_CATALOG_SCHEMA
+    )
+    if not production and not synthetic:
         raise Field3AcceptedC4Failure("wrong field/catalog schema")
     field_name = field.get("field")
     run_identity = field.get("runIdentity")
@@ -118,15 +418,29 @@ def _authenticate_identity(
         for owner in (full, c3, catalog)
     ):
         raise Field3AcceptedC4Failure("predecessor field identity diverged")
-    # Production admits the frozen field-3 identity.  A distinctly labelled
-    # low-precision identity is accepted only by the focused oracle tests.
-    if (field_name, run_identity) != (FIELD, RUN_IDENTITY) and not (
-        field_name != FIELD and run_identity.startswith("synthetic-c4-low-")
-    ):
+    if field_name != FIELD:
         raise Field3AcceptedC4Failure("unsupported field-3 identity")
     precision = _integer(c3.get("targetBits"), "C3 precision")
-    if precision not in (64, 192, 153088):
-        raise Field3AcceptedC4Failure("unsupported C4 precision")
+    if production:
+        if (
+            run_identity != RUN_IDENTITY
+            or precision != PRODUCTION_BITS
+            or field.get("testOnly") is not False
+            or catalog.get("testOnly") is not False
+        ):
+            raise Field3AcceptedC4Failure("production identity requires 153088 bits")
+    elif (
+        not run_identity.startswith("synthetic-c4-low-")
+        or precision not in (64, 192)
+        or field.get("testOnly") is not True
+        or catalog.get("testOnly") is not True
+    ):
+        raise Field3AcceptedC4Failure("invalid synthetic C4 identity")
+    if (
+        _integer(field.get("targetBits"), "field target bits") != precision
+        or _integer(catalog.get("targetBits"), "catalog target bits") != precision
+    ):
+        raise Field3AcceptedC4Failure("analytic input precision diverged")
     if _integer(full.get("targetBits"), "terminal precision") != precision:
         raise Field3AcceptedC4Failure("terminal/C3 precision diverged")
     return field_name, run_identity, precision
@@ -192,14 +506,25 @@ def _analytic_preparation(
         "realPlaces",
         "complexPlaces",
         "rootsOfUnity",
-        "preparedOwnerSha256",
+        "targetBits",
+        "testOnly",
+        "preparedFileSha256",
+        "preparedIdentitySha256",
+        "initialOwnerSha256",
+        "authorityOwnerSha256",
     }
     required_catalog = {
         "schema",
         "field",
         "runIdentity",
         "fieldOwnerSha256",
-        "preparedOwnerSha256",
+        "targetBits",
+        "testOnly",
+        "preparedFileSha256",
+        "preparedIdentitySha256",
+        "initialOwnerSha256",
+        "authorityOwnerSha256",
+        "residueBound",
         "primes",
         "offsets",
         "counts",
@@ -214,9 +539,15 @@ def _analytic_preparation(
     r1 = _integer(field.get("realPlaces"), "real places")
     r2 = _integer(field.get("complexPlaces"), "complex places")
     roots = _integer(field.get("rootsOfUnity"), "roots of unity")
-    prepared = _sha256(field.get("preparedOwnerSha256"), "prepared owner digest")
-    if catalog.get("preparedOwnerSha256") != prepared:
-        raise Field3AcceptedC4Failure("catalog detached from prepared field")
+    for key in (
+        "preparedFileSha256",
+        "preparedIdentitySha256",
+        "initialOwnerSha256",
+        "authorityOwnerSha256",
+    ):
+        value = _sha256(field.get(key), key)
+        if catalog.get(key) != value:
+            raise Field3AcceptedC4Failure(f"catalog detached at {key}")
     # fieldOwnerSha256 is checked against the caller-authenticated digest by
     # compose_authenticated_c4 before any arithmetic starts.
     if degree != 4 or r1 != 2 or r2 != 1:
@@ -276,6 +607,8 @@ def _analytic_preparation(
         inverse_hr,
         state,
     )
+    if state[0] != _integer(catalog.get("residueBound"), "residue bound"):
+        raise Field3AcceptedC4Failure("analytic residue consequence changed")
     return inverse_hr, state
 
 
@@ -423,8 +756,11 @@ def compose_authenticated_c4(
             f"analytic acceptance failed with status {status}"
         )
     generation = 1
+    output_schema = (
+        OUTPUT_SCHEMA if field.get("schema") == FIELD_SCHEMA else TEST_OUTPUT_SCHEMA
+    )
     return {
-        "schema": OUTPUT_SCHEMA,
+        "schema": output_schema,
         "field": field_name,
         "runIdentity": run_identity,
         "precision": str(precision),
@@ -446,6 +782,7 @@ def compose_authenticated_c4(
         "candidateDenominator": str(denominator[0]),
         "candidatePublished": True,
         "analyticPending": False,
+        "testOnly": output_schema == TEST_OUTPUT_SCHEMA,
         "analytic": {
             "status": "accepted",
             "badCheckStatus": 0,
@@ -458,15 +795,63 @@ def compose_authenticated_c4(
 
 
 def project_analytic_owner(
-    accepted_c4: Mapping[str, Any], accepted_c4_sha256: str
+    accepted_c4: Mapping[str, Any],
+    accepted_c4_sha256: str,
+    full_owner: Mapping[str, Any],
+    c3_owner: Mapping[str, Any],
+    field_owner: Mapping[str, Any],
+    catalog_owner: Mapping[str, Any],
+    full_owner_sha256: str,
+    c3_owner_sha256: str,
+    field_owner_sha256: str,
+    catalog_owner_sha256: str,
 ) -> dict[str, Any]:
-    """Return C7's zero-recomputation view of one authenticated C4 owner."""
+    """Return C7's view after reauthenticating C4's complete ancestry."""
     owner = _mapping(accepted_c4, "accepted C4 owner")
     digest = _sha256(accepted_c4_sha256, "accepted C4 digest")
+    full = _mapping(full_owner, "full terminal owner")
+    c3 = _mapping(c3_owner, "C3 owner")
+    field = _mapping(field_owner, "field owner")
+    catalog = _mapping(catalog_owner, "catalog owner")
+    supplied = {
+        "fullTerminalOwnerSha256": _sha256(full_owner_sha256, "full terminal digest"),
+        "c3OwnerSha256": _sha256(c3_owner_sha256, "C3 digest"),
+        "fieldOwnerSha256": _sha256(field_owner_sha256, "field digest"),
+        "catalogOwnerSha256": _sha256(catalog_owner_sha256, "catalog digest"),
+    }
+    for key, value in supplied.items():
+        if owner.get(key) != value:
+            raise Field3AcceptedC4Failure(f"C4 ancestry changed at {key}")
+    if catalog.get("fieldOwnerSha256") != supplied["fieldOwnerSha256"]:
+        raise Field3AcceptedC4Failure("catalog detached from field owner")
+    field_name, run_identity, source_precision = _authenticate_identity(
+        full, c3, field, catalog
+    )
+    _, packed_a, _ = _authenticate_terminal_and_c3(full, c3, source_precision)
+    c3_latches = list(pari_field3_regulator_owner_latches(packed_a, 273))
+    if _integers(owner.get("c3Latches"), 2, "C3 latches") != c3_latches:
+        raise Field3AcceptedC4Failure("C4 C3 latches changed")
+    if _integers(owner.get("c3Hash"), 4, "C3 hash") != _hash_words(
+        supplied["c3OwnerSha256"]
+    ):
+        raise Field3AcceptedC4Failure("C4 C3 content-address latch changed")
+    _, analytic_state = _analytic_preparation(field, catalog)
     if (
-        owner.get("schema") != OUTPUT_SCHEMA
+        _integers(owner.get("analyticOwnerState"), 6, "analytic owner state")
+        != analytic_state
+    ):
+        raise Field3AcceptedC4Failure("C4 analytic owner state changed")
+    _, _, multiple_state = _regulator_multiple(packed_a)
+    if _integers(owner.get("multipleState"), 4, "multiple state") != multiple_state:
+        raise Field3AcceptedC4Failure("C4 regulator-multiple state changed")
+    expected_schema = (
+        OUTPUT_SCHEMA if field.get("schema") == FIELD_SCHEMA else TEST_OUTPUT_SCHEMA
+    )
+    if (
+        owner.get("schema") != expected_schema
         or owner.get("candidatePublished") is not True
         or owner.get("analyticPending") is not False
+        or owner.get("testOnly") is not (expected_schema == TEST_OUTPUT_SCHEMA)
     ):
         raise Field3AcceptedC4Failure("C4 owner was not accepted")
     analytic = _mapping(owner.get("analytic"), "analytic acceptance")
@@ -476,26 +861,32 @@ def project_analytic_owner(
     precision = _integer(owner.get("precision"), "accepted precision")
     generation = _integer(owner.get("generation"), "accepted generation")
     if (
-        owner.get("field") != FIELD
-        or owner.get("runIdentity") != RUN_IDENTITY
+        owner.get("field") != field_name
+        or owner.get("runIdentity") != run_identity
         or state[0] != 0
         or state[1] != generation
         or generation < 1
         or state[2] != precision
         or state[3] != 1
+        or precision != source_precision
     ):
         raise Field3AcceptedC4Failure("C4 acceptance state changed")
-    ancestry = {
-        key: _sha256(owner.get(key), key)
-        for key in (
-            "fullTerminalOwnerSha256",
-            "c3OwnerSha256",
-            "fieldOwnerSha256",
-            "catalogOwnerSha256",
-        )
-    }
+    if _integers(owner.get("computeRState"), 6, "compute_R state") != [
+        0,
+        0,
+        0,
+        0,
+        1,
+        precision,
+    ]:
+        raise Field3AcceptedC4Failure("C4 compute_R acceptance latch changed")
+    ancestry = supplied
     return {
-        "schema": ANALYTIC_SCHEMA,
+        "schema": (
+            ANALYTIC_SCHEMA
+            if expected_schema == OUTPUT_SCHEMA
+            else TEST_ANALYTIC_SCHEMA
+        ),
         "field": owner.get("field"),
         "runIdentity": owner.get("runIdentity"),
         "accepted": True,
@@ -512,6 +903,13 @@ def project_analytic_owner(
             for value in _integers(owner.get("candidateRelations"), 26, "relations")
         ],
         "acceptedC4OwnerSha256": digest,
+        "testOnly": expected_schema == TEST_OUTPUT_SCHEMA,
+        "c3Hash": [str(value) for value in _hash_words(supplied["c3OwnerSha256"])],
+        "c3Latches": [str(value) for value in c3_latches],
+        "analyticOwnerState": [str(value) for value in analytic_state],
+        "multipleState": [str(value) for value in multiple_state],
+        "acceptanceState": [str(value) for value in state],
+        "computeRState": [str(value) for value in [0, 0, 0, 0, 1, precision]],
         **ancestry,
         "assumptions": {
             "pariAnalyticBounds": True,
@@ -529,6 +927,11 @@ __all__ = [
     "Field3AcceptedC4Failure",
     "Field3AcceptedC4Retry",
     "OUTPUT_SCHEMA",
+    "TEST_ANALYTIC_SCHEMA",
+    "TEST_CATALOG_SCHEMA",
+    "TEST_FIELD_SCHEMA",
+    "TEST_OUTPUT_SCHEMA",
     "compose_authenticated_c4",
+    "derive_analytic_inputs",
     "project_analytic_owner",
 ]

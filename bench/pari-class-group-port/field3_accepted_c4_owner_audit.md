@@ -8,7 +8,20 @@
 x^4 - 2000022*x - 2000042.
 ```
 
-It authenticates four immutable, content-addressed predecessors:
+The `derive-inputs` operation first constructs the field and catalog owners;
+they are not caller-shaped declarations. It authenticates the exact frozen
+authority (`246bfe...954c`), initial collector (`81b9d3...6fe`), and prepared
+embedding identity (`bc0dfb...7cf`). From these it derives:
+
+- the polynomial, signature, and integral multiplication tensor;
+- the absolute discriminant as the exact determinant of the tensor's trace
+  pairing;
+- roots of unity from the real signature; and
+- the complete prime decomposition catalog through the analytic bound,
+  including the required sentinel prime beyond the bound.
+
+The acceptance operation then authenticates four immutable, content-addressed
+predecessors:
 
 1. `field3-full-terminal-ancestry-v1`, including the terminal two-by-two HNF;
 2. `field3-high-precision-A-v1`, including the 273-cell packed logarithm
@@ -51,6 +64,11 @@ qualified low-precision control requests 64 to 128 bits. RELAT also fails
 closed. Neither case creates a result file. A later C6/getfu PRECI is outside
 this C4 producer and remains terminal rather than restarting Buchall.
 
+The production identity requires exactly 153,088 bits. Low-precision
+qualification uses schemas prefixed by `test-field3-` plus a
+`synthetic-c4-low-*` run identity and `testOnly: true`. Those owners cannot
+publish either production output schema.
+
 Successful publication creates a canonical newline-terminated JSON file named
 by its SHA-256, then atomically renames and chmods it to mode 0444. Repeating an
 identical run is idempotent and verifies the existing bytes and mode.
@@ -63,14 +81,23 @@ analytic and compute states, and all four predecessor digests.
 C7 historically expects
 `sagejs.pari-class-group/field3-analytic-accepted-owner-v1`. The coordinator
 therefore derives a second content-addressed view from the authenticated
-primary owner. The view names the primary digest and copies no value from an
-independent fixture. Both are produced by `--operation accept`; the zero-
-recomputation adapter can also be invoked independently with
-`--operation project-c7`.
+primary owner. Before projection it reopens all four predecessors and
+recomputes C3 content-address words, C3 latches, analytic-preparation state,
+regulator-multiple state, and the final acceptance latches. The view exposes
+those latches and all five ancestry digests for C7's own cross-check. Both
+outputs are computed before publication by `--operation accept`; projection
+can also be invoked independently with `--operation project-c7`.
 
 ## CLI
 
 ```text
+node field3_accepted_c4_owner_coordinator.cjs --operation derive-inputs \
+  --profile production \
+  --prepared-owner FILE --prepared-sha256 SHA256 \
+  --initial-owner FILE --initial-sha256 SHA256 \
+  --authority-owner FILE --authority-sha256 SHA256 \
+  --output-dir DIRECTORY
+
 node field3_accepted_c4_owner_coordinator.cjs --operation accept \
   --full-terminal-owner FILE --full-terminal-sha256 SHA256 \
   --c3-owner FILE --c3-sha256 SHA256 \
@@ -80,6 +107,10 @@ node field3_accepted_c4_owner_coordinator.cjs --operation accept \
 
 node field3_accepted_c4_owner_coordinator.cjs --operation project-c7 \
   --accepted-c4-owner FILE --accepted-c4-sha256 SHA256 \
+  --full-terminal-owner FILE --full-terminal-sha256 SHA256 \
+  --c3-owner FILE --c3-sha256 SHA256 \
+  --field-owner FILE --field-sha256 SHA256 \
+  --catalog-owner FILE --catalog-sha256 SHA256 \
   --output-dir DIRECTORY
 ```
 
@@ -89,15 +120,18 @@ record directly.
 
 ## Qualification
 
-`check_field3_accepted_c4_owner.cjs` constructs only permitted field/catalog
-inputs from a freshly compiled, UBSan-enabled PARI 2.17.4 source oracle. A
+`check_field3_accepted_c4_owner.cjs` constructs explicit test-only source
+authorities from a freshly compiled, UBSan-enabled PARI 2.17.4 source oracle,
+then exercises `derive-inputs`; it never handcrafts an accepted analytic
+owner. A
 generated 64-bit rank-two C3 control and generated terminal HNF exercise the
 complete accepted path. The test checks both schemas, digest ancestry,
 mode-0444 publication, idempotency, and the independent projection CLI.
 
-Six fail-atomic cases cover genuine PRECI, detached field/catalog ancestry,
+Eight fail-atomic cases cover genuine PRECI, detached field/catalog ancestry,
 wrong caller digest, detached terminal/C3 transform, a rejected analytic
-projection mutation, and mutable input mode.
+projection mutation, a forged production identity, a mutated C3 latch, and
+mutable input mode.
 The output directory remains byte-for-byte unchanged after every rejection and
 contains no temporary publication.
 
