@@ -18,11 +18,9 @@ against the accepted arch and relation-lattice owner capacities, and passed to
 the bridge. The root does not inject the observed seven-column answer; the
 focused checker independently asserts that the live dimension is seven.
 
-The only representation adaptation is unavoidable and explicit: the resident
-candidate records `prep_state` in an `IntegerBuffer`, while the bridge consumes
-that eight-word status record as an `Int64Buffer`. The root copies those eight
-native words into caller-owned `bridge_prep_state`; it does not copy any large
-mathematical owner.
+The resident candidate and bridge now share the exact `IntegerBuffer`
+representation for `prep_state`. The root passes that owner directly, with no
+eight-word adapter and no copy of any mathematical owner.
 
 `unified_state` exposes status, candidate status, bridge status, prefix-ready,
 public-complete, columns, relation count, HNF rank, KCZ, KCZ2, unit rank, and

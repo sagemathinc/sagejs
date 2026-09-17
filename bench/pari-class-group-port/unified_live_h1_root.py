@@ -368,7 +368,6 @@ def pari_unified_live_h1_root(
     prep_kummer_catalog_tau: IntegerBuffer,
     prep_kummer_requested_counts: IntegerBuffer,
     prep_kummer_state: IntegerBuffer,
-    bridge_prep_state: Int64Buffer,
     unified_state: Int64Buffer,
     unit_transform: IntegerBuffer,
     getfu_factor: IntegerBuffer,
@@ -459,11 +458,10 @@ def pari_unified_live_h1_root(
     and compact-factor count. Prefix readiness is set only after the candidate
     proves exact class number one and the live-owner bridge finishes
     successfully; public completion remains false for the downstream exact-unit
-    suffix. `bridge_prep_state` is the
-    sole representation adapter: an eight-word native copy from the candidate's
-    exact-integer preparation state to the bridge's fixed-width status ABI.
+    suffix. The candidate-owned exact preparation state crosses the bridge
+    directly, without a representation adapter or copy.
     """
-    if len(unified_state) < 12 or len(bridge_prep_state) < 8:
+    if len(unified_state) < 12:
         raise ValueError("short unified live h1 root state")
     if unified_state[0] == 0 and unified_state[3] == 1:
         return 0
@@ -839,8 +837,6 @@ def pari_unified_live_h1_root(
     ):
         unified_state[0] = 1
         return 1
-    for i in range(8):
-        bridge_prep_state[i] = prep_state[i]
     columns = int(hnf_state[1])
     if (
         columns < 1
@@ -854,7 +850,7 @@ def pari_unified_live_h1_root(
         accept_relations,
         accept_regulator,
         prep_base_state,
-        bridge_prep_state,
+        prep_state,
         hnf_state,
         accept_acceptance_state,
         attempt_state,
