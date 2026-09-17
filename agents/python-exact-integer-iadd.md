@@ -41,6 +41,18 @@ The source-current candidate artifact is
 The unrelated construction-only movements are not claimed as improvements.
 Keyword calls and initialized construction remain open cliffs.
 
+## Rejected classifier-inline probe
+
+A five-million-iteration CPU profile still attributed samples to the helper's
+local primitive predicate.  An exact generated-artifact probe duplicated those
+checks inline, then ran ten alternating processes against the source-current
+candidate with the same three-round discard.  Positional calls regressed 3.3%
+(16.025 to 16.549 ms); all other movements were between -0.9% and +2.8%.
+The rewrite is therefore rejected rather than spending scarce source budget on
+an allocation-free shape that V8 already optimizes effectively.  The paired
+receipt is
+`cf64cf3fd11ee610ad3e7dd4da48526c3c4b239bf7efe0a92c03594b6f44c1b9`.
+
 ## Qualification
 
 - A source-current eight-stage build passed in 7m 59s.
