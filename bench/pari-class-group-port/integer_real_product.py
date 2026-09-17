@@ -27,7 +27,7 @@ def pari_integer_real_product(
         return 0, -1, 0
     if mantissa != 0 and (
         precision < 64
-        or precision > 2304
+        or precision > 4352
         or precision % 64 != 0
         or abs(mantissa).bit_length() != precision
     ):

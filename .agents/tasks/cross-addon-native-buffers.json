@@ -1,0 +1,78 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "cross-addon-native-buffers",
+  "title": "Cross-addon native buffer interoperability",
+  "lane": "native-compiler",
+  "status": "active",
+  "owner": "user",
+  "objective": "Determine and regression-test whether separately compiled native kernels can share IntegerBuffer, Int64Buffer, and Float64Buffer values safely; implement a narrow lifetime-safe compiler/runtime fix only if justified, otherwise document the unified-compilation boundary",
+  "base_commit": "3a694809b95e7e08f1b12adee78121b96f4eed69",
+  "claims": [
+    "tools/native-kernel/js-backend.cjs",
+    "tools/native-kernel/test/cross-addon-buffers.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "JavaScript typed-array semantics and isolated native-addon differential execution"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test tools/native-kernel/test/cross-addon-buffers.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.835,
+      "started_at": "2026-09-17T04:47:53.668Z",
+      "commit": "3a694809b95e7e08f1b12adee78121b96f4eed69",
+      "workspace_fingerprint": "b1d49d3a251dec0a15c40c8abf9c988ed229e9f1589438b3d923f45d2fe5ee2d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.02,
+      "started_at": "2026-09-17T04:48:00.079Z",
+      "commit": "3a694809b95e7e08f1b12adee78121b96f4eed69",
+      "workspace_fingerprint": "b1d49d3a251dec0a15c40c8abf9c988ed229e9f1589438b3d923f45d2fe5ee2d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/cross-addon-buffers.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.85,
+      "started_at": "2026-09-17T04:48:33.433Z",
+      "commit": "3a694809b95e7e08f1b12adee78121b96f4eed69",
+      "workspace_fingerprint": "0f1f54a4b283618c95236e448e6c52626bf10d30f04b7e4886ac0449ab13b88b",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Confirmed that matching IntegerBuffer, Int64Buffer, and Float64Buffer values use host-owned typed-array storage and cross independently compiled native addons synchronously without copies. The reported candidate-to-bridge failure is a prep_state ABI mismatch: the candidate publishes IntegerBuffer while the bridge declares Int64Buffer. Generated wrappers now reject that mismatch explicitly, with a focused two-addon native regression covering in-place cross-addon mutation and unchanged backing storage.",
+    "risks": [
+      "The producer/bridge application sources still need to agree on prep_state's declared type; this compiler change diagnoses rather than converts the mismatch.",
+      "The full unit tier reached its final batch before an unrelated browser test failed because dist/wasi-runtime.mjs returned 404."
+    ],
+    "next_steps": [
+      "Align prep_state as IntegerBuffer across the live prepared-H1 producer and bridge, then rerun that end-to-end worker."
+    ]
+  }
+}

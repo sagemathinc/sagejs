@@ -2979,6 +2979,10 @@ function integerNativeBuffer(value, argument) {
 function int64BufferView(value, argument = "buffer") {
   if (value !== null && typeof value === "object" &&
       value[int64BufferViewTag] === true) return value;
+  if (isPackedIntegerBuffer(value)) {
+    throw new TypeError(argument +
+      " must be an Int64Buffer, not an IntegerBuffer");
+  }
   if (value === null || (typeof value !== "object" &&
       typeof value !== "function")) {
     throw new TypeError(argument + " must be an Int64Buffer");
@@ -3075,6 +3079,10 @@ function float64Scalar(value, argument) {
 function float64BufferView(value, argument = "buffer") {
   if (value !== null && typeof value === "object" &&
       value[float64BufferViewTag] === true) return value;
+  if (isPackedIntegerBuffer(value)) {
+    throw new TypeError(argument +
+      " must be a Float64Buffer, not an IntegerBuffer");
+  }
   if (value === null || (typeof value !== "object" &&
       typeof value !== "function")) {
     throw new TypeError(argument + " must be a Float64Buffer");

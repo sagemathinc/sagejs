@@ -79,7 +79,8 @@ async function main() {
   assert.deepEqual(stages, [
     "relation-retry", "sparse-hnf-snf-transform", "unit-regulator", "honesty-generators-final",
   ]);
-  assert.equal(direct.correspondenceComplete, true);
+  assert.equal(direct.correspondenceComplete, false);
+  assert.equal(direct.terminalStatus, "live-candidate-bridge-prefix-h1");
   assert.equal(direct.result.classGroup.classNumber, "1");
   assert.equal(direct.result.assumptions.publicClassUnitComplete, false);
   assert.equal(direct.replay.resultSha256, digest(direct.result));
@@ -97,6 +98,8 @@ async function main() {
     stageOrder: stages,
     resultSha256: direct.replay.resultSha256,
     authoritySha256: direct.replay.authoritySha256,
+    correspondenceComplete: direct.correspondenceComplete,
+    terminalStatus: direct.terminalStatus,
     inMemoryOnly: true, fixtureReads: false, pariCalls: false,
   }));
 }

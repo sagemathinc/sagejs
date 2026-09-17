@@ -13,7 +13,7 @@ const HERE = __dirname;
 const CANDIDATE_SOURCE = path.join(HERE, "resident_generated_class_attempt.py");
 const BRIDGE_SOURCE = path.join(HERE, "live_h1_owner_bridge.py");
 const PREPARED_SCHEMA = "sagejs.pari-class-group/sanitized-prepared-h1-v1";
-const TERMINAL_STATUS = "pari-correspondence-complete-internal-h1";
+const TERMINAL_STATUS = "live-candidate-bridge-prefix-h1";
 
 const BRIDGE_SIZES = Object.freeze({
   unit_transform: 14, getfu_factor: 4, compact_provenance: 14,
@@ -97,7 +97,7 @@ function candidateResult(values, bridgeValues) {
   assert.equal(bridge[15], "0", "internal result cannot claim public completion");
   const cleaned = decimalPrefix(bridgeValues.cleaned_arch, 147, "cleaned archimedean owner");
   return {
-    schema: "sagejs.pari-class-group/outcome-c-live-result-v1",
+    schema: "sagejs.pari-class-group/live-candidate-bridge-prefix-v1",
     field: "pari-2.17.4:x^3-20018*x+20034",
     classGroup: { classNumber: "1", invariantFactors: [], generators: [] },
     correspondence: {
@@ -190,7 +190,7 @@ function createPreparedH1Adapter({ compiler } = {}) {
       bridgeState: decimalPrefix(bridgeValues.bridge_state, 16, "bridge state"),
     });
     return {
-      correspondenceComplete: true,
+      correspondenceComplete: false,
       result,
       replay: { status: "cold-replay-authenticated", resultSha256, authoritySha256 },
       rng: {

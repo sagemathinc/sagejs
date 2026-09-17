@@ -1,0 +1,71 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "h1-precision-retry-driver",
+  "title": "H1 Precision Retry Driver",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Build an answer-independent retry driver that starts at the live H1 candidate precision, invokes the actual embedding/log/getfu attempt, advances only through live PARI retry status, retains exact owners, and stops on live success or resource cap.",
+  "base_commit": "754cd041aa3b11daa9dc723e139b5080a3cdfda2",
+  "claims": [
+    "bench/pari-class-group-port/h1_precision_retry_driver.cjs",
+    "bench/pari-class-group-port/check_h1_precision_retry_driver.cjs",
+    "bench/pari-class-group-port/h1_precision_retry_driver_audit.md",
+    "bench/pari-class-group-port/binary_splitting.py",
+    "bench/pari-class-group-port/class_relation_cleanarch.py",
+    "bench/pari-class-group-port/cubic_embedding_precision_rebuild.py",
+    "bench/pari-class-group-port/cubic_precision_rebuild.py",
+    "bench/pari-class-group-port/exponential.py",
+    "bench/pari-class-group-port/exponential_entry.py",
+    "bench/pari-class-group-port/float_conversion.py",
+    "bench/pari-class-group-port/integer_real_product.py",
+    "bench/pari-class-group-port/integer_real_sum.py",
+    "bench/pari-class-group-port/log_matrix_transform.py",
+    "bench/pari-class-group-port/logarithm_constant.py",
+    "bench/pari-class-group-port/pi_constant.py",
+    "bench/pari-class-group-port/real_conversion.py",
+    "bench/pari-class-group-port/real_division.py",
+    "bench/pari-class-group-port/real_square_root.py",
+    "bench/pari-class-group-port/regulator_scalar.py",
+    "bench/pari-class-group-port/short_product.py",
+    "bench/pari-class-group-port/unit_reconstruction_cubic.py",
+    "bench/pari-class-group-port/unit_reconstruction_signed.py"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "actual translated cubic embedding, S-unit log, and getfu leaves"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "node --check bench/pari-class-group-port/h1_precision_retry_driver.cjs",
+    "node --check bench/pari-class-group-port/check_h1_precision_retry_driver.cjs",
+    "node bench/pari-class-group-port/check_h1_precision_retry_driver.cjs"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Added an answer-independent signed native H1 precision retry owner. It rebuilds only numerical owners, advances via the translated PARI policy, preserves exact-owner identity, and succeeds honestly at p2304 after live PRECI results at p192, p384, p768, and p1536.",
+    "risks": [
+      "The expanded p4096/p4352 corridor is focused Linux qualification for this authentic real cubic; broader platform and generalized-field qualification remains integration work."
+    ],
+    "next_steps": [
+      "Compose the successful signed retry driver into the unified suffix root and replay its units, logs, phases, and normalized factor through final result publication."
+    ]
+  }
+}
