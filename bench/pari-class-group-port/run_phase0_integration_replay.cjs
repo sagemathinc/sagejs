@@ -970,6 +970,29 @@ stage("regulator-acceptance-replay", {
   allowNoArtifactDirectory: true,
 });
 
+stage("authentic-h1-unit-success", {
+  dependencies: ["presentation-authority", "unit-component-cubic",
+    "class-relation-cleanarch", "regulator-acceptance-replay"],
+  command: (context) => commandNode("check_class_group_authentic_success.cjs",
+    outputPath(context, "resident-cubic-gmp", "output")),
+  validate: (summary) => {
+    assert.equal(summary.schema,
+      "sagejs.pari-class-group/authentic-unit-correspondence-v1");
+    assert.equal(summary.field, "pari-2.17.4:x^3-20018*x+20034");
+    assert.equal(summary.classNumber, 1);
+    assert.equal(summary.classGeneratorCount, 0);
+    assert.equal(summary.unitRank, 2);
+    assert.deepEqual(summary.unitNorms, [-1, -1]);
+    assert.equal(summary.correspondenceStatus,
+      "active-hnf-kernel-to-successful-unit-component");
+    assert.equal(summary.finalDriverStatus, "not-published");
+    assert.equal(summary.phase5Complete, false);
+    assert.equal(summary.publicComplete, false);
+  },
+  noFixture: true,
+  allowNoArtifactDirectory: true,
+});
+
 stage("mixed-getfu-prerequisite", {
   dependencies: ["nf-cxlog", "unit-lattice-reduction"],
   requiresPari: true,
