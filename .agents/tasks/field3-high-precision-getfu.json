@@ -1,0 +1,72 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "field3-high-precision-getfu",
+  "title": "Replay field3 high-precision unit suffix",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Regenerate field3 precision-dependent embeddings and relation logs from exact retained owners at 153088 bits and independently replay the accepted unit-log/regulator/getfu suffix as far as bounded resources permit",
+  "base_commit": "91bf2c9372c4a714f595dab91d24123559661f60",
+  "claims": [
+    "bench/pari-class-group-port/field3_high_precision_unit_suffix.py",
+    "bench/pari-class-group-port/check_field3_high_precision_unit_suffix.cjs",
+    "bench/pari-class-group-port/field3_high_precision_unit_suffix_audit.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "PARI 2.17.4 boundary fixture only; no PARI call after boundary"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_field3_high_precision_unit_suffix.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 107.087,
+      "started_at": "2026-09-17T09:46:27.130Z",
+      "commit": "91bf2c9372c4a714f595dab91d24123559661f60",
+      "workspace_fingerprint": "9ae2d4055969c959832cdd35f4e6a9074770de4909490820e8fe9c41190a734f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 78.01,
+      "started_at": "2026-09-17T09:48:55.056Z",
+      "commit": "91bf2c9372c4a714f595dab91d24123559661f60",
+      "workspace_fingerprint": "9ae2d4055969c959832cdd35f4e6a9074770de4909490820e8fe9c41190a734f",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Authenticated the exact hard-quartic live owners and regenerated the first scalar relation-log column at 153088 bits with exact packed PARI equality, no resident 192-bit float input, transactional rejection, 2.02 GiB peak RSS, and a 107-second focused receipt.",
+    "risks": [
+      "This is one of 301 raw log columns and deliberately does not claim an accepted unit lattice, regulator, or getfu result.",
+      "The positive high-precision path is qualified on Linux x64 GMP; CPython is exercised only for fail-closed preflight in this bounded probe."
+    ],
+    "next_steps": [
+      "Implement mixed-quartic real and complex embedding rebuild from exact polynomial and integral-basis owners.",
+      "Port the arbitrary AGM logarithm path above 384 bits and replay the remaining 300 columns.",
+      "Compose regenerated raw logs with the exact same-run 301x13 accepted-column transform before lattice, regulator, or getfu claims."
+    ]
+  }
+}
