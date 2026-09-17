@@ -1,0 +1,82 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "terminal-candidate-final-bridge",
+  "title": "Terminal Candidate Final Bridge",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Bridge the authenticated post-random terminal candidate into exact Smith/final-state interfaces without fixture injection",
+  "base_commit": "eeb2aee651d87a6336a68cb26e7ea185f51cc498",
+  "claims": [
+    "bench/pari-class-group-port/terminal_candidate_final_bridge.py",
+    "bench/pari-class-group-port/check_terminal_candidate_final_bridge.cjs",
+    "bench/pari-class-group-port/terminal_candidate_final_bridge_audit.md",
+    "bench/pari-class-group-port/check_post_rnd_lie_iteration.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "gmp",
+      "PARI 2.17.4 pristine forced-rnd trace"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node bench/pari-class-group-port/check_terminal_candidate_final_bridge.cjs",
+    "node bench/pari-class-group-port/check_post_rnd_lie_iteration.cjs /home/user/upstream/pari-2.17.4 /home/user/upstream/pari-2.17.4.tar.gz /tmp/sagejs-actual-initial-collector-Askt7e/fixtures.json /tmp/sagejs-analytic-invhr-d88QqB/fixtures.json",
+    "pnpm architecture:check"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_terminal_candidate_final_bridge.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.569,
+      "started_at": "2026-09-17T02:24:49.821Z",
+      "commit": "eeb2aee651d87a6336a68cb26e7ea185f51cc498",
+      "workspace_fingerprint": "b9bd362a2579f38e2e136f69c8301bfdb28b39c25f94470343c0a43b8bfc1141",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_post_rnd_lie_iteration.cjs /home/user/upstream/pari-2.17.4 /home/user/upstream/pari-2.17.4.tar.gz /tmp/sagejs-actual-initial-collector-Askt7e/fixtures.json /tmp/sagejs-analytic-invhr-d88QqB/fixtures.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 18.223,
+      "started_at": "2026-09-17T02:24:59.833Z",
+      "commit": "eeb2aee651d87a6336a68cb26e7ea185f51cc498",
+      "workspace_fingerprint": "b9bd362a2579f38e2e136f69c8301bfdb28b39c25f94470343c0a43b8bfc1141",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.963,
+      "started_at": "2026-09-17T02:25:22.319Z",
+      "commit": "eeb2aee651d87a6336a68cb26e7ea185f51cc498",
+      "workspace_fingerprint": "b9bd362a2579f38e2e136f69c8301bfdb28b39c25f94470343c0a43b8bfc1141",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Bridged the live post-random/LIE terminal H/B/C owners through invariant-only finalization, exact Smith transforms, linked relation/transform component outputs, and immutable partial-result publication. The genuine field now publishes [2,2], class number 4, and stable candidate/transform hashes without terminal fixtures.",
+    "risks": [
+      "The compact resident ABI no longer retains a full transform from all 301 relation columns and 288 factor-base rows; the final contract starts from the authenticated compact H presentation with identity presentation witnesses."
+    ],
+    "next_steps": [
+      "Supply mixed-signature quartic class-generator, rank-two unit, and final-driver components from the same run and owner generation; until then connected final publication must remain rejected."
+    ]
+  }
+}
