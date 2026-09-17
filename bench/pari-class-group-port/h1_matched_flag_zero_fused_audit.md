@@ -304,3 +304,56 @@ SHA-256
 The committed compact receipt preserves all raw samples, order, RSS, evidence,
 toolchain, and artifact identities in
 `h1_matched_flag_zero_timing_result.json`.
+
+## Read-only attribution recommendation
+
+The next run should diagnose, not optimize. Use one diagnostic build with a
+fixed `Int64Buffer` timing owner and `CLOCK_MONOTONIC_RAW` timestamps at the
+existing call boundaries. Accumulate elapsed nanoseconds into mutually
+exclusive buckets so their sum can be checked against the addon call interval:
+
+1. N-API packed-buffer validation/ingress before the generated root;
+2. factor-base/catalog/Kummer/selected-packet preparation before
+   `pari_analytic_class_group_attempt`;
+3. relation initialization and `pari_collect_unreduced_ideals`;
+4. relation-log append and `pari_hnfspec_complete` separately;
+5. `pari_post_hnf_acceptance` plus the small Smith/publication tail;
+6. `pari_live_h1_owner_bridge`;
+7. compact authentication/transposition and the one
+   `pari_getfu_signed_real_cubic` call separately; and
+8. generated-root return plus packed-buffer egress in the N-API wrapper.
+
+The boundary timestamps should be compiler diagnostic hooks or a diagnostic
+owner threaded through the private graph, not handwritten replacements for
+any arithmetic. Instrumentation must leave the ordinary source graph and all
+frozen counters/evidence unchanged. Run an uninstrumented/instrumented pair to
+bound probe overhead, and reject the attribution unless the buckets plus probe
+overhead explain at least 99% of the raw addon interval.
+
+Record per bucket: elapsed time; entry count; exact-buffer logical words and
+capacity words touched; GMP initialization, assignment, growth/reallocation,
+and clear counts; peak live limb bytes; and private function/status-return
+counts. Also collect whole-call Linux `perf stat` cycles, instructions,
+branches, branch misses, cache references/misses, page faults, and context
+switches. A low-frequency symbol sample from the already-supported
+profile-symbol build can identify the hottest generated leaves without
+changing the mathematical boundary.
+
+The hypotheses are deliberately exclusive enough to decide the next campaign:
+
+- a large ingress/egress bucket implicates the 460-argument packed ABI or
+  whole-capacity buffer processing;
+- a dominant relation bucket confirms the earlier relation-prefix/compiler
+  gap persists inside the fused graph;
+- a dominant HNF or post-HNF bucket points to exact matrix storage and reuse;
+- a dominant bridge/getfu bucket points to real-log/unit reconstruction;
+- small mathematical buckets but high allocation/limb-growth counts implicate
+  ownership loss and GMP temporary churn across private calls;
+- broadly inflated buckets with high instruction count and low IPC implicate
+  generated code size, status ABI traffic, and missed inlining.
+
+No bound, buffer capacity, algorithm, or compiler lowering should be changed
+until this attribution record is complete. In particular, do not infer from
+the 4096-word defensive owners alone that capacity scanning is the cause; the
+diagnostic must distinguish logical words actually touched from reserved
+capacity.
