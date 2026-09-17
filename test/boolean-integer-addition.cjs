@@ -44,6 +44,34 @@ test("native exact-add fast path preserves integers and delegates other values",
   assert.deepEqual(delegated, [[1.5, 2], ["a", "b"]]);
 });
 
+test("native exact-iadd guard delegates mutable and mixed operands", () => {
+  const source = readFileSync(join(__dirname, "..", "src", "baselib", "builtins.py"), "utf8");
+  const match = source.match(
+    /^def ρσ_operator_iadd_exact\(([^)]*)\)\s*->\s*Any:[^]*?return r"""%js ([^]*?)"""/m,
+  );
+  assert.ok(match);
+  const parameters = match[1].replace(/:\s*[^,]+/g, "");
+  const calls = [];
+  const exactIadd = runInNewContext(
+    `(function(${parameters}) {return ${match[2]};})`,
+    {
+      ρσ_operator_add_exact: (left, right) => {
+        calls.push(["add", left, right]);
+        return left + right;
+      },
+      _builtins_inplace: (left, right, name) => {
+        calls.push([name, left, right]);
+        return "delegated";
+      },
+    },
+  );
+  assert.equal(exactIadd(2, 3), 5);
+  assert.equal(exactIadd("a", "b"), "ab");
+  assert.equal(exactIadd({}, {}), "delegated");
+  assert.equal(exactIadd(2, 3n), "delegated");
+  assert.deepEqual(calls.map(call => call[0]), ["add", "add", "__iadd__", "__iadd__"]);
+});
+
 test("adding a boolean keeps the sum an exact integer", async (t) => {
   const session = await createSage({ mode: "python" });
   t.after(() => session.close());

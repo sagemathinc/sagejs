@@ -452,6 +452,19 @@ the two explicitly recorded unrelated/environment test limitations are in
 `agents/python-exact-integer-add-native.md`. Keep the candidate behind its
 prerequisites.
 
+**2026-09-17 exact-inplace-add follow-up:** the remaining compiled `+=` wrapper
+still rediscovered same-storage primitive types and resolved the already-proven
+exact-add callable for every accumulator update. A raw guard now sends only
+Number/Number, BigInt/BigInt, and string/string pairs directly to exact add;
+objects and mixed storage retain the full `__iadd__` protocol. Against the
+exact-add candidate, positional calls improve another 13.5% to 1.88x CPython,
+keyword functions 2.6%, and immediate keyword methods 3.6%; construction rows
+remain flat. The artifact shrinks 363 bytes and core source falls to
+902,614/903,000. The full differential baseline, operator/mutation/traitlets,
+decorator/attrs, strict, docs, and merge gates remain green. Evidence is folded
+into `agents/python-exact-integer-add-native.md` so the coherent arithmetic
+slice can integrate together.
+
 Continue next with integration-aware qualification, the receiver-lookup campaign,
 and true handled-exception ownership. Generator/coroutine suspension makes a
 single global active-exception pointer unsafe: preserve owned handlers while

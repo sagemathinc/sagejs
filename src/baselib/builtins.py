@@ -2267,14 +2267,9 @@ def ρσ_operator_ipow(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_iadd_exact(left: Any, right: Any) -> Any:
-    left_type = runtime.jstype(left)
-    if runtime.strict_equal(left_type, runtime.jstype(right)) and (
-        runtime.strict_equal(left_type, "number")
-        or runtime.strict_equal(left_type, "bigint")
-        or runtime.strict_equal(left_type, "string")
-    ):
-        return ρσ_operator_add_exact(left, right)
-    return _builtins_inplace(left, right, "__iadd__", ρσ_operator_add_exact)
+    return r"""%js (()=>{let t=typeof left;return t===typeof right&&
+(t==="number"||t==="bigint"||t==="string")?ρσ_operator_add_exact(left,right):
+_builtins_inplace(left,right,"__iadd__",ρσ_operator_add_exact)})()"""
 
 
 def ρσ_operator_isub_exact(left: Any, right: Any) -> Any:
