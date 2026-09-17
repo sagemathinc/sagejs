@@ -189,3 +189,41 @@ and direct addon were all fixed and independently preflighted, the remaining
 blocker is localized to compiler frontend lifecycle/reentrancy on the real
 multi-module H1 call graph. No mathematical replay completed and no partial
 authority receipt was retained.
+
+## Parser-fix replay and authenticated honesty correction
+
+After integration commit `4388f0347` cached immutable Tree-sitter language
+modules, its focused lifecycle regression passed and the targeted H1 replay
+crossed the former recursive-lowering failure. The run stopped after 120.4
+seconds at the adapter's exact honesty-tuple check, with 1,344,992 KiB peak
+aggregate RSS and 1,387,360 KiB peak per-process RSS under the 4 GiB/600-second
+limits. It produced no authority receipt.
+
+The two independent resident outputs from that run agreed on the authenticated
+owners:
+
+```text
+prep_base_state = [333, 333, 66, 48, 48, 66, product]
+prep_state      = [7, 0, 66, 48, 4, 1833, 2270, 66]
+relation_state  = [73, 780, 0, 0, 0, 73]
+attempt_state   = [4, 0, 0, 1]
+class_number    = [1]
+```
+
+`pari_honesty_dispatch_from_factor_base` assigns `C1=333` and `C2=333` to
+the relation and checking **bounds**, while `KCZ=48` and `KCZ2=48` are the
+relation and checking **group counts**. The live source-derived receipt is
+therefore exactly:
+
+```text
+class_number=1, invariant_count=0, accepted_relations=73,
+relation_bound=333, checking_bound=333,
+relation_groups=48, checking_groups=48,
+honesty_status="equal-bound-source-skip"
+```
+
+The adapter had stale expectations which incorrectly reused the group count
+`48` for both bounds. This checkpoint corrects only those two expected values;
+it does not relax equality or accept submitted status. A coordinated mutation
+back to the stale `relation_bound=48` is now explicitly rejected alongside the
+existing checking-group mutation.

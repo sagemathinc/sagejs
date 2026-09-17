@@ -315,6 +315,7 @@ async function main() {
   rejectBoundary(value => { value.rawOwners.final_torsion_generator[0] = "1"; });
   rejectBoundary(value => { value.coldReplay.sha256 = "0".repeat(64); });
   rejectBoundary(value => { value.honesty.checking_groups = 47; });
+  rejectBoundary(value => { value.honesty.relation_bound = 48; });
   rejectBoundary(value => {
     value.regulatorAuthority.evidence.live_regulator_contained = false;
   });
