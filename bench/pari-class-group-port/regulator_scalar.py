@@ -36,7 +36,7 @@ def pari_validate_regulator_values(values: IntegerBuffer, count: int) -> int:
         elif m == 0:
             if p != 0:
                 raise ValueError("invalid real zero")
-        elif p < 64 or p > 2304 or p % 64 != 0 or abs(m).bit_length() != p:
+        elif p < 64 or p > 2368 or p % 64 != 0 or abs(m).bit_length() != p:
             raise ValueError("invalid regulator real")
     return 0
 

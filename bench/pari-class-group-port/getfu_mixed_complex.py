@@ -67,7 +67,7 @@ def pari_mpcosm1(
         return 0, 0, 2 * exponent - 1, 0
     if (
         precision < 64
-        or precision > 384
+        or precision > 2240
         or precision % 64 != 0
         or abs(mantissa).bit_length() != precision
     ):
@@ -91,7 +91,7 @@ def pari_mpcosm1(
             reduced_exponent = xe
             if exponent - reduced_exponent >= 7:
                 target = precision + ((exponent - reduced_exponent + 63) // 64) * 64
-                if target > 2048:
+                if target > 2496:
                     raise ValueError("mpcosm1 reduction precision exceeds boundary")
                 pm, pp, pe = pari_pi_constant(target, pi_cache, a, b, p, q, stack)
                 pm, pp, pe = pari_word_integer_real_product(quotient, pm, pp, pe - 1)
@@ -123,7 +123,7 @@ def pari_mpcosm1(
     if checked_float64(roots) < checked_float64(-exponent) * 0.1:
         roots = 0
     working = original_precision + ((roots + 63) // 64) * 64
-    if working > 2048:
+    if working > 2496:
         raise ValueError("mpcosm1 working precision exceeds boundary")
     bits += roots
     leading = checked_uint64(abs(mantissa) >> (precision - 64))
@@ -205,7 +205,7 @@ def pari_mpsincos(
         if exponent >= 0:
             return 0, 0, exponent, 0, 0, exponent
         cosine_precision = ((-exponent + 63) // 64) * 64
-        if cosine_precision > 2048:
+        if cosine_precision > 2496:
             raise ValueError("zero cosine precision exceeds boundary")
         return (
             0,
