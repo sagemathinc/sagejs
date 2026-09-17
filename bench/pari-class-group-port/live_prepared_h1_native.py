@@ -1,22 +1,18 @@
-"""One-addon resident candidate to live `h = 1` owner bridge.
+"""One-owner-domain prepared h=1 candidate and final bridge.
 
-Copyright (C) The PARI group. GPL-2.0-or-later, without warranty.
-
-The prepared field owners, candidate construction, and bridge work all remain in
-one source-transparent native call graph. No fixture, filesystem, or PARI oracle
-is consulted by this computation.
+The wrapper is intentionally mechanical: it keeps the translated mathematical
+functions in their ordinary attributed modules while forcing both calls into a
+single compiled graph, so native buffers never cross addon ownership domains.
 """
 
 from sagejs.native import Float64Buffer, Int64Buffer, IntegerBuffer, native
 
+from .resident_generated_class_attempt import pari_resident_generated_class_attempt
 from .live_h1_owner_bridge import pari_live_h1_owner_bridge
-from .resident_generated_class_attempt import (
-    pari_resident_generated_class_attempt,
-)
 
 
 @native
-def pari_unified_live_h1_root(
+def pari_live_prepared_h1_native(
     matrix: IntegerBuffer,
     ideal: IntegerBuffer,
     n: int,
@@ -368,112 +364,90 @@ def pari_unified_live_h1_root(
     prep_kummer_catalog_tau: IntegerBuffer,
     prep_kummer_requested_counts: IntegerBuffer,
     prep_kummer_state: IntegerBuffer,
-    unified_state: Int64Buffer,
-    unit_transform: IntegerBuffer,
-    getfu_factor: IntegerBuffer,
-    compact_provenance: IntegerBuffer,
-    cleaned_arch: IntegerBuffer,
-    bridge_state: Int64Buffer,
-    u1: IntegerBuffer,
-    u2: IntegerBuffer,
-    first_arch: IntegerBuffer,
-    p_triples: IntegerBuffer,
-    au: IntegerBuffer,
-    clean_logs: IntegerBuffer,
-    signs: Int64Buffer,
-    unit_state: Int64Buffer,
-    unit_trace: Float64Buffer,
-    integer_state: IntegerBuffer,
-    integer_basis: IntegerBuffer,
-    integer_transform: IntegerBuffer,
-    integer_gram: IntegerBuffer,
-    integer_mu: Float64Buffer,
-    integer_mu_exponents: IntegerBuffer,
-    integer_r: Float64Buffer,
-    integer_r_exponents: IntegerBuffer,
-    integer_s: Float64Buffer,
-    integer_s_exponents: IntegerBuffer,
-    integer_approximate: Float64Buffer,
-    integer_float_gram: Float64Buffer,
-    integer_alpha: IntegerBuffer,
-    integer_column: IntegerBuffer,
-    integer_column_exponents: IntegerBuffer,
-    integer_normalized: Float64Buffer,
-    integer_temporary: Float64Buffer,
-    integer_dpe_scratch: Float64Buffer,
-    integer_scratch: IntegerBuffer,
-    real_integers: IntegerBuffer,
-    real_form: IntegerBuffer,
-    real_basis: IntegerBuffer,
-    real_transform: IntegerBuffer,
-    real_gram: IntegerBuffer,
-    real_mu: Float64Buffer,
-    real_mu_exponents: IntegerBuffer,
-    real_r: Float64Buffer,
-    real_r_exponents: IntegerBuffer,
-    real_s: Float64Buffer,
-    real_s_exponents: IntegerBuffer,
-    real_approximate: Float64Buffer,
-    real_float_gram: Float64Buffer,
-    real_alpha: IntegerBuffer,
-    real_column: IntegerBuffer,
-    real_column_exponents: IntegerBuffer,
-    real_normalized: Float64Buffer,
-    real_temporary: Float64Buffer,
-    real_dpe_scratch: Float64Buffer,
-    real_scratch: IntegerBuffer,
-    real_state: IntegerBuffer,
-    factor_matep: IntegerBuffer,
-    factor_basis: IntegerBuffer,
-    factor_transform: IntegerBuffer,
-    factor_state: Int64Buffer,
-    factor_mu: Float64Buffer,
-    factor_mu_exponents: IntegerBuffer,
-    factor_r: Float64Buffer,
-    factor_r_exponents: IntegerBuffer,
-    factor_s: Float64Buffer,
-    factor_s_exponents: IntegerBuffer,
-    factor_approximate: Float64Buffer,
-    factor_float_gram: Float64Buffer,
-    factor_alpha: IntegerBuffer,
-    factor_column: IntegerBuffer,
-    factor_column_exponents: IntegerBuffer,
-    factor_normalized: Float64Buffer,
-    factor_temporary: Float64Buffer,
-    factor_exact_gram: IntegerBuffer,
-    clean_pi_cache: IntegerBuffer,
-    clean_a: IntegerBuffer,
-    clean_b: IntegerBuffer,
-    clean_p: IntegerBuffer,
-    clean_q: IntegerBuffer,
-    clean_stack: IntegerBuffer,
-    clean_scratch: IntegerBuffer,
-    clean_state: Int64Buffer,
-    driver_state: Int64Buffer,
+    final_unit_transform: IntegerBuffer,
+    final_getfu_factor: IntegerBuffer,
+    final_compact_provenance: IntegerBuffer,
+    final_cleaned_arch: IntegerBuffer,
+    final_bridge_state: Int64Buffer,
+    final_u1: IntegerBuffer,
+    final_u2: IntegerBuffer,
+    final_first_arch: IntegerBuffer,
+    final_p_triples: IntegerBuffer,
+    final_au: IntegerBuffer,
+    final_clean_logs: IntegerBuffer,
+    final_signs: Int64Buffer,
+    final_unit_state: Int64Buffer,
+    final_unit_trace: Float64Buffer,
+    final_integer_state: IntegerBuffer,
+    final_integer_basis: IntegerBuffer,
+    final_integer_transform: IntegerBuffer,
+    final_integer_gram: IntegerBuffer,
+    final_integer_mu: Float64Buffer,
+    final_integer_mu_exponents: IntegerBuffer,
+    final_integer_r: Float64Buffer,
+    final_integer_r_exponents: IntegerBuffer,
+    final_integer_s: Float64Buffer,
+    final_integer_s_exponents: IntegerBuffer,
+    final_integer_approximate: Float64Buffer,
+    final_integer_float_gram: Float64Buffer,
+    final_integer_alpha: IntegerBuffer,
+    final_integer_column: IntegerBuffer,
+    final_integer_column_exponents: IntegerBuffer,
+    final_integer_normalized: Float64Buffer,
+    final_integer_temporary: Float64Buffer,
+    final_integer_dpe_scratch: Float64Buffer,
+    final_integer_scratch: IntegerBuffer,
+    final_real_integers: IntegerBuffer,
+    final_real_form: IntegerBuffer,
+    final_real_basis: IntegerBuffer,
+    final_real_transform: IntegerBuffer,
+    final_real_gram: IntegerBuffer,
+    final_real_mu: Float64Buffer,
+    final_real_mu_exponents: IntegerBuffer,
+    final_real_r: Float64Buffer,
+    final_real_r_exponents: IntegerBuffer,
+    final_real_s: Float64Buffer,
+    final_real_s_exponents: IntegerBuffer,
+    final_real_approximate: Float64Buffer,
+    final_real_float_gram: Float64Buffer,
+    final_real_alpha: IntegerBuffer,
+    final_real_column: IntegerBuffer,
+    final_real_column_exponents: IntegerBuffer,
+    final_real_normalized: Float64Buffer,
+    final_real_temporary: Float64Buffer,
+    final_real_dpe_scratch: Float64Buffer,
+    final_real_scratch: IntegerBuffer,
+    final_real_state: IntegerBuffer,
+    final_factor_matep: IntegerBuffer,
+    final_factor_basis: IntegerBuffer,
+    final_factor_transform: IntegerBuffer,
+    final_factor_state: Int64Buffer,
+    final_factor_mu: Float64Buffer,
+    final_factor_mu_exponents: IntegerBuffer,
+    final_factor_r: Float64Buffer,
+    final_factor_r_exponents: IntegerBuffer,
+    final_factor_s: Float64Buffer,
+    final_factor_s_exponents: IntegerBuffer,
+    final_factor_approximate: Float64Buffer,
+    final_factor_float_gram: Float64Buffer,
+    final_factor_alpha: IntegerBuffer,
+    final_factor_column: IntegerBuffer,
+    final_factor_column_exponents: IntegerBuffer,
+    final_factor_normalized: Float64Buffer,
+    final_factor_temporary: Float64Buffer,
+    final_factor_exact_gram: IntegerBuffer,
+    final_clean_pi_cache: IntegerBuffer,
+    final_clean_a: IntegerBuffer,
+    final_clean_b: IntegerBuffer,
+    final_clean_p: IntegerBuffer,
+    final_clean_q: IntegerBuffer,
+    final_clean_stack: IntegerBuffer,
+    final_clean_scratch: IntegerBuffer,
+    final_clean_state: Int64Buffer,
+    final_driver_state: Int64Buffer,
 ) -> int:
-    """Run the resident candidate and publish its live exact-`h = 1` bridge.
-
-    `unified_state` is status, candidate status, bridge status, prefix-ready,
-    public-complete, columns, relation count, HNF rank, KCZ, KCZ2, unit rank,
-    and compact-factor count. Prefix readiness is set only after the candidate
-    proves exact class number one and the live-owner bridge finishes
-    successfully; public completion remains false for the downstream exact-unit
-    suffix. The candidate-owned exact preparation state crosses the bridge
-    directly, without a representation adapter or copy.
-    """
-    if len(unified_state) < 12:
-        raise ValueError("short unified live h1 root state")
-    if unified_state[0] == 0 and unified_state[3] == 1:
-        return 0
-    if unified_state[0] != 0:
-        raise ValueError("cannot reuse a partial unified live h1 root")
-    unified_state[0] = -1
-    unified_state[1] = -1
-    unified_state[2] = -1
-    unified_state[3] = 0
-    for i in range(4, 12):
-        unified_state[i] = 0
-    candidate_status = pari_resident_generated_class_attempt(
+    """Run the resident candidate then its live final bridge transactionally."""
+    action = pari_resident_generated_class_attempt(
         matrix,
         ideal,
         n,
@@ -826,26 +800,9 @@ def pari_unified_live_h1_root(
         prep_kummer_requested_counts,
         prep_kummer_state,
     )
-    unified_state[1] = candidate_status
-    if (
-        candidate_status != 0
-        or attempt_state[0] != 4
-        or attempt_state[1] != 0
-        or attempt_state[2] != 0
-        or attempt_state[3] != 1
-        or class_number[0] != 1
-    ):
-        unified_state[0] = 1
-        return 1
-    columns = int(hnf_state[1])
-    if (
-        columns < 1
-        or len(hnf_result_c) < 21 * columns
-        or len(accept_relations) < 2 * columns
-    ):
-        unified_state[0] = 3
-        return 3
-    bridge_status = pari_live_h1_owner_bridge(
+    if action != 0:
+        return action
+    return pari_live_h1_owner_bridge(
         hnf_result_c,
         accept_relations,
         accept_regulator,
@@ -855,101 +812,87 @@ def pari_unified_live_h1_root(
         accept_acceptance_state,
         attempt_state,
         class_number,
-        precision,
-        unit_transform,
-        getfu_factor,
-        compact_provenance,
-        cleaned_arch,
-        bridge_state,
-        u1,
-        u2,
-        first_arch,
-        p_triples,
-        au,
-        clean_logs,
-        signs,
-        unit_state,
-        unit_trace,
-        integer_state,
-        integer_basis,
-        integer_transform,
-        integer_gram,
-        integer_mu,
-        integer_mu_exponents,
-        integer_r,
-        integer_r_exponents,
-        integer_s,
-        integer_s_exponents,
-        integer_approximate,
-        integer_float_gram,
-        integer_alpha,
-        integer_column,
-        integer_column_exponents,
-        integer_normalized,
-        integer_temporary,
-        integer_dpe_scratch,
-        integer_scratch,
-        real_integers,
-        real_form,
-        real_basis,
-        real_transform,
-        real_gram,
-        real_mu,
-        real_mu_exponents,
-        real_r,
-        real_r_exponents,
-        real_s,
-        real_s_exponents,
-        real_approximate,
-        real_float_gram,
-        real_alpha,
-        real_column,
-        real_column_exponents,
-        real_normalized,
-        real_temporary,
-        real_dpe_scratch,
-        real_scratch,
-        real_state,
-        factor_matep,
-        factor_basis,
-        factor_transform,
-        factor_state,
-        factor_mu,
-        factor_mu_exponents,
-        factor_r,
-        factor_r_exponents,
-        factor_s,
-        factor_s_exponents,
-        factor_approximate,
-        factor_float_gram,
-        factor_alpha,
-        factor_column,
-        factor_column_exponents,
-        factor_normalized,
-        factor_temporary,
-        factor_exact_gram,
-        clean_pi_cache,
-        clean_a,
-        clean_b,
-        clean_p,
-        clean_q,
-        clean_stack,
-        clean_scratch,
-        clean_state,
-        driver_state,
+        7,
+        192,
+        final_unit_transform,
+        final_getfu_factor,
+        final_compact_provenance,
+        final_cleaned_arch,
+        final_bridge_state,
+        final_u1,
+        final_u2,
+        final_first_arch,
+        final_p_triples,
+        final_au,
+        final_clean_logs,
+        final_signs,
+        final_unit_state,
+        final_unit_trace,
+        final_integer_state,
+        final_integer_basis,
+        final_integer_transform,
+        final_integer_gram,
+        final_integer_mu,
+        final_integer_mu_exponents,
+        final_integer_r,
+        final_integer_r_exponents,
+        final_integer_s,
+        final_integer_s_exponents,
+        final_integer_approximate,
+        final_integer_float_gram,
+        final_integer_alpha,
+        final_integer_column,
+        final_integer_column_exponents,
+        final_integer_normalized,
+        final_integer_temporary,
+        final_integer_dpe_scratch,
+        final_integer_scratch,
+        final_real_integers,
+        final_real_form,
+        final_real_basis,
+        final_real_transform,
+        final_real_gram,
+        final_real_mu,
+        final_real_mu_exponents,
+        final_real_r,
+        final_real_r_exponents,
+        final_real_s,
+        final_real_s_exponents,
+        final_real_approximate,
+        final_real_float_gram,
+        final_real_alpha,
+        final_real_column,
+        final_real_column_exponents,
+        final_real_normalized,
+        final_real_temporary,
+        final_real_dpe_scratch,
+        final_real_scratch,
+        final_real_state,
+        final_factor_matep,
+        final_factor_basis,
+        final_factor_transform,
+        final_factor_state,
+        final_factor_mu,
+        final_factor_mu_exponents,
+        final_factor_r,
+        final_factor_r_exponents,
+        final_factor_s,
+        final_factor_s_exponents,
+        final_factor_approximate,
+        final_factor_float_gram,
+        final_factor_alpha,
+        final_factor_column,
+        final_factor_column_exponents,
+        final_factor_normalized,
+        final_factor_temporary,
+        final_factor_exact_gram,
+        final_clean_pi_cache,
+        final_clean_a,
+        final_clean_b,
+        final_clean_p,
+        final_clean_q,
+        final_clean_stack,
+        final_clean_scratch,
+        final_clean_state,
+        final_driver_state,
     )
-    unified_state[2] = bridge_status
-    if bridge_status != 0 or bridge_state[0] != 0:
-        unified_state[0] = 2
-        return 2
-    unified_state[4] = 0
-    unified_state[5] = bridge_state[5]
-    unified_state[6] = bridge_state[8]
-    unified_state[7] = bridge_state[9]
-    unified_state[8] = bridge_state[10]
-    unified_state[9] = bridge_state[11]
-    unified_state[10] = bridge_state[12]
-    unified_state[11] = bridge_state[13]
-    unified_state[3] = 1
-    unified_state[0] = 0
-    return 0

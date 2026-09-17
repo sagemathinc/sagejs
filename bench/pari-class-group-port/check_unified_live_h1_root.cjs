@@ -51,7 +51,7 @@ async function main() {
     "pari_resident_generated_class_attempt",
   );
   assert.equal(residentNames.length, 351);
-  assert.equal(rootNames.length, 434);
+  assert.equal(rootNames.length, 433);
   assert.deepEqual(rootNames.slice(0, 351), residentNames);
 
   const bridgeChecker = fs.readFileSync(bridgeCheckerPath, "utf8");
@@ -64,8 +64,7 @@ async function main() {
     if (Object.hasOwn(candidate, name)) {
       input[name] = structuredClone(candidate[name]);
     } else {
-      const size = name === "bridge_prep_state" ? 8
-        : name === "unified_state" ? 12 : bridgeSizes[name];
+      const size = name === "unified_state" ? 12 : bridgeSizes[name];
       assert(Number.isInteger(size), `missing workspace size for ${name}`);
       input[name] = Array(size).fill(kind === "Float64Buffer" ? 0 : 0n);
     }
@@ -97,7 +96,6 @@ async function main() {
   ]);
   assert.deepEqual(values(input.attempt_state).map(BigInt), [4n, 0n, 0n, 1n]);
   assert.equal(BigInt(values(input.class_number)[0]), 1n);
-  assert.deepEqual(values(input.bridge_prep_state).map(BigInt), values(input.prep_state).map(BigInt));
   assert.deepEqual(values(input.bridge_state).map(BigInt), [
     0n, 0n, 0n, 0n, 0n, 7n, 1n, 0n, 73n, 8n, 48n, 48n, 2n, 7n, 7n, 0n,
   ]);
