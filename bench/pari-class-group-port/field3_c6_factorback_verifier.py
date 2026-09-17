@@ -12,8 +12,9 @@ recomputes the materialized logarithms from authenticated embeddings; real
 entries are exact at the packed policy and phases are compared modulo the
 authenticated period and rounding policy.
 
-The authentic 153088-bit field is intentionally not executed here.  The same
-code is exercised with fresh low-precision and generated exact data.
+The authentic 153088-bit field is intentionally not executed here. The exact
+correspondence is exercised with fresh low-precision generated data, while
+sparse high-precision probes qualify the bounded logarithm corridor.
 """
 
 from __future__ import annotations
@@ -264,26 +265,68 @@ def _nearest_integer(value: Fraction) -> int:
     return lower
 
 
+def _materialized_log_workspace_capacity(precision: int) -> tuple[int, int]:
+    """Return coefficient and split-stack cells for one cold replay."""
+    from .pi_constant import pari_pi_workspace_capacity
+
+    if not ((64 <= precision <= 384 and precision % 64 == 0) or precision == 153088):
+        raise Field3C6FactorbackFailure("unsupported cold log-replay precision")
+    pi_cells, pi_stack = pari_pi_workspace_capacity(precision)
+    if precision == 153088:
+        # Qualified jointly by the real and complex AGM batch roots.  The
+        # log(2) atanh splitters dominate the smaller Ramanujan pi count.
+        return max(pi_cells, 16385), max(pi_stack, 105)
+    return max(pi_cells, 512), max(pi_stack, 1024)
+
+
 def _materialized_logs(
     units: list[int],
     embedding_real: list[int],
     embedding_imag: list[int],
     precision: int,
+    workspace: tuple[
+        list[int],
+        list[int],
+        list[int],
+        list[int],
+        list[int],
+        list[int],
+        list[int],
+    ]
+    | None = None,
 ) -> tuple[list[int], list[int]]:
     from .complex_logarithm import pari_real_pair_logarithm
+    from .exponential import pari_real_resize
+    from .high_precision_agm_log import pari_real_logarithm_high_precision_abs
+    from .high_precision_complex_agm_log import pari_complex_logarithm_agm
     from .log_matrix_transform import pari_log_scalar_product, pari_log_scalar_sum
+    from .pi_constant import pari_pi_constant
 
-    if precision < 64 or precision > 384 or precision % 64 != 0:
-        raise Field3C6FactorbackFailure("unsupported cold log-replay precision")
+    coefficient_cells, stack_cells = _materialized_log_workspace_capacity(precision)
+    if workspace is None:
+        log_cache = [0] * 3
+        pi_cache = [0] * 3
+        a = [0] * coefficient_cells
+        b = [0] * coefficient_cells
+        p = [0] * coefficient_cells
+        q = [0] * coefficient_cells
+        stack = [0] * stack_cells
+    else:
+        if len(workspace) != 7 or len({id(value) for value in workspace}) != 7:
+            raise Field3C6FactorbackFailure("aliased cold log-replay workspace")
+        log_cache, pi_cache, a, b, p, q, stack = workspace
+        if (
+            len(log_cache) < 3
+            or len(pi_cache) < 3
+            or len(a) < coefficient_cells
+            or len(b) < coefficient_cells
+            or len(p) < coefficient_cells
+            or len(q) < coefficient_cells
+            or len(stack) < stack_cells
+        ):
+            raise Field3C6FactorbackFailure("cold log-replay workspace exhausted")
     logs_real: list[int] = []
     logs_imag: list[int] = []
-    log_cache = [0] * 3
-    pi_cache = [0] * 3
-    a = [0] * 512
-    b = [0] * 512
-    p = [0] * 512
-    q = [0] * 512
-    stack = [0] * 1024
     for unit in range(UNIT_COLUMNS):
         coordinates = units[DEGREE * unit : DEGREE * (unit + 1)]
         for place in range(PLACES):
@@ -311,18 +354,73 @@ def _materialized_logs(
                 real = (0, 0, -precision)
             if imaginary[0] == 0:
                 imaginary = (0, 0, -precision)
-            kind, lm, lp, le, am, ap, ae = pari_real_pair_logarithm(
-                *real,
-                *imaginary,
-                precision,
-                log_cache,
-                pi_cache,
-                a,
-                b,
-                p,
-                q,
-                stack,
-            )
+            if precision <= 384:
+                kind, lm, lp, le, am, ap, ae = pari_real_pair_logarithm(
+                    *real,
+                    *imaginary,
+                    precision,
+                    log_cache,
+                    pi_cache,
+                    a,
+                    b,
+                    p,
+                    q,
+                    stack,
+                )
+            elif imaginary[0] == 0:
+                resized = pari_real_resize(*real, precision)
+                lm, lp, le = pari_real_logarithm_high_precision_abs(
+                    abs(resized[0]),
+                    resized[1],
+                    resized[2],
+                    pi_cache,
+                    log_cache,
+                    a,
+                    b,
+                    p,
+                    q,
+                    stack,
+                )
+                if resized[0] > 0:
+                    kind, am, ap, ae = 1, 0, -1, 0
+                else:
+                    kind = 2
+                    am, ap, ae = pari_pi_constant(
+                        precision, pi_cache, a, b, p, q, stack
+                    )
+            elif real[0] == 0:
+                resized = pari_real_resize(*imaginary, precision)
+                lm, lp, le = pari_real_logarithm_high_precision_abs(
+                    abs(resized[0]),
+                    resized[1],
+                    resized[2],
+                    pi_cache,
+                    log_cache,
+                    a,
+                    b,
+                    p,
+                    q,
+                    stack,
+                )
+                kind = 2
+                am, ap, ae = pari_pi_constant(precision, pi_cache, a, b, p, q, stack)
+                ae -= 1
+                if resized[0] < 0:
+                    am = -am
+            else:
+                kind = 2
+                lm, lp, le, am, ap, ae = pari_complex_logarithm_agm(
+                    *real,
+                    *imaginary,
+                    precision,
+                    pi_cache,
+                    log_cache,
+                    a,
+                    b,
+                    p,
+                    q,
+                    stack,
+                )
             if place == 2:
                 lm, lp, le = pari_log_scalar_product(2, lm, lp, le)
                 am, ap, ae = pari_log_scalar_product(2, am, ap, ae)
