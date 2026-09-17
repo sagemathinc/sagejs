@@ -528,6 +528,18 @@ pass. The unchanged local startup gate remains above budget and is not called a
 receipt. Exact evidence is in `agents/python-keyword-single-pass-binding.md`;
 keep this candidate behind its prerequisites.
 
+**2026-09-17 receiverless keyword-classification follow-up:** the binder still
+called the authoritative class-instance-method classifier for ordinary
+receiverless functions even though that classifier's first condition rejects a
+null or undefined receiver. Moving the identical guard to the shared raw
+boundary improves keyword functions another 3.9%, from 86.702 ms to 83.293 ms
+per 100,000 calls and from 8.5x to 8.2x CPython; every other matrix row remains
+flat. A throwing-classifier boundary test proves receiverless calls bypass it,
+while non-null class/metaclass and instance paths are unchanged. Full
+differential, focused, traitlets, attrs/decorator, strict, docs, and merge gates
+pass at 902,348/903,000 core bytes. Evidence is folded into
+`agents/python-keyword-single-pass-binding.md`; M5 remains open.
+
 Continue next with integration-aware qualification, the receiver-lookup campaign,
 and true handled-exception ownership. Generator/coroutine suspension makes a
 single global active-exception pointer unsafe: preserve owned handlers while
