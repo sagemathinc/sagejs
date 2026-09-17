@@ -1433,9 +1433,6 @@ def ρσ_operator_add_exact(left: Any, right: Any) -> Any:
 
 
 def _builtins_operator_add_exact_slow(left: Any, right: Any) -> Any:
-    # Primitive values cannot override Python's arithmetic methods. Handle
-    # them before the general parent/coercion and special-method machinery;
-    # overflowing safe integers still promote to BigInt below.
     left_type = ρσ_python_jstype(left)
     right_type = ρσ_python_jstype(right)
     # Python booleans use integer arithmetic here.
@@ -2249,10 +2246,16 @@ def ρσ_operator_ipow(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_iadd_exact(left: Any, right: Any) -> Any:
+    result = runtime.reflect.apply(
+        ρσ_exact_integer_add,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        runtime.undefined,
+        [left, right, _BUILTINS_MISSING],
+    )
+    if result is not _BUILTINS_MISSING:
+        return result
     left_type = runtime.jstype(left)
     if runtime.strict_equal(left_type, runtime.jstype(right)) and (
         runtime.strict_equal(left_type, "number")
-        or runtime.strict_equal(left_type, "bigint")
         or runtime.strict_equal(left_type, "string")
     ):
         return ρσ_operator_add_exact(left, right)
