@@ -129,12 +129,12 @@
     }
   ],
   "handoff": {
-    "summary": "Adds a separately receipted field-2 HNF-append trace producer and routes continuation/retries through it. Generated stages now separate attempt-local execution paths from stable logical command identity while authenticating original source, transformed source, and exact launcher bytes. Focused tests prove resume stability and fail-closed argument/source/launcher mutation behavior.",
+    "summary": "Adds a separately receipted field-2 HNF-append trace producer and routes continuation/retries through it. Generated stages separate attempt-local execution paths from stable logical command identity while authenticating original source, transformed source, and exact launcher bytes. The sealed only-stage mode recursively authenticates and pins an immutable dependency closure. The bounded quartic CPython, JavaScript, GMP, and tagged suffix replay passes from the corrected five-receipt prefix.",
     "risks": [
-      "The bounded integration replay qualified collector, summarized driver, extended HNF trace, and continuation. The retry suffix remains to be rerun after this identity fix is integrated into the frozen replay checkout."
+      "The suffix evidence deliberately joins receipts produced at the frozen 8b33815fe prefix with consumers at 7cc910aab; every cross-commit edge is content-hash pinned and recursively verified, but this does not replace the plan's eventual single-commit full Phase-0 replay."
     ],
     "next_steps": [
-      "Integrate the identity fix, then resume the bounded quartic retry suffix from the five immutable current receipts."
+      "Integrate the runner and verifier fixes, retain the immutable suffix root, and use the next explicitly frozen integration checkpoint for the eventual full Phase-0 replay."
     ]
   }
 }
