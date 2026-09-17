@@ -162,6 +162,9 @@ function validateRelation(receipt) {
     "full coordinates");
   equal(integers(matrix.suffixCoordinates, "suffix coordinates", 2), ["1", "0"],
     "suffix coordinates");
+  const selectedGeneratorIdeals = array(relation.selectedGeneratorIdeals,
+    "selected class-generator ideals", 2).map((ideal, index) =>
+    integers(ideal, `selected class-generator ideal ${index}`, 16));
   const arbitrary = plain(relation.arbitraryIdeal, "arbitrary-ideal receipt");
   if (arbitrary.exactQuotientReplay !== true) fail("ideal quotient was not replayed");
   equal(integers(arbitrary.fullCoordinates, "ideal full coordinates", 2), ["0", "1"],
@@ -183,7 +186,7 @@ function validateRelation(receipt) {
     arbitraryIdeal: integers(exact.ideal, "arbitrary ideal", 16),
     fullCoordinates: integers(matrix.fullCoordinates, "full coordinates", 2),
     nonzeroEntries: integer(exact.nonzero_relation_entries, "nonzero relations"),
-    presentation: ["2", "0", "0", "2"],
+    presentation: ["2", "0", "0", "2", ...selectedGeneratorIdeals.flat()],
     quotientGenerator: integers(exact.quotient_generator, "quotient generator", 4),
     representative: integers(exact.representative, "ideal representative", 16),
     suffixCoordinates: integers(matrix.suffixCoordinates, "suffix coordinates", 2),
@@ -333,6 +336,43 @@ function validateUnitBoundary(boundary, evidence) {
   }
   const transform = integers(input.rawToAcceptedTransform,
     "raw-to-accepted transform", 3913);
+  const relationRecords = integers(input.relationRecords,
+    "same-run relation records", 288 * 301);
+  const principalGenerators = integers(input.principalGenerators,
+    "same-run principal generators", 4 * 301);
+  const sourceRawLogs = integers(input.sourceRawLogs,
+    "same-run source raw logs", 7 * 3 * 301);
+  const terminalAcceptedA = integers(input.terminalAcceptedA,
+    "same-run terminal accepted A", 7 * 3 * 13);
+  const factoredUnitTransform = integers(input.factoredUnitTransform,
+    "factored rank-two unit transform", 301 * 2);
+  const unitNorms = integers(input.unitNorms, "factored unit norms", 2);
+  equal(unitNorms, ["1", "1"], "factored unit norms");
+  const recomposed = [];
+  for (let unit = 0; unit < 2; unit += 1) {
+    for (let relation = 0; relation < 301; relation += 1) {
+      let value = 0n;
+      for (let accepted = 0; accepted < 13; accepted += 1) {
+        value += BigInt(transform[accepted * 301 + relation]) *
+          BigInt(evidence.compact.transform[unit * 13 + accepted]);
+      }
+      recomposed.push(String(value));
+    }
+  }
+  equal(factoredUnitTransform, recomposed, "factored rank-two unit transform");
+  // The independently injected replay remains the mathematical authority, but
+  // the composer also rejects a detached or reordered R/T owner before calling
+  // it.  This is only 1.13 million bounded exact products.
+  for (let accepted = 0; accepted < 13; accepted += 1) {
+    for (let row = 0; row < 288; row += 1) {
+      let value = 0n;
+      for (let relation = 0; relation < 301; relation += 1) {
+        value += BigInt(relationRecords[relation * 288 + row]) *
+          BigInt(transform[accepted * 301 + relation]);
+      }
+      if (value !== 0n) fail("same-run relation transform is not an exact kernel");
+    }
+  }
   const authoritySha256 = digest(input.authoritySha256, "unit correspondence authority");
   const detached = {
     authoritySha256,
@@ -341,11 +381,17 @@ function validateUnitBoundary(boundary, evidence) {
       regulator: evidence.compact.regulator,
       transform: evidence.compact.transform,
     }),
+    factoredUnitTransform: [...factoredUnitTransform],
     fieldId: FIELD_ID,
+    principalGenerators: [...principalGenerators],
     rawToAcceptedTransform: [...transform],
+    relationRecords: [...relationRecords],
     relationAuthoritySha256: AUTHORITY_SHA256,
     schema: UNIT_BOUNDARY_SCHEMA,
+    sourceRawLogs: [...sourceRawLogs],
     suffixAuthoritySha256: SUFFIX_SHA256,
+    terminalAcceptedA: [...terminalAcceptedA],
+    unitNorms: [...unitNorms],
   };
   let replay;
   try {
@@ -361,15 +407,36 @@ function validateUnitBoundary(boundary, evidence) {
       receipt.relationAuthoritySha256 !== AUTHORITY_SHA256 ||
       receipt.suffixAuthoritySha256 !== SUFFIX_SHA256 ||
       receipt.transformSha256 !== neutral.sha256Canonical(transform) ||
+      receipt.relationRecordsSha256 !== neutral.sha256Canonical(relationRecords) ||
+      receipt.principalGeneratorsSha256 !== neutral.sha256Canonical(principalGenerators) ||
+      receipt.sourceRawLogsSha256 !== neutral.sha256Canonical(sourceRawLogs) ||
+      receipt.terminalAcceptedASha256 !== neutral.sha256Canonical(terminalAcceptedA) ||
+      receipt.factoredUnitTransformSha256 !==
+        neutral.sha256Canonical(factoredUnitTransform) ||
+      receipt.compactUnitTransformSha256 !==
+        neutral.sha256Canonical(evidence.compact.transform) ||
+      JSON.stringify(receipt.unitNorms) !== JSON.stringify(unitNorms) ||
       receipt.exactKernelVerified !== true ||
       receipt.packedLogTransformVerified !== true ||
       receipt.principalIdealOneVerified !== true ||
+      receipt.factoredUnitNormsVerified !== true ||
+      receipt.sameRunPrincipalGeneratorsVerified !== true ||
       receipt.sameRunSuffixVerified !== true ||
+      receipt.pariCallsAfterBoundary !== 0 ||
       receipt.correspondenceComplete !== true ||
       receipt.publicComplete !== false) {
     fail("unit correspondence replay receipt is incomplete");
   }
-  return { authoritySha256, transform };
+  return {
+    authoritySha256,
+    factoredUnitTransform,
+    principalGenerators,
+    relationRecords,
+    sourceRawLogs,
+    terminalAcceptedA,
+    transform,
+    unitNorms,
+  };
 }
 
 function completePayload(evidence, unit, publicationReplaySchema) {
@@ -389,10 +456,19 @@ function completePayload(evidence, unit, publicationReplaySchema) {
     owner("class-presentation", "class-presentation", relation.presentation),
     owner("compact-unit-lattice", "compact-unit-lattice", evidence.compact.lattice),
     owner("compact-unit-transform", "compact-unit-transform", evidence.compact.transform),
+    owner("factored-unit-norms", "factored-unit-norms", unit.unitNorms),
+    owner("factored-unit-transform", "factored-unit-transform",
+      unit.factoredUnitTransform),
     owner("honesty-evidence", "honesty-evidence",
       ["301", "288", relation.nonzeroEntries, "11", "2"]),
+    owner("principal-generators", "principal-relation-generators",
+      unit.principalGenerators),
+    owner("raw-relation-records", "raw-relation-records", unit.relationRecords),
     owner("raw-to-accepted-unit-transform", "exact-unit-relation-transform", unit.transform),
     owner("regulator-enclosure", "regulator-enclosure", evidence.compact.regulator),
+    owner("source-raw-packed-logs", "source-raw-packed-logs", unit.sourceRawLogs),
+    owner("terminal-accepted-packed-logs", "terminal-accepted-packed-logs",
+      unit.terminalAcceptedA),
     owner("torsion-generator", "torsion-generator", evidence.torsion.generator),
   ];
   return {

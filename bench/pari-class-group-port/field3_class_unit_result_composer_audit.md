@@ -4,8 +4,8 @@
 
 `field3_class_unit_result_composer.cjs` is the narrow adapter from the retained
 mixed-quartic run into the field-neutral
-`class_unit_correspondence_result.cjs` contract.  It performs no number-field
-arithmetic and makes no PARI call.  Its inputs are the independently replayed
+`class_unit_correspondence_result.cjs` contract.  It performs only bounded
+exact integer composition and makes no PARI call.  Its inputs are the independently replayed
 component receipts produced by:
 
 - `field3_relation_replay_map.py` and its focused checker;
@@ -23,8 +23,8 @@ field-neutral-authority factory.
 The authentic retained run now composes the following same-field facts:
 
 - the 301 exact principal relations over all 288 factor-base ideals;
-- the full rank-288 relation presentation with Smith invariants `[2, 2]` and
-  class number 4;
+- the full rank-288 relation presentation with Smith invariants `[2, 2]`,
+  class number 4, and the exact HNF ideals for both selected generators;
 - the invertible alignment of retained suffix packets 11 and 2 with the full
   presentation;
 - an exact nontrivial arbitrary-ideal quotient witness with full coordinates
@@ -35,15 +35,17 @@ The authentic retained run now composes the following same-field facts:
 - the rank-two compact lattice, its 13-by-2 transform, the retained regulator,
   and PARI's matched `not_given(PRECI)` outcome.
 
-All detached owners in the future neutral envelope have explicit logical
+All detached owners in the neutral envelope have explicit logical
 lengths, capacities, canonical integer encoding, and complete capacity
 contents.  They include the Smith presentation, exact ideal quotient,
 compact-unit lattice and transform, regulator enclosure, torsion generator,
-honesty evidence, and (once available) the raw-to-accepted unit transform.
+honesty evidence, the raw-to-accepted unit transform, the raw relations and
+principal generators, the source/terminal packed logs, and the two final
+factored-unit exponent columns and norms.
 
-## The intentional stop
+## The former stop and its closure
 
-The authentic result is:
+Before the transform-retention lane landed, the authentic result was:
 
 ```text
 blocked-missing-exact-unit-correspondence
@@ -52,21 +54,35 @@ public_complete = false
 sealedEnvelopeHex = null
 ```
 
-This is not a failed schema conversion.  It is the required mathematical stop.
-The retained run lacks:
+That was the required mathematical stop.  The transform-retention lane now
+supplies:
 
 1. the 3,913-entry, column-major 301-by-13 transform from raw relations to the
-   accepted HNF kernel columns; and
-2. a same-run retained suffix for all 13 accepted columns.
+   accepted HNF kernel columns;
+2. all 86,688 raw relation entries and 1,204 principal-generator coordinates
+   from that same run;
+3. all 6,321 source-introduction packed-log words; and
+4. the same-run 273-word terminal accepted `A` owner.
 
-Consequently the adapter does not claim that reconstructed units generate the
-principal ideal one, does not claim exact unit correspondence, and cannot call
-the neutral sealer.  In particular, the `PRECI` flag-zero outcome is preserved
-faithfully but is not used to disguise the missing exact owner.
+The positive composer recomputes the compact product `W = T*U`, where `U` is
+the retained 13-by-2 rank-two transform.  The resulting two units each have 227
+nonzero principal-generator factors.  It proves `R*T = 0` and `R*W = 0`
+entry-by-entry.  Since the exact class-map replay already proved every raw
+principal ideal relation and the same-run `R` and principal generators are
+byte-identical to those owners, each factored product generates the principal
+ideal one.  Exact quartic determinant signs, combined with the independently
+replayed absolute norm identities, give unit norms `(+1,+1)`.
 
-## Future injection boundary
+The retained source-order replay, run independently a second time for the
+out-of-band capability, binds every packed source column to terminal `A`
+bit-for-bit.  The compact transform uses only accepted columns 0 and 1, which
+the earlier compact replay proves agree with the selected PRECI suffix.  No
+expanded algebraic unit is invented: the materialization remains exactly
+`not_given(PRECI)`.
 
-`prepareField3ClassUnitResult` accepts an optional
+## Injection boundary
+
+`prepareField3ClassUnitResult` accepts the
 `field3-unit-correspondence-boundary-v1` capability.  It must contain exactly
 3,913 canonical transform entries and a separately supplied synchronous replay.
 That replay must bind:
@@ -87,7 +103,7 @@ candidate before the neutral publisher's first atomic assignment.  The sealed
 bytes are stored as an immutable hexadecimal string so caller-visible mutation
 cannot alter the prepared candidate.
 
-This two-boundary design is deliberate: the future transform owner does not
+This two-boundary design is deliberate: the transform owner does not
 authorize its own class/torsion evidence, and the composer cannot authorize its
 own final envelope.
 
@@ -96,19 +112,28 @@ own final envelope.
 The focused checker runs the authentic exact 301-by-288 replay/map under the
 already-built integration runtime, replays the compact-unit evidence under
 CPython, and derives torsion again without PARI.  The observed relation-map
-process stayed below the 4 GiB cap.  It then verifies the honest blocked result
-and rejects 14 attacks, including changed retained roots, class invariants,
-class number, suffix alignment, quotient proof, exact ideal data, regulator,
-PRECI decision, missing-owner size, torsion generator/state, and a
-transform-shaped value whose replay omits the exact identities.
+process stayed below the 4 GiB cap.  It verifies the honest blocked result
+and first verifies that the absent-transform path still stops honestly.  It
+then runs the same-run transform producer twice: once for the candidate and
+once for the out-of-band replay capability.  The two captures agree exactly;
+each independently replays the packed source-operation tree and its mutation
+gates.  The positive path seals the field-neutral envelope, verifies it through
+a separately created final mathematical authority, publishes atomically, and
+replays idempotently.
 
-The current checker does not fabricate a successful 301-by-13 transform merely
-to exercise the ready branch.  That branch becomes eligible for a positive
-test only when the transform-retention lane supplies real same-run data.
+The focused run rejects 23 attacks, including changed retained roots, class
+invariants, class number, suffix alignment, quotient proof, exact ideal data, regulator,
+PRECI decision, missing-owner size, torsion generator/state, and a
+transform-shaped value whose replay omits the exact identities, mutations of
+each newly retained same-run owner, and a coordinated re-seal with a fresh
+envelope digest but altered factored-unit data.
 
 ## Outcome
 
-This adapter closes the field-3 class-map/torsion/PRECI composition gap without
-overstating the unit result.  The one remaining mathematical input is now a
-small, explicit, typed owner rather than an ambiguous final-composer failure.
-No public Sage.js result is claimed.
+The adapter now publishes an internally correspondence-complete PARI result for
+this field: class group `[2,2]`, class number 4, exact ideal correspondence,
+rank-two factored units with norm one, order-two torsion, regulator evidence,
+and the faithful PRECI materialization.  It remains conditional on the explicit
+PARI/GRH assumptions recorded in the envelope.  `public_complete` is still
+false: this is not an independent Sage.js proof of PARI's bounds, unit
+saturation, regulator acceptance, or public certification policy.
