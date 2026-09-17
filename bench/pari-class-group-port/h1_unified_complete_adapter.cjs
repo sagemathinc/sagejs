@@ -237,7 +237,11 @@ async function sageBuild({ diagnosticStageClock = false } = {}) {
         diagnosticStageClock ? "function" : "undefined",
         "unified root diagnostic clock capability changed",
       );
-      return { built, fn, specification: rootSpecification(), diagnosticStageClock };
+      return {
+        built, fn, specification: rootSpecification(), diagnosticStageClock,
+        diagnosticStageClockConfig: diagnosticStageClock
+          ? DIAGNOSTIC_STAGE_CLOCK : null,
+      };
     }));
   }
   return sageBuildPromises.get(key);
@@ -263,6 +267,7 @@ async function preparePreparedH1({
   validateSageResult(replayStatus, replayInput);
   return {
     implementation, seed, built,
+    replayAuthority: sageAuthority(replayInput),
     replayAuthoritySha256: digest(sageAuthority(replayInput)),
     timedInput: makeInputs(preparedInput, built.specification, built.fn),
   };
@@ -300,7 +305,8 @@ async function runPreparedH1({
   const diagnosticStageTrace = preparedState.built.diagnosticStageClock
     ? preparedState.built.fn.diagnosticStageTrace() : null;
   validateSageResult(status, input);
-  assert.equal(digest(sageAuthority(input)), preparedState.replayAuthoritySha256,
+  const sourceAuthority = sageAuthority(input);
+  assert.equal(digest(sourceAuthority), preparedState.replayAuthoritySha256,
     "unified root changed under independent owner replay");
   // final_state[12] remains pending in the native result.  Only this adapter's
   // independent second owner graph authorizes the diagnostic correspondence
@@ -313,6 +319,7 @@ async function runPreparedH1({
   return {
     correspondenceComplete: true,
     ...matchedRecords({ seed, preparedInput }),
+    sourceAuthority,
     ...(diagnosticStageTrace === null ? {} : { diagnosticStageTrace }),
   };
 }
@@ -325,6 +332,7 @@ async function closePreparedH1(preparedState) {
 
 module.exports = {
   FIELD_ID,
+  DIAGNOSTIC_STAGE_CLOCK,
   DIAGNOSTIC_STAGES,
   closePreparedH1,
   digest,
@@ -333,5 +341,6 @@ module.exports = {
   preparePreparedH1,
   runPreparedH1,
   rootSpecification,
+  sageAuthority,
   stageMode: "whole-root-only",
 };
