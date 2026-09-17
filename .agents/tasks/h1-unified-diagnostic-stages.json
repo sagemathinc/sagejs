@@ -1,0 +1,44 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "h1-unified-diagnostic-stages",
+  "title": "Unified H1 diagnostic stages",
+  "lane": "integration",
+  "status": "active",
+  "owner": "final_mutation_replay",
+  "objective": "Add honest mutually exclusive diagnostic stage timing and counter instrumentation for the unified H1 computation while retaining PARI whole-root-only behavior and disabling final timing",
+  "base_commit": "c461638a3a91ee0f64bfeea913e87754ff59f007",
+  "claims": [
+    "bench/pari-class-group-port/h1_unified_diagnostic_stages.cjs",
+    "bench/pari-class-group-port/check_h1_unified_diagnostic_stages.cjs",
+    "bench/pari-class-group-port/h1_unified_diagnostic_stages_audit.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Exclusive timer conservation and independently recomputed work-counter deltas"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "not-applicable",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "not-applicable"
+  },
+  "validation": [
+    "node bench/pari-class-group-port/check_h1_unified_diagnostic_stages.cjs",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
