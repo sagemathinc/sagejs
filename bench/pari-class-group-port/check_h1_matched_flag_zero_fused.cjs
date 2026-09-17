@@ -12,6 +12,7 @@ const assert = require("node:assert/strict");
 const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
+const vm = require("node:vm");
 const { spawnSync } = require("node:child_process");
 
 const directory = __dirname;
@@ -244,9 +245,312 @@ function sizeEstimate() {
   return result;
 }
 
+function values(value) {
+  return Array.isArray(value) ? value : value.toArray ? value.toArray() : Array.from(value);
+}
+
+function workspaceSizes() {
+  const checker = fs.readFileSync(path.join(directory, "check_live_h1_owner_bridge.cjs"), "utf8");
+  const literal = checker.match(/const sizes = (\{[\s\S]*?\n\});/);
+  assert(literal, "missing authenticated bridge workspace sizes");
+  return {
+    ...vm.runInNewContext(`(${literal[1]})`, { columnCapacity: 16 }),
+    unified_state: 12,
+    embedding_packed: 27, matep: 18, transformed_arch: 18,
+    transformed_clean: 18, transformed_phases: 6, exponential_values: 18,
+    solve_work: 27, solve_rhs: 18, solved: 18, rounded: 6,
+    multiplication: 9, inverse: 3, candidate_units: 6,
+    normalized_factor: 4, output_units: 6, output_logs: 18,
+    output_phases: 6, output_factor: 4, getfu_state: 8, pivots: 3,
+    exp_cache: 64, exp_a: 64, exp_b: 64, exp_p: 64, exp_q: 64,
+    exp_stack: 128, root_state: 12,
+  };
+}
+
+function plainInputs(inputPath, names, mutation = null) {
+  const record = JSON.parse(fs.readFileSync(inputPath, "utf8"));
+  const candidate = record.input;
+  assert(candidate && typeof candidate === "object", "sanitized input record required");
+  const sizes = workspaceSizes();
+  const answer = {};
+  for (const [name, kind] of names) {
+    if (Object.hasOwn(candidate, name)) answer[name] = structuredClone(candidate[name]);
+    else {
+      assert(Number.isInteger(sizes[name]), `missing workspace size for ${name}`);
+      const sentinel = name.startsWith("output_") ? 991 : 0;
+      answer[name] = Array(sizes[name]).fill(sentinel);
+    }
+    if (Array.isArray(answer[name])) {
+      answer[name] = kind === "Float64Buffer"
+        ? answer[name].map(Number) : answer[name].map(BigInt);
+    } else if (kind === "float") answer[name] = Number(answer[name]);
+    else if (kind === "bool") answer[name] = Boolean(answer[name]);
+    else answer[name] = BigInt(answer[name]);
+  }
+  if (mutation !== null) mutation(answer);
+  return answer;
+}
+
+function nativeInputs(fn, names, plain) {
+  const answer = {};
+  for (const [name, kind] of names) {
+    const data = plain[name];
+    if (!kind.endsWith("Buffer")) answer[name] = data;
+    else if (kind === "Float64Buffer") answer[name] = fn.createFloat64Buffer(data.map(Number));
+    else if (kind === "Int64Buffer") answer[name] = fn.createInt64Buffer(data.map(BigInt));
+    else answer[name] = fn.createIntegerBuffer(data.length, 4096, data.map(BigInt));
+  }
+  return answer;
+}
+
+function canonicalJson(value) {
+  if (Array.isArray(value)) return value.map(canonicalJson);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonicalJson(value[key])]));
+  }
+  return value;
+}
+
+function digestCanonical(value) {
+  return sha256(JSON.stringify(canonicalJson(value)));
+}
+
+function strings(owner, count) {
+  return values(owner).slice(0, count).map(String);
+}
+
+function relationEvidence(v) {
+  const descriptors = [];
+  const norms = strings(v.packet_norms, 66);
+  const ideals = strings(v.packet_ideals, 66 * 9);
+  for (let factor = 0; factor < 66; factor += 1) {
+    descriptors.push([norms[factor], ...ideals.slice(9 * factor, 9 * (factor + 1))]);
+  }
+  const relationValues = strings(v.relation_records, 73 * 66);
+  const generatorValues = strings(v.generators, 73 * 3);
+  const metadataValues = strings(v.relation_metadata, 73 * 3);
+  const logValues = strings(v.log_embeddings, 73 * 3 * 7);
+  const prepDegree = strings(v.prep_degree_state, 4);
+  const prepBase = strings(v.prep_base_state, 7);
+  const prepSub = strings(v.prep_sub_state, 3);
+  const prepKummer = strings(v.prep_kummer_state, 4);
+  const relationState = strings(v.relation_state, 6);
+  const progress = strings(v.progress, 4);
+  const counters = strings(v.counters, 4);
+  const payload = {
+    schema: "sagejs.pari-class-group/h1-pre-hnf-relation-prefix-v1",
+    field_id: "x^3-20018*x+20034",
+    run_id: "seed-1",
+    relation_shape: ["73", "66"],
+    relation_layout: "column-major",
+    relations: Array.from({ length: 73 }, (_, index) =>
+      relationValues.slice(66 * index, 66 * (index + 1))),
+    factor_descriptor_shape: ["66", "10"],
+    factor_descriptor_layout: "factor-major; norm then row-major ideal",
+    factor_descriptors: descriptors,
+    generator_shape: ["73", "3"],
+    generator_layout: "relation-major",
+    generators: Array.from({ length: 73 }, (_, index) =>
+      generatorValues.slice(3 * index, 3 * (index + 1))),
+    metadata_shape: ["73", "3"],
+    metadata_layout: "relation-major; token, relorig, relaut",
+    relation_metadata: Array.from({ length: 73 }, (_, index) =>
+      metadataValues.slice(3 * index, 3 * (index + 1))),
+    log_shape: ["73", "3", "7"],
+    log_layout: "relation-major; place-major packed real/complex",
+    log_embeddings: Array.from({ length: 73 }, (_, index) =>
+      logValues.slice(21 * index, 21 * (index + 1))),
+    counters: {
+      C1: prepBase[0], C2: prepBase[1], KC: prepBase[2],
+      KCZ: prepBase[3], KCZ2: prepBase[4],
+      accepted_relations: relationState[0], catalog_entries: prepDegree[1],
+      decomposition_calls: prepKummer[2], degree_groups: prepDegree[2],
+      descriptors: prepKummer[3], factor_attempts: progress[1],
+      factor_slots: prepDegree[3], initial_relations: "12",
+      random_relations: counters[3], small_elements: counters[1],
+      subfactor_trials: prepSub[0], visited_ideals: "16",
+    },
+    terminal_rng_state: strings(v.prep_kummer_random_state, 66),
+  };
+  return { sha256: digestCanonical(payload), payload };
+}
+
+function compactEvidence(v, relationSha256) {
+  const root = strings(v.root_state, 12);
+  const state = strings(v.getfu_state, 8);
+  const payload = {
+    schema: "sagejs.pari-class-group/h1-compact-flag-zero-v1",
+    field_id: "x^3-20018*x+20034",
+    run_id: "seed-1",
+    relation_prefix_sha256: relationSha256,
+    precision_bits: "192",
+    unit_rank: "2",
+    compact_factor_count: "7",
+    compact_provenance: [
+      strings(v.compact_provenance, 14).slice(0, 7),
+      strings(v.compact_provenance, 14).slice(7, 14),
+    ],
+    clean_logs: strings(v.clean_logs, 18),
+    clean_phases: strings(v.signs, 6),
+    getfu_factor: strings(v.getfu_factor, 4),
+    getfu: {
+      status: state[0] === "0" ? "success" : "not_given(PRECI)",
+      state,
+    },
+    counters: {
+      getfu_attempts: "1", precision_retries: "0",
+      stronger_exact_suffix_calls: "0",
+    },
+    terminal_rng_state: strings(v.prep_kummer_random_state, 66),
+    assumptions: { pari_correspondence_assumed: true, public_complete: false },
+  };
+  return { sha256: digestCanonical(payload), payload, root, state };
+}
+
+function walkFiles(directoryPath) {
+  const answer = [];
+  for (const entry of fs.readdirSync(directoryPath, { withFileTypes: true })) {
+    const filename = path.join(directoryPath, entry.name);
+    if (entry.isDirectory()) answer.push(...walkFiles(filename));
+    else answer.push(filename);
+  }
+  return answer;
+}
+
+function artifact(filename) {
+  return { path: filename, bytes: fs.statSync(filename).size,
+    sha256: sha256(fs.readFileSync(filename)) };
+}
+
+async function compileOnly() {
+  const compilerPath = process.env.SAGEJS_REPLAY_RUNTIME_ROOT
+    ? path.join(process.env.SAGEJS_REPLAY_RUNTIME_ROOT, "tools/native-kernel/compiler.cjs")
+    : "../../tools/native-kernel/compiler.cjs";
+  const { compileKernel } = require(compilerPath);
+  const compileStarted = process.hrtime.bigint();
+  const built = await compileKernel({ sourcePath: fusedPath });
+  const compileWallNs = process.hrtime.bigint() - compileStarted;
+  const core = fs.readFileSync(built.coreSourcePath, "utf8");
+  for (const forbidden of [
+    "pari_live_retrying_h1_suffix", "precision_resource_cap",
+    "napi_call_function", "PyObject_Call", "v8::",
+  ]) assert(!core.includes(forbidden), `generated core contains ${forbidden}`);
+  assert.match(core, /pari_getfu_signed_real_cubic/);
+  const files = walkFiles(built.outputPath);
+  const objects = files.filter((filename) => filename.endsWith(".o"));
+  assert(objects.length >= 1, "compiled object missing");
+  return {
+    cacheKey: built.cacheKey,
+    cached: built.cached, compileWallNs: compileWallNs.toString(),
+    modulePath: built.modulePath,
+    outputPath: built.outputPath,
+    artifacts: {
+      core: artifact(built.coreSourcePath),
+      addon: artifact(built.addonPath),
+      objects: objects.map(artifact).sort((left, right) => right.bytes - left.bytes),
+    },
+    generatedExclusions: {
+      strongerRetrySuffix: true, precisionResourceLoop: true,
+      dynamicPythonCalls: true, oneCompactGetfuSourceLeaf: true,
+    },
+    publicComplete: false,
+  };
+}
+
+function validateArtifact(modulePath, inputPath, backend, mutation) {
+  assert(["javascript", "gmp"].includes(backend));
+  assert(["none", "degree", "precision"].includes(mutation));
+  const source = fs.readFileSync(fusedPath, "utf8");
+  const names = signature(source, entry);
+  const fn = require(modulePath)[entry];
+  assert(fn.nativeAvailable);
+  const mutate = mutation === "degree"
+    ? (input) => { input.n = 4n; }
+    : mutation === "precision"
+      ? (input) => { input.precision = 191n; }
+      : null;
+  const plain = plainInputs(inputPath, names, mutate);
+  const input = backend === "gmp" ? nativeInputs(fn, names, plain) : plain;
+  const beforeGetfu = strings(input.getfu_state, 8);
+  const started = process.hrtime.bigint();
+  let status;
+  try { status = fn[backend](...names.map(([name]) => input[name])); }
+  catch (error) { status = "exception:" + error.message; }
+  const wallNs = process.hrtime.bigint() - started;
+  if (mutation !== "none") {
+    assert.notEqual(status, 0n, `${mutation} mutation accepted`);
+    assert.equal(strings(input.root_state, 12)[11], "0", `${mutation} published root`);
+    assert.deepEqual(strings(input.getfu_state, 8), beforeGetfu, `${mutation} reached getfu`);
+    return { backend, mutation, status: String(status), wallNs: wallNs.toString(),
+      publicationCommitted: false, getfuReached: false };
+  }
+  assert.equal(status, 0n);
+  assert.deepEqual(strings(input.root_state, 12),
+    ["0", "1", "3", "192", "1", "0", "0", "7", "73", "8", "0", "1"]);
+  assert.deepEqual(strings(input.getfu_state, 8),
+    ["3", "10", "-186", "0", "1923", "0", "0", "1"]);
+  assert.deepEqual(strings(input.unified_state, 12),
+    ["0", "0", "0", "1", "0", "7", "73", "8", "48", "48", "2", "7"]);
+  const relation = relationEvidence(input);
+  assert.equal(relation.sha256,
+    "b0c647186a5fed5317c7135ccf16623a930631382ad7963e12af4ded2db7259a");
+  const compact = compactEvidence(input, relation.sha256);
+  return {
+    backend, mutation, wallNs: wallNs.toString(),
+    relationSha256: relation.sha256,
+    compactSha256: compact.sha256,
+    root: compact.root,
+    getfu: compact.state,
+    counters: relation.payload.counters,
+    ownerEvidenceSha256: digestCanonical({ relation: relation.payload, compact: compact.payload }),
+  };
+}
+
+function worker(command) {
+  const answer = spawnSync(process.execPath, [__filename, ...command], {
+    encoding: "utf8", timeout: 600_000, maxBuffer: 256 * 1024 * 1024,
+    env: process.env,
+  });
+  assert.equal(answer.status, 0, answer.stderr || String(answer.error));
+  return JSON.parse(answer.stdout.trim().split("\n").at(-1));
+}
+
+async function nativeDifferential(inputPath) {
+  // Compilation/lowering and each large backend owner set live in separate
+  // processes. This is a compilation-unit policy, not an algorithm split: the
+  // measured native entry remains one fused call. Sequential workers prevent
+  // retained compiler IR or a previous backend's exact buffers from stacking.
+  const build = worker(["--compile-only"]);
+  const started = process.hrtime.bigint();
+  const javascript = worker(["--validate-artifact", build.modulePath, inputPath,
+    "javascript", "none"]);
+  const gmp = worker(["--validate-artifact", build.modulePath, inputPath, "gmp", "none"]);
+  assert.deepEqual(gmp, { ...javascript, backend: "gmp", wallNs: gmp.wallNs });
+  const mutations = [
+    worker(["--validate-artifact", build.modulePath, inputPath, "gmp", "degree"]),
+    worker(["--validate-artifact", build.modulePath, inputPath, "gmp", "precision"]),
+  ];
+  return {
+    inputPath: path.resolve(inputPath), ...build,
+    validationWallNs: (process.hrtime.bigint() - started).toString(),
+    snapshots: { javascript, gmp }, mutations,
+    mutationFailures: mutations.length,
+    validationProcessPolicy: "compile, JavaScript, GMP, and mutations sequentially isolated",
+  };
+}
+
 async function main() {
-  assert(!process.argv.includes("--native"),
-    "native build not admitted; rerun only after the coordinator grants a heavy slot");
+  if (process.argv[2] === "--compile-only") {
+    process.stdout.write(`${JSON.stringify(await compileOnly())}\n`);
+    return;
+  }
+  if (process.argv[2] === "--validate-artifact") {
+    assert.equal(process.argv.length, 7);
+    process.stdout.write(`${JSON.stringify(validateArtifact(
+      process.argv[3], process.argv[4], process.argv[5], process.argv[6],
+    ))}\n`);
+    return;
+  }
   const receipt = {
     schema: "sagejs.pari-class-group/h1-matched-flag-zero-fused-source-v1",
     boundary: "prepared H1 through one compact p192 PRECI publication",
@@ -256,6 +560,12 @@ async function main() {
     estimate: sizeEstimate(),
     nativeValidation: "pending-heavy-slot",
   };
+  const nativeIndex = process.argv.indexOf("--native");
+  if (nativeIndex >= 0) {
+    assert(process.argv[nativeIndex + 1], "--native needs sanitized inputs.json");
+    receipt.native = await nativeDifferential(process.argv[nativeIndex + 1]);
+    receipt.nativeValidation = "complete";
+  }
   process.stdout.write(`${JSON.stringify(receipt)}\n`);
 }
 
