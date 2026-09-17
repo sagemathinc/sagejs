@@ -60,7 +60,7 @@ function zeroLengths() {
     preparation_column_exponents: n, preparation_float_scratch: n,
     preparation_temporary: 1, preparation_state: 1,
     schedule: 4, hnf_generator: n, hnf_matrix: n*n, hnf_work: n*n,
-    hnf_pivots: n, power_ideal: n*n, power_alpha: n, power_metadata: n,
+    hnf_pivots: n, power_ideal: n*n, power_alpha: n, power_metadata: 5,
     power_primitive: n, power_temporary: n, power_diagnostic: 3,
     power_multiplication: n*n, power_work: 3*n*n+n,
     power_triangular: n*(n+1), power_moduli: n,
