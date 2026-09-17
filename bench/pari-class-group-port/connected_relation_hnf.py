@@ -12,7 +12,7 @@ from sagejs.native import (
     diagnostic_stage_switch,
     native,
 )
-from .relation_insertion import pari_initialize_owned_relations
+from .relation_cache import pari_prepared_initialize_relations
 from .unreduced_small_norm import pari_collect_unreduced_ideals
 from .relation_log_embeddings import pari_append_relation_log_embeddings
 from .hnfspec_complete import pari_hnfspec_complete
@@ -278,7 +278,7 @@ def pari_connected_relation_hnf(
     if len(hnf_original) < rows * capacity:
         raise ValueError("short connected HNF relation words")
     chain_state[0] = 1
-    chain_state[2] = pari_initialize_owned_relations(
+    chain_state[2] = pari_prepared_initialize_relations(
         initial_additional,
         initial_primes,
         initial_offsets,
@@ -292,9 +292,15 @@ def pari_connected_relation_hnf(
         relation_metadata,
         relation,
         relation_scratch,
-        n,
-        generators,
     )
+    # Keep relation_insertion.pari_initialize_owned_relations semantics inline:
+    # the compiler admits this cache initializer as a direct dependency, while
+    # the wrapper's transitive import is not a callable signature in this root.
+    for initial_row in range(chain_state[2]):
+        generators[initial_row * n] = relation_metadata[3 * initial_row]
+        for initial_coordinate in range(1, n):
+            generators[initial_row * n + initial_coordinate] = 0
+        relation_metadata[3 * initial_row] = initial_row + 1
     relation_state[5] = initial_target
     status = pari_collect_unreduced_ideals(
         matrix,
