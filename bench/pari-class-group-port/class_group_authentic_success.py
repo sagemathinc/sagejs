@@ -44,6 +44,10 @@ from .torsion_authority import (
     derive_real_cubic_torsion,
     prepared_polynomial_sha256,
 )
+from .unit_relation_authority import (
+    capture_unit_relation_authority,
+    replay_unit_relation_authority,
+)
 from .unit_bridge_cubic import (
     pari_cubic_getfu_factor_rank_two,
     pari_cubic_unit_bridge_prepare,
@@ -60,7 +64,6 @@ OWNER_GENERATION = 1
 CONNECTED_FIELD_ID = "pari-2.17.4:" + FIELD_ID
 _MAX_BYTES = 64 * 1024 * 1024
 _UNVERIFIED_REQUIREMENTS = (
-    "successful-unit-component-to-rigorous-regulator-unit-link",
     "remove-live-pari-unit-oracle-input",
     "independent-unit-saturation-index-one-certificate",
     "independent-factor-base-relation-completeness-certificate",
@@ -69,6 +72,7 @@ _UNVERIFIED_REQUIREMENTS = (
 _CLEANARCH_PRECISION = 192
 _CLEANARCH_COLUMNS = 7
 _CLEANARCH_RETRY = [1, 192, 256, 64, 10, 64]
+_REGULATOR_FIXTURE = "regulator-acceptance-replay-fixture.json"
 
 
 class AuthenticSuccessFailure(ValueError):
@@ -208,7 +212,7 @@ def _read_inputs(
 
 def _unit_retry(
     fixture: Mapping[str, Any], oracle: Mapping[str, Any]
-) -> tuple[list[int], list[int], list[int], list[int], list[int]]:
+) -> tuple[list[int], list[int], list[int], list[int], list[int], list[int]]:
     def zeros(length: int) -> list[int]:
         return [0] * length
 
@@ -373,7 +377,7 @@ def _unit_retry(
         != 0
     ):
         raise AuthenticSuccessFailure("unit provenance composition rejected")
-    return units, logs, tensor, provenance, retry_link
+    return units, logs, tensor, provenance, retry_link, getfu_factor
 
 
 def _full_relation_provenance(
@@ -556,6 +560,27 @@ def _integral_to_power(coordinates: Sequence[int]) -> list[int]:
     ]
 
 
+def _compose_retry_units(
+    integral_factors: Sequence[int], getfu_factor: Sequence[int]
+) -> list[int]:
+    factors = [
+        _integral_to_power(integral_factors[3 * index : 3 * (index + 1)])
+        for index in range(2)
+    ]
+    answer: list[int] = []
+    for unit in range(2):
+        value = (Fraction(1), Fraction(0), Fraction(0))
+        for factor in range(2):
+            value = _cubic_multiply(
+                value,
+                _cubic_power(factors[factor], getfu_factor[2 * unit + factor]),
+            )
+        if any(coordinate.denominator != 1 for coordinate in value):
+            raise AuthenticSuccessFailure("composed retry unit is not integral")
+        answer.extend(coordinate.numerator for coordinate in value)
+    return answer
+
+
 def _exact_relation_unit_authority(
     resident: Mapping[str, Any],
     presentation: Mapping[str, Any],
@@ -648,7 +673,9 @@ def build_authentic_success_payload(
         )
     }
     candidate = _candidate(class_state, fixture, resident)
-    units, logs, tensor, provenance, retry_link = _unit_retry(fixture, unit_oracle)
+    units, logs, tensor, provenance, retry_link, getfu_factor = _unit_retry(
+        fixture, unit_oracle
+    )
     unit_component = make_real_cubic_unit_component(
         RUN_ID,
         OWNER_GENERATION,
@@ -665,15 +692,38 @@ def build_authentic_success_payload(
     kernel_basis, full_provenance = _full_relation_provenance(resident, provenance)
     presentation = capture_presentation_authority(resident_output)
     replay_presentation_authority(presentation)
-    relation_unit = _exact_relation_unit_authority(
-        resident, presentation, full_provenance, units
+    relation_unit = capture_unit_relation_authority(
+        resident_output,
+        Path(fixture_path).with_name(_REGULATOR_FIXTURE),
     )
+    replay_unit_relation_authority(relation_unit, presentation)
+    composed_retry_units = _compose_retry_units(units, getfu_factor)
+    published_units = _integers(
+        relation_unit["published_units_power_basis"]["entries"],
+        "relation authority units",
+        6,
+    )
+    if composed_retry_units != published_units:
+        raise AuthenticSuccessFailure(
+            "successful retry units are detached from relation/regulator authority"
+        )
+    retry_units = {
+        "factor_integral_basis_shape": ["2", "3"],
+        "factor_integral_basis": [str(value) for value in units],
+        "getfu_factor_shape": ["2", "2"],
+        "getfu_factor": [str(value) for value in getfu_factor],
+        "selected_power_basis_shape": ["2", "3"],
+        "selected_power_basis": [str(value) for value in composed_retry_units],
+        "relation_authority_orientation": ["1", "-1"],
+        "source": "live-pari-2.17.4-unit-oracle",
+    }
     authorities = {
         "presentation": presentation,
         "torsion": _torsion_authority(),
         "cleanarch": _cleanarch_authority(fixture),
         "regulator": _regulator_authority(regulator_authority),
         "relation_unit": relation_unit,
+        "retry_units": retry_units,
     }
     payload = {
         "source": {
@@ -689,7 +739,7 @@ def build_authentic_success_payload(
         "buchall": class_state["buchall"],
         "authorities": authorities,
         "correspondence": {
-            "status": "cold-replayed-authorities-linked-unit-regulator-unresolved",
+            "status": "cold-replayed-exact-unit-correspondence-live-oracle-blocked",
             "active_relation_shape": ["8", "15"],
             "hnf_kernel_shape": ["15", "7"],
             "hnf_kernel_basis": [str(value) for value in kernel_basis],
@@ -797,7 +847,14 @@ def _validate_class_state(payload: Mapping[str, Any]) -> None:
 def _validate_authorities(value: Mapping[str, Any]) -> None:
     authorities = _exact_dict(
         value["authorities"],
-        {"presentation", "torsion", "cleanarch", "regulator", "relation_unit"},
+        {
+            "presentation",
+            "torsion",
+            "cleanarch",
+            "regulator",
+            "relation_unit",
+            "retry_units",
+        },
         "independent authorities",
     )
     presentation = authorities["presentation"]
@@ -888,74 +945,83 @@ def _validate_authorities(value: Mapping[str, Any]) -> None:
     if not regulator_payload["evidence"]["regulator"]["rigorous"]:
         raise AuthenticSuccessFailure("regulator authority is not rigorous")
 
-    relation_unit = _exact_dict(
-        authorities["relation_unit"],
+    relation_unit = authorities["relation_unit"]
+    replay_unit_relation_authority(relation_unit, presentation)
+    rigorous_units = regulator_payload["inputs"]["exact_units_power_coordinates"]
+    if relation_unit["published_units_power_basis"]["entries"] != [
+        str(entry) for row in rigorous_units for entry in row
+    ]:
+        raise AuthenticSuccessFailure(
+            "relation units are detached from regulator units"
+        )
+
+    retry_units = _exact_dict(
+        authorities["retry_units"],
         {
-            "cleanup_transform_shape",
-            "cleanup_transform",
-            "relation_exponent_shape",
-            "relation_exponents",
-            "torsion_signs",
-            "selected_exact_units_shape",
-            "selected_exact_units",
-            "status",
+            "factor_integral_basis_shape",
+            "factor_integral_basis",
+            "getfu_factor_shape",
+            "getfu_factor",
+            "selected_power_basis_shape",
+            "selected_power_basis",
+            "relation_authority_orientation",
+            "source",
         },
-        "relation-unit authority",
+        "retry-unit link",
     )
     if (
-        relation_unit["cleanup_transform_shape"] != ["73", "73"]
-        or relation_unit["relation_exponent_shape"] != ["2", "73"]
-        or relation_unit["selected_exact_units_shape"] != ["2", "3"]
-        or relation_unit["status"]
-        != "exact-principal-relation-product-equals-selected-unit-up-to-torsion"
+        retry_units["factor_integral_basis_shape"] != ["2", "3"]
+        or retry_units["getfu_factor_shape"] != ["2", "2"]
+        or retry_units["selected_power_basis_shape"] != ["2", "3"]
+        or retry_units["source"] != "live-pari-2.17.4-unit-oracle"
     ):
-        raise AuthenticSuccessFailure("relation-unit authority shape changed")
-    cleanup = _integers(
-        relation_unit["cleanup_transform"], "cleanup transform", 73 * 73
+        raise AuthenticSuccessFailure("retry-unit link shape changed")
+    retry_factors = _integers(retry_units["factor_integral_basis"], "retry factors", 6)
+    retry_factor = _integers(retry_units["getfu_factor"], "getfu factor", 4)
+    selected = _integers(retry_units["selected_power_basis"], "selected units", 6)
+    orientation = _integers(
+        retry_units["relation_authority_orientation"],
+        "relation-authority orientation",
+        2,
     )
-    exponents = _integers(
-        relation_unit["relation_exponents"], "relation exponents", 146
+    if orientation != [1, -1]:
+        raise AuthenticSuccessFailure("relation-authority orientation changed")
+    component_kernel = _integers(
+        correspondence["unit_kernel_provenance"], "component kernel provenance", 14
     )
-    signs = _integers(relation_unit["torsion_signs"], "relation torsion signs", 2)
-    selected_exact_units = _integers(
-        relation_unit["selected_exact_units"], "selected exact units", 6
+    authority_kernel = _integers(
+        relation_unit["unit_kernel_provenance"]["entries"],
+        "authority kernel provenance",
+        14,
     )
-    active = _integers(
-        correspondence["active_relation_provenance"], "active provenance", 30
+    component_active = _integers(
+        correspondence["active_relation_provenance"], "component active provenance", 30
     )
-    relations = presentation["relations"]
-    for unit_index in range(2):
-        coefficients = active[15 * unit_index : 15 * (unit_index + 1)] + [0] * 58
-        replayed_exponents = [
-            sum(
-                coefficients[column] * cleanup[73 * column + row]
-                for column in range(73)
-            )
-            for row in range(73)
-        ]
-        if replayed_exponents != exponents[73 * unit_index : 73 * (unit_index + 1)]:
-            raise AuthenticSuccessFailure("relation-unit exponent map changed")
-        product = (Fraction(1), Fraction(0), Fraction(0))
-        for exponent, relation in zip(replayed_exponents, relations):
-            if exponent:
-                alpha = _integers(relation["alpha"], "principal generator", 3)
-                product = _cubic_multiply(
-                    product,
-                    _cubic_power(_integral_to_power(alpha), exponent),
-                )
-        wanted = tuple(
-            Fraction(entry)
-            for entry in selected_exact_units[3 * unit_index : 3 * (unit_index + 1)]
-        )
-        expected_sign = 0
-        if product == wanted:
-            expected_sign = 1
-        elif product == tuple(-entry for entry in wanted):
-            expected_sign = -1
-        if signs[unit_index] != expected_sign:
-            raise AuthenticSuccessFailure("relation-unit replay status changed")
-    if any(sign not in (-1, 1) for sign in signs):
-        raise AuthenticSuccessFailure("exact relation-unit status is stale")
+    authority_active = _integers(
+        relation_unit["active_relation_provenance"]["entries"],
+        "authority active provenance",
+        30,
+    )
+    if authority_kernel != [
+        orientation[unit] * component_kernel[7 * unit + column]
+        for unit in range(2)
+        for column in range(7)
+    ]:
+        raise AuthenticSuccessFailure("relation authority kernel provenance changed")
+    if authority_active != [
+        orientation[unit] * component_active[15 * unit + column]
+        for unit in range(2)
+        for column in range(15)
+    ]:
+        raise AuthenticSuccessFailure("relation authority active provenance changed")
+    if _compose_retry_units(retry_factors, retry_factor) != selected:
+        raise AuthenticSuccessFailure("retry-unit composition changed")
+    if selected != _integers(
+        relation_unit["published_units_power_basis"]["entries"],
+        "published authority units",
+        6,
+    ):
+        raise AuthenticSuccessFailure("retry units are detached from rigorous units")
 
 
 def _validate_payload_unchecked(payload: Any) -> None:
@@ -1079,7 +1145,7 @@ def _validate_payload_unchecked(payload: Any) -> None:
         "correspondence",
     )
     fixed = {
-        "status": "cold-replayed-authorities-linked-unit-regulator-unresolved",
+        "status": "cold-replayed-exact-unit-correspondence-live-oracle-blocked",
         "active_relation_shape": ["8", "15"],
         "hnf_kernel_shape": ["15", "7"],
         "unit_kernel_provenance_shape": ["2", "7"],

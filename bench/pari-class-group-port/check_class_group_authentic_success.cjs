@@ -84,7 +84,7 @@ assert payload["generators"] == {"entries": []}
 assert payload["unit_component"]["terminal_status"] == "getfu-and-cleanarch-complete"
 assert payload["unit_component"]["evidence"]["rank"] == "2"
 assert payload["unit_component"]["evidence"]["claimed_norms"] == ["-1", "-1"]
-assert payload["correspondence"]["status"] == "cold-replayed-authorities-linked-unit-regulator-unresolved"
+assert payload["correspondence"]["status"] == "cold-replayed-exact-unit-correspondence-live-oracle-blocked"
 assert payload["correspondence"]["equal_bound_honesty"] == "equal-bound-source-skip"
 assert payload["correspondence"]["cleanarch_status"] == "cold-replayed-class-relation-cleanarch"
 assert payload["correspondence"]["final_driver_status"] == "not-published"
@@ -94,7 +94,6 @@ assert len(payload["correspondence"]["active_relation_provenance"]) == 30
 assert payload["terminal"]["phase5_complete"] is False
 assert payload["terminal"]["public_complete"] is False
 assert payload["terminal"]["unverified_requirements"] == [
-    "successful-unit-component-to-rigorous-regulator-unit-link",
     "remove-live-pari-unit-oracle-input",
     "independent-unit-saturation-index-one-certificate",
     "independent-factor-base-relation-completeness-certificate",
@@ -161,8 +160,9 @@ mutation(lambda p: p["authorities"]["presentation"]["relations"][0]["alpha"].__s
 mutation(lambda p: p["authorities"]["torsion"]["envelope"]["payload"]["torsion"].__setitem__("order", "3"))
 mutation(lambda p: p["authorities"]["cleanarch"]["output"].__setitem__(1, "99"))
 mutation(lambda p: p["authorities"]["regulator"]["envelope"]["payload"]["evidence"]["exact_unit_norms"].__setitem__(0, "1"))
-mutation(lambda p: p["authorities"]["relation_unit"]["cleanup_transform"].__setitem__(0, "2"))
-mutation(lambda p: p["authorities"]["relation_unit"]["relation_exponents"].__setitem__(0, "1"))
+mutation(lambda p: p["authorities"]["relation_unit"]["active_to_retained_relations"]["entries"].__setitem__(0, "2"))
+mutation(lambda p: p["authorities"]["relation_unit"]["published_units_power_basis"]["entries"].__setitem__(0, "1"))
+mutation(lambda p: p["authorities"]["retry_units"]["getfu_factor"].__setitem__(3, "1"))
 mutation(lambda p: p["terminal"].__setitem__("phase5_complete", True))
 mutation(lambda p: p["terminal"].__setitem__("public_complete", True))
 mutation(lambda p: p["terminal"]["unverified_requirements"].pop())
