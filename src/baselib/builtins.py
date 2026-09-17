@@ -1433,7 +1433,6 @@ def ρσ_operator_add_exact(left: Any, right: Any) -> Any:
 
 
 def _builtins_operator_add_exact_slow(left: Any, right: Any) -> Any:
-    # Primitive floats and strings cannot override Python arithmetic methods.
     left_type = ρσ_python_jstype(left)
     right_type = ρσ_python_jstype(right)
     # Python booleans use integer arithmetic here.

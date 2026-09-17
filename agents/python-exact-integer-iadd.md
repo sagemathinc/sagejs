@@ -43,13 +43,13 @@ Keyword calls and initialized construction remain open cliffs.
 
 ## Qualification
 
-- A source-current eight-stage build passed in 8m 00s.
+- A source-current eight-stage build passed in 7m 59s.
 - All 225 portable test files pass.
 - Strict CPython syntax, Ruff 0.16.0, and Pyright pass for 404 modules.
 - All six pinned traitlets workflow checks pass.
 - Focused in-place dispatch, shared-bootstrap, boolean arithmetic, and operator
   checks pass.
-- Core runtime remains within the unchanged budget at 902,996 / 903,000 bytes.
+- Core runtime remains within the unchanged budget at 902,918 / 903,000 bytes.
 
 This branch is intentionally held behind PR #309.  It must be rebased onto
 fresh main after that prerequisite integrates before a non-draft PR is opened.
