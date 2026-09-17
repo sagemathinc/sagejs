@@ -35,7 +35,9 @@ def pari_modlog2(
     stack: IntegerBuffer,
 ) -> tuple[int, int, int, int]:
     """Return the centered remainder and integer shift; zero uses a sentinel."""
-    if mantissa == 0 or precision < 64 or precision > 153088 or precision % 64 != 0:
+    # PARI's prepared getfu logarithms may retain one guard limb beyond the
+    # nominal 153088-bit field precision.  Range reduction preserves it.
+    if mantissa == 0 or precision < 64 or precision > 153152 or precision % 64 != 0:
         raise ValueError("unsupported exponential range reduction input")
     value = pari_real_to_float(mantissa, precision, exponent)
     quotient = pari_reduction_quotient(value)
