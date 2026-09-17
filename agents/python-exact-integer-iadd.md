@@ -1,6 +1,7 @@
 # Exact primitive integer in-place addition
 
-Base: `ed035d2e3e46b17dba1577e89f41b8bb32cd4abc` (PR #309 candidate).
+Base: `c6466e8e89c0ad580f558d5554b232e5b6918e29` (fresh `origin/main`,
+including merged PRs #308 and #309).
 
 ## Change and semantic boundary
 
@@ -71,6 +72,6 @@ paired receipt is
   checks pass.
 - Core runtime remains within the unchanged budget at 902,918 / 903,000 bytes.
 
-This branch is intentionally held behind PR #309.  It must be rebased onto
-fresh main after that prerequisite integrates before a non-draft PR is opened.
+The qualified commits were replayed onto fresh main after PR #309 merged; the
+focused semantic suite and unchanged package budget pass on that integration.
 No release is implied.

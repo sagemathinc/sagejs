@@ -411,8 +411,8 @@ paths. Against the exact PR #309 artifact, positional calls improve another
 The remaining 13–18x keyword gaps stay open. All 225 portable files, strict
 checks, traitlets, focused dispatch checks, a full build, and the unchanged
 902,918/903,000 core budget pass. Evidence is in
-`agents/python-exact-integer-iadd.md`; hold this dependency behind #309 until
-that prerequisite is integrated into fresh main.
+`agents/python-exact-integer-iadd.md`. PR #309 is now merged, and the qualified
+commits are replayed on the resulting `origin/main` for integration.
 
 Continue next with integration-aware qualification, the receiver-lookup campaign,
 and true handled-exception ownership. Generator/coroutine suspension makes a
