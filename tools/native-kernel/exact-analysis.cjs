@@ -509,6 +509,77 @@ function storageAnalysis(fn) {
   };
 }
 
+/*
+ * A private exact call is allowed to borrow its caller's scratch only when the
+ * compiler can reserve a disjoint, bounded suffix for the complete acyclic
+ * call chain.  The layout is a stack discipline rather than a sum over the
+ * whole module: a caller keeps its liveness-coloured locals in the prefix and
+ * every (sequential) child reuses the same suffix.  Recursive graphs and exact
+ * arena bodies retain the existing per-function init/clear path.  In
+ * particular, we do not let a scratch value outlive an arena checkpoint that
+ * may have supplied its GMP limbs.
+ */
+const MAX_RESIDENT_EXACT_SCRATCH_SLOTS = 1 << 16;
+
+function residentExactScratchAnalyses(functions, recursive) {
+  const exact = new Map(functions
+    .filter((fn) => fn.kernelKind === "integer")
+    .map((fn) => [fn.name, fn]));
+  const memo = new Map();
+  const visiting = new Set();
+  const analyze = (fn) => {
+    if (memo.has(fn.name)) return memo.get(fn.name);
+    if (recursive.has(fn.name) || visiting.has(fn.name) ||
+        fn.analysis?.liveExactWorkspace !== undefined) {
+      memo.set(fn.name, undefined);
+      return undefined;
+    }
+    visiting.add(fn.name);
+    let childSlots = 0;
+    const qualifiedChildren = [];
+    for (const name of fn.dependencies || []) {
+      const child = exact.get(name);
+      if (child === undefined) continue;
+      const analysis = analyze(child);
+      // Zero-slot functions are deliberately left unannotated below: they do
+      // not need the hidden frame ABI.  Exclude them from the authenticated
+      // child closure as well so analysis and emission describe the same
+      // private call graph.
+      if (analysis === undefined || analysis.frameSlots === 0) continue;
+      childSlots = Math.max(childSlots, analysis.frameSlots);
+      qualifiedChildren.push(name);
+    }
+    visiting.delete(fn.name);
+    const localSlots = fn.analysis?.storage?.scratchSlots;
+    if (!Number.isSafeInteger(localSlots) || localSlots < 0 ||
+        !Number.isSafeInteger(childSlots) || childSlots < 0 ||
+        localSlots > MAX_RESIDENT_EXACT_SCRATCH_SLOTS - childSlots) {
+      memo.set(fn.name, undefined);
+      return undefined;
+    }
+    const frameSlots = localSlots + childSlots;
+    const result = {
+      authority: "closed-acyclic-exact-scratch-frame-v1",
+      localSlots,
+      childBaseOffset: localSlots,
+      frameSlots,
+      maximumFrameSlots: MAX_RESIDENT_EXACT_SCRATCH_SLOTS,
+      qualifiedChildren: qualifiedChildren.sort(),
+      ownership: "root-initialized-private-call-graph-or-local-fallback",
+      cleanup: "owning-root-only-on-success-and-error",
+    };
+    memo.set(fn.name, result);
+    return result;
+  };
+  for (const fn of exact.values()) analyze(fn);
+  for (const fn of exact.values()) {
+    const analysis = memo.get(fn.name);
+    if (analysis !== undefined && analysis.frameSlots > 0) {
+      fn.analysis.residentExactScratch = analysis;
+    }
+  }
+}
+
 function constantBits(value) {
   const integer = BigInt(value);
   const magnitude = integer < 0n ? -integer : integer;
@@ -2164,6 +2235,7 @@ function analyzeExactModule(functions) {
       fn.hostCallable = false;
     }
   }
+  residentExactScratchAnalyses(functions, recursive);
   const primeSourceEffects = primeSourceEffectAnalyses(functions);
   for (const fn of functions) {
     const effects = primeSourceEffects.get(fn.name);

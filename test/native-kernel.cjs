@@ -677,7 +677,7 @@ assert.match(
   integerAlgorithmsC,
   /native_native_lcm[\s\S]*native_native_gcd\(status/,
 );
-assert.match(integerAlgorithmsC, /mpz_t sagejs_scratch_0/);
+assert.match(integerAlgorithmsC, /mpz_ptr sagejs_scratch_0/);
 assert.doesNotMatch(integerAlgorithmsC, /mpz_t sagejs_a;/);
 assert.match(integerAlgorithmsC, /mpz_fdiv_q\(/);
 assert.match(integerAlgorithmsC, /mpz_fdiv_r\(/);

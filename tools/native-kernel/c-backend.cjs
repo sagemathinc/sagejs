@@ -405,9 +405,71 @@ function internalResults(fn, type) {
   throw new Error(`unsupported exact native return ${type}`);
 }
 
+const MAX_RESIDENT_EXACT_SCRATCH_SLOTS = 1 << 16;
+
+function validateResidentExactScratch(functions) {
+  const exact = new Map(functions
+    .filter((fn) => fn.kernelKind === "integer")
+    .map((fn) => [fn.name, fn]));
+  for (const fn of exact.values()) {
+    const scratch = fn.analysis?.residentExactScratch;
+    if (scratch === undefined) continue;
+    const expectedChildren = (fn.dependencies || [])
+      .filter((name) => exact.get(name)?.analysis?.residentExactScratch !== undefined)
+      .sort();
+    const expectedChildSlots = expectedChildren.reduce((maximum, name) =>
+      Math.max(maximum,
+        exact.get(name).analysis.residentExactScratch.frameSlots), 0);
+    const expectedFrameSlots = scratch.localSlots + expectedChildSlots;
+    if (scratch.authority !== "closed-acyclic-exact-scratch-frame-v1" ||
+        scratch.ownership !==
+          "root-initialized-private-call-graph-or-local-fallback" ||
+        scratch.cleanup !== "owning-root-only-on-success-and-error" ||
+        scratch.localSlots !== fn.analysis?.storage?.scratchSlots ||
+        scratch.childBaseOffset !== scratch.localSlots ||
+        scratch.maximumFrameSlots !== MAX_RESIDENT_EXACT_SCRATCH_SLOTS ||
+        !Number.isSafeInteger(scratch.localSlots) || scratch.localSlots < 0 ||
+        !Number.isSafeInteger(scratch.frameSlots) ||
+        scratch.frameSlots < scratch.localSlots ||
+        scratch.frameSlots !== expectedFrameSlots ||
+        scratch.frameSlots > MAX_RESIDENT_EXACT_SCRATCH_SLOTS ||
+        JSON.stringify(scratch.qualifiedChildren) !==
+          JSON.stringify(expectedChildren)) {
+      throw new Error(`${fn.name}: invalid resident exact scratch authority`);
+    }
+    for (const name of scratch.qualifiedChildren) {
+      const child = exact.get(name)?.analysis?.residentExactScratch;
+      if (child === undefined ||
+          child.frameSlots > scratch.frameSlots - scratch.childBaseOffset) {
+        throw new Error(`${fn.name}: invalid resident exact child frame ${name}`);
+      }
+    }
+  }
+  const visiting = new Set();
+  const visited = new Set();
+  const visit = (name) => {
+    if (visiting.has(name)) {
+      throw new Error(`${name}: cyclic resident exact scratch authority`);
+    }
+    if (visited.has(name)) return;
+    visiting.add(name);
+    const scratch = exact.get(name)?.analysis?.residentExactScratch;
+    for (const child of scratch?.qualifiedChildren || []) visit(child);
+    visiting.delete(name);
+    visited.add(name);
+  };
+  for (const name of exact.keys()) visit(name);
+}
+
 function internalSignature(fn, prototype = false) {
+  const residentScratch = fn.analysis?.residentExactScratch;
   const argumentsList = [
     "sagejs_native_status *status",
+    ...(residentScratch === undefined ? [] : [
+      "mpz_ptr sagejs_exact_scratch_frame",
+      "size_t sagejs_exact_scratch_capacity",
+      "size_t sagejs_exact_scratch_base",
+    ]),
     ...internalResults(fn, fn.returnType),
     ...fn.params.map((param) => internalArgument(fn, param)),
   ].join(", ");
@@ -1694,8 +1756,24 @@ ${indent}}`;
     const calleeName = callee.kernelKind === "float64"
       ? `sagejs_kernel_${operation.function}`
       : `native_${operation.function}`;
+    const calleeScratch = callee.analysis?.residentExactScratch;
+    const callerScratch = context.residentScratch;
+    const sharesScratch = calleeScratch !== undefined &&
+      callerScratch !== undefined &&
+      callerScratch.qualifiedChildren.includes(operation.function);
+    const scratchArguments = calleeScratch === undefined
+      ? []
+      : sharesScratch
+        ? [
+          "sagejs_exact_scratch_frame",
+          "sagejs_exact_scratch_capacity",
+          `sagejs_exact_scratch_base + ${callerScratch.childBaseOffset}`,
+        ]
+        : ["NULL", "0", "0"];
     return [
-      `${indent}if (!${calleeName}(status, ${outputs.join(", ")}` +
+      `${indent}if (!${calleeName}(status, ` +
+        `${scratchArguments.length ? `${scratchArguments.join(", ")}, ` : ""}` +
+        `${outputs.join(", ")}` +
         `${args.length ? `, ${args.join(", ")}` : ""}))`,
       `${indent}    goto fail;`,
     ].join("\n");
@@ -2019,14 +2097,77 @@ function emitExactStatements(statements, context, indent) {
 
 function exactDeclarations(fn) {
   const storage = fn.analysis.storage;
+  const residentScratch = fn.analysis?.residentExactScratch;
   const declarations = [];
   const initialization = [];
   const cleanup = [];
   const arenaCleanup = [];
-  for (let slot = 0; slot < storage.scratchSlots; slot += 1) {
-    declarations.push(`    mpz_t sagejs_scratch_${slot};`);
-    initialization.push(`    mpz_init(sagejs_scratch_${slot});`);
-    cleanup.unshift(`    mpz_clear(sagejs_scratch_${slot});`);
+  if (residentScratch !== undefined) {
+    declarations.push(
+      "    mpz_ptr sagejs_owned_exact_scratch = NULL;",
+      "    size_t sagejs_owned_exact_scratch_initialized = 0;",
+      "    int sagejs_owns_exact_scratch = 0;",
+    );
+    for (let slot = 0; slot < storage.scratchSlots; slot += 1) {
+      declarations.push(`    mpz_ptr sagejs_scratch_${slot} = NULL;`);
+    }
+    initialization.push(
+      "    if (sagejs_exact_scratch_frame == NULL)",
+      "    {",
+      "        sagejs_owned_exact_scratch = malloc(",
+      `            ${residentScratch.frameSlots} *`,
+      "                sizeof(*sagejs_owned_exact_scratch));",
+      "        if (sagejs_owned_exact_scratch == NULL)",
+      "        {",
+      "            sagejs_native_status_set(status, SAGEJS_NATIVE_ERROR,",
+      '                "unable to allocate resident exact scratch frame");',
+      "            goto fail;",
+      "        }",
+      "        sagejs_owns_exact_scratch = 1;",
+      `        while (sagejs_owned_exact_scratch_initialized < ${residentScratch.frameSlots})`,
+      "        {",
+      "            mpz_init(sagejs_owned_exact_scratch +",
+      "                sagejs_owned_exact_scratch_initialized);",
+      "            sagejs_owned_exact_scratch_initialized += 1;",
+      "        }",
+      "        sagejs_exact_scratch_frame = sagejs_owned_exact_scratch;",
+      `        sagejs_exact_scratch_capacity = ${residentScratch.frameSlots};`,
+      "        sagejs_exact_scratch_base = 0;",
+      "    }",
+      "    if (sagejs_exact_scratch_base > sagejs_exact_scratch_capacity ||",
+      `        ${residentScratch.frameSlots} > sagejs_exact_scratch_capacity -`,
+      "            sagejs_exact_scratch_base)",
+      "    {",
+      "        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,",
+      '            "resident exact scratch frame capacity mismatch");',
+      "        goto fail;",
+      "    }",
+    );
+    for (let slot = 0; slot < storage.scratchSlots; slot += 1) {
+      initialization.push(
+        `    sagejs_scratch_${slot} = sagejs_exact_scratch_frame +`,
+        `        sagejs_exact_scratch_base + ${slot};`,
+        `    mpz_set_ui(sagejs_scratch_${slot}, 0);`,
+      );
+    }
+    cleanup.unshift(
+      "    if (sagejs_owns_exact_scratch)",
+      "    {",
+      "        while (sagejs_owned_exact_scratch_initialized > 0)",
+      "        {",
+      "            sagejs_owned_exact_scratch_initialized -= 1;",
+      "            mpz_clear(sagejs_owned_exact_scratch +",
+      "                sagejs_owned_exact_scratch_initialized);",
+      "        }",
+      "        free(sagejs_owned_exact_scratch);",
+      "    }",
+    );
+  } else {
+    for (let slot = 0; slot < storage.scratchSlots; slot += 1) {
+      declarations.push(`    mpz_t sagejs_scratch_${slot};`);
+      initialization.push(`    mpz_init(sagejs_scratch_${slot});`);
+      cleanup.unshift(`    mpz_clear(sagejs_scratch_${slot});`);
+    }
   }
   for (const name of storage.borrowedLocals || []) {
     declarations.push(`    mpz_srcptr ${cName(name)} = NULL;`);
@@ -2152,6 +2293,8 @@ function exactDeclarations(fn) {
       `${exactBufferCType(local.type) !== undefined ? "{0}" : "0"};`);
   }
   const context = {
+    fn,
+    residentScratch,
     storage,
     arenaRetryable: exactArenaRetryable(fn),
     freshIdentifier: createIdentifierAllocator([...fn.params, ...fn.locals].flatMap(value =>
@@ -2827,9 +2970,13 @@ function emitExactWrapper(fn, options = {}) {
       : parameterValue(param)
   );
   const failureRefresh = resourceFailureRefreshStatements(fn, parameterValue);
+  const scratchArguments = options.call !== undefined ||
+      fn.analysis?.residentExactScratch === undefined
+    ? [] : ["NULL", "0", "0"];
   const execution = exactWrapperExecution(
     fn,
     `${options.call || `native_${fn.name}`}(&${wrapperStatus}, ` +
+      `${scratchArguments.length ? `${scratchArguments.join(", ")}, ` : ""}` +
       `${resultArguments.join(", ")}` +
       `${argumentsList.length ? `, ${argumentsList.join(", ")}` : ""})`,
     wrapperStatus,
@@ -4419,10 +4566,14 @@ ${cleanup.join("\n")}
       `sagejs_native_output_${index}`
     );
   const args = fn.params.map((param) => `sagejs_arg_${param.name}`);
+  const scratchArguments = fn.analysis?.residentExactScratch === undefined
+    ? [] : ["NULL", "0", "0"];
   return `${publicCoreSignature(fn)}
 {
     sagejs_native_status_reset(status);
-    return native_${fn.name}(status, ${outputs.join(", ")}` +
+    return native_${fn.name}(status, ` +
+    `${scratchArguments.length ? `${scratchArguments.join(", ")}, ` : ""}` +
+    `${outputs.join(", ")}` +
     `${args.length ? `, ${args.join(", ")}` : ""});
 }`;
 }
@@ -4798,6 +4949,7 @@ function generateHostCore(ir, options = {}) {
         .sort(),
     };
   });
+  validateResidentExactScratch(functions);
   const exact = functions.filter((fn) => fn.kernelKind === "integer");
   const exactEntries = exact.filter(hostCallable);
   // Prime-source callers use the checked scalar core ABI, even when their
