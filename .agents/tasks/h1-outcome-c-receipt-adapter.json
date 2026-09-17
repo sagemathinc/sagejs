@@ -1,0 +1,49 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "h1-outcome-c-receipt-adapter",
+  "title": "H1 Outcome C Receipt Adapter",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "final_mutation_replay",
+  "objective": "Implement the authenticated Outcome-C diagnostic receipt adapter for the authentic h1 sentinel atop exclusive stage timing, failing closed at the pending prepared-root completion edge",
+  "base_commit": "f0d3cfe24d58e46492635fd20c6a24dd5e0c0772",
+  "claims": [
+    "bench/pari-class-group-port/h1-outcome-c-adapter-receipt.schema.json",
+    "bench/pari-class-group-port/h1_outcome_c_adapter.cjs",
+    "bench/pari-class-group-port/h1_outcome_c_worker.cjs",
+    "bench/pari-class-group-port/check_h1_outcome_c_adapter.cjs",
+    "bench/pari-class-group-port/h1_outcome_c_adapter.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "actual 351-parameter prepared-root ABI",
+      "exclusive stage receipt verifier",
+      "authenticated cold replay and matched Sage.js/PARI digests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node bench/pari-class-group-port/check_h1_outcome_c_adapter.cjs",
+    "node bench/pari-class-group-port/check_h1_exclusive_stage_timing.cjs",
+    "pnpm merge:check"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

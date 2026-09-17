@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/pari-class-group-h1-outcome-c-adapter-v1.json",
+  "title": "Authentic h1 Outcome-C diagnostic adapter receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "qualifiedTiming", "finalTimingRun", "executionStatus",
+    "workerMode", "preparedInput", "workers", "authenticatedDigests",
+    "attributionDerived", "diagnosticReceipt"
+  ],
+  "properties": {
+    "schema": {"const": 1},
+    "qualifiedTiming": {"const": false},
+    "finalTimingRun": {"const": false},
+    "executionStatus": {"const": "diagnostic-complete"},
+    "workerMode": {"enum": ["authentic", "self-test"]},
+    "preparedInput": {"$ref": "#/$defs/preparedInput"},
+    "workers": {"$ref": "#/$defs/workers"},
+    "authenticatedDigests": {
+      "const": ["result", "replay", "rng", "work"]
+    },
+    "attributionDerived": {"const": true},
+    "diagnosticReceipt": {
+      "$ref": "https://sagejs.org/schemas/pari-class-group-h1-exclusive-stage-timing-v1.json"
+    }
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "preparedInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema", "sha256", "rootSourceSha256", "canonicalBytes",
+        "parameterCount", "nonzeroOwners"
+      ],
+      "properties": {
+        "schema": {"const": "sagejs.pari-class-group/sanitized-prepared-h1-v1"},
+        "sha256": {"$ref": "#/$defs/digest"},
+        "rootSourceSha256": {"$ref": "#/$defs/digest"},
+        "canonicalBytes": {"type": "integer", "minimum": 1},
+        "parameterCount": {"type": "integer", "minimum": 1},
+        "nonzeroOwners": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "worker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["implementation", "workerSha256", "adapterSha256"],
+      "properties": {
+        "implementation": {"enum": ["sagejs", "pari"]},
+        "workerSha256": {"$ref": "#/$defs/digest"},
+        "adapterSha256": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "workers": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sagejs", "pari"],
+      "properties": {
+        "sagejs": {"$ref": "#/$defs/worker"},
+        "pari": {"$ref": "#/$defs/worker"}
+      }
+    }
+  }
+}
