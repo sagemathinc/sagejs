@@ -6,15 +6,16 @@
   "lane": "integration",
   "status": "active",
   "owner": "user",
-  "objective": "Compile one ordinary-Python ownership domain for the live H1 owner bridge, exact cubic units, p2176 embedding/log rebuild, regulator determinant, and final authority state",
-  "base_commit": "07486073fb13d491af82b62f293d96799cc6f9ff",
+  "objective": "Compile a native retrying H1 suffix with live logical dimensions, source-policy precision transitions, exact replay, transactional publication, and caller-capped incomplete state",
+  "base_commit": "119f4674d5ab6177c12e661403723c7d9170b9e1",
   "claims": [
     "bench/pari-class-group-port/unified_full_h1_root.py",
     "bench/pari-class-group-port/check_unified_full_h1_root.cjs",
     "bench/pari-class-group-port/unified_full_h1_root_audit.md"
   ],
   "dependencies": [
-    "live-prepared-h1-worker"
+    "live-prepared-h1-worker",
+    "h1-precision-retry-driver"
   ],
   "references": [],
   "architecture": {
@@ -36,7 +37,9 @@
   "validation": [
     "pnpm architecture:check",
     "pnpm test:portable",
-    "pnpm test:baselib:strict"
+    "pnpm test:baselib:strict",
+    "node bench/pari-class-group-port/check_unified_full_h1_root.cjs",
+    "pnpm format:python --check"
   ],
   "runs": [
     {
@@ -48,11 +51,46 @@
       "commit": "07486073fb13d491af82b62f293d96799cc6f9ff",
       "workspace_fingerprint": "2a3b07b0b851155fd5d684f9c9f8469b6b3a28b0d9645fe25504d1844a40bd94",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_unified_full_h1_root.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 22.307,
+      "started_at": "2026-09-17T05:37:05.430Z",
+      "commit": "bb76354b8f919119752a3c5929c43568edf4baeb",
+      "workspace_fingerprint": "417dfb078c0f68fdd8dac89c5451eb2847ea1bebf2ffab878b791f50d8b1111e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_unified_full_h1_root.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 22.531,
+      "started_at": "2026-09-17T05:37:37.515Z",
+      "commit": "bb76354b8f919119752a3c5929c43568edf4baeb",
+      "workspace_fingerprint": "4fdb21e2a0dd4e3c496ce35856c34da451df7a65631d25b7622e69c413fbcf6f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm format:python --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.895,
+      "started_at": "2026-09-17T05:38:59.817Z",
+      "commit": "bb76354b8f919119752a3c5929c43568edf4baeb",
+      "workspace_fingerprint": "4fdb21e2a0dd4e3c496ce35856c34da451df7a65631d25b7622e69c413fbcf6f",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Added a source-transparent native retrying H1 suffix. It consumes live logical dimensions and a caller cap, retries through pari_live_retry_transition, preserves phase bits and the embedding/getfu layout boundary, exactly validates getfu units, and publishes all public owners transactionally only after genuine success. The authentic fixture reaches signed-getfu success at the policy-selected p2304; p192 and p2048 caps remain incomplete without publication.",
+    "risks": [
+      "The focused checker injects the separately qualified bridge compact provenance and factor transform, so this receipt covers the native suffix rather than the complete candidate-to-authority graph.",
+      "pnpm architecture:check remains blocked by the pre-existing unclassified bench/pari-class-group-port/pari_h1_outcome_c_adapter.c outside this lane's claims."
+    ],
+    "next_steps": [
+      "Integration should compose pari_live_retrying_h1_suffix after the same-addon live owner bridge, passing the resident-derived logical dimensions and bridge-owned transforms directly."
+    ]
   }
 }

@@ -1,6 +1,49 @@
-# Frozen full H1 native-suffix control
+# Live retrying H1 native suffix
 
-## Closed ownership domain
+## Publish authority
+
+`pari_live_retrying_h1_suffix` is one ordinary-Python compiled call graph for
+the precision-dependent end of the real-cubic H1 path. It accepts the live
+relation, active-HNF, and compact-factor dimensions, their independently
+bounded owner capacities, an initial precision, and a caller resource cap.
+The root composes and exactly replays the kernel and retained relations before
+entering a retry loop driven only by `pari_live_retry_transition`.
+
+Each attempt rebuilds the cubic embeddings and S-unit logarithms in reusable
+caller-owned scratch, preserves the characteristic-two phase bits, and
+transposes the embedding rebuild's row-major matrix at the signed-getfu
+column-major boundary. Signed getfu receives its own reusable exponential
+workspace. The relation rows passed to the S-unit leaf use the live logical
+relation count as their stride, while padded capacity remains available for
+the exact/public relation owners.
+
+The six public result owners are transactional. The root publishes retained
+relations, exact units, norms, logs, phases, and the regulator only after
+signed getfu succeeds, the returned units agree with independent exact
+relation replay up to inversion, and the regulator determinant succeeds. If
+the next retry selected by source policy exceeds the caller's resource cap,
+the root returns incomplete and leaves every public result owner untouched.
+
+There is no terminal-precision literal, fixture logical dimension, expected
+regulator, ULP corridor, or answer-derived success condition in this root.
+For the authentic saved resident owners, the observed policy path is p192,
+p384, p768, and p1536 with `PRECI`, followed by genuine success at p2304.
+That terminal precision is a checker observation, not control flow. The final
+state is `[0, 5, 2304, 0, 3, 73, 15, 7, 2, 7, 2, 0, 0, 0, 1, 4096]`, the
+exact norms are `[-1, -1]`, and the published phase bits are
+`[0, 0, 1, 1, 1, 1]`.
+
+Focused mutations show that caps at p192 and p2048 leave publication owners
+at their sentinels, shortening the live active-HNF dimension is rejected, and
+changing a principal-generator exact owner is rejected before publication.
+The checker injects the already-qualified bridge compact provenance and
+factor transform as a component oracle. Consequently this is a genuine native
+retrying suffix receipt, not by itself a candidate-to-authority timed-root
+receipt.
+
+## Frozen component control
+
+### Closed ownership domain
 
 `pari_unified_full_h1_suffix` is the ordinary-Python native continuation of
 the authentic real-cubic resident/bridge path. It consumes only live owners:
@@ -30,7 +73,7 @@ the translated retry policy, and import this work with the neighboring
 candidate/bridge root into one compilation unit. Passing buffers between
 separately generated addons is explicitly not supported.
 
-## Authentic result
+### Authentic result
 
 The focused checker uses saved live resident output for
 `x^3 - 20018*x + 20034`. It injects the already qualified compact provenance
