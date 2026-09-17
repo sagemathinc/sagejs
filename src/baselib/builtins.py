@@ -2032,6 +2032,13 @@ def ρσ_operator_pow(left: Any, right: Any) -> Any:
 
 def ρσ_operator_pow_python_exact(left: Any, right: Any) -> Any:
     """Use exact Python integers without giving them Sage rational powers."""
+    result = runtime.reflect.apply(
+        ρσ_exact_integer_power,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        runtime.undefined,
+        [left, right, _BUILTINS_MISSING],
+    )
+    if result is not _BUILTINS_MISSING:
+        return result
     if (
         _builtins_exact_integer_primitive(left)
         and _builtins_exact_integer_primitive(right)
@@ -2042,6 +2049,13 @@ def ρσ_operator_pow_python_exact(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_pow_exact(left: Any, right: Any) -> Any:
+    result = runtime.reflect.apply(
+        ρσ_exact_integer_power,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        runtime.undefined,
+        [left, right, _BUILTINS_MISSING],
+    )
+    if result is not _BUILTINS_MISSING:
+        return result
     if isinstance(right, runtime.rational_class):
         if right._denominator != 1:
             if getattr(
@@ -2063,17 +2077,10 @@ def ρσ_operator_pow_exact(left: Any, right: Any) -> Any:
     ):
         denominator = runtime.native_pow(runtime.bigint(left), -runtime.bigint(right))
         return runtime.rational_class(1, denominator)
-    if runtime.strict_equal(left_type, right_type) and (
-        runtime.strict_equal(left_type, "number")
-        or runtime.strict_equal(left_type, "bigint")
+    if runtime.strict_equal(left_type, "number") and runtime.strict_equal(
+        right_type, "number"
     ):
-        if runtime.strict_equal(left_type, "bigint") and right < 0:
-            raise ValueError(
-                "negative powers of exact integers are not implemented yet"
-            )
         result = runtime.native_pow(left, right)
-        if not runtime.strict_equal(left_type, "number"):
-            return result
         if (
             runtime.number.isNaN(result)
             and left < 0
@@ -2081,33 +2088,7 @@ def ρσ_operator_pow_exact(left: Any, right: Any) -> Any:
             and runtime.number.isFinite(runtime.number(right))
         ):
             return complex(left) ** right
-        if _builtins_is_python_float(left) or _builtins_is_python_float(right):
-            return ρσ_float_result(result)
-        if (
-            result <= runtime.number.MAX_SAFE_INTEGER
-            and result >= runtime.number.MIN_SAFE_INTEGER
-        ):
-            return result
-        if (
-            runtime.number.isSafeInteger(left)
-            and runtime.number.isSafeInteger(right)
-            and right >= 0
-        ):
-            return runtime.native_pow(runtime.bigint(left), runtime.bigint(right))
-        return result
-    if (
-        (
-            runtime.strict_equal(left_type, "bigint")
-            or runtime.strict_equal(right_type, "bigint")
-        )
-        and _builtins_exact_integer_primitive(left)
-        and _builtins_exact_integer_primitive(right)
-    ):
-        if right < 0:
-            raise ValueError(
-                "negative powers of exact integers are not implemented yet"
-            )
-        return runtime.native_pow(runtime.bigint(left), runtime.bigint(right))
+        return ρσ_float_result(result)
     if _builtins_member_is_function(left, "__pow__"):
         result = _builtins_call_member(left, "__pow__", [right])
         if result is not NotImplemented:
@@ -2265,7 +2246,25 @@ def ρσ_operator_imul_exact(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_ipow_exact(left: Any, right: Any) -> Any:
+    result = runtime.reflect.apply(
+        ρσ_exact_integer_power,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        runtime.undefined,
+        [left, right, _BUILTINS_MISSING],
+    )
+    if result is not _BUILTINS_MISSING:
+        return result
     return _builtins_inplace(left, right, "__ipow__", ρσ_operator_pow_exact)
+
+
+def ρσ_operator_ipow_python_exact(left: Any, right: Any) -> Any:
+    result = runtime.reflect.apply(
+        ρσ_exact_integer_power,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        runtime.undefined,
+        [left, right, _BUILTINS_MISSING],
+    )
+    if result is not _BUILTINS_MISSING:
+        return result
+    return _builtins_inplace(left, right, "__ipow__", ρσ_operator_pow_python_exact)
 
 
 def ρσ_operator_idiv_exact(left: Any, right: Any) -> Any:
