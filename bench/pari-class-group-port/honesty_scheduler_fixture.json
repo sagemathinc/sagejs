@@ -1,0 +1,37 @@
+{
+  "identity": {
+    "pariVersion": "2.17.4",
+    "archiveSha256": "02651d99c391007d384b3fadbc20abc6916b77036f9e496c99e9ce8688ca4b53",
+    "leafFixtureSha256": "9b34eca4b40c6af731202e0e6d64727af84c0d1610c6f4368c66fb2df22b4b1d",
+    "exactFactorBaseSourceSha256": "d5c5d0845d4e330a9eca419a7eb7529a95d83fe883c0e549a7fb2df0dc9dd346"
+  },
+  "outerSchedule": [
+    [1, 2, 2, 3, 2],
+    [2, 3, 3, 1, 2],
+    [3, 7, 2, 1, 1],
+    [4, 11, 3, 2, 3],
+    [5, 13, 2, 1, 1],
+    [6, 17, 4, 1, 3],
+    [7, 23, 2, 1, 1],
+    [8, 29, 2, 1, 1],
+    [9, 31, 2, 1, 1]
+  ],
+  "backingFactorBase": [2, 3, 7, 11, 13, 17, 23, 29, 31],
+  "factorProduct": "6",
+  "collectorStatusSha256": "c95e48269e3ff53983538aaea302b9cc1fc2d9e027bd1b8fbdebdd97c54780aa",
+  "collectorCounterSha256": "1f6371444e240a96a75ff37d2f96f4533bdfd6582dd1c20ad5a85da98e274c20",
+  "schedulerStateSha256": "3e479324a2ed099b0a1dc7578900b965b8ff20b13a576d879140f64f6d639714",
+  "finalState": [
+    2, 2, 9, 4, 11, 1, 51, 51, 50, -1, 0, 0, 0, 0, 5, 51, 50,
+    2673, 0, 1, 1
+  ],
+  "finalRngSha256": "abbb9c3c53ecd18c482280310a7ed43a4cceb06792b6f6c36e6c05163b3256ef",
+  "finalIdeal": ["2673", "2619", "2302", "0", "1", "0", "0", "0", "1"],
+  "result": { "success": 0, "finalKCZ": 2, "probes": 51, "draws": 50 },
+  "genericGaps": [
+    "nontrivial automorphism orbits",
+    "outer Q_primpart",
+    "idealred threshold",
+    "successful KCZ increment and all-success restoration"
+  ]
+}
