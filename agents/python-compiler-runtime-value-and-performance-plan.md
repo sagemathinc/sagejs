@@ -342,6 +342,19 @@ pass at 902,699/903,000 core bytes. Exact artifacts and qualification are in
 dependency until PR #301 and the binder slice reach `origin/main`; do not let a
 stacked PR merge into a feature branch.
 
+**2026-09-17 attribute-read checkpoint:** a further stacked candidate reuses
+the ordinary-store proof for direct own-field reads only when full resolution
+also proves default `__getattribute__`. Class mutation/deletion, descriptors,
+custom lookup, namespace exposure/replacement, own-field deletion, native
+receivers, and evaluation order retain full paths. Against the store candidate,
+positional construction plus a method improves another 31.2% and keyword
+construction 21.8%; the residual gaps are 13.8x and 15.2x CPython. All 225
+portable files, strict checks, traitlets, attrs, decorator, docs, and merge
+invariants pass at 902,665/903,000 core bytes. The common standalone shrinks by
+71,972 bytes. Exact artifacts and the checked access decomposition are recorded
+in `agents/python-attribute-read-cache.md`. Keep this branch behind the same
+integration queue; ordinary reads/stores and call binding remain M5 cliffs.
+
 Continue next with integration-aware qualification, the receiver-lookup campaign,
 and true handled-exception ownership. Generator/coroutine suspension makes a
 single global active-exception pointer unsafe: preserve owned handlers while

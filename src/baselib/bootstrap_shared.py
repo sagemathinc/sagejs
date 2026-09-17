@@ -123,8 +123,8 @@ def ρσ_prepare_method_call(value, name):
     })()"""
 
 
-def ρσ_store_attr(value, name, member):
-    return r"""%js (()=>{const p=value==null?undefined:Object.getPrototypeOf(value),c=p===undefined?undefined:_builtins_store_cache.get(p);if(c!==undefined&&c.get(name)===_builtins_descriptor_epoch.value&&!_builtins_instance_namespaces.has(value)&&!Object.hasOwn(value,"__setattr__")){let f=_builtins_instance_fields.get(value);if(f===undefined){f=new Set;_builtins_instance_fields.set(value,f)}f.add(name);Object.defineProperty(value,name,{value:member,writable:true,enumerable:true,configurable:true});return null}return ρσ_setattr(value,name,member)})()"""
+def ρσ_attr(value, name, member):
+    return r"""%js (()=>{const r=arguments.length<3,p=value==null?0:Object.getPrototypeOf(value),c=p&&_builtins_store_cache.get(p),h=Object.hasOwn;if(c&&c.get(name)===_builtins_descriptor_epoch.value&&!_builtins_instance_namespaces.has(value)&&(r?h(value,name):!h(value,"__setattr__"))){if(r)return value[name];let f=_builtins_instance_fields.get(value);if(f===undefined){f=new Set;_builtins_instance_fields.set(value,f)}f.add(name);Object.defineProperty(value,name,{value:member,writable:true,enumerable:true,configurable:true});return null}return r?ρσ_getattr_internal(value,name,ρσ_getattr_missing):ρσ_setattr(value,name,member)})()"""
 
 
 def ρσ_interpolate_kwargs(receiver, target_function, supplied_args):
