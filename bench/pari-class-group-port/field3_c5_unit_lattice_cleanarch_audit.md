@@ -12,7 +12,7 @@ The coordinator requires three independent immutable, mode-0444 owners:
   exact relation-image certificate;
 - the eventual C3 high-precision `3 x 13` packed logarithm owner; and
 - an analytically accepted C4 candidate which binds both preceding owners by
-  SHA-256, carries terminal retry semantics, and records a field-derived
+  SHA-256, carries terminal analytic-acceptance semantics, and records a field-derived
   successful `bad_check` decision.
 
 C5 verifies that the C3 `301 x 13` transform is exactly the unit prefix of the
@@ -26,7 +26,7 @@ The accepted-C4 schema is
 separate owner because C4 itself intentionally stops with
 `analyticPending=1`.  C5 requires `candidatePublished=true`,
 `analyticPending=false`, `badCheckStatus=0`, `fieldDerived=true`, and a
-completed terminal retry protocol.  This lane does not invent the analytic
+completed acceptance state.  This lane does not invent the analytic
 class-number authority.
 
 ## Arithmetic and publication
@@ -52,8 +52,10 @@ The outer coordinator repeats the exact raw-transform product, then publishes
 a content-addressed JSON owner atomically and idempotently at mode 0444.
 
 The general mixed-quartic cleanarch precision admission was extended from the
-old experimental ceiling through 153152 bits.  This includes both the 153088
-target and C4's single 64-bit retry; it changes no arithmetic.
+old experimental ceiling through the 153088-bit field target; it changes no
+arithmetic.  The internal 153152-bit embedding guard is not a `compute_R` or
+cleanarch retry target.  A genuine `compute_R` precision retry would target
+229632 bits and is outside this C5 cut; `getfu` PRECI remains terminal here.
 
 ## Focused evidence and deferred gates
 
@@ -65,7 +67,7 @@ composition, immutable/idempotent publication, and mutations of analytic
 acceptance, owner binding, latches, and regulator.  It also compiles the
 81-argument native root and exercises its JavaScript short-owner preflight.
 
-An authentic 153088/153152-bit run, C6 `getfu`, broad repository tests, and a
+An authentic 153088-bit run, C6 `getfu`, broad repository tests, and a
 matched PARI performance measurement are explicitly deferred to integration.
 The lane neither imports the old field-3 suffix authority nor embeds a
 regulator, relation lattice, unit, class generator, or final answer.
