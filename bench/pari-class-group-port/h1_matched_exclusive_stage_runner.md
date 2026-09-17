@@ -1,6 +1,6 @@
 # Matched H1 exclusive-stage development runner
 
-This runner compares the complete unified Sage.js H1 root with the
+This runner samples the complete unified Sage.js H1 root alongside the
 benchmark-only PARI 2.17.4 derivative at the prepared-`nfinit` boundary. It is
 an unqualified development-host diagnostic. It cannot qualify final campaign
 timing.
@@ -12,8 +12,9 @@ The Sage.js root is compiled from the unchanged
 `diagnosticStageClock`. The four existing `diagnostic_stage_switch` calls are
 the only internal cuts. After each native call, the runner consumes
 `diagnosticStageTrace()` directly and rejects a failed clock, failed root,
-unknown stage, zero-length visit, gap, overlap, total mismatch, or incomplete
-five-stage coverage.
+unknown stage, zero-length visit, total mismatch, or incomplete five-stage
+coverage. The receipt records ordered duration partitions exactly as emitted;
+it does not invent absolute start/end offsets.
 
 The PARI arm consumes `orderedSegments`, `stageTotalsNanoseconds`, and
 `inclusiveRootNanoseconds` from the separately hashed stage-clock derivative.
@@ -22,12 +23,22 @@ must exactly equal an independent pristine-library cold replay before its
 timing is accepted. No JavaScript timer, synthetic counter, or inferred
 segment is substituted for either native trace.
 
-Both arms additionally return the existing matched H1 projection. Its result,
-cold-replay, seed/RNG, and common-work digests must agree exactly within and
-across all pairs. This projection is intentionally narrower than PARI's rich
-source record: the receipt separately hashes that exact PARI record and the
-Sage.js independent owner replay authority. It does not claim that the two
-implementations have the same internal RNG or work representation.
+The two source stage vocabularies are namespaced as `sage-root/*` and
+`pari-buch2/*`. Similar names do not establish identical source boundaries, so
+the receipt explicitly prohibits cross-implementation stage ratios. Only the
+complete-root medians are compared.
+
+Correctness comes from independent actual authorities, not a shared projected
+record. The receipt embeds and hashes the Sage.js cold-replay final-owner
+bundle and the pristine PARI result/work/66-word-RNG record, independently
+normalizes their common mathematical result, and requires every sampled source
+authority to match its own replay. Sage.js emits no terminal RNG state; its
+seed-1 owner-graph policy is reported separately rather than being equated to
+PARI's actual RNG or work record.
+
+Both implementations are prepared once. One active diagnostic warmup per
+persistent implementation is excluded, followed by seven alternating
+ABBA/BAAB pairs. Sage replay is never performed inside a sampled arm.
 
 ## Frozen input and command
 
@@ -52,11 +63,11 @@ node bench/pari-class-group-port/h1_matched_exclusive_stage_runner.cjs \
   --output bench/pari-class-group-port/h1-matched-exclusive-stage-development-receipt.json
 ```
 
-The output records every raw ordered segment and derives odd-sample medians
-for the four named stages, explicit residual, and complete root. The named
-positive-gap fraction is diagnostic attribution only. Absolute times and
-ratios from this shared host must not be promoted to the frozen qualification
-table.
+The output records every raw ordered duration partition, implementation-local
+stage medians, and complete-root medians. It also hashes the clean Git commit,
+compiler configuration and sources, native artifacts, PARI derivative inputs
+and artifacts, command, and host/runtime identity. Absolute times and ratios
+from this shared host must not be promoted to the frozen qualification table.
 
 Run the mutation/static checker without compiling the large root:
 
