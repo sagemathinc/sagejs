@@ -52,7 +52,7 @@ function loadPrepared(filename) {
   return answer;
 }
 
-function normalizeSageAuthority(authority) {
+function sageTerminalShape(authority) {
   exactKeys(authority, ["finalOwners", "precisionAuthority"], "Sage owner authority");
   const owners = authority.finalOwners;
   for (const name of ["final_state", "final_invariants", "final_torsion_order", "final_torsion_generator", "final_regulator"]) assert(Array.isArray(owners[name]), `missing ${name}`);
@@ -74,7 +74,7 @@ function validatePariRecord(record) {
   assert.equal(unit.rank, "2"); assert.deepEqual(unit.logEmbeddingShape, ["3", "2"]); assert.equal(unit.regulatorTriplet.length, 3); assert.equal(unit.torsionOrder, "2"); assert.deepEqual(unit.torsionGeneratorPowerBasis, ["-1", "0", "0"]);
   assert.equal(record.result.terminal.correspondenceComplete, true); assert.equal(record.result.terminal.status, "pari-correspondence-complete-internal-h1"); return record;
 }
-function normalizePariRecord(record) {
+function pariTerminalShape(record) {
   validatePariRecord(record); const result = record.result;
   return { fieldId: result.field.id, classGroup: { classNumber: result.classGroup.classNumber, invariantFactors: result.classGroup.invariantFactors }, unitGroup: { rank: result.unitGroupCorrespondence.rank, torsionOrder: result.unitGroupCorrespondence.torsionOrder, torsionGeneratorPowerBasis: result.unitGroupCorrespondence.torsionGeneratorPowerBasis }, terminalStatus: result.terminal.status };
 }
@@ -87,7 +87,7 @@ function durationPartitions(implementation, ordered) {
   });
 }
 function validateArm(arm) {
-  exactKeys(arm, ["implementation", "rootDurationNanoseconds", "durationPartitions", "partitionTotalsNanoseconds", "normalizedResultSha256", "sourceAuthoritySha256", "terminalStatus"], "duration arm");
+  exactKeys(arm, ["implementation", "rootDurationNanoseconds", "durationPartitions", "partitionTotalsNanoseconds", "terminalShapeSha256", "sourceAuthoritySha256", "terminalStatus"], "duration arm");
   assert(["sagejs", "pari"].includes(arm.implementation));
   const root = unsigned(arm.rootDurationNanoseconds, "root", { positive: true });
   exactKeys(arm.partitionTotalsNanoseconds, labelsFor(arm.implementation), "partition totals");
@@ -98,18 +98,18 @@ function validateArm(arm) {
   });
   assert.equal(sum, root);
   for (const label of labelsFor(arm.implementation)) { const claimed = unsigned(arm.partitionTotalsNanoseconds[label], label); assert.equal(claimed, totals[label]); assert(claimed > 0n); }
-  assert.match(arm.normalizedResultSha256, /^[0-9a-f]{64}$/); assert.match(arm.sourceAuthoritySha256, /^[0-9a-f]{64}$/); assert.equal(arm.terminalStatus, "pari-correspondence-complete-internal-h1"); return arm;
+  assert.match(arm.terminalShapeSha256, /^[0-9a-f]{64}$/); assert.match(arm.sourceAuthoritySha256, /^[0-9a-f]{64}$/); assert.equal(arm.terminalStatus, "pari-correspondence-complete-internal-h1"); return arm;
 }
 function sageArm(output) {
   assert.equal(output.correspondenceComplete, true);
-  const trace = output.diagnosticStageTrace; const normalized = normalizeSageAuthority(output.sourceAuthority);
+  const trace = output.diagnosticStageTrace; const terminalShape = sageTerminalShape(output.sourceAuthority);
   exactKeys(trace, ["schema", "rootNanoseconds", "failed", "clockFailed", "totalsNanoseconds", "visits"], "native trace"); assert.equal(trace.schema, 1); assert.equal(trace.failed, false); assert.equal(trace.clockFailed, false); assert.deepEqual(Object.keys(trace.totalsNanoseconds).sort(), [...SOURCE_STAGES].sort());
   trace.visits.forEach((visit, index) => { exactKeys(visit, ["ordinal", "stage", "stageIndex", "nanoseconds"], `visit ${index}`); assert.equal(visit.ordinal, index + 1); assert.equal(visit.stageIndex, NATIVE_STAGE_ORDER.indexOf(visit.stage)); });
-  return validateArm({ implementation: "sagejs", rootDurationNanoseconds: String(trace.rootNanoseconds), durationPartitions: durationPartitions("sagejs", trace.visits), partitionTotalsNanoseconds: Object.fromEntries(SOURCE_STAGES.map(stage => [stageLabel("sagejs", stage), String(trace.totalsNanoseconds[stage])])), normalizedResultSha256: digest(normalized), sourceAuthoritySha256: digest(output.sourceAuthority), terminalStatus: output.terminalStatus });
+  return validateArm({ implementation: "sagejs", rootDurationNanoseconds: String(trace.rootNanoseconds), durationPartitions: durationPartitions("sagejs", trace.visits), partitionTotalsNanoseconds: Object.fromEntries(SOURCE_STAGES.map(stage => [stageLabel("sagejs", stage), String(trace.totalsNanoseconds[stage])])), terminalShapeSha256: digest(terminalShape), sourceAuthoritySha256: digest(output.sourceAuthority), terminalStatus: output.terminalStatus });
 }
 function pariArm(sample) {
   const record = validatePariRecord(sample.record);
-  return validateArm({ implementation: "pari", rootDurationNanoseconds: sample.timing.inclusiveRootNanoseconds, durationPartitions: durationPartitions("pari", sample.timing.orderedSegments), partitionTotalsNanoseconds: Object.fromEntries(SOURCE_STAGES.map(stage => [stageLabel("pari", stage), sample.timing.stageTotalsNanoseconds[stage]])), normalizedResultSha256: digest(normalizePariRecord(record)), sourceAuthoritySha256: digest(record), terminalStatus: record.result.terminal.status });
+  return validateArm({ implementation: "pari", rootDurationNanoseconds: sample.timing.inclusiveRootNanoseconds, durationPartitions: durationPartitions("pari", sample.timing.orderedSegments), partitionTotalsNanoseconds: Object.fromEntries(SOURCE_STAGES.map(stage => [stageLabel("pari", stage), sample.timing.stageTotalsNanoseconds[stage]])), terminalShapeSha256: digest(pariTerminalShape(record)), sourceAuthoritySha256: digest(record), terminalStatus: record.result.terminal.status });
 }
 function median(values) { const sorted = [...values].sort((a, b) => a < b ? -1 : a > b ? 1 : 0); assert(sorted.length > 0 && sorted.length % 2 === 0); return (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2n; }
 function deriveSummary(pairs) {
@@ -120,11 +120,11 @@ function deriveSummary(pairs) {
 }
 
 function validateAuthorities(authorities) {
-  exactKeys(authorities, ["sagejs", "pari", "commonNormalizedResultSha256"], "authorities");
-  exactKeys(authorities.sagejs, ["replayOwners", "replayOwnersSha256", "normalizedResult", "normalizedResultSha256", "rngAuthority", "workAuthority"], "Sage authority");
-  const sage = normalizeSageAuthority(authorities.sagejs.replayOwners); assert.deepEqual(authorities.sagejs.normalizedResult, sage); assert.equal(authorities.sagejs.replayOwnersSha256, digest(authorities.sagejs.replayOwners)); assert.equal(authorities.sagejs.normalizedResultSha256, digest(sage)); assert.equal(authorities.sagejs.rngAuthority.available, false); assert.equal(authorities.sagejs.workAuthority.sha256, authorities.sagejs.replayOwnersSha256);
-  exactKeys(authorities.pari, ["pristineRecord", "pristineRecordSha256", "normalizedResult", "normalizedResultSha256", "rngAuthority", "workAuthority"], "PARI authority");
-  const record = validatePariRecord(authorities.pari.pristineRecord); const pari = normalizePariRecord(record); assert.deepEqual(authorities.pari.normalizedResult, pari); assert.equal(authorities.pari.pristineRecordSha256, digest(record)); assert.equal(authorities.pari.normalizedResultSha256, digest(pari)); assert.deepEqual(authorities.pari.rngAuthority, record.rng); assert.deepEqual(authorities.pari.workAuthority, record.work); assert.deepEqual(sage, pari); assert.equal(authorities.commonNormalizedResultSha256, digest(sage)); return authorities;
+  exactKeys(authorities, ["sagejs", "pari", "commonTerminalShapeSha256"], "authorities");
+  exactKeys(authorities.sagejs, ["replayOwners", "replayOwnersSha256", "terminalShape", "terminalShapeSha256", "rngAuthority", "workAuthority"], "Sage authority");
+  const sage = sageTerminalShape(authorities.sagejs.replayOwners); assert.deepEqual(authorities.sagejs.terminalShape, sage); assert.equal(authorities.sagejs.replayOwnersSha256, digest(authorities.sagejs.replayOwners)); assert.equal(authorities.sagejs.terminalShapeSha256, digest(sage)); assert.equal(authorities.sagejs.rngAuthority.available, false); assert.equal(authorities.sagejs.workAuthority.sha256, authorities.sagejs.replayOwnersSha256);
+  exactKeys(authorities.pari, ["pristineRecord", "pristineRecordSha256", "terminalShape", "terminalShapeSha256", "rngAuthority", "workAuthority"], "PARI authority");
+  const record = validatePariRecord(authorities.pari.pristineRecord); const pari = pariTerminalShape(record); assert.deepEqual(authorities.pari.terminalShape, pari); assert.equal(authorities.pari.pristineRecordSha256, digest(record)); assert.equal(authorities.pari.terminalShapeSha256, digest(pari)); assert.deepEqual(authorities.pari.rngAuthority, record.rng); assert.deepEqual(authorities.pari.workAuthority, record.work); assert.deepEqual(sage, pari); assert.equal(authorities.commonTerminalShapeSha256, digest(sage)); return authorities;
 }
 function validateBuildProvenance(build) {
   exactKeys(build, ["vcs", "sourceSha256", "sageBuild", "pariBuild", "runtime", "command"], "build provenance");
@@ -141,10 +141,10 @@ function validateReceipt(receipt) {
   exactKeys(receipt, ["schema", "diagnosticOnly", "qualifiedTiming", "boundaryQualification", "fieldId", "seedPolicy", "inputProvenance", "buildProvenance", "authorities", "warmup", "pairs", "summary"], "receipt");
   assert.equal(receipt.schema, "sagejs.pari-class-group/h1-matched-duration-partitions-development-v2"); assert.equal(receipt.diagnosticOnly, true); assert.equal(receipt.qualifiedTiming, false); assert.equal(receipt.boundaryQualification, "unqualified-development-host"); assert.equal(receipt.fieldId, FIELD_ID); assert.equal(receipt.seedPolicy.requestedSeed, "1"); assert.equal(receipt.seedPolicy.sagejsActualRngStateAvailable, false); assert.equal(receipt.seedPolicy.pariActualRngStateAvailable, true);
   assert.equal(receipt.inputProvenance.fileSha256, FROZEN_INPUT_FILE_SHA256); assert.equal(receipt.inputProvenance.preparedInputSha256, FROZEN_PREPARED_INPUT_SHA256); validateBuildProvenance(receipt.buildProvenance); validateAuthorities(receipt.authorities);
-  assert.equal(receipt.warmup.policy, "one excluded active diagnostic call per persistent prepared implementation"); assert.deepEqual(receipt.warmup.arms.map(arm => arm.implementation), ["sagejs", "pari"]); receipt.warmup.arms.forEach(validateArm);
+  assert.equal(receipt.warmup.policy, "one excluded active diagnostic call per persistent prepared implementation; Sage uses preparation replay"); assert.deepEqual(receipt.warmup.arms.map(arm => arm.implementation), ["sagejs", "pari"]); receipt.warmup.arms.forEach(validateArm);
   assert(receipt.pairs.length >= 7 && receipt.pairs.length % 2 === 1);
   receipt.pairs.forEach((pair, index) => { const order = index % 2 ? "BAAB" : "ABBA"; const implementations = order === "ABBA" ? ["sagejs", "pari", "pari", "sagejs"] : ["pari", "sagejs", "sagejs", "pari"]; assert.equal(pair.pairIndex, index); assert.equal(pair.order, order); assert.deepEqual(pair.arms.map(arm => arm.implementation), implementations); pair.arms.forEach(validateArm); });
-  for (const arm of [...receipt.warmup.arms, ...receipt.pairs.flatMap(pair => pair.arms)]) { const authority = receipt.authorities[arm.implementation]; assert.equal(arm.normalizedResultSha256, authority.normalizedResultSha256); assert.equal(arm.sourceAuthoritySha256, arm.implementation === "sagejs" ? authority.replayOwnersSha256 : authority.pristineRecordSha256); }
+  for (const arm of [...receipt.warmup.arms, ...receipt.pairs.flatMap(pair => pair.arms)]) { const authority = receipt.authorities[arm.implementation]; assert.equal(arm.terminalShapeSha256, authority.terminalShapeSha256); assert.equal(arm.sourceAuthoritySha256, arm.implementation === "sagejs" ? authority.replayOwnersSha256 : authority.pristineRecordSha256); }
   assert.deepEqual(receipt.summary, deriveSummary(receipt.pairs)); return receipt;
 }
 
@@ -160,13 +160,19 @@ async function run({ input, output = DEFAULT_OUTPUT, pairs = 7, seed = "1" }) {
   const sageState = await adapter.preparePreparedH1({ implementation: "sagejs", seed, preparedInput: loaded.preparedInput, diagnosticStageClock: true }); const pristineState = await pariAdapter.preparePreparedH1({ implementation: "pari", seed, preparedInput: loaded.preparedInput }); const pristineRecord = validatePariRecord(pristineState.replayRecord); const manifest = buildDerivative(); const derivative = new DerivativeClient(manifest); await derivative.ready(); let warmup; const rawPairs = [];
   const runPari = async () => { const sample = await derivative.run("ACTIVE", seed); validateActiveTiming(sample.timing); assert.deepEqual(sample.record, pristineRecord); return pariArm(sample); };
   try {
-    warmup = { policy: "one excluded active diagnostic call per persistent prepared implementation", arms: [await executeSage(adapter, sageState, loaded.preparedInput, seed), await runPari()] };
+    const sageReplayWarmup = sageArm({
+      correspondenceComplete: true,
+      sourceAuthority: sageState.replayAuthority,
+      terminalStatus: "pari-correspondence-complete-internal-h1",
+      diagnosticStageTrace: sageState.replayDiagnosticStageTrace,
+    });
+    warmup = { policy: "one excluded active diagnostic call per persistent prepared implementation; Sage uses preparation replay", arms: [sageReplayWarmup, await runPari()] };
     for (let pairIndex = 0; pairIndex < pairs; pairIndex++) { const order = pairIndex % 2 ? ["pari", "sagejs", "sagejs", "pari"] : ["sagejs", "pari", "pari", "sagejs"]; const arms = []; for (const implementation of order) arms.push(implementation === "sagejs" ? await executeSage(adapter, sageState, loaded.preparedInput, seed) : await runPari()); rawPairs.push({ pairIndex, order: pairIndex % 2 ? "BAAB" : "ABBA", arms }); }
   } finally { await derivative.close(); await pariAdapter.closePreparedH1(pristineState); await adapter.closePreparedH1(sageState); }
-  const sageNormalized = normalizeSageAuthority(sageState.replayAuthority); const pariNormalized = normalizePariRecord(pristineRecord); assert.deepEqual(sageNormalized, pariNormalized); const command = [process.execPath, __filename, "--input", path.resolve(input), "--pairs", String(pairs), "--seed", seed, "--output", path.resolve(output)];
-  const receipt = validateReceipt({ schema: "sagejs.pari-class-group/h1-matched-duration-partitions-development-v2", diagnosticOnly: true, qualifiedTiming: false, boundaryQualification: "unqualified-development-host", fieldId: FIELD_ID, seedPolicy: { requestedSeed: seed, sagejsActualRngStateAvailable: false, pariActualRngStateAvailable: true }, inputProvenance: { sourcePath: path.resolve(input), fileSha256: loaded.fileSha256, preparedInputSha256: loaded.preparedInputSha256 }, buildProvenance: buildProvenance(sageState, manifest, command), authorities: { sagejs: { replayOwners: sageState.replayAuthority, replayOwnersSha256: digest(sageState.replayAuthority), normalizedResult: sageNormalized, normalizedResultSha256: digest(sageNormalized), rngAuthority: { available: false, requestedSeed: seed, policy: "frozen-owner-graph-authenticates-seed-1; no terminal Sage RNG state is emitted" }, workAuthority: { kind: "complete-final-owner-bundle", sha256: digest(sageState.replayAuthority) } }, pari: { pristineRecord, pristineRecordSha256: digest(pristineRecord), normalizedResult: pariNormalized, normalizedResultSha256: digest(pariNormalized), rngAuthority: pristineRecord.rng, workAuthority: pristineRecord.work }, commonNormalizedResultSha256: digest(sageNormalized) }, warmup, pairs: rawPairs, summary: deriveSummary(rawPairs) });
+  const sageShape = sageTerminalShape(sageState.replayAuthority); const pariShape = pariTerminalShape(pristineRecord); assert.deepEqual(sageShape, pariShape); const command = [process.execPath, __filename, "--input", path.resolve(input), "--pairs", String(pairs), "--seed", seed, "--output", path.resolve(output)];
+  const receipt = validateReceipt({ schema: "sagejs.pari-class-group/h1-matched-duration-partitions-development-v2", diagnosticOnly: true, qualifiedTiming: false, boundaryQualification: "unqualified-development-host", fieldId: FIELD_ID, seedPolicy: { requestedSeed: seed, sagejsActualRngStateAvailable: false, pariActualRngStateAvailable: true }, inputProvenance: { sourcePath: path.resolve(input), fileSha256: loaded.fileSha256, preparedInputSha256: loaded.preparedInputSha256 }, buildProvenance: buildProvenance(sageState, manifest, command), authorities: { sagejs: { replayOwners: sageState.replayAuthority, replayOwnersSha256: digest(sageState.replayAuthority), terminalShape: sageShape, terminalShapeSha256: digest(sageShape), rngAuthority: { available: false, requestedSeed: seed, policy: "frozen-owner-graph-authenticates-seed-1; no terminal Sage RNG state is emitted" }, workAuthority: { kind: "complete-final-owner-bundle", sha256: digest(sageState.replayAuthority) } }, pari: { pristineRecord, pristineRecordSha256: digest(pristineRecord), terminalShape: pariShape, terminalShapeSha256: digest(pariShape), rngAuthority: pristineRecord.rng, workAuthority: pristineRecord.work }, commonTerminalShapeSha256: digest(sageShape) }, warmup, pairs: rawPairs, summary: deriveSummary(rawPairs) });
   if (output) fs.writeFileSync(output, `${JSON.stringify(receipt, null, 2)}\n`); return receipt;
 }
 function parseArguments(argv) { const options = { input: null, output: DEFAULT_OUTPUT, pairs: 7, seed: "1" }; for (let index = 0; index < argv.length; index++) { const item = argv[index]; if (item === "--input") options.input = path.resolve(argv[++index]); else if (item === "--output") options.output = path.resolve(argv[++index]); else if (item === "--pairs") options.pairs = Number(argv[++index]); else if (item === "--seed") options.seed = argv[++index]; else throw new Error(`unknown argument: ${item}`); } assert(options.input); return options; }
-module.exports = { FIELD_ID, FROZEN_INPUT_FILE_SHA256, FROZEN_PREPARED_INPUT_SHA256, NATIVE_STAGE_ORDER, SOURCE_STAGES, deriveSummary, digest, durationPartitions, loadPrepared, normalizePariRecord, normalizeSageAuthority, pariArm, run, sageArm, stageLabel, validateArm, validateAuthorities, validatePariRecord, validateReceipt };
+module.exports = { FIELD_ID, FROZEN_INPUT_FILE_SHA256, FROZEN_PREPARED_INPUT_SHA256, NATIVE_STAGE_ORDER, SOURCE_STAGES, deriveSummary, digest, durationPartitions, loadPrepared, pariArm, pariTerminalShape, run, sageArm, sageTerminalShape, stageLabel, validateArm, validateAuthorities, validatePariRecord, validateReceipt };
 if (require.main === module) run(parseArguments(process.argv.slice(2))).then(receipt => process.stdout.write(`${JSON.stringify(receipt.summary)}\n`)).catch(error => { console.error(error.stack || error.message); process.exitCode = 1; });

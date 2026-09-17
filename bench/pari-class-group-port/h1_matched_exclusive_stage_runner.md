@@ -30,15 +30,18 @@ complete-root medians are compared.
 
 Correctness comes from independent actual authorities, not a shared projected
 record. The receipt embeds and hashes the Sage.js cold-replay final-owner
-bundle and the pristine PARI result/work/66-word-RNG record, independently
-normalizes their common mathematical result, and requires every sampled source
-authority to match its own replay. Sage.js emits no terminal RNG state; its
+bundle and the pristine PARI result/work/66-word-RNG record. It independently
+derives only a common terminal shape: field, class number/invariants, unit
+rank, torsion order/generator, and terminal status. Regulator encodings and
+fundamental-unit evidence remain source-specific and are not claimed equal.
+Every sampled source authority must match its own replay. Sage.js emits no terminal RNG state; its
 seed-1 owner-graph policy is reported separately rather than being equated to
 PARI's actual RNG or work record.
 
-Both implementations are prepared once. One active diagnostic warmup per
-persistent implementation is excluded, followed by seven alternating
-ABBA/BAAB pairs. Sage replay is never performed inside a sampled arm.
+Both implementations are prepared once. The Sage preparation replay and one
+PARI active call are the sole enumerated, excluded warmups, followed by seven
+alternating ABBA/BAAB pairs. Sage replay is never performed inside a sampled
+arm.
 
 ## Frozen input and command
 
@@ -54,7 +57,7 @@ after sanitization its prepared-input digest is
 `03a4ac33c173b65168361f3ff612bc45ed7ff793881a8d5181b1c9a0868fe658`.
 The runner records both identities and rejects ABI or field drift.
 
-Run the seven alternating AB/BA pairs with:
+Run the seven alternating ABBA/BAAB pairs with:
 
 ```bash
 node bench/pari-class-group-port/h1_matched_exclusive_stage_runner.cjs \

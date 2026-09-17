@@ -264,11 +264,14 @@ async function preparePreparedH1({
   validatePreparedInput(preparedInput, built.specification);
   const replayInput = makeInputs(preparedInput, built.specification, built.fn);
   const replayStatus = built.fn.gmp(...rootArguments(replayInput, built.specification));
+  const replayDiagnosticStageTrace = built.diagnosticStageClock
+    ? built.fn.diagnosticStageTrace() : null;
   validateSageResult(replayStatus, replayInput);
   return {
     implementation, seed, built,
     replayAuthority: sageAuthority(replayInput),
     replayAuthoritySha256: digest(sageAuthority(replayInput)),
+    replayDiagnosticStageTrace,
     timedInput: makeInputs(preparedInput, built.specification, built.fn),
   };
 }
