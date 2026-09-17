@@ -1,0 +1,81 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "field3-full-owner-authority",
+  "title": "Field-3 full owner authority",
+  "lane": "integration",
+  "status": "active",
+  "owner": "field3-full-owner-authority",
+  "objective": "Authenticate the same-run field-3 relation, ideal, logarithm, permutation, RNG, cache, and schedule owners needed by the live suffix, or document an exact retention obstruction without detached reconstruction",
+  "base_commit": "db6bd5650a86c97afccce4cc36ec5b1e59d422cc",
+  "claims": [
+    "bench/pari-class-group-port/field3_full_owner_authority.py",
+    "bench/pari-class-group-port/check_field3_full_owner_authority.cjs",
+    "bench/pari-class-group-port/field3_full_owner_authority_audit.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Authenticated same-run resident field-3 producer state"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "pnpm parallel:check",
+    "python3 -m py_compile bench/pari-class-group-port/field3_full_owner_authority.py",
+    "node --check bench/pari-class-group-port/check_field3_full_owner_authority.cjs",
+    "node --expose-gc bench/pari-class-group-port/check_field3_full_owner_authority.cjs <PARI_ROOT> <PARI_ARCHIVE> <INITIAL> <ANALYTIC>"
+  ],
+  "runs": [
+    {
+      "command": "python3 -m py_compile bench/pari-class-group-port/field3_full_owner_authority.py && node --check bench/pari-class-group-port/check_field3_full_owner_authority.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --expose-gc bench/pari-class-group-port/check_field3_full_owner_authority.cjs <PARI_ROOT> <PARI_ARCHIVE> <INITIAL> <ANALYTIC>",
+      "result": "pass (monitored process-group peak 1748008 KiB; core 1438087 bytes)",
+      "exit_code": 0,
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check",
+      "result": "pass",
+      "exit_code": 0,
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "blocked by pre-existing unclassified bench/pari-class-group-port/pari-stage-clock/pari_stage_clock_driver.c outside this lane's claims",
+      "exit_code": 1,
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Authenticated the full same-run field-3 owner generation at the accepted 288-by-301 post-rnd/LIE boundary. The source-transparent leaf validates relation/provenance, generator, log, factor-base ideal, permutation, RNG/cache, and scheduler owners transactionally and emits only 48 integrity latches plus 24 shape/state words. The focused checker retains an immutable exact snapshot of all 186560 logical cells for independent cold replay and passes CPython, JavaScript, GMP, and tagged differential checks.",
+    "risks": [
+      "The 48 modular words are integrity/generation latches, not collision-free mathematical authority; every later replay must retain and consume the original exact owner resources.",
+      "The leaf deliberately admits only the frozen field-3 quartic shape and terminal state.",
+      "Full architecture validation is currently blocked by an unrelated unclassified stage-clock C file already present at the integration base."
+    ],
+    "next_steps": [
+      "Integrate the leaf into the immutable internal result so exact cold replay reads these same-caller owner resources rather than reconstructing relations from terminal HNF.",
+      "Resolve the unrelated stage-clock native classification in its owning lane, then rerun pnpm architecture:check."
+    ]
+  }
+}
