@@ -113,6 +113,45 @@ test("shared attribute stores use only epoch-current unexposed cache entries", (
   assert.equal(fallbacks, 4);
 });
 
+test("shared ordinary stores preserve exceptional host layouts", () => {
+  const prototype = {};
+  const cache = new WeakMap([[prototype, new Map([["__proto__", 1], ["field", 1]])]]);
+  const fields = new WeakMap();
+  const api = context({
+    _builtins_store_cache: cache,
+    _builtins_descriptor_epoch: { value: 1 },
+    _builtins_instance_fields: fields,
+    _builtins_instance_namespaces: new WeakMap(),
+    ρσ_setattr: () => { throw new Error("unexpected fallback"); },
+    ρσ_getattr_internal: () => { throw new Error("unexpected read"); },
+    ρσ_getattr_missing: Symbol("missing"),
+  });
+
+  const receiver = Object.create(prototype);
+  api.ρσ_attr(receiver, "field", 1);
+  const first = Object.getOwnPropertyDescriptor(receiver, "field");
+  assert.deepEqual(first, { value: 1, writable: true, enumerable: true, configurable: true });
+  api.ρσ_attr(receiver, "field", 2);
+  assert.equal(receiver.field, 2);
+
+  const replacementPrototype = { changed: true };
+  api.ρσ_attr(receiver, "__proto__", replacementPrototype);
+  assert.equal(Object.getPrototypeOf(receiver), prototype);
+  assert.equal(receiver.__proto__, replacementPrototype);
+
+  Object.defineProperty(receiver, "field", { get: () => 7, configurable: true });
+  api.ρσ_attr(receiver, "field", 3);
+  assert.deepEqual(Object.getOwnPropertyDescriptor(receiver, "field"), {
+    value: 3, writable: true, enumerable: true, configurable: true,
+  });
+
+  const sealed = Object.preventExtensions(Object.create(prototype));
+  assert.throws(
+    () => api.ρσ_attr(sealed, "field", 4),
+    /object is not extensible/,
+  );
+});
+
 test("shared keyword binding consumes literal packets without Python operators", () => {
   const receiver = {};
   function target(left, middle, right, keywords) {
