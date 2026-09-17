@@ -297,9 +297,7 @@ def build_no_oracle_unit_regulator_completion(
         [str(value) for value in _integers(row, 3, "principal generator")]
         for row in generators
     ]
-    if arch["relation_transform_sha256"] != _sha256(
-        [str(value) for value in retained]
-    ):
+    if arch["relation_transform_sha256"] != _sha256([str(value) for value in retained]):
         raise NoOracleCompletionFailure("rebuilt logs used another relation transform")
     if arch["principal_generators_sha256"] != _sha256(canonical_generators):
         raise NoOracleCompletionFailure("rebuilt logs used other principal generators")

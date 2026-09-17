@@ -819,6 +819,35 @@ stage("honesty-equal-bound", {
   allowNoArtifactDirectory: true,
 });
 
+stage("h1-honesty-terminal", {
+  dependencies: ["honesty-equal-bound", "resident-cubic-gmp"],
+  command: (context) => commandNode("check_h1_honesty_terminal.cjs",
+    outputPath(context, "resident-cubic-gmp", "output")),
+  validate: (summary) => {
+    assert.equal(summary.honesty_status, "equal-bound-source-skip");
+    assert.equal(summary.class_number, 1);
+    assert.equal(summary.accepted_relations, 73);
+    assert.equal(summary.relation_groups, summary.checking_groups);
+  },
+  noFixture: true,
+  allowNoArtifactDirectory: true,
+});
+
+stage("live-generic-controls", {
+  dependencies: ["resident-cubic-gmp"],
+  command: () => commandNode("check_live_retry_control.cjs"),
+  validate: (summary) => {
+    assert.equal(summary.capacityAuthority, "degree*live_prime_count");
+    assert.equal(summary.observedFactorBaseSizeUsedAsControl, false);
+    assert.equal(summary.preselectedSuccessfulPrecision, false);
+    assert.equal(summary.terminalPrecisionClaimed, false);
+    assert.deepEqual(summary.backends,
+      ["cpython", "javascript", "gmp", "tagged"]);
+  },
+  noFixture: true,
+  allowNoArtifactDirectory: true,
+});
+
 stage("degree5-ranked-lll", {
   dependencies: ["honesty-success"],
   requiresPari: true,
@@ -1253,6 +1282,23 @@ stage("prepared-h1-root-boundary", {
   allowNoArtifactDirectory: true,
 });
 
+stage("prepared-h1-no-oracle-root", {
+  dependencies: ["cubic-embedding-rebuild", "cubic-precision-rebuild",
+    "live-exact-units-cubic", "regulator-acceptance-replay",
+    "torsion-authority"],
+  command: () => commandNode("check_prepared_h1_no_oracle_root.cjs"),
+  validate: (summary) => {
+    assert.equal(summary.status,
+      "prepared-h1-no-oracle-correspondence-complete");
+    assert.equal(summary.fixtureInsideRoot, false);
+    assert.equal(summary.publicComplete, false);
+    assert.equal(summary.retryPrecisionBits, "2176");
+    assert.match(summary.sha256, /^[0-9a-f]{64}$/);
+  },
+  noFixture: true,
+  allowNoArtifactDirectory: true,
+});
+
 stage("internal-correspondence-completion", {
   dependencies: ["h1-class-correspondence", "unit-relation-authority",
     "authentic-h1-unit-success", "torsion-authority",
@@ -1575,8 +1621,9 @@ stage("final-state", {
     "cubic-precision-rebuild",
     "torsion-authority", "class-relation-cleanarch",
     "regulator-acceptance-replay", "authentic-h1-unit-success",
-    "prepared-h1-root-boundary", "internal-correspondence-completion",
-    "torsion-final-binding",
+    "prepared-h1-root-boundary", "prepared-h1-no-oracle-root",
+    "internal-correspondence-completion",
+    "torsion-final-binding", "h1-honesty-terminal", "live-generic-controls",
     "h1-live-final-driver-status", "h1-exclusive-stage-timing-contract",
     "mixed-getfu-quartic", "mixed-getfu-hard-precision",
     "quartic-direct-composition", "signed-genback-computed-t2",
