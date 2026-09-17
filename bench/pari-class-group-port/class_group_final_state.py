@@ -27,10 +27,11 @@ from .class_group_internal_result import (
 )
 
 
-CONNECTED_SCHEMA = "sagejs.pari-class-group/connected-final-state-v2"
+CONNECTED_SCHEMA = "sagejs.pari-class-group/connected-final-state-v3"
 _MAX_CONNECTED_BYTES = 64 * 1024 * 1024
 _MAX_SOURCE_VECTOR = 1_000_000
-_FINAL_STATE_NAMES = ("M1", "M2", "Ga", "Ge", "GD", "ga", "clg2")
+_FINAL_ARRAY_NAMES = ("Ur", "M1", "M2", "Ga", "Ge", "GD", "ga")
+_CLG2_COMPONENTS = ("Ur", "ga", "GD", "Ge", "M1", "M2")
 _UNVERIFIED_REQUIREMENTS = (
     "exact-ideal-arithmetic-replay",
     "exact-unit-principality-and-norm-replay",
@@ -97,7 +98,7 @@ class FinalDriverComponentOutput:
     transforms_sha256: str
     units_sha256: str
     generators_sha256: str
-    source_state: Mapping[str, Sequence[Any]]
+    source_state: Mapping[str, Any]
 
 
 @dataclass(frozen=True)
@@ -382,22 +383,71 @@ def _decimal(value: Any, name: str) -> str:
     return str(integer)
 
 
-def _snapshot_final_source_state(
-    source_state: Mapping[str, Sequence[Any]],
-) -> dict[str, list[str]]:
-    if not isinstance(source_state, MappingABC) or set(source_state) != set(
-        _FINAL_STATE_NAMES
-    ):
+def _snapshot_shaped_array(value: Any, name: str) -> dict[str, list[str]]:
+    shaped = _exact_keys(value, {"shape", "entries"}, name)
+    shape = _decimal_vector(shaped["shape"], name + " shape")
+    if not shape or len(shape) > 4 or any(dimension < 0 for dimension in shape):
+        raise AssemblyFailure(name + " shape is invalid")
+    cells = 1
+    for dimension in shape:
+        cells *= dimension
+        if cells > _MAX_SOURCE_VECTOR:
+            raise AssemblyFailure(name + " shape exceeds its cell bound")
+    entries = _decimal_vector(shaped["entries"], name + " entries", cells)
+    return {
+        "shape": [str(dimension) for dimension in shape],
+        "entries": [str(entry) for entry in entries],
+    }
+
+
+def _snapshot_final_source_state(source_state: Mapping[str, Any]) -> dict[str, Any]:
+    if not isinstance(source_state, MappingABC) or set(source_state) != {
+        *_FINAL_ARRAY_NAMES,
+        "clg2",
+    }:
         raise AssemblyFailure("final driver source state is incomplete")
-    answer: dict[str, list[str]] = {}
-    for name in _FINAL_STATE_NAMES:
-        value = source_state[name]
-        if isinstance(value, (str, bytes)) or not isinstance(value, SequenceABC):
-            raise AssemblyFailure(name + " final state must be an exact sequence")
-        if not value or len(value) > _MAX_SOURCE_VECTOR:
-            raise AssemblyFailure(name + " final state must be nonempty and bounded")
-        answer[name] = [_decimal(entry, name + " entry") for entry in value]
+    answer: dict[str, Any] = {
+        name: _snapshot_shaped_array(source_state[name], name)
+        for name in _FINAL_ARRAY_NAMES
+    }
+    clg2 = _exact_keys(source_state["clg2"], {"components"}, "clg2 manifest")
+    if clg2["components"] != list(_CLG2_COMPONENTS):
+        raise AssemblyFailure("clg2 component order changed")
+    answer["clg2"] = {"components": list(_CLG2_COMPONENTS)}
+
+    ur_shape = [int(entry) for entry in answer["Ur"]["shape"]]
+    m1_shape = [int(entry) for entry in answer["M1"]["shape"]]
+    m2_shape = [int(entry) for entry in answer["M2"]["shape"]]
+    ga_shape = [int(entry) for entry in answer["Ga"]["shape"]]
+    ge_shape = [int(entry) for entry in answer["Ge"]["shape"]]
+    gd_shape = [int(entry) for entry in answer["GD"]["shape"]]
+    generator_arch_shape = [int(entry) for entry in answer["ga"]["shape"]]
+    if len(m2_shape) != 2 or m2_shape[0] != m2_shape[1]:
+        raise AssemblyFailure("M2 must be square")
+    dimension = m2_shape[0]
+    if ur_shape != [dimension, dimension]:
+        raise AssemblyFailure("Ur shape disagrees with M2")
+    if len(m1_shape) != 2 or m1_shape[0] != dimension:
+        raise AssemblyFailure("M1 shape disagrees with M2")
+    active = m1_shape[1]
+    if ga_shape != [active, 3, 7] or gd_shape != [active, 3, 7]:
+        raise AssemblyFailure("Ga/GD shapes disagree with active generators")
+    if not ge_shape or ge_shape[0] != active:
+        raise AssemblyFailure("Ge shape disagrees with active generators")
+    if generator_arch_shape != [dimension, 3, 7]:
+        raise AssemblyFailure("ga shape disagrees with M2")
     return answer
+
+
+def snapshot_final_source_state(source_state: Mapping[str, Any]) -> dict[str, Any]:
+    """Detach and validate shaped `buchall` source arrays.
+
+    Zero-cell arrays are legal only when their declared shape has zero
+    product. This public bridge lets a precision-frontier publisher retain the
+    exact same source-state representation that a later connected publication
+    will consume.
+    """
+    return _snapshot_final_source_state(source_state)
 
 
 def _require_component(component: Any | None, name: str) -> Any:
@@ -737,4 +787,5 @@ __all__ = [
     "UnitComponentOutput",
     "canonical_component_sha256",
     "cold_replay_connected_final_state",
+    "snapshot_final_source_state",
 ]

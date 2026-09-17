@@ -119,13 +119,14 @@ generator_output = m.ClassGeneratorComponentOutput(
     generators,
 )
 source_state = {
-    "M1": [1, 0, 0, 1],
-    "M2": [1, 1, 0, 1],
-    "Ga": [1, 2],
-    "Ge": [3, 4],
-    "GD": [6, 2],
-    "ga": [5, 7],
-    "clg2": [12, 2, 6],
+    "Ur": {"shape": [2, 2], "entries": [1, 0, 0, 1]},
+    "M1": {"shape": [2, 2], "entries": [1, 0, 0, 1]},
+    "M2": {"shape": [2, 2], "entries": [1, 1, 0, 1]},
+    "Ga": {"shape": [2, 3, 7], "entries": list(range(42))},
+    "Ge": {"shape": [2, 1], "entries": [3, 4]},
+    "GD": {"shape": [2, 3, 7], "entries": list(range(42, 84))},
+    "ga": {"shape": [2, 3, 7], "entries": list(range(84, 126))},
+    "clg2": {"components": ["Ur", "ga", "GD", "Ge", "M1", "M2"]},
 }
 driver_output = m.FinalDriverComponentOutput(
     run_id,
@@ -228,8 +229,10 @@ trivial_generator_hash = m.canonical_component_sha256(trivial_generators)
 trivial_units = copy.deepcopy(units)
 trivial_unit_hash = m.canonical_component_sha256(trivial_units)
 trivial_source = copy.deepcopy(source_state)
-trivial_source["GD"] = [1, 1]
-trivial_source["clg2"] = [1, 0]
+trivial_source["M1"] = {"shape": [2, 0], "entries": []}
+trivial_source["Ga"] = {"shape": [0, 3, 7], "entries": []}
+trivial_source["Ge"] = {"shape": [0, 0], "entries": []}
+trivial_source["GD"] = {"shape": [0, 3, 7], "entries": []}
 trivial_result = m.ConnectedFinalStateAssembler(authority).assemble_and_publish(
     m.RelationComponentOutput(run_id, field_id, generation, "candidate-accepted", trivial_state, trivial_layout),
     m.TransformComponentOutput(run_id, generation, "smith-and-hnf-complete", trivial_candidate_hash, trivial_transforms),
@@ -265,10 +268,19 @@ for index, bad_component in enumerate(bad_components):
     assert rejected.current() is None
 
 # Missing final source state and invalid source decisions fail closed.
+false_empty = copy.deepcopy(source_state)
+false_empty["M1"] = {"shape": [2, 1], "entries": []}
+wrong_zero_shape = copy.deepcopy(source_state)
+wrong_zero_shape["Ga"] = {"shape": [0, 3, 7], "entries": []}
+nonempty_zero_shape = copy.deepcopy(source_state)
+nonempty_zero_shape["GD"] = {"shape": [0, 3, 7], "entries": [1]}
 for changed in (
     m.FinalDriverComponentOutput(run_id, generation, "buchall-end-assembled", "verified", "accepted", candidate_hash, transform_hash, unit_hash, generator_hash, {k:v for k,v in source_state.items() if k != "M2"}),
     m.FinalDriverComponentOutput(run_id, generation, "buchall-end-assembled", "not-run", "accepted", candidate_hash, transform_hash, unit_hash, generator_hash, source_state),
     m.FinalDriverComponentOutput(run_id, generation, "buchall-end-assembled", "verified", "retry", candidate_hash, transform_hash, unit_hash, generator_hash, source_state),
+    m.FinalDriverComponentOutput(run_id, generation, "buchall-end-assembled", "verified", "accepted", candidate_hash, transform_hash, unit_hash, generator_hash, false_empty),
+    m.FinalDriverComponentOutput(run_id, generation, "buchall-end-assembled", "verified", "accepted", candidate_hash, transform_hash, unit_hash, generator_hash, wrong_zero_shape),
+    m.FinalDriverComponentOutput(run_id, generation, "buchall-end-assembled", "verified", "accepted", candidate_hash, transform_hash, unit_hash, generator_hash, nonempty_zero_shape),
 ):
     rejected = m.ConnectedFinalStateAssembler(authority)
     try:
@@ -281,7 +293,7 @@ for changed in (
 
 # A connected conflict cannot replace the first terminal result.
 changed_state = copy.deepcopy(source_state)
-changed_state["M2"][0] = 9
+changed_state["M2"]["entries"][0] = 9
 changed_driver = m.FinalDriverComponentOutput(
     run_id, generation, "buchall-end-assembled", "verified", "accepted",
     candidate_hash, transform_hash, unit_hash, generator_hash, changed_state,
@@ -336,13 +348,14 @@ paths = [
     ("driver", "terminal_status"),
     ("driver", "honesty_status"),
     ("driver", "cleanarch_status"),
-    ("driver", "source_state", "M1", 0),
-    ("driver", "source_state", "M2", 0),
-    ("driver", "source_state", "Ga", 0),
-    ("driver", "source_state", "Ge", 0),
-    ("driver", "source_state", "GD", 0),
-    ("driver", "source_state", "ga", 0),
-    ("driver", "source_state", "clg2", 0),
+    ("driver", "source_state", "Ur", "entries", 0),
+    ("driver", "source_state", "M1", "entries", 0),
+    ("driver", "source_state", "M2", "entries", 0),
+    ("driver", "source_state", "Ga", "entries", 0),
+    ("driver", "source_state", "Ge", "entries", 0),
+    ("driver", "source_state", "GD", "entries", 0),
+    ("driver", "source_state", "ga", "entries", 0),
+    ("driver", "source_state", "clg2", "components"),
     ("terminal", "status"),
     ("terminal", "all_source_components_present"),
     ("terminal", "phase5_complete"),
@@ -439,7 +452,7 @@ for key, index in linked_witness_paths:
         raise AssertionError(f"rehashed Smith linkage mutation accepted: {key}")
 
 retained = copy.deepcopy(envelope)
-mutate(retained, ("driver", "source_state", "M1", 0))
+mutate(retained, ("driver", "source_state", "M2", "entries", 0))
 retained_payload = json.dumps(retained["payload"], sort_keys=True, separators=(",", ":")).encode()
 retained["payload_sha256"] = hashlib.sha256(retained_payload).hexdigest()
 try:
@@ -467,7 +480,7 @@ assert pin_publisher.current() is None
 print(json.dumps({
     "schema": m.CONNECTED_SCHEMA,
     "sha256": result.sha256,
-    "sourceRequiredRejections": 1 + len(missing_cases) + len(bad_components) + 3 + 1,
+    "sourceRequiredRejections": 1 + len(missing_cases) + len(bad_components) + 6 + 1,
     "authenticatedMutations": len(paths),
     "semanticMutations": len(semantic_paths),
     "linkedWitnessMutations": len(linked_witness_paths),
@@ -485,9 +498,9 @@ const run = spawnSync("python3", ["-c", program, repo], {
 });
 assert.equal(run.status, 0, run.stderr || String(run.error));
 const receipt = JSON.parse(run.stdout);
-assert.equal(receipt.schema, "sagejs.pari-class-group/connected-final-state-v2");
-assert.equal(receipt.sourceRequiredRejections, 13);
-assert.equal(receipt.authenticatedMutations, 23);
+assert.equal(receipt.schema, "sagejs.pari-class-group/connected-final-state-v3");
+assert.equal(receipt.sourceRequiredRejections, 16);
+assert.equal(receipt.authenticatedMutations, 24);
 assert.equal(receipt.semanticMutations, 6);
 assert.equal(receipt.linkedWitnessMutations, 3);
 assert.equal(receipt.pinnedRetainedMutations, 1);
