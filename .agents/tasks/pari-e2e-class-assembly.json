@@ -1,0 +1,96 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-e2e-class-assembly",
+  "title": "Cubic class_group_gen assembly leaf",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "nf_cxlog_inventory",
+  "objective": "Compose existing Smith and nf_cxlog interfaces into an exact class_group_gen assembly leaf for one authentic cubic fixture, verifying M1/M2 and Ga/Ge/GD/ga/clg2 across dynamic and native tiers",
+  "base_commit": "dc534fa05e68c330871fd3720718bdfa7c03e8db",
+  "claims": [
+    "bench/pari-class-group-port/class_group_assembly.py",
+    "bench/pari-class-group-port/check_class_group_assembly.cjs",
+    "bench/pari-class-group-port/class_group_assembly_results.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "PARI 2.17.4 src/basemath/buch2.c class_group_gen"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Pinned pristine PARI 2.17.4",
+      "native GMP and tagged differential replay"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 62.36,
+      "started_at": "2026-09-17T00:15:13.201Z",
+      "commit": "dc534fa05e68c330871fd3720718bdfa7c03e8db",
+      "workspace_fingerprint": "d9ad9225e3cb2f75d635fea44f717685fe908b6bd8eba871c1849460710dbe32",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_class_group_assembly.cjs /home/user/upstream/pari-2.17.4 /home/user/upstream/pari-2.17.4.tar.gz",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.998,
+      "started_at": "2026-09-17T00:16:27.403Z",
+      "commit": "dc534fa05e68c330871fd3720718bdfa7c03e8db",
+      "workspace_fingerprint": "d9ad9225e3cb2f75d635fea44f717685fe908b6bd8eba871c1849460710dbe32",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_class_group_assembly.cjs /home/user/upstream/pari-2.17.4 /home/user/upstream/pari-2.17.4.tar.gz",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.733,
+      "started_at": "2026-09-17T00:17:14.102Z",
+      "commit": "dc534fa05e68c330871fd3720718bdfa7c03e8db",
+      "workspace_fingerprint": "7f15884ebf3adc23db6b9c95c816d9ff0c5d6fd921f4130604a9b9d997ca4fe1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 60.766,
+      "started_at": "2026-09-17T00:17:24.595Z",
+      "commit": "dc534fa05e68c330871fd3720718bdfa7c03e8db",
+      "workspace_fingerprint": "7f15884ebf3adc23db6b9c95c816d9ff0c5d6fd921f4130604a9b9d997ca4fe1",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a composition-only class_group_gen leaf that consumes the existing exact Smith and totally-real cubic nf_cxlog implementations, then constructs M1, M2, Ga, GD, ga, and the packed clg2 components. A pinned pristine PARI oracle authenticates the nontrivial class-number-24 field x^3-200*x+7 and its actual four-factor genback multiplier across CPython, JavaScript, GMP, and tagged execution.",
+    "risks": [
+      "This leaf begins after generic genback and therefore imports authentic W, C, and Ge from the oracle rather than constructing reduced ideal generators itself.",
+      "The first connected fixture is a totally real cubic with one active Smith generator; mixed signatures and arbitrary rational basis coordinates remain outside the nf_cxlog contract.",
+      "The broad pnpm test:native gate is intentionally deferred to the converged integration tree to avoid another production-pack rebuild; focused compilation/differential replay and strict baselib validation pass."
+    ],
+    "next_steps": [
+      "Connect signed generic genback output to the packed Ge boundary and replay the associated principal-ideal identity.",
+      "Feed accepted resident W and cleaned C owners from the full driver instead of the pristine oracle.",
+      "Rerun pnpm test:native on the converged integration tree before merge."
+    ]
+  }
+}
