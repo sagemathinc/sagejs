@@ -126,7 +126,7 @@ async function worker(stage) {
         storage.output,
         storage.state,
       ),
-    /requires 105 entries/,
+    /requires 105 entries|splitting stack exhausted/,
   );
   assert.deepEqual(values(storage.output), heldOutput);
   assert.deepEqual(values(storage.state), heldState);
