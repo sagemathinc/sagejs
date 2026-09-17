@@ -1,7 +1,7 @@
 # Python constructor custom-new guard
 
-Base: `4914b8a86` (`agent/python-keyword-constructor-dispatch`, queued behind the
-attribute-cache integration).
+Base: `958927947` (`agent/python-keyword-constructor-dispatch-main`, queued
+behind the reviewer-repaired attribute-store integration).
 
 ## Change
 
@@ -59,16 +59,18 @@ remain roughly 20–25x. This is not closure of M5.
 
 ## Qualification
 
-- The final exact-source build converged in two passes and completed in 7m 26s.
+- The replayed prerequisite-source build converged in two passes and completed
+  in 7m 29s.
 - The CPython differential corpus passes 505 cases with the same three
   intentional incompatibilities and no baseline drift.
-- Thirty-five focused initializer, live-default, method, and raw-ABI checks
-  pass in Python and Sage modes.
+- All 104 selected constructor, lowering, runtime-hotpath, prepared-method, and
+  raw-ABI checks pass. The earlier qualification also covers live defaults in
+  Python and Sage modes.
 - All six pinned traitlets checks and the pinned decorator 5.2.1 and attrs
   25.4.0 workflows pass.
 - Strict CPython syntax, Ruff 0.16.0, and Pyright pass for 404 modules; merge
   invariants pass.
-- Core runtime is 902,612/903,000 bytes. No source, startup, browser, or
+- Core runtime is 902,476/903,000 bytes. No source, startup, browser, or
   performance budget changed.
 - The local startup gate is not a passing receipt: the candidate measured
   417.9 ms normalized and its exact parent previously measured 430.8 ms, both
