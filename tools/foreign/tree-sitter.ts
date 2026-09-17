@@ -23,6 +23,32 @@ const CORE_WASM = "web-tree-sitter.wasm";
 const TREE_SITTER_INITIAL_MEMORY_PAGES = 512;
 const TREE_SITTER_MAXIMUM_MEMORY_PAGES = 6144;
 let initialization: Promise<void> | undefined;
+// Emscripten dynamically links a grammar by extending the core module's
+// WebAssembly table. `web-tree-sitter` does not expose an unload operation for
+// a `Language`, so loading the same immutable grammar for every parser leaks
+// table slots and eventually makes `Parser.initialize()` call an invalid
+// entry. Keep one language instance per packaged asset for the process
+// lifetime; parsers themselves remain independently owned and deletable.
+const languages = new Map<string, Promise<Language>>();
+
+function loadLanguage(languageAsset: string): Promise<Language> {
+  let language = languages.get(languageAsset);
+  if (language === undefined) {
+    language = Language.load(
+      readResourceBytes(vendorResourcePath(languageAsset)),
+    );
+    languages.set(languageAsset, language);
+    // Preserve the previous retry behavior after an I/O, validation, or
+    // dynamic-link failure. Only a successfully loaded immutable grammar is a
+    // process-lifetime resident.
+    void language.catch(() => {
+      if (languages.get(languageAsset) === language) {
+        languages.delete(languageAsset);
+      }
+    });
+  }
+  return language;
+}
 
 export async function createTreeSitterParser(
   languageAsset: string,
@@ -39,9 +65,7 @@ export async function createTreeSitterParser(
     }),
   });
   await initialization;
-  const language = await Language.load(
-    readResourceBytes(vendorResourcePath(languageAsset)),
-  );
+  const language = await loadLanguage(languageAsset);
   const parser = new Parser();
   parser.setLanguage(language);
   return parser;
