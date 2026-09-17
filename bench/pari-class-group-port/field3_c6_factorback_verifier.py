@@ -494,6 +494,20 @@ def verify_field3_c6_factorback(
     """Return a complete receipt, or raise without publishing partial state."""
     if source.get("schema") != SOURCE_SCHEMA or c6.get("schema") != C6_SCHEMA:
         raise Field3C6FactorbackFailure("owner schema changed")
+    actual_c6_sha256 = _digest(c6_sha256, "C6 owner")
+    if _digest(source.get("c6OwnerSha256"), "source C6 owner") != actual_c6_sha256:
+        raise Field3C6FactorbackFailure("factorback source C6 ancestry changed")
+    embedding_owner_sha256 = _digest(
+        source.get("embeddingOwnerSha256"), "source embedding owner"
+    )
+    if (
+        _digest(c6.get("embeddingOwnerSha256"), "C6 embedding owner")
+        != embedding_owner_sha256
+    ):
+        raise Field3C6FactorbackFailure("factorback embedding ancestry changed")
+    relation_owner_sha256 = _digest(
+        source.get("relationOwnerSha256"), "source relation owner"
+    )
     field = source.get("field")
     run_identity = source.get("runIdentity")
     if (
@@ -649,8 +663,10 @@ def verify_field3_c6_factorback(
         "precision": precision,
         "generation": generation,
         "sourceOwnerSha256": _digest(source_sha256, "source owner"),
-        "c6OwnerSha256": _digest(c6_sha256, "C6 owner"),
+        "c6OwnerSha256": actual_c6_sha256,
         "c5OwnerSha256": c5_sha256,
+        "embeddingOwnerSha256": embedding_owner_sha256,
+        "relationOwnerSha256": relation_owner_sha256,
         "inverseMask": inverse_mask,
         "columns": columns,
         "verified": {
