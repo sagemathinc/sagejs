@@ -1,0 +1,60 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "field3-terminal-live-enable",
+  "title": "Enable Field3 Live Terminal Owner",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Enable authenticated field3 live-final owner publication from corrected relation and class serializers",
+  "base_commit": "4f9cf2e83b81fab518351b9755f7e86b2a34942d",
+  "claims": [
+    "bench/pari-class-group-port/field3_terminal_owner_adapters.cjs",
+    "bench/pari-class-group-port/check_field3_terminal_owner_adapters.cjs",
+    "bench/pari-class-group-port/field3_terminal_owner_adapters_audit.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Corrected authenticated field3 terminal source owners"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_field3_terminal_owner_adapters.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 27.161,
+      "started_at": "2026-09-17T17:23:57.616Z",
+      "commit": "4f9cf2e83b81fab518351b9755f7e86b2a34942d",
+      "workspace_fingerprint": "c34babbc03c3035038e5dc4e434877bb68695f1713f8f13189a59b63f77efff4",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Enables atomic live-final owner publication only from the independently approved corrected field3 relation and class serializers. Revalidates full15/raw/protocol/relation/class ancestry, exact relation digests, high-precision H/Ce, terminal B definition, corrected antiuniformizer descriptors, replay witnesses, and order-principal factorback before emitting the C7 schema.",
+    "risks": [
+      "No authentic 153088-bit mathematical computation was launched in this lane; the corrected bounded serializer checker was replayed instead.",
+      "Broad repository validation remains for the integration lane; this lane ran only the focused low-cost terminal qualification."
+    ],
+    "next_steps": [
+      "Run the authentic source-owner and adapter chain after all exact field3 predecessors have published.",
+      "Run broad architecture, portability, and strict baselib gates in the integration lane."
+    ]
+  }
+}

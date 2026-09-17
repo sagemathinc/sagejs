@@ -48,37 +48,30 @@ qualified bounded AGM replay now includes the authentic 153088-bit precision;
 this adapter therefore accepts that precision only when the independently
 published receipt binds the exact factorback source, C5, and C6 owner bytes.
 
-## Live final owner (fail-closed pending serializer)
+## Live final owner
 
-The intended `live` operation joins full terminal `W` and packed `Ce`, a future
-immutable serialization of the existing exact relation authority (the full
-288-by-301 relation matrix and all 301 exact principal generators), and a
-future immutable serialization of the existing class-suffix replay (terminal
-`B`, the two exact factor-base descriptors, Smith invariants, and
-principal-factor proof).
+The `live` operation joins full terminal `W` and packed `Ce`, the authenticated
+exact relation authority (the full 288-by-301 relation matrix and all 301 exact
+principal generators), and the independently replayed class suffix (terminal
+`B`, two exact antiuniformizer descriptors, Smith invariants, and factored
+order-principal witnesses).
 
-The class owner must name both source digests. The adapter checks `W`, `Ce`,
-the Smith diagonal, exact-relation and principal-generator authority, and all
-class replay verdicts. Each of the 301 `relationPrincipals` is built directly
-from one relation column and its corresponding exact power-basis principal
-generator. The two `Vbase` entries and terminal `B` are copied from the class
-owner. Torsion `[-1]` of order two is derived from the authenticated mixed
-signature: a characteristic-zero field with a real embedding has only `+1`
-and `-1` as roots of unity.
+The class owner must name the exact full15, relation, raw-log, local-HNF
+protocol, frozen resident authority, and live-class-join digests. The adapter
+requires all links to agree, checks `W` and high-precision `Ce` byte-for-byte,
+recomputes relation-array and terminal-`B` checkpoints, validates the Smith
+diagonal, and consumes every exact replay verdict. It also checks each
+antiuniformizer, multiplication matrix, generated inverse ideal witness, and
+both 301-entry order-principal factorbacks against the retained replay and
+full15 transform. It never admits the obsolete uniformizer-derived `tau`.
 
-No production immutable serializer for those two existing in-memory
-authorities exists at this commit. Therefore the `live` operation deliberately
-fails closed with `live owner publication awaits authenticated relation/class
-serializers`; it does **not** treat a caller-created object carrying a desired
-schema string and true-valued booleans as mathematical authority. Once the
-real serializers exist, the retained validation design can be enabled and will
-yield exactly `sagejs.pari-class-group/field3-live-final-owner-v1`. A compact
-fingerprint will not be admitted in place of the exact arrays.
-
-In particular, terminal `B` authority depends on that authenticated class
-serializer. C7 validates the resulting array and its ancestry but does not
-claim that caller-authored `B` bytes are authoritative; `composeLive` remains
-fail-closed until the serializer exists.
+Each of the 301 `relationPrincipals` is built directly from one authenticated
+relation column and its exact power-basis principal generator. The two `Vbase`
+entries and terminal `B` are copied only after their corrected serializer
+proofs pass. Torsion `[-1]` of order two is derived from the authenticated
+mixed signature: a characteristic-zero field with a real embedding has only
+`+1` and `-1` as roots of unity. Any missing digest, replay flag, defining
+equation, checkpoint, or factorback fails before publication.
 
 The C7 consumer was tightened independently of that pending edge. It now
 validates the successful unit terminal state, precision/generation, both
@@ -88,14 +81,16 @@ of the 301 exact principal-generator power-basis records, and live ancestry.
 
 ## Publication and qualification
 
-The implemented unit output is canonical JSON with a trailing newline, named
+Both implemented outputs are canonical JSON with a trailing newline, named
 by its SHA-256, written through a unique temporary file, atomically renamed,
 and sealed mode 0444. An existing name is accepted only if both bytes and mode
-still agree. Repeated publication is idempotent. The pending live path never
-publishes a file.
+still agree. Repeated publication is idempotent.
 
 `check_field3_terminal_owner_adapters.cjs` is a bounded generated-data
 qualification. It checks success at low and 153088-bit declared precision,
 `PRECI-not_given`, exact sign propagation, atomic/idempotent publication,
-duplicate-key rejection, and authenticated semantic mutations. It does not
-perform or stand in for the authentic 153088-bit arithmetic run.
+duplicate-key rejection, and authenticated semantic mutations. It first runs
+the corrected bounded terminal-source qualification and records its authentic
+relation/class owner digests, then tests the adapter without launching a new
+high-precision computation. It does not perform or stand in for the authentic
+153088-bit arithmetic run.
