@@ -187,26 +187,32 @@ for raw in d['inputs']:
   out.append({'blocked':True,'error':str(error),'transactional':before==after})
 print(json.dumps(out))`, path.resolve(__dirname, "../.."), path.resolve(__dirname, "../../src/lib")],
     { input: JSON.stringify(payload) }));
-  assert.deepEqual(python.map(row => row.blocked), Array(6).fill(true));
-  assert.deepEqual(python.map(row => row.error),
-    Array(6).fill("invalid ranked ideal preparation input"));
-  assert.deepEqual(python.map(row => row.transactional), Array(6).fill(true));
+  assert.deepEqual(python.map(row => row.blocked), Array(6).fill(false));
+  const sageStatuses = python.map(row => row.status);
+  assert.deepEqual(sageStatuses, [1, 0, 0, 1, 1, 1]);
+  const pariStatuses = raw.probes.map(row => row.status);
+  const mismatches = sageStatuses.flatMap((status, index) =>
+    status === pariStatuses[index]
+      ? []
+      : [{ index, pari: pariStatuses[index], sage: status }]);
+  assert.deepEqual(mismatches, [
+    { index: 1, pari: 1, sage: 0 },
+    { index: 2, pari: 1, sage: 0 },
+  ]);
   console.log(JSON.stringify({
     quinticExporterComplete: true,
-    pariOracleStatuses: raw.probes.map(row => row.status),
-    sageCollectorProbesExecuted: 0,
-    blockedInputs: python.length,
-    blocker: "ideal_ranked_preparation rejects n > 4 before ranked LLL",
-    downstreamDegreeCaps: [
-      "lll_rank.pari_initial_integer_rank: n > 4",
-      "lll_selection.pari_lll_select_full_rank: n not in {3,4}",
-      "flatter.pari_flatter: n not in {3,4}",
-    ],
-    transactional: python.every(row => row.transactional),
+    pariOracleStatuses: pariStatuses,
+    sageCollectorStatuses: sageStatuses,
+    sageCollectorProbesExecuted: python.length,
+    matchingProbes: python.length - mismatches.length,
+    mismatches,
+    blockedInputs: 0,
+    blocker: "two downstream collector decisions remain after exact degree-five ranked preparation",
+    rankedPreparationClosed: true,
     transcriptSha256: sha256(JSON.stringify(python)),
     backendsAttempted: ["cpython"],
     nativeAttempted: false,
-    nativeReason: "same-source CPython path is blocked before a collector probe",
+    nativeReason: "two same-source CPython collector decisions still diverge downstream",
     oracleDirectory: oracle.directory,
   }));
 }

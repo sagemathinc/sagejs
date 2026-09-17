@@ -797,17 +797,34 @@ stage("honesty-success", {
   }),
 });
 
-stage("honesty-quintic-collector-boundary", {
+stage("degree5-ranked-lll", {
   dependencies: ["honesty-success"],
+  requiresPari: true,
+  command: (context) => commandNode("check_degree5_ranked_lll.cjs",
+    context.pariRoot, context.pariArchive),
+  validate: (summary) => {
+    assert.equal(summary.qualifiedTiming, false);
+    assert.match(summary.oracleSourceSha256, /^[0-9a-f]{64}$/);
+    assert.match(summary.traceSha256, /^[0-9a-f]{64}$/);
+    assert.match(summary.coreSourcePath, /kernel_core\.c$/);
+  },
+  noFixture: true,
+});
+
+stage("honesty-quintic-collector-boundary", {
+  dependencies: ["degree5-ranked-lll"],
   requiresPari: true,
   command: (context) => commandNode("check_quintic_collector_fixture.cjs",
     context.pariRoot, context.pariArchive),
   validate: (summary) => {
     assert.equal(summary.quinticExporterComplete, true);
     assert.deepEqual(summary.pariOracleStatuses, [1, 1, 1, 1, 1, 1]);
-    assert.equal(summary.sageCollectorProbesExecuted, 0);
-    assert.equal(summary.blockedInputs, 6);
-    assert.equal(summary.transactional, true);
+    assert.deepEqual(summary.sageCollectorStatuses, [1, 0, 0, 1, 1, 1]);
+    assert.equal(summary.sageCollectorProbesExecuted, 6);
+    assert.equal(summary.matchingProbes, 4);
+    assert.equal(summary.mismatches.length, 2);
+    assert.equal(summary.blockedInputs, 0);
+    assert.equal(summary.rankedPreparationClosed, true);
     assert.deepEqual(summary.backendsAttempted, ["cpython"]);
     assert.equal(summary.nativeAttempted, false);
   },
@@ -827,6 +844,22 @@ stage("relation-hnf-witness", {
     assert.deepEqual(summary.backends, ["cpython", "javascript", "gmp", "tagged"]);
     assert.deepEqual(summary.independentIdentities,
       ["A*R2P=H", "H*P2R=A", "V*Vi=I", "Vi*V=I"]);
+  },
+  noFixture: true,
+  allowNoArtifactDirectory: true,
+});
+
+stage("presentation-authority", {
+  dependencies: ["relation-hnf-witness", "resident-cubic-gmp"],
+  command: (context) => commandNode("check_presentation_authority.cjs",
+    outputPath(context, "resident-cubic-gmp", "output")),
+  validate: (summary) => {
+    assert.equal(summary.factor_base_size, 66);
+    assert.equal(summary.principal_relations, 73);
+    assert.deepEqual(summary.active_shape, [8, 15]);
+    assert.deepEqual(summary.presentation_shape, [8, 8]);
+    assert.equal(summary.mutations_rejected, 11);
+    assert.deepEqual(summary.backends, ["cpython"]);
   },
   noFixture: true,
   allowNoArtifactDirectory: true,
@@ -897,6 +930,22 @@ stage("torsion-authority", {
     assert.deepEqual(summary.torsionGenerator, ["-1", "0", "0"]);
     assert.equal(summary.torsionNorm, -1);
     assert.equal(summary.coordinatedRehashedMutations, 10);
+  },
+  noFixture: true,
+  allowNoArtifactDirectory: true,
+});
+
+stage("class-relation-cleanarch", {
+  dependencies: ["unit-component-cubic", "relation-hnf-witness"],
+  requiresPari: true,
+  command: (context) => commandNode("check_class_relation_cleanarch.cjs",
+    context.pariArchive, context.pariRoot),
+  validate: (summary) => {
+    assert.equal(summary.cases, 1);
+    assert.equal(summary.entries, 21);
+    assert.deepEqual(summary.backends,
+      ["cpython", "javascript", "gmp", "tagged"]);
+    assert.equal(summary.transactionalRetry, true);
   },
   noFixture: true,
   allowNoArtifactDirectory: true,
