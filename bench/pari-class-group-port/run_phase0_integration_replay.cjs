@@ -1489,6 +1489,31 @@ stage("h1-outcome-c-adapter-contract", {
   allowNoArtifactDirectory: true,
 });
 
+stage("pari-h1-outcome-c-adapter", {
+  dependencies: ["h1-outcome-c-adapter-contract"],
+  requiresPari: true,
+  command: (context) => commandNode("check_pari_h1_outcome_c_adapter.cjs",
+    context.pariRoot, context.pariArchive),
+  validate: (summary) => {
+    assert.equal(summary.schema,
+      "sagejs.pari-class-group/pari-h1-outcome-c-adapter-check-v1");
+    assert.equal(summary.pariVersion, "2.17.4");
+    assert.equal(summary.fieldId,
+      "pari-2.17.4:x^3-20018*x+20034");
+    assert.equal(summary.preparation, "nfinit-outside-root");
+    assert.equal(summary.stageCoverage, "whole-root-only");
+    assert.equal(summary.syntheticClock, false);
+    assert.equal(summary.repetitions, 2);
+    assert.match(summary.rootNanoseconds, /^[1-9][0-9]*$/);
+    for (const key of ["resultDigest", "replayDigest", "rngDigest",
+      "workDigest", "sourceSha256", "librarySha256",
+      "executableSha256"]) assert.match(summary[key], /^[0-9a-f]{64}$/);
+    assert.equal(summary.finalTimingRun, false);
+  },
+  noFixture: true,
+  allowNoArtifactDirectory: true,
+});
+
 stage("mixed-getfu-prerequisite", {
   dependencies: ["nf-cxlog", "unit-lattice-reduction"],
   requiresPari: true,
@@ -1735,7 +1760,7 @@ stage("final-state", {
     "torsion-final-binding", "h1-honesty-terminal", "live-generic-controls",
     "live-class-result-assembly", "final-class-unit-completion-composer",
     "h1-live-final-driver-status", "h1-exclusive-stage-timing-contract",
-    "h1-outcome-c-adapter-contract",
+    "h1-outcome-c-adapter-contract", "pari-h1-outcome-c-adapter",
     "mixed-getfu-quartic", "mixed-getfu-hard-precision",
     "quartic-direct-composition", "signed-genback-computed-t2",
     "generator-order-witness", "get-clg2", "precision-bridge",

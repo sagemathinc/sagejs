@@ -14,6 +14,8 @@ const {
   sanitizePreparedInput,
 } = require("./h1_outcome_c_adapter.cjs");
 const { digest, runWorker } = require("./h1_outcome_c_worker.cjs");
+if (process.argv[2]) process.env.SAGEJS_PARI_ROOT = path.resolve(process.argv[2]);
+if (process.argv[3]) process.env.SAGEJS_PARI_ARCHIVE = path.resolve(process.argv[3]);
 const pariAdapter = require("./pari_h1_outcome_c_adapter.cjs");
 
 const sourceText = fs.readFileSync(
