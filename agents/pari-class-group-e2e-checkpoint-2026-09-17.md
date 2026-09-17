@@ -53,7 +53,7 @@ attribution does not.
 | 1 — observability and ladder | Partial | Four-plus-twelve identities and the 24-field qualification population are frozen; all 16 development PARI traces are exported and hashed. | Natural random-relation, successful honesty, and precision coverage are absent from the performance population; Sage.js does not execute all 16 end to end. |
 | 2 — relation/retry | Partial | Exact cubic collection, quartic repeated nonempty-`W` HNF appends, and isolated random-relation corridors exist. | Generic capacity growth, factor-base enlargement, natural random fallback, and all-sentinel closure remain. |
 | 3 — exact envelope | Partial | H1 full Smith replay and field-3 `[2,2]` relation/Smith state exist. The field-3 live process retains and independently cold-replays all 186,560 exact cells. All 301 principal relations now replay exactly against the 288 retained factor-base ideals. A bounded canonical-HNF route proves rank 288, invariant factors `[2,2]`, order 4, exact suffix alignment, and an arbitrary-ideal receipt with an independently checked principal quotient. | Retain and replay the missing 301-by-13 raw-relation-to-accepted-unit transform, join the exact leaves into one transactional result, and close the 12-field envelope. |
-| 4 — units/precision | Partial | The real H1 cubic performs exact source-derived units and retries from 192 to 2304 bits. The authentic mixed-quartic class logs now pass packed `cleanarch` across CPython, JavaScript, GMP, tagged, and pristine PARI. | The mixed-quartic `getfu` path still returns PRECI at 192 bits. Pristine PARI succeeds by 153024 bits, so a neutral high-precision owner/re-log retry and the development panel remain open. |
+| 4 — units/precision | Partial | The real H1 cubic performs exact source-derived units and retries from 192 to 2304 bits. The authentic mixed-quartic class logs pass packed `cleanarch` across CPython, JavaScript, GMP, tagged, and pristine PARI. Neutral 153088-bit packed Python/GMP probes now match pristine PARI exactly for pi, log(2), exp(log(2)), and exp(log(2)+i), including transactional storage/precision rejection, below 1.25 GiB peak RSS. | The mixed-quartic `getfu` path still returns PRECI at 192 bits. Rebuilding its precision-dependent embeddings, all retained relation logs, regulator, and unit solve at high precision remains open; the neutral probe is feasibility evidence, not field-specific closure. |
 | 5 — honesty/final | Partial | One atomic H1 internal final result and mutation/replay contract exist. A field-neutral immutable correspondence envelope now provides canonical encoding, independent mathematical authority, tagged exact/PRECI/LARGE unit outcomes, honesty outcomes, atomic publication, and 15 adversarial mutations. A separate predeclared unequal-bound degree-five path authentically executes the successful six-ideal `be_honest` schedule with transactional rejection. | The envelope deliberately has no H1 adapter until Python replay has a trusted data-only cross-runtime identity. The H1 class group is trivial and its honesty path is an equal-bound skip. Nontrivial generator witnesses, mixed units, and a joined general final replay remain. |
 | 6 — qualification | Partial | A real mutually exclusive seven-pair matched diagnostic conserves each root and leaves only `0.011 ms` median unattributed in Sage.js. | Source stage cuts are not cross-implementation-identical, the 80% cross-source gap attribution gate remains unmet, and the frozen 24-field qualification has not run. |
 
@@ -71,10 +71,11 @@ attribution does not.
    mixed `nf_cxlog`/`getfu`, class-generator, `cleanarch`, and final replay
    leaves. Its authenticated live endpoint has 288 factor-base rows, 301
    relations, `H = diag(2,2)`, and class invariants `[2,2]`.
-4. Lift the neutral precision-resource graph to at least the proved PARI
-   success bound of 153024 bits, regenerate precision-dependent embeddings and
-   logs from the retained exact owners, and rerun `cleanarch`/`getfu` without
-   answer-derived transformations.
+4. Use the now-qualified neutral 153088-bit packed primitive corridor to
+   regenerate the field's precision-dependent embeddings and logs from exact
+   owners, then rerun `cleanarch`/`getfu` without answer-derived
+   transformations. The successful neutral real and complex probes do not by
+   themselves close this field-specific cut.
 5. Preserve the full relation/HNF provenance and exact generator-order
    witnesses. A compact identity witness or a rebuilt final-answer fixture is
    not a valid substitute. After those cuts, reassess the next development field from the frozen
