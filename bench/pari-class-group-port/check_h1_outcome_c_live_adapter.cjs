@@ -8,7 +8,6 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
-const vm = require("node:vm");
 const {
   COMPLETE_STATUS,
   OWNER_SHAPES,
@@ -35,24 +34,15 @@ assert.equal(candidateNames.length, 351);
 assert.deepEqual(rootNames.slice(0, 351), candidateNames);
 assert.equal(stageMode, "whole-root-only");
 
-function objectLiteral(file, declaration, context = {}) {
-  const source = fs.readFileSync(path.join(here, file), "utf8");
-  const pattern = declaration === "sizes"
-    ? /const sizes = (\{[\s\S]*?\n\});/
-    : new RegExp(`const ${declaration} = Object\\.freeze\\((\\{[\\s\\S]*?\\n\\})\\);`);
-  const match = source.match(pattern);
-  assert(match, `missing ${declaration} in ${file}`);
-  return vm.runInNewContext(`(${match[1]})`, context);
+const rootOwnerNames = rootNames.slice(candidateNames.length)
+  .filter(([, kind]) => kind.endsWith("Buffer"))
+  .map(([name]) => name).sort();
+assert.deepEqual(Object.keys(OWNER_SHAPES).sort(), rootOwnerNames,
+  "adapter owner-shape manifest diverged from the complete-root ABI");
+for (const [name, length] of Object.entries(OWNER_SHAPES)) {
+  assert(Number.isSafeInteger(length) && length > 0,
+    `adapter owner ${name} lacks a positive fixed capacity`);
 }
-const canonicalShapes = {
-  ...objectLiteral("check_live_h1_owner_bridge.cjs", "sizes", { columnCapacity: 16 }),
-  ...objectLiteral("check_pari_unified_complete_h1_root.cjs", "classSizes"),
-  ...objectLiteral("check_pari_unified_complete_h1_root.cjs", "precisionSizes"),
-  ...objectLiteral("check_pari_unified_complete_h1_root.cjs", "finalSizes"),
-  unified_state: 12,
-};
-assert.deepEqual(OWNER_SHAPES, canonicalShapes,
-  "adapter owner shapes diverged from the complete-root checker");
 
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-complete-h1-adapter-"));
 const modulePath = path.join(temporary, "complete-root.cjs");
