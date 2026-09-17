@@ -20,6 +20,18 @@ const TERMINAL_STATUS = "pari-correspondence-complete-internal-h1";
 const ROOT_SOURCE = path.join(HERE, "pari_unified_complete_h1_root.py");
 const ROOT_CHECKER = path.join(HERE, "check_pari_unified_complete_h1_root.cjs");
 const BRIDGE_CHECKER = path.join(HERE, "check_live_h1_owner_bridge.cjs");
+const DIAGNOSTIC_STAGES = Object.freeze([
+  "unattributed-remainder",
+  "relation-retry",
+  "sparse-hnf-snf-transform",
+  "unit-regulator",
+  "honesty-generators-final",
+]);
+const DIAGNOSTIC_STAGE_CLOCK = Object.freeze({
+  function: "pari_unified_complete_h1_root",
+  stages: DIAGNOSTIC_STAGES,
+  maximumVisits: 32,
+});
 
 function canonical(value) {
   if (typeof value === "bigint") return value.toString();
@@ -211,18 +223,29 @@ function matchedRecords({ seed, preparedInput }) {
   };
 }
 
-let sageBuildPromise;
-async function sageBuild() {
-  if (!sageBuildPromise) sageBuildPromise = compileKernel({ sourcePath: ROOT_SOURCE })
-    .then(built => {
+const sageBuildPromises = new Map();
+async function sageBuild({ diagnosticStageClock = false } = {}) {
+  const key = diagnosticStageClock ? "diagnostic-stage-clock-v1" : "ordinary";
+  if (!sageBuildPromises.has(key)) {
+    const options = { sourcePath: ROOT_SOURCE };
+    if (diagnosticStageClock) options.diagnosticStageClock = DIAGNOSTIC_STAGE_CLOCK;
+    sageBuildPromises.set(key, compileKernel(options).then(built => {
       const fn = require(built.modulePath).pari_unified_complete_h1_root;
       assert(fn.nativeAvailable, "unified complete H1 native root unavailable");
-      return { built, fn, specification: rootSpecification() };
-    });
-  return sageBuildPromise;
+      assert.equal(
+        typeof fn.diagnosticStageTrace,
+        diagnosticStageClock ? "function" : "undefined",
+        "unified root diagnostic clock capability changed",
+      );
+      return { built, fn, specification: rootSpecification(), diagnosticStageClock };
+    }));
+  }
+  return sageBuildPromises.get(key);
 }
 
-async function preparePreparedH1({ implementation, seed, preparedInput }) {
+async function preparePreparedH1({
+  implementation, seed, preparedInput, diagnosticStageClock = false,
+}) {
   if (implementation === "pari") {
     return {
       implementation,
@@ -233,7 +256,7 @@ async function preparePreparedH1({ implementation, seed, preparedInput }) {
   assert.equal(implementation, "sagejs");
   assert.equal(seed, "1",
     "the frozen prepared owner graph authenticates only the seed-1 stream");
-  const built = await sageBuild();
+  const built = await sageBuild({ diagnosticStageClock });
   validatePreparedInput(preparedInput, built.specification);
   const replayInput = makeInputs(preparedInput, built.specification, built.fn);
   const replayStatus = built.fn.gmp(...rootArguments(replayInput, built.specification));
@@ -274,16 +297,24 @@ async function runPreparedH1({
   const status = preparedState.built.fn.gmp(
     ...rootArguments(input, preparedState.built.specification),
   );
+  const diagnosticStageTrace = preparedState.built.diagnosticStageClock
+    ? preparedState.built.fn.diagnosticStageTrace() : null;
   validateSageResult(status, input);
   assert.equal(digest(sageAuthority(input)), preparedState.replayAuthoritySha256,
     "unified root changed under independent owner replay");
   // final_state[12] remains pending in the native result.  Only this adapter's
   // independent second owner graph authorizes the diagnostic correspondence
   // projection; the root's publication bit alone is never promoted.
-  // The native root is currently monolithic.  It is therefore charged to the
-  // explicit residual instead of inventing internal stage boundaries.
-  switchStage("unattributed-remainder");
-  return { correspondenceComplete: true, ...matchedRecords({ seed, preparedInput }) };
+  // Ordinary callers retain the explicit residual charge. Diagnostic builds
+  // instead expose the compiler-owned native trace captured above.
+  if (!preparedState.built.diagnosticStageClock) {
+    switchStage("unattributed-remainder");
+  }
+  return {
+    correspondenceComplete: true,
+    ...matchedRecords({ seed, preparedInput }),
+    ...(diagnosticStageTrace === null ? {} : { diagnosticStageTrace }),
+  };
 }
 
 async function closePreparedH1(preparedState) {
@@ -294,9 +325,11 @@ async function closePreparedH1(preparedState) {
 
 module.exports = {
   FIELD_ID,
+  DIAGNOSTIC_STAGES,
   closePreparedH1,
   digest,
   matchedResult,
+  matchedRecords,
   preparePreparedH1,
   runPreparedH1,
   rootSpecification,
