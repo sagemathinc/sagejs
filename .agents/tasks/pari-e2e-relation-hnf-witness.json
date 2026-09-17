@@ -1,0 +1,107 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-e2e-relation-hnf-witness",
+  "title": "Relation to accepted-HNF replay witnesses",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Retain and reconstruct exact bidirectional relation/HNF witnesses for the authentic 73-relation h=1 cubic",
+  "base_commit": "54449ef0f5aae5df58f982fceee24789d9a58073",
+  "claims": [
+    "bench/pari-class-group-port/relation_hnf_witness.py",
+    "bench/pari-class-group-port/check_relation_hnf_witness.cjs",
+    "bench/pari-class-group-port/relation_hnf_witness_audit.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "/home/user/upstream/pari-2.17.4/src/basemath/hnf_snf.c"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Independent exact matrix identities on the authentic 73-relation cubic"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "node bench/pari-class-group-port/check_relation_hnf_witness.cjs --resident-output /tmp/sagejs-resident-generated-class-3qtnS5/output.json"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_relation_hnf_witness.cjs --resident-output /tmp/sagejs-resident-generated-class-3qtnS5/output.json",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 0.365,
+      "started_at": "2026-09-17T00:46:13.833Z",
+      "commit": "54449ef0f5aae5df58f982fceee24789d9a58073",
+      "workspace_fingerprint": "a8115c7e81481673b3ce6018935a0e21fb09f4f1ae2c638ae5351201510b91e6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_relation_hnf_witness.cjs --resident-output /tmp/sagejs-resident-generated-class-3qtnS5/output.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.875,
+      "started_at": "2026-09-17T00:54:04.351Z",
+      "commit": "54449ef0f5aae5df58f982fceee24789d9a58073",
+      "workspace_fingerprint": "a8115c7e81481673b3ce6018935a0e21fb09f4f1ae2c638ae5351201510b91e6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.171,
+      "started_at": "2026-09-17T00:54:33.156Z",
+      "commit": "54449ef0f5aae5df58f982fceee24789d9a58073",
+      "workspace_fingerprint": "a8115c7e81481673b3ce6018935a0e21fb09f4f1ae2c638ae5351201510b91e6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 201.499,
+      "started_at": "2026-09-17T00:54:59.113Z",
+      "commit": "54449ef0f5aae5df58f982fceee24789d9a58073",
+      "workspace_fingerprint": "a8115c7e81481673b3ce6018935a0e21fb09f4f1ae2c638ae5351201510b91e6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 81.95,
+      "started_at": "2026-09-17T00:59:02.931Z",
+      "commit": "54449ef0f5aae5df58f982fceee24789d9a58073",
+      "workspace_fingerprint": "a8115c7e81481673b3ce6018935a0e21fb09f4f1ae2c638ae5351201510b91e6",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Adds a source-transparent native leaf that authenticates retained hnfspec provenance A*V=[0|H], computes V inverse with the existing exact unimodular inverse, and publishes compact R2P=V[:,z:] and P2R=V^-1[z:,:]. The authentic 73-relation h=1 cubic passes CPython, JavaScript, GMP, and tagged checks of A*R2P=H, H*P2R=A, and both inverse orders.",
+    "risks": [
+      "The durable replay boundary is the active 8x15 hnfspec matrix before hnffinal deletes all eight unit pivots, not the raw 66x73 relation-record owner or the empty final h=1 quotient.",
+      "The checker requires an explicitly supplied qualified resident output artifact; fixture hash a705f625bf6f47a25b62dd3ff8485abf1c8af5ec0f12d15ee5cbb89cf6195e0b was used for the recorded pass.",
+      "The first recorded focused run failed because two concurrent full builds temporarily clobbered dist; a clean sequential pnpm build and the subsequent recorded focused run passed.",
+      "The repository-wide portable tier reached 191 passing files, then failed on the pre-existing modular q-expansion source freeze because integration's architecture/package-graph.json hash differs from that frozen baseline; this lane does not own either file."
+    ],
+    "next_steps": [
+      "In the integration lane, call the leaf while hnf_matbnew, hnf_full_h, and hnf_hnf_transform still describe the same successful hnfspec boundary.",
+      "Publish the active 8x15 relation matrix and the two 120-entry compact witnesses into final replay; do not attempt to map raw 66x73 records directly to the empty h=1 quotient."
+    ]
+  }
+}
