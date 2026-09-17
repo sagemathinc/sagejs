@@ -68,14 +68,42 @@ const FRAGMENT_RECEIPT_SUPERSESSION_NAME =
   /^complex-log-fragment-receipt-supersession-([0-9]+)-([0-9]+)-column-([0-9]+)-([0-9a-f]{64})\.json$/;
 const BATCH_EPOCH_TRANSITION_NAME =
   /^complex-log-batch-epoch-transition-([0-9]+)-to-([0-9]+)-([0-9a-f]{64})\.json$/;
-const EPOCH_152_TO_156 = Object.freeze({
-  fromCommit: "fd6ea9d769dbbdd2ddeb4b4f285d60782636e007",
-  toCommit: "679c510266c7925f046f3354671a2ff7a41f6cef",
-  path: "bench/pari-class-group-port/pi_constant.py",
-  fromSha256: "32b2ce4ff2d06ae5cdc187d8e7ed14144701388254cb7d784b1720ad4f7d925c",
-  toSha256: "ab96de0b5b796f80b43b9397a6c58c9d13024f79a0bb95503588e7b002e3a46a",
-  diffSha256: "68963ab5c4a5d8d7b042c6f7105644c8958143a5403c9fd9ac252d9fc5468555",
-});
+const EPOCH_TRANSITIONS = Object.freeze([
+  Object.freeze({
+    fromSourceStart: 152,
+    toSourceStart: 156,
+    reason: "reachable pi workspace API changed after batch 152",
+    fromCommit: "fd6ea9d769dbbdd2ddeb4b4f285d60782636e007",
+    toCommit: "679c510266c7925f046f3354671a2ff7a41f6cef",
+    changedReachableSources: [Object.freeze({
+      path: "bench/pari-class-group-port/pi_constant.py",
+      fromSha256: "32b2ce4ff2d06ae5cdc187d8e7ed14144701388254cb7d784b1720ad4f7d925c",
+      toSha256: "ab96de0b5b796f80b43b9397a6c58c9d13024f79a0bb95503588e7b002e3a46a",
+      diffSha256: "68963ab5c4a5d8d7b042c6f7105644c8958143a5403c9fd9ac252d9fc5468555",
+    })],
+  }),
+  Object.freeze({
+    fromSourceStart: 164,
+    toSourceStart: 168,
+    reason: "native private-buffer backend changed after batch 164",
+    fromCommit: "5cbe139e869050f66260cef58a46a8bb93667fd4",
+    toCommit: "96e228d10f9c8dbe1800b9d2c367408fdaaf6b72",
+    changedReachableSources: [
+      Object.freeze({
+        path: "tools/native-kernel/c-backend.cjs",
+        fromSha256: "adcd5dd1f985bc38965a670504126bf2a384808654acd5dd9d0dd91e683aa03f",
+        toSha256: "1b500c50098cad6f99bafc78c134589de1a031d714effc37ca1e18f48bd3c9a7",
+        diffSha256: "ee3e6d139c1397ee2ce86d51dade309a8d689e1d06e01aa59b62442a6141b378",
+      }),
+      Object.freeze({
+        path: "tools/native-kernel/private-integer-buffer-emitter.cjs",
+        fromSha256: "8b689133eadfde0e81a8a4fec0b5e893e721c03f81d3406789566ee86c61580c",
+        toSha256: "865ca5796323f1a8d54125514860af369785c908957d4796983abb6f9c7d46ce",
+        diffSha256: "07d5d2a61e6e712c53bf092cea75f752f19d3a34d29edc673485221b62de1028",
+      }),
+    ],
+  }),
+]);
 const sha = (value) => crypto.createHash("sha256").update(value).digest("hex");
 const packedSha = (entries) => sha(entries.map(String).join("\n"));
 const root = path.resolve(__dirname, "../..");
@@ -765,30 +793,33 @@ function receiptReference(receipt) {
   };
 }
 
+function epochTransitionSpec(fromSourceStart, toSourceStart) {
+  const spec = EPOCH_TRANSITIONS.find(
+    (entry) =>
+      entry.fromSourceStart === fromSourceStart &&
+      entry.toSourceStart === toSourceStart,
+  );
+  assert(spec, `unauthorized batch epoch transition ${fromSourceStart}:${toSourceStart}`);
+  return spec;
+}
+
 function publishBatchEpochTransition(fromReceiptPath, toReceiptPath, outputDirectory) {
   const from = readReceipt(fromReceiptPath);
   const to = readReceipt(toReceiptPath);
-  assert.equal(from.value.sourceStart, 152);
-  assert.equal(from.value.sourceStop, 156);
-  assert.equal(to.value.sourceStart, 156);
-  assert.equal(to.value.sourceCount, 4);
+  assert.equal(from.value.sourceStop, to.value.sourceStart);
+  const spec = epochTransitionSpec(from.value.sourceStart, to.value.sourceStart);
   assert.notEqual(from.value.cacheKey, to.value.cacheKey);
   const value = {
     schema: BATCH_EPOCH_TRANSITION_SCHEMA,
     ...commonIdentity(),
-    fromSourceStart: 152,
-    toSourceStart: 156,
-    reason: "reachable pi workspace API changed after batch 152",
-    fromCommit: EPOCH_152_TO_156.fromCommit,
-    toCommit: EPOCH_152_TO_156.toCommit,
+    fromSourceStart: spec.fromSourceStart,
+    toSourceStart: spec.toSourceStart,
+    reason: spec.reason,
+    fromCommit: spec.fromCommit,
+    toCommit: spec.toCommit,
     fromCacheKey: from.value.cacheKey,
     toCacheKey: to.value.cacheKey,
-    changedReachableSources: [{
-      path: EPOCH_152_TO_156.path,
-      fromSha256: EPOCH_152_TO_156.fromSha256,
-      toSha256: EPOCH_152_TO_156.toSha256,
-      diffSha256: EPOCH_152_TO_156.diffSha256,
-    }],
+    changedReachableSources: spec.changedReachableSources,
     unchangedMathematicalIdentity: commonIdentity(),
     fromReceipt: receiptReference(from),
     toReceipt: receiptReference(to),
@@ -797,7 +828,7 @@ function publishBatchEpochTransition(fromReceiptPath, toReceiptPath, outputDirec
   const digest = sha(bytes);
   return publishImmutable(
     outputDirectory,
-    `complex-log-batch-epoch-transition-152-to-156-${digest}.json`,
+    `complex-log-batch-epoch-transition-${spec.fromSourceStart}-to-${spec.toSourceStart}-${digest}.json`,
     bytes,
   );
 }
@@ -814,17 +845,11 @@ function readBatchEpochTransition(transitionPath) {
   assert.equal(Number(match[1]), value.fromSourceStart);
   assert.equal(Number(match[2]), value.toSourceStart);
   assert.deepEqual(value.unchangedMathematicalIdentity, commonIdentity());
-  assert.equal(value.fromSourceStart, 152);
-  assert.equal(value.toSourceStart, 156);
-  assert.equal(value.reason, "reachable pi workspace API changed after batch 152");
-  assert.equal(value.fromCommit, EPOCH_152_TO_156.fromCommit);
-  assert.equal(value.toCommit, EPOCH_152_TO_156.toCommit);
-  assert.deepEqual(value.changedReachableSources, [{
-    path: EPOCH_152_TO_156.path,
-    fromSha256: EPOCH_152_TO_156.fromSha256,
-    toSha256: EPOCH_152_TO_156.toSha256,
-    diffSha256: EPOCH_152_TO_156.diffSha256,
-  }]);
+  const spec = epochTransitionSpec(value.fromSourceStart, value.toSourceStart);
+  assert.equal(value.reason, spec.reason);
+  assert.equal(value.fromCommit, spec.fromCommit);
+  assert.equal(value.toCommit, spec.toCommit);
+  assert.deepEqual(value.changedReachableSources, spec.changedReachableSources);
   const from = readReceipt(value.fromReceipt.path);
   const to = readReceipt(value.toReceipt.path);
   for (const [entry, receipt] of [[value.fromReceipt, from], [value.toReceipt, to]]) {
@@ -832,9 +857,9 @@ function readBatchEpochTransition(transitionPath) {
     assert.equal(entry.sha256, receipt.digest);
     assert.equal(entry.bytes, receipt.bytes.length);
   }
-  assert.equal(from.value.sourceStart, 152);
-  assert.equal(from.value.sourceStop, 156);
-  assert.equal(to.value.sourceStart, 156);
+  assert.equal(from.value.sourceStart, spec.fromSourceStart);
+  assert.equal(from.value.sourceStop, spec.toSourceStart);
+  assert.equal(to.value.sourceStart, spec.toSourceStart);
   assert.equal(value.fromCacheKey, from.value.cacheKey);
   assert.equal(value.toCacheKey, to.value.cacheKey);
   assert.notEqual(value.fromCacheKey, value.toCacheKey);
@@ -1958,7 +1983,12 @@ function lightweightSelfTest() {
       sourceStop: original.value.sourceStop,
       outputSha256: packedSha(original.value.packedWeightedComplex),
       packedCells: CELLS_PER_COLUMN * original.value.sourceCount,
-      cacheKey: original.value.sourceStart <= 152 ? "epoch-old" : "epoch-new",
+      cacheKey:
+        original.value.sourceStart <= 152
+          ? "epoch-old"
+          : original.value.sourceStart <= 164
+            ? "epoch-middle"
+            : "epoch-new",
     };
     const receiptBytes = Buffer.from(`${JSON.stringify(receiptValue, null, 2)}\n`);
     epochReceipts.push(
@@ -1978,12 +2008,28 @@ function lightweightSelfTest() {
     epochReceipts[39].path,
     epochDirectory,
   );
+  negativeTests += expectFailure(
+    () => verifyBatchEpochs(epochDirectory),
+    /missing batch epoch transition 164:168/,
+  );
+  const secondEpochTransition = publishBatchEpochTransition(
+    epochReceipts[41].path,
+    epochReceipts[42].path,
+    epochDirectory,
+  );
   const epochAudit = verifyBatchEpochs(epochDirectory);
-  assert.deepEqual(epochAudit.transitions, [{
-    fromSourceStart: 152,
-    toSourceStart: 156,
-    transitionSha256: epochTransition.sha256,
-  }]);
+  assert.deepEqual(epochAudit.transitions, [
+    {
+      fromSourceStart: 152,
+      toSourceStart: 156,
+      transitionSha256: epochTransition.sha256,
+    },
+    {
+      fromSourceStart: 164,
+      toSourceStart: 168,
+      transitionSha256: secondEpochTransition.sha256,
+    },
+  ]);
   const mutatedEpoch = JSON.parse(fs.readFileSync(epochTransition.path));
   mutatedEpoch.changedReachableSources[0].diffSha256 = "0".repeat(64);
   const mutatedEpochBytes = Buffer.from(`${JSON.stringify(mutatedEpoch, null, 2)}\n`);
@@ -1995,6 +2041,22 @@ function lightweightSelfTest() {
   negativeTests += expectFailure(
     () => readBatchEpochTransition(mutatedEpochPath),
     /diffSha256/,
+  );
+  const mutatedSecondEpoch = JSON.parse(
+    fs.readFileSync(secondEpochTransition.path),
+  );
+  mutatedSecondEpoch.changedReachableSources[1].toSha256 = "0".repeat(64);
+  const mutatedSecondEpochBytes = Buffer.from(
+    `${JSON.stringify(mutatedSecondEpoch, null, 2)}\n`,
+  );
+  const mutatedSecondEpochPath = publishImmutable(
+    epochDirectory,
+    `complex-log-batch-epoch-transition-164-to-168-${sha(mutatedSecondEpochBytes)}.json`,
+    mutatedSecondEpochBytes,
+  ).path;
+  negativeTests += expectFailure(
+    () => readBatchEpochTransition(mutatedSecondEpochPath),
+    /toSha256/,
   );
   return {
     schema: "sagejs-field3-complex-log-corpus-protocol-self-test-v1",
