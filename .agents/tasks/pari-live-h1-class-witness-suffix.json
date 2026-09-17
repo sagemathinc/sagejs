@@ -1,0 +1,80 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-live-h1-class-witness-suffix",
+  "title": "Compose live h1 class witness suffix",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Compose live prefix relation/HNF owners through exact bidirectional HNF witnesses, full Smith transforms, D=I binding, and transactional publication of vacuous h1 generator/order evidence without resident artifacts or expected matrices.",
+  "base_commit": "398678093d4e7e3883b2a1addc1b07d75381f9ec",
+  "claims": [
+    "bench/pari-class-group-port/live_h1_class_witness_suffix.py",
+    "bench/pari-class-group-port/check_live_h1_class_witness_suffix.cjs",
+    "bench/pari-class-group-port/live_h1_class_witness_suffix_audit.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "exact matrix identities"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_live_h1_class_witness_suffix.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.197,
+      "started_at": "2026-09-17T04:52:32.157Z",
+      "commit": "398678093d4e7e3883b2a1addc1b07d75381f9ec",
+      "workspace_fingerprint": "ca79c2f0073e9239ecfdd51808a792a9e38cff1627053f6dc06b802eacbe1fde",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -m py_compile bench/pari-class-group-port/live_h1_class_witness_suffix.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.059,
+      "started_at": "2026-09-17T04:52:35.308Z",
+      "commit": "398678093d4e7e3883b2a1addc1b07d75381f9ec",
+      "workspace_fingerprint": "ca79c2f0073e9239ecfdd51808a792a9e38cff1627053f6dc06b802eacbe1fde",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 57.07,
+      "started_at": "2026-09-17T04:52:55.262Z",
+      "commit": "398678093d4e7e3883b2a1addc1b07d75381f9ec",
+      "workspace_fingerprint": "ca79c2f0073e9239ecfdd51808a792a9e38cff1627053f6dc06b802eacbe1fde",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a source-transparent native suffix that consumes only live relation, HNF, and HNF-transform owners; derives both relation/presentation maps and the full Smith transform; proves D=I and both transform inverse pairs; and transactionally publishes the matrices plus genuine empty h1 generator/order evidence. Focused CPython, JavaScript, GMP, and tagged checks reject relation, HNF, transform, and nontrivial-class mutations without changing published owners.",
+    "risks": [
+      "The result is internal PARI-correspondence evidence under the existing explicit factor-base/GRH assumptions, not a public class-saturation proof.",
+      "The integration base currently fails architecture:check on the pre-existing unclassified benchmark-only pari_h1_outcome_c_adapter.c file."
+    ],
+    "next_steps": [
+      "Wire this suffix directly after the accepted prepared-root prefix and retain its transform and generator components in the unified immutable Output."
+    ]
+  }
+}
