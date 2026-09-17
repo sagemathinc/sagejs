@@ -1,0 +1,64 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "field3-c6-authentic-runner",
+  "title": "Field3 authentic C6 runner",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "field3_c6_authentic_runner",
+  "objective": "Publish an authenticated native field3 prepared-embedding owner and execute exactly one C6 candidate attempt with immutable ancestry and terminal atomicity",
+  "base_commit": "96e228d10f9c8dbe1800b9d2c367408fdaaf6b72",
+  "claims": [
+    "bench/pari-class-group-port/field3_c6_embedding_owner_coordinator.cjs",
+    "bench/pari-class-group-port/field3_c6_authentic_runner.cjs",
+    "bench/pari-class-group-port/check_field3_c6_authentic_runner.cjs",
+    "bench/pari-class-group-port/field3_c6_authentic_runner_audit.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "PARI 2.17.4 low-precision getfu differential and exact owner replay"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "fallback",
+    "windows-x64": "fallback",
+    "macos-arm64": "fallback"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_field3_c6_authentic_runner.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.031,
+      "started_at": "2026-09-17T16:02:47.731Z",
+      "commit": "96e228d10f9c8dbe1800b9d2c367408fdaaf6b72",
+      "workspace_fingerprint": "485787a8e53834c81bff9528d6d5e9cccccfb6ba0df10a0b38989fd9a80e8646",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a no-retry native runner which publishes an immutable prepared-embedding owner, executes one C6 getfu candidate, delegates exact result replay to the existing C6 coordinator, and emits the downstream factorback-source owner only after success. Focused transport, mutation, atomicity, capacity, and pristine-PARI low-precision differential checks pass without launching the authentic computation.",
+    "risks": [
+      "The authentic 153088-bit native attempt is intentionally not executed in this lane.",
+      "The cold factorback verifier currently caps its independent logarithm replay at 384 bits, so its authentic precision extension remains separate work.",
+      "Broad native and strict suites require a clean integrated build; an accidentally requested broad test:changed build was interrupted immediately at compiler convergence to respect this lane's no-heavy-build constraint, leaving this worktree dist unsuitable for broad validation."
+    ],
+    "next_steps": [
+      "Integrate this commit into the current integration tip and build the embedding and C6 source graphs in isolated content-addressed caches.",
+      "Run the documented command once under the 600-second, 4-GiB aggregate process-tree guard after authentic C5 publication.",
+      "On success, feed the emitted factorback-source and C6 owner to the separately precision-extended cold verifier before C7 publication."
+    ]
+  }
+}
