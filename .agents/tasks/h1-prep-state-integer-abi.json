@@ -1,0 +1,118 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "h1-prep-state-integer-abi",
+  "title": "Unify H1 preparation-state ownership",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Align the live H1 owner bridge with the candidate's exact IntegerBuffer prep_state ABI and remove the redundant eight-word repack from the unified native prefix",
+  "base_commit": "87064b6753229d1b0935ac382bd750492f32aa48",
+  "claims": [
+    "bench/pari-class-group-port/live_h1_owner_bridge.py",
+    "bench/pari-class-group-port/check_live_h1_owner_bridge.cjs",
+    "bench/pari-class-group-port/live_prepared_h1_native.py",
+    "bench/pari-class-group-port/live_prepared_h1_worker.cjs",
+    "bench/pari-class-group-port/check_live_prepared_h1_worker.cjs",
+    "bench/pari-class-group-port/class_group_final_driver_status.py",
+    "bench/pari-class-group-port/check_class_group_final_driver_status.cjs",
+    "bench/pari-class-group-port/check_class_group_live_result_assembly.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "GMP and tagged differential execution"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "env SAGEJS_REPLAY_RUNTIME_ROOT=/home/user/sagejs-worktrees/pari-class-group-e2e-integration node bench/pari-class-group-port/check_live_h1_owner_bridge.cjs",
+    "env SAGEJS_REPLAY_RUNTIME_ROOT=/home/user/sagejs-worktrees/pari-class-group-e2e-integration node bench/pari-class-group-port/check_live_prepared_h1_worker.cjs"
+  ],
+  "runs": [
+    {
+      "command": "env SAGEJS_REPLAY_RUNTIME_ROOT=/home/user/sagejs-worktrees/pari-class-group-e2e-integration node bench/pari-class-group-port/check_live_h1_owner_bridge.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.97,
+      "started_at": "2026-09-17T05:08:01.861Z",
+      "commit": "87064b6753229d1b0935ac382bd750492f32aa48",
+      "workspace_fingerprint": "2e6b0dbd596d75f793a4932df7aca9371fc0f0321cc279a968bcee49751f9c30",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_REPLAY_RUNTIME_ROOT=/home/user/sagejs-worktrees/pari-class-group-e2e-integration node bench/pari-class-group-port/check_live_prepared_h1_worker.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.544,
+      "started_at": "2026-09-17T05:08:15.478Z",
+      "commit": "87064b6753229d1b0935ac382bd750492f32aa48",
+      "workspace_fingerprint": "2e6b0dbd596d75f793a4932df7aca9371fc0f0321cc279a968bcee49751f9c30",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.133,
+      "started_at": "2026-09-17T05:08:48.581Z",
+      "commit": "87064b6753229d1b0935ac382bd750492f32aa48",
+      "workspace_fingerprint": "2e6b0dbd596d75f793a4932df7aca9371fc0f0321cc279a968bcee49751f9c30",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 35.218,
+      "started_at": "2026-09-17T05:09:01.383Z",
+      "commit": "87064b6753229d1b0935ac382bd750492f32aa48",
+      "workspace_fingerprint": "2e6b0dbd596d75f793a4932df7aca9371fc0f0321cc279a968bcee49751f9c30",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 110.31,
+      "started_at": "2026-09-17T05:09:54.828Z",
+      "commit": "87064b6753229d1b0935ac382bd750492f32aa48",
+      "workspace_fingerprint": "2e6b0dbd596d75f793a4932df7aca9371fc0f0321cc279a968bcee49751f9c30",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 57.623,
+      "started_at": "2026-09-17T05:11:49.891Z",
+      "commit": "87064b6753229d1b0935ac382bd750492f32aa48",
+      "workspace_fingerprint": "2e6b0dbd596d75f793a4932df7aca9371fc0f0321cc279a968bcee49751f9c30",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Changed the live H1 preparation-state ABI to IntegerBuffer end to end, passed the candidate's packed owner directly into the final bridge, removed the redundant eight-word Int64 repack, and added focused ABI assertions.",
+    "risks": [
+      "Native callers must continue to pass the producer's packed IntegerBuffer rather than constructing an Int64Buffer copy.",
+      "The portable tier reaches 192 passing files before an unrelated stale modular q-expansion source-freeze hash on architecture/package-graph.json; the lane therefore remains active rather than review."
+    ],
+    "next_steps": [
+      "Integrate this commit into the live prepared-H1 branch and rerun its aggregate validation."
+    ]
+  }
+}

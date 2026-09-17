@@ -7,7 +7,10 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
-const { compileKernel } = require("../../tools/native-kernel/compiler.cjs");
+const compilerPath = process.env.SAGEJS_REPLAY_RUNTIME_ROOT
+  ? path.join(process.env.SAGEJS_REPLAY_RUNTIME_ROOT, "tools/native-kernel/compiler.cjs")
+  : "../../tools/native-kernel/compiler.cjs";
+const { compileKernel } = require(compilerPath);
 
 const root = path.resolve(__dirname, "../..");
 const sourcePath = path.join(__dirname, "live_h1_owner_bridge.py");
@@ -21,6 +24,10 @@ const names = source
   .trim()
   .split("\n")
   .map((line) => line.trim().replace(/,$/, "").split(": "));
+assert.deepEqual(
+  names.find(([name]) => name === "prep_state"),
+  ["prep_state", "IntegerBuffer"],
+);
 
 const sizes = {
   unit_transform: 14, getfu_factor: 4, compact_provenance: 14,

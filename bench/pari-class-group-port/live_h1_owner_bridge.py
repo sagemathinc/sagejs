@@ -25,7 +25,7 @@ def pari_live_h1_owner_bridge(
     relation_lattice: IntegerBuffer,
     expected_regulator: IntegerBuffer,
     prep_base_state: IntegerBuffer,
-    prep_state: Int64Buffer,
+    prep_state: IntegerBuffer,
     hnf_state: Int64Buffer,
     acceptance_state: Int64Buffer,
     attempt_state: Int64Buffer,

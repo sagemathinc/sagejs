@@ -33,7 +33,7 @@ class FinalDriverStatusFailure(ValueError):
 @native
 def pari_equal_bound_cleanarch_driver_status(
     prep_base_state: IntegerBuffer,
-    prep_state: Int64Buffer,
+    prep_state: IntegerBuffer,
     hnf_state: Int64Buffer,
     acceptance_state: Int64Buffer,
     class_logs: IntegerBuffer,
