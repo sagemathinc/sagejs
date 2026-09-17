@@ -4,7 +4,7 @@
   "id": "final-class-live-assembly",
   "title": "Final Class Live Assembly",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Compose transactional class cleanarch and Buchall final-result assembly solely from live authenticated owners for the authentic h=1 root, without fixtures or external oracles and without public completion",
   "base_commit": "f0d3cfe24d58e46492635fd20c6a24dd5e0c0772",
@@ -62,13 +62,33 @@
       "platform": "linux-x64"
     },
     {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1122.226,
+      "started_at": "2026-09-17T03:27:40.652Z",
+      "commit": "d9b62e39d95db8091e2935fabca8e14034d1c46d",
+      "workspace_fingerprint": "35d6d0264201df2391de1d027b924eb676e5edea081a7268d8c76abe06738988",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 57.363,
+      "started_at": "2026-09-17T03:46:58.059Z",
+      "commit": "d9b62e39d95db8091e2935fabca8e14034d1c46d",
+      "workspace_fingerprint": "35d6d0264201df2391de1d027b924eb676e5edea081a7268d8c76abe06738988",
+      "platform": "linux-x64"
+    },
+    {
       "command": "node bench/pari-class-group-port/check_class_group_live_result_assembly.cjs",
       "result": "pass",
       "exit_code": 0,
-      "seconds": 10.832,
-      "started_at": "2026-09-17T03:42:41.760Z",
-      "commit": "f0d3cfe24d58e46492635fd20c6a24dd5e0c0772",
-      "workspace_fingerprint": "7a36cfe3171967a0d8fc0d0927f746c79fff92c03c297f229797a9140e1de40c",
+      "seconds": 8.803,
+      "started_at": "2026-09-17T03:47:59.668Z",
+      "commit": "d9b62e39d95db8091e2935fabca8e14034d1c46d",
+      "workspace_fingerprint": "35d6d0264201df2391de1d027b924eb676e5edea081a7268d8c76abe06738988",
       "platform": "linux-x64"
     }
   ],
