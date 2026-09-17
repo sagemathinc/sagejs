@@ -1,0 +1,185 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/pari-class-group-h1-exclusive-stage-timing-v1.json",
+  "title": "Authentic h=1 mutually-exclusive stage timing receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "qualifiedTiming", "fieldId", "rootBoundary",
+    "timerProtocol", "clock", "seed", "provenance", "pairs", "summary"
+  ],
+  "properties": {
+    "schema": {"const": 1},
+    "qualifiedTiming": {"const": false},
+    "fieldId": {"const": "pari-2.17.4:x^3-20018*x+20034"},
+    "rootBoundary": {"const": "prepared-nfinit-class-unit-h1"},
+    "timerProtocol": {"const": "single-active-stage-contiguous-v1"},
+    "clock": {"const": "monotonic-wall-nanoseconds"},
+    "seed": {"$ref": "#/$defs/unsigned"},
+    "provenance": {"$ref": "#/$defs/provenance"},
+    "pairs": {
+      "type": "array",
+      "minItems": 7,
+      "items": {"$ref": "#/$defs/pair"}
+    },
+    "summary": {"$ref": "#/$defs/summary"}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "unsigned": {"type": "string", "pattern": "^(0|[1-9][0-9]{0,29})$"},
+    "positive": {"type": "string", "pattern": "^[1-9][0-9]{0,29}$"},
+    "signed": {"type": "string", "pattern": "^-?(0|[1-9][0-9]{0,59})$"},
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "commit", "dirty", "rootSourceSha256", "sageGeneratedSha256",
+        "sageObjectSha256", "pariLibrarySha256", "pariExecutableSha256"
+      ],
+      "properties": {
+        "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "dirty": {"const": false},
+        "rootSourceSha256": {"$ref": "#/$defs/digest"},
+        "sageGeneratedSha256": {"$ref": "#/$defs/digest"},
+        "sageObjectSha256": {"$ref": "#/$defs/digest"},
+        "pariLibrarySha256": {"$ref": "#/$defs/digest"},
+        "pariExecutableSha256": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "totals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "relation-retry", "sparse-hnf-snf-transform", "unit-regulator",
+        "honesty-generators-final", "unattributed-remainder"
+      ],
+      "properties": {
+        "relation-retry": {"$ref": "#/$defs/unsigned"},
+        "sparse-hnf-snf-transform": {"$ref": "#/$defs/unsigned"},
+        "unit-regulator": {"$ref": "#/$defs/unsigned"},
+        "honesty-generators-final": {"$ref": "#/$defs/unsigned"},
+        "unattributed-remainder": {"$ref": "#/$defs/unsigned"}
+      }
+    },
+    "signedTotals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "relation-retry", "sparse-hnf-snf-transform", "unit-regulator",
+        "honesty-generators-final", "unattributed-remainder"
+      ],
+      "properties": {
+        "relation-retry": {"$ref": "#/$defs/signed"},
+        "sparse-hnf-snf-transform": {"$ref": "#/$defs/signed"},
+        "unit-regulator": {"$ref": "#/$defs/signed"},
+        "honesty-generators-final": {"$ref": "#/$defs/signed"},
+        "unattributed-remainder": {"$ref": "#/$defs/signed"}
+      }
+    },
+    "segment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ordinal", "stage", "startNanoseconds", "endNanoseconds"],
+      "properties": {
+        "ordinal": {"type": "integer", "minimum": 0},
+        "stage": {
+          "enum": [
+            "relation-retry", "sparse-hnf-snf-transform", "unit-regulator",
+            "honesty-generators-final", "unattributed-remainder"
+          ]
+        },
+        "startNanoseconds": {"$ref": "#/$defs/unsigned"},
+        "endNanoseconds": {"$ref": "#/$defs/positive"}
+      }
+    },
+    "arm": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "position", "label", "implementation", "repetitions",
+        "rootNanoseconds", "segments", "stageTotalsNanoseconds",
+        "timerReadOverheadNanoseconds", "resultDigest", "replayDigest",
+        "rngDigest", "workDigest", "terminalStatus"
+      ],
+      "properties": {
+        "position": {"type": "integer", "minimum": 0, "maximum": 1},
+        "label": {"enum": ["A", "B"]},
+        "implementation": {"enum": ["sagejs", "pari"]},
+        "repetitions": {"type": "integer", "minimum": 1},
+        "rootNanoseconds": {"$ref": "#/$defs/positive"},
+        "segments": {
+          "type": "array",
+          "minItems": 4,
+          "items": {"$ref": "#/$defs/segment"}
+        },
+        "stageTotalsNanoseconds": {"$ref": "#/$defs/totals"},
+        "timerReadOverheadNanoseconds": {"$ref": "#/$defs/unsigned"},
+        "resultDigest": {"$ref": "#/$defs/digest"},
+        "replayDigest": {"$ref": "#/$defs/digest"},
+        "rngDigest": {"$ref": "#/$defs/digest"},
+        "workDigest": {"$ref": "#/$defs/digest"},
+        "terminalStatus": {"type": "string", "minLength": 1}
+      }
+    },
+    "pair": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pairIndex", "order", "arms"],
+      "properties": {
+        "pairIndex": {"type": "integer", "minimum": 0},
+        "order": {"enum": ["AB", "BA"]},
+        "arms": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {"$ref": "#/$defs/arm"}
+        }
+      }
+    },
+    "pairAttribution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pairIndex", "commonDenominator", "rootGapNumerator",
+        "stageGapNumerators", "namedPositiveGapNumerator",
+        "unattributedPositiveGapNumerator", "attributedGapFraction"
+      ],
+      "properties": {
+        "pairIndex": {"type": "integer", "minimum": 0},
+        "commonDenominator": {"$ref": "#/$defs/positive"},
+        "rootGapNumerator": {"$ref": "#/$defs/signed"},
+        "stageGapNumerators": {"$ref": "#/$defs/signedTotals"},
+        "namedPositiveGapNumerator": {"$ref": "#/$defs/unsigned"},
+        "unattributedPositiveGapNumerator": {"$ref": "#/$defs/unsigned"},
+        "attributedGapFraction": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pairCount", "pairAttributions", "attributedGapFraction",
+        "aggregation", "qualifiedForFinalTiming"
+      ],
+      "properties": {
+        "pairCount": {"type": "integer", "minimum": 7},
+        "pairAttributions": {
+          "type": "array",
+          "minItems": 7,
+          "items": {"$ref": "#/$defs/pairAttribution"}
+        },
+        "attributedGapFraction": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "aggregation": {"const": "median-of-positive-root-gap-pair-fractions-v1"},
+        "qualifiedForFinalTiming": {"const": false}
+      }
+    }
+  }
+}
