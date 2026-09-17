@@ -7,7 +7,13 @@ one source-transparent native call graph. No fixture, filesystem, or PARI oracle
 is consulted by this computation.
 """
 
-from sagejs.native import Float64Buffer, Int64Buffer, IntegerBuffer, native
+from sagejs.native import (
+    Float64Buffer,
+    Int64Buffer,
+    IntegerBuffer,
+    diagnostic_stage_switch,
+    native,
+)
 
 from .live_h1_owner_bridge import pari_live_h1_owner_bridge
 from .resident_generated_class_attempt import (
@@ -845,6 +851,7 @@ def pari_unified_live_h1_root(
     ):
         unified_state[0] = 3
         return 3
+    diagnostic_stage_switch(3)
     bridge_status = pari_live_h1_owner_bridge(
         hnf_result_c,
         accept_relations,

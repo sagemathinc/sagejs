@@ -5,7 +5,13 @@ Experimental PARI 2.17.4 segment with prepared nf/factor-base/ideal packets.
 No intermediate relation, logarithm or HNF result crosses a host boundary.
 """
 
-from sagejs.native import Float64Buffer, Int64Buffer, IntegerBuffer, native
+from sagejs.native import (
+    Float64Buffer,
+    Int64Buffer,
+    IntegerBuffer,
+    diagnostic_stage_switch,
+    native,
+)
 from .relation_insertion import pari_initialize_owned_relations
 from .unreduced_small_norm import pari_collect_unreduced_ideals
 from .relation_log_embeddings import pari_append_relation_log_embeddings
@@ -483,6 +489,7 @@ def pari_connected_relation_hnf(
         int(chain_state[2]),
     )
     chain_state[0] = 2
+    diagnostic_stage_switch(2)
     for i in range(rows * columns):
         hnf_original[i] = int(relation_records[i])
     status = pari_hnfspec_complete(

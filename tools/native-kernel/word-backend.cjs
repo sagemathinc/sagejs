@@ -185,6 +185,9 @@ function emitWordOperation(operation, context, indent) {
     ? undefined
     : value(operation.target);
   const promote = () => context.promote(operation, indent);
+  if (operation.kind === "diagnostic.stage.switch") {
+    return `${indent}(void) ${value(operation.stage)};`;
+  }
   if (operation.kind === "integer.constant") {
     return fitsInt64(operation.value)
       ? `${indent}${target} = ${int64Constant(operation.value)};`

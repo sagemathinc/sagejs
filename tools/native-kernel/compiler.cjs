@@ -887,6 +887,96 @@ function bindingGyp(
   };
 }
 
+function normalizeDiagnosticStageClock(value, ir) {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== "object" || Array.isArray(value)) {
+    throw new TypeError("diagnosticStageClock must be an object");
+  }
+  const allowed = new Set(["function", "stages", "maximumVisits"]);
+  for (const key of Object.keys(value)) {
+    if (!allowed.has(key)) {
+      throw new TypeError(`unknown diagnosticStageClock option ${key}`);
+    }
+  }
+  if (typeof value.function !== "string" ||
+      !/^[A-Za-z_][A-Za-z0-9_]*$/.test(value.function)) {
+    throw new TypeError("diagnosticStageClock.function must be a function name");
+  }
+  if (!Array.isArray(value.stages) || value.stages.length < 2 ||
+      value.stages.length > 64 ||
+      value.stages.some((stage) => typeof stage !== "string" || stage === "")) {
+    throw new TypeError(
+      "diagnosticStageClock.stages must contain 2 to 64 non-empty names",
+    );
+  }
+  if (new Set(value.stages).size !== value.stages.length) {
+    throw new TypeError("diagnosticStageClock stage names must be unique");
+  }
+  const maximumVisits = value.maximumVisits ?? 64;
+  if (!Number.isInteger(maximumVisits) || maximumVisits < value.stages.length ||
+      maximumVisits > 4096) {
+    throw new TypeError(
+      "diagnosticStageClock.maximumVisits must be an integer from the stage " +
+        "count through 4096",
+    );
+  }
+  const fn = ir.functions.find((candidate) => candidate.name === value.function);
+  if (fn === undefined || fn.hostCallable === false ||
+      fn.kernelKind !== "integer") {
+    throw new TypeError(
+      "diagnosticStageClock.function must name a public integer kernel",
+    );
+  }
+  const reachable = new Set([value.function]);
+  const pending = [value.function];
+  while (pending.length > 0) {
+    const caller = pending.pop();
+    for (const callee of ir.callGraph?.[caller] || []) {
+      if (reachable.has(callee)) continue;
+      reachable.add(callee);
+      pending.push(callee);
+    }
+  }
+  let markerCount = 0;
+  for (const candidate of ir.functions) {
+    if (!reachable.has(candidate.name)) continue;
+    const constants = new Map();
+    const markers = [];
+    const walk = (node) => {
+      if (node === null || typeof node !== "object") return;
+      if (node.kind === "uint64.constant" && typeof node.target === "string") {
+        constants.set(node.target, BigInt(node.value));
+      } else if (node.kind === "diagnostic.stage.switch") {
+        markers.push(node.stage);
+      }
+      for (const child of Object.values(node)) {
+        if (Array.isArray(child)) child.forEach(walk);
+        else walk(child);
+      }
+    };
+    walk(candidate.body);
+    for (const marker of markers) {
+      markerCount += 1;
+      const stage = constants.get(marker);
+      if (stage === undefined || stage >= BigInt(value.stages.length)) {
+        throw new TypeError(
+          `${candidate.name} uses a diagnostic stage outside configured stages`,
+        );
+      }
+    }
+  }
+  if (markerCount === 0) {
+    throw new TypeError(
+      "diagnosticStageClock.function does not reach a diagnostic stage marker",
+    );
+  }
+  return Object.freeze({
+    function: value.function,
+    stages: Object.freeze([...value.stages]),
+    maximumVisits,
+  });
+}
+
 async function compileKernel(options) {
   // Use the physical source identity everywhere the compiler records or
   // hashes a kernel.  macOS exposes its temporary directory through both
@@ -922,6 +1012,10 @@ async function compileKernel(options) {
     options.automaticSelections ?? {},
     ir,
   );
+  const diagnosticStageClock = normalizeDiagnosticStageClock(
+    options.diagnosticStageClock,
+    ir,
+  );
   const foreignInputs = foreignCompilationInputs(ir, { cacheRoot });
   const compatibility = nativeCompatibility(ir, foreignInputs, sourcePath);
   const usesSpecializedPrimeField = ir.functions.some(
@@ -951,6 +1045,7 @@ async function compileKernel(options) {
     sourceBoundsChecked,
     profileSymbols,
     automaticSelections,
+    diagnosticStageClock,
     mpfr: "4.2.2",
     mpc: mpcVersion,
   };
@@ -1011,6 +1106,7 @@ async function compileKernel(options) {
       privateFunctions: compatibility.privateFunctions,
       foreignInputs,
       automaticSelections,
+      diagnosticStageClock,
       exceptionShields: exceptionShims === null ? [] :
         exceptionShims.functions.map((fn) => fn.call_plan.symbol),
     };
@@ -1029,7 +1125,10 @@ async function compileKernel(options) {
     );
   }
   mkdirSync(outputPath, { recursive: true });
-  const artifacts = generateArtifacts(ir, { moduleIdentity });
+  const artifacts = generateArtifacts(ir, {
+    moduleIdentity,
+    diagnosticStageClock,
+  });
   const cSource = artifacts.adapterSource;
   const { generatedCSourceMap } = require("./provenance.cjs");
   const cSourceMap = generatedCSourceMap(cSource);
@@ -1059,6 +1158,7 @@ async function compileKernel(options) {
       sourceBoundsChecked,
       profileSymbols,
       automaticSelections,
+      diagnosticStageClock,
       sourceHash,
       sourcePath,
       nativeAbi: compatibility.nativeAbi,
@@ -1080,6 +1180,7 @@ async function compileKernel(options) {
         primeFieldTuning: tuning,
         sourceBoundsChecked,
         automaticSelections,
+        diagnosticStageClock,
         sourcePath,
         cSourceMap,
         coreSourceMap,
@@ -1149,6 +1250,7 @@ async function compileKernel(options) {
     privateFunctions: compatibility.privateFunctions,
     foreignInputs,
     automaticSelections,
+    diagnosticStageClock,
     exceptionShields: exceptionShims === null ? [] :
       exceptionShims.functions.map((fn) => fn.call_plan.symbol),
   };

@@ -9,7 +9,13 @@ saturation and a stable public result contract remain outside this experiment.
 Copyright (C) The PARI group. GPL-2.0-or-later, without warranty.
 """
 
-from sagejs.native import Float64Buffer, Int64Buffer, IntegerBuffer, native
+from sagejs.native import (
+    Float64Buffer,
+    Int64Buffer,
+    IntegerBuffer,
+    diagnostic_stage_switch,
+    native,
+)
 
 from .live_h1_class_witness_suffix import pari_live_h1_class_witness_suffix
 from .unified_full_h1_root import pari_live_retrying_h1_suffix
@@ -788,6 +794,7 @@ def pari_unified_complete_h1_root(
     final_state[3] = -1
     final_state[4] = -1
 
+    diagnostic_stage_switch(1)
     prefix_status = pari_unified_live_h1_root(
         matrix,
         ideal,
@@ -1267,6 +1274,7 @@ def pari_unified_complete_h1_root(
     ):
         raise ValueError("short derived-shape final h1 owner")
 
+    diagnostic_stage_switch(2)
     class_status = pari_live_h1_class_witness_suffix(
         hnf_matbnew,
         class_rows,
@@ -1333,6 +1341,7 @@ def pari_unified_complete_h1_root(
         precision_resident_root_p[embedding] = preparation_embedding[source + 1]
         precision_resident_root_e[embedding] = preparation_embedding[source + 2]
 
+    diagnostic_stage_switch(3)
     precision_status = pari_live_retrying_h1_suffix(
         precision_resident_root_m,
         precision_resident_root_p,
@@ -1437,6 +1446,7 @@ def pari_unified_complete_h1_root(
         final_state[10] = bridge_state[12]
         return MISSING_LIVE_PRECISION_SUFFIX
 
+    diagnostic_stage_switch(4)
     exact_torsion_status = pari_exact_real_cubic_torsion(
         prep_polynomial,
         torsion_order,

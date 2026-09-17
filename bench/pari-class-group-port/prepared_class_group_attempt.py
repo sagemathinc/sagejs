@@ -6,7 +6,13 @@ invariant-only Smith output share resident owners. Prepared nf/factor-base,
 analytic inverse hR and cache-change inputs remain explicit boundaries.
 """
 
-from sagejs.native import Float64Buffer, Int64Buffer, IntegerBuffer, native
+from sagejs.native import (
+    Float64Buffer,
+    Int64Buffer,
+    IntegerBuffer,
+    diagnostic_stage_switch,
+    native,
+)
 from .connected_relation_hnf import pari_connected_relation_hnf
 from .post_hnf_acceptance import pari_post_hnf_acceptance
 from .class_invariant_output import pari_class_invariant_output
@@ -559,6 +565,7 @@ def pari_prepared_class_group_attempt(
         attempt_state[0] = 4
         return action
     attempt_state[0] = 2
+    diagnostic_stage_switch(3)
     action = pari_post_hnf_acceptance(
         int(len(relation)),
         int(hnf_state[0]),
@@ -622,6 +629,7 @@ def pari_prepared_class_group_attempt(
         attempt_state[0] = 4
         return action
     attempt_state[0] = 3
+    diagnostic_stage_switch(2)
     action = pari_class_invariant_output(
         hnf_result_h,
         int(hnf_state[0]),

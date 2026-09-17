@@ -403,6 +403,9 @@ function emitTaggedOperation(operation, context, indent) {
   const target = operation.target === undefined
     ? undefined
     : taggedValue(operation.target, context);
+  if (operation.kind === "diagnostic.stage.switch") {
+    return `${indent}(void) ${taggedValue(operation.stage, context)};`;
+  }
   if (operation.kind.startsWith("float64.") ||
       operation.kind === "integer.from_float64" ||
       operation.kind === "integer.round_float64") {

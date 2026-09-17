@@ -83,6 +83,44 @@ const stages = {
   assert.equal(trace.counterTotals.publications, "1");
   assert.equal(validateDiagnosticTrace(trace), trace);
 
+  const repeated = new UnifiedH1DiagnosticRecorder({
+    clock: fakeClock(Array.from({ length: 20 }, (_, index) => index)),
+  });
+  repeated.begin();
+  const repeatedStages = [
+    ["relation-retry", { relationAttempts: "1" }],
+    ["sparse-hnf-snf-transform", { hnfRows: "1" }],
+    ["unit-regulator", { unitAttempts: "1" }],
+    ["sparse-hnf-snf-transform", { smithPivots: "1" }],
+    ["unit-regulator", { regulatorEvaluations: "1" }],
+    ["sparse-hnf-snf-transform", { transformColumns: "1" }],
+    ["unit-regulator", { acceptedUnits: "1" }],
+    ["honesty-generators-final", { publications: "1" }],
+  ];
+  for (const [stage, counters] of repeatedStages) {
+    repeated.enter(stage);
+    repeated.leave(stage, counters);
+  }
+  const repeatedTrace = repeated.finish();
+  assert.deepEqual(
+    repeatedTrace.stageRecords.map(record => [record.stage, record.invocation]),
+    [
+      ["relation-retry", 1],
+      ["sparse-hnf-snf-transform", 1],
+      ["unit-regulator", 1],
+      ["sparse-hnf-snf-transform", 2],
+      ["unit-regulator", 2],
+      ["sparse-hnf-snf-transform", 3],
+      ["unit-regulator", 3],
+      ["honesty-generators-final", 1],
+    ],
+  );
+  assert.equal(
+    repeatedTrace.stageTotalsNanoseconds["sparse-hnf-snf-transform"], "3",
+  );
+  assert.equal(repeatedTrace.stageTotalsNanoseconds["unit-regulator"], "3");
+  assert.equal(validateDiagnosticTrace(repeatedTrace), repeatedTrace);
+
   const pari = await runPariWholeRootDiagnostic({
     operation: async () => "bnfinit-result",
     clock: fakeClock([100, 175]),
@@ -163,6 +201,7 @@ const stages = {
     residualNanoseconds: "16",
     counterCount: COUNTER_NAMES.length,
     negativeCases: 13,
+    repeatedVisitCount: repeatedTrace.stageRecords.length,
     pariWholeRootOnly: true,
     finalTimingRun: false,
   }, null, 2));

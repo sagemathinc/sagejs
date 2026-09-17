@@ -660,6 +660,12 @@ function emitExactOperation(operation, context, indent) {
   if (operation.kind === "bool.constant") {
     return `${indent}${target} = ${operation.value ? 1 : 0};`;
   }
+  if (operation.kind === "diagnostic.stage.switch") {
+    const stage = exactValue(operation.stage, context);
+    return context.diagnosticStageClock
+      ? `${indent}sagejs_native_diagnostic_stage_switch(${stage});`
+      : `${indent}(void) ${stage};`;
+  }
   if (operation.kind === "range.validate_step") {
     const step = exactValue(operation.step, context);
     const condition = operation.stepType === "Integer"
@@ -2197,10 +2203,12 @@ function exactDeclarations(fn) {
   return { context, declarations, initialization, cleanup };
 }
 
-function emitExactInternalFunction(fn, functions) {
+function emitExactInternalFunction(fn, functions, options = {}) {
   const { context, declarations, initialization, cleanup } =
     exactDeclarations(fn);
   context.functions = functions;
+  context.diagnosticStageClock = options.diagnosticStageClock !== null &&
+    options.diagnosticStageClock !== undefined;
   return `${internalSignature(fn)}
 {
 ${declarations.join("\n")}
@@ -2829,6 +2837,7 @@ function emitExactWrapper(fn, options = {}) {
     identifiers,
     declarations,
   );
+  const diagnostic = options.diagnosticStageClock === true;
   return `
 static napi_value ${options.wrapper || `compiled_${fn.name}_gmp`}(
     napi_env env, napi_callback_info info)
@@ -2848,7 +2857,9 @@ ${declarations.join("\n")}
     }
 ${initialization.join("\n")}
 ${parsing.join("\n")}
+${diagnostic ? "    sagejs_native_diagnostic_stage_begin();" : ""}
 ${execution}
+${diagnostic ? "    sagejs_native_diagnostic_stage_finish(0);" : ""}
 ${resultInitialization.join("\n")}
 ${resourceRefreshStatements(fn, parameterValue).join("\n")}
 ${resultCreation.join("\n")}
@@ -2856,25 +2867,32 @@ ${cleanup.join("\n")}
     return result;
 
 fail:
+${diagnostic ? "    sagejs_native_diagnostic_stage_finish(1);" : ""}
 ${cleanup.join("\n")}
     return NULL;
 }`;
 }
 
-function emitExactWrappers(fn) {
+function emitExactWrappers(fn, options = {}) {
+  const diagnosticStageClock =
+    options.diagnosticStageClock?.function === fn.name;
   if (fn.analysis?.backend?.kind === "fmpz") {
     return [
       emitExactWrapper(fn, {
         wrapper: `compiled_${fn.name}`,
         call: `sagejs_kernel_${fn.name}`,
+        diagnosticStageClock,
       }),
       emitTaggedWrapper(fn, {
         wrapper: `compiled_${fn.name}_tagged`,
       }),
-      emitExactWrapper(fn),
+      emitExactWrapper(fn, { diagnosticStageClock }),
     ].join("\n\n");
   }
-  return [emitTaggedWrapper(fn), emitExactWrapper(fn)].join("\n\n");
+  return [
+    emitTaggedWrapper(fn),
+    emitExactWrapper(fn, { diagnosticStageClock }),
+  ].join("\n\n");
 }
 
 function fieldKind(fn) {
@@ -4556,6 +4574,192 @@ ${functions.map((fn) => fn.kernelKind === "integer"
 `;
 }
 
+function generateDiagnosticStageClockSupport(configuration) {
+  if (configuration === null || configuration === undefined) return "";
+  const stageCount = configuration.stages.length;
+  const maximumVisits = configuration.maximumVisits;
+  return `#define SAGEJS_DIAGNOSTIC_STAGE_COUNT ${stageCount}
+#define SAGEJS_DIAGNOSTIC_STAGE_MAX_VISITS ${maximumVisits}
+#define SAGEJS_DIAGNOSTIC_STAGE_HEADER_WORDS 6
+#if defined(__cplusplus)
+#define SAGEJS_DIAGNOSTIC_THREAD_LOCAL thread_local
+#elif defined(_MSC_VER)
+#define SAGEJS_DIAGNOSTIC_THREAD_LOCAL __declspec(thread)
+#else
+#define SAGEJS_DIAGNOSTIC_THREAD_LOCAL _Thread_local
+#endif
+
+typedef struct
+{
+    uint64_t totals[SAGEJS_DIAGNOSTIC_STAGE_COUNT];
+    uint64_t visit_stages[SAGEJS_DIAGNOSTIC_STAGE_MAX_VISITS];
+    uint64_t visit_durations[SAGEJS_DIAGNOSTIC_STAGE_MAX_VISITS];
+    uint64_t root_started;
+    uint64_t segment_started;
+    uint64_t root_nanoseconds;
+    uint64_t visit_count;
+    uint64_t current_stage;
+    uint64_t failed;
+    uint64_t clock_failed;
+    int active;
+    int ready;
+} sagejs_native_diagnostic_stage_clock;
+
+static SAGEJS_DIAGNOSTIC_THREAD_LOCAL
+    sagejs_native_diagnostic_stage_clock sagejs_native_diagnostic_active;
+static SAGEJS_DIAGNOSTIC_THREAD_LOCAL
+    sagejs_native_diagnostic_stage_clock sagejs_native_diagnostic_last;
+
+static int sagejs_native_diagnostic_now(uint64_t *result)
+{
+#if defined(_WIN32)
+    LARGE_INTEGER counter;
+    LARGE_INTEGER frequency;
+    if (!QueryPerformanceCounter(&counter) ||
+        !QueryPerformanceFrequency(&frequency) || frequency.QuadPart <= 0)
+        return 0;
+    *result = (uint64_t) (counter.QuadPart / frequency.QuadPart) *
+        UINT64_C(1000000000) +
+        (uint64_t) (((unsigned long long)
+            (counter.QuadPart % frequency.QuadPart) * UINT64_C(1000000000)) /
+            (unsigned long long) frequency.QuadPart);
+#else
+    struct timespec value;
+    if (clock_gettime(CLOCK_MONOTONIC, &value) != 0 || value.tv_sec < 0)
+        return 0;
+    *result = (uint64_t) value.tv_sec * UINT64_C(1000000000) +
+        (uint64_t) value.tv_nsec;
+#endif
+    return 1;
+}
+
+static void sagejs_native_diagnostic_close_segment(
+    sagejs_native_diagnostic_stage_clock *clock, uint64_t now)
+{
+    uint64_t duration;
+    if (now < clock->segment_started ||
+        clock->current_stage >= SAGEJS_DIAGNOSTIC_STAGE_COUNT)
+    {
+        clock->clock_failed = 1;
+        return;
+    }
+    duration = now - clock->segment_started;
+    if (UINT64_MAX - clock->totals[clock->current_stage] < duration)
+    {
+        clock->clock_failed = 1;
+        return;
+    }
+    clock->totals[clock->current_stage] += duration;
+    if (clock->visit_count >= SAGEJS_DIAGNOSTIC_STAGE_MAX_VISITS)
+    {
+        clock->clock_failed = 1;
+        return;
+    }
+    clock->visit_stages[clock->visit_count] = clock->current_stage;
+    clock->visit_durations[clock->visit_count] = duration;
+    clock->visit_count += 1;
+}
+
+static void sagejs_native_diagnostic_stage_begin(void)
+{
+    uint64_t now = 0;
+    memset(&sagejs_native_diagnostic_active, 0,
+        sizeof(sagejs_native_diagnostic_active));
+    sagejs_native_diagnostic_active.current_stage = 0;
+    sagejs_native_diagnostic_active.active = 1;
+    if (!sagejs_native_diagnostic_now(&now))
+        sagejs_native_diagnostic_active.clock_failed = 1;
+    sagejs_native_diagnostic_active.root_started = now;
+    sagejs_native_diagnostic_active.segment_started = now;
+}
+
+static void sagejs_native_diagnostic_stage_switch(uint64_t stage)
+{
+    uint64_t now = 0;
+    sagejs_native_diagnostic_stage_clock *clock =
+        &sagejs_native_diagnostic_active;
+    if (!clock->active) return;
+    if (stage >= SAGEJS_DIAGNOSTIC_STAGE_COUNT ||
+        !sagejs_native_diagnostic_now(&now))
+    {
+        clock->clock_failed = 1;
+        return;
+    }
+    sagejs_native_diagnostic_close_segment(clock, now);
+    clock->current_stage = stage;
+    clock->segment_started = now;
+}
+
+static void sagejs_native_diagnostic_stage_finish(uint64_t failed)
+{
+    uint64_t now = 0;
+    uint64_t total = 0;
+    size_t stage;
+    sagejs_native_diagnostic_stage_clock *clock =
+        &sagejs_native_diagnostic_active;
+    if (!clock->active) return;
+    clock->failed = failed != 0;
+    if (!sagejs_native_diagnostic_now(&now))
+        clock->clock_failed = 1;
+    else
+    {
+        sagejs_native_diagnostic_close_segment(clock, now);
+        if (now < clock->root_started) clock->clock_failed = 1;
+        else clock->root_nanoseconds = now - clock->root_started;
+    }
+    for (stage = 0; stage < SAGEJS_DIAGNOSTIC_STAGE_COUNT; stage += 1)
+    {
+        if (UINT64_MAX - total < clock->totals[stage])
+        {
+            clock->clock_failed = 1;
+            break;
+        }
+        total += clock->totals[stage];
+    }
+    if (total != clock->root_nanoseconds) clock->clock_failed = 1;
+    clock->active = 0;
+    clock->ready = 1;
+    sagejs_native_diagnostic_last = *clock;
+}
+
+static size_t sagejs_native_diagnostic_stage_snapshot_words(void)
+{
+    return SAGEJS_DIAGNOSTIC_STAGE_HEADER_WORDS +
+        SAGEJS_DIAGNOSTIC_STAGE_COUNT +
+        2 * SAGEJS_DIAGNOSTIC_STAGE_MAX_VISITS;
+}
+
+static int sagejs_native_diagnostic_stage_snapshot(
+    uint64_t *output, size_t length)
+{
+    size_t stage;
+    size_t visit;
+    size_t position = SAGEJS_DIAGNOSTIC_STAGE_HEADER_WORDS;
+    const sagejs_native_diagnostic_stage_clock *clock =
+        &sagejs_native_diagnostic_last;
+    if (output == NULL || length < sagejs_native_diagnostic_stage_snapshot_words() ||
+        !clock->ready)
+        return 0;
+    memset(output, 0,
+        sagejs_native_diagnostic_stage_snapshot_words() * sizeof(uint64_t));
+    output[0] = 1;
+    output[1] = SAGEJS_DIAGNOSTIC_STAGE_COUNT;
+    output[2] = clock->visit_count;
+    output[3] = clock->root_nanoseconds;
+    output[4] = clock->failed;
+    output[5] = clock->clock_failed;
+    for (stage = 0; stage < SAGEJS_DIAGNOSTIC_STAGE_COUNT; stage += 1)
+        output[position++] = clock->totals[stage];
+    for (visit = 0; visit < clock->visit_count &&
+        visit < SAGEJS_DIAGNOSTIC_STAGE_MAX_VISITS; visit += 1)
+    {
+        output[position++] = clock->visit_stages[visit];
+        output[position++] = clock->visit_durations[visit];
+    }
+    return 1;
+}`;
+}
+
 function generateHostCore(ir, options = {}) {
   verifyCheckedBoundsProofs(ir.functions);
   const checkedRegions = prepareCheckedRegions(ir);
@@ -4657,6 +4861,7 @@ function generateHostCore(ir, options = {}) {
   );
   const pieces = [
     generateStatusRuntime(),
+    generateDiagnosticStageClockSupport(options.diagnosticStageClock),
     exact.length > 0 ? GMP_CHECKPOINT_ALLOCATOR_C_SOURCE : "",
     exact.length > 0 ? generateExactCoreRuntime() : "",
     fmpz.selected.length > 0 ? FMPZ_EXACT_RUNTIME_C_SOURCE : "",
@@ -4671,7 +4876,7 @@ function generateHostCore(ir, options = {}) {
     word.functions,
     tagged.functions,
     fmpz.functions,
-    ...exact.map((fn) => emitExactInternalFunction(fn, functionMap)),
+    ...exact.map((fn) => emitExactInternalFunction(fn, functionMap, options)),
     ...exactEntries.map(publicCoreFunction),
     ...privateCoreAdapters.map((fn) =>
       publicCoreFunction(fn).replace(/^int sagejs_kernel_/m, "static int sagejs_kernel_")
@@ -4696,6 +4901,11 @@ function generateHostCore(ir, options = {}) {
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+${options.diagnosticStageClock ? `#if defined(_WIN32)
+#include <windows.h>
+#else
+#include <time.h>
+#endif` : ""}
 #if defined(_MSC_VER)
 #include <intrin.h>
 #endif
@@ -4741,7 +4951,47 @@ ${pieces.join("\n\n")}
   };
 }
 
-function generateNodeAdapter(ir) {
+function generateDiagnosticStageClockNodeAdapter(configuration) {
+  if (configuration === null || configuration === undefined) return "";
+  return `static napi_value sagejs_native_diagnostic_stage_snapshot_node(
+    napi_env env, napi_callback_info info)
+{
+    napi_value args[1];
+    size_t argc = 1;
+    napi_typedarray_type type;
+    size_t length = 0;
+    void *data = NULL;
+    napi_value array_buffer;
+    size_t byte_offset = 0;
+    napi_value result;
+    if (!sagejs_native_check_napi(env,
+        napi_get_cb_info(env, info, &argc, args, NULL, NULL)))
+        return NULL;
+    if (argc != 1 || !sagejs_native_check_napi(env,
+        napi_get_typedarray_info(env, args[0], &type, &length, &data,
+            &array_buffer, &byte_offset)))
+        return NULL;
+    if (type != napi_biguint64_array ||
+        length != sagejs_native_diagnostic_stage_snapshot_words())
+    {
+        napi_throw_type_error(env, NULL,
+            "diagnostic stage snapshot requires its exact BigUint64Array");
+        return NULL;
+    }
+    if (!sagejs_native_diagnostic_stage_snapshot((uint64_t *) data, length))
+    {
+        napi_throw_error(env, NULL,
+            "no completed diagnostic stage trace is available");
+        return NULL;
+    }
+    if (!sagejs_native_check_napi(env,
+        napi_get_undefined(env, &result)))
+        return NULL;
+    return result;
+}`;
+}
+
+function generateNodeAdapter(ir, options = {}) {
   const functions = ir.functions.filter(hostCallable);
   const floatOnly = ir.functions.length > 0 &&
     ir.functions.every((fn) => fn.kernelKind === "float64") &&
@@ -4851,7 +5101,7 @@ static int get_precision(
     )
   );
   const wrappers = [
-    ...exactEntries.map(emitExactWrappers),
+    ...exactEntries.map((fn) => emitExactWrappers(fn, options)),
     ...floats.map(emitFloat64NodeAdapter),
     ...fields.map(emitFieldNodeAdapter),
     ...primeSources.map(emitPrimeSourceNodeAdapter),
@@ -4899,6 +5149,11 @@ static int get_precision(
     ...(publicResources.length === 0 ? [] : [
       `        {"__sagejsFfiResourceExternalMemory", NULL, ` +
         "sagejs_resource_external_memory, NULL, NULL, NULL, " +
+        "napi_default, NULL}",
+    ]),
+    ...(options.diagnosticStageClock == null ? [] : [
+      `        {"__sagejsDiagnosticStageSnapshot", NULL, ` +
+        "sagejs_native_diagnostic_stage_snapshot_node, NULL, NULL, NULL, " +
         "napi_default, NULL}",
     ]),
   ].join(",\n");
@@ -4952,6 +5207,8 @@ ${bufferAdapters}
 ${publicResources.map(generateOwnedResourceNodeSupport).join("\n\n")}
 
 ${generateResourceMemoryInspection(publicResources)}
+
+${generateDiagnosticStageClockNodeAdapter(options.diagnosticStageClock)}
 
 ${floatBuffers ? generateFloat64BufferNodeAdapter() : ""}
 
@@ -5010,7 +5267,7 @@ function generateC(ir) {
 function generateArtifacts(ir, options = {}) {
   const core = generateHostCore(ir, options);
   return {
-    adapterSource: generateNodeAdapter(ir),
+    adapterSource: generateNodeAdapter(ir, options),
     coreSource: core.source,
     coreHeader: core.header,
     hostIsolation: core.audit,

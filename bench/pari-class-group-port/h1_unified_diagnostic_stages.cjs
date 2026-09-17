@@ -119,22 +119,32 @@ function validateDiagnosticTrace(trace) {
   }
 
   assert.equal(trace.implementation, "sagejs", "exclusive stage hooks are Sage.js-only");
-  assert.deepEqual(
-    trace.stageRecords.map(record => record.stage),
-    NAMED_STAGES,
-    "unified diagnostic stages must execute once in source order",
-  );
+  const seenStages = new Set(trace.stageRecords.map(record => record.stage));
+  for (const stage of NAMED_STAGES)
+    assert(seenStages.has(stage), `unified diagnostic stage was not visited: ${stage}`);
   const recomputedCounters = Object.fromEntries(COUNTER_NAMES.map(name => [name, 0n]));
+  const recomputedTimes = Object.fromEntries(NAMED_STAGES.map(stage => [stage, 0n]));
+  const invocations = Object.fromEntries(NAMED_STAGES.map(stage => [stage, 0]));
   for (const [index, record] of trace.stageRecords.entries()) {
     exactKeys(record, ["stage", "invocation", "nanoseconds", "counters"], `stage record ${index}`);
-    assert.equal(record.invocation, 1, "a unified stage was entered more than once");
+    assert(NAMED_STAGES.includes(record.stage), "stage record has unknown stage");
+    invocations[record.stage] += 1;
+    assert.equal(
+      record.invocation, invocations[record.stage],
+      `${record.stage} invocation is not contiguous`,
+    );
     const stageNanoseconds = unsigned(record.nanoseconds, `${record.stage} record time`);
     assert(stageNanoseconds > 0n, `${record.stage} has no measured interval`);
-    assert.equal(stageNanoseconds, totals[record.stage], `${record.stage} record/time mismatch`);
+    recomputedTimes[record.stage] += stageNanoseconds;
     const counters = canonicalCounters(record.stage, record.counters);
     assert.deepEqual(record.counters, counters, `${record.stage} counters are not canonical`);
     for (const [name, value] of Object.entries(counters))
       recomputedCounters[name] += BigInt(value);
+  }
+  for (const stage of NAMED_STAGES) {
+    assert.equal(
+      recomputedTimes[stage], totals[stage], `${stage} record/time mismatch`,
+    );
   }
   for (const name of COUNTER_NAMES) {
     assert.equal(
@@ -155,6 +165,7 @@ class UnifiedH1DiagnosticRecorder {
     this.finished = false;
     this.active = null;
     this.records = [];
+    this.invocations = Object.fromEntries(NAMED_STAGES.map(stage => [stage, 0]));
   }
 
   begin() {
@@ -166,10 +177,7 @@ class UnifiedH1DiagnosticRecorder {
   enter(stage) {
     assert(this.started && !this.finished, "diagnostic root is not active");
     assert.equal(this.active, null, "diagnostic stages cannot nest or overlap");
-    assert.equal(
-      stage, NAMED_STAGES[this.records.length],
-      "diagnostic stages must follow unified source order",
-    );
+    assert(NAMED_STAGES.includes(stage), `unknown diagnostic stage: ${stage}`);
     this.timer.switchStage(stage);
     this.active = stage;
   }
@@ -178,23 +186,37 @@ class UnifiedH1DiagnosticRecorder {
     assert.equal(this.active, stage, "cannot close a different diagnostic stage");
     const canonical = canonicalCounters(stage, counters);
     this.timer.switchStage(RESIDUAL_STAGE);
-    this.records.push({ stage, invocation: 1, counters: canonical });
+    this.invocations[stage] += 1;
+    this.records.push({
+      stage,
+      invocation: this.invocations[stage],
+      counters: canonical,
+    });
     this.active = null;
   }
 
   finish() {
     assert(this.started && !this.finished, "diagnostic root is not active");
     assert.equal(this.active, null, "cannot finish inside a diagnostic stage");
-    assert.equal(this.records.length, NAMED_STAGES.length, "unified stages are incomplete");
+    for (const stage of NAMED_STAGES)
+      assert(this.invocations[stage] > 0, `unified diagnostic stage is incomplete: ${stage}`);
     const timing = this.timer.finish();
     this.finished = true;
     const counterTotals = zeroCounterTotals();
-    const stageRecords = this.records.map(record => {
+    const namedSegments = timing.segments.filter(segment =>
+      NAMED_STAGES.includes(segment.stage)
+    );
+    assert.equal(namedSegments.length, this.records.length);
+    const stageRecords = this.records.map((record, index) => {
       for (const [name, value] of Object.entries(record.counters))
         counterTotals[name] = String(BigInt(counterTotals[name]) + BigInt(value));
+      const segment = namedSegments[index];
+      assert.equal(segment.stage, record.stage, "record/segment stage changed");
       return {
         ...record,
-        nanoseconds: timing.stageTotalsNanoseconds[record.stage],
+        nanoseconds: String(
+          BigInt(segment.endNanoseconds) - BigInt(segment.startNanoseconds),
+        ),
       };
     });
     return validateDiagnosticTrace({

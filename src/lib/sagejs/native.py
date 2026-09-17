@@ -113,6 +113,19 @@ def checked_float64(value: int) -> float:
     return float(exact)
 
 
+def diagnostic_stage_switch(stage: int) -> int:
+    """Mark a benchmark-only native timing stage and return `stage`.
+
+    Ordinary Python execution deliberately does nothing.  Normal native builds
+    lower this call to the same no-op.  Only an explicit Native Kernel
+    `diagnosticStageClock` compilation option enables the monotonic clock and
+    its private UInt64 timing sidecar.  Mathematical code can therefore retain
+    source-visible stage boundaries without changing its behavior or public
+    call signature.
+    """
+    return int(stage)
+
+
 class _NativeExactBudget:
     """Shared deterministic semantic-memory budget for portable exact owners."""
 

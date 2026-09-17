@@ -331,6 +331,9 @@ function emitExactStatement(operation, indent, resourceStack = null) {
     return `${indent}if (${operation.step} === 0n) ` +
       `nativeRaise("ValueError", "range() arg 3 must not be zero");`;
   }
+  if (operation.kind === "diagnostic.stage.switch") {
+    return `${indent}void ${operation.stage};`;
+  }
   if (
     operation.kind === "integer.copy" ||
     operation.kind === "bool.copy" ||
@@ -1280,7 +1283,7 @@ function automaticSelectionCode(fn, receipt) {
   };
 }
 
-function emitExactPublicFunction(fn, automaticSelection) {
+function emitExactPublicFunction(fn, automaticSelection, diagnosticStageClock) {
   const params = fn.params.map((param) => param.name).join(", ");
   const declaredParams = exactParameters(fn);
   const normalized = fn.params.map((param) =>
@@ -1305,6 +1308,50 @@ function emitExactPublicFunction(fn, automaticSelection) {
     fn.analysis.liveExactWorkspace ?? null,
   );
   const selection = automaticSelectionCode(fn, automaticSelection);
+  const diagnostic = diagnosticStageClock?.function === fn.name
+    ? `
+${fn.name}.diagnosticStageTrace = function () {
+  if (nativeAddon === null) {
+    throw new Error("diagnostic native stage clock is not available");
+  }
+  const stageNames = Object.freeze(${JSON.stringify(diagnosticStageClock.stages)});
+  const maximumVisits = ${diagnosticStageClock.maximumVisits};
+  const words = new BigUint64Array(6 + stageNames.length + 2 * maximumVisits);
+  nativeAddon.__sagejsDiagnosticStageSnapshot(words);
+  const visitCount = Number(words[2]);
+  if (words[0] !== 1n || words[1] !== BigInt(stageNames.length) ||
+      visitCount > maximumVisits) {
+    throw new Error("invalid diagnostic native stage snapshot");
+  }
+  const totals = Object.create(null);
+  for (let stage = 0; stage < stageNames.length; stage += 1) {
+    totals[stageNames[stage]] = words[6 + stage];
+  }
+  const visits = [];
+  let position = 6 + stageNames.length;
+  for (let visit = 0; visit < visitCount; visit += 1) {
+    const stage = Number(words[position++]);
+    const nanoseconds = words[position++];
+    if (stage >= stageNames.length) {
+      throw new Error("invalid diagnostic native stage visit");
+    }
+    visits.push(Object.freeze({
+      ordinal: visit + 1,
+      stage: stageNames[stage],
+      stageIndex: stage,
+      nanoseconds,
+    }));
+  }
+  return Object.freeze({
+    schema: Number(words[0]),
+    rootNanoseconds: words[3],
+    failed: words[4] !== 0n,
+    clockFailed: words[5] !== 0n,
+    totalsNanoseconds: Object.freeze(totals),
+    visits: Object.freeze(visits),
+  });
+};`
+    : "";
   return `${emitExactFallback(fn)}
 
 ${selection.declaration}
@@ -1326,6 +1373,7 @@ function backend_${fn.name}(${args}) {
     throw new Error("GMP backend was requested but is not available");
   }
   if (nativeAddon === null) return "bigint";
+${diagnosticStageClock?.function === fn.name ? '  return "gmp";' : ""}
 ${exactUsesFloat64(fn)
     ? '  if (integerBackendOverride === "tagged" && requestedNativeMode === "native" &&\n' +
       '      process.env.SAGEJS_NATIVE_INTEGER_BACKEND === undefined) return "gmp";'
@@ -1389,7 +1437,7 @@ ${fn.name}.createUInt64Buffer = createUInt64Buffer;
 ${fn.name}.createIntegerBuffer = createIntegerBuffer;
 ${fn.name}.createFloat64Buffer = createFloat64Buffer;
 ${fn.name}.packIntegerBuffer = packIntegerBuffer;
-${fn.name}.nativeAvailable = nativeAddon !== null;`;
+${fn.name}.nativeAvailable = nativeAddon !== null;${diagnostic}`;
 }
 
 function emitPrimeFieldPublicFunction(fn) {
@@ -3447,7 +3495,11 @@ ${ir.functions.map((fn) =>
     fn.hostCallable === false
       ? emitExactFallback(fn)
       : fn.kernelKind === "integer"
-      ? emitExactPublicFunction({...fn, nativeDeclaredErrors: declaredFfiErrors(fn, ir.functions)}, options.automaticSelections?.[fn.name])
+      ? emitExactPublicFunction(
+        {...fn, nativeDeclaredErrors: declaredFfiErrors(fn, ir.functions)},
+        options.automaticSelections?.[fn.name],
+        options.diagnosticStageClock,
+      )
       : fn.kernelKind === "float64"
         ? emitFloat64PublicFunction(fn)
       : fn.kernelKind === "prime-field-matrix"
