@@ -144,3 +144,20 @@ each GMP mutation run in separate sequential child processes which require the
 same already-built addon directly. The native entry remains the exact single
 fused call. This prevents compiler IR and prior backends' exact buffers from
 coexisting while retaining byte-for-byte cross-backend evidence comparison.
+
+That first process split still failed: even isolated cached `compileKernel`
+lowering/cache discovery crossed the cap before any backend child began. The
+second resource receipt records exit `-9` after `52.6453 s`, peak
+`4,217,240 KiB`, empty stdout/stderr, and SHA-256
+`e1709b1550cd9d0f9ea3f5d64cf982497b0eed0adf83f07768dcb369c3496ad5`.
+This localizes the capacity problem to reconstructing the approximately 100 MB
+private graph IR/manifest merely to discover an already-built addon.
+
+The corrected policy bypasses compiler lowering entirely for correctness
+replay. It authenticates the ordinary-Python source SHA against the 559-byte
+native cache discovery index, pins the exact cache key, and authenticates the
+generated core and addon hashes before requiring the addon directly. Four
+negative controls independently mutate the source, cache, core, and addon
+identities and must all fail. Backend and mutation owner sets remain isolated
+in sequential child processes. This uses the one already-built fused artifact;
+it neither rebuilds nor changes the mathematical/timed boundary.
