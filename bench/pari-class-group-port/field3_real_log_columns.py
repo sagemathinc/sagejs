@@ -226,7 +226,7 @@ def pari_field3_real_log_abs(
 
 
 @native
-def pari_field3_real_log_columns(
+def pari_field3_real_log_columns_batch(
     polynomial: IntegerBuffer,
     signature: Int64Buffer,
     basis: IntegerBuffer,
@@ -236,6 +236,7 @@ def pari_field3_real_log_columns(
     relation_metadata: IntegerBuffer,
     relation_records: IntegerBuffer,
     target: int,
+    source_start: int,
     count: int,
     embedding_scratch: IntegerBuffer,
     root_m: IntegerBuffer,
@@ -257,16 +258,24 @@ def pari_field3_real_log_columns(
     output: IntegerBuffer,
     state: Int64Buffer,
 ) -> int:
-    """Publish two real logarithm triples per source-order relation column.
+    """Publish one deterministic batch of two real-log triples per column.
 
     Validation and the complete embedding rebuild precede log scratch writes.
     Public `output` and `state` are committed only after all selected columns
-    finish, so arithmetic failures cannot publish a mixed-prefix owner.
+    finish, so arithmetic failures cannot publish a mixed-prefix owner.  The
+    selected source interval is `[source_start, source_start + count)`; output
+    remains local-column-major and therefore has exactly `6 * count` cells.
     """
     if target != 153088:
         raise ValueError("unsupported field-3 real-log target")
-    if count < 27 or count > 301:
-        raise ValueError("invalid field-3 real-log prefix")
+    if (
+        source_start < 0
+        or source_start >= 301
+        or count < 1
+        or count > 28
+        or source_start + count > 301
+    ):
+        raise ValueError("invalid field-3 real-log source range")
     if (
         len(principal_generators) < 1204
         or len(relation_metadata) < 903
@@ -281,7 +290,7 @@ def pari_field3_real_log_columns(
         or len(coordinates) < 4
         or len(scratch) < 6 * count
         or len(output) < 6 * count
-        or len(state) < 8
+        or len(state) < 10
     ):
         raise ValueError("short field-3 real-log owner or workspace")
     for column in range(301):
@@ -320,12 +329,15 @@ def pari_field3_real_log_columns(
     )
 
     agm_count = 0
-    for column in range(count):
+    scalar_count = 0
+    for local_column in range(count):
+        column = source_start + local_column
         scalar = column < 26
         vm = 0
         vp = -1
         ve = 0
         if scalar:
+            scalar_count += 1
             vm, vp, ve = pari_integer_to_real(principal_generators[4 * column], target)
             dispatch = pari_field3_log_uses_agm(vm, vp)
             agm_count += 2 * dispatch
@@ -333,7 +345,7 @@ def pari_field3_real_log_columns(
                 vm, vp, ve, pi_cache, log_cache, a, b, p, q, stack
             )
             for place in range(2):
-                offset = 6 * column + 3 * place
+                offset = 6 * local_column + 3 * place
                 scratch[offset] = lm
                 scratch[offset + 1] = lp
                 scratch[offset + 2] = le
@@ -355,7 +367,7 @@ def pari_field3_real_log_columns(
             lm, lp, le = pari_field3_real_log_abs(
                 vm, vp, ve, pi_cache, log_cache, a, b, p, q, stack
             )
-            offset = 6 * column + 3 * place
+            offset = 6 * local_column + 3 * place
             scratch[offset] = lm
             scratch[offset + 1] = lp
             scratch[offset + 2] = le
@@ -363,13 +375,15 @@ def pari_field3_real_log_columns(
         output[index] = scratch[index]
     state[0] = 0
     state[1] = target
-    state[2] = count
-    state[3] = 26
-    state[4] = count - 26
-    state[5] = 2 * count
-    state[6] = agm_count
-    state[7] = 2 * count - agm_count
+    state[2] = source_start
+    state[3] = count
+    state[4] = scalar_count
+    state[5] = count - scalar_count
+    state[6] = 2 * count
+    state[7] = agm_count
+    state[8] = 2 * count - agm_count
+    state[9] = 301
     return 0
 
 
-__all__ = ["pari_field3_real_log_columns"]
+__all__ = ["pari_field3_real_log_columns_batch"]

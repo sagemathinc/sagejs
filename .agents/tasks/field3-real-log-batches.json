@@ -1,0 +1,51 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "field3-real-log-batches",
+  "title": "Field3 Real Log Batches",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Generalize the authenticated field3 real-log column owner to deterministic fail-atomic source ranges, verify byte-identical 0:28 replay, publish sequential <=28-column exact PARI-matched capsules under resource bounds, and merge only a complete ordered gap-free 301-column owner",
+  "base_commit": "9d0172d38a37966f1d9658a620a968df10349c90",
+  "claims": [
+    "bench/pari-class-group-port/field3_real_log_columns.py",
+    "bench/pari-class-group-port/check_field3_real_log_batches.cjs",
+    "bench/pari-class-group-port/merge_field3_real_log_batches.cjs",
+    "bench/pari-class-group-port/field3-real-log-batches-audit.md",
+    "bench/pari-class-group-port/field3_real_log_batches_result.json"
+  ],
+  "dependencies": [],
+  "references": [
+    "PARI 2.17.4 src/basemath/buch2.c:get_log_embed",
+    "PARI 2.17.4 src/basemath/trans1.c:logr_abs/logagmr_abs"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "qualified 0:28 capsule",
+      "pristine PARI 2.17.4 exact packed triples",
+      "authenticated prepared owner"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
