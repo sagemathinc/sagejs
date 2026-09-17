@@ -779,6 +779,27 @@ stage("honesty-success", {
   }),
 });
 
+stage("honesty-quintic-collector-boundary", {
+  dependencies: ["honesty-success"],
+  requiresPari: true,
+  command: (context) => commandNode("check_quintic_collector_fixture.cjs",
+    context.pariRoot, context.pariArchive),
+  validate: (summary) => {
+    assert.equal(summary.quinticExporterComplete, true);
+    assert.deepEqual(summary.pariOracleStatuses, [1, 1, 1, 1, 1, 1]);
+    assert.equal(summary.sageCollectorProbesExecuted, 0);
+    assert.equal(summary.blockedInputs, 6);
+    assert.equal(summary.transactional, true);
+    assert.deepEqual(summary.backendsAttempted, ["cpython"]);
+    assert.equal(summary.nativeAttempted, false);
+  },
+  noFixture: true,
+  additionalOutputs: (summary) => ({
+    "oracle-source": path.join(summary.oracleDirectory, "oracle.c"),
+    "oracle-binary": path.join(summary.oracleDirectory, "oracle"),
+  }),
+});
+
 stage("relation-hnf-witness", {
   dependencies: ["resident-cubic-gmp"],
   command: (context) => commandNode("check_relation_hnf_witness.cjs",
