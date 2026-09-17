@@ -1913,9 +1913,13 @@ function verifyReceipt(context, current, state = undefined) {
   assert.equal(sha256(Buffer.from(JSON.stringify(receipt.identity))), receipt.identitySha256);
   assert(stages.has(receipt.stage), `unknown receipt stage: ${receipt.stage}`);
   const declaredDependencies = [...stages.get(receipt.stage).dependencies].sort();
+  const declaredSealedDependencies = orderedClosure(declaredDependencies).sort();
   const recordedDependencies = Object.keys(receipt.identity.dependencies || {}).sort();
-  assert.deepEqual(recordedDependencies, declaredDependencies,
-    `${receipt.stage} recorded dependencies do not match the current stage graph`);
+  assert(
+    JSON.stringify(recordedDependencies) === JSON.stringify(declaredDependencies) ||
+      JSON.stringify(recordedDependencies) === JSON.stringify(declaredSealedDependencies),
+    `${receipt.stage} recorded dependencies do not match the current direct or sealed stage graph`,
+  );
   if (traversal.verified.has(receipt.stage)) {
     assert.equal(traversal.verified.get(receipt.stage).filename, current.filename,
       `multiple selected receipts for ${receipt.stage}`);

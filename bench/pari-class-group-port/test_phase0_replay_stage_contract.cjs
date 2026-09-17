@@ -157,11 +157,19 @@ try {
   writeReceipt("quartic-driver", []);
   writeReceipt("quartic-hnfadd-trace", ["quartic-driver"]);
   writeReceipt("quartic-collector", []);
+  writeReceipt("analytic", []);
+  writeReceipt("quartic-continuation",
+    ["quartic-collector", "quartic-hnfadd-trace"]);
+  writeReceipt("quartic-retry-cpython", ["analytic", "quartic-collector",
+    "quartic-continuation", "quartic-driver", "quartic-hnfadd-trace"]);
   const sealed = sealedDependencyReceipts(artifactContext,
     ["quartic-collector", "quartic-hnfadd-trace"]);
   assert.deepEqual(sealed.map(({ name }) => name),
     ["quartic-collector", "quartic-driver", "quartic-hnfadd-trace"],
     "sealed dependency verification returns the complete pinned closure");
+  assert.equal(sealedDependencyReceipts(artifactContext,
+    ["quartic-retry-cpython"]).length, 6,
+  "a consumer receipt may pin exactly the declared transitive closure");
 
   const driverOutput = path.join(temporary, "stages", "quartic-driver",
     "attempts", "attempt-test", "output.txt");
