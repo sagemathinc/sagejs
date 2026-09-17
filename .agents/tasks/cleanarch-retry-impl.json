@@ -1,0 +1,65 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "cleanarch-retry-impl",
+  "title": "Cleanarch Retry Impl",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Port PARI 2.17.4 buch2.c class-relation cleanarch and exact precision-retry transaction on a frozen fixture",
+  "base_commit": "c38d42cd94db20a44d77a8c25453ad5808897ce1",
+  "claims": [
+    "bench/pari-class-group-port/class_relation_cleanarch.py",
+    "bench/pari-class-group-port/check_class_relation_cleanarch.cjs",
+    "bench/pari-class-group-port/class_relation_cleanarch_fixture.json",
+    "bench/pari-class-group-port/class_relation_cleanarch_audit.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "/home/user/upstream/pari-2.17.4.tar.gz",
+    "pari-2.17.4/src/basemath/buch2.c:899-931,4178-4190"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "pari 2.17.4",
+      "cpython",
+      "javascript"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_class_relation_cleanarch.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.109,
+      "started_at": "2026-09-17T02:28:34.838Z",
+      "commit": "c38d42cd94db20a44d77a8c25453ad5808897ce1",
+      "workspace_fingerprint": "e8f16904e7186897ecc6f2b4b947c32c36b083afeb12c495ca8cb05c61ff63d2",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Ported the totally-real cubic class-relation cleanarch leaf and exact failed-cleanup precision action. The pristine PARI, CPython, JavaScript, GMP, and tagged paths agree on all 21 frozen packed entries; failed cleanup leaves published output unchanged.",
+    "risks": [
+      "The cleanup leaf is specialized to degree three and signature (3,0).",
+      "Lane-wide strict/native suites are deferred to integration; the focused differential is recorded."
+    ],
+    "next_steps": [
+      "Connect the successful cleaned matrix and failed-attempt retry metadata to the shared outer driver.",
+      "Generalize row weighting and phase modulus for mixed signatures."
+    ]
+  }
+}
