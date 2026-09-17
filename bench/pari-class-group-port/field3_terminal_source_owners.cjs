@@ -121,7 +121,8 @@ function main(argv = process.argv) {
   if (options.operation === "class") {
     const required = ["operation", "full15", "full15-sha256", "relation",
       "relation-sha256", "authority", "authority-sha256", "live-join",
-      "live-join-sha256", "output-dir"];
+      "live-join-sha256", "raw-owner", "raw-owner-sha256", "protocol-owner",
+      "protocol-owner-sha256", "output-dir"];
     requireExactly(options, required);
     const full15 = authenticate(options.full15, options["full15-sha256"], "full15 owner");
     const relation = authenticate(options.relation, options["relation-sha256"],
@@ -130,12 +131,19 @@ function main(argv = process.argv) {
       "authority owner");
     const live = authenticate(options["live-join"], options["live-join-sha256"],
       "live class join");
-    const value = replay("class", [full15, relation, authority, live],
+    const raw = authenticate(options["raw-owner"], options["raw-owner-sha256"],
+      "raw logarithm owner");
+    const protocol = authenticate(options["protocol-owner"],
+      options["protocol-owner-sha256"], "local HNF protocol owner");
+    const value = replay("class", [full15, relation, authority, live, raw, protocol],
       [options["full15-sha256"], options["relation-sha256"],
-        options["authority-sha256"], options["live-join-sha256"]]);
+        options["authority-sha256"], options["live-join-sha256"],
+        options["raw-owner-sha256"], options["protocol-owner-sha256"]]);
     if (value.schema !== CLASS_SCHEMA || value.B?.length !== 572 ||
         value.W?.length !== 4 || value.packedC?.length !== 42 ||
-        value.Vbase?.length !== 2 || value.replay?.smithExact !== true)
+        value.Vbase?.length !== 2 || value.replay?.smithExact !== true ||
+        value.replay?.terminalBExact !== true ||
+        value.replay?.principalFactorsExact !== true)
       fail("class replay returned an invalid owner");
     return publish(value, options["output-dir"], "field3-live-class-suffix-owner");
   }

@@ -11,10 +11,14 @@ transactional coordinator.
 from __future__ import annotations
 
 import hashlib
+import inspect
 import json
 import os
+import sys
 from collections.abc import Mapping, Sequence
 from typing import Any
+
+sys.set_int_max_str_digits(0)
 
 
 FIELD = "x^4-2000022*x-2000042"
@@ -24,6 +28,7 @@ RELATION_SCHEMA = "sagejs.pari-class-group/field3-full-owner-authority-v1"
 CLASS_SCHEMA = "sagejs.pari-class-group/field3-live-class-suffix-owner-v1"
 AUTHORITY_SHA256 = "246bfe2af51c8be732308719773fc7d696f7dc1bf21958c91d96cd8fc448954c"
 LIVE_JOIN_SHA256 = "b8df9b99acb501d8ea0faf3034c1059d451ffd84180735c89c982b0f014da814"
+PROTOCOL_SHA256 = "892afa9a63da8353cce50eead03b12f031812182a3229a48ed8fbdfa60b94e72"
 
 
 class Field3TerminalSourceFailure(ValueError):
@@ -107,12 +112,11 @@ def _authority_owners(authority: Mapping[str, Any]) -> dict[str, Any]:
     return owners
 
 
-def _live(live_join: Mapping[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+def _live(live_join: Mapping[str, Any]) -> dict[str, Any]:
     live = live_join.get("live")
-    expected = live_join.get("expected")
-    if not isinstance(live, dict) or not isinstance(expected, dict):
+    if not isinstance(live, dict):
         raise Field3TerminalSourceFailure("live class join changed")
-    return live, expected
+    return live
 
 
 def _replay_resident_authority(
@@ -214,7 +218,7 @@ def build_relation_owner(
         raise Field3TerminalSourceFailure("frozen relation source identity changed")
     owners = _authority_owners(authority)
     _replay_resident_authority(authority, owners)
-    live, _ = _live(live_join)
+    live = _live(live_join)
     basis_table = _integers(live.get("basisTable"), 64, "integral-basis table")
     from .field3_relation_replay_map import replay_field3_principal_relations
 
@@ -277,38 +281,222 @@ def build_relation_owner(
     }
 
 
-def _class_suffix_replay(
-    full15: Mapping[str, Any], live: Mapping[str, Any]
-) -> dict[str, list[int]]:
-    """Rerun the exact two-column suffix using the high-precision `Ce`."""
-    from .field3_live_class_suffix import pari_field3_live_class_suffix
+def _replay_terminal_b(
+    protocol: Mapping[str, Any], authority_b: Sequence[int]
+) -> list[int]:
+    """Replay the authenticated `hnffinal` plus three `hnfadd` B stages."""
+    from .field3_high_precision_hnf_transform import _protocol_arrays
+    from .hnfadd import pari_hnfadd
+    from .hnffinal import pari_hnffinal_nonempty
+
+    p = _protocol_arrays(protocol)
+    checkpoints = protocol.get("checkpointHashes")
+    if not isinstance(checkpoints, Mapping):
+        raise Field3TerminalSourceFailure("local HNF checkpoint owner changed")
 
     def z(length: int) -> list[int]:
         return [0] * length
 
+    # B is independent of logarithm values.  One valid inexact real entry is
+    # repeated solely to keep the generic log-transform dispatch on its real
+    # branch while the exact H/D/B schedule is replayed.
+    log_entry = [1, 1 << 63, 64, 0, 0, -1, 0]
+    rows, columns, dep_rows, total, log_rows = 34, 41, 2, 293, 3
+    lig, tail = rows + dep_rows, total - columns
+    result_h = z(rows * rows)
+    result_dep = z(dep_rows * rows)
+    result_b = z(lig * (tail + rows))
+    result_c = z(7 * log_rows * total)
+    state = z(7)
+    if pari_hnffinal_nonempty(
+        p["initialFullH"],
+        rows,
+        columns,
+        list(range(1, lig + 1)),
+        p["initialFullDep"],
+        dep_rows,
+        p["initialTrailing"],
+        total,
+        log_entry * (log_rows * total),
+        log_rows,
+        z(rows * columns),
+        z(columns * columns),
+        z(columns * columns),
+        z(columns + 1),
+        z(11),
+        z(dep_rows * columns),
+        z(lig * tail),
+        z(7 * log_rows * total),
+        z(rows),
+        z(lig),
+        result_h,
+        result_dep,
+        result_b,
+        result_c,
+        state,
+    ) != 0 or state != [4, 11, 282, 2, 7, 30, 0]:
+        raise Field3TerminalSourceFailure("initial terminal-B replay failed")
+    current_h = result_h[:16]
+    current_dep = result_dep[:8]
+    current_b = result_b[:1692]
+    if _array_sha256(current_b) != checkpoints.get("initialB"):
+        raise Field3TerminalSourceFailure("initial B checkpoint changed")
+
+    metadata = p["appendMetadata"]
+    current_columns = 293
+    labels = ("random", "post", "terminal")
+    expected_states = (
+        [5, 12, 283, 0, 7, 1, 0, 295, 0],
+        [5, 13, 283, 0, 8, 0, 0, 296, 0],
+        [2, 15, 286, 0, 13, 3, 0, 301, 0],
+    )
+    for stage, (label, expected_state) in enumerate(
+        zip(labels, expected_states, strict=True)
+    ):
+        at = 16 * stage
+        old, new, old_h, old_b = metadata[at : at + 4]
+        if old != current_columns:
+            raise Field3TerminalSourceFailure("disconnected terminal-B schedule")
+        permutation = p["appendPermutations"][
+            metadata[at + 11] : metadata[at + 11] + 288
+        ]
+        explicit: dict[str, Any] = {
+            "h": current_h,
+            "h_rows": old_h,
+            "dep": current_dep,
+            "b": current_b,
+            "b_columns": old_b,
+            "logs": log_entry * (3 * old),
+            "total_columns": old,
+            "log_rows": 3,
+            "perm": permutation,
+            "rows": 288,
+            "new_relations": p["appendRelations"][
+                metadata[at + 13] : metadata[at + 13] + 288 * new
+            ],
+            "new_columns": new,
+            "new_logs": log_entry * (3 * new),
+        }
+        capacity = max(
+            8192, 288 * (old_h + new), 21 * (old + new), 288 * (old + new + 288)
+        )
+        outputs: dict[str, list[int]] = {}
+        arguments: list[Any] = []
+        for name in inspect.signature(pari_hnfadd).parameters:
+            value = explicit.get(name)
+            if value is None:
+                value = z(capacity)
+                outputs[name] = value
+            arguments.append(value)
+        if pari_hnfadd(*arguments) != 0:
+            raise Field3TerminalSourceFailure(label + " terminal-B replay failed")
+        replay_state = outputs["state"][:9]
+        if replay_state != expected_state:
+            raise Field3TerminalSourceFailure(label + " terminal-B state changed")
+        current_h = outputs["result_h"][: replay_state[0] ** 2]
+        current_dep = outputs["result_dep"][: replay_state[3] * replay_state[0]]
+        current_b = outputs["result_b"][: (288 - replay_state[2]) * replay_state[2]]
+        if _array_sha256(current_b) != checkpoints.get(label + "B"):
+            raise Field3TerminalSourceFailure(label + " B checkpoint changed")
+        current_columns += new
+    expected = [int(value) for value in authority_b]
+    if current_b != expected or len(current_b) != 2 * 286:
+        raise Field3TerminalSourceFailure("terminal B diverged from resident authority")
+    if any(value < 0 or value >= 2 for value in current_b):
+        raise Field3TerminalSourceFailure("terminal B is not reduced modulo H")
+    return current_b
+
+
+def _class_suffix_replay(
+    full15: Mapping[str, Any], live: Mapping[str, Any], owners: Mapping[str, Any]
+) -> dict[str, list[int]]:
+    """Rerun the suffix from derived antiuniformizers, never an answer fixture."""
+    from .prime_descriptor import pari_prepared_prime_descriptor_suffix
+    from .prime_ideal_hnf import pari_prime_ideal_hnf
+    from .quartic_class_group_assembly import pari_mixed_quartic_class_group_assembly
+
+    def z(length: int) -> list[int]:
+        return [0] * length
+
+    permutation = _integers(live.get("outerPerm"), 288, "live permutation")
+    packet_primes = _integers(owners.get("packetPrimes"), 288, "packet primes")
+    packet_generators = _integers(
+        owners.get("packetGenerators"), 1152, "packet generators"
+    )
+    packet_inert = _integers(owners.get("packetInert"), 288, "packet inert flags")
+    ramification = _integers(owners.get("ramification"), 288, "ramification")
+    packet_ideals = _integers(owners.get("packetIdeals"), 4608, "packet ideals")
+    table = _integers(live.get("basisTable"), 64, "basis table")
+    indices = permutation[:2]
+    primes: list[int] = []
+    generators: list[int] = []
+    antiuniformizers: list[int] = []
+    tau: list[int] = []
+    assembly_tau: list[int] = []
+    for selected in indices:
+        packet = selected - 1
+        if packet < 0 or packet >= 288 or packet_inert[packet] != 0:
+            raise Field3TerminalSourceFailure("invalid selected packet")
+        if ramification[packet] != 1:
+            raise Field3TerminalSourceFailure("unsupported ramified selected packet")
+        prime = packet_primes[packet]
+        generator = packet_generators[4 * packet : 4 * packet + 4]
+        anti, descriptor_tau, descriptor_state = z(4), z(16), z(3)
+        descriptor_tau_work = z(16)
+        pari_prepared_prime_descriptor_suffix(
+            table,
+            generator,
+            4,
+            prime,
+            0,
+            z(44),
+            z(4),
+            z(4),
+            descriptor_tau_work,
+            z(4),
+            z(4),
+            z(4),
+            z(1),
+            anti,
+            descriptor_tau,
+            descriptor_state,
+        )
+        if descriptor_state[0] != 0 or descriptor_state[2] != 1:
+            raise Field3TerminalSourceFailure("selected descriptor replay failed")
+        reconstructed = z(16)
+        pari_prime_ideal_hnf(
+            table,
+            generator,
+            4,
+            prime,
+            0,
+            z(16),
+            z(16),
+            z(4),
+            reconstructed,
+        )
+        if reconstructed != packet_ideals[16 * packet : 16 * packet + 16]:
+            raise Field3TerminalSourceFailure("selected packet ideal replay failed")
+        primes.append(prime)
+        generators.extend(generator)
+        antiuniformizers.extend(anti)
+        tau.extend(descriptor_tau)
+        assembly_tau.extend(descriptor_tau_work)
+
     matrices = [z(4) for _ in range(10)]
-    retained = [z(length) for length in (2, 2, 8, 32, 4, 4, 3, 2, 2, 2, 2)]
-    generator_ideals, relation_exponents = z(32), z(4)
+    generator_ideals, generated_ideals, relation_exponents = z(32), z(32), z(4)
     offsets, kinds, nums, dens, exps = z(3), z(2), z(2), z(2), z(2)
-    invariants, class_number, state = z(2), z(1), z(12)
-    args = [
+    invariants, class_number = z(2), z(1)
+    assembly: Any = pari_mixed_quartic_class_group_assembly
+    status = assembly(
         _integers(full15.get("terminalH"), 4, "terminal H"),
         _integers(full15.get("packedCe"), 42, "packed Ce"),
-        [int(value) for value in live.get("hnfState", [])],
-        _integers(live.get("outerPerm"), 288, "live permutation"),
-        int(live.get("packetCount", -1)),
-        _integers(live.get("packetPrimes"), 288, "packet primes"),
-        _integers(live.get("packetGenerators"), 1152, "packet generators"),
-        _integers(live.get("packetInert"), 288, "packet inert flags"),
-        _integers(live.get("basisTable"), 64, "basis table"),
-        z(4),
-        z(42),
-        z(2),
-        z(32),
-        z(4),
-        z(16),
+        primes,
+        assembly_tau,
+        2,
+        2,
         generator_ideals,
-        z(32),
+        generated_ideals,
         relation_exponents,
         offsets,
         kinds,
@@ -339,38 +527,44 @@ def _class_suffix_replay(
         z(42),
         z(42),
         z(8),
-        *retained,
-        state,
-    ]
-    suffix: Any = pari_field3_live_class_suffix
-    if suffix(*args) != 0:
+    )
+    if status != 0:
         raise Field3TerminalSourceFailure("high-precision class suffix replay failed")
-    names = (
-        "indices",
-        "primes",
-        "generators",
-        "tau",
-        "order",
-        "m1",
-        "offsets",
-        "kinds",
-        "numerators",
-        "denominators",
-        "exponents",
-    )
-    result = {name: values for name, values in zip(names, retained, strict=True)}
-    result.update(
-        {
-            "generatorIdeals": generator_ideals,
-            "relationExponents": relation_exponents,
-            "invariants": invariants,
-            "classNumber": class_number,
-            "state": state,
-            "uir": matrices[6],
-            "computedM1": matrices[8],
-        }
-    )
-    return result
+    state = [
+        0,
+        2,
+        int(live.get("hnfState", [0] * 8)[7]),
+        *indices,
+        32,
+        4,
+        offsets[2],
+        class_number[0],
+        2,
+        2,
+        63,
+    ]
+    return {
+        "indices": indices,
+        "primes": primes,
+        "generators": generators,
+        "antiuniformizers": antiuniformizers,
+        "tau": tau,
+        "order": relation_exponents,
+        "m1": matrices[8],
+        "offsets": offsets,
+        "kinds": kinds,
+        "numerators": nums,
+        "denominators": dens,
+        "exponents": exps,
+        "generatorIdeals": generator_ideals,
+        "generatedIdeals": generated_ideals,
+        "relationExponents": relation_exponents,
+        "invariants": invariants,
+        "classNumber": class_number,
+        "state": state,
+        "uir": matrices[6],
+        "computedM1": matrices[8],
+    }
 
 
 def build_class_owner(
@@ -378,13 +572,21 @@ def build_class_owner(
     relation: Mapping[str, Any],
     authority: Mapping[str, Any],
     live_join: Mapping[str, Any],
+    raw_owner: Mapping[str, Any],
+    protocol_owner: Mapping[str, Any],
     full15_sha256: str,
     relation_sha256: str,
     authority_sha256: str,
     live_join_sha256: str,
+    raw_owner_sha256: str,
+    protocol_owner_sha256: str,
 ) -> dict[str, Any]:
     """Replay and serialize the authentic two-generator class suffix."""
-    if authority_sha256 != AUTHORITY_SHA256 or live_join_sha256 != LIVE_JOIN_SHA256:
+    if (
+        authority_sha256 != AUTHORITY_SHA256
+        or live_join_sha256 != LIVE_JOIN_SHA256
+        or protocol_owner_sha256 != PROTOCOL_SHA256
+    ):
         raise Field3TerminalSourceFailure("frozen class source identity changed")
     _identity(full15, FULL15_SCHEMA, "full15 owner")
     _identity(relation, RELATION_SCHEMA, "relation owner")
@@ -397,19 +599,22 @@ def build_class_owner(
     )
     if relation != expected_relation:
         raise Field3TerminalSourceFailure("relation owner failed independent replay")
-    if (
-        full15.get("authorityOwnerSha256") != authority_sha256
-        or full15.get("transformShape") != [301, 15]
-        or full15.get("terminalShape") != [3, 15]
-        or full15.get("unitColumns") != 13
-        or full15.get("classColumns") != 2
-        or full15.get("retentionState") != [0, 301, 15, 293, 3, 4515, 13, 2]
-        or full15.get("imageState") != [0, 288, 301, 13, 2, 15, 3744, 576]
-        or full15.get("terminalState") != [2, 15, 286, 0, 13, 3, 0, 301, 0]
-    ):
-        raise Field3TerminalSourceFailure("full15 authenticated ancestry changed")
+    from .field3_full_terminal_ancestry import transform_authenticated_owners
+
+    replayed_full15 = transform_authenticated_owners(
+        raw_owner, protocol_owner, authority
+    )
+    replayed_full15.update(
+        {
+            "rawOwnerSha256": raw_owner_sha256,
+            "protocolOwnerSha256": protocol_owner_sha256,
+            "authorityOwnerSha256": authority_sha256,
+        }
+    )
+    if full15 != replayed_full15:
+        raise Field3TerminalSourceFailure("full15 raw/protocol replay changed")
     owners = _authority_owners(authority)
-    live, expected = _live(live_join)
+    live = _live(live_join)
     terminal_h = _integers(full15.get("terminalH"), 4, "terminal H")
     terminal_permutation = _integers(
         full15.get("terminalPermutation"), 288, "terminal permutation"
@@ -433,12 +638,14 @@ def build_class_owner(
             live.get(live_name), length, live_name
         ):
             raise Field3TerminalSourceFailure(authority_name + " owners diverged")
-    if terminal_permutation[:2] != live_permutation[:2] or (
-        terminal_permutation[:2] != authority_permutation[:2]
+    selected_count = len(terminal_h) // 2
+    if (
+        selected_count != 2
+        or terminal_permutation[:selected_count] != live_permutation[:selected_count]
+        or terminal_permutation[:selected_count]
+        != authority_permutation[:selected_count]
     ):
         raise Field3TerminalSourceFailure("selected class prefix changed")
-    if terminal_permutation[:2] != [11, 2]:
-        raise Field3TerminalSourceFailure("unexpected selected class packets")
     if terminal_h[1] != 0 or terminal_h[2] != 0:
         raise Field3TerminalSourceFailure("terminal class presentation is not diagonal")
     transform = _integers(full15.get("transform"), 301 * 15, "full15 transform")
@@ -463,58 +670,104 @@ def build_class_owner(
         relation_records, transform, terminal_h, terminal_permutation, image_state
     ) != 0 or image_state != [0, 288, 301, 13, 2, 15, 3744, 576]:
         raise Field3TerminalSourceFailure("full15 exact relation image changed")
-    replay = _class_suffix_replay(full15, live)
-    retained = expected.get("retained")
-    if not isinstance(retained, dict):
-        raise Field3TerminalSourceFailure("retained class witness changed")
-    for name in (
-        "indices",
-        "primes",
-        "generators",
-        "tau",
-        "order",
-        "m1",
-        "offsets",
-        "kinds",
-        "numerators",
-        "denominators",
-        "exponents",
-    ):
-        expected_values = _integers(retained.get(name), len(replay[name]), name)
-        if replay[name] != expected_values:
-            raise Field3TerminalSourceFailure(name + " failed class replay")
-    expected_m1 = _integers(retained.get("m1"), 4, "retained M1")
-    if replay["uir"] != expected_m1 or replay["computedM1"] != expected_m1:
+    replay = _class_suffix_replay(full15, live, owners)
+    if replay["indices"] != terminal_permutation[:selected_count]:
+        raise Field3TerminalSourceFailure("derived suffix selection changed")
+    if replay["uir"] != replay["m1"] or replay["computedM1"] != replay["m1"]:
         raise Field3TerminalSourceFailure("Uir/M1 exact replay changed")
-    if replay["generatorIdeals"] != _integers(
-        expected.get("generatorIdeals"), 32, "generator ideals"
-    ):
-        raise Field3TerminalSourceFailure("generator ideals failed replay")
-    if replay["relationExponents"] != _integers(
-        expected.get("order"), 4, "order exponents"
-    ):
-        raise Field3TerminalSourceFailure("order exponents failed replay")
-    if replay["state"] != _integers(expected.get("suffixState"), 12, "suffix state"):
-        raise Field3TerminalSourceFailure("class suffix state failed replay")
     invariants = [terminal_h[0], terminal_h[3]]
     if replay["invariants"] != invariants or replay["classNumber"] != [
         invariants[0] * invariants[1]
     ]:
         raise Field3TerminalSourceFailure("Smith invariants failed replay")
-    b = _integers(
+    authority_b = _integers(
         authority.get("terminalHNF", [None, None, None])[2], 572, "terminal B"
     )
+    b = _replay_terminal_b(protocol_owner, authority_b)
+
+    # Independently reconnect descriptors, integral inverse ideals, retained
+    # scalar factors, Smith order rows, and the full relation quotient.
+    from .field3_relation_replay_map import replay_field3_principal_relations
+    from .quartic_signed_genback import pari_quartic_ideal_hnf_inverse_scaled
+
+    relation_replay = replay_field3_principal_relations(
+        owners, _integers(live.get("basisTable"), 64, "basis table")
+    )
+    if (
+        replay["offsets"] != [0, 1, 2]
+        or replay["kinds"] != [0, 0]
+        or replay["numerators"] != [1, 1]
+        or replay["denominators"] != replay["primes"]
+        or replay["exponents"] != [1, 1]
+    ):
+        raise Field3TerminalSourceFailure("derived principal factors changed")
+    if replay["order"] != replay["relationExponents"]:
+        raise Field3TerminalSourceFailure("retained order rows changed")
+    table = relation_replay["basis_table"]
+    from .field3_relation_replay_map import _principal_hnf, _quartic_product
+
+    for generator in range(selected_count):
+        selected = replay["indices"][generator] - 1
+        packet = relation_replay["factor_base"][selected]
+        generated = tuple(
+            replay["generatorIdeals"][16 * generator : 16 * generator + 16]
+        )
+        inverse_scaled = [0] * 16
+        pari_quartic_ideal_hnf_inverse_scaled(
+            list(packet),
+            list(table),
+            [0] * 16,
+            [0] * 4,
+            [0] * 4,
+            [0] * 52,
+            [0] * 20,
+            [0] * 4,
+            inverse_scaled,
+        )
+        if generated != tuple(inverse_scaled):
+            raise Field3TerminalSourceFailure("generated ideal is not p*P^-1")
+        prime = replay["primes"][generator]
+        principal_p = _principal_hnf((prime, 0, 0, 0), table)
+        if _quartic_product(packet, generated, table) != principal_p:
+            raise Field3TerminalSourceFailure("P*(p*P^-1) is not (p)")
+        packet_square = _quartic_product(packet, packet, table)
+        generated_square = _quartic_product(generated, generated, table)
+        if _quartic_product(packet_square, generated_square, table) != _principal_hnf(
+            (prime * prime, 0, 0, 0), table
+        ):
+            raise Field3TerminalSourceFailure("generator order ideal replay failed")
+        # The independently replayed terminal presentation is diagonal H.
+        # Thus e_j is not in H Z^2 while 2e_j is, proving exact order two
+        # without repeating the already-authenticated 288-dimensional HNF.
+        if terminal_h[generator * 2 + generator] != 2:
+            raise Field3TerminalSourceFailure("selected ideal lost exact order two")
     precision = int(full15.get("targetBits", 0))
     if precision != 153088:
         raise Field3TerminalSourceFailure("full15 precision identity changed")
     descriptors = []
+    order_factorback = []
+    unit_columns = int(full15.get("unitColumns", -1))
     for index in range(2):
         descriptors.append(
             {
                 "packetIndex": str(replay["indices"][index]),
                 "prime": str(replay["primes"][index]),
                 "generator": _strings(replay["generators"][4 * index : 4 * index + 4]),
+                "antiuniformizer": _strings(
+                    replay["antiuniformizers"][4 * index : 4 * index + 4]
+                ),
                 "tau": _strings(replay["tau"][16 * index : 16 * index + 16]),
+            }
+        )
+        order_factorback.append(
+            {
+                "packetIndex": str(replay["indices"][index]),
+                "packetExponent": str(invariants[index]),
+                "relationExponents": _strings(
+                    transform[
+                        (unit_columns + index) * 301 : (unit_columns + index + 1) * 301
+                    ]
+                ),
             }
         )
     return {
@@ -526,12 +779,15 @@ def build_class_owner(
         "relationAuthoritySha256": relation_sha256,
         "residentAuthoritySha256": authority_sha256,
         "liveClassJoinSha256": live_join_sha256,
+        "rawOwnerSha256": raw_owner_sha256,
+        "protocolOwnerSha256": protocol_owner_sha256,
         "B": _strings(b),
         "W": _strings(terminal_h),
         "packedC": _strings(packed_ce),
         "invariants": _strings(invariants),
         "classNumber": str(invariants[0] * invariants[1]),
         "Vbase": descriptors,
+        "orderPrincipalFactorback": order_factorback,
         "retainedWitness": {name: _strings(values) for name, values in replay.items()},
         "replay": {
             "smithExact": True,
@@ -539,6 +795,14 @@ def build_class_owner(
             "principalFactorsExact": True,
             "selectedPermutationPrefix": _strings(terminal_permutation[:2]),
             "wholePermutationCompared": False,
+            "terminalBExact": True,
+            "selectedIdealsExact": True,
+            "orderPrincipalIdealsExact": True,
+        },
+        "BDefinition": {
+            "layout": "column-major 2x286 reduced trailing block",
+            "equation": "C_B[j] = g_perm[2+j] + sum_i B[i,j]*g_perm[i]",
+            "checkpointSha256": _array_sha256(b),
         },
         "assumptions": {
             "pari2174Correspondence": True,
@@ -556,13 +820,26 @@ def main(argv: Sequence[str]) -> None:
         authority = _load(argv[2], argv[4], "authority owner")
         live = _load(argv[3], argv[5], "live class join")
         result = build_relation_owner(authority, live, argv[4], argv[5])
-    elif operation == "class" and len(argv) == 10:
-        full15 = _load(argv[2], argv[6], "full15 owner")
-        relation = _load(argv[3], argv[7], "relation owner")
-        authority = _load(argv[4], argv[8], "authority owner")
-        live = _load(argv[5], argv[9], "live class join")
+    elif operation == "class" and len(argv) == 14:
+        full15 = _load(argv[2], argv[8], "full15 owner")
+        relation = _load(argv[3], argv[9], "relation owner")
+        authority = _load(argv[4], argv[10], "authority owner")
+        live = _load(argv[5], argv[11], "live class join")
+        raw = _load(argv[6], argv[12], "raw logarithm owner")
+        protocol = _load(argv[7], argv[13], "local HNF protocol owner")
         result = build_class_owner(
-            full15, relation, authority, live, argv[6], argv[7], argv[8], argv[9]
+            full15,
+            relation,
+            authority,
+            live,
+            raw,
+            protocol,
+            argv[8],
+            argv[9],
+            argv[10],
+            argv[11],
+            argv[12],
+            argv[13],
         )
     else:
         raise Field3TerminalSourceFailure("invalid terminal-source operation")
