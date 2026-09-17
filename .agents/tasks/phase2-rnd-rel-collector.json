@@ -1,0 +1,66 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "phase2-rnd-rel-collector",
+  "title": "Connected random-relation collector",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Connect the authenticated PARI 2.17.4 random-relation scheduler to exact R*P[j] ideal construction, RND_REL_RELPID insertion, and resident HNF append on a frozen field-3 branch",
+  "base_commit": "f40663992b2965f8e0dde2ca916c692c57bf9a83",
+  "claims": [
+    "bench/pari-class-group-port/rnd_relation_collector.py",
+    "bench/pari-class-group-port/check_rnd_relation_collector.cjs",
+    "bench/pari-class-group-port/rnd_relation_collector_fixture.json",
+    "bench/pari-class-group-port/rnd_relation_collector_audit.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "/home/user/upstream/pari-2.17.4/src/basemath/buch2.c:2648-2677",
+    "/home/user/upstream/pari-2.17.4/src/basemath/buch2.c:3946-3970"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "gmp",
+      "PARI 2.17.4 pristine random relation branch"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_rnd_relation_collector.cjs /home/user/upstream/pari-2.17.4 /home/user/upstream/pari-2.17.4.tar.gz --field3 --initial=/tmp/sagejs-actual-initial-collector-Askt7e/fixtures.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 70.389,
+      "started_at": "2026-09-17T01:00:32.277Z",
+      "commit": "f40663992b2965f8e0dde2ca916c692c57bf9a83",
+      "workspace_fingerprint": "5f75a2f538d7236a320e4c44dc2bed61f45681a9b1e67e42a6135c4b3a53c0f2",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Closed the frozen field-3 random-relation corridor from authenticated rnd_rel scheduling through exact R*P[j] construction, Fincke_Pohst_ideal/RND_REL_RELPID insertion, log append, and resident hnfadd. CPython, JavaScript, and GMP reproduce PARI's RNG endpoint, two relation rows, generators, provenance, serialized logs, and full H/D/B/C/permutation state.",
+    "risks": [
+      "The control deliberately forces the first post-HNF collection through literal rnd_rel; this is a frozen branch witness, not a complete outer scheduling loop.",
+      "Tagged exact arithmetic is inapplicable because the authenticated log and HNF owners contain 256-320-bit integers."
+    ],
+    "next_steps": [
+      "Integrate the corridor behind the shared prepared/resumable driver after review.",
+      "Port repeated random attempts, duplicate-pressure behavior, later subfactor changes, and factor-base enlargement."
+    ]
+  }
+}
