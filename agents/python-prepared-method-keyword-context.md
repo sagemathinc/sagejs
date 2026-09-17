@@ -1,7 +1,7 @@
 # Prepared-method keyword context
 
-Base: `6677a5544` (`agent/python-constructor-new-guard-native`, queued behind
-the attribute and construction integration).
+Base: `7f8fe624b` (`agent/python-constructor-new-guard-main`, queued behind the
+reviewer-repaired attribute and construction integration).
 
 ## Change
 
@@ -53,15 +53,17 @@ gap is still 24.5x CPython. This does not close the call cliff.
 
 ## Qualification
 
-- The final exact-source build converged in two passes and completed in 7m 33s.
+- The replayed prerequisite-source build converged in two passes and completed
+  in 7m 31s.
 - The CPython differential corpus passes 505 cases with the same three
   intentional incompatibilities and no baseline drift.
-- Twenty-two focused prepared-method, resolved-keyword, and raw-ABI checks pass;
-  another 23 dynamic initializer/default and traitlets checks pass.
+- All 104 selected lowering, runtime-hotpath, constructor, prepared-method, and
+  raw-ABI checks pass; the earlier qualification additionally covers the
+  dynamic initializer/default and traitlets workflows.
 - The pinned decorator 5.2.1 and attrs 25.4.0 workflows pass.
 - Strict CPython syntax, Ruff 0.16.0, and Pyright pass for 404 modules; merge
   invariants pass.
-- Core runtime is 902,720/903,000 bytes. No source, startup, browser, or
+- Core runtime is 902,584/903,000 bytes. No source, startup, browser, or
   performance budget changed.
 - The local startup gate is not a passing receipt: the candidate measured
   440.5 ms normalized and its exact parent measured 417.9 ms, both above the
