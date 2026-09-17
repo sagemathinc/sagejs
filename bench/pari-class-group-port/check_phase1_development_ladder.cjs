@@ -25,7 +25,7 @@ const frozen = {
   buch2Sha256: "904ced8034732c7fcfe1da393e23950aac0862b085150fdc24ce1e31beb7d1ac",
   sentinels: [0, 8, 1, 14],
   additional: [3, 4, 6, 10, 11, 13, 16, 18, 19, 20, 21, 23],
-  traced: [0, 1, 8, 10],
+  traced: [0, 1, 3, 4, 6, 8, 10, 11, 13, 14, 16, 18, 19, 20, 21, 23],
 };
 
 assert.equal(ladder.schema, 1);
@@ -96,21 +96,20 @@ assert.deepEqual(
 );
 
 assert.deepEqual(ladder.existingDefaultDriverEvidence.coveredPanelIndices, frozen.traced);
-assert.deepEqual(
-  ladder.existingDefaultDriverEvidence.uncoveredPanelIndices,
-  [...frozen.sentinels, ...frozen.additional].filter(index => !frozen.traced.includes(index)).sort((a, b) => a - b),
-);
-assert.equal(ladder.existingDefaultDriverEvidence.allSixteenTraced, false);
+assert.deepEqual(ladder.existingDefaultDriverEvidence.uncoveredPanelIndices, []);
+assert.equal(ladder.existingDefaultDriverEvidence.allSixteenTraced, true);
 assert.equal(hashFile(ladder.existingDefaultDriverEvidence.checker.path), ladder.existingDefaultDriverEvidence.checker.sha256);
+assert.equal(hashFile(ladder.existingDefaultDriverEvidence.exporter.path), ladder.existingDefaultDriverEvidence.exporter.sha256);
+assert.equal(hashFile(ladder.existingDefaultDriverEvidence.manifest.path), ladder.existingDefaultDriverEvidence.manifest.sha256);
 const traceChecker = read(ladder.existingDefaultDriverEvidence.checker.path).toString("utf8");
-for (const literal of [
-  frozen.archiveSha256,
-  frozen.buch2Sha256,
-  "x^3-20018*x+20034",
-  "x^3-20010*x+20018",
-  "x^4-20018*x-20034",
-  "x^4-2000022*x-2000042",
-]) assert(traceChecker.includes(literal), `Missing pinned trace identity: ${literal}`);
+for (const literal of [frozen.archiveSha256, frozen.buch2Sha256, "--panel-index=", "Final-reserve rows are closed"])
+  assert(traceChecker.includes(literal), `Missing pinned trace policy: ${literal}`);
+const traceManifest = json(ladder.existingDefaultDriverEvidence.manifest.path);
+assert.equal(traceManifest.qualificationExecutionEnabled, false);
+assert.equal(traceManifest.reserveOpened, false);
+assert.deepEqual(traceManifest.records.map(record => record.panelIndex), frozen.traced);
+assert.equal(traceManifest.records.reduce((sum, record) => sum + record.bytes, 0),
+  ladder.existingDefaultDriverEvidence.totalPayloadBytes);
 
 for (const [name, expected] of Object.entries(ladder.evidenceHashes)) {
   assert.equal(hashFile(`bench/pari-class-group-port/${name}`), expected);
