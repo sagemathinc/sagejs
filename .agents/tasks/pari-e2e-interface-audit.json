@@ -1,0 +1,48 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-e2e-interface-audit",
+  "title": "Audit merged class-group finalization interfaces",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "snf_transform_inventory",
+  "objective": "Preserve the adversarial integration audit of merged class-group Smith, generator, logarithm, unit, honesty, and immutable-result interfaces with exact evidence and a bounded shortest path",
+  "base_commit": "944a1291113a51b366d293e00c7979c754eeee03",
+  "claims": [
+    "bench/pari-class-group-port/phase3_6_integration_audit.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Read-only source and PARI 2.17.4 class_group_gen comparison"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Preserved a read-only adversarial audit of the merged Phase 3--6 class-group interfaces. It identifies bounded cubic genback as the first substantive missing edge, records the exact immutable packed-log schema incompatibility, and gives the shortest equal-bound totally-real cubic integration path.",
+    "risks": [
+      "The audit is source analysis, not evidence that the missing adapters or bounded cubic genback already work.",
+      "The broad test:changed command was stopped during its inherited full build because this lane changes documentation only and the integration base is hundreds of files ahead of origin/main."
+    ],
+    "next_steps": [
+      "Implement bounded totally-real cubic genback for the nonunit Uir columns.",
+      "Revise immutable unit evidence so complete packed log entries, rather than individual representation words, are replayed mathematically."
+    ]
+  }
+}
