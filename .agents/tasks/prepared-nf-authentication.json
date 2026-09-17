@@ -1,0 +1,83 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "prepared-nf-authentication",
+  "title": "Prepared Nf Authentication",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Authenticate the prepared-NF allowlist against the supplied cubic polynomial, basis, multiplication tensor, discriminant, signature, and embeddings without class/unit answers",
+  "base_commit": "c461638a3a91ee0f64bfeea913e87754ff59f007",
+  "claims": [
+    "bench/pari-class-group-port/prepared_nf_authentication.cjs",
+    "bench/pari-class-group-port/check_prepared_nf_authentication.cjs",
+    "bench/pari-class-group-port/prepared_nf_authentication_audit.md",
+    "bench/pari-class-group-port/h1_outcome_c_adapter.cjs",
+    "bench/pari-class-group-port/check_h1_outcome_c_adapter.cjs",
+    "bench/pari-class-group-port/check_unified_live_h1_root.cjs",
+    "bench/pari-class-group-port/check_unified_full_h1_root.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Exact cubic quotient-ring arithmetic plus independent high-precision embedding residuals"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "node bench/pari-class-group-port/check_prepared_nf_authentication.cjs /tmp/sagejs-resident-generated-class-HfHeZG/inputs.json",
+    "node bench/pari-class-group-port/check_h1_outcome_c_adapter.cjs",
+    "node bench/pari-class-group-port/check_unified_full_h1_root.cjs /tmp/sagejs-resident-generated-class-3qtnS5/output.json"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_prepared_nf_authentication.cjs /tmp/sagejs-resident-generated-class-HfHeZG/inputs.json",
+      "result": "pass",
+      "exit_code": 0,
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_h1_outcome_c_adapter.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_unified_full_h1_root.cjs /tmp/sagejs-resident-generated-class-3qtnS5/output.json",
+      "result": "pass",
+      "exit_code": 0,
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:unit",
+      "result": "blocked-by-base: unclassified bench/pari-class-group-port/pari_h1_outcome_c_adapter.c",
+      "exit_code": 1,
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added an exact host preflight for the H1 prepared number field and made the Outcome-C sanitizer fail closed on it. The preflight proves cubic irreducibility, discriminant/signature/index, basis inverse and all multiplication structure constants, validates packed and rounded real embeddings as approximate algebra homomorphisms, reconstructs runtime prime/product tables, and returns a live authority digest. Both unified-root checkers now authenticate their prepared inputs. Fifteen focused corruptions are rejected.",
+    "risks": [
+      "This is deliberately the fixed cubic H1 runtime policy (degree 3, p192, prime limit 65537, factor limit 1048576), not yet a general nfinit authority API.",
+      "The embedding check assumes each packed PARI real has error at most one stored ulp; the bound is conservative and source-documented, but it is not an independently certified root enclosure.",
+      "The base integration contains an unrelated unclassified pari_h1_outcome_c_adapter.c, so architecture-policy unit tests fail before this lane's full suite can finish."
+    ],
+    "next_steps": [
+      "Have the integration lane review and merge the authority call before any unified computation is described as Outcome C.",
+      "Classify the pre-existing PARI adapter C file, then rerun test:unit and merge:check.",
+      "If this boundary is generalized, replace fixed runtime-policy constants with a separately versioned and authenticated preparation policy."
+    ]
+  }
+}
