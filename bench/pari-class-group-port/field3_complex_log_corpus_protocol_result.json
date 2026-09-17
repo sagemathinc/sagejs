@@ -1,6 +1,6 @@
 {
   "schema": "sagejs-field3-complex-log-corpus-protocol-result-v1",
-  "status": "first-authentic-batch-passed",
+  "status": "paused-at-88-timeout-fragment-recovery-ready",
   "baseCommit": "56324f09872e235b20207f46aa83e4cadebde898",
   "schedule": {
     "batches": 76,
@@ -25,7 +25,9 @@
     "immutableCapsules": 76,
     "immutableReceipts": 1,
     "immutableMergeArtifacts": 2,
-    "negativeTests": 7
+    "immutableColumnFragments": 4,
+    "fragmentAssemblyCapsuleSha256": "bc4e95ba3970b4350c702f914119e338ead2f0995c76c54c9ee72f1e6a39ecf6",
+    "negativeTests": 13
   },
   "estimateFromQualifiedPrefixRun": {
     "warmBatchSeconds": [190, 230],
@@ -68,11 +70,50 @@
       "timeoutSeconds": 600
     }
   },
+  "serialCampaignCheckpoint": {
+    "completeThroughSourceStart": 84,
+    "completeBatches": 22,
+    "failedRange": {
+      "sourceStart": 88,
+      "sourceCount": 4,
+      "startedAt": "2026-09-17T13:42:25.566Z",
+      "stoppedAt": "2026-09-17T13:52:25.734Z",
+      "elapsedMilliseconds": 600167,
+      "signal": "SIGKILL",
+      "cause": "600-second supervisor timeout",
+      "peakAggregateRssKiB": 443944,
+      "capsulePublished": false,
+      "receiptPublished": false,
+      "failureLog": {
+        "path": "/scratch/sagejs-runtime/pari-class-group-e2e-20260917/field3-authority/complex-log-run-logs/batch-88-4.log",
+        "sha256": "c94b95c443f70a4a32f9468b5f1bf20543c9404bc6d6d113fafc760daa81049a",
+        "bytes": 415
+      },
+      "nativeAttribution": {
+        "completedTimingAvailable": false,
+        "precedingBatchOverheadMilliseconds": [7955.132462, 8347.885014],
+        "inferredNativeLowerBoundMilliseconds": 591819
+      }
+    }
+  },
+  "columnFragmentRecovery": {
+    "schema": "sagejs.pari-class-group/field3-complex-log-column-fragment-v1",
+    "receiptSchema": "sagejs.pari-class-group/field3-complex-log-column-fragment-receipt-v1",
+    "parentRange": [88, 4],
+    "columns": [88, 89, 90, 91],
+    "kernelSourceChanged": false,
+    "ordinaryBatchPublishedByFragment": false,
+    "assemblyProducesOrdinaryV1Batch": true,
+    "heavyFragmentsExecuted": 0
+  },
   "resumeState": {
-    "complete": 1,
-    "missing": 75,
+    "complete": 22,
+    "missing": 54,
     "capsuleOnly": 0
   },
-  "heavyBatchesExecuted": 1,
+  "heavyBatchesExecuted": 24,
+  "heavyBatchesPassed": 22,
+  "heavyBatchesFailed": 1,
+  "heavyBatchesInterruptedBeforePublication": 1,
   "completeOwnerPublished": false
 }

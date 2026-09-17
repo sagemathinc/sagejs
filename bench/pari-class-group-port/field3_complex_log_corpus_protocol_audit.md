@@ -108,3 +108,75 @@ Its mode-0444, 1,977-byte receipt has SHA-256
 `036f120432b3643764b15338ab7fdb3dbd29290a42da1115f6d5df3d9fd831f0`.
 Independent resume planning reports one complete range, 75 missing ranges, and
 zero capsule-only interruptions. No later batch or complete owner was started.
+
+## Serial campaign checkpoint and timeout diagnosis
+
+The fixed serial campaign subsequently qualified every deterministic range
+from `4:4` through `84:4`. Resume planning now reports 22 complete ranges, 54
+missing ranges, and zero capsule-only interruptions. Each successful range has
+an independently validated mode-0444 capsule and matching receipt. No complete
+owner has been published.
+
+The next range, `88:4`, started at `2026-09-17T13:42:25.566Z` and was killed by
+the protocol supervisor at `2026-09-17T13:52:25.734Z`: 600.167 seconds of wall
+time against the fixed 600-second limit. Its last sampled aggregate RSS was
+443,944 KiB, so this was a timeout rather than memory pressure. Fail-atomicity
+held: the range published neither capsule nor receipt, the corrected outer
+controller exited nonzero, and no later range started. The preserved failure
+log has SHA-256
+`c94b95c443f70a4a32f9468b5f1bf20543c9404bc6d6d113fafc760daa81049a`.
+
+The v1 worker timed only the native call and emitted that timing after return,
+so a killed call cannot expose an exact native duration. For the immediately
+preceding ranges `68:4` through `84:4`, total pre/post-native overhead was
+7.96--8.35 seconds and native time was 87.80--96.79 seconds. Thus the evidence
+strongly localizes more than 591 seconds of the failed attempt inside the
+native call, but that lower bound is an attribution rather than a completed
+native timing.
+
+## Authenticated one-column recovery protocol
+
+Columns 88--91 have independent principal generators
+`[1273,5,0,0]`, `[-230,13,0,0]`, `[65,2,0,0]`, and `[-707,3,0,0]` once the
+authenticated embedding owner is fixed. The mathematical native kernel
+already accepts `count=1`; only the corpus scheduler prohibited nonterminal
+one-column ranges. The recovery layer therefore changes no Python source,
+kernel hash, authority, prepared embedding, source digest, target precision,
+or final batch schema.
+
+Each internal column invocation publishes a hash-named mode-0444 fragment and
+an independent resource receipt carrying the unchanged common identity. A
+fragment is associated with one canonical parent schedule entry but cannot
+publish that parent batch. The fragment resume planner authenticates unique
+fragment/receipt pairs and reports complete, missing, and fragment-only
+columns without treating a fragment as a completed ordinary batch. The
+assembler requires exactly the parent's columns
+in increasing source order, rejects a missing column, overlap, duplicate,
+permutation, writable artifact, filename/content mutation, or common-identity
+change, and only then constructs the ordinary v1 batch capsule and receipt.
+Consequently successful fragments for columns 88, 89, 90, and 91 assemble to
+the same canonical `88:4` payload and content hash that the existing v1 reader
+validates; downstream resume planning and complete-owner merge remain
+unchanged.
+
+The lightweight self-test publishes four fragments in an isolated temporary
+directory, proves that zero ordinary batch capsules exist before assembly,
+assembles exactly one v1 capsule, and compares its digest byte-for-byte with a
+direct v1 constructor. The full protocol test now exercises 13 negative
+controls, including fragment count/order/duplicate/mode/hash failures. No
+heavy one-column fragment has been executed at this checkpoint.
+
+The authenticated recovery commands are:
+
+```bash
+node bench/pari-class-group-port/field3_complex_log_corpus_protocol.cjs \
+  --fragment-parent-start 88 --fragment-parent-count 4 --fragment-plan
+node bench/pari-class-group-port/field3_complex_log_corpus_protocol.cjs \
+  --fragment-parent-start 88 --fragment-parent-count 4 --column COLUMN
+node bench/pari-class-group-port/field3_complex_log_corpus_protocol.cjs \
+  --fragment-parent-start 88 --fragment-parent-count 4 \
+  --assemble-fragments RECEIPT_88 RECEIPT_89 RECEIPT_90 RECEIPT_91
+```
+
+The assembler requires the receipt paths after `--assemble-fragments` in exact
+source-column order.
