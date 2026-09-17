@@ -515,6 +515,181 @@ stage("quartic-retry-javascript", quarticReplay("javascript"));
 stage("quartic-retry-gmp", quarticReplay("gmp"));
 stage("quartic-retry-tagged", quarticReplay("tagged"));
 
+stage("field3-collector", {
+  dependencies: [],
+  requiresPari: true,
+  command: (context) => commandNode("check_actual_initial_collector.cjs",
+    context.pariRoot, context.pariArchive, "--native", "--field", "3"),
+  validate: (summary, fixture) => {
+    assert.equal(summary.result[0].field, 3);
+    assert(fixture.nativeOutputs.some((entry) => entry.backend === "gmp" && entry.field === 3));
+  },
+});
+
+stage("field3-driver", {
+  dependencies: [],
+  requiresPari: true,
+  command: (context) => commandNode("check_default_driver_trace.cjs",
+    context.pariRoot, context.pariArchive, "--field3"),
+  validate: (summary, fixture) => {
+    assert.equal(summary.field, 3);
+    assert(Array.isArray(fixture) && fixture.some((entry) => entry.event === "result"));
+  },
+  fixtureName: "trace.json",
+  fixtureKey: "trace",
+});
+
+stage("field3-retry", {
+  dependencies: ["analytic", "field3-collector", "field3-driver"],
+  command: (context) => ({
+    command: "prlimit",
+    arguments: ["--as=6442450944", "--", process.execPath,
+      checker("check_prepared_class_group_resumable_field3.cjs"),
+      outputPath(context, "field3-collector"), outputPath(context, "analytic"),
+      tracePath(context, "field3-driver")],
+    extraEnvironment: { NODE_OPTIONS: "--max-old-space-size=2048" },
+  }),
+  validate: (summary, fixture) => {
+    assert.equal(summary.field, 3);
+    assert.equal(summary.exactSourceReplay, true);
+    assert.equal(summary.passes, 6);
+    assert.equal(summary.native.status, 0);
+    assert.equal(summary.native.classNumber, "4");
+    assert.deepEqual(summary.native.invariants, ["2", "2"]);
+    assert.equal(fixture.native.classNumber, "4");
+  },
+});
+
+stage("smith-transform", {
+  dependencies: ["field3-collector"],
+  requiresPari: true,
+  command: (context) => commandNode("check_class_group_smith_transform.cjs",
+    context.pariRoot, context.pariArchive,
+    "--collector-fixtures", outputPath(context, "field3-collector")),
+  validate: (summary) => {
+    assert(summary.cases > 0);
+    assert.deepEqual(summary.backends, ["cpython", "javascript", "gmp", "tagged"]);
+    assert.equal(summary.ubsan, true);
+  },
+  noFixture: true,
+  additionalOutputs: (summary) => ({
+    "oracle-source": path.join(summary.artifactDirectory, "oracle.c"),
+    "oracle-binary": path.join(summary.artifactDirectory, "oracle"),
+  }),
+});
+
+stage("nf-cxlog", {
+  dependencies: [],
+  requiresPari: true,
+  command: (context) => commandNode("check_nf_cxlog.cjs",
+    context.pariRoot, context.pariArchive),
+  validate: (summary) => {
+    assert(summary.cases > 0);
+    assert.equal(summary.malformedRejected, 4);
+    assert.deepEqual(summary.backends,
+      ["PARI", "CPython", "javascript", "gmp", "tagged"]);
+  },
+  noFixture: true,
+  allowNoArtifactDirectory: true,
+});
+
+stage("signed-reduction", {
+  dependencies: [],
+  requiresPari: true,
+  command: (context) => commandNode("check_signed_prime_ideal_reduction.cjs",
+    context.pariExecutable),
+  validate: (summary) => {
+    assert.equal(summary.pari.replayed, true);
+    assert(typeof summary.modulePath === "string");
+  },
+  noFixture: true,
+  allowNoArtifactDirectory: true,
+});
+
+stage("unit-lattice-reduction", {
+  dependencies: [],
+  requiresPari: true,
+  command: (context) => commandNode("check_unit_lattice_reduction.cjs",
+    context.pariArchive),
+  validate: (summary) => {
+    assert.equal(summary.cases, 2);
+    assert.deepEqual(summary.backends, ["javascript", "gmp", "tagged"]);
+    assert.equal(summary.exactTransforms, true);
+    assert.equal(summary.regulatorConsistency, true);
+  },
+  noFixture: true,
+  allowNoArtifactDirectory: true,
+});
+
+stage("unit-lattice-selection", {
+  dependencies: [],
+  requiresPari: true,
+  command: (context) => commandNode("check_unit_lattice_selection.cjs",
+    context.pariRoot, context.pariArchive),
+  validate: (summary) => {
+    assert(summary.cases > 0);
+    assert.equal(summary.atomicGuardsPerBackend, 14);
+    assert.equal(summary.ubsan, true);
+  },
+  noFixture: true,
+  additionalOutputs: (summary) => ({
+    "oracle-source": path.join(summary.artifactDirectory, "oracle.c"),
+    "oracle-binary": path.join(summary.artifactDirectory, "oracle"),
+  }),
+});
+
+stage("unit-getfu", {
+  dependencies: ["unit-lattice-reduction", "unit-lattice-selection"],
+  requiresPari: true,
+  command: (context) => commandNode("check_unit_reconstruction_cubic.cjs",
+    context.pariRoot, context.pariArchive),
+  validate: (summary) => {
+    assert(summary.fixtures > 0);
+    assert(summary.successes > 0);
+    assert.equal(summary.ubsan, true);
+    assert.equal(summary.sourceSha256, buch2Sha256);
+  },
+  noFixture: true,
+  additionalOutputs: (summary) => ({
+    "oracle-source": path.join(summary.artifactDirectory, "oracle.c"),
+    "oracle-binary": path.join(summary.artifactDirectory, "oracle"),
+  }),
+});
+
+stage("honesty", {
+  dependencies: [],
+  requiresPari: true,
+  command: (context) => commandNode("check_honesty_branch.cjs",
+    context.pariRoot, context.pariArchive),
+  validate: (summary) => {
+    assert.equal(summary.unequalBounds, true);
+    assert.equal(summary.probes, 51);
+    assert.equal(summary.randomProducts, 50);
+    assert.deepEqual(summary.backends, ["cpython", "javascript", "gmp", "tagged"]);
+  },
+  noFixture: true,
+  additionalOutputs: (summary) => ({
+    "oracle-source": path.join(summary.oracleDirectory, "oracle.c"),
+    "oracle-binary": path.join(summary.oracleDirectory, "oracle"),
+  }),
+});
+
+stage("immutable-result", {
+  dependencies: ["field3-retry", "smith-transform", "nf-cxlog", "signed-reduction",
+    "unit-getfu", "honesty"],
+  command: () => commandNode("check_class_group_internal_result.cjs"),
+  validate: (summary) => {
+    assert.equal(summary.schema, "sagejs.pari-class-group/internal-result-v1");
+    assert.equal(summary.authenticatedMutationCases, 55);
+    assert.equal(summary.semanticMutationCases, 13);
+    assert.equal(summary.pinnedRetainedEvidenceCases, 1);
+    assert.equal(summary.publicComplete, false);
+    assert.equal(summary.phase5Complete, false);
+  },
+  noFixture: true,
+  allowNoArtifactDirectory: true,
+});
+
 const defaultThrough = "cubic-candidate";
 
 function orderedClosure(targets) {
@@ -554,6 +729,9 @@ function validatePari(context) {
   assert(fs.existsSync(context.pariLibrary),
     "PARI root lacks Olinux-x86_64/libpari.so");
   context.pariLibrarySha256 = hashFile(fs.realpathSync(context.pariLibrary));
+  context.pariExecutable = path.join(context.pariRoot, "gp");
+  assert(fs.existsSync(context.pariExecutable), "PARI root lacks gp executable");
+  context.pariExecutableSha256 = hashFile(fs.realpathSync(context.pariExecutable));
 }
 
 function definitionIdentity(context, specification, command, dependencies) {
@@ -576,6 +754,8 @@ function definitionIdentity(context, specification, command, dependencies) {
       [name, sha256(current.bytes)])),
     pariArchiveSha256: specification.requiresPari ? archiveSha256 : null,
     pariLibrarySha256: specification.requiresPari ? context.pariLibrarySha256 : null,
+    pariExecutableSha256: specification.requiresPari
+      ? context.pariExecutableSha256 : null,
     generatedChecker: command.generatedChecker || null,
   };
 }
@@ -657,7 +837,9 @@ function runStage(context, name) {
   }
   const summary = jsonFromStdout(result.stdout);
   assert(summary && typeof summary === "object" && !Array.isArray(summary));
-  const producedDirectory = summary.artifactDirectory || summary.directory || summary.outputDirectory;
+  const producedDirectory = summary.artifactDirectory || summary.directory ||
+    summary.outputDirectory || summary.oracleDirectory ||
+    (specification.allowNoArtifactDirectory ? generated : null);
   assert(typeof producedDirectory === "string", `${name} did not report an artifact directory`);
   relativeToArtifacts(context, producedDirectory);
   specification.postprocess?.(summary, attempt);
@@ -743,7 +925,9 @@ function contextFromOptions(options, needsPari, writePipeline = true) {
       node: process.version },
     pari: needsPari ? { root: context.pariRoot, archive: context.pariArchive,
       archiveSha256, buch2Sha256, library: fs.realpathSync(context.pariLibrary),
-      librarySha256: context.pariLibrarySha256 } : null,
+      librarySha256: context.pariLibrarySha256,
+      executable: fs.realpathSync(context.pariExecutable),
+      executableSha256: context.pariExecutableSha256 } : null,
   };
   if (writePipeline) writeJsonAtomic(path.join(context.artifactRoot, "pipeline.json"), pipeline);
   return context;

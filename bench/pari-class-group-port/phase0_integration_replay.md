@@ -84,6 +84,31 @@ native compilation are expensive:
    and a 1536 MiB Node heap. Success requires the exact three-pass 150/151/152
    relation trace, class number 1, and accepted terminal state.
 
+The post-Phase-0 focused gates are also individually resumable:
+
+9. `field3-collector` and `field3-driver` regenerate the second quartic
+   resident inputs. `field3-retry` checks the six-pass, 303-relation terminal
+   replay, class number 4, and invariants `[2,2]` under a 6 GiB process limit.
+10. `smith-transform` replays exact class-group Smith transformations against
+    the field-3 collector fixture. `nf-cxlog` checks the prepared logarithmic
+    embedding frontier, including low-precision and malformed-input controls.
+    `signed-reduction` checks the signed cubic inverse-prime/T2 path and invokes
+    the exact `gp` executable from the pinned private PARI build.
+11. `unit-lattice-reduction` and `unit-lattice-selection` verify the exact and
+    floating rank-two lattice pieces. `unit-getfu` checks the prepared cubic
+    `getfu` reconstruction corridor and its precision/size stops.
+12. `honesty` replays the unequal-bound random-ideal retry transcript.
+    `immutable-result` checks canonical serialization, authenticated and
+    semantic mutation rejection, retained evidence, and cold replay. It joins
+    all new focused gates while deliberately asserting that neither the public
+    API nor Phase 5 is complete.
+
+Focused checkers which produce no standalone fixture are still durable: their
+JSON summary is retained in the receipt, stdout and stderr are hashed, and the
+checker, runner, dependency, repository tree, PARI archive, `libpari`, and
+exact `gp` executable hashes are part of stage identity. Checker-created
+temporary files remain below the attempt-local generated directory.
+
 The runner does not treat these candidate results as a complete class/unit
 group and does not change any production dispatch.
 
@@ -118,6 +143,17 @@ deliberate source/toolchain change, name it explicitly:
 
 ```bash
 ... run ... --stage quartic-retry-gmp --force-stage quartic-retry-gmp
+```
+
+Run the newly added gates through their immutable-result join without selecting
+unrelated earlier stages:
+
+```bash
+node bench/pari-class-group-port/run_phase0_integration_replay.cjs run \
+  --artifact-root /scratch/sagejs/pari-class-group-phase0 \
+  --pari-root /scratch/sagejs/pari-2.17.4 \
+  --pari-archive /scratch/sagejs/pari-2.17.4.tar.gz \
+  --stage immutable-result
 ```
 
 Verify stored evidence without invoking mathematical code:
