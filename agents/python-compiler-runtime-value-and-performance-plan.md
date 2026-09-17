@@ -396,6 +396,18 @@ checks, traitlets, focused dispatch checks, a full build, and the unchanged
 `agents/python-exact-integer-iadd.md`; hold this dependency behind #309 until
 that prerequisite is integrated into fresh main.
 
+**2026-09-17 exact subtraction/multiplication checkpoint:** a further queued
+follow-up generalizes the primitive boundary across `+`, `-`, and `*`, including
+their exact in-place forms. In a controlled one-million-operation comparison,
+subtraction improves 83.8%, multiplication 80.3%, `-=` 82.8%, and `*=` 88.6%;
+their remaining gaps are 1.17-2.28x CPython. Existing optimized addition remains
+flat within 0.9%, and the standalone shrinks by 1,140 bytes. Exact overflow,
+boolean, float, string, custom in-place, and binary fallback semantics pass
+focused checks at 902,660/903,000 core bytes. Evidence is in
+`agents/python-exact-integer-binary.md`; retain this behind the exact-addition
+integration queue and do not confuse these closed arithmetic micro-cliffs with
+the open keyword, construction, or cold-compiler cliffs.
+
 Continue next with integration-aware qualification, the receiver-lookup campaign,
 and true handled-exception ownership. Generator/coroutine suspension makes a
 single global active-exception pointer unsafe: preserve owned handlers while

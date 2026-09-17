@@ -77,17 +77,23 @@ def ρσ_unbound_method_adapter(target_function):
     })()"""
 
 
-def ρσ_exact_integer_add(left, right, missing):
+def ρσ_exact_integer_binary(left, right, operation, missing):
     return r"""%js (() => {
         const leftType = typeof left, rightType = typeof right;
         const exact = (type, value) => type === "boolean" || type === "bigint" ||
             (type === "number" && Number.isSafeInteger(value));
         if (!exact(leftType, left) || !exact(rightType, right)) return missing;
         if (leftType !== "bigint" && rightType !== "bigint") {
-            const result = Number(left) + Number(right);
+            const leftNumber = Number(left), rightNumber = Number(right);
+            const result = operation === 0 ? leftNumber + rightNumber :
+                operation === 1 ? leftNumber - rightNumber :
+                leftNumber * rightNumber;
             if (Number.isSafeInteger(result)) return result === 0 ? 0 : result;
         }
-        return BigInt(left) + BigInt(right);
+        const leftBigint = BigInt(left), rightBigint = BigInt(right);
+        return operation === 0 ? leftBigint + rightBigint :
+            operation === 1 ? leftBigint - rightBigint :
+            leftBigint * rightBigint;
     })()"""
 
 
