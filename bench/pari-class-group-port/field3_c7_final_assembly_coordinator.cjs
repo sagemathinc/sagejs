@@ -54,6 +54,7 @@ def load(path,expected):
 operation=sys.argv[1]
 paths=sys.argv[2:6];hashes=sys.argv[6:10]
 owners=[load(path,digest) for path,digest in zip(paths,hashes,strict=True)]
+for owner,digest in zip(owners,hashes,strict=True): owner['_authenticatedSha256']=digest
 result=m.assemble_authenticated_owners(*owners)
 result['sourceOwners']={name:{'sha256':digest} for name,digest in zip(('full15','regulator','unit','live'),hashes,strict=True)}
 result['coldReplayCapable']=True
