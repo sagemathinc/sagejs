@@ -657,7 +657,7 @@ stage("unit-getfu", {
 });
 
 stage("honesty", {
-  dependencies: [],
+  dependencies: ["honesty-scheduler"],
   requiresPari: true,
   command: (context) => commandNode("check_honesty_branch.cjs",
     context.pariRoot, context.pariArchive),
@@ -683,6 +683,245 @@ stage("immutable-result", {
     assert.equal(summary.authenticatedMutationCases, 55);
     assert.equal(summary.semanticMutationCases, 13);
     assert.equal(summary.pinnedRetainedEvidenceCases, 1);
+    assert.equal(summary.publicComplete, false);
+    assert.equal(summary.phase5Complete, false);
+  },
+  noFixture: true,
+  allowNoArtifactDirectory: true,
+});
+
+stage("rnd-scheduler", {
+  dependencies: ["field3-collector"],
+  requiresPari: true,
+  command: (context) => commandNode("check_rnd_relation_scheduler.cjs",
+    context.pariRoot, context.pariArchive),
+  validate: (summary) => {
+    assert.equal(summary.pari, "2.17.4");
+    assert.equal(summary.cpython, true);
+    assert.deepEqual(summary.native, ["javascript", "gmp"]);
+    assert.equal(summary.collectorBoundary, "explicit");
+  },
+  noFixture: true,
+  additionalOutputs: (summary) => ({
+    "oracle-source": path.join(summary.oracleDirectory, "oracle.c"),
+    "oracle-binary": path.join(summary.oracleDirectory, "oracle"),
+  }),
+});
+
+stage("rnd-collector", {
+  dependencies: ["field3-collector", "field3-driver", "rnd-scheduler"],
+  requiresPari: true,
+  command: (context) => commandNode("check_rnd_relation_collector.cjs",
+    context.pariRoot, context.pariArchive,
+    `--initial=${outputPath(context, "field3-collector")}`),
+  validate: (summary) => {
+    assert.equal(summary.pari, "2.17.4");
+    assert.equal(summary.cpython, true);
+    assert.deepEqual(summary.native.map((entry) => entry.backend), ["javascript", "gmp"]);
+    assert.match(summary.tagged, /^unsupported:/);
+  },
+  noFixture: true,
+});
+
+stage("honesty-scheduler", {
+  dependencies: ["rnd-collector"],
+  requiresPari: true,
+  command: (context) => commandNode("check_honesty_scheduler.cjs",
+    context.pariRoot, context.pariArchive),
+  validate: (summary) => {
+    assert.equal(summary.frozenCaseComplete, true);
+    assert.equal(summary.unequalBounds, true);
+    assert(summary.noCacheCollectorProbes > 0);
+    assert.deepEqual(summary.schedulerBackends, ["cpython", "javascript", "gmp", "tagged"]);
+  },
+  noFixture: true,
+  additionalOutputs: (summary) => ({
+    "oracle-source": path.join(summary.oracleDirectory, "factor-base.c"),
+    "oracle-binary": path.join(summary.oracleDirectory, "factor-base"),
+  }),
+});
+
+stage("honesty-success", {
+  dependencies: ["honesty-scheduler"],
+  requiresPari: true,
+  command: (context) => commandNode("check_honesty_success.cjs",
+    context.pariRoot, context.pariArchive),
+  validate: (summary) => {
+    assert.equal(summary.successfulFrozenCaseComplete, true);
+    assert.equal(summary.unequalBounds, true);
+    assert.equal(summary.probes, 6);
+    assert.equal(summary.rngUnchanged, true);
+    assert.deepEqual(summary.backends, ["cpython", "javascript", "gmp", "tagged"]);
+  },
+  noFixture: true,
+  additionalOutputs: (summary) => ({
+    "oracle-source": path.join(summary.oracleDirectory, "select.c"),
+    "oracle-binary": path.join(summary.oracleDirectory, "select"),
+  }),
+});
+
+stage("relation-hnf-witness", {
+  dependencies: ["resident-cubic-gmp"],
+  command: (context) => commandNode("check_relation_hnf_witness.cjs",
+    "--resident-output", outputPath(context, "resident-cubic-gmp", "output")),
+  validate: (summary) => {
+    assert.equal(summary.acceptedRelations, 73);
+    assert.deepEqual(summary.backends, ["cpython", "javascript", "gmp", "tagged"]);
+    assert.deepEqual(summary.independentIdentities,
+      ["A*R2P=H", "H*P2R=A", "V*Vi=I", "Vi*V=I"]);
+  },
+  noFixture: true,
+  allowNoArtifactDirectory: true,
+});
+
+stage("unit-bridge-preci", {
+  dependencies: ["relation-hnf-witness", "unit-getfu"],
+  requiresPari: true,
+  command: (context) => commandNode("check_unit_bridge_cubic.cjs",
+    context.pariRoot, context.pariArchive),
+  validate: (summary) => {
+    assert.equal(summary.cases, 1);
+    assert.equal(summary.residentGetfuStatus, "PRECI");
+    assert.deepEqual(summary.backends, ["cpython", "javascript", "gmp", "tagged"]);
+  },
+  noFixture: true,
+  additionalOutputs: (summary) => ({
+    "oracle-source": path.join(summary.artifactDirectory, "oracle.c"),
+    "oracle-binary": path.join(summary.artifactDirectory, "oracle"),
+  }),
+});
+
+stage("mixed-getfu-prerequisite", {
+  dependencies: ["nf-cxlog", "unit-lattice-reduction"],
+  requiresPari: true,
+  command: (context) => commandNode("check_getfu_mixed_complex.cjs",
+    context.pariRoot, context.pariArchive),
+  validate: (summary) => {
+    assert.equal(summary.fields, 2);
+    assert.equal(summary.ubsan, true);
+    assert.equal(summary.sourceSha256, buch2Sha256);
+  },
+  noFixture: true,
+  additionalOutputs: (summary) => ({
+    "oracle-source": path.join(summary.artifactDirectory, "oracle.c"),
+    "oracle-binary": path.join(summary.artifactDirectory, "oracle"),
+  }),
+});
+
+stage("mixed-getfu-quartic", {
+  dependencies: ["mixed-getfu-prerequisite", "field3-retry"],
+  requiresPari: true,
+  command: (context) => commandNode("check_getfu_mixed_quartic.cjs",
+    context.pariRoot, context.pariArchive),
+  validate: (summary) => {
+    assert.equal(summary.fields, 1);
+    assert.equal(summary.exact, 3);
+    assert.equal(summary.branchChecks, 6);
+    assert.equal(summary.ubsan, true);
+  },
+  noFixture: true,
+  additionalOutputs: (summary) => ({
+    "oracle-source": path.join(summary.artifactDirectory, "oracle.c"),
+    "oracle-binary": path.join(summary.artifactDirectory, "oracle"),
+  }),
+});
+
+stage("signed-genback-assembly", {
+  dependencies: ["signed-reduction", "smith-transform", "nf-cxlog"],
+  requiresPari: true,
+  command: (context) => commandNode("check_signed_genback_assembly.cjs",
+    context.pariRoot, context.pariArchive),
+  validate: (summary) => {
+    assert.equal(summary.classNumber, 24);
+    assert.deepEqual(summary.relation, [-3, -1]);
+    assert.equal(summary.factorCount, 4);
+    assert.deepEqual(summary.backends,
+      ["PARI", "CPython", "javascript", "gmp", "tagged"]);
+  },
+  noFixture: true,
+  allowNoArtifactDirectory: true,
+});
+
+stage("signed-genback-computed-t2", {
+  dependencies: ["signed-genback-assembly"],
+  requiresPari: true,
+  command: (context) => commandNode("check_signed_genback_computed_t2.cjs",
+    context.pariRoot, context.pariArchive),
+  validate: (summary) => {
+    assert.equal(summary.candidates, 5);
+    assert.equal(summary.witnessMatrices, 15);
+    assert.equal(summary.classNumber, 24);
+    assert.deepEqual(summary.backends,
+      ["PARI", "CPython", "javascript", "gmp", "tagged"]);
+  },
+  noFixture: true,
+  allowNoArtifactDirectory: true,
+});
+
+stage("get-clg2", {
+  dependencies: ["signed-genback-computed-t2", "mixed-getfu-quartic"],
+  requiresPari: true,
+  command: (context) => commandNode("check_get_clg2_arch.cjs",
+    context.pariRoot, context.pariArchive),
+  validate: (summary) => {
+    assert.deepEqual(summary.backends,
+      ["PARI", "CPython", "javascript", "gmp", "tagged"]);
+    assert.equal(summary.malformedCasesPerBackend, 5);
+    assert.equal(summary.aliasModesPerBackend, 2);
+    assert.equal(summary.pariArchiveSha256, archiveSha256);
+  },
+  noFixture: true,
+  additionalOutputs: (summary) => ({
+    "oracle-source": path.join(summary.artifactDirectory, "oracle.c"),
+    "oracle-binary": path.join(summary.artifactDirectory, "oracle"),
+  }),
+});
+
+stage("precision-bridge", {
+  dependencies: ["unit-bridge-preci", "mixed-getfu-quartic"],
+  command: () => commandNode("check_precision_resource_graph_bridge.cjs"),
+  parseSummary: () => ({ exactOwnerRetained: true, atomicRetryPublication: true }),
+  validate: (summary) => {
+    assert.equal(summary.exactOwnerRetained, true);
+    assert.equal(summary.atomicRetryPublication, true);
+  },
+  noFixture: true,
+  allowNoArtifactDirectory: true,
+});
+
+const scratchFalsificationLedger = checker(
+  "resident-mpz-scratch-frame-falsification-20260917.json",
+);
+stage("scratch-falsification-ledger", {
+  dependencies: ["relation-hnf-witness"],
+  command: () => ({
+    command: process.execPath,
+    arguments: ["-e", `const fs=require("node:fs");const x=JSON.parse(fs.readFileSync(${JSON.stringify(scratchFalsificationLedger)}));console.log(JSON.stringify({schemaVersion:x.schemaVersion,disposition:x.experiment.disposition,passed:x.gate.passed,cpuSpeedup:x.gate.kernelCpuSpeedup,correct:x.correctness.allClassOutputsMatched&&x.correctness.allResidentBufferHashesMatched}));`],
+  }),
+  identityInputs: () => [scratchFalsificationLedger],
+  validate: (summary) => {
+    assert.equal(summary.schemaVersion, 1);
+    assert.equal(summary.disposition, "rejected-and-reverted");
+    assert.equal(summary.passed, false);
+    assert.equal(summary.correct, true);
+    assert(summary.cpuSpeedup < 3);
+  },
+  noFixture: true,
+  allowNoArtifactDirectory: true,
+});
+
+stage("final-state", {
+  dependencies: ["immutable-result", "rnd-collector", "honesty", "honesty-success",
+    "relation-hnf-witness", "unit-bridge-preci", "mixed-getfu-quartic",
+    "signed-genback-computed-t2", "get-clg2", "precision-bridge",
+    "scratch-falsification-ledger"],
+  command: () => commandNode("check_class_group_final_state.cjs"),
+  validate: (summary) => {
+    assert.equal(summary.schema, "sagejs.pari-class-group/connected-final-state-v2");
+    assert.equal(summary.sourceRequiredRejections, 13);
+    assert.equal(summary.authenticatedMutations, 23);
+    assert.equal(summary.semanticMutations, 6);
+    assert.equal(summary.linkedWitnessMutations, 3);
     assert.equal(summary.publicComplete, false);
     assert.equal(summary.phase5Complete, false);
   },
@@ -740,6 +979,9 @@ function definitionIdentity(context, specification, command, dependencies) {
     : command.arguments.find((argument) => argument.endsWith(".cjs"));
   const sources = [fs.realpathSync(__filename)];
   if (checkerPath && fs.existsSync(checkerPath)) sources.push(fs.realpathSync(checkerPath));
+  for (const filename of specification.identityInputs?.(context) || []) {
+    sources.push(fs.realpathSync(filename));
+  }
   const sourceHashes = Object.fromEntries(sources.map((filename) => [
     path.relative(root, filename), hashFile(filename),
   ]));
@@ -835,7 +1077,8 @@ function runStage(context, name) {
   if (result.status !== 0) {
     throw new Error(`${name} failed (attempt retained at ${attempt}):\n${result.stderr || result.error}`);
   }
-  const summary = jsonFromStdout(result.stdout);
+  const summary = specification.parseSummary
+    ? specification.parseSummary(result.stdout) : jsonFromStdout(result.stdout);
   assert(summary && typeof summary === "object" && !Array.isArray(summary));
   const producedDirectory = summary.artifactDirectory || summary.directory ||
     summary.outputDirectory || summary.oracleDirectory ||
