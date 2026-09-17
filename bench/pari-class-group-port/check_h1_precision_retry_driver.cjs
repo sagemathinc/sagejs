@@ -74,7 +74,10 @@ function liveCompactProvenance(fn) {
     fn.javascript(...parameterNames.map(([name]) => values[name])),
     0n,
   );
-  return values.compact_provenance;
+  return {
+    compact: values.compact_provenance,
+    factor: values.getfu_factor,
+  };
 }
 
 function composeRetainedTransform(compact) {
@@ -95,7 +98,7 @@ function composeRetainedTransform(compact) {
   return retained;
 }
 
-function liveInput(retainedTransform, resourceCap) {
+function liveInput(retainedTransform, factorTransform, resourceCap) {
   const embedding = resident.preparation_embedding.map(BigInt);
   return {
     residentRoots: {
@@ -105,6 +108,7 @@ function liveInput(retainedTransform, resourceCap) {
     },
     principalGenerators: resident.generators.slice(0, 3 * 73).map(BigInt),
     retainedTransform,
+    factorTransform,
     multiplicationBasis: resident.basis_table.slice(0, 27).map(BigInt),
     initialPrecision: 192n,
     resourceCap,
@@ -114,25 +118,31 @@ function liveInput(retainedTransform, resourceCap) {
 async function main() {
   const bridgeBuild = await compileKernel({ sourcePath: bridgeSource });
   const bridge = require(bridgeBuild.modulePath).pari_live_h1_owner_bridge;
-  const retainedTransform = composeRetainedTransform(liveCompactProvenance(bridge));
+  const liveUnitOwners = liveCompactProvenance(bridge);
+  const retainedTransform = composeRetainedTransform(liveUnitOwners.compact);
   assert(retainedTransform.some((entry) => entry !== 0n));
 
   const run = await createH1PrecisionRetryDriver();
-  const completed = run(liveInput(retainedTransform, 2176n));
-  assert.equal(completed.status, "resource-cap");
-  assert.equal(completed.precision, 2176n);
+  const completed = run(liveInput(retainedTransform, liveUnitOwners.factor, 4096n));
+  if (process.env.SAGEJS_DEBUG_H1_RETRY)
+    console.error(completed.status, completed.attempts);
+  assert.equal(completed.status, "success");
+  assert.equal(completed.precision, 2304n);
   assert.deepEqual(completed.attempts.map((x) => x.precision), [
-    192n, 384n, 768n, 1536n, 2176n,
+    192n, 384n, 768n, 1536n, 2304n,
   ]);
-  assert(completed.attempts.every((x) => x.status === 3n));
-  assert.equal(completed.attempts.at(0).unitState[4], 1916n);
-  assert.equal(completed.attempts.at(-1).unitState[4], -2n);
-  assert.equal(Object.hasOwn(completed, "units"), false);
-  assert.equal(Object.hasOwn(completed, "logs"), false);
+  assert(completed.attempts.slice(0, -1).every((x) => x.status === 3n));
+  assert.equal(completed.attempts.at(-1).status, 0n);
+  assert(completed.attempts.at(0).unitState[4] > 0n);
+  assert.equal(completed.attempts.at(-1).unitState[4], -178n);
+  assert.deepEqual(completed.attempts.at(-1).candidateNorms, [-1n, -1n]);
+  assert(completed.units.some((entry) => entry !== 0n));
+  assert(completed.logs.some((entry) => entry !== 0n));
+  assert.deepEqual(completed.phases, [0n, 0n, 1n, 1n, 1n, 1n]);
 
   // The cap is deliberately below the observed success.  It is reached from
   // live PRECI transitions and returns no partially-filled public result.
-  const capped = run(liveInput(retainedTransform, 2048n));
+  const capped = run(liveInput(retainedTransform, liveUnitOwners.factor, 2048n));
   assert.equal(capped.status, "resource-cap");
   assert.equal(capped.precision, 2048n);
   assert.equal(Object.hasOwn(capped, "units"), false);
@@ -148,7 +158,7 @@ async function main() {
     },
   });
   assert.throws(
-    () => corruptingRun(liveInput(retainedTransform, 2176n)),
+    () => corruptingRun(liveInput(retainedTransform, liveUnitOwners.factor, 4096n)),
     /retained exact owner changed/,
   );
   assert.equal(injected, true);
@@ -159,7 +169,7 @@ async function main() {
     initialPrecision: "192",
     transitionPrecisions: completed.attempts.map((x) => x.precision.toString()),
     transitionStatuses: completed.attempts.map((x) => x.status.toString()),
-    translatedResourceCeiling: completed.precision.toString(),
+    terminalPrecision: completed.precision.toString(),
     finalLiveStatus: completed.attempts.at(-1).status.toString(),
     finalPrecisionDeficit: completed.attempts.at(-1).unitState[4].toString(),
     resourceCapStop: capped.precision.toString(),

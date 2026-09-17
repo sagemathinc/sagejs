@@ -78,7 +78,7 @@ def pari_cleanarch_totally_real_cubic(
             if rp < 0:
                 raise ValueError("class logarithm real part must be packed")
             if m != 0:
-                if rp < 64 or rp > 2496 or rp % 64 != 0:
+                if rp < 64 or rp > 4352 or rp % 64 != 0:
                     raise ValueError("unsupported class-log precision")
                 if abs(m).bit_length() != rp:
                     raise ValueError("unnormalized class logarithm")

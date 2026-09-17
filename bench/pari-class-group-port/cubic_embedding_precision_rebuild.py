@@ -48,7 +48,7 @@ def pari_cubic_refine_root(
         raise ValueError("invalid resident cubic root")
     if precision % 64 != 0 or abs(mantissa).bit_length() != precision:
         raise ValueError("invalid resident cubic root precision")
-    if target < 64 or target > 2176 or target % 64 != 0:
+    if target < 64 or target > 4096 or target % 64 != 0:
         raise ValueError("unsupported cubic retry root precision")
     fractional_bits = target + 128
     seed_shift = fractional_bits + exponent + 1 - precision

@@ -27,7 +27,7 @@ def pari_log2_constant(
     All mutable buffers are disjoint and have caller-selected limb capacity.
     The single guard word is preserved; unsupported precision is not clamped.
     """
-    if precision < 64 or precision > 2368 or precision % 64 != 0:
+    if precision < 64 or precision > 4352 or precision % 64 != 0:
         raise ValueError("unsupported logarithm constant precision")
     if len(cache) < 3:
         raise ValueError("logarithm constant cache requires three entries")

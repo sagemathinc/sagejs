@@ -298,7 +298,7 @@ def pari_getfu_real_cubic(
     State: return, fast zeros, DPE zeros, max real exponent, rounding error,
     inverse-choice mask, completed exact unit checks, solve status.
     """
-    if precision < 64 or precision > 2240 or precision % 64 != 0:
+    if precision < 64 or precision > 4096 or precision % 64 != 0:
         raise ValueError("unsupported cubic getfu precision")
     if (
         len(clean_logs) < 18

@@ -28,7 +28,7 @@ def pari_integer_real_sum(
         return pari_integer_to_real(integer, 64 * ((-gap + 63) // 64))
     if (
         precision < 64
-        or precision > 2304
+        or precision > 4352
         or precision % 64 != 0
         or abs(mantissa).bit_length() != precision
     ):

@@ -142,8 +142,8 @@ def pari_logarithm_series_wide(m: int, p: int, e: int) -> tuple[int, int, int]:
 def pari_real_square_root_wide(
     mantissa: int, precision: int, exponent: int
 ) -> tuple[int, int, int]:
-    """`sqrtr_abs` for the one extra p2,368 logarithm work word."""
-    if precision < 64 or precision > 2368 or precision % 64 != 0:
+    """`sqrtr_abs` for the retained wide-logarithm working precision."""
+    if precision < 64 or precision > 4352 or precision % 64 != 0:
         raise ValueError("unsupported wide square-root precision")
     magnitude = abs(mantissa)
     if magnitude.bit_length() != precision:
@@ -173,8 +173,8 @@ def pari_real_logarithm_wide(
     q: IntegerBuffer,
     stack: IntegerBuffer,
 ) -> tuple[int, int, int]:
-    """`logr_abs` through the p2,240 number-field embedding corridor."""
-    if precision < 64 or precision > 2240 or precision % 64 != 0:
+    """`logr_abs` through the reviewed p4,096 embedding corridor."""
+    if precision < 64 or precision > 4352 or precision % 64 != 0:
         raise ValueError("unsupported wide logarithm precision")
     magnitude = abs(mantissa)
     if magnitude.bit_length() != precision:
@@ -208,7 +208,7 @@ def pari_real_logarithm_wide(
         roots = 0
     else:
         working += ((roots + 63) // 64) * 64
-    if working > 2368:
+    if working > 4352:
         raise ValueError("wide logarithm working precision exceeds corridor")
     xm, xp, xe = pari_real_resize(magnitude, precision, exponent, working)
     xe -= ex
@@ -252,14 +252,14 @@ def pari_cubic_sunit_precision_rebuild(
     clean_state: Int64Buffer,
     state: Int64Buffer,
 ) -> int:
-    """Rebuild rank-two p2,176 `logfu` from exact `X` and `U`.
+    """Rebuild rank-two `logfu` through p4,096 from exact `X` and `U`.
 
     `generators` contains three integral-basis coordinates for every retained
     atomic S-unit. `transform` is PARI's column-major `generator_count x 2`
     matrix. Public `output` changes only after every logarithm, transform, and
     cleanup succeeds.
     """
-    if generator_count < 1 or precision < 64 or precision > 2176:
+    if generator_count < 1 or precision < 64 or precision > 4096:
         raise ValueError("unsupported cubic S-unit precision rebuild")
     if precision % 64 != 0:
         raise ValueError("cubic S-unit precision must use whole words")

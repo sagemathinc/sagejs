@@ -30,7 +30,7 @@ def pari_pi_constant(
     the upstream 64-bit guard word within the coordinated 2,496-bit arithmetic
     boundary.
     """
-    if precision < 64 or precision > 2432 or precision % 64 != 0:
+    if precision < 64 or precision > 4096 or precision % 64 != 0:
         raise ValueError("unsupported pi precision")
     if len(cache) < 3:
         raise ValueError("pi cache requires three entries")
