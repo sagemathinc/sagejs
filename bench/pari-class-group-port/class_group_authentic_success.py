@@ -63,8 +63,8 @@ RUN_ID = "authentic-real-cubic-h1-p2304"
 OWNER_GENERATION = 1
 CONNECTED_FIELD_ID = "pari-2.17.4:" + FIELD_ID
 _MAX_BYTES = 64 * 1024 * 1024
-_UNVERIFIED_REQUIREMENTS = (
-    "remove-live-pari-unit-oracle-input",
+_INTERNAL_UNVERIFIED_REQUIREMENTS = ("remove-live-pari-unit-oracle-input",)
+_PUBLIC_UNVERIFIED_REQUIREMENTS = (
     "independent-unit-saturation-index-one-certificate",
     "independent-factor-base-relation-completeness-certificate",
 )
@@ -755,7 +755,8 @@ def build_authentic_success_payload(
             "status": "authentic-internal-authority-composition-published",
             "phase5_complete": False,
             "public_complete": False,
-            "unverified_requirements": list(_UNVERIFIED_REQUIREMENTS),
+            "internal_unverified_requirements": list(_INTERNAL_UNVERIFIED_REQUIREMENTS),
+            "public_unverified_requirements": list(_PUBLIC_UNVERIFIED_REQUIREMENTS),
         },
     }
     _validate_payload(payload)
@@ -1188,7 +1189,8 @@ def _validate_payload_unchecked(payload: Any) -> None:
         "status": "authentic-internal-authority-composition-published",
         "phase5_complete": False,
         "public_complete": False,
-        "unverified_requirements": list(_UNVERIFIED_REQUIREMENTS),
+        "internal_unverified_requirements": list(_INTERNAL_UNVERIFIED_REQUIREMENTS),
+        "public_unverified_requirements": list(_PUBLIC_UNVERIFIED_REQUIREMENTS),
     }:
         raise AuthenticSuccessFailure("terminal claim changed")
 

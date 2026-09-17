@@ -70,8 +70,10 @@ assert len(payload["correspondence"]["unit_kernel_provenance"]) == 14
 assert len(payload["correspondence"]["active_relation_provenance"]) == 30
 assert payload["terminal"]["phase5_complete"] is False
 assert payload["terminal"]["public_complete"] is False
-assert payload["terminal"]["unverified_requirements"] == [
+assert payload["terminal"]["internal_unverified_requirements"] == [
     "remove-live-pari-unit-oracle-input",
+]
+assert payload["terminal"]["public_unverified_requirements"] == [
     "independent-unit-saturation-index-one-certificate",
     "independent-factor-base-relation-completeness-certificate",
 ]
@@ -142,7 +144,8 @@ mutation(lambda p: p["authorities"]["relation_unit"]["published_units_power_basi
 mutation(lambda p: p["authorities"]["retry_units"]["getfu_factor"].__setitem__(3, "1"))
 mutation(lambda p: p["terminal"].__setitem__("phase5_complete", True))
 mutation(lambda p: p["terminal"].__setitem__("public_complete", True))
-mutation(lambda p: p["terminal"]["unverified_requirements"].pop())
+mutation(lambda p: p["terminal"]["internal_unverified_requirements"].pop())
+mutation(lambda p: p["terminal"]["public_unverified_requirements"].pop())
 for changed in mutations:
     rejected(changed)
 
