@@ -1,0 +1,90 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "phase2-rnd-rel-scheduler",
+  "title": "Resident rnd_rel scheduler",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Translate PARI 2.17.4 rnd_rel cache/permutation/subfactor scheduling around the resident field-3 relation loop with a predeclared genuine branch fixture and exact CPython/native differential evidence",
+  "base_commit": "dc534fa05e68c330871fd3720718bdfa7c03e8db",
+  "claims": [
+    "bench/pari-class-group-port/rnd_relation_scheduler.py",
+    "bench/pari-class-group-port/check_rnd_relation_scheduler.cjs",
+    "bench/pari-class-group-port/rnd_relation_scheduler_fixture.json",
+    "bench/pari-class-group-port/rnd_relation_scheduler_audit.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "/home/user/upstream/pari-2.17.4/src/basemath/buch2.c:301-344",
+    "/home/user/upstream/pari-2.17.4/src/basemath/buch2.c:2648-2677",
+    "/home/user/upstream/pari-2.17.4/src/basemath/buch2.c:3946-3970"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "PARI 2.17.4 instrumented rnd_rel branch"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node bench/pari-class-group-port/check_rnd_relation_scheduler.cjs /home/user/upstream/pari-2.17.4 /home/user/upstream/pari-2.17.4.tar.gz",
+    "pnpm format:python:check",
+    "git diff --check"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_rnd_relation_scheduler.cjs /home/user/upstream/pari-2.17.4 /home/user/upstream/pari-2.17.4.tar.gz",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.77,
+      "started_at": "2026-09-17T00:17:06.887Z",
+      "commit": "dc534fa05e68c330871fd3720718bdfa7c03e8db",
+      "workspace_fingerprint": "20364a4b12178a6aa194f5ca45a6cdaa6d11ce3df96206370e96a4d40e498126",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm format:python:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.985,
+      "started_at": "2026-09-17T00:22:20.984Z",
+      "commit": "dc534fa05e68c330871fd3720718bdfa7c03e8db",
+      "workspace_fingerprint": "20364a4b12178a6aa194f5ca45a6cdaa6d11ce3df96206370e96a4d40e498126",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "git diff --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.036,
+      "started_at": "2026-09-17T00:22:31.612Z",
+      "commit": "dc534fa05e68c330871fd3720718bdfa7c03e8db",
+      "workspace_fingerprint": "20364a4b12178a6aa194f5ca45a6cdaa6d11ce3df96206370e96a4d40e498126",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Ports the literal PARI 2.17.4 rnd_rel scheduling prefix and get_random_ideal into ordinary native-compilable Python. A frozen field-3 fixture proves exact subfactor growth, XORGEN draws, random ideal HNF, resident owner preservation, and permutation publication in CPython, JavaScript native, and GMP native.",
+    "risks": [
+      "The Fincke--Pohst random-relation collector remains an explicit suspension boundary.",
+      "Composite ideal HNF still requires its inherited modulus-below-2^64 frontier.",
+      "Broad repository suites were not run under the integration lane's compile-resource constraint; focused native differential validation passed."
+    ],
+    "next_steps": [
+      "Connect R*P[j] and RND_REL_RELPID insertion to the existing prepared collector without changing the shared final driver.",
+      "Append collected random relations through resident HNF continuation and exercise natural repeated rnd_rel calls."
+    ]
+  }
+}
