@@ -10,7 +10,7 @@ function run(c,a,o={}){const r=spawnSync(c,a,{encoding:'utf8',timeout:180000,max
  const source=run('tar',['-xOf',archive,'pari-2.17.4/src/basemath/Flv.c']);
  const begin=source.indexOf('static GEN\nFlm_solve_upper_1('),end=source.indexOf('static long\nFlm_echelon_gauss(');assert(begin>0&&end>begin);
  const cases=[];let seed=829123;const rnd=n=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed%n;};
- for(const [m,n] of [[1,1],[3,7],[7,3],[7,9],[8,8],[8,13],[13,8],[15,16],[16,15],[24,29],[32,32],[63,65]]){
+ for(const [m,n] of [[1,1],[3,7],[7,3],[7,9],[8,8],[8,13],[13,8],[15,16],[16,15],[24,29],[32,32],[63,65],[80,80]]){
   for(const prime of [2,101,2147483659])for(let variant=0;variant<8;variant++){
    const a=Array.from({length:m*n},(_,ij)=>{const i=Math.floor(ij/n),j=ij%n;
     if(variant===0)return 0;
@@ -70,7 +70,7 @@ for value in [-1,2147483659]:
  assert repr(a)==before
 for m,n in [(0,0),(0,5),(5,0)]:
  a=args(m,n);assert f(*a)==0 and a[7]==[0]*n and a[8][:3]==[0,0,n]
-a=args(80,80);assert f(*a)==-1 and a[7]==[77]*80 and a[8]==[-1]+[77]*7
+a=args(70,200);assert f(*a)==-1 and a[7]==[77]*200 and a[8]==[-1]+[77]*7
 print('CPython passed')
 `,path.resolve(__dirname,'../..'),path.resolve(__dirname,'../../src/lib')],{input:JSON.stringify([cases,expected])});
  const summary={cases:cases.length,cp:cp.trim(),ubsan:true,sourceSha256:hash(source),traceSha256:hash(trace),artifactDirectory:dir,qualifiedTiming:false};
@@ -93,9 +93,9 @@ print('CPython passed')
   for(const index of [0,4,5,6,7,8]){const a=args();a[index]=[];const before=structuredClone(a);assert.throws(()=>f[backend](...a));assert.deepEqual(a,before);}
   for(const value of [-1n,2147483659n]){const a=args();a[0][0]=value;const before=structuredClone(a);assert.throws(()=>f[backend](...a));assert.deepEqual(a,before);}
   for(const [m,n] of [[0,0],[0,5],[5,0]]){const a=args(m,n);assert.equal(f[backend](...a),0n);assert.deepEqual(a[7],Array(n).fill(0n));assert.deepEqual(a[8].slice(0,3),[0n,0n,BigInt(n)]);}
-  const a=args(80,80);assert.equal(f[backend](...a),-1n);assert.deepEqual(a[7],Array(80).fill(77n));assert.deepEqual(a[8],[-1n,...Array(7).fill(77n)]);
+  const a=args(70,200);assert.equal(f[backend](...a),-1n);assert.deepEqual(a[7],Array(200).fill(77n));assert.deepEqual(a[8],[-1n,...Array(7).fill(77n)]);
  }
- summary.atomicGuards=true;summary.emptyShapes=true;summary.strassenFrontier=true;
+ summary.atomicGuards=true;summary.emptyShapes=true;summary.boundedProductBridge=200000;
  summary.coreBytes=fs.statSync(built.coreSourcePath).size;summary.coreSha256=hash(fs.readFileSync(built.coreSourcePath));summary.backends=['javascript','gmp'];
  fs.writeFileSync(path.join(dir,'fixtures.json'),JSON.stringify({cases,expected,nativeOutputs:output,summary}));console.log(JSON.stringify(summary));
 })().catch(e=>{console.error(e);process.exitCode=1;});

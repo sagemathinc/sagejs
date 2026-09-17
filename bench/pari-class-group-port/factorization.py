@@ -208,6 +208,66 @@ def pari_word_prime(
 
 
 @native
+def pari_complete_word_from_catalog(
+    n: int,
+    primes: IntegerBuffer,
+    prime_limit: int,
+    out_primes: IntegerBuffer,
+    out_exponents: IntegerBuffer,
+    count: int,
+) -> tuple[int, int]:
+    """Complete a cofactor only when the prepared catalog proves enough.
+
+    This is an algorithmic bridge for the still-unported `ifac_factoru` stage,
+    not a translation of its Pollard--Brent implementation.  The prepared
+    catalog contract says that `primes` contains every prime through
+    `prime_limit`.  Trial division is therefore conclusive only when the exact
+    square root of the cofactor is within that authenticated interval.
+    """
+    if n < 1 or count < 0 or prime_limit < 2 or len(primes) == 0:
+        raise ValueError("catalog completion input outside prepared contract")
+    limit = round(sqrt(n))
+    if limit * limit > n:
+        limit -= 1
+    if limit > prime_limit:
+        return count, n
+    if primes[len(primes) - 1] < limit:
+        raise ValueError("prepared prime catalog ends before required bound")
+    j = 1
+    while j < len(primes):
+        p = primes[j]
+        if p > limit:
+            break
+        exponent = 0
+        while n % p == 0:
+            n //= p
+            exponent += 1
+        if exponent != 0:
+            if count >= len(out_primes) or count >= len(out_exponents):
+                raise ValueError("factor output capacity exhausted")
+            if count != 0 and out_primes[count - 1] >= p:
+                raise ValueError("catalog completion would break factor order")
+            out_primes[count] = p
+            out_exponents[count] = exponent
+            count += 1
+            if n == 1:
+                return count, 1
+            limit = round(sqrt(n))
+            if limit * limit > n:
+                limit -= 1
+        j += 1
+    if n != 1:
+        if count >= len(out_primes) or count >= len(out_exponents):
+            raise ValueError("factor output capacity exhausted")
+        if count != 0 and out_primes[count - 1] >= n:
+            raise ValueError("catalog completion would break factor order")
+        out_primes[count] = n
+        out_exponents[count] = 1
+        count += 1
+    return count, 1
+
+
+@native
 def pari_word_factor_front(
     n: int,
     primes: IntegerBuffer,
@@ -283,16 +343,31 @@ def pari_word_factor_front(
                 out_exponents[j] = exponent
             count = end
             if residual != 1:
-                return count, n
+                return pari_complete_word_from_catalog(
+                    n,
+                    primes,
+                    prime_limit,
+                    out_primes,
+                    out_exponents,
+                    count,
+                )
             if n == 1:
                 return count, 1
             if n <= maxp and pari_catalog_contains(primes, n) != 0:
                 out_primes[count] = n
                 out_exponents[count] = 1
                 return count + 1, 1
-        # Stop before the still-unported second prime-iterator pass.
+        # PARI hands this range to `ifac_factoru`.  Use the authenticated
+        # catalog bridge when it is conclusive, or preserve the cofactor.
         if limit > factorlimit:
-            return count, n
+            return pari_complete_word_from_catalog(
+                n,
+                primes,
+                prime_limit,
+                out_primes,
+                out_exponents,
+                count,
+            )
         no_small = 0
         if limit >= 661:
             no_small = 1
@@ -300,8 +375,17 @@ def pari_word_factor_front(
             out_primes[count] = n
             out_exponents[count] = 1
             return count + 1, 1
-        # ifac_factoru is still unported.
-        return count, n
+        # The prepared catalog can replace the acceleration stage only when it
+        # reaches the residual's exact square root.  Otherwise retain the
+        # unresolved cofactor as an explicit fail-closed boundary.
+        return pari_complete_word_from_catalog(
+            n,
+            primes,
+            prime_limit,
+            out_primes,
+            out_exponents,
+            count,
+        )
     old_count = -1
     j = 1
     while j < len(primes):

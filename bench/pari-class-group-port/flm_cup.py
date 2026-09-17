@@ -4,7 +4,8 @@ Copyright (C) The PARI group. GPL-2.0-or-later, without warranty.
 Translated from `src/basemath/Flv.c`, including its recursive row split,
 column permutations, and packed C/U outputs. Exact residue arithmetic replaces
 word primitives; this is not a claim of equal arithmetic-leaf performance.
-The unported Strassen-Winograd multiplication dispatch is an explicit frontier.
+An exact bounded cubic bridge covers modest products where PARI dispatches to
+Strassen-Winograd; larger products remain an explicit frontier.
 """
 
 from sagejs.native import Int64Buffer, IntegerBuffer, native
@@ -139,10 +140,11 @@ def _pari_flm_cup_frame(
         )
         if status != 0:
             return -1
-        bound = 140
-        if prime >= 1073741824:
-            bound = 40
-        if bottom >= bound and rank1 >= bound and remaining >= bound:
+        # PARI dispatches large blocks to Strassen-Winograd here.  The source
+        # transparent port retains the exact cubic update only for bounded
+        # work, including row 14's first 61*54*54 update.  This is an
+        # algorithmic multiplication bridge, not a Strassen translation.
+        if bottom * rank1 * remaining > 200000:
             return -1
         for i in range(bottom):
             for j in range(remaining):
@@ -208,7 +210,7 @@ def pari_flm_cup(
     pivots: IntegerBuffer,
     state: Int64Buffer,
 ) -> int:
-    """Return 0 or -1 (unported multiplication dispatch), preserving input.
+    """Return 0 or -1 (over-cap multiplication dispatch), preserving input.
 
     Owners must be disjoint. Let `s=max(1,rows*columns,rows,columns)` and
     `d=rows//4+1`. Arena needs `8*s*d` entries;

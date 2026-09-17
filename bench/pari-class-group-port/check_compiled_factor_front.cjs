@@ -14,7 +14,7 @@ printf("%s",s);for(long i=1;i<lg(gel(f,1));i++)printf(" %lu %ld",uel(gel(f,1),i)
 pari_close();return 0;}
 `);
   const cc=spawnSync("cc",["-O2","-I"+path.join(pari,"src/headers"),"-I"+lib,source,"-L"+lib,"-Wl,-rpath,"+lib,"-lpari","-o",exe],{encoding:"utf8",timeout:30000});assert.equal(cc.status,0,cc.stderr);
-  const inputs=[1n,2n,12n,3n**20n,2n**60n,101n*103n,101n**5n,251n*257n,617n*619n,1009n*1013n,1000003n*1000033n,18446744073709551557n];
+  const inputs=[1n,2n,12n,3n**20n,2n**60n,101n*103n,101n**5n,251n*257n,617n*619n,1009n*1013n,928025453n,1000003n*1000033n,18446744073709551557n];
   for (let n=3n;n<200n;n+=2n) inputs.push(n);
   for (const p of [127n,131n,251n,257n,659n,661n,673n,677n,1009n]) {
     inputs.push(p*p, p*p*p, 6n*p*p);
@@ -27,7 +27,7 @@ import sys,json,decimal
 sys.set_int_max_str_digits(100000)
 sys.path.insert(0,${JSON.stringify(path.resolve(__dirname,"../../src/lib"))})
 sys.path.insert(0,${JSON.stringify(__dirname)})
-from factorization import pari_word_factor_front
+from factorization import pari_complete_word_from_catalog,pari_word_factor_front
 d=json.load(sys.stdin); results=[]
 for row in d['rows']:
   for fast in [0,1]:
@@ -42,6 +42,19 @@ for row in d['rows']:
     assert product==n
     if residual==1: assert list(zip(p[1:count],e[1:count]))==list(oracle.items())
     results.append([str(count),str(residual),*[str(v) for pair in zip(p[:count],e[:count]) for v in pair]])
+p=[0]*8;e=[0]*8
+count,residual=pari_word_factor_front(928025453,list(map(int,d['primes'])),list(map(int,d['products'])),int(d['factorlimit']),int(d['primeLimit']),p,e,0,1)
+q=[0]*8;x=[0]*8
+direct=pari_complete_word_from_catalog(25081769,list(map(int,d['primes'])),int(d['primeLimit']),q,x,0)
+assert direct==(2,1) and q[:2]==[4793,5233] and x[:2]==[1,1]
+too_large=1000003*1000033;q=[0]*8;x=[0]*8
+assert pari_complete_word_from_catalog(too_large,list(map(int,d['primes'])),int(d['primeLimit']),q,x,0)==(0,too_large)
+truncated=[v for v in map(int,d['primes']) if v<=4000]
+try: pari_complete_word_from_catalog(25081769,truncated,int(d['primeLimit']),q,x,0)
+except ValueError: pass
+else: raise AssertionError('truncated catalog accepted')
+assert residual==1 and count==3, (count,residual,p[:count],e[:count])
+assert p[:count]==[37,4793,5233] and e[:count]==[1,1,1], (p[:count],e[:count])
 print(json.dumps(results))
 `],{input:JSON.stringify(data),encoding:"utf8",timeout:30000});assert.equal(python.status,0,python.stderr);
   const expected=JSON.parse(python.stdout).map(r=>r.map(BigInt));
@@ -49,6 +62,14 @@ print(json.dumps(results))
   for(let i=0;i<inputs.length;i++)for(const fast of [0n,1n])for(const backend of ["javascript","gmp","tagged"]){
     const p=[97n,...Array(16).fill(0n)],e=[7n,...Array(16).fill(0n)],out=mod.pari_word_factor_front[backend](inputs[i],primes.map(BigInt),products.map(BigInt),BigInt(factorlimit),BigInt(primeLimit),p,e,1n,fast);
     assert.deepEqual([...out,...p.slice(0,Number(out[0])).flatMap((v,j)=>[v,e[j]])],expected[2*i+Number(fast)]);
+  }
+  for(const backend of ["javascript","gmp","tagged"]){
+    const p=Array(8).fill(0n),e=Array(8).fill(0n),out=mod.pari_word_factor_front[backend](928025453n,primes.map(BigInt),products.map(BigInt),BigInt(factorlimit),BigInt(primeLimit),p,e,0n,1n);
+    assert.deepEqual(out,[3n,1n]);assert.deepEqual(p.slice(0,3),[37n,4793n,5233n]);assert.deepEqual(e.slice(0,3),[1n,1n,1n]);
+    const tooLarge=1000003n*1000033n,q=Array(8).fill(0n),x=Array(8).fill(0n);
+    assert.deepEqual(mod.pari_complete_word_from_catalog[backend](tooLarge,primes.map(BigInt),BigInt(primeLimit),q,x,0n),[0n,tooLarge]);
+    const truncated=primes.filter(value=>BigInt(value)<=4000n).map(BigInt);
+    assert.throws(()=>mod.pari_complete_word_from_catalog[backend](25081769n,truncated,BigInt(primeLimit),q,x,0n));
   }
   const complete=expected.filter(r=>r[1]===1n).length;assert(complete>0&&complete<expected.length);
   console.log(`${expected.length} word factor-front cases match CPython/JS/GMP/tagged: ${complete} complete PARI factorizations, ${expected.length-complete} explicit unresolved cofactors`);
