@@ -340,11 +340,30 @@ function patchCore(original) {
     "    if (count == 0)\n    {\n        mpz_set_ui(result, 0);",
     "    sagejs_attr_buffer_read(buffer->sizes, count);\n    if (count == 0)\n    {\n        mpz_set_ui(result, 0);",
     "tracked mpz read");
-  source = replaceOnce(source,
-    "    memset(slot, 0, buffer->word_capacity * sizeof(*slot));",
-    "    sagejs_attr_buffer_write(buffer->sizes, count, buffer->word_capacity);\n" +
+  if (PRIVATE_BUFFER) {
+    source = replaceOnce(source,
+      `    if (sagejs_private_state == NULL)
+        memset(slot, 0, buffer->word_capacity * sizeof(*slot));
+    else
+        sagejs_private_integer_buffer_mark(sagejs_private_state, position);`,
+      `    if (sagejs_private_state == NULL)
+    {
+        sagejs_attr_buffer_write(buffer->sizes, count, buffer->word_capacity);
+        memset(slot, 0, buffer->word_capacity * sizeof(*slot));
+    }
+    else
+    {
+        sagejs_attr_buffer_write(buffer->sizes, count, 0);
+        sagejs_private_integer_buffer_mark(sagejs_private_state, position);
+    }`,
+      "tracked private mpz write");
+  } else {
+    source = replaceOnce(source,
       "    memset(slot, 0, buffer->word_capacity * sizeof(*slot));",
-    "tracked mpz write");
+      "    sagejs_attr_buffer_write(buffer->sizes, count, buffer->word_capacity);\n" +
+        "    memset(slot, 0, buffer->word_capacity * sizeof(*slot));",
+      "tracked mpz write");
+  }
   source = replaceOnce(source,
     "    const uint64_t magnitude =\n        buffer->limbs[position * buffer->word_capacity];",
     "    sagejs_attr_buffer_read(buffer->sizes, 1);\n    const uint64_t magnitude =\n" +
