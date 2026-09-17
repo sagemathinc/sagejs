@@ -2,13 +2,11 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { readFileSync } = require("node:fs");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
+const { buildRegulatorAuthority } = require("./build_regulator_authority.cjs");
 
 const root = path.resolve(__dirname, "../..");
-const runtimeRoot = path.resolve(process.env.SAGEJS_REPLAY_RUNTIME_ROOT || root);
-const { createSage } = require(path.join(runtimeRoot, "dist/tools/kernel.js"));
 const resident = path.resolve(
   process.argv[2] || "/tmp/sagejs-resident-generated-class-3qtnS5/output.json",
 );
@@ -27,28 +25,7 @@ function run(command, args, options = {}) {
 }
 
 async function main() {
-const regulatorSource = readFileSync(path.join(__dirname, "regulator_acceptance_replay.py"), "utf8");
-const regulatorFixture = JSON.parse(readFileSync(path.join(__dirname, "regulator-acceptance-replay-fixture.json"), "utf8"));
-const regulatorSession = await createSage({ mode: "python" });
-let regulatorAuthority;
-try {
-  const regulatorProgram = regulatorSource + String.raw`
-import json
-fixture = json.loads(${JSON.stringify(JSON.stringify(regulatorFixture))})
-R = PolynomialRing(QQ, "x")
-x = R.gen()
-K = NumberField(x**3 - 20018*x + 20034, "a")
-payload = build_regulator_acceptance_replay(K, fixture)
-raw, authority = seal_regulator_acceptance_replay(payload)
-assert cold_replay_regulator_acceptance(K, raw, authority) == payload
-print(json.dumps({"envelope": json.loads(raw), "sha256": authority.envelope_sha256}, sort_keys=True))
-`;
-  const replay = await regulatorSession.evaluate(regulatorProgram, { filename: "regulator-authority.py" });
-  assert.equal(replay.stderr || "", "");
-  regulatorAuthority = JSON.parse(replay.stdout);
-} finally {
-  regulatorSession.close();
-}
+const regulatorAuthority = await buildRegulatorAuthority();
 const oracle = oracleExecutable
   ? JSON.parse(run(oracleExecutable, []))
   : JSON.parse(

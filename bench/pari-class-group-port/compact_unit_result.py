@@ -8,7 +8,7 @@ hash-authorized factor pool.
 
 This is an upstream-assumed correspondence result.  It is not a rigorous unit
 saturation certificate and must not be promoted to a completed public
-``UnitGroupComputation``.
+`UnitGroupComputation`.
 """
 
 from __future__ import annotations

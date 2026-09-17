@@ -9,6 +9,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const { compileKernel } = require("../../tools/native-kernel/compiler.cjs");
+const { buildRegulatorAuthority } = require("./build_regulator_authority.cjs");
 
 const root = path.resolve(__dirname, "../..");
 const residentPath = path.resolve(
@@ -23,6 +24,9 @@ const run = (command, args, options = {}) => {
   return result.stdout;
 };
 
+async function main() {
+const regulatorAuthority = await buildRegulatorAuthority();
+
 // Retain the pristine PARI cleanarch differential as an explicit dependency.
 run("node", [path.join(__dirname, "check_class_relation_cleanarch.cjs")]);
 const unitOracle = JSON.parse(run("node", [path.join(__dirname, "check_unit_bridge_cubic.cjs")], {
@@ -35,8 +39,9 @@ sys.path.insert(0,sys.argv[1]);sys.path.append(sys.argv[1]+'/src/lib')
 a=importlib.import_module('bench.pari-class-group-port.class_group_authentic_success')
 m=importlib.import_module('bench.pari-class-group-port.class_group_final_driver_status')
 resident_path,fixture_path=sys.argv[2:4]
-resident=json.loads(pathlib.Path(resident_path).read_text());oracle=json.load(sys.stdin)
-authentic=a.build_authentic_success_payload(resident_path,fixture_path,oracle)
+resident=json.loads(pathlib.Path(resident_path).read_text());data=json.load(sys.stdin)
+oracle=data['oracle'];regulator_authority=data['regulator_authority']
+authentic=a.build_authentic_success_payload(resident_path,fixture_path,oracle,regulator_authority)
 status=m.build_live_final_driver_status(resident,authentic);payload=m.detached_status_payload(status)
 assert payload['native_state']==['0','1','1','48','48','7','7','73','8','0']
 assert payload['final_driver']['honesty_status']=='equal-bound-source-skip'
@@ -71,10 +76,9 @@ print(json.dumps({'sourceSha256':payload['source_sha256'],'cleanedSha256':payloa
 `;
 const fixturePath = path.join(__dirname, "unit-bridge-cubic-fixtures.json");
 const dynamic = JSON.parse(run("python3", ["-c", program, root, residentPath, fixturePath], {
-  input: JSON.stringify(unitOracle),
+  input: JSON.stringify({ oracle: unitOracle, regulator_authority: regulatorAuthority }),
 }));
 
-(async () => {
 const resident = JSON.parse(fs.readFileSync(residentPath));
 const built = await compileKernel({
   sourcePath: path.join(__dirname, "class_group_final_driver_status.py"),
@@ -120,7 +124,9 @@ console.log(JSON.stringify({
   transactional: true,
   cacheKey: built.cacheKey,
 }));
-})().catch((error) => {
+}
+
+main().catch((error) => {
   console.error(error);
   process.exitCode = 1;
 });

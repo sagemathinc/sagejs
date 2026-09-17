@@ -797,6 +797,28 @@ stage("honesty-success", {
   }),
 });
 
+stage("honesty-equal-bound", {
+  dependencies: ["resident-cubic-driver"],
+  command: () => ({
+    command: "/usr/bin/python3",
+    arguments: [checker("test_honesty_equal_bound.py")],
+    extraEnvironment: { PYTHONPATH: root },
+  }),
+  identityInputs: () => [checker("honesty_equal_bound.py")],
+  parseSummary: () => ({
+    sourcePredicateDerived: true,
+    authenticSkip: true,
+    focusedTests: 5,
+  }),
+  validate: (summary) => {
+    assert.equal(summary.sourcePredicateDerived, true);
+    assert.equal(summary.authenticSkip, true);
+    assert.equal(summary.focusedTests, 5);
+  },
+  noFixture: true,
+  allowNoArtifactDirectory: true,
+});
+
 stage("degree5-ranked-lll", {
   dependencies: ["honesty-success"],
   requiresPari: true,
@@ -1300,7 +1322,8 @@ stage("scratch-falsification-ledger", {
 
 stage("final-state", {
   dependencies: ["immutable-result", "rnd-collector", "honesty", "honesty-success",
-    "honesty-quintic-collector-downstream", "relation-hnf-witness",
+    "honesty-equal-bound", "honesty-quintic-collector-downstream",
+    "relation-hnf-witness",
     "presentation-authority", "h1-class-correspondence", "unit-bridge-preci",
     "unit-component-cubic",
     "compact-unit-result", "unit-relation-authority-frontier",

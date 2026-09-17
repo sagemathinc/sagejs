@@ -57,6 +57,8 @@ assert cold_replay_regulator_acceptance(K, raw, authority) == payload
 print(json.dumps({
     "payload": payload,
     "envelope_sha256": authority.envelope_sha256,
+    "envelope": json.loads(raw),
+    "sha256": authority.envelope_sha256,
 }, sort_keys=True))
 `;
     const result = await session.evaluate(source, {
@@ -131,7 +133,12 @@ torsion = importlib.import_module("bench.pari-class-group-port.torsion_authority
 m = importlib.import_module("bench.pari-class-group-port.internal_correspondence_completion")
 
 fixture = root + "/bench/pari-class-group-port/unit-bridge-cubic-fixtures.json"
-authentic = success.build_authentic_success_payload(resident, fixture, oracle)
+authentic = success.build_authentic_success_payload(
+    resident,
+    fixture,
+    oracle,
+    {"envelope": regulator["envelope"], "sha256": regulator["sha256"]},
+)
 presentation_payload = presentation.capture_presentation_authority(resident)
 torsion_result = torsion.derive_real_cubic_torsion([20034, -20018, 0, 1])
 

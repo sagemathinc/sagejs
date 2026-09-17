@@ -3,10 +3,10 @@
 Copyright (C) The PARI group. GPL-2.0-or-later, without warranty.
 
 This is a deliberately frozen continuation of the PARI 2.17.4
-``class_group_gen`` experiment for ``x^3 - 200*x + 7``.  The preceding
-signed-``genback`` leaf publishes the generator ideal, its ordered compact
+`class_group_gen` experiment for `x^3 - 200*x + 7`.  The preceding
+signed-`genback` leaf publishes the generator ideal, its ordered compact
 principal factors, and the Smith identity.  This leaf retains that provenance
-and independently verifies the missing order relation ``I**24 = (alpha)`` by
+and independently verifies the missing order relation `I**24 = (alpha)` by
 exact ideal arithmetic.  PARI is not called by this source boundary.
 
 All cubic ideals and multiplication matrices are row-major.  The private
@@ -170,10 +170,10 @@ def pari_cubic_generator_order_witness_frozen(
     power_trace: IntegerBuffer,
     state: IntegerBuffer,
 ) -> int:
-    """Verify and publish the exact ``I**24`` principal witness.
+    """Verify and publish the exact `I**24` principal witness.
 
     The four compact factors are the source-order output of the already
-    authenticated signed-``genback`` reduction.  They are deliberately
+    authenticated signed-`genback` reduction.  They are deliberately
     checked here because this frozen leaf is a provenance replay, not a public
     generic ideal-power operation.  Algebraic rejection publishes no ideal,
     factor, HNF, or trace output.
