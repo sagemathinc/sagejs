@@ -76,11 +76,90 @@
       "commit": "227218186bc9f040aca39c1b450047d2309eadf3",
       "workspace_fingerprint": "3c96a2a1a221ddfa88c38acdb6c31433d6cf2253cdf53baf5606433c89b394c5",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_pari_h1_outcome_c_adapter.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.536,
+      "started_at": "2026-09-17T04:10:12.155Z",
+      "commit": "f3fcfbaa2f01383bf2efedf605d4173226d7cae8",
+      "workspace_fingerprint": "f9c319be6acfdd131e5e8b506bd4c3d5e060e71c6ad695b10de5f277e7a18e96",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_h1_outcome_c_adapter.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.745,
+      "started_at": "2026-09-17T04:10:13.517Z",
+      "commit": "f3fcfbaa2f01383bf2efedf605d4173226d7cae8",
+      "workspace_fingerprint": "f9c319be6acfdd131e5e8b506bd4c3d5e060e71c6ad695b10de5f277e7a18e96",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.737,
+      "started_at": "2026-09-17T04:10:16.016Z",
+      "commit": "f3fcfbaa2f01383bf2efedf605d4173226d7cae8",
+      "workspace_fingerprint": "f9c319be6acfdd131e5e8b506bd4c3d5e060e71c6ad695b10de5f277e7a18e96",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1.033,
+      "started_at": "2026-09-17T04:10:22.446Z",
+      "commit": "f3fcfbaa2f01383bf2efedf605d4173226d7cae8",
+      "workspace_fingerprint": "f9c319be6acfdd131e5e8b506bd4c3d5e060e71c6ad695b10de5f277e7a18e96",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.222,
+      "started_at": "2026-09-17T04:32:35.350Z",
+      "commit": "f3fcfbaa2f01383bf2efedf605d4173226d7cae8",
+      "workspace_fingerprint": "f9c319be6acfdd131e5e8b506bd4c3d5e060e71c6ad695b10de5f277e7a18e96",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 114.142,
+      "started_at": "2026-09-17T04:32:52.283Z",
+      "commit": "f3fcfbaa2f01383bf2efedf605d4173226d7cae8",
+      "workspace_fingerprint": "f9c319be6acfdd131e5e8b506bd4c3d5e060e71c6ad695b10de5f277e7a18e96",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 69.03,
+      "started_at": "2026-09-17T04:35:33.505Z",
+      "commit": "f3fcfbaa2f01383bf2efedf605d4173226d7cae8",
+      "workspace_fingerprint": "f9c319be6acfdd131e5e8b506bd4c3d5e060e71c6ad695b10de5f277e7a18e96",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Added an authentic Linux-only PARI 2.17.4 prepared-nf Outcome-C adapter. The helper prepares nfinit before the worker clock, resets PARI's stack and RNG for each run, times the complete bnfinit flag-zero class/unit root, emits implementation-neutral result/RNG/work evidence, and binds every timed result to an independent fresh-process replay. The shared worker now supports a fail-closed whole-root-only stage mode without manufacturing exclusive stages.",
+    "risks": [
+      "PARI's public bnfinit API has no audited internal stage callbacks, so all elapsed time is honestly assigned to the unattributed remainder and named stages remain zero.",
+      "PARI flag zero does not materialize expanded fundamental units; the standardized result carries the exact rank, log matrix, regulator, and torsion but leaves expandedFundamentalUnits null.",
+      "This benchmark reference is intentionally Linux-only and GPL-attributed; it is not product implementation.",
+      "The portable suite fails in the unchanged modular-qexp source-freeze test: its committed manifest records acf5c55b... for architecture/package-graph.json while the unchanged file and exact base commit hash to 66d0eec3.... No unrelated modular-forms fixture was changed."
+    ],
+    "next_steps": [
+      "Implement or integrate the authentic Sage h=1 adapter against the same result, replay, RNG, and work contract.",
+      "Have the paired coordinator run at least seven alternating pairs before setting finalTimingRun; this lane deliberately performs no final timing run.",
+      "Either add audited PARI internal stage hooks or review a whole-root paired receipt schema before claiming named-stage attribution."
+    ]
   }
 }
