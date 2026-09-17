@@ -1,10 +1,10 @@
 # Authentic cubic unit composition bridge
 
 This lane connects the resident equal-bound output for
-`x^3-20018*x+20034` to the signed real-cubic `getfu` leaf. It deliberately
-does not claim that the full unit reconstruction succeeds at the resident
-192-bit precision. PARI reports `fupb_PRECI` at that boundary, and this port
-reports the same status.
+`x^3-20018*x+20034` to the signed real-cubic `getfu` leaf. PARI and the port
+both first report `fupb_PRECI` at resident 192-bit precision. The bridge now
+continues through the authentic p2240-capacity retry and reconstructs both
+fundamental units exactly.
 
 ## Source and frozen input
 
@@ -45,7 +45,7 @@ The checker also validates both exact PARI fundamental units by constructing
 their multiplication matrices, proving determinant `+/-1`, and replaying an
 exact inverse product.
 
-## Honest precision frontier
+## Authentic precision retry
 
 The resident 192-bit call reaches `getfu` and returns `fupb_PRECI`. This is a
 real algorithmic retry, not an implementation mismatch: the larger
@@ -53,25 +53,24 @@ fundamental unit has 2115-bit integral-basis coordinates. A pristine
 `bnfnewprec` replay at 2048 requested bits produces packed real logs of
 precision 2176 and an embedding entry of precision 2240.
 
-Those values exceed the current translated packed-real capacity. The existing
-shared graph admits at most 1856-bit regulator scalars; division, logarithm,
-short-product, and exponential helpers have related 1920--2048-bit limits.
-The source-faithful retry needs p2240 inputs and at least p2304 working/log2
-capacity. Truncating the values, accepting a lower-precision reconstruction,
-or publishing source units as if this bridge reconstructed them would all be
-incorrect, so this lane does none of those things.
+The integrated precision-resource campaign supplies p2240 input and p2304
+working/log2 capacity. Before retrying, the bridge verifies that all six
+high-precision source inputs agree with the resident values through their
+leading 176 bits; the frozen case differs by at most 12 low mantissa bits due
+to the independent source accumulation. It then reruns the real LLL factor
+and signed `getfu` reconstruction at 2048 requested bits.
 
-The next dependency is therefore the precision-resource campaign: raise the
-packed-real arithmetic graph coherently to p2240 input and p2304 working
-precision, with division, exponential, solve, and rounding fixtures. Once it
-lands, this checker can turn the currently asserted `PRECI` boundary into the
-same exact unit/log/factor comparisons already provided by the signed leaf.
+The retry returns the same two exact units, 18 packed output words, six phase
+bits, and normalized factor transform as the instrumented pristine PARI
+2.17.4 static `getfu` call. The final factor is composed with the accepted
+relation provenance. The initial PRECI call is also tested transactionally:
+all unit, log, phase, and factor outputs remain zero until the successful
+retry publishes them.
 
 ## Exclusions
 
-This cut does not implement precision retry ownership, the wide
-`extract_full_lattice` selector, mixed signatures, quartic reconstruction, or
-the shared final driver. It makes no timing claim. Its narrow result is that
-the real resident relation output now reaches the authentic signed `getfu`
-boundary with exact provenance and sign handling, and that the sole observed
-stop is quantitatively identified precision capacity.
+This cut does not implement the wide `extract_full_lattice` selector, mixed
+signatures, quartic reconstruction, or the shared final driver. It makes no
+timing claim. Its narrow result is an exact, source-matched real-cubic retry
+with relation provenance, sign handling, regulator evidence, and a compatible
+unit-component publication boundary.
