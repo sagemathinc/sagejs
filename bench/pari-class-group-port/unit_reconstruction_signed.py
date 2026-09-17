@@ -139,9 +139,9 @@ def pari_getfu_signed_real_cubic(
     mutated; inversion negates the corresponding output factor column exactly
     as PARI mutates `*ptU`.
     """
-    if precision < 64 or precision > 1920 or precision % 64 != 0:
+    if precision < 64 or precision > 2240 or precision % 64 != 0:
         raise ValueError("unsupported signed cubic getfu precision")
-    if phase_precision < 64 or phase_precision > 1920 or phase_precision % 64 != 0:
+    if phase_precision < 64 or phase_precision > 2240 or phase_precision % 64 != 0:
         raise ValueError("unsupported signed cubic phase precision")
     if (
         len(clean_logs) < 18

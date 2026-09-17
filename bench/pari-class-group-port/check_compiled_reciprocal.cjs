@@ -6,8 +6,8 @@ const {spawnSync}=require("node:child_process"),{compileKernel}=require("../../t
   const source=path.join(dir,"oracle.c"),exe=path.join(dir,"oracle");
   fs.writeFileSync(source,`#include "pari.h"
 int main(void){pari_init(16000000,10000);setrand(stoi(1729));
-long precs[]={64,128,192,256,512,1024,2048};
-for(long pi=0;pi<7;pi++)for(long pattern=0;pattern<40;pattern++)for(long sign=-1;sign<=1;sign+=2){
+long precs[]={64,128,192,256,512,1024,2048,2176,2240,2304,2368,2432,2496};
+for(long pi=0;pi<13;pi++)for(long pattern=0;pattern<40;pattern++)for(long sign=-1;sign<=1;sign+=2){
 pari_sp av=avma;long p=precs[pi],e=pattern-20,de;GEN m=addii(int2n(p-1),randomi(int2n(p-1)));
 if(pattern==0)m=int2n(p-1);if(pattern==1)m=addis(int2n(p-1),1);if(pattern==2)m=subis(int2n(p),1);
 if(sign<0)m=negi(m);GEN x=itor(m,p);setexpo(x,e);GEN y=invr(x);GEN out=mantissa_real(y,&de);
@@ -15,7 +15,7 @@ pari_printf("%Ps %ld %ld %Ps %ld %ld\\n",m,p,e,out,bit_prec(y),expo(y));avma=av;
 }pari_close();return 0;}`);
   const cc=spawnSync("cc",["-O2","-I"+path.join(pari,"src/headers"),"-I"+lib,source,"-L"+lib,"-Wl,-rpath,"+lib,"-lpari","-lm","-o",exe],{encoding:"utf8",timeout:30000});assert.equal(cc.status,0,cc.stderr);
   const run=spawnSync(exe,[],{encoding:"utf8",timeout:30000,maxBuffer:4*1024*1024});assert.equal(run.status,0,run.stderr);
-  const records=run.stdout.trim().split("\n").map(line=>line.split(" "));assert.equal(records.length,560);
+  const records=run.stdout.trim().split("\n").map(line=>line.split(" "));assert.equal(records.length,1040);
   const py=spawnSync("python3",["-c",`
 import sys,json,importlib
 sys.path[:0]=[${JSON.stringify(path.resolve(__dirname,"../.."))},${JSON.stringify(path.resolve(__dirname,"../../src/lib"))}]
@@ -28,6 +28,9 @@ for row in json.load(sys.stdin):
     const values=row.map(BigInt);
     assert.deepEqual(mod.pari_real_reciprocal[backend](...values.slice(0,3)),values.slice(3),`${backend}: ${row}`);
   }
-  for(const backend of ["javascript","gmp","tagged"])assert.throws(()=>mod.pari_real_reciprocal[backend](0n,64n,0n),/zero reciprocal/);
+  for(const backend of ["javascript","gmp","tagged"]){
+    assert.throws(()=>mod.pari_real_reciprocal[backend](0n,64n,0n),/zero reciprocal/);
+    assert.throws(()=>mod.pari_real_reciprocal[backend](1n<<2559n,2560n,0n),/unsupported reciprocal precision/);
+  }
   console.log(`${records.length} reciprocal outputs match actual PARI/CPython/JS/GMP/tagged; quotient-loop substitution remains explicit`);
 })().catch(error=>{console.error(error);process.exitCode=1;});

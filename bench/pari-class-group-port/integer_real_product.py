@@ -18,7 +18,7 @@ def pari_integer_real_product(
     """Follow generic gmul and mulir below the 64-bit GMP crossover.
 
     Precision -1 represents an exact integer; generic zero multiplication
-    returns exact zero. Nonzero reals admit 64..2048 bits, below the pinned
+    returns exact zero. Nonzero reals admit 64..2304 bits, below the pinned
     3520-bit MULRR_MULII_LIMIT. The integer may be arbitrarily large.
     Do not replace the itor/short-product branch with exact multiplication:
     its intermediate rounding and omitted low cross-products are observable.
@@ -27,7 +27,7 @@ def pari_integer_real_product(
         return 0, -1, 0
     if mantissa != 0 and (
         precision < 64
-        or precision > 2048
+        or precision > 2304
         or precision % 64 != 0
         or abs(mantissa).bit_length() != precision
     ):

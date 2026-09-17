@@ -27,7 +27,7 @@ def pari_small_real_division(a: int, px: int, b: int, py: int) -> tuple[int, int
     """Positive normalized mantissas; output mantissa, bits, exponent delta."""
     if py != 128 and py != 192:
         raise ValueError("small divrr requires two or three divisor words")
-    if px < 64 or px > 1920 or px % 64 != 0:
+    if px < 64 or px > 2368 or px % 64 != 0:
         raise ValueError("invalid small divrr numerator precision")
     if a.bit_length() != px or b.bit_length() != py:
         raise ValueError("small divrr requires normalized positive mantissas")

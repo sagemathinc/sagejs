@@ -20,6 +20,15 @@ function run(c, a, o = {}) { const r = spawnSync(c, a, { encoding: 'utf8', timeo
     // The selected exponents fit the existing conversion window.
     cases.push([op, ...a, ...b]);
   }
+  // Authentic getfu uses bounded exact coefficients with these wide reals.
+  // Exercise both input widths and the p+64 exact-one reciprocal explicitly,
+  // without promising arbitrary exact-integer exponent gaps above the guard.
+  for (const p of [2176n, 2240n, 2304n]) {
+    const a = [(1n << (p - 1n)) + 173n, p, -2n];
+    const b = [-((1n << (p - 1n)) + 911n), p, -3n];
+    for (let op = 0; op < 3; op++) cases.push([op, ...a, ...b]);
+    cases.push([2, 1n, -1n, 0n, ...a]);
+  }
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sagejs-regulator-scalar-')), file = path.join(dir, 'oracle.c'), exe = path.join(dir, 'oracle');
   fs.writeFileSync(file, `#include "pari.h"
 static GEN rd(void){char s[8192];if(scanf("%8191s",s)!=1)exit(2);return gp_read_str(s);}
@@ -47,5 +56,7 @@ for i,(r,e) in enumerate(zip(*json.load(sys.stdin))):
     const [op, ...args] = cases[i], f = mod[['pari_regulator_scalar_add', 'pari_regulator_scalar_multiply', 'pari_regulator_scalar_divide'][op]];
     assert(f.nativeAvailable); assert.deepEqual(f[backend](...args), expected[i].map(BigInt), backend + ' ' + i);
   }
+  for (const backend of ['javascript', 'gmp'])
+    assert.throws(() => mod.pari_regulator_scalar_divide[backend](1n, -1n, 0n, 1n << 2367n, 2368n, 0n), /reciprocal outside basecase window/);
   console.log(JSON.stringify({ ...summary, coreBytes: fs.statSync(built.coreSourcePath).size }));
 })().catch(e => { console.error(e); process.exitCode = 1; });

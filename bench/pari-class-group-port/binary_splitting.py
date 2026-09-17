@@ -121,7 +121,8 @@ def pari_atanhuu(
     """
     if u <= 0 or v <= u or v > 9007199254740992:
         raise ValueError("unsupported atanhuu rational argument")
-    if precision < 64 or precision > 2048 or precision % 64 != 0:
+    # A 2,368-bit log(2) request retains PARI's extra series guard word.
+    if precision < 64 or precision > 2432 or precision % 64 != 0:
         raise ValueError("unsupported atanhuu precision")
     d = 2.0 * log2(checked_float64(v) / checked_float64(u))
     if d == 0.0:

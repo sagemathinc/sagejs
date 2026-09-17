@@ -54,7 +54,7 @@ def pari_regulator_negative_reciprocal(m: int, p: int, e: int) -> tuple[int, int
         raise ValueError("unsupported exact regulator pivot")
     if m == 0:
         raise ZeroDivisionError("zero regulator pivot")
-    if p < 64 or p > 1856 or p % 64 != 0:
+    if p < 64 or p > 2304 or p % 64 != 0:
         raise ValueError("regulator reciprocal exceeds division window")
     # gdiv's +/-1 shortcut precedes divir. invr_basecase constructs real_1
     # at p+64, then divrr/affrr; the denominator is already negated.
@@ -81,7 +81,7 @@ def pari_regulator_pivots(
 
     Input is column-major triples, beginning with exact T entries 1 or 2;
     later entries are prepared reals or exact zero. Scratch owners are
-    disjoint. Inexact entries are capped at1856bits so the existing divrr
+    disjoint. Inexact entries are capped at 2,304 bits so the divrr
     leaf admits the required guard word. First-pass validation is extra
     prototype overhead, not part of the upstream numerical schedule.
     The integer branch preserves work and occupied; pivots publish only on
@@ -118,7 +118,7 @@ def pari_regulator_pivots(
                     raise ValueError("nonzero exact regulator logarithm")
             else:
                 integer_only = False
-                if p > 1856:
+                if p > 2304:
                     raise ValueError("regulator precision exceeds division window")
     state[0] = -1
     state[1] = 0

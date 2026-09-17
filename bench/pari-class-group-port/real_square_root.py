@@ -28,9 +28,9 @@ def pari_real_square_root_abs(
 
     The even-exponent branch retains an extra root word. Its exceptional
     guard comparison uses the retained root, exactly as the GMP kernel does.
-    Precision is capped locally so intermediates fit existing 64-word buffers.
+    Precision is capped locally at the coordinated getfu working boundary.
     """
-    if precision < 64 or precision > 1920 or precision % 64 != 0:
+    if precision < 64 or precision > 2304 or precision % 64 != 0:
         raise ValueError("unsupported square root precision")
     magnitude = abs(mantissa)
     if magnitude.bit_length() != precision:

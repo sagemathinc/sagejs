@@ -66,10 +66,10 @@ int main(void) {
       compare(sqrr(gel(z,1)),sqrr(gel(z,2)),"prepared",8*f+k);avma=av;
     }
   }
-  long id=0;
-  for(long px=64;px<=192;px+=64)for(long py=64;py<=192;py+=64)
+  long id=0;const long precisions[]={64,128,192,2176,2240,2304,2368,2432,2496};
+  for(long pi=0;pi<9;pi++)for(long pj=0;pj<9;pj++)
     for(long shift=0;shift<=132;shift++) {
-      pari_sp av=avma;
+      pari_sp av=avma;long px=precisions[pi],py=precisions[pj];
       GEN x=gmul2n(itor(addiu(int2n(px-1),3),nbits2prec(px)),-px+1);
       GEN y=gmul2n(itor(subiu(int2n(py),1),nbits2prec(py)),-py+1-shift);
       compare(x,y,"boundary",++id);avma=av;
@@ -126,10 +126,10 @@ with tempfile.TemporaryDirectory(prefix="sagejs-add-control-") as tmp:
     rows = [line.split() for line in run.stdout.splitlines()]
     if json_mode:
         records = [r[1:] for r in rows if r[0] == "record"]
-        assert len(records) == 1229
+        assert len(records) == 10805
         print(json.dumps(records))
         sys.exit(0)
-    assert len(rows) == 1213, len(rows)
+    assert len(rows) == 10789, len(rows)
     for label in ("prepared", "boundary"):
         group = [r for r in rows if r[0] == label]
         print(
