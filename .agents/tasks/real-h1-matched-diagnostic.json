@@ -13,6 +13,7 @@
     "bench/pari-class-group-port/run_h1_complete_matched_diagnostic.cjs",
     "bench/pari-class-group-port/check_h1_complete_real_runner.cjs",
     "bench/pari-class-group-port/h1_complete_real_runner.md",
+    "bench/pari-class-group-port/evidence/h1-complete-matched-diagnostic-unqualified-20260917.json",
     "bench/pari-class-group-port/check_pari_unified_complete_h1_root.cjs",
     "bench/pari-class-group-port/pari_unified_complete_h1_root.py"
   ],

@@ -75,3 +75,7 @@ can be compared repeatedly without answer-bearing inputs or digest drift. It
 does **not** localize the remaining gap: both implementations were wholly
 residual, so the honest attributed-gap fraction was zero. Native and PARI stage
 clocks are prerequisites for the campaign's 80% attribution gate.
+
+The complete compact raw receipt is tracked as
+`evidence/h1-complete-matched-diagnostic-unqualified-20260917.json`, SHA-256
+`8487542f41b5c254506c3ed4b4f4793cb686224ad7f52ad73750af08bd2f338c`.
