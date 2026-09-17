@@ -77,6 +77,20 @@ def ρσ_unbound_method_adapter(target_function):
     })()"""
 
 
+def ρσ_exact_integer_add(left, right, missing):
+    return r"""%js (() => {
+        const leftType = typeof left, rightType = typeof right;
+        const exact = (type, value) => type === "boolean" || type === "bigint" ||
+            (type === "number" && Number.isSafeInteger(value));
+        if (!exact(leftType, left) || !exact(rightType, right)) return missing;
+        if (leftType !== "bigint" && rightType !== "bigint") {
+            const result = Number(left) + Number(right);
+            if (Number.isSafeInteger(result)) return result === 0 ? 0 : result;
+        }
+        return BigInt(left) + BigInt(right);
+    })()"""
+
+
 def ρσ_check_interrupt():
     return r"""%js (() => {
         const state = globalThis.__sagejs_interrupt_state__;

@@ -1419,6 +1419,13 @@ def _builtins_operator_add_slow(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_add_exact(left: Any, right: Any) -> Any:
+    result = runtime.reflect.apply(
+        ρσ_exact_integer_add,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        runtime.undefined,
+        [left, right, _BUILTINS_MISSING],
+    )
+    if result is not _BUILTINS_MISSING:
+        return result
     result = runtime.fast_closed_binary(left, right, "add", _BUILTINS_MISSING)
     if result is not _BUILTINS_MISSING:
         return result
@@ -1455,18 +1462,7 @@ def _builtins_operator_add_exact_slow(left: Any, right: Any) -> Any:
             and result >= runtime.number.MIN_SAFE_INTEGER
         ):
             return result
-        if runtime.number.isSafeInteger(left) and runtime.number.isSafeInteger(right):
-            return runtime.native_add(runtime.bigint(left), runtime.bigint(right))
         return result
-    if (
-        (
-            runtime.strict_equal(left_type, "bigint")
-            or runtime.strict_equal(right_type, "bigint")
-        )
-        and _builtins_exact_integer_primitive(left)
-        and _builtins_exact_integer_primitive(right)
-    ):
-        return runtime.native_add(runtime.bigint(left), runtime.bigint(right))
     if runtime.is_math_element(left) or runtime.is_math_element(right):
         return runtime.coercion_model.binOp("add", left, right)
     if _builtins_special_is_function(left, "__add__"):
@@ -1493,10 +1489,6 @@ def _builtins_operator_add_exact_slow(left: Any, right: Any) -> Any:
     if runtime.strict_equal(left_type, "bigint") or runtime.strict_equal(
         right_type, "bigint"
     ):
-        if _builtins_exact_integer_primitive(
-            left
-        ) and _builtins_exact_integer_primitive(right):
-            return runtime.native_add(runtime.bigint(left), runtime.bigint(right))
         if runtime.strict_equal(left_type, "number") or runtime.strict_equal(
             right_type, "number"
         ):
@@ -1521,8 +1513,6 @@ def _builtins_operator_add_exact_slow(left: Any, right: Any) -> Any:
         and result >= runtime.number.MIN_SAFE_INTEGER
     ):
         return result
-    if runtime.number.isSafeInteger(left) and runtime.number.isSafeInteger(right):
-        return runtime.native_add(runtime.bigint(left), runtime.bigint(right))
     return result
 
 

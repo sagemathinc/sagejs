@@ -371,6 +371,20 @@ documentation, merge, architecture, and the unchanged 902,888/903,000 core
 budget pass. Exact artifacts and qualification are in
 `agents/python-lazy-instance-identity.md`.
 
+**2026-09-17 exact-addition checkpoint:** a fresh-main candidate classifies
+primitive exact integer operands once in the shared bootstrap and promotes to
+`BigInt` before a safe-number sum loses precision. Floats, unsafe foreign
+numbers, objects, Python/Sage dispatch, and the public runtime surface remain
+unchanged. Controlled exact-artifact measurements improve positional calls by
+73.7%, keyword functions by 33.2%, keyword methods by 25.1%, positional
+construction plus a method by 15.6%, and keyword construction plus a method by
+7.3%. Positional calls are now 2.24x CPython in this workload, but keyword and
+initialized-construction paths remain 11–19x and therefore remain M5 cliffs.
+All 225 portable files, the 508-case differential baseline, strict checks,
+traitlets, full build, and the unchanged 902,922/903,000 core budget pass.
+Exact artifacts and measurements are recorded in
+`agents/python-exact-integer-add.md`.
+
 **2026-09-17 default-construction checkpoint:** a follow-up omits the live
 `object.__init__` call only when a class without a declared initializer is
 called with an empty argument vector and its resolved initializer is still the
