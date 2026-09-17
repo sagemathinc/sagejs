@@ -55,3 +55,12 @@ This contract is general and source-transparent, and the measured H1 root is a
 legitimate first consumer.  It should be implemented as a separate compiler
 campaign rather than smuggling noncanonical storage through the existing public
 `IntegerBuffer` ABI.
+
+The follow-up source checkpoint adds the first fail-closed portion of that
+campaign in `private-integer-buffer-authority.cjs`: a complete private graph is
+structurally authenticated, while raw-limb access, an unknown call, alias
+escape, fallback, or any subsequent graph mutation revokes authority.  Its
+claim names every mandatory canonicalization boundary and atomic publication
+rule.  It intentionally emits no no-clear code yet; emission must wait until a
+reviewed canonicalizer can consume this authority.  Thus this checkpoint cannot
+weaken public behavior even if used incorrectly.

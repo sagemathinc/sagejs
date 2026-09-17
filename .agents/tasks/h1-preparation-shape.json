@@ -12,7 +12,9 @@
     "bench/pari-class-group-port/check_h1_preparation_shape.cjs",
     "bench/pari-class-group-port/check_h1_fused_attribution.cjs",
     "bench/pari-class-group-port/h1_preparation_shape_result.json",
-    "bench/pari-class-group-port/h1_preparation_shape_audit.md"
+    "bench/pari-class-group-port/h1_preparation_shape_audit.md",
+    "tools/native-kernel/private-integer-buffer-authority.cjs",
+    "tools/native-kernel/test/private-integer-buffer-authority.cjs"
   ],
   "dependencies": [],
   "references": [],
@@ -56,10 +58,14 @@
     {
       "command": "python3 -m json.tool bench/pari-class-group-port/h1_preparation_shape_result.json",
       "result": "passed"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/private-integer-buffer-authority.cjs",
+      "result": "passed; closed graph authority and all required revocations"
     }
   ],
   "handoff": {
-    "summary": "Confirmed capacity-scaled spare-limb clearing dominates H1 preparation: 582 logical writes trigger 4,866,048 cleared words. Diagnostic controls improve preparation by 20.91% with right-sizing and 91.43% without private spare clearing, with all frozen evidence exact. The unsafe global setter change was reverted.",
+    "summary": "Confirmed capacity-scaled spare-limb clearing dominates H1 preparation: 582 logical writes trigger 4,866,048 cleared words. Diagnostic controls improve preparation by 20.91% with right-sizing and 91.43% without private spare clearing, with all frozen evidence exact. The unsafe global setter change was reverted. Added fail-closed structural authority for a future private noncanonical buffer region; it emits no behavior change.",
     "risks": [
       "Global no-clear violates the public canonical IntegerBuffer ABI and must not be restored.",
       "Results are single diagnostic profiles, not seven-pair qualification timings."
