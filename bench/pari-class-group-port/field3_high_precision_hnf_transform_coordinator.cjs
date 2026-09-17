@@ -23,7 +23,12 @@ function args(argv) {
     if (!key.startsWith("--") || index + 1 >= argv.length) fail("invalid arguments");
     result[key.slice(2)] = argv[index + 1];
   }
-  const exact = ["raw-owner", "raw-sha256", "protocol-owner", "protocol-sha256", "output-dir"];
+  const operation = result.operation;
+  const exact = operation === "capture-protocol"
+    ? ["operation", "authority", "authority-sha256", "initial", "initial-sha256", "output-dir"]
+    : operation === "transform"
+      ? ["operation", "raw-owner", "raw-sha256", "protocol-owner", "protocol-sha256", "output-dir"]
+      : [];
   if (Object.keys(result).sort().join("\0") !== exact.sort().join("\0")) {
     fail(`required arguments are ${exact.map((key) => `--${key}`).join(", ")}`);
   }
@@ -46,6 +51,34 @@ function owner(file, expected, label) {
 
 function main() {
   const options = args(process.argv);
+  if (options.operation === "capture-protocol") {
+    const authority = owner(
+      options.authority,
+      options["authority-sha256"],
+      "resident authority",
+    );
+    const initial = owner(
+      options.initial,
+      options["initial-sha256"],
+      "initial owner",
+    );
+    const script = String.raw`
+import importlib,json,sys
+sys.path.append('src/lib');sys.path.append('src/baselib')
+m=importlib.import_module('bench.pari-class-group-port.field3_high_precision_hnf_transform')
+captured=m.capture_local_hnf_protocol(sys.argv[1],sys.argv[2])
+json.dump(m.publish_local_hnf_protocol(sys.argv[3],captured),sys.stdout,separators=(',',':'))
+sys.stdout.write('\n')
+`;
+    const run = spawnSync("python3", ["-c", script, authority, initial, options["output-dir"]], {
+      cwd: ROOT,
+      encoding: "utf8",
+      maxBuffer: 1024 * 1024 * 8,
+    });
+    if (run.status !== 0) fail((run.stderr || `python exited ${run.status}`).trim());
+    process.stdout.write(run.stdout);
+    return;
+  }
   const raw = owner(options["raw-owner"], options["raw-sha256"], "raw owner");
   const protocol = owner(
     options["protocol-owner"],
