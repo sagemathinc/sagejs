@@ -228,6 +228,38 @@ the extracted `buch2.c` must have SHA-256
 `904ced8034732c7fcfe1da393e23950aac0862b085150fdc24ce1e31beb7d1ac`.
 New reference receipts may not use a system PARI of another version.
 
+## Qualified quartic suffix replay (2026-09-17)
+
+The corrected extended-HNF quartic chain was replayed from an immutable copy of
+the five authenticated prefix receipts. The consumer runner commit was
+`7cc910aabf7bbdef94f0ebd456cdf7b850533f01`; the follow-up verifier correction
+which accepts exactly the declared sealed closure is
+`1c9d3992a`. The durable root is
+`/scratch/sagejs-runtime/pari-class-group-phase0-identity-suffix/` and occupied
+548 MiB after the run. The four serial commands used `--only-stage`,
+`timeout 600s`, `prlimit --as=4294967296`, and a 1536 MiB Node heap:
+
+| Stage | Wall / user / sys seconds | Identity SHA-256 | Receipt SHA-256 |
+| --- | ---: | --- | --- |
+| `quartic-retry-cpython` | 9.319 / 8.790 / 0.871 | `fcc86e7e538c66c79a46cc54dd683382aa6062e6cebf604bf53a04a2dcf467b4` | `e4c57fadc8ca5a3643079ec175e2e55f8795f339378aa0d342a2c3546b2fb9e1` |
+| `quartic-retry-javascript` | 338.137 / 352.105 / 6.782 | `ea60e2746da1c8dc611cbdbf42fb83cadff28c57c3bf74d51076b329611c49f1` | `afc57426f83290f9f52f394c1849cf6ccccbcfafe72d9ef633145f2775210e18` |
+| `quartic-retry-gmp` | 47.463 / 63.218 / 4.029 | `65e92e609370fa784c5068a72ac72cf09e689d6aff8cf312c506341406de51d9` | `0e8147235a91673c1443300bdfb53b592587135ae32d64730a84294135be98e3` |
+| `quartic-retry-tagged` | 46.959 / 62.353 / 3.895 | `4b62f60bd7061cb906b55eaf51ed66166f267e165829427f367fa0a58cb8c65b` | `975b662e2ce62a7af2a9a8b66fc2acc8f6cc4a6a7855187c297d5a8c1eec0dff` |
+
+All four recursively reverify after completion. Every backend reaches the same
+three-pass 150/151/152 relation history, terminal status zero, class number
+one, and regulator owner. During the longest JavaScript compilation, an
+explicit process snapshot observed 1,514,008 KiB RSS in `cc1` and 936,084 KiB
+in its checker parent; this is an observation, not a sampled aggregate maximum.
+The address-space and timeout gates were enforced throughout. The four command
+logs have SHA-256 values
+`2e7327e463cb545800025fd972df973c88b9ac231490fd2ecd0b2320a76268f1`,
+`b290858a5a12f6e257113e0781651c133692dcf84ddd172979c96aa00c1b873e`,
+`4787be2e833dc7083cd6168d6bfaa0fa1b175077ff7347d72c9488ac8a2f89c1`,
+and `ede2214e838bfab6dc79e433d28faf55d274c72124621460e642bb141fe57e1c`
+in table order. These are correctness replay times, not qualified performance
+measurements.
+
 ## Scope and caveats
 
 - Native compiler caches remain content-addressed beside their mathematical
