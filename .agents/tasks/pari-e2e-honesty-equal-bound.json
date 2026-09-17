@@ -1,0 +1,71 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-e2e-honesty-equal-bound",
+  "title": "Authenticated equal-bound honesty decision",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Compute the authentic h=1 cubic equal-bound honesty skip directly from authenticated factor-base bounds, with ordinary Python and mutation tests",
+  "base_commit": "176ee7b8bab3f86e54d6b32d1ac5a4123c49f776",
+  "claims": [
+    "bench/pari-class-group-port/honesty_equal_bound.py",
+    "bench/pari-class-group-port/test_honesty_equal_bound.py",
+    "bench/pari-class-group-port/honesty_equal_bound_audit.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "PARI 2.17.4 src/basemath/buch2.c"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "PARI 2.17.4 buch2.c be_honest equal-bound branch"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "python3 -m unittest bench.pari-class-group-port.test_honesty_equal_bound",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "python3 -m unittest bench.pari-class-group-port.test_honesty_equal_bound",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.069,
+      "started_at": "2026-09-17T02:59:05.020Z",
+      "commit": "176ee7b8bab3f86e54d6b32d1ac5a4123c49f776",
+      "workspace_fingerprint": "5f878bae586c533b0acd662dcb54856e31d4e206e8245a50a6b11ab2f4e5fe15",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 9.126,
+      "started_at": "2026-09-17T02:59:05.753Z",
+      "commit": "176ee7b8bab3f86e54d6b32d1ac5a4123c49f776",
+      "workspace_fingerprint": "5f878bae586c533b0acd662dcb54856e31d4e206e8245a50a6b11ab2f4e5fe15",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added an ordinary-Python honesty dispatch component that consumes the resident preparation's authenticated seven-word factor-base state and connected preparation state. It derives the authentic h=1 cubic skip by evaluating PARI 2.17.4's exact KCZ2 > KCZ predicate; no status or result bit is accepted. Mutation tests switch equal counts to required honesty, reject disconnected counters and invalid monotonicity, and preserve inputs on failure.",
+    "risks": [
+      "This closes only equal-count dispatch; it does not implement or certify unequal-bound be_honest.",
+      "Authentication authority remains the upstream resident preparation that produces and cross-checks the bound state."
+    ],
+    "next_steps": [
+      "Replace downstream literal equal-bound-source-skip labels with this derived component when the integration lane can claim those consumers."
+    ]
+  }
+}
