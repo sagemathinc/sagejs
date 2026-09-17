@@ -1,0 +1,14 @@
+{
+  "schema": "sagejs.private-integer-buffer-layout/v1",
+  "name": "pari-h1-matched-flag-zero-state-v1",
+  "root": "pari_fused_h1_matched_flag_zero_root",
+  "selection": "written-proven-private",
+  "expected": {
+    "parameterSha256": "bc2accc70a2dfb044b0a0a4a692972d9791550f1b71479da107f98bf57e4da2d",
+    "candidateSha256": "77c94baf6f8e63577a69ab2d8013b439c48c622b5faa5a41671796f60f64bcf3",
+    "integerBuffers": 348,
+    "candidates": 328,
+    "rejected": 0,
+    "public": 20
+  }
+}

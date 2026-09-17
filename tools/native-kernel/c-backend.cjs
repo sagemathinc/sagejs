@@ -11,6 +11,9 @@ const {
 const {
   emitPrivateIntegerBufferRuntime,
 } = require("./private-integer-buffer-emitter.cjs");
+const {
+  resolvePrivateIntegerBufferLayout,
+} = require("./private-integer-buffer-layout.cjs");
 
 const { createHash } = require("node:crypto");
 const { exactArenaRetryable } = require("./exact-analysis.cjs");
@@ -4938,11 +4941,11 @@ static int sagejs_native_diagnostic_stage_snapshot(
 }`;
 }
 
-function configuredPrivateIntegerBuffers(functions, callGraph, configuration) {
-  if (configuration === null || configuration === undefined) return undefined;
+function configuredPrivateIntegerBuffers(functions, callGraph, manifest) {
+  if (manifest === null || manifest === undefined) return undefined;
   const byName = new Map(functions.map((fn) => [fn.name, fn]));
-  const root = byName.get(configuration.root);
-  if (root === undefined || !Array.isArray(configuration.buffers)) return undefined;
+  const root = byName.get(manifest.root);
+  if (root === undefined) return undefined;
   const ordered = [];
   const seen = new Set();
   function include(name) {
@@ -4954,11 +4957,13 @@ function configuredPrivateIntegerBuffers(functions, callGraph, configuration) {
     for (const callee of callGraph?.[name] || []) include(callee);
   }
   include(root.name);
-  const claim = privateIntegerBufferPlan(ordered, root, configuration.buffers);
+  const layout = resolvePrivateIntegerBufferLayout(ordered, root, manifest);
+  if (layout === undefined || layout.candidates.length === 0) return undefined;
+  const claim = privateIntegerBufferPlan(ordered, root, layout.candidates);
   if (claim === undefined) return undefined;
   const emission = emitPrivateIntegerBufferRuntime(ordered, root, claim);
   if (emission === undefined) return undefined;
-  return Object.freeze({ root, functions: ordered, claim, emission });
+  return Object.freeze({ root, functions: ordered, layout, claim, emission });
 }
 
 function generateHostCore(ir, options = {}) {
@@ -5000,7 +5005,7 @@ function generateHostCore(ir, options = {}) {
     };
   });
   const privateBuffers = configuredPrivateIntegerBuffers(
-    functions, ir.callGraph, options.privateIntegerBuffers,
+    functions, ir.callGraph, options.privateIntegerBufferLayout,
   );
   validateResidentExactScratch(functions);
   const exact = functions.filter((fn) => fn.kernelKind === "integer");
@@ -5139,8 +5144,12 @@ ${pieces.join("\n\n")}
 `;
   const privateIntegerBufferAudit = privateBuffers === undefined ? null : {
     authority: privateBuffers.claim.authority,
+    layout: privateBuffers.layout.name,
     root: privateBuffers.root.name,
     buffers: [...privateBuffers.claim.buffers],
+    publicBuffers: [...privateBuffers.layout.publicBuffers],
+    rejected: [...privateBuffers.layout.rejected],
+    expected: privateBuffers.layout.expected,
     canonicalizeAt: [...privateBuffers.claim.canonicalizeAt],
     failurePublication: privateBuffers.claim.failurePublication,
   };

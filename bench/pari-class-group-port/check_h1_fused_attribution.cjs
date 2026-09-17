@@ -442,20 +442,19 @@ function prepareDiagnostic() {
     const manifest = JSON.parse(
       fs.readFileSync(path.join(BASE_CACHE, "manifest.json"), "utf8"),
     );
+    const privateIntegerBufferLayout = JSON.parse(fs.readFileSync(
+      path.join(HERE, "h1_private_integer_buffer_layout.json"), "utf8",
+    ));
     const generated = generateArtifacts(manifest.ir, {
       moduleIdentity: manifest.moduleIdentity,
-      privateIntegerBuffers: {
-        root: ENTRY,
-        buffers: ["prep_kummer_catalog_tau"],
-      },
+      privateIntegerBufferLayout,
     });
-    assert.deepEqual(generated.hostIsolation.privateIntegerBuffers, {
-      authority: "private-integer-buffer-v1",
-      root: ENTRY,
-      buffers: ["prep_kummer_catalog_tau"],
-      canonicalizeAt: ["public-output", "raw-hash", "resume", "ffi", "fallback"],
-      failurePublication: "canonicalize-before-publish",
-    });
+    assert.equal(generated.hostIsolation.privateIntegerBuffers.authority,
+      "private-integer-buffer-v1");
+    assert.equal(generated.hostIsolation.privateIntegerBuffers.layout,
+      privateIntegerBufferLayout.name);
+    assert.deepEqual(generated.hostIsolation.privateIntegerBuffers.expected,
+      privateIntegerBufferLayout.expected);
     coreInput = generated.coreSource;
     adapterInput = generated.adapterSource;
     headerInput = generated.coreHeader;
