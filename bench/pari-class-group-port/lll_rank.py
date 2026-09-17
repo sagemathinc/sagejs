@@ -1,4 +1,4 @@
-"""PARI 2.17.4 initial modular rank path for small square LLL inputs.
+"""PARI 2.17.4 initial modular rank path for square LLL inputs through degree 5.
 
 Copyright (C) The PARI group. GPL-2.0-or-later, without warranty.
 alglin1.c ZM_pivots and Flv.c Flm_gauss_pivot, with the first two primes
@@ -74,7 +74,7 @@ def pari_flm_pivots(
     pivots: IntegerBuffer,
 ) -> int:
     """Preserve the small-square LLL entry while sharing literal elimination."""
-    if n < 1 or n > 4:
+    if n < 1 or n > 5:
         raise ValueError("unsupported modular pivot shape")
     return pari_flm_rectangular_pivots(matrix, n, n, prime, occupied, pivots)
 
@@ -88,7 +88,7 @@ def pari_initial_integer_rank(
     pivots: IntegerBuffer,
     diagnostic: IntegerBuffer,
 ) -> int:
-    """ZM_pivots through its initial two-prime phase for n <= 4.
+    """ZM_pivots through its initial two-prime phase for n <= 5.
 
     Return exact rank on upstream maximal-rank/all-zero exits, otherwise -1
     for the unported rational verification phase. diagnostic records trials,
@@ -96,7 +96,7 @@ def pari_initial_integer_rank(
     """
     if (
         n < 1
-        or n > 4
+        or n > 5
         or len(original) < n * n
         or len(matrix) < n * n
         or len(occupied) < n
