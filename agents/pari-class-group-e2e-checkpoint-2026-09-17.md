@@ -65,7 +65,8 @@ field-3 class group `[2,2]`, of order 4, and its class-generator and
 order-principal witnesses. The immutable result has
 `correspondenceComplete=true`, `publicComplete=false`, and independently cold
 replays. It is the first authentic hard-quartic correspondence-complete
-sentinel, not public Sage.js completion or certification.
+development field, not one of the four frozen sentinels and not public Sage.js
+completion or certification.
 
 ## Phase coverage
 
