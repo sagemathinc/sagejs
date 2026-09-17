@@ -17,8 +17,8 @@ def private_leaf(destination: IntegerBuffer, value: int) -> int:
     return destination[0]
 
 @native
-def private_root(scratch: IntegerBuffer, value: int) -> int:
-    return private_leaf(scratch, value)
+def private_root(scratch: IntegerBuffer, public: IntegerBuffer, value: int) -> int:
+    return private_leaf(scratch, value) + public[0]
 `;
 
 async function lower() {
@@ -34,12 +34,13 @@ function layout(root = "private_root") {
     expected: {
       parameterSha256: privateIntegerBufferLayoutDigest([
         ["scratch", "IntegerBuffer"],
+        ["public", "IntegerBuffer"],
       ]),
       candidateSha256: privateIntegerBufferLayoutDigest(["scratch"]),
-      integerBuffers: 1,
+      integerBuffers: 2,
       candidates: 1,
       rejected: 0,
-      public: 0,
+      public: 1,
     },
   };
 }
@@ -68,9 +69,14 @@ test("host core emits private stores and canonical root boundaries visibly", asy
     layout: "private-host-core-test-v1",
     root: "private_root",
     buffers: ["scratch"],
-    publicBuffers: [],
+    publicBuffers: ["public"],
     rejected: [],
     expected: layout().expected,
+    aliasProtection: {
+      policy: "all-root-storage-ranges-disjoint-v1",
+      rootIntegerBuffers: 2,
+      checkedRangeKinds: ["sizes", "limbs"],
+    },
     canonicalizeAt: ["public-output", "raw-hash", "resume", "ffi", "fallback"],
     failurePublication: "canonicalize-before-publish",
   });
@@ -79,6 +85,10 @@ test("host core emits private stores and canonical root boundaries visibly", asy
   assert.match(core.source, /sagejs_private_integer_buffer_context_end/);
   assert.match(core.source,
     /sagejs_private_integer_buffer_state \*sagejs_private_table\[2\] = \{0\}/);
+  assert.match(core.source,
+    /sagejs_private_root_buffers\[2\] = \{ &sagejs_arg_scratch, &sagejs_arg_public \}/);
+  assert.match(core.source,
+    /sagejs_private_integer_buffers_disjoint\(sagejs_private_root_buffers, 2\)/);
   assert.match(core.source,
     /sagejs_private_integer_buffer_begin\(&sagejs_private_context, &sagejs_private_scratch, &sagejs_arg_scratch\)/);
   assert.match(core.source,

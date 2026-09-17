@@ -1,0 +1,65 @@
+{
+  "schema": "sagejs.pari-class-group/h1-private-integer-buffer-provenance-v1",
+  "compiler_source": {
+    "integration_commit": "fd6ea9d769dbbdd2ddeb4b4f285d60782636e007",
+    "files": {
+      "tools/native-kernel/c-backend.cjs": "adcd5dd1f985bc38965a670504126bf2a384808654acd5dd9d0dd91e683aa03f",
+      "tools/native-kernel/private-integer-buffer-authority.cjs": "ef3adeff4432a3f47281e538ac11d22d64ff149e4312c0c6deb5107fece44155",
+      "tools/native-kernel/private-integer-buffer-emitter.cjs": "8b689133eadfde0e81a8a4fec0b5e893e721c03f81d3406789566ee86c61580c",
+      "tools/native-kernel/private-integer-buffer-layout.cjs": "56aaa75ede7064b088d3fa1743523e75c03229b1625940c9cb6de497dca853ee",
+      "bench/pari-class-group-port/h1_private_integer_buffer_layout.json": "59c2dfecf02f81bf91961f7e60dc3148e62a52b6434b4c2f70ec0eb3bbd74bc0"
+    }
+  },
+  "qualification_harness": {
+    "base_integration_commit": "fd6ea9d769dbbdd2ddeb4b4f285d60782636e007",
+    "base_sha256": "68457d03dd772abbf5b940421ab14876ca1136e63a5b4d85e10ca8faf8bc221d",
+    "execution_had_uncommitted_canonicality_assertion": true,
+    "captured_commit": "035c8b8faa4b68d60aa4545dbbd35d5de6391fc0",
+    "captured_sha256": "c990f13e3eabd46d7aba89d4d9d565e1d6a2f67280c7a6c6f981c29b1cd70b2b"
+  },
+  "pinned_input": {
+    "path": "/scratch/sagejs-runtime/pari-class-group-e2e-20260917/final-bba785ce0/stages/resident-cubic-cpython/attempts/attempt-tEYA38/generated/sagejs-resident-generated-class-11G1wH/inputs.json",
+    "sha256": "22a997866388571cd3c12e1a3ea5c5cc3a7fe89217b253bb0e779007f6fe9b77"
+  },
+  "pinned_base_native_manifest": {
+    "path": "/home/user/sagejs-worktrees/pari-class-group-e2e-integration-worktrees/h1-matched-flag-zero-fused/bench/pari-class-group-port/.sagejs-native-kernels/2a65d69bf9c475e1378673d9829ffed16ba84dea4e503a7668b4ba59b970e6f1/manifest.json",
+    "sha256": "2e17ea617106bcfe30d64e35bde06b1649d49d034bc2540c9aa28104ba592235"
+  },
+  "generated_artifact": {
+    "core_sha256": "8c3538294a4dd8a417d2a0274cfb1d8780a469b744380eb5c0c7dd40790d8f5b",
+    "adapter_sha256": "6ada9c1e949d9b361fe7b2a7c516bffdc1349d7e26ff9062ed853b4db23719ab",
+    "addon_sha256": "b7c046b1bde1f82cd2b562b94340fc0559885c16ffee826f4c1d8bd99e7b4ca3"
+  },
+  "scratch_receipts": [
+    {
+      "path": "/scratch/sagejs-runtime/h1-fused-attribution-h2-fd6ea9d76.prepare.json",
+      "sha256": "124a7c1baacfcda360efdbbc6a1542ff46822e21860958218095e23e9a5872a9",
+      "mode": "0444"
+    },
+    {
+      "path": "/scratch/sagejs-runtime/h1-fused-attribution-h2-fd6ea9d76.build.json",
+      "sha256": "c6deb79a9471d1d03d213d7e47612fde0b467d08cd7807602f688a3788991e38",
+      "mode": "0444"
+    },
+    {
+      "path": "/scratch/sagejs-runtime/h1-fused-attribution-h2-fd6ea9d76.build.monitor",
+      "sha256": "ba2ba26347d6742a09d41e92be9e9cd1c314ca581d2113b1c9c20e9c5b88a132",
+      "mode": "0444"
+    },
+    {
+      "path": "/scratch/sagejs-runtime/h1-fused-attribution-h2-fd6ea9d76.profile.json",
+      "sha256": "d22ab8d4c0e24b5c4ce5215dff167496dca4ba9a4c11a2606c688de824516e5c",
+      "mode": "0444"
+    },
+    {
+      "path": "/scratch/sagejs-runtime/h1-fused-attribution-h2-fd6ea9d76.profile.monitor",
+      "sha256": "dc991fadca3dfbcb203bacf0591fcd4f0f90556b8d9fba7c006298c87943a433",
+      "mode": "0444"
+    }
+  ],
+  "limitations": [
+    "The performance result is one diagnostic sample, not a paired timing distribution.",
+    "The larger full-layout gain is consistent with avoiding capacity clearing but does not by itself isolate every causal contribution.",
+    "The runtime harness canonicality assertion was uncommitted during execution and was captured source-identically afterward."
+  ]
+}

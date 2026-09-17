@@ -43,3 +43,19 @@ or relabel the stronger exact-unit suffix.
 
 Exact machine-readable values and scratch receipt hashes are frozen in
 `h1_private_integer_buffer_qualification.json`.
+
+The compiler inputs came from integration commit `fd6ea9d76`.  The profile
+harness began at that commit but carried the exhaustive canonicality assertion
+as an uncommitted change during execution; commit `035c8b8fa` subsequently
+captured that exact harness source.  This distinction, file hashes, the pinned
+base native manifest, generated artifact identities, and all scratch receipt
+paths are recorded in `h1_private_integer_buffer_qualification_manifest.json`.
+Its SHA-256 is
+`b82b26d49bb233915ab5368e4b629f232bdae43fcf7d4671e3fb27e12c30d7f4`.
+The five scratch receipts were changed to mode `0444` after their hashes were
+verified.
+
+The observed full-layout speedup is strong evidence that capacity-scaled
+clearing dominated preparation, but it is still a single before/after sample
+and does not isolate every causal contribution.  No distributional or causal
+claim stronger than that is made here.

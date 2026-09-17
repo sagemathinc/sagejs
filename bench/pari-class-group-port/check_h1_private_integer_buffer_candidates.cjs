@@ -70,8 +70,14 @@ function main() {
     assert.equal(core.audit.privateIntegerBuffers.layout, specification.name);
     assert.equal(core.audit.privateIntegerBuffers.buffers.length,
       specification.expected.candidates);
+    assert.deepEqual(core.audit.privateIntegerBuffers.aliasProtection, {
+      policy: "all-root-storage-ranges-disjoint-v1",
+      rootIntegerBuffers: specification.expected.integerBuffers,
+      checkedRangeKinds: ["sizes", "limbs"],
+    });
     assert.match(core.source, /sagejs_private_integer_buffer_hash/);
     assert.match(core.source, /sagejs_private_integer_buffer_context_end/);
+    assert.match(core.source, /sagejs_private_integer_buffers_disjoint/);
     answer.target = {
       sourceSha256: sha256(core.source),
       sourceBytes: Buffer.byteLength(core.source),

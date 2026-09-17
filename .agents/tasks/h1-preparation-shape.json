@@ -19,6 +19,7 @@
     "tools/native-kernel/c-backend.cjs",
     "tools/native-kernel/test/private-integer-buffer-authority.cjs",
     "tools/native-kernel/test/private-integer-buffer-emitter.cjs",
+    "tools/native-kernel/test/private-integer-buffer-alias.cjs",
     "tools/native-kernel/test/private-integer-buffer-host-core.cjs",
     "tools/native-kernel/test/private-integer-buffer-layout.cjs",
     "bench/pari-class-group-port/check_h1_private_integer_buffer_candidates.cjs",
@@ -26,7 +27,9 @@
     "bench/pari-class-group-port/h1_private_integer_buffer_candidates.json",
     "bench/pari-class-group-port/h1_private_integer_buffer_candidates_audit.md",
     "bench/pari-class-group-port/h1_private_integer_buffer_qualification.json",
-    "bench/pari-class-group-port/h1_private_integer_buffer_qualification_audit.md"
+    "bench/pari-class-group-port/h1_private_integer_buffer_qualification_audit.md",
+    "bench/pari-class-group-port/h1_private_integer_buffer_qualification_manifest.json",
+    "bench/pari-class-group-port/h1_private_integer_buffer_qualification_manifest.sha256"
   ],
   "dependencies": [],
   "references": [],
@@ -156,10 +159,18 @@
       "commit": "f29195caed3d4cc6027f36bc6ea87dfdc1df2afe",
       "workspace_fingerprint": "3eb41f24d97300434d7bd2e49f1611c7afce96baa9bdb49d41af13cb5de425bb",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/private-integer-buffer-alias.cjs tools/native-kernel/test/private-integer-buffer-authority.cjs tools/native-kernel/test/private-integer-buffer-layout.cjs tools/native-kernel/test/private-integer-buffer-emitter.cjs tools/native-kernel/test/private-integer-buffer-host-core.cjs",
+      "result": "passed; 15 tests including same/partial sizes and limbs overlap across private/private and private/public owners"
+    },
+    {
+      "command": "qualification manifest SHA and scratch receipt mode/hash verification",
+      "result": "passed; manifest SHA b82b26d49bb233915ab5368e4b629f232bdae43fcf7d4671e3fb27e12c30d7f4 and five receipts mode 0444"
     }
   ],
   "handoff": {
-    "summary": "Generalized private IntegerBuffer authority from one named buffer to an authenticated state-layout manifest derived from the complete fused H1 call graph. The static audit classifies all 348 root IntegerBuffers as 328 written private candidates, 20 public/read-only buffers, and zero rejected. The bounded full-layout fused replay passes with every frozen relation/compact/owner/RNG/counter/root/getfu value exact and all 348 packed buffers exhaustively canonical after publication. Preparation falls from 1.533s to 165ms (89.23%) and the inclusive root from 2.382s to 1.399s (41.24%); compact/getfu is now the 1.106s dominant stage.",
+    "summary": "Generalized private IntegerBuffer authority from one named buffer to an authenticated state-layout manifest derived from the complete fused H1 call graph. The static audit classifies all 348 root IntegerBuffers as 328 written private candidates, 20 public/read-only buffers, and zero rejected. Runtime activation now additionally requires every sizes/limbs range across all root IntegerBuffers to be pairwise disjoint; any same or partial private/private or private/public alias fails closed to ordinary clearing. The bounded full-layout fused replay passes with every frozen relation/compact/owner/RNG/counter/root/getfu value exact and all 348 packed buffers exhaustively canonical after publication. Preparation falls from 1.533s to 165ms (89.23%) and the inclusive root from 2.382s to 1.399s (41.24%); compact/getfu is now the 1.106s dominant stage.",
     "risks": [
       "Global no-clear violates the public canonical IntegerBuffer ABI and must not be restored.",
       "Only five candidates have individual cleared-word counters; the exact full-layout gain is measured but 323 per-buffer contributions remain unattributed.",
