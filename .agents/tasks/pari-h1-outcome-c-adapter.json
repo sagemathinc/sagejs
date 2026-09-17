@@ -1,0 +1,52 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-h1-outcome-c-adapter",
+  "title": "Pari H1 Outcome C Adapter",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "final_mutation_replay",
+  "objective": "Implement an authentic PARI 2.17.4 prepared-nf bnfinit(flag=0) Outcome-C worker adapter with full-root timing and authenticated standardized evidence",
+  "base_commit": "31fe1d67d238f790c5745339cd40c8a3117d08f4",
+  "claims": [
+    "bench/pari-class-group-port/pari_h1_outcome_c_adapter.c",
+    "bench/pari-class-group-port/pari_h1_outcome_c_adapter.cjs",
+    "bench/pari-class-group-port/check_pari_h1_outcome_c_adapter.cjs",
+    "bench/pari-class-group-port/pari_h1_outcome_c_adapter.md",
+    "bench/pari-class-group-port/h1_outcome_c_worker.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "PARI/GP 2.17.4 src/basemath/buch2.c",
+    "https://pari.math.u-bordeaux.fr/"
+  ],
+  "architecture": {
+    "strategy": "native-primitive",
+    "fallback": "tested-capability",
+    "oracles": [
+      "PARI 2.17.4 GP nfinit plus bnfinit flag zero"
+    ],
+    "exceptions": [
+      "This C file is a benchmark-only foreign-library timing adapter for PARI's stack-owned GEN ABI; it is not mathematical product implementation."
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "not-applicable",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "not-applicable"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node bench/pari-class-group-port/check_pari_h1_outcome_c_adapter.cjs",
+    "node bench/pari-class-group-port/check_h1_outcome_c_adapter.cjs",
+    "pnpm merge:check"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
