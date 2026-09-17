@@ -138,7 +138,7 @@ def ρσ_interpolate_kwargs(receiver, target_function, supplied_args):
                 return ρσ_interpolate_kwargs(receiver,target_function,supplied_args);
             if(context[2]===true){supplied_args.unshift(receiver);receiver=undefined;}
             prepared=context[3]===true;
-        }else if(_internal_class_instance_function(receiver,target_function)&&
+        }else if(receiver!=null&&_internal_class_instance_function(receiver,target_function)&&
                  _internal_get_member(target_function,"__self__")===undefined){
             receiver=undefined;
         }else if(receiver!==null&&receiver!==undefined&&

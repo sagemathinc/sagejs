@@ -183,6 +183,16 @@ test("shared keyword binding consumes literal packets without Python operators",
   assert.deepEqual(Array.from(result).slice(0, 4), [receiver, 3, undefined, 5]);
   assert.deepEqual(Object.keys(result[4]), []);
 
+  const receiverlessApi = context({
+    _internal_class_instance_function: () => { throw new Error("classified receiver"); },
+    ρσ_exception_value: value => value,
+  });
+  const receiverlessPacket = { left: 4, right: 6 };
+  const receiverless = receiverlessApi.ρσ_interpolate_kwargs(
+    undefined, target, [receiverlessPacket]);
+  assert.deepEqual(Array.from(receiverless).slice(1, 4), [4, undefined, 6]);
+  assert.deepEqual(Object.keys(receiverless[4]), []);
+
   const preparedPacket = { left: 7, right: 11 };
   const preparedApi = context({
     _internal_class_instance_function: () => { throw new Error("reclassified"); },

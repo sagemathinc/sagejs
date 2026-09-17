@@ -53,6 +53,35 @@ The exact base artifact is
 shared successful-call mechanism, but keyword calls remain 8.6x--13.8x
 CPython and keyword construction remains 11.6x; those cliffs are open.
 
+## Receiverless-classification follow-up
+
+The next source-current profile showed ordinary receiverless keyword functions
+still entering `_internal_class_instance_function`, whose authoritative first
+condition immediately rejects a null or undefined receiver. The shared raw
+boundary now performs that identical null/undefined guard before calling the
+compiled classifier. A direct regression makes the classifier throw and proves
+that receiverless binding no longer enters it; non-null class/metaclass and
+instance paths are unchanged.
+
+The same idle host and ten-process protocol compared the single-pass artifact
+with this follow-up:
+
+| Case | Single-pass base | Follow-up | Change | CPython | Follow-up / CPython |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| positional function | 16.455 ms | 16.762 ms | flat | 8.751 ms | 1.92x |
+| keyword function | 86.702 ms | 83.293 ms | **3.9% faster** | 10.150 ms | **8.21x** |
+| immediate keyword method | 143.668 ms | 144.315 ms | flat | 10.577 ms | 13.64x |
+| empty construction | 31.466 ms | 31.183 ms | flat | 7.803 ms | 4.00x |
+| no-op initializer | 54.069 ms | 54.505 ms | flat | 12.007 ms | 4.54x |
+| positional construction and method | 230.020 ms | 228.528 ms | flat | 23.299 ms | 9.81x |
+| keyword construction and method | 440.771 ms | 440.626 ms | flat | 37.574 ms | 11.73x |
+
+The follow-up artifact is
+`70ffd5bad252d8c4922c2196d5c0af6c7ce9c798b16f7f4e79fda631333333d7`
+(24,440,875 bytes), 16 bytes larger than the single-pass artifact. This is a
+bounded second improvement to receiverless keyword functions, not closure of
+the binder cliff.
+
 ## Qualification
 
 - The source-current build converged in two self-hosting passes and completed.
@@ -64,9 +93,9 @@ CPython and keyword construction remains 11.6x; those cliffs are open.
 - Pinned attrs 25.4.0 and decorator 5.2.1 workflows pass with checked outputs.
 - Strict CPython syntax, Ruff 0.16.0, and Pyright pass for 404 modules;
   documentation and merge invariants pass.
-- Core runtime falls to 902,332/903,000 bytes. No source, startup, browser, or
+- Core runtime is 902,348/903,000 bytes after the follow-up. No source, startup, browser, or
   performance budget changed.
-- The local startup measurement is not a passing receipt: 427.0 ms normalized
+- The final local startup measurement is not a passing receipt: 435.5 ms normalized
   exceeds the unchanged 400.0 ms budget. This is recorded rather than widened;
   merge-owned CI must provide the startup/browser receipt when the integration
   queue reaches this candidate.
