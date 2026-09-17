@@ -4,7 +4,7 @@
   "id": "row14-capacity-protocol",
   "title": "Transactional row-14 owner capacity protocol",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Replace the resumable class-group root owner-growth stop with field-neutral transactional required-capacity reporting, qualify undersized and bounded prefix progression for the frozen row-14 quartic sentinel, and proceed toward exact completion only below 4 GiB.",
   "base_commit": "f50c44e0799b4d48a17be23a31a3eb9e1fc6cdd8",
@@ -61,7 +61,8 @@
     "risks": [
       "The root ABI gains one trailing capacity_state buffer, so integration adapters that construct the old positional ABI must append it.",
       "Only an entry miss is byte-for-byte transactional for all retained owners. Later misses occur after private scratch mutation; callers must discard those owners and restart from authenticated prepared nfinit.",
-      "This lane qualifies the capacity gate, not the final 806-relation/HNF [24, 8]/class-number-192 result. Integer word-capacity requirements for the full integrated root remain to be measured below 4 GiB."
+      "This lane qualifies the capacity gate, not the final 806-relation/HNF [24, 8]/class-number-192 result. Integer word-capacity requirements for the full integrated root remain to be measured below 4 GiB.",
+      "The focused 4 GiB checker is recorded. Broad pnpm test:baselib:strict and pnpm test:native validation is intentionally deferred to the integration lane."
     ],
     "next_steps": [
       "Teach the integration adapter to allocate every owner from capacity_state and restart the root from prepared nfinit after any later capacity miss.",
