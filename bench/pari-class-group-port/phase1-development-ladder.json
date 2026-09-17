@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "experiment": "pari-class-group-end-to-end-native-phase1-ladder-audit",
-  "baseCommit": "dc534fa05e68c330871fd3720718bdfa7c03e8db",
+  "baseCommit": "1196fd4fdc5fdaa2a3fd1273d32c594bfb299ffa",
   "sources": {
     "plan": {"path": "agents/pari-class-group-end-to-end-native-plan.md", "sha256": "88a47911bcba3007f82e4ff2d426a2760afab136118ed5cb0922104f19303fad"},
     "panel": {"path": "bench/pari-class-group-port/panel.json", "sha256": "7c6515240940db971cff3bc28819f9e6547adae9305643b0f6274eeafe6ec3a5"},
@@ -49,7 +49,23 @@
   },
   "coverage": {
     "nonemptyW": {"performancePopulation": "observed", "panelIndices": [10], "evidence": ["field3_resident_retry_audit.md", "retry_hnf_integration_audit.md"]},
-    "randomRelations": {"performancePopulation": "absent", "panelIndices": [], "evidence": ["retry_hnf_integration_audit.md", "resident_attempt_reference_audit.md"]},
+    "randomRelations": {
+      "performancePopulation": "absent",
+      "panelIndices": [],
+      "evidence": ["retry_hnf_integration_audit.md", "resident_attempt_reference_audit.md"],
+      "correctnessOnly": {
+        "status": "closed-frozen-corridor",
+        "panelIdentityIndex": 10,
+        "defaultPolicy": false,
+        "fixture": "rnd_relation_collector_fixture.json",
+        "fixtureSha256": "d686f79595579b59349483d601d25282f08719d16414ec7303c169784cf9c0e1",
+        "audit": "rnd_relation_collector_audit.md",
+        "auditSha256": "92fbf8f9771c6e2469d46616c1ff6c946871db6d02f5a4295730390da5ae58a7",
+        "checker": "check_rnd_relation_collector.cjs",
+        "checkerSha256": "fb01b7cf9c86c691531258d3b1aa54bc6fe5d08f7c1697855e1565651be3387d",
+        "note": "Pristine PARI executes literal rnd_rel after a declared control forces the first post-HNF collection branch; it is not a natural default-driver observation."
+      }
+    },
     "rankDeficiency": {"performancePopulation": "observed", "panelIndices": [8, 10], "evidence": ["retry_hnf_integration_audit.md"]},
     "precisionEscalation": {"performancePopulation": "absent", "panelIndices": [], "evidence": ["retry_hnf_integration_audit.md"]},
     "honesty": {
@@ -57,12 +73,19 @@
       "panelIndices": [],
       "evidence": ["end_to_end_frontier.md"],
       "correctnessOnly": {
-        "status": "partial",
+        "status": "closed-frozen-all-failure-corridor",
+        "genericBranchStatus": "partial",
+        "panelIdentityIndex": 0,
+        "defaultPolicy": false,
         "fixture": "honesty_branch_fixture.json",
         "fixtureSha256": "9b34eca4b40c6af731202e0e6d64727af84c0d1610c6f4368c66fb2df22b4b1d",
-        "audit": "honesty_branch_audit.md",
-        "auditSha256": "c7b0794ec982f39fe52370b42b73875a4f34ff1e8baa2b89c5c2c8c84fec153b",
-        "note": "The fixture covers bounded unequal-bound retry arithmetic and random_bits(4), not rnd_rel or a successful full honesty branch."
+        "schedulerFixture": "honesty_scheduler_fixture.json",
+        "schedulerFixtureSha256": "a34b2dee6f1f416563aa65c51febdff9dc732c985062511b95be8f4750c595c0",
+        "audit": "honesty_scheduler_audit.md",
+        "auditSha256": "60bbc5991d7459434e45104287eb597a7054aae6ae9b20b5a0fad45fc1d26d21",
+        "checker": "check_honesty_scheduler.cjs",
+        "checkerSha256": "d56c69872d9f6709694f5d4c5dcba2bfad170e404bd2e4a83a41257ef42e686e",
+        "note": "The scheduler closes the bounded unequal-bound all-failure case. It is not rnd_rel, a natural default-bound observation, or a successful/full generic honesty branch."
       }
     }
   },
@@ -73,14 +96,32 @@
     "resident_attempt_reference_audit.md": "0341df0d88433352673b1bf7e7e9b056eb5d9b8db4abf1e615dd76dff2d4d918"
   },
   "correctnessOnlyRequirements": [
-    {"branch": "random-relations", "status": "missing", "requiredObservation": "At least one pristine PARI trace enters rnd_rel; record relation rows, RNG states, and retry decision.", "performanceInput": false},
+    {"branch": "random-relations", "status": "closed-frozen-corridor", "requiredObservation": "The forced pristine-PARI rnd_rel corridor records scheduler state, RNG, ideals, inserted relations, logs, and post-append HNF state.", "performanceInput": false},
     {"branch": "precision-escalation", "status": "missing", "requiredObservation": "At least one pristine PARI trace takes the precision-rebuild path; record owner invalidation, rebuilt logs, and terminal decision.", "performanceInput": false},
-    {"branch": "successful-full-honesty", "status": "partial", "requiredObservation": "Extend the existing unequal-bound fixture with a successful full branch, including KCZ mutation/restoration, orbit selection, ideal reduction, and scheduler state.", "performanceInput": false}
+    {"branch": "unequal-bound-honesty-all-failure", "status": "closed-frozen-corridor", "requiredObservation": "The bounded scheduler computes all 51 failed collector probes and 50 retry draws and terminates with unchanged KCZ.", "performanceInput": false},
+    {"branch": "successful-full-honesty", "status": "missing", "requiredObservation": "Add a successful branch, including KCZ mutation/restoration, orbit selection where applicable, ideal reduction where applicable, and scheduler state.", "performanceInput": false}
   ],
+  "promotionPolicy": {
+    "correctnessFixtureAcceptance": [
+      "Pin pristine PARI 2.17.4 archive and source hashes and an exact frozen input identity.",
+      "Record the complete branch-specific input, output, decision, RNG, and owner-state transcript needed for independent replay.",
+      "Match the translated implementation against the pristine source transcript on every exact observable.",
+      "Exercise malformed input, insufficient capacity, and partial-publication failures transactionally where the corridor mutates state."
+    ],
+    "performanceCoveragePromotion": [
+      "The identity must already be one of the frozen sixteen development fields; a fixture never opens or substitutes a reserve field.",
+      "The branch must arise naturally in an unmodified pristine-PARI default-driver run for the frozen polynomial and preparation policy, without forced control flow, custom bounds, injected resident state, or predeclared answers.",
+      "The Sage.js default public path must take the corresponding branch and match the complete PARI stage transcript and terminal mathematical result.",
+      "Only after trace agreement may the existing field be timed under the locked qualification host and predeclared paired schedule with failures retained in denominators."
+    ],
+    "fixtureCanBecomePerformanceField": false,
+    "samePolynomialIsInsufficient": true
+  },
   "reservePolicy": {"panelRows": 24, "developmentRows": 16, "finalReserveRows": 8, "reserveOpened": false, "panelModified": false},
   "verdict": {
     "sentinelRetryPrecisionOrHonestyRequirementProven": false,
-    "missingCorrectnessOnlyFixtures": ["random-relations", "precision-escalation", "successful-full-honesty"],
+    "closedCorrectnessOnlyCorridors": ["random-relations", "unequal-bound-honesty-all-failure"],
+    "missingCorrectnessOnlyFixtures": ["precision-escalation", "successful-full-honesty"],
     "fieldSubstitutionAllowed": false
   }
 }
