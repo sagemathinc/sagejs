@@ -665,8 +665,11 @@ def pari_unified_complete_h1_root(
     `final_state` is status, prefix status, class-witness status, torsion
     status, precision-suffix status, missing stage, accepted relation count,
     presentation dimension, class number, invariant count, unit rank, torsion
-    order, internal correspondence complete, published final cells, final
-    publication, and public completion.
+    order, independently replayed correspondence complete, published final
+    cells, final publication, and public completion.  This native producer
+    deliberately leaves correspondence completion false: only the detached
+    cold verifier may promote that bit after authenticating the complete
+    terminal owner snapshot.
 
     Every mathematical owner is produced below this native call.  The resource
     cap is caller policy, not answer data.  A successful final state is written
@@ -768,10 +771,11 @@ def pari_unified_complete_h1_root(
         or len(precision_published_phases) < 6
     ):
         raise ValueError("short unified complete h1 owner")
+    # Never accept caller-mutable status cells as authority for a previous
+    # result.  A verified immutable replay receipt belongs outside this native
+    # producer; until that receipt is supplied, re-entry must fail closed.
     if final_state[14] == 1:
-        if final_state[0] != 0 or final_state[12] != 1:
-            raise ValueError("inconsistent published complete h1 state")
-        return 0
+        raise ValueError("published complete h1 state requires cold replay")
     if final_state[0] != 0:
         raise ValueError("partial unified complete h1 state")
 
@@ -1471,7 +1475,9 @@ def pari_unified_complete_h1_root(
     final_state[9] = class_published_state[9]
     final_state[10] = bridge_state[12]
     final_state[11] = torsion_order[0]
-    final_state[12] = 1
+    # Production succeeded, but correspondence is not established until the
+    # full terminal owner bundle passes detached cold replay.
+    final_state[12] = 0
     final_state[13] = 811
     final_state[14] = 1
     final_state[15] = 0
