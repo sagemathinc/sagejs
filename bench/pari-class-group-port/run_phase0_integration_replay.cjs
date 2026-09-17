@@ -1107,6 +1107,31 @@ stage("quartic-nf-cxlog", {
   }),
 });
 
+stage("quartic-direct-composition", {
+  dependencies: ["quartic-signed-genback", "quartic-nf-cxlog"],
+  requiresPari: true,
+  command: (context) => commandNode("check_quartic_direct_composition.cjs",
+    context.pariRoot, context.pariArchive),
+  validate: (summary) => {
+    assert.equal(summary.polynomial, "x^4-200000002*x-200000002");
+    assert.deepEqual(summary.smithColumns,
+      [["1", "0", "0"], ["-2", "-1", "-1"]]);
+    assert.equal(summary.reductions, 7);
+    assert.equal(summary.factors, 7);
+    assert.deepEqual(summary.classGroup, ["24", "8"]);
+    assert.deepEqual(summary.backends,
+      ["pristine PARI 2.17.4", "CPython", "javascript", "gmp", "tagged"]);
+    assert.equal(summary.atomicMutationControl, true);
+    assert.match(summary.coreSha256, /^[0-9a-f]{64}$/);
+    assert.equal(summary.qualifiedTiming, false);
+  },
+  noFixture: true,
+  additionalOutputs: (summary) => ({
+    "oracle-source": path.join(summary.directory, "oracle.c"),
+    "oracle-binary": path.join(summary.directory, "oracle"),
+  }),
+});
+
 stage("signed-genback-assembly", {
   dependencies: ["signed-reduction", "smith-transform", "nf-cxlog"],
   requiresPari: true,
@@ -1211,8 +1236,13 @@ stage("scratch-falsification-ledger", {
 
 stage("final-state", {
   dependencies: ["immutable-result", "rnd-collector", "honesty", "honesty-success",
-    "relation-hnf-witness", "unit-bridge-preci", "mixed-getfu-quartic",
-    "signed-genback-computed-t2", "get-clg2", "precision-bridge",
+    "honesty-quintic-collector-downstream", "relation-hnf-witness",
+    "presentation-authority", "unit-bridge-preci", "unit-component-cubic",
+    "compact-unit-result", "torsion-authority", "class-relation-cleanarch",
+    "regulator-acceptance-replay", "authentic-h1-unit-success",
+    "mixed-getfu-quartic", "mixed-getfu-hard-precision",
+    "quartic-direct-composition", "signed-genback-computed-t2",
+    "generator-order-witness", "get-clg2", "precision-bridge",
     "scratch-falsification-ledger"],
   command: () => commandNode("check_class_group_final_state.cjs"),
   validate: (summary) => {
