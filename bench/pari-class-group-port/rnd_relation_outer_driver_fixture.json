@@ -1,0 +1,26 @@
+{
+  "identity": {
+    "pariVersion": "2.17.4",
+    "polynomial": "x^4-2000022*x-2000042",
+    "corridor": "forced rnd_rel append through first subsequent LIE small_norm"
+  },
+  "counts": {
+    "randomLast": 295,
+    "pariNext": 296,
+    "nativeNext": 298
+  },
+  "hashes": {
+    "rngAfterRandomIdeal": "98458dc24362074cc00bcb42b59517dd9a68ccb567671dd686bf8413dbbcdd72",
+    "randomPrefixRelations": "8740a5010aabad7c2f939cc4b139240ec8a86f824fd91100bf01e35717abf1ba",
+    "randomPrefixGenerators": "982d43c5b89f8ca23d249ce997ecea4ea3818ebbf12f08167c49066eec3f2ce3",
+    "randomPrefixLogs": "1e9680962ad85e0b472eeb8bee7471dbfe89ca22225e6b90cefdd1da889ff999",
+    "randomPrefixHnf": "893124ebcaa94ae85d93b3de33df70e168a5aa4bba2c55876e2aefb0a0d619e3",
+    "nativeNextRelations": "57206cd4cf16ae1579f85134c30b13c3b24b8c34d9dedc47725f4dcefee17dcc",
+    "pariNextRelations": "a7312010150aef81299e2f9ce59d0c405451c390f316086e5a2a9e83310ba45b"
+  },
+  "frontier": {
+    "pari": "one relation at j=1, 295 to 296",
+    "native": "three different relations at j=1, 295 to 298",
+    "nextPrimitive": "persistent FACT/cache publication from rnd_rel into the LIE small_norm call"
+  }
+}
