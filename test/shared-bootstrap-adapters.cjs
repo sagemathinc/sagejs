@@ -10,7 +10,7 @@ const root = join(__dirname, "..");
 const source = readFileSync(join(root, "src/baselib/bootstrap_shared.py"), "utf8");
 const names = ["ρσ_copy_method_metadata", "ρσ_native_method_adapter", "ρσ_unbound_method_adapter",
   "ρσ_check_interrupt", "ρσ_normalize_exception", "ρσ_prepare_method_call",
-  "ρσ_store_attr", "ρσ_interpolate_kwargs"];
+  "ρσ_attr", "ρσ_interpolate_kwargs"];
 
 // Exercise the native ABI bodies directly; full self-hosted/module
 // linkage remains a separate build qualification, not implied by this test.
@@ -69,6 +69,7 @@ test("shared attribute stores use only epoch-current unexposed cache entries", (
   const fields = new WeakMap();
   const namespaces = new WeakMap();
   let fallbacks = 0;
+  let readFallbacks = 0;
   const api = context({
     _builtins_store_cache: cache,
     _builtins_descriptor_epoch: epoch,
@@ -80,26 +81,35 @@ test("shared attribute stores use only epoch-current unexposed cache entries", (
       cache.set(prototype, new Map([[name, epoch.value]]));
       return null;
     },
+    ρσ_getattr_internal: (value, name) => {
+      readFallbacks += 1;
+      return value[name];
+    },
+    ρσ_getattr_missing: Symbol("missing"),
   });
 
-  assert.equal(api.ρσ_store_attr(receiver, "field", 11), null);
+  assert.equal(api.ρσ_attr(receiver, "field", 11), null);
   assert.equal(fallbacks, 1);
-  assert.equal(api.ρσ_store_attr(receiver, "field", 13), null);
+  assert.equal(api.ρσ_attr(receiver, "field", 13), null);
   assert.equal(fallbacks, 1);
   assert.equal(receiver.field, 13);
   assert.equal(fields.get(receiver).has("field"), true);
+  assert.equal(api.ρσ_attr(receiver, "field"), 13);
+  assert.equal(readFallbacks, 0);
 
   Object.defineProperty(receiver, "__setattr__", { value: () => null, configurable: true });
-  api.ρσ_store_attr(receiver, "field", 15);
+  api.ρσ_attr(receiver, "field", 15);
   assert.equal(fallbacks, 2);
   delete receiver.__setattr__;
 
   epoch.value += 1;
-  api.ρσ_store_attr(receiver, "field", 17);
+  assert.equal(api.ρσ_attr(receiver, "field"), 15);
+  assert.equal(readFallbacks, 1);
+  api.ρσ_attr(receiver, "field", 17);
   assert.equal(fallbacks, 3);
 
   namespaces.set(receiver, { exposed: true });
-  api.ρσ_store_attr(receiver, "field", 19);
+  api.ρσ_attr(receiver, "field", 19);
   assert.equal(fallbacks, 4);
 });
 

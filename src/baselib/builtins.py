@@ -5648,14 +5648,9 @@ def ρσ_setattr(value: Any, name: _Str, member: Any) -> None:
             and _builtins_get_member(member, "__classmethod__") is not True
             and _builtins_get_member(member, "__sagejs_native_method__") is not True
         ):
-            # Python function objects always implement the non-data descriptor
-            # protocol when they are installed on a class, including functions
-            # assigned after class creation with `setattr`. Compiler-emitted
-            # instance calls to an existing source method use JavaScript
-            # receiver syntax. When such a method is replaced, its prototype
-            # needs the same explicit-self adapter used by `dataclasses` while
-            # class lookup continues to expose the original function. New and
-            # inherited methods continue through normal descriptor lookup.
+            # Class-installed Python functions are non-data descriptors.
+            # Replacements of receiver-style methods need the explicit-self
+            # adapter while class lookup continues to expose the function.
             runtime.reflect.set(member, "__python_descriptor__", True)
             if (
                 _builtins_get_member(member, "__func__") is not runtime.undefined
@@ -5699,12 +5694,18 @@ def ρσ_setattr(value: Any, name: _Str, member: Any) -> None:
         if _builtins_member_is_function(member, "__set_name__"):
             _builtins_call_member(member, "__set_name__", [value, name])
     if _builtins_store_instance_attribute(value, name, member):
-        prototype = runtime.object.getPrototypeOf(value)
-        store_cache = _builtins_store_cache.get(prototype)
-        if store_cache is runtime.undefined:
-            store_cache = runtime.reflect.construct(runtime.map_class, [])
-            _builtins_store_cache.set(prototype, store_cache)
-        store_cache.set(name, _builtins_descriptor_epoch.value)
+        getattribute = _builtins_class_attribute_resolution(
+            _builtins_attribute_owner(value), "__getattribute__"
+        )
+        if getattribute is runtime.undefined or (
+            getattribute[3] is _builtins_object_getattribute
+        ):
+            prototype = runtime.object.getPrototypeOf(value)
+            store_cache = _builtins_store_cache.get(prototype)
+            if store_cache is runtime.undefined:
+                store_cache = runtime.reflect.construct(runtime.map_class, [])
+                _builtins_store_cache.set(prototype, store_cache)
+            store_cache.set(name, _builtins_descriptor_epoch.value)
         return
     if not runtime.reflect.set(value, name, member):
         own_descriptor = runtime.object.getOwnPropertyDescriptor(value, name)
