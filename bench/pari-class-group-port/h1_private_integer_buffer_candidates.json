@@ -37,10 +37,11 @@
     "unmeasured_candidates": 323
   },
   "generated_target": {
-    "source_sha256": "c9f1eb55d7b7acc511308c0ec3a78eb409a690bdaf2c56cc0cd23e5675439749",
-    "source_bytes": 100275455,
+    "source_sha256": "70399ef1b7729a5f577e39ae4c6e5caf174189e6f31b1d5f1bd267a16568b7ca",
+    "source_bytes": 100288010,
     "pointer_table_capacity": 1024,
     "lookup": "root-local open-addressed pointer hash",
-    "canonicalization": "one success/failure root boundary"
+    "canonicalization": "one success/failure root boundary",
+    "alias_protection": "all root sizes/limbs storage ranges pairwise disjoint"
   }
 }

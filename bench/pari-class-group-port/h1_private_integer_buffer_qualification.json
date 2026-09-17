@@ -1,6 +1,7 @@
 {
   "schema": "sagejs.pari-class-group/h1-private-integer-buffer-qualification-v1",
   "integration_commit": "fd6ea9d769dbbdd2ddeb4b4f285d60782636e007",
+  "provenance_manifest_sha256": "b82b26d49bb233915ab5368e4b629f232bdae43fcf7d4671e3fb27e12c30d7f4",
   "layout": {
     "name": "pari-h1-matched-flag-zero-state-v1",
     "integer_buffers": 348,

@@ -5150,6 +5150,7 @@ ${pieces.join("\n\n")}
     publicBuffers: [...privateBuffers.layout.publicBuffers],
     rejected: [...privateBuffers.layout.rejected],
     expected: privateBuffers.layout.expected,
+    aliasProtection: privateBuffers.emission.aliasProtection,
     canonicalizeAt: [...privateBuffers.claim.canonicalizeAt],
     failurePublication: privateBuffers.claim.failurePublication,
   };

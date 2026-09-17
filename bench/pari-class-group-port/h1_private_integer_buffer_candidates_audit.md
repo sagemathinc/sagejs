@@ -38,8 +38,17 @@ all dirty buffers canonicalize at success or failure, followed by one context
 publication boundary.  Unregistered buffers take the unchanged fully clearing
 path.
 
-The full generated target is 100,275,455 bytes with SHA-256
-`c9f1eb55d7b7acc511308c0ec3a78eb409a690bdaf2c56cc0cd23e5675439749`.
+Before activating that context, the generated root checks the complete set of
+348 root `IntegerBuffer`s.  Every logical `sizes` and `limbs` address range must
+be pairwise disjoint, including cross-kind overlaps and private/public pairs.
+Any identical or partially overlapping range leaves the private table empty,
+so all stores take the ordinary clearing setter.  Address-size overflow also
+fails closed.  This runtime check complements the static no-escape proof;
+JavaScript typed-array views can otherwise introduce aliases invisible to the
+Python call graph.
+
+The full generated target is 100,288,010 bytes with SHA-256
+`70399ef1b7729a5f577e39ae4c6e5caf174189e6f31b1d5f1bd267a16568b7ca`.
 Static inspection verifies the authenticated layout audit, 1024-entry pointer
 table, constant-expected-time lookup, success/failure canonicalizers, and
 unchanged public fallback.  No native compilation or fused execution was run

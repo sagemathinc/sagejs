@@ -19,6 +19,9 @@ function identifier(value) {
 function emitPrivateIntegerBufferRuntime(functions, root, claim) {
   if (!privateIntegerBufferPlanAuthorized(functions, root, claim)) return undefined;
   const buffers = claim.buffers.map(identifier);
+  const rootBuffers = root.params
+    .filter((param) => param.type === "IntegerBuffer")
+    .map((param) => identifier(param.name));
   let tableCapacity = 2;
   while (tableCapacity < 2 * buffers.length) tableCapacity *= 2;
   const declarations = buffers.map((name) =>
@@ -31,8 +34,12 @@ function emitPrivateIntegerBufferRuntime(functions, root, claim) {
     `    sagejs_private_integer_buffer_begin(&sagejs_private_context, &sagejs_private_${name}, &sagejs_arg_${name});`,
   );
   opens.unshift(
+    `    sagejs_integer_buffer *sagejs_private_root_buffers[${rootBuffers.length}] = { ${rootBuffers.map((name) => `&sagejs_arg_${name}`).join(", ")} };`,
     `    sagejs_private_integer_buffer_context_begin(&sagejs_private_context, sagejs_private_table, ${tableCapacity});`,
+    `    if (sagejs_private_integer_buffers_disjoint(sagejs_private_root_buffers, ${rootBuffers.length}))`,
+    "    {",
   );
+  opens.push("    }");
   const closes = [...buffers].reverse().map((name) =>
     `    sagejs_private_integer_buffer_canonicalize(&sagejs_private_${name});`,
   );
@@ -62,6 +69,58 @@ typedef struct sagejs_private_integer_buffer_state {
 #endif
 static SAGEJS_PRIVATE_BUFFER_TLS sagejs_private_integer_buffer_context
     *sagejs_private_integer_buffer_top = NULL;
+
+static int sagejs_private_integer_buffer_ranges_overlap(
+    const void *left, size_t left_bytes,
+    const void *right, size_t right_bytes)
+{
+    uintptr_t left_start = (uintptr_t)left;
+    uintptr_t right_start = (uintptr_t)right;
+    uintptr_t left_end, right_end;
+    if (left_bytes == 0 || right_bytes == 0) return 0;
+    if (left_start > UINTPTR_MAX - left_bytes ||
+        right_start > UINTPTR_MAX - right_bytes) return 1;
+    left_end = left_start + left_bytes;
+    right_end = right_start + right_bytes;
+    return left_start < right_end && right_start < left_end;
+}
+
+static int sagejs_private_integer_buffers_disjoint(
+    sagejs_integer_buffer *const *buffers, size_t count)
+{
+    size_t left, right;
+    for (left = 0; left < count; left++)
+    {
+        const sagejs_integer_buffer *a = buffers[left];
+        size_t a_sizes, a_limbs;
+        if (a->length > SIZE_MAX / sizeof(*a->sizes) ||
+            (a->length != 0 && a->word_capacity > SIZE_MAX / a->length) ||
+            a->length * a->word_capacity > SIZE_MAX / sizeof(*a->limbs)) return 0;
+        a_sizes = a->length * sizeof(*a->sizes);
+        a_limbs = a->length * a->word_capacity * sizeof(*a->limbs);
+        if (sagejs_private_integer_buffer_ranges_overlap(
+                a->sizes, a_sizes, a->limbs, a_limbs)) return 0;
+        for (right = left + 1; right < count; right++)
+        {
+            const sagejs_integer_buffer *b = buffers[right];
+            size_t b_sizes, b_limbs;
+            if (b->length > SIZE_MAX / sizeof(*b->sizes) ||
+                (b->length != 0 && b->word_capacity > SIZE_MAX / b->length) ||
+                b->length * b->word_capacity > SIZE_MAX / sizeof(*b->limbs)) return 0;
+            b_sizes = b->length * sizeof(*b->sizes);
+            b_limbs = b->length * b->word_capacity * sizeof(*b->limbs);
+            if (sagejs_private_integer_buffer_ranges_overlap(
+                    a->sizes, a_sizes, b->sizes, b_sizes) ||
+                sagejs_private_integer_buffer_ranges_overlap(
+                    a->sizes, a_sizes, b->limbs, b_limbs) ||
+                sagejs_private_integer_buffer_ranges_overlap(
+                    a->limbs, a_limbs, b->sizes, b_sizes) ||
+                sagejs_private_integer_buffer_ranges_overlap(
+                    a->limbs, a_limbs, b->limbs, b_limbs)) return 0;
+        }
+    }
+    return 1;
+}
 
 static size_t sagejs_private_integer_buffer_hash(
     const sagejs_integer_buffer *buffer, size_t capacity)
@@ -106,7 +165,7 @@ sagejs_private_integer_buffer_lookup(const sagejs_integer_buffer *buffer)
 {
     sagejs_private_integer_buffer_context *context =
         sagejs_private_integer_buffer_top;
-    while (context != NULL)
+    if (context != NULL)
     {
         size_t position = sagejs_private_integer_buffer_hash(
             buffer, context->capacity);
@@ -117,7 +176,6 @@ sagejs_private_integer_buffer_lookup(const sagejs_integer_buffer *buffer)
             if (state->buffer->sizes == buffer->sizes) return state;
             position = (position + 1) & (context->capacity - 1);
         }
-        context = context->previous;
     }
     return NULL;
 }
@@ -192,6 +250,11 @@ static void sagejs_private_integer_buffer_canonicalize(
     )),
     beforePublish: closes.join("\n"),
     failureCleanup: closes.join("\n"),
+    aliasProtection: Object.freeze({
+      policy: "all-root-storage-ranges-disjoint-v1",
+      rootIntegerBuffers: rootBuffers.length,
+      checkedRangeKinds: Object.freeze(["sizes", "limbs"]),
+    }),
   });
 }
 
