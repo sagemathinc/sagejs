@@ -1,6 +1,6 @@
 {
   "schema": "sagejs-field3-complex-log-corpus-protocol-result-v1",
-  "status": "column-88-qualified-awaiting-column-89",
+  "status": "batch-88-recovered-awaiting-batch-92",
   "baseCommit": "56324f09872e235b20207f46aa83e4cadebde898",
   "schedule": {
     "batches": 76,
@@ -104,10 +104,10 @@
     "kernelSourceChanged": false,
     "ordinaryBatchPublishedByFragment": false,
     "assemblyProducesOrdinaryV1Batch": true,
-    "heavyFragmentsExecuted": 1,
+    "heavyFragmentsExecuted": 4,
     "fragmentResumeState": {
-      "complete": 1,
-      "missing": 3,
+      "complete": 4,
+      "missing": 0,
       "fragmentOnly": 0
     },
     "authenticColumn88": {
@@ -119,11 +119,47 @@
       "excludedReceiptSha256": "90b179d79f297aa76c9b174ca1eb85cf9c928df7ff1273c35af155b0ac838986",
       "replacementReceiptSha256": "1171272bda08e8654ae21bfd308e8823be80d96b632b8c294ef20116f6b5621d",
       "supersessionSha256": "b6d671e883357f17599fe602a921c32638565a5b1fcbc25553f52b6dddbfb3d0"
+    },
+    "authenticColumns89To91": [
+      {
+        "column": 89,
+        "runMilliseconds": 94057.18663,
+        "wallMilliseconds": 102485,
+        "peakAggregateRssKiB": 1363784,
+        "fragmentSha256": "924eb7d7d2d8a53b898b937b15a9f7e24db5f2944bb778d4e17e4fd3bef47c7d",
+        "receiptSha256": "4e7bdb3ff1b67d96bc071e1ce09e643825c0c582e9816b639b8bf7a1b1d40c37"
+      },
+      {
+        "column": 90,
+        "runMilliseconds": 99294.597872,
+        "wallMilliseconds": 108177,
+        "peakAggregateRssKiB": 1355276,
+        "fragmentSha256": "919cd50796b70b3930a9ba516503a28d4774a3ca421203ef824016c95a994ac8",
+        "receiptSha256": "834a7f48dfc92660daeceda19d084b4d6d28a8b43df82af8e04137f2fe630444"
+      },
+      {
+        "column": 91,
+        "runMilliseconds": 92307.696794,
+        "wallMilliseconds": 101191,
+        "peakAggregateRssKiB": 1380024,
+        "fragmentSha256": "801a596d3cf2cd54ef5aff70af152b9afb2d4530bfcc12e9ce7167f85081b30e",
+        "receiptSha256": "19c41e907c8ec7ff69d9354166d7227a6baa826de8c3c76c298260d66ce491e7"
+      }
+    ],
+    "assembledBatch88": {
+      "outputSha256": "933708bb761b8794ca81dec4a249cd0ba1df16c1b4d29ee74ba3e14d463a6cf5",
+      "packedCells": 28,
+      "state": ["0", "153088", "88", "4", "0", "0", "4", "92", "209"],
+      "runMilliseconds": 379679.041755,
+      "wallMilliseconds": 414473,
+      "peakAggregateRssKiB": 1380024,
+      "capsuleSha256": "5e45a9eb95dad85c59a3a10e51baf3699092c714d2a67942d83946a5ba27208c",
+      "receiptSha256": "88352efde1026b470e20728dabf9f36370571fe5a4f7cecf12d0f5fec18eb5c7"
     }
   },
   "resumeState": {
-    "complete": 22,
-    "missing": 54,
+    "complete": 23,
+    "missing": 53,
     "capsuleOnly": 0
   },
   "heavyBatchesExecuted": 24,

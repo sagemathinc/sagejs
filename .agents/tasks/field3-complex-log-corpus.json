@@ -78,18 +78,22 @@
       "command": "node bench/pari-class-group-port/field3_complex_log_corpus_protocol.cjs --fragment-parent-start 88 --fragment-parent-count 4 --column 88",
       "status": "passed-after-receipt-repair",
       "summary": "Qualified authentic column 88 without recomputing arithmetic: native 94019.560459 ms, wall 102620 ms, peak 1354600 KiB; retained the rejected receipt and authenticated its corrected replacement through an immutable supersession"
+    },
+    {
+      "command": "authenticated fragments 89, 90, and 91; ordered assembly of parent 88:4",
+      "status": "passed",
+      "summary": "Qualified all four independent fragments and assembled exactly one canonical ordinary v1 88:4 capsule; global planner reports 23 complete, 53 missing, zero capsule-only"
     }
   ],
   "handoff": {
-    "summary": "Qualified authentic deterministic batches 0:4 through 84:4, then stopped fail-atomically when 88:4 exceeded the fixed 600-second limit. Added a JS-only authenticated one-column fragment and ordered assembly protocol. Authentic column 88 is now complete after a deterministic provenance-preserving receipt repair; columns 89--91 remain unstarted.",
+    "summary": "Qualified authentic deterministic batches 0:4 through 84:4, then recovered the timed-out 88:4 batch from four independently supervised authenticated column fragments. The ordered assembler published one canonical ordinary v1 capsule/receipt, and global resume state is 23 complete, 53 missing, zero capsule-only.",
     "risks": [
-      "Only authentic column 88 has run; the slow column among 89--91 and each isolated runtime remain unknown",
-      "The killed v1 worker emits native timing only after return; its >591-second native attribution is inferred from measured setup overhead in adjacent batches rather than a completed timer"
+      "The killed four-column v1 worker emits native timing only after return; its >591-second native attribution is inferred from measured setup overhead, while the four isolated fragments total only 379679 ms of native time",
+      "Ordinary ranges beginning at 92 have not yet resumed, so later slow-batch behavior remains unknown"
     ],
     "next_steps": [
-      "After explicit resource authorization, run column 89 as the next separately supervised authenticated fragment, stopping on failure",
-      "If all four fragments pass, assemble their receipt paths in exact source order and verify the resulting ordinary 88:4 capsule/receipt through the unchanged resume planner",
-      "Resume later deterministic batches only after the 88:4 recovery is qualified",
+      "After explicit resource authorization, resume the ordinary deterministic campaign at 92:4 with the unchanged fail-stop controller",
+      "If a later ordinary batch reaches the fixed timeout, use the same authenticated fragment protocol rather than relaxing resource limits",
       "Integration owns broad native and strict suites"
     ]
   }

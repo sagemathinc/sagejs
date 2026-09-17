@@ -215,3 +215,43 @@ that exact supersession chain. It now reports column 88 complete, columns
 controls, including rejection of the missing field and proof that repair
 preserves all old mathematical and resource values. No ordinary `88:4`
 capsule or receipt has been published.
+
+## Completed fragment recovery and ordinary batch 88:4
+
+The remaining independently supervised fragments all qualified under the same
+600-second/4-GiB policy:
+
+- column 89: native 94,057.186630 ms, wall 102,485 ms, peak 1,363,784 KiB,
+  fragment SHA-256
+  `924eb7d7d2d8a53b898b937b15a9f7e24db5f2944bb778d4e17e4fd3bef47c7d`,
+  receipt SHA-256
+  `4e7bdb3ff1b67d96bc071e1ce09e643825c0c582e9816b639b8bf7a1b1d40c37`;
+- column 90: native 99,294.597872 ms, wall 108,177 ms, peak 1,355,276 KiB,
+  fragment SHA-256
+  `919cd50796b70b3930a9ba516503a28d4774a3ca421203ef824016c95a994ac8`,
+  receipt SHA-256
+  `834a7f48dfc92660daeceda19d084b4d6d28a8b43df82af8e04137f2fe630444`;
+  and
+- column 91: native 92,307.696794 ms, wall 101,191 ms, peak 1,380,024 KiB,
+  fragment SHA-256
+  `801a596d3cf2cd54ef5aff70af152b9afb2d4530bfcc12e9ce7167f85081b30e`,
+  receipt SHA-256
+  `19c41e907c8ec7ff69d9354166d7227a6baa826de8c3c76c298260d66ce491e7`.
+
+After the fragment planner reported exactly four complete columns, zero missing,
+and zero fragment-only entries, the ordered assembler ran exactly once. It
+published the ordinary v1 `88:4` capsule with output digest
+`933708bb761b8794ca81dec4a249cd0ba1df16c1b4d29ee74ba3e14d463a6cf5`
+and state `[0,153088,88,4,0,0,4,92,209]`. The 370,098-byte mode-0444
+capsule has SHA-256
+`5e45a9eb95dad85c59a3a10e51baf3699092c714d2a67942d83946a5ba27208c`;
+its 5,345-byte mode-0444 receipt has SHA-256
+`88352efde1026b470e20728dabf9f36370571fe5a4f7cecf12d0f5fec18eb5c7`.
+
+Independent replay through the unchanged v1 readers proved that all 28 cells
+are byte-identical to the four fragment payloads in source order and that all
+authority, prepared-owner, kernel, norm, and source hashes remain unchanged.
+Aggregate fragment-native time was 379,679.041755 ms, aggregate monitored wall
+time was 414,473 ms, and maximum peak RSS was 1,380,024 KiB. Global resume
+planning now reports 23 complete ranges, 53 missing ranges, and zero
+capsule-only ranges. No ordinary range beginning at 92 or later has started.
