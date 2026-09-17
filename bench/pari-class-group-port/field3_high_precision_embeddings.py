@@ -12,7 +12,7 @@ come from the defining polynomial alone.
 
 from math import isqrt
 
-from sagejs.native import IntegerBuffer, Int64Buffer, native
+from sagejs.native import Int64Buffer, IntegerBuffer, native
 
 from .real_division import pari_real_division
 from .short_product import (
@@ -205,7 +205,8 @@ def pari_field3_real_horner(
 ) -> tuple[int, int, int]:
     """Evaluate one cubic basis polynomial with `RgX_cxeval` association."""
     if degree == 1:
-        vm, vp, ve = mantissa, precision, exponent
+        vm, vp, ve = pari_word_integer_real_product(c1, mantissa, precision, exponent)
+        vm, vp, ve = pari_word_integer_real_sum(c0, vm, vp, ve)
     elif exponent <= 1:
         leading = c2
         if degree == 3:
@@ -316,7 +317,13 @@ def pari_field3_complex_horner(
 ) -> tuple[int, int, int, int, int, int]:
     """Evaluate one complex basis polynomial with inverse Horner."""
     if degree == 1:
-        return rm, rp, re, im, ip, ie
+        vrm, vrp, vre = pari_word_integer_real_product(c1, rm, rp, re)
+        vim, vip, vie = pari_word_integer_real_product(c1, im, ip, ie)
+        vrm, vrp, vre = pari_word_integer_real_sum(c0, vrm, vrp, vre)
+        if denominator != 1:
+            vrm, vrp, vre = pari_real_word_division(denominator, vrm, vrp, vre)
+            vim, vip, vie = pari_real_word_division(denominator, vim, vip, vie)
+        return vrm, vrp, vre, vim, vip, vie
     irm, irp, ire, iim, iip, iie = pari_field3_complex_inverse(rm, rp, re, im, ip, ie)
     if c0 == 0:
         # As in `RgX_cxeval`, zero remains an exact accumulator until the
@@ -486,9 +493,11 @@ def pari_field3_high_precision_embeddings(
     rm, rp, re = pari_field3_pack_fixed(real_complex, working, precision)
     im, ip, ie = pari_field3_pack_fixed(imaginary_complex, working, precision)
 
-    # `nf_basden` cancels the common 37 from the first three columns.  The
-    # fourth column retains denominator 37.  Reconstruct the realified `M`
-    # directly from the exact basis owner; no 192-bit `M` is consumed.
+    # `nf_basden` retains the common 37 in every primitive basis polynomial,
+    # evaluates those integer polynomials, and only then divides every column
+    # by 37.  Do not cancel this factor algebraically: the generic real
+    # multiplication and division graph has an observable last-word effect.
+    # No resident 192-bit `M` is consumed.
     for row in range(4):
         offset = 4 * row
         scratch[3 * offset] = 1
@@ -497,17 +506,11 @@ def pari_field3_high_precision_embeddings(
         if row == 3:
             scratch[3 * offset] = 0
     for column in range(1, 4):
-        denominator = 1
-        c0 = basis[4 * column] // 37
-        c1 = basis[4 * column + 1] // 37
-        c2 = basis[4 * column + 2] // 37
-        c3 = basis[4 * column + 3] // 37
-        if column == 3:
-            denominator = 37
-            c0 = basis[12]
-            c1 = basis[13]
-            c2 = basis[14]
-            c3 = basis[15]
+        denominator = 37
+        c0 = basis[4 * column]
+        c1 = basis[4 * column + 1]
+        c2 = basis[4 * column + 2]
+        c3 = basis[4 * column + 3]
         vm, vp, ve = pari_field3_real_horner(
             fm, fp, fe, c0, c1, c2, c3, denominator, column
         )

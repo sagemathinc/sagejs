@@ -10,12 +10,14 @@ capsule binds:
 - run identity `pari-2.17.4:nfinit192->nfnewprec153088:field3`;
 - polynomial `[-2000042, -2000022, 0, 0, 1]` and signature `(2, 1)`;
 - `nf_get_zkden = 37` and the exact `nf_get_zkprimpart` basis;
-- all 64 exact multiplication-tensor cells.
+- all 64 exact multiplication-tensor cells;
+- the 153152-bit `make_M` root state produced for the 153088-bit request, and
+  the authentic `trunc = 0` choice made by `nfnewprec_shallow`.
 
 Its SHA-256 is
-`e515b1795d3973f3cebf1e195993fdf1941891ab07670a182488f38c38788b17`.
+`03a19e230febd45c79dab3b0f42366b8646f8b77a3246d9dc7bd2c16cae5528e`.
 The complete pristine trace SHA-256 is
-`8ae3beda63f437d4cd43ef8d1b16c212d5004cb957a2536cba5765c794f4059a`.
+`7ff3153e7fd4acdb5162ce6082726144bc88031a18a993bf6406c983da6c1973`.
 The tensor is not used as a substitute for basis provenance: the native leaf
 checks every basis coefficient, while an independent `Fraction` replay derives
 all tensor cells anew from the polynomial and basis.
@@ -29,19 +31,24 @@ polynomial residual exponents are `-153132`, `-153126`, `-153126`, and
 `-153124`.
 
 The same source evaluates the exact integral basis using PARI's ordinary or
-inverse Horner association. Fifteen of the sixteen realified `M` triples are
-bit-exact. Entry 6—second real embedding of `x^2-x`—is one mantissa ulp below
-PARI, at the identical 153152-bit precision and exponent 13. This is retained
-as an explicit diagnostic, not patched with a field-specific constant.
+inverse Horner association. All sixteen realified `M` triples are bit-exact.
+The one-ulp discrepancy in the previous lane was not missing numerical root
+information: the exported roots are already the authentic 153152-bit
+`F->prec + F->extraprec` state consumed by `make_M`.
 
-The missing primitive is now exact: `make_M` evaluates the basis from
-`F->ro` at `F->prec + F->extraprec`, and only afterwards truncates both `M`
-and the exported roots. Re-evaluating from the exported roots therefore cannot
-recover every guard-word decision. A pristine experiment shows that one extra
-PARI root word makes this cell agree. Closing full `M` requires reproducing or
-retaining that pre-truncation `get_roots` state. It does not require a new
-product primitive: the reviewed source-matched high-precision product path is
-used and the generated core contains `mpz_mul`.
+The decisive source detail is `nf_basden`. It retains the common denominator
+37 for every primitive basis polynomial. Thus PARI evaluates `37*x` and
+`37*(x^2-x)`, as well as the fourth numerator, before dividing every column by
+37. Algebraically cancelling 37 from the first three columns changes one last
+word. The port now preserves the primitive numerators and common denominator
+through the operation graph. No expected `M` value or field-specific ulp
+correction is used.
+
+For this exact `nfnewprec_shallow` path, `make_M_G(&F, 0)` selects
+`trunc = 0`; a `gprec_w` shrink is therefore *not* executed. This source fact
+is captured explicitly rather than imposing the truncation inferred in the
+earlier audit. The generated core still uses the reviewed source-matched
+high-precision `mpz_mul` path.
 
 Independent exact dyadic replay also checks every embedding homomorphism
 identity against the re-derived tensor. The maximum residual exponent is
@@ -50,10 +57,13 @@ identity against the re-derived tensor. The maximum residual exponent is
 ## Focused native probe
 
 The GMP backend compiled successfully and completed the final positive call in
-268.4 ms. The probe was run with a 4 GiB address-space limit and 600-second
-timeout. Wrong-target and mutated-basis calls reject before changing public
-root, embedding, or state buffers. No 192-bit `M`, arbitrary logarithm, or
-`getfu` result is consumed or claimed.
+276.7 ms. The probe was run with a 4 GiB address-space limit and 600-second
+timeout. Wrong-target, mutated-polynomial, and mutated-basis calls reject
+before changing public root, embedding, or state buffers. No 192-bit `M`,
+arbitrary logarithm, or `getfu` result is consumed or claimed.
+
+The same positive oracle comparison passes through the ordinary CPython
+fallback and generated JavaScript backend as well as GMP.
 
 Reproduce with:
 
