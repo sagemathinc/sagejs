@@ -21,17 +21,27 @@ For the frozen field-3 quartic `x^4 - 2000022*x - 2000042`, the live HNF has
 two rows. Its final permutation begins with packet indices 11 and 2. The
 prepared packet descriptors at those positions have primes 13 and 3. The new
 leaf does not accept those values as expected answers: it reads the live
-permutation, selects the corresponding same-workspace descriptors, and
-reconstructs each `pr_get_tau` multiplication matrix from the prepared
-integral-basis multiplication table and packet generator.
+permutation, selects the corresponding same-workspace descriptors, and calls
+`pari_prepared_prime_descriptor_suffix(table, u, 4, p, 0, ...)`. That call
+derives PARI's antiuniformizer/complement `t` before constructing
+`pr_get_tau`; using the multiplication matrix of the uniformizer `u` here is
+incorrect.
+
+The descriptor suffix has two intentional layouts. Its detached published
+`tau` is column-major, matching the prepared prime-descriptor contract. Its
+internal `tau_work` is row-major, matching `ZM_hnfmodid` and the translated
+quartic assembly. The live join stages both owners separately, passes only
+`tau_work` into genback, and retains the published `tau` together with `t` as
+descriptor evidence.
 
 ## Retained evidence
 
 After the existing Smith/quartic assembly succeeds, the join transactionally
 retains:
 
-- the one-based packet indices, primes, algebraic generators, and reconstructed
-  multiplication matrices used for both class generators;
+- the one-based packet indices, primes, algebraic generators, derived
+  antiuniformizers, and published column-major multiplication matrices used
+  for both class generators;
 - both signed `Uir` order columns and the complete `M1` matrix, for the exact
   identities `Uir_j * D_j = W * M1_j` checked by the assembly;
 - the ordered compact principal corrections, including offsets, kinds,
@@ -51,11 +61,25 @@ live H, C, permutation, and packet owners directly to the new suffix. No class
 invariant, generator ideal, active packet choice, or principal factor is copied
 from the PARI answer.
 
+For each selected packet `(P, p)`, the checker independently proves
+
+```text
+ZM_hnfmodid(pr_get_tau(P), p)
+  = pari_quartic_ideal_hnf_inverse_scaled(P)
+  = p P^-1
+```
+
+and multiplies the result back by `P` to obtain the diagonal HNF of `(p)`.
+It also reconstructs the old multiplication matrix of `u` and requires its
+HNF to differ from the authentic generator ideal, making the original bug a
+direct regression case.
+
 The resulting live inputs are replayed through the identical compiled source
 on JavaScript, GMP, and tagged backends. The checker requires exact agreement
-for the class group `[2, 2]`, class number 4, both generator ideals, all retained
-order/principal evidence, and the suffix state. Mutating either the live HNF or
-the active permutation is rejected without publishing any retained witness.
+for the class group `[2, 2]`, class number 4, both generator ideals, both
+antiuniformizers, all retained order/principal evidence, and the suffix state.
+Mutating the live HNF, duplicating the active permutation entry, or corrupting
+the selected generator is rejected without publishing any retained witness.
 Generated isolated core code is also scanned for host callbacks.
 
 This remains an experimental prepared-boundary cut. The field-specific

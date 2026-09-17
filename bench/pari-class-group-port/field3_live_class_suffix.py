@@ -6,15 +6,16 @@ This is the narrow PARI 2.17.4 `class_group_gen` join for the frozen
 field-3 mixed quartic.  The resident retry driver publishes `W` in the
 logical prefix of its H owner, `C` in the logical prefix of its transformed
 log owner, and the final factor-base permutation.  This leaf selects the
-corresponding prepared prime descriptors, reconstructs their multiplication
-matrices from the prepared integral-basis table, and feeds those values to the
-existing mixed-quartic assembly.  No class invariant, generator ideal,
-principal correction, or expected descriptor is an input.
+corresponding prepared prime descriptors, derives each `pr_get_tau` from its
+antiuniformizer, and feeds the row-major working matrix to the existing
+mixed-quartic assembly.  The separately published descriptor matrix retains
+PARI's column-major layout.  No class invariant, generator ideal, principal
+correction, or expected descriptor is an input.
 """
 
 from sagejs.native import IntegerBuffer, Int64Buffer, native
 
-from .prime_ideal_hnf import pari_basis_multiplication_table
+from .prime_descriptor import pari_prepared_prime_descriptor_suffix
 from .quartic_class_group_assembly import pari_mixed_quartic_class_group_assembly
 
 
@@ -32,9 +33,21 @@ def pari_field3_live_class_suffix(
     relation_hnf: IntegerBuffer,
     relation_logs: IntegerBuffer,
     selected_primes: IntegerBuffer,
+    selected_antiuniformizers: IntegerBuffer,
     selected_tau: IntegerBuffer,
+    selected_tau_work: IntegerBuffer,
     descriptor_generator: IntegerBuffer,
+    descriptor_workspace: IntegerBuffer,
+    descriptor_anti_work: IntegerBuffer,
+    descriptor_column: IntegerBuffer,
+    descriptor_tau_work: IntegerBuffer,
+    descriptor_x: IntegerBuffer,
+    descriptor_y: IntegerBuffer,
+    descriptor_spare: IntegerBuffer,
+    descriptor_stack: IntegerBuffer,
+    descriptor_anti: IntegerBuffer,
     descriptor_tau: IntegerBuffer,
+    descriptor_state: IntegerBuffer,
     generator_ideals: IntegerBuffer,
     generated_ideals: IntegerBuffer,
     relation_exponents: IntegerBuffer,
@@ -82,6 +95,7 @@ def pari_field3_live_class_suffix(
     retained_packet_indices: IntegerBuffer,
     retained_packet_primes: IntegerBuffer,
     retained_packet_generators: IntegerBuffer,
+    retained_packet_antiuniformizers: IntegerBuffer,
     retained_packet_tau: IntegerBuffer,
     retained_order_exponents: IntegerBuffer,
     retained_order_m1: IntegerBuffer,
@@ -125,15 +139,28 @@ def pari_field3_live_class_suffix(
         or len(relation_hnf) < dimension * dimension
         or len(relation_logs) < places * dimension * log_width
         or len(selected_primes) < active
+        or len(selected_antiuniformizers) < active * degree
         or len(selected_tau) < active * ideal_size
+        or len(selected_tau_work) < active * ideal_size
         or len(descriptor_generator) < degree
+        or len(descriptor_workspace) < 2 * ideal_size + 3 * degree
+        or len(descriptor_anti_work) < degree
+        or len(descriptor_column) < degree
+        or len(descriptor_tau_work) < ideal_size
+        or len(descriptor_x) < degree
+        or len(descriptor_y) < degree
+        or len(descriptor_spare) < degree
+        or len(descriptor_stack) < 1
+        or len(descriptor_anti) < degree
         or len(descriptor_tau) < ideal_size
+        or len(descriptor_state) < 3
     ):
         raise ValueError("short field-3 live descriptor owner")
     if (
         len(retained_packet_indices) < active
         or len(retained_packet_primes) < active
         or len(retained_packet_generators) < active * degree
+        or len(retained_packet_antiuniformizers) < active * degree
         or len(retained_packet_tau) < active * ideal_size
         or len(retained_order_exponents) < active * dimension
         or len(retained_order_m1) < dimension * dimension
@@ -177,17 +204,37 @@ def pari_field3_live_class_suffix(
         selected_primes[generator] = prime
         for i in range(degree):
             descriptor_generator[i] = packet_generators[packet_index * degree + i]
-        pari_basis_multiplication_table(
-            basis_table, descriptor_generator, degree, descriptor_tau
+        status = pari_prepared_prime_descriptor_suffix(
+            basis_table,
+            descriptor_generator,
+            degree,
+            prime,
+            0,
+            descriptor_workspace,
+            descriptor_anti_work,
+            descriptor_column,
+            descriptor_tau_work,
+            descriptor_x,
+            descriptor_y,
+            descriptor_spare,
+            descriptor_stack,
+            descriptor_anti,
+            descriptor_tau,
+            descriptor_state,
         )
+        if status != 0 or descriptor_state[0] != 0 or descriptor_state[2] != 1:
+            return 2
+        for i in range(degree):
+            selected_antiuniformizers[generator * degree + i] = descriptor_anti[i]
         for i in range(ideal_size):
             selected_tau[generator * ideal_size + i] = descriptor_tau[i]
+            selected_tau_work[generator * ideal_size + i] = descriptor_tau_work[i]
 
     status = pari_mixed_quartic_class_group_assembly(
         relation_hnf,
         relation_logs,
         selected_primes,
-        selected_tau,
+        selected_tau_work,
         dimension,
         active,
         generator_ideals,
@@ -249,6 +296,9 @@ def pari_field3_live_class_suffix(
             retained_packet_generators[generator * degree + i] = packet_generators[
                 packet_index * degree + i
             ]
+            retained_packet_antiuniformizers[generator * degree + i] = (
+                selected_antiuniformizers[generator * degree + i]
+            )
         for i in range(ideal_size):
             retained_packet_tau[generator * ideal_size + i] = selected_tau[
                 generator * ideal_size + i
@@ -278,6 +328,7 @@ def pari_field3_live_class_suffix(
     suffix_state[10] = active
     suffix_state[11] = (
         2 * active
+        + active * degree
         + active * degree
         + active * ideal_size
         + active * dimension
