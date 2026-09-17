@@ -83,16 +83,21 @@
       "command": "authenticated fragments 89, 90, and 91; ordered assembly of parent 88:4",
       "status": "passed",
       "summary": "Qualified all four independent fragments and assembled exactly one canonical ordinary v1 88:4 capsule; global planner reports 23 complete, 53 missing, zero capsule-only"
+    },
+    {
+      "command": "ordinary batches 92:4 through 120:4; authenticated current-cache fragments 124 through 127; ordered assembly of parent 124:4",
+      "status": "passed-after-timeout-and-cache-provenance-recovery",
+      "summary": "Qualified eight ordinary batches, fail-stopped timed-out 124:4, preserved and superseded three pre-transition fragment receipts after byte-identical recomputation under the frozen current cache identity, and assembled one canonical ordinary 124:4 capsule; global planner reports 32 complete, 44 missing, zero capsule-only"
     }
   ],
   "handoff": {
-    "summary": "Qualified authentic deterministic batches 0:4 through 84:4, then recovered the timed-out 88:4 batch from four independently supervised authenticated column fragments. The ordered assembler published one canonical ordinary v1 capsule/receipt, and global resume state is 23 complete, 53 missing, zero capsule-only.",
+    "summary": "Qualified authentic deterministic batches through 124:4, recovering timed-out batches 88:4 and 124:4 from independently supervised authenticated column fragments. Cache-provenance supersession preserved three older immutable receipts while selecting byte-identical recomputations under one frozen cache identity. Global resume state is 32 complete, 44 missing, zero capsule-only.",
     "risks": [
       "The killed four-column v1 worker emits native timing only after return; its >591-second native attribution is inferred from measured setup overhead, while the four isolated fragments total only 379679 ms of native time",
-      "Ordinary ranges beginning at 92 have not yet resumed, so later slow-batch behavior remains unknown"
+      "Two ordinary four-column ranges have reached the fixed timeout; later ranges may require the authenticated one-column recovery protocol"
     ],
     "next_steps": [
-      "After explicit resource authorization, resume the ordinary deterministic campaign at 92:4 with the unchanged fail-stop controller",
+      "After explicit resource authorization, resume the ordinary deterministic campaign at 128:4 with the unchanged fail-stop controller",
       "If a later ordinary batch reaches the fixed timeout, use the same authenticated fragment protocol rather than relaxing resource limits",
       "Integration owns broad native and strict suites"
     ]

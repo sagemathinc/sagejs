@@ -253,5 +253,50 @@ are byte-identical to the four fragment payloads in source order and that all
 authority, prepared-owner, kernel, norm, and source hashes remain unchanged.
 Aggregate fragment-native time was 379,679.041755 ms, aggregate monitored wall
 time was 414,473 ms, and maximum peak RSS was 1,380,024 KiB. Global resume
-planning now reports 23 complete ranges, 53 missing ranges, and zero
-capsule-only ranges. No ordinary range beginning at 92 or later has started.
+planning at that checkpoint reported 23 complete ranges, 53 missing ranges,
+and zero capsule-only ranges.
+
+## Completed fragment recovery and ordinary batch 124:4
+
+Ordinary ranges `92:4` through `120:4` subsequently qualified sequentially.
+The next range, `124:4`, reached the same fixed 600-second timeout without
+publishing a capsule or receipt. Its four independent column runs initially
+qualified, but the first assembly attempt failed closed: columns 124--126 had
+cache key `0373a098aba3964394366c13eea899bf1c927c97123d150bd568a9b679492c0a`,
+whereas column 127 had cache key
+`3e7e26feddd8d2d9cef851b9a626b018e28aa5cfddb137d6237ba18e454c6643`.
+The transition was caused by an integration update to the cache-fingerprinted
+native C backend between columns 126 and 127, not by a change to the Python
+kernel, authority, prepared embedding, or source owners.
+
+The fail-closed receipt supersession protocol now also supports authentic
+recomputation under a frozen cache identity. It preserves the old receipt,
+requires the replacement's fragment, output, state, source identities,
+resource policy, core size, and addon size to be identical, and permits only
+the measured execution-resource fields and cache key to differ. Each
+replacement is additionally bound to the immutable qualified column-127
+receipt as its cache authority. The lightweight self-test exercises accepted
+replacement and rejects a changed core size; it now has 15 negative controls.
+
+Columns 124--126 were recomputed one at a time under the frozen current backend
+fingerprint. Their mathematical fragment hashes remained respectively
+`bbba752860669eeeb731e60563e8736b84d989c8fa01d18f093c3afef360a379`,
+`4bc4c18127a4c6562a2e44346e9c2bbfb3694d2552561359cc417237e6b26117`,
+and `c93c8bcb9bd813dbd06df0b4ad730acfeca35b15a36b741852ffc227c837559d`.
+Their replacement receipt hashes are respectively
+`193eb9e5ae8b7ec2d5092374793397c5bbe7339b96c1254ebfca785c4780d07e`,
+`076b05912417b5652721df899976c94f4d8c7056bb8fd74d4a8f00367d13d89d`,
+and `235b0c41b6f357a7f387b0acb1a6a027f2e925b9af772768ecf4e56b3cd330d9`.
+All excluded receipts remain immutable and are named by three independently
+validated supersession records.
+
+After the planner selected four receipts with the common current cache key,
+the ordered assembler ran exactly once. Independent reconstruction proved its
+28 cells equal the four fragment payloads in source order. The output digest is
+`5dfd354ecc7fdfe9c9946317d9d9720954df591f518783488050ae1700c1877b`;
+the 370,101-byte mode-0444 capsule has SHA-256
+`97da3a236c082af7609b5b882109cfe08656a8871078fd3f5b7c8b0da79d678e`,
+and the 5,374-byte mode-0444 receipt has SHA-256
+`ac2f619c13fdf4b9e0499a727c27cd6e598a1dc44efbb6c85df9ebe02e991865`.
+Global resume planning now reports 32 complete ranges, 44 missing ranges, and
+zero capsule-only ranges. No ordinary range beginning at 128 has started.

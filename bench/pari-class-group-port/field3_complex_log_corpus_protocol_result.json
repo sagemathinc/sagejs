@@ -1,6 +1,6 @@
 {
   "schema": "sagejs-field3-complex-log-corpus-protocol-result-v1",
-  "status": "batch-88-recovered-awaiting-batch-92",
+  "status": "batch-124-recovered-awaiting-batch-128",
   "baseCommit": "56324f09872e235b20207f46aa83e4cadebde898",
   "schedule": {
     "batches": 76,
@@ -27,7 +27,7 @@
     "immutableMergeArtifacts": 2,
     "immutableColumnFragments": 4,
     "fragmentAssemblyCapsuleSha256": "bc4e95ba3970b4350c702f914119e338ead2f0995c76c54c9ee72f1e6a39ecf6",
-    "negativeTests": 14
+    "negativeTests": 15
   },
   "estimateFromQualifiedPrefixRun": {
     "warmBatchSeconds": [190, 230],
@@ -157,14 +157,36 @@
       "receiptSha256": "88352efde1026b470e20728dabf9f36370571fe5a4f7cecf12d0f5fec18eb5c7"
     }
   },
+  "columnFragmentRecovery124": {
+    "parentRange": [124, 4],
+    "timedOutOrdinaryBatchPublished": false,
+    "frozenCacheKey": "3e7e26feddd8d2d9cef851b9a626b018e28aa5cfddb137d6237ba18e454c6643",
+    "receiptSupersessions": 3,
+    "fragmentResumeState": {
+      "complete": 4,
+      "missing": 0,
+      "fragmentOnly": 0
+    },
+    "recomputedColumns": [124, 125, 126],
+    "assembledBatch124": {
+      "outputSha256": "5dfd354ecc7fdfe9c9946317d9d9720954df591f518783488050ae1700c1877b",
+      "packedCells": 28,
+      "state": ["0", "153088", "124", "4", "0", "0", "4", "128", "173"],
+      "runMilliseconds": 372620.0594,
+      "wallMilliseconds": 435070,
+      "peakAggregateRssKiB": 1360984,
+      "capsuleSha256": "97da3a236c082af7609b5b882109cfe08656a8871078fd3f5b7c8b0da79d678e",
+      "receiptSha256": "ac2f619c13fdf4b9e0499a727c27cd6e598a1dc44efbb6c85df9ebe02e991865"
+    }
+  },
   "resumeState": {
-    "complete": 23,
-    "missing": 53,
+    "complete": 32,
+    "missing": 44,
     "capsuleOnly": 0
   },
-  "heavyBatchesExecuted": 24,
-  "heavyBatchesPassed": 22,
-  "heavyBatchesFailed": 1,
-  "heavyBatchesInterruptedBeforePublication": 1,
+  "heavyBatchesExecuted": 32,
+  "heavyBatchesPassed": 30,
+  "heavyBatchesFailed": 2,
+  "heavyBatchesInterruptedBeforePublication": 2,
   "completeOwnerPublished": false
 }
