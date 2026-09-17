@@ -1,0 +1,42 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "final-immutable-mutation-replay",
+  "title": "Final Immutable Mutation Replay",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Harden final immutable class-group result replay by rejecting mutation of every plan-required material component",
+  "base_commit": "c38d42cd94db20a44d77a8c25453ad5808897ce1",
+  "claims": [
+    "bench/pari-class-group-port/check_class_group_final_mutations.cjs",
+    "bench/pari-class-group-port/class_group_final_mutation_fixture.json",
+    "bench/pari-class-group-port/class_group_final_mutation_replay.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Independent canonical decode, exact integer replay, and out-of-band publication authority"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node bench/pari-class-group-port/check_class_group_final_mutations.cjs",
+    "node bench/pari-class-group-port/check_class_group_final_state.cjs"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
