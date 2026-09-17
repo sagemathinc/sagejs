@@ -58,3 +58,20 @@ and the Sage.js compiler must already be built.
 The runner performs at least seven alternating AB/BA pairs. Every receipt sets
 `diagnosticOnly=true`, `qualifiedTiming=false`, and `finalTimingRun=false`.
 Do not promote it as a quiet-host or cross-machine performance result.
+
+## Development-host observation
+
+After the cold-replay honesty correction, one seven-pair run on 2026-09-17
+authenticated prepared-input digest
+`03a4ac33c173b65168361f3ff612bc45ed7ff793881a8d5181b1c9a0868fe658`
+and common-result digest
+`6ba7e2352ae9c7ac804ac92caa5455ad01d882355d130cc2a06905d4692fd9ff`
+in every arm. The unqualified medians were `2492.960 ms` for Sage.js and
+`75.674 ms` for PARI, a `32.94x` ratio. Ranges were
+`2487.974-2531.313 ms` and `67.768-81.197 ms`, respectively.
+
+This observation is useful because it proves that the complete corrected root
+can be compared repeatedly without answer-bearing inputs or digest drift. It
+does **not** localize the remaining gap: both implementations were wholly
+residual, so the honest attributed-gap fraction was zero. Native and PARI stage
+clocks are prerequisites for the campaign's 80% attribution gate.
