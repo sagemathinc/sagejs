@@ -1,0 +1,92 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "final-outcome-c-adapter",
+  "title": "Wire complete H1 root into Outcome-C adapter",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Invoke the unified complete native H1 root through an honest standardized internal Outcome-C adapter while keeping public completion false",
+  "base_commit": "a998fc1bd2ae554af0fa21a287344446f217ff69",
+  "claims": [
+    "bench/pari-class-group-port/h1_outcome_c_live_adapter.cjs",
+    "bench/pari-class-group-port/check_h1_outcome_c_live_adapter.cjs",
+    "bench/pari-class-group-port/h1_outcome_c_live_adapter.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Unified complete H1 root final publication"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_h1_outcome_c_live_adapter.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.073,
+      "started_at": "2026-09-17T06:12:07.411Z",
+      "commit": "a998fc1bd2ae554af0fa21a287344446f217ff69",
+      "workspace_fingerprint": "e596dd1e503eab67a9b103f10141fbf49be04595602eb59dfae7be9285d2ddb5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.935,
+      "started_at": "2026-09-17T06:13:06.935Z",
+      "commit": "a998fc1bd2ae554af0fa21a287344446f217ff69",
+      "workspace_fingerprint": "e596dd1e503eab67a9b103f10141fbf49be04595602eb59dfae7be9285d2ddb5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 57.484,
+      "started_at": "2026-09-17T06:15:16.058Z",
+      "commit": "a998fc1bd2ae554af0fa21a287344446f217ff69",
+      "workspace_fingerprint": "3abf71e508cd602f9a5b4d7d8dde5af23ca46729e9168084a09af2b56bff3121",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_h1_outcome_c_live_adapter.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.084,
+      "started_at": "2026-09-17T06:16:22.872Z",
+      "commit": "a998fc1bd2ae554af0fa21a287344446f217ff69",
+      "workspace_fingerprint": "3abf71e508cd602f9a5b4d7d8dde5af23ca46729e9168084a09af2b56bff3121",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "The authentic Sage adapter now invokes the 564-argument unified complete H1 native root, authenticates prepared-NF state before timing, serializes its atomic 811-cell publication, exposes all material live replay owners to one injected cold authority, reports whole-root-only timing, and refuses correspondence completion until a digest-bound cold replay receipt is returned. Public completion remains false.",
+    "risks": [
+      "The terminal snapshot/cold replay implementation must still be connected to authenticateFinalPublication; the default adapter intentionally remains correspondence-incomplete.",
+      "The fixed owner shapes are restricted to the audited prepared equal-bound H1 sentinel and are not a general class-group ABI.",
+      "Broad pnpm test:native validation is deferred to the converged integration branch because concurrent multi-gigabyte unified-root compiler jobs exhaust the available build slots."
+    ],
+    "next_steps": [
+      "Have the cold-replay lane synchronously capture replayOwners and return the strict replay receipt.",
+      "Run the real alternating matched diagnostic only after that integration; keep this adapter whole-root-only until native stage clocks exist."
+    ]
+  }
+}
