@@ -193,7 +193,12 @@ function composeUnit(full15, c5, c6, factorbackSource = null, factorback = null)
   identity(factorbackSource.value, FACTORBACK_SOURCE_SCHEMA,
     "factorback source owner");
   identity(factorback.value, FACTORBACK_SCHEMA, "factorback receipt");
+  const relationOwnerSha256 = digest(factorbackSource.value.relationOwnerSha256,
+    "factorback source relation owner");
   if (factorbackSource.value.c5OwnerSha256 !== c5.sha256 ||
+      factorbackSource.value.c6OwnerSha256 !== c6.sha256 ||
+      factorbackSource.value.embeddingOwnerSha256 !==
+        c6.value.embeddingOwnerSha256 ||
       Number(integer(factorbackSource.value.precision,
         "factorback source precision")) !== precision ||
       Number(integer(factorbackSource.value.generation,
@@ -201,6 +206,9 @@ function composeUnit(full15, c5, c6, factorbackSource = null, factorback = null)
       factorback.value.sourceOwnerSha256 !== factorbackSource.sha256 ||
       factorback.value.c5OwnerSha256 !== c5.sha256 ||
       factorback.value.c6OwnerSha256 !== c6.sha256 ||
+      factorback.value.embeddingOwnerSha256 !==
+        factorbackSource.value.embeddingOwnerSha256 ||
+      factorback.value.relationOwnerSha256 !== relationOwnerSha256 ||
       Number(integer(factorback.value.precision, "factorback precision")) !== precision ||
       Number(integer(factorback.value.generation, "factorback generation")) !== generation)
     fail("factorback ancestry changed");
@@ -260,9 +268,14 @@ function composeUnit(full15, c5, c6, factorbackSource = null, factorback = null)
       c3OwnerSha256, acceptedC4OwnerSha256,
       embeddingOwnerSha256: c6.value.embeddingOwnerSha256,
       candidateSha256: c6.value.candidateSha256,
+      relationOwnerSha256,
       factorbackSourceOwnerSha256: factorbackSource.sha256,
       factorbackReceiptSha256: factorback.sha256 },
     proof: { ...verified, inverseMask: mask,
+      sourceOwnerSha256: factorbackSource.sha256,
+      sourceC6OwnerSha256: factorback.value.c6OwnerSha256,
+      sourceEmbeddingOwnerSha256: factorback.value.embeddingOwnerSha256,
+      sourceRelationOwnerSha256: factorback.value.relationOwnerSha256,
       columns: columns.map((entry) => ({ ...entry })) },
     assumptions: { pari2174Correspondence: true, exactFactorbackVerified: true,
       signInverseMaterializationVerified: true, publicCompletion: false },
