@@ -368,6 +368,54 @@ pass at 902,948/903,000 core bytes. Exact evidence is in
 `agents/python-attribute-store-assignment.md`. Keep this candidate behind the
 store/read integration queue and do not describe the broader M5 cliff as closed.
 
+**2026-09-17 lazy-identity checkpoint:** a fresh-main candidate removes the
+redundant `Object.defineProperty` that eagerly allocated `ρσ_object_id` on every
+ordinary construction. Stable identity already belongs to the runtime `id()`
+map and is now acquired only by `id`, identity hashing, or synthetic repr.
+Subscription fallback uses the inherited immutable class marker, preserving
+Python errors even if foreign code spoofs the writable host `constructor`.
+Controlled exact-artifact measurements improve empty construction by 56.6%,
+no-op initialization by 38.5%, positional construction plus a method by 7.2%,
+and keyword construction plus a method by 8.5%; call-only rows remain flat.
+Empty construction is 2.05x CPython, while initialized construction remains
+12.7-14.1x and the call cliffs remain open. All 225 portable files, the full
+differential baseline, traitlets/attrs/decorator workflows, strict checks,
+documentation, merge, architecture, and the unchanged 902,888/903,000 core
+budget pass. Exact artifacts and qualification are in
+`agents/python-lazy-instance-identity.md`.
+
+**2026-09-17 exact-addition checkpoint:** a fresh-main candidate classifies
+primitive exact integer operands once in the shared bootstrap and promotes to
+`BigInt` before a safe-number sum loses precision. Floats, unsafe foreign
+numbers, objects, Python/Sage dispatch, and the public runtime surface remain
+unchanged. Controlled exact-artifact measurements improve positional calls by
+73.7%, keyword functions by 33.2%, keyword methods by 25.1%, positional
+construction plus a method by 15.6%, and keyword construction plus a method by
+7.3%. Positional calls are now 2.24x CPython in this workload, but keyword and
+initialized-construction paths remain 11–19x and therefore remain M5 cliffs.
+All 225 portable files, the 508-case differential baseline, strict checks,
+traitlets, full build, and the unchanged 902,922/903,000 core budget pass.
+Exact artifacts and measurements are recorded in
+`agents/python-exact-integer-add.md`.
+
+**2026-09-17 default-construction checkpoint:** a follow-up omits the live
+`object.__init__` call only when a class without a declared initializer is
+called with an empty argument vector and its resolved initializer is still the
+captured original. Declared initializers retain the original emitted dispatch;
+mutation, inheritance, custom allocation, nonempty calls, and assigned
+initializers retain the general path. Controlled exact-artifact measurements
+improve empty construction another 60.4%, from 15.949 ms to 6.318 ms per
+100,000 checked constructions; the same CPython run is 7.819 ms. Call-only and
+initialized-construction rows remain within 1.6% and their large 3.3-25.1x
+CPython gaps remain open. The candidate is 162 standalone bytes larger while
+shorter internal names reduce counted core source to 902,846/903,000 bytes.
+Focused mutation/lowering tests, the full differential baseline, strict checks,
+traitlets, attrs, decorator, documentation, merge, and architecture gates pass.
+The campaign separately exposed the pre-existing acceptance of unexpected
+positional arguments by an empty class; repair that semantic defect without
+mixing it into the empty-call speed path. Exact evidence is in
+`agents/python-default-construction.md`.
+
 Continue next with integration-aware qualification, the receiver-lookup campaign,
 and true handled-exception ownership. Generator/coroutine suspension makes a
 single global active-exception pointer unsafe: preserve owned handlers while

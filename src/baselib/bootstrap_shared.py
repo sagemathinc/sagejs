@@ -77,6 +77,10 @@ def ρσ_unbound_method_adapter(target_function):
     })()"""
 
 
+def ρσ_exact_integer_add(left, right, missing):
+    return r"""%js (()=>{const a=typeof left,b=typeof right,e=(t,v)=>t==="boolean"||t==="bigint"||t==="number"&&Number.isSafeInteger(v);if(!e(a,left)||!e(b,right))return missing;if(a!=="bigint"&&b!=="bigint"){const v=Number(left)+Number(right);if(Number.isSafeInteger(v))return v===0?0:v}return BigInt(left)+BigInt(right)})()"""
+
+
 def ρσ_check_interrupt():
     return r"""%js (() => {
         const state = globalThis.__sagejs_interrupt_state__;

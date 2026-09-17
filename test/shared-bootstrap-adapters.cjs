@@ -9,6 +9,7 @@ const test = require("node:test");
 const root = join(__dirname, "..");
 const source = readFileSync(join(root, "src/baselib/bootstrap_shared.py"), "utf8");
 const names = ["ρσ_copy_method_metadata", "ρσ_native_method_adapter", "ρσ_unbound_method_adapter",
+  "ρσ_exact_integer_add",
   "ρσ_check_interrupt", "ρσ_normalize_exception", "ρσ_prepare_method_call",
   "ρσ_attr", "ρσ_interpolate_kwargs"];
 
@@ -206,6 +207,20 @@ test("shared bootstrap owns its low-level adapters and metadata copier", () => {
   const graph = JSON.parse(readFileSync(join(root, "architecture/package-graph.json"), "utf8"));
   assert.ok(graph.packages.find(entry => entry.id === "core-runtime").files
     .includes("src/baselib/bootstrap_shared.py"));
+});
+
+test("shared exact integer addition preserves primitive Python integers", () => {
+  const { ρσ_exact_integer_add: add } = context();
+  const missing = {};
+  assert.equal(add(1, 2, missing), 3);
+  assert.equal(add(true, true, missing), 2);
+  assert.equal(add(Number.MAX_SAFE_INTEGER, true, missing), 9007199254740992n);
+  assert.equal(add(Number.MAX_SAFE_INTEGER, false, missing), Number.MAX_SAFE_INTEGER);
+  assert.equal(add(4n, true, missing), 5n);
+  assert.equal(Object.is(add(-0, false, missing), 0), true);
+  assert.equal(add(1.5, 2, missing), missing);
+  assert.equal(add(Number.MAX_SAFE_INTEGER + 1, 1, missing), missing);
+  assert.equal(add({}, 1, missing), missing);
 });
 
 test("shared receiver adapters preserve binding, metadata getters, and cache identity", () => {
