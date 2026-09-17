@@ -1451,6 +1451,23 @@ stage("h1-exclusive-stage-timing-contract", {
   allowNoArtifactDirectory: true,
 });
 
+stage("h1-outcome-c-adapter-contract", {
+  dependencies: ["h1-exclusive-stage-timing-contract",
+    "prepared-h1-no-oracle-root"],
+  command: () => commandNode("check_h1_outcome_c_adapter.cjs"),
+  validate: (summary) => {
+    assert.equal(summary.parameterCount, 351);
+    assert.equal(summary.pairCount, 7);
+    assert.deepEqual(summary.authenticatedDigests,
+      ["result", "replay", "rng", "work"]);
+    assert.equal(summary.attributionSource, "coordinator-derived");
+    assert.equal(summary.workerMode, "self-test");
+    assert.equal(summary.finalTimingRun, false);
+  },
+  noFixture: true,
+  allowNoArtifactDirectory: true,
+});
+
 stage("mixed-getfu-prerequisite", {
   dependencies: ["nf-cxlog", "unit-lattice-reduction"],
   requiresPari: true,
@@ -1697,6 +1714,7 @@ stage("final-state", {
     "torsion-final-binding", "h1-honesty-terminal", "live-generic-controls",
     "live-class-result-assembly",
     "h1-live-final-driver-status", "h1-exclusive-stage-timing-contract",
+    "h1-outcome-c-adapter-contract",
     "mixed-getfu-quartic", "mixed-getfu-hard-precision",
     "quartic-direct-composition", "signed-genback-computed-t2",
     "generator-order-witness", "get-clg2", "precision-bridge",
