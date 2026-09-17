@@ -266,6 +266,21 @@ try {
   reject([coordinator, "--operation", "project-c7", "--accepted-c4-owner",
     alteredLatchOwner.file, "--accepted-c4-sha256", alteredLatchOwner.sha256,
     ...acceptArgs(owners, output).slice(3)], /C4 C3 latches changed/);
+  const candidateMutations = [
+    ["class-number", (value) => { value.candidateClassNumber = String(BigInt(value.candidateClassNumber) + 1n); }],
+    ["regulator", (value) => { value.candidateRegulator[0] = String(BigInt(value.candidateRegulator[0]) + 1n); }],
+    ["relations", (value) => { value.candidateRelations[0] = String(BigInt(value.candidateRelations[0]) + 1n); }],
+    ["denominator", (value) => { value.candidateDenominator = String(BigInt(value.candidateDenominator) + 1n); }],
+    ["zeta-factor", (value) => { value.candidateZetaFactor[0] = String(BigInt(value.candidateZetaFactor[0]) + 1n); }],
+  ];
+  for (const [label, mutate] of candidateMutations) {
+    const changed = structuredClone(c4);
+    mutate(changed);
+    const changedOwner = immutableOwner(temporary, `accepted-altered-${label}.json`, changed);
+    reject([coordinator, "--operation", "project-c7", "--accepted-c4-owner",
+      changedOwner.file, "--accepted-c4-sha256", changedOwner.sha256,
+      ...acceptArgs(owners, output).slice(3)], /payload diverged from authenticated replay/);
+  }
   fs.chmodSync(owners.catalog.file, 0o644);
   reject(acceptArgs(owners, output), /not an immutable mode-0444 file/);
   fs.chmodSync(owners.catalog.file, 0o444);

@@ -880,6 +880,22 @@ def project_analytic_owner(
         precision,
     ]:
         raise Field3AcceptedC4Failure("C4 compute_R acceptance latch changed")
+    # A projection is an authenticated adapter, not an endorsement of values
+    # copied from its input.  Replay the complete C4 derivation and require the
+    # supplied payload to be exactly the result of that computation.  This
+    # covers every candidate value as well as all state and ancestry fields.
+    recomputed = compose_authenticated_c4(
+        full,
+        c3,
+        field,
+        catalog,
+        supplied["fullTerminalOwnerSha256"],
+        supplied["c3OwnerSha256"],
+        supplied["fieldOwnerSha256"],
+        supplied["catalogOwnerSha256"],
+    )
+    if dict(owner) != recomputed:
+        raise Field3AcceptedC4Failure("C4 payload diverged from authenticated replay")
     ancestry = supplied
     return {
         "schema": (
