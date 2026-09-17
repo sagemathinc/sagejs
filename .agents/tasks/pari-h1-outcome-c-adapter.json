@@ -13,7 +13,8 @@
     "bench/pari-class-group-port/pari_h1_outcome_c_adapter.cjs",
     "bench/pari-class-group-port/check_pari_h1_outcome_c_adapter.cjs",
     "bench/pari-class-group-port/pari_h1_outcome_c_adapter.md",
-    "bench/pari-class-group-port/h1_outcome_c_worker.cjs"
+    "bench/pari-class-group-port/h1_outcome_c_worker.cjs",
+    "architecture/native-code.json"
   ],
   "dependencies": [],
   "references": [
@@ -43,7 +44,38 @@
     "node bench/pari-class-group-port/check_h1_outcome_c_adapter.cjs",
     "pnpm merge:check"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_pari_h1_outcome_c_adapter.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.505,
+      "started_at": "2026-09-17T04:08:26.144Z",
+      "commit": "227218186bc9f040aca39c1b450047d2309eadf3",
+      "workspace_fingerprint": "3c96a2a1a221ddfa88c38acdb6c31433d6cf2253cdf53baf5606433c89b394c5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_h1_outcome_c_adapter.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.73,
+      "started_at": "2026-09-17T04:08:27.334Z",
+      "commit": "227218186bc9f040aca39c1b450047d2309eadf3",
+      "workspace_fingerprint": "3c96a2a1a221ddfa88c38acdb6c31433d6cf2253cdf53baf5606433c89b394c5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1.726,
+      "started_at": "2026-09-17T04:08:29.717Z",
+      "commit": "227218186bc9f040aca39c1b450047d2309eadf3",
+      "workspace_fingerprint": "3c96a2a1a221ddfa88c38acdb6c31433d6cf2253cdf53baf5606433c89b394c5",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
     "summary": "",
     "risks": [],

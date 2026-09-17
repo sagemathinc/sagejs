@@ -144,6 +144,13 @@
       "rationale": "Standalone exact-payload and sanitizer lifecycle witness for the fused field-analysis resource. It is compiled only by focused tests and benchmarks and is not linked into Sage.js or exposed as a runtime boundary."
     },
     {
+      "path": "bench/pari-class-group-port/pari_h1_outcome_c_adapter.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Linux-only benchmark adapter for the pinned PARI 2.17.4 prepared-nf bnfinit flag-zero Outcome-C reference. It links PARI only in a disposable helper process, is never linked into Sage.js, and keeps the mathematical implementation in the independently maintained upstream library."
+    },
+    {
       "path": "bench/cowasm/buffer-landscape/c.c",
       "category": "benchmark-reference",
       "review_status": "accepted",
