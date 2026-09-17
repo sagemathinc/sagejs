@@ -9,7 +9,7 @@ const test = require("node:test");
 const root = join(__dirname, "..");
 const source = readFileSync(join(root, "src/baselib/bootstrap_shared.py"), "utf8");
 const names = ["ρσ_copy_method_metadata", "ρσ_native_method_adapter", "ρσ_unbound_method_adapter",
-  "ρσ_exact_integer_add",
+  "ρσ_exact_integer_add", "ρσ_exact_shift", "ρσ_exact_integer_submul",
   "ρσ_check_interrupt", "ρσ_normalize_exception", "ρσ_prepare_method_call",
   "ρσ_attr", "ρσ_interpolate_kwargs"];
 
@@ -226,18 +226,43 @@ test("shared bootstrap owns its low-level adapters and metadata copier", () => {
     .includes("src/baselib/bootstrap_shared.py"));
 });
 
-test("shared exact integer addition preserves primitive Python integers", () => {
-  const { ρσ_exact_integer_add: add } = context();
+test("shared exact integer arithmetic preserves primitive Python integers", () => {
+  const { ρσ_exact_integer_add: add, ρσ_exact_integer_submul: submul } = context();
   const missing = {};
+  const subtract = (left, right) => submul(left, right, false, missing);
+  const multiply = (left, right) => submul(left, right, true, missing);
   assert.equal(add(1, 2, missing), 3);
   assert.equal(add(true, true, missing), 2);
   assert.equal(add(Number.MAX_SAFE_INTEGER, true, missing), 9007199254740992n);
   assert.equal(add(Number.MAX_SAFE_INTEGER, false, missing), Number.MAX_SAFE_INTEGER);
   assert.equal(add(4n, true, missing), 5n);
   assert.equal(Object.is(add(-0, false, missing), 0), true);
+  assert.equal(subtract(-Number.MAX_SAFE_INTEGER, true), -9007199254740992n);
+  assert.equal(subtract(4n, true), 3n);
+  assert.equal(multiply(3037000500, 3037000500), 9223372037000250000n);
+  assert.equal(multiply(4n, true), 4n);
   assert.equal(add(1.5, 2, missing), missing);
   assert.equal(add(Number.MAX_SAFE_INTEGER + 1, 1, missing), missing);
   assert.equal(add({}, 1, missing), missing);
+});
+
+test("shared exact integer shifts preserve primitive Python integers", () => {
+  const { ρσ_exact_shift: shift } = context();
+  const missing = {};
+  const left = (value, count) => shift(value, count, 0, missing);
+  const right = (value, count) => shift(value, count, 1, missing);
+  assert.deepEqual([left(7, 3), left(-7, 3), right(7, 2), right(-7, 2)], [56, -56, 1, -2]);
+  assert.equal(left(2n ** 52n, 2), 2n ** 54n);
+  assert.equal(right(-(2n ** 60n), 4), -(2n ** 56n));
+  assert.equal(left(true, true), 2);
+  assert.equal(right(true, true), 0);
+  assert.equal(right(7, 100), 0);
+  assert.equal(right(-7, 100), -1);
+  assert.equal(left(0n, 100000000000000000000n), 0);
+  assert.equal(left(1, -1), missing);
+  assert.equal(right(1n, -1n), missing);
+  assert.equal(left(1.5, 1), missing);
+  assert.equal(right({}, 1), missing);
 });
 
 test("shared receiver adapters preserve binding, metadata getters, and cache identity", () => {
