@@ -957,6 +957,45 @@ stage("compact-unit-result", {
   allowNoArtifactDirectory: true,
 });
 
+stage("unit-relation-authority-frontier", {
+  dependencies: ["compact-unit-result", "presentation-authority"],
+  command: () => commandNode("check_unit_relation_authority_cubic.cjs"),
+  validate: (summary) => {
+    assert.equal(summary.rawRelations, 73);
+    assert.equal(summary.acceptedColumns, 7);
+    assert.equal(summary.missingEntries, 511);
+    assert.equal(summary.retainedRawMap, false);
+    assert.equal(summary.exactVerifierReplay, "exact-coordinate-equality");
+    assert.equal(summary.nonunitCancellation, true);
+    assert.equal(summary.answerDerivedReplayOnly, true);
+    assert.equal(summary.mutationsRejected, 4);
+  },
+  noFixture: true,
+  allowNoArtifactDirectory: true,
+});
+
+stage("unit-relation-authority", {
+  dependencies: ["presentation-authority", "unit-component-cubic",
+    "resident-cubic-gmp"],
+  command: (context) => commandNode("check_unit_relation_authority.cjs",
+    outputPath(context, "resident-cubic-gmp", "output")),
+  validate: (summary) => {
+    assert.equal(summary.schema,
+      "sagejs.pari-class-group/unit-relation-authority-v1");
+    assert.deepEqual(summary.activeShape, [2, 15]);
+    assert.deepEqual(summary.retainedShape, [2, 73]);
+    assert.deepEqual(summary.unitNorms, [-1, -1]);
+    assert.deepEqual(summary.torsionSigns, [1, 1]);
+    assert.deepEqual(summary.nonzeroRetainedCounts, [49, 46]);
+    assert.deepEqual(summary.maxAbsRetainedExponents, [164, 181]);
+    assert.equal(summary.mutationsRejected, 17);
+    assert.equal(summary.unitSaturationProved, false);
+    assert.equal(summary.publicCompletion, false);
+  },
+  noFixture: true,
+  allowNoArtifactDirectory: true,
+});
+
 stage("torsion-authority", {
   dependencies: ["unit-component-cubic", "resident-cubic-input"],
   command: (context) => commandNode("check_torsion_authority.cjs",
@@ -1017,17 +1056,18 @@ stage("authentic-h1-unit-success", {
     outputPath(context, "resident-cubic-gmp", "output")),
   validate: (summary) => {
     assert.equal(summary.schema,
-      "sagejs.pari-class-group/authentic-unit-correspondence-v1");
+      "sagejs.pari-class-group/authentic-authority-composition-v2");
     assert.equal(summary.field, "pari-2.17.4:x^3-20018*x+20034");
     assert.equal(summary.classNumber, 1);
     assert.equal(summary.classGeneratorCount, 0);
     assert.equal(summary.unitRank, 2);
     assert.deepEqual(summary.unitNorms, [-1, -1]);
     assert.equal(summary.correspondenceStatus,
-      "active-hnf-kernel-to-successful-unit-component");
+      "cold-replayed-authorities-linked-unit-regulator-unresolved");
     assert.equal(summary.finalDriverStatus, "not-published");
     assert.equal(summary.phase5Complete, false);
     assert.equal(summary.publicComplete, false);
+    assert.equal(summary.coordinatedRehashedMutations, 31);
   },
   noFixture: true,
   allowNoArtifactDirectory: true,
@@ -1263,7 +1303,9 @@ stage("final-state", {
     "honesty-quintic-collector-downstream", "relation-hnf-witness",
     "presentation-authority", "h1-class-correspondence", "unit-bridge-preci",
     "unit-component-cubic",
-    "compact-unit-result", "torsion-authority", "class-relation-cleanarch",
+    "compact-unit-result", "unit-relation-authority-frontier",
+    "unit-relation-authority",
+    "torsion-authority", "class-relation-cleanarch",
     "regulator-acceptance-replay", "authentic-h1-unit-success",
     "mixed-getfu-quartic", "mixed-getfu-hard-precision",
     "quartic-direct-composition", "signed-genback-computed-t2",
