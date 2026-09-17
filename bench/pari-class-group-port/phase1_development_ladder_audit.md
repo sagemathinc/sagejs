@@ -1,7 +1,7 @@
 # Phase 1 development-ladder audit
 
-This is an identity and existing-evidence audit at integration commit
-`dc534fa05e68c330871fd3720718bdfa7c03e8db`. It performs no timing, build, or
+This is an identity and existing-evidence audit refreshed at integration commit
+`1196fd4fdc5fdaa2a3fd1273d32c594bfb299ffa`. It performs no timing, build, or
 new PARI execution. In particular, field metadata is never treated as proof
 that a source branch ran.
 
@@ -55,22 +55,71 @@ honesty work.
 | --- | --- | --- |
 | nonempty `W` | row 10 (`--field3`) | observed; the quartic retry retains nonempty append transactions |
 | rank deficiency | rows 8 and 10 | observed; row 8 has an index-two unit-lattice shortage and row 10 begins with two missing ideal rows |
-| random relations | none | absent; all four traces avoid `rnd_rel` and factor-base enlargement |
+| random relations | none | absent from default performance traces; a forced correctness-only `rnd_rel` corridor is closed |
 | precision escalation | none | absent; all four traces remain at 192 bits and avoid precision rebuild |
-| honesty | none | absent from the performance population; the default first endpoint has equal bounds |
+| honesty | none | absent from the default performance population; the unequal-bound all-failure correctness corridor is closed |
 
-The unequal-bound `honesty_branch_fixture.json` is useful but deliberately
-correctness-only. It records 51 failed no-cache probes and 50
-`random_bits(4)` retry-ideal sequences. Those random draws are **not** PARI's
-`rnd_rel` branch. The fixture also stops on failure and therefore does not
-cover a successful full honesty scheduler, automorphism orbit selection,
-conditional ideal reduction, or the complete temporary-`KCZ`
-mutation/restoration lifecycle.
+### Closed correctness-only corridors
 
-The manifest consequently predeclares three correctness-only requirements:
-an actual `rnd_rel` trace, a precision-rebuild trace, and a successful full
-honesty trace. They are not performance inputs and may not replace or enlarge
-the frozen 24-field panel.
+`rnd_relation_collector_fixture.json` now closes one authentic PARI 2.17.4
+`rnd_rel` corridor for panel identity 10. The instrumentation's declared
+control forces the first post-HNF collection through the literal source
+branch. PARI itself then produces the RNG transition, search ideals, two new
+relations, generators, logs, and changed HNF state; CPython and native replay
+match those exact observables. This establishes the arithmetic and publication
+contract of that frozen corridor. It does **not** establish that the unchanged
+default policy naturally enters `rnd_rel` on row 10.
+
+The unequal-bound honesty evidence is also stronger now. The original leaf
+fixture records 51 failed no-cache probes and 50 `random_bits(4)` retry-ideal
+sequences. `honesty_scheduler_fixture.json` connects every one of those ideals
+to the translated no-cache collector, computes all 51 failures, publishes all
+50 retries transactionally, and terminates with `KCZ=2`. This closes the
+frozen all-failure scheduler corridor. The four-bit draws remain **unrelated**
+to `rnd_rel`. Deliberately changed `C1=5,C2=31` means this is not a default
+performance observation, and the all-failure result still does not cover
+successful `KCZ` increments/restoration, nontrivial automorphism orbits,
+outer primitive-part work, or the `idealred` threshold path.
+
+Precision escalation and a successful full honesty corridor remain missing
+correctness fixtures. None of these fixtures is a performance input, and none
+may replace, enlarge, or open the frozen panel.
+
+## Exact promotion policy
+
+A **correctness-only corridor is accepted** when all four conditions hold:
+
+1. pristine PARI 2.17.4 archive/source hashes and the exact input identity are
+   pinned;
+2. the complete branch-specific inputs, outputs, decisions, RNG state, and
+   owner/publication state required for independent replay are retained or
+   authenticated by hashes;
+3. translated CPython/native execution matches every exact pristine-source
+   observable; and
+4. mutating corridors test malformed input, insufficient capacity, and
+   partial-publication failures transactionally.
+
+This qualification says that a bounded algorithmic corridor is correct. It
+does not turn its polynomial into a performance case.
+
+A branch may be promoted to **performance-population coverage** only when all
+four additional conditions hold:
+
+1. the identity is already one of the frozen sixteen development fields;
+   correctness evidence cannot open or substitute a reserve;
+2. an unmodified pristine-PARI default-driver run for the frozen polynomial
+   and preparation policy enters the branch naturally, without forced control
+   flow, custom bounds, injected resident state, or predeclared answers;
+3. the Sage.js default public path enters the corresponding branch and agrees
+   on the complete stage transcript and terminal mathematical result; and
+4. after trace agreement, the unchanged field is measured on the locked host
+   with the predeclared paired schedule, retaining failures in denominators.
+
+Using the same polynomial is insufficient. The forced row-10 `rnd_rel`
+corridor and custom-bound row-0 honesty corridor therefore remain
+correctness-only even though both identities occur in the performance panel.
+Promotion changes only the evidence status of an existing field; a fixture
+itself can never become a new performance field.
 
 ## Reproduction
 

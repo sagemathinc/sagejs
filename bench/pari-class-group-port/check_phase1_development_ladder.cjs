@@ -17,7 +17,7 @@ const panel = json(ladder.sources.panel.path);
 const qualification = json(ladder.sources.qualificationManifest.path);
 
 const frozen = {
-  baseCommit: "dc534fa05e68c330871fd3720718bdfa7c03e8db",
+  baseCommit: "1196fd4fdc5fdaa2a3fd1273d32c594bfb299ffa",
   panelSha256: "7c6515240940db971cff3bc28819f9e6547adae9305643b0f6274eeafe6ec3a5",
   qualificationSha256: "3821a5a51390ca25b3110e7a8058d73cd9945d0ab6ad254c07186e0ac19c1c50",
   pariVersion: "2.17.4",
@@ -124,11 +124,41 @@ for (const name of ["randomRelations", "precisionEscalation"]) {
   assert.equal(coverage[name].performancePopulation, "absent");
   assert.deepEqual(coverage[name].panelIndices, []);
 }
+const randomRelations = coverage.randomRelations.correctnessOnly;
+assert.equal(randomRelations.status, "closed-frozen-corridor");
+assert.equal(randomRelations.panelIdentityIndex, 10);
+assert.equal(randomRelations.defaultPolicy, false);
+for (const [name, expected] of [
+  [randomRelations.fixture, randomRelations.fixtureSha256],
+  [randomRelations.audit, randomRelations.auditSha256],
+  [randomRelations.checker, randomRelations.checkerSha256],
+]) assert.equal(hashFile(`bench/pari-class-group-port/${name}`), expected);
+const randomFixture = json(`bench/pari-class-group-port/${randomRelations.fixture}`);
+assert.equal(randomFixture.identity.pariVersion, frozen.pariVersion);
+assert.equal(randomFixture.pariArchiveSha256, frozen.archiveSha256);
+assert.equal(randomFixture.buch2Sha256, frozen.buch2Sha256);
+assert.equal(randomFixture.identity.polynomial, "x^4-2000022*x-2000042");
+assert.match(randomFixture.identity.forcedBranch, /literal rnd_rel/);
+assert.deepEqual(randomFixture.counts, {
+  old: 293,
+  last: 295,
+  newColumns: 2,
+  hRowsBefore: 4,
+  hRowsAfter: 5,
+  bColumnsBefore: 282,
+  bColumnsAfter: 283,
+});
+assert.match(randomRelations.note, /not a natural default-driver observation/);
 assert.equal(coverage.honesty.performancePopulation, "absent");
 assert.deepEqual(coverage.honesty.panelIndices, []);
-assert.equal(coverage.honesty.correctnessOnly.status, "partial");
+assert.equal(coverage.honesty.correctnessOnly.status, "closed-frozen-all-failure-corridor");
+assert.equal(coverage.honesty.correctnessOnly.genericBranchStatus, "partial");
+assert.equal(coverage.honesty.correctnessOnly.panelIdentityIndex, 0);
+assert.equal(coverage.honesty.correctnessOnly.defaultPolicy, false);
 assert.equal(hashFile(`bench/pari-class-group-port/${coverage.honesty.correctnessOnly.fixture}`), coverage.honesty.correctnessOnly.fixtureSha256);
 assert.equal(hashFile(`bench/pari-class-group-port/${coverage.honesty.correctnessOnly.audit}`), coverage.honesty.correctnessOnly.auditSha256);
+assert.equal(hashFile(`bench/pari-class-group-port/${coverage.honesty.correctnessOnly.schedulerFixture}`), coverage.honesty.correctnessOnly.schedulerFixtureSha256);
+assert.equal(hashFile(`bench/pari-class-group-port/${coverage.honesty.correctnessOnly.checker}`), coverage.honesty.correctnessOnly.checkerSha256);
 const honesty = json(`bench/pari-class-group-port/${coverage.honesty.correctnessOnly.fixture}`);
 assert.equal(honesty.identity.pariVersion, frozen.pariVersion);
 assert.equal(honesty.identity.archiveSha256, frozen.archiveSha256);
@@ -137,12 +167,28 @@ assert.notEqual(honesty.input.C1, honesty.input.C2);
 assert.equal(honesty.result.success, 0);
 assert.equal(honesty.semantics.randomBits, 4);
 assert.match(coverage.honesty.correctnessOnly.note, /not rnd_rel/);
+const honestyScheduler = json(`bench/pari-class-group-port/${coverage.honesty.correctnessOnly.schedulerFixture}`);
+assert.equal(honestyScheduler.identity.pariVersion, frozen.pariVersion);
+assert.equal(honestyScheduler.identity.archiveSha256, frozen.archiveSha256);
+assert.equal(honestyScheduler.identity.leafFixtureSha256, coverage.honesty.correctnessOnly.fixtureSha256);
+assert.deepEqual(honestyScheduler.result, { success: 0, finalKCZ: 2, probes: 51, draws: 50 });
+assert(honestyScheduler.genericGaps.includes("successful KCZ increment and all-success restoration"));
 assert.deepEqual(ladder.correctnessOnlyRequirements.map(x => [x.branch, x.status, x.performanceInput]), [
-  ["random-relations", "missing", false],
+  ["random-relations", "closed-frozen-corridor", false],
   ["precision-escalation", "missing", false],
-  ["successful-full-honesty", "partial", false],
+  ["unequal-bound-honesty-all-failure", "closed-frozen-corridor", false],
+  ["successful-full-honesty", "missing", false],
 ]);
 for (const requirement of ladder.correctnessOnlyRequirements) assert(requirement.requiredObservation.length > 40);
+
+assert.equal(ladder.promotionPolicy.fixtureCanBecomePerformanceField, false);
+assert.equal(ladder.promotionPolicy.samePolynomialIsInsufficient, true);
+assert.equal(ladder.promotionPolicy.correctnessFixtureAcceptance.length, 4);
+assert.equal(ladder.promotionPolicy.performanceCoveragePromotion.length, 4);
+const promotionText = ladder.promotionPolicy.performanceCoveragePromotion.join(" ");
+for (const required of ["frozen sixteen", "unmodified", "without forced control flow", "Sage.js default public path", "paired schedule"]) {
+  assert(promotionText.includes(required), `Missing performance-promotion rule: ${required}`);
+}
 
 assert.deepEqual(ladder.reservePolicy, {
   panelRows: 24,
@@ -152,8 +198,11 @@ assert.deepEqual(ladder.reservePolicy, {
   panelModified: false,
 });
 assert.equal(ladder.verdict.sentinelRetryPrecisionOrHonestyRequirementProven, false);
-assert.deepEqual(ladder.verdict.missingCorrectnessOnlyFixtures, [
+assert.deepEqual(ladder.verdict.closedCorrectnessOnlyCorridors, [
   "random-relations",
+  "unequal-bound-honesty-all-failure",
+]);
+assert.deepEqual(ladder.verdict.missingCorrectnessOnlyFixtures, [
   "precision-escalation",
   "successful-full-honesty",
 ]);
@@ -166,6 +215,7 @@ console.log(JSON.stringify({
   sentinels: frozen.sentinels,
   additionalDevelopment: frozen.additional,
   existingDefaultDriverEvidence: `${frozen.traced.length}/16`,
-  observedCoverage: ["nonempty-W", "rank-deficiency"],
-  missingCoverage: ["random-relations", "precision-escalation", "full-honesty"],
+  observedPerformanceCoverage: ["nonempty-W", "rank-deficiency"],
+  closedCorrectnessOnlyCorridors: ["random-relations", "unequal-bound-honesty-all-failure"],
+  missingCorrectnessOnlyCoverage: ["precision-escalation", "successful-full-honesty"],
 }));
