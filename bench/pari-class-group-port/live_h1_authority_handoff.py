@@ -29,9 +29,6 @@ DEGREE = 3
 ACTIVE_ROWS = 8
 ACTIVE_COLUMNS = 15
 KERNEL_COLUMNS = 7
-AUTHENTIC_OWNER_SHA256 = (
-    "7eed284b9a90e00bb27feea24fbbed30b9d1a9196ce4bddc5ead5e854b0eb6e9"
-)
 _MAX_INTEGER_DIGITS = 65536
 
 
@@ -41,25 +38,19 @@ class LiveH1AuthorityFailure(ValueError):
 
 @dataclass(frozen=True)
 class LiveH1AuthorityExpectation:
-    """Out-of-band identity of one accepted live-owner generation."""
+    """Freshness identity of one live-owner generation."""
 
     run_id: str
     owner_generation: int
-    expected_owner_sha256: str
 
     def __post_init__(self) -> None:
         if not self.run_id:
             raise ValueError("live authority run id is empty")
         if self.owner_generation <= 0:
             raise ValueError("live authority generation must be positive")
-        digest = self.expected_owner_sha256
-        if len(digest) != 64 or any(ch not in "0123456789abcdef" for ch in digest):
-            raise ValueError("live authority expectation needs a SHA-256 digest")
 
 
-AUTHENTIC_EXPECTATION = LiveH1AuthorityExpectation(
-    RUN_ID, OWNER_GENERATION, AUTHENTIC_OWNER_SHA256
-)
+AUTHENTIC_EXPECTATION = LiveH1AuthorityExpectation(RUN_ID, OWNER_GENERATION)
 
 
 @dataclass(frozen=True)
@@ -129,6 +120,12 @@ def _owner(values: Any, length: int, name: str) -> tuple[int, ...]:
     ):
         raise LiveH1AuthorityFailure(name + " does not cover its logical prefix")
     return tuple(_integer(values[index], name) for index in range(length))
+
+
+def _retained_owner(values: Any, length: int, name: str) -> tuple[int, ...]:
+    if type(values) is not tuple or len(values) != length:
+        raise LiveH1AuthorityFailure(name + " has the wrong retained shape")
+    return _owner(values, length, name)
 
 
 def _decimal(values: Sequence[int]) -> list[str]:
@@ -272,8 +269,6 @@ def capture_live_h1_authority(
         active_transform_copy,
     )
     digest = _owner_sha256(record)
-    if digest != expectation.expected_owner_sha256:
-        raise LiveH1AuthorityFailure("live owners do not match out-of-band authority")
     kernel_map = _kernel_relation_map(cleanup_copy, active_transform_copy)
     _validate_mathematics(relation_copy, active_copy, active_transform_copy, kernel_map)
     return ImmutableLiveH1Authority(
@@ -303,39 +298,69 @@ def require_live_h1_authority(
     if (
         handoff.run_id != expectation.run_id
         or handoff.owner_generation != expectation.owner_generation
-        or handoff.owner_sha256 != expectation.expected_owner_sha256
     ):
         raise LiveH1AuthorityFailure("live authority identity is stale")
+    polynomial = _retained_owner(handoff.polynomial, 4, "retained polynomial")
+    table = _retained_owner(
+        handoff.multiplication_table, DEGREE**3, "retained multiplication table"
+    )
+    relations = _retained_owner(
+        handoff.relation_exponents,
+        ROWS * RELATIONS,
+        "retained relation matrix",
+    )
+    alphas = _retained_owner(
+        handoff.principal_alphas, DEGREE * RELATIONS, "retained principal alphas"
+    )
+    cleanup = _retained_owner(
+        handoff.cleanup_transform,
+        RELATIONS * RELATIONS,
+        "retained cleanup transform",
+    )
+    active = _retained_owner(
+        handoff.active_relation,
+        ACTIVE_ROWS * ACTIVE_COLUMNS,
+        "retained active relation matrix",
+    )
+    active_transform = _retained_owner(
+        handoff.active_hnf_transform,
+        ACTIVE_COLUMNS * ACTIVE_COLUMNS,
+        "retained active HNF transform",
+    )
+    kernel_map = _retained_owner(
+        handoff.kernel_relation_map,
+        KERNEL_COLUMNS * RELATIONS,
+        "retained kernel relation map",
+    )
+    if polynomial != (20034, -20018, 0, 1):
+        raise LiveH1AuthorityFailure("retained live authority field changed")
     record = _owner_record(
         handoff.run_id,
         handoff.owner_generation,
-        handoff.polynomial,
-        handoff.multiplication_table,
-        handoff.relation_exponents,
-        handoff.principal_alphas,
-        handoff.cleanup_transform,
-        handoff.active_relation,
-        handoff.active_hnf_transform,
+        polynomial,
+        table,
+        relations,
+        alphas,
+        cleanup,
+        active,
+        active_transform,
     )
     if _owner_sha256(record) != handoff.owner_sha256:
         raise LiveH1AuthorityFailure("retained live owners changed")
-    expected_kernel = _kernel_relation_map(
-        handoff.cleanup_transform, handoff.active_hnf_transform
-    )
-    if handoff.kernel_relation_map != expected_kernel:
+    expected_kernel = _kernel_relation_map(cleanup, active_transform)
+    if kernel_map != expected_kernel:
         raise LiveH1AuthorityFailure("retained kernel relation map changed")
     _validate_mathematics(
-        handoff.relation_exponents,
-        handoff.active_relation,
-        handoff.active_hnf_transform,
-        handoff.kernel_relation_map,
+        relations,
+        active,
+        active_transform,
+        kernel_map,
     )
     return handoff
 
 
 __all__ = [
     "AUTHENTIC_EXPECTATION",
-    "AUTHENTIC_OWNER_SHA256",
     "ImmutableLiveH1Authority",
     "LiveH1AuthorityExpectation",
     "LiveH1AuthorityFailure",

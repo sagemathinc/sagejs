@@ -7,6 +7,8 @@ const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 
 const root = path.resolve(__dirname, "../..");
+const expectedOwnerSha256 =
+  "7eed284b9a90e00bb27feea24fbbed30b9d1a9196ce4bddc5ead5e854b0eb6e9";
 const resident = path.resolve(
   process.argv[2] || "/tmp/sagejs-resident-generated-class-3qtnS5/output.json",
 );
@@ -50,7 +52,7 @@ handoff = m.capture_live_h1_authority(
     active_transform,
 )
 assert m.require_live_h1_authority(handoff, m.AUTHENTIC_EXPECTATION) is handoff
-assert handoff.owner_sha256 == m.AUTHENTIC_OWNER_SHA256
+assert handoff.owner_sha256 == sys.argv[3]
 assert len(handoff.principal_alphas) == 73 * 3
 assert len(handoff.cleanup_transform) == 73 * 73
 assert len(handoff.active_hnf_transform) == 15 * 15
@@ -106,9 +108,7 @@ mutations.append(dataclasses.replace(
 for changed in mutations:
     rejected(changed)
 
-stale = m.LiveH1AuthorityExpectation(
-    m.RUN_ID, m.OWNER_GENERATION + 1, m.AUTHENTIC_OWNER_SHA256
-)
+stale = m.LiveH1AuthorityExpectation(m.RUN_ID, m.OWNER_GENERATION + 1)
 rejected(handoff, stale)
 
 def capture_rejected(*owners):
@@ -132,11 +132,34 @@ short = list(owners)
 short[3] = short[3][:218]
 capture_rejected(*short)
 changed = [list(owner) for owner in owners]
-changed[3][0] = int(changed[3][0]) + 1
+changed[0][0] = int(changed[0][0]) + 1
 capture_rejected(*changed)
 changed = [list(owner) for owner in owners]
-changed[4][0] = int(changed[4][0]) + 1
+kernel = 0
+relation = next(
+    index
+    for index, value in enumerate(handoff.kernel_relation_exponents(kernel))
+    if value != 0
+)
+changed[2][66 * relation] = int(changed[2][66 * relation]) + 1
 capture_rejected(*changed)
+changed = [list(owner) for owner in owners]
+column = next(
+    index
+    for index in range(15)
+    if int(owners[6][15 * kernel + index]) != 0
+)
+changed[5][8 * column] = int(changed[5][8 * column]) + 1
+capture_rejected(*changed)
+
+# Fresh alpha owners are not compared with an in-bound frozen answer. They
+# receive a different live digest; downstream principality replay decides
+# whether those retained witnesses are mathematically valid.
+changed = [list(owner) for owner in owners]
+changed[3][0] = int(changed[3][0]) + 1
+fresh = m.capture_live_h1_authority(m.AUTHENTIC_EXPECTATION, *changed)
+assert fresh.owner_sha256 != handoff.owner_sha256
+assert m.require_live_h1_authority(fresh, m.AUTHENTIC_EXPECTATION) is fresh
 
 print(json.dumps({
     "schema": m.SCHEMA,
@@ -150,7 +173,7 @@ print(json.dumps({
     "kernelRelationMapShape": [7, 73],
     "kernelNonzeroCounts": nonzero,
     "kernelMaxAbsExponents": max_abs,
-    "mutationsRejected": len(mutations) + 4,
+    "mutationsRejected": len(mutations) + 5,
     "downstreamFileJoins": 0,
     "downstreamFixtureJoins": 0,
     "unitSaturationProved": False,
@@ -158,11 +181,15 @@ print(json.dumps({
 }, sort_keys=True))
 `;
 
-const result = spawnSync("python3", ["-c", program, root, resident], {
+const result = spawnSync(
+  "python3",
+  ["-c", program, root, resident, expectedOwnerSha256],
+  {
   cwd: root,
   encoding: "utf8",
   maxBuffer: 64 * 1024 * 1024,
   timeout: 240000,
-});
+  },
+);
 assert.equal(result.status, 0, result.stderr || String(result.error));
 process.stdout.write(result.stdout);
