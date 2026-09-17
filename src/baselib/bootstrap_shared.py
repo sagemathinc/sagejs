@@ -228,14 +228,15 @@ def ρσ_interpolate_kwargs(receiver, target_function, supplied_args):
         const keyword_object=supplied_args[supplied_args.length-1];
         if(target_function.__handles_kwarg_interpolation__){
             const supplied_count=supplied_args.length-1;
-            const named_count=argnames.length;
             let direct=true;
             for(const property_name of Object.keys(keyword_object)){
                 const index=argnames.indexOf(property_name);
                 if(index>=positional_only){
                     if(index<supplied_count)
                         throw ρσ_exception_value(new TypeError("multiple values for argument '"+property_name+"'"));
-                    direct=false;
+                    if(direct){supplied_args.pop();direct=false;}
+                    supplied_args[index]=keyword_object[property_name];
+                    Reflect.deleteProperty(keyword_object,property_name);
                 }else if(keyword_only&&keyword_only.indexOf(property_name)!==-1){
                     continue;
                 }else if(!target_function.__varkw__){
@@ -243,14 +244,6 @@ def ρσ_interpolate_kwargs(receiver, target_function, supplied_args):
                 }
             }
             if(direct)return Reflect.apply(target_function,receiver,supplied_args);
-            supplied_args.pop();
-            for(let index=0;index<named_count;index++){
-                const property_name=argnames[index];
-                if(index>=positional_only&&_internal_has_own(keyword_object,property_name)){
-                    supplied_args[index]=keyword_object[property_name];
-                    Reflect.deleteProperty(keyword_object,property_name);
-                }
-            }
             supplied_args.push(keyword_object);
             return Reflect.apply(target_function,receiver,supplied_args);
         }
