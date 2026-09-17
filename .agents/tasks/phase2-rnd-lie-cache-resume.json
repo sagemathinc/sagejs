@@ -1,0 +1,66 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "phase2-rnd-lie-cache-resume",
+  "title": "Random to LIE cache resumption",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Freeze PARI FACT/cache state across rnd_rel and reproduce the following field-3 LIE small_norm relation 295 to 296 with persistent resident cache state",
+  "base_commit": "36c02a54622588fed116a52a1fbfaae124773cf9",
+  "claims": [
+    "bench/pari-class-group-port/rnd_lie_cache_resume.py",
+    "bench/pari-class-group-port/check_rnd_lie_cache_resume.cjs",
+    "bench/pari-class-group-port/rnd_lie_cache_resume_fixture.json",
+    "bench/pari-class-group-port/rnd_lie_cache_resume_audit.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "/home/user/upstream/pari-2.17.4/src/basemath/buch2.c:2247-2677",
+    "/home/user/upstream/pari-2.17.4/src/basemath/buch2.c:3870-4083"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "gmp",
+      "PARI 2.17.4 pristine FACT/cache trace"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "focused PARI 2.17.4 / CPython / JavaScript / GMP differential checker",
+    "pnpm parallel:check --task phase2-rnd-lie-cache-resume"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_rnd_lie_cache_resume.cjs /home/user/upstream/pari-2.17.4 /home/user/upstream/pari-2.17.4.tar.gz /tmp/sagejs-actual-initial-collector-Askt7e/fixtures.json /tmp/sagejs-analytic-invhr-d88QqB/fixtures.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 22.137,
+      "started_at": "2026-09-17T01:55:15.471Z",
+      "commit": "36c02a54622588fed116a52a1fbfaae124773cf9",
+      "workspace_fingerprint": "af5e1a7c0f3a4f35be176144e620c6d11ef57d0d953a35fa50483e0a92147ee0",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Froze exact FACT/cache state and found that lost absolute done_small parity, not cache arithmetic, caused 295->298. Added a transactional resident resume boundary; exact CPython relation/generator/log replay and JS/GMP checks now reproduce PARI 295->296.",
+    "risks": [
+      "The authenticated done_small value is still supplied by the outer scheduler; the shared final driver must carry it rather than reconstruct it from the selected index."
+    ],
+    "next_steps": [
+      "Publish column 296 through resident HNF/acceptance, then connect the genuine done_small=291 LIE iteration where FACT changes but the relation basis remains unchanged."
+    ]
+  }
+}

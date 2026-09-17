@@ -1,0 +1,56 @@
+{
+  "identity": {
+    "pariVersion": "2.17.4",
+    "polynomial": "x^4-2000022*x-2000042",
+    "boundary": "forced rnd_rel return through following small_norm row"
+  },
+  "source": {
+    "rnd": {
+      "last": 295,
+      "end": 295,
+      "chk": 293,
+      "missing": 0,
+      "relsup": 0,
+      "fact": [[6, 1], [13, 2], [17, 1], [19, 1], [22, 1], [39, 1], [60, 1], [11, 1]],
+      "basisLength": 82944,
+      "basisHash": "b20c7ee3c3b01a4ab11bae2742f0a47569e27de9fd9df7e38dd4c8809bcbcd50"
+    },
+    "post": {
+      "lie": 0,
+      "hasR": 1,
+      "doneSmall": 290,
+      "last": 295,
+      "end": 296,
+      "chk": 295,
+      "missing": 0,
+      "relsup": 0,
+      "fact": [[6, 1], [13, 2], [17, 1], [19, 1], [22, 1], [39, 1], [60, 1], [11, 1]],
+      "basisLength": 82944,
+      "basisHash": "b20c7ee3c3b01a4ab11bae2742f0a47569e27de9fd9df7e38dd4c8809bcbcd50"
+    },
+    "lie": {
+      "last": 296,
+      "end": 297,
+      "chk": 296,
+      "missing": 0,
+      "relsup": 0,
+      "fact": [[1, 24], [6, 1], [16, 2], [150, 1], [231, 1], [254, 1]],
+      "basisLength": 82944,
+      "basisHash": "b20c7ee3c3b01a4ab11bae2742f0a47569e27de9fd9df7e38dd4c8809bcbcd50"
+    }
+  },
+  "counts": { "randomLast": 295, "next": 296 },
+  "hashes": {
+    "rng": "98458dc24362074cc00bcb42b59517dd9a68ccb567671dd686bf8413dbbcdd72",
+    "relations": "8740a5010aabad7c2f939cc4b139240ec8a86f824fd91100bf01e35717abf1ba",
+    "generators": "982d43c5b89f8ca23d249ce997ecea4ea3818ebbf12f08167c49066eec3f2ce3",
+    "logs": "1e9680962ad85e0b472eeb8bee7471dbfe89ca22225e6b90cefdd1da889ff999",
+    "hnf": "893124ebcaa94ae85d93b3de33df70e168a5aa4bba2c55876e2aefb0a0d619e3",
+    "next": "a7312010150aef81299e2f9ce59d0c405451c390f316086e5a2a9e83310ba45b",
+    "sourceNext": "a7312010150aef81299e2f9ce59d0c405451c390f316086e5a2a9e83310ba45b",
+    "nextGenerators": "71d4f22ae873ecec233c519bdb09f7d14a58f760a13042d64e767815f7a793d7",
+    "sourceNextGenerators": "71d4f22ae873ecec233c519bdb09f7d14a58f760a13042d64e767815f7a793d7",
+    "nextLogs": "e3733306dc4f180270eaa3588eb64371c184ffb2a7bd69955d9061179e667580",
+    "sourceNextLogs": "e3733306dc4f180270eaa3588eb64371c184ffb2a7bd69955d9061179e667580"
+  }
+}
