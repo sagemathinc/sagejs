@@ -77,85 +77,116 @@ async function runWorker({ request, implementation, adapterPath, clock }) {
   validateRequest(request, implementation);
   const adapter = require(adapterPath);
   assert.equal(typeof adapter.runPreparedH1, "function", "adapter must export runPreparedH1");
-  const timer = new ExclusiveStageTimer(clock);
-  const results = [], replays = [], rngStates = [], workRecords = [];
-  let terminalStatus = null;
-  timer.begin();
-  for (let repetition = 0; repetition < request.repetitions; repetition += 1) {
-    timer.switchStage("unattributed-remainder");
-    const output = await adapter.runPreparedH1({
+  const stageMode = adapter.stageMode === undefined ? "exclusive" : adapter.stageMode;
+  assert(
+    ["exclusive", "whole-root-only"].includes(stageMode),
+    `unsupported adapter stage mode: ${stageMode}`,
+  );
+  const preparedState = adapter.preparePreparedH1 === undefined
+    ? undefined
+    : await adapter.preparePreparedH1({
       implementation,
       seed: request.seed,
       preparedInput: structuredClone(request.preparedInput),
-      switchStage: stage => timer.switchStage(stage),
     });
-    exactKeys(output, [
-      "correspondenceComplete", "result", "replay", "rng", "work",
-      "terminalStatus",
-    ], "prepared h1 adapter output");
-    assert.equal(
-      output.correspondenceComplete,
-      true,
-      "worker refuses a candidate-only or live-oracle-composed result",
-    );
-    assert.equal(
-      output.terminalStatus,
-      CORRESPONDENCE_COMPLETE_STATUS,
-      "worker requires the audited correspondence-complete terminal status",
-    );
-    exactKeys(output.replay, [
-      "status", "resultSha256", "authoritySha256",
-    ], "cold replay record");
-    assert.equal(output.replay.status, "cold-replay-authenticated");
-    assert.equal(
-      output.replay.resultSha256,
-      digest(output.result),
-      "cold replay is not bound to the returned result",
-    );
-    assert.match(output.replay.authoritySha256, /^[0-9a-f]{64}$/);
-    terminalStatus ??= output.terminalStatus;
-    assert.equal(output.terminalStatus, terminalStatus);
-    results.push(output.result);
-    replays.push(output.replay);
-    rngStates.push(output.rng);
-    workRecords.push(output.work);
+  try {
+    const timer = new ExclusiveStageTimer(clock);
+    const results = [], replays = [], rngStates = [], workRecords = [];
+    let terminalStatus = null;
+    timer.begin();
+    for (let repetition = 0; repetition < request.repetitions; repetition += 1) {
+      timer.switchStage("unattributed-remainder");
+      const output = await adapter.runPreparedH1({
+        implementation,
+        seed: request.seed,
+        preparedInput: structuredClone(request.preparedInput),
+        preparedState,
+        switchStage: stage => timer.switchStage(stage),
+      });
+      exactKeys(output, [
+        "correspondenceComplete", "result", "replay", "rng", "work",
+        "terminalStatus",
+      ], "prepared h1 adapter output");
+      assert.equal(
+        output.correspondenceComplete,
+        true,
+        "worker refuses a candidate-only or live-oracle-composed result",
+      );
+      assert.equal(
+        output.terminalStatus,
+        CORRESPONDENCE_COMPLETE_STATUS,
+        "worker requires the audited correspondence-complete terminal status",
+      );
+      exactKeys(output.replay, [
+        "status", "resultSha256", "authoritySha256",
+      ], "cold replay record");
+      assert.equal(output.replay.status, "cold-replay-authenticated");
+      assert.equal(
+        output.replay.resultSha256,
+        digest(output.result),
+        "cold replay is not bound to the returned result",
+      );
+      assert.match(output.replay.authoritySha256, /^[0-9a-f]{64}$/);
+      terminalStatus ??= output.terminalStatus;
+      assert.equal(output.terminalStatus, terminalStatus);
+      results.push(output.result);
+      replays.push(output.replay);
+      rngStates.push(output.rng);
+      workRecords.push(output.work);
+    }
+    timer.switchStage("unattributed-remainder");
+    const trace = timer.finish();
+    for (const [name, values] of Object.entries({
+      result: results,
+      replay: replays,
+      rng: rngStates,
+      work: workRecords,
+    })) {
+      const expected = digest(values[0]);
+      assert(
+        values.every(value => digest(value) === expected),
+        `${name} changed across fresh repetitions`,
+      );
+    }
+    const arm = {
+      position: 0,
+      label: implementation === "sagejs" ? "A" : "B",
+      implementation,
+      repetitions: request.repetitions,
+      ...trace,
+      timerReadOverheadNanoseconds: "0",
+      resultDigest: digest(results[0]),
+      replayDigest: digest(replays[0]),
+      rngDigest: digest(rngStates[0]),
+      workDigest: digest(workRecords[0]),
+      terminalStatus,
+    };
+    if (stageMode === "exclusive") {
+      validateArm(arm);
+    } else {
+      assert.equal(
+        arm.stageTotalsNanoseconds["unattributed-remainder"],
+        arm.rootNanoseconds,
+        "whole-root-only timing must remain entirely unattributed",
+      );
+      for (const stage of [
+        "relation-retry", "sparse-hnf-snf-transform", "unit-regulator",
+        "honesty-generators-final",
+      ]) assert.equal(arm.stageTotalsNanoseconds[stage], "0");
+    }
+    return {
+      schema: 1,
+      implementation,
+      requestSha256: digest(request),
+      preparedInputSha256: request.preparedInputSha256,
+      selfTestClock: clock !== process.hrtime.bigint,
+      arm,
+    };
+  } finally {
+    if (adapter.closePreparedH1 !== undefined) {
+      await adapter.closePreparedH1(preparedState);
+    }
   }
-  timer.switchStage("unattributed-remainder");
-  const trace = timer.finish();
-  for (const [name, values] of Object.entries({
-    result: results,
-    replay: replays,
-    rng: rngStates,
-    work: workRecords,
-  })) {
-    const expected = digest(values[0]);
-    assert(
-      values.every(value => digest(value) === expected),
-      `${name} changed across fresh repetitions`,
-    );
-  }
-  const arm = {
-    position: 0,
-    label: implementation === "sagejs" ? "A" : "B",
-    implementation,
-    repetitions: request.repetitions,
-    ...trace,
-    timerReadOverheadNanoseconds: "0",
-    resultDigest: digest(results[0]),
-    replayDigest: digest(replays[0]),
-    rngDigest: digest(rngStates[0]),
-    workDigest: digest(workRecords[0]),
-    terminalStatus,
-  };
-  validateArm(arm);
-  return {
-    schema: 1,
-    implementation,
-    requestSha256: digest(request),
-    preparedInputSha256: request.preparedInputSha256,
-    selfTestClock: clock !== process.hrtime.bigint,
-    arm,
-  };
 }
 
 async function main(argv = process.argv.slice(2)) {
