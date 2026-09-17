@@ -157,16 +157,56 @@
       "commit": "2331b12abd5cf384c2ff1b18599fd42d623e3dd5",
       "workspace_fingerprint": "ec54fe5e2ea2e0fb7961afaa21440ef53710258c8939201833dd408c183bef3a",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_field3_accepted_c4_owner.cjs /home/user/upstream/pari-2.17.4 /home/user/upstream/pari-2.17.4.tar.gz",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.942,
+      "started_at": "2026-09-17T17:11:47.324Z",
+      "commit": "a638aaffbc0b2d43098f2e80d8b92c7181f62e09",
+      "workspace_fingerprint": "48c6b3cf29e5b499369a463aff9aff949a742ebb2de4cc2e1fe3d5955d3341fe",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -m py_compile bench/pari-class-group-port/field3_accepted_c4_owner.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.069,
+      "started_at": "2026-09-17T17:11:53.977Z",
+      "commit": "a638aaffbc0b2d43098f2e80d8b92c7181f62e09",
+      "workspace_fingerprint": "48c6b3cf29e5b499369a463aff9aff949a742ebb2de4cc2e1fe3d5955d3341fe",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check bench/pari-class-group-port/field3_accepted_c4_owner_coordinator.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.032,
+      "started_at": "2026-09-17T17:11:54.771Z",
+      "commit": "a638aaffbc0b2d43098f2e80d8b92c7181f62e09",
+      "workspace_fingerprint": "48c6b3cf29e5b499369a463aff9aff949a742ebb2de4cc2e1fe3d5955d3341fe",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check bench/pari-class-group-port/check_field3_accepted_c4_owner.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.032,
+      "started_at": "2026-09-17T17:11:55.549Z",
+      "commit": "a638aaffbc0b2d43098f2e80d8b92c7181f62e09",
+      "workspace_fingerprint": "48c6b3cf29e5b499369a463aff9aff949a742ebb2de4cc2e1fe3d5955d3341fe",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Added the production authenticated C4 coordinator and authentic field/catalog producers. The producers bind the exact frozen authority and initial-collector content addresses plus the prepared embedding's exact semantic identity, derive the discriminant from the integral multiplication tensor's trace pairing, and derive the prime catalog through the live residue bound. Production requires targetBits=153088; low-precision qualification uses disjoint test-only schemas that cannot publish production owners. Acceptance publishes both C5 and C7 owner schemas from one computation. C7 projection reopens all four predecessors, recomputes C3, analytic-preparation, regulator-multiple, and acceptance latches, then replays the complete C4 computation and requires exact semantic equality, including every candidate result. A pristine PARI 2.17.4 low-precision oracle qualifies success, idempotency, the genuine 64-to-128 PRECI transition, both interfaces, and thirteen fail-atomic mutations.",
+    "summary": "Added the production authenticated C4 coordinator and authentic field/catalog producers. The producers bind the exact frozen authority and initial-collector content addresses plus the prepared embedding's exact semantic identity, derive the discriminant from the integral multiplication tensor's trace pairing, and derive the prime catalog through the live residue bound. Production catalog derivation now correctly treats admission offsets/counts as the sparse factor-base schedule rather than the analytic catalog: it recomputes ordinary splitting patterns from the authenticated polynomial and rational-prime stream, then derives the index-prime 37 pattern from exact authority packet norms and ramification. The resulting 802-prime catalog through sentinel 6151 differentially matches pristine PARI 2.17.4. Production requires targetBits=153088; low-precision qualification uses disjoint test-only schemas that cannot publish production owners. Acceptance publishes both C5 and C7 owner schemas from one computation. C7 projection reopens all four predecessors, recomputes C3, analytic-preparation, regulator-multiple, and acceptance latches, then replays the complete C4 computation and requires exact semantic equality, including every candidate result. Qualification covers success, idempotency, the genuine 64-to-128 PRECI transition, both interfaces, thirteen fail-atomic acceptance mutations, and four production-catalog authority mutations.",
     "risks": [
       "The real 153088-bit invocation is deliberately deferred until authentic C3, full-terminal, field, and catalog owners are all present.",
-      "No heavy build was run by instruction. test:changed was stopped when it selected the repository-wide build; architecture:check subsequently encountered that intentionally incomplete dist rather than a source failure."
+      "No heavy build was run by instruction. test:changed was stopped when 1,265 inherited branch changes selected the repository-wide five-minute build; merge:check passed before the stop."
     ],
     "next_steps": [
-      "Run --operation derive-inputs against the authentic prepared embedding plus the frozen authority and initial collector, then invoke --operation accept under the authentic 600-second/4-GiB gate.",
+      "Use the successfully derived authentic field/catalog owners (field SHA 08d3393a9218cd83d93385c30a24881d779dbd4614461f5aea9bd1a1cfe34e40, catalog SHA 74726d2477c470792055a873e86a4dd4a640cc8063bff1dff95bf93ca65196e1) to invoke --operation accept under the authentic 600-second/4-GiB gate.",
       "Have C7 cross-check the projection's exposed accepted-C4/full-terminal/C3/field/catalog digests and C3/analytic/multiple/acceptance latches against its own ancestry."
     ]
   }
