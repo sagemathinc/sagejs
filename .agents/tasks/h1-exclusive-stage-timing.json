@@ -1,0 +1,44 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "h1-exclusive-stage-timing",
+  "title": "H1 Exclusive Stage Timing",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "final_mutation_replay",
+  "objective": "Define and validate mutually exclusive end-to-end stage timing receipts for the authentic h=1 prepared class-group root without running qualification timing",
+  "base_commit": "176ee7b8bab3f86e54d6b32d1ac5a4123c49f776",
+  "claims": [
+    "bench/pari-class-group-port/h1-exclusive-stage-timing-receipt.schema.json",
+    "bench/pari-class-group-port/h1_exclusive_stage_timing.cjs",
+    "bench/pari-class-group-port/check_h1_exclusive_stage_timing.cjs",
+    "bench/pari-class-group-port/h1_exclusive_stage_timing.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Exact contiguous interval partition and cross-multiplied per-call gap identity"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "not-applicable",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "not-applicable"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node bench/pari-class-group-port/check_h1_exclusive_stage_timing.cjs"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
