@@ -289,10 +289,10 @@ if _builtins_deleted_builtin is runtime.undefined:
         runtime.global_object, "ρσ_deleted_builtin", _builtins_deleted_builtin
     )
 _BUILTINS_DELETED_BUILTIN = _builtins_deleted_builtin
-# Reserved compiler alias for fixed-arity lookup.
+# Reserved compiler aliases for fixed-arity lookup and default initialization.
 ρσ_getattr_missing = _BUILTINS_MISSING
 _builtins_float_prototype = runtime.undefined
-_builtins_object_init = runtime.undefined
+ρσ_object_init = runtime.undefined
 _builtins_descriptor_cache = runtime.reflect.construct(
     runtime.reflect.get(runtime.global_object, "WeakMap"), []
 )
@@ -6596,11 +6596,11 @@ def ρσ_pow(
 
 def _builtins_synthetic_init_ends_at_object(initializer: Any) -> _Bool:
     """Return whether an initializer forwards only to `object.__init__`."""
-    if initializer is _builtins_object_init:
+    if initializer is ρσ_object_init:
         return True
     if _builtins_get_member(initializer, "__sagejs_synthetic_init__") is not True:
         underlying = _builtins_get_member(initializer, "__func__")
-        if underlying is _builtins_object_init:
+        if underlying is ρσ_object_init:
             return True
         if _builtins_get_member(underlying, "__sagejs_synthetic_init__") is not True:
             return False
@@ -6615,7 +6615,7 @@ def _builtins_synthetic_init_ends_at_object(initializer: Any) -> _Bool:
             "__sagejs_synthetic_init_target__",
         )
         remaining -= 1
-    return initializer is _builtins_object_init
+    return initializer is ρσ_object_init
 
 
 def ρσ_live_initializer(cls: Any) -> Any:
@@ -6655,8 +6655,8 @@ def ρσ_live_initializer(cls: Any) -> Any:
     return initializer
 
 
-def ρσ_skip_init_for_custom_new(cls: Any, initializer: Any) -> _Bool:
-    """Implement CPython's custom-new/object-init exception."""
+def ρσ_skip_init(cls: Any, initializer: Any) -> _Bool:
+    """Return whether construction can omit initialization."""
     if not _builtins_synthetic_init_ends_at_object(initializer):
         return False
     cached = _builtins_initializer_cache.get(cls)
@@ -6679,7 +6679,7 @@ def ρσ_skip_init_for_custom_new(cls: Any, initializer: Any) -> _Bool:
 
 def ρσ_apply_custom_new_signature(cls: Any, initializer: Any) -> None:
     """Publish the user-call signature of a class with only custom allocation."""
-    if not ρσ_skip_init_for_custom_new(cls, initializer):
+    if not ρσ_skip_init(cls, initializer):
         return
     allocator = ρσ_getattr(cls, "__new__", None)
     argument_names = _builtins_get_member(allocator, "__argnames__")
@@ -6743,7 +6743,7 @@ def _builtins_type_call(cls: Any, *args: Any, **keywords: Any) -> Any:
         "__init__",
     )
     if runtime.strict_equal(runtime.jstype(initializer), "function") and not (
-        ρσ_skip_init_for_custom_new(cls, initializer_contract)
+        ρσ_skip_init(cls, initializer_contract)
     ):
         # ``initializer`` is already descriptor-bound.  Calling it through
         # the compiler's generic callable fallback would resolve ``__call__``
@@ -9492,7 +9492,7 @@ def _builtins_object_delattr(self: Any, name: _Str) -> None:
 
 runtime.reflect.set(_builtins_object_new, "__staticmethod__", True)
 _sage_object_prototype = runtime.reflect.get(SageObject, "prototype")
-_builtins_object_init = runtime.reflect.get(_sage_object_prototype, "__init__")
+ρσ_object_init = runtime.reflect.get(_sage_object_prototype, "__init__")
 for _object_owner in (SageObject, _sage_object_prototype):
     for _object_name, _object_method in [
         ("__new__", _builtins_object_new),

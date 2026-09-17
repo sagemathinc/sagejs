@@ -74,6 +74,33 @@ test("class-body initializer fixture passes the CPython oracle", () => {
   assert.equal(result.stdout.trim(), "dynamic-init-class-body-ok");
 });
 
+test("only synthetic initializers emit the empty-call shortcut", async () => {
+  const compiler = require("../dist/tools/compiler.js").default();
+  const { createPythonCompilerFrontend } = require(
+    "../dist/tools/python/compiler-frontend.js"
+  );
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse(
+      "class Empty:\n    pass\nclass Initialized:\n" +
+        "    def __init__(self):\n        pass\n",
+      { filename: "<default-init-fast-path>", for_linting: true,
+        import_dirs: [], strict_python_scopes: true,
+        scoped_flags: { bound_methods: true, sequential_definitions: true } },
+    );
+    const output = new compiler.OutputStream({ omit_baselib: true,
+      private_scope: false, write_name: false, beautify: true,
+      python_attributes: true });
+    ast.print(output);
+    const shortcuts = output.get().match(
+      /arguments\.length === 0 && ρσ_initializer === ρσ_object_init/g,
+    );
+    assert.equal(shortcuts?.length, 1);
+  } finally {
+    frontend.close();
+  }
+});
+
 // Required in both language modes: binding must not depend on Sage preparsing.
 for (const mode of ["python", "sage"]) {
   for (const kind of ["positional", "keywords", "allocation", "class-body"]) {
