@@ -120,7 +120,8 @@ assert args[10] == list(map(int, oracle["relations"]))
 assert args[11] == [int(oracle["denominator"])]
 assert args[12][2:] == [oracle["bits"], oracle["rank"], 10]
 
-# The same ordinary source runs at both target precisions without a cap.
+# The same arithmetic source runs at the scalar precision and at the separate
+# internal embedding guard precision without a cap. The latter is not C3 A.
 for precision in (153088, 153152):
     high = reconstruction(precision)
     assert mod.pari_field3_reconstruct_with_bound(*high) == 0
@@ -134,11 +135,9 @@ def coordinator(precision, complete):
     c3_state = [0 if complete else 7, 1 if complete else 0, 3, 13,
                 precision, 41, 273, 1]
     if precision == 192:
-        retry = [0, 1, 0, 0]
-    elif precision == 153088:
-        retry = [0, 2, 0, 153152]
+        precision_protocol = [192, 192, 384, 1]
     else:
-        retry = [1, 2, 153088, 0]
+        precision_protocol = [153088, 153152, 229632, 1]
     c3_hash = [0x12345678, -0x22334455, 0x33445566, -0x44556677]
     latches = list(mod.pari_field3_regulator_owner_latches(packed, 273))
     n, c, z, q = 3, 13, 3 * 14, 9
@@ -157,14 +156,14 @@ def coordinator(precision, complete):
     args = [
         packed, [-2000042, -2000022, 0, 0, 1],
         [4, 2, 1, 3, 13, 273, 1, 2], c3_state,
-        retry, c3_hash[:], c3_hash[:], latches, 10,
+        precision_protocol, c3_hash[:], c3_hash[:], latches, 10,
         *multiple_work, [77] * 4, *suffix,
     ]
     return args
 
 # Real high-precision publication is impossible until the complete C3 owner
 # exists. The coordinator must return before changing any caller-owned buffer.
-for precision in (153088, 153152):
+for precision in (153088,):
     args = coordinator(precision, False)
     before = copy.deepcopy(args)
     assert mod.pari_field3_high_precision_regulator_schedule(*args) == 7
@@ -175,7 +174,7 @@ base = coordinator(153088, True)
 for index, mutate in (
     (1, lambda value: value.__setitem__(0, value[0] + 1)),
     (2, lambda value: value.__setitem__(3, 4)),
-    (4, lambda value: value.__setitem__(3, 153088)),
+    (4, lambda value: value.__setitem__(1, 153088)),
     (6, lambda value: value.__setitem__(0, value[0] ^ 1)),
     (0, lambda value: value.__setitem__(0, 9)),
 ):
@@ -204,12 +203,27 @@ assert candidate_relations == [97] * 26
 assert published_hash == [91] * 4 and published_latches == [91] * 2
 assert state[5] == 0 and state[6] == 1
 
+# Source semantics are deliberately distinct: a compute_R PRECI authorizes
+# Buchall's myprecdbl transition, while getfu PRECI is terminal not_given.
+retry_work, outcome = [77] * 6, [77] * 5
+assert mod.pari_field3_precision_outcome(3, 0, 153088, retry_work, outcome) == 3
+assert outcome == [1, 229632, 0, 0, 153088]
+assert retry_work[3] == 229632
+retry_work, outcome = [77] * 6, [77] * 5
+assert mod.pari_field3_precision_outcome(0, 3, 153088, retry_work, outcome) == 3
+assert outcome == [0, 0, 1, 3, 153088]
+assert retry_work == [77] * 6
+retry_work, outcome = [77] * 6, [77] * 5
+assert mod.pari_field3_precision_outcome(3, 0, 192, retry_work, outcome) == 3
+assert outcome[1] == 384
+
 print(json.dumps({
     "pariDifferentialCases": 1,
     "targetPrecisionFallbackCases": 4,
     "authorityMutationCases": 5,
-    "incompleteC3AtomicCases": 2,
+    "incompleteC3AtomicCases": 1,
     "syntheticCompleteRejectionCases": 1,
+    "precisionOutcomeCases": 3,
 }))
 `;
 const summary = JSON.parse(
