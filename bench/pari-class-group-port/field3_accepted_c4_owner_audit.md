@@ -83,7 +83,10 @@ C7 historically expects
 therefore derives a second content-addressed view from the authenticated
 primary owner. Before projection it reopens all four predecessors and
 recomputes C3 content-address words, C3 latches, analytic-preparation state,
-regulator-multiple state, and the final acceptance latches. The view exposes
+regulator-multiple state, and the final acceptance latches. It then replays
+the complete C4 computation and requires exact semantic equality with the
+supplied accepted owner, covering class number, zeta factor, regulator,
+relations, and denominator as well as every state field. The view exposes
 those latches and all five ancestry digests for C7's own cross-check. Both
 outputs are computed before publication by `--operation accept`; projection
 can also be invoked independently with `--operation project-c7`.
@@ -128,10 +131,10 @@ generated 64-bit rank-two C3 control and generated terminal HNF exercise the
 complete accepted path. The test checks both schemas, digest ancestry,
 mode-0444 publication, idempotency, and the independent projection CLI.
 
-Eight fail-atomic cases cover genuine PRECI, detached field/catalog ancestry,
+Thirteen fail-atomic cases cover genuine PRECI, detached field/catalog ancestry,
 wrong caller digest, detached terminal/C3 transform, a rejected analytic
 projection mutation, a forged production identity, a mutated C3 latch, and
-mutable input mode.
+one mutation of each of the five candidate outputs, plus mutable input mode.
 The output directory remains byte-for-byte unchanged after every rejection and
 contains no temporary publication.
 
