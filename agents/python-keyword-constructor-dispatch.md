@@ -1,7 +1,7 @@
 # Python keyword-constructor dispatch fast path
 
-Base: `ddee65db6` (`agent/python-attribute-store-assignment`, queued behind the
-attribute read/store integration).
+Base: `2bfcbaa4b` (`agent/python-attribute-store-assignment`, queued behind the
+reviewer-repaired attribute-store integration).
 
 ## Change
 
@@ -65,17 +65,19 @@ unproven parallel protocol.
 
 ## Qualification
 
-- The exact-source build converged in two passes and completed in 7m 27s.
+- The current prerequisite-source build converged in two passes and completed
+  in 7m 34s.
 - The CPython differential corpus passes 505 cases with the same three
   intentional incompatibilities and no baseline drift.
-- Thirty-four focused initializer, live-default, prepared-method, and shared
-  bootstrap checks pass. These include custom `__new__`, foreign allocation,
+- Twenty-three directly focused constructor, prepared-method, and shared
+  bootstrap checks pass on the replayed head. The earlier broader qualification
+  additionally covers custom `__new__`, foreign allocation,
   replaced/deleted/inherited initializers, positional-only and duplicate
   arguments, callable initializer objects, and invalid initializer returns in
   Python and Sage modes.
 - All six pinned traitlets checks and the pinned decorator 5.2.1 and attrs
   25.4.0 workflows pass.
-- Core runtime is 902,744/903,000 bytes. No source, startup, browser, or
+- Core runtime is 902,607/903,000 bytes. No source, startup, browser, or
   performance budget changed.
 - The local startup gate is not a passing receipt: the candidate measured
   430.8 ms normalized and the exact prerequisite measured 419.9 ms normalized,
