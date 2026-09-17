@@ -117,8 +117,7 @@ async function main() {
       adapter.DIAGNOSTIC_CONTROLS);
     assert.equal(output.work.serializedIntermediates, "0");
     assert.equal(output.work.externalOracleCalls, "0");
-    assert.deepEqual(stages, ["relation-retry", "sparse-hnf-snf-transform",
-      "unit-regulator", "honesty-generators-final"]);
+    assert.deepEqual(stages, ["unit-regulator", "honesty-generators-final"]);
   }
   const resultDigest = digest(calls[0].output);
   assert.equal(digest(calls[1].output), resultDigest);

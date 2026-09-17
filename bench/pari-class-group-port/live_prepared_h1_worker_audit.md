@@ -21,6 +21,14 @@ resident p192 path differ by four terminal p192 ulps; the qualified corridor
 accepts at most four, records the actual delta, and rejects a five-ulp sibling.
 The precision, 73 relation count, 15 active columns, seven kernel columns, and
 four-ulp corridor are frozen diagnostic controls. They are not live authorities.
+
+The unified native call contains relation/retry, HNF/Smith, and the initial
+unit-owner bridge without internal clock hooks. Its complete duration therefore
+stays in the explicit unattributed remainder. Post-call relation and HNF
+counters are evidence of work, not evidence of elapsed-time boundaries. Only
+the separately executed exact-unit/regulator replay and final envelope work
+switch into named diagnostic stages. This partial attribution is intentional;
+the missing named stages remain zero until source-boundary hooks exist.
 Consequently `correspondenceComplete` remains false and the terminal state names
 the missing live logical-length, retry-policy, and rigorous-enclosure inputs.
 This is pinned experimental evidence, not Outcome C or a general regulator
