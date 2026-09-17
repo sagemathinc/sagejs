@@ -10,7 +10,7 @@ const root = join(__dirname, "..");
 const source = readFileSync(join(root, "src/baselib/bootstrap_shared.py"), "utf8");
 const names = ["ρσ_copy_method_metadata", "ρσ_native_method_adapter", "ρσ_unbound_method_adapter",
   "ρσ_check_interrupt", "ρσ_normalize_exception", "ρσ_prepare_method_call",
-  "ρσ_interpolate_kwargs"];
+  "ρσ_store_attr", "ρσ_interpolate_kwargs"];
 
 // Exercise the native ABI bodies directly; full self-hosted/module
 // linkage remains a separate build qualification, not implied by this test.
@@ -59,6 +59,48 @@ test("prepared method calls use and invalidate the shared prototype cache", () =
   assert.deepEqual(Array.from(api.ρσ_prepare_method_call(receiver, "method")),
     ["fallback", undefined, false]);
   assert.equal(fallbacks, 2);
+});
+
+test("shared attribute stores use only epoch-current unexposed cache entries", () => {
+  const prototype = {};
+  const receiver = Object.create(prototype);
+  const epoch = { value: 5 };
+  const cache = new WeakMap();
+  const fields = new WeakMap();
+  const namespaces = new WeakMap();
+  let fallbacks = 0;
+  const api = context({
+    _builtins_store_cache: cache,
+    _builtins_descriptor_epoch: epoch,
+    _builtins_instance_fields: fields,
+    _builtins_instance_namespaces: namespaces,
+    ρσ_setattr: (value, name, member) => {
+      fallbacks += 1;
+      value[name] = member;
+      cache.set(prototype, new Map([[name, epoch.value]]));
+      return null;
+    },
+  });
+
+  assert.equal(api.ρσ_store_attr(receiver, "field", 11), null);
+  assert.equal(fallbacks, 1);
+  assert.equal(api.ρσ_store_attr(receiver, "field", 13), null);
+  assert.equal(fallbacks, 1);
+  assert.equal(receiver.field, 13);
+  assert.equal(fields.get(receiver).has("field"), true);
+
+  Object.defineProperty(receiver, "__setattr__", { value: () => null, configurable: true });
+  api.ρσ_store_attr(receiver, "field", 15);
+  assert.equal(fallbacks, 2);
+  delete receiver.__setattr__;
+
+  epoch.value += 1;
+  api.ρσ_store_attr(receiver, "field", 17);
+  assert.equal(fallbacks, 3);
+
+  namespaces.set(receiver, { exposed: true });
+  api.ρσ_store_attr(receiver, "field", 19);
+  assert.equal(fallbacks, 4);
 });
 
 test("shared keyword binding consumes literal packets without Python operators", () => {

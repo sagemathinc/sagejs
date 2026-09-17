@@ -296,6 +296,9 @@ _builtins_object_init = runtime.undefined
 _builtins_descriptor_cache = runtime.reflect.construct(
     runtime.reflect.get(runtime.global_object, "WeakMap"), []
 )
+_builtins_store_cache = runtime.reflect.construct(
+    runtime.reflect.get(runtime.global_object, "WeakMap"), []
+)
 _builtins_property_cache = runtime.reflect.construct(
     runtime.reflect.get(runtime.global_object, "WeakMap"), []
 )
@@ -5696,6 +5699,12 @@ def ρσ_setattr(value: Any, name: _Str, member: Any) -> None:
         if _builtins_member_is_function(member, "__set_name__"):
             _builtins_call_member(member, "__set_name__", [value, name])
     if _builtins_store_instance_attribute(value, name, member):
+        prototype = runtime.object.getPrototypeOf(value)
+        store_cache = _builtins_store_cache.get(prototype)
+        if store_cache is runtime.undefined:
+            store_cache = runtime.reflect.construct(runtime.map_class, [])
+            _builtins_store_cache.set(prototype, store_cache)
+        store_cache.set(name, _builtins_descriptor_epoch.value)
         return
     if not runtime.reflect.set(value, name, member):
         own_descriptor = runtime.object.getOwnPropertyDescriptor(value, name)
