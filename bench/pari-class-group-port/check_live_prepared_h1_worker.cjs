@@ -58,8 +58,9 @@ async function main() {
         if (!fs.existsSync(manifestPath) || !fs.existsSync(modulePath) ||
             !fs.existsSync(addonPath)) continue;
         const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
-        if (path.basename(manifest.sourcePath) === basename)
-          return { modulePath, cacheKey: manifest.cacheKey };
+        if (path.basename(manifest.sourcePath) === basename) {
+          return { modulePath, cacheKey: manifest.cacheKey, ir: manifest.ir };
+        }
       }
     }
     return compileKernel({ sourcePath: path.join(__dirname, basename) });
@@ -67,6 +68,18 @@ async function main() {
   // The compiler frontend owns one WebAssembly tree-sitter parser; compile
   // sequentially so this focused checker is deterministic in one process.
   const unifiedBuild = await build("live_prepared_h1_native.py");
+  const unifiedEntry = unifiedBuild.ir?.functions.find(
+    (fn) => fn.name === "pari_live_prepared_h1_native",
+  );
+  assert(unifiedEntry, "unified native entry disappeared");
+  assert.equal(
+    unifiedEntry.params.find((param) => param.name === "prep_state")?.type,
+    "IntegerBuffer",
+  );
+  assert.equal(
+    unifiedEntry.params.some((param) => param.name === "final_prep_state"),
+    false,
+  );
   const embeddingBuild = await build("cubic_embedding_rebuild.py");
   const precisionBuild = await build("cubic_precision_rebuild.py");
   const determinantBuild = await build("regulator_determinant.py");

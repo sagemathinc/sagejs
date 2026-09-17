@@ -99,7 +99,7 @@ for (const backend of ["javascript", "gmp", "tagged"]) {
   const driverState = S(Array(10).fill(0));
   const args = [
     I(resident.prep_base_state.slice(0, 7)),
-    S(resident.prep_state.slice(0, 8)),
+    I(resident.prep_state.slice(0, 8)),
     S(resident.hnf_state.slice(0, 9)),
     S(resident.accept_acceptance_state.slice(0, 3)),
     I(resident.hnf_result_c.slice(0, 21 * columns)),

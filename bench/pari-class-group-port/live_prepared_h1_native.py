@@ -364,7 +364,6 @@ def pari_live_prepared_h1_native(
     prep_kummer_catalog_tau: IntegerBuffer,
     prep_kummer_requested_counts: IntegerBuffer,
     prep_kummer_state: IntegerBuffer,
-    final_prep_state: Int64Buffer,
     final_unit_transform: IntegerBuffer,
     final_getfu_factor: IntegerBuffer,
     final_compact_provenance: IntegerBuffer,
@@ -803,16 +802,12 @@ def pari_live_prepared_h1_native(
     )
     if action != 0:
         return action
-    if len(final_prep_state) < 8:
-        raise ValueError("short final preparation-state bridge")
-    for i in range(8):
-        final_prep_state[i] = prep_state[i]
     return pari_live_h1_owner_bridge(
         hnf_result_c,
         accept_relations,
         accept_regulator,
         prep_base_state,
-        final_prep_state,
+        prep_state,
         hnf_state,
         accept_acceptance_state,
         attempt_state,

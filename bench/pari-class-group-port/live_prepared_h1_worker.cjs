@@ -57,7 +57,7 @@ const FLOAT_NAMES = new Set([
   "factor_temporary",
 ]);
 const INT64_NAMES = new Set([
-  "prep_state", "hnf_state", "acceptance_state", "attempt_state",
+  "hnf_state", "acceptance_state", "attempt_state",
   "bridge_state", "signs", "unit_state", "factor_state", "clean_state",
   "driver_state",
 ]);
@@ -112,6 +112,10 @@ function makeBuffer(fn, kind, data, name = "") {
 }
 function allocateCandidate(prepared) {
   assert.equal(prepared.schema, "sagejs.pari-class-group/sanitized-prepared-h1-v1");
+  assert.deepEqual(
+    prepared.names.find(([name]) => name === "prep_state"),
+    ["prep_state", "IntegerBuffer"],
+  );
   const owners = {};
   for (const [name, kind] of prepared.names) {
     const raw = prepared.input[name];
@@ -123,7 +127,7 @@ function allocateCandidate(prepared) {
   return owners;
 }
 function allocateFinal() {
-  const owners = { prep_state: nativeRoot.createInt64Buffer(Array(8).fill(0n)) };
+  const owners = {};
   for (const name of BRIDGE_NAMES.slice(11)) {
     const kind = FLOAT_NAMES.has(name) ? "Float64Buffer"
       : INT64_NAMES.has(name) ? "Int64Buffer" : "IntegerBuffer";
@@ -352,7 +356,6 @@ async function runPreparedH1({ implementation, seed, preparedInput, switchStage 
   switchStage("relation-retry");
   const action = nativeRoot.gmp(
     ...preparedInput.names.map(([name]) => live[name]),
-    final.prep_state,
     ...BRIDGE_NAMES.slice(11).map(name => final[name]),
   );
   trace("candidate-returned");
