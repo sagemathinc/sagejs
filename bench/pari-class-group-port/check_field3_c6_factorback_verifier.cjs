@@ -46,6 +46,50 @@ const pristine = run(
 ).stdout.trim().split("\n");
 assert.deepEqual(pristine, ["-1", "x - 1", "-1", "x^3 - x^2 + x - 1"]);
 
+// Exercise the authentic precision gate without running a genuine field or a
+// nontrivial AGM.  log(1)=0 follows the complete 153088-bit real dispatcher,
+// while short-capacity and PRECI failures must occur before touching caller
+// storage.  The non-axis branch remains the already qualified complex AGM.
+const highPrecisionProbe = JSON.parse(run(
+  "python3",
+  ["-c", String.raw`
+import importlib,json,sys
+sys.set_int_max_str_digits(0)
+sys.path.extend(sys.argv[1:4])
+m=importlib.import_module('bench.pari-class-group-port.field3_c6_factorback_verifier')
+T=153088
+assert m._materialized_log_workspace_capacity(T)==(16385,105)
+one=[1<<(T-1),T,0];zero=[0,0,-T]
+real=[]
+for place in range(3): real += one+zero+zero+zero
+imag=(zero*4)*3
+units=[1,0,0,0,1,0,0,0]
+def workspace(stack=105): return ([0]*3,[0]*3,[0]*16385,[0]*16385,[0]*16385,[0]*16385,[17]*stack)
+short=workspace(104);before=[part[:] for part in short]
+try: m._materialized_logs(units,real,imag,T,short);raise AssertionError('short capacity accepted')
+except m.Field3C6FactorbackFailure as error: assert 'workspace exhausted' in str(error)
+assert short==tuple(before)
+held=workspace();before=[part[:] for part in held]
+try: m._materialized_logs(units,real,imag,153024,held);raise AssertionError('PRECI accepted')
+except m.Field3C6FactorbackFailure as error: assert 'unsupported' in str(error)
+assert held==tuple(before)
+logs_real,logs_imag=m._materialized_logs(units,real,imag,T,workspace())
+assert logs_real==([0,0,-T]*2+[0,0,1-T])*2,logs_real
+assert logs_imag==[0,-1,0]*6,logs_imag
+complex_module=importlib.import_module('bench.pari-class-group-port.high_precision_complex_agm_log')
+calls=[]
+def fake_complex(*args):
+ assert args[6]==T;calls.append(args[:7]);return 0,0,-T,0,0,-T
+complex_module.pari_complex_logarithm_agm=fake_complex
+complex_imag=[]
+for place in range(3): complex_imag += one+zero+zero+zero
+m._materialized_logs(units,real,complex_imag,T,workspace())
+assert len(calls)==6
+print(json.dumps({'target':T,'capacity':[16385,105],'realCells':len(logs_real),'imagCells':len(logs_imag),'complexDispatchCalls':len(calls),'shortCapacityAtomic':True,'preciAtomic':True}))
+`, root, path.join(root, "src/lib"), path.join(root, "src/baselib")],
+).stdout);
+assert.equal(highPrecisionProbe.target, 153088);
+
 function packedNumber(value, precision = 64) {
   if (value === 0) return [0, 0, -precision];
   let exponent = Math.floor(Math.log2(Math.abs(value)));
@@ -345,6 +389,7 @@ try {
     relationProducts: 288 * 301 * 2,
     exactTorsionSigns: [-1, 1],
     equivalentPhasePeriodAccepted: true,
+    highPrecisionSparseProbe: highPrecisionProbe,
     mutationsRejected: mutations,
     atomicIdempotentPublication: true,
     authentic153088Executed: false,

@@ -84,16 +84,29 @@ uniqueness. Every failed case leaves the content-addressed output directory
 unchanged. A second positive case shifts a C6/C5 phase pair by the authenticated
 `2*pi` period and proves that the equivalent phase class is accepted.
 
+The checker also admits the exact 153,088-bit protocol without running the
+authentic field. A sparse CPython probe evaluates six `log(1)` entries through
+the complete high-precision real dispatcher, verifies all 18 real and 18
+imaginary packed cells, and confirms that six non-axis entries dispatch to the
+already qualified complex AGM root. The reviewed capacity is 16,385
+coefficient cells and 105 split-stack cells. A short stack and the neighboring
+153,024-bit PRECI request are rejected before any caller-owned workspace cell
+changes.
+
 The focused receipt SHA-256 is
 `4d15856ace75611823bc06d9df4ca14b8b479f99a4586764e313b1c8ca4b297a`.
 It is synthetic test evidence, not an authentic field-3 answer.
 
 ## Deferred boundary
 
-The authentic 153,088-bit factorback and logarithm replay remain deferred.
-The current cold logarithm evaluator intentionally supports only bounded
-64--384-bit qualification inputs. The integration lane must construct the
-source owner from the final immutable raw-relation, C5, and C6 owners, including
-the exact embedding and period authority, before extending and running the
-same replay at authentic precision. That work remains outside the timed native
-core.
+The authentic 153,088-bit factorback and logarithm replay remains deferred,
+but it is no longer rejected by the cold evaluator. At that exact target,
+positive or negative real axes use the qualified complete real AGM dispatcher,
+imaginary axes use the same magnitude path plus the qualified pi constant, and
+non-axis values use the qualified complex AGM root. All seven mutable
+workspaces are disjoint, explicitly sized, and preflighted before mutation.
+
+The integration lane must still construct the source owner from the final
+immutable raw-relation, C5, and C6 owners, including exact embedding and period
+authority. Only then should it run this cold replay; it remains outside the
+timed native core.
