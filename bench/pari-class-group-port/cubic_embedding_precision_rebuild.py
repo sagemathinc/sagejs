@@ -2,10 +2,10 @@
 
 Copyright (C) The PARI group. GPL-2.0-or-later, without warranty.
 
-This is the narrow ``get_roots -> make_M`` source cut needed by the frozen
-``x^3 - 20018*x + 20034`` retry.  It starts with the ordered resident roots,
+This is the narrow `get_roots -> make_M` source cut needed by the frozen
+`x^3 - 20018*x + 20034` retry.  It starts with the ordered resident roots,
 certifies a dyadic bracket against the exact polynomial, refines that bracket,
-and evaluates the integral basis ``[1, x, x^2 + 2*x - 13345]`` using PARI's
+and evaluates the integral basis `[1, x, x^2 + 2*x - 13345]` using PARI's
 ordinary/inverse Horner choice.  No retry-precision floating value is input.
 """
 
@@ -22,7 +22,7 @@ from .short_product import (
 
 @native
 def pari_cubic_dyadic_polynomial_sign(numerator: int, fractional_bits: int) -> int:
-    """Sign of ``x^3 - 20018*x + 20034`` at ``x=numerator/2^k``."""
+    """Sign of `x^3 - 20018*x + 20034` at `x=numerator/2^k`."""
     scaled = numerator * numerator * numerator
     scaled -= (20018 * numerator) << (2 * fractional_bits)
     scaled += 20034 << (3 * fractional_bits)
@@ -104,7 +104,7 @@ def pari_cubic_refine_root(
 def pari_cubic_integral_basis_value(
     mantissa: int, precision: int, exponent: int
 ) -> tuple[int, int, int]:
-    """Evaluate ``x^2 + 2*x - 13345`` with ``RgX_cxeval`` association."""
+    """Evaluate `x^2 + 2*x - 13345` with `RgX_cxeval` association."""
     if exponent <= 1:
         # Ordinary Horner: (x + 2) * x - 13345.
         sm, sp, se = pari_word_integer_real_sum(2, mantissa, precision, exponent)
@@ -135,7 +135,7 @@ def pari_cubic_embedding_precision_rebuild(
     matrix_e: IntegerBuffer,
     state: Int64Buffer,
 ) -> int:
-    """Rebuild ordered retry roots and ``nf_get_M`` transactionally.
+    """Rebuild ordered retry roots and `nf_get_M` transactionally.
 
     Matrix storage is row-major, matching the compiled S-unit consumer.  The
     three root scratch buffers may change on failure; public matrix buffers do

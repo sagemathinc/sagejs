@@ -979,7 +979,9 @@ stage("cubic-precision-rebuild", {
     assert.equal(summary.generators, 73);
     assert.equal(summary.python.status, "exact");
     assert.equal(summary.highPrecisionLogsInjected, false);
-    assert.equal(summary.highPrecisionEmbeddingInjected, true);
+    assert.equal(summary.highPrecisionEmbeddingInjected, false);
+    assert.equal(summary.residentPrecisionBits, 320);
+    assert.equal(summary.python.embeddingRebuilt, true);
     assert.equal(summary.transactionalFailure, true);
     assert.deepEqual(summary.backends,
       ["cpython", "javascript", "gmp", "tagged"]);
