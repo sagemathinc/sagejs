@@ -6,7 +6,6 @@
 
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
-const Module = require("node:module");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 
@@ -26,41 +25,8 @@ const fixtures = [
     "sagejs-initial-kummer-catalog-BCSD8t/fixtures.json",
 ].map(relative => path.join(fixtureRoot, relative));
 
-function loadTerminalTools() {
-  const filename = path.join(runtimeRoot,
-    "bench/pari-class-group-port/check_unified_h1_terminal_snapshot.cjs");
-  let source = fs.readFileSync(filename, "utf8");
-  const oldExport =
-    "module.exports = { authenticateFinalPublication, copyReplayOwners };";
-  const newExport = `module.exports = {
-  authenticateFinalPublication, copyReplayOwners, produceOwners,
-  runDetachedReplay, verifyRegulator,
-};`;
-  assert(source.includes(oldExport), "terminal checker export boundary changed");
-  source = source.replace(oldExport, newExport);
-  const oldReturn = "return { copiedOwners, cacheKey: built.cacheKey };";
-  const newReturn = `return {
-    copiedOwners,
-    cacheKey: built.cacheKey,
-    honestyInput: {
-      prep_base_state: copied(input, "prep_base_state", 7),
-      prep_state: copied(input, "prep_state", 8),
-      attempt_state: copied(input, "attempt_state", 4),
-      class_number: copied(input, "class_number", 1),
-      class_invariants: copied(input, "class_invariants", 12),
-      relation_state: copied(input, "relation_state", 6),
-    },
-  };`;
-  assert(source.includes(oldReturn), "terminal owner return boundary changed");
-  source = source.replace(oldReturn, newReturn);
-  const loaded = new Module(filename, module);
-  loaded.filename = filename;
-  loaded.paths = Module._nodeModulePaths(path.dirname(filename));
-  loaded._compile(source, filename);
-  return loaded.exports;
-}
-
-const tools = loadTerminalTools();
+const tools = require(path.join(runtimeRoot,
+  "bench/pari-class-group-port/check_unified_h1_terminal_snapshot.cjs"));
 
 function honestyEvidence(input) {
   const program = String.raw`
@@ -133,8 +99,8 @@ print(json.dumps(authority,sort_keys=True,separators=(",",":")))
   }
 }
 
-async function capture() {
-  const produced = await tools.produceOwners(fixtures);
+async function capture(fixturePaths = fixtures) {
+  const produced = await tools.produceOwners(fixturePaths);
   const coldReplay = tools.runDetachedReplay(produced.copiedOwners);
   const regulatorAuthority = await fullRegulatorAuthority(produced.copiedOwners);
   return {
@@ -144,6 +110,27 @@ async function capture() {
     rawOwners: produced.copiedOwners,
     regulatorAuthority,
   };
+}
+
+async function produceH1ClassUnitResult(fixturePaths = fixtures) {
+  for (const fixture of fixturePaths) assert(fs.existsSync(fixture), `missing ${fixture}`);
+  const candidate = await capture(fixturePaths);
+  const trusted = await capture(fixturePaths);
+  assert.deepEqual(candidate.rawOwners, trusted.rawOwners);
+  assert.equal(candidate.coldReplay.sha256, trusted.coldReplay.sha256);
+  assert.equal(candidate.regulatorAuthority.authority_sha256,
+    trusted.regulatorAuthority.authority_sha256);
+  assert.deepEqual(candidate.honesty, trusted.honesty);
+  const replaySchema =
+    "sagejs.pari-class-group/h1-final-correspondence-replay-v1";
+  const prepared = adapter.prepareH1ClassUnitResult(
+    makeBoundary(candidate, trusted), { publicationReplaySchema: replaySchema });
+  const authority = finalAuthority(prepared, trusted, replaySchema);
+  const result = adapter.publishPreparedH1Result(prepared, authority);
+  assert(result instanceof neutral.ImmutableClassUnitCorrespondenceResult);
+  assert.equal(result.sha256, prepared.envelopeSha256);
+  assert.equal(result.detachedPayload().terminal.public_complete, false);
+  return result;
 }
 
 function evidence(captureValue) {
@@ -384,7 +371,11 @@ async function main() {
   }, null, 2));
 }
 
-main().catch(error => {
-  console.error(error.stack || error);
-  process.exitCode = 1;
-});
+module.exports = { produceH1ClassUnitResult };
+
+if (require.main === module) {
+  main().catch(error => {
+    console.error(error.stack || error);
+    process.exitCode = 1;
+  });
+}

@@ -5,7 +5,7 @@ an execution was fresh from an enumerable JSON claim.  The execution registry
 therefore admits only the exact in-process receipt object returned by a
 registered prepared-input transaction.
 
-Rows 6, 13, and 14 currently implement this boundary.  Each transaction:
+Rows 0, 6, 13, and 14 currently implement this boundary.  Each transaction:
 
 1. starts from its authenticated prepared-number-field input;
 2. computes all intermediate owners privately;
@@ -25,6 +25,9 @@ stage clock, host claim, reserve eligibility, or qualified-timing claim.
 
 Genuine focused executions validated:
 
+- row 0: neutral result
+  `dbf645dd5bdf4eb2f27dbaa769d1c08d454c551318a32611b47a1a232754da58`,
+  trivial class group, class number 1;
 - row 6: neutral result
   `b3bfd9122875729853f0421ab5ffe6220f161f07add30a9753eb79df784dad73`,
   class group `[2, 2]`, class number 4;
@@ -37,6 +40,6 @@ Genuine focused executions validated:
   `3e6e104f836e3c61b988fffa2a94d2b5ba1a6793b7e7ae458422005a74acf0fe`,
   class group `[8, 24]`, class number 192.
 
-Row 0 is not admitted yet: its unified native root returns a matched semantic
-projection, but the reusable producer does not yet retain an
-`ImmutableClassUnitCorrespondenceResult`.
+Row 0 reuses the genuine unified prepared-H1 root, its independent cold replay,
+and neutral publisher.  Its fresh wrapper persists only the verified canonical
+envelope and strips clocks, RSS, diagnostic state, and reserve claims.

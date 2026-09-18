@@ -150,7 +150,18 @@ async function produceOwners(fixtures) {
   // owner needed by the cold verifier is copied into this detached data-only
   // object before any serialization or replay begins.
   const copiedOwners = copyReplayOwners(input);
-  return { copiedOwners, cacheKey: built.cacheKey };
+  return {
+    copiedOwners,
+    cacheKey: built.cacheKey,
+    honestyInput: {
+      prep_base_state: copied(input, "prep_base_state", 7),
+      prep_state: copied(input, "prep_state", 8),
+      attempt_state: copied(input, "attempt_state", 4),
+      class_number: copied(input, "class_number", 1),
+      class_invariants: copied(input, "class_invariants", 12),
+      relation_state: copied(input, "relation_state", 6),
+    },
+  };
 }
 
 async function verifyRegulator(owners) {
@@ -268,12 +279,17 @@ async function main() {
   }));
 }
 
-module.exports = { authenticateFinalPublication, copyReplayOwners };
+module.exports = {
+  authenticateFinalPublication,
+  copyReplayOwners,
+  produceOwners,
+  runDetachedReplay,
+  verifyRegulator,
+};
 
 const command = process.argv[2];
-const invocation = command === "--owners"
-  ? replayOwnersMode(process.argv[3])
-  : require.main === module ? main() : Promise.resolve();
+const invocation = require.main !== module ? Promise.resolve()
+  : command === "--owners" ? replayOwnersMode(process.argv[3]) : main();
 invocation.catch(error => {
   console.error(error.stack || error);
   process.exitCode = 1;
