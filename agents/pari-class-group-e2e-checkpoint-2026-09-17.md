@@ -24,6 +24,16 @@ a connected arithmetic boundary, not yet a completed class-and-unit result:
 full Smith ancestry, exact class witnesses, fundamental-unit reconstruction,
 and C7 assembly remain open.
 
+Commits `a4184f067` and `d3ca4608b` subsequently close the first three of
+those evidence gaps. Exact source-schedule ancestry supplies seven relation
+kernels and two class columns; cubic ideal replay authenticates all 1,137
+principal equations and proves two independent order-two generator ideals.
+Exact sign propagation modulo two then closes the totally-real cubic C5/C6
+suffix, retaining the compact `7 x 2` unit transform and the authentic
+`not_given(LARGE)` flag-zero outcome. This makes the class side internally
+complete and the matched unit correspondence complete, but it still does not
+provide independently certified full-unit saturation or a C7 transaction.
+
 ### Post-checkpoint advances on 2026-09-18
 
 The integration spine has since crossed four additional, independently checked
