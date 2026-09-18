@@ -33,14 +33,20 @@ campaign outcome from **D**:
   `not_given(LARGE)` outcome.  The C7 result is correspondence-complete and
   public-incomplete.  Commit `4e6a3f013` then fuses the prepared root, eight-pass
   Gate-C schedule, post-806 arithmetic, C5/C6, exact class ancestry, and C7
-  publication into one transaction.  Its only runtime inputs are the
-  authenticated prepared-field projection and immutable prepared-root owner;
+  publication into one transaction.  Its runtime inputs are the authenticated
+  prepared-field projection and immutable prepared-root owner;
   W0 and all previously published mathematical answer owners are excluded.  The
   capped replay takes 138.62 seconds and 1,384,772 KiB peak RSS, rejects 11
   adversarial mutations, and reproduces the independently constructed C7 digest
-  exactly.  This is the first genuine end-to-end result at the prepared-number-
-  field boundary, but no PARI ratio is valid until the matched 2.17.4 adapter is
-  complete;
+  exactly.  Commit `4fb519147` closes the stricter boundary by recomputing that
+  root inside the same worker, so the authenticated neutral prepared-field
+  projection is now the sole mathematical input.  Its fresh root takes 1.210
+  seconds, the downstream live computation 137.870 seconds, and the inclusive
+  mathematical clock 139.080 seconds; the all-in transaction including
+  compile/warmup and serialization takes 150.260 seconds at 1,390,700 KiB peak
+  RSS.  This is the first genuine end-to-end result at the strict prepared-
+  number-field boundary, but no PARI ratio is valid until Sage-side detached
+  certification is separated from the matched clock;
 - commit `b5c292b9c` closes row 3 with class group `Z/6Z`, exact order witness,
   compact rank-two units, regulator, torsion, and authentic
   `not_given(LARGE)`; and commit `6b881db53` closes row 11 with class group
