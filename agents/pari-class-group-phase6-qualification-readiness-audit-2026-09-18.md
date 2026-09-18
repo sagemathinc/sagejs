@@ -22,16 +22,25 @@ The pinned local PARI installation also authenticates exactly:
 - `libpari-gmp-tls.so.2.17.4` SHA-256
   `fdc8f2d7ff050c8e8c6cb8994b0f9dc971267ac763eaf5cd927454937d37357f`.
 
-Row 14 has the only complete resident prepared-kernel timing pair: a Sage.js
-adapter, a pristine PARI `bnfinit0(nf,0)` adapter, a common semantic projection,
-fresh-run checks, and the fixed eleven-block ABBA/BAAB campaign. No long series
-was run during this audit.
+The field-neutral prepared-adapter registry now admits symmetric Sage.js/PARI
+pairs for development rows `0,1,3,4,14,16`.  Every registration names one
+common immutable semantic projection and is rejected unless both reviewed
+implementation modules and their required exports exist.  The runtime wrapper
+normalizes only already-computed results; it contains no mathematical
+implementation.  Rows without disjoint stage clocks report the complete root as
+an explicit unattributed remainder instead of inventing leaf attribution.  Row
+3's stronger compact-unit provenance projection is down-projected only by
+discarding those extra retained-evidence fields.
+
+The registry and coordinator remain mechanically disabled for campaign use:
+`executionEnabled=false` and `reserveOpeningEnabled=false`.  No long series was
+run during this audit.
 
 ## Exact blockers
 
-Full qualification is not ready, for five independent reasons:
+Full qualification is not ready, for four independent reasons:
 
-1. Development rows `0,1,3,4,6,8,10,11,13,16,18,19,20,21,23` lack matched
+1. Development rows `6,8,10,11,13,18,19,20,21,23` lack matched
    resident Sage/PARI prepared-kernel timing adapters and common semantic
    projections. Their correctness transactions are not timing adapters: they
    include subprocess, replay, publication, and filesystem work not present in
@@ -40,11 +49,7 @@ Full qualification is not ready, for five independent reasons:
    protocol. They have neither aggregate correctness receipts nor timing pairs.
 3. `class-unit-qualification-manifest.json` correctly retains
    `executionEnabled=false` and `reserveOpeningEnabled=false`.
-4. The neutral general executor has the alternating success path, but no
-   process-isolated 600-second timeout/failure journal around each real adapter
-   arm. The receipt schema can represent failures; the current executor cannot
-   yet acquire them safely from arbitrary real workers.
-5. This CoCalc process is not a human-approved quiet timing authority. Final
+4. This CoCalc process is not a human-approved quiet timing authority. Final
    measurements require a pinned physical core, fixed readable governor, timing
    lock, no agents/builds, and a clean frozen checkout on `opt` or `bench-1`.
 
@@ -74,7 +79,7 @@ bench/pari-class-group-port/run_row14_matched_alternating_campaign.cjs \
 ```
 
 That command remains a row-14 candidate measurement, not the sealed 24-field
-qualification. The highest-value next implementation is a field-neutral
-resident timing adapter interface plus per-arm subprocess coordinator; then
-instantiate it for the other 15 already-correct development roots before
-freezing and opening the eight reserves.
+qualification. The field-neutral interface and process-isolated 600-second
+per-arm journal now exist.  The next adapter work is to register the remaining
+ten development rows, preserving the same symmetric boundary before freezing
+and opening the eight reserves.

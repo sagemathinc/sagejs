@@ -11,6 +11,7 @@ const os = require("node:os");
 const path = require("node:path");
 
 const aggregate = require("./run_fresh_prepared_aggregate.cjs");
+const adapters = require("./phase6_prepared_adapter_registry.cjs");
 const qualification = require("./run_class_unit_qualification.cjs");
 const roots = require("./phase5_development_roots.cjs");
 
@@ -22,7 +23,8 @@ const EXPECTED_PARI = Object.freeze({
   librarySha256: "fdc8f2d7ff050c8e8c6cb8994b0f9dc971267ac763eaf5cd927454937d37357f",
 });
 const DEVELOPMENT_INDICES = Object.freeze(roots.DEVELOPMENT_ROOTS.map(root => root.panelIndex));
-const MATCHED_TIMING_INDICES = Object.freeze([14]);
+const MATCHED_TIMING_INDICES = Object.freeze(
+  adapters.inventory().rows.map(row => row.panelIndex));
 
 function sha256File(filename) {
   return crypto.createHash("sha256").update(fs.readFileSync(filename)).digest("hex");
@@ -98,23 +100,16 @@ function authenticateAggregate({ corpusDirectory, aggregateReceipt }) {
 }
 
 function timingInventory() {
-  const here = __dirname;
-  const row14Files = [
-    "row14_matched_alternating_campaign.cjs",
-    "row14_sage_prepared_timing_adapter.cjs",
-    "row14_pari_prepared_timing_adapter.cjs",
-    "run_row14_matched_alternating_campaign.cjs",
-  ];
-  assert(row14Files.every(filename => fs.existsSync(path.join(here, filename))),
-    "registered row-14 timing implementation is incomplete");
-  const rows = DEVELOPMENT_INDICES.map(panelIndex => ({
+  const admitted = new Map(adapters.inventory().rows.map(row =>
+    [row.panelIndex, row]));
+  const rows = DEVELOPMENT_INDICES.map(panelIndex => admitted.get(panelIndex) || {
     panelIndex,
     freshCorrectness: true,
-    sagePreparedKernelTiming: MATCHED_TIMING_INDICES.includes(panelIndex),
-    pariPreparedKernelTiming: MATCHED_TIMING_INDICES.includes(panelIndex),
-    commonSemanticProjection: MATCHED_TIMING_INDICES.includes(panelIndex),
-    mutuallyExclusiveStageTiming: MATCHED_TIMING_INDICES.includes(panelIndex),
-  }));
+    sagePreparedKernelTiming: false,
+    pariPreparedKernelTiming: false,
+    commonSemanticProjection: false,
+    mutuallyExclusiveStageTiming: false,
+  });
   return {
     rows,
     matchedReady: rows.filter(row => row.sagePreparedKernelTiming &&
@@ -162,7 +157,6 @@ function auditReadiness({ corpusDirectory, aggregateReceipt, pariRoot, pariArchi
     "the qualification manifest deliberately has executionEnabled=false");
   if (!manifestData.manifest.reserveOpeningEnabled) blockers.push(
     `all ${reserveFields.length} final-reserve fields remain sealed`);
-  blockers.push("the general coordinator has no per-arm 600-second timeout/failure journal around adapter processes");
   if (!host.onePinnedCpu || !host.readableGovernor || !host.quietHostApproved) blockers.push(
     "this process is not an approved quiet, one-core, fixed-governor timing authority");
 

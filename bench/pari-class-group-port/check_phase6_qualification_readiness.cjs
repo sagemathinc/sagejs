@@ -16,9 +16,9 @@ assert.throws(() => readiness.parseCpuList("4-2"));
 assert.deepEqual(readiness.DEVELOPMENT_INDICES,
   [0, 1, 3, 4, 6, 8, 10, 11, 13, 14, 16, 18, 19, 20, 21, 23]);
 const inventory = readiness.timingInventory();
-assert.deepEqual(inventory.matchedReady, [14]);
+assert.deepEqual(inventory.matchedReady, [0, 1, 3, 4, 14, 16]);
 assert.deepEqual(inventory.missingMatchedTiming,
-  [0, 1, 3, 4, 6, 8, 10, 11, 13, 16, 18, 19, 20, 21, 23]);
+  [6, 8, 10, 11, 13, 18, 19, 20, 21, 23]);
 const pari = readiness.authenticatePari();
 assert.equal(pari.authenticated, true);
 assert.deepEqual(pari.hashes, {
@@ -46,11 +46,11 @@ if (process.argv.length === 4) {
   });
   assert.equal(report.correctness.completedDevelopmentFields, 16);
   assert.equal(report.correctness.developmentAggregateAuthenticated, true);
-  assert.deepEqual(report.timing.matchedDevelopmentRows, [14]);
+  assert.deepEqual(report.timing.matchedDevelopmentRows, [0, 1, 3, 4, 14, 16]);
   assert.equal(report.timing.row14CampaignPhase6Qualified, false);
   assert.equal(report.reserves.opened, 0);
   assert.equal(report.fullQualificationReady, false);
-  assert(report.blockers.length >= 5);
+  assert(report.blockers.length >= 4);
   aggregateAuthenticated = true;
 }
 
