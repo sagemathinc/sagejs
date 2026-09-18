@@ -256,6 +256,12 @@ function allocate(compiled, input, lengths, { minimumWords = 8, compact = new Se
   return { values, bytes, elements, integerBuffers, int64Buffers, float64Buffers };
 }
 
+function allocationFacts(label, allocated) {
+  return { label, bytes: allocated.bytes, elements: allocated.elements,
+    integerBuffers: allocated.integerBuffers, int64Buffers: allocated.int64Buffers,
+    float64Buffers: allocated.float64Buffers };
+}
+
 function appendSizes(state, newColumns) {
   const hRows = state[0], bColumns = state[2], totalColumns = state[7];
   const lig = ROWS - bColumns, width = hRows + newColumns;
@@ -364,6 +370,65 @@ function resetReusableOwner(owner) {
   }
 }
 
+function resetTypedOwners(compiled, values) {
+  for (const [name, kind] of compiled.names) {
+    if (!kind.endsWith("Buffer")) continue;
+    const owner = values[name];
+    if (owner instanceof Float64Array) owner.fill(0);
+    else resetReusableOwner(owner);
+  }
+}
+
+function createInitialGateStorage(collector, hnfspec, prepared, root) {
+  validateBoundary(prepared, root);
+  const lengths = zeroLengths();
+  const compact = new Set(["relation_basis", "relation_records", "relation_hashes",
+    "relation_metadata", "relation", "relation_scratch", "generators"]);
+  const collectorStorage = allocate(collector, collectorInput(prepared, root), lengths,
+    { minimumWords: 8, compact });
+  const hnfLengths = Object.fromEntries(hnfspec.names.map(([name]) =>
+    [name, lengths[name === "pivots" ? "hnf_rank_pivots" : `hnf_${name}`]]));
+  hnfLengths.original = ROWS * FIRST_COLUMNS;
+  hnfLengths.perm = ROWS;
+  hnfLengths.logs = 7 * PLACES * FIRST_COLUMNS;
+  const hnfStorage = allocate(hnfspec,
+    { rows: ROWS, columns: FIRST_COLUMNS, k0: 4, log_rows: PLACES }, hnfLengths,
+    { minimumWords: 16, compact: new Set(["cup_arena", "cup_frames"]) });
+  return {
+    prepared, root, collector, hnfspec, collectorStorage, hnfStorage,
+    consumed: false,
+    ownerConstructions: collector.names.filter(([, kind]) => kind.endsWith("Buffer")).length +
+      hnfspec.names.filter(([, kind]) => kind.endsWith("Buffer")).length,
+    bytes: collectorStorage.bytes + hnfStorage.bytes,
+    elements: collectorStorage.elements + hnfStorage.elements,
+  };
+}
+
+function claimInitialGateStorage(storage, collector, hnfspec, prepared, root) {
+  assert.equal(storage.prepared, prepared,
+    "prepared initial storage belongs to a different prepared envelope");
+  assert.equal(storage.root, root,
+    "prepared initial storage belongs to a different initial owner");
+  assert.equal(storage.collector, collector,
+    "prepared initial storage belongs to a different collector handle");
+  assert.equal(storage.hnfspec, hnfspec,
+    "prepared initial storage belongs to a different hnfspec handle");
+  assert.equal(storage.consumed, false, "prepared initial storage was already consumed");
+  storage.consumed = true;
+  return storage;
+}
+
+function loadInitialHnfspecStorage(storage, cv, root) {
+  const values = storage.hnfStorage.values;
+  resetTypedOwners(storage.hnfspec, values);
+  copyBufferPrefix(values.original, cv.relation_records, ROWS * FIRST_COLUMNS);
+  copyBufferPrefix(values.perm, root.factor.permutation, ROWS);
+  copyBufferPrefix(values.logs, cv.log_embeddings, 7 * PLACES * FIRST_COLUMNS);
+  values.rows = BigInt(ROWS); values.columns = BigInt(FIRST_COLUMNS);
+  values.k0 = 4n; values.log_rows = BigInt(PLACES);
+  return values;
+}
+
 function createHnfaddTransactionStorage(append) {
   const values = {}, capacities = { ...APPEND_CAPACITIES };
   let bytes = 0, elements = 0, integerBuffers = 0, int64Buffers = 0;
@@ -452,15 +517,18 @@ async function firstPreparedHnf(prepared, root, options = {}) {
     profile, "initial.compile-collector", () => compile(
       "collected_log_embeddings.py", "pari_collect_and_log_relations", profile !== null));
   if (profile !== null) profile._compiled.push([collector, "pari_collect_and_log_relations"]);
+  const preparedStorage = kernels?.initialStorage === undefined ? null :
+    claimInitialGateStorage(kernels.initialStorage, collector, kernels.hnfspec,
+      prepared, root);
   const compact = new Set(["relation_basis", "relation_records", "relation_hashes",
     "relation_metadata", "relation", "relation_scratch", "generators"]);
-  const allocated = timed(profile, "initial.allocate-collector", () =>
-    allocate(collector, collectorInput(prepared, root), lengths,
-      { minimumWords: 8, compact }));
-  if (profile !== null) profile.allocations.push({ label: "initial.collector",
-    bytes: allocated.bytes, elements: allocated.elements,
-    integerBuffers: allocated.integerBuffers, int64Buffers: allocated.int64Buffers,
-    float64Buffers: allocated.float64Buffers });
+  const allocated = preparedStorage?.collectorStorage || timed(
+    profile, "initial.allocate-collector", () =>
+      allocate(collector, collectorInput(prepared, root), lengths,
+        { minimumWords: 8, compact }));
+  if (profile !== null) profile.allocations.push(allocationFacts(
+    preparedStorage === null ? "initial.collector" : "prepared.initial.collector",
+    allocated));
   const cv = allocated.values;
   const status = timed(profile, "initial.collector", () =>
     collector.fn.gmp(...collector.names.map(([name]) => cv[name])));
@@ -475,17 +543,20 @@ async function firstPreparedHnf(prepared, root, options = {}) {
     profile, "initial.compile-hnfspec", () => compile(
       "hnfspec_complete.py", "pari_hnfspec_complete", profile !== null));
   if (profile !== null) profile._compiled.push([hnf, "pari_hnfspec_complete"]);
-  const hnfInput = { rows: ROWS, columns: FIRST_COLUMNS, k0: 4, log_rows: PLACES,
-    original: cv.relation_records.toArray().slice(0, ROWS * FIRST_COLUMNS),
-    perm: root.factor.permutation, logs: cv.log_embeddings.toArray() };
+  const hnfInput = preparedStorage === null
+    ? { rows: ROWS, columns: FIRST_COLUMNS, k0: 4, log_rows: PLACES,
+      original: cv.relation_records.toArray().slice(0, ROWS * FIRST_COLUMNS),
+      perm: root.factor.permutation, logs: cv.log_embeddings.toArray() }
+    : null;
   const hnfLengths = Object.fromEntries(hnf.names.map(([name]) =>
     [name, lengths[name === "pivots" ? "hnf_rank_pivots" : `hnf_${name}`]]));
   const hnfCompact = new Set(["cup_arena", "cup_frames"]);
-  const ha = timed(profile, "initial.allocate-hnfspec", () =>
+  const ha = preparedStorage?.hnfStorage || timed(profile, "initial.allocate-hnfspec", () =>
     allocate(hnf, hnfInput, hnfLengths, { minimumWords: 16, compact: hnfCompact }));
-  if (profile !== null) profile.allocations.push({ label: "initial.hnfspec",
-    bytes: ha.bytes, elements: ha.elements, integerBuffers: ha.integerBuffers,
-    int64Buffers: ha.int64Buffers, float64Buffers: ha.float64Buffers });
+  if (preparedStorage !== null) timed(profile, "initial.reset-and-load-hnfspec", () =>
+    loadInitialHnfspecStorage(preparedStorage, cv, root));
+  if (profile !== null) profile.allocations.push(allocationFacts(
+    preparedStorage === null ? "initial.hnfspec" : "prepared.initial.hnfspec", ha));
   assert.equal(timed(profile, "initial.hnfspec", () =>
     hnf.fn.gmp(...hnf.names.map(([name]) => ha.values[name]))), 0n);
   if (profile !== null) profile.native.push({ label: "initial.hnfspec",
@@ -495,7 +566,7 @@ async function firstPreparedHnf(prepared, root, options = {}) {
   return { collector, cv, hnf: ha.values, ownerBytes: allocated.bytes + ha.bytes };
 }
 
-async function warmPreparedGateC({ profile = false } = {}) {
+async function warmPreparedGateC({ profile = false, prepared, root } = {}) {
   // Compilation/loading belongs outside every mathematical timing boundary.
   // Return the authenticated resident handles so a matched run does not parse,
   // lower, or inspect the large graphs again after its clock has started.
@@ -505,7 +576,13 @@ async function warmPreparedGateC({ profile = false } = {}) {
     "hnfspec_complete.py", "pari_hnfspec_complete", profile);
   const next = await compile("row14_next_pass.py", "pari_row14_prepare_next_pass");
   const hnfadd = await compile("hnfadd.py", "pari_hnfadd", profile);
-  return Object.freeze({ collector, hnfspec, next, hnfadd, profile: Boolean(profile) });
+  assert.equal(prepared === undefined, root === undefined,
+    "prepared Gate-C storage requires both prepared and root owners");
+  const initialStorage = prepared === undefined ? undefined :
+    createInitialGateStorage(collector, hnfspec, prepared, root);
+  return Object.freeze({ collector, hnfspec, next, hnfadd,
+    ...(initialStorage === undefined ? {} : { initialStorage }),
+    profile: Boolean(profile) });
 }
 
 async function runPreparedGateC(prepared, root, options = {}) {
@@ -619,7 +696,13 @@ async function runPreparedGateC(prepared, root, options = {}) {
     delete profile._compiled;
   }
   return { collectorValues: cv, resident, checkpoints, passTrace, collectionPasses,
-    ownerBytesUpperBound, preparedRng: root.rng.slice(), storageReuse: {
+    ownerBytesUpperBound, preparedRng: root.rng.slice(), initialStorageReuse:
+      kernels?.initialStorage === undefined ? null : {
+        strategy: "authenticated-resident-fixed-owner-envelope",
+        ownerConstructionsOutsideRun: kernels.initialStorage.ownerConstructions,
+        bytes: kernels.initialStorage.bytes, elements: kernels.initialStorage.elements,
+        consumedExactlyOnce: kernels.initialStorage.consumed,
+      }, storageReuse: {
       strategy: "validated-fixed-envelope-reset-logical-state",
       hnfaddTransactions: appendStorage.resets,
       continuationPasses: collectionPasses - 1,
@@ -644,4 +727,5 @@ async function runPreparedGateC(prepared, root, options = {}) {
 
 module.exports = { APPEND_CAPACITIES, APPEND_SHAPES, PREPARED_KEYS,
   createContinuationControlStorage, createHnfaddTransactionStorage,
+  createInitialGateStorage,
   prepareHnfaddTransaction, runPreparedGateC, validateBoundary, warmPreparedGateC };
