@@ -12,7 +12,9 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 
 const neutral = require("./class_unit_correspondence_result.cjs");
+const authentication = require("./prepared_nf_authentication.cjs");
 const roots = require("./phase5_development_roots.cjs");
+const preparedManifest = require("./fresh-prepared-corpus-manifest.json");
 const row0 = require("./row0_fresh_prepared_execution.cjs");
 const row1 = require("./row1_fresh_prepared_transaction.cjs");
 const row3 = require("./row3_fresh_prepared_transaction.cjs");
@@ -50,6 +52,20 @@ const RUNNERS = new Map([
   [21, row21],
   [23, row23],
 ]);
+const EXPECTED_PREPARED = new Map(preparedManifest.rows.map(row => [
+  row.panelIndex,
+  Object.freeze({
+    authoritySha256: row.preparedAuthoritySha256,
+    jsonSha256: row.preparedJsonSha256,
+  }),
+]));
+const NORMALIZED_PREPARED_KEYS = Object.freeze(
+  [...preparedManifest.normalizedPreparedKeys].sort());
+
+assert.deepEqual([...RUNNERS.keys()], roots.DEVELOPMENT_ROOTS.map(root => root.panelIndex),
+  "fresh-prepared runner population differs from the development population");
+assert.deepEqual([...EXPECTED_PREPARED.keys()], [...RUNNERS.keys()],
+  "prepared authority population differs from the runner population");
 
 function registeredRoot(root) {
   assert(root && typeof root === "object" && !Array.isArray(root));
@@ -58,6 +74,37 @@ function registeredRoot(root) {
   assert(RUNNERS.has(root.panelIndex),
     `development row ${root.panelIndex} has no registered fresh-prepared runner`);
   return registered;
+}
+
+/**
+ * Authenticate a raw normalized prepared object for one registered runner.
+ *
+ * This is deliberately the same public input shape consumed by
+ * `runRegisteredFreshPrepared`: no private envelope, filename, corpus record,
+ * output, or answer-bearing fixture is admitted.  The exact normalized key
+ * set rejects added answer fields, `authenticatePreparedNf` verifies the
+ * mathematical prepared-NF relationships, and the frozen per-row digest binds
+ * that authority to the selected runner.
+ */
+function validateRegisteredFreshPrepared({ root, prepared }) {
+  const registered = registeredRoot(root);
+  assert(prepared && typeof prepared === "object" && !Array.isArray(prepared),
+    "fresh prepared input must be a raw normalized object");
+  assert.deepEqual(Object.keys(prepared).sort(), NORMALIZED_PREPARED_KEYS,
+    "fresh prepared input has an unreviewed or missing normalized key");
+  const authority = authentication.authenticatePreparedNf(prepared);
+  const expected = EXPECTED_PREPARED.get(registered.panelIndex);
+  assert.equal(authority.sha256, expected.authoritySha256,
+    `prepared authority does not match registered row ${registered.panelIndex}`);
+  return Object.freeze({
+    panelIndex: registered.panelIndex,
+    fieldId: registered.manifestFieldId,
+    internalFieldId: registered.internalFieldId,
+    degree: authority.degree,
+    signature: Object.freeze([...authority.signature]),
+    preparedAuthoritySha256: authority.sha256,
+    preparedJsonSha256: expected.jsonSha256,
+  });
 }
 
 function validateDurableResult(receipt, result) {
@@ -138,9 +185,17 @@ function admitRegisteredFreshReceipt({ root, receipt }) {
 async function runRegisteredFreshPrepared({ root, prepared, outputDirectory }) {
   const registered = registeredRoot(root);
   assert.equal(typeof outputDirectory, "string");
+  const compatibility = validateRegisteredFreshPrepared({
+    root: registered,
+    prepared,
+  });
   const receipt = await RUNNERS.get(registered.panelIndex)
     .runFreshPrepared(prepared, outputDirectory);
-  return admitRegisteredFreshReceipt({ root: registered, receipt });
+  const admitted = admitRegisteredFreshReceipt({ root: registered, receipt });
+  assert.equal(admitted.freshExecution.preparedAuthoritySha256,
+    compatibility.preparedAuthoritySha256,
+  "fresh runner used a different prepared authority than registry admission");
+  return admitted;
 }
 
 function verifyFreshExecution(freshExecution, { root, result }) {
@@ -159,5 +214,6 @@ module.exports = {
   SCHEMA,
   admitRegisteredFreshReceipt,
   runRegisteredFreshPrepared,
+  validateRegisteredFreshPrepared,
   verifyFreshExecution,
 };

@@ -49,14 +49,23 @@ pretty-printed receipt is written once and made mode 0444.
 ## Fail-closed probe
 
 The registry intentionally does not expose its private runner map. The child
-therefore calls the public `runRegisteredFreshPrepared` boundary with an invalid
-`outputDirectory`. Registry membership is checked before that public argument
-check: a registered root rejects the invalid directory, while an unregistered
-root rejects because no runner exists. No row implementation is entered.
+instead passes each immutable corpus file through the explicit
+`validateRegisteredFreshPrepared` boundary. That boundary accepts the same raw
+normalized object as the real runner, requires exactly the 22 reviewed keys,
+runs the full prepared-NF mathematical authenticator, and binds its authority
+digest to the selected registered row. It does not create output directories or
+enter any row computation.
 
-This focused probe currently reports the registered and missing subsets. A
-real aggregate run refuses to create its temporary execution tree unless the
-registered subset equals the exact ordered 16-row population.
+The real `runRegisteredFreshPrepared` path performs this same admission before
+entering the row runner and checks that the branded result reports the identical
+prepared authority. The runner may repeat its own private validation; the
+registry check is an independent common fail-closed boundary.
+
+The focused probe reports registered, missing, and independently authenticated
+subsets. A real aggregate run refuses to create its temporary execution tree
+unless all three agree with the exact ordered 16-row population. The focused
+checker also proves that an added answer-bearing key and changed mathematical
+content are rejected.
 
 ## Focused validation
 

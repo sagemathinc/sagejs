@@ -15,7 +15,7 @@ const roots = require("./phase5_development_roots.cjs");
 const CHILD_SCHEMA =
   "sagejs.pari-class-group/fresh-prepared-aggregate-child-v1";
 const PROBE_SCHEMA =
-  "sagejs.pari-class-group/fresh-prepared-registry-probe-v1";
+  "sagejs.pari-class-group/fresh-prepared-registry-probe-v2";
 const SHA256 = /^[0-9a-f]{64}$/;
 
 function sha256(bytes) {
@@ -30,25 +30,32 @@ function expectedIndices() {
   return roots.DEVELOPMENT_ROOTS.map(root => root.panelIndex);
 }
 
-async function probeRegistry() {
+function probeRegistry(corpusDirectory) {
+  assert.equal(typeof corpusDirectory, "string",
+    "registry probe requires the frozen prepared corpus directory");
   const registry = require("./fresh_prepared_development_registry.cjs");
   const registered = [];
   const missing = [];
+  const validated = [];
   for (const root of roots.DEVELOPMENT_ROOTS) {
     try {
-      await registry.runRegisteredFreshPrepared({
+      const expected = manifest().rows.find(row => row.panelIndex === root.panelIndex);
+      assert(expected, `prepared corpus does not contain row ${root.panelIndex}`);
+      const filename = path.join(corpusDirectory,
+        `prepared-row-${String(root.panelIndex).padStart(2, "0")}-${expected.preparedJsonSha256}.json`);
+      const { prepared } = validatePreparedFile(root.panelIndex, filename);
+      const compatibility = registry.validateRegisteredFreshPrepared({
         root,
-        prepared: null,
-        outputDirectory: null,
+        prepared,
       });
-      assert.fail(`row ${root.panelIndex} accepted an invalid output directory`);
+      assert.equal(compatibility.preparedAuthoritySha256,
+        expected.preparedAuthoritySha256);
+      registered.push(root.panelIndex);
+      validated.push(compatibility);
     } catch (error) {
       const message = String(error && error.message);
       if (message.includes("has no registered fresh-prepared runner")) {
         missing.push(root.panelIndex);
-      } else if (message.includes("'string'") ||
-        message.includes("outputDirectory")) {
-        registered.push(root.panelIndex);
       } else {
         throw error;
       }
@@ -59,7 +66,10 @@ async function probeRegistry() {
     expected: expectedIndices(),
     registered,
     missing,
-    ready: missing.length === 0 && registered.length === expectedIndices().length,
+    validated,
+    allInputsAuthenticated: validated.length === expectedIndices().length,
+    ready: missing.length === 0 && registered.length === expectedIndices().length &&
+      validated.length === expectedIndices().length,
   });
 }
 
@@ -74,7 +84,11 @@ function validatePreparedFile(panelIndex, filename) {
   const bytes = fs.readFileSync(filename);
   assert.equal(bytes.length, expected.preparedJsonBytes);
   assert.equal(sha256(bytes), expected.preparedJsonSha256);
-  return { expected, prepared: JSON.parse(bytes) };
+  const prepared = JSON.parse(bytes);
+  assert.deepEqual(Object.keys(prepared).sort(),
+    [...manifest().normalizedPreparedKeys].sort(),
+    `row ${panelIndex} has an unreviewed or missing prepared key`);
+  return { expected, prepared };
 }
 
 function writeReceipt(filename, receipt) {
@@ -127,11 +141,13 @@ async function runRow(panelIndex, preparedPath, outputDirectory, receiptPath) {
 
 async function main(argv) {
   if (argv[2] === "--probe") {
-    process.stdout.write(`${JSON.stringify(await probeRegistry())}\n`);
+    assert.equal(argv.length, 4,
+      "usage: fresh_prepared_aggregate_child.cjs --probe CORPUS");
+    process.stdout.write(`${JSON.stringify(probeRegistry(path.resolve(argv[3])))}\n`);
     return;
   }
   assert.equal(argv[2], "--run",
-    "usage: fresh_prepared_aggregate_child.cjs --probe | --run ROW PREPARED OUTPUT RECEIPT");
+    "usage: fresh_prepared_aggregate_child.cjs --probe CORPUS | --run ROW PREPARED OUTPUT RECEIPT");
   assert.equal(argv.length, 7);
   const panelIndex = Number(argv[3]);
   assert(Number.isSafeInteger(panelIndex));

@@ -94,9 +94,11 @@ function inspectCorpus(directory) {
   });
 }
 
-function probeRegistry() {
+function probeRegistry(corpusDirectory) {
+  const resolvedCorpus = fs.realpathSync(corpusDirectory);
   const result = childProcess.spawnSync(process.execPath,
-    [path.join(__dirname, "fresh_prepared_aggregate_child.cjs"), "--probe"], {
+    [path.join(__dirname, "fresh_prepared_aggregate_child.cjs"), "--probe",
+      resolvedCorpus], {
       cwd: __dirname,
       encoding: "utf8",
       maxBuffer: 1024 * 1024,
@@ -108,6 +110,7 @@ function probeRegistry() {
   assert.deepEqual(probe.expected, frozenPopulation().map(row => row.panelIndex));
   assert.deepEqual([...probe.registered, ...probe.missing].sort((a, b) => a - b),
     probe.expected);
+  assert.deepEqual(probe.validated.map(row => row.panelIndex), probe.registered);
   return Object.freeze(probe);
 }
 
@@ -116,6 +119,8 @@ function assertRegistryReady(probe) {
     `aggregate gate remains closed; missing fresh-prepared rows: ${probe.missing.join(",")}`);
   assert.deepEqual(probe.registered, probe.expected);
   assert.deepEqual(probe.missing, []);
+  assert.equal(probe.allInputsAuthenticated, true);
+  assert.equal(probe.validated.length, probe.expected.length);
 }
 
 function privateTemporaryRoot() {
@@ -278,7 +283,7 @@ async function runAggregate(corpusDirectory, receiptPath) {
   assert.equal(fs.existsSync(receiptPath), false,
     "aggregate receipt destination already exists");
   const corpus = inspectCorpus(corpusDirectory);
-  const probe = probeRegistry();
+  const probe = probeRegistry(corpus.directory);
   assertRegistryReady(probe);
   const temporaryRoot = privateTemporaryRoot();
   try {
@@ -318,13 +323,15 @@ async function main(argv) {
   if (argv[2] === "--inspect") {
     assert(argv[3], "usage: run_fresh_prepared_aggregate.cjs --inspect CORPUS");
     const corpus = inspectCorpus(argv[3]);
-    const probe = probeRegistry();
+    const probe = probeRegistry(corpus.directory);
     process.stdout.write(`${JSON.stringify({
-      schema: "sagejs.pari-class-group/fresh-prepared-aggregate-inspection-v1",
+      schema: "sagejs.pari-class-group/fresh-prepared-aggregate-inspection-v2",
       corpusRows: corpus.files.length,
       expected: probe.expected,
       registered: probe.registered,
       missing: probe.missing,
+      validated: probe.validated,
+      allInputsAuthenticated: probe.allInputsAuthenticated,
       ready: probe.ready,
       executionStarted: false,
       timingClaim: false,
