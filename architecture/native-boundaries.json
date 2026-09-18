@@ -13,7 +13,7 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 253,
+    "classified-native-file": 257,
     "declared-ffi": 480,
     "declared-ffi-resource": 37,
     "napi-export": 358,
@@ -9558,6 +9558,14 @@
       "lane": "integration"
     },
     {
+      "id": "native-file:bench/pari-class-group-port/generic_phase6_pari_prepared_adapter.c",
+      "kind": "classified-native-file",
+      "path": "bench/pari-class-group-port/generic_phase6_pari_prepared_adapter.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra"
+    },
+    {
       "id": "native-file:bench/pari-class-group-port/pari_compact_flag_one_development_authority.c",
       "kind": "classified-native-file",
       "path": "bench/pari-class-group-port/pari_compact_flag_one_development_authority.c",
@@ -9609,6 +9617,30 @@
       "id": "native-file:bench/pari-class-group-port/row16_phase6_pari_prepared_adapter.c",
       "kind": "classified-native-file",
       "path": "bench/pari-class-group-port/row16_phase6_pari_prepared_adapter.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:bench/pari-class-group-port/row19_phase6_pari_prepared_adapter.c",
+      "kind": "classified-native-file",
+      "path": "bench/pari-class-group-port/row19_phase6_pari_prepared_adapter.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:bench/pari-class-group-port/row21_phase6_pari_prepared_adapter.c",
+      "kind": "classified-native-file",
+      "path": "bench/pari-class-group-port/row21_phase6_pari_prepared_adapter.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:bench/pari-class-group-port/row23_phase6_pari_prepared_adapter.c",
+      "kind": "classified-native-file",
+      "path": "bench/pari-class-group-port/row23_phase6_pari_prepared_adapter.c",
       "disposition": "benchmark-reference",
       "review_status": "accepted",
       "lane": "arithmetic-algebra"
