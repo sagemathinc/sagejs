@@ -43,7 +43,7 @@ and exact selected sign/phase evidence.  The resulting C5/C6 owner has
 canonical SHA-256
 `5308cfc9a128a1b5d1667a21c84866f0c91c8db6107e777eefd9cf88c0243551`.
 The full external ancestry consumed by the check is separately pinned at
-`3ae88d05e68ed5687b9cb1939dca9ae641d4a09e52b914a03bd5041d919d17f7`;
+`aafbe40446e563b9b93a2d186d24a9c0f4b9908c922c24dd64ce1c78e3500ae9`;
 the focused receipt retains that digest explicitly rather than pretending the
 smaller C5/C6 owner embeds all 10,233 transform entries.
 
