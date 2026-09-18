@@ -166,9 +166,10 @@ function collectorInput(prepared, prefix) {
   };
 }
 
-async function runFirstCollection(prepared, prefix) {
+async function runFirstCollection(prepared, prefix, options = {}) {
   const source = path.join(__dirname, "collected_log_embeddings.py");
-  const built = await compileKernel({ sourcePath: source });
+  const built = await compileKernel({ sourcePath: source,
+    ...(options.cacheRoot ? { cacheRoot: options.cacheRoot } : {}) });
   const fn = require(built.modulePath).pari_collect_and_log_relations;
   assert(fn?.nativeAvailable);
   const names = signature(source, "pari_collect_and_log_relations");

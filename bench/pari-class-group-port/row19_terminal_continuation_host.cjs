@@ -21,9 +21,8 @@ function signature(source, name) {
     line.trim().replace(/,$/, "").split(": "));
 }
 
-async function compiled(sourceName, exportName) {
+async function compiled(sourceName, exportName, cacheRoot = null) {
   const source = path.join(__dirname, sourceName);
-  const cacheRoot = process.env.SAGEJS_NATIVE_CACHE_DIR;
   const built = await compileKernel({ sourcePath: source,
     ...(cacheRoot ? { cacheRoot } : {}) });
   const fn = require(built.modulePath)[exportName];
@@ -95,10 +94,11 @@ function acceptanceSizes() {
     accept_zeta_factor: 3, accept_post_hnf_state: 3 };
 }
 
-async function analyticInverseHr(prepared, catalog) {
+async function analyticInverseHr(prepared, catalog, cacheRoot = null) {
   assert.equal(catalog.schema, "sagejs.pari-class-group/row19-analytic-catalog-v1");
   assert.equal(catalog.oracleDataConsumed, false);
-  const kernel = await compiled("row14_post806_terminal.py", "pari_row14_analytic_inverse_hr");
+  const kernel = await compiled("row14_post806_terminal.py",
+    "pari_row14_analytic_inverse_hr", cacheRoot);
   const count = catalog.primes.length, groups = catalog.degrees.length;
   const input = { discriminant: prepared.analytic_discriminant, real_places: 1,
     complex_places: 1, roots_of_unity: prepared.analytic_roots_of_unity,
@@ -126,21 +126,32 @@ async function analyticInverseHr(prepared, catalog) {
     state: Array.from(values.state).map(Number), bytes, groups };
 }
 
-async function runTerminalContinuation(prepared, prefix, catalog, ownerDescriptor) {
-  const authority = readOwner(ownerDescriptor);
-  assert.equal(authority.schema, "sagejs.pari-class-group/row19-first-hnf-owner-v1");
-  const first = await firstHnf.runFirstHnf(prepared, prefix);
+async function runTerminalContinuationLive(
+  prepared,
+  prefix,
+  catalog,
+  first,
+  expectedAuthority = null,
+  firstOwnerSha256 = null,
+  options = {},
+) {
   const liveExact = first.exact;
-  for (const key of ["state", "sparseState", "cleanupState", "rankState",
-    "assemblyState", "hnfState", "finalState", "cupState", "cupSolveState",
-    "dimensions", "ancestry", "result"])
-    assert.deepEqual(liveExact[key], authority[key], `first-HNF authority ${key}`);
+  if (expectedAuthority !== null) {
+    assert.equal(expectedAuthority.schema,
+      "sagejs.pari-class-group/row19-first-hnf-owner-v1");
+    for (const key of ["state", "sparseState", "cleanupState", "rankState",
+      "assemblyState", "hnfState", "finalState", "cupState", "cupSolveState",
+      "dimensions", "ancestry", "result"])
+      assert.deepEqual(liveExact[key], expectedAuthority[key],
+        `first-HNF authority ${key}`);
+  }
 
   const cv = first.collected.values;
   const collectorSource = path.join(__dirname, "collected_log_embeddings.py");
   const collectorNames = signature(collectorSource, "pari_collect_and_log_relations");
   const collectorFn = require(first.collected.built.modulePath).pari_collect_and_log_relations;
-  const next = await compiled("row14_next_pass.py", "pari_row14_prepare_next_pass");
+  const next = await compiled("row14_next_pass.py", "pari_row14_prepare_next_pass",
+    options.cacheRoot);
   const search = next.fn.createIntegerBuffer(ROWS, 1, cv.search_ideals.toArray());
   const outerPerm = next.fn.createIntegerBuffer(ROWS, 1, cv.outer_perm.toArray());
   const outer = next.fn.createInt64Buffer(Array.from(cv.outer_state));
@@ -163,9 +174,9 @@ async function runTerminalContinuation(prepared, prefix, catalog, ownerDescripto
   assert.deepEqual(cv.relation_state.toArray().map(String),
     ["430", "4350", "0", "0", "0", "430"]);
 
-  const analytic = await analyticInverseHr(prepared, catalog);
+  const analytic = await analyticInverseHr(prepared, catalog, options.cacheRoot);
   const terminal = await compiled("connected_hnfadd_acceptance.py",
-    "pari_connected_hnfadd_acceptance");
+    "pari_connected_hnfadd_acceptance", options.cacheRoot);
   const sizes = { ...appendSizes(liveExact.state, TERMINAL-FIRST), ...acceptanceSizes() };
   const explicit = { h: liveExact.result.W, h_rows: 9, dep: liveExact.result.dep,
     b: liveExact.result.B, b_columns: 408, logs: liveExact.result.C,
@@ -197,7 +208,7 @@ async function runTerminalContinuation(prepared, prefix, catalog, ownerDescripto
   assert.equal(Number(values.state[8]), 1);
 
   const suffix = await compiled("row19_hnfadd_cup_suffix.py",
-    "pari_row19_hnfadd_cup_suffix");
+    "pari_row19_hnfadd_cup_suffix", options.cacheRoot);
   const width = 16, lig = 16;
   const suffixInput = { ...values, width, lig, log_rows: PLACES,
     b_columns: 408, total_columns: FIRST, new_columns: TERMINAL-FIRST,
@@ -208,7 +219,8 @@ async function runTerminalContinuation(prepared, prefix, catalog, ownerDescripto
   bytes += (8*width*lig*(Math.floor(width/4)+1)) * 12;
   assert.equal(suffix.fn.gmp(...suffix.names.map(([name]) => suffixInput[name])), 0n);
 
-  const acceptance = await compiled("post_hnf_acceptance.py", "pari_post_hnf_acceptance");
+  const acceptance = await compiled("post_hnf_acceptance.py",
+    "pari_post_hnf_acceptance", options.cacheRoot);
   const acceptanceInput = { factor_count: ROWS, h_rows: 9, b_columns: 415,
     c_columns: TERMINAL, places: PLACES, degree: DEGREE,
     h: values.result_h, c: values.result_c, inverse_hr: values.accept_inverse_hr,
@@ -251,10 +263,21 @@ async function runTerminalContinuation(prepared, prefix, catalog, ownerDescripto
       hashes: view(cv.relation_hashes, TERMINAL),
       metadata: view(cv.relation_metadata, 3*TERMINAL),
       generators: view(cv.generators, DEGREE*TERMINAL) } };
-  return { exact, firstOwnerSha256: ownerDescriptor.ownerSha256,
+  return { exact, firstOwnerSha256,
     ownerBytesUpperBound: first.ownerBytesUpperBound + bytes,
     nativeCoreBytes: fs.statSync(terminal.built.coreSourcePath).size,
-    nextControl };
+    nextControl,
+    // Private continuation capability.  Public projections must not serialize
+    // this object; the Phase-6 resident root retains it in a WeakMap so a
+    // later class/unit root can consume the same native buffers.
+    resident: { collector: cv, terminal: values } };
 }
 
-module.exports = { runTerminalContinuation, readOwner };
+async function runTerminalContinuation(prepared, prefix, catalog, ownerDescriptor) {
+  const authority = readOwner(ownerDescriptor);
+  const first = await firstHnf.runFirstHnf(prepared, prefix);
+  return runTerminalContinuationLive(prepared, prefix, catalog, first,
+    authority, ownerDescriptor.ownerSha256);
+}
+
+module.exports = { runTerminalContinuation, runTerminalContinuationLive, readOwner };

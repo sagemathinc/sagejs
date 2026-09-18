@@ -17,6 +17,8 @@ const EXPECTED = Object.freeze({
   compactUnitCoordinatorSha256: "46740daa713a09fa827d8187c87c07a5732d65595efa4fb839a0217dea034974",
   unitCoordinatorSha256: "dc135ffdd504f2012945ebf5434c0cab4d48f268f6b0d26d5c499b7033cadc23",
   finalCoordinatorSha256: "58ce9efebe448739e2f9406d5754907870628b5def9b8eba28ac9f04289f75d7",
+  terminalHostSha256: "802d86e73bae4f8dbc9a173dda4ee28a7981de55047cd6ae0c68d006da1ce833",
+  residentRelationRootSha256: "c4a53031501b7c33706dedee98c56eb9ab2650401b236f578fac9b6647859ee0",
 });
 const sha = bytes => crypto.createHash("sha256").update(bytes).digest("hex");
 const source = name => fs.readFileSync(path.join(__dirname, name));
@@ -31,6 +33,8 @@ function inspect(inputPath = DEFAULT_INPUT) {
     compactUnitCoordinatorSha256: "row19_live_rank1_unit_coordinator.cjs",
     unitCoordinatorSha256: "row19_live_unit_result_coordinator.cjs",
     finalCoordinatorSha256: "row19_final_result_coordinator.cjs",
+    terminalHostSha256: "row19_terminal_continuation_host.cjs",
+    residentRelationRootSha256: "row19_phase6_resident_relation_root.cjs",
   };
   for (const [key, filename] of Object.entries(files))
     assert.equal(sha(source(filename)), EXPECTED[key], `${filename} changed`);
@@ -41,25 +45,30 @@ function inspect(inputPath = DEFAULT_INPUT) {
   assert.match(transaction, /spawnSync\("python3"/);
   assert.match(transaction, /fs\.mkdtempSync\(/);
   assert.match(transaction, /writePrivateOwner\(/);
-  for (const filename of Object.values(files).slice(1)) {
+  for (const filename of Object.values(files).slice(1, 5)) {
     const text = source(filename).toString("utf8");
     assert.match(text, /spawnSync\("python3"/);
     assert.match(text, /fs\.readFileSync\(/);
   }
+  const resident = source(files.residentRelationRootSha256).toString("utf8");
+  assert.match(resident, /runTerminalContinuationLive\(/);
+  assert.match(resident, /serializedOwnersInsideRoot: 0/);
   return {
     schema: "sagejs.pari-class-group/row19-phase6-timing-blocker-v1",
     panelIndex: 19, fieldId: "3.1.1086061775432017340256300.107",
     preparedAuthoritySha256: authority.sha256,
     freshInputAuthenticated: true, changedPreparedAuthorityRejected: true,
     residentPreparedKernelTimingReady: false,
+    residentRelationKernelReady: true,
+    residentRelationKernelStages: 6,
     forbiddenCurrentClockWork: ["multiple Python subprocesses",
       "temporary compressed owner publication", "owner rereads and authentication",
       "detached class/unit/final composition"],
     sourceCut: [
-      "join prefix, first-HNF and terminal continuation behind one resident owner graph",
+      "lower the prepared factor-base and analytic prefixes into the resident native graph",
       "port the class-principal, compact-unit and exact-unit coordinators to callable native roots",
-      "pass live owner handles instead of gzip descriptors between every stage",
-      "expose prepareResident/runResident and move replay/publication entirely after its root clock",
+      "connect those roots to the live terminal relation owner without gzip descriptors",
+      "eliminate residual native-artifact cache lookup from the resident relation clock",
     ], sourceSha256: EXPECTED,
   };
 }

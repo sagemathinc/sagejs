@@ -94,15 +94,16 @@ function exactState(values) {
   };
 }
 
-async function runFirstHnf(prepared, prefix) {
+async function runFirstHnf(prepared, prefix, options = {}) {
   assert.equal(prefix.factor.subfactor.length, K0,
     "hnfspec k0 must be the live subfactor count");
-  const collected = await collection.runFirstCollection(prepared, prefix);
+  const collected = await collection.runFirstCollection(prepared, prefix, options);
   const cv = collected.values;
   assert.deepEqual(cv.relation_state.toArray().map(String),
     ["423", "4350", "7", "0", "0", "423"]);
   const source = path.join(__dirname, "hnfspec_complete.py");
-  const built = await compileKernel({ sourcePath: source });
+  const built = await compileKernel({ sourcePath: source,
+    ...(options.cacheRoot ? { cacheRoot: options.cacheRoot } : {}) });
   const fn = require(built.modulePath).pari_hnfspec_complete;
   assert(fn?.nativeAvailable);
   const names = signature(source, "pari_hnfspec_complete"), lengths = hnfLengths();
