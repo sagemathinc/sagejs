@@ -1,195 +1,160 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
 const test = require("node:test");
 
 const registry = require("../bench/pari-class-group-port/phase6_prepared_adapter_registry.cjs");
 const wrapper = require("../bench/pari-class-group-port/phase6_registered_prepared_adapter.cjs");
+const retiredGenericSmoke = require("../bench/pari-class-group-port/check_phase6_generic_pari_wave_smoke.cjs");
 
 const copy = value => structuredClone(value);
+const DIAGNOSTIC_ROWS = [0, 1, 3, 4, 8, 10, 11, 14, 16, 18, 19, 20, 23];
 
-test("the first symmetric prepared-adapter wave is admitted statically", () => {
+test("v2 inventory fails closed while retaining diagnostic implementations", () => {
   const inventory = registry.inventory();
+  assert.equal(inventory.schema,
+    "sagejs.pari-class-group/phase6-prepared-adapter-registry-v2");
   assert.equal(inventory.executionEnabled, false);
   assert.equal(inventory.reserveOpeningEnabled, false);
-  assert.deepEqual(inventory.rows.map(row => row.panelIndex),
-    [0, 1, 3, 4, 8, 10, 11, 14, 16, 18, 19, 20, 23]);
-  assert(Object.isFrozen(registry.REGISTERED[0].expectedProjection));
-  assert(Object.isFrozen(registry.REGISTERED[0].expectedProjection.field));
-  assert(inventory.rows.every(row => row.sagePreparedKernelTiming &&
-    row.pariPreparedKernelTiming && row.commonSemanticProjection &&
-    row.mutuallyExclusiveStageTiming));
-});
-
-test("the generic PARI wave shares exact neutral projections", () => {
-  const expected = {
-    8: ["1", [], "2"],
-    10: ["4", ["2", "2"], "2"],
-    11: ["4", ["2", "2"], "2"],
-    18: ["18", ["18"], "1"],
-    20: ["1", [], "2"],
-  };
-  for (const [row, [classNumber, invariants, rank]] of
-    Object.entries(expected)) {
-    const projection = registry.preparedAdapterRegistration(Number(row))
-      .expectedProjection;
-    assert.equal(projection.classGroup.classNumber, classNumber);
-    assert.deepEqual(projection.classGroup.invariantFactors, invariants);
-    assert.equal(projection.unitGroup.rank, rank);
-    assert.match(projection.schema, /neutral-exact-projection-v1$/);
+  assert.deepEqual(inventory.rows, []);
+  assert.deepEqual(inventory.diagnosticRows.map(row => row.panelIndex),
+    DIAGNOSTIC_ROWS);
+  for (const row of inventory.diagnosticRows) {
+    assert.equal(row.status, "diagnostic-only");
+    assert.equal(row.matchedReady, false);
+    assert.equal(row.sagePreparedKernelTiming, false);
+    assert.equal(row.pariPreparedKernelTiming, false);
+    assert.equal(row.commonSemanticProjection, false);
+    assert.deepEqual(row.missingCapabilities, registry.REQUIRED_CAPABILITIES);
   }
 });
 
-test("row 23 admits the same neutral quintic class-and-unit projection", () => {
-  const admitted = registry.preparedAdapterRegistration(23);
-  assert.deepEqual(admitted.expectedProjection, {
-    schema: "sagejs.pari-class-group/row23-phase6-common-projection-v1",
-    field: { id: "5.5.1002836007889.1",
-      polynomialAscending: ["341", "-970", "772", "-141", "-2", "1"] },
-    classGroup: { classNumber: "6", invariantFactors: ["6"] },
-    unitGroup: { rank: "4", regulatorPresent: true, torsionOrder: "2" },
-    completionMode: "flag-zero-class-and-unit-result",
-  });
-  assert.equal(admitted.workCounters.degree, "5");
-  assert.equal(admitted.workCounters.unitRank, "4");
+test("legacy projections and expected work are diagnostic metadata only", () => {
+  const row = registry.diagnosticPreparedAdapterRegistration(14);
+  assert.equal(row.admissionCapability, null);
+  assert.equal(row.expectedProjection.classGroup.classNumber, "192");
+  assert.deepEqual(row.expectedWorkMetadata,
+    { classNumber: "192", degree: "4", unitRank: "2" });
+  assert(Object.isFrozen(row.expectedProjection));
+  assert(Object.isFrozen(row.admission.missingCapabilities));
+  assert.throws(() => registry.preparedAdapterRegistration(14),
+    /diagnostic-only; missing v2 capabilities: row-specific-evidence-verifier/);
 });
 
-test("row 19 admits its repeated-fresh class-and-unit pair", async () => {
-  const admitted = registry.preparedAdapterRegistration(19);
-  assert.deepEqual(admitted.expectedProjection, {
-    schema: "sagejs.pari-class-group/row19-phase6-common-projection-v1",
-    field: { id: "3.1.1086061775432017340256300.107",
-      polynomialAscending: ["-51050867718180330", "0", "0", "1"] },
-    classGroup: { classNumber: "39366",
-      invariantFactors: ["3", "3", "3", "3", "3", "3", "3", "3", "6"],
-      generatorCount: "9" },
-    unitGroup: { rank: "1", regulatorPresent: true, torsionOrder: "2" },
-    completionMode: "flag-zero-class-and-unit-result",
-  });
-  for (const implementation of ["sagejs", "pari"]) {
-    const adapter = await wrapper.createRegisteredPreparedAdapter(
-      { panelIndex: 19, implementation });
-    assert.equal(adapter.implementation, implementation);
-    assert.equal(adapter.projectionSchema, admitted.projectionSchema);
-    assert.equal(typeof adapter.runFresh, "function");
-  }
+test("self-asserted v2 capabilities cannot create production trust", () => {
+  assert.deepEqual(registry.TRUSTED_V2_ADMISSIONS, []);
+  assert(Object.isFrozen(registry.TRUSTED_V2_ADMISSIONS));
+  assert.deepEqual(registry.REQUIRED_CAPABILITIES, [
+    "row-specific-evidence-verifier",
+    "class-invariants",
+    "class-generator-ideals-orders-principal-witnesses",
+    "unit-compact-or-factored-basis-or-exact-not-given",
+    "regulator-value-and-log-lattice-semantics",
+    "torsion",
+    "terminal-precision-retry-state",
+    "independent-replay-distinct-from-output",
+    "replay-mutation-coverage",
+    "independently-observed-work-counters",
+    "independently-observed-native-call-counters",
+    "source-and-provenance-hashes",
+  ]);
+  const row = copy(registry.REGISTERED[0]);
+  row.admissionCapability = { schema: registry.CAPABILITY_SCHEMA,
+    panelIndex: row.panelIndex, fieldId: row.fieldId,
+    projectionSchema: row.projectionSchema,
+    evidence: { schema:
+      `sagejs.pari-class-group/row${row.panelIndex}-phase6-matched-state-evidence-v2`,
+    modulePath: __filename, sha256: "0".repeat(64) },
+    verifier: { modulePath: __filename, evidenceExportName: "verifyEvidence",
+      sampleExportName: "verifySample", sha256: "0".repeat(64) },
+    sampleContract: { mutationNames: [...registry.MUTATION_FAMILIES],
+      workCounterKeys: ["relations"],
+      replaySchema: "untrusted-replay", terminalStateSchema: "untrusted-terminal",
+      precisionStateSchema: "untrusted-precision", retryStateSchema: "untrusted-retry",
+      stateEnvelopeSchema: "untrusted-state-envelope",
+      workObservationSchema: "untrusted-work-observation",
+      nativeCallObservationSchema: "untrusted-native-observation",
+      provenance: { adapterSha256: "0".repeat(64), cacheSha256: "0".repeat(64),
+        coreSha256: "0".repeat(64), sourceSha256: "0".repeat(64) } },
+    coverage: Object.fromEntries(registry.COVERAGE_KEYS.map(key => [key, true])) };
+  row.admission = { status: "v2-evidence-verified", matchedReady: true,
+    freshCorrectness: true, sagePreparedKernelTiming: true,
+    pariPreparedKernelTiming: true, commonSemanticProjection: true,
+    mutuallyExclusiveStageTiming: true,
+    stageAttribution: "inclusive-root-with-explicit-unattributed-remainder",
+    missingCapabilities: [] };
+  assert.throws(() => registry.validateRegistration(row, { loadModules: false }),
+    /has no centrally trusted v2 admission/);
+  const wrongRowSchema = copy(row);
+  wrongRowSchema.admissionCapability.evidence.schema =
+    "sagejs.pari-class-group/row999-phase6-matched-state-evidence-v2";
+  assert.throws(() => registry.validateRegistration(wrongRowSchema,
+    { loadModules: false }), /evidence schema must be bound/);
+  assert.throws(() => registry.validateMatchedSampleV2({ registration: row,
+    capability: row.admissionCapability, verified: {} }),
+  /not the central registry authority/);
+
+  row.admissionCapability = null;
+  assert.throws(() => registry.validateRegistration(row));
 });
 
-test("registration rejects an incomplete implementation pair", () => {
+test("registration still rejects incomplete implementation diagnostics", () => {
   const incomplete = copy(registry.REGISTERED[0]);
   delete incomplete.adapters.pari;
   assert.throws(() => registry.validateRegistration(incomplete), /adapter pair/);
-});
 
-test("registration rejects mismatched schemas and fields", () => {
-  const schema = copy(registry.REGISTERED[0]);
-  schema.adapters.pari.projectionSchema = "wrong";
-  assert.throws(() => registry.validateRegistration(schema),
-    /pari projection schema differs/);
-  const field = copy(registry.REGISTERED[0]);
-  field.expectedProjection.field.id = "different-field";
-  assert.throws(() => registry.validateRegistration(field),
-    /expected projection field differs/);
-});
-
-test("registration rejects missing exports, files, and duplicate rows", () => {
   const missingExport = copy(registry.REGISTERED[0]);
   missingExport.requirements.sagejs.exports = ["notAnExport"];
   assert.throws(() => registry.validateRegistration(missingExport),
     /lacks notAnExport/);
-  const missingFile = copy(registry.REGISTERED[0]);
-  missingFile.requirements.pari.modulePath = "/does/not/exist.cjs";
-  assert.throws(() => registry.validateRegistration(missingFile),
-    /module is missing/);
   assert.throws(() => registry.validateRegistry([
     registry.REGISTERED[0], registry.REGISTERED[0],
   ]), /duplicate panel indices/);
 });
 
-test("row 3 down-projection drops only stronger retained evidence", () => {
-  const expected = copy(registry.preparedAdapterRegistration(3).expectedProjection);
-  const stronger = copy(expected);
-  stronger.schema = "sagejs.pari-class-group/row3-phase6-class-unit-projection-v1";
-  stronger.unitGroup.materialization = "not_given(LARGE)";
-  stronger.unitGroup.factoredTransformRetained = true;
-  stronger.unitGroup.rawRelationProvenanceRetained = true;
-  stronger.completionMode =
-    "flag-zero-class-and-compact-unit-provenance-result";
-  assert.deepEqual(wrapper.downProject(3, "sagejs", stronger, expected), expected);
-  const wrong = copy(stronger);
-  wrong.classGroup.classNumber = "7";
-  assert.throws(() => wrapper.downProject(3, "sagejs", wrong, expected),
-    /common projection changed/);
+test("runtime factory cannot execute a diagnostic-only row", async () => {
+  await assert.rejects(() => wrapper.createRegisteredPreparedAdapter(
+    { panelIndex: 14, implementation: "sagejs" }),
+  /diagnostic-only; missing v2 capabilities/);
 });
 
-test("generic-wave Sage projections discard only reviewed stronger fields", () => {
-  const row8 = copy(registry.preparedAdapterRegistration(8).expectedProjection);
-  const source8 = copy(row8);
-  source8.schema = "sagejs.pari-class-group/row8-phase6-common-projection-v1";
-  source8.unitGroup.flagZeroStatus = "not_given(PRECI)";
-  assert.deepEqual(wrapper.downProject(8, "sagejs", source8, row8), row8);
-  source8.classGroup.classNumber = "2";
-  assert.throws(() => wrapper.downProject(8, "sagejs", source8, row8));
-
-  const row18 = copy(registry.preparedAdapterRegistration(18).expectedProjection);
-  const source18 = copy(row18);
-  delete source18.classGroup.generatorCount;
-  source18.completionMode = "initial-reject-then-connected-retry";
-  assert.deepEqual(wrapper.downProject(18, "sagejs", source18, row18), row18);
-
-  const row20 = copy(registry.preparedAdapterRegistration(20).expectedProjection);
-  const source20 = { classGroup: copy(row20.classGroup),
-    unitGroup: { ...copy(row20.unitGroup), coordinates: ["1"], norms: ["1"] },
-    correspondenceComplete: true };
-  assert.deepEqual(wrapper.downProject(20, "sagejs", source20, row20), row20);
-  source20.correspondenceComplete = false;
-  assert.throws(() => wrapper.downProject(20, "sagejs", source20, row20));
+test("retired generic-PARI smoke cannot launch shallow legacy pair work", async () => {
+  const output = path.join(os.tmpdir(),
+    `retired-phase6-generic-smoke-${process.pid}.json`);
+  fs.rmSync(output, { force: true });
+  await assert.rejects(() => retiredGenericSmoke.main([output, "8,20"]),
+    error => {
+      assert.match(error.message,
+        /retired shallow Phase 6 generic-PARI smoke cannot launch mathematical arms/);
+      assert.match(error.message, /row-specific-evidence-verifier/);
+      return true;
+    });
+  assert.equal(fs.existsSync(output), false,
+    "retired smoke must fail before writing a receipt");
+  const diagnostic = retiredGenericSmoke.retiredDiagnostic([8]);
+  assert.equal(diagnostic[0].status, "diagnostic-only");
+  assert.deepEqual(diagnostic[0].missingCapabilities,
+    registry.REQUIRED_CAPABILITIES);
 });
 
-test("protocol normalization retains disabled execution and honest stage remainder", () => {
-  const admitted = registry.preparedAdapterRegistration(0);
-  const started = process.threadCpuUsage();
-  const sample = wrapper.normalizedSample({ panelIndex: 0,
-    implementation: "sagejs",
-    request: { boundary: "prepared-kernel", fieldId: admitted.fieldId,
-      seed: "1" }, raw: { kernelNanoseconds: "17" },
-    projection: copy(admitted.expectedProjection),
-    counters: admitted.workCounters, threadStarted: started });
-  assert.equal(sample.stageTiming.inclusiveNanoseconds, "17");
-  assert.equal(sample.stageTiming.unattributedNanoseconds, "17");
-  assert.deepEqual(Object.values(sample.stageTiming.leaves), ["0", "0", "0", "0"]);
-  assert.deepEqual(sample.rng, { scope: "matched-input-seed-only", seed: "1",
-    terminalStateMaterialized: false });
-});
-
-test("generic-wave native-call accounting is explicit and fail-closed", () => {
+test("legacy projection, replay, and counter manufacture is retired", () => {
+  assert.throws(() => wrapper.downProject(8, "sagejs", {}, {}),
+    /legacy metadata down-projection is disabled/);
+  assert.throws(() => wrapper.normalizedSample({ panelIndex: 8,
+    implementation: "sagejs" }), /legacy sample normalization is disabled/);
+  assert.throws(() => wrapper.explicitNativeCalls({}), /lacks an explicit/);
   assert.equal(wrapper.explicitNativeCalls(
     { resourceCounters: { nativeCalls: "7" } }), "7");
-  assert.equal(wrapper.explicitNativeCalls(
-    { executionBoundary: { nativeCallsInsideClock: 1 } }), "1");
-  assert.equal(wrapper.explicitNativeCalls(
-    { boundary: { nativeCallsInsideClock: 1 } }), "1");
-  assert.throws(() => wrapper.explicitNativeCalls({}), /lacks an explicit/);
-  assert.throws(() => wrapper.explicitNativeCalls({ resourceCounters:
-    { nativeCalls: "2" }, boundary: { nativeCallsInsideClock: 1 } }),
-  /disagree/);
+});
 
-  const admitted = registry.preparedAdapterRegistration(18);
-  assert.throws(() => wrapper.normalizedSample({ panelIndex: 18,
-    implementation: "sagejs",
-    request: { boundary: "prepared-kernel", fieldId: admitted.fieldId,
-      seed: "1" }, raw: { kernelNanoseconds: "17" },
-    projection: copy(admitted.expectedProjection),
-    counters: admitted.workCounters, threadStarted: process.threadCpuUsage() }),
-  /lacks an explicit/);
-
-  const legacy = registry.preparedAdapterRegistration(14);
-  const normalized = wrapper.normalizedSample({ panelIndex: 14,
-    implementation: "sagejs",
-    request: { boundary: "prepared-kernel", fieldId: legacy.fieldId,
-      seed: "1" }, raw: { kernelNanoseconds: "17" },
-    projection: copy(legacy.expectedProjection),
-    counters: legacy.workCounters, threadStarted: process.threadCpuUsage() });
-  assert.equal(normalized.resourceCounters.mathematicalCalls, "1",
-    "pre-wave registrations retain their separately audited legacy value");
+test("row 14 remains diagnostic despite its stronger comparison path", () => {
+  const row14 = registry.diagnosticPreparedAdapterRegistration(14);
+  const timing = require("../bench/pari-class-group-port/row14_sage_prepared_timing_adapter.cjs");
+  assert.equal(typeof timing.compareWithPari, "function");
+  assert.equal(row14.admission.matchedReady, false);
+  assert.deepEqual(row14.admission.missingCapabilities,
+    registry.REQUIRED_CAPABILITIES);
 });

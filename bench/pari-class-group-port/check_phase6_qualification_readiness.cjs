@@ -16,10 +16,15 @@ assert.throws(() => readiness.parseCpuList("4-2"));
 assert.deepEqual(readiness.DEVELOPMENT_INDICES,
   [0, 1, 3, 4, 6, 8, 10, 11, 13, 14, 16, 18, 19, 20, 21, 23]);
 const inventory = readiness.timingInventory();
-assert.deepEqual(inventory.matchedReady,
+assert.deepEqual(inventory.matchedReady, []);
+assert.deepEqual(inventory.missingMatchedTiming, readiness.DEVELOPMENT_INDICES);
+const adapterInventory = require("./phase6_prepared_adapter_registry.cjs")
+  .inventory();
+assert.deepEqual(adapterInventory.rows, []);
+assert.deepEqual(adapterInventory.diagnosticRows.map(row => row.panelIndex),
   [0, 1, 3, 4, 8, 10, 11, 14, 16, 18, 19, 20, 23]);
-assert.deepEqual(inventory.missingMatchedTiming,
-  [6, 13, 21]);
+assert(adapterInventory.diagnosticRows.every(row =>
+  row.matchedReady === false && row.missingCapabilities.length === 12));
 const pari = readiness.authenticatePari();
 assert.equal(pari.authenticated, true);
 assert.deepEqual(pari.hashes, {
@@ -47,8 +52,9 @@ if (process.argv.length === 4) {
   });
   assert.equal(report.correctness.completedDevelopmentFields, 16);
   assert.equal(report.correctness.developmentAggregateAuthenticated, true);
-  assert.deepEqual(report.timing.matchedDevelopmentRows,
-    [0, 1, 3, 4, 8, 10, 11, 14, 16, 18, 19, 20, 23]);
+  assert.deepEqual(report.timing.matchedDevelopmentRows, []);
+  assert.deepEqual(report.timing.missingDevelopmentRows,
+    readiness.DEVELOPMENT_INDICES);
   assert.equal(report.timing.row14CampaignPhase6Qualified, false);
   assert.equal(report.reserves.opened, 0);
   assert.equal(report.fullQualificationReady, false);
@@ -57,11 +63,15 @@ if (process.argv.length === 4) {
 }
 
 process.stdout.write(`${JSON.stringify({
-  schema: "sagejs.pari-class-group/phase6-qualification-readiness-check-v1",
+  schema: "sagejs.pari-class-group/phase6-qualification-readiness-check-v2",
   pariAuthenticated: pari.authenticated,
   developmentRows: readiness.DEVELOPMENT_INDICES.length,
   matchedTimingRows: inventory.matchedReady,
   missingTimingRows: inventory.missingMatchedTiming,
+  diagnosticAdapterRows: adapterInventory.diagnosticRows.map(row => ({
+    panelIndex: row.panelIndex,
+    missingCapabilities: row.missingCapabilities,
+  })),
   aggregateAuthenticated,
   longCampaignExecuted: false,
   reservesOpened: 0,

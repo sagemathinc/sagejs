@@ -1,139 +1,103 @@
-# Phase 6 qualification readiness after the 16-row aggregate
+# Phase 6 qualification readiness: v2 fail-closed correction
 
-This audit is a read-only admission result, not a timing result. It binds the
-complete 16-row fresh-prepared correctness aggregate to the frozen Phase 6
-population, authenticates the local pristine PARI 2.17.4 installation, and
-inventories the remaining timing adapters without opening reserves or running a
-long series.
+This audit supersedes the earlier 13-row matched-readiness claim. It is a
+read-only admission result, not a timing result. No long pair workload was run,
+no reserve was opened, and execution remains disabled.
 
-## What is ready
+## Corrected readiness
 
-The aggregate receipt at
-`/scratch/fresh-prepared-development-aggregate-v1-20260918.json` independently
-authenticates all 16 development rows. Each row starts from its raw normalized
-prepared-`nfinit` input in a bounded fresh child and reaches an internally
-correspondence-complete, public-incomplete neutral result. This closes the
-development correctness prerequisite for Phase 6.
+Exactly **zero** development rows are currently matched-ready for Phase 6.
+Rows `0,1,3,4,8,10,11,14,16,18,19,20,23` still have useful underlying
+Sage.js/PARI implementation modules and frozen metadata, but they are listed as
+`diagnostic-only`. Rows `6,13,21` do not have entries in the central inventory.
+Consequently all 16 development rows are in `missingDevelopmentRows`.
 
-The pinned local PARI installation also authenticates exactly:
+The earlier registry admitted rows from module/export existence plus a shallow
+common projection. Its wrapper then cloned that projection as replay, copied
+static expected work values as counters, and supplied fallback mathematical-call
+counts. Those operations do not prove representation-neutral matched class and
+unit output. The v1 matched-readiness claim and receipts based on that claim
+must not be used as qualification evidence.
 
-- archive SHA-256 `02651d99c391007d384b3fadbc20abc6916b77036f9e496c99e9ce8688ca4b53`;
-- `buch2.c` SHA-256 `904ced8034732c7fcfe1da393e23950aac0862b085150fdc24ce1e31beb7d1ac`;
-- `libpari-gmp-tls.so.2.17.4` SHA-256
-  `fdc8f2d7ff050c8e8c6cb8994b0f9dc971267ac763eaf5cd927454937d37357f`.
+The fresh-prepared 16-row correctness aggregate and the pinned PARI 2.17.4
+artifact authentication remain separate diagnostic/correctness evidence. They
+do not satisfy the Phase 6 matched-timing admission contract.
 
-The field-neutral prepared-adapter registry now admits symmetric Sage.js/PARI
-pairs for development rows `0,1,3,4,8,10,11,14,16,18,19,20,23`. Every
-registration names one
-common immutable semantic projection and is rejected unless both reviewed
-implementation modules and their required exports exist.  The runtime wrapper
-normalizes only already-computed results; it contains no mathematical
-implementation.  Rows without disjoint stage clocks report the complete root as
-an explicit unattributed remainder instead of inventing leaf attribution.  Row
-3's stronger compact-unit provenance projection is down-projected only by
-discarding those extra retained-evidence fields. Rows 8, 10, 11, 18, and 20
-use one reviewed, pristine-PARI 2.17.4 adapter and five frozen field
-specifications. Their Sage projections are reduced only after exact class and
-unit fields, polynomial identity, and row-specific completion evidence pass.
-Row 10's private historical PARI polynomial label is explicitly checked before
-the public boundary publishes the frozen corpus field id.
+## V2 admission contract
 
-Row 19 uses a dedicated repeated-fresh factory because its aggregate resident
-is intentionally single-use. Every Sage.js sample authenticates and allocates
-a new resident before the clock; every PARI sample starts a new helper and
-waits for prepared `READY`. A bounded two-repetition smoke matched output,
-replay, all 66 terminal RNG words, and work digests across both arms. Its
-unqualified receipt is
-`/scratch/row19-phase6-unqualified-fresh-protocol-v1.json`, SHA-256
-`c1bfc5689ecef7d69431fabfb1f77b0fcda75f49f04bcdaeb25faba6a268213d`.
-The resulting read-only readiness check is
-`/scratch/phase6-readiness-row19-v1.json`, SHA-256
-`27d15f70a2a809a149880f0fd658bb30f0a1ab3d6ee2bb23d3cd8ec0f943d2f1`.
-It admits 13 development pairs, reports rows `6,13,21` as missing, executes no
-long campaign, and opens no reserves.
+A row can enter the matched inventory only through an entry committed to the
+central `TRUSTED_V2_ADMISSIONS` authority. That allowlist is empty. A registrant
+cannot inject evidence/verifier paths, hashes, or coverage: its entire capability
+must deep-match the centrally reviewed entry for that row. The row-specific
+evidence schema is bound exactly to the registration panel index. Only then may
+the registry authenticate the evidence and verifier files, call the evidence
+verifier, and require a separate live-sample verifier export. Admission must
+cover every one of these capabilities:
 
-The registry and coordinator remain mechanically disabled for campaign use:
-`executionEnabled=false` and `reserveOpeningEnabled=false`.  No long series was
-run during this audit.
+1. class invariants;
+2. generator ideals, generator orders, and principal witnesses when the class
+   group is nontrivial;
+3. a compact/factored unit basis, or an exact mutually matched `not_given`
+   state;
+4. regulator value and log-lattice semantics;
+5. torsion;
+6. terminal, precision, and retry state;
+7. independent replay that is distinct from output;
+8. mutation coverage of the replay/evidence families;
+9. independently observed work counters;
+10. independently observed native-call counters;
+11. source and provenance hashes.
 
-### Generic-PARI development smoke
+The first capability is the row-specific evidence/verifier itself. Missing any
+capability leaves the row diagnostic-only. Expected metadata in the registry is
+explicitly named `expectedWorkMetadata`; it is never emitted as an observed
+counter.
 
-The generic PARI adapter wave ran one unqualified worker-protocol sample on
-each side for rows 8, 10, 11, 18, and 20. In every pair the exact output,
-replay, matched-input RNG scope, and work-counter digests agree. These receipts
-explicitly retain `qualifiedTiming=false`, `executionEnabled=false`, and
-`reserveOpeningEnabled=false`:
+The runtime wrapper no longer down-projects shallow metadata, constructs replay,
+or normalizes hardcoded/fallback counters. It refuses diagnostic-only rows
+before resident preparation. For a future admitted row, it delegates sample
+construction to the authenticated row-specific live-sample verifier and rejects
+a replay equal to the output. The central post-verifier validator additionally
+requires the exact worker sample shape; distinct output/replay schemas and
+authenticated digests; `independentReplay=true`; exhaustive named mutation
+coverage; complete class, generator, unit, regulator/log-lattice, torsion, and
+terminal/precision/retry state; positive observed work/native-call counters;
+and source, adapter, core, and cache hashes matching the trusted capability.
+The row verifier returns its observations separately, and the validator binds
+the published counters and provenance back to those observations.
 
-- row 8: `/scratch/row8-phase6-generic-wave-smoke-v2.json`, SHA-256
-  `3b0f14c633c1c0e7cee343da09cefe6597d59441644de6df46498c7a6a782437`;
-- row 10: `/scratch/row10-phase6-generic-wave-smoke-v2.json`, SHA-256
-  `cbc9cd8b164467270456c57fc44cfc78de213a4743a803a7bdab40d0f3f49310`;
-- row 11: `/scratch/row11-phase6-generic-wave-smoke-v2.json`, SHA-256
-  `db0635cfe57f7e17852534b61a115f6636cabcde3fc92019732544fb2b1e7d56`;
-- row 18: `/scratch/row18-phase6-generic-wave-smoke-v1.json`, SHA-256
-  `1832a15e196ef896af0fedd79566ad000db8775014840d72b31266c3aaa851ad`;
-- row 20: `/scratch/row20-phase6-generic-wave-smoke-v1.json`, SHA-256
-  `24ba3f0b646c0ee917a556475d7edfebdbd98847f07660034c980cc5b9657c1e`.
+The historical `check_phase6_generic_pari_wave_smoke.cjs` entry point is also
+retired fail-closed. It reads only the diagnostic inventory, reports the v2
+capability gap in its error, and exits before loading the arm worker, preparing
+a resident, starting PARI, or writing a shallow smoke receipt.
 
-The diagnostic kernel clocks range from 0.325 to 5.34 seconds for Sage.js and
-0.00220 to 0.591 seconds for PARI. They were collected on a busy, unapproved
-host with one repetition and are protocol diagnostics only, not comparative
-performance evidence. The read-only aggregate readiness receipt is
-`/scratch/phase6-readiness-generic-wave-v1.json`, SHA-256
-`65a12f5491b20242b1804a759dacbec50d3145faa50e1f835983af1d5ebb77f3`.
-
-The five new Sage registrations fail closed unless their resident result
-explicitly carries the number of native calls inside the clock. Row 11's v2
-receipt therefore records 26 native calls rather than the earlier wrapper
-default of one. Rows 18 and 20 each explicitly report one through their
-respective `executionBoundary` and `boundary` objects. Pre-wave registrations
-retain their historical protocol fallback pending a separate row-14/row-16
-counter audit; that compatibility does not apply to this wave.
+Row 14's `compareWithPari` path is the strongest existing comparison model, but
+it has not been verified against this complete v2 contract. Row 14 therefore
+remains diagnostic-only with the same missing-capability list as the other 12
+inventory entries.
 
 ## Exact blockers
 
-Full qualification is not ready, for four independent reasons:
+- All 13 inventoried pairs lack a v2 admission capability and each reports all
+  12 missing capabilities.
+- Rows `6,13,21` have no central diagnostic registration.
+- All eight final-reserve fields remain sealed.
+- `executionEnabled=false` and `reserveOpeningEnabled=false` remain mandatory.
+- This process is not a human-approved quiet timing authority.
 
-1. Development rows `6,13,21` lack matched
-   resident Sage/PARI prepared-kernel timing adapters and common semantic
-   projections. Their correctness transactions are not timing adapters: they
-   include subprocess, replay, publication, and filesystem work not present in
-   PARI's kernel clock.
-2. All eight final-reserve fields remain unopened, as required by the frozen
-   protocol. They have neither aggregate correctness receipts nor timing pairs.
-3. `class-unit-qualification-manifest.json` correctly retains
-   `executionEnabled=false` and `reserveOpeningEnabled=false`.
-4. This CoCalc process is not a human-approved quiet timing authority. Final
-   measurements require a pinned physical core, fixed readable governor, timing
-   lock, no agents/builds, and a clean frozen checkout on `opt` or `bench-1`.
+The absence of v2 admission is independently sufficient to prohibit a Phase 6
+campaign. Existing unqualified smoke receipts remain diagnostics only.
 
-Consequently, the 16-row aggregate establishes correctness coverage, not a
-16-row performance campaign. It would be incorrect to time the existing fresh
-transactions and compare those wall clocks with `bnfinit0`.
+## Focused audit commands
 
-## Executable audit and next command
-
-Re-run the admission audit without doing mathematical work:
+These commands perform no heavy matched pair workload:
 
 ```sh
-node bench/pari-class-group-port/phase6_qualification_readiness.cjs \
-  /scratch/sagejs-pari-fresh-prepared-corpus-v1 \
-  /scratch/fresh-prepared-development-aggregate-v1-20260918.json
+node --test test/pari-class-group-prepared-adapter-registry.cjs
+node bench/pari-class-group-port/check_phase6_qualification_readiness.cjs
 ```
 
-After a coordinator has approved a quiet host and selected `$CPU`, the existing
-single-row candidate series is:
-
-```sh
-SAGEJS_TIMING_CPU=$CPU OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
-MKL_NUM_THREADS=1 /usr/bin/flock --nonblock --exclusive \
-/tmp/sagejs-opt-timing.lock /usr/bin/taskset -c $CPU node --expose-gc \
-bench/pari-class-group-port/run_row14_matched_alternating_campaign.cjs \
-/scratch/row14-qualified-candidate.json
-```
-
-That command remains a row-14 candidate measurement, not the sealed 24-field
-qualification. The field-neutral interface and process-isolated 600-second
-per-arm journal now exist. The next adapter work is to register the remaining
-three development rows, preserving the same symmetric boundary before freezing
-and opening the eight reserves.
+The second command authenticates the locally pinned PARI artifacts and prints
+the exact per-row missing capability lists. Supplying the prepared corpus and
+aggregate receipt additionally reauthenticates the correctness aggregate, but
+does not change the zero-row matched-readiness result.

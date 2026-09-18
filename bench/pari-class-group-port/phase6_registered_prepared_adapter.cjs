@@ -1,7 +1,8 @@
 "use strict";
 
-// Runtime normalization for pairs admitted by phase6_prepared_adapter_registry.
-// All mathematical work remains in the row-specific reviewed implementations.
+// Runtime dispatch for pairs admitted by phase6_prepared_adapter_registry.
+// The wrapper never constructs semantic output, replay, counters, or provenance:
+// those must be returned by the admitted row-specific v2 sample verifier.
 
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -19,6 +20,9 @@ function registration(panelIndex) {
     .preparedAdapterRegistration(panelIndex);
 }
 
+const admissionRegistry = () =>
+  require("./phase6_prepared_adapter_registry.cjs");
+
 function loadPrepared(panelIndex) {
   const record = manifest.rows.find(value => value.panelIndex === panelIndex);
   assert(record, `prepared manifest lacks row ${panelIndex}`);
@@ -26,9 +30,6 @@ function loadPrepared(panelIndex) {
     `prepared-row-${String(panelIndex).padStart(2, "0")}-${record.preparedJsonSha256}.json`);
   return { filename, prepared: JSON.parse(fs.readFileSync(filename, "utf8")) };
 }
-
-const clone = value => structuredClone(value);
-const EXPLICIT_NATIVE_CALL_ROWS = new Set([8, 10, 11, 18, 20]);
 
 function explicitNativeCalls(raw) {
   const candidates = [raw.resourceCounters?.nativeCalls,
@@ -44,97 +45,14 @@ function explicitNativeCalls(raw) {
 }
 
 function downProject(panelIndex, implementation, raw, expected) {
-  let value = raw;
-  if (panelIndex === 3 && implementation === "sagejs") {
-    value = { schema: expected.schema, field: raw.field,
-      classGroup: raw.classGroup,
-      unitGroup: { rank: raw.unitGroup.rank,
-        regulatorPresent: raw.unitGroup.regulatorPresent,
-        torsionOrder: raw.unitGroup.torsionOrder },
-      work: raw.work,
-      completionMode: "flag-zero-class-and-unit-result" };
-  }
-  if ([8, 10, 11].includes(panelIndex) && implementation === "sagejs") {
-    const sourceIds = {
-      8: expected.field.id,
-      10: "pari-2.17.4:x^4-2000022*x-2000042",
-      11: expected.field.id,
-    };
-    assert.equal(raw.field.id, sourceIds[panelIndex]);
-    assert.deepEqual(raw.field.polynomialAscending,
-      expected.field.polynomialAscending);
-    assert.deepEqual(raw.classGroup, expected.classGroup);
-    assert.deepEqual({ rank: raw.unitGroup.rank,
-      regulatorPresent: raw.unitGroup.regulatorPresent,
-      torsionOrder: raw.unitGroup.torsionOrder }, expected.unitGroup);
-    assert.equal(raw.completionMode, expected.completionMode);
-    value = expected;
-  }
-  if (panelIndex === 18 && implementation === "sagejs") {
-    assert.deepEqual(raw.field, expected.field);
-    assert.deepEqual(raw.classGroup,
-      { classNumber: "18", invariantFactors: ["18"] });
-    assert.deepEqual(raw.unitGroup, expected.unitGroup);
-    assert.equal(raw.completionMode, "initial-reject-then-connected-retry");
-    value = expected;
-  }
-  if (panelIndex === 20 && implementation === "sagejs") {
-    assert.deepEqual(raw.classGroup, expected.classGroup);
-    assert.deepEqual({ rank: raw.unitGroup.rank,
-      regulatorPresent: raw.unitGroup.regulatorPresent,
-      torsionOrder: raw.unitGroup.torsionOrder }, expected.unitGroup);
-    assert.equal(raw.correspondenceComplete, true);
-    value = expected;
-  }
-  assert.deepEqual(value, expected,
-    `row ${panelIndex} ${implementation} common projection changed`);
-  return clone(expected);
-}
-
-function cpuNanoseconds(started) {
-  const elapsed = process.threadCpuUsage(started);
-  return String(BigInt(elapsed.user + elapsed.system) * 1000n);
+  void raw; void expected;
+  throw new Error(`row ${panelIndex} ${implementation} legacy metadata down-projection is disabled; a v2 row-specific verifier is required`);
 }
 
 function normalizedSample({ panelIndex, implementation, request, raw,
   projection, counters, threadStarted }) {
-  assert.equal(request.boundary, "prepared-kernel");
-  assert.equal(request.fieldId, projection.field.id,
-    `row ${panelIndex} field identity changed`);
-  const kernel = String(raw.kernelNanoseconds);
-  assert.match(kernel, /^[1-9][0-9]*$/);
-  const peak = raw.processMaxRssKiB === undefined
-    ? String(process.resourceUsage().maxRSS) : String(raw.processMaxRssKiB);
-  // The generic-PARI wave is admitted only with a count carried by its
-  // reviewed resident result. Older registrations predate this requirement;
-  // preserve their historical protocol value until row 14 and row 16 expose
-  // equivalent counters and can be audited separately.
-  const mathematicalCalls = implementation === "sagejs" &&
-    EXPLICIT_NATIVE_CALL_ROWS.has(panelIndex)
-    ? explicitNativeCalls(raw)
-    : implementation === "sagejs"
-      ? String(raw.executionBoundary?.nativeCallsInsideClock ??
-        raw.boundary?.nativeCallsInsideClock ?? (panelIndex === 3 ? 2 : 1))
-      : "1";
-  assert.match(mathematicalCalls, /^[1-9][0-9]*$/);
-  return {
-    kernelNanoseconds: kernel,
-    threadCpuNanoseconds: cpuNanoseconds(threadStarted),
-    peakRssKiB: peak,
-    output: projection,
-    replay: { exact: true, projection: clone(projection) },
-    // Most early row adapters did not materialize terminal RNG state on both
-    // sides.  Record the matched deterministic input authority explicitly;
-    // never pretend this is a terminal-state comparison.
-    rng: { scope: "matched-input-seed-only", seed: request.seed,
-      terminalStateMaterialized: false },
-    counters: clone(counters),
-    resourceCounters: { mathematicalCalls },
-    stageTiming: { inclusiveNanoseconds: kernel,
-      leaves: { relationRetry: "0", sparseHnfSnfTransform: "0",
-        unitRegulator: "0", honestyGeneratorsFinal: "0" },
-      unattributedNanoseconds: kernel },
-  };
+  void request; void raw; void projection; void counters; void threadStarted;
+  throw new Error(`row ${panelIndex} ${implementation} legacy sample normalization is disabled; output, independent replay, and observed counters must come from a v2 row-specific verifier`);
 }
 
 async function prepareSage(panelIndex) {
@@ -287,13 +205,8 @@ async function createRegisteredPreparedAdapter(configuration) {
   const { panelIndex, implementation } = configuration;
   assert(["sagejs", "pari"].includes(implementation));
   const admitted = registration(panelIndex);
-  if (panelIndex === 19) {
-    const pair = require("./row19_phase6_fresh_adapter.cjs");
-    const adapter = await pair.createRow19FreshPreparedAdapter(configuration);
-    assert.equal(adapter.projectionSchema, admitted.projectionSchema);
-    return adapter;
-  }
-  const expected = clone(admitted.expectedProjection);
+  const verifier = require(admitted.admissionCapability.verifier.modulePath)
+    [admitted.admissionCapability.verifier.sampleExportName];
   const sage = implementation === "sagejs" ? await prepareSage(panelIndex) : null;
   return {
     implementation,
@@ -301,11 +214,13 @@ async function createRegisteredPreparedAdapter(configuration) {
     async runFresh(request) {
       const result = implementation === "sagejs"
         ? await sage(request) : await runPari(panelIndex, request);
-      const projection = downProject(panelIndex, implementation,
-        result.projection, expected);
-      return normalizedSample({ panelIndex, implementation, request,
-        raw: result.raw, projection, counters: admitted.workCounters,
-        threadStarted: result.threadStarted });
+      const verified = await verifier({ implementation, request,
+        raw: result.raw, diagnosticProjection: result.projection });
+      return admissionRegistry().validateMatchedSampleV2({
+        registration: admitted,
+        capability: admitted.admissionCapability,
+        verified,
+      });
     },
   };
 }
