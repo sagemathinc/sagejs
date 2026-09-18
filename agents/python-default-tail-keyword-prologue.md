@@ -1,7 +1,7 @@
 # Generated default-tail keyword ownership
 
-Base: `3396da6ff` (`agent/python-keyword-receiver-guard`, queued behind the
-existing call, construction, and attribute integration sequence).
+Base: `2ce0617bb` (`agent/python-constructor-new-guard-main`, the exact
+source-current constructor candidate queued behind PR #316).
 
 ## Change
 
@@ -38,55 +38,58 @@ explicit instance callbacks, evaluation order, and live defaults.
 
 ## Controlled measurements
 
-The idle `bench-1` Linux x64 host ran Node 26.5.1 and CPython 3.12.3. Ten
+The shared Linux x64 project host ran Node 26.9.0 and CPython 3.14.4. Ten
 alternating fresh processes compared exact base and candidate artifacts; the
-first three samples were discarded. Each row contains 100,000 checked
-operations.
+first three samples were discarded. Compilation and startup are outside the
+measured regions. Each row contains 100,000 checked operations. Functions and
+methods in this table have one trailing default and supply it by keyword.
 
 | Case | Receiver-guard base | Candidate | Change | CPython | Candidate / CPython |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| positional function | 16.435 ms | 16.609 ms | flat | 8.639 ms | 1.92x |
-| keyword function | 82.218 ms | 42.546 ms | **48.3% faster** | 10.045 ms | **4.24x** |
-| immediate keyword method | 142.690 ms | 97.414 ms | **31.7% faster** | 10.469 ms | **9.31x** |
-| empty construction | 31.007 ms | 31.799 ms | flat | 7.692 ms | 4.13x |
-| no-op initializer | 54.178 ms | 54.310 ms | flat | 11.808 ms | 4.60x |
-| positional construction and method | 225.434 ms | 224.615 ms | flat | 23.162 ms | 9.70x |
-| keyword construction and method | 441.508 ms | 394.863 ms | **10.6% faster** | 37.253 ms | **10.60x** |
+| positional function | 90.237 ms | 87.644 ms | flat | 11.718 ms | 7.48x |
+| keyword function | 163.383 ms | 156.044 ms | **4.49% faster** | 13.356 ms | **11.68x** |
+| immediate keyword method | 174.529 ms | 160.840 ms | **7.84% faster** | 13.218 ms | **12.17x** |
+| empty construction | 54.525 ms | 53.578 ms | flat | 8.655 ms | 6.19x |
+| no-op initializer | 70.140 ms | 72.135 ms | flat | 12.067 ms | 5.98x |
+| positional construction and method | 236.051 ms | 230.291 ms | flat | 19.609 ms | 11.74x |
+| keyword construction and method | 380.245 ms | 366.637 ms | **3.58% faster** | 35.711 ms | **10.27x** |
 
 The exact base artifact is
-`70ffd5bad252d8c4922c2196d5c0af6c7ce9c798b16f7f4e79fda631333333d7`
-(24,440,875 bytes). The candidate is
-`3874a08f2bfc9192935d219b1e220fae6bfe0a29d64d2737db22224b369d162e`
-(24,437,540 bytes), 3,335 bytes smaller. The result closes roughly half of
-the remaining keyword-function gap, but keyword functions, immediate methods,
-and keyword construction remain 4.2x, 9.3x, and 10.6x CPython. Those cliffs
-remain open.
+`2371d5010d0c2ee9ddebe7ce6dc6d75312d4b70c4ecf7a37cdb49dcf70eb0019`
+(24,341,229 bytes). The candidate is
+`be8c164b0520667224cda7fcf98d88268d5fe975cf82482a4dad3c48ee648ebe`
+(24,337,175 bytes), 4,054 bytes smaller.
+
+A signature decomposition confirms the mechanism rather than a broad JIT
+shift. Required-only keywords improve 3.31% from one-pass positioning; one
+required keyword with an omitted default improves 3.88%; a positional required
+argument plus one supplied default improves 27.70%; and a required keyword plus
+four supplied defaults improves 9.23%. Their candidate/CPython ratios remain
+10.15x--14.48x. Default-tail ownership is valuable, but required-name placement
+and the generated prologue remain large cliffs.
 
 ## Qualification
 
 - The corrected source-current compiler converged in two self-hosting passes;
-  the full build completed.
+  the full build completed in 7m 28s.
 - The CPython differential corpus passes 505 cases with the same three
   intentional incompatibilities and no baseline drift. An earlier parallel,
   oversubscribed run timed out one normally passing case; the isolated rerun is
   the qualification receipt and no baseline was changed.
-- Forty-nine focused binder, live-default, dynamic-initializer, method,
-  positional-only, and pinned traitlets checks pass in Python/Sage modes.
+- All 110 focused binder, live-default, dynamic-initializer, method,
+  positional-only, lowering, and raw-ABI checks pass in Python/Sage modes.
+  All six pinned traitlets checks pass.
 - Pinned attrs 25.4.0 and decorator 5.2.1 workflows pass with checked outputs.
 - Strict CPython syntax, Ruff 0.16.0, and Pyright pass for 404 modules;
   documentation, merge invariants, and the complete architecture check pass.
   The compiler-input change regenerated and verified the repository-owned
   optimizer-opportunity manifest and Markdown identity.
-- Seventeen compiler fixtures pass. Fifteen compiler fixtures and the generic
-  unit tier cannot run in this worktree because the optional
-  `packages/flint/build/Release/sagejs_flint.node` is absent; every reported
-  failure has that same missing-module root cause. This is an environment
-  limitation, not a passing receipt.
-- Core runtime is 902,583/903,000 bytes. No source, startup, browser, or
-  performance budget changed. The standalone artifact shrinks by 3,335 bytes.
-- The local startup measurement is not a passing receipt: 430.2 ms normalized
-  exceeds the unchanged 400.0 ms budget. Merge-owned CI must supply the
+- Core runtime is 902,294/903,000 bytes. No source, startup, browser, or
+  performance budget changed. The standalone artifact shrinks by 4,054 bytes.
+- The local startup measurement is not a passing receipt: the candidate
+  measured 405.6 ms normalized and its exact parent measured 415.0 ms, both
+  above the unchanged 400.0 ms budget. Merge-owned CI must supply the
   startup/browser receipt when the integration queue reaches this candidate.
 
-The branch remains queued behind its prerequisites and has no stacked PR. It is
-not a release action.
+The branch remains queued behind the constructor candidates and has no stacked
+PR. It is not a release action.

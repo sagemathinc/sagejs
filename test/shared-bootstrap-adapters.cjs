@@ -217,6 +217,11 @@ test("shared keyword binding consumes literal packets without Python operators",
 
   const receiverlessApi = context({
     _internal_class_instance_function: () => { throw new Error("classified receiver"); },
+    _internal_get_member: (value, name) => value[name],
+    _internal_type_is: (value, expected) => value === expected,
+    _internal_has_own: (value, name) => Object.hasOwn(value, name),
+    _internal_keyword_constructor_prototypes: new WeakSet(),
+    ρσ_native_jstype: (value) => typeof value,
     ρσ_exception_value: value => value,
   });
   const receiverlessPacket = { left: 4, right: 6 };
