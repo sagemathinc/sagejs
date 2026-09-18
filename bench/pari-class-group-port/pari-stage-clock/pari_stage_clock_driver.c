@@ -16,6 +16,16 @@
 #include <string.h>
 #include <time.h>
 
+#ifndef SAGEJS_STAGE_AUTHORITY_ADAPTER
+#define SAGEJS_STAGE_AUTHORITY_ADAPTER "../pari_h1_outcome_c_adapter.c"
+#endif
+#ifndef SAGEJS_STAGE_POLYNOMIAL
+#define SAGEJS_STAGE_POLYNOMIAL "x^3-20018*x+20034"
+#endif
+#ifndef SAGEJS_STAGE_STACK_BYTES
+#define SAGEJS_STAGE_STACK_BYTES 768000000
+#endif
+
 #ifdef SAGEJS_PRISTINE_CONTROL
 static void sagejs_buchall_stage_clock_reset(int enabled) { (void)enabled; }
 static void sagejs_buchall_stage_clock_finish(void) {}
@@ -57,7 +67,7 @@ static GEN sagejs_timed_bnfinit0(GEN, long, GEN, long);
 /* Reuse the exact authority output implementation. */
 #define bnfinit0 sagejs_timed_bnfinit0
 #define main sagejs_pristine_adapter_main_not_used
-#include "../pari_h1_outcome_c_adapter.c"
+#include SAGEJS_STAGE_AUTHORITY_ADAPTER
 #undef main
 #undef bnfinit0
 
@@ -140,8 +150,11 @@ main(void)
   pari_sp prepared_stack;
 
   setvbuf(stdout, NULL, _IONBF, 0);
-  pari_init(768000000, 1000000);
-  polynomial = gp_read_str("x^3-20018*x+20034");
+  pari_init(SAGEJS_STAGE_STACK_BYTES, 1000000);
+#ifdef SAGEJS_STAGE_MT_NBTHREADS
+  pari_mt_nbthreads = SAGEJS_STAGE_MT_NBTHREADS;
+#endif
+  polynomial = gp_read_str(SAGEJS_STAGE_POLYNOMIAL);
   nf = nfinit0(polynomial, 0, nbits2prec(192));
   if (!nf) return 2;
   version = pari_version();

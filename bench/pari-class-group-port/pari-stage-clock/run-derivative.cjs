@@ -25,6 +25,18 @@ function median(values) {
   return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
 }
 
+function comparableAuthorityRecord(record, variant) {
+  if (variant === "h1") return record;
+  assert.equal(variant, "row14", `unknown derivative variant ${variant}`);
+  assert.equal(record.schema,
+    "sagejs.pari-class-group/row14-pari-prepared-sample-v1");
+  // The row-14 authority serializer also reports its own clocks and process
+  // high-water RSS.  Those observations must vary and are not mathematical
+  // work.  Exact active/inactive/pristine identity covers only result, source
+  // work, and terminal RNG state, just as the H1 authority record does.
+  return { result: record.result, work: record.work, rng: record.rng };
+}
+
 class DerivativeClient {
   constructor(manifest, { pristine = false } = {}) {
     this.lines = [];
@@ -160,11 +172,12 @@ async function runCampaign({
   repetitions = 1,
   seed = "1",
   enforcePerturbationGate = false,
+  variant = "h1",
 } = {}) {
   assert(Number.isSafeInteger(pairs) && pairs >= 1);
   assert(Number.isSafeInteger(repetitions) && repetitions >= 1);
   if (enforcePerturbationGate) assert(pairs >= 11, "gate requires at least 11 pairs");
-  const manifest = buildDerivative();
+  const manifest = buildDerivative({ variant });
   const clients = {
     ACTIVE: new DerivativeClient(manifest),
     INACTIVE: new DerivativeClient(manifest),
@@ -185,8 +198,9 @@ async function runCampaign({
         const samples = [];
         for (let repetition = 0; repetition < repetitions; repetition++) {
           const sample = await clients[mode].run(mode, seed);
-          if (authorityRecord === null) authorityRecord = sample.record;
-          else assert.deepEqual(sample.record, authorityRecord, "result/work/RNG changed");
+          const comparable = comparableAuthorityRecord(sample.record, variant);
+          if (authorityRecord === null) authorityRecord = comparable;
+          else assert.deepEqual(comparable, authorityRecord, "result/work/RNG changed");
           if (mode === "ACTIVE") validateActiveTiming(sample.timing);
           else validateInactiveTiming(sample.timing);
           kernelNanoseconds += BigInt(sample.timing.kernelNanoseconds);
@@ -208,7 +222,8 @@ async function runCampaign({
       const inactiveSamples = [];
       for (let repetition = 0; repetition < repetitions; repetition++) {
         const sample = await clients.INACTIVE.run("INACTIVE", seed);
-        assert.deepEqual(sample.record, authorityRecord, "inactive hook result/work/RNG changed");
+        assert.deepEqual(comparableAuthorityRecord(sample.record, variant), authorityRecord,
+          "inactive hook result/work/RNG changed");
         validateInactiveTiming(sample.timing);
         inactiveKernelNanoseconds += BigInt(sample.timing.kernelNanoseconds);
         inactiveSamples.push(sample.timing);
@@ -270,6 +285,7 @@ async function runCampaign({
       pristineExecutableSha256: manifest.pristineExecutableSha256,
     },
     boundary: "prepared nfinit outside; complete bnfinit0(nf,0) inside",
+    variant,
     seed,
     pairs,
     repetitions,
@@ -296,10 +312,11 @@ function parseArguments(argv) {
   for (let index = 0; index < argv.length; index++) {
     const arg = argv[index];
     if (arg === "--enforce-perturbation-gate") options.enforcePerturbationGate = true;
-    else if (["--pairs", "--repetitions", "--seed"].includes(arg)) {
+    else if (["--pairs", "--repetitions", "--seed", "--variant"].includes(arg)) {
       assert(index + 1 < argv.length, `${arg} needs a value`);
       const key = arg.slice(2).replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
-      options[key] = arg === "--seed" ? argv[++index] : Number(argv[++index]);
+      options[key] = ["--seed", "--variant"].includes(arg)
+        ? argv[++index] : Number(argv[++index]);
     } else throw new Error(`unknown argument: ${arg}`);
   }
   return options;
@@ -317,6 +334,7 @@ if (require.main === module) {
 module.exports = {
   DerivativeClient,
   STAGES,
+  comparableAuthorityRecord,
   runCampaign,
   validateActiveTiming,
   validateInactiveTiming,

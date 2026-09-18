@@ -14,8 +14,28 @@ const initial = require("./check_row14_prepared_initial_root.cjs");
 const gate = require("./row14_prepared_gate_c_host.cjs");
 const complete = require("./row14_prepared_complete_host.cjs");
 const post = require("./row14_post806_terminal_host.cjs");
+const { ALL_STAGES, ExclusiveStageTimer } = require("./h1_exclusive_stage_timing.cjs");
 
 const ROWS = 799, DEGREE = 4, PLACES = 3, UNIT_COLUMNS = 7;
+
+function bindExclusiveRoot(kernelStart, kernelEnd, exclusiveStart, exclusiveTiming) {
+  for (const [label, value] of Object.entries({ kernelStart, kernelEnd, exclusiveStart }))
+    assert.equal(typeof value, "bigint", `${label} must be a bigint timestamp`);
+  assert(kernelEnd >= kernelStart, "legacy kernel clock moved backwards");
+  assert(exclusiveStart >= kernelStart, "exclusive clock started before kernel clock");
+  const root = BigInt(exclusiveTiming.rootNanoseconds);
+  const exclusiveEnd = exclusiveStart + root;
+  assert(exclusiveEnd >= kernelEnd, "exclusive clock ended before kernel clock");
+  const startOffsetNanoseconds = exclusiveStart - kernelStart;
+  const endOffsetNanoseconds = exclusiveEnd - kernelEnd;
+  const kernelNanoseconds = kernelEnd - kernelStart;
+  assert.equal(root, kernelNanoseconds - startOffsetNanoseconds + endOffsetNanoseconds);
+  return {
+    relationship: "exclusive = kernel - startOffset + endOffset",
+    startOffsetNanoseconds: String(startOffsetNanoseconds),
+    endOffsetNanoseconds: String(endOffsetNanoseconds),
+  };
+}
 
 function signature(source, name) {
   const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -312,38 +332,63 @@ async function runResident(resident) {
   const started = process.hrtime.bigint();
   let previous = started;
   const stages = {};
+  let exclusiveStarted;
+  const exclusive = new ExclusiveStageTimer(() => {
+    const now = process.hrtime.bigint();
+    if (exclusiveStarted === undefined) exclusiveStarted = now;
+    return now;
+  });
+  exclusive.begin();
   const mark = name => {
     const now = process.hrtime.bigint();
     stages[name] = String(now - previous); previous = now;
   };
   const rootResult = await initial.computePreparedInitialRoot(payload,
-    { built: resident.rootBuilt });
+    { built: resident.rootBuilt,
+      beforeNative: () => exclusive.switchStage("relation-retry"),
+      afterNative: () => exclusive.switchStage("unattributed-remainder") });
   mark("initialRootAndLiveState");
   const root = rootResult.owner;
   const metadata = complete.synthesizeMetadata(resident.preparedEnvelope, root,
     { verifyDigest: false });
   mark("factorMetadataProjection");
   const live = await gate.runPreparedGateC(resident.preparedEnvelope, root,
-    { kernels: resident.gateKernels });
+    { kernels: resident.gateKernels,
+      switchStage: stage => exclusive.switchStage(stage) });
   assert.equal(live.executionBoundary.compilationInsideRun, false);
   assert.equal(live.executionBoundary.residentHandleCount, 4);
   mark("relationCollectionAndHnf");
+  exclusive.switchStage("unattributed-remainder");
   const accepted = liveAcceptedState(resident.preparedEnvelope, root, live, metadata);
   mark("acceptedLiveStateProjection");
   const post806 = await post.runRow14Post806TerminalFromOwners(accepted, metadata,
     { verifyDigests: false, catalog: resident.postCatalog,
       terminal: resident.postTerminal });
   mark("analyticAcceptanceAndTerminalLattice");
+  // The post-806 root mixes regulator acceptance and Smith output.  Until that
+  // native root has an audited internal cut, conservatively leave all of it in
+  // the explicit residual rather than assigning a favorable semantic stage.
+  exclusive.switchStage("unit-regulator");
   const units = runUnitSuffix(resident.units, accepted, post806, metadata.metadata.prepared);
   mark("unitLatticeAndGetfu");
+  exclusive.switchStage("honesty-generators-final");
   const klass = runClassAssembly(resident.classAssembly, accepted, metadata.metadata);
   mark("classGroupGen");
+  exclusive.switchStage("unattributed-remainder");
+  const exclusiveStageTiming = exclusive.finish();
+  assert.deepEqual(Object.keys(exclusiveStageTiming.stageTotalsNanoseconds), ALL_STAGES);
+  assert.equal(Object.values(exclusiveStageTiming.stageTotalsNanoseconds)
+    .reduce((sum, value) => sum + BigInt(value), 0n),
+  BigInt(exclusiveStageTiming.rootNanoseconds));
   // `mark` captured the first instant after the final mathematical output.
   // Do not include result-object construction or resource inspection.
   const kernelNanoseconds = String(previous - started);
+  const exclusiveRootBoundary = bindExclusiveRoot(
+    started, previous, exclusiveStarted, exclusiveStageTiming);
   return { kernelNanoseconds, root, live, accepted, post806, units, klass,
     executionBoundary: live.executionBoundary,
-    stageNanoseconds: stages, maxRssKiB: process.resourceUsage().maxRSS };
+    stageNanoseconds: stages, exclusiveStageTiming, exclusiveRootBoundary,
+    maxRssKiB: process.resourceUsage().maxRSS };
 }
 
-module.exports = { prepareResident, runResident, runUnitSuffix };
+module.exports = { bindExclusiveRoot, prepareResident, runResident, runUnitSuffix };

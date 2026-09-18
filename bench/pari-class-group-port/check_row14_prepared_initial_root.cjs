@@ -144,6 +144,26 @@ function residentReset(owners) {
   return () => { for (const reset of actions) reset(); };
 }
 
+function invokePreparedInitialNative(fn, args, options = {}) {
+  const beforeNative = options.beforeNative || (() => {});
+  const afterNative = options.afterNative || (() => {});
+  const clock = options.clock || process.hrtime.bigint;
+  assert.equal(typeof beforeNative, "function", "beforeNative must be callable");
+  assert.equal(typeof afterNative, "function", "afterNative must be callable");
+  assert.equal(typeof clock, "function", "clock must be callable");
+  beforeNative();
+  const started = clock();
+  let count;
+  let ended;
+  try {
+    count = fn.gmp(...args);
+  } finally {
+    ended = clock();
+    afterNative();
+  }
+  return { count, elapsedNs: ended - started };
+}
+
 async function computePreparedInitialRoot(payload, options = {}) {
   assert.deepEqual(Object.keys(payload).sort(),
     ["outputDirectory", "prepared", "preparedAuthoritySha256"]);
@@ -255,9 +275,11 @@ async function computePreparedInitialRoot(payload, options = {}) {
     return owners[name];
   });
   const resetResidentOwners = residentReset(owners);
-  const started = process.hrtime.bigint();
-  const count = fn.gmp(...args); // The only root invocation in this checker.
-  const elapsedNs = process.hrtime.bigint() - started;
+  const invocation = invokePreparedInitialNative(fn, args, {
+    beforeNative: options.beforeNative,
+    afterNative: options.afterNative,
+  }); // The only root invocation in this checker.
+  const { count, elapsedNs } = invocation;
   const row8 = prepared.prep_polynomial.join(",") === "-20034,-20018,0,0,1";
   const expectedInitialCount = row8 ? 9n : 42n;
   assert.equal(count, expectedInitialCount);
@@ -525,4 +547,9 @@ if (require.main === module) {
   });
 }
 
-module.exports = { SOURCE, computePreparedInitialRoot, publishOwner };
+module.exports = {
+  SOURCE,
+  computePreparedInitialRoot,
+  invokePreparedInitialNative,
+  publishOwner,
+};

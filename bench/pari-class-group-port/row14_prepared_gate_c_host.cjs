@@ -508,9 +508,22 @@ function createContinuationControlStorage(next, cv) {
     bytes: 8*(3+ROWS), elements: 3+ROWS };
 }
 
+function runExclusiveNativeStage(switchStage, stage, callback) {
+  assert.equal(typeof switchStage, "function", "Gate-C stage switch must be callable");
+  assert.equal(typeof callback, "function", "Gate-C native callback must be callable");
+  switchStage(stage);
+  try {
+    return callback();
+  } finally {
+    switchStage("unattributed-remainder");
+  }
+}
+
 async function firstPreparedHnf(prepared, root, options = {}) {
   const profile = options.profile || null;
   const kernels = options.kernels || null;
+  const switchStage = options.switchStage || (() => {});
+  assert.equal(typeof switchStage, "function", "Gate-C stage switch must be callable");
   timed(profile, "initial.validate-boundary", () => validateBoundary(prepared, root));
   const lengths = zeroLengths();
   const collector = kernels?.collector || await timedAsync(
@@ -530,8 +543,9 @@ async function firstPreparedHnf(prepared, root, options = {}) {
     preparedStorage === null ? "initial.collector" : "prepared.initial.collector",
     allocated));
   const cv = allocated.values;
-  const status = timed(profile, "initial.collector", () =>
-    collector.fn.gmp(...collector.names.map(([name]) => cv[name])));
+  const status = runExclusiveNativeStage(switchStage, "relation-retry", () =>
+    timed(profile, "initial.collector", () =>
+      collector.fn.gmp(...collector.names.map(([name]) => cv[name]))));
   if (profile !== null) profile.native.push({ label: "initial.collector",
     trace: nativeTrace(collector.fn) });
   assert(status === 0n || status === 1n);
@@ -557,8 +571,9 @@ async function firstPreparedHnf(prepared, root, options = {}) {
     loadInitialHnfspecStorage(preparedStorage, cv, root));
   if (profile !== null) profile.allocations.push(allocationFacts(
     preparedStorage === null ? "initial.hnfspec" : "prepared.initial.hnfspec", ha));
-  assert.equal(timed(profile, "initial.hnfspec", () =>
-    hnf.fn.gmp(...hnf.names.map(([name]) => ha.values[name]))), 0n);
+  assert.equal(runExclusiveNativeStage(switchStage, "sparse-hnf-snf-transform", () =>
+    timed(profile, "initial.hnfspec", () =>
+      hnf.fn.gmp(...hnf.names.map(([name]) => ha.values[name])))), 0n);
   if (profile !== null) profile.native.push({ label: "initial.hnfspec",
     trace: nativeTrace(hnf.fn) });
   assert.deepEqual(Array.from(ha.values.state).map(Number),
@@ -590,12 +605,18 @@ async function runPreparedGateC(prepared, root, options = {}) {
     ? { outer: [], native: [], builds: [], allocations: [], _compiled: [] }
     : null;
   const kernels = options.kernels || null;
+  const switchStage = options.switchStage || (() => {});
+  assert.equal(typeof switchStage, "function", "Gate-C stage switch must be callable");
+  if (options.switchStage !== undefined) {
+    assert(kernels !== null,
+      "exclusive Gate-C stage timing requires precompiled resident kernels");
+  }
   if (kernels !== null) {
     assert.equal(kernels.profile, profile !== null,
       "prepared Gate-C handle instrumentation mismatch");
   }
   const gateStarted = profile === null ? 0n : process.hrtime.bigint();
-  const first = await firstPreparedHnf(prepared, root, { profile, kernels });
+  const first = await firstPreparedHnf(prepared, root, { profile, kernels, switchStage });
   const cv = first.cv;
   const resident = {
     h: first.hnf.result_h.toArray().slice(0, 9),
@@ -641,14 +662,17 @@ async function runPreparedGateC(prepared, root, options = {}) {
     control.fill(0n);
     assert.equal(resident.perm.length, ROWS);
     for (let index = 0; index < ROWS; index += 1) perm[index] = BigInt(resident.perm[index]);
-    assert.equal(next.fn.gmp(perm, BigInt(ROWS), BigInt(resident.state[0]), BigInt(need),
-      BigInt(squash), search, outerPerm, 1n, outer, cache, schedule, completed, control), 0n);
+    assert.equal(runExclusiveNativeStage(switchStage, "relation-retry", () =>
+      next.fn.gmp(perm, BigInt(ROWS), BigInt(resident.state[0]), BigInt(need),
+        BigInt(squash), search, outerPerm, 1n, outer, cache, schedule, completed, control)),
+    0n);
     record(profile, `pass-${passNumber}.control-and-setup`, setupStarted);
     const nextControl = Array.from(control).map(Number); squash = nextControl[1];
     cv.search_count = BigInt(nextControl[0]); cv.outer_mode = 1n;
     cv.outer_ru = BigInt(PLACES); cv.scalar_prefix_count = 42n;
-    assert.equal(timed(profile, `pass-${passNumber}.collector`, () =>
-      first.collector.fn.gmp(...first.collector.names.map(([name]) => cv[name]))), 0n);
+    assert.equal(runExclusiveNativeStage(switchStage, "relation-retry", () =>
+      timed(profile, `pass-${passNumber}.collector`, () =>
+        first.collector.fn.gmp(...first.collector.names.map(([name]) => cv[name])))), 0n);
     if (profile !== null) profile.native.push({ label: `pass-${passNumber}.collector`,
       trace: nativeTrace(first.collector.fn) });
     const relationState = cv.relation_state.toArray().map(Number);
@@ -672,8 +696,9 @@ async function runPreparedGateC(prepared, root, options = {}) {
     const av = prepareHnfaddTransaction(
       appendStorage, append, resident.state, newColumns, explicit).values;
     record(profile, `pass-${passNumber}.reset-and-load-hnfadd`, materializeStarted);
-    assert.equal(timed(profile, `pass-${passNumber}.hnfadd`, () =>
-      append.fn.gmp(...append.names.map(([name]) => av[name]))), 0n);
+    assert.equal(runExclusiveNativeStage(switchStage, "sparse-hnf-snf-transform", () =>
+      timed(profile, `pass-${passNumber}.hnfadd`, () =>
+        append.fn.gmp(...append.names.map(([name]) => av[name])))), 0n);
     if (profile !== null) profile.native.push({ label: `pass-${passNumber}.hnfadd`,
       trace: nativeTrace(append.fn) });
     const publishStarted = profile === null ? 0n : process.hrtime.bigint();
@@ -728,4 +753,5 @@ async function runPreparedGateC(prepared, root, options = {}) {
 module.exports = { APPEND_CAPACITIES, APPEND_SHAPES, PREPARED_KEYS,
   createContinuationControlStorage, createHnfaddTransactionStorage,
   createInitialGateStorage,
-  prepareHnfaddTransaction, runPreparedGateC, validateBoundary, warmPreparedGateC };
+  prepareHnfaddTransaction, runExclusiveNativeStage, runPreparedGateC,
+  validateBoundary, warmPreparedGateC };

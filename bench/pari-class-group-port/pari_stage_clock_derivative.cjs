@@ -20,8 +20,22 @@ const ARCHIVE_SHA256 =
 const HERE = __dirname;
 const BUILDER = __filename;
 const DRIVER = path.join(HERE, "pari-stage-clock", "pari_stage_clock_driver.c");
-const AUTHORITY_DRIVER = path.join(HERE, "pari_h1_outcome_c_adapter.c");
 const PATCHER = path.join(HERE, "pari-stage-clock", "instrument-buch2.cjs");
+const VARIANTS = Object.freeze({
+  h1: Object.freeze({
+    authorityDriver: path.join(HERE, "pari_h1_outcome_c_adapter.c"),
+    compileDefinitions: Object.freeze([]),
+  }),
+  row14: Object.freeze({
+    authorityDriver: path.join(HERE, "row14_pari_prepared_timing_adapter.c"),
+    compileDefinitions: Object.freeze([
+      '-DSAGEJS_STAGE_AUTHORITY_ADAPTER="../row14_pari_prepared_timing_adapter.c"',
+      '-DSAGEJS_STAGE_POLYNOMIAL="x^4-200000002*x-200000002"',
+      "-DSAGEJS_STAGE_STACK_BYTES=1200000000",
+      "-DSAGEJS_STAGE_MT_NBTHREADS=1",
+    ]),
+  }),
+});
 
 function fileSha256(filename) {
   return sha256(fs.readFileSync(filename));
@@ -50,7 +64,9 @@ function readConfigValue(filename, key) {
   return match[1];
 }
 
-function buildIdentity(archive) {
+function buildIdentity(archive, variant) {
+  const configuration = VARIANTS[variant];
+  assert(configuration, `unknown stage-clock variant ${variant}`);
   const pristineRoot = path.resolve(
     process.env.SAGEJS_PARI_ROOT || "/home/user/upstream/pari-2.17.4",
   );
@@ -64,7 +80,7 @@ function buildIdentity(archive) {
     patcherSha256: fileSha256(PATCHER),
     builderSha256: fileSha256(BUILDER),
     driverSha256: fileSha256(DRIVER),
-    authorityDriverSha256: fileSha256(AUTHORITY_DRIVER),
+    authorityDriverSha256: fileSha256(configuration.authorityDriver),
     pristineLibrarySha256: fileSha256(pristineLibraryPath),
     configureArguments: [
       "--graphic=none",
@@ -75,23 +91,33 @@ function buildIdentity(archive) {
     ],
     compiler: process.env.CC || "cc",
   };
+  // Preserve the already-qualified H1 cache identity.  Variant-specific fields
+  // are necessary only for a nondefault authority driver.
+  if (variant !== "h1") {
+    identity.variant = variant;
+    identity.compileDefinitions = configuration.compileDefinitions;
+  }
   assert.equal(identity.archiveSha256, ARCHIVE_SHA256, "wrong PARI archive");
-  return { identity, pristineRoot, pristineObjectDirectory, pristineLibraryPath };
+  return { configuration, identity, pristineRoot, pristineObjectDirectory,
+    pristineLibraryPath };
 }
 
 function buildDerivative({
   archive = process.env.SAGEJS_PARI_ARCHIVE || "/home/user/upstream/pari-2.17.4.tar.gz",
   scratchRoot = process.env.SAGEJS_PARI_STAGE_SCRATCH || "/scratch/sagejs-runtime",
   jobs = Number(process.env.SAGEJS_PARI_BUILD_JOBS || 4),
+  variant = "h1",
 } = {}) {
   assert.equal(process.platform, "linux", "PARI stage-clock derivative is Linux-only");
   archive = path.resolve(archive);
   scratchRoot = path.resolve(scratchRoot);
   assert(Number.isSafeInteger(jobs) && jobs >= 1 && jobs <= 32, "invalid build job count");
-  const { identity, pristineRoot, pristineObjectDirectory, pristineLibraryPath } =
-    buildIdentity(archive);
+  const { configuration, identity, pristineRoot, pristineObjectDirectory,
+    pristineLibraryPath } = buildIdentity(archive, variant);
   const buildId = sha256(Buffer.from(JSON.stringify(identity))).slice(0, 16);
-  const finalRoot = path.join(scratchRoot, `pari-stage-clock-2.17.4-${buildId}`);
+  const finalRoot = path.join(scratchRoot, variant === "h1"
+    ? `pari-stage-clock-2.17.4-${buildId}`
+    : `pari-stage-clock-2.17.4-${variant}-${buildId}`);
   const manifestPath = path.join(finalRoot, "manifest.json");
   if (fs.existsSync(manifestPath)) {
     const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
@@ -147,6 +173,7 @@ function buildDerivative({
     "-O3", "-Wall", "-Wextra", "-fno-strict-aliasing", "-DNDEBUG",
     `-I${path.join(extracted, "src", "headers")}`,
     `-I${configuredObjectDirectory}`,
+    ...configuration.compileDefinitions,
     DRIVER,
     `-L${configuredObjectDirectory}`,
     "-lpari", "-lm", "-o", executable,
@@ -156,6 +183,7 @@ function buildDerivative({
   const pristineCompileArguments = [
     "-O3", "-Wall", "-Wextra", "-fno-strict-aliasing", "-DNDEBUG",
     "-DSAGEJS_PRISTINE_CONTROL",
+    ...configuration.compileDefinitions,
     `-I${path.join(pristineRoot, "src", "headers")}`,
     `-I${pristineObjectDirectory}`,
     DRIVER,
@@ -214,6 +242,7 @@ if (require.main === module) {
 
 module.exports = {
   ARCHIVE_SHA256,
+  VARIANTS,
   buildDerivative,
   fileSha256,
 };
