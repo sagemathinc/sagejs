@@ -6531,27 +6531,6 @@ def ρσ_pow(
     return runtime.normalize_integer(answer)
 
 
-def ρσ_synthetic_init_ends_at_object(initializer: Any) -> Any:
-    return r"""%js (()=>{
-        if(initializer===ρσ_object_init)return true;
-        if(_builtins_get_member(initializer,"__sagejs_synthetic_init__")!==true){
-            const underlying=_builtins_get_member(initializer,"__func__");
-            if(underlying===ρσ_object_init)return true;
-            if(_builtins_get_member(underlying,"__sagejs_synthetic_init__")!==true)
-                return false;
-            initializer=underlying;
-        }
-        let remaining=100;
-        while(remaining>0&&
-              _builtins_get_member(initializer,"__sagejs_synthetic_init__")===true){
-            initializer=_builtins_get_member(
-                initializer,"__sagejs_synthetic_init_target__");
-            --remaining;
-        }
-        return initializer===ρσ_object_init;
-    })()"""
-
-
 def ρσ_live_initializer(cls: Any) -> Any:
     """Resolve and cache the current non-forwarding initializer."""
     cached = _builtins_initializer_cache.get(cls)
@@ -6589,24 +6568,11 @@ def ρσ_live_initializer(cls: Any) -> Any:
     return initializer
 
 
-def ρσ_skip_init(cls: Any, initializer: Any) -> Any:
-    return r"""%js (()=>{
-        if(!ρσ_synthetic_init_ends_at_object(initializer))return false;
-        const cached=_builtins_initializer_cache.get(cls);
-        const cacheable=cached!==undefined&&
-            cached[0]===_builtins_descriptor_epoch.value&&cached[1]===initializer;
-        if(cacheable&&cached.length>2)return cached[2];
-        const allocator=ρσ_getattr(cls,"__new__",null);
-        const answer=ρσ_native_jstype(allocator)==="function"&&
-            allocator!==_builtins_object_new;
-        if(cacheable)cached[2]=answer;
-        return answer;
-    })()"""
-
-
 def ρσ_apply_custom_new_signature(cls: Any, initializer: Any) -> None:
     """Publish the user-call signature of a class with only custom allocation."""
-    if not ρσ_skip_init(cls, initializer):
+    if not ρσ_skip_init(  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        cls, initializer
+    ):
         return
     allocator = ρσ_getattr(cls, "__new__", None)
     argument_names = _builtins_get_member(allocator, "__argnames__")
@@ -6670,7 +6636,9 @@ def _builtins_type_call(cls: Any, *args: Any, **keywords: Any) -> Any:
         "__init__",
     )
     if runtime.strict_equal(runtime.jstype(initializer), "function") and not (
-        ρσ_skip_init(cls, initializer_contract)
+        ρσ_skip_init(  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+            cls, initializer_contract
+        )
     ):
         # ``initializer`` is already descriptor-bound.  Calling it through
         # the compiler's generic callable fallback would resolve ``__call__``

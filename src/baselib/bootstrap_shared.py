@@ -280,3 +280,39 @@ def ρσ_interpolate_kwargs_constructor(
         return result!=null&&(typeof result==="object"||typeof result==="function")?
             result:receiver;
     })()"""
+
+
+def ρσ_synthetic_init_ends_at_object(initializer):
+    return r"""%js (()=>{
+        if(initializer===ρσ_object_init)return true;
+        if(_builtins_get_member(initializer,"__sagejs_synthetic_init__")!==true){
+            const underlying=_builtins_get_member(initializer,"__func__");
+            if(underlying===ρσ_object_init)return true;
+            if(_builtins_get_member(underlying,"__sagejs_synthetic_init__")!==true)
+                return false;
+            initializer=underlying;
+        }
+        let remaining=100;
+        while(remaining>0&&
+              _builtins_get_member(initializer,"__sagejs_synthetic_init__")===true){
+            initializer=_builtins_get_member(
+                initializer,"__sagejs_synthetic_init_target__");
+            --remaining;
+        }
+        return initializer===ρσ_object_init;
+    })()"""
+
+
+def ρσ_skip_init(cls, initializer):
+    return r"""%js (()=>{
+        if(!ρσ_synthetic_init_ends_at_object(initializer))return false;
+        const cached=_builtins_initializer_cache.get(cls);
+        const cacheable=cached!==undefined&&
+            cached[0]===_builtins_descriptor_epoch.value&&cached[1]===initializer;
+        if(cacheable&&cached.length>2)return cached[2];
+        const allocator=ρσ_getattr(cls,"__new__",null);
+        const answer=ρσ_native_jstype(allocator)==="function"&&
+            allocator!==_builtins_object_new;
+        if(cacheable)cached[2]=answer;
+        return answer;
+    })()"""
