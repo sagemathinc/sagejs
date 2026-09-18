@@ -13,7 +13,7 @@ test("the first symmetric prepared-adapter wave is admitted statically", () => {
   assert.equal(inventory.executionEnabled, false);
   assert.equal(inventory.reserveOpeningEnabled, false);
   assert.deepEqual(inventory.rows.map(row => row.panelIndex),
-    [0, 1, 3, 4, 8, 10, 11, 14, 16, 18, 20, 23]);
+    [0, 1, 3, 4, 8, 10, 11, 14, 16, 18, 19, 20, 23]);
   assert(Object.isFrozen(registry.REGISTERED[0].expectedProjection));
   assert(Object.isFrozen(registry.REGISTERED[0].expectedProjection.field));
   assert(inventory.rows.every(row => row.sagePreparedKernelTiming &&
@@ -52,6 +52,27 @@ test("row 23 admits the same neutral quintic class-and-unit projection", () => {
   });
   assert.equal(admitted.workCounters.degree, "5");
   assert.equal(admitted.workCounters.unitRank, "4");
+});
+
+test("row 19 admits its repeated-fresh class-and-unit pair", async () => {
+  const admitted = registry.preparedAdapterRegistration(19);
+  assert.deepEqual(admitted.expectedProjection, {
+    schema: "sagejs.pari-class-group/row19-phase6-common-projection-v1",
+    field: { id: "3.1.1086061775432017340256300.107",
+      polynomialAscending: ["-51050867718180330", "0", "0", "1"] },
+    classGroup: { classNumber: "39366",
+      invariantFactors: ["3", "3", "3", "3", "3", "3", "3", "3", "6"],
+      generatorCount: "9" },
+    unitGroup: { rank: "1", regulatorPresent: true, torsionOrder: "2" },
+    completionMode: "flag-zero-class-and-unit-result",
+  });
+  for (const implementation of ["sagejs", "pari"]) {
+    const adapter = await wrapper.createRegisteredPreparedAdapter(
+      { panelIndex: 19, implementation });
+    assert.equal(adapter.implementation, implementation);
+    assert.equal(adapter.projectionSchema, admitted.projectionSchema);
+    assert.equal(typeof adapter.runFresh, "function");
+  }
 });
 
 test("registration rejects an incomplete implementation pair", () => {

@@ -287,6 +287,12 @@ async function createRegisteredPreparedAdapter(configuration) {
   const { panelIndex, implementation } = configuration;
   assert(["sagejs", "pari"].includes(implementation));
   const admitted = registration(panelIndex);
+  if (panelIndex === 19) {
+    const pair = require("./row19_phase6_fresh_adapter.cjs");
+    const adapter = await pair.createRow19FreshPreparedAdapter(configuration);
+    assert.equal(adapter.projectionSchema, admitted.projectionSchema);
+    return adapter;
+  }
   const expected = clone(admitted.expectedProjection);
   const sage = implementation === "sagejs" ? await prepareSage(panelIndex) : null;
   return {

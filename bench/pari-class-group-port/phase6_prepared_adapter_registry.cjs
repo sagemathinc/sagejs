@@ -199,6 +199,24 @@ const definitions = [
       "buildHelper", "frozenFieldSpecification", "validateProjection"]],
   },
   {
+    panelIndex: 19,
+    expectedProjection: {
+      schema: "sagejs.pari-class-group/row19-phase6-common-projection-v1",
+      field: { id: "3.1.1086061775432017340256300.107",
+        polynomialAscending: ["-51050867718180330", "0", "0", "1"] },
+      classGroup: { classNumber: "39366",
+        invariantFactors: ["3", "3", "3", "3", "3", "3", "3", "3", "6"],
+        generatorCount: "9" },
+      unitGroup: { rank: "1", regulatorPresent: true, torsionOrder: "2" },
+      completionMode: "flag-zero-class-and-unit-result",
+    },
+    workCounters: { classNumber: "39366", degree: "3", unitRank: "1" },
+    sage: ["row19_phase6_sage_prepared_adapter.cjs", ["prepareResident",
+      "runResident", "semanticProjection"]],
+    pari: ["row19_phase6_pari_prepared_adapter.cjs", ["Client",
+      "buildHelper", "commonProjection"]],
+  },
+  {
     panelIndex: 20,
     expectedProjection: {
       schema: "sagejs.pari-class-group/row20-phase6-neutral-exact-projection-v1",

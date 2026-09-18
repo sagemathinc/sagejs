@@ -23,7 +23,7 @@ The pinned local PARI installation also authenticates exactly:
   `fdc8f2d7ff050c8e8c6cb8994b0f9dc971267ac763eaf5cd927454937d37357f`.
 
 The field-neutral prepared-adapter registry now admits symmetric Sage.js/PARI
-pairs for development rows `0,1,3,4,8,10,11,14,16,18,20,23`. Every
+pairs for development rows `0,1,3,4,8,10,11,14,16,18,19,20,23`. Every
 registration names one
 common immutable semantic projection and is rejected unless both reviewed
 implementation modules and their required exports exist.  The runtime wrapper
@@ -37,6 +37,20 @@ specifications. Their Sage projections are reduced only after exact class and
 unit fields, polynomial identity, and row-specific completion evidence pass.
 Row 10's private historical PARI polynomial label is explicitly checked before
 the public boundary publishes the frozen corpus field id.
+
+Row 19 uses a dedicated repeated-fresh factory because its aggregate resident
+is intentionally single-use. Every Sage.js sample authenticates and allocates
+a new resident before the clock; every PARI sample starts a new helper and
+waits for prepared `READY`. A bounded two-repetition smoke matched output,
+replay, all 66 terminal RNG words, and work digests across both arms. Its
+unqualified receipt is
+`/scratch/row19-phase6-unqualified-fresh-protocol-v1.json`, SHA-256
+`c1bfc5689ecef7d69431fabfb1f77b0fcda75f49f04bcdaeb25faba6a268213d`.
+The resulting read-only readiness check is
+`/scratch/phase6-readiness-row19-v1.json`, SHA-256
+`27d15f70a2a809a149880f0fd658bb30f0a1ab3d6ee2bb23d3cd8ec0f943d2f1`.
+It admits 13 development pairs, reports rows `6,13,21` as missing, executes no
+long campaign, and opens no reserves.
 
 The registry and coordinator remain mechanically disabled for campaign use:
 `executionEnabled=false` and `reserveOpeningEnabled=false`.  No long series was
@@ -80,7 +94,7 @@ counter audit; that compatibility does not apply to this wave.
 
 Full qualification is not ready, for four independent reasons:
 
-1. Development rows `6,13,19,21` lack matched
+1. Development rows `6,13,21` lack matched
    resident Sage/PARI prepared-kernel timing adapters and common semantic
    projections. Their correctness transactions are not timing adapters: they
    include subprocess, replay, publication, and filesystem work not present in
@@ -121,5 +135,5 @@ bench/pari-class-group-port/run_row14_matched_alternating_campaign.cjs \
 That command remains a row-14 candidate measurement, not the sealed 24-field
 qualification. The field-neutral interface and process-isolated 600-second
 per-arm journal now exist. The next adapter work is to register the remaining
-four development rows, preserving the same symmetric boundary before freezing
+three development rows, preserving the same symmetric boundary before freezing
 and opening the eight reserves.

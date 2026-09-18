@@ -17,9 +17,9 @@ assert.deepEqual(readiness.DEVELOPMENT_INDICES,
   [0, 1, 3, 4, 6, 8, 10, 11, 13, 14, 16, 18, 19, 20, 21, 23]);
 const inventory = readiness.timingInventory();
 assert.deepEqual(inventory.matchedReady,
-  [0, 1, 3, 4, 8, 10, 11, 14, 16, 18, 20, 23]);
+  [0, 1, 3, 4, 8, 10, 11, 14, 16, 18, 19, 20, 23]);
 assert.deepEqual(inventory.missingMatchedTiming,
-  [6, 13, 19, 21]);
+  [6, 13, 21]);
 const pari = readiness.authenticatePari();
 assert.equal(pari.authenticated, true);
 assert.deepEqual(pari.hashes, {
@@ -48,7 +48,7 @@ if (process.argv.length === 4) {
   assert.equal(report.correctness.completedDevelopmentFields, 16);
   assert.equal(report.correctness.developmentAggregateAuthenticated, true);
   assert.deepEqual(report.timing.matchedDevelopmentRows,
-    [0, 1, 3, 4, 8, 10, 11, 14, 16, 18, 20, 23]);
+    [0, 1, 3, 4, 8, 10, 11, 14, 16, 18, 19, 20, 23]);
   assert.equal(report.timing.row14CampaignPhase6Qualified, false);
   assert.equal(report.reserves.opened, 0);
   assert.equal(report.fullQualificationReady, false);
