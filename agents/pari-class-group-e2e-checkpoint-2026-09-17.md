@@ -81,6 +81,19 @@ dependent blocks, and basis/dependent permutation partitions match W0 at all
 eight checkpoints.  Alternate valid resident `B`, `C`, and within-partition
 pivot coordinates are retained and hash-bound rather than replaced from W0.
 
+The connected row-13 terminal transaction now continues that live state
+through analytic acceptance, Smith reduction, exact class ancestry, all 1,006
+principal-relation replays, rank-two C5/C6, and neutral C7 publication.  A
+fresh capped run from only the authenticated prepared projection and immutable
+prepared root took 509.685 seconds at 1,326,656 KiB peak RSS and rejected all
+14 boundary/owner/envelope mutations.  It proves `Cl(K) = Z/2Z`, class number
+2, retains the compact unit ancestry, regulator, and authentic
+`not_given(LARGE)` result, and seals envelope
+`17ccbab46e27cae538d8958f4eb0a760fbbbfde112ea26b784dcc54057505b73`.
+Frozen W0 is read only afterward as a differential oracle.  This makes row 13
+the twelfth internally correspondence-complete development field while
+retaining `public_complete=false` and making no qualified timing claim.
+
 Commit `f5d660bf6` crosses a separate generality frontier for row 6.  Its live
 prepared-input factor-base root reaches `KC=1130`, beyond the old fixed 1024
 ceiling, under a predeclared 2048-ideal admission bound while allocating zero
