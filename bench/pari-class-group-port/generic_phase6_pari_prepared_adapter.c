@@ -23,6 +23,14 @@ static uint64_t nanoseconds(struct timespec value)
        + (uint64_t)value.tv_nsec;
 }
 
+static uint64_t usage_nanoseconds(struct rusage value)
+{
+  return ((uint64_t)value.ru_utime.tv_sec + (uint64_t)value.ru_stime.tv_sec)
+           * UINT64_C(1000000000)
+       + ((uint64_t)value.ru_utime.tv_usec + (uint64_t)value.ru_stime.tv_usec)
+           * UINT64_C(1000);
+}
+
 static void emit_integer(GEN value) { pari_printf("\"%Ps\"", value); }
 
 /* PARI returns elementary divisors in source order.  Reverse the nontrivial
@@ -61,12 +69,13 @@ static void emit_run(GEN nf, long row, const char *field_id,
                      const char *polynomial_json, const char *seed)
 {
   struct timespec begin, end;
-  struct rusage usage;
+  struct rusage usage, usage_begin;
   GEN bnf, cyc, generators, logs, fu;
   long rank, log_rows, log_columns;
   uint64_t elapsed;
 
   setrand(gp_read_str(seed));
+  getrusage(RUSAGE_SELF, &usage_begin);
   clock_gettime(CLOCK_MONOTONIC, &begin);
   bnf = bnfinit0(nf, 0, NULL, nbits2prec(192));
   clock_gettime(CLOCK_MONOTONIC, &end);
@@ -84,9 +93,12 @@ static void emit_run(GEN nf, long row, const char *field_id,
 
   printf("{\"schema\":\"sagejs.pari-class-group/generic-phase6-pari-prepared-sample-v1\","
          "\"row\":%ld,\"kernelNanoseconds\":\"%" PRIu64 "\","
-         "\"projection\":{\"schema\":\"sagejs.pari-class-group/row%ld-phase6-neutral-exact-projection-v1\","
+         "\"processCpuNanoseconds\":\"%" PRIu64 "\","
+         "\"projection\":{\"schema\":\"sagejs.pari-class-group/row%ld-phase6-neutral-%s-projection-v%s\","
          "\"field\":{\"id\":\"%s\",\"polynomialAscending\":%s},"
-         "\"classGroup\":{\"classNumber\":", row, elapsed, row,
+         "\"classGroup\":{\"classNumber\":", row, elapsed,
+         usage_nanoseconds(usage) - usage_nanoseconds(usage_begin), row,
+         row == 13 ? "lean" : "exact", row == 13 ? "2" : "1",
          field_id, polynomial_json);
   emit_integer(bnf_get_no(bnf));
   fputs(",\"invariantFactors\":", stdout);
@@ -107,7 +119,17 @@ static void emit_run(GEN nf, long row, const char *field_id,
          lg(gel(bnf, 5)) - 1, log_rows, log_columns, typ(fu), lg(fu) - 1,
          typ(fu) == t_MAT && lg(fu) == 1 ? "not_given(LARGE)" : "materialized");
   emit_rng(seed);
-  printf(",\"processMaxRssKiB\":\"%ld\"}\n", usage.ru_maxrss);
+  fputs(",\"replayEvidence\":{\"source\":\"independent-pari-bnf-getters\","
+        "\"classNumber\":", stdout);
+  emit_integer(bnf_get_no(bnf));
+  fputs(",\"invariantFactors\":", stdout);
+  emit_canonical_invariants(bnf_get_cyc(bnf));
+  printf(",\"generatorCount\":\"%ld\",\"unitRank\":\"%ld\","
+         "\"regulatorPresent\":%s,\"torsionOrder\":\"%ld\"},",
+         lg(bnf_get_gen(bnf)) - 1,
+         nf_get_r1(nf) + nf_get_r2(nf) - 1,
+         signe(bnf_get_reg(bnf)) ? "true" : "false", bnf_get_tuN(bnf));
+  printf("\"processMaxRssKiB\":\"%ld\"}\n", usage.ru_maxrss);
   fflush(stdout);
 }
 

@@ -251,7 +251,8 @@ async function computePreparedInitialOwner(payload, options = {}) {
     publication: { gateA: true, gateB: true, gateCReady: true,
       collectionExecuted: false, terminalClassComputed: false },
   };
-  return { owner, state, telemetry: { elapsedNs: String(elapsedNs), maxRssKiB },
+  return { owner, state, telemetry: { elapsedNs: String(elapsedNs), maxRssKiB,
+    nativeMathematicalCalls: 1 },
     coreSourcePath: built.coreSourcePath };
 }
 

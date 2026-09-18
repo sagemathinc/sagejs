@@ -7,7 +7,8 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const { compileKernel } = require("../../tools/native-kernel/compiler.cjs");
-const { reverseSchedule } = require("./relation_column_ancestry.cjs");
+const { embedHnfInputColumn, reverseHnfFinal, reverseSchedule } =
+  require("./relation_column_ancestry.cjs");
 function zeroLengths() {
   const n = DEGREE, rows = ROWS, columns = TARGET, k0 = 4;
   const size = rows * columns, square = columns * columns;
@@ -102,6 +103,17 @@ function array(owner) {
   return owner.toArray ? owner.toArray() : Array.from(owner);
 }
 
+function exactIntegerState(owner, expectedLength, label) {
+  assert.equal(typeof owner?.toArray, "function",
+    `${label} is not a packed IntegerBuffer owner`);
+  assert.equal(owner.length, expectedLength, `${label} has the wrong length`);
+  const values = owner.toArray().map(Number);
+  assert.equal(values.length, expectedLength, `${label} projected the wrong length`);
+  assert(values.every(Number.isSafeInteger),
+    `${label} contains a non-integer slot`);
+  return values;
+}
+
 function hnfStep(values, rows, depRows, columns, tail, trailingName,
   transformName) {
   return { rows, depRows, columns, tail,
@@ -110,6 +122,107 @@ function hnfStep(values, rows, depRows, columns, tail, trailingName,
     fullH: array(values.full_h).slice(0, rows * columns),
     fullDep: array(values.full_dep).slice(0, depRows * columns),
     diagonal: array(values.diagonal).slice(0, rows) };
+}
+
+function terminalCoordinates(state, perm) {
+  assert(Array.isArray(state) && state.length === 9,
+    "row-13 terminal state has the wrong shape");
+  const hRows = Number(state[0]), bColumns = Number(state[2]);
+  const zeroColumns = Number(state[4]), totalColumns = Number(state[7]);
+  for (const [name, value] of Object.entries({ hRows, bColumns, zeroColumns,
+    totalColumns }))
+    assert(Number.isSafeInteger(value) && value >= 0,
+      `row-13 ${name} is invalid`);
+  assert.equal(zeroColumns + hRows + bColumns, totalColumns,
+    "row-13 terminal coordinate partition changed");
+  assert(Array.isArray(perm) && perm.length === ROWS,
+    "row-13 terminal permutation has the wrong shape");
+  const seen = new Set();
+  for (const raw of perm) {
+    const value = Number(raw);
+    assert(Number.isSafeInteger(value) && value >= 1 && value <= ROWS &&
+      !seen.has(value), "row-13 terminal permutation is invalid");
+    seen.add(value);
+  }
+  const dependentRows = ROWS - bColumns - hRows;
+  assert(dependentRows >= 0, "row-13 terminal dependent-row count is negative");
+  return {
+    totalColumns,
+    zeroColumns: Array.from({ length: zeroColumns }, (_, index) => index),
+    presentationColumns: Array.from({ length: hRows },
+      (_, index) => zeroColumns + index),
+    activeFactorRows: Array.from({ length: hRows },
+      (_, index) => Number(perm[dependentRows + index]) - 1),
+    hRows, bColumns, dependentRows,
+  };
+}
+
+function relationProduct(records, columns, coefficients) {
+  assert.equal(coefficients.length, columns);
+  assert(records.length >= ROWS * columns);
+  const output = Array(ROWS).fill(0n);
+  for (let column = 0; column < columns; column += 1) {
+    const coefficient = BigInt(coefficients[column]);
+    if (coefficient === 0n) continue;
+    const offset = column * ROWS;
+    for (let row = 0; row < ROWS; row += 1)
+      output[row] += coefficient * BigInt(records[offset + row]);
+  }
+  return output;
+}
+
+function publishedHColumn(resident, column) {
+  const coordinates = terminalCoordinates(resident.state, resident.perm);
+  assert(column >= 0 && column < coordinates.hRows);
+  const output = Array(ROWS).fill(0n);
+  for (let row = 0; row < coordinates.dependentRows; row += 1)
+    output[Number(resident.perm[row]) - 1] =
+      BigInt(resident.dep[column * coordinates.dependentRows + row]);
+  for (let row = 0; row < coordinates.hRows; row += 1)
+    output[Number(resident.perm[coordinates.dependentRows + row]) - 1] =
+      BigInt(resident.h[column * coordinates.hRows + row]);
+  return output;
+}
+
+function assemblyProduct(values, coefficients, genuine, redundant, width,
+  tail, dependentName, activeName, trailingName) {
+  const lig = genuine + redundant;
+  return embedHnfInputColumn(coefficients, {
+    totalRows: ROWS, genuineRows: genuine, dependentRows: redundant,
+    width, tail,
+    dependent: array(values[dependentName]).slice(0, width * redundant),
+    active: array(values[activeName]).slice(0, width * genuine),
+    trailing: array(values[trailingName]).slice(0, lig * tail),
+    preHnfPermutation: array(values.perm_work).slice(0, lig),
+    postHnfPermutation: array(values.perm).slice(lig),
+  });
+}
+
+function authenticateLiveHColumns(records, columns, resident, initialStep,
+  appendSteps, local = null) {
+  const coordinates = terminalCoordinates(resident.state, resident.perm);
+  const checks = [];
+  for (let column = 0; column < coordinates.hRows; column += 1) {
+    const terminalColumn = coordinates.presentationColumns[column];
+    const expected = publishedHColumn(resident, column);
+    if (local !== null) {
+      const selected = Array(columns).fill(0n); selected[terminalColumn] = 1n;
+      const localInput = reverseHnfFinal(
+        selected.slice(local.step.zeroPrefix), local.step.hnf);
+      assert.deepEqual(assemblyProduct(local.values, localInput,
+        local.genuine, local.redundant, local.width, local.tail,
+        local.dependentName, local.activeName, local.trailingName), expected,
+      `row-13 ${columns} live hnffinal H column ${column}`);
+    }
+    const raw = reverseSchedule(columns, [terminalColumn], initialStep,
+      appendSteps)[0];
+    assert.deepEqual(relationProduct(records, columns, raw), expected,
+      `row-13 ${columns} composed live H column ${column}`);
+    checks.push({ column, terminalColumn,
+      activeFactorRow: coordinates.activeFactorRows[column],
+      rawNonzero: raw.filter(value => value !== 0n).length });
+  }
+  return { columns, coordinates, checks };
 }
 
 function words(values, minimum = 1) {
@@ -279,15 +392,20 @@ async function firstPreparedHnf(prepared, root, kernels = null) {
   const firstState = Array.from(ha.values.state).map(Number);
   assert.deepEqual([firstState[0], firstState[2], firstState[3], firstState[7]],
     [1, 987, 11, FIRST_COLUMNS]);
+  // Packed IntegerBuffer owners deliberately expose exact slots through
+  // `toArray()`; their numeric JavaScript properties are not the slots.
+  exactIntegerState(ha.values.rank_state, 10, "row-13 initial rank state");
   const assembly = Array.from(ha.values.assembly_state).map(Number);
   const [genuine, redundant, width, lig, tail] = assembly;
   assert.equal(genuine + redundant, lig);
+  assert.equal(lig + tail, ROWS);
   assert.equal(width + tail, FIRST_COLUMNS);
   const ancestry = { columns: FIRST_COLUMNS,
     cleanupTransform: array(ha.values.transform).slice(0, FIRST_COLUMNS ** 2),
     hnf: hnfStep(ha.values, genuine, redundant, width, tail, "b",
       "hnf_transform") };
   return { collector, cv, hnf: ha.values, ancestry,
+    nativeMathematicalCalls: 2,
     ownerBytes: allocated.bytes + ha.bytes };
 }
 
@@ -317,6 +435,13 @@ async function runPreparedGateC(prepared, root, options = {}) {
     c: first.hnf.result_c.toArray().slice(0, 7 * PLACES * FIRST_COLUMNS),
     perm: Array.from(first.hnf.perm), state: Array.from(first.hnf.state).map(Number),
   };
+  const coordinateCheckpoints = [authenticateLiveHColumns(
+    cv.relation_records.toArray(), FIRST_COLUMNS, resident, first.ancestry, [],
+    { step: { zeroPrefix: 0, hnf: first.ancestry.hnf },
+      values: first.hnf, genuine: first.ancestry.hnf.rows,
+      redundant: first.ancestry.hnf.depRows,
+      width: first.ancestry.hnf.columns, tail: first.ancestry.hnf.tail,
+      dependentName: "dep", activeName: "matbnew", trailingName: "b" })];
   // Only the selected resident blocks survive this boundary. Drop the large
   // first-HNF scratch graph before compiling/running continuation kernels.
   first.hnf = null;
@@ -330,6 +455,7 @@ async function runPreparedGateC(prepared, root, options = {}) {
   const checkpoints = [snapshot(FIRST_COLUMNS)], appendSteps = [],
     expected = [996, 999, 1000, 1001, 1002, 1005, 1006], passTrace = [];
   let checkpointIndex = 0, collectionPasses = 1, squash = 0, appendPeakBytes = 0;
+  let nativeMathematicalCalls = first.nativeMathematicalCalls;
   while (checkpointIndex < expected.length) {
     collectionPasses += 1;
     assert(collectionPasses <= 10, "row-13 continuation exceeded ten authentic passes");
@@ -341,6 +467,7 @@ async function runPreparedGateC(prepared, root, options = {}) {
     const schedule = next.fn.createInt64Buffer(Array.from(cv.schedule));
     const completed = next.fn.createIntegerBuffer(1, 1, cv.log_completed.toArray());
     const control = next.fn.createInt64Buffer(3), perm = next.fn.createInt64Buffer(resident.perm);
+    nativeMathematicalCalls += 1;
     assert.equal(next.fn.gmp(perm, BigInt(ROWS), BigInt(resident.state[0]), BigInt(need),
       BigInt(squash), search, outerPerm, 1n, outer, cache, schedule, completed, control), 0n);
     const nextControl = Array.from(control).map(Number); squash = nextControl[1];
@@ -352,6 +479,7 @@ async function runPreparedGateC(prepared, root, options = {}) {
     cv.log_completed = first.collector.fn.createIntegerBuffer(1, 1, completed.toArray());
     cv.search_count = BigInt(nextControl[0]); cv.outer_mode = 1n;
     cv.outer_ru = BigInt(PLACES); cv.scalar_prefix_count = 54n;
+    nativeMathematicalCalls += 1;
     const collectStatus = first.collector.fn.gmp(
       ...first.collector.names.map(([name]) => cv[name]));
     if (collectStatus !== 0n) {
@@ -400,42 +528,81 @@ async function runPreparedGateC(prepared, root, options = {}) {
         av[name] = append.fn.createIntegerBuffer(values.length, 16, values); }
     }
     appendPeakBytes = Math.max(appendPeakBytes, bytes);
+    nativeMathematicalCalls += 1;
     assert.equal(append.fn.gmp(...append.names.map(([name]) => av[name])), 0n);
-    const rankState = Array.from(av.rank_state).map(Number);
+    const rankState = exactIntegerState(av.rank_state, 10,
+      "row-13 append rank state");
     const appendRedundant = rankState[7];
     assert.equal(rankState[2], appendRedundant);
+    assert.equal(rankState[8], lig);
+    assert(Number.isSafeInteger(appendRedundant) && appendRedundant >= 0 &&
+      appendRedundant <= lig, "row-13 append redundant rank is invalid");
     const appendGenuine = lig - appendRedundant;
-    appendSteps.push({ oldTotal: oldColumns, newColumns,
+    const appendStep = { oldTotal: oldColumns, newColumns,
       zeroPrefix: oldColumns - bColumns - hRows, hRows, bColumns,
       perm: resident.perm.slice(), newRelations, rows: ROWS,
       hnf: hnfStep(av, appendGenuine, appendRedundant, width, bColumns,
-        "permuted_b", "transform") });
+        "permuted_b", "transform") };
+    assert(appendStep.zeroPrefix >= 0,
+      "row-13 append zero-column prefix is negative");
+    appendSteps.push(appendStep);
     resident.state = Array.from(av.state).map(Number); resident.perm = Array.from(av.perm);
     const newH = resident.state[0], newB = resident.state[2], depRows = ROWS-newB-newH;
     resident.h = av.result_h.toArray().slice(0, newH*newH);
     resident.dep = av.result_dep.toArray().slice(0, depRows*newH);
     resident.b = av.result_b.toArray().slice(0, (ROWS-newB)*newB);
     resident.c = av.result_c.toArray().slice(0, 7*PLACES*columns);
+    coordinateCheckpoints.push(authenticateLiveHColumns(
+      cv.relation_records.toArray(), columns, resident, first.ancestry,
+      appendSteps,
+      { step: appendStep, values: av, genuine: appendGenuine,
+        redundant: appendRedundant, width, tail: bColumns,
+        dependentName: "new_dep", activeName: "matb",
+        trailingName: "permuted_b" }));
     relationState[4] = columns;
     cv.relation_state = first.collector.fn.createIntegerBuffer(6, 1, relationState.map(BigInt));
     checkpoints.push(snapshot(columns)); checkpointIndex += 1;
   }
   const ownerBytesUpperBound = first.ownerBytes + appendPeakBytes;
   assert(ownerBytesUpperBound < 4 * 1024 ** 3);
-  const transforms = reverseSchedule(TARGET,
-    Array.from({ length: 8 }, (_, index) => index), first.ancestry,
-    appendSteps);
+  assert.equal(nativeMathematicalCalls, 27,
+    "row-13 reviewed gate native invocation count changed");
+  const terminal = terminalCoordinates(resident.state, resident.perm);
+  const selectedCoordinates = [...terminal.zeroColumns,
+    ...terminal.presentationColumns];
+  const transforms = reverseSchedule(TARGET, selectedCoordinates,
+    first.ancestry, appendSteps);
+  assert.equal(transforms.length,
+    terminal.zeroColumns.length + terminal.presentationColumns.length);
+  const unitTransforms = transforms.slice(0, terminal.zeroColumns.length);
+  const presentationTransforms = transforms.slice(terminal.zeroColumns.length);
+  const records = cv.relation_records.toArray();
+  for (const transform of unitTransforms)
+    assert.deepEqual(relationProduct(records, TARGET, transform),
+      Array(ROWS).fill(0n), "row-13 terminal zero column is not a relation kernel");
+  for (let column = 0; column < presentationTransforms.length; column += 1)
+    assert.deepEqual(relationProduct(records, TARGET,
+      presentationTransforms[column]), publishedHColumn(resident, column),
+    `row-13 terminal presentation column ${column} changed`);
+  if (unitTransforms.length && presentationTransforms.length) {
+    assert.notDeepEqual(relationProduct(records, TARGET,
+      unitTransforms.at(-1)), publishedHColumn(resident, 0),
+    "row-13 swapped terminal kernel/presentation coordinate was accepted");
+  }
   return { collectorValues: cv, resident, checkpoints, passTrace, collectionPasses,
     ownerBytesUpperBound, preparedRng: root.rng.slice(),
-    rawToUnitKernel: transforms.slice(0, 7).flat().map(String),
-    rawToPresentation: transforms[7].map(String),
+    terminalCoordinates: terminal, coordinateCheckpoints,
+    rawToUnitKernel: unitTransforms.flat().map(String),
+    rawToPresentation: presentationTransforms.flat().map(String),
     executionBoundary: {
       compilationInsideRun: kernels === null,
       residentHandleCount: kernels === null ? 0 : 4,
+      nativeMathematicalCalls,
       subprocessesInsideRun: false,
       filesystemInsideRun: false,
     } };
 }
 
-module.exports = { PREPARED_KEYS, runPreparedGateC, validateBoundary,
-  warmPreparedGateC };
+module.exports = { PREPARED_KEYS, authenticateLiveHColumns, exactIntegerState,
+  publishedHColumn, relationProduct, runPreparedGateC, terminalCoordinates,
+  validateBoundary, warmPreparedGateC };

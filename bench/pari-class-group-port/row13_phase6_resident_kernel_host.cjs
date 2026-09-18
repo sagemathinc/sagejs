@@ -94,23 +94,34 @@ function acceptedState(preparedEnvelope, root, live, metadata) {
 }
 
 function authenticateTransforms(kernel, live) {
+  const coordinates = gate.terminalCoordinates(live.resident.state,
+    live.resident.perm);
+  assert.deepEqual(live.terminalCoordinates, coordinates);
   const transforms = [...live.rawToUnitKernel, ...live.rawToPresentation]
     .map(BigInt);
-  const products = kernel.fn.createIntegerBuffer(8 * ROWS, 64);
+  const selectedColumns = coordinates.zeroColumns.length +
+    coordinates.presentationColumns.length;
+  assert.equal(transforms.length, selectedColumns * COLUMNS);
+  const products = kernel.fn.createIntegerBuffer(selectedColumns * ROWS, 64);
   const transformOwner = kernel.fn.createIntegerBuffer(transforms.length, 64,
     transforms);
   assert.equal(kernel.fn.gmp(live.collectorValues.relation_records,
-    BigInt(ROWS), BigInt(COLUMNS), transformOwner, 8n, products), 0n);
+    BigInt(ROWS), BigInt(COLUMNS), transformOwner,
+    BigInt(selectedColumns), products), 0n);
   const values = products.toArray();
-  for (let index = 0; index < 7 * ROWS; index += 1)
+  const unitCells = coordinates.zeroColumns.length * ROWS;
+  for (let index = 0; index < unitCells; index += 1)
     assert.equal(values[index], 0n);
-  const classProduct = values.slice(7 * ROWS, 8 * ROWS);
-  const nonzero = [];
-  for (let row = 0; row < ROWS; row += 1)
-    if (classProduct[row] !== 0n) nonzero.push([row, classProduct[row]]);
-  assert.equal(nonzero.length, 1);
-  assert.equal(nonzero[0][1], 2n);
-  return { activeFactorRow: nonzero[0][0], products };
+  assert.equal(coordinates.presentationColumns.length, 1);
+  const classProduct = values.slice(unitCells, unitCells + ROWS);
+  const expected = gate.publishedHColumn(live.resident, 0);
+  assert.deepEqual(classProduct, expected,
+    "row-13 live class transform does not reproduce the live H column");
+  assert(coordinates.zeroColumns.length > 0);
+  assert.notDeepEqual(values.slice(unitCells - ROWS, unitCells), expected,
+    "row-13 swapped terminal kernel/presentation coordinate was accepted");
+  return { activeFactorRow: coordinates.activeFactorRows[0],
+    coordinates, products };
 }
 
 function classState(live, metadata, transformAuthentication) {
@@ -129,6 +140,7 @@ async function runResident(resident) {
   const started = process.hrtime.bigint();
   let previous = started;
   const stageNanoseconds = {};
+  let unitNativeMathematicalCalls = 0;
   const mark = name => { const now = process.hrtime.bigint();
     stageNanoseconds[name] = String(now - previous); previous = now; };
   const rootResult = await initial.computePreparedInitialOwner({
@@ -155,12 +167,28 @@ async function runResident(resident) {
     metadataReceipt, { catalog: resident.postCatalog,
       terminal: resident.postTerminal });
   mark("analyticAcceptanceAndTerminalLattice");
-  const units = runUnitSuffix(resident.units, accepted, post1006,
+  const countedUnits = Object.fromEntries(Object.entries(resident.units).map(
+    ([name, kernel]) => [name, { ...kernel, fn: new Proxy(kernel.fn, {
+      get(target, property, receiver) {
+        if (property !== "gmp") return Reflect.get(target, property, receiver);
+        return (...args) => { unitNativeMathematicalCalls += 1;
+          return target.gmp(...args); };
+      },
+    }) }],
+  ));
+  const units = runUnitSuffix(countedUnits, accepted, post1006,
     metadataReceipt.metadata.prepared, 256, 32);
   mark("unitLatticeAndGetfu");
   const klass = classState(live, metadataReceipt.metadata,
     transformAuthentication);
   mark("classGroupGeneratorAssembly");
+  assert.equal(unitNativeMathematicalCalls, 11,
+    "row-13 unit suffix native invocation count changed");
+  const nativeMathematicalCalls = rootResult.telemetry.nativeMathematicalCalls +
+    live.executionBoundary.nativeMathematicalCalls + 1 +
+    post1006.nativeMathematicalCalls + unitNativeMathematicalCalls;
+  assert.equal(nativeMathematicalCalls, 43,
+    "row-13 reviewed top-level native invocation count changed");
   const kernelNanoseconds = String(previous - started);
   return { schema: "sagejs.pari-class-group/row13-phase6-resident-sample-v1",
     kernelNanoseconds, stageNanoseconds, root, metadataReceipt, live, accepted,
@@ -181,7 +209,9 @@ async function runResident(resident) {
       compilationInsideClock: false, preparedAuthenticationInsideClock: false,
       subprocessesInsideClock: false, filesystemInsideClock: false,
       replayInsideClock: false, publicationInsideClock: false,
-      nativeHandleCount: 18 }, maxRssKiB: process.resourceUsage().maxRSS };
+      nativeHandleCount: 18,
+      nativeMathematicalCalls },
+    maxRssKiB: process.resourceUsage().maxRSS };
 }
 
 module.exports = { EXPECTED_AUTHORITY, FIELD_ID, acceptedState,

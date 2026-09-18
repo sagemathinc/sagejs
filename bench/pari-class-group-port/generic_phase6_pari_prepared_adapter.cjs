@@ -51,6 +51,14 @@ const ROWS = freeze({
     signature: ["2", "1"], classNumber: "4",
     invariantFactors: ["2", "2"], generatorCount: "2",
     unitRank: "2", torsionOrder: "2" },
+  13: { panelIndex: 13,
+    fieldId: "generated-sha256-353468f1887e96f5a2f66e3121564636ed8cdbd75bde6571609627bbe8586e33",
+    polynomial: "x^4-20000000006*x-20000000010",
+    polynomialAscending: ["-20000000010", "-20000000006", "0", "0", "1"],
+    discriminant: "-4320000007232000005404800002002560000290992",
+    degree: "4", signature: ["2", "1"], classNumber: "2",
+    invariantFactors: ["2"], generatorCount: "1",
+    unitRank: "2", torsionOrder: "2" },
   18: { panelIndex: 18, fieldId: "3.1.1005907102200.3",
     polynomial: "x^3+177570*x-7353960",
     polynomialAscending: ["-7353960", "177570", "0", "1"],
@@ -121,7 +129,16 @@ function buildHelper() {
 function validateProjection(specification, projection) {
   const spec = validateFrozenFieldSpecification(specification);
   assert.deepEqual(projection, {
-    schema: `sagejs.pari-class-group/row${spec.panelIndex}-phase6-neutral-exact-projection-v1`,
+    schema: spec.panelIndex === 13
+      ? "sagejs.pari-class-group/row13-phase6-neutral-lean-projection-v2"
+      : `sagejs.pari-class-group/row${spec.panelIndex}-phase6-neutral-exact-projection-v1`,
+    ...(spec.panelIndex === 13 ? { semanticScope: {
+      compared: ["class-number", "class-invariant-factors",
+        "class-generator-count", "unit-rank", "torsion-order",
+        "regulator-presence", "completion-mode"],
+      excluded: ["generator-ideal-values", "fundamental-unit-values",
+        "regulator-value"],
+    } } : {}),
     field: { id: spec.fieldId, polynomialAscending: spec.polynomialAscending },
     classGroup: { classNumber: spec.classNumber,
       invariantFactors: spec.invariantFactors, generatorCount: spec.generatorCount },
@@ -188,8 +205,22 @@ class HelperClient {
       "sagejs.pari-class-group/generic-phase6-pari-prepared-sample-v1");
     assert.equal(sample.row, spec.panelIndex);
     assert.match(sample.kernelNanoseconds, /^[1-9][0-9]*$/);
+    assert.match(sample.processCpuNanoseconds, /^[1-9][0-9]*$/);
     assert.match(sample.processMaxRssKiB, /^[1-9][0-9]*$/);
+    if (spec.panelIndex === 13) sample.projection.semanticScope = {
+      compared: ["class-number", "class-invariant-factors",
+        "class-generator-count", "unit-rank", "torsion-order",
+        "regulator-presence", "completion-mode"],
+      excluded: ["generator-ideal-values", "fundamental-unit-values",
+        "regulator-value"],
+    };
     validateProjection(spec, sample.projection);
+    assert.deepEqual(sample.replayEvidence, {
+      source: "independent-pari-bnf-getters",
+      classNumber: spec.classNumber, invariantFactors: spec.invariantFactors,
+      generatorCount: spec.generatorCount, unitRank: spec.unitRank,
+      regulatorPresent: true, torsionOrder: spec.torsionOrder,
+    });
     assert.deepEqual({ degree: sample.detail.degree,
       signature: sample.detail.signature, discriminant: sample.detail.discriminant },
     { degree: spec.degree, signature: spec.signature,

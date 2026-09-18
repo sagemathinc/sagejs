@@ -347,6 +347,7 @@ async function runRow13Post1006Terminal(owner, metadataReceipt, options = {}) {
     .map(String);
   return {
     schema: "sagejs.pari-class-group/row13-post1006-terminal-v1",
+    nativeMathematicalCalls: 3,
     status: Number(status),
     acceptedOwnerSha256: hash(owner),
     metadataSha256: metadataReceipt.metadataSha256,
