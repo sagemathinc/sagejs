@@ -71,7 +71,24 @@
       }
     },
     "rankDeficiency": {"performancePopulation": "observed", "panelIndices": [8, 10], "evidence": ["retry_hnf_integration_audit.md"]},
-    "precisionEscalation": {"performancePopulation": "absent", "panelIndices": [], "evidence": ["retry_hnf_integration_audit.md"]},
+    "precisionEscalation": {
+      "performancePopulation": "absent",
+      "panelIndices": [],
+      "evidence": ["retry_hnf_integration_audit.md"],
+      "correctnessOnly": {
+        "status": "closed-bounded-authentic-h1-corridor",
+        "panelIdentityIndex": 0,
+        "defaultPolicy": false,
+        "naturalDefaultDriverObservation": false,
+        "fixture": "phase1-precision-escalation-fixture.json",
+        "fixtureSha256": "433c5965ea518bdcf30ad766b3186724dbd9a5837d398550ec18f1f2596bac76",
+        "audit": "phase1_precision_escalation_fixture_audit.md",
+        "auditSha256": "835414ea0cb6659a9f4d81428ef31e97be2a02929809283ff44ab9f63c31b381",
+        "checker": "check_phase1_precision_escalation_fixture.cjs",
+        "checkerSha256": "af510cebcc0902bd6356bc74e49b79987906c3df753e2c63ec1109124a6d790f",
+        "note": "The authentic H1 correctness corridor observes 192, 384, 768, and 1536 PRECI attempts followed by success at 2304; it does not establish precision escalation in the frozen default-driver performance population."
+      }
+    },
     "honesty": {
       "performancePopulation": "absent",
       "panelIndices": [],
@@ -90,6 +107,24 @@
         "checker": "check_honesty_scheduler.cjs",
         "checkerSha256": "d56c69872d9f6709694f5d4c5dcba2bfad170e404bd2e4a83a41257ef42e686e",
         "note": "The scheduler closes the bounded unequal-bound all-failure case. It is not rnd_rel, a natural default-bound observation, or a successful/full generic honesty branch."
+      },
+      "selectedSuccess": {
+        "status": "closed-selected-immediate-success-corridor",
+        "genericBranchStatus": "partial",
+        "panelIdentityIndex": 21,
+        "defaultPolicy": false,
+        "customBounds": {"C1": 5, "C2": 31},
+        "fixture": "honesty_success_fixture.json",
+        "fixtureSha256": "f90ff02e7c0f8e08282d13e3d73193d6a2751420988d502482ce294f7562f35c",
+        "selectionChecker": "check_honesty_success.cjs",
+        "selectionCheckerSha256": "a6ddcd502749f5aa243828e3111dc1d3cfbdd9743e1966ec803215a22d957ff5",
+        "liveChecker": "check_honesty_success_live_first_probe.cjs",
+        "liveCheckerSha256": "897e193d35da129d1a4711595e45f50d7b6badad90826416d39c3a7db23a0a2e",
+        "audit": "honesty_success_audit.md",
+        "auditSha256": "b8cf0a7abee5fdb4b796076ffd4396ae5ec6093c51d380ed404f3647c9c84eed",
+        "liveAudit": "honesty_success_live_first_probe_audit.md",
+        "liveAuditSha256": "1ef6892d96279fff97f6794bb6c67bde4ef7a23f49909d05815d0eb6631e340a",
+        "note": "The selected row-21 path computes and consumes six immediate successful probes, increments KCZ three times, and restores it from six to three. It does not cover automorphism orbits, failure/retry arithmetic, or a general honesty algorithm."
       }
     }
   },
@@ -101,9 +136,9 @@
   },
   "correctnessOnlyRequirements": [
     {"branch": "random-relations", "status": "closed-frozen-corridor", "requiredObservation": "The forced pristine-PARI rnd_rel corridor records scheduler state, RNG, ideals, inserted relations, logs, and post-append HNF state.", "performanceInput": false},
-    {"branch": "precision-escalation", "status": "missing", "requiredObservation": "At least one pristine PARI trace takes the precision-rebuild path; record owner invalidation, rebuilt logs, and terminal decision.", "performanceInput": false},
+    {"branch": "precision-escalation", "status": "closed-bounded-authentic-h1-corridor", "requiredObservation": "The authentic H1 corridor records source-policy precision transitions, rebuilt embeddings and logs, exact-owner preservation, terminal success, and transactional cap failure.", "performanceInput": false},
     {"branch": "unequal-bound-honesty-all-failure", "status": "closed-frozen-corridor", "requiredObservation": "The bounded scheduler computes all 51 failed collector probes and 50 retry draws and terminates with unchanged KCZ.", "performanceInput": false},
-    {"branch": "successful-full-honesty", "status": "missing", "requiredObservation": "Add a successful branch, including KCZ mutation/restoration, orbit selection where applicable, ideal reduction where applicable, and scheduler state.", "performanceInput": false}
+    {"branch": "successful-honesty-selected-path", "status": "closed-selected-immediate-success-corridor", "requiredObservation": "The selected successful branch computes every live probe, records scheduler state and KCZ mutation/restoration, and records that orbit and ideal-reduction branches are not applicable on this path.", "performanceInput": false}
   ],
   "promotionPolicy": {
     "correctnessFixtureAcceptance": [
@@ -123,9 +158,13 @@
   },
   "reservePolicy": {"panelRows": 24, "developmentRows": 16, "finalReserveRows": 8, "reserveOpened": false, "panelModified": false},
   "verdict": {
-    "sentinelRetryPrecisionOrHonestyRequirementProven": false,
-    "closedCorrectnessOnlyCorridors": ["random-relations", "unequal-bound-honesty-all-failure"],
-    "missingCorrectnessOnlyFixtures": ["precision-escalation", "successful-full-honesty"],
+    "sentinelRetryPrecisionOrHonestyRequirementProven": true,
+    "boundedCorrectnessOnlyPrecisionEscalationProven": true,
+    "selectedSuccessfulHonestyProven": true,
+    "generalHonestyProven": false,
+    "closedCorrectnessOnlyCorridors": ["random-relations", "precision-escalation", "unequal-bound-honesty-all-failure", "successful-honesty-selected-path"],
+    "missingCorrectnessOnlyFixtures": [],
+    "openGeneralizationFrontiers": ["honesty-automorphism-orbits", "honesty-failure-retry-arithmetic", "honesty-ideal-reduction-path"],
     "fieldSubstitutionAllowed": false
   }
 }
