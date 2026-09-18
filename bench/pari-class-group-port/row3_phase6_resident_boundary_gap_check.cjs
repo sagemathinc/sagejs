@@ -28,7 +28,7 @@ async function main() {
   const continuationSource = fs.readFileSync(path.join(__dirname,
     "row3_prepared_relation_hnf_frontier.cjs"), "utf8");
   assert.match(initialSource, /Promise\.all\(\[/,
-    "row-3 initial frontier no longer has the audited multi-root shape");
+    "row-3 correctness frontier no longer has the audited multi-root shape");
   assert.match(continuationSource, /spawnSync\("python3"/,
     "row-3 unit suffix subprocess blocker changed");
   assert.match(continuationSource, /compile\("collected_log_embeddings\.py"/,
@@ -61,10 +61,12 @@ async function main() {
     pariKernelNanoseconds: sample.kernelNanoseconds,
     pariProjection: sample.projection,
     freshCorrectness: fresh,
-    sageResidentKernelAvailable: false,
+    sageResidentClassCandidateKernelAvailable: true,
+    sageResidentWholeClassUnitKernelAvailable: false,
     timingEligible: false, qualifiedTiming: false, ratioPublished: false,
-    blockers: ["multi-root JS coordinator", "compilation/allocation inside transaction",
-      "ordinary-Python unit subprocess", "JSON relation/log transfer"],
+    blockers: ["ordinary-Python compact-unit subprocess",
+      "JSON relation/log transfer into unit suffix",
+      "no preallocated float/int64 arena views for resident bridge/getfu suffix"],
   }, null, 2)}\n`);
 }
 

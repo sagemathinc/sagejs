@@ -1,8 +1,10 @@
 # Row 3 Phase 6 resident-boundary gap
 
-Row 3 has authenticated prepared-input correctness and a pristine resident
-PARI 2.17.4 `bnfinit0(nf, 0)` reference adapter. It does **not** yet have an
-honest resident Sage.js timing adapter.
+Row 3 has authenticated prepared-input correctness, a pristine resident PARI
+2.17.4 `bnfinit0(nf, 0)` reference adapter, and now a resident Sage.js
+class-candidate/regulator root. It does **not** yet have an honest resident
+whole class-and-unit timing adapter. See
+`row3_phase6_resident_kernel_audit.md` for the narrowed remaining gap.
 
 The current correct transaction crosses three boundaries which cannot be
 included in a matched mathematical clock:
