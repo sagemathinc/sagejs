@@ -179,8 +179,7 @@ async function deriveRow6ColumnAncestry(owner, factorOwner) {
     cup_arena: 8_000_000, cup_frames: 64, cup_solve_state: 8, cup_state: 8,
   };
   const wide = new Set([
-    "transform", "full_h", "hnf_transform", "lam", "d", "full_dep",
-    "work_b", "result_h", "result_dep", "result_b",
+    "transform", "full_h", "hnf_transform", "lam", "d",
   ]);
   const iv = allocate(initial.fn, initial.names, lengths, {
     original: records.slice(0, size), rows: ROWS, columns: INITIAL_COLUMNS,
@@ -241,7 +240,7 @@ async function deriveRow6ColumnAncestry(owner, factorOwner) {
       log_rows: PLACES, perm: resident.perm, rows: ROWS,
       new_relations: newRelations, new_columns: newColumns,
       new_logs: logs.slice(oldTotal*21, nextTotal*21),
-    }, { wide: new Set(Object.keys(appendLengths)) });
+    });
     assert.equal(append.fn.gmp(...append.names.map(([name]) => av[name])), 0n);
     const rankState = view(av.rank_state).map(Number);
     const appendRedundant = rankState[7];

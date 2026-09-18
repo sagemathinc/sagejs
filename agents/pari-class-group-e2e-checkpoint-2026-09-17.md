@@ -34,6 +34,15 @@ suffix, retaining the compact `7 x 2` unit transform and the authentic
 complete and the matched unit correspondence complete, but it still does not
 provide independently certified full-unit saturation or a C7 transaction.
 
+Commit `f0e0ace61` and the subsequent prepared-row-6 transaction close C7 and
+publication for this retained-owner boundary. The isolated capped run takes
+84.370 seconds, peaks at 963,064 KiB RSS, rejects twelve mutations, and publishes
+the 6,746,371-byte envelope
+`b3bfd9122875729853f0421ab5ffe6220f161f07add30a9753eb79df784dad73`.
+It is correspondence-complete and public-incomplete. The runtime still admits
+the immutable factor-base and accepted Gate-C owners, so row 6 is not a
+prepared-field relation-collection qualification result.
+
 ### Post-checkpoint advances on 2026-09-18
 
 The integration spine has since crossed four additional, independently checked
