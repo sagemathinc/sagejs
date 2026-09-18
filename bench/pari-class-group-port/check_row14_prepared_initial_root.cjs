@@ -240,7 +240,9 @@ async function computePreparedInitialRoot(payload, options = {}) {
   const started = process.hrtime.bigint();
   const count = fn.gmp(...args); // The only root invocation in this checker.
   const elapsedNs = process.hrtime.bigint() - started;
-  assert.equal(count, 42n);
+  const row8 = prepared.prep_polynomial.join(",") === "-20034,-20018,0,0,1";
+  const expectedInitialCount = row8 ? 9n : 42n;
+  assert.equal(count, expectedInitialCount);
   const state = packedSlice(owners.root_state, 0, 18);
   assert.equal(state[0], "1", "root did not publish");
   const kc = Number(state[3]), kcz = Number(state[4]), initialCount = Number(state[9]);
@@ -256,7 +258,9 @@ async function computePreparedInitialRoot(payload, options = {}) {
       (index + 1) * DEGREE * DEGREE),
   }));
   const owner = {
-    schema: "sagejs.pari-class-group/row14-prepared-initial-owner-v1",
+    schema: row8
+      ? "sagejs.pari-class-group/row8-prepared-initial-owner-v1"
+      : "sagejs.pari-class-group/row14-prepared-initial-owner-v1",
     authority: { preparedAuthoritySha256: payload.preparedAuthoritySha256,
       sourceSha256: sha(fs.readFileSync(SOURCE)),
       compilerCoreSha256: sha(fs.readFileSync(built.coreSourcePath)) },
@@ -279,6 +283,13 @@ async function computePreparedInitialRoot(payload, options = {}) {
     kummerState: packedSlice(owners.kummer_state, 0, 4),
     rng: packedSlice(owners.random_state, 0, 66),
     selectedIndices: indices.map(String), selectedDescriptors,
+    analyticPrimeData: {
+      primes: prepared.analytic_primes,
+      offsets: packedSlice(owners.pattern_offsets, 0, p),
+      counts: packedSlice(owners.pattern_counts, 0, p),
+      degrees: packedSlice(owners.pattern_degrees, 0, descriptors),
+      multiplicities: packedSlice(owners.pattern_multiplicities, 0, descriptors),
+    },
     factor: {
       rationalPrimes: packedSlice(owners.initial_primes, 0, kcz),
       groupOffsets: packedSlice(owners.initial_offsets, 0, kcz),

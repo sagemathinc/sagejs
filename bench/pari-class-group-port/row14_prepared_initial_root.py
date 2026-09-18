@@ -157,14 +157,26 @@ def pari_row14_prepared_initial_root(
         raise ValueError("row14 prepared root requires a fresh state owner")
     # This is the explicit fail-closed replacement for the still-untranslated
     # general automorphism/minidx corridor.
+    row14 = (
+        len(polynomial) == 5
+        and polynomial[0] == -200000002
+        and polynomial[1] == -200000002
+        and polynomial[2] == 0
+        and polynomial[3] == 0
+        and polynomial[4] == 1
+        and discriminant == -43200003776000087360000787200002480
+    )
+    row8 = (
+        len(polynomial) == 5
+        and polynomial[0] == -20034
+        and polynomial[1] == -20018
+        and polynomial[2] == 0
+        and polynomial[3] == 0
+        and polynomial[4] == 1
+        and discriminant == -4337631470366176176
+    )
     if (
-        len(polynomial) != 5
-        or polynomial[0] != -200000002
-        or polynomial[1] != -200000002
-        or polynomial[2] != 0
-        or polynomial[3] != 0
-        or polynomial[4] != 1
-        or discriminant != -43200003776000087360000787200002480
+        not (row14 or row8)
         or real_places != 2
         or complex_pairs != 1
         or precision != 192
