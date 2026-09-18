@@ -217,7 +217,7 @@ async function runPreparedComplete(prepared, gate, factor, outputDirectory) {
     `row6-prepared-complete-${composition.sealedEnvelopeSha256}.json`,
   );
   writeImmutable(outputPath, raw);
-  return {
+  const receipt = {
     schema: "sagejs.pari-class-group/row6-prepared-complete-receipt-v1",
     path: outputPath,
     sha256: composition.sealedEnvelopeSha256,
@@ -239,6 +239,16 @@ async function runPreparedComplete(prepared, gate, factor, outputDirectory) {
     unitMaterialization: "not_given(LARGE)",
     mutationChecks,
   };
+  // Keep the already replay-verified result available to the in-process fresh
+  // execution registry without changing the durable JSON receipt.  A copied
+  // or deserialized receipt intentionally loses this authority.
+  Object.defineProperty(receipt, "verifiedResult", {
+    configurable: false,
+    enumerable: false,
+    value: publication,
+    writable: false,
+  });
+  return receipt;
 }
 
 if (require.main === module && process.argv[2] === "--stage") {

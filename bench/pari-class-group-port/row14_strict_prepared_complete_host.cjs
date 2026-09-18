@@ -96,7 +96,7 @@ async function runStrictPreparedComplete(preparedEnvelope, outputDirectory) {
     const transactionElapsedNs = process.hrtime.bigint() - transactionStarted;
     const maxRssKiB = Math.max(Number(completeReceipt.maxRssKiB),
       Number(initial.receipt.maxRssKiB));
-    return {
+    const receipt = {
       ...completeReceipt,
       schema: "sagejs.pari-class-group/row14-strict-prepared-complete-receipt-v1",
       preparedAuthoritySha256: preparedEnvelope.authoritySha256,
@@ -123,6 +123,15 @@ async function runStrictPreparedComplete(preparedEnvelope, outputDirectory) {
       answerOwnerRuntimeInput: false,
       runtimeInputs: ["authenticated neutral prepared-nf projection"],
     };
+    // Preserve the non-serializable neutral-result brand for the untimed
+    // fresh-execution adapter; object spread intentionally omits it.
+    Object.defineProperty(receipt, "verifiedResult", {
+      configurable: false,
+      enumerable: false,
+      value: completeReceipt.verifiedResult,
+      writable: false,
+    });
+    return receipt;
   } finally {
     fs.rmSync(temporary, { recursive: true, force: true });
   }

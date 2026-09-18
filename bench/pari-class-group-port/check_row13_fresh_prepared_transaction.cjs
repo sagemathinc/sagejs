@@ -22,6 +22,23 @@ const sha256 = (bytes) => crypto.createHash("sha256").update(bytes).digest("hex"
 async function worker(request) {
   const transaction = require("./row13_fresh_prepared_transaction.cjs");
   const receipt = await transaction.runFreshPreparedRequest(request);
+  assert.equal(transaction.isAuthenticFreshReceipt(receipt), true);
+  assert.equal(transaction.isAuthenticFreshReceipt({ ...receipt }), false);
+  assert(receipt.verifiedResult,
+    "fresh transaction did not retain its replay-verified neutral result");
+  assert.equal(Object.keys(receipt).includes("verifiedResult"), false);
+  const roots = require("./phase5_development_roots.cjs");
+  const fresh = require("./fresh_prepared_development_registry.cjs");
+  const core = require("./qualification_execution_core.cjs");
+  const root = roots.developmentRoot(13);
+  const admitted = fresh.admitRegisteredFreshReceipt({ root, receipt });
+  const correctness = await core.runDevelopmentCorrectnessPath({
+    root, invoke: async () => admitted,
+  });
+  assert.equal(correctness.freshPreparedExecution, true);
+  assert.throws(() => fresh.admitRegisteredFreshReceipt({
+    root, receipt: { ...receipt },
+  }), /transaction-local brand/);
   process.stdout.write(`${JSON.stringify(receipt)}\n`);
 }
 

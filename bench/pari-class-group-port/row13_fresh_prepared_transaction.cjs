@@ -21,6 +21,7 @@ const PREPARED_KEYS = ["admission_factorlimit", "admission_matrix_e",
   "basis_table", "n", "precision", "prep_index", "prep_invzk",
   "prep_polynomial", "prep_zk", "prep_zk_degrees", "prep_zkden",
   "preparation_embedding", "preparation_rounded_embedding"];
+const FRESH_RECEIPTS = new WeakSet();
 
 function validatePreparedData(preparedData) {
   assert.deepEqual(Object.keys(preparedData).sort(), PREPARED_KEYS,
@@ -116,9 +117,17 @@ async function runFreshPrepared(preparedData, outputDirectory) {
   const receiptPath = path.join(outputDirectory,
     `row13-fresh-prepared-receipt-${receiptSha256}.json`);
   writeImmutable(receiptPath, receiptBytes);
-  return { ...receipt, receipt: {
+  const published = { ...receipt, receipt: {
     path: receiptPath, sha256: receiptSha256, bytes: receiptBytes.length,
   } };
+  Object.defineProperty(published, "verifiedResult", {
+    configurable: false,
+    enumerable: false,
+    value: downstream.verifiedResult,
+    writable: false,
+  });
+  FRESH_RECEIPTS.add(published);
+  return published;
 }
 
 async function runFreshPreparedRequest(request) {
@@ -127,8 +136,13 @@ async function runFreshPreparedRequest(request) {
   return runFreshPrepared(request.prepared, request.outputDirectory);
 }
 
+function isAuthenticFreshReceipt(receipt) {
+  return FRESH_RECEIPTS.has(receipt);
+}
+
 module.exports = {
   EXPECTED_PREPARED_AUTHORITY_SHA256,
+  isAuthenticFreshReceipt,
   runFreshPrepared,
   runFreshPreparedRequest,
   validatePreparedData,

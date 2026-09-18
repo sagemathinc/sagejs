@@ -204,6 +204,15 @@ async function main() {
     result: development.result, replay: changedReplay }), /replay payload digest changed/);
   await assert.rejects(core.runDevelopmentCorrectnessPath({ root: developmentRoot,
     result: {}, replay: development.replay }), /verified neutral result brand/);
+  await assert.rejects(core.runDevelopmentCorrectnessPath({
+    root: developmentRoot,
+    invoke: async () => ({ result: development.result, replay: development.replay,
+      sourceMetadata: {}, freshExecution: {
+        panelIndex: developmentRoot.panelIndex,
+        resultSha256: development.result.sha256,
+        freshPreparedExecution: true,
+      } }),
+  }), /no registered fresh-prepared runner|registry-local brand/);
 
   process.stdout.write(`${JSON.stringify({
     schema: "sagejs.pari-class-group/qualification-execution-core-check-v1",
@@ -216,7 +225,7 @@ async function main() {
     developmentCorrectness: true,
     developmentResultSha256: correctness.resultSha256,
     developmentTimingFields: 0,
-    negativeCases: 5,
+    negativeCases: 6,
     qualifiedTiming: false,
   })}\n`);
 }

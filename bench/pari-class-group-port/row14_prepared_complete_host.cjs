@@ -231,7 +231,7 @@ async function runPreparedComplete(preparedEnvelope, root, outputDirectory) {
     const outputPath = path.join(outputDirectory,
       `row14-prepared-complete-${prepared.sealedEnvelopeSha256}.json`);
     writeImmutable(outputPath, raw);
-    return { schema: "sagejs.pari-class-group/row14-prepared-complete-receipt-v1",
+    const receipt = { schema: "sagejs.pari-class-group/row14-prepared-complete-receipt-v1",
       path: outputPath, sha256: prepared.sealedEnvelopeSha256, bytes: raw.length,
       acceptedOwnerSha256: ACCEPTED_SHA256, metadataSha256: METADATA_SHA256,
       classOwnerSha256: classReceipt.sha256, unitOwnerSha256: unitReceipt.sha256,
@@ -244,6 +244,15 @@ async function runPreparedComplete(preparedEnvelope, root, outputDirectory) {
       maxRssKiB: process.resourceUsage().maxRSS,
       relationState: strings(live.collectorValues.relation_state.toArray()),
       collectionPasses: live.collectionPasses };
+    // Keep the live replay brand available to an in-process fresh-execution
+    // wrapper without changing the serialized/diagnostic receipt shape.
+    Object.defineProperty(receipt, "verifiedResult", {
+      configurable: false,
+      enumerable: false,
+      value: published,
+      writable: false,
+    });
+    return receipt;
   } finally { fs.rmSync(temporary, { recursive: true, force: true }); }
 }
 

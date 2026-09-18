@@ -28,6 +28,7 @@ const PREPARED_KEYS = ["admission_factorlimit", "admission_matrix_e",
   "prep_polynomial", "prep_zk", "prep_zk_degrees", "prep_zkden",
   "preparation_embedding", "preparation_rounded_embedding"];
 const ROWS = 1130, DEGREE = 3, PLACES = 3;
+const FRESH_RECEIPTS = new WeakSet();
 
 const sha256 = bytes => crypto.createHash("sha256").update(bytes).digest("hex");
 const hash = value => sha256(Buffer.from(JSON.stringify(value)));
@@ -155,7 +156,7 @@ async function runFreshPrepared(prepared, outputDirectory) {
     const completed = await completeHost.runPreparedComplete(
       preparedEnvelope, gate, built.factor, outputDirectory);
     const { elapsedNs, stageElapsedNs, maxRssKiB, ...neutralReceipt } = completed;
-    return {
+    const receipt = {
       ...neutralReceipt,
       schema: "sagejs.pari-class-group/row6-fresh-prepared-receipt-v1",
       freshPreparedExecution: true,
@@ -172,10 +173,22 @@ async function runFreshPrepared(prepared, outputDirectory) {
       untrustedTelemetryRetainedInternally: Boolean(
         built.telemetry.factor && built.telemetry.initial && gateTelemetry),
     };
+    Object.defineProperty(receipt, "verifiedResult", {
+      configurable: false,
+      enumerable: false,
+      value: completed.verifiedResult,
+      writable: false,
+    });
+    FRESH_RECEIPTS.add(receipt);
+    return receipt;
   } finally {
     fs.rmSync(temporary, { recursive: true, force: true });
   }
 }
 
-module.exports = { buildGateOwner, buildPreparedOwners, runFreshPrepared,
-  validatePrepared };
+function isAuthenticFreshReceipt(receipt) {
+  return FRESH_RECEIPTS.has(receipt);
+}
+
+module.exports = { buildGateOwner, buildPreparedOwners, isAuthenticFreshReceipt,
+  runFreshPrepared, validatePrepared };

@@ -362,7 +362,7 @@ async function runPreparedComplete(preparedEnvelope, root, outputDirectory) {
     `row13-prepared-complete-${prepared.sealedEnvelopeSha256}.json`,
   );
   writeImmutable(outputPath, raw);
-  return {
+  const receipt = {
     schema: "sagejs.pari-class-group/row13-prepared-complete-receipt-v1",
     path: outputPath,
     sha256: prepared.sealedEnvelopeSha256,
@@ -388,6 +388,16 @@ async function runPreparedComplete(preparedEnvelope, root, outputDirectory) {
     unitMaterialization: "not_given(LARGE)",
     mutationChecks,
   };
+  // This in-memory authority is deliberately absent from the serialized
+  // receipt.  It proves that the result passed detached replay in this exact
+  // transaction; JSON copies cannot inherit the proof.
+  Object.defineProperty(receipt, "verifiedResult", {
+    configurable: false,
+    enumerable: false,
+    value: publication,
+    writable: false,
+  });
+  return receipt;
 }
 
 module.exports = {

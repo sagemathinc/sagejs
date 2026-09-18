@@ -11,6 +11,7 @@
 const assert = require("node:assert/strict");
 const neutral = require("./class_unit_correspondence_result.cjs");
 const developmentRoots = require("./phase5_development_roots.cjs");
+const freshDevelopment = require("./fresh_prepared_development_registry.cjs");
 const {
   ONE_SECOND_NS,
   canonicalDigest,
@@ -262,13 +263,17 @@ async function runDevelopmentCorrectnessPath({
   assert((invoke === undefined) !== (result === undefined),
     "supply exactly one development invocation or verified result");
 
-  let supplied = { result, replay, sourceMetadata };
+  let supplied = { result, replay, sourceMetadata, freshExecution: undefined };
   if (invoke !== undefined) {
     supplied = await invoke(root);
     assert(supplied && typeof supplied === "object" && !Array.isArray(supplied),
       "development root invocation returned no result");
-    assert.deepEqual(Object.keys(supplied).sort(), ["replay", "result", "sourceMetadata"].sort(),
-      "development root invocation has unexpected fields");
+    const suppliedKeys = Object.keys(supplied).sort();
+    assert([
+      ["replay", "result", "sourceMetadata"].sort(),
+      ["freshExecution", "replay", "result", "sourceMetadata"].sort(),
+    ].some(expected => JSON.stringify(expected) === JSON.stringify(suppliedKeys)),
+    "development root invocation has unexpected fields");
   }
   const normalized = developmentRoots.normalizeVerifiedDevelopmentRoot({
     panelIndex: root.panelIndex,
@@ -279,6 +284,11 @@ async function runDevelopmentCorrectnessPath({
   const payloadSha256 = neutral.sha256Canonical(payload);
   const detachedReplay = validateDetachedDevelopmentReplay(
     supplied.replay, normalized, payloadSha256);
+  const freshExecution = supplied.freshExecution === undefined ? null
+    : freshDevelopment.verifyFreshExecution(supplied.freshExecution, {
+      root: registered,
+      result: normalized.result,
+    });
   return Object.freeze({
     schema: DEVELOPMENT_CORRECTNESS_SCHEMA,
     panelIndex: normalized.panelIndex,
@@ -290,7 +300,7 @@ async function runDevelopmentCorrectnessPath({
     terminalStatus: payload.terminal.status,
     correspondenceComplete: true,
     publicComplete: false,
-    freshPreparedExecution: false,
+    freshPreparedExecution: freshExecution !== null,
     qualifiedTiming: false,
   });
 }
