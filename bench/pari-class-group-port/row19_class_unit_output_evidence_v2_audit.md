@@ -1,10 +1,10 @@
 # Row 19 output-evidence v2 projection
 
-Row 19 now publishes a valid
-`sagejs.pari-class-group/class-unit-output-evidence-v2` sidecar for the phases
-whose evidence is retained. The sidecar remains explicit that the public
-output boundary is incomplete: general factor, reduce, and combine maps are
-still absent.
+Row 19 now publishes a complete valid
+`sagejs.pari-class-group/class-unit-output-evidence-v2` sidecar. In addition
+to the retained relation, presentation, class, and unit evidence, its phase-5
+maps are backed by executable ordinary Python for every fractional cubic ideal
+whose prime-ideal support is contained in the 424-prime retained factor base.
 
 ## Phase 3: complete
 
@@ -44,17 +44,30 @@ declined to expand the unit for reason `LARGE` at 192 bits, which is represented
 by the contract's explicit `exactUnits.status = not_given` variant rather than
 treated as missing phase-4 evidence.
 
-## Remaining boundary
+## Phase 5: complete on the supported ideal domain
 
-Phase 5 and `outputBoundaryComplete` remain false. The exact missing list is:
+[`row19_general_ideal_maps.py`](row19_general_ideal_maps.py) consumes only the
+authenticated fresh result and the dimension-compatible raw Smith proof. It
+implements:
 
-- `factor-map-material`;
-- `reduce-map-material`; and
-- `combine-map-material`.
+- factorization of an arbitrary integral ideal HNF using the 424 retained
+  prepared prime-ideal `tau` matrices and an exact norm-support check;
+- the same operation for a fractional ideal represented by an integral HNF
+  numerator and positive rational denominator;
+- Smith quotient coordinates from the exact `V` in `U R V = D`;
+- reduction to a word in the nine published class-generator ideals, together
+  with an exact signed combination of the 430 retained principal relations;
+  and
+- combination by signed factor-exponent addition followed by the same exact
+  reduction.
 
-Each corresponding map is marked unready and publishes no fabricated map
-evidence. This is now an ordinary incomplete-but-valid v2 sidecar, not a v2
-presentation-shape gap. It makes no qualification or timing claim.
+The domain is mathematical rather than fixture-specific: any supported ideal
+HNF is accepted, while an ideal or denominator with a prime outside the
+retained base fails closed. The map evidence hashes the source-transparent
+implementation, its source-owner contract, and the raw Smith proof hashes.
+All three maps are ready, `phase5Complete` and `outputBoundaryComplete` are
+true, and the missing list is empty. This is still not a qualified timing
+claim.
 
 ## Independent replay
 
@@ -67,11 +80,21 @@ The focused checker:
 4. independently rebuilds the full raw Smith proof and exactly multiplies all
    430-by-424 cells of `U_raw R V_raw = D_raw` using sparse raw rows;
 5. checks that the diagonal product is 39366; and
-6. rejects a one-byte source mutation.
+6. authenticates the factor/reduce/combine evidence hashes; and
+7. rejects a one-byte source mutation.
+
+The separate focused map checker factors all 424 factor-base prime HNFs back
+to their unit tapes, factors all nine published generator HNFs as arbitrary
+inputs, replays their exact Smith/relation witnesses, checks a mixed-order
+combine law, checks a nonintegral principal-denominator input, rejects two
+out-of-support inputs, and rejects mutations of both a retained `tau` matrix
+and raw Smith `V`.
 
 Run:
 
 ```bash
 node bench/pari-class-group-port/check_row19_class_unit_output_evidence_v2.cjs \
   /scratch/sagejs-row19-fresh-transaction-check/row19-class-unit-result-a9642e255d536cde1c13740b0452bbdedf917cc851b753c2ec6152df2622eb66.json
+
+node bench/pari-class-group-port/check_row19_general_ideal_maps.cjs
 ```

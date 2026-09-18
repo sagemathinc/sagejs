@@ -31,10 +31,9 @@ function main(filename) {
 
   assert.equal(output.completion.phase3Complete, true);
   assert.equal(output.completion.phase4Complete, true);
-  assert.equal(output.completion.phase5Complete, false);
-  assert.equal(output.completion.outputBoundaryComplete, false);
-  assert.deepEqual(output.completion.missing,
-    ["combine-map-material", "factor-map-material", "reduce-map-material"]);
+  assert.equal(output.completion.phase5Complete, true);
+  assert.equal(output.completion.outputBoundaryComplete, true);
+  assert.deepEqual(output.completion.missing, []);
   assert.equal(output.relations.relationCount, "430");
   assert.equal(output.relations.factorBaseCount, "424");
   assert.equal(output.presentation.variant, "smith_uwvd");
@@ -91,6 +90,13 @@ function main(filename) {
   }
   assert.equal(proof.diagonalFactors.map(BigInt)
     .reduce((product, value) => product * value, 1n), 39366n);
+  const mapMaterials = adapter.row19MapMaterials(proof);
+  for (const name of ["combine", "factor", "reduce"]) {
+    assert.equal(output.maps[name].ready, true);
+    assert.deepEqual(output.maps[name].missing, []);
+    assert.deepEqual(output.maps[name].evidenceRefs, [`${name}-map`]);
+    assert.equal(evidence.get(`${name}-map`).sha256, digest(mapMaterials[name]));
+  }
 
   // Independently bind the published class and unit evidence to source
   // owners rather than trusting their metadata.
@@ -114,10 +120,10 @@ function main(filename) {
     digest(owner(payload, "torsion-generator")));
 
   const assessment = adapter.assessRow19OutputEvidence(raw);
-  assert.equal(assessment.status, "valid-v2-incomplete-output-boundary");
+  assert.equal(assessment.status, "valid-v2-complete-output-boundary");
   assert.equal(assessment.completion.phase3Complete, true);
   assert.equal(assessment.completion.phase4Complete, true);
-  assert.equal(assessment.completion.phase5Complete, false);
+  assert.equal(assessment.completion.phase5Complete, true);
   assert.deepEqual(assessment.missing.owners, []);
   assert.deepEqual(assessment.missing.capability, []);
   assert.equal(assessment.outputEvidenceSha256, digest(output));
@@ -135,8 +141,8 @@ function main(filename) {
     rawRelationShape: [430, 424], rawSmithLeftShape: [430, 430],
     rawSmithRightShape: [424, 424], rawSmithDiagonalShape: [430, 424],
     fullRawSmithIdentityReplayed: true, classNumber: "39366",
-    phase3Complete: true, phase4Complete: true, phase5Complete: false,
-    outputBoundaryComplete: false, publishableUnderV2: true,
+    phase3Complete: true, phase4Complete: true, phase5Complete: true,
+    outputBoundaryComplete: true, publishableUnderV2: true,
     remainingMissing: output.completion.missing,
     sourceMutationRejected: true, qualifiedTiming: false,
   })}\n`);

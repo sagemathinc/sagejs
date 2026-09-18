@@ -2,10 +2,11 @@
 
 // Row 19's additive output-evidence-v2 projection. The raw Smith proof is
 // dimensioned for the actual 430-by-424 relation surface. Phases 3 and 4 are
-// complete; the public boundary remains incomplete because general maps are
-// not retained.
+// complete. Source-transparent arbitrary supported-ideal maps close phase 5.
 
 const crypto = require("node:crypto");
+const fs = require("node:fs");
+const path = require("node:path");
 const neutral = require("./class_unit_correspondence_result.cjs");
 const v2 = require("./class_unit_output_evidence_v2.cjs");
 
@@ -78,6 +79,32 @@ function chunks(values, count, width, name) {
     values.slice(index * width, (index + 1) * width));
 }
 
+function row19MapMaterials(proof) {
+  const implementationSha256 = sha(fs.readFileSync(path.join(__dirname,
+    "row19_general_ideal_maps.py")));
+  const common = {
+    correspondenceResultSha256: CORRESPONDENCE_SHA256,
+    domain: "arbitrary-fractional-cubic-ideal-hnf-supported-on-retained-factor-base",
+    implementation: "ordinary-cpython-parseable-source",
+    implementationSha256,
+    invariantFactors: ["3", "3", "3", "3", "3", "3", "3", "3", "6"],
+    rawSmithMaterialSha256: proof.materialSha256,
+  };
+  return Object.freeze({
+    factor: Object.freeze({ ...common, operation: "factor",
+      algorithm: "prepared-prime-ideal-valuations-with-complete-norm-support-check",
+      retainedOwners: ["factor-base"], rejectsOutsideSupport: true }),
+    reduce: Object.freeze({ ...common, operation: "reduce",
+      algorithm: "smith-quotient-coordinates-and-exact-signed-principal-relation-witness",
+      retainedOwners: ["class-generator-ideals", "factor-base",
+        "relation-generators", "relation-records"] }),
+    combine: Object.freeze({ ...common, operation: "combine",
+      algorithm: "signed-factor-tape-addition-followed-by-smith-reduction",
+      retainedOwners: ["class-generator-ideals", "factor-base",
+        "relation-generators", "relation-records"] }),
+  });
+}
+
 function collect(raw) {
   const payload = authenticateRow19Correspondence(raw);
   const map = owners(payload);
@@ -121,10 +148,12 @@ function collect(raw) {
   // the authentication function exported by this module.
   const proof = require("./row19_raw_relation_smith_proof.cjs")
     .buildRow19RawRelationSmithProof(raw);
+  const mapMaterials = row19MapMaterials(proof);
   const dependencies = proof.material.u.slice(424 * 430);
   const entries = [
     evidence("factor-base-ideals", "factor_base_ideals", factorBase.idealHnfs,
       [424, 9], "decimal_integer_matrix"),
+    evidence("factor-map", "factor_map", mapMaterials.factor, []),
     evidence("principal-generators", "principal_generators", principalGenerators,
       [430, 3], "decimal_integer_matrix"),
     evidence("raw-relation-dependencies", "dependency", dependencies,
@@ -141,6 +170,7 @@ function collect(raw) {
       [424, 424], "decimal_integer_matrix"),
     evidence("raw-smith-w", "presentation_transform_middle", relationMatrix,
       [430, 424], "decimal_integer_matrix"),
+    evidence("reduce-map", "reduce_map", mapMaterials.reduce, []),
     evidence("relation-logs", "relation_logs", relationLogs,
       [430, 14], "opaque_canonical_bytes"),
     evidence("relation-matrix", "relation_matrix", relationMatrix,
@@ -170,6 +200,7 @@ function collect(raw) {
     }, []),
     evidence("unit-relation-transform", "compact_unit_relation_transform",
       compactUnit.relationExponents, [430], "decimal_integer_matrix"),
+    evidence("combine-map", "combine_map", mapMaterials.combine, []),
   ];
   classIdeals.forEach((ideal, index) => entries.push(
     evidence(`class-ideal-${index}`, "class_generator_ideal", ideal,
@@ -179,7 +210,7 @@ function collect(raw) {
   ));
   entries.sort((left, right) => left.id.localeCompare(right.id));
 
-  const missing = ["combine-map-material", "factor-map-material", "reduce-map-material"];
+  const missing = [];
   const output = {
     schema: v2.SCHEMA,
     field: { definingPolynomialAscending:
@@ -209,13 +240,13 @@ function collect(raw) {
       precisionBits: "192", precisionRef: "regulator-precision" },
     torsion: { generatorRef: "torsion-generator", order: "2" } },
     maps: {
-      combine: { evidenceRefs: [], missing: ["combine-map-material"], ready: false },
-      factor: { evidenceRefs: [], missing: ["factor-map-material"], ready: false },
-      reduce: { evidenceRefs: [], missing: ["reduce-map-material"], ready: false },
+      combine: { evidenceRefs: ["combine-map"], missing: [], ready: true },
+      factor: { evidenceRefs: ["factor-map"], missing: [], ready: true },
+      reduce: { evidenceRefs: ["reduce-map"], missing: [], ready: true },
     },
     completion: { correspondenceComplete: true, freshCorrespondence: true,
-      missing, outputBoundaryComplete: false, phase3Complete: true,
-      phase4Complete: true, phase5Complete: false },
+      missing, outputBoundaryComplete: true, phase3Complete: true,
+      phase4Complete: true, phase5Complete: true },
   };
   v2.validate(output);
   return { output: Object.freeze(output), proof };
@@ -231,7 +262,7 @@ function assessRow19OutputEvidence(raw) {
     schema: ASSESSMENT_SCHEMA,
     source: output.source,
     field: output.field,
-    status: "valid-v2-incomplete-output-boundary",
+    status: "valid-v2-complete-output-boundary",
     rawRelations: { factorBaseCount: "424", relationCount: "430",
       logColumns: "14", evidence: output.evidence.filter(entry =>
         new Set(["factor-base-ideals", "principal-generators", "relation-logs",
@@ -240,8 +271,7 @@ function assessRow19OutputEvidence(raw) {
       diagonalFactors: proof.diagonalFactors,
       materialSha256: proof.materialSha256,
       shapes: proof.shapes },
-    missing: { owners: [], capability: [], maps: [...output.completion.missing],
-      reason: "general-class-group-maps-not-retained" },
+    missing: { owners: [], capability: [], maps: [], reason: "none" },
     completion: { ...output.completion, phase4MaterialRetained: true },
     outputEvidenceSha256: digest(output),
     qualifiedTiming: false,
@@ -251,4 +281,4 @@ function assessRow19OutputEvidence(raw) {
 module.exports = Object.freeze({ ASSESSMENT_SCHEMA, CORRESPONDENCE_SHA256, FIELD_ID,
   PARI_SOURCE_SHA256, Row19OutputEvidenceFailure,
   authenticateRow19Correspondence, assessRow19OutputEvidence,
-  buildRow19OutputEvidence });
+  buildRow19OutputEvidence, row19MapMaterials });
