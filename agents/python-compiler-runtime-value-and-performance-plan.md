@@ -499,6 +499,21 @@ invariants, and the unchanged 902,984/903,000 core budget pass. Evidence is in
 `agents/python-exact-integer-power.md`; PR #314 and exact shifts are now in
 `origin/main`, and the candidate has been replayed and remeasured against it.
 
+**2026-09-18 constructor custom-new checkpoint:** profiling showed every
+generated class construction paying compiled-Python traversal to decide whether
+a synthetic initializer ends at `object.__init__`. The internal bounded chain
+walk and epoch-current custom-allocator cache now use a raw implementation in
+the shared bootstrap boundary while `builtins.py` remains strict Python.
+Against the exact PR #316 source, controlled
+exact-artifact measurements improve no-op-initializer construction by 11.72%
+and field-bearing positional/keyword construction by 3.41%; call-only and empty
+class controls remain flat. No-op construction is now 5.68x CPython, while
+field-bearing construction remains 10.51–12.04x and keyword calls roughly
+12.8x. All semantic, differential, package, strict, and merge gates pass at
+902,448/903,000 core bytes. Exact evidence is in
+`agents/python-constructor-new-guard-native.md`. Keep this candidate behind PR
+#316, now merged, and keep M5 open.
+
 Continue next with integration-aware qualification, the receiver-lookup campaign,
 and true handled-exception ownership. Generator/coroutine suspension makes a
 single global active-exception pointer unsafe: preserve owned handlers while

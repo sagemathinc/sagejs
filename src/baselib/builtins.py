@@ -6531,30 +6531,6 @@ def ρσ_pow(
     return runtime.normalize_integer(answer)
 
 
-def _builtins_synthetic_init_ends_at_object(initializer: Any) -> _Bool:
-    """Return whether an initializer forwards only to `object.__init__`."""
-    if initializer is ρσ_object_init:
-        return True
-    if _builtins_get_member(initializer, "__sagejs_synthetic_init__") is not True:
-        underlying = _builtins_get_member(initializer, "__func__")
-        if underlying is ρσ_object_init:
-            return True
-        if _builtins_get_member(underlying, "__sagejs_synthetic_init__") is not True:
-            return False
-        initializer = underlying
-    remaining = 100
-    while (
-        remaining > 0
-        and _builtins_get_member(initializer, "__sagejs_synthetic_init__") is True
-    ):
-        initializer = _builtins_get_member(
-            initializer,
-            "__sagejs_synthetic_init_target__",
-        )
-        remaining -= 1
-    return initializer is ρσ_object_init
-
-
 def ρσ_live_initializer(cls: Any) -> Any:
     """Resolve and cache the current non-forwarding initializer."""
     cached = _builtins_initializer_cache.get(cls)
@@ -6592,31 +6568,11 @@ def ρσ_live_initializer(cls: Any) -> Any:
     return initializer
 
 
-def ρσ_skip_init(cls: Any, initializer: Any) -> _Bool:
-    """Return whether construction can omit initialization."""
-    if not _builtins_synthetic_init_ends_at_object(initializer):
-        return False
-    cached = _builtins_initializer_cache.get(cls)
-    cacheable = (
-        cached is not runtime.undefined
-        and cached[0] == _builtins_descriptor_epoch.value
-        and cached[1] is initializer
-    )
-    if cacheable and cached.length > 2:
-        return cached[2]
-    allocator = ρσ_getattr(cls, "__new__", None)
-    answer = (
-        runtime.strict_equal(runtime.jstype(allocator), "function")
-        and allocator is not _builtins_object_new
-    )
-    if cacheable:
-        cached[2] = answer
-    return answer
-
-
 def ρσ_apply_custom_new_signature(cls: Any, initializer: Any) -> None:
     """Publish the user-call signature of a class with only custom allocation."""
-    if not ρσ_skip_init(cls, initializer):
+    if not ρσ_skip_init(  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        cls, initializer
+    ):
         return
     allocator = ρσ_getattr(cls, "__new__", None)
     argument_names = _builtins_get_member(allocator, "__argnames__")
@@ -6680,7 +6636,9 @@ def _builtins_type_call(cls: Any, *args: Any, **keywords: Any) -> Any:
         "__init__",
     )
     if runtime.strict_equal(runtime.jstype(initializer), "function") and not (
-        ρσ_skip_init(cls, initializer_contract)
+        ρσ_skip_init(  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+            cls, initializer_contract
+        )
     ):
         # ``initializer`` is already descriptor-bound.  Calling it through
         # the compiler's generic callable fallback would resolve ``__call__``
