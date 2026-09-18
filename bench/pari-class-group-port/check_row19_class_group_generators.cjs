@@ -72,7 +72,15 @@ function main() {
     preparedAuthoritySha256: authority.sha256,
     preparedProjectionSha256: hash(prepared),
     prefixSha256: hash(prefix),
+    prefixProjectionSha256: null,
   };
+  // Python and JavaScript intentionally format a few binary64 diagnostics
+  // differently; the worker binds its received projection separately.
+  const projectionDigest = spawnSync("python3", ["-c",
+    "import hashlib,json,sys;print(hashlib.sha256(json.dumps(json.load(sys.stdin),separators=(',',':')).encode()).hexdigest())"],
+  { input: JSON.stringify(prefix), encoding: "utf8" });
+  assert.equal(projectionDigest.status, 0, projectionDigest.stderr);
+  ancestry.prefixProjectionSha256 = projectionDigest.stdout.trim();
   assert.equal(terminal.authority.prefixSha256, ancestry.prefixSha256,
     "fresh prefix disagrees with terminal ancestry");
   const payload = { terminal, prepared, prefix, ancestry };

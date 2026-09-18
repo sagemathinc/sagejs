@@ -209,7 +209,7 @@ def compose_row19_class_group_generators(
     if (
         ancestry.get("terminalOwnerSha256") != TERMINAL_OWNER_SHA256
         or ancestry.get("preparedProjectionSha256") != _json_digest(prepared)
-        or ancestry.get("prefixSha256") != _json_digest(prefix)
+        or ancestry.get("prefixProjectionSha256") != _json_digest(prefix)
         or terminal.get("schema") != TERMINAL_SCHEMA
         or terminal.get("authority", {}).get("preparedAuthoritySha256")
         != ancestry.get("preparedAuthoritySha256")
