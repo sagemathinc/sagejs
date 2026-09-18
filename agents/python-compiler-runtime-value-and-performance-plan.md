@@ -568,10 +568,10 @@ immediate defaulted method by 7.84%, and keyword construction by 3.58%; controls
 remain within about 3%. A positional required argument plus one supplied
 default improves 27.70%, while four supplied defaults improve 9.23%, confirming
 that the benefit follows the redundant tail work. The artifact shrinks 4,054
-bytes and core source is 902,294/903,000. Keyword paths still measure roughly
+bytes and current integrated core source is 902,417/903,000. Keyword paths still measure roughly
 10.2x--14.5x CPython, so M5 remains open. Current evidence is in
-`agents/python-default-tail-keyword-prologue.md`; keep this branch behind the
-constructor candidates.
+`agents/python-default-tail-keyword-prologue.md`; this branch is now the direct
+follow-up to merged PR #317.
 
 Continue next with integration-aware qualification, the receiver-lookup campaign,
 and true handled-exception ownership. Generator/coroutine suspension makes a

@@ -1,7 +1,7 @@
 # Generated default-tail keyword ownership
 
-Base: `2ce0617bb` (`agent/python-constructor-new-guard-main`, the exact
-source-current constructor candidate queued behind PR #316).
+Base: merged PR #317 (`1fa7a26bd`), which integrates the qualified constructor
+guard used for the controlled measurements below.
 
 ## Change
 
@@ -80,16 +80,20 @@ and the generated prologue remain large cliffs.
   positional-only, lowering, and raw-ABI checks pass in Python/Sage modes.
   All six pinned traitlets checks pass.
 - Pinned attrs 25.4.0 and decorator 5.2.1 workflows pass with checked outputs.
+- The current 11-package runner is unchanged from the exact #317 parent: both
+  pass 9/11, with the same pyparsing execution failure and mpmath timeout. This
+  optimization therefore introduces no package-workflow drift, but the broad
+  package suite is not claimed as globally qualified.
 - Strict CPython syntax, Ruff 0.16.0, and Pyright pass for 404 modules;
   documentation, merge invariants, and the complete architecture check pass.
   The compiler-input change regenerated and verified the repository-owned
   optimizer-opportunity manifest and Markdown identity.
-- Core runtime is 902,294/903,000 bytes. No source, startup, browser, or
+- Core runtime is 902,417/903,000 bytes. No source, startup, browser, or
   performance budget changed. The standalone artifact shrinks by 4,054 bytes.
-- The local startup measurement is not a passing receipt: the candidate
-  measured 405.6 ms normalized and its exact parent measured 415.0 ms, both
-  above the unchanged 400.0 ms budget. Merge-owned CI must supply the
-  startup/browser receipt when the integration queue reaches this candidate.
+- Back-to-back current-head startup qualification measured the exact #317
+  parent at 416.3--416.7 ms raw and the candidate at 415.5--418.1 ms raw. With
+  contemporaneous load normalization, both pass at 396.4 ms and 398.0 ms
+  respectively against the unchanged 400.0 ms budget.
 
-The branch remains queued behind the constructor candidates and has no stacked
-PR. It is not a release action.
+The branch is the direct follow-up to merged PR #317. It is not a release
+action.
