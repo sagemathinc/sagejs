@@ -75,6 +75,9 @@ function compilerAuthority() {
     .filter(name => name.endsWith(".cjs")).sort()
     .map(name => fileEvidence(path.join(ROOT, "tools", "native-kernel", name),
       `native compiler source ${name}`));
+  const declarationFiles = require("../../tools/ffi/declarations.cjs")
+    .declarationFiles(ROOT)
+    .map(filename => fileEvidence(filename, "FFI declaration authority"));
   const authority = {
     compiler: {
       requested, invoked: fileEvidence(invokedPath, "C compiler"),
@@ -90,7 +93,7 @@ function compilerAuthority() {
     nodeGyp: fileEvidence(nodeGyp, "node-gyp entry point"),
     nativeHeader: fileEvidence(path.join(ROOT, "packages", "flint", "include",
       "sagejs", "native.h"), "native ABI header"),
-    compilerSources,
+    compilerSources, declarationFiles,
   };
   authority.sha256 = sha256(stableJson(authority));
   return Object.freeze(authority);
