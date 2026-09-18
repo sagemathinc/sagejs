@@ -12,11 +12,13 @@ from sagejs.native import (
     native,
     integer_buffer_view,
 )
-from .prime_degree_catalog import pari_prime_degree_catalog
 from .discriminant_log import pari_discriminant_log
 from .initial_base import pari_prepared_initial_base
-from .initial_kummer_catalog import pari_initial_kummer_catalog
 from .pari_random import pari_random_seed
+from .resident_cubic_catalog import (
+    pari_resident_cubic_degree_catalog,
+    pari_resident_cubic_descriptor_catalog,
+)
 from .selected_ideal_packets import pari_selected_ideal_packets
 from .selected_ideal_metadata import pari_selected_ideal_metadata
 from .bad_subfactor import pari_bad_subfactor_flags
@@ -447,12 +449,20 @@ def pari_resident_generated_class_attempt(
         prep_state[i] = 0
     prep_state[0] = 1
     prime_count = int(len(analytic_primes))
-    status = pari_prime_degree_catalog(
+    status = pari_resident_cubic_degree_catalog(
         prep_polynomial,
-        n,
         prep_index,
+        basis_table,
+        admission_real_count,
+        admission_matrix_m,
+        admission_matrix_p,
+        admission_matrix_e,
         analytic_primes,
         prime_count,
+        prep_kummer_factorwork,
+        prep_kummer_decomposition_output,
+        prep_kummer_residue_degrees,
+        prep_kummer_descriptor_state,
         prep_degree_workspace,
         prep_factor_degrees,
         prep_factor_exponents,
@@ -514,7 +524,7 @@ def pari_resident_generated_class_attempt(
         raise ValueError("short resident class invariant backing owner")
     prep_state[0] = 3
     pari_random_seed(prep_kummer_random_state, 1)
-    written = pari_initial_kummer_catalog(
+    written = pari_resident_cubic_descriptor_catalog(
         analytic_primes,
         analytic_offsets,
         analytic_counts,
@@ -528,9 +538,12 @@ def pari_resident_generated_class_attempt(
         prep_zk,
         prep_zk_degrees,
         basis_table,
-        n,
         prep_index,
         prep_zkden,
+        admission_real_count,
+        admission_matrix_m,
+        admission_matrix_p,
+        admission_matrix_e,
         prep_kummer_random_state,
         prep_kummer_factorwork,
         prep_kummer_factor,

@@ -5,7 +5,7 @@ an execution was fresh from an enumerable JSON claim.  The execution registry
 therefore admits only the exact in-process receipt object returned by a
 registered prepared-input transaction.
 
-Rows 0, 3, 6, 8, 13, 14, 19, 21, and 23 currently implement this boundary.  Each
+Rows 0, 1, 3, 6, 8, 13, 14, 19, 21, and 23 currently implement this boundary.  Each
 transaction:
 
 1. starts from its authenticated prepared-number-field input;
@@ -29,6 +29,9 @@ Genuine focused executions validated:
 - row 0: neutral result
   `dbf645dd5bdf4eb2f27dbaa769d1c08d454c551318a32611b47a1a232754da58`,
   trivial class group, class number 1;
+- row 1: neutral result
+  `d00c51fc42892d23d9ea0d8c17e07685b289af570f2897d2573c16ccaa497d54`,
+  class group `[3]`, two exact rank-two units of norm one, and torsion order 2;
 - row 3: neutral result
   `41bef3b744883eb7b91ef1e6fd415d31249322006400e0ffda13a5afbe3a7ba4`,
   class group `[6]`, two compact rank-two units, and an exact 443-factor
