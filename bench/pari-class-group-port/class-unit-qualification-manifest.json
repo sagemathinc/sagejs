@@ -4,6 +4,7 @@
   "panelPath": "panel.json",
   "panelSha256": "7c6515240940db971cff3bc28819f9e6547adae9305643b0f6274eeafe6ec3a5",
   "targetPariVersion": "2.17.4",
+  "developmentExecutionEnabled": true,
   "executionEnabled": false,
   "reserveOpeningEnabled": false,
   "sentinelRule": [

@@ -3,11 +3,14 @@
 // Neutral execution core for the sealed class-and-unit qualification contract.
 //
 // This module deliberately does not select fields, open reserves, acquire the
-// timing lock, approve a host, or mark evidence as qualified.  It turns two
-// already-authenticated fresh-computation adapters into exact alternating
-// blocks suitable for the existing append-only receipt journal.
+// timing lock, approve a host, or mark evidence as qualified.  Its qualification
+// path turns two already-authenticated fresh-computation adapters into exact
+// alternating blocks.  Its separate development path validates one explicitly
+// supplied Sage result and detached replay without measuring it.
 
 const assert = require("node:assert/strict");
+const neutral = require("./class_unit_correspondence_result.cjs");
+const developmentRoots = require("./phase5_development_roots.cjs");
 const {
   ONE_SECOND_NS,
   canonicalDigest,
@@ -23,6 +26,9 @@ const PREPARED_STAGE_NAMES = Object.freeze([
   "unitRegulator",
   "honestyGeneratorsFinal",
 ]);
+
+const DEVELOPMENT_CORRECTNESS_SCHEMA =
+  "sagejs.pari-class-group/development-correctness-execution-v1";
 
 function unsigned(value, label, { positive = false } = {}) {
   assert.equal(typeof value, "string", `${label} must be an integer string`);
@@ -216,6 +222,79 @@ function scheduleForTier(tier) {
     : finalQualificationSchedule();
 }
 
+function validateDetachedDevelopmentReplay(replay, normalized, payloadSha256) {
+  assert(replay && typeof replay === "object" && !Array.isArray(replay),
+    "development invocation requires detached replay evidence");
+  assert.deepEqual(Object.keys(replay).sort(), [
+    "correspondenceComplete", "fieldId", "payloadSha256", "publicComplete",
+    "resultSha256", "schema",
+  ].sort(), "detached development replay has unexpected fields");
+  assert.equal(typeof replay.schema, "string");
+  assert(replay.schema.length > 0, "detached development replay schema is empty");
+  assert([normalized.fieldId, normalized.internalFieldId].includes(replay.fieldId),
+    "detached development replay field identity changed");
+  assert.equal(replay.resultSha256, normalized.resultSha256,
+    "detached development replay result digest changed");
+  assert.equal(replay.payloadSha256, payloadSha256,
+    "detached development replay payload digest changed");
+  assert.equal(replay.correspondenceComplete, true);
+  assert.equal(replay.publicComplete, false);
+  return structuredClone(replay);
+}
+
+async function runDevelopmentCorrectnessPath({
+  root,
+  invoke,
+  result,
+  replay,
+  sourceMetadata,
+}) {
+  assert(root && typeof root === "object" && !Array.isArray(root),
+    "development execution requires a registered root");
+  const registered = developmentRoots.developmentRoot(root.panelIndex);
+  assert.equal(root, registered, "development root was not supplied by the registry");
+  assert.equal(root.publicationStatus, developmentRoots.NEUTRAL_READY,
+    `development row ${root.panelIndex} is unavailable: ${root.gap}`);
+  assert.equal(root.freshPreparedExecution, false);
+  assert.equal(root.qualifiedTiming, false);
+  assert(invoke === undefined || typeof invoke === "function",
+    "development root invocation must be a function");
+  assert((invoke === undefined) !== (result === undefined),
+    "supply exactly one development invocation or verified result");
+
+  let supplied = { result, replay, sourceMetadata };
+  if (invoke !== undefined) {
+    supplied = await invoke(root);
+    assert(supplied && typeof supplied === "object" && !Array.isArray(supplied),
+      "development root invocation returned no result");
+    assert.deepEqual(Object.keys(supplied).sort(), ["replay", "result", "sourceMetadata"].sort(),
+      "development root invocation has unexpected fields");
+  }
+  const normalized = developmentRoots.normalizeVerifiedDevelopmentRoot({
+    panelIndex: root.panelIndex,
+    result: supplied.result,
+    sourceMetadata: supplied.sourceMetadata,
+  });
+  const payload = normalized.result.detachedPayload();
+  const payloadSha256 = neutral.sha256Canonical(payload);
+  const detachedReplay = validateDetachedDevelopmentReplay(
+    supplied.replay, normalized, payloadSha256);
+  return Object.freeze({
+    schema: DEVELOPMENT_CORRECTNESS_SCHEMA,
+    panelIndex: normalized.panelIndex,
+    fieldId: normalized.fieldId,
+    internalFieldId: normalized.internalFieldId,
+    resultSha256: normalized.resultSha256,
+    payloadSha256,
+    replaySha256: neutral.sha256Canonical(detachedReplay),
+    terminalStatus: payload.terminal.status,
+    correspondenceComplete: true,
+    publicComplete: false,
+    freshPreparedExecution: false,
+    qualifiedTiming: false,
+  });
+}
+
 async function runAlternatingSuccessPath({
   adapters,
   boundary,
@@ -289,10 +368,12 @@ async function runAlternatingSuccessPath({
 }
 
 module.exports = {
+  DEVELOPMENT_CORRECTNESS_SCHEMA,
   PREPARED_STAGE_NAMES,
   calibrateAdapter,
   executeFreshBatch,
   runAlternatingSuccessPath,
+  runDevelopmentCorrectnessPath,
   scheduleForTier,
   validateFreshSample,
   validateStageTiming,

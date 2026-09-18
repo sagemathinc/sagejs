@@ -57,3 +57,38 @@ identity changes, unsupported terminal status, an unbranded authority, a wrong
 result brand, inconsistent source metadata, the blocked row, and reserve
 rejection. It makes no scratch reads and performs no timed or fresh mathematical
 computation.
+
+## Untimed development execution
+
+The qualification manifest now has a separate
+`developmentExecutionEnabled=true` gate. The broad `executionEnabled` and
+`reserveOpeningEnabled` gates remain false. This admits only the Sage-side,
+untimed correctness route; it does not admit `--run`, alternating PARI timing,
+host approval, receipt generation, or reserve opening.
+
+`qualification_execution_core.cjs` exposes
+`runDevelopmentCorrectnessPath({root, invoke})`, or the equivalent explicit
+`{root, result, replay}` form. The supplied root must be the exact immutable
+registry entry. The invocation must return a branded, already verified
+`ImmutableClassUnitCorrespondenceResult`, normalized source metadata, and a
+detached replay record binding the result digest, payload digest, and field
+identity. The returned `development-correctness-execution-v1` record contains
+only result/replay/payload digests and terminal status. It has no clock,
+calibration, repetitions, blocks, host declaration, or qualification receipt.
+
+The CLI accepts:
+
+```text
+node bench/pari-class-group-port/run_class_unit_qualification.cjs \
+  --run-development descriptor.json
+```
+
+The descriptor names an explicit caller-supplied driver module/export and an
+opaque input object containing whatever paths and authority material that
+driver requires. The runner never derives artifact locations from a row or
+searches scratch storage. It validates the descriptor and manifest gate, then
+rejects reserve or unavailable fields before resolving or loading the driver.
+Row 23 is therefore reported with its precise registry gap without executing
+any adapter. Available-field drivers remain responsible for explicitly opening
+and authenticating their heterogeneous inputs and returning the required
+verified result plus detached replay.

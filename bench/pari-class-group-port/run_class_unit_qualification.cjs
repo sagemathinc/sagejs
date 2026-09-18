@@ -1,9 +1,9 @@
 "use strict";
 
-// Qualification infrastructure only. This file validates frozen inputs,
-// schedules, append-only receipts, and timing-host declarations. It does not
-// yet contain a Sage.js or PARI execution adapter and therefore cannot open the
-// reserve population or produce real timing evidence.
+// Qualification infrastructure plus an explicitly gated, untimed Sage-only
+// development dispatcher. This file has no built-in artifact discovery or
+// Sage.js/PARI timing adapters and cannot open the reserve population or
+// produce real timing evidence.
 
 const assert = require("node:assert/strict");
 const crypto = require("node:crypto");
@@ -19,6 +19,8 @@ const MANIFEST_PATH = path.join(HERE, "class-unit-qualification-manifest.json");
 const SCHEMA_PATH = path.join(HERE, "class-unit-qualification-receipt.schema.json");
 const TIMING_LOCK_PATH = "/tmp/sagejs-opt-timing.lock";
 const TIMING_LOCK_OWNER_PATH = "/tmp/sagejs-opt-timing.lock.owner.json";
+const DEVELOPMENT_DESCRIPTOR_SCHEMA =
+  "sagejs.pari-class-group/development-execution-descriptor-v1";
 const ONE_SECOND_NS = 1_000_000_000n;
 const TERMINAL_STATUSES = new Set([
   "complete_matched",
@@ -64,6 +66,8 @@ function validateManifest({ panelPath = PANEL_PATH, manifestPath = MANIFEST_PATH
   assert.equal(manifest.schema, 1);
   assert.equal(manifest.panelSha256, sha256(panelBytes), "frozen panel hash changed");
   assert.equal(manifest.targetPariVersion, "2.17.4");
+  assert.equal(manifest.developmentExecutionEnabled, true,
+    "development-only correctness execution must remain explicitly gated");
   assert.equal(manifest.executionEnabled, false, "infrastructure lane must not enable execution");
   assert.equal(manifest.reserveOpeningEnabled, false, "infrastructure lane must not open reserves");
   assert.equal(panel.rows.length, 24);
@@ -147,13 +151,79 @@ function assertDevelopmentFields(fields) {
 function developmentPlan(manifest) {
   const fields = manifest.fields.filter(field => field.role !== "final-reserve");
   assertDevelopmentFields(fields);
+  const roots = require("./phase5_development_roots.cjs");
+  const cases = fields.map(field => {
+    const root = roots.developmentRoot(field.panelIndex, { manifest });
+    return {
+      panelIndex: field.panelIndex,
+      fieldId: field.id,
+      role: field.role,
+      available: root.publicationStatus === roots.NEUTRAL_READY,
+      status: root.publicationStatus,
+      reason: root.gap,
+    };
+  });
   return {
-    executable: false,
-    reason: "execution adapters are deliberately absent from the infrastructure lane",
+    executable: manifest.developmentExecutionEnabled,
+    mode: "untimed-sage-correctness-only",
+    qualifiedTiming: false,
+    freshPreparedExecution: false,
     fields,
-    stageDiagnosticSchedule: stageDiagnosticSchedule(manifest.schedule.stageDiagnosticPairs),
-    finalQualificationSchedule: finalQualificationSchedule(manifest.schedule.finalBlocks),
+    cases,
+    available: cases.filter(value => value.available).map(value => value.fieldId),
+    unavailable: cases.filter(value => !value.available).map(value => ({
+      fieldId: value.fieldId, reason: value.reason,
+    })),
   };
+}
+
+function validateDevelopmentDescriptor(descriptor) {
+  assert(descriptor && typeof descriptor === "object" && !Array.isArray(descriptor),
+    "development descriptor must be an object");
+  assert.deepEqual(Object.keys(descriptor).sort(), [
+    "driverExport", "driverModule", "input", "panelIndex", "schema",
+  ].sort(), "development descriptor has unexpected fields");
+  assert.equal(descriptor.schema, DEVELOPMENT_DESCRIPTOR_SCHEMA);
+  assert(Number.isInteger(descriptor.panelIndex), "development panel index must be an integer");
+  assert.equal(typeof descriptor.driverModule, "string");
+  assert(descriptor.driverModule.length > 0, "development driver module is missing");
+  assert.equal(typeof descriptor.driverExport, "string");
+  assert.match(descriptor.driverExport, /^[A-Za-z][A-Za-z0-9]*$/,
+    "development driver export is invalid");
+  assert(descriptor.input && typeof descriptor.input === "object" && !Array.isArray(descriptor.input),
+    "development descriptor input must be an object");
+  return descriptor;
+}
+
+async function executeDevelopmentDescriptor(descriptor, {
+  manifestData = validateManifest(),
+  baseDirectory = process.cwd(),
+  loadModule = filename => require(filename),
+} = {}) {
+  validateDevelopmentDescriptor(descriptor);
+  assert.equal(manifestData.manifest.developmentExecutionEnabled, true,
+    "development execution is disabled");
+  const roots = require("./phase5_development_roots.cjs");
+  // This lookup rejects final-reserve fields and unavailable development roots
+  // before resolving or loading any caller-supplied driver.
+  const root = roots.developmentRoot(descriptor.panelIndex, {
+    manifest: manifestData.manifest,
+  });
+  if (root.publicationStatus !== roots.NEUTRAL_READY) {
+    throw new roots.Phase5DevelopmentRootUnavailable(
+      `development field ${root.manifestFieldId} is unavailable: ${root.gap}`);
+  }
+  const driverPath = path.isAbsolute(descriptor.driverModule)
+    ? descriptor.driverModule : path.resolve(baseDirectory, descriptor.driverModule);
+  const driverModule = loadModule(driverPath);
+  const driver = driverModule?.[descriptor.driverExport];
+  assert.equal(typeof driver, "function",
+    `development driver export ${descriptor.driverExport} is not a function`);
+  const core = require("./qualification_execution_core.cjs");
+  return core.runDevelopmentCorrectnessPath({
+    root,
+    invoke: () => driver({ root, input: structuredClone(descriptor.input) }),
+  });
 }
 
 function assertHostPreflight(host) {
@@ -462,14 +532,16 @@ function usage() {
     "usage:",
     "  node run_class_unit_qualification.cjs --check-manifest",
     "  node run_class_unit_qualification.cjs --plan-development",
+    "  node run_class_unit_qualification.cjs --run-development DESCRIPTOR.json",
     "  node run_class_unit_qualification.cjs --validate-receipt RECEIPT.json",
     "  node run_class_unit_qualification.cjs --validate-journal RECEIPT.jsonl",
     "",
-    "Real execution and reserve opening are deliberately disabled in this infrastructure lane.",
+    "Development execution is untimed and requires an explicit caller-supplied driver descriptor.",
+    "Final execution, timing qualification, and reserve opening remain disabled.",
   ].join("\n");
 }
 
-function main(argv = process.argv.slice(2)) {
+async function main(argv = process.argv.slice(2)) {
   const manifestData = validateManifest();
   if (argv.length === 1 && argv[0] === "--check-manifest") {
     console.log(JSON.stringify({
@@ -477,6 +549,7 @@ function main(argv = process.argv.slice(2)) {
       panelSha256: manifestData.panelSha256,
       manifestSha256: manifestData.manifestSha256,
       fields: manifestData.manifest.fields.length,
+      developmentExecutionEnabled: true,
       executionEnabled: false,
       reserveOpeningEnabled: false,
     }));
@@ -484,6 +557,15 @@ function main(argv = process.argv.slice(2)) {
   }
   if (argv.length === 1 && argv[0] === "--plan-development") {
     console.log(JSON.stringify(developmentPlan(manifestData.manifest), null, 2));
+    return;
+  }
+  if (argv.length === 2 && argv[0] === "--run-development") {
+    const descriptorPath = path.resolve(argv[1]);
+    const result = await executeDevelopmentDescriptor(readJson(descriptorPath), {
+      manifestData,
+      baseDirectory: path.dirname(descriptorPath),
+    });
+    console.log(JSON.stringify(result, null, 2));
     return;
   }
   if (argv.length === 2 && argv[0] === "--validate-receipt") {
@@ -497,7 +579,7 @@ function main(argv = process.argv.slice(2)) {
     return;
   }
   if (argv.includes("--run") || argv.includes("--open-reserves") || argv.includes("--lock-held")) {
-    throw new Error("real execution and reserve opening remain disabled until the complete Phase-5 root is integrated");
+    throw new Error("final paired execution, timing lock use, and reserve opening remain disabled by manifest policy");
   }
   throw new Error(usage());
 }
@@ -514,7 +596,9 @@ module.exports = {
   canonicalDigest,
   createReceiptJournal,
   deriveReceiptSummary,
+  DEVELOPMENT_DESCRIPTOR_SCHEMA,
   developmentPlan,
+  executeDevelopmentDescriptor,
   finalQualificationSchedule,
   finalizeReceiptJournal,
   implementationForLabel,
@@ -525,15 +609,14 @@ module.exports = {
   syntheticReceipt,
   timingLockCommand,
   validateManifest,
+  validateDevelopmentDescriptor,
   validateReceipt,
   validateReceiptSchema,
 };
 
 if (require.main === module) {
-  try {
-    main();
-  } catch (error) {
+  main().catch(error => {
     console.error(error.message);
     process.exitCode = 1;
-  }
+  });
 }
