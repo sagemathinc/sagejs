@@ -280,4 +280,5 @@ async function runTerminalContinuation(prepared, prefix, catalog, ownerDescripto
     authority, ownerDescriptor.ownerSha256);
 }
 
-module.exports = { runTerminalContinuation, runTerminalContinuationLive, readOwner };
+module.exports = { acceptanceSizes, appendSizes, runTerminalContinuation,
+  runTerminalContinuationLive, readOwner };

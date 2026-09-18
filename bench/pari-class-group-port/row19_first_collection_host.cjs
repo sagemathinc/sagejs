@@ -221,4 +221,4 @@ async function runFirstCollection(prepared, prefix, options = {}) {
 }
 
 module.exports = { ROWS, DEGREE, PLACES, RESERVE, INITIAL, FIRST_COLUMNS,
-  validateBoundary, collectorInput, runFirstCollection };
+  validateBoundary, collectorInput, runFirstCollection, zeroLengths };
