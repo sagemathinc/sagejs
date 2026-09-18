@@ -6,6 +6,8 @@
 // the upstream-assumed PARI correspondence to a public result.
 
 const crypto = require("node:crypto");
+const fs = require("node:fs");
+const path = require("node:path");
 const output = require("./class_unit_output_evidence_v2.cjs");
 
 const SOURCE_SCHEMA = "sagejs.pari-class-group/row21-final-buchall-end-v1";
@@ -57,6 +59,35 @@ function evidence(id, kind, shape, material, encoding = "canonical_json") {
     sha256: output.sha256Canonical(material),
     shape,
   };
+}
+
+function row21MapMaterials() {
+  const implementationSha256 = sha256(fs.readFileSync(path.join(__dirname,
+    "row21_native_supported_ideal_maps.py")));
+  const valuationImplementationSha256 = sha256(fs.readFileSync(path.join(__dirname,
+    "valuation.py")));
+  const common = {
+    correspondenceResultSha256: CORRESPONDENCE_RESULT_SHA256,
+    domain: "arbitrary-fractional-quintic-ideal-hnf-supported-on-retained-factor-base",
+    implementation: "ordinary-cpython-parseable-source-with-native-factor-boundary",
+    implementationSha256,
+    valuationImplementationSha256,
+    invariantFactors: [],
+    rejectsOutsideSupport: true,
+  };
+  return Object.freeze({
+    factor: Object.freeze({ ...common, operation: "factor",
+      algorithm: "native-prepared-prime-ideal-valuations-with-complete-norm-support-check",
+      retainedOwners: ["factor-base-descriptors", "factor-base-ideals"] }),
+    reduce: Object.freeze({ ...common, operation: "reduce",
+      algorithm: "right-inverse-trivial-class-reduction-with-exact-signed-relation-witness",
+      retainedOwners: ["relation-generators", "relation-matrix",
+        "presentation-right-inverse"] }),
+    combine: Object.freeze({ ...common, operation: "combine",
+      algorithm: "signed-factor-tape-addition-followed-by-exact-trivial-class-reduction",
+      retainedOwners: ["relation-generators", "relation-matrix",
+        "presentation-right-inverse"] }),
+  });
 }
 
 function transpose(values, rows, columns, name) {
@@ -152,8 +183,10 @@ function buildRow21OutputEvidenceV2(sourceRaw) {
   }
 
   const entries = [
+    evidence("combine-map", "combine_map", [], row21MapMaterials().combine),
     evidence("factor-base-ideals", "factor_base_ideals", ["24", "25"],
       ideals, "decimal_integer_matrix"),
+    evidence("factor-map", "factor_map", [], row21MapMaterials().factor),
     evidence("presentation-dependency", "dependency", ["32", "24"], {
       rightInverse: presentation.rightInverse,
       rightInverseShape: presentation.rightInverseShape,
@@ -191,6 +224,7 @@ function buildRow21OutputEvidenceV2(sourceRaw) {
     evidence("relation-logs", "relation_logs", ["32", "3"], realLogs),
     evidence("relation-matrix", "relation_matrix", ["32", "24"],
       relationEntries, "decimal_integer_matrix"),
+    evidence("reduce-map", "reduce_map", [], row21MapMaterials().reduce),
     evidence("torsion-generator", "torsion_generator", ["5"],
       torsionGenerator, "decimal_integer_matrix"),
   ];
@@ -232,11 +266,6 @@ function buildRow21OutputEvidenceV2(sourceRaw) {
   }
   entries.sort((left, right) => left.id.localeCompare(right.id));
 
-  const missingMaps = name => ({
-    evidenceRefs: [],
-    missing: [`${name}-lazy-materialization`],
-    ready: false,
-  });
   const payload = {
     classGroup: {
       classNumber: "1",
@@ -247,18 +276,15 @@ function buildRow21OutputEvidenceV2(sourceRaw) {
       correspondenceComplete: true,
       freshCorrespondence: true,
       missing: [
-        "combine-lazy-materialization",
-        "factor-lazy-materialization",
         "independent-regulator-enclosure",
         "independent-saturation-certificate",
         "proved-factor-base-bound",
         "public-api-integration",
-        "reduce-lazy-materialization",
       ],
       outputBoundaryComplete: false,
       phase3Complete: true,
       phase4Complete: true,
-      phase5Complete: false,
+      phase5Complete: true,
     },
     evidence: entries,
     field: {
@@ -267,9 +293,9 @@ function buildRow21OutputEvidenceV2(sourceRaw) {
       id: FIELD_ID,
     },
     maps: {
-      combine: missingMaps("combine"),
-      factor: missingMaps("factor"),
-      reduce: missingMaps("reduce"),
+      combine: { evidenceRefs: ["combine-map"], missing: [], ready: true },
+      factor: { evidenceRefs: ["factor-map"], missing: [], ready: true },
+      reduce: { evidenceRefs: ["reduce-map"], missing: [], ready: true },
     },
     presentation: {
       dependencyRefs: ["presentation-dependency"],
@@ -321,4 +347,5 @@ module.exports = Object.freeze({
   SOURCE_PAYLOAD_SHA256,
   SOURCE_SHA256,
   buildRow21OutputEvidenceV2,
+  row21MapMaterials,
 });

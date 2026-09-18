@@ -32,26 +32,31 @@ precision, analytic acceptance, and retry/reconstruction states.  The
 regulator is truthfully tagged `pari_packed_accepted`, not
 `rigorous_enclosure`.
 
-## Deliberately incomplete boundary
+## Phase 5 maps and deliberately incomplete output boundary
 
 The row-21 correspondence was freshly computed and its phases 3 and 4 reached
 the retained terminal state. The relation presentation is published with its
 exact integral left inverse (the source calls the transposed object a right
 inverse), and the checker independently replays the resulting identity.
-Nevertheless
-`outputBoundaryComplete = false`.  The explicit missing list contains:
+`row21_native_supported_ideal_maps.py` now exposes factor, reduce, and combine
+maps for every arbitrary fractional quintic ideal HNF whose complete support
+is contained in the authenticated retained factor base. Native prepared
+prime-ideal valuations factor HNFs without a caller-supplied tape; complete
+norm exhaustion rejects ideals outside that domain. Exact relation-right-
+inverse replay proves the signed principal reduction witness. All three maps
+are ready and `phase5Complete = true` on that explicit domain. The dedicated
+native-map audit records the boundary and differential oracle check.
 
-- the omitted lazy factor, reduce, and combine map materializations;
+Nevertheless `outputBoundaryComplete = false`. The explicit missing list
+contains:
+
 - an independent regulator enclosure;
 - an independent saturation certificate;
 - an independently proved factor-base bound; and
 - integration with the public API.
 
-All three map records are consequently unready and publish no map evidence.
-Because the campaign plan includes these maps in Phase 5, `phase5Complete` is
-also false even though the row-specific final `buchall_end` assembly completed.
-This preserves the distinction between a complete upstream-assumed PARI
-correspondence and a complete public/certified output boundary.
+This preserves the distinction between a complete supported class-map surface
+and a complete public/certified output boundary.
 
 The focused checker authenticates and projects the retained envelope, checks
 selected evidence digests independently against source subobjects, roundtrips

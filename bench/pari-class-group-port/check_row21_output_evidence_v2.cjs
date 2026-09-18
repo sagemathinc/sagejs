@@ -59,13 +59,13 @@ function main() {
   assert.equal(payload.unitGroup.regulator.kind, "pari_packed_accepted");
   assert.equal(payload.completion.correspondenceComplete, true);
   assert.equal(payload.completion.freshCorrespondence, true);
-  assert.equal(payload.completion.phase5Complete, false);
+  assert.equal(payload.completion.phase5Complete, true);
   assert.equal(payload.completion.outputBoundaryComplete, false);
   assert.equal(payload.source.correspondenceResultSha256,
     adapter.CORRESPONDENCE_RESULT_SHA256);
-  assert.equal(payload.maps.factor.ready, false);
-  assert.equal(payload.maps.reduce.ready, false);
-  assert.equal(payload.maps.combine.ready, false);
+  assert.equal(payload.maps.factor.ready, true);
+  assert.equal(payload.maps.reduce.ready, true);
+  assert.equal(payload.maps.combine.ready, true);
 
   const source = JSON.parse(sourceRaw).payload;
   const byId = new Map(payload.evidence.map(entry => [entry.id, entry]));
@@ -98,13 +98,12 @@ function main() {
   assert.throws(() => adapter.buildRow21OutputEvidenceV2(changedSource),
     /reviewed identity/);
   rejected(payload, value => {
-    value.completion.phase5Complete = true;
     value.completion.outputBoundaryComplete = true;
     value.completion.missing = [];
-  }, /lacks map material/);
+    value.completion.phase4Complete = false;
+  }, /lacks prerequisite phases/);
   rejected(payload, value => {
-    value.maps.factor.ready = true;
-    value.maps.factor.missing = [];
+    value.maps.factor.evidenceRefs = [];
   }, /must not be empty/);
   rejected(payload, value => {
     value.unitGroup.regulator.kind = "rigorous_enclosure";
