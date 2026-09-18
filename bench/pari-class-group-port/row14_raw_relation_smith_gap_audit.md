@@ -32,6 +32,12 @@ coefficient swell.  This is diagnostic evidence only, not a timing claim.  It
 also explains why regeneration should use the existing staged production
 ancestry rather than a generic dense transform.
 
+The staged source-operation route has now regenerated those 796 rows and
+proved the complete identity and both unimodular determinants.  See
+`row14_full_raw_smith_ancestry_audit.md`.  This file remains the audit of the
+older partial artifact and its once-exact gap; it is no longer the current
+row-14 Smith frontier.
+
 Run:
 
 ```bash

@@ -91,9 +91,20 @@ function reverseHnfFinal(output, step) {
     }
   }
   const input = Array(columns + tail).fill(0n);
-  for (let source = 0; source < columns; source += 1)
-    for (let column = 0; column < columns; column += 1)
-      input[source] += transform[column * columns + source] * work[column];
+  // A selected terminal column normally reaches this boundary with only a
+  // handful of live coefficients.  Iterating the whole square transform for
+  // every selected column made full ancestry replay needlessly cubic even
+  // though the exact source operation is a sparse linear combination.  Keep
+  // the same arithmetic and ordering, but visit only active transform rows.
+  for (let column = 0; column < columns; column += 1) {
+    const coefficient = work[column];
+    if (coefficient === 0n) continue;
+    const offset = column * columns;
+    for (let source = 0; source < columns; source += 1) {
+      const value = transform[offset + source];
+      if (value !== 0n) input[source] += value * coefficient;
+    }
+  }
   for (let column = 0; column < tail; column += 1)
     input[columns + column] = inputTail[column];
   return input;
@@ -125,10 +136,15 @@ function reverseSchedule(finalWidth, selected, initialStep, appendSteps) {
     for (let index = appendSteps.length - 1; index >= 0; index -= 1)
       current = reverseAppend(current, appendSteps[index], raw);
     const cleaned = reverseHnfFinal(current, initialStep.hnf);
-    for (let source = 0; source < initialStep.columns; source += 1)
-      for (let column = 0; column < initialStep.columns; column += 1)
-        raw[source] += initialStep.cleanupTransform[column * initialStep.columns + source]
-          * cleaned[column];
+    for (let column = 0; column < initialStep.columns; column += 1) {
+      const coefficient = cleaned[column];
+      if (coefficient === 0n) continue;
+      const offset = column * initialStep.columns;
+      for (let source = 0; source < initialStep.columns; source += 1) {
+        const value = initialStep.cleanupTransform[offset + source];
+        if (value !== 0n) raw[source] += value * coefficient;
+      }
+    }
     return raw;
   });
 }
