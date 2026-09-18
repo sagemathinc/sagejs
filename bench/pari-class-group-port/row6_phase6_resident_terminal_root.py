@@ -9,13 +9,36 @@ catalog, analytic inverse-`hR` computation, post-HNF acceptance, regulator
 reconstruction, and Smith output execute in one generated native call graph.
 """
 
-from sagejs.native import Float64Buffer, Int64Buffer, IntegerBuffer, native
+from typing import TypedDict
+
+from sagejs.native import Float64Buffer, Int64Buffer, IntegerBuffer, native, uint64
 
 from .row14_post806_terminal import (
     pari_row14_analytic_inverse_hr,
     pari_row14_post806_terminal,
 )
 from .row6_prepared_factor_base_root import pari_row6_prime_degree_catalog
+from .row6_phase6_resident_unit_private import (
+    pari_row6_phase6_resident_unit_private,
+)
+from .row6_phase6_resident_class_private import (
+    pari_row6_phase6_resident_class_private,
+)
+
+
+class Row6UnitManifest(TypedDict):
+    columns: uint64
+    precision: uint64
+    unit_rank: uint64
+    expect_large: bool
+
+
+class Row6ClassManifest(TypedDict):
+    rows: uint64
+    columns: uint64
+    degree: uint64
+    kernel_columns: uint64
+    class_columns: uint64
 
 
 @native
@@ -125,12 +148,44 @@ def pari_row6_phase6_resident_terminal_root(
     class_number: IntegerBuffer,
     smith_state: Int64Buffer,
     terminal_state: Int64Buffer,
+    unit_manifest: Row6UnitManifest,
+    unit_accepted_arch: IntegerBuffer,
+    unit_accepted_signs: Int64Buffer,
+    unit_phase_pi: IntegerBuffer,
+    unit_preparation_embedding: IntegerBuffer,
+    unit_multiplication_basis: IntegerBuffer,
+    unit_final_transform: IntegerBuffer,
+    unit_bridge_transform: IntegerBuffer,
+    unit_getfu_factor: IntegerBuffer,
+    unit_clean_logs: IntegerBuffer,
+    unit_sign_phases: Int64Buffer,
+    unit_c5_state: Int64Buffer,
+    unit_c5_trace: Float64Buffer,
+    unit_factor_state: Int64Buffer,
+    unit_c6_state: Int64Buffer,
+    unit_state: Int64Buffer,
+    class_manifest: Row6ClassManifest,
+    class_raw_relations: IntegerBuffer,
+    class_principal_generators: IntegerBuffer,
+    class_factor_ideals: IntegerBuffer,
+    class_factor_norms: IntegerBuffer,
+    class_descriptor_generators: IntegerBuffer,
+    class_descriptor_primes: IntegerBuffer,
+    class_descriptor_e: IntegerBuffer,
+    class_descriptor_f: IntegerBuffer,
+    class_descriptor_inert: IntegerBuffer,
+    class_multiplication_basis: IntegerBuffer,
+    class_raw_to_unit_kernel: IntegerBuffer,
+    class_raw_to_presentation: IntegerBuffer,
+    class_active_rows: Int64Buffer,
+    class_factor_map: IntegerBuffer,
+    class_state: Int64Buffer,
     resident_state: Int64Buffer,
 ) -> int:
     """Execute the connected row-6 post-1,137 native source cut."""
-    if len(resident_state) < 6:
+    if len(resident_state) < 14:
         raise ValueError("short row-6 resident terminal state")
-    for i in range(6):
+    for i in range(14):
         resident_state[i] = 0
     resident_state[0] = -1
 
@@ -263,8 +318,63 @@ def pari_row6_phase6_resident_terminal_root(
         terminal_state,
     )
     resident_state[3] = status
-    resident_state[4] = smith_state[1]
-    resident_state[5] = terminal_state[5]
+    if status != 0:
+        resident_state[0] = status
+        return status
+
+    status = pari_row6_phase6_resident_unit_private(
+        unit_manifest,
+        unit_accepted_arch,
+        unit_accepted_signs,
+        unit_phase_pi,
+        unit_relations,
+        regulator,
+        unit_preparation_embedding,
+        unit_multiplication_basis,
+        unit_final_transform,
+        unit_bridge_transform,
+        unit_getfu_factor,
+        unit_clean_logs,
+        unit_sign_phases,
+        unit_c5_state,
+        unit_c5_trace,
+        unit_factor_state,
+        unit_c6_state,
+        unit_state,
+    )
+    resident_state[4] = status
+    resident_state[5] = smith_state[1]
+    resident_state[6] = terminal_state[5]
+    resident_state[7] = unit_state[5]
+    resident_state[8] = unit_state[6]
+    resident_state[9] = unit_state[7]
+    if status != 0:
+        resident_state[0] = status
+        return status
+
+    status = pari_row6_phase6_resident_class_private(
+        class_manifest,
+        h,
+        class_raw_relations,
+        class_principal_generators,
+        class_factor_ideals,
+        class_factor_norms,
+        class_descriptor_generators,
+        class_descriptor_primes,
+        class_descriptor_e,
+        class_descriptor_f,
+        class_descriptor_inert,
+        class_multiplication_basis,
+        class_raw_to_unit_kernel,
+        class_raw_to_presentation,
+        class_active_rows,
+        class_factor_map,
+        class_state,
+    )
+    resident_state[10] = status
+    resident_state[11] = class_state[1]
+    resident_state[12] = class_state[3]
+    resident_state[13] = class_state[5]
     resident_state[0] = status
     return status
 

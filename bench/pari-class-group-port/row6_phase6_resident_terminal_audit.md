@@ -13,12 +13,17 @@ ordinary-Python translations for:
 2. analytic inverse-`hR` construction;
 3. post-HNF acceptance;
 4. regulator and unit-relation lattice reconstruction; and
-5. Smith invariants and class number.
+5. Smith invariants and class number;
+6. compact rank-two unit preparation, flag-zero `getfu` factorization, signed
+   real-cubic unit cleanup, and C5/C6 provenance; and
+7. exact factor-base reconstruction, all 1,137 principal ideal equations, and
+   the two class-witness projections.
 
 The compiler clones this imported call graph into one generated addon. The
 generated root calls `native_pari_row6_prime_degree_catalog`,
 `native_pari_row14_analytic_inverse_hr`, and
-`native_pari_row14_post806_terminal` directly. The host authenticates the
+`native_pari_row14_post806_terminal` directly, then calls the private bounded
+unit and class graphs without returning to the host. The host authenticates the
 prepared input and retained Gate-C/factor owners, compiles, and allocates all
 storage before entry. The correctness run makes one native call, with no
 subprocess, filesystem access, serialization, allocation, or inspection in
@@ -30,7 +35,12 @@ The exact output agrees with the prior three-addon path, including:
 - post-HNF, acceptance, multiple, and reconstruction states;
 - the 192-bit regulator and all fourteen unit-lattice entries;
 - Smith invariants `[2, 2]`, class number `4`; and
-- terminal state `[0,0,7,0,2,1137,0,0,2,0]`.
+- terminal state `[0,0,7,0,2,1137,0,0,2,0]`;
+- the final/bridge unit transforms, exact cleaned logs, sign phases, and C5/C6
+  states; and
+- active factor rows `[1092,1094]`, the complete 2-by-1,130 factor map, all
+  1,130 reconstructed prime ideals, and all 1,137 principal equations (7,819
+  exact ideal products).
 
 The check also rejects prepared/gate/precision mutations, rejects a short
 publication state before publication, and proves that a fresh invocation after
@@ -54,7 +64,7 @@ only.
 
 ## Exact remaining boundaries
 
-The existing complete correctness transaction still has four implementation
+The existing complete correctness transaction still has three implementation
 boundaries that prevent a complete resident lifecycle:
 
 1. The factor-base and initial-relation roots are CLI programs. Their native
@@ -67,30 +77,29 @@ boundaries that prevent a complete resident lifecycle:
 3. Column-ancestry replay is in-process but separately allocates and reruns the
    HNF schedule after Gate C rather than retaining the required transform state
    in the live graph.
-4. The terminal class and rank-two unit composers accept nested Python
-   mappings and dynamically shaped lists. Their purported `composeInMemory`
-   coordinators actually spawn CPython and serialize the owners. C7 then
-   consumes those mapping-valued results.
+The class and unit part of the former fourth boundary is now closed. Their
+scalar manifests use closed `TypedDict` mappings and their variable data use
+bounded typed buffers. The generated native graph performs the actual exact
+mathematics, while the old CPython composers are differential oracles outside
+the resident call. C7 result-object construction still remains host-side
+publication after these buffers are complete.
 
-The scalar part of the last point now has an executable compiler proof:
+The closed scalar mapping ABI also has an executable compiler proof:
 `row6_phase6_resident_mapping_obstruction.py`. It declares a standard-library
 `TypedDict`, and the compiler validates and copies its required scalar fields
 into a fixed-layout value before native entry. The ordinary fallback remains a
 dictionary subscript. Generated native code contains neither dictionaries nor
 string lookup. Arbitrary `dict[str, int]`, dynamic keys, mutation, escape,
-nested mappings, and dynamically shaped values still fail closed. Thus this
-does not by itself connect the composers; their scalar owner projections can
-now use closed mappings, while variable data must still move through bounded
-typed buffers. Hashing, mutation replay, and publication inspection remain
-outside the mathematical call.
+nested mappings, and dynamically shaped values still fail closed. The
+composers use precisely this split: closed scalar mappings plus bounded typed
+buffers. Hashing, mutation replay, and publication inspection remain outside
+the mathematical call.
 
 ## Next connected cut
 
 The next row-6 implementation should build one static invocation manifest for
 factor base, initial relations, collector, initial HNF, continuation HNFs, and
 the terminal root added here. It should retain ancestry as bounded transform
-state instead of rerunning HNF. Once the class/unit mapping work is expressed
-as closed scalar mappings plus typed buffers, C7 construction can inspect the
-completed buffers after the clock. Only that complete prepared-input graph may
-enable the process
-coordinator timing method.
+state instead of rerunning HNF. C7 construction can then inspect the completed
+class/unit buffers after the clock. Only that complete prepared-input graph may
+enable the process coordinator timing method.
