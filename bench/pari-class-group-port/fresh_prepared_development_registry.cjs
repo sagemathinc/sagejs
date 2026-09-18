@@ -20,6 +20,7 @@ const row4 = require("./row4_fresh_prepared_transaction.cjs");
 const row6 = require("./row6_fresh_prepared_transaction_host.cjs");
 const row8 = require("./row8_fresh_prepared_transaction.cjs");
 const row10 = require("./row10_fresh_prepared_transaction.cjs");
+const row11 = require("./row11_fresh_prepared_transaction.cjs");
 const row13 = require("./row13_fresh_prepared_transaction.cjs");
 const row14 = require("./row14_fresh_prepared_execution.cjs");
 const row16 = require("./row16_fresh_prepared_transaction.cjs");
@@ -39,6 +40,7 @@ const RUNNERS = new Map([
   [6, row6],
   [8, row8],
   [10, row10],
+  [11, row11],
   [13, row13],
   [14, row14],
   [16, row16],
