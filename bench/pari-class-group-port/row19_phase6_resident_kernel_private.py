@@ -41,20 +41,24 @@ def pari_row19_phase6_resident_kernel_private(
     terminal_trailing: IntegerBuffer,
     terminal_diagonal: Int64Buffer,
     terminal_permutation: Int64Buffer,
+    terminal_result_h: IntegerBuffer,
     workspace: IntegerBuffer,
     kernel_output: IntegerBuffer,
+    presentation_output: IntegerBuffer,
     state_output: Int64Buffer,
 ) -> int:
     """Reverse the same-run first and append transforms without recomputation."""
     rows = 424
     first_columns = 423
     columns = 430
-    targets = 6
+    kernel_targets = 6
+    presentation_targets = 9
+    targets = 15
     if (
         manifest["factor_count"] != rows
         or manifest["first_columns"] != first_columns
         or manifest["relation_count"] != columns
-        or manifest["kernel_rank"] != targets
+        or manifest["kernel_rank"] != kernel_targets
         or len(relation_records) < rows * columns
         or len(first_cleanup_transform) < first_columns * first_columns
         or len(first_transform) < 84 * 84
@@ -68,23 +72,28 @@ def pari_row19_phase6_resident_kernel_private(
         or len(terminal_trailing) < 16 * 408
         or len(terminal_diagonal) < 16
         or len(terminal_permutation) < rows
-        or len(workspace) < 70368
-        or len(kernel_output) < columns * targets
+        or len(terminal_result_h) < 81
+        or len(workspace) < 89475
+        or len(kernel_output) < columns * kernel_targets
+        or len(presentation_output) < columns * presentation_targets
         or len(state_output) < 12
     ):
         raise ValueError("unsupported row-19 resident kernel boundary")
 
-    selected: IntegerBuffer = integer_buffer_view(workspace, 0, 2580)
-    previous: IntegerBuffer = integer_buffer_view(workspace, 2580, 2538)
-    work: IntegerBuffer = integer_buffer_view(workspace, 5118, 2544)
-    bwork: IntegerBuffer = integer_buffer_view(workspace, 7662, 28815)
-    cleaned: IntegerBuffer = integer_buffer_view(workspace, 36477, 2538)
-    initial_work: IntegerBuffer = integer_buffer_view(workspace, 39015, 2538)
-    initial_bwork: IntegerBuffer = integer_buffer_view(workspace, 41553, 28815)
+    selected: IntegerBuffer = integer_buffer_view(workspace, 0, 6450)
+    previous: IntegerBuffer = integer_buffer_view(workspace, 6450, 6345)
+    work: IntegerBuffer = integer_buffer_view(workspace, 12795, 6360)
+    bwork: IntegerBuffer = integer_buffer_view(workspace, 19155, 28815)
+    cleaned: IntegerBuffer = integer_buffer_view(workspace, 47970, 6345)
+    initial_work: IntegerBuffer = integer_buffer_view(workspace, 54315, 6345)
+    initial_bwork: IntegerBuffer = integer_buffer_view(workspace, 60660, 28815)
     reverse_state: Int64Buffer = int64_workspace(12)
     for i in range(columns * targets):
         selected[i] = 0
+    for i in range(columns * kernel_targets):
         kernel_output[i] = 0
+    for i in range(columns * presentation_targets):
+        presentation_output[i] = 0
     for target in range(targets):
         # The six carried zero columns are the terminal kernel coordinates.
         selected[target * columns + target] = 1
@@ -131,7 +140,12 @@ def pari_row19_phase6_resident_kernel_private(
             previous[previous_base + 15 + column] = work[work_base + 16 + column]
         for appended in range(7):
             coefficient = work[work_base + appended]
-            kernel_output[target * columns + first_columns + appended] = coefficient
+            if target < kernel_targets:
+                kernel_output[target * columns + first_columns + appended] = coefficient
+            else:
+                presentation_output[
+                    (target - kernel_targets) * columns + first_columns + appended
+                ] = coefficient
             if coefficient == 0:
                 continue
             for tail in range(408):
@@ -177,9 +191,13 @@ def pari_row19_phase6_resident_kernel_private(
         return status
     for target in range(targets):
         for source in range(first_columns):
-            kernel_output[target * columns + source] = cleaned[
-                target * first_columns + source
-            ]
+            value = cleaned[target * first_columns + source]
+            if target < kernel_targets:
+                kernel_output[target * columns + source] = value
+            else:
+                presentation_output[(target - kernel_targets) * columns + source] = (
+                    value
+                )
 
     # This replay is the publication boundary: no transform is accepted merely
     # because its shape agrees with the retained HNF schedule.
@@ -187,37 +205,58 @@ def pari_row19_phase6_resident_kernel_private(
     maximum_bits = 0
     for target in range(targets):
         for row in range(rows):
+            physical = row
+            if target >= kernel_targets:
+                physical = terminal_permutation[row] - 1
+                if physical < 0 or physical >= rows:
+                    raise ValueError("invalid terminal permutation")
             value = 0
             for source in range(columns):
-                value += (
-                    relation_records[source * rows + row]
-                    * kernel_output[target * columns + source]
-                )
-            if value != 0:
-                state_output[0] = 1
-                state_output[1] = target
-                state_output[2] = row
-                return 1
-        for source in range(columns):
-            value = kernel_output[target * columns + source]
-            if value != 0:
-                nonzero += 1
-                absolute = value
-                if absolute < 0:
-                    absolute = -absolute
-                bits = 0
-                while absolute != 0:
-                    absolute //= 2
-                    bits += 1
-                if bits > maximum_bits:
-                    maximum_bits = bits
+                coefficient = 0
+                if target < kernel_targets:
+                    coefficient = kernel_output[target * columns + source]
+                else:
+                    coefficient = presentation_output[
+                        (target - kernel_targets) * columns + source
+                    ]
+                value += relation_records[source * rows + physical] * coefficient
+            if target < kernel_targets:
+                if value != 0:
+                    state_output[0] = 1
+                    state_output[1] = target
+                    state_output[2] = row
+                    return 1
+            else:
+                presentation_column = target - kernel_targets
+                expected = 0
+                if row < 9:
+                    expected = terminal_result_h[presentation_column * 9 + row]
+                if value != expected:
+                    state_output[0] = 2
+                    state_output[1] = presentation_column
+                    state_output[2] = row
+                    return 2
+        if target < kernel_targets:
+            for source in range(columns):
+                value = kernel_output[target * columns + source]
+                if value != 0:
+                    nonzero += 1
+                    absolute = value
+                    if absolute < 0:
+                        absolute = -absolute
+                    bits = 0
+                    while absolute != 0:
+                        absolute //= 2
+                        bits += 1
+                    if bits > maximum_bits:
+                        maximum_bits = bits
     for i in range(12):
         reverse_state[i] = 0
         state_output[i] = 0
     state_output[0] = 0
     state_output[1] = rows
     state_output[2] = columns
-    state_output[3] = targets
+    state_output[3] = kernel_targets
     state_output[4] = nonzero
     state_output[5] = maximum_bits
     state_output[6] = 78

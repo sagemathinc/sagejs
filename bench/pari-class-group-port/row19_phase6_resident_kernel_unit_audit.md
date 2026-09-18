@@ -38,13 +38,21 @@ The bounded check ran under 4 GiB address/RSS and 600 CPU seconds.  Receipt:
 The measured resident root was 90.331 seconds with maximum RSS 1,030,024 KiB.
 This remains diagnostic, not qualified timing.
 
-## Exact remaining obstruction
+## Final factored class witnesses
 
-The class invariants and exact compact fundamental unit are now resident, but
-the nine class-generator principal witnesses are not.  Producing them requires
-reversing terminal presentation columns 6 through 14 (not merely the six
-kernel columns), composing those raw relation exponents with the retained
-Smith transforms, and publishing the corresponding factored principal
-generators.  Expansion to integral-basis unit elements is intentionally not
-required for an exact compact unit, but the final public result constructor
-must preserve the factored witnesses and maps without host serialization.
+The final cut reverses terminal presentation columns 6 through 14 alongside
+the six kernel columns. It composes the resulting 430-by-9 raw relation map
+with the retained Smith `M1` transform and replays all 3,816 factor-base
+valuations against `order * Uir`. The nine witnesses are byte-identical to the
+previous independently constructed principal owner: combined coefficient hash
+`029449eb24fbf5654c4b3bb2dcec77aa012082674183fb244bf02e1a7fbf3c1c`
+and factor-base exponent hash
+`0f371fe920dfea58dee17f439eef453acd9c3c671284b62a9a36dfb2b5509d7c`.
+
+The root retains those owners together with `M1`, `Uir`, the compact unit and
+inverse, and the raw presentation map in its private live-owner table. Its
+public projection is a final exact **factored** class-and-unit result: class
+group, nine complete principal witnesses, rank-one unit and inverse, and the
+GRH assumption. No owner is serialized. Expanded integral-basis unit
+coordinates remain intentionally absent, and public API integration remains
+outside this diagnostic root.

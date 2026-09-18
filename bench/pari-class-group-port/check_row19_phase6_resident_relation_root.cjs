@@ -64,6 +64,18 @@ async function worker(input) {
     "938f098a4c3d8347bc0290a0ee0d2c9189c499f50654bcaf8e744ea65d605abb");
   assert.deepEqual(result.compactUnit.state,
     [0, 430, 6, 1, 352, 20, 1, 1, 192, 1]);
+  assert.equal(result.principalWitnesses.rawRelationCoefficientsSha256,
+    "029449eb24fbf5654c4b3bb2dcec77aa012082674183fb244bf02e1a7fbf3c1c");
+  assert.equal(result.principalWitnesses.factorBaseExponentsSha256,
+    "0f371fe920dfea58dee17f439eef453acd9c3c671284b62a9a36dfb2b5509d7c");
+  assert.deepEqual(result.principalWitnesses.factorCounts,
+    [353, 355, 354, 353, 353, 353, 354, 353, 352]);
+  assert.deepEqual(result.principalWitnesses.state,
+    [0, 9, 430, 424, 3180, 41, 3816, 3870, 1, 1]);
+  assert.equal(result.finalFactoredResult.status, "success");
+  assert.equal(result.finalFactoredResult.exactFactoredCorrespondenceComplete, true);
+  assert.equal(result.finalFactoredResult.serializedOwners, 0);
+  assert.equal(result.correspondenceComplete, true);
   process.stdout.write(`${JSON.stringify({ result,
     measurement: { elapsedNs: String(elapsedNs), maxRssKiB: usage.maxRSS,
       userCpuMicros: usage.userCPUTime - startUsage.userCPUTime,

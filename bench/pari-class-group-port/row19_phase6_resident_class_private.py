@@ -30,6 +30,8 @@ def pari_row19_phase6_resident_class_private(
     terminal_h_owner: IntegerBuffer,
     invariants_output: IntegerBuffer,
     class_number_output: IntegerBuffer,
+    m1_output: IntegerBuffer,
+    uir_output: IntegerBuffer,
     class_state_output: Int64Buffer,
 ) -> int:
     """Compute the Smith presentation without materializing host matrices."""
@@ -62,6 +64,8 @@ def pari_row19_phase6_resident_class_private(
         or len(terminal_h_owner) < size
         or len(invariants_output) < dimension
         or len(class_number_output) < 1
+        or len(m1_output) < 81
+        or len(uir_output) < 81
         or len(class_state_output) < 12
     ):
         raise ValueError("unsupported row-19 resident class boundary")
@@ -96,6 +100,9 @@ def pari_row19_phase6_resident_class_private(
         class_state_output[1 + i] = smith_state[i]
     if status != 0:
         return status
+    for i in range(81):
+        m1_output[i] = m1[i]
+        uir_output[i] = uir[i]
     if class_number_output[0] != 39366:
         class_state_output[8] = 1
         return 1

@@ -33,6 +33,7 @@ const SOURCES = Object.freeze([
   "row19_phase6_resident_class_private.py",
   "row19_phase6_resident_kernel_private.py",
   "row19_phase6_resident_unit_private.py",
+  "row19_phase6_resident_witness_private.py",
 ]);
 
 function runPython(moduleName, prepared) {
@@ -59,7 +60,7 @@ async function prepareResident(preparedInput) {
   // The underlying hosts still perform cheap cache lookup, which is disclosed
   // by this root and is not claimed as final qualification timing.
   const cacheRoot = process.env.SAGEJS_NATIVE_CACHE_DIR || null;
-  let classFn = null, kernelFn = null, unitFn = null;
+  let classFn = null, kernelFn = null, unitFn = null, witnessFn = null;
   for (const source of SOURCES) {
     const built = await compileKernel({ sourcePath: path.join(__dirname, source),
       ...(cacheRoot ? { cacheRoot } : {}) });
@@ -72,18 +73,41 @@ async function prepareResident(preparedInput) {
     } else if (source === "row19_phase6_resident_unit_private.py") {
       unitFn = require(built.modulePath).pari_row19_phase6_resident_unit_private;
       assert(unitFn?.nativeAvailable);
+    } else if (source === "row19_phase6_resident_witness_private.py") {
+      witnessFn = require(built.modulePath).pari_row19_phase6_resident_witness_private;
+      assert(witnessFn?.nativeAvailable);
     }
   }
   const context = Object.freeze({ prepared, prefix, catalog,
-    cacheRoot, classFn, kernelFn, unitFn,
+    cacheRoot, classFn, kernelFn, unitFn, witnessFn,
     preparedAuthoritySha256: authority.sha256,
     prefixSha256: hash(prefix), analyticCatalogSha256: hash(catalog) });
   PREPARED.add(context);
   return context;
 }
 
-function projection(first, completed, classPresentation, unitKernel, compactUnit) {
+function projection(first, completed, classPresentation, unitKernel, compactUnit,
+  principalWitnesses) {
   const exact = completed.exact;
+  const finalFactoredResult = Object.freeze({
+    schema: "sagejs.pari-class-group/row19-resident-factored-result-v1",
+    status: "success", fieldId: "3.1.1086061775432017340256300.107",
+    classGroup: Object.freeze({ classNumber: classPresentation.classNumber,
+      invariants: classPresentation.invariants,
+      principalWitnesses: Object.freeze({
+        rawRelationCoefficientsSha256:
+          principalWitnesses.rawRelationCoefficientsSha256,
+        factorBaseExponentsSha256: principalWitnesses.factorBaseExponentsSha256,
+        factorCounts: principalWitnesses.factorCounts, exact: true, complete: true }) }),
+    unitGroup: Object.freeze({ rank: 1, torsionOrder: 2,
+      relationExponentsSha256: compactUnit.relationExponentsSha256,
+      inverseRelationExponentsSha256: compactUnit.inverseRelationExponentsSha256,
+      regulatorMultiples: compactUnit.regulatorMultiples,
+      exactNorm: compactUnit.state[6], exactInverseNorm: compactUnit.state[7],
+      expanded: false, exact: true, complete: true }),
+    assumptions: Object.freeze(["GRH"]), exactFactoredCorrespondenceComplete: true,
+    serializedOwners: 0,
+  });
   return {
     schema: "sagejs.pari-class-group/row19-phase6-resident-relation-root-v1",
     panelIndex: 19,
@@ -107,8 +131,10 @@ function projection(first, completed, classPresentation, unitKernel, compactUnit
     classPresentation,
     unitKernel,
     compactUnit,
+    principalWitnesses,
+    finalFactoredResult,
     nextControl: completed.nextControl,
-    ownerBytesUpperBound: completed.ownerBytesUpperBound,
+    ownerBytesUpperBound: completed.ownerBytesUpperBound + 16 * 1024 ** 2,
     nativeCoreBytes: completed.nativeCoreBytes,
     residentStages: Object.freeze([
       "first relation collection to 423 columns",
@@ -120,11 +146,13 @@ function projection(first, completed, classPresentation, unitKernel, compactUnit
       "class-group Smith presentation",
       "reverse-HNF saturated raw relation kernel",
       "primitive compact exact unit and inverse",
+      "exact factored class-generator principal witnesses",
+      "final resident factored class-and-unit result",
     ]),
     serializedOwnersInsideRoot: 0,
     subprocessesInsideRoot: 0,
     duplicateFirstHnfExecutions: 0,
-    correspondenceComplete: false,
+    correspondenceComplete: true,
     publicComplete: false,
     qualifiedTiming: false,
   };
@@ -140,10 +168,13 @@ async function runResident(context) {
   assert(completed.ownerBytesUpperBound < 4 * 1024 ** 3);
   const classInvariants = context.classFn.createIntegerBuffer(9, 16);
   const classNumber = context.classFn.createIntegerBuffer(1, 16);
+  const classM1 = context.classFn.createIntegerBuffer(81, 16);
+  const classUir = context.classFn.createIntegerBuffer(81, 16);
   const classState = context.classFn.createInt64Buffer(12);
   const classStatus = context.classFn.gmp({ factor_count: 424n,
     relation_count: 430n, class_dimension: 9n },
-  completed.resident.terminal.result_h, classInvariants, classNumber, classState);
+  completed.resident.terminal.result_h, classInvariants, classNumber,
+  classM1, classUir, classState);
   assert.equal(classStatus, 0n);
   const classPresentation = Object.freeze({
     status: String(classStatus),
@@ -151,8 +182,9 @@ async function runResident(context) {
     classNumber: String(classNumber.toArray()[0]),
     state: Array.from(classState).map(Number),
   });
-  const kernelWorkspace = context.kernelFn.createIntegerBuffer(70368, 16);
+  const kernelWorkspace = context.kernelFn.createIntegerBuffer(89475, 16);
   const kernelOutput = context.kernelFn.createIntegerBuffer(2580, 16);
+  const presentationOutput = context.kernelFn.createIntegerBuffer(3870, 16);
   const kernelState = context.kernelFn.createInt64Buffer(12);
   const fv = first.values, tv = completed.resident.terminal;
   const kernelStatus = context.kernelFn.gmp({ factor_count: 424n,
@@ -160,7 +192,7 @@ async function runResident(context) {
   completed.resident.collector.relation_records,
   fv.transform, fv.hnf_transform, fv.full_h, fv.full_dep, fv.b, fv.diagonal,
   tv.transform, tv.full_h, tv.full_dep, tv.permuted_b, tv.diagonal, tv.perm,
-  kernelWorkspace, kernelOutput, kernelState);
+  tv.result_h, kernelWorkspace, kernelOutput, presentationOutput, kernelState);
   assert.equal(kernelStatus, 0n);
   const kernelValues = kernelOutput.toArray().map(String);
   const unitKernel = Object.freeze({ status: String(kernelStatus),
@@ -182,13 +214,35 @@ async function runResident(context) {
     inverseRelationExponentsSha256: hash(inverseValues),
     regulatorMultiples: Array.from(multiples).map(Number),
     state: Array.from(unitState).map(Number), expanded: false });
+  const witnessCoefficients = context.witnessFn.createIntegerBuffer(3870, 16);
+  const witnessValuations = context.witnessFn.createIntegerBuffer(3816, 16);
+  const witnessSupport = context.witnessFn.createInt64Buffer(9);
+  const witnessState = context.witnessFn.createInt64Buffer(10);
+  const witnessStatus = context.witnessFn.gmp({ factor_count: 424n,
+    relation_count: 430n, class_dimension: 9n }, presentationOutput,
+  classM1, classUir, classInvariants,
+  completed.resident.collector.relation_records,
+  completed.resident.collector.generators, tv.perm,
+  witnessCoefficients, witnessValuations, witnessSupport, witnessState);
+  assert.equal(witnessStatus, 0n);
+  const witnessCoefficientValues = witnessCoefficients.toArray().map(String);
+  const witnessValuationValues = witnessValuations.toArray().map(String);
+  const principalWitnesses = Object.freeze({ status: String(witnessStatus),
+    rawRelationCoefficientsSha256: hash(witnessCoefficientValues),
+    factorBaseExponentsSha256: hash(witnessValuationValues),
+    factorCounts: Array.from(witnessSupport).map(Number),
+    state: Array.from(witnessState).map(Number), exact: true, complete: true });
   const result = Object.freeze({
-    ...projection(first, completed, classPresentation, unitKernel, compactUnit),
+    ...projection(first, completed, classPresentation, unitKernel, compactUnit,
+      principalWitnesses),
     preparedAuthoritySha256: context.preparedAuthoritySha256,
     prefixSha256: context.prefixSha256,
     analyticCatalogSha256: context.analyticCatalogSha256,
   });
-  LIVE_RESULTS.set(result, Object.freeze({ first, completed }));
+  LIVE_RESULTS.set(result, Object.freeze({ first, completed,
+    finalFactored: Object.freeze({ classM1, classUir, presentationOutput,
+      witnessCoefficients, witnessValuations, witnessSupport,
+      kernelOutput, dependency, inverse, multiples }) }));
   return result;
 }
 
