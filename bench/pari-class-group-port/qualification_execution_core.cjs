@@ -77,7 +77,7 @@ function validateStageTiming(timing, kernelNanoseconds) {
   };
 }
 
-function validateFreshSample(sample, { implementation, boundary }) {
+function validateFreshSample(sample, { implementation, boundary, tier }) {
   assert(sample && typeof sample === "object" && !Array.isArray(sample),
     `${implementation} adapter returned no sample`);
   assert.deepEqual(Object.keys(sample).sort(), [
@@ -86,8 +86,11 @@ function validateFreshSample(sample, { implementation, boundary }) {
   ].sort(), `${implementation} sample has unexpected fields`);
   const kernel = unsigned(sample.kernelNanoseconds,
     `${implementation} kernel time`, { positive: true });
-  const threadCpu = unsigned(sample.threadCpuNanoseconds,
-    `${implementation} thread CPU time`);
+  if (sample.threadCpuNanoseconds === null)
+    assert.equal(tier, "diagnostic",
+      `${implementation} thread CPU may be unavailable only for diagnostics`);
+  const threadCpu = sample.threadCpuNanoseconds === null ? null
+    : unsigned(sample.threadCpuNanoseconds, `${implementation} thread CPU time`);
   const peakRss = unsigned(sample.peakRssKiB, `${implementation} peak RSS`, {
     positive: true,
   });
@@ -146,6 +149,7 @@ async function executeFreshBatch(adapter, {
   };
   let kernel = 0n;
   let threadCpu = 0n;
+  let threadCpuAvailable = null;
   let peakRss = 0n;
   let perCallCounters = null;
   const resourceTotals = {};
@@ -157,7 +161,7 @@ async function executeFreshBatch(adapter, {
       boundary, fieldId, repetition, seed, tier,
     });
     const sample = validateFreshSample(raw, {
-      implementation: adapter.implementation, boundary,
+      implementation: adapter.implementation, boundary, tier,
     });
     assertSameDigests(digests, sample,
       `${adapter.implementation} fresh computation ${repetition}`);
@@ -165,7 +169,11 @@ async function executeFreshBatch(adapter, {
     assert.deepEqual(sample.workCounters, perCallCounters,
       `${adapter.implementation} source work changed across fresh computations`);
     kernel += sample.kernel;
-    threadCpu += sample.threadCpu;
+    const available = sample.threadCpu !== null;
+    if (threadCpuAvailable === null) threadCpuAvailable = available;
+    else assert.equal(available, threadCpuAvailable,
+      `${adapter.implementation} changed thread CPU availability across repetitions`);
+    if (available) threadCpu += sample.threadCpu;
     if (sample.peakRss > peakRss) peakRss = sample.peakRss;
     addCounterTotals(resourceTotals, sample.resources);
     if (sample.stageTiming !== null) {
@@ -178,7 +186,7 @@ async function executeFreshBatch(adapter, {
   return {
     repetitions,
     wallNanoseconds: String(kernel),
-    threadCpuNanoseconds: String(threadCpu),
+    threadCpuNanoseconds: threadCpuAvailable === true ? String(threadCpu) : null,
     peakRssKiB: String(peakRss),
     ...digests,
     counters: perCallCounters,
