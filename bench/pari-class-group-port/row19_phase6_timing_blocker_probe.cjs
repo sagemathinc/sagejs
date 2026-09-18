@@ -18,7 +18,7 @@ const EXPECTED = Object.freeze({
   unitCoordinatorSha256: "dc135ffdd504f2012945ebf5434c0cab4d48f268f6b0d26d5c499b7033cadc23",
   finalCoordinatorSha256: "58ce9efebe448739e2f9406d5754907870628b5def9b8eba28ac9f04289f75d7",
   terminalHostSha256: "802d86e73bae4f8dbc9a173dda4ee28a7981de55047cd6ae0c68d006da1ce833",
-  residentRelationRootSha256: "e6fc5660a786647ef9dfe82b581840a4831dea3918d6a84ef123f4439e4f4270",
+  residentRelationRootSha256: "03a92287ce8461f8f279ce45f9cbb51add4e3c707518c86fc179a4e037ca2c24",
 });
 const sha = bytes => crypto.createHash("sha256").update(bytes).digest("hex");
 const source = name => fs.readFileSync(path.join(__dirname, name));

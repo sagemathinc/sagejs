@@ -89,8 +89,8 @@ async function prepareResident(preparedInput) {
 function projection(first, completed, classPresentation, unitKernel, compactUnit,
   principalWitnesses) {
   const exact = completed.exact;
-  const finalFactoredResult = Object.freeze({
-    schema: "sagejs.pari-class-group/row19-resident-factored-result-v1",
+  const finalFactoredReceipt = Object.freeze({
+    schema: "sagejs.pari-class-group/row19-resident-factored-receipt-v1",
     status: "success", fieldId: "3.1.1086061775432017340256300.107",
     classGroup: Object.freeze({ classNumber: classPresentation.classNumber,
       invariants: classPresentation.invariants,
@@ -106,7 +106,7 @@ function projection(first, completed, classPresentation, unitKernel, compactUnit
       exactNorm: compactUnit.state[6], exactInverseNorm: compactUnit.state[7],
       expanded: false, exact: true, complete: true }),
     assumptions: Object.freeze(["GRH"]), exactFactoredCorrespondenceComplete: true,
-    serializedOwners: 0,
+    capabilityBacked: true, serializedOwners: 0,
   });
   return {
     schema: "sagejs.pari-class-group/row19-phase6-resident-relation-root-v1",
@@ -132,7 +132,7 @@ function projection(first, completed, classPresentation, unitKernel, compactUnit
     unitKernel,
     compactUnit,
     principalWitnesses,
-    finalFactoredResult,
+    finalFactoredReceipt,
     nextControl: completed.nextControl,
     ownerBytesUpperBound: completed.ownerBytesUpperBound + 16 * 1024 ** 2,
     nativeCoreBytes: completed.nativeCoreBytes,
@@ -252,4 +252,39 @@ function liveOwners(result) {
   return owners;
 }
 
-module.exports = { SOURCES, liveOwners, prepareResident, runResident };
+function materializeFinalFactored(result) {
+  const live = liveOwners(result);
+  const final = live.finalFactored;
+  const values = (owner, length = owner.length) => Object.freeze(
+    owner.toArray().slice(0, length).map(String));
+  const signed = owner => Object.freeze(Array.from(owner).map(Number));
+  return Object.freeze({
+    schema: "sagejs.pari-class-group/row19-materialized-factored-result-v1",
+    classGroup: Object.freeze({
+      m1: values(final.classM1),
+      uir: values(final.classUir),
+      rawPresentation: values(final.presentationOutput),
+      principalCoefficients: values(final.witnessCoefficients),
+      principalValuations: values(final.witnessValuations),
+      principalSupport: signed(final.witnessSupport),
+    }),
+    unitGroup: Object.freeze({
+      rawKernel: values(final.kernelOutput),
+      relationExponents: values(final.dependency),
+      inverseRelationExponents: values(final.inverse),
+      regulatorMultiples: signed(final.multiples),
+    }),
+    replayInputs: Object.freeze({
+      relationRecords: values(
+        live.completed.resident.collector.relation_records, 430 * 424),
+      relationGenerators: values(
+        live.completed.resident.collector.generators, 430 * 3),
+      terminalPermutation: Object.freeze(
+        signed(live.completed.resident.terminal.perm).slice(0, 424)),
+      terminalHnf: values(live.completed.resident.terminal.result_h, 81),
+    }),
+  });
+}
+
+module.exports = { SOURCES, liveOwners, materializeFinalFactored,
+  prepareResident, runResident };

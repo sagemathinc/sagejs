@@ -2,8 +2,11 @@
 
 Date: 2026-09-18
 
-This lane closes the largest honest resident cut currently available for row
-19. It does **not** claim a complete prepared-field class-and-unit kernel.
+This lane began as the largest resident relation cut for row 19 and now also
+retains the exact Smith presentation, reverse-HNF unit kernel, compact unit and
+inverse, and all nine factored principal witnesses. The factor-base and
+analytic-catalog prefixes are still prepared outside the resident timer, so it
+does **not** claim a complete prepared-input timing boundary.
 
 ## Boundary closed
 
@@ -34,10 +37,12 @@ The retained exact projection is unchanged:
 
 The root reports zero subprocesses, zero serialized owners, and zero duplicate
 first-HNF executions inside its boundary. Its conservative owner-byte upper
-bound is 505,170,392 bytes, below the four-GiB gate. A private `WeakMap` retains
-the first-HNF object plus the terminal collector/HNF native buffers for the
-next class/unit connection; those capabilities are absent from the serializable
-result projection and cannot be forged by copying it.
+bound is below the four-GiB gate. A private `WeakMap` retains the first-HNF
+object, terminal collector/HNF native buffers, Smith transforms, unit factors,
+and principal witnesses. The branded result is the capability key.
+`materializeFinalFactored(result)` copies the complete retained owners only
+after timing for independent replay; copying the JSON receipt does not confer
+that capability.
 
 ## Validation
 
@@ -63,20 +68,18 @@ correctness consumers are not forked onto different mathematics.
 
 ## Exact remaining source cut
 
-`residentPreparedKernelTimingReady` remains false. Three boundaries prevent
-an honest prepared-field or end-to-end timing claim:
+`residentPreparedKernelTimingReady` remains false. Two boundaries prevent an
+honest prepared-field timing claim:
 
 1. factor-base/initial-relation and analytic-catalog prefixes are ordinary
    Python orchestrators currently invoked in subprocesses during
    `prepareResident`;
-2. the class-principal, compact-unit, exact-unit, and final-result paths still
-   consume serialized owners and invoke CPython; and
-3. the existing first/terminal hosts perform authenticated native-artifact
+2. the existing first/terminal hosts perform authenticated native-artifact
    cache lookups inside the resident call rather than receiving a fully bound
    callable graph.
 
-Consequently this is a real resident relation/HNF/acceptance aggregate and a
-useful implementation predecessor, but it is deliberately marked
-`correspondenceComplete=false`, `publicComplete=false`, and
-`qualifiedTiming=false`. Timing the old complete transaction or presenting
-this subgraph as end-to-end would be misleading.
+The internal retained result is now marked `correspondenceComplete=true`: it
+contains capability-backed exact factored units and principal witnesses and the
+checker materializes and authenticates every owner outside the timer. It
+remains `publicComplete=false` and `qualifiedTiming=false`; it is neither a
+public certified result nor a complete prepared-input timing claim.

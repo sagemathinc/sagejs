@@ -4,6 +4,7 @@
 // sagejs-test-platform: linux-x64
 
 const assert = require("node:assert/strict");
+const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
@@ -14,6 +15,8 @@ const DEFAULT_INPUT =
   "/scratch/sagejs-pari-fresh-prepared-corpus-v1/prepared-row-19-ca58db0bc082112bf2922e3f5f4cf99fbaad71825a5650f6c32a29b3b8db6cdf.json";
 const ISOLATED_NATIVE_CACHE =
   "/scratch/sagejs-row19-phase6-resident/native-cache-v3";
+const hash = value => crypto.createHash("sha256")
+  .update(Buffer.from(JSON.stringify(value))).digest("hex");
 
 async function worker(input) {
   const prepared = JSON.parse(fs.readFileSync(input, "utf8"));
@@ -24,6 +27,10 @@ async function worker(input) {
   const live = root.liveOwners(result);
   const elapsedNs = process.hrtime.bigint() - start;
   const usage = process.resourceUsage();
+  // Materialization is deliberately after the resident timer.  It proves that
+  // the branded result is a capability for the complete retained owners, not
+  // merely a collection of unattached digests.
+  const materialized = root.materializeFinalFactored(result);
   assert.equal(result.serializedOwnersInsideRoot, 0);
   assert.equal(result.subprocessesInsideRoot, 0);
   assert.equal(result.duplicateFirstHnfExecutions, 0);
@@ -72,9 +79,30 @@ async function worker(input) {
     [353, 355, 354, 353, 353, 353, 354, 353, 352]);
   assert.deepEqual(result.principalWitnesses.state,
     [0, 9, 430, 424, 3180, 41, 3816, 3870, 1, 1]);
-  assert.equal(result.finalFactoredResult.status, "success");
-  assert.equal(result.finalFactoredResult.exactFactoredCorrespondenceComplete, true);
-  assert.equal(result.finalFactoredResult.serializedOwners, 0);
+  assert.equal(result.finalFactoredReceipt.status, "success");
+  assert.equal(result.finalFactoredReceipt.exactFactoredCorrespondenceComplete, true);
+  assert.equal(result.finalFactoredReceipt.capabilityBacked, true);
+  assert.equal(result.finalFactoredReceipt.serializedOwners, 0);
+  assert.equal(materialized.classGroup.m1.length, 81);
+  assert.equal(materialized.classGroup.uir.length, 81);
+  assert.equal(materialized.classGroup.rawPresentation.length, 9 * 430);
+  assert.equal(materialized.classGroup.principalCoefficients.length, 9 * 430);
+  assert.equal(materialized.classGroup.principalValuations.length, 9 * 424);
+  assert.equal(materialized.unitGroup.rawKernel.length, 6 * 430);
+  assert.equal(materialized.unitGroup.relationExponents.length, 430);
+  assert.equal(materialized.unitGroup.inverseRelationExponents.length, 430);
+  assert.equal(materialized.replayInputs.relationRecords.length, 424 * 430);
+  assert.equal(materialized.replayInputs.relationGenerators.length, 3 * 430);
+  assert.equal(materialized.replayInputs.terminalPermutation.length, 424);
+  assert.equal(hash(materialized.classGroup.principalCoefficients),
+    result.principalWitnesses.rawRelationCoefficientsSha256);
+  assert.equal(hash(materialized.classGroup.principalValuations),
+    result.principalWitnesses.factorBaseExponentsSha256);
+  assert.equal(hash(materialized.unitGroup.rawKernel), result.unitKernel.sha256);
+  assert.equal(hash(materialized.unitGroup.relationExponents),
+    result.compactUnit.relationExponentsSha256);
+  assert.equal(hash(materialized.unitGroup.inverseRelationExponents),
+    result.compactUnit.inverseRelationExponentsSha256);
   assert.equal(result.correspondenceComplete, true);
   process.stdout.write(`${JSON.stringify({ result,
     measurement: { elapsedNs: String(elapsedNs), maxRssKiB: usage.maxRSS,
