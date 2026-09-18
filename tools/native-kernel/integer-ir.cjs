@@ -33,21 +33,36 @@ const TYPE_ALIASES = new Map([
   ["NativeIntegerVector", "NativeIntegerVector"],
 ]);
 const INT64_BUFFER_TYPES = new Set(["Int64Buffer", "Int64Record"]);
-const EXACT_BUFFER_TYPES = new Set([...INT64_BUFFER_TYPES, "IntegerBuffer"]);
+const EXACT_BUFFER_TYPES = new Set([
+  ...INT64_BUFFER_TYPES,
+  "IntegerBuffer",
+  "WorkspaceIntegerBuffer",
+  "WorkspaceIntegerBufferView",
+]);
 const BORROWED_BUFFER_TYPES = new Set([...EXACT_BUFFER_TYPES, "UInt64Buffer"]);
 const LIVE_INTEGER_VECTOR_TYPE = "NativeIntegerVector";
 const LIVE_INTEGER_MATRIX_TYPE = "NativeIntegerMatrix";
 const LIVE_EXACT_ARENA_TYPE = "NativeExactArena";
+const LIVE_WORKSPACE_ARENA_TYPE = "NativeWorkspaceArena";
+const WORKSPACE_INTEGER_BUFFER_TYPE = "WorkspaceIntegerBuffer";
+const WORKSPACE_INTEGER_BUFFER_VIEW_TYPE = "WorkspaceIntegerBufferView";
 const LIVE_RECORD_VECTOR_PREFIX = "NativeRecordVector:";
 const LIVE_BOUNDED_MAP_PREFIX = "NativeBoundedMap:";
 const LIVE_BOUNDED_SET_PREFIX = "NativeBoundedSet:";
 const LIVE_SPARSE_INTEGER_ROWS_TYPE = "NativeSparseIntegerRows";
 const LIVE_EXACT_OWNER_TYPES = new Set([
   LIVE_EXACT_ARENA_TYPE,
+  LIVE_WORKSPACE_ARENA_TYPE,
   LIVE_INTEGER_VECTOR_TYPE,
   LIVE_INTEGER_MATRIX_TYPE,
   LIVE_SPARSE_INTEGER_ROWS_TYPE,
 ]);
+
+function isIntegerBufferType(type) {
+  return type === "IntegerBuffer" ||
+    type === WORKSPACE_INTEGER_BUFFER_TYPE ||
+    type === WORKSPACE_INTEGER_BUFFER_VIEW_TYPE;
+}
 
 function liveRecordVectorType(record) {
   return `${LIVE_RECORD_VECTOR_PREFIX}${record}`;
@@ -396,7 +411,7 @@ function copyKind(type) {
   }
   if (type === "Float64") return "float64.copy";
   if (type === "Float64Buffer") return "float64.buffer.copy";
-  if (type === "IntegerBuffer") return "integer.buffer.copy";
+  if (isIntegerBufferType(type)) return "integer.buffer.copy";
   if (type === "UInt64Buffer") return "uint64.buffer.copy";
   return INT64_BUFFER_TYPES.has(type)
     ? "int64.buffer.copy"
@@ -469,6 +484,7 @@ function createContext(
     activeBoundedCollections: new Map(),
     activeSparseIntegerRows: new Set(),
     activeExactArenas: new Map(),
+    activeWorkspaceArenas: new Map(),
     activeArenaForeignResources: new Set(),
     records,
     fn,
@@ -551,6 +567,24 @@ function liveExactArenaName(node, context) {
     context.activeExactArenas.has(node.name) &&
       context.initialized.has(node.name),
     `NativeExactArena ${node.name} is outside its lexical scope`,
+  );
+  return node.name;
+}
+
+function liveWorkspaceArenaName(node, context) {
+  expect(
+    context,
+    node,
+    nodeType(node) === "AST_SymbolRef" &&
+      context.variables.get(node.name) === LIVE_WORKSPACE_ARENA_TYPE,
+    "workspace-arena operation requires a NativeWorkspaceArena local",
+  );
+  expect(
+    context,
+    node,
+    context.activeWorkspaceArenas.has(node.name) &&
+      context.initialized.has(node.name),
+    `NativeWorkspaceArena ${node.name} is outside its lexical scope`,
   );
   return node.name;
 }
@@ -1727,7 +1761,7 @@ function lowerCall(node, context, operations) {
     operations.push({
       kind: buffer.type === "Float64Buffer"
         ? "float64.buffer.length"
-        : buffer.type === "IntegerBuffer"
+        : isIntegerBufferType(buffer.type)
         ? "integer.buffer.length"
         : buffer.type === "UInt64Buffer"
           ? "uint64.buffer.length"
@@ -1889,8 +1923,9 @@ function lowerCall(node, context, operations) {
     expect(
       context,
       args[0],
-      buffer.type === (exactView ? "IntegerBuffer" : uint64View
-        ? "UInt64Buffer" : "Int64Buffer"),
+      (exactView ? isIntegerBufferType(buffer.type) :
+        buffer.type === (uint64View
+        ? "UInt64Buffer" : "Int64Buffer")),
       `${name}() requires an ${exactView ? "IntegerBuffer" : uint64View
         ? "UInt64Buffer" : "Int64Buffer"}`,
     );
@@ -1906,7 +1941,10 @@ function lowerCall(node, context, operations) {
       args[2],
       operations,
     );
-    const resultType = exactView ? "IntegerBuffer" : uint64View
+    const resultType = exactView
+      ? (buffer.type === "IntegerBuffer"
+        ? "IntegerBuffer" : WORKSPACE_INTEGER_BUFFER_VIEW_TYPE)
+      : uint64View
       ? "UInt64Buffer" : "Int64Record";
     const target = temporary(context, node, resultType);
     operations.push({
@@ -2070,7 +2108,8 @@ function lowerCall(node, context, operations) {
     expect(
       context,
       arg || node,
-      value.type === expectedType,
+      value.type === expectedType ||
+        (expectedType === "IntegerBuffer" && isIntegerBufferType(value.type)),
       `${name} argument ${index + 1} expects ${expectedType}, got ${value.type}`,
     );
     return value;
@@ -2371,7 +2410,7 @@ function lowerExpression(node, context, operations, expectedType = undefined) {
       operations.push({
         kind: buffer.type === "Float64Buffer"
           ? "float64.buffer.get"
-          : buffer.type === "IntegerBuffer"
+          : isIntegerBufferType(buffer.type)
           ? "integer.buffer.get"
           : buffer.type === "UInt64Buffer"
             ? "uint64.buffer.get"
@@ -2755,6 +2794,12 @@ function assignScalar(targetNode, value, context, operations) {
     nodeType(targetNode) === "AST_SymbolRef",
     "native assignment targets must be local names",
   );
+  expect(
+    context,
+    targetNode,
+    value.type !== WORKSPACE_INTEGER_BUFFER_TYPE,
+    "NativeWorkspaceArena IntegerBuffer owners cannot be aliased or captured",
+  );
   ensureVariable(context, targetNode, targetNode.name, value.type);
   if (context.foreignResources.has(value.type)) {
     expect(
@@ -3069,7 +3114,7 @@ function lowerBufferAssignment(item, right, operator, context) {
     const currentType = INT64_BUFFER_TYPES.has(buffer.type) ? "int64" : valueType;
     let current = temporary(context, item, currentType);
     operations.push({
-      kind: buffer.type === "IntegerBuffer"
+      kind: isIntegerBufferType(buffer.type)
         ? "integer.buffer.get"
         : buffer.type === "UInt64Buffer"
           ? "uint64.buffer.get"
@@ -3105,7 +3150,7 @@ function lowerBufferAssignment(item, right, operator, context) {
     value = { name: target, type: valueType };
   }
   operations.push({
-    kind: buffer.type === "IntegerBuffer"
+    kind: isIntegerBufferType(buffer.type)
       ? "integer.buffer.set"
       : buffer.type === "UInt64Buffer"
         ? "uint64.buffer.set"
@@ -3444,6 +3489,86 @@ function lowerArenaAllocation(statement, context) {
         : "integer.arena.vector.allocate",
     arena,
     ...descriptor,
+  });
+  return operations;
+}
+
+function lowerWorkspaceArenaAllocation(statement, context) {
+  const assign = statement.body;
+  if (
+    nodeType(assign) !== "AST_Assign" ||
+    assign.operator !== "=" ||
+    nodeType(assign.left) !== "AST_SymbolRef" ||
+    nodeType(assign.right) !== "AST_Call" ||
+    nodeType(assign.right.expression) !== "AST_Dot" ||
+    nodeType(assign.right.expression.expression) !== "AST_SymbolRef"
+  ) {
+    return undefined;
+  }
+  const arenaNode = assign.right.expression.expression;
+  if (context.variables.get(arenaNode.name) !== LIVE_WORKSPACE_ARENA_TYPE) {
+    return undefined;
+  }
+  const arena = liveWorkspaceArenaName(arenaNode, context);
+  const arenaState = context.activeWorkspaceArenas.get(arena);
+  expect(
+    context,
+    statement,
+    context.loopDepth === arenaState.loopDepth,
+    "NativeWorkspaceArena children cannot be allocated repeatedly in a native loop",
+  );
+  const method = assign.right.expression.property;
+  expect(
+    context,
+    assign.right.expression,
+    method === "integer_buffer",
+    `unsupported NativeWorkspaceArena allocation ${method}`,
+  );
+  const args = array(assign.right.args);
+  expect(
+    context,
+    assign.right,
+    args.length === 2 && array(assign.right.args?.kwarg_items).length === 0 &&
+      !assign.right.args?.starargs,
+    "NativeWorkspaceArena.integer_buffer() requires length and literal word capacity",
+  );
+  const wordCapacity = integerLiteral(args[1]);
+  expect(
+    context,
+    args[1],
+    wordCapacity !== undefined && wordCapacity > 0n &&
+      wordCapacity <= ((1n << 64n) - 1n),
+    "workspace IntegerBuffer word capacity must be a positive uint64 literal",
+  );
+  const operations = [];
+  const length = lowerUint64Operand(args[0], context, operations);
+  expect(
+    context,
+    args[0],
+    length.type === "uint64",
+    "workspace IntegerBuffer length must be uint64",
+  );
+  const child = assign.left.name;
+  expect(
+    context,
+    assign.left,
+    !context.variables.has(child),
+    `NativeWorkspaceArena child ${child} shadows an existing native value`,
+  );
+  ensureVariable(context, assign.left, child, WORKSPACE_INTEGER_BUFFER_TYPE);
+  context.initialized.add(child);
+  arenaState.children.push({
+    owner: child,
+    type: WORKSPACE_INTEGER_BUFFER_TYPE,
+    length: length.name,
+    wordCapacity: wordCapacity.toString(),
+  });
+  operations.push({
+    kind: "workspace.arena.integer_buffer.allocate",
+    arena,
+    owner: child,
+    length: length.name,
+    wordCapacity: wordCapacity.toString(),
   });
   return operations;
 }
@@ -3959,6 +4084,18 @@ function lowerStatements(statements, context) {
       continue;
     }
     if (nodeType(statement) === "AST_SimpleStatement") {
+      const workspaceArenaAllocation = lowerWorkspaceArenaAllocation(
+        statement,
+        context,
+      );
+      if (workspaceArenaAllocation !== undefined) {
+        annotateOperations(
+          workspaceArenaAllocation,
+          sourceSpan(statement, context.filename),
+        );
+        result.push(...workspaceArenaAllocation);
+        continue;
+      }
       const arenaAllocation = lowerArenaAllocation(statement, context);
       if (arenaAllocation !== undefined) {
         annotateOperations(
@@ -4024,13 +4161,17 @@ function lowerStatements(statements, context) {
         ? LIVE_INTEGER_VECTOR_TYPE
         : constructorName === LIVE_INTEGER_MATRIX_TYPE
           ? LIVE_INTEGER_MATRIX_TYPE
-          : constructorName === LIVE_EXACT_ARENA_TYPE
+        : constructorName === LIVE_EXACT_ARENA_TYPE
             ? LIVE_EXACT_ARENA_TYPE
+          : constructorName === LIVE_WORKSPACE_ARENA_TYPE
+            ? LIVE_WORKSPACE_ARENA_TYPE
             : undefined;
       const expectedArguments = ownerType === LIVE_INTEGER_MATRIX_TYPE
         ? 3
         : ownerType === LIVE_EXACT_ARENA_TYPE
           ? 2
+        : ownerType === LIVE_WORKSPACE_ARENA_TYPE
+          ? 1
           : 2;
       expect(
         context,
@@ -4043,6 +4184,8 @@ function lowerStatements(statements, context) {
           ? "NativeIntegerMatrix() requires rows, columns, and memory_limit"
           : ownerType === LIVE_EXACT_ARENA_TYPE
             ? "NativeExactArena() requires memory_limit and temporary_limit"
+          : ownerType === LIVE_WORKSPACE_ARENA_TYPE
+            ? "NativeWorkspaceArena() requires memory_limit"
             : "NativeIntegerVector() requires capacity and memory_limit",
       );
       expect(
@@ -4059,12 +4202,66 @@ function lowerStatements(statements, context) {
         !context.variables.has(owner),
         `live exact owner ${owner} shadows an existing native value`,
       );
+      if (ownerType === LIVE_WORKSPACE_ARENA_TYPE) {
+        expect(
+          context,
+          statement,
+          context.activeWorkspaceArenas.size === 0 &&
+            context.activeExactArenas.size === 0,
+          "nested NativeWorkspaceArena or NativeExactArena scopes are not supported",
+        );
+        const setup = [];
+        const memoryLimit = lowerUint64Operand(constructorArgs[0], context, setup);
+        expect(
+          context,
+          constructor,
+          memoryLimit.type === "uint64",
+          "NativeWorkspaceArena memory_limit must be uint64",
+        );
+        ensureVariable(context, clause.alias, owner, ownerType);
+        context.initialized.add(owner);
+        const arenaState = {
+          children: [],
+          controlDepth: context.controlDepth,
+          loopDepth: context.loopDepth,
+        };
+        context.activeWorkspaceArenas.set(owner, arenaState);
+        context.resourceScopeDepth += 1;
+        const body = lowerBlock(statement.body, context);
+        context.resourceScopeDepth -= 1;
+        expect(
+          context,
+          statement,
+          body.at(-1)?.kind === "return",
+          "NativeWorkspaceArena body must end with an unconditional return",
+        );
+        context.activeWorkspaceArenas.delete(owner);
+        context.initialized.delete(owner);
+        for (const [name, type] of context.variables) {
+          if (type === WORKSPACE_INTEGER_BUFFER_TYPE ||
+              type === WORKSPACE_INTEGER_BUFFER_VIEW_TYPE) {
+            context.initialized.delete(name);
+          }
+        }
+        const operation = {
+          kind: "workspace.arena.scope",
+          owner,
+          memoryLimit: memoryLimit.name,
+          setup,
+          children: arenaState.children,
+          body,
+        };
+        annotateOperations([operation], sourceSpan(statement, context.filename));
+        result.push(operation);
+        continue;
+      }
       if (ownerType === LIVE_EXACT_ARENA_TYPE) {
         expect(
           context,
           statement,
-          context.activeExactArenas.size === 0,
-          "nested NativeExactArena scopes are not supported",
+          context.activeExactArenas.size === 0 &&
+            context.activeWorkspaceArenas.size === 0,
+          "nested NativeExactArena or NativeWorkspaceArena scopes are not supported",
         );
         const setup = [];
         const memoryLimit = lowerUint64Operand(
@@ -4412,7 +4609,8 @@ function containsReturn(statements) {
         statement.kind === "loop.range_exact" ||
         statement.kind === "integer.vector.scope" ||
         statement.kind === "integer.matrix.scope" ||
-        statement.kind === "integer.arena.scope") &&
+        statement.kind === "integer.arena.scope" ||
+        statement.kind === "workspace.arena.scope") &&
         containsReturn(statement.body))
     ) {
       return true;

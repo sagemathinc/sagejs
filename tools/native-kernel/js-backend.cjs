@@ -315,6 +315,11 @@ ${fn.name}.nativeAvailable = nativeAddon !== null;`;
 }
 
 function emitExactStatement(operation, indent, resourceStack = null) {
+  if (operation.kind === "workspace.arena.integer_buffer.allocate") {
+    return `${indent}${operation.owner} = ` +
+      `nativeWorkspaceIntegerBufferCreate(${operation.arena}, ` +
+      `${operation.length}, ${operation.wordCapacity}n);`;
+  }
   if (operation.kind === "integer.workspace.allocate" ||
       operation.kind === "int64.workspace.allocate") {
     return `${indent}${operation.target} = ` +
@@ -938,6 +943,26 @@ ${indent}}`;
       `${indent}} finally {`,
       ...cleanup,
       `${indent}  nativeExactArenaClose(${operation.owner});`,
+      `${indent}}`,
+    ].join("\n");
+  }
+  if (operation.kind === "workspace.arena.scope") {
+    const cleanup = [...operation.children].reverse().map((child) =>
+      `${indent}  nativeWorkspaceIntegerBufferClose(${child.owner});`
+    );
+    return [
+      ...operation.setup.map((item) =>
+        emitExactStatement(item, indent, resourceStack)
+      ),
+      `${indent}${operation.owner} = createNativeWorkspaceArena(` +
+        `${operation.memoryLimit});`,
+      `${indent}try {`,
+      ...operation.body.map((item) =>
+        emitExactStatement(item, `${indent}  `, resourceStack)
+      ),
+      `${indent}} finally {`,
+      ...cleanup,
+      `${indent}  nativeWorkspaceArenaClose(${operation.owner});`,
       `${indent}}`,
     ].join("\n");
   }
@@ -2817,6 +2842,75 @@ function nativeExactArenaClose(arena) {
   }
   if (arena.budget.charged !== 0n) {
     throw new RangeError("NativeExactArena closed with live exact children");
+  }
+  arena.budget.open = false;
+  arena.open = false;
+}
+
+function createNativeWorkspaceArena(memoryLimit) {
+  return {
+    budget: createNativeExactBudget(
+      memoryLimit,
+      "NativeWorkspaceArena memory limit exceeded",
+    ),
+    open: true,
+  };
+}
+
+function nativeWorkspaceIntegerBufferCreate(arena, length, wordCapacity) {
+  if (arena === null || typeof arena !== "object" || arena.open !== true) {
+    throw new Error("NativeWorkspaceArena is closed");
+  }
+  const exactLength = BigInt(length);
+  const exactCapacity = BigInt(wordCapacity);
+  const uint64Maximum = 18446744073709551615n;
+  if (exactLength < 0n || exactLength > uint64Maximum ||
+      exactCapacity <= 0n || exactCapacity > uint64Maximum) {
+    throw new RangeError("workspace IntegerBuffer shape is outside uint64");
+  }
+  const entryCharge = 4n + 8n * exactCapacity;
+  if (exactLength !== 0n && entryCharge > uint64Maximum / exactLength) {
+    throw new RangeError("workspace IntegerBuffer byte count overflow");
+  }
+  const chargedBytes = exactLength * entryCharge;
+  nativeExactBudgetReplace(arena.budget, 0n, chargedBytes);
+  try {
+    if (exactLength > BigInt(Number.MAX_SAFE_INTEGER) ||
+        exactCapacity > BigInt(Number.MAX_SAFE_INTEGER)) {
+      throw new RangeError(
+        "JavaScript fallback workspace IntegerBuffer shape is too large",
+      );
+    }
+    const buffer = createIntegerBuffer(
+      Number(exactLength), Number(exactCapacity),
+    );
+    buffer.workspaceArena = arena;
+    buffer.workspaceCharge = chargedBytes;
+    buffer.workspaceOpen = true;
+    return buffer;
+  } catch (error) {
+    nativeExactBudgetRelease(arena.budget, chargedBytes);
+    throw error;
+  }
+}
+
+function nativeWorkspaceIntegerBufferClose(buffer) {
+  if (buffer === null || typeof buffer !== "object" ||
+      buffer.workspaceOpen !== true) {
+    return;
+  }
+  nativeExactBudgetRelease(buffer.workspaceArena.budget, buffer.workspaceCharge);
+  buffer.workspaceArena = null;
+  buffer.workspaceCharge = 0n;
+  buffer.workspaceOpen = false;
+}
+
+function nativeWorkspaceArenaClose(arena) {
+  if (arena === null || typeof arena !== "object" || arena.open !== true) {
+    return;
+  }
+  if (arena.budget.charged !== 0n) {
+    throw new RangeError("NativeWorkspaceArena closed with live workspaces");
   }
   arena.budget.open = false;
   arena.open = false;

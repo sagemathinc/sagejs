@@ -1180,6 +1180,88 @@ class NativeExactArena:
         self._open = False
 
 
+class NativeWorkspaceArena:
+    """Lexically own bounded packed workspaces used by native call graphs.
+
+    The ordinary-Python implementation allocates zero-filled lists. Native
+    compilation instead owns the existing packed `IntegerBuffer`
+    representation on the heap, charges its complete sizes-and-limbs storage
+    against `memory_limit`, and releases every child on all exits. Children
+    may be borrowed by private native helpers but cannot escape the `with`
+    statement.
+
+    Unlike `NativeExactArena`, this arena does not install a GMP allocator or
+    reserve a temporary checkpoint. It only controls explicitly declared
+    packed workspaces.
+    """
+
+    _UINT64_MAX = (1 << 64) - 1
+
+    def __init__(self, memory_limit: int) -> None:
+        exact_limit = int(memory_limit)
+        if exact_limit < 0 or exact_limit > self._UINT64_MAX:
+            raise OverflowError("NativeWorkspaceArena memory limit is outside uint64")
+        self._budget = _NativeExactBudget(
+            exact_limit,
+            "NativeWorkspaceArena memory limit exceeded",
+        )
+        self._children: list[tuple[IntegerBuffer, int]] = []
+        self._open = True
+        self._entered = False
+
+    def _require_open(self) -> None:
+        if not self._open:
+            raise ValueError("NativeWorkspaceArena is closed")
+
+    def __enter__(self) -> NativeWorkspaceArena:
+        if self._entered or not self._open:
+            raise ValueError("NativeWorkspaceArena cannot be re-entered")
+        self._entered = True
+        return self
+
+    def __exit__(self, _type: Any, _value: Any, _traceback: Any) -> bool:
+        self.close()
+        return False
+
+    def integer_buffer(
+        self,
+        length: int,
+        word_capacity: int,
+    ) -> IntegerBuffer:
+        """Create a zero-filled packed exact buffer within this arena."""
+        self._require_open()
+        exact_length = int(length)
+        exact_capacity = int(word_capacity)
+        if exact_length < 0 or exact_length > self._UINT64_MAX:
+            raise OverflowError("workspace IntegerBuffer length is outside uint64")
+        if exact_capacity <= 0 or exact_capacity > self._UINT64_MAX:
+            raise OverflowError(
+                "workspace IntegerBuffer word capacity is outside uint64"
+            )
+        charge = exact_length * (4 + 8 * exact_capacity)
+        if charge > self._UINT64_MAX:
+            raise OverflowError("workspace IntegerBuffer storage is outside uint64")
+        self._budget.reserve(0, charge)
+        try:
+            child = [0 for _index in range(exact_length)]
+        except BaseException:
+            self._budget.release(charge)
+            raise
+        self._children.append((child, charge))
+        return child
+
+    def close(self) -> None:
+        """Release every packed child in reverse creation order."""
+        if not self._open:
+            return
+        for child, charge in reversed(self._children):
+            child.clear()
+            self._budget.release(charge)
+        self._children.clear()
+        self._budget.close()
+        self._open = False
+
+
 class RationalBuffer:
     """Owned normalized exact-rational storage for fallback execution.
 
@@ -1846,6 +1928,7 @@ __all__ = [
     "Int64Buffer",
     "Int64Record",
     "NativeExactArena",
+    "NativeWorkspaceArena",
     "NativeBoundedMap",
     "NativeBoundedSet",
     "NativeSparseIntegerRows",

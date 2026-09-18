@@ -165,6 +165,10 @@ function operationInputs(operation) {
       return [operation.matrix, operation.left, operation.right];
     case "integer.arena.scope":
       return [operation.memoryLimit, operation.temporaryLimit];
+    case "workspace.arena.scope":
+      return [operation.memoryLimit];
+    case "workspace.arena.integer_buffer.allocate":
+      return [operation.arena, operation.length];
     case "integer.arena.vector.allocate":
       return [operation.arena, operation.capacity, operation.maximumBits];
     case "integer.arena.matrix.allocate":
@@ -295,7 +299,8 @@ function walkStatements(statements, handlers) {
     }
     if (statement.kind === "integer.vector.scope" ||
         statement.kind === "integer.matrix.scope" ||
-        statement.kind === "integer.arena.scope") {
+        statement.kind === "integer.arena.scope" ||
+        statement.kind === "workspace.arena.scope") {
       handlers.operation(statement);
       walkStatements(statement.setup, handlers);
       walkStatements(statement.body, handlers);
@@ -344,7 +349,8 @@ function introduceResidentBorrows(fn) {
       } else if (
         statement.kind === "integer.vector.scope" ||
         statement.kind === "integer.matrix.scope" ||
-        statement.kind === "integer.arena.scope"
+        statement.kind === "integer.arena.scope" ||
+        statement.kind === "workspace.arena.scope"
       ) {
         rewrite(statement.setup);
         rewrite(statement.body);
@@ -655,7 +661,8 @@ function executionProfile(fn) {
       }
       if (operation.kind === "integer.vector.scope" ||
           operation.kind === "integer.matrix.scope" ||
-          operation.kind === "integer.arena.scope") {
+          operation.kind === "integer.arena.scope" ||
+          operation.kind === "workspace.arena.scope") {
         profile.liveExactScopes += 1;
       }
       if (operation.kind === "integer.constant") {
@@ -775,6 +782,8 @@ function localEffects(fn) {
       if (operation.kind === "integer.vector.scope" ||
           operation.kind === "integer.matrix.scope" ||
           operation.kind === "integer.arena.scope" ||
+          operation.kind === "workspace.arena.scope" ||
+          operation.kind === "workspace.arena.integer_buffer.allocate" ||
           operation.kind === "integer.arena.vector.allocate" ||
           operation.kind === "integer.arena.matrix.allocate" ||
           operation.kind === "record.arena.vector.allocate" ||
@@ -942,7 +951,8 @@ function bufferWrites(fn, dependencyEffects) {
           statement.kind === "loop.range_exact" ||
           statement.kind === "integer.vector.scope" ||
           statement.kind === "integer.matrix.scope" ||
-          statement.kind === "integer.arena.scope") {
+          statement.kind === "integer.arena.scope" ||
+          statement.kind === "workspace.arena.scope") {
         if (statement.setup) {
           changed = visit(statement.setup) || changed;
         }
@@ -1361,6 +1371,21 @@ function liveExactWorkspaceAnalysis(fn, backend) {
           ...(earlyCheckpoint === undefined
             ? {}
             : { checkpointLifetime: earlyCheckpoint }),
+        });
+      } else if (operation.kind === "workspace.arena.scope") {
+        scopes.push({
+          owner: operation.owner,
+          memoryLimit: operation.memoryLimit,
+          storage: "budgeted-packed-integer-buffer-arena",
+          children: operation.children.map((child) => ({
+            owner: child.owner,
+            storage: "packed-signed-magnitude-integer-buffer",
+            length: child.length,
+            wordCapacity: child.wordCapacity,
+            cleanup: "reverse-owner-order-all-exit-idempotent",
+          })),
+          cleanup: "reverse-child-order-all-exit-idempotent",
+          canonicalAuthority: false,
         });
       }
     },

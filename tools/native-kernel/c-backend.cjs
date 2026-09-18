@@ -103,7 +103,8 @@ function isInt64BufferType(type) {
 }
 
 function isIntegerBufferType(type) {
-  return type === "IntegerBuffer";
+  return type === "IntegerBuffer" || type === "WorkspaceIntegerBuffer" ||
+    type === "WorkspaceIntegerBufferView";
 }
 
 function isUInt64BufferType(type) {
@@ -1298,6 +1299,19 @@ function emitExactOperation(operation, context, indent) {
       `${indent}${cName(operation.owner)}_initialized = 1;`,
     ].join("\n");
   }
+  if (operation.kind === "workspace.arena.integer_buffer.allocate") {
+    const arena = exactValue(operation.arena, context);
+    const owner = exactValue(operation.owner, context);
+    return [
+      `${indent}if (!sagejs_native_workspace_integer_buffer_init(status, ` +
+        `&${owner}, &${arena}, ${exactValue(operation.length, context)}, ` +
+        `UINT64_C(${operation.wordCapacity}), ` +
+        `&${cName(operation.owner)}_charge))`,
+      `${indent}    goto fail;`,
+      `${indent}${cName(operation.owner)}_arena = &${arena};`,
+      `${indent}${cName(operation.owner)}_initialized = 1;`,
+    ].join("\n");
+  }
   if (operation.kind === "integer.arena.matrix.allocate") {
     const arena = exactValue(operation.arena, context);
     const owner = exactValue(operation.owner, context);
@@ -1983,6 +1997,29 @@ function emitExactStatements(statements, context, indent) {
       );
       continue;
     }
+    if (statement.kind === "workspace.arena.scope") {
+      const owner = exactValue(statement.owner, context);
+      lines.push(
+        emitExactStatements(statement.setup, context, indent),
+        `${indent}if (!sagejs_native_workspace_arena_init(status, &${owner}, ` +
+          `${exactValue(statement.memoryLimit, context)}))`,
+        `${indent}    goto fail;`,
+        `${indent}${cName(statement.owner)}_initialized = 1;`,
+        emitExactStatements(statement.body, context, indent),
+        ...[...statement.children].reverse().flatMap((child) => [
+          `${indent}if (${cName(child.owner)}_initialized)`,
+          `${indent}{`,
+          `${indent}    sagejs_native_workspace_integer_buffer_clear(` +
+            `&${exactValue(child.owner, context)}, ` +
+            `${cName(child.owner)}_arena, ${cName(child.owner)}_charge);`,
+          `${indent}    ${cName(child.owner)}_initialized = 0;`,
+          `${indent}}`,
+        ]),
+        `${indent}sagejs_native_workspace_arena_clear(&${owner});`,
+        `${indent}${cName(statement.owner)}_initialized = 0;`,
+      );
+      continue;
+    }
     if (statement.kind === "integer.arena.scope") {
       const owner = exactValue(statement.owner, context);
       const lastAllocation = statement.body.findLastIndex((operation) =>
@@ -2315,6 +2352,32 @@ function exactDeclarations(fn) {
       );
       continue;
     }
+    if (local.type === "NativeWorkspaceArena") {
+      declarations.push(
+        `    sagejs_native_workspace_arena ${cName(local.name)} = {0};`,
+        `    int ${cName(local.name)}_initialized = 0;`,
+      );
+      arenaCleanup.unshift(
+        `    if (${cName(local.name)}_initialized)`,
+        `        sagejs_native_workspace_arena_clear(&${cName(local.name)});`,
+      );
+      continue;
+    }
+    if (local.type === "WorkspaceIntegerBuffer") {
+      declarations.push(
+        `    sagejs_integer_buffer ${cName(local.name)} = {0};`,
+        `    sagejs_native_workspace_arena *${cName(local.name)}_arena = NULL;`,
+        `    uint64_t ${cName(local.name)}_charge = 0;`,
+        `    int ${cName(local.name)}_initialized = 0;`,
+      );
+      cleanup.unshift(
+        `    if (${cName(local.name)}_initialized)`,
+        `        sagejs_native_workspace_integer_buffer_clear(` +
+          `&${cName(local.name)}, ${cName(local.name)}_arena, ` +
+          `${cName(local.name)}_charge);`,
+      );
+      continue;
+    }
     if (local.type === "Integer" || local.type.startsWith("IntegerSequence[")) {
       continue;
     }
@@ -2373,13 +2436,13 @@ function exactDeclarations(fn) {
      owners therefore always come after exact scratch, resident children, and
      foreign resources in both success and failure cleanup. */
   const checkpointCleanupSymbols = fn.checkpointCleanupSymbols || [];
-  if (arenaCleanup.length > 0 && checkpointCleanupSymbols.length > 0) {
-    const liveCheckpoint = fn.locals
+  const exactArenaLocals = fn.locals
       .filter((local) => local.type === "NativeExactArena")
       .map((local) =>
         `(${cName(local.name)}_initialized && ` +
-        `${cName(local.name)}.checkpoint.open)`)
-      .join(" || ");
+        `${cName(local.name)}.checkpoint.open)`);
+  if (exactArenaLocals.length > 0 && checkpointCleanupSymbols.length > 0) {
+    const liveCheckpoint = exactArenaLocals.join(" || ");
     cleanup.push(
       `    if (${liveCheckpoint})`,
       "    {",
@@ -3117,16 +3180,22 @@ ${cleanup.join("\n")}
 function emitExactWrappers(fn, options = {}) {
   const diagnosticStageClock =
     options.diagnosticStageClock?.function === fn.name;
-  if (fn.analysis?.backend?.kind === "fmpz") {
+  const ownsDirectExactStorage =
+    fn.params.some((param) => isLiveExactOwnerType(param.type)) ||
+    fn.locals.some((local) => isLiveExactOwnerType(local.type));
+  if (fn.analysis?.backend?.kind === "fmpz" || ownsDirectExactStorage) {
+    const taggedWrapper = fn.analysis?.backend?.kind === "fmpz"
+      ? [emitTaggedWrapper(fn, {
+        wrapper: `compiled_${fn.name}_tagged`,
+      })]
+      : [];
     return [
       emitExactWrapper(fn, {
         wrapper: `compiled_${fn.name}`,
         call: `sagejs_kernel_${fn.name}`,
         diagnosticStageClock,
       }),
-      emitTaggedWrapper(fn, {
-        wrapper: `compiled_${fn.name}_tagged`,
-      }),
+      ...taggedWrapper,
       emitExactWrapper(fn, { diagnosticStageClock }),
     ].join("\n\n");
   }
@@ -3821,6 +3890,7 @@ typedef struct
 function generateIntegerBufferCoreSupport(
   includeFmpz = false,
   privateBuffers = false,
+  includeWorkspaceArena = false,
 ) {
   return `
 static int sagejs_integer_buffer_index(
@@ -4061,7 +4131,129 @@ static int sagejs_integer_buffer_set_tagged(
     }
     return sagejs_integer_buffer_set_mpz(
         status, buffer, position, value->big);
-}`;
+}
+
+${includeWorkspaceArena ? `
+typedef struct
+{
+    uint64_t limit;
+    uint64_t charged;
+    int open;
+} sagejs_native_workspace_arena;
+
+static int sagejs_native_workspace_arena_init(
+    sagejs_native_status *status,
+    sagejs_native_workspace_arena *arena,
+    uint64_t memory_limit)
+{
+    (void) status;
+    memset(arena, 0, sizeof(*arena));
+    arena->limit = memory_limit;
+    arena->open = 1;
+    return 1;
+}
+
+static void sagejs_native_workspace_arena_clear(
+    sagejs_native_workspace_arena *arena)
+{
+    if (arena == NULL)
+        return;
+    arena->limit = 0;
+    arena->charged = 0;
+    arena->open = 0;
+}
+
+static int sagejs_native_workspace_integer_buffer_init(
+    sagejs_native_status *status,
+    sagejs_integer_buffer *buffer,
+    sagejs_native_workspace_arena *arena,
+    uint64_t length,
+    uint64_t word_capacity,
+    uint64_t *charge)
+{
+    size_t exact_length, exact_capacity, limb_count;
+    uint64_t sizes_bytes, limbs_bytes, total;
+    memset(buffer, 0, sizeof(*buffer));
+    *charge = 0;
+    if (!arena->open)
+    {
+        sagejs_native_status_set(status, SAGEJS_NATIVE_ERROR,
+            "NativeWorkspaceArena is closed");
+        return 0;
+    }
+    if (word_capacity == 0 || length > (uint64_t) SIZE_MAX ||
+        word_capacity > (uint64_t) SIZE_MAX)
+    {
+        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,
+            "workspace IntegerBuffer shape is outside size_t");
+        return 0;
+    }
+    exact_length = (size_t) length;
+    exact_capacity = (size_t) word_capacity;
+    if (exact_length != 0 && exact_capacity > SIZE_MAX / exact_length)
+    {
+        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,
+            "workspace IntegerBuffer limb count overflow");
+        return 0;
+    }
+    limb_count = exact_length * exact_capacity;
+    if (length > UINT64_MAX / sizeof(int32_t) ||
+        limb_count > UINT64_MAX / sizeof(uint64_t))
+    {
+        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,
+            "workspace IntegerBuffer byte count overflow");
+        return 0;
+    }
+    sizes_bytes = length * sizeof(int32_t);
+    limbs_bytes = (uint64_t) limb_count * sizeof(uint64_t);
+    if (limbs_bytes > UINT64_MAX - sizes_bytes)
+    {
+        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,
+            "workspace IntegerBuffer byte count overflow");
+        return 0;
+    }
+    total = sizes_bytes + limbs_bytes;
+    if (arena->charged > arena->limit || total > arena->limit - arena->charged)
+    {
+        sagejs_native_status_set(status, SAGEJS_NATIVE_ERROR,
+            "NativeWorkspaceArena memory limit exceeded");
+        return 0;
+    }
+    arena->charged += total;
+    if (exact_length != 0)
+        buffer->sizes = (int32_t *) calloc(exact_length, sizeof(int32_t));
+    if (limb_count != 0)
+        buffer->limbs = (uint64_t *) calloc(limb_count, sizeof(uint64_t));
+    if ((exact_length != 0 && buffer->sizes == NULL) ||
+        (limb_count != 0 && buffer->limbs == NULL))
+    {
+        free(buffer->limbs);
+        free(buffer->sizes);
+        memset(buffer, 0, sizeof(*buffer));
+        arena->charged -= total;
+        sagejs_native_status_set(status, SAGEJS_NATIVE_ERROR,
+            "NativeWorkspaceArena IntegerBuffer allocation failed");
+        return 0;
+    }
+    buffer->length = exact_length;
+    buffer->word_capacity = exact_capacity;
+    *charge = total;
+    return 1;
+}
+
+static void sagejs_native_workspace_integer_buffer_clear(
+    sagejs_integer_buffer *buffer,
+    sagejs_native_workspace_arena *arena,
+    uint64_t charge)
+{
+    if (buffer == NULL)
+        return;
+    free(buffer->limbs);
+    free(buffer->sizes);
+    memset(buffer, 0, sizeof(*buffer));
+    if (arena != NULL && arena->open && charge <= arena->charged)
+        arena->charged -= charge;
+}` : ""}`;
 }
 
 function generateIntegerBufferNodeAdapter() {
@@ -5119,6 +5311,7 @@ function generateHostCore(ir, options = {}) {
   // owned and fmpz-only aggregate borrows continue to use their direct core.
   const bridgeFunctions = exact.filter((fn) =>
     !fn.params.some((param) => isLiveExactOwnerType(param.type)) &&
+    !fn.locals.some((local) => local.type === "NativeWorkspaceArena") &&
     fn.analysis?.fmpzExact?.hostBoundary !== "none-internal-borrowed-aggregate-only"
   );
   const checkedVariants = checkedRegions.flatMap((region) => region.variants);
@@ -5152,6 +5345,9 @@ function generateHostCore(ir, options = {}) {
     fn.params.some((param) => isIntegerBufferType(param.type)) ||
     fn.locals.some((local) => isIntegerBufferType(local.type))
   );
+  const usesWorkspaceArena = exact.some((fn) =>
+    fn.locals.some((local) => local.type === "NativeWorkspaceArena")
+  );
   const pieces = [
     generateStatusRuntime(),
     generateDiagnosticStageClockSupport(options.diagnosticStageClock),
@@ -5162,7 +5358,9 @@ function generateHostCore(ir, options = {}) {
     privateBuffers?.emission.support || "",
     usesIntegerBuffers
       ? generateIntegerBufferCoreSupport(
-        fmpz.selected.length > 0, privateBuffers !== undefined,
+        fmpz.selected.length > 0,
+        privateBuffers !== undefined,
+        usesWorkspaceArena,
       )
       : "",
     exact.map((fn) => internalSignature(fn, true)).join("\n"),
