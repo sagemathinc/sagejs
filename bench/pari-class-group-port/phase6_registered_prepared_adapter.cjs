@@ -65,18 +65,16 @@ async function prepareSage(panelIndex) {
       ? await host.prepareResident(1, prepared)
       : await host.prepareResident(prepared);
     return request => {
-      const threadStarted = process.threadCpuUsage();
       const raw = host.runInvocation(resident, host.prepareInvocation(resident));
-      return { raw, projection: raw.projection, threadStarted };
+      return { raw, diagnosticProjection: raw.projection };
     };
   }
   if (panelIndex === 3) {
     const host = require("./row3_phase6_resident_kernel_host.cjs");
     const resident = await host.prepareResident(loadPrepared(panelIndex).filename);
     return request => {
-      const threadStarted = process.threadCpuUsage();
       const raw = host.runInvocation(resident);
-      return { raw, projection: raw.projection, threadStarted };
+      return { raw, diagnosticProjection: raw.projection };
     };
   }
   if (panelIndex === 14) {
@@ -89,20 +87,18 @@ async function prepareSage(panelIndex) {
       authentication.authenticatePreparedNf(prepared).sha256, data: prepared };
     const resident = await host.prepareResident(preparedEnvelope);
     return async request => {
-      const threadStarted = process.threadCpuUsage();
       const raw = await host.runResident(resident);
       const semantic = campaign.sageProjection(raw);
-      return { raw, projection: timing.commonProjectionFromSage(semantic),
-        threadStarted };
+      return { raw,
+        diagnosticProjection: timing.commonProjectionFromSage(semantic) };
     };
   }
   if (panelIndex === 16) {
     const host = require("./row16_phase6_sage_prepared_adapter.cjs");
     const resident = await host.prepareResident(loadPrepared(panelIndex).filename);
     return request => {
-      const threadStarted = process.threadCpuUsage();
       const raw = host.runResident(resident);
-      return { raw, projection: raw.projection, threadStarted };
+      return { raw, diagnosticProjection: raw.projection };
     };
   }
   if ([8, 10, 11].includes(panelIndex)) {
@@ -118,7 +114,6 @@ async function prepareSage(panelIndex) {
         : "createRow11ResidentPreparedAdapter"];
     const adapter = await factory();
     return async request => {
-      const threadStarted = process.threadCpuUsage();
       // The row-10 resident predates the corpus-wide generated field id and
       // retains PARI's polynomial label as its private assertion.  Both names
       // are frozen above; expose only the canonical corpus id at this boundary.
@@ -126,35 +121,32 @@ async function prepareSage(panelIndex) {
         ? { ...request, fieldId: "pari-2.17.4:x^4-2000022*x-2000042" }
         : request;
       const raw = await adapter.runFresh(privateRequest);
-      return { raw, projection: raw.output, threadStarted };
+      return { raw, diagnosticProjection: raw.output };
     };
   }
   if (panelIndex === 18) {
     const host = require("./row18_phase6_resident_host.cjs");
     const resident = await host.prepareResident(loadPrepared(panelIndex).prepared);
     return request => {
-      const threadStarted = process.threadCpuUsage();
       const invocation = host.prepareInvocation(resident);
       const raw = host.runInvocation(resident, invocation);
-      return { raw, projection: raw.projection, threadStarted };
+      return { raw, diagnosticProjection: raw.projection };
     };
   }
   if (panelIndex === 20) {
     const host = require("./row20_phase6_resident_kernel.cjs");
     const resident = await host.prepareResident(loadPrepared(panelIndex).prepared);
     return request => {
-      const threadStarted = process.threadCpuUsage();
       const raw = host.runResident(resident);
-      return { raw, projection: raw, threadStarted };
+      return { raw, diagnosticProjection: raw };
     };
   }
   if (panelIndex === 23) {
     const host = require("./row23_phase6_sage_prepared_adapter.cjs");
     const resident = await host.prepareResident(loadPrepared(panelIndex).filename);
     return request => {
-      const threadStarted = process.threadCpuUsage();
       const raw = host.runResident(resident);
-      return { raw, projection: raw.projection, threadStarted };
+      return { raw, diagnosticProjection: raw.projection };
     };
   }
   throw new Error(`unsupported registered Sage.js row ${panelIndex}`);
@@ -184,7 +176,6 @@ async function runPari(panelIndex, request) {
   } else throw new Error(`unsupported registered PARI row ${panelIndex}`);
   await client.ready();
   try {
-    const threadStarted = process.threadCpuUsage();
     const raw = await client.run(request.seed);
     let projection = raw.projection;
     if (panelIndex === 14) {
@@ -193,7 +184,7 @@ async function runPari(panelIndex, request) {
     } else if ([16, 23].includes(panelIndex)) {
       projection = module.commonProjection(raw);
     }
-    return { raw, projection, threadStarted };
+    return { raw, diagnosticProjection: projection };
   } finally { await client.close(); }
 }
 
@@ -205,20 +196,22 @@ async function createRegisteredPreparedAdapter(configuration) {
   const { panelIndex, implementation } = configuration;
   assert(["sagejs", "pari"].includes(implementation));
   const admitted = registration(panelIndex);
-  const verifier = require(admitted.admissionCapability.verifier.modulePath)
-    [admitted.admissionCapability.verifier.sampleExportName];
+  const verifierAuthority = admitted.admissionCapability.matchedSample.verifier;
+  const verifier = require(verifierAuthority.modulePath)
+    [verifierAuthority.exportName];
   const sage = implementation === "sagejs" ? await prepareSage(panelIndex) : null;
   return {
     implementation,
-    projectionSchema: admitted.projectionSchema,
+    projectionSchema: admitted.matchedOutputSchema,
     async runFresh(request) {
       const result = implementation === "sagejs"
         ? await sage(request) : await runPari(panelIndex, request);
       const verified = await verifier({ implementation, request,
-        raw: result.raw, diagnosticProjection: result.projection });
+        raw: result.raw, diagnosticProjection: result.diagnosticProjection });
       return admissionRegistry().validateMatchedSampleV2({
         registration: admitted,
         capability: admitted.admissionCapability,
+        implementation,
         verified,
       });
     },

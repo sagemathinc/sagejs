@@ -16,12 +16,17 @@ const REGISTRATION_SCHEMA =
   "sagejs.pari-class-group/phase6-prepared-adapter-registration-v2";
 const CAPABILITY_SCHEMA =
   "sagejs.pari-class-group/phase6-matched-state-admission-capability-v2";
+const PROVENANCE_MANIFEST_SCHEMA =
+  "sagejs.pari-class-group/phase6-implementation-provenance-manifest-v1";
+const CPU_OBSERVATION_SCHEMA =
+  "sagejs.pari-class-group/phase6-cpu-observation-v1";
 const WRAPPER_PATH = path.join(__dirname,
   "phase6_registered_prepared_adapter.cjs");
 const FACTORY = "createRegisteredPreparedAdapter";
 
 const REQUIRED_CAPABILITIES = Object.freeze([
-  "row-specific-evidence-verifier",
+  "sage-correctness-evidence-verifier",
+  "row-specific-matched-sample-verifier",
   "class-invariants",
   "class-generator-ideals-orders-principal-witnesses",
   "unit-compact-or-factored-basis-or-exact-not-given",
@@ -32,10 +37,20 @@ const REQUIRED_CAPABILITIES = Object.freeze([
   "replay-mutation-coverage",
   "independently-observed-work-counters",
   "independently-observed-native-call-counters",
-  "source-and-provenance-hashes",
 ]);
 
-const COVERAGE_KEYS = Object.freeze(REQUIRED_CAPABILITIES.slice(1));
+const CORRECTNESS_COVERAGE_KEYS = Object.freeze([
+  "class-invariants",
+  "class-generator-ideals-orders-principal-witnesses",
+  "unit-compact-or-factored-basis-or-exact-not-given",
+  "regulator-value-and-log-lattice-semantics",
+  "torsion",
+  "terminal-precision-retry-state",
+  "independent-replay-distinct-from-output",
+  "replay-mutation-coverage",
+  "source-and-provenance-hashes",
+]);
+const COVERAGE_KEYS = CORRECTNESS_COVERAGE_KEYS;
 const MUTATION_FAMILIES = Object.freeze([
   "class-invariants", "class-generators", "class-principal-witnesses",
   "unit-basis", "regulator-log-lattice", "torsion", "terminal-state",
@@ -65,6 +80,14 @@ function deepFreeze(value) {
 // bundle and sample contract have been reviewed.
 const TRUSTED_V2_ADMISSIONS = deepFreeze([]);
 
+// These are the rows for which phase6_registered_prepared_adapter.cjs has both
+// a Sage.js preparation path and a PARI execution path. Diagnostic inventory is
+// allowed to be broader, but the trust root may never consume a row outside
+// this set.
+const DISPATCHABLE_PANEL_INDICES = Object.freeze([
+  0, 1, 3, 4, 8, 10, 11, 14, 16, 18, 20, 23,
+]);
+
 const commonCubic = ({ row, id, polynomial, classNumber, invariants }) => ({
   schema: `sagejs.pari-class-group/row${row}-phase6-common-projection-v1`,
   field: { id, polynomialAscending: polynomial },
@@ -77,7 +100,7 @@ const commonCubic = ({ row, id, polynomial, classNumber, invariants }) => ({
 const definitions = [
   {
     panelIndex: 8,
-    expectedProjection: {
+    expectedDiagnosticProjection: {
       schema: "sagejs.pari-class-group/row8-phase6-neutral-exact-projection-v1",
       field: { id:
         "generated-sha256-0857fab7114ab0045f1b91601101549c7b8d854c5c999b91afcb190cd2863363",
@@ -94,7 +117,7 @@ const definitions = [
   },
   {
     panelIndex: 10,
-    expectedProjection: {
+    expectedDiagnosticProjection: {
       schema: "sagejs.pari-class-group/row10-phase6-neutral-exact-projection-v1",
       field: { id:
         "generated-sha256-984793770b4a15a79fbc9984fe352fbc867491917733c78bdba3b1856c18e3a7",
@@ -112,7 +135,7 @@ const definitions = [
   },
   {
     panelIndex: 11,
-    expectedProjection: {
+    expectedDiagnosticProjection: {
       schema: "sagejs.pari-class-group/row11-phase6-neutral-exact-projection-v1",
       field: { id:
         "generated-sha256-147ddd296edb3764954d6142a499d17edcfecc635aec0181d4beda65d97ad4ab",
@@ -130,7 +153,7 @@ const definitions = [
   },
   {
     panelIndex: 0,
-    expectedProjection: commonCubic({ row: 0,
+    expectedDiagnosticProjection: commonCubic({ row: 0,
       id: "pari-2.17.4:x^3-20018*x+20034",
       polynomial: ["20034", "-20018", "0", "1"],
       classNumber: "1", invariants: [] }),
@@ -142,7 +165,7 @@ const definitions = [
   },
   {
     panelIndex: 1,
-    expectedProjection: commonCubic({ row: 1,
+    expectedDiagnosticProjection: commonCubic({ row: 1,
       id: "generated-sha256-dec56e7e41f5f60071249da2e66871ed837a3c6e65d821c328e7b4c57adaff3f",
       polynomial: ["20018", "-20010", "0", "1"],
       classNumber: "3", invariants: ["3"] }),
@@ -154,7 +177,7 @@ const definitions = [
   },
   {
     panelIndex: 3,
-    expectedProjection: commonCubic({ row: 3,
+    expectedDiagnosticProjection: commonCubic({ row: 3,
       id: "generated-sha256-11997528676ebeb1c0636be2cb828b5ed5a527ea18eb3a4ace953984da507de9",
       polynomial: ["20000000042", "-20000000022", "0", "1"],
       classNumber: "6", invariants: ["6"] }),
@@ -166,7 +189,7 @@ const definitions = [
   },
   {
     panelIndex: 4,
-    expectedProjection: commonCubic({ row: 4,
+    expectedDiagnosticProjection: commonCubic({ row: 4,
       id: "generated-sha256-806defcf929c9cfff7467b8e7ea7b9f939cdd042bce8c1f5a310f5688904e3b9",
       polynomial: ["20000000018", "-20000000010", "0", "1"],
       classNumber: "2", invariants: ["2"] }),
@@ -178,7 +201,7 @@ const definitions = [
   },
   {
     panelIndex: 14,
-    expectedProjection: {
+    expectedDiagnosticProjection: {
       schema: "sagejs.pari-class-group/row14-prepared-common-projection-v1",
       field: { id:
         "generated-sha256-e1d4643ab62bde9546d63340545e5302c2cef517222d569e634fb5e2093f6413",
@@ -197,7 +220,7 @@ const definitions = [
   },
   {
     panelIndex: 16,
-    expectedProjection: {
+    expectedDiagnosticProjection: {
       schema: "sagejs.pari-class-group/row16-flag-zero-matched-projection-v1",
       field: { id: "3.1.1002718428660.2",
         polynomialAscending: ["-73393658", "-146523", "0", "1"] },
@@ -215,7 +238,7 @@ const definitions = [
   },
   {
     panelIndex: 18,
-    expectedProjection: {
+    expectedDiagnosticProjection: {
       schema: "sagejs.pari-class-group/row18-phase6-neutral-exact-projection-v1",
       field: { id: "3.1.1005907102200.3",
         polynomialAscending: ["-7353960", "177570", "0", "1"] },
@@ -232,7 +255,7 @@ const definitions = [
   },
   {
     panelIndex: 19,
-    expectedProjection: {
+    expectedDiagnosticProjection: {
       schema: "sagejs.pari-class-group/row19-phase6-common-projection-v1",
       field: { id: "3.1.1086061775432017340256300.107",
         polynomialAscending: ["-51050867718180330", "0", "0", "1"] },
@@ -250,7 +273,7 @@ const definitions = [
   },
   {
     panelIndex: 20,
-    expectedProjection: {
+    expectedDiagnosticProjection: {
       schema: "sagejs.pari-class-group/row20-phase6-neutral-exact-projection-v1",
       field: { id: "5.1.1000000.1",
         polynomialAscending: ["-12", "-5", "0", "0", "0", "1"] },
@@ -266,7 +289,7 @@ const definitions = [
   },
   {
     panelIndex: 23,
-    expectedProjection: {
+    expectedDiagnosticProjection: {
       schema: "sagejs.pari-class-group/row23-phase6-common-projection-v1",
       field: { id: "5.5.1002836007889.1",
         polynomialAscending: ["341", "-970", "772", "-141", "-2", "1"] },
@@ -293,16 +316,18 @@ function descriptor(panelIndex, implementation, projectionSchema) {
   });
 }
 
-function registration(definition) {
-  const projection = structuredClone(definition.expectedProjection);
-  const projectionSchema = projection.schema;
+function registration(definition, trustedCapability) {
+  const projection = structuredClone(definition.expectedDiagnosticProjection);
+  const diagnosticProjectionSchema = projection.schema;
+  const matchedOutputSchema = trustedCapability?.matchedOutputSchema ?? null;
   return Object.freeze({
     schema: REGISTRATION_SCHEMA,
     panelIndex: definition.panelIndex,
     fieldId: projection.field.id,
     boundary: "prepared-kernel",
-    projectionSchema,
-    expectedProjection: deepFreeze(projection),
+    diagnosticProjectionSchema,
+    expectedDiagnosticProjection: deepFreeze(projection),
+    matchedOutputSchema,
     expectedWorkMetadata: deepFreeze({ ...definition.expectedWorkMetadata }),
     requirements: Object.freeze({
       sagejs: Object.freeze({ modulePath: path.join(__dirname,
@@ -311,20 +336,65 @@ function registration(definition) {
         definition.pari[0]), exports: Object.freeze(definition.pari[1]) }),
     }),
     adapters: Object.freeze({
-      sagejs: descriptor(definition.panelIndex, "sagejs", projectionSchema),
-      pari: descriptor(definition.panelIndex, "pari", projectionSchema),
+      sagejs: descriptor(definition.panelIndex, "sagejs",
+        matchedOutputSchema ?? diagnosticProjectionSchema),
+      pari: descriptor(definition.panelIndex, "pari",
+        matchedOutputSchema ?? diagnosticProjectionSchema),
     }),
-    admissionCapability: null,
-    admission: deepFreeze({ status: "diagnostic-only", matchedReady: false,
-      freshCorrectness: true, sagePreparedKernelTiming: false,
-      pariPreparedKernelTiming: false, commonSemanticProjection: false,
-      mutuallyExclusiveStageTiming: false,
-      stageAttribution: "not-admitted",
-      missingCapabilities: [...REQUIRED_CAPABILITIES] }),
+    admissionCapability: trustedCapability ?? null,
+    admission: deepFreeze(trustedCapability ? matchedAdmission()
+      : diagnosticAdmission()),
   });
 }
 
-const REGISTERED = Object.freeze(definitions.map(registration));
+function validateTrustIndexSets(definitionRows, trustedRows, dispatchableRows) {
+  assert(Array.isArray(definitionRows) && Array.isArray(trustedRows) &&
+    Array.isArray(dispatchableRows));
+  for (const row of [...definitionRows, ...trustedRows, ...dispatchableRows])
+    assert(Number.isSafeInteger(row) && row >= 0,
+      "trust wiring indices must be nonnegative safe integers");
+  assert.equal(new Set(definitionRows).size, definitionRows.length,
+    "prepared adapter definitions have duplicate panel indices");
+  assert.equal(new Set(trustedRows).size, trustedRows.length,
+    "trusted v2 admissions have duplicate panel indices");
+  assert.equal(new Set(dispatchableRows).size, dispatchableRows.length,
+    "dispatchable rows have duplicate panel indices");
+  for (const row of dispatchableRows)
+    assert(definitionRows.includes(row),
+      `dispatchable row ${row} is orphaned from the inventory`);
+  for (const row of trustedRows)
+    assert(definitionRows.includes(row),
+      `trusted v2 admission row ${row} is orphaned from the inventory`);
+  for (const row of trustedRows)
+    assert(dispatchableRows.includes(row),
+      `trusted v2 admission row ${row} has no complete wrapper dispatch`);
+  return Object.freeze(definitionRows.map(panelIndex => Object.freeze({
+    panelIndex, trusted: trustedRows.includes(panelIndex),
+  })));
+}
+
+function wireTrustedAdmissions(definitionsToWire, trustedAdmissions) {
+  const definitionRows = definitionsToWire.map(value => value.panelIndex);
+  const trustedRows = trustedAdmissions.map(value => value.panelIndex);
+  validateTrustIndexSets(definitionRows, trustedRows,
+    DISPATCHABLE_PANEL_INDICES);
+  const consumed = new Set();
+  const registrations = definitionsToWire.map(definition => {
+    const capability = trustedAdmissions.find(value =>
+      value.panelIndex === definition.panelIndex);
+    if (capability) {
+      assert(!consumed.has(capability),
+        `trusted v2 admission row ${definition.panelIndex} was consumed twice`);
+      consumed.add(capability);
+    }
+    return registration(definition, capability);
+  });
+  assert.equal(consumed.size, trustedAdmissions.length,
+    "trusted v2 admissions were not consumed exactly once");
+  return Object.freeze(registrations);
+}
+
+const REGISTERED = wireTrustedAdmissions(definitions, TRUSTED_V2_ADMISSIONS);
 
 function validateRequirement(requirement, label, { loadModules = true } = {}) {
   exactKeys(requirement, ["exports", "modulePath"], label);
@@ -341,84 +411,154 @@ function validateRequirement(requirement, label, { loadModules = true } = {}) {
   }
 }
 
+function authenticateFile(item, label) {
+  assert(path.isAbsolute(item.modulePath), `${label} path must be absolute`);
+  assert(fs.existsSync(item.modulePath), `${label} module is missing`);
+  assert(fs.statSync(item.modulePath).isFile(), `${label} is not a file`);
+  assert.match(item.sha256, SHA256, `${label} SHA-256 is malformed`);
+  const actual = require("node:crypto").createHash("sha256")
+    .update(fs.readFileSync(item.modulePath)).digest("hex");
+  assert.equal(actual, item.sha256, `${label} source hash changed`);
+}
+
+function validateImplementationProvenance(manifest, implementation) {
+  exactKeys(manifest, ["artifacts", "implementation", "schema"],
+    `${implementation} provenance manifest`);
+  assert.equal(manifest.schema, PROVENANCE_MANIFEST_SCHEMA);
+  assert.equal(manifest.implementation, implementation);
+  assert(Array.isArray(manifest.artifacts) && manifest.artifacts.length > 0,
+    `${implementation} provenance has no artifacts`);
+  const roles = [];
+  for (const artifact of manifest.artifacts) {
+    exactKeys(artifact, ["role", "sha256"],
+      `${implementation} provenance artifact`);
+    assert.match(artifact.role, /^[a-z][a-z0-9-]*$/);
+    assert.match(artifact.sha256, SHA256);
+    roles.push(artifact.role);
+  }
+  assert.equal(new Set(roles).size, roles.length,
+    `${implementation} provenance has duplicate artifact roles`);
+}
+
 function validateCapability(capability, registration) {
-  exactKeys(capability, ["coverage", "evidence", "fieldId", "panelIndex",
-    "projectionSchema", "sampleContract", "schema", "verifier"],
-  "v2 admission capability");
+  exactKeys(capability, ["fieldId", "matchedOutputSchema", "matchedSample",
+    "panelIndex", "sageCorrectness", "schema"], "v2 admission capability");
   assert.equal(capability.schema, CAPABILITY_SCHEMA);
   assert.equal(capability.panelIndex, registration.panelIndex,
     "v2 capability row differs from registration");
   assert.equal(capability.fieldId, registration.fieldId,
     "v2 capability field differs from registration");
-  assert.equal(capability.projectionSchema, registration.projectionSchema,
-    "v2 capability projection schema differs from registration");
-  exactKeys(capability.evidence, ["modulePath", "schema", "sha256"],
-    "v2 admission evidence");
-  exactKeys(capability.verifier, ["evidenceExportName", "modulePath",
-    "sampleExportName", "sha256"],
-    "v2 admission verifier");
-  assert.equal(capability.evidence.schema,
+  assert.equal(capability.matchedOutputSchema, registration.matchedOutputSchema,
+    "v2 matched-output schema differs from registration");
+  assert.notEqual(capability.matchedOutputSchema,
+    registration.diagnosticProjectionSchema,
+    "matched output and diagnostic projection schemas must be distinct");
+  assert.match(capability.matchedOutputSchema,
+    /^sagejs\.pari-class-group\/[A-Za-z0-9._/-]+$/);
+
+  const correctness = capability.sageCorrectness;
+  exactKeys(correctness, ["coverage", "evidence", "leanSemanticDigest",
+    "mutationNames", "verifier"], "Sage.js correctness admission");
+  assert.match(correctness.leanSemanticDigest, SHA256,
+    "Sage.js correctness lean-semantic digest is malformed");
+  exactKeys(correctness.evidence, ["modulePath", "schema", "sha256"],
+    "Sage.js correctness evidence");
+  exactKeys(correctness.verifier, ["exportName", "modulePath", "sha256"],
+    "Sage.js correctness verifier");
+  assert.equal(correctness.evidence.schema,
     `sagejs.pari-class-group/row${registration.panelIndex}-phase6-matched-state-evidence-v2`,
     "v2 evidence schema must be bound to the registration row");
   const trusted = TRUSTED_V2_ADMISSIONS.find(value =>
     value.panelIndex === registration.panelIndex);
   assert(trusted,
     `row ${registration.panelIndex} has no centrally trusted v2 admission`);
-  assert.deepEqual(capability, trusted,
+  assert.equal(capability, trusted,
     `row ${registration.panelIndex} v2 capability differs from central authority`);
-  exactKeys(capability.sampleContract, ["mutationNames", "precisionStateSchema",
-    "nativeCallObservationSchema", "provenance", "replaySchema",
-    "retryStateSchema", "stateEnvelopeSchema", "terminalStateSchema",
-    "workCounterKeys", "workObservationSchema"], "v2 sample contract");
-  assert.deepEqual(capability.sampleContract.mutationNames, MUTATION_FAMILIES);
-  assert(Array.isArray(capability.sampleContract.workCounterKeys) &&
-    capability.sampleContract.workCounterKeys.length > 0);
-  assert.equal(new Set(capability.sampleContract.workCounterKeys).size,
-    capability.sampleContract.workCounterKeys.length);
-  for (const key of capability.sampleContract.workCounterKeys)
+  assert.deepEqual(correctness.mutationNames, MUTATION_FAMILIES);
+  exactKeys(correctness.coverage, CORRECTNESS_COVERAGE_KEYS,
+    "Sage.js correctness coverage");
+  for (const key of CORRECTNESS_COVERAGE_KEYS)
+    assert.equal(correctness.coverage[key], true,
+      `Sage.js correctness coverage lacks ${key}`);
+
+  const matched = capability.matchedSample;
+  exactKeys(matched, ["contract", "verifier"], "matched sample admission");
+  exactKeys(matched.verifier, ["exportName", "modulePath", "sha256"],
+    "matched sample verifier");
+  const contract = matched.contract;
+  exactKeys(contract, ["cpuPolicy", "nativeCallObservationSchema",
+    "precisionStateSchema", "provenanceByImplementation", "retryStateSchema",
+    "stageTimingLeafKeys", "stateEnvelopeSchema", "terminalStateSchema",
+    "workCounterKeys", "workObservationSchema"], "v2 matched sample contract");
+  assert(Array.isArray(contract.workCounterKeys) &&
+    contract.workCounterKeys.length > 0);
+  assert.equal(new Set(contract.workCounterKeys).size,
+    contract.workCounterKeys.length);
+  for (const key of contract.workCounterKeys)
     assert.match(key, /^[A-Za-z][A-Za-z0-9]*$/);
-  exactKeys(capability.sampleContract.provenance,
-    ["adapterSha256", "cacheSha256", "coreSha256", "sourceSha256"],
-    "v2 pinned provenance");
-  for (const hash of Object.values(capability.sampleContract.provenance))
-    assert.match(hash, SHA256);
-  for (const key of ["nativeCallObservationSchema", "replaySchema",
-    "stateEnvelopeSchema", "terminalStateSchema", "precisionStateSchema",
-    "retryStateSchema", "workObservationSchema"])
-    assert.equal(typeof capability.sampleContract[key], "string");
-  for (const [label, item] of [["evidence", capability.evidence],
-    ["verifier", capability.verifier]]) {
-    assert(path.isAbsolute(item.modulePath), `${label} path must be absolute`);
-    assert(fs.existsSync(item.modulePath), `${label} module is missing`);
-    assert(fs.statSync(item.modulePath).isFile(), `${label} is not a file`);
-    assert.match(item.sha256, SHA256, `${label} SHA-256 is malformed`);
-    const actual = require("node:crypto").createHash("sha256")
-      .update(fs.readFileSync(item.modulePath)).digest("hex");
-    assert.equal(actual, item.sha256, `${label} source hash changed`);
+  assert(Array.isArray(contract.stageTimingLeafKeys) &&
+    contract.stageTimingLeafKeys.length > 0);
+  assert.equal(new Set(contract.stageTimingLeafKeys).size,
+    contract.stageTimingLeafKeys.length);
+  for (const key of contract.stageTimingLeafKeys)
+    assert.match(key, /^[A-Za-z][A-Za-z0-9]*$/);
+  exactKeys(contract.provenanceByImplementation, ["pari", "sagejs"],
+    "implementation provenance authority");
+  for (const implementation of ["sagejs", "pari"])
+    validateImplementationProvenance(
+      contract.provenanceByImplementation[implementation], implementation);
+  exactKeys(contract.cpuPolicy, ["pari", "sagejs"], "CPU policy");
+  for (const implementation of ["sagejs", "pari"]) {
+    const policy = contract.cpuPolicy[implementation];
+    exactKeys(policy, ["authorities", "availability"],
+      `${implementation} CPU policy`);
+    assert(["required", "optional"].includes(policy.availability));
+    assert(Array.isArray(policy.authorities) && policy.authorities.length > 0);
+    assert.equal(new Set(policy.authorities).size, policy.authorities.length);
   }
-  assert.equal(typeof capability.verifier.evidenceExportName, "string");
-  assert.equal(typeof capability.verifier.sampleExportName, "string");
-  exactKeys(capability.coverage, COVERAGE_KEYS, "v2 evidence coverage");
-  for (const key of COVERAGE_KEYS)
-    assert.equal(capability.coverage[key], true, `v2 coverage lacks ${key}`);
+  assert.equal(contract.cpuPolicy.sagejs.availability, "required");
+  assert.deepEqual(contract.cpuPolicy.sagejs.authorities,
+    ["process-thread-self"]);
+  assert.equal(contract.cpuPolicy.pari.availability, "optional");
+  for (const authority of contract.cpuPolicy.pari.authorities)
+    assert(["pari-child-rusage", "unavailable-parent-cannot-measure-child"]
+      .includes(authority), `untrusted PARI CPU authority ${authority}`);
+  for (const key of ["nativeCallObservationSchema",
+    "stateEnvelopeSchema", "terminalStateSchema", "precisionStateSchema",
+    "retryStateSchema", "workObservationSchema"].filter(key =>
+    Object.hasOwn(contract, key))) assert.equal(typeof contract[key], "string");
+  authenticateFile(correctness.evidence, "Sage.js correctness evidence");
+  authenticateFile(correctness.verifier, "Sage.js correctness verifier");
+  authenticateFile(matched.verifier, "matched sample verifier");
+  assert.equal(typeof correctness.verifier.exportName, "string");
+  assert.equal(typeof matched.verifier.exportName, "string");
   // Unlike diagnostic module checks, trusted v2 evidence authentication can
   // never be bypassed through a validation option.
-  const verifierModule = require(capability.verifier.modulePath);
-  const verifier = verifierModule[capability.verifier.evidenceExportName];
+  const verifierModule = require(correctness.verifier.modulePath);
+  const verifier = verifierModule[correctness.verifier.exportName];
   assert.equal(typeof verifier, "function", "v2 evidence verifier is missing");
-  assert.equal(typeof verifierModule[capability.verifier.sampleExportName],
-    "function", "v2 live-sample verifier is missing");
-  const evidence = JSON.parse(fs.readFileSync(capability.evidence.modulePath,
+  const sampleVerifierModule = require(matched.verifier.modulePath);
+  assert.equal(typeof sampleVerifierModule[matched.verifier.exportName],
+    "function", "v2 matched-sample verifier is missing");
+  const evidence = JSON.parse(fs.readFileSync(correctness.evidence.modulePath,
     "utf8"));
   const verdict = verifier(evidence);
   assert(verdict && typeof verdict === "object" && !Array.isArray(verdict),
     "v2 evidence verifier returned no verdict");
-  exactKeys(verdict, ["coverage", "evidenceSchema", "matchedReady",
-    "panelIndex"], "v2 verifier verdict");
+  exactKeys(verdict, ["coverage", "evidenceSchema", "leanSemanticDigest",
+    "matchedReady", "mutationCoverage", "panelIndex"],
+  "v2 verifier verdict");
   assert.equal(verdict.panelIndex, registration.panelIndex);
-  assert.equal(verdict.evidenceSchema, capability.evidence.schema);
+  assert.equal(verdict.evidenceSchema, correctness.evidence.schema);
   assert.equal(verdict.matchedReady, true);
-  assert.deepEqual(verdict.coverage, capability.coverage);
+  assert.equal(verdict.leanSemanticDigest, correctness.leanSemanticDigest,
+    "correctness verifier lean semantics differ from trust authority");
+  assert.deepEqual(verdict.coverage, correctness.coverage);
+  exactKeys(verdict.mutationCoverage, MUTATION_FAMILIES,
+    "Sage.js correctness mutation coverage");
+  for (const name of MUTATION_FAMILIES)
+    assert.equal(verdict.mutationCoverage[name], true,
+      `Sage.js correctness evidence lacks mutation ${name}`);
   return capability;
 }
 
@@ -431,6 +571,17 @@ function canonical(value) {
 
 const digest = value => require("node:crypto").createHash("sha256")
   .update(canonical(value)).digest("hex");
+
+function leanSemanticProjection(output) {
+  return {
+    field: output.field,
+    classGroup: output.matchedState.classGroup,
+    unitGroup: output.matchedState.unitGroup,
+    regulator: output.matchedState.regulator,
+    torsion: output.matchedState.torsion,
+    terminal: output.matchedState.terminal,
+  };
+}
 
 function positiveIntegerString(value, label) {
   assert.equal(typeof value, "string", `${label} must be an integer string`);
@@ -448,69 +599,58 @@ function validateState(value, schema, label) {
   assert.equal(value.schema, schema, `${label} schema differs from authority`);
 }
 
-function validateMatchedSampleV2({ registration, capability, verified }) {
-  const centralRegistration = REGISTERED.find(value =>
-    value.panelIndex === registration.panelIndex);
-  assert.equal(registration, centralRegistration,
-    "live v2 sample registration is not the central registry authority");
-  const trusted = TRUSTED_V2_ADMISSIONS.find(value =>
-    value.panelIndex === registration.panelIndex);
-  assert(trusted,
-    `row ${registration.panelIndex} has no centrally trusted v2 admission`);
-  assert.deepEqual(capability, trusted,
-    "live sample capability differs from central authority");
+function validateMatchedSampleShape({ registration, capability, implementation,
+  verified }) {
+  assert(["sagejs", "pari"].includes(implementation),
+    "v2 sample implementation is invalid");
   exactKeys(verified, ["observations", "sample"], "v2 verifier result");
   const { observations, sample } = verified;
-  exactKeys(sample, ["counters", "kernelNanoseconds", "output", "peakRssKiB",
-    "replay", "resourceCounters", "rng", "stageTiming",
-    "threadCpuNanoseconds"], "v2 matched sample");
+  exactKeys(sample, ["counters", "cpu", "kernelNanoseconds", "output",
+    "peakRssKiB", "resourceCounters", "rng", "stageTiming"],
+  "v2 matched sample");
   for (const [label, value] of [["kernelNanoseconds", sample.kernelNanoseconds],
     ["peakRssKiB", sample.peakRssKiB]]) positiveIntegerString(value, label);
-  nonnegativeIntegerString(sample.threadCpuNanoseconds, "threadCpuNanoseconds");
 
   exactKeys(sample.output, ["field", "matchedState", "provenance", "schema"],
     "v2 matched output");
-  assert.equal(sample.output.schema, registration.projectionSchema);
+  assert.equal(sample.output.schema, registration.matchedOutputSchema);
   exactKeys(sample.output.field, ["id", "polynomialAscending"],
     "v2 output field");
   assert.equal(sample.output.field.id, registration.fieldId);
-  assert(Array.isArray(sample.output.field.polynomialAscending) &&
-    sample.output.field.polynomialAscending.length >= 2,
-  "v2 output polynomial is missing");
+  assert.deepEqual(sample.output.field.polynomialAscending,
+    registration.expectedDiagnosticProjection.field.polynomialAscending,
+    "v2 output polynomial differs from the central field definition");
   const state = sample.output.matchedState;
   exactKeys(state, ["classGroup", "precision", "regulator", "retry",
     "terminal", "torsion", "unitGroup"], "v2 complete matched state");
-  exactKeys(state.classGroup,
-    ["classNumber", "generators", "invariantFactors"], "v2 class group");
+  exactKeys(state.classGroup, ["classNumber", "invariantFactors"],
+    "v2 timed class group");
   positiveIntegerString(state.classGroup.classNumber, "class number");
+  assert.equal(state.classGroup.classNumber,
+    registration.expectedWorkMetadata.classNumber,
+    "class number differs from the central field expectation");
   assert(Array.isArray(state.classGroup.invariantFactors));
-  assert(Array.isArray(state.classGroup.generators));
+  assert.deepEqual(state.classGroup.invariantFactors,
+    registration.expectedDiagnosticProjection.classGroup.invariantFactors,
+    "class invariants differ from the central field expectation");
   let invariantProduct = 1n;
-  for (const factor of state.classGroup.invariantFactors) {
+  for (const [index, factor] of state.classGroup.invariantFactors.entries()) {
     positiveIntegerString(factor, "class invariant factor");
     assert(BigInt(factor) > 1n, "class invariant factors must be nontrivial");
+    if (index > 0) {
+      const previous = BigInt(state.classGroup.invariantFactors[index - 1]);
+      assert.equal(BigInt(factor) % previous, 0n,
+        "class invariant factors must form a divisibility chain");
+    }
     invariantProduct *= BigInt(factor);
   }
   assert.equal(invariantProduct, BigInt(state.classGroup.classNumber),
     "class invariant factors do not multiply to the class number");
-  if (state.classGroup.invariantFactors.length === 0) {
-    assert.deepEqual(state.classGroup.generators, []);
-  } else {
-    assert.equal(state.classGroup.generators.length,
-      state.classGroup.invariantFactors.length,
-      "nontrivial class factors require generator evidence");
-    for (const [index, generator] of state.classGroup.generators.entries()) {
-      exactKeys(generator, ["ideal", "order", "principalWitness"],
-        "v2 class generator");
-      positiveIntegerString(generator.order, "class generator order");
-      assert.equal(generator.order, state.classGroup.invariantFactors[index],
-        "class generator order differs from its invariant factor");
-      assert.notEqual(generator.ideal, null);
-      assert.notEqual(generator.principalWitness, null);
-    }
-  }
-  exactKeys(state.unitGroup, ["basis", "mode", "notGivenState"],
+  exactKeys(state.unitGroup, ["basis", "mode", "notGivenState", "rank"],
     "v2 unit group");
+  nonnegativeIntegerString(state.unitGroup.rank, "unit rank");
+  assert.equal(state.unitGroup.rank, registration.expectedWorkMetadata.unitRank,
+    "unit rank differs from the central field expectation");
   assert(["compact", "factored", "not_given"].includes(state.unitGroup.mode));
   if (state.unitGroup.mode === "not_given") {
     assert.equal(state.unitGroup.basis, null);
@@ -521,43 +661,30 @@ function validateMatchedSampleV2({ registration, capability, verified }) {
       "materialized unit basis is missing");
     assert.equal(state.unitGroup.notGivenState, null);
   }
-  exactKeys(state.regulator, ["logLattice", "value"], "v2 regulator");
+  exactKeys(state.regulator, ["value"], "v2 regulator");
   assert.notEqual(state.regulator.value, null);
-  assert(Array.isArray(state.regulator.logLattice) &&
-    state.regulator.logLattice.length > 0, "v2 regulator log lattice is missing");
   exactKeys(state.torsion, ["generator", "order"], "v2 torsion");
   positiveIntegerString(state.torsion.order, "torsion order");
+  assert.equal(state.torsion.order,
+    registration.expectedDiagnosticProjection.unitGroup.torsionOrder,
+    "torsion order differs from the central field expectation");
   assert.notEqual(state.torsion.generator, null, "torsion generator is missing");
-  const contract = capability.sampleContract;
+  const contract = capability.matchedSample.contract;
   validateState(state.terminal, contract.terminalStateSchema, "terminal state");
   validateState(state.precision, contract.precisionStateSchema, "precision state");
   validateState(state.retry, contract.retryStateSchema, "retry state");
-  assert.deepEqual(sample.output.provenance, contract.provenance,
-    "output provenance differs from pinned authority");
-
-  exactKeys(sample.replay, ["evidence", "evidenceDigest", "independentReplay",
-    "mutationCoverage", "outputDigest", "provenance", "schema"],
-  "v2 independent replay");
-  assert.equal(sample.replay.schema, contract.replaySchema);
-  assert.notEqual(sample.replay.schema, sample.output.schema,
-    "output and replay schemas must be distinct");
-  assert.equal(sample.replay.independentReplay, true);
-  assert.notDeepEqual(sample.replay.evidence, sample.output,
-    "independent replay evidence must differ from output");
-  assert.equal(sample.replay.outputDigest, digest(sample.output));
-  assert.equal(sample.replay.evidenceDigest, digest(sample.replay.evidence));
-  assert.notEqual(sample.replay.outputDigest, sample.replay.evidenceDigest,
-    "output and replay evidence digests must be distinct");
-  assert.deepEqual(sample.replay.provenance, contract.provenance);
-  exactKeys(sample.replay.mutationCoverage, MUTATION_FAMILIES,
-    "v2 replay mutation coverage");
-  for (const name of MUTATION_FAMILIES)
-    assert.equal(sample.replay.mutationCoverage[name], true,
-      `v2 replay lacks mutation coverage for ${name}`);
+  const expectedProvenance =
+    contract.provenanceByImplementation[implementation];
+  validateImplementationProvenance(expectedProvenance, implementation);
+  assert.deepEqual(sample.output.provenance, expectedProvenance,
+    "output provenance differs from implementation-specific authority");
+  assert.equal(digest(leanSemanticProjection(sample.output)),
+    capability.sageCorrectness.leanSemanticDigest,
+    "timed lean semantics differ from authenticated Sage.js correctness");
 
   exactKeys(sample.counters, contract.workCounterKeys, "observed work counters");
   for (const [name, value] of Object.entries(sample.counters))
-    positiveIntegerString(value, `observed work counter ${name}`);
+    nonnegativeIntegerString(value, `observed work counter ${name}`);
   exactKeys(sample.resourceCounters, ["nativeCalls"], "native-call counters");
   positiveIntegerString(sample.resourceCounters.nativeCalls, "native calls");
   exactKeys(observations, ["nativeCalls", "provenance", "workCounters"],
@@ -584,8 +711,31 @@ function validateMatchedSampleV2({ registration, capability, verified }) {
   assert.notDeepEqual(observations.workCounters.derivationEvidence,
     observations.nativeCalls.derivationEvidence,
     "work and native-call observations require distinct derivation evidence");
-  assert.deepEqual(observations.provenance, contract.provenance,
-    "observed provenance differs from pinned authority");
+  assert.deepEqual(observations.provenance, expectedProvenance,
+    "observed provenance differs from implementation-specific authority");
+
+  const cpuPolicy = contract.cpuPolicy[implementation];
+  assert.equal(sample.cpu.schema, CPU_OBSERVATION_SCHEMA);
+  if (sample.cpu.availability === "available") {
+    exactKeys(sample.cpu,
+      ["authority", "availability", "nanoseconds", "schema"],
+      "available CPU observation");
+    nonnegativeIntegerString(sample.cpu.nanoseconds, "CPU nanoseconds");
+  } else {
+    exactKeys(sample.cpu,
+      ["authority", "availability", "reason", "schema"],
+      "unavailable CPU observation");
+    assert.equal(sample.cpu.availability, "unavailable");
+    assert.equal(cpuPolicy.availability, "optional",
+      `${implementation} CPU observation is required`);
+    assert.equal(typeof sample.cpu.reason, "string");
+    assert(sample.cpu.reason.length > 0);
+  }
+  assert(cpuPolicy.authorities.includes(sample.cpu.authority),
+    `${implementation} CPU observation has no authority`);
+  if (implementation === "pari" && sample.cpu.availability === "available")
+    assert.equal(sample.cpu.authority, "pari-child-rusage",
+      "parent thread CPU cannot measure the PARI child");
 
   exactKeys(sample.rng, ["precision", "retry", "schema", "terminal"],
     "v2 terminal state envelope");
@@ -597,9 +747,8 @@ function validateMatchedSampleV2({ registration, capability, verified }) {
     ["inclusiveNanoseconds", "leaves", "unattributedNanoseconds"],
   "v2 stage timing");
   assert.equal(sample.stageTiming.inclusiveNanoseconds, sample.kernelNanoseconds);
-  exactKeys(sample.stageTiming.leaves, ["honestyGeneratorsFinal",
-    "relationRetry", "sparseHnfSnfTransform", "unitRegulator"],
-  "v2 stage timing leaves");
+  exactKeys(sample.stageTiming.leaves, contract.stageTimingLeafKeys,
+    "v2 stage timing leaves");
   for (const [name, value] of Object.entries(sample.stageTiming.leaves))
     nonnegativeIntegerString(value, `stage timing leaf ${name}`);
   nonnegativeIntegerString(sample.stageTiming.unattributedNanoseconds,
@@ -611,39 +760,81 @@ function validateMatchedSampleV2({ registration, capability, verified }) {
   return sample;
 }
 
-const diagnosticAdmission = () => ({ status: "diagnostic-only",
+function validateMatchedSampleV2({ registration, capability, implementation,
+  verified }) {
+  const centralRegistration = REGISTERED.find(value =>
+    value.panelIndex === registration.panelIndex);
+  assert.equal(registration, centralRegistration,
+    "live v2 sample registration is not the central registry authority");
+  const trusted = TRUSTED_V2_ADMISSIONS.find(value =>
+    value.panelIndex === registration.panelIndex);
+  assert(trusted,
+    `row ${registration.panelIndex} has no centrally trusted v2 admission`);
+  assert.equal(capability, trusted,
+    "live sample capability differs from central authority");
+  return validateMatchedSampleShape({ registration, capability,
+    implementation, verified });
+}
+
+// This pure shape checker supports focused evidence-contract tests. It cannot
+// register an adapter or confer runtime trust: only validateMatchedSampleV2()
+// consults the closed-over production trust root and can admit a live sample.
+function validateMatchedSampleForAudit(value) {
+  return validateMatchedSampleShape(value);
+}
+
+// Like validateMatchedSampleForAudit(), this exercises trust-index invariants
+// without altering or replacing the closed-over production trust root.
+function validateTrustIndexSetsForAudit(definitionRows, trustedRows,
+  dispatchableRows = definitionRows) {
+  return validateTrustIndexSets(definitionRows, trustedRows, dispatchableRows);
+}
+
+function diagnosticAdmission() { return { status: "diagnostic-only",
   matchedReady: false, freshCorrectness: true,
   sagePreparedKernelTiming: false, pariPreparedKernelTiming: false,
   commonSemanticProjection: false, mutuallyExclusiveStageTiming: false,
   stageAttribution: "not-admitted",
-  missingCapabilities: [...REQUIRED_CAPABILITIES] });
+  missingCapabilities: [...REQUIRED_CAPABILITIES] }; }
 
-const matchedAdmission = () => ({ status: "v2-evidence-verified",
+function matchedAdmission() { return { status: "v2-evidence-verified",
   matchedReady: true, freshCorrectness: true,
   sagePreparedKernelTiming: true, pariPreparedKernelTiming: true,
   commonSemanticProjection: true, mutuallyExclusiveStageTiming: true,
   stageAttribution: "inclusive-root-with-explicit-unattributed-remainder",
-  missingCapabilities: [] });
+  missingCapabilities: [] }; }
 
 function validateRegistration(value, options = {}) {
   exactKeys(value, ["adapters", "admission", "admissionCapability", "boundary",
-    "expectedProjection", "expectedWorkMetadata", "fieldId", "panelIndex",
-    "projectionSchema", "requirements", "schema"],
+    "diagnosticProjectionSchema", "expectedDiagnosticProjection",
+    "expectedWorkMetadata", "fieldId", "matchedOutputSchema", "panelIndex",
+    "requirements", "schema"],
   "prepared adapter registration");
   assert.equal(value.schema, REGISTRATION_SCHEMA);
   assert(Number.isSafeInteger(value.panelIndex) && value.panelIndex >= 0);
   assert.equal(value.boundary, "prepared-kernel");
-  assert.equal(value.expectedProjection.schema, value.projectionSchema,
-    "expected projection schema differs from registration");
-  assert.equal(value.expectedProjection.field.id, value.fieldId,
-    "expected projection field differs from registration");
+  assert.equal(value.expectedDiagnosticProjection.schema,
+    value.diagnosticProjectionSchema,
+    "expected diagnostic projection schema differs from registration");
+  assert.equal(value.expectedDiagnosticProjection.field.id, value.fieldId,
+    "expected diagnostic projection field differs from registration");
+  const polynomial = value.expectedDiagnosticProjection.field.polynomialAscending;
+  assert(Array.isArray(polynomial), "central polynomial must be an array");
+  assert.equal(polynomial.length,
+    Number(value.expectedWorkMetadata.degree) + 1,
+    "central polynomial degree differs from expected work metadata");
+  for (const coefficient of polynomial)
+    assert.match(coefficient, /^-?(0|[1-9][0-9]*)$/,
+      "central polynomial coefficient is not canonical");
+  assert.notEqual(polynomial.at(-1), "0", "central polynomial leading term is zero");
   exactKeys(value.adapters, ["pari", "sagejs"], "adapter pair");
   exactKeys(value.requirements, ["pari", "sagejs"], "implementation requirements");
   for (const implementation of ["sagejs", "pari"]) {
     const adapter = worker.validateDescriptor(value.adapters[implementation]);
     assert.equal(adapter.implementation, implementation);
-    assert.equal(adapter.projectionSchema, value.projectionSchema,
-      `${implementation} projection schema differs from registration`);
+    assert.equal(adapter.projectionSchema,
+      value.matchedOutputSchema ?? value.diagnosticProjectionSchema,
+      `${implementation} adapter schema differs from registration`);
     assert.deepEqual(adapter.configuration,
       { panelIndex: value.panelIndex, implementation },
       `${implementation} adapter configuration differs from registration`);
@@ -658,8 +849,13 @@ function validateRegistration(value, options = {}) {
   for (const item of Object.values(value.expectedWorkMetadata))
     assert.match(item, /^(0|[1-9][0-9]*)$/);
   if (value.admissionCapability === null) {
+    assert.equal(value.matchedOutputSchema, null,
+      "diagnostic row cannot claim a matched-output schema");
     assert.deepEqual(value.admission, diagnosticAdmission());
   } else {
+    assert.equal(value.admissionCapability,
+      TRUSTED_V2_ADMISSIONS.find(item => item.panelIndex === value.panelIndex),
+      "registration did not consume the central trust entry exactly");
     validateCapability(value.admissionCapability, value);
     assert.deepEqual(value.admission, matchedAdmission());
   }
@@ -672,6 +868,15 @@ function validateRegistry(entries = REGISTERED, options = {}) {
   const indices = validated.map(value => value.panelIndex);
   assert.equal(new Set(indices).size, indices.length,
     "prepared adapter registry has duplicate panel indices");
+  if (entries === REGISTERED) {
+    const consumed = validated.filter(value => value.admissionCapability !== null)
+      .map(value => value.admissionCapability);
+    assert.equal(consumed.length, TRUSTED_V2_ADMISSIONS.length,
+      "central trust root was not consumed exactly");
+    for (const capability of TRUSTED_V2_ADMISSIONS)
+      assert.equal(consumed.filter(value => value === capability).length, 1,
+        `trusted row ${capability.panelIndex} was not consumed exactly once`);
+  }
   return Object.freeze([...validated].sort((left, right) =>
     left.panelIndex - right.panelIndex));
 }
@@ -694,7 +899,8 @@ function inventory(entries = REGISTERED, options = {}) {
   const summarize = value => Object.freeze({
     panelIndex: value.panelIndex,
     fieldId: value.fieldId,
-    projectionSchema: value.projectionSchema,
+    diagnosticProjectionSchema: value.diagnosticProjectionSchema,
+    matchedOutputSchema: value.matchedOutputSchema,
     ...value.admission,
   });
   return Object.freeze({
@@ -707,9 +913,11 @@ function inventory(entries = REGISTERED, options = {}) {
   });
 }
 
-module.exports = { CAPABILITY_SCHEMA, COVERAGE_KEYS, FACTORY, MUTATION_FAMILIES,
-  REGISTERED, REGISTRATION_SCHEMA, REGISTRY_SCHEMA, REQUIRED_CAPABILITIES,
-  TRUSTED_V2_ADMISSIONS, WRAPPER_PATH,
+module.exports = { CAPABILITY_SCHEMA, CORRECTNESS_COVERAGE_KEYS,
+  COVERAGE_KEYS, CPU_OBSERVATION_SCHEMA, FACTORY, MUTATION_FAMILIES,
+  DISPATCHABLE_PANEL_INDICES, PROVENANCE_MANIFEST_SCHEMA, REGISTERED,
+  REGISTRATION_SCHEMA,
+  REGISTRY_SCHEMA, REQUIRED_CAPABILITIES, TRUSTED_V2_ADMISSIONS, WRAPPER_PATH,
   diagnosticPreparedAdapterRegistration, inventory, preparedAdapterRegistration,
-  validateCapability, validateMatchedSampleV2, validateRegistration,
-  validateRegistry };
+  validateCapability, validateMatchedSampleForAudit, validateMatchedSampleV2,
+  validateRegistration, validateRegistry, validateTrustIndexSetsForAudit };
