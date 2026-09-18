@@ -1,9 +1,10 @@
 # Row 14 output-evidence-v2 assessment
 
 This adapter projects the immutable fresh row-14 neutral result
-`edb2b0bdf5753497b51e4b4a34229c3ad8977de8b877de72005a18472d43cff2`.
-It does not claim a shared-v2 payload where the retained evidence cannot support
-one.
+`edb2b0bdf5753497b51e4b4a34229c3ad8977de8b877de72005a18472d43cff2`
+into a complete internal shared-v2 evidence payload. The claim is limited to
+the authenticated retained-prime support and remains an internal PARI-
+correspondence result rather than a public certified computation.
 
 The actual relation boundary is:
 
@@ -12,28 +13,35 @@ The actual relation boundary is:
 - 806 principal generators (`806 x 4`); and
 - 21 packed logarithm cells per relation (`806 x 21`).
 
-The result retains a genuine dimension-compatible composite presentation proof:
+The result retains the genuine dimension-compatible composite presentation:
 
 ```text
 T(3 x 806) R(806 x 799) = P(3 x 3) F(3 x 799).
 ```
 
-The focused checker independently recomputes all 2,397 scalar equalities.  The
-terminal presentation has determinant 192 and Smith invariants `[8,24]`.
-This is useful proof material, but it is not the full raw Smith identity required
-by output-evidence-v2.  In particular, no retained owners provide the raw
-`806 x 806` left transform, `799 x 799` right transform, or `806 x 799`
-diagonal.  The adapter therefore refuses to substitute the 3-by-3 terminal
-presentation into those shapes and reports `not-publishable-under-v2`.
+The complete production ancestry replay now also supplies the raw `806 x 806`
+left transform, `799 x 799` right transform, and `806 x 799` diagonal. An
+independent checker proves all 643,994 cells of `U R V = D`, verifies
+`det(U) = det(V) = -1`, and recovers Smith invariants `[8, 24]` and class number
+192. The smaller composite presentation remains a separately checked bridge to
+the published class ideals.
 
 The exact class ideals/order coefficients, rank-two factored and compact unit
-material, accepted regulator, and torsion generator remain authenticated.
-Phase 4 material is retained for the matched `not_given(LARGE)` output, but the
-shared-v2 phase-4 completion bit remains false because its phase-3 prerequisite
-cannot be published.  Phase 3 is false because its required full Smith envelope
-is absent.  Phase 5 and the output boundary are false: the retained `factor-map` is
-a three-column class-presentation projection, not a general arbitrary-ideal
-factor operation, and the result has no general factor/reduce/combine maps.
+material, accepted regulator, and torsion generator remain authenticated. The
+general supported-ideal map accepts arbitrary integral column-HNF ideals whose
+complete prime support lies in the 799 retained descriptors. It admits
+fractional rational denominators only when their complete decomposition is
+retained, derives valuations from the authenticated descriptor `tau` data, and
+uses the full Smith identity to return exact class coordinates and signed
+806-relation principality witnesses. Factor, reduce, and combine fail closed
+outside this domain. All 799 factor-base prime ideals, arbitrary integral and
+fractional products, and the combine law replay; mutations of `tau` and Smith
+`V` reject.
+
+Phases 3, 4, and 5 and the internal output-evidence boundary are therefore true
+for this explicit supported domain. This does not assert a public API, a
+qualified timing, or an unconditional/global factor-base theorem beyond the
+upstream-assumed correspondence experiment.
 
 Run the independent assessment with:
 
