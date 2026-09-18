@@ -10,7 +10,8 @@ const root = join(__dirname, "..");
 const source = readFileSync(join(root, "src/baselib/bootstrap_shared.py"), "utf8");
 const builtinsSource = readFileSync(join(root, "src/baselib/builtins.py"), "utf8");
 const sharedNames = ["ρσ_copy_method_metadata", "ρσ_native_method_adapter", "ρσ_unbound_method_adapter",
-  "ρσ_exact_integer_add", "ρσ_exact_shift", "ρσ_exact_integer_submul",
+  "ρσ_exact_integer_add", "ρσ_exact_integer_divmod", "ρσ_exact_shift",
+  "ρσ_exact_integer_submul", "ρσ_int_pow",
   "ρσ_check_interrupt", "ρσ_normalize_exception", "ρσ_prepare_method_call",
   "ρσ_attr", "ρσ_interpolate_kwargs", "ρσ_interpolate_kwargs_constructor"];
 const builtinsNames = ["ρσ_synthetic_init_ends_at_object", "ρσ_skip_init"];
@@ -233,8 +234,14 @@ test("branded keyword constructors reuse prepared allocation", () => {
     this.value = keywords.value;
   }
   target.prototype = prototype;
+  target.__bases__ = [];
   const api = context({
     _internal_keyword_constructor_prototypes: new WeakSet([prototype]),
+    _internal_class_instance_function: () => false,
+    _internal_get_member: (value, name) => value[name],
+    _internal_type_is: (left, right) => left === right,
+    ρσ_native_jstype: (value) => typeof value,
+    _internal_has_own: Object.hasOwn,
   });
   const discarded = Object.create(prototype);
   const result = api.ρσ_interpolate_kwargs_constructor(
@@ -243,6 +250,20 @@ test("branded keyword constructors reuse prepared allocation", () => {
   assert.equal(result.value, 17);
   assert.equal(result, discarded);
   assert.deepEqual(calls, [[discarded, packet]]);
+
+  function replacement(value) {
+    calls.push([this, value]);
+    this.value = value;
+  }
+  replacement.prototype = prototype;
+  replacement.__argnames__ = ["value"];
+  const rebound = Object.create(prototype);
+  const reboundResult = api.ρσ_interpolate_kwargs_constructor(
+    rebound, false, replacement, [{ value: 23 }],
+  );
+  assert.equal(reboundResult, rebound);
+  assert.equal(rebound.value, 23);
+  assert.deepEqual(calls[1], [rebound, 23]);
 
   const receiver = {};
   assert.equal(
@@ -307,7 +328,11 @@ test("shared bootstrap owns its low-level adapters and metadata copier", () => {
 });
 
 test("shared exact integer arithmetic preserves primitive Python integers", () => {
-  const { ρσ_exact_integer_add: add, ρσ_exact_integer_submul: submul } = context();
+  const {
+    ρσ_exact_integer_add: add,
+    ρσ_exact_integer_submul: submul,
+    ρσ_int_pow: power,
+  } = context();
   const missing = {};
   const subtract = (left, right) => submul(left, right, false, missing);
   const multiply = (left, right) => submul(left, right, true, missing);
@@ -321,9 +346,33 @@ test("shared exact integer arithmetic preserves primitive Python integers", () =
   assert.equal(subtract(4n, true), 3n);
   assert.equal(multiply(3037000500, 3037000500), 9223372037000250000n);
   assert.equal(multiply(4n, true), 4n);
+  assert.equal(power(3, 7, missing), 2187);
+  assert.equal(power(2, 53, missing), 9007199254740992n);
+  assert.equal(power(-2n, 3, missing), -8n);
+  assert.equal(power(2, -1, missing), missing);
   assert.equal(add(1.5, 2, missing), missing);
   assert.equal(add(Number.MAX_SAFE_INTEGER + 1, 1, missing), missing);
   assert.equal(add({}, 1, missing), missing);
+});
+
+test("shared exact integer division and modulo preserve Python signs", () => {
+  const { ρσ_exact_integer_divmod: divmod } = context();
+  const missing = {};
+  const floor = (left, right) => divmod(left, right, 0, missing);
+  const mod = (left, right) => divmod(left, right, 1, missing);
+  assert.deepEqual([floor(7, 3), floor(-7, 3), floor(7, -3), floor(-7, -3)], [2, -3, -3, 2]);
+  assert.deepEqual([mod(7, 3), mod(-7, 3), mod(7, -3), mod(-7, -3)], [1, 2, -2, -1]);
+  assert.equal(floor(2n ** 60n, 3), 384307168202282325n);
+  assert.equal(mod(-(2n ** 60n), 7), 6);
+  assert.equal(floor(true, true), 1);
+  assert.equal(mod(true, 2), 1);
+  assert.equal(floor(1, 0), missing);
+  assert.equal(mod(1n, 0n), missing);
+  assert.equal(floor(1, false), missing);
+  assert.equal(mod(1, false), missing);
+  assert.equal(floor(1n, false), missing);
+  assert.equal(mod(1n, false), missing);
+  assert.equal(floor(1.5, 1), missing);
 });
 
 test("shared exact integer shifts preserve primitive Python integers", () => {

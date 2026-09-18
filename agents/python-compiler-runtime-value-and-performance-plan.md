@@ -419,6 +419,20 @@ positional arguments by an empty class; repair that semantic defect without
 mixing it into the empty-call speed path. Exact evidence is in
 `agents/python-default-construction.md`.
 
+**2026-09-17 exact-division checkpoint:** a fresh-main candidate classifies
+primitive exact integer operands once in the shared bootstrap and implements
+Python's floor quotient and divisor-signed remainder without repeated
+Python-level type discovery. Zero divisors, floats, unsafe foreign numbers,
+objects, reflected methods, and augmented assignment retain the established
+semantic paths. Controlled exact-artifact measurements improve one million
+floor divisions by 77.31% to 1.33x CPython and one million modulo operations by
+65.94% to 1.90x CPython. Neighboring operator rows remain within 1.8%, the
+standalone shrinks by 518 bytes, and core source shrinks to 902,497/903,000.
+All 225 portable files, the 508-case differential baseline, 404 strict modules,
+traitlets and pyparsing workflows, documentation, and merge invariants pass.
+Exact artifacts and qualification are in
+`agents/python-exact-integer-divmod.md`.
+
 **2026-09-17 exact-shift checkpoint:** a fresh-main candidate classifies
 primitive exact integer operands once in the shared bootstrap while retaining
 negative-count errors, float/object dispatch, reflected methods, augmented
@@ -461,15 +475,29 @@ the registered generated-class adapter without it and caused a second allocation
 The guarded shared-bootstrap path now applies only an authenticated registered
 constructor directly to the prepared receiver; unregistered, replaced, custom,
 and explicit-apply paths retain their existing semantics. Controlled
-alternating-process measurements improve keyword construction plus a method by
-7.3%, from 541.702 ms to 502.178 ms per 100,000 operations, while the other six
-call/construction rows remain flat. The residual gap is 13.5x CPython, and
-keyword methods remain 24.4x, so M5 is still open. A preceding prepared-context
+source-current alternating-process measurements improve keyword construction
+plus a method by 5.98%, from 409.000 ms to 384.550 ms per 100,000 operations,
+while the other six call/construction rows remain flat. The residual gap is
+12.92x CPython, and keyword methods remain 19.92x, so M5 is still open. A preceding prepared-context
 binder experiment was rejected after producing only -0.7% to +1.3% variation.
 The exact artifacts, semantic boundary, and qualification are recorded in
-`agents/python-keyword-constructor-dispatch.md`. Core source falls to
-902,744/903,000 bytes without a budget change. Keep this work behind the
-attribute integration queue.
+`agents/python-keyword-constructor-dispatch.md`. Core source is
+902,456/903,000 bytes without a budget change. Keep this work behind the
+attribute-store and exact-div/mod integration queue.
+
+**2026-09-17 exact-power checkpoint:** a further queued follow-up uses a
+separate compact primitive boundary for nonnegative integer power while leaving
+negative Python floats, negative Sage rationals, floats, and object dispatch on
+their authoritative paths. One million `3 ** 7` operations improve 98.95%,
+from 4,549.589 ms to 47.164 ms (2.32x CPython rather than 224x); positive `**=`
+improves 99.00% and measures 0.74x CPython. It also repairs a pre-existing
+Python augmented-power error: `2 **= -1` now produces float `0.5`, while Sage
+retains rational `1/2`. All six existing arithmetic controls remain within
+-1.74% to +0.23%. A full build, 72 focused tests, all 225 portable files, the
+508-case differential baseline, strict checks, traitlets/pyparsing, docs, merge
+invariants, and the unchanged 902,984/903,000 core budget pass. Evidence is in
+`agents/python-exact-integer-power.md`; PR #314 and exact shifts are now in
+`origin/main`, and the candidate has been replayed and remeasured against it.
 
 **2026-09-17 constructor custom-new checkpoint:** profiling showed every
 generated class construction paying compiled-Python traversal to decide whether
