@@ -172,6 +172,20 @@
       "rationale": "Linux-only timing adapter for the pinned PARI 2.17.4 row-14 prepared-nf bnfinit flag-zero reference. It links PARI only in a disposable benchmark process, keeps nfinit preparation and serialization outside the timed kernel, and is never linked into Sage.js."
     },
     {
+      "path": "bench/pari-class-group-port/row0_phase6_pari_prepared_adapter.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Linux-only timing adapter for the pinned PARI 2.17.4 row-0 prepared-nf bnfinit flag-zero reference. It links PARI only in a disposable benchmark process, keeps nfinit preparation outside the timed kernel, and is never linked into Sage.js."
+    },
+    {
+      "path": "bench/pari-class-group-port/row16_phase6_pari_prepared_adapter.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Linux-only timing adapter for the pinned PARI 2.17.4 row-16 prepared-nf bnfinit flag-zero reference. It links PARI only in a disposable benchmark process, keeps nfinit preparation outside the timed kernel, and is never linked into Sage.js."
+    },
+    {
       "path": "bench/pari-class-group-port/pari-stage-clock/pari_stage_clock_driver.c",
       "category": "benchmark-reference",
       "review_status": "accepted",
