@@ -68,19 +68,25 @@ const roots = registry.buildDevelopmentRootRegistry();
 assert.equal(roots.length, 16);
 assert.equal(roots.filter(value => value.completionStatus === registry.COMPLETE).length, 15);
 assert.equal(roots.filter(value => value.completionStatus === registry.BLOCKED).length, 1);
-assert.equal(roots.filter(value => value.publicationStatus === registry.NEUTRAL_READY).length, 13);
+assert.equal(roots.filter(value => value.publicationStatus === registry.NEUTRAL_READY).length, 15);
 assert.equal(roots.every(value => value.freshPreparedExecution === false), true);
 assert.equal(roots.every(value => value.qualifiedTiming === false), true);
 assert.deepEqual(roots.filter(value => value.completionStatus === registry.BLOCKED)
   .map(value => value.panelIndex), [23]);
 assert.deepEqual(roots.filter(value => value.publicationStatus === registry.ADAPTER_REQUIRED)
-  .map(value => value.panelIndex), [19, 21]);
+  .map(value => value.panelIndex), []);
 const row19 = registry.developmentRoot(19);
-assert.equal(row19.module, "row19_final_result_coordinator.cjs");
-assert.equal(row19.composeExport, "compose");
-assert.equal(row19.publishExport, "publish");
+assert.equal(row19.module, "row19_class_unit_result_adapter.cjs");
+assert.equal(row19.composeExport, "prepareRow19ClassUnitResult");
+assert.equal(row19.publishExport, "publishPreparedRow19ClassUnitResult");
 assert.equal(row19.sourceSchema,
   "sagejs.pari-class-group/row19-buchall-end-result-v1");
+const row21 = registry.developmentRoot(21);
+assert.equal(row21.module, "row21_terminal_neutral_adapter.cjs");
+assert.equal(row21.composeExport, "prepareRow21NeutralResult");
+assert.equal(row21.publishExport, "publishPreparedRow21NeutralResult");
+assert.equal(row21.sourceSchema,
+  "sagejs.pari-class-group/row21-final-buchall-end-v1");
 
 const entry = registry.developmentRoot(1);
 const fixture = sealed(entry);
@@ -107,12 +113,12 @@ assert.throws(() => registry.verifyDevelopmentRoot({ panelIndex: 1, raw: fixture
 assert.throws(() => registry.normalizeVerifiedDevelopmentRoot({ panelIndex: 1, result: {} }),
   /verified neutral result brand/);
 assert.throws(() => registry.developmentRoot(2), registry.Phase5ReserveFieldRejected);
-assert.throws(() => registry.verifyDevelopmentRoot({ panelIndex: 19, ...fixture }),
-  registry.Phase5DevelopmentRootUnavailable);
 assert.throws(() => registry.verifyDevelopmentRoot({ panelIndex: 23, ...fixture }),
   registry.Phase5DevelopmentRootUnavailable);
-assert.throws(() => registry.verifyDevelopmentRoot({ panelIndex: 21, ...fixture }),
-  registry.Phase5DevelopmentRootUnavailable);
+assert.throws(() => registry.verifyDevelopmentRoot({ panelIndex: 1, ...fixture,
+  sourceMetadata: { fieldId: "wrong-field" } }), /source metadata field identity changed/);
+assert.throws(() => registry.verifyDevelopmentRoot({ panelIndex: 1, ...fixture,
+  sourceMetadata: { publicComplete: true } }), /claims public completion/);
 
 const changedPanel = structuredClone(panel);
 changedPanel.rows[1].signature = [1, 1];
@@ -127,8 +133,8 @@ process.stdout.write(`${JSON.stringify({
   schema: "sagejs.pari-class-group/phase5-development-root-check-v1",
   registeredDevelopmentFields: roots.length,
   committedInternallyComplete: 15,
-  neutralEnvelopeReady: 13,
-  adapterRequired: [19, 21],
+  neutralEnvelopeReady: 15,
+  adapterRequired: [],
   blocked: [23],
   reservesOpened: 0,
   freshPreparedExecutions: 0,

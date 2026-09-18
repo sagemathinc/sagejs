@@ -9,10 +9,9 @@ or admit any final-reserve field.
 rows to its exact manifest ID, ascending defining polynomial, polynomial digest,
 degree, signature, stratum, and role. It records fifteen committed internally
 complete roots and keeps row 23 explicitly blocked. Thirteen of the fifteen
-completed roots already produce the field-neutral
-`ImmutableClassUnitCorrespondenceResult`; committed rows 19 and 21 still need
-narrow adapters from their field-specific terminal envelopes to that neutral
-envelope.
+completed roots originally produced the field-neutral
+`ImmutableClassUnitCorrespondenceResult`; committed adapters now bring rows 19
+and 21 to the same boundary, so all fifteen completed roots are neutral-ready.
 
 ## Interface
 
@@ -36,22 +35,25 @@ All other roots use the manifest field ID directly.
 
 ## Coverage and remaining gaps
 
-Neutral-envelope-ready rows are 0, 1, 3, 4, 6, 8, 10, 11, 13, 14, 16, 18,
-and 20. Rows 6, 13, 16, 18, and 20 still need small publication wrappers around
-their existing payload/preparation exports; this registry deliberately does not
-manufacture their out-of-band mathematical authorities.
+Neutral-envelope-ready rows are 0, 1, 3, 4, 6, 8, 10, 11, 13, 14, 16, 18, 19,
+20, and 21. Rows 6, 13, 16, 18, and 20 still need small publication wrappers
+around their existing payload/preparation exports; this registry deliberately
+does not manufacture their out-of-band mathematical authorities.
 
-Row 19 is internally complete at commit `7e963b4ee`; the registry binds its
-`row19_final_result_coordinator.cjs` `compose`/`publish` interface and
-`sagejs.pari-class-group/row19-buchall-end-result-v1` schema. Row 21 is also
-internally complete, but its committed result is a distinct Python envelope.
-Later adapters must cold-replay these field-specific results and project them
-into the neutral payload before this registry will accept them. Row 23 remains
+Row 19 is internally complete at commit `7e963b4ee`; the registry now binds
+`row19_class_unit_result_adapter.cjs` and its
+`prepareRow19ClassUnitResult`/`publishPreparedRow19ClassUnitResult` interface.
+It retains `sagejs.pari-class-group/row19-buchall-end-result-v1` as the source
+schema. Row 21 binds `row21_terminal_neutral_adapter.cjs` and its
+`prepareRow21NeutralResult`/`publishPreparedRow21NeutralResult` interface while
+retaining `sagejs.pari-class-group/row21-final-buchall-end-v1` as its source
+schema. Both adapters are committed at `4e0d02487`. Row 23 remains
 mathematically incomplete because generic degree-five ideal reduction and
 expanded ideal-product replay are still absent.
 
 The focused checker covers registry counts, a successful branded neutral
 result, generated-ID/internal-ID normalization, polynomial and signature
 identity changes, unsupported terminal status, an unbranded authority, a wrong
-result brand, adapter-required rows, the blocked row, and reserve rejection. It
-makes no scratch reads and performs no timed or fresh mathematical computation.
+result brand, inconsistent source metadata, the blocked row, and reserve
+rejection. It makes no scratch reads and performs no timed or fresh mathematical
+computation.
