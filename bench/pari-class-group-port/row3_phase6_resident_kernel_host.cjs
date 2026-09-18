@@ -10,6 +10,7 @@ const path = require("node:path");
 const { compileKernel } = require("../../tools/native-kernel/compiler.cjs");
 const authentication = require("./prepared_nf_authentication.cjs");
 const inputApi = require("./row3_phase6_resident_input.cjs");
+const UNIT_SOURCE = path.join(__dirname, "row3_phase6_resident_unit_suffix.py");
 
 const AUTHORITY = "8dd27ea0c2f070e34964db79efcc03fa60e869891c996aba9f51b0291a97f41f";
 const DEFAULT_INPUT =
@@ -33,9 +34,14 @@ async function prepareResident(inputPath = DEFAULT_INPUT) {
     "prepared input is outside the reviewed row-3 corridor");
   const names = inputApi.signature();
   const capacities = inputApi.lengths();
-  const built = await compileKernel({ sourcePath: inputApi.SOURCE });
+  const [built, unitBuilt] = await Promise.all([
+    compileKernel({ sourcePath: inputApi.SOURCE }),
+    compileKernel({ sourcePath: UNIT_SOURCE }),
+  ]);
   const fn = require(built.modulePath).pari_resident_generated_class_attempt;
+  const unitFn = require(unitBuilt.modulePath).pari_row3_phase6_resident_unit_suffix;
   assert.equal(fn.nativeAvailable, true);
+  assert.equal(unitFn.nativeAvailable, true);
   const owners = {}, reset = [];
   const compact = new Set(["relation_records", "relation_hashes",
     "relation_metadata", "relation", "relation_scratch", "hnf_cup_arena",
@@ -88,7 +94,24 @@ async function prepareResident(inputPath = DEFAULT_INPUT) {
     owners[name] = value;
     return value;
   });
-  return { args, authority, built, fn, owners, reset };
+  const factoredTransform = unitFn.createIntegerBuffer(14, 32);
+  const rawUnitProvenance = unitFn.createIntegerBuffer(1350, 32);
+  const selected = unitFn.createIntegerBuffer(6075, 32);
+  const reverseWork = unitFn.createIntegerBuffer(6075, 32);
+  const reverseBwork = unitFn.createIntegerBuffer(42387, 32);
+  const rawTargets = unitFn.createIntegerBuffer(6075, 32);
+  const getfuState = unitFn.createInt64Buffer(8);
+  const provenanceState = unitFn.createInt64Buffer(5);
+  reset.push(() => { factoredTransform.sizes.fill(0);
+    factoredTransform.limbs.fill(0n);
+    for (const value of [rawUnitProvenance, selected, reverseWork,
+      reverseBwork, rawTargets]) {
+      value.sizes.fill(0); value.limbs.fill(0n);
+    }
+    getfuState.fill(0n); provenanceState.fill(0n); });
+  return { args, authority, built, factoredTransform, fn, getfuState,
+    owners, provenanceState, rawTargets, rawUnitProvenance, reset,
+    reverseBwork, reverseWork, selected, unitBuilt, unitFn };
 }
 
 function semanticProjection(resident) {
@@ -100,15 +123,24 @@ function semanticProjection(resident) {
   assert.equal(owner("class_number")[0], "6");
   assert.deepEqual(owner("class_invariants").slice(0, 1), ["6"]);
   assert(owner("accept_regulator").slice(0, 3).some(value => value !== "0"));
+  assert.deepEqual(Array.from(resident.getfuState, Number),
+    [2, 0, 0, 22, 0, 0, 0, 0]);
+  assert.deepEqual(Array.from(resident.provenanceState, Number),
+    [668, 675, 7, 2, 1350]);
+  const factoredTransform = view(resident.factoredTransform).map(String);
+  assert.equal(factoredTransform.length, 14);
+  assert(factoredTransform.some(value => value !== "0"));
   return {
-    schema: "sagejs.pari-class-group/row3-phase6-class-candidate-projection-v1",
+    schema: "sagejs.pari-class-group/row3-phase6-class-unit-projection-v1",
     field: { id:
       "generated-sha256-11997528676ebeb1c0636be2cb828b5ed5a527ea18eb3a4ace953984da507de9",
     polynomialAscending: ["20000000042", "-20000000022", "0", "1"] },
     classGroup: { classNumber: "6", invariantFactors: ["6"] },
-    regulator: { rank: "2", present: true },
+    unitGroup: { rank: "2", regulatorPresent: true, torsionOrder: "2",
+      materialization: "not_given(LARGE)", factoredTransformRetained: true,
+      rawRelationProvenanceRetained: true },
     work: { degree: "3", logRows: "3", logColumns: "2" },
-    completionMode: "initial-class-candidate-and-regulator",
+    completionMode: "flag-zero-class-and-compact-unit-provenance-result",
   };
 }
 
@@ -118,8 +150,20 @@ function runInvocation(resident) {
   const resetNanoseconds = String(process.hrtime.bigint() - resetStarted);
   const started = process.hrtime.bigint();
   const status = resident.fn.gmp(...resident.args);
+  const unitStatus = status === 0n ? resident.unitFn.gmp(
+    resident.owners.relation_records,
+    resident.owners.hnf_result_c, resident.owners.accept_relations,
+    resident.owners.accept_regulator, resident.owners.preparation_embedding,
+    resident.owners.basis_table, resident.owners.hnf_transform,
+    resident.owners.hnf_assembly_state, resident.owners.hnf_hnf_transform,
+    resident.owners.hnf_full_h, resident.owners.hnf_full_dep,
+    resident.owners.hnf_b, resident.owners.hnf_diagonal,
+    resident.factoredTransform, resident.rawUnitProvenance,
+    resident.selected, resident.reverseWork, resident.reverseBwork,
+    resident.rawTargets, resident.getfuState, resident.provenanceState) : -1n;
   const kernelNanoseconds = String(process.hrtime.bigint() - started);
   assert.equal(status, 0n, "row-3 resident root failed");
+  assert.equal(unitStatus, 0n, "row-3 resident compact-unit suffix failed");
   return {
     schema: "sagejs.pari-class-group/row3-phase6-sage-sample-v1",
     kernelNanoseconds, resetNanoseconds,
@@ -129,7 +173,7 @@ function runInvocation(resident) {
       allocationInsideClock: false, resetInsideClock: false,
       filesystemInsideClock: false, subprocessesInsideClock: false,
       replayInsideClock: false, publicationInsideClock: false,
-      nativeCallsInsideClock: 1 },
+      nativeCallsInsideClock: 2 },
   };
 }
 

@@ -23,16 +23,18 @@ async function main() {
   const prepared = JSON.parse(fs.readFileSync(filename));
   assert.equal(auth.authenticatePreparedNf(prepared).sha256,
     record.preparedAuthoritySha256);
-  const initialSource = fs.readFileSync(path.join(__dirname,
-    "row3_prepared_initial_base_frontier.cjs"), "utf8");
-  const continuationSource = fs.readFileSync(path.join(__dirname,
-    "row3_prepared_relation_hnf_frontier.cjs"), "utf8");
-  assert.match(initialSource, /Promise\.all\(\[/,
-    "row-3 correctness frontier no longer has the audited multi-root shape");
-  assert.match(continuationSource, /spawnSync\("python3"/,
-    "row-3 unit suffix subprocess blocker changed");
-  assert.match(continuationSource, /compile\("collected_log_embeddings\.py"/,
-    "row-3 continuation no longer compiles inside its transaction");
+  const hostSource = fs.readFileSync(path.join(__dirname,
+    "row3_phase6_resident_kernel_host.cjs"), "utf8");
+  const suffixSource = fs.readFileSync(path.join(__dirname,
+    "row3_phase6_resident_unit_suffix.py"), "utf8");
+  assert.match(hostSource, /resident\.unitFn\.gmp\(/,
+    "row-3 resident compact-unit call disappeared");
+  assert.match(hostSource, /rawUnitProvenance/,
+    "row-3 resident raw provenance owner disappeared");
+  assert.doesNotMatch(hostSource, /spawnSync|execFile|execSync/,
+    "row-3 resident host gained a subprocess");
+  assert.match(suffixSource, /_pari_reverse_hnffinal_selection\(/,
+    "row-3 resident suffix no longer reverses HNF provenance");
 
   const client = new pari.HelperClient(pari.buildHelper());
   await client.ready();
@@ -62,11 +64,9 @@ async function main() {
     pariProjection: sample.projection,
     freshCorrectness: fresh,
     sageResidentClassCandidateKernelAvailable: true,
-    sageResidentWholeClassUnitKernelAvailable: false,
-    timingEligible: false, qualifiedTiming: false, ratioPublished: false,
-    blockers: ["ordinary-Python compact-unit subprocess",
-      "JSON relation/log transfer into unit suffix",
-      "no preallocated float/int64 arena views for resident bridge/getfu suffix"],
+    sageResidentWholeClassUnitKernelAvailable: true,
+    timingEligible: true, qualifiedTiming: false, ratioPublished: false,
+    blockers: [],
   }, null, 2)}\n`);
 }
 

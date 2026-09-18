@@ -1,36 +1,27 @@
-# Row 3 Phase 6 resident-boundary gap
+# Row 3 Phase 6 resident-boundary resolution
 
-Row 3 has authenticated prepared-input correctness, a pristine resident PARI
-2.17.4 `bnfinit0(nf, 0)` reference adapter, and now a resident Sage.js
-class-candidate/regulator root. It does **not** yet have an honest resident
-whole class-and-unit timing adapter. See
-`row3_phase6_resident_kernel_audit.md` for the narrowed remaining gap.
+The previous row-3 boundary gap is closed for the authenticated prepared
+input. `row3_phase6_resident_kernel_host.cjs` compiles and allocates before
+the clock, resets before the clock, and then times two calls in one resident
+process:
 
-The current correct transaction crosses three boundaries which cannot be
-included in a matched mathematical clock:
+1. the generic translated relation, HNF, analytic-acceptance, regulator, and
+   class-group root; and
+2. the row-3 rank-two bridge, `getfu(LARGE)`, and exact provenance suffix.
 
-1. `row3_prepared_initial_base_frontier.cjs` compiles eleven native roots and
-   executes a JavaScript sequence which allocates and projects an immutable
-   factor-base owner.
-2. `row3_prepared_relation_hnf_frontier.cjs` compiles the collector, HNF,
-   analytic and terminal roots while running, then allocates new native owners
-   between calls.
-3. Its final unit reconstruction invokes ordinary Python in a subprocess and
-   serializes the complete relation/log payload through JSON.
+The second root retains both the compact `7 x 2` unit transform and its exact
+`675 x 2` expansion in raw-relation order. It reverses the terminal HNF from
+the live first-root owners; it does not serialize or reconstruct those owners.
+Compilation, authentication, allocation, reset, inspection, independent
+replay, and publication are outside the mathematical clock.
 
-Those operations are appropriate in an untimed correctness transaction. They
-are not equivalent to restoring a prepared PARI stack and timing one call to
-`bnfinit0`. Timing the existing transaction would charge compilation,
-filesystem, subprocess, serialization and publication work only to Sage.js.
+The bounded check runs under a 4 GiB address-space limit and a 600 second CPU
+limit. After the clock it independently replays the existing exact Python
+authority and checks the complete transform, all 1,350 raw provenance
+coefficients, unit norms and real signs, relation-kernel annihilation,
+principal-relation norms, and principal-generator signs.
 
-The row therefore fails closed for Phase 6 timing. The missing implementation
-is a resident in-memory root (or resident call graph) that accepts only the
-authenticated prepared NF, retains compiled handles and bounded workspaces,
-performs relation/HNF/unit/class work without a subprocess, and returns a
-common semantic projection after its clock stops. Until that exists, row 3 is
-correctness-covered but timing-ineligible.
-
-`row3_phase6_resident_boundary_gap_check.cjs` authenticates the exact prepared
-row, checks the structural blockers above, exercises the pristine PARI helper,
-and optionally reruns the existing fresh correctness transaction. It never
-reports a Sage/PARI ratio.
+This is a Linux-only development boundary and its timing remains unqualified.
+The older fresh correctness transaction still has its multi-root and Python
+subprocess structure, but that structure is no longer used by the resident
+timing adapter.
