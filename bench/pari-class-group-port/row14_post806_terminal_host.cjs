@@ -52,16 +52,11 @@ function float64(fn, length, values) {
   return fn.createFloat64Buffer(values === undefined ? length : values.map(Number));
 }
 
-async function runRow14Post806Terminal(ownerPath, metadataPath) {
-  const compressed = fs.readFileSync(ownerPath);
-  const plain = zlib.gunzipSync(compressed);
-  assert.equal(sha256(plain), OWNER_SHA256, "row-14 live owner identity drift");
-  const owner = JSON.parse(plain);
+function validateOwners(owner, metadataReceipt, { verifyDigests = true } = {}) {
   assert.equal(owner.schema, OWNER_SCHEMA);
-
-  const metadataReceipt = JSON.parse(fs.readFileSync(metadataPath, "utf8"));
   assert.equal(metadataReceipt.metadataSha256, METADATA_SHA256);
-  assert.equal(sha256(JSON.stringify(metadataReceipt.metadata)), METADATA_SHA256);
+  if (verifyDigests) assert.equal(
+    sha256(JSON.stringify(metadataReceipt.metadata)), METADATA_SHA256);
   const metadata = metadataReceipt.metadata;
   assert.equal(owner.ancestry.factorMetadataSha256, METADATA_SHA256);
   assert.equal(owner.ancestry.capsuleSha256, metadata.authority.capsuleSha256);
@@ -77,8 +72,15 @@ async function runRow14Post806Terminal(ownerPath, metadataPath) {
   assert.equal(owner.final.dep.length, 0);
   assert.equal(owner.final.b.length, 3 * 796);
   assert.equal(owner.final.c.length, 7 * 3 * 806);
+  return { metadata, boundary };
+}
 
-  const catalog = await compiled("prime_degree_catalog.py", "pari_prime_degree_catalog");
+async function runRow14Post806TerminalFromOwners(owner, metadataReceipt,
+  options = {}) {
+  const { metadata, boundary } = validateOwners(owner, metadataReceipt, options);
+
+  const catalog = options.catalog || await compiled(
+    "prime_degree_catalog.py", "pari_prime_degree_catalog");
   const allPrimes = metadata.prepared.admission_primes.map(Number);
   const primeCount = allPrimes.findIndex(prime => prime === ANALYTIC_LAST_PRIME) + 1;
   assert(primeCount > 0);
@@ -107,7 +109,7 @@ async function runRow14Post806Terminal(ownerPath, metadataPath) {
   };
   assert.equal(catalog.fn.gmp(...catalog.names.map(([name]) => cv[name])), 0n);
 
-  const terminal = await compiled("row14_post806_terminal.py",
+  const terminal = options.terminal || await compiled("row14_post806_terminal.py",
     "pari_row14_post806_terminal");
   const analytic = require(terminal.built.modulePath).pari_row14_analytic_inverse_hr;
   assert(analytic?.nativeAvailable);
@@ -209,4 +211,14 @@ async function runRow14Post806Terminal(ownerPath, metadataPath) {
   };
 }
 
-module.exports = { runRow14Post806Terminal };
+async function runRow14Post806Terminal(ownerPath, metadataPath) {
+  const compressed = fs.readFileSync(ownerPath);
+  const plain = zlib.gunzipSync(compressed);
+  assert.equal(sha256(plain), OWNER_SHA256, "row-14 live owner identity drift");
+  const owner = JSON.parse(plain);
+  const metadataReceipt = JSON.parse(fs.readFileSync(metadataPath, "utf8"));
+  return runRow14Post806TerminalFromOwners(owner, metadataReceipt);
+}
+
+module.exports = { runRow14Post806Terminal,
+  runRow14Post806TerminalFromOwners, validateOwners };

@@ -34,7 +34,7 @@ const sha256 = bytes => crypto.createHash("sha256").update(bytes).digest("hex");
 const hash = value => sha256(Buffer.from(JSON.stringify(value)));
 const strings = values => values.map(String);
 
-function synthesizeMetadata(preparedEnvelope, root) {
+function synthesizeMetadata(preparedEnvelope, root, { verifyDigest = true } = {}) {
   validateBoundary(preparedEnvelope, root);
   const prepared = structuredClone(preparedEnvelope.data);
   const descriptorGenerators = root.selectedDescriptors.flatMap(row => row.generator);
@@ -68,7 +68,7 @@ function synthesizeMetadata(preparedEnvelope, root) {
       searchIdeals: strings(root.handoff.searchIdeals),
     },
   };
-  assert.equal(hash(metadata), METADATA_SHA256,
+  if (verifyDigest) assert.equal(hash(metadata), METADATA_SHA256,
     "prepared projection no longer reconstructs authenticated factor metadata");
   return { metadata, metadataSha256: METADATA_SHA256 };
 }
@@ -87,7 +87,8 @@ function checkpointHashes(live) {
   }));
 }
 
-function acceptedOwner(preparedEnvelope, root, live, metadata) {
+function acceptedOwner(preparedEnvelope, root, live, metadata,
+  { verifyDigest = true } = {}) {
   const values = live.collectorValues;
   const records = strings(values.relation_records.toArray()).slice(0, ROWS * COLUMNS);
   const logs = strings(values.log_embeddings.toArray()).slice(0, 7 * PLACES * COLUMNS);
@@ -115,8 +116,8 @@ function acceptedOwner(preparedEnvelope, root, live, metadata) {
     exclusions: ["terminal class group", "Smith invariants", "regulator", "units",
       "capacity tails", "frozen W0 as a runtime input"],
   };
-  const plain = Buffer.from(JSON.stringify(owner));
-  assert.equal(sha256(plain), ACCEPTED_SHA256,
+  const plain = verifyDigest ? Buffer.from(JSON.stringify(owner)) : null;
+  if (verifyDigest) assert.equal(sha256(plain), ACCEPTED_SHA256,
     "connected Gate C owner diverged from the accepted relation boundary");
   return { owner, plain };
 }

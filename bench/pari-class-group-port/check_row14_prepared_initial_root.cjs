@@ -127,8 +127,7 @@ function publishOwner(directory, owner) {
     bytes: plain.length, compressedBytes: compressed.length };
 }
 
-async function runRoot() {
-  const payload = JSON.parse(fs.readFileSync(0, "utf8"));
+async function computePreparedInitialRoot(payload, options = {}) {
   assert.deepEqual(Object.keys(payload).sort(),
     ["outputDirectory", "prepared", "preparedAuthoritySha256"]);
   const allowedPrepared = ["admission_factorlimit", "admission_matrix_e",
@@ -142,7 +141,7 @@ async function runRoot() {
     "root child received an unreviewed prepared field");
 
   const { compileKernel } = require("../../tools/native-kernel/compiler.cjs");
-  const built = await compileKernel({ sourcePath: SOURCE });
+  const built = options.built || await compileKernel({ sourcePath: SOURCE });
   const module = require(built.modulePath);
   const fn = module.pari_row14_prepared_initial_root;
   assert.equal(fn.nativeAvailable, true);
@@ -316,9 +315,17 @@ async function runRoot() {
     publication: { gateA: true, gateB: true, gateCReady: true,
       collectionExecuted: false, terminalClassComputed: false },
   };
-  const receipt = publishOwner(payload.outputDirectory, owner);
-  process.stdout.write(`${canonical({ ...receipt, state, elapsedNs: String(elapsedNs),
-    maxRssKiB: owner.execution.maxRssKiB, coreSourcePath: built.coreSourcePath })}\n`);
+  return { owner, state, elapsedNs: String(elapsedNs),
+    maxRssKiB: owner.execution.maxRssKiB, coreSourcePath: built.coreSourcePath };
+}
+
+async function runRoot() {
+  const payload = JSON.parse(fs.readFileSync(0, "utf8"));
+  const computed = await computePreparedInitialRoot(payload);
+  const receipt = publishOwner(payload.outputDirectory, computed.owner);
+  process.stdout.write(`${canonical({ ...receipt, state: computed.state,
+    elapsedNs: computed.elapsedNs, maxRssKiB: computed.maxRssKiB,
+    coreSourcePath: computed.coreSourcePath })}\n`);
 }
 
 function readCapsule() {
@@ -477,7 +484,11 @@ function main() {
   })}\n`);
 }
 
-Promise.resolve(main()).catch(error => {
-  process.stderr.write(`${error.stack || error}\n`);
-  process.exitCode = 1;
-});
+if (require.main === module) {
+  Promise.resolve(main()).catch(error => {
+    process.stderr.write(`${error.stack || error}\n`);
+    process.exitCode = 1;
+  });
+}
+
+module.exports = { SOURCE, computePreparedInitialRoot, publishOwner };

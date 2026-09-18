@@ -205,7 +205,10 @@ main(void)
   uint64_t preparation_nanoseconds;
 
   setvbuf(stdout, NULL, _IONBF, 0);
+  /* Match the single resident Sage.js worker and avoid reserving PARI's
+   * default pool of worker stacks for a deliberately single-threaded kernel. */
   pari_init(1200000000, 1000000);
+  pari_mt_nbthreads = 1;
   polynomial = gp_read_str("x^4-200000002*x-200000002");
   clock_gettime(CLOCK_MONOTONIC, &begin);
   nf = nfinit0(polynomial, 0, nbits2prec(192));
