@@ -151,6 +151,24 @@ qualifying run took 322.253 seconds at 1,133,356 KiB peak RSS.  The immutable
 owner remains below the 4-GiB bound.  Analytic acceptance, exact class
 witnesses, units, and C7 remain the next row-6 cuts.
 
+The subsequent f06f row-6 milestone closes that particular native-call gap.
+`row6_phase6_whole_prepared_root.generated.py` now connects the authenticated
+prepared input, factor base, initial relations, all 14 collection passes,
+initial HNF and both continuations, ancestry, analytic and post-HNF work, Smith
+invariants, rank-two units, exact factor/principal authentication, and class
+witness projection in one native invocation.  Its exact replay returns class
+number `4`, invariants `[2,2]`, and the expected unit result; it also rejects a
+reused publication lifecycle and a prepared-input mutation.  The final persisted
+4-GiB/600-second jitless correctness run exited zero after 65.236 seconds at
+595,336 KiB maximum RSS/HWM and 3,225,152 KiB maximum virtual size.  Its JSON
+receipt SHA-256 is
+`a6c1729e8099c687a7d4134be2a8e5f89b4ef749c489f6b7bd2948a9b50f273d`;
+the sampled resource receipt SHA-256 is
+`371e3b4c9f9a3b2a8e851009560d7535e66f9b9ce78ab6d8e310498b6afd12a7`.
+This is whole-root correctness/resource evidence for row 6, not Phase-6
+qualification: timing remains disabled pending the full matched v2 Sage/PARI
+adapter, approved host, identical clock boundaries, and alternating campaign.
+
 Commits `bff9e5840` and `0e15a7d4d` add the pinned PARI 2.17.4 side of the
 row-14 prepared-field timing experiment.  It prepares `nfinit` outside the
 clock and times exactly `bnfinit0(prepared_nf,0,NULL,nbits2prec(192))`, retaining
