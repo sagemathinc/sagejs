@@ -30,14 +30,14 @@ HNF state:    0,7,7,0,7,4,0,14,0
 units:        [7,-7,15,-9,9], [-27,15,8,6,-9]
 unit norms:   -1, -1
 unit state:   0,0,0,0,0,0,2,1
-second clock: 3.956081221 s
+second clock: 4.058664856 s
 ```
 
 Receipt:
 
 ```text
-/scratch/row20-phase6-resident-kernel-check-v4.json
-semantic sha256 76b172c0544a2304ffb6a6d4f9e87f7b68fd46c060a4ceb49b330168665a48d3
+/scratch/row20-phase6-aggregate-kernel-check-v2.json
+semantic sha256 b6a844c8ca857090bbd975f8222752be89130b421313c85d90abe77cf32cfeb7
 ```
 
 Run it with:
@@ -53,8 +53,11 @@ timeout 600s node \
 `prepareResident` performs authentication, compilation/cache access, owner
 allocation, setup-oracle comparison, argument binding, and reset-snapshot
 construction. `resetResident` restores those buffers before the clock starts.
-The inclusive clock contains six prebound native calls and no owner allocation,
-filesystem access, subprocess, reset, projection, or serialization. It reports
+The inclusive clock contains one call to a private aggregate typed-Python root
+and no owner allocation, filesystem access, subprocess, reset, projection, or
+serialization. The aggregate body calls the six imported mathematical roots in
+sequence and propagates their status. Its ABI has 450 retained arguments and
+its generated C is approximately 3.37 MB. It reports
 `allocationFreeMatchedClock: true`.
 
 The cut is not yet the public class-group API (`publicComplete: false`). It also

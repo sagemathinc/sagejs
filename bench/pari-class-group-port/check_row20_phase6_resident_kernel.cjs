@@ -7,6 +7,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const kernel = require("./row20_phase6_resident_kernel.cjs");
+const aggregateSource = require("./row20_phase6_aggregate_source.cjs");
 
 const CORPUS = process.env.SAGEJS_FRESH_PREPARED_CORPUS ||
   "/scratch/sagejs-pari-fresh-prepared-corpus-v1";
@@ -39,6 +40,9 @@ function prepared() {
 }
 
 async function main() {
+  assert.equal(fs.readFileSync(path.join(__dirname,
+    "row20_phase6_aggregate_root.generated.py"), "utf8"),
+  aggregateSource.generate(), "row-20 aggregate generated source is stale");
   const input = prepared();
   for (const mutate of [
     value => { value.prep_polynomial[0] = "-11"; },
@@ -80,13 +84,14 @@ async function main() {
   assert.deepEqual(result.boundary, {
     allocationInsideClock: false, filesystemInsideClock: false,
     subprocessesInsideClock: false, serializationInsideClock: false,
-    resetInsideClock: false, nativeCallsInsideClock: 6,
+    resetInsideClock: false, nativeCallsInsideClock: 1,
   });
   const canonical = JSON.stringify(semantic(result));
   process.stdout.write(`${JSON.stringify({ schema:
-    "sagejs.pari-class-group/row20-phase6-resident-kernel-check-v2",
+    "sagejs.pari-class-group/row20-phase6-resident-kernel-check-v3",
   preparedMutationsRejected: 4, residentNoPublication: true,
   residentNoCpythonChild: true, repeatedCalls: 2, ownerIdentitiesStable: true,
+  aggregateSourceFresh: true, aggregateArgumentCount: 450,
   resultSha256: sha(Buffer.from(canonical)),
   result })}\n`);
 }

@@ -8,6 +8,7 @@ const factorRoot = require("./row20_phase6_factor_base_host.cjs");
 const hnf = require("./row20_fresh_first_hnf_host.cjs");
 const acceptance = require("./row20_fresh_acceptance_host.cjs");
 const units = require("./row20_phase6_resident_unit_host.cjs");
+const aggregate = require("./row20_phase6_aggregate_host.cjs");
 const { compileKernel } = require("../../tools/native-kernel/compiler.cjs");
 
 const SCHEMA = "sagejs.pari-class-group/row20-phase6-resident-kernel-v1";
@@ -123,10 +124,12 @@ async function prepareResident(prepared) {
   for (const restore of analyticReset) restore();
   const unitResident = await units.prepare(storedPrepared);
   units.bindInputs(unitResident, hnfInvocation, acceptanceInvocation);
-  return { acceptanceInvocation, acceptanceReset, analyticInvocation,
+  const resident = { acceptanceInvocation, acceptanceReset, analyticInvocation,
     analyticReset, authority, expectedFactor: setupFactor.owner,
     factorResident, hnfInvocation, hnfReset, prepared: storedPrepared,
     unitResident };
+  resident.aggregateResident = await aggregate.prepare(resident);
+  return resident;
 }
 
 function resetResident(resident) {
@@ -140,21 +143,11 @@ function resetResident(resident) {
 function runResident(resident) {
   resetResident(resident);
   const started = process.hrtime.bigint();
-  const factorStatus = factorRoot.runNative(resident.factorResident);
-  const hnfStatus = resident.hnfInvocation.fn.gmp(...resident.hnfInvocation.args);
-  const catalogStatus = resident.analyticInvocation.catalog.fn.gmp(
-    ...resident.analyticInvocation.catalogArgs);
-  const analyticStatus = resident.analyticInvocation.analytic.fn.gmp(
-    ...resident.analyticInvocation.analyticArgs);
-  const acceptanceStatus = resident.acceptanceInvocation.kernel.fn.gmp(
-    ...resident.acceptanceInvocation.args);
-  const unitStatus = units.runNative(resident.unitResident);
+  const aggregateStatus = aggregate.runNative(resident.aggregateResident);
   const stopped = process.hrtime.bigint();
-  assert.equal(factorStatus, 0n);
+  assert.equal(aggregateStatus, 0n);
   verifyFactor(resident);
-  assert.equal(hnfStatus, 0n); assert.equal(catalogStatus, 0n);
-  assert.equal(analyticStatus, 0n); assert.equal(acceptanceStatus, 0n);
-  const materialized = units.projection(resident.unitResident, unitStatus);
+  const materialized = units.projection(resident.unitResident, 0n);
   const first = materialized.units.slice(0, 5), second = materialized.units.slice(5);
   const norms = [unitNorm(first, resident.prepared.basis_table),
     unitNorm(second, resident.prepared.basis_table)];
@@ -172,7 +165,7 @@ function runResident(resident) {
       relationCount: "14", factorBaseSize: "7" },
     boundary: { allocationInsideClock: false, filesystemInsideClock: false,
       subprocessesInsideClock: false, serializationInsideClock: false,
-      resetInsideClock: false, nativeCallsInsideClock: 6 },
+      resetInsideClock: false, nativeCallsInsideClock: 1 },
     allocationFreeMatchedClock: true, correspondenceComplete: true,
     publicComplete: false };
 }
