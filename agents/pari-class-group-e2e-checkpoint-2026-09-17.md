@@ -69,6 +69,18 @@ relation state `[54,10110,945,7,0,1006]` at 634,900 KiB peak RSS.  Frozen W0 is
 admitted only after worker exit; every descriptor, basis cell, and relation
 agrees exactly even though the live RNG state legitimately differs.
 
+Commits `2644f1053`, `338f89654`, and `95fdde170` continue row 13 through its
+complete ten-pass relation/HNF schedule.  The first two close genuine shared
+frontiers: authentic 448-bit real/log/argument storage, a 500,000-operation CUP
+bridge, and deterministic supported-smooth factorization of the 68-bit norm
+that previously stopped at the word boundary.  Gate C reaches checkpoints
+995, 996, 999, 1000, 1001, 1002, 1005, and 1006, including the two authentic
+stalls, with final state `[1006,10110,0,0,1006,1006]`.  The capped run takes
+127.394 seconds at 1,546,392 KiB peak RSS.  Relations, raw exact logs, `H`,
+dependent blocks, and basis/dependent permutation partitions match W0 at all
+eight checkpoints.  Alternate valid resident `B`, `C`, and within-partition
+pivot coordinates are retained and hash-bound rather than replaced from W0.
+
 Commit `f5d660bf6` crosses a separate generality frontier for row 6.  Its live
 prepared-input factor-base root reaches `KC=1130`, beyond the old fixed 1024
 ceiling, under a predeclared 2048-ideal admission bound while allocating zero
@@ -95,6 +107,19 @@ the matched class, generator, rank-two log/regulator, torsion, work-state, and
 The adapter deliberately publishes no ratio: the Sage.js transaction still
 includes detached certification and publication work excluded from PARI's
 kernel clock, so a matched Sage-side timing partition is the next prerequisite.
+
+Commit `dfc734103` proves the strict Sage and pristine PARI outputs have the
+same class group, both generator-ideal HNFs, regulator value, torsion, work
+shape, and all 66 terminal RNG words; the six rounded unit logarithms agree by
+110--115 bits.  A subsequent resident prototype removes subprocesses, files,
+owner hashing, detached replay, mutation checks, and publication from the
+clock.  Its first successful compute-only run took 128.439 seconds: 1.368 for
+the live root, 86.658 for relation/HNF, 5.082 for a now-removed projection,
+35.271 for analytic acceptance plus the terminal lattice, 0.014 for native
+unit/getfu, and 0.044 for native `class_group_gen`.  This is diagnostic pending
+the cleaned focused receipt, but it already localizes essentially the whole
+remaining performance problem to relation/HNF and analytic/terminal-lattice
+machinery rather than unit or final class assembly.
 
 One prepared totally real cubic,
 `x^3 - 20018*x + 20034`, now has a genuinely connected internal result:
