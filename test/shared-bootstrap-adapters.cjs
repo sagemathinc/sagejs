@@ -12,7 +12,7 @@ const names = ["ρσ_copy_method_metadata", "ρσ_native_method_adapter", "ρσ_
   "ρσ_exact_integer_add", "ρσ_exact_integer_divmod", "ρσ_exact_shift",
   "ρσ_exact_integer_submul", "ρσ_int_pow",
   "ρσ_check_interrupt", "ρσ_normalize_exception", "ρσ_prepare_method_call",
-  "ρσ_attr", "ρσ_interpolate_kwargs"];
+  "ρσ_attr", "ρσ_interpolate_kwargs", "ρσ_interpolate_kwargs_constructor"];
 
 // Exercise the native ABI bodies directly; full self-hosted/module
 // linkage remains a separate build qualification, not implied by this test.
@@ -213,6 +213,53 @@ test("shared keyword binding consumes literal packets without Python operators",
   assert.throws(
     () => api.ρσ_interpolate_kwargs(undefined, target, [{ unknown: 2 }]),
     /unexpected keyword argument 'unknown'/,
+  );
+});
+
+test("branded keyword constructors reuse prepared allocation", () => {
+  const prototype = {};
+  const packet = { value: 17 };
+  const calls = [];
+  function target(keywords) {
+    calls.push([this, keywords]);
+    this.value = keywords.value;
+  }
+  target.prototype = prototype;
+  target.__bases__ = [];
+  const api = context({
+    _internal_keyword_constructor_prototypes: new WeakSet([prototype]),
+    _internal_class_instance_function: () => false,
+    _internal_get_member: (value, name) => value[name],
+    _internal_type_is: (left, right) => left === right,
+    ρσ_native_jstype: (value) => typeof value,
+    _internal_has_own: Object.hasOwn,
+  });
+  const discarded = Object.create(prototype);
+  const result = api.ρσ_interpolate_kwargs_constructor(
+    discarded, false, target, [packet],
+  );
+  assert.equal(result.value, 17);
+  assert.equal(result, discarded);
+  assert.deepEqual(calls, [[discarded, packet]]);
+
+  function replacement(value) {
+    calls.push([this, value]);
+    this.value = value;
+  }
+  replacement.prototype = prototype;
+  replacement.__argnames__ = ["value"];
+  const rebound = Object.create(prototype);
+  const reboundResult = api.ρσ_interpolate_kwargs_constructor(
+    rebound, false, replacement, [{ value: 23 }],
+  );
+  assert.equal(reboundResult, rebound);
+  assert.equal(rebound.value, 23);
+  assert.deepEqual(calls[1], [rebound, 23]);
+
+  const receiver = {};
+  assert.equal(
+    api.ρσ_interpolate_kwargs_constructor(receiver, true, () => 3, []),
+    receiver,
   );
 });
 

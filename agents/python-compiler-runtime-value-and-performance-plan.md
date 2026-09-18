@@ -469,6 +469,22 @@ traitlets/pyparsing workflows, docs, merge invariants, and the unchanged
 not confuse these closed arithmetic micro-cliffs with the open keyword,
 construction, or cold-compiler cliffs.
 
+**2026-09-17 keyword-constructor dispatch checkpoint:** static keyword
+construction previously prepared one receiver, then the generic binder invoked
+the registered generated-class adapter without it and caused a second allocation.
+The guarded shared-bootstrap path now applies only an authenticated registered
+constructor directly to the prepared receiver; unregistered, replaced, custom,
+and explicit-apply paths retain their existing semantics. Controlled
+source-current alternating-process measurements improve keyword construction
+plus a method by 5.98%, from 409.000 ms to 384.550 ms per 100,000 operations,
+while the other six call/construction rows remain flat. The residual gap is
+12.92x CPython, and keyword methods remain 19.92x, so M5 is still open. A preceding prepared-context
+binder experiment was rejected after producing only -0.7% to +1.3% variation.
+The exact artifacts, semantic boundary, and qualification are recorded in
+`agents/python-keyword-constructor-dispatch.md`. Core source is
+902,456/903,000 bytes without a budget change. Keep this work behind the
+attribute-store and exact-div/mod integration queue.
+
 **2026-09-17 exact-power checkpoint:** a further queued follow-up uses a
 separate compact primitive boundary for nonnegative integer power while leaving
 negative Python floats, negative Sage rationals, floats, and object dispatch on
