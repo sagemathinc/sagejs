@@ -7,11 +7,10 @@ or admit any final-reserve field.
 
 `phase5_development_roots.cjs` binds every one of the sixteen frozen development
 rows to its exact manifest ID, ascending defining polynomial, polynomial digest,
-degree, signature, stratum, and role. It records fifteen committed internally
-complete roots and keeps row 23 explicitly blocked. Thirteen of the fifteen
-completed roots originally produced the field-neutral
+degree, signature, stratum, and role. It records sixteen committed internally
+complete roots. Thirteen roots originally produced the field-neutral
 `ImmutableClassUnitCorrespondenceResult`; committed adapters now bring rows 19
-and 21 to the same boundary, so all fifteen completed roots are neutral-ready.
+21, and 23 to the same boundary, so all sixteen roots are neutral-ready.
 
 ## Interface
 
@@ -36,7 +35,7 @@ All other roots use the manifest field ID directly.
 ## Coverage and remaining gaps
 
 Neutral-envelope-ready rows are 0, 1, 3, 4, 6, 8, 10, 11, 13, 14, 16, 18, 19,
-20, and 21. Rows 6, 13, 16, 18, and 20 still need small publication wrappers
+20, 21, and 23. Rows 6, 13, 16, 18, and 20 still need small publication wrappers
 around their existing payload/preparation exports; this registry deliberately
 does not manufacture their out-of-band mathematical authorities.
 
@@ -47,14 +46,15 @@ It retains `sagejs.pari-class-group/row19-buchall-end-result-v1` as the source
 schema. Row 21 binds `row21_terminal_neutral_adapter.cjs` and its
 `prepareRow21NeutralResult`/`publishPreparedRow21NeutralResult` interface while
 retaining `sagejs.pari-class-group/row21-final-buchall-end-v1` as its source
-schema. Both adapters are committed at `4e0d02487`. Row 23 remains
-mathematically incomplete because generic degree-five ideal reduction and
-expanded ideal-product replay are still absent.
+schema. Row 23 binds `row23_terminal_neutral_adapter.cjs` after exact
+degree-five ideal reduction, expanded ideal-product replay, and full `clg2`
+correspondence closed its former gap. Its source schema is
+`sagejs.pari-class-group/row23-final-buchall-end-v1`.
 
 The focused checker covers registry counts, a successful branded neutral
 result, generated-ID/internal-ID normalization, polynomial and signature
 identity changes, unsupported terminal status, an unbranded authority, a wrong
-result brand, inconsistent source metadata, the blocked row, and reserve
+result brand, inconsistent source metadata, row-23 registration, and reserve
 rejection. It makes no scratch reads and performs no timed or fresh mathematical
 computation.
 
@@ -87,8 +87,7 @@ The descriptor names an explicit caller-supplied driver module/export and an
 opaque input object containing whatever paths and authority material that
 driver requires. The runner never derives artifact locations from a row or
 searches scratch storage. It validates the descriptor and manifest gate, then
-rejects reserve or unavailable fields before resolving or loading the driver.
-Row 23 is therefore reported with its precise registry gap without executing
-any adapter. Available-field drivers remain responsible for explicitly opening
+rejects reserve fields before resolving or loading the driver. Available-field
+drivers remain responsible for explicitly opening
 and authenticating their heterogeneous inputs and returning the required
 verified result plus detached replay.

@@ -41,16 +41,15 @@ test("frozen qualification manifest derives exact split without changing the pan
   assert.equal(plan.fields.length, 16);
   assert.equal(plan.executable, true);
   assert.equal(plan.mode, "untimed-sage-correctness-only");
-  assert.equal(plan.available.length, 15);
-  assert.deepEqual(plan.unavailable, [{ fieldId: "5.5.1002836007889.1",
-    reason: "generic degree-five ideal reduction and expanded ideal-product replay remain incomplete" }]);
+  assert.equal(plan.available.length, 16);
+  assert.deepEqual(plan.unavailable, []);
   assert.equal(plan.qualifiedTiming, false);
   assert.equal(plan.freshPreparedExecution, false);
   assert.doesNotThrow(() => runner.assertDevelopmentFields(plan.fields));
   assert.throws(() => runner.assertDevelopmentFields(data.manifest.fields), /reserve field/);
 });
 
-test("development dispatch rejects reserves and unavailable roots before loading drivers", async () => {
+test("development dispatch rejects reserves before loading drivers", async () => {
   const data = runner.validateManifest();
   let loads = 0;
   const descriptor = panelIndex => ({
@@ -63,9 +62,6 @@ test("development dispatch rejects reserves and unavailable roots before loading
   const options = { manifestData: data, loadModule() { loads += 1; return {}; } };
   await assert.rejects(runner.executeDevelopmentDescriptor(descriptor(2), options),
     /reserve field.*remains sealed/);
-  assert.equal(loads, 0);
-  await assert.rejects(runner.executeDevelopmentDescriptor(descriptor(23), options),
-    /development field .* is unavailable/);
   assert.equal(loads, 0);
 });
 

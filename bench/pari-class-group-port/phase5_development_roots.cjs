@@ -111,8 +111,9 @@ const ROOT_SPECS = Object.freeze([
     "sagejs.pari-class-group/row21-final-buchall-end-v1"],
   [23, "5.5.1002836007889.1",
     "c3077e07c31ac7586ee22c1a57ecfab1883699f8061f850ad75a86d46f23ea73",
-    null, null, null, null, BLOCKED, UNAVAILABLE,
-    "generic degree-five ideal reduction and expanded ideal-product replay remain incomplete"],
+    null, "row23_terminal_neutral_adapter.cjs", "prepareRow23NeutralResult",
+    "publishPreparedRow23NeutralResult", COMPLETE, NEUTRAL_READY, null,
+    "sagejs.pari-class-group/row23-final-buchall-end-v1"],
 ].map(values => Object.freeze({
   panelIndex: values[0], manifestFieldId: values[1], polynomialSha256: values[2],
   internalFieldId: values[3] || values[1], module: values[4], composeExport: values[5],
@@ -171,8 +172,8 @@ function buildDevelopmentRootRegistry({
       reserveEligible: false,
     });
   });
-  assert.equal(entries.filter(entry => entry.completionStatus === COMPLETE).length, 15);
-  assert.equal(entries.filter(entry => entry.completionStatus === BLOCKED).length, 1);
+  assert.equal(entries.filter(entry => entry.completionStatus === COMPLETE).length, 16);
+  assert.equal(entries.filter(entry => entry.completionStatus === BLOCKED).length, 0);
   return Object.freeze(entries);
 }
 
