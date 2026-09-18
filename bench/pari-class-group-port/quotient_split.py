@@ -51,7 +51,7 @@ def pari_small_quotient_split_step(
     equals component count, not that
     class-group or prime-descriptor computation is complete.
     """
-    if n < 3 or n > 4 or rank < 0 or rank >= n or prime < 2 or prime > 3037000493:
+    if n < 3 or n > 5 or rank < 0 or rank >= n or prime < 2 or prime > 3037000493:
         raise ValueError("small quotient split domain")
     size = n * n
     if (
@@ -66,7 +66,7 @@ def pari_small_quotient_split_step(
         or len(polynomial_workspace) < 2 * n * (n + 2) + 4 * n + 4
         or len(coefficients) < n + 2
         or len(polynomial_diagnostic) < 2
-        or len(roots) < 4
+        or len(roots) < n
         or len(root_workspace) < pari_small_prime_polynomial_roots_workspace_size()
         or len(children) < n * size
         or len(child_ranks) < n

@@ -17,7 +17,7 @@ from .relation_cache import pari_word_mod_inverse
 
 @native
 def pari_small_prime_matrix_intersection_scratch_size(rows: int) -> int:
-    if rows < 0 or rows > 4:
+    if rows < 0 or rows > 5:
         raise ValueError("small intersection dimension frontier")
     return 7 * rows * rows + 3 * rows
 
@@ -94,7 +94,7 @@ def pari_small_flm_kernel(
     Kernel active columns have stride columns; return nullity. Pivots one-based
     row or zero. Dense Gaussian corridor rows<=4, columns<=8, small prime.
     """
-    if rows < 0 or rows > 4 or columns < 0 or columns > 8 or p < 2 or p > 3037000493:
+    if rows < 0 or rows > 5 or columns < 0 or columns > 10 or p < 2 or p > 3037000493:
         raise ValueError("small Flm kernel domain")
     if (
         a < 0

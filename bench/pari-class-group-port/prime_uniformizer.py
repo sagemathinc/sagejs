@@ -89,7 +89,8 @@ def pari_prepared_prime_uniformizer(
     """Publish uniformizer; return0, or raise with status-1 partial scratch.
 
     Disjoint owners. P/V are independent valid prime/complement image bases;
-    n=3/4, noninert P, and caller-selected init_norm embedding branch. State
+    n=3/4, or the bounded degree-five residue-degree-at-most-three corridor,
+    noninert P, and caller-selected init_norm embedding branch. State
     [status, norm tests, branch] uses branch1 initial,2 scalar-shift,3 column.
     Output is untouched on error. Trace capacity (rank+2)*(n+3) records all
     norm-tested candidates, including exact norm/error and divisibility result.
@@ -98,9 +99,10 @@ def pari_prepared_prime_uniformizer(
     """
     if (
         n < 3
-        or n > 4
+        or n > 5
         or rank < 1
         or rank >= n
+        or n - rank > 3
         or complement_rank < 0
         or complement_rank > n
     ):

@@ -30,7 +30,7 @@ def pari_small_quotient_minpoly(
     scratch without publishing a polynomial.
     """
     n = dimension
-    if n < 1 or n > 4 or prime < 2 or prime > 3037000493:
+    if n < 1 or n > 5 or prime < 2 or prime > 3037000493:
         raise ValueError("small quotient minimal polynomial domain")
     columns = n + 2
     size = n * columns

@@ -25,7 +25,7 @@ puts("]");pari_close();return 0;}
  fs.writeFileSync(path.join(directory,'oracle.c'),control);const lib=path.join(pari,'Olinux-x86_64'),binary=path.join(directory,'oracle');
  run('cc',['-O1','-I'+path.join(pari,'src/headers'),'-I'+lib,path.join(directory,'oracle.c'),'-L'+lib,'-Wl,-rpath,'+lib,'-lpari','-lm','-o',binary]);
  const rows=[];
- for(const n of [3,4])for(let count=0;count<=n;count++)for(let code=0;code<4**count;code++){
+ for(const n of [3,4,5])for(let count=0;count<=Math.min(n,4);count++)for(let code=0;code<4**count;code++){
   let x=code;const degrees=[],generators=[];
   for(let j=0;j<count;j++){const k=x%4;x=Math.floor(x/4);degrees.push([1,1,2,1][k]);const u=Array(n).fill('0');if(k===1)u[n-1]='-1';if(k===2)u[0]=String(1n<<100n);generators.push(...u);}
   rows.push({n,count,degrees,generators,synthetic:true});
@@ -60,6 +60,12 @@ for which in range(8):
  except ValueError:pass
  else:raise AssertionError('missing descriptor-sort guard')
  assert a==before
+bad=[[1]*5,[0]*25,5,5,[77]*7,[77]*4]
+before=[x.copy() if isinstance(x,list) else x for x in bad]
+try:f(*bad)
+except ValueError:pass
+else:raise AssertionError('degree-five count-five sort escaped frontier')
+assert bad==before
 print(json.dumps(out))
 `,path.resolve(__dirname,'../..'),path.resolve(__dirname,'../../src/lib')],JSON.stringify(rows)));
  for(let i=0;i<rows.length;i++)assert.deepEqual(cp[i],[[...expected[i][0],77,77],[expected[i][1],expected[i][2],77,77]]);
@@ -77,6 +83,11 @@ print(json.dumps(out))
   const args=a.map(x=>Array.isArray(x)?f.createIntegerBuffer(x.length,4,x):x);
   assert.throws(()=>f[backend](...args),/descriptor/);assert.deepEqual(args.map(x=>typeof x==='bigint'?x:x.toArray()),a);
  }
- const result={cases:rows.length,actual:rows.filter(r=>r.actual).length,invalidControls:8,backends:['cpython','javascript','gmp','tagged'],directory,sortHash:hash(sort),comparatorHash:hash(cmp+zcmp),controlHash:hash(control),actualFixtureHash:hash(fs.readFileSync(fixture)),candidateHash:hash(fs.readFileSync(path.join(__dirname,'prime_descriptor_sort.py'))),coreHash:hash(fs.readFileSync(built.coreSourcePath)),qualifiedTiming:false};
+ for(const backend of ['javascript','gmp','tagged']){
+  const a=[[1n,1n,1n,1n,1n],Array(25).fill(0n),5n,5n,Array(7).fill(77n),Array(4).fill(77n)];
+  const args=a.map(x=>Array.isArray(x)?f.createIntegerBuffer(x.length,4,x):x);
+  assert.throws(()=>f[backend](...args),/descriptor/);assert.deepEqual(args.map(x=>typeof x==='bigint'?x:x.toArray()),a);
+ }
+ const result={cases:rows.length,actual:rows.filter(r=>r.actual).length,invalidControls:9,backends:['cpython','javascript','gmp','tagged'],directory,sortHash:hash(sort),comparatorHash:hash(cmp+zcmp),controlHash:hash(control),actualFixtureHash:hash(fs.readFileSync(fixture)),candidateHash:hash(fs.readFileSync(path.join(__dirname,'prime_descriptor_sort.py'))),coreHash:hash(fs.readFileSync(built.coreSourcePath)),qualifiedTiming:false};
  fs.writeFileSync(path.join(directory,'fixtures.json'),JSON.stringify({rows,expected,result}));console.log(JSON.stringify(result));
 })().catch(e=>{console.error(e);process.exitCode=1;});

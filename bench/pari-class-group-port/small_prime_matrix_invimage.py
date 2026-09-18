@@ -18,7 +18,7 @@ from .relation_cache import pari_word_mod_inverse
 @native
 def pari_small_prime_matrix_invimage_workspace_size(rows: int, columns: int) -> int:
     """Augmented matrix, full kernel output capacity, and kernel scratch."""
-    if rows < 0 or rows > 4 or columns < 0 or columns > 7:
+    if rows < 0 or rows > 5 or columns < 0 or columns > 9:
         raise ValueError("small prime inverse image dimension frontier")
     c = columns + 1
     return 2 * rows * c + c * c + rows + c

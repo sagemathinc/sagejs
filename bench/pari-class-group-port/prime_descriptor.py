@@ -40,7 +40,7 @@ def pari_prepared_prime_descriptor_suffix(
     for the existing ZC_nfval port; detached tau output is column-major.
     Output owners are unchanged on failure. No valuation is run if unramified.
     """
-    if n < 3 or n > 4 or prime < 2 or prime > 3037000493:
+    if n < 3 or n > 5 or prime < 2 or prime > 3037000493:
         raise ValueError("prime descriptor dimension/prime frontier")
     if ramified != 0 and ramified != 1:
         raise ValueError("prime descriptor ramification flag")
@@ -143,7 +143,7 @@ def pari_prepared_prime_descriptor(
     Prepared embedding selection, P/V, primehood and integral table validity
     remain caller preconditions. Inert/Kummer/filter branches are not included.
     """
-    if n < 3 or n > 4:
+    if n < 3 or n > 5:
         raise ValueError("prime descriptor dimension/prime frontier")
     if (
         len(tau_work) < n * n

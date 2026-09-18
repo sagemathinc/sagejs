@@ -36,7 +36,7 @@ def pari_prepared_prime_embedding_norm(
     and PARI bigint backend instruction counts are not asserted equivalent.
     Unsupported mixed exact/real norm components remain explicit exceptions.
     """
-    if degree < 3 or degree > 4 or real_count < 1 or real_count > degree:
+    if degree < 3 or degree > 5 or real_count < 1 or real_count > degree:
         raise ValueError("prime embedding norm signature frontier")
     if (degree - real_count) % 2 != 0:
         raise ValueError("invalid prime embedding norm signature")
@@ -58,11 +58,13 @@ def pari_prepared_prime_embedding_norm(
         values_p[i] = p
         values_e[i] = e
     if values_p[0] == -1:
-        # Native exact powers currently require a literal exponent. Both
-        # supported degrees retain the same arithmetic primitive.
+        # Native exact powers currently require a literal exponent. Every
+        # admitted degree retains the same arithmetic primitive.
         if degree == 3:
             return values_m[0] ** 3, -(1 << 61)
-        return values_m[0] ** 4, -(1 << 61)
+        if degree == 4:
+            return values_m[0] ** 4, -(1 << 61)
+        return values_m[0] ** 5, -(1 << 61)
     for i in range(degree):
         if values_p[i] == -1:
             raise ValueError("mixed exact prime norm component frontier")

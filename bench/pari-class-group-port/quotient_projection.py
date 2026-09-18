@@ -34,7 +34,7 @@ def pari_small_radical_quotient(
     supplied radical, Frobenius map, completion or inverse is consumed.
     All owners are disjoint. State -1 denotes an unpublished partial attempt.
     """
-    if n < 3 or n > 4 or prime < 2 or prime > 3037000493:
+    if n < 3 or n > 5 or prime < 2 or prime > 3037000493:
         raise ValueError("small radical quotient domain")
     if len(projection_workspace) < 11 * n * n + 2 * n or len(state) < 3:
         raise ValueError("short radical quotient projection storage")
@@ -78,7 +78,7 @@ def pari_small_quotient_projection(
     row strides, not padded n-strides. State is status, quotient dimension,
     kernel dimension. Scratch is not transactional after state becomes -1.
     """
-    if n < 3 or n > 4 or rank < 0 or rank >= n or prime < 2 or prime > 3037000493:
+    if n < 3 or n > 5 or rank < 0 or rank >= n or prime < 2 or prime > 3037000493:
         raise ValueError("small quotient projection domain")
     size = n * n
     if (

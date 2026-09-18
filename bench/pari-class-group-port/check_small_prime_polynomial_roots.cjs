@@ -13,6 +13,12 @@ function run(cmd,args,options={}){const r=spawnSync(cmd,args,{encoding:'utf8',ti
  for(const p of [3,7,11,13,17,19,23,29,31,37])for(const degree of [3,4])for(let sample=0;sample<100;sample++){
   const a=Array.from({length:degree+1},()=>next()%p);if(a.every(x=>x===0))a[degree]=1;if(sample%7===0)for(let i=0;i<a.length;i++)a[i]-=p;rows.push({p,degree,a});
  }
+ for(const degree of [3,4])for(let sample=0;sample<40;sample++){
+  const p=47,a=Array.from({length:degree},()=>next()%p);a.push(1);rows.push({p,degree,a});
+ }
+ for(const p of [2,3,5,47])for(let sample=0;sample<100;sample++){
+  const degree=5,a=Array.from({length:degree},()=>next()%p);a.push(1);rows.push({p,degree,a});
+ }
  // Fully split quartics and repeated roots exercise queue removal and source sorting.
  for(const p of [3,37])for(let k=0;k<100;k++){let a=[1];for(let j=0;j<4;j++){const r=(k+j*j)%p,b=Array(a.length+1).fill(0);for(let i=0;i<a.length;i++){b[i]=(b[i]-r*a[i])%p;b[i+1]=(b[i+1]+a[i])%p;}a=b;}rows.push({p,degree:4,a});}
  rows.push({p:101,degree:2,a:[-1,0,1]});
@@ -35,9 +41,9 @@ for r,e in zip(*json.load(sys.stdin)):
   const built=await compileKernel({sourcePath:path.join(__dirname,'small_prime_polynomial_roots.py')}),f=require(built.modulePath).pari_small_prime_polynomial_roots;assert(f.nativeAvailable);coreSha256=sha(fs.readFileSync(built.coreSourcePath));
   for(const backend of ['javascript','gmp','tagged']){
    for(let i=0;i<rows.length;i++){const r=rows[i],e=expected[i],a=r.a.map(BigInt),out=Array(6).fill(77n),w=Array(246).fill(91n);assert.equal(f[backend](a,BigInt(r.degree),BigInt(r.p),out,w),BigInt(e.length));assert.deepEqual(out,[...e.map(BigInt),...Array(6-e.length).fill(77n)]);assert.deepEqual(w.slice(244),[91n,91n]);assert.deepEqual(a,r.a.map(BigInt));}
-   for(const args of [[[0n,0n,0n,0n],3n,37n],[[1n],-1n,3n],[[1n],5n,3n],[[1n],0n,4n],[[],1n,3n],[[-1n,0n,0n,1n],3n,101n]]){const out=Array(6).fill(77n);assert.throws(()=>f[backend](...args,out,Array(244).fill(91n)),/frontier|insufficient|zero polynomial/);assert.deepEqual(out,Array(6).fill(77n));}
+   for(const args of [[[0n,0n,0n,0n],3n,37n],[[0n,0n,0n,0n,0n,0n],5n,47n],[[1n],-1n,3n],[[1n],6n,3n],[[1n],0n,4n],[[],1n,3n],[[-1n,0n,0n,1n],3n,101n],[[-1n,0n,0n,0n,0n,1n],5n,53n]]){const out=Array(6).fill(77n);assert.throws(()=>f[backend](...args,out,Array(244).fill(91n)),/frontier|insufficient|zero polynomial/);assert.deepEqual(out,Array(6).fill(77n));}
    backends.push(backend);
   }
  }
- const result={cases:rows.length,backends,coreSha256,sourceSha256:hashes,oracleSha256:sha(fs.readFileSync(c)),traceSha256:sha(trace),qualifiedTiming:false,higherDegreePrimeFrontier:37};fs.writeFileSync(path.join(dir,'fixtures.json'),JSON.stringify({rows,expected,result}));console.log(JSON.stringify({dir,...result}));
+ const result={cases:rows.length,backends,coreSha256,sourceSha256:hashes,oracleSha256:sha(fs.readFileSync(c)),traceSha256:sha(trace),qualifiedTiming:false,higherDegreePrimeFrontier:{optimizedDegree3And4:37,boundedDirectDegree3Through5:47}};fs.writeFileSync(path.join(dir,'fixtures.json'),JSON.stringify({rows,expected,result}));console.log(JSON.stringify({dir,...result}));
 })().catch(e=>{console.error(e);process.exitCode=1;});

@@ -84,7 +84,7 @@ def pari_integral_field_multiply(
     Table[(i*n+j)*n+k] is the coefficient of w_k in w_i*w_j. All buffers
     are disjoint; this entry is the column/column path, not scalar dispatch.
     """
-    if n < 3 or n > 4:
+    if n < 3 or n > 5:
         raise ValueError("unsupported integral field arithmetic degree")
     if len(table) < n * n * n or len(left) < n or len(right) < n or len(output) < n:
         raise ValueError("insufficient integral field arithmetic storage")
@@ -120,7 +120,7 @@ def pari_integral_field_square(
     table: IntegerBuffer, value: IntegerBuffer, n: int, output: IntegerBuffer
 ) -> int:
     """nfsqri_ZC: retain triangular squaring, not general multiplication."""
-    if n < 3 or n > 4:
+    if n < 3 or n > 5:
         raise ValueError("unsupported integral field arithmetic degree")
     if len(table) < n * n * n or len(value) < n or len(output) < n:
         raise ValueError("insufficient integral field arithmetic storage")

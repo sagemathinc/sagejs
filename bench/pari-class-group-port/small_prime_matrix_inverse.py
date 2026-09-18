@@ -18,7 +18,7 @@ from .relation_cache import pari_word_mod_inverse
 @native
 def pari_small_prime_matrix_inverse_workspace_size(n: int) -> int:
     """Mutable A/B spans of n² entries and a binary pivot span of n entries."""
-    if n < 0 or n > 4:
+    if n < 0 or n > 5:
         raise ValueError("unsupported small prime inverse dimension")
     return 2 * n * n + n
 

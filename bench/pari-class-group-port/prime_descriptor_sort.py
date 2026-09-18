@@ -49,7 +49,7 @@ def pari_prime_descriptor_sort(
     gives comparator/coordinate counts; outputs outside active prefixes stay
     untouched. Canonical mathematical descriptor consistency is precondition.
     """
-    if n < 3 or n > 4 or count < 0 or count > n:
+    if n < 3 or n > 5 or count < 0 or count > n or count > 4:
         raise ValueError("prime descriptor sort degree/count frontier")
     if (
         len(degrees) < count

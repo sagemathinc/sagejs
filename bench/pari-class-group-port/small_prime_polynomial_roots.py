@@ -231,17 +231,20 @@ def pari_small_prime_polynomial_roots(
 ) -> int:
     """Sorted distinct roots, caller prime p; disjoint owners and atomic output.
 
-    Working table queue capacity is four, bounded by degree. Return count;
-    output tail unchanged. Larger primes are an explicit dependency frontier.
+    The source-style table corridor remains bounded by degree four and prime
+    37.  A direct, bounded degree-five corridor admits primes through 47 for
+    prepared index-prime decomposition. Return count; output tail unchanged.
     """
-    if degree < 0 or degree > 4 or p < 2 or (p != 2 and p % 2 == 0):
+    if (
+        degree < 0
+        or degree > 5
+        or p < 2
+        or (p != 2 and p % 2 == 0)
+        or (degree >= 3 and p > 47)
+    ):
         raise ValueError("small polynomial roots degree/prime frontier")
-    if len(coefficients) < degree + 1 or len(roots) < 4 or len(w) < 244:
+    if len(coefficients) < degree + 1 or len(roots) < degree or len(w) < 244:
         raise ValueError("insufficient small polynomial roots storage")
-    if degree <= 2 and p != 2:
-        return pari_small_prime_quadratic_roots(coefficients, degree, p, roots)
-    if p > 37:
-        raise ValueError("small polynomial roots degree/prime frontier")
     for i in range(9):
         w[i] = 0
     for i in range(degree + 1):
@@ -252,6 +255,23 @@ def pari_small_prime_polynomial_roots(
         raise ValueError("roots of zero polynomial")
     if degree == 0:
         return 0
+    # The original optimized corridor is retained verbatim below. Degree five
+    # uses bounded direct evaluation only after normalization, writing scratch
+    # first so every failure keeps the public output atomic.
+    if degree == 5 or p > 37:
+        count = 0
+        for x in range(p):
+            value = 0
+            for i in range(degree, -1, -1):
+                value = (value * x + w[i]) % p
+            if value == 0:
+                w[112 + count] = x
+                count += 1
+        for i in range(count):
+            roots[i] = w[112 + i]
+        return count
+    if degree <= 2 and p != 2:
+        return pari_small_prime_quadratic_roots(coefficients, degree, p, roots)
     done = 0
     sort_needed = 0
     if p == 2:

@@ -43,11 +43,11 @@ def pari_small_fp_rectangular_product(
     """
     if (
         rows < 1
-        or rows > 4
+        or rows > 5
         or inner < 1
-        or inner > 4
+        or inner > 5
         or columns < 1
-        or columns > 4
+        or columns > 5
         or prime < 2
         or prime > 3037000493
     ):
@@ -111,7 +111,7 @@ def pari_small_pradical(
     Invalid dimensions/storage fail before mutation; this internal dependency
     does not promise transactional scratch on arithmetic failure.
     """
-    if n < 3 or n > 4 or prime < 2 or prime > 3037000493:
+    if n < 3 or n > 5 or prime < 2 or prime > 3037000493:
         raise ValueError("small pradical domain")
     size = n * n
     if (

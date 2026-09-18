@@ -28,7 +28,7 @@ def pari_integral_basis_multiply(
     Table[(i*n+j)*n+k] is the coefficient of w_k in w_i*w_j. Owners
     must be disjoint. In particular this is not general field multiplication.
     """
-    if n < 3 or n > 4 or basis_index < 1 or basis_index > n:
+    if n < 3 or n > 5 or basis_index < 1 or basis_index > n:
         raise ValueError("unsupported integral basis multiplication domain")
     if len(table) < n * n * n or len(value) < n or len(output) < n:
         raise ValueError("insufficient integral basis multiplication storage")
@@ -66,7 +66,7 @@ def pari_integral_basis_frobenius(
     one square, reduction, dedicated basis multiplication, then reduction.
     Output and scratch tails are untouched; all owners must be disjoint.
     """
-    if n < 3 or n > 4 or basis_index < 1 or basis_index > n or p < 2:
+    if n < 3 or n > 5 or basis_index < 1 or basis_index > n or p < 2:
         raise ValueError("unsupported integral Frobenius domain")
     if len(table) < n * n * n or len(temporary) < n or len(output) < n:
         raise ValueError("insufficient integral Frobenius storage")

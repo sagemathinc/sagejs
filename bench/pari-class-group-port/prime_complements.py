@@ -60,7 +60,7 @@ def pari_small_prime_complements(
     work), actual intersection calls, completed complement count. Shape errors
     precede writes; other exceptions leave explicit partial output and scratch.
     """
-    if n < 3 or n > 4 or count < 1 or count > n or prime < 2 or prime > 3037000493:
+    if n < 3 or n > 5 or count < 1 or count > n or prime < 2 or prime > 3037000493:
         raise ValueError("small prime complements domain")
     size = n * n
     bank = n * size

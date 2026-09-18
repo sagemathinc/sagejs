@@ -22,7 +22,7 @@ from .relation_cache import pari_word_mod_inverse
 def _small_prime_matrix_pivots(
     w: IntegerBuffer, a: int, rows: int, columns: int, p: int, out: int, scratch: int
 ) -> int:
-    if rows < 0 or rows > 4 or columns < 0 or columns > 8 or p < 2 or p > 3037000493:
+    if rows < 0 or rows > 5 or columns < 0 or columns > 10 or p < 2 or p > 3037000493:
         raise ValueError("outside small matrix basis corridor")
     size = rows * columns
     capacity = rows * rows
