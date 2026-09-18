@@ -277,6 +277,7 @@ function liveAcceptedState(preparedEnvelope, root, live, metadata) {
 
 async function prepareResident(preparedEnvelope) {
   const rootBuilt = await compileKernel({ sourcePath: initial.SOURCE });
+  const gateKernels = await gate.warmPreparedGateC();
   // Compile sequentially: several roots share very large dependency graphs,
   // and concurrent node-gyp jobs needlessly multiply peak memory.
   const classAssembly = await compile("quartic_direct_composition.py",
@@ -298,7 +299,7 @@ async function prepareResident(preparedEnvelope) {
   const prepare = await compile("field3_mixed_unit_suffix.py",
     "pari_field3_prepare_getfu");
   const getfu = await compile("getfu_mixed_quartic.py", "pari_getfu_mixed_quartic");
-  return { preparedEnvelope, rootBuilt, classAssembly, postCatalog, postTerminal,
+  return { preparedEnvelope, rootBuilt, gateKernels, classAssembly, postCatalog, postTerminal,
     units: { selection, integer: integerReduction, real: realReductionKernel,
       compose, logs, clean, prepare, getfu } };
 }
@@ -320,7 +321,10 @@ async function runResident(resident) {
   const metadata = complete.synthesizeMetadata(resident.preparedEnvelope, root,
     { verifyDigest: false });
   mark("factorMetadataProjection");
-  const live = await gate.runPreparedGateC(resident.preparedEnvelope, root);
+  const live = await gate.runPreparedGateC(resident.preparedEnvelope, root,
+    { kernels: resident.gateKernels });
+  assert.equal(live.executionBoundary.compilationInsideRun, false);
+  assert.equal(live.executionBoundary.residentHandleCount, 4);
   mark("relationCollectionAndHnf");
   const accepted = liveAcceptedState(resident.preparedEnvelope, root, live, metadata);
   mark("acceptedLiveStateProjection");
@@ -336,6 +340,7 @@ async function runResident(resident) {
   // Do not include result-object construction or resource inspection.
   const kernelNanoseconds = String(previous - started);
   return { kernelNanoseconds, root, live, accepted, post806, units, klass,
+    executionBoundary: live.executionBoundary,
     stageNanoseconds: stages, maxRssKiB: process.resourceUsage().maxRSS };
 }
 

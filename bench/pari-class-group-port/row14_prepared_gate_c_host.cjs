@@ -247,10 +247,12 @@ function allocate(compiled, input, lengths, { minimumWords = 8, compact = new Se
 
 async function firstPreparedHnf(prepared, root, options = {}) {
   const profile = options.profile || null;
+  const kernels = options.kernels || null;
   timed(profile, "initial.validate-boundary", () => validateBoundary(prepared, root));
   const lengths = zeroLengths();
-  const collector = await timedAsync(profile, "initial.compile-collector", () =>
-    compile("collected_log_embeddings.py", "pari_collect_and_log_relations", profile !== null));
+  const collector = kernels?.collector || await timedAsync(
+    profile, "initial.compile-collector", () => compile(
+      "collected_log_embeddings.py", "pari_collect_and_log_relations", profile !== null));
   if (profile !== null) profile._compiled.push([collector, "pari_collect_and_log_relations"]);
   const compact = new Set(["relation_basis", "relation_records", "relation_hashes",
     "relation_metadata", "relation", "relation_scratch", "generators"]);
@@ -271,8 +273,9 @@ async function firstPreparedHnf(prepared, root, options = {}) {
     ["802", "8110", "4", "0", "0", "802"]);
   assert.equal(Number(cv.log_completed.toArray()[0]), FIRST_COLUMNS);
 
-  const hnf = await timedAsync(profile, "initial.compile-hnfspec", () =>
-    compile("hnfspec_complete.py", "pari_hnfspec_complete", profile !== null));
+  const hnf = kernels?.hnfspec || await timedAsync(
+    profile, "initial.compile-hnfspec", () => compile(
+      "hnfspec_complete.py", "pari_hnfspec_complete", profile !== null));
   if (profile !== null) profile._compiled.push([hnf, "pari_hnfspec_complete"]);
   const hnfInput = { rows: ROWS, columns: FIRST_COLUMNS, k0: 4, log_rows: PLACES,
     original: cv.relation_records.toArray().slice(0, ROWS * FIRST_COLUMNS),
@@ -296,19 +299,28 @@ async function firstPreparedHnf(prepared, root, options = {}) {
 
 async function warmPreparedGateC({ profile = false } = {}) {
   // Compilation/loading belongs outside every mathematical timing boundary.
-  // The run still performs cache lookups so its control path is unchanged.
-  await compile("collected_log_embeddings.py", "pari_collect_and_log_relations", profile);
-  await compile("hnfspec_complete.py", "pari_hnfspec_complete", profile);
-  await compile("row14_next_pass.py", "pari_row14_prepare_next_pass");
-  await compile("hnfadd.py", "pari_hnfadd", profile);
+  // Return the authenticated resident handles so a matched run does not parse,
+  // lower, or inspect the large graphs again after its clock has started.
+  const collector = await compile(
+    "collected_log_embeddings.py", "pari_collect_and_log_relations", profile);
+  const hnfspec = await compile(
+    "hnfspec_complete.py", "pari_hnfspec_complete", profile);
+  const next = await compile("row14_next_pass.py", "pari_row14_prepare_next_pass");
+  const hnfadd = await compile("hnfadd.py", "pari_hnfadd", profile);
+  return Object.freeze({ collector, hnfspec, next, hnfadd, profile: Boolean(profile) });
 }
 
 async function runPreparedGateC(prepared, root, options = {}) {
   const profile = options.profile
     ? { outer: [], native: [], builds: [], allocations: [], _compiled: [] }
     : null;
+  const kernels = options.kernels || null;
+  if (kernels !== null) {
+    assert.equal(kernels.profile, profile !== null,
+      "prepared Gate-C handle instrumentation mismatch");
+  }
   const gateStarted = profile === null ? 0n : process.hrtime.bigint();
-  const first = await firstPreparedHnf(prepared, root, { profile });
+  const first = await firstPreparedHnf(prepared, root, { profile, kernels });
   const cv = first.cv;
   const resident = {
     h: first.hnf.result_h.toArray().slice(0, 9),
@@ -320,10 +332,12 @@ async function runPreparedGateC(prepared, root, options = {}) {
   const snapshot = columns => ({ columns, state: resident.state.slice(),
     h: resident.h.map(String), dep: resident.dep.map(String), b: resident.b.map(String),
     c: resident.c.map(String), perm: resident.perm.map(String) });
-  const next = await timedAsync(profile, "continuation.compile-control", () =>
-    compile("row14_next_pass.py", "pari_row14_prepare_next_pass"));
-  const append = await timedAsync(profile, "continuation.compile-hnfadd", () =>
-    compile("hnfadd.py", "pari_hnfadd", profile !== null));
+  const next = kernels?.next || await timedAsync(
+    profile, "continuation.compile-control", () =>
+      compile("row14_next_pass.py", "pari_row14_prepare_next_pass"));
+  const append = kernels?.hnfadd || await timedAsync(
+    profile, "continuation.compile-hnfadd", () =>
+      compile("hnfadd.py", "pari_hnfadd", profile !== null));
   if (profile !== null) profile._compiled.push([append, "pari_hnfadd"]);
   const checkpoints = [snapshot(802)], expected = [804, 805, 806], passTrace = [];
   let checkpointIndex = 0, collectionPasses = 1, squash = 0, appendPeakBytes = 0;
@@ -428,7 +442,14 @@ async function runPreparedGateC(prepared, root, options = {}) {
     delete profile._compiled;
   }
   return { collectorValues: cv, resident, checkpoints, passTrace, collectionPasses,
-    ownerBytesUpperBound, preparedRng: root.rng.slice(), ...(profile === null ? {} : { profile }) };
+    ownerBytesUpperBound, preparedRng: root.rng.slice(), executionBoundary: {
+      compilationInsideRun: kernels === null,
+      residentHandleCount: kernels === null ? 0 : 4,
+      residentHandleCacheKeys: kernels === null ? [] : [
+        kernels.collector.built.cacheKey, kernels.hnfspec.built.cacheKey,
+        kernels.next.built.cacheKey, kernels.hnfadd.built.cacheKey,
+      ],
+    }, ...(profile === null ? {} : { profile }) };
 }
 
 module.exports = { PREPARED_KEYS, runPreparedGateC, validateBoundary, warmPreparedGateC };

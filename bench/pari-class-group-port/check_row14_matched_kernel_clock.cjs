@@ -61,6 +61,8 @@ async function main() {
   const authenticated = timing.authenticatePrepared();
   const resident = await host.prepareResident(authenticated.prepared);
   const result = await host.runResident(resident);
+  assert.equal(result.executionBoundary.compilationInsideRun, false);
+  assert.equal(result.executionBoundary.residentHandleCount, 4);
   const sage = projection(result);
   const comparison = timing.compareWithPari(sage, sample);
   assert.equal(comparison.exactGeneratorIdeals, true);
@@ -83,6 +85,7 @@ async function main() {
     sageKernelNanoseconds: result.kernelNanoseconds,
     pariKernelNanoseconds: sample.kernelNanoseconds,
     sageStageNanoseconds: result.stageNanoseconds,
+    executionBoundary: result.executionBoundary,
     sageMaximumRssKiB: String(result.maxRssKiB),
     pariMaximumRssKiB: sample.processMaxRssKiB,
     comparison, rejectedSemanticMutations,
