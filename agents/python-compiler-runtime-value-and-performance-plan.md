@@ -419,6 +419,20 @@ positional arguments by an empty class; repair that semantic defect without
 mixing it into the empty-call speed path. Exact evidence is in
 `agents/python-default-construction.md`.
 
+**2026-09-17 exact-division checkpoint:** a fresh-main candidate classifies
+primitive exact integer operands once in the shared bootstrap and implements
+Python's floor quotient and divisor-signed remainder without repeated
+Python-level type discovery. Zero divisors, floats, unsafe foreign numbers,
+objects, reflected methods, and augmented assignment retain the established
+semantic paths. Controlled exact-artifact measurements improve one million
+floor divisions by 77.31% to 1.33x CPython and one million modulo operations by
+65.94% to 1.90x CPython. Neighboring operator rows remain within 1.8%, the
+standalone shrinks by 518 bytes, and core source shrinks to 902,497/903,000.
+All 225 portable files, the 508-case differential baseline, 404 strict modules,
+traitlets and pyparsing workflows, documentation, and merge invariants pass.
+Exact artifacts and qualification are in
+`agents/python-exact-integer-divmod.md`.
+
 **2026-09-17 exact-shift checkpoint:** a fresh-main candidate classifies
 primitive exact integer operands once in the shared bootstrap while retaining
 negative-count errors, float/object dispatch, reflected methods, augmented
