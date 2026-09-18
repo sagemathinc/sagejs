@@ -14,6 +14,7 @@ const fs = require("node:fs");
 const neutral = require("./class_unit_correspondence_result.cjs");
 const roots = require("./phase5_development_roots.cjs");
 const row0 = require("./row0_fresh_prepared_execution.cjs");
+const row3 = require("./row3_fresh_prepared_transaction.cjs");
 const row6 = require("./row6_fresh_prepared_transaction_host.cjs");
 const row8 = require("./row8_fresh_prepared_transaction.cjs");
 const row13 = require("./row13_fresh_prepared_transaction.cjs");
@@ -26,6 +27,7 @@ const SCHEMA = "sagejs.pari-class-group/fresh-prepared-development-execution-v1"
 const FRESH_EXECUTIONS = new WeakSet();
 const RUNNERS = new Map([
   [0, row0],
+  [3, row3],
   [6, row6],
   [8, row8],
   [13, row13],
