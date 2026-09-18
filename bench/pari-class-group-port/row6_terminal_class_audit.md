@@ -18,3 +18,9 @@ then takes about 2.5 seconds and about 112 MiB peak RSS under a 4 GiB/600 second
 cap. Neither computation opens the frozen W0 transcript. The 147-cell transformed
 archimedean image is also retained for the subsequent unit suffix; that suffix
 is a separate authority and is not established by this cut.
+
+The real components of that image come from the authenticated source-stage HNF
+replay. Its sign components are propagated separately and exactly modulo two
+through the same integer ancestry map, then normalized to canonical `0`/`pi`
+representatives. This avoids losing parity when unreduced integer multiples of
+`pi` exceed binary64's exact-integer range.

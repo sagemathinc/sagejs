@@ -283,35 +283,51 @@ async function deriveRow6ColumnAncestry(owner, factorOwner) {
     assert.deepEqual(relationProduct(records, klass[column]), expected);
   }
 
-  // Row 6 cannot use the physical prefix of Gate-C's path-dependent C
-  // workspace as its seven unit-kernel logarithms.  Materialize the logarithm
-  // image of the seven exact raw-relation kernel columns recovered above.
-  // This keeps the column selection and logarithm selection under the same
-  // authenticated ancestry instead of relying on a workspace layout accident.
-  const logTransform = await compiled(
-    "log_matrix_transform.py", "pari_log_matrix_transform");
   const rawToUnitKernel = unit.flat();
-  const lv = allocate(logTransform.fn, logTransform.names, {
-    entries: logs.length,
-    coefficients: rawToUnitKernel.length,
-    output: 7 * PLACES * 7,
-  }, {
-    entries: logs,
-    coefficients: rawToUnitKernel,
-    rows: PLACES,
-    inner: COLUMNS,
-    columns: 7,
-    generic: false,
-  }, { wide: new Set(["entries", "coefficients", "output"]) });
-  assert.equal(logTransform.fn.gmp(
-    ...logTransform.names.map(([name]) => lv[name])), 0n);
-  const acceptedArch = view(lv.output).slice(0, 7 * PLACES * 7);
+  // Retain the real parts from the authenticated source-operation replay.
+  // A flat raw-log matrix product is mathematically equivalent but suffers
+  // catastrophic cancellation for these very large kernel coefficients.
+  // Sign phases are different: carrying huge integer multiples of pi through
+  // floating conversion loses parity above 2^53.  Recover their exact parity
+  // over F_2 from the raw source signs and the same integer ancestry, then
+  // normalize each selected phase to zero or one authenticated raw pi value.
+  const acceptedArch = resident.c.slice(0, 7 * PLACES * 7);
+  const phaseAt = Array.from({ length: COLUMNS }, (_, column) =>
+    Array.from({ length: PLACES }, (_, place) =>
+      logs[(column * PLACES + place) * 7] === 2n ? 1 : 0));
+  const acceptedSigns = [];
+  for (let kernel = 0; kernel < 7; kernel += 1) {
+    for (let place = 0; place < PLACES; place += 1) {
+      let parity = 0n;
+      for (let column = 0; column < COLUMNS; column += 1) {
+        if (phaseAt[column][place]) parity ^= unit[kernel][column] & 1n;
+      }
+      acceptedSigns.push(Number(parity));
+    }
+  }
+  const piSource = logs.findIndex((_, index) =>
+    index % 7 === 0 && logs[index] === 2n);
+  assert.notEqual(piSource, -1, "raw logs contain no negative real value");
+  const phasePi = logs.slice(piSource + 4, piSource + 7);
+  assert(phasePi[0] > 0n && phasePi[1] >= 192n);
+  for (let entry = 0; entry < 7 * PLACES; entry += 1) {
+    const at = entry * 7;
+    if (acceptedSigns[entry]) {
+      acceptedArch[at] = 2n;
+      acceptedArch.splice(at + 4, 3, ...phasePi);
+    } else {
+      acceptedArch[at] = 1n;
+      acceptedArch.splice(at + 4, 3, 0n, -1n, 0n);
+    }
+  }
   assert.equal(acceptedArch.length, 147);
   return {
     schema: "sagejs.pari-class-group/row6-column-ancestry-v1",
     rawToUnitKernel: rawToUnitKernel.map(String),
     rawToPresentation: klass.flat().map(String),
     acceptedArch: acceptedArch.map(String),
+    acceptedSigns,
+    phasePi: phasePi.map(String),
     state: {
       backend: "source-hnfspec-hnfadd-reverse-replay",
       selectedColumns: 9, kernelColumns: 7, classColumns: 2,
@@ -325,8 +341,13 @@ async function deriveRow6ColumnAncestry(owner, factorOwner) {
         oneShotRawTransformAuthoritative: false,
         rawToUnitKernelAuthority: "integer relation kernel R*T=0",
         acceptedArchAuthority:
-          "source raw packed logs times authenticated rawToUnitKernel",
+          "source-stage real replay plus raw-sign F2 image under rawToUnitKernel",
+        acceptedSignsAuthority:
+          "raw packed phase presence times rawToUnitKernel modulo 2",
+        phasePiAuthority: "first authenticated odd-pi raw packed phase",
         acceptedArchSha256: hash(acceptedArch.map(String)),
+        acceptedSignsSha256: hash(acceptedSigns),
+        phasePiSha256: hash(phasePi.map(String)),
         terminalPackedEquality: hash(resident.c.map(String)) === hash(owner.final.c),
         alternateValidBCPivotAuthority: true,
         checkpoints: logProvenance, mutationsRejected: logProvenance.length,

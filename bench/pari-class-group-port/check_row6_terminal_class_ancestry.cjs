@@ -34,6 +34,20 @@ async function main() {
   assert.equal(ancestry.rawToUnitKernel.length, 7 * 1137);
   assert.equal(ancestry.rawToPresentation.length, 2 * 1137);
   assert.equal(ancestry.acceptedArch.length, 147);
+  assert.equal(ancestry.acceptedSigns.length, 21);
+  assert(ancestry.acceptedSigns.every((value) => value === 0 || value === 1));
+  assert.equal(ancestry.phasePi.length, 3);
+  for (let entry = 0; entry < 21; entry += 1) {
+    const at = entry * 7;
+    const phase = ancestry.acceptedArch.slice(at + 4, at + 7);
+    if (ancestry.acceptedSigns[entry]) {
+      assert.equal(ancestry.acceptedArch[at], "2");
+      assert.deepEqual(phase, ancestry.phasePi);
+    } else {
+      assert.equal(ancestry.acceptedArch[at], "1");
+      assert.deepEqual(phase, ["0", "-1", "0"]);
+    }
+  }
   assert.equal(
     ancestry.state.packedLogProvenance.acceptedArchSha256,
     canonicalHash(ancestry.acceptedArch),
@@ -50,6 +64,8 @@ async function main() {
     rawToUnitKernelSha256: canonicalHash(ancestry.rawToUnitKernel),
     rawToPresentationSha256: canonicalHash(ancestry.rawToPresentation),
     acceptedArchSha256: canonicalHash(ancestry.acceptedArch),
+    acceptedSignsSha256: canonicalHash(ancestry.acceptedSigns),
+    phasePiSha256: canonicalHash(ancestry.phasePi),
     activeFactorRows: ancestry.state.activeFactorRows,
     checkpointCount: ancestry.state.packedLogProvenance.checkpoints.length,
     terminalPackedEquality: true,
