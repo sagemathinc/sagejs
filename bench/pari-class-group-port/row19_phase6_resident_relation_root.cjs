@@ -31,6 +31,8 @@ const SOURCES = Object.freeze([
   "row19_hnfadd_cup_suffix.py",
   "post_hnf_acceptance.py",
   "row19_phase6_resident_class_private.py",
+  "row19_phase6_resident_kernel_private.py",
+  "row19_phase6_resident_unit_private.py",
 ]);
 
 function runPython(moduleName, prepared) {
@@ -57,24 +59,30 @@ async function prepareResident(preparedInput) {
   // The underlying hosts still perform cheap cache lookup, which is disclosed
   // by this root and is not claimed as final qualification timing.
   const cacheRoot = process.env.SAGEJS_NATIVE_CACHE_DIR || null;
-  let classFn = null;
+  let classFn = null, kernelFn = null, unitFn = null;
   for (const source of SOURCES) {
     const built = await compileKernel({ sourcePath: path.join(__dirname, source),
       ...(cacheRoot ? { cacheRoot } : {}) });
     if (source === "row19_phase6_resident_class_private.py") {
       classFn = require(built.modulePath).pari_row19_phase6_resident_class_private;
       assert(classFn?.nativeAvailable);
+    } else if (source === "row19_phase6_resident_kernel_private.py") {
+      kernelFn = require(built.modulePath).pari_row19_phase6_resident_kernel_private;
+      assert(kernelFn?.nativeAvailable);
+    } else if (source === "row19_phase6_resident_unit_private.py") {
+      unitFn = require(built.modulePath).pari_row19_phase6_resident_unit_private;
+      assert(unitFn?.nativeAvailable);
     }
   }
   const context = Object.freeze({ prepared, prefix, catalog,
-    cacheRoot, classFn,
+    cacheRoot, classFn, kernelFn, unitFn,
     preparedAuthoritySha256: authority.sha256,
     prefixSha256: hash(prefix), analyticCatalogSha256: hash(catalog) });
   PREPARED.add(context);
   return context;
 }
 
-function projection(first, completed, classPresentation) {
+function projection(first, completed, classPresentation, unitKernel, compactUnit) {
   const exact = completed.exact;
   return {
     schema: "sagejs.pari-class-group/row19-phase6-resident-relation-root-v1",
@@ -97,6 +105,8 @@ function projection(first, completed, classPresentation) {
       relationIdentitySha256: hash(exact.relationIdentity),
     },
     classPresentation,
+    unitKernel,
+    compactUnit,
     nextControl: completed.nextControl,
     ownerBytesUpperBound: completed.ownerBytesUpperBound,
     nativeCoreBytes: completed.nativeCoreBytes,
@@ -108,6 +118,8 @@ function projection(first, completed, classPresentation) {
       "terminal HNF append and CUP suffix",
       "analytic inverse hR and acceptance",
       "class-group Smith presentation",
+      "reverse-HNF saturated raw relation kernel",
+      "primitive compact exact unit and inverse",
     ]),
     serializedOwnersInsideRoot: 0,
     subprocessesInsideRoot: 0,
@@ -139,8 +151,39 @@ async function runResident(context) {
     classNumber: String(classNumber.toArray()[0]),
     state: Array.from(classState).map(Number),
   });
+  const kernelWorkspace = context.kernelFn.createIntegerBuffer(70368, 16);
+  const kernelOutput = context.kernelFn.createIntegerBuffer(2580, 16);
+  const kernelState = context.kernelFn.createInt64Buffer(12);
+  const fv = first.values, tv = completed.resident.terminal;
+  const kernelStatus = context.kernelFn.gmp({ factor_count: 424n,
+    first_columns: 423n, relation_count: 430n, kernel_rank: 6n },
+  completed.resident.collector.relation_records,
+  fv.transform, fv.hnf_transform, fv.full_h, fv.full_dep, fv.b, fv.diagonal,
+  tv.transform, tv.full_h, tv.full_dep, tv.permuted_b, tv.diagonal, tv.perm,
+  kernelWorkspace, kernelOutput, kernelState);
+  assert.equal(kernelStatus, 0n);
+  const kernelValues = kernelOutput.toArray().map(String);
+  const unitKernel = Object.freeze({ status: String(kernelStatus),
+    sha256: hash(kernelValues), state: Array.from(kernelState).map(Number),
+    columns: 6, relationCount: 430 });
+  const dependency = context.unitFn.createIntegerBuffer(430, 16);
+  const inverse = context.unitFn.createIntegerBuffer(430, 16);
+  const multiples = context.unitFn.createInt64Buffer(6);
+  const unitState = context.unitFn.createInt64Buffer(10);
+  const unitStatus = context.unitFn.gmp({ relation_count: 430n,
+    kernel_rank: 6n, log_stride: 14n, degree: 3n }, kernelOutput,
+  completed.resident.collector.log_embeddings, tv.accept_regulator,
+  completed.resident.collector.generators, dependency, inverse, multiples, unitState);
+  assert.equal(unitStatus, 0n);
+  const dependencyValues = dependency.toArray().map(String);
+  const inverseValues = inverse.toArray().map(String);
+  const compactUnit = Object.freeze({ status: String(unitStatus),
+    relationExponentsSha256: hash(dependencyValues),
+    inverseRelationExponentsSha256: hash(inverseValues),
+    regulatorMultiples: Array.from(multiples).map(Number),
+    state: Array.from(unitState).map(Number), expanded: false });
   const result = Object.freeze({
-    ...projection(first, completed, classPresentation),
+    ...projection(first, completed, classPresentation, unitKernel, compactUnit),
     preparedAuthoritySha256: context.preparedAuthoritySha256,
     prefixSha256: context.prefixSha256,
     analyticCatalogSha256: context.analyticCatalogSha256,

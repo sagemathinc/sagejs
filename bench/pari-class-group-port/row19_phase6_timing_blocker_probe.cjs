@@ -18,7 +18,7 @@ const EXPECTED = Object.freeze({
   unitCoordinatorSha256: "dc135ffdd504f2012945ebf5434c0cab4d48f268f6b0d26d5c499b7033cadc23",
   finalCoordinatorSha256: "58ce9efebe448739e2f9406d5754907870628b5def9b8eba28ac9f04289f75d7",
   terminalHostSha256: "802d86e73bae4f8dbc9a173dda4ee28a7981de55047cd6ae0c68d006da1ce833",
-  residentRelationRootSha256: "9ec6bc1856ba1f01dcf38f67885110e6d2b6c60b14740f5c8954863cfa10e61a",
+  residentRelationRootSha256: "573446e7d4014949d2f0525477b4755c5bcc84e86eebc98605ad0faf04ef9dd1",
 });
 const sha = bytes => crypto.createHash("sha256").update(bytes).digest("hex");
 const source = name => fs.readFileSync(path.join(__dirname, name));
@@ -60,15 +60,16 @@ function inspect(inputPath = DEFAULT_INPUT) {
     freshInputAuthenticated: true, changedPreparedAuthorityRejected: true,
     residentPreparedKernelTimingReady: false,
     residentRelationKernelReady: true,
-    residentRelationKernelStages: 6,
+    residentCompactUnitReady: true,
+    residentRelationKernelStages: 8,
     forbiddenCurrentClockWork: ["multiple Python subprocesses",
       "temporary compressed owner publication", "owner rereads and authentication",
-      "detached class/unit/final composition"],
+      "detached class-principal/final composition"],
     sourceCut: [
       "lower the prepared factor-base and analytic prefixes into the resident native graph",
-      "derive the saturated raw relation kernel and class principal witnesses from retained HNF transforms",
-      "port the compact-unit and exact-unit coordinators to callable native roots",
-      "connect those roots to the live terminal relation owner without gzip descriptors",
+      "reverse terminal presentation columns 6 through 14 for class principal witnesses",
+      "compose those witnesses with the retained Smith transforms",
+      "connect the exact factored class/unit result to the public final constructor",
       "eliminate residual native-artifact cache lookup from the resident relation clock",
     ], sourceSha256: EXPECTED,
   };
