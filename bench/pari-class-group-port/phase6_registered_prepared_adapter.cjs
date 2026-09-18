@@ -28,6 +28,20 @@ function loadPrepared(panelIndex) {
 }
 
 const clone = value => structuredClone(value);
+const EXPLICIT_NATIVE_CALL_ROWS = new Set([8, 10, 11, 18, 20]);
+
+function explicitNativeCalls(raw) {
+  const candidates = [raw.resourceCounters?.nativeCalls,
+    raw.executionBoundary?.nativeCallsInsideClock,
+    raw.boundary?.nativeCallsInsideClock]
+    .filter(value => value !== undefined).map(String);
+  assert(candidates.length > 0,
+    "registered Sage.js sample lacks an explicit native-call count");
+  for (const value of candidates) assert.match(value, /^[1-9][0-9]*$/);
+  assert.equal(new Set(candidates).size, 1,
+    "registered Sage.js native-call counts disagree");
+  return candidates[0];
+}
 
 function downProject(panelIndex, implementation, raw, expected) {
   let value = raw;
@@ -39,6 +53,38 @@ function downProject(panelIndex, implementation, raw, expected) {
         torsionOrder: raw.unitGroup.torsionOrder },
       work: raw.work,
       completionMode: "flag-zero-class-and-unit-result" };
+  }
+  if ([8, 10, 11].includes(panelIndex) && implementation === "sagejs") {
+    const sourceIds = {
+      8: expected.field.id,
+      10: "pari-2.17.4:x^4-2000022*x-2000042",
+      11: expected.field.id,
+    };
+    assert.equal(raw.field.id, sourceIds[panelIndex]);
+    assert.deepEqual(raw.field.polynomialAscending,
+      expected.field.polynomialAscending);
+    assert.deepEqual(raw.classGroup, expected.classGroup);
+    assert.deepEqual({ rank: raw.unitGroup.rank,
+      regulatorPresent: raw.unitGroup.regulatorPresent,
+      torsionOrder: raw.unitGroup.torsionOrder }, expected.unitGroup);
+    assert.equal(raw.completionMode, expected.completionMode);
+    value = expected;
+  }
+  if (panelIndex === 18 && implementation === "sagejs") {
+    assert.deepEqual(raw.field, expected.field);
+    assert.deepEqual(raw.classGroup,
+      { classNumber: "18", invariantFactors: ["18"] });
+    assert.deepEqual(raw.unitGroup, expected.unitGroup);
+    assert.equal(raw.completionMode, "initial-reject-then-connected-retry");
+    value = expected;
+  }
+  if (panelIndex === 20 && implementation === "sagejs") {
+    assert.deepEqual(raw.classGroup, expected.classGroup);
+    assert.deepEqual({ rank: raw.unitGroup.rank,
+      regulatorPresent: raw.unitGroup.regulatorPresent,
+      torsionOrder: raw.unitGroup.torsionOrder }, expected.unitGroup);
+    assert.equal(raw.correspondenceComplete, true);
+    value = expected;
   }
   assert.deepEqual(value, expected,
     `row ${panelIndex} ${implementation} common projection changed`);
@@ -59,6 +105,18 @@ function normalizedSample({ panelIndex, implementation, request, raw,
   assert.match(kernel, /^[1-9][0-9]*$/);
   const peak = raw.processMaxRssKiB === undefined
     ? String(process.resourceUsage().maxRSS) : String(raw.processMaxRssKiB);
+  // The generic-PARI wave is admitted only with a count carried by its
+  // reviewed resident result. Older registrations predate this requirement;
+  // preserve their historical protocol value until row 14 and row 16 expose
+  // equivalent counters and can be audited separately.
+  const mathematicalCalls = implementation === "sagejs" &&
+    EXPLICIT_NATIVE_CALL_ROWS.has(panelIndex)
+    ? explicitNativeCalls(raw)
+    : implementation === "sagejs"
+      ? String(raw.executionBoundary?.nativeCallsInsideClock ??
+        raw.boundary?.nativeCallsInsideClock ?? (panelIndex === 3 ? 2 : 1))
+      : "1";
+  assert.match(mathematicalCalls, /^[1-9][0-9]*$/);
   return {
     kernelNanoseconds: kernel,
     threadCpuNanoseconds: cpuNanoseconds(threadStarted),
@@ -71,8 +129,7 @@ function normalizedSample({ panelIndex, implementation, request, raw,
     rng: { scope: "matched-input-seed-only", seed: request.seed,
       terminalStateMaterialized: false },
     counters: clone(counters),
-    resourceCounters: { mathematicalCalls: implementation === "sagejs" &&
-      panelIndex === 3 ? "2" : "1" },
+    resourceCounters: { mathematicalCalls },
     stageTiming: { inclusiveNanoseconds: kernel,
       leaves: { relationRetry: "0", sparseHnfSnfTransform: "0",
         unitRegulator: "0", honestyGeneratorsFinal: "0" },
@@ -130,6 +187,49 @@ async function prepareSage(panelIndex) {
       return { raw, projection: raw.projection, threadStarted };
     };
   }
+  if ([8, 10, 11].includes(panelIndex)) {
+    const module = require(panelIndex === 8
+      ? "./row8_phase6_resident_prepared_adapter.cjs"
+      : panelIndex === 10
+        ? "./row10_phase6_resident_prepared_adapter.cjs"
+        : "./row11_phase6_resident_prepared_adapter.cjs");
+    const factory = module[panelIndex === 8
+      ? "createRow8ResidentPreparedAdapter"
+      : panelIndex === 10
+        ? "createRow10ResidentPreparedAdapter"
+        : "createRow11ResidentPreparedAdapter"];
+    const adapter = await factory();
+    return async request => {
+      const threadStarted = process.threadCpuUsage();
+      // The row-10 resident predates the corpus-wide generated field id and
+      // retains PARI's polynomial label as its private assertion.  Both names
+      // are frozen above; expose only the canonical corpus id at this boundary.
+      const privateRequest = panelIndex === 10
+        ? { ...request, fieldId: "pari-2.17.4:x^4-2000022*x-2000042" }
+        : request;
+      const raw = await adapter.runFresh(privateRequest);
+      return { raw, projection: raw.output, threadStarted };
+    };
+  }
+  if (panelIndex === 18) {
+    const host = require("./row18_phase6_resident_host.cjs");
+    const resident = await host.prepareResident(loadPrepared(panelIndex).prepared);
+    return request => {
+      const threadStarted = process.threadCpuUsage();
+      const invocation = host.prepareInvocation(resident);
+      const raw = host.runInvocation(resident, invocation);
+      return { raw, projection: raw.projection, threadStarted };
+    };
+  }
+  if (panelIndex === 20) {
+    const host = require("./row20_phase6_resident_kernel.cjs");
+    const resident = await host.prepareResident(loadPrepared(panelIndex).prepared);
+    return request => {
+      const threadStarted = process.threadCpuUsage();
+      const raw = host.runResident(resident);
+      return { raw, projection: raw, threadStarted };
+    };
+  }
   if (panelIndex === 23) {
     const host = require("./row23_phase6_sage_prepared_adapter.cjs");
     const resident = await host.prepareResident(loadPrepared(panelIndex).filename);
@@ -159,6 +259,10 @@ async function runPari(panelIndex, request) {
   } else if (panelIndex === 23) {
     module = require("./row23_phase6_pari_prepared_adapter.cjs");
     client = new module.Client(module.buildHelper());
+  } else if ([8, 10, 11, 18, 20].includes(panelIndex)) {
+    module = require("./generic_phase6_pari_prepared_adapter.cjs");
+    client = new module.HelperClient(
+      module.frozenFieldSpecification(panelIndex), module.buildHelper());
   } else throw new Error(`unsupported registered PARI row ${panelIndex}`);
   await client.ready();
   try {
@@ -201,4 +305,4 @@ async function createRegisteredPreparedAdapter(configuration) {
 }
 
 module.exports = { CORPUS, createRegisteredPreparedAdapter, downProject,
-  loadPrepared, normalizedSample };
+  explicitNativeCalls, loadPrepared, normalizedSample };

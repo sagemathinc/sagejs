@@ -13,12 +13,31 @@ test("the first symmetric prepared-adapter wave is admitted statically", () => {
   assert.equal(inventory.executionEnabled, false);
   assert.equal(inventory.reserveOpeningEnabled, false);
   assert.deepEqual(inventory.rows.map(row => row.panelIndex),
-    [0, 1, 3, 4, 14, 16, 23]);
+    [0, 1, 3, 4, 8, 10, 11, 14, 16, 18, 20, 23]);
   assert(Object.isFrozen(registry.REGISTERED[0].expectedProjection));
   assert(Object.isFrozen(registry.REGISTERED[0].expectedProjection.field));
   assert(inventory.rows.every(row => row.sagePreparedKernelTiming &&
     row.pariPreparedKernelTiming && row.commonSemanticProjection &&
     row.mutuallyExclusiveStageTiming));
+});
+
+test("the generic PARI wave shares exact neutral projections", () => {
+  const expected = {
+    8: ["1", [], "2"],
+    10: ["4", ["2", "2"], "2"],
+    11: ["4", ["2", "2"], "2"],
+    18: ["18", ["18"], "1"],
+    20: ["1", [], "2"],
+  };
+  for (const [row, [classNumber, invariants, rank]] of
+    Object.entries(expected)) {
+    const projection = registry.preparedAdapterRegistration(Number(row))
+      .expectedProjection;
+    assert.equal(projection.classGroup.classNumber, classNumber);
+    assert.deepEqual(projection.classGroup.invariantFactors, invariants);
+    assert.equal(projection.unitGroup.rank, rank);
+    assert.match(projection.schema, /neutral-exact-projection-v1$/);
+  }
 });
 
 test("row 23 admits the same neutral quintic class-and-unit projection", () => {
@@ -82,6 +101,30 @@ test("row 3 down-projection drops only stronger retained evidence", () => {
     /common projection changed/);
 });
 
+test("generic-wave Sage projections discard only reviewed stronger fields", () => {
+  const row8 = copy(registry.preparedAdapterRegistration(8).expectedProjection);
+  const source8 = copy(row8);
+  source8.schema = "sagejs.pari-class-group/row8-phase6-common-projection-v1";
+  source8.unitGroup.flagZeroStatus = "not_given(PRECI)";
+  assert.deepEqual(wrapper.downProject(8, "sagejs", source8, row8), row8);
+  source8.classGroup.classNumber = "2";
+  assert.throws(() => wrapper.downProject(8, "sagejs", source8, row8));
+
+  const row18 = copy(registry.preparedAdapterRegistration(18).expectedProjection);
+  const source18 = copy(row18);
+  delete source18.classGroup.generatorCount;
+  source18.completionMode = "initial-reject-then-connected-retry";
+  assert.deepEqual(wrapper.downProject(18, "sagejs", source18, row18), row18);
+
+  const row20 = copy(registry.preparedAdapterRegistration(20).expectedProjection);
+  const source20 = { classGroup: copy(row20.classGroup),
+    unitGroup: { ...copy(row20.unitGroup), coordinates: ["1"], norms: ["1"] },
+    correspondenceComplete: true };
+  assert.deepEqual(wrapper.downProject(20, "sagejs", source20, row20), row20);
+  source20.correspondenceComplete = false;
+  assert.throws(() => wrapper.downProject(20, "sagejs", source20, row20));
+});
+
 test("protocol normalization retains disabled execution and honest stage remainder", () => {
   const admitted = registry.preparedAdapterRegistration(0);
   const started = process.threadCpuUsage();
@@ -96,4 +139,36 @@ test("protocol normalization retains disabled execution and honest stage remaind
   assert.deepEqual(Object.values(sample.stageTiming.leaves), ["0", "0", "0", "0"]);
   assert.deepEqual(sample.rng, { scope: "matched-input-seed-only", seed: "1",
     terminalStateMaterialized: false });
+});
+
+test("generic-wave native-call accounting is explicit and fail-closed", () => {
+  assert.equal(wrapper.explicitNativeCalls(
+    { resourceCounters: { nativeCalls: "7" } }), "7");
+  assert.equal(wrapper.explicitNativeCalls(
+    { executionBoundary: { nativeCallsInsideClock: 1 } }), "1");
+  assert.equal(wrapper.explicitNativeCalls(
+    { boundary: { nativeCallsInsideClock: 1 } }), "1");
+  assert.throws(() => wrapper.explicitNativeCalls({}), /lacks an explicit/);
+  assert.throws(() => wrapper.explicitNativeCalls({ resourceCounters:
+    { nativeCalls: "2" }, boundary: { nativeCallsInsideClock: 1 } }),
+  /disagree/);
+
+  const admitted = registry.preparedAdapterRegistration(18);
+  assert.throws(() => wrapper.normalizedSample({ panelIndex: 18,
+    implementation: "sagejs",
+    request: { boundary: "prepared-kernel", fieldId: admitted.fieldId,
+      seed: "1" }, raw: { kernelNanoseconds: "17" },
+    projection: copy(admitted.expectedProjection),
+    counters: admitted.workCounters, threadStarted: process.threadCpuUsage() }),
+  /lacks an explicit/);
+
+  const legacy = registry.preparedAdapterRegistration(14);
+  const normalized = wrapper.normalizedSample({ panelIndex: 14,
+    implementation: "sagejs",
+    request: { boundary: "prepared-kernel", fieldId: legacy.fieldId,
+      seed: "1" }, raw: { kernelNanoseconds: "17" },
+    projection: copy(legacy.expectedProjection),
+    counters: legacy.workCounters, threadStarted: process.threadCpuUsage() });
+  assert.equal(normalized.resourceCounters.mathematicalCalls, "1",
+    "pre-wave registrations retain their separately audited legacy value");
 });
