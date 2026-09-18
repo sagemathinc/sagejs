@@ -153,8 +153,9 @@ function denseInitial(initial) {
   return { basis, records, hashes, metadata, generators };
 }
 
-function collectorInput(preparedEnvelope, factor, initial) {
-  const prepared = preparedEnvelope.data, f = factor.factor, dense = denseInitial(initial);
+function collectorInput(preparedEnvelope, factor, initial, options = {}) {
+  const prepared = preparedEnvelope.data, f = factor.factor;
+  const dense = options.dense === false ? null : denseInitial(initial);
   const offsets = Array(Number(factor.rootState[2]) + 1).fill("-1");
   const counts = Array(offsets.length).fill("0");
   for (let i = 0; i < f.rationalPrimes.length; i += 1) {
@@ -190,11 +191,15 @@ function collectorInput(preparedEnvelope, factor, initial) {
     packet_generators: factor.selectedDescriptors.flatMap(row => row.generator),
     packet_inert: f.inertFlags, subfactor: f.subfactor,
     extra: Array(f.subfactor.length).fill("0"),
-    relation_state: initial.relations.state, relation_basis: dense.basis,
-    relation_records: [...dense.records, ...Array((RESERVE - 203) * ROWS).fill("0")],
-    relation_hashes: [...dense.hashes, ...Array(RESERVE - 203).fill("0")],
-    relation_metadata: [...dense.metadata, ...Array((RESERVE - 203) * 3).fill("0")],
-    generators: [...dense.generators, ...Array((RESERVE - 203) * DEGREE).fill("0")],
+    relation_state: initial.relations.state, relation_basis: dense?.basis,
+    relation_records: dense === null ? undefined :
+      [...dense.records, ...Array((RESERVE - 203) * ROWS).fill("0")],
+    relation_hashes: dense === null ? undefined :
+      [...dense.hashes, ...Array(RESERVE - 203).fill("0")],
+    relation_metadata: dense === null ? undefined :
+      [...dense.metadata, ...Array((RESERVE - 203) * 3).fill("0")],
+    generators: dense === null ? undefined :
+      [...dense.generators, ...Array((RESERVE - 203) * DEGREE).fill("0")],
     relation: Array(ROWS).fill("0"), relation_scratch: Array(ROWS).fill("0"),
     schedule: ["0", "0", "0", "0"], log_completed: ["0"],
     outer_state: ["934", "4", "0", "0", String(ROWS + 1), ...Array(14).fill("0")],
@@ -402,4 +407,5 @@ async function runPreparedGateC(prepared, factor, initial) {
     ownerBytesUpperBound, preparedRng: factor.rng.slice() };
 }
 
-module.exports = { runPreparedGateC, validateBoundary };
+module.exports = { allocate, collectorInput, runPreparedGateC,
+  validateBoundary, zeroLengths };

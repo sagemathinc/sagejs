@@ -17,11 +17,9 @@ function packed(buffer, start, end) {
   return buffer.toArray().slice(start, end).map(String);
 }
 
-async function prepare(prepared) {
+function prepareWithKernel(prepared, built, fn) {
   assert.equal(authentication.authenticatePreparedNf(prepared).sha256,
     PREPARED_AUTHORITY_SHA256);
-  const built = await compileKernel({ sourcePath: SOURCE });
-  const fn = require(built.modulePath)[EXPORT];
   assert.equal(fn?.nativeAvailable, true);
   const ib = (length, words = 8, values) => fn.createIntegerBuffer(
     length, words, values === undefined ? undefined : values.map(BigInt));
@@ -105,6 +103,12 @@ async function prepare(prepared) {
     args: Object.freeze(Object.values(inputs)) });
 }
 
+async function prepare(prepared) {
+  const built = await compileKernel({ sourcePath: SOURCE });
+  const fn = require(built.modulePath)[EXPORT];
+  return prepareWithKernel(prepared, built, fn);
+}
+
 function run(resident) {
   const status = resident.fn.gmp(...resident.args);
   assert.equal(status, 0n);
@@ -126,4 +130,5 @@ function run(resident) {
   return Object.freeze({ status, projection });
 }
 
-module.exports = { EXPORT, PREPARED_AUTHORITY_SHA256, SOURCE, prepare, run };
+module.exports = { EXPORT, PREPARED_AUTHORITY_SHA256, SOURCE,
+  prepare, prepareWithKernel, run };
