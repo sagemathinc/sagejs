@@ -9,8 +9,8 @@ publish qualified timings.
 The gate derives its population from `phase5_development_roots.cjs`, requires
 the corpus manifest and materialized corpus index to name the identical ordered
 population, and probes `fresh_prepared_development_registry.cjs` before starting
-any mathematical execution. The current gate remains closed until every one of
-the 16 roots has a registered fresh-prepared runner.
+any mathematical execution. All 16 roots now have registered fresh-prepared
+runners, and the first complete bounded aggregate passed on 2026-09-18.
 
 ## Execution boundary
 
@@ -90,3 +90,23 @@ node bench/pari-class-group-port/run_fresh_prepared_aggregate.cjs --run \
 
 The destination must not already exist. The runner deliberately has no implicit
 or default execution mode.
+
+## First complete receipt
+
+The 2026-09-18 execution used the exact frozen population
+`[0, 1, 3, 4, 6, 8, 10, 11, 13, 14, 16, 18, 19, 20, 21, 23]`. All 16 rows
+authenticated their prepared inputs, ran in distinct bounded children, published
+correspondence-complete and public-incomplete neutral results, and declared no
+W0 or retained mathematical runtime inputs. The aggregate producer wrote:
+
+- receipt: `/scratch/fresh-prepared-development-aggregate-v1-20260918.json`;
+- file SHA-256:
+  `7c8b9ca9cf8db44a7a1860c0a702c3d6bceb73af2578a85b665d848f2604471e`;
+- canonical aggregate SHA-256:
+  `8eb14e33dff10ea7c9e99e7c619d8b4cc43dc2cbf18c7bda1f10fe1523be041c`.
+
+The focused checker independently rebound the corpus identities and prepared
+authorities, recomputed the canonical aggregate digest, and reported
+`aggregateReceiptVerified=true`. This is a correctness gate only: neither the
+receipt nor this audit makes a timing, qualification, public-completion, or
+independent-certification claim.
