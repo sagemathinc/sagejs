@@ -10,6 +10,7 @@ const os = require("node:os");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const coordinator = require("./row11_presentation_class_unit_coordinator.cjs");
+const manifestAuthority = require("./row11_manifest_authority.cjs");
 
 const HERE = __dirname;
 const ROOT = path.resolve(HERE, "../..");
@@ -25,6 +26,11 @@ function reject(owner, mutate) {
 
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-row11-boundary-"));
 try {
+  const historical = manifestAuthority.authenticateHistoricalFreshCorpusManifest(
+    fs.readFileSync(path.join(HERE, "fresh-prepared-corpus-manifest.json")));
+  assert.equal(historical.sourceSha256, SHA);
+  assert.notEqual(manifestAuthority.ACTIVE_DRIVER_MANIFEST_SHA256,
+    manifestAuthority.HISTORICAL_SOURCE_MANIFEST_SHA256);
   const run = spawnSync(process.execPath, [
     path.join(HERE, "row11_presentation_class_unit_coordinator.cjs"),
     "--pristine-w0", PAYLOAD,
@@ -38,6 +44,8 @@ try {
   assert.equal(receipt.publicComplete, false);
   const owner = JSON.parse(fs.readFileSync(receipt.path));
   assert.equal(coordinator.verifyOwner(owner), true);
+  assert.equal(owner.ancestry.manifestSha256,
+    manifestAuthority.HISTORICAL_SOURCE_MANIFEST_SHA256);
   assert.equal(fs.statSync(receipt.path).mode & 0o777, 0o444);
   assert.deepEqual(owner.presentation.invariants, ["2", "2"]);
   assert.equal(owner.presentation.classNumber, "4");

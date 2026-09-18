@@ -11,7 +11,7 @@
     },
     "qualification": {
       "path": "bench/pari-class-group-port/class-unit-qualification-manifest.json",
-      "sha256": "3821a5a51390ca25b3110e7a8058d73cd9945d0ab6ad254c07186e0ac19c1c50"
+      "sha256": "fb3b5d16a03ab348b7d8f495dddb6d2716dda45c0486213246298222a9a3cb90"
     },
     "checker": {
       "path": "bench/pari-class-group-port/check_default_driver_trace.cjs",

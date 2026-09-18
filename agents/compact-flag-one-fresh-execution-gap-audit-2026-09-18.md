@@ -11,16 +11,17 @@ The required usable-compact-unit tier is exactly the twelve
 `compact-flag-one-manifest.json`. Its execution switches remain false. The
 field identities below are not a new selection.
 
-One integration defect is visible at this HEAD: the compact manifest's
-historical pins for `class-unit-qualification-manifest.json` and
-`run_class_unit_qualification.cjs` are stale. The manifest records
-`3821a5a5...` and `ee2aa15e...`; the current files are respectively
+The compact manifest now binds the current
+`class-unit-qualification-manifest.json` and
+`run_class_unit_qualification.cjs` at
 `fb3b5d16a03ab348b7d8f495dddb6d2716dda45c0486213246298222a9a3cb90`
 and
 `8cea73a89f02716cada918aa790330b72db47c166402704498f6dafc2965e49e`.
-The ordered twelve-row derivation itself is unchanged and is independently
-rechecked by the new row-20 adapter. Updating the shared frozen manifest belongs
-to the integration owner; this lane does not do it.
+This is a provenance rebind after the qualification runner gained an untimed,
+Sage-only development correctness dispatcher. The ordered twelve-row
+derivation is unchanged. The compact manifest still has `enabled`,
+`timingEnabled`, `finalRunEnabled`, and `reserveOpeningEnabled` all set to
+false, so the rebind neither enables compact execution nor opens reserves.
 
 | row | exact field ID | polynomial SHA-256 | frozen flag-zero W0 SHA-256 |
 | ---: | --- | --- | --- |

@@ -6,6 +6,10 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const { authenticatePreparedBundle } = require("./prepared_nf_authentication.cjs");
+const {
+  HISTORICAL_SOURCE_MANIFEST_SHA256,
+  authenticateActiveRow11Manifest,
+} = require("./row11_manifest_authority.cjs");
 
 const ROOT = path.resolve(__dirname, "../..");
 const MANIFEST = path.join(__dirname, "development-default-driver-manifest.json");
@@ -123,19 +127,18 @@ function main() {
   if (sha(bytes) !== W0_SHA256) fail("pristine row-11 digest changed");
   const w0 = strictParse(bytes, "pristine row-11 W0");
   const manifestBytes = fs.readFileSync(MANIFEST);
-  const manifest = JSON.parse(manifestBytes);
-  const record = manifest.records.find(entry => entry.panelIndex === 11);
-  if (sha(manifestBytes) !== "abe10f55aa44fbb47560cd23cf8b708268d838720d38b0fc98debbc1b763ef46" ||
-      !record || record.sha256 !== W0_SHA256 || record.bytes !== bytes.length ||
-      path.basename(selected) !== record.filename ||
-      sha(Buffer.from(JSON.stringify(w0.prepared))) !== record.preparedSha256 ||
-      sha(Buffer.from(JSON.stringify(w0.events))) !== record.eventsSha256 ||
-      sha(Buffer.from(JSON.stringify(w0.events.at(-1)))) !== record.terminalResultSha256)
-    fail("row-11 W0 is detached from the frozen manifest");
+  let record;
+  try {
+    record = authenticateActiveRow11Manifest({ manifestBytes, w0Bytes: bytes, w0, selected });
+  } catch (error) {
+    fail(error.message);
+  }
   const prepared = authenticatePreparedBundle(w0);
   const ancestry = {
     pristineW0Sha256: W0_SHA256,
-    manifestSha256: sha(manifestBytes),
+    // This is source provenance for the immutable W0, not the mutable active
+    // policy gate authenticated immediately above.
+    manifestSha256: HISTORICAL_SOURCE_MANIFEST_SHA256,
     preparedSha256: record.preparedSha256,
     eventsSha256: record.eventsSha256,
     terminalResultSha256: record.terminalResultSha256,

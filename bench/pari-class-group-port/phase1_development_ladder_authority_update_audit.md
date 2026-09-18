@@ -19,6 +19,30 @@ traces exercised precision escalation or honesty, the row-21 honesty fixture
 uses declared unequal bounds, no reserve field was opened, and neither fixture
 is a timing input.
 
+The Phase-1 ladder now also binds the current qualification manifest at
+`fb3b5d16a03ab348b7d8f495dddb6d2716dda45c0486213246298222a9a3cb90`.
+That manifest change enables only the explicit untimed development-correctness
+dispatcher (`developmentExecutionEnabled=true`). Paired/final qualification
+execution remains disabled (`executionEnabled=false`) and reserve opening
+remains disabled (`reserveOpeningEnabled=false`). The development trace
+manifest was rebound to that current policy without changing any of its sixteen
+field identities, payload digests, event summaries, or `qualificationExecutionEnabled=false`
+trace provenance.
+
+The resulting active provenance hashes are:
+
+- `development-default-driver-manifest.json`:
+  `79e77fbb7b3c8920437ce701a837a05720355cf008dd44705efee6c1e04cd261`;
+- `phase1-development-ladder.json`:
+  `dbc6cbbe8af6f2804a9c434906e8b00571dd9ddc842e9adf0bb1080b61e7d932`;
+- `compact-flag-one-manifest.json`:
+  `0563ad43ca0f32288f109abe4e636b65b04987a729698b2f155a2bc2aae7618d`.
+
+Older hashes cited by dated audits continue to identify the bytes actually
+audited at their stated historical commits. Likewise, retained W0-derived
+authorities that pin the former development trace manifest remain historical
+artifacts; they are not silently rebound by this active-policy update.
+
 The successful-honesty conclusion is intentionally path-specific. The selected
 immediate-success path has no automorphism orbit, failed retry, primitive-part,
 or ideal-reduction event. Those remain explicit generalization frontiers; the

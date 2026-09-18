@@ -24,7 +24,7 @@ const frozen = {
   planGitBlob: "19a0e56c38b4af8e3230235495a02fa1796f7a8f",
   planSha256: "88a47911bcba3007f82e4ff2d426a2760afab136118ed5cb0922104f19303fad",
   panelSha256: "7c6515240940db971cff3bc28819f9e6547adae9305643b0f6274eeafe6ec3a5",
-  qualificationSha256: "3821a5a51390ca25b3110e7a8058d73cd9945d0ab6ad254c07186e0ac19c1c50",
+  qualificationSha256: "fb3b5d16a03ab348b7d8f495dddb6d2716dda45c0486213246298222a9a3cb90",
   pariVersion: "2.17.4",
   archiveSha256: "02651d99c391007d384b3fadbc20abc6916b77036f9e496c99e9ce8688ca4b53",
   buch2Sha256: "904ced8034732c7fcfe1da393e23950aac0862b085150fdc24ce1e31beb7d1ac",
@@ -81,6 +81,8 @@ assert.equal(panel.rows.length, 24);
 assert.equal(panel.rows.filter(row => row.phase === "tuning").length, 16);
 assert.equal(panel.rows.filter(row => row.phase === "final-reserve").length, 8);
 assert.equal(qualification.reserveOpeningEnabled, false);
+assert.equal(qualification.developmentExecutionEnabled, true);
+assert.equal(qualification.executionEnabled, false);
 
 const rule = [
   "already-exercised real cubic",

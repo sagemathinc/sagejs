@@ -4,8 +4,8 @@
   "targetPariVersion": "2.17.4",
   "sourcePins": {
     "panel": {"path": "panel.json", "sha256": "7c6515240940db971cff3bc28819f9e6547adae9305643b0f6274eeafe6ec3a5"},
-    "qualificationManifest": {"path": "class-unit-qualification-manifest.json", "sha256": "3821a5a51390ca25b3110e7a8058d73cd9945d0ab6ad254c07186e0ac19c1c50"},
-    "qualificationRunner": {"path": "run_class_unit_qualification.cjs", "sha256": "ee2aa15e99cde50e4217a6ebe7e38fc94133c0f48fa9ac64112494feec99fb0a"},
+    "qualificationManifest": {"path": "class-unit-qualification-manifest.json", "sha256": "fb3b5d16a03ab348b7d8f495dddb6d2716dda45c0486213246298222a9a3cb90"},
+    "qualificationRunner": {"path": "run_class_unit_qualification.cjs", "sha256": "8cea73a89f02716cada918aa790330b72db47c166402704498f6dafc2965e49e"},
     "receiptSchema": {"path": "class-unit-qualification-receipt.schema.json", "sha256": "afb0c69d742b7e2ec5f308e3fabe855980a4fa0d4e5b41eb8e5911296c579bb8"}
   },
   "derivation": {

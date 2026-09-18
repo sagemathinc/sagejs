@@ -70,9 +70,8 @@ function projectFreshReceipt(receipt, {
   assert.equal(payload.unitGroup.materialization.tag, "exact_units");
   assert.equal(receipt.exactUnitCount, 2);
 
-  // The historical manifest pins pre-execution versions of the qualification
-  // manifest and runner.  Validate the live population explicitly here rather
-  // than silently accepting those now-stale file hashes.
+  // Validate the current hash-bound manifest and its unchanged compact
+  // population before projecting the fresh result.
   const manifest = validateCurrentPopulation();
   const pari = compact.validatePristinePariAuthority(
     pariAuthority, manifest);
@@ -96,7 +95,7 @@ function projectFreshReceipt(receipt, {
       pariCallExecutedThisInvocation: false,
       eagerExpansionAddedByAdapter: false,
       measurements: [],
-      historicalSourcePinsCurrent: false,
+      historicalSourcePinsCurrent: true,
     },
     authorities: {
       sagePreparedAuthoritySha256: receipt.preparedAuthoritySha256,

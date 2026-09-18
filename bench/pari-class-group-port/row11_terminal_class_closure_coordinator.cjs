@@ -10,6 +10,11 @@ const { spawnSync } = require("node:child_process");
 const { compileKernel } = require("../../tools/native-kernel/compiler.cjs");
 const { authenticatePreparedBundle } = require("./prepared_nf_authentication.cjs");
 const boundaryApi = require("./row11_presentation_class_unit_coordinator.cjs");
+const {
+  HISTORICAL_SOURCE_MANIFEST_SHA256,
+  HISTORICAL_TERMINAL_COORDINATOR_SHA256,
+  authenticateActiveRow11Manifest,
+} = require("./row11_manifest_authority.cjs");
 
 const ROOT = path.resolve(__dirname, "../..");
 const SOURCE = path.join(__dirname, "row11_terminal_class_closure.py");
@@ -20,7 +25,6 @@ const SCHEMA = "sagejs.pari-class-group/row11-terminal-class-closure-v1";
 const TRANSFORM_SCHEMA = "sagejs.pari-class-group/row11-compact-hnf-transform-v1";
 const FIELD_ID = "generated-sha256-147ddd296edb3764954d6142a499d17edcfecc635aec0181d4beda65d97ad4ab";
 const W0_SHA256 = "6444c0501657bf0109b96fff44c50e7684b80dcb1cfa4587951d1ae4abe04165";
-const MANIFEST_SHA256 = "abe10f55aa44fbb47560cd23cf8b708268d838720d38b0fc98debbc1b763ef46";
 const ROWS = 421, COLUMNS = 430, INITIAL = 427, KERNEL = 9, TARGETS = 11, PLACES = 3;
 const DIGEST = /^[0-9a-f]{64}$/;
 const INTEGER = /^-?(0|[1-9][0-9]*)$/;
@@ -331,18 +335,16 @@ function publish(owner,directory){verifyOwner(owner);const bytes=Buffer.from(`${
   return{schema:SCHEMA,path:destination,sha256:digest,bytes:bytes.length};}
 async function main(){const options=argumentsOf(process.argv);if(options["pristine-sha256"]!==W0_SHA256)fail("wrong pristine row-11 digest");
   const selected=path.resolve(options["pristine-w0"]),bytes=fs.readFileSync(selected);if(sha(bytes)!==W0_SHA256)fail("pristine row-11 digest changed");
-  const w0=strictParse(bytes,"pristine row-11 W0"),manifestBytes=fs.readFileSync(MANIFEST),manifest=JSON.parse(manifestBytes),record=manifest.records.find(entry=>entry.panelIndex===11);
-  if(sha(manifestBytes)!==MANIFEST_SHA256||!record||record.sha256!==W0_SHA256||record.bytes!==bytes.length||path.basename(selected)!==record.filename||
-    sha(Buffer.from(JSON.stringify(w0.prepared)))!==record.preparedSha256||sha(Buffer.from(JSON.stringify(w0.events)))!==record.eventsSha256||
-    sha(Buffer.from(JSON.stringify(w0.events.at(-1))))!==record.terminalResultSha256)fail("row-11 W0 is detached from manifest");
+  const w0=strictParse(bytes,"pristine row-11 W0"),manifestBytes=fs.readFileSync(MANIFEST);let record;
+  try{record=authenticateActiveRow11Manifest({manifestBytes,w0Bytes:bytes,w0,selected});}catch(error){fail(error.message);}
   const prepared=authenticatePreparedBundle(w0),temporary=fs.mkdtempSync(path.join(os.tmpdir(),"sagejs-row11-closure-stage-"));
   try{const boundaryRun=spawnSync(process.execPath,[BOUNDARY,"--pristine-w0",selected,"--pristine-sha256",W0_SHA256,"--output-dir",temporary],
       {cwd:ROOT,encoding:"utf8",timeout:600000,maxBuffer:64*1024*1024});if(boundaryRun.status!==0)fail(boundaryRun.stderr||"committed row-11 boundary failed");
     const boundaryReceipt=JSON.parse(boundaryRun.stdout),boundaryOwner=JSON.parse(fs.readFileSync(boundaryReceipt.path));boundaryApi.verifyOwner(boundaryOwner,boundaryOwner.ancestry);
     const transform=await sourceTransform(w0),transformPath=path.join(temporary,"transform.json");fs.writeFileSync(transformPath,JSON.stringify(transform));
-    const ancestry={pristineW0Sha256:W0_SHA256,manifestSha256:MANIFEST_SHA256,preparedSha256:record.preparedSha256,eventsSha256:record.eventsSha256,
+    const ancestry={pristineW0Sha256:W0_SHA256,manifestSha256:HISTORICAL_SOURCE_MANIFEST_SHA256,preparedSha256:record.preparedSha256,eventsSha256:record.eventsSha256,
       terminalResultSha256:record.terminalResultSha256,preparedAuthoritySha256:prepared.sha256,presentationBoundarySha256:boundaryReceipt.sha256,
-      sourceSha256:sha(fs.readFileSync(SOURCE)),coordinatorSha256:sha(fs.readFileSync(SELF)),compactTransformSha256:sha(fs.readFileSync(transformPath))};
+      sourceSha256:sha(fs.readFileSync(SOURCE)),coordinatorSha256:HISTORICAL_TERMINAL_COORDINATOR_SHA256,compactTransformSha256:sha(fs.readFileSync(transformPath))};
     const program=String.raw`import hashlib,importlib,json,sys
 def strict(pairs):
  out={}

@@ -34,7 +34,7 @@ async function genuine(tracePath = TRACE) {
       "ea40bb397941f6fec98881c1d0ce2402a33c02c82c0d1bab3face46b13ae36c2");
     assert.equal(receipt.execution.sageFreshPreparedExecution, true);
     assert.equal(receipt.execution.pariCallExecutedThisInvocation, false);
-    assert.equal(receipt.execution.historicalSourcePinsCurrent, false);
+    assert.equal(receipt.execution.historicalSourcePinsCurrent, true);
     assert.equal(receipt.execution.measurements.length, 0);
     assert.equal(Object.keys(receipt).includes("freshReceipt"), false);
     assert.throws(() => adapter.verifyFreshMatched({ ...receipt }),
@@ -48,7 +48,7 @@ async function genuine(tracePath = TRACE) {
       pristinePariFlagOneAuthority: true,
       pariCallExecutedThisInvocation: false,
       qualifiedTiming: false,
-      historicalSourcePinsCurrent: false,
+      historicalSourcePinsCurrent: true,
     })}\n`);
   } finally {
     fs.rmSync(outputDirectory, { recursive: true, force: true });

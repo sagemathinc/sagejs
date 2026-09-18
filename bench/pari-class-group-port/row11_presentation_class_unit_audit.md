@@ -11,13 +11,22 @@ This lane authenticates the mixed-signature quartic at panel row 11:
   `/scratch/sagejs-pari-development-panel-a998/panel-11-ce2bfa61425aa681.json`;
 - W0 SHA-256
   `6444c0501657bf0109b96fff44c50e7684b80dcb1cfa4587951d1ae4abe04165`;
-- compact-manifest SHA-256
+- active development-driver manifest SHA-256
+  `79e77fbb7b3c8920437ce701a837a05720355cf008dd44705efee6c1e04cd261`;
+- historical W0 source-manifest SHA-256
   `abe10f55aa44fbb47560cd23cf8b708268d838720d38b0fc98debbc1b763ef46`.
 
 The coordinator verifies the W0 byte length and digest, exact filename,
 prepared-event digest, complete event-list digest, terminal-result digest,
 prepared-number-field authentication, and adapter source digest before invoking
 ordinary CPython source. Duplicate JSON keys are rejected.
+
+The two manifest digests intentionally have different roles.  A new direct
+execution is admitted only through the current active driver manifest.  The
+immutable W0 and fresh-prepared corpus were captured under the historical
+source manifest, so their published ancestry continues to name that original
+byte authority.  Updating active policy therefore neither rewrites old corpus
+receipts nor changes the byte identity of the row-11 mathematical owner.
 
 ## Exact result reached
 

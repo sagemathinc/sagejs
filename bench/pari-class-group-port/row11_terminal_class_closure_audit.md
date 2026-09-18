@@ -13,6 +13,19 @@ with signature `(2,1)`.  Its only frozen input is the 28 MiB W0
 and joined to the committed row-11 presentation boundary before any new owner
 is published.
 
+The direct coordinator authenticates the current development-driver manifest
+at SHA-256
+`79e77fbb7b3c8920437ce701a837a05720355cf008dd44705efee6c1e04cd261`.
+The W0 and fresh-prepared corpus remain source-provenanced by the manifest
+bytes under which they were captured,
+`abe10f55aa44fbb47560cd23cf8b708268d838720d38b0fc98debbc1b763ef46`.
+This deliberate dual authority updates the live admission gate without
+rewriting historical corpus receipts or changing the closure-owner digest.
+Because this rebind changes admission checks only, the owner's
+`coordinatorSha256` also remains the previously audited mathematical
+coordinator authority; the active gate itself is independently pinned by the
+current manifest digest above.
+
 ## Bounded source replay
 
 The coordinator natively replays the existing source-transparent

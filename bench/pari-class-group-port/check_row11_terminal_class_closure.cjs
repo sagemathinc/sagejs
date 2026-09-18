@@ -11,6 +11,7 @@ const os = require("node:os");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const api = require("./row11_terminal_class_closure_coordinator.cjs");
+const manifestAuthority = require("./row11_manifest_authority.cjs");
 
 const HERE = __dirname;
 const ROOT = path.resolve(HERE, "../..");
@@ -36,6 +37,9 @@ function clone(value) { return JSON.parse(JSON.stringify(value)); }
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-row11-terminal-closure-check-"));
 const output = path.join(temporary, "owners");
 try {
+  const historical = manifestAuthority.authenticateHistoricalFreshCorpusManifest(
+    fs.readFileSync(path.join(HERE, "fresh-prepared-corpus-manifest.json")));
+  assert.equal(historical.sourceSha256, W0_SHA256);
   assert.equal(sha(fs.readFileSync(W0)), W0_SHA256);
   const started = Date.now();
   const first = JSON.parse(run(output).stdout);
@@ -46,6 +50,8 @@ try {
   assert.equal(sha(fs.readFileSync(first.path)), first.sha256);
   const owner = JSON.parse(fs.readFileSync(first.path));
   assert.equal(api.verifyOwner(owner, owner.ancestry), true);
+  assert.equal(owner.ancestry.manifestSha256,
+    manifestAuthority.HISTORICAL_SOURCE_MANIFEST_SHA256);
 
   const records = owner.exactRelations.relationRecords.map(BigInt);
   const transform = owner.relationClosure.transform.map(BigInt);

@@ -5,7 +5,7 @@
   "sources": {
     "plan": {"path": "agents/pari-class-group-end-to-end-native-plan.md", "commit": "1196fd4fdc5fdaa2a3fd1273d32c594bfb299ffa", "gitBlob": "19a0e56c38b4af8e3230235495a02fa1796f7a8f", "sha256": "88a47911bcba3007f82e4ff2d426a2760afab136118ed5cb0922104f19303fad"},
     "panel": {"path": "bench/pari-class-group-port/panel.json", "sha256": "7c6515240940db971cff3bc28819f9e6547adae9305643b0f6274eeafe6ec3a5"},
-    "qualificationManifest": {"path": "bench/pari-class-group-port/class-unit-qualification-manifest.json", "sha256": "3821a5a51390ca25b3110e7a8058d73cd9945d0ab6ad254c07186e0ac19c1c50"}
+    "qualificationManifest": {"path": "bench/pari-class-group-port/class-unit-qualification-manifest.json", "sha256": "fb3b5d16a03ab348b7d8f495dddb6d2716dda45c0486213246298222a9a3cb90"}
   },
   "pristinePari": {
     "version": "2.17.4",
@@ -44,7 +44,7 @@
   "existingDefaultDriverEvidence": {
     "checker": {"path": "bench/pari-class-group-port/check_default_driver_trace.cjs", "sha256": "1767daaa24fbfd1633cae0bacd0040a31233112111d9839bc91e0946dee97b5a"},
     "exporter": {"path": "bench/pari-class-group-port/export_pari_development_panel.cjs", "sha256": "515e391c3d86a3e1e6504058b3d6b7ea8651df864d9c83113afdec4fed93f31b"},
-    "manifest": {"path": "bench/pari-class-group-port/development-default-driver-manifest.json", "sha256": "abe10f55aa44fbb47560cd23cf8b708268d838720d38b0fc98debbc1b763ef46"},
+    "manifest": {"path": "bench/pari-class-group-port/development-default-driver-manifest.json", "sha256": "79e77fbb7b3c8920437ce701a837a05720355cf008dd44705efee6c1e04cd261"},
     "coveredPanelIndices": [0, 1, 3, 4, 6, 8, 10, 11, 13, 14, 16, 18, 19, 20, 21, 23],
     "uncoveredPanelIndices": [],
     "allSixteenTraced": true,
