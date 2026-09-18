@@ -12,6 +12,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 
 const neutral = require("./class_unit_correspondence_result.cjs");
+const authentication = require("./prepared_nf_authentication.cjs");
 const strict = require("./row14_strict_prepared_complete_host.cjs");
 
 const RECEIPT_SCHEMA =
@@ -142,11 +143,24 @@ function verifyFreshPreparedReceipt(receipt) {
   return validateReceiptShape(receipt);
 }
 
-async function runFreshPreparedExecution(preparedEnvelope, outputDirectory) {
+function validatePrepared(prepared) {
+  const authority = authentication.authenticatePreparedNf(prepared);
+  assert.equal(authority.sha256, strict.EXPECTED_AUTHORITY_SHA256,
+    "prepared-nf projection is outside the reviewed row-14 corridor");
+  return authority;
+}
+
+async function runFreshPreparedExecution(prepared, outputDirectory) {
   assert.equal(typeof outputDirectory, "string");
-  // Validation happens before any strict work and pins the reviewed prepared
-  // authority.  The strict host repeats this check at its own boundary.
-  const preparedAuthority = strict.validateStrictPrepared(preparedEnvelope);
+  // The public aggregate boundary accepts only the common normalized prepared
+  // object.  The authority envelope is a private adapter detail: callers may
+  // neither supply nor substitute its digest.
+  const preparedAuthority = validatePrepared(prepared);
+  const preparedEnvelope = {
+    authoritySha256: preparedAuthority.sha256,
+    data: structuredClone(prepared),
+  };
+  strict.validateStrictPrepared(preparedEnvelope);
   const result = await strict.runStrictPreparedComplete(
     preparedEnvelope, outputDirectory);
   const published = verifyPublishedResult(result);
@@ -189,5 +203,6 @@ module.exports = {
   isAuthenticFreshReceipt(receipt) { return brandedReceipts.has(receipt); },
   runFreshPrepared: runFreshPreparedExecution,
   runFreshPreparedExecution,
+  validatePrepared,
   verifyFreshPreparedReceipt,
 };

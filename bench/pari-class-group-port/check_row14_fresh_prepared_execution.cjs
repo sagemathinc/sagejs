@@ -10,6 +10,7 @@ const os = require("node:os");
 const path = require("node:path");
 
 const neutralPath = require.resolve("./class_unit_correspondence_result.cjs");
+const authenticationPath = require.resolve("./prepared_nf_authentication.cjs");
 const strictPath = require.resolve("./row14_strict_prepared_complete_host.cjs");
 const adapterPath = require.resolve("./row14_fresh_prepared_execution.cjs");
 const realNeutral = require(neutralPath);
@@ -54,6 +55,17 @@ async function main() {
     constructor(sha256) { this.sha256 = sha256; Object.freeze(this); }
   }
   const verifiedResult = new FakeVerifiedResult(finalSha256);
+  const prepared = { normalizedPreparedObject: true };
+  require.cache[authenticationPath] = {
+    id: authenticationPath, filename: authenticationPath, loaded: true,
+    exports: {
+      authenticatePreparedNf(value) {
+        assert.equal(value, prepared,
+          "row-14 adapter did not authenticate the caller's raw object");
+        return { sha256: preparedSha256 };
+      },
+    },
+  };
   require.cache[neutralPath] = {
     id: neutralPath, filename: neutralPath, loaded: true,
     exports: { ...realNeutral,
@@ -63,9 +75,19 @@ async function main() {
   require.cache[strictPath] = {
     id: strictPath, filename: strictPath, loaded: true,
     exports: {
+      EXPECTED_AUTHORITY_SHA256: preparedSha256,
       EXPECTED_FINAL_SHA256: finalSha256,
-      validateStrictPrepared() { return { sha256: preparedSha256 }; },
-      async runStrictPreparedComplete() {
+      validateStrictPrepared(preparedEnvelope) {
+        assert.deepEqual(Object.keys(preparedEnvelope).sort(),
+          ["authoritySha256", "data"]);
+        assert.equal(preparedEnvelope.authoritySha256, preparedSha256);
+        assert.deepEqual(preparedEnvelope.data, prepared);
+        assert.notEqual(preparedEnvelope.data, prepared,
+          "row-14 private authority envelope retained caller ownership");
+        return { sha256: preparedSha256 };
+      },
+      async runStrictPreparedComplete(preparedEnvelope) {
+        assert.equal(preparedEnvelope.authoritySha256, preparedSha256);
         return {
           path: filename, bytes: bytes.length, sha256: finalSha256,
           mathematicalAuthoritySha256, correspondenceComplete: true,
@@ -79,7 +101,8 @@ async function main() {
   };
   delete require.cache[adapterPath];
   const adapter = require(adapterPath);
-  const receipt = await adapter.runFreshPreparedExecution({}, temporary);
+  assert.equal(adapter.validatePrepared(prepared).sha256, preparedSha256);
+  const receipt = await adapter.runFreshPreparedExecution(prepared, temporary);
   assert.equal(adapter.verifyFreshPreparedReceipt(receipt), receipt);
   assert.equal(receipt.freshPreparedExecution, true);
   assert.equal(receipt.qualifiedTiming, false);
@@ -113,6 +136,7 @@ async function main() {
 main().finally(() => {
   delete require.cache[adapterPath];
   delete require.cache[strictPath];
+  delete require.cache[authenticationPath];
   delete require.cache[neutralPath];
   fs.rmSync(temporary, { recursive: true, force: true });
 }).catch(error => {

@@ -16,6 +16,12 @@ const EXPECTED = [0, 1, 3, 4, 6, 8, 10, 11, 13, 14, 16, 18, 19, 20, 21, 23];
 async function main() {
   assert.deepEqual(aggregate.frozenPopulation().map(row => row.panelIndex), EXPECTED);
   assert.deepEqual(child.expectedIndices(), EXPECTED);
+  assert.deepEqual(aggregate.RESOURCE_BOUNDS, {
+    addressSpaceBytes: 4 * 1024 * 1024 * 1024,
+    cpuSeconds: 600,
+    fileBytes: 1024 * 1024 * 1024,
+    wallMilliseconds: 600_000,
+  });
 
   const probe = aggregate.probeRegistry();
   assert.deepEqual(probe.expected, EXPECTED);

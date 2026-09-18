@@ -21,10 +21,12 @@ const AGGREGATE_SCHEMA =
 const CORPUS_SCHEMA =
   "sagejs.pari-class-group/fresh-prepared-corpus-index-v1";
 const SHA256 = /^[0-9a-f]{64}$/;
-const CHILD_CPU_SECONDS = 7200;
-const CHILD_WALL_MILLISECONDS = 10800000;
-const CHILD_ADDRESS_SPACE_BYTES = 32 * 1024 * 1024 * 1024;
-const CHILD_FILE_BYTES = 1024 * 1024 * 1024;
+const RESOURCE_BOUNDS = Object.freeze({
+  addressSpaceBytes: 4 * 1024 * 1024 * 1024,
+  cpuSeconds: 600,
+  fileBytes: 1024 * 1024 * 1024,
+  wallMilliseconds: 600_000,
+});
 
 function sha256(bytes) {
   return crypto.createHash("sha256").update(bytes).digest("hex");
@@ -132,9 +134,9 @@ function privateTemporaryRoot() {
 
 function boundedChildArguments(row, outputDirectory, receiptPath) {
   return [
-    `--as=${CHILD_ADDRESS_SPACE_BYTES}`,
-    `--cpu=${CHILD_CPU_SECONDS}`,
-    `--fsize=${CHILD_FILE_BYTES}`,
+    `--as=${RESOURCE_BOUNDS.addressSpaceBytes}`,
+    `--cpu=${RESOURCE_BOUNDS.cpuSeconds}`,
+    `--fsize=${RESOURCE_BOUNDS.fileBytes}`,
     "--nofile=1024:1024",
     "--nproc=512:512",
     "--",
@@ -174,7 +176,7 @@ async function executeBoundedRow(row, temporaryRoot) {
         setTimeout(() => {
           try { process.kill(-processHandle.pid, "SIGKILL"); } catch {}
         }, 5000).unref();
-      }, CHILD_WALL_MILLISECONDS);
+      }, RESOURCE_BOUNDS.wallMilliseconds);
       processHandle.once("error", error => { clearTimeout(timer); reject(error); });
       processHandle.once("exit", (code, signal) => {
         clearTimeout(timer);
@@ -346,6 +348,7 @@ if (require.main === module) {
 
 module.exports = {
   AGGREGATE_SCHEMA,
+  RESOURCE_BOUNDS,
   assertRegistryReady,
   canonical,
   frozenPopulation,

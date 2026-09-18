@@ -15,9 +15,11 @@ the 16 roots has a registered fresh-prepared runner.
 ## Execution boundary
 
 Each row executes sequentially in a new Node process beneath Linux `prlimit`.
-The child has explicit address-space, CPU, file-size, open-file, process-count,
-and parent-enforced wall bounds. A private mode-0700 directory contains that
-row's logs, published neutral result, and child receipt.
+The normal campaign limits are pinned to 4 GiB of address space, 600 CPU
+seconds, a 1 GiB output-file limit, and a parent-enforced 600-second wall
+bound; open-file and process-count limits are explicit as well. A private
+mode-0700 directory contains that row's logs, published neutral result, and
+child receipt.
 
 The field transaction, transaction-local receipt verification, registry
 admission, and registry-local fresh-execution verification all occur in that
