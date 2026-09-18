@@ -7,6 +7,7 @@ boundary while retaining the exact seven-by-two factored-unit transform.
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 from collections.abc import Mapping, Sequence
@@ -66,6 +67,16 @@ def _floats(length: int) -> list[float]:
 
 def _sha(value: Any) -> str:
     return hashlib.sha256(json.dumps(value, separators=(",", ":")).encode()).hexdigest()
+
+
+def _semantic_sha(value: Any) -> str:
+    projected = copy.deepcopy(value)
+    projected.pop("ownerSha256", None)
+    execution = projected.get("execution")
+    if isinstance(execution, dict):
+        execution.pop("elapsedNs", None)
+        execution.pop("maxRssKiB", None)
+    return _sha(projected)
 
 
 def _embedding(prepared: Mapping[str, Any]) -> list[int]:
@@ -259,7 +270,7 @@ def compose_row6_rank2_c5_c6(
         or post.get("status") != 0
     ):
         raise Row6Rank2Failure("wrong or unsuccessful input owner")
-    gate_sha = _sha(gate)
+    gate_sha = _semantic_sha(gate)
     if ancestry.get("gateOwnerSha256") != gate_sha or post.get(
         "gateOwnerSha256"
     ) != ancestry.get("gateContentSha256"):
@@ -287,8 +298,7 @@ def compose_row6_rank2_c5_c6(
         ancestry.get("acceptedArchSha256")
         != _sha([str(value) for value in accepted_arch])
         or ancestry.get("acceptedSignsSha256") != _sha(accepted_signs)
-        or ancestry.get("phasePiSha256")
-        != _sha([str(value) for value in phase_pi])
+        or ancestry.get("phasePiSha256") != _sha([str(value) for value in phase_pi])
     ):
         raise Row6Rank2Failure("unit ancestry digest changed")
     lattice = _integers(post.get("unitRelations"), 14, "unit relations")

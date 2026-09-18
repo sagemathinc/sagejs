@@ -13,6 +13,7 @@ GPL-2.0-or-later.
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import importlib
 import json
@@ -64,6 +65,16 @@ def _hash(value: Any) -> str:
     return hashlib.sha256(
         json.dumps(value, separators=(",", ":"), ensure_ascii=True).encode("ascii")
     ).hexdigest()
+
+
+def _semantic_hash(value: Any) -> str:
+    projected = copy.deepcopy(value)
+    projected.pop("ownerSha256", None)
+    execution = projected.get("execution")
+    if isinstance(execution, dict):
+        execution.pop("elapsedNs", None)
+        execution.pop("maxRssKiB", None)
+    return _hash(projected)
 
 
 def _cubic_modules() -> tuple[Any, Any, Any, Any]:
@@ -268,10 +279,10 @@ def compose_row6_terminal_class_owner(
         or factor_authority.get("preparedAuthoritySha256") != prepared_sha256
     ):
         raise Row6TerminalClassFailure("prepared ancestry changed")
-    gate_sha256 = _hash(gate)
-    factor_sha256 = _hash(factor)
-    # Gate-C uses the newline-terminated immutable owner digest externally;
-    # the ancestry receipt binds the in-memory canonical object used here.
+    gate_sha256 = _semantic_hash(gate)
+    factor_sha256 = _semantic_hash(factor)
+    # The ancestry receipt binds the versioned semantic projection used by
+    # the JavaScript hosts; execution timing and RSS are not mathematics.
     state = _mapping(ancestry.get("state"), "column ancestry state")
     expected_state = {
         "backend": "source-hnfspec-hnfadd-reverse-replay",

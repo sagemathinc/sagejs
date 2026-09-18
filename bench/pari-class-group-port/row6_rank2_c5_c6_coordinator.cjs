@@ -4,6 +4,7 @@ const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
+const semantic = require("./row6_prepared_semantic_authority.cjs");
 
 const ROOT = path.resolve(__dirname, "../..");
 const SOURCE = path.join(__dirname, "row6_rank2_c5_c6.py");
@@ -29,7 +30,8 @@ function composeInMemory(gate, post, metadata, ancestryEvidence = {}) {
   const metadataValue = metadata.metadata || metadata;
   const ancestry = {
     ...ancestryEvidence,
-    gateOwnerSha256: sha(gate), gateContentSha256: post.gateOwnerSha256,
+    gateOwnerSha256: semantic.semanticSha256(gate),
+    gateContentSha256: post.gateOwnerSha256,
     metadataSha256: sha(metadataValue), sourceSha256: sourceSha(),
   };
   const program = String.raw`import importlib,json,sys

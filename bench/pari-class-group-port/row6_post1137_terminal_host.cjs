@@ -10,6 +10,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const zlib = require("node:zlib");
 const { compileKernel } = require("../../tools/native-kernel/compiler.cjs");
+const semantic = require("./row6_prepared_semantic_authority.cjs");
 
 const GATE_SCHEMA = "sagejs.pari-class-group/row6-prepared-gate-c-owner-v1";
 const FACTOR_SCHEMA = "sagejs.pari-class-group/row6-prepared-factor-base-owner-v1";
@@ -67,7 +68,7 @@ function validateInputs(gate, factor, preparedEnvelope) {
   assert.equal(preparedEnvelope.authoritySha256, PREPARED_AUTHORITY_SHA256);
   const prepared = preparedEnvelope.data;
   assert.equal(gate.authority.preparedAuthoritySha256, PREPARED_AUTHORITY_SHA256);
-  assert.equal(gate.authority.factorOwnerSha256, FACTOR_SHA256);
+  semantic.assertFactorAuthority(gate, factor);
   assert.equal(factor.authority.preparedAuthoritySha256, PREPARED_AUTHORITY_SHA256);
   assert.deepEqual(gate.field.polynomial, prepared.prep_polynomial.map(String));
   assert.deepEqual(gate.field.signature, [3, 0]);
@@ -186,7 +187,8 @@ async function runRow6Post1137TerminalFromOwners(gate, factor, preparedEnvelope)
   const unitRelations = tv.unit_relations.toArray().slice(0, reconstructionSize).map(String);
   return {
     schema: "sagejs.pari-class-group/row6-post1137-terminal-v1",
-    status: Number(status), gateOwnerSha256: GATE_SHA256, factorOwnerSha256: FACTOR_SHA256,
+    status: Number(status), gateOwnerSha256: semantic.semanticSha256(gate),
+    factorOwnerSha256: semantic.semanticSha256(factor),
     preparedAuthoritySha256: PREPARED_AUTHORITY_SHA256,
     analyticPrimeCount: primeCount, analyticState: Array.from(av.state, Number),
     fieldDiscriminant: String(prepared.analytic_discriminant),

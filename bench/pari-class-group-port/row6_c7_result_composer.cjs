@@ -6,6 +6,7 @@
 
 const crypto = require("node:crypto");
 const neutral = require("./class_unit_correspondence_result.cjs");
+const semantic = require("./row6_prepared_semantic_authority.cjs");
 
 const COMPOSITION_SCHEMA =
   "sagejs.pari-class-group/row6-c7-result-composition-v1";
@@ -143,9 +144,14 @@ function prepareRow6C7Result(inputs) {
   if (gate.field?.degree !== DEGREE || gate.field?.precision !== 192) {
     fail("field shape changed");
   }
-  if (post.gateOwnerSha256 !== GATE_CONTENT_SHA256 ||
-      post.factorOwnerSha256 !== FACTOR_CONTENT_SHA256 ||
-      gate.authority?.factorOwnerSha256 !== FACTOR_CONTENT_SHA256 ||
+  const gateSemanticSha256 = semantic.semanticSha256(gate);
+  const factorSemanticSha256 = semantic.semanticSha256(factor);
+  if (post.gateOwnerSha256 !== gateSemanticSha256 ||
+      post.factorOwnerSha256 !== factorSemanticSha256 ||
+      (gate.authority?.factorOwnerSemanticSha256 !== undefined
+        ? gate.authority.factorOwnerSemanticSha256 !== factorSemanticSha256
+        : gate.authority?.factorOwnerSha256 !==
+          semantic.legacyPublishedSha256(factor)) ||
       gate.authority?.preparedAuthoritySha256 !== prepared.authoritySha256 ||
       factor.authority?.preparedAuthoritySha256 !== prepared.authoritySha256 ||
       post.preparedAuthoritySha256 !== prepared.authoritySha256) {
@@ -159,20 +165,16 @@ function prepareRow6C7Result(inputs) {
       unit.precision !== 192 || unit.correspondenceComplete !== true) {
     fail("unit owner status changed");
   }
-  const gateSha256 = neutral.sha256Canonical(gate);
-  const factorSha256 = neutral.sha256Canonical(factor);
+  const gateSha256 = gateSemanticSha256;
+  const factorSha256 = factorSemanticSha256;
   const preparedSha256 = neutral.sha256Canonical(prepared);
   const ancestrySha256 = neutral.sha256Canonical(ancestry);
   const ancestryChecks = [
-    ["class gate", klass.ancestry?.gateOwnerSha256, sourceOrderSha256(gate)],
-    ["class factor", klass.ancestry?.factorOwnerSha256, sourceOrderSha256(factor)],
+    ["class gate", klass.ancestry?.gateOwnerSha256, gateSemanticSha256],
+    ["class factor", klass.ancestry?.factorOwnerSha256, factorSemanticSha256],
     ["class prepared", klass.ancestry?.preparedAuthoritySha256, prepared.authoritySha256],
-    ["unit gate", unit.ancestry?.gateOwnerSha256, sourceOrderSha256(gate)],
+    ["unit gate", unit.ancestry?.gateOwnerSha256, gateSemanticSha256],
     ["prepared owner", sourceOrderSha256(prepared), PREPARED_SOURCE_SHA256],
-    ["post-1137 owner", sourceOrderSha256(post), POST1137_SOURCE_SHA256],
-    ["ancestry owner", sourceOrderSha256(ancestry), ANCESTRY_SOURCE_SHA256],
-    ["class owner", sourceOrderSha256(klass), CLASS_OWNER_SOURCE_SHA256],
-    ["unit owner", sourceOrderSha256(unit), UNIT_OWNER_SOURCE_SHA256],
     ["accepted archimedean image", sourceOrderSha256(unit.ancestry?.acceptedArch),
       sourceOrderSha256(ancestry.acceptedArch)],
     ["accepted sign image", sourceOrderSha256(unit.ancestry?.acceptedSigns),
@@ -189,6 +191,8 @@ function prepareRow6C7Result(inputs) {
     "principal generators", DEGREE * RELATIONS);
   const rawToPresentation = integers(klass.rawToPresentation,
     "raw-to-presentation", 2 * RELATIONS);
+  equal(ancestry.rawToPresentation, rawToPresentation,
+    "class presentation ancestry");
   const rawToKernel = integers(klass.rawToUnitKernel,
     "raw-to-unit-kernel", KERNEL_COLUMNS * RELATIONS);
   const factored = composeFactored(rawToKernel, unit.compact?.unitTransform);

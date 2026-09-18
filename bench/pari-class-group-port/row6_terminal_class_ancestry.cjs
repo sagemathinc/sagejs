@@ -10,6 +10,7 @@ const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 const { compileKernel } = require("../../tools/native-kernel/compiler.cjs");
+const semantic = require("./row6_prepared_semantic_authority.cjs");
 const {
   authenticatePackedLogCheckpoint,
   reverseSchedule,
@@ -149,8 +150,7 @@ async function deriveRow6ColumnAncestry(owner, factorOwner) {
   assert.equal(owner.schema, "sagejs.pari-class-group/row6-prepared-gate-c-owner-v1");
   assert.equal(factorOwner.schema,
     "sagejs.pari-class-group/row6-prepared-factor-base-owner-v1");
-  assert.equal(owner.authority.factorOwnerSha256,
-    "1afc78df4b2ff4fe85dd3385589835095c8123da86082de0f66dce4e0897fbef");
+  semantic.assertFactorAuthority(owner, factorOwner);
   assert.deepEqual(owner.checkpoints.map((entry) => entry.columns), CHECKPOINTS);
   assert.deepEqual(owner.final.state, [2, 9, 1128, 0, 7, 1, 0, 1137, 0]);
   const records = owner.final.relations.map(BigInt);
@@ -331,7 +331,8 @@ async function deriveRow6ColumnAncestry(owner, factorOwner) {
       backend: "source-hnfspec-hnfadd-reverse-replay",
       selectedColumns: 9, kernelColumns: 7, classColumns: 2,
       relationReplayCells: ROWS*9, initialAssembly: assembly,
-      gateOwnerSha256: hash(owner), factorOwnerSha256: hash(factorOwner),
+      gateOwnerSha256: semantic.semanticSha256(owner),
+      factorOwnerSha256: semantic.semanticSha256(factorOwner),
       activeFactorRows: active, acceptedActiveFactorRows: acceptedActive,
       replayPermutationSha256: hash(resident.perm.map(String)),
       acceptedPermutationSha256: hash(owner.final.perm.map(String)),

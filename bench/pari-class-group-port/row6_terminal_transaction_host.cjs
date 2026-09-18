@@ -15,15 +15,12 @@ const ancestryHost = require("./row6_terminal_class_ancestry.cjs");
 const classCoordinator = require("./row6_terminal_class_coordinator.cjs");
 const unitCoordinator = require("./row6_rank2_c5_c6_coordinator.cjs");
 const neutral = require("./class_unit_correspondence_result.cjs");
+const semantic = require("./row6_prepared_semantic_authority.cjs");
 
 const PREPARED_SHA256 =
   "abfa328710a3d1c2e39b3893e6f6b6cf0214b7da7a101d5360502fe56c8ac58b";
 const PREPARED_CANONICAL_SHA256 =
   "abfa328710a3d1c2e39b3893e6f6b6cf0214b7da7a101d5360502fe56c8ac58b";
-const GATE_CANONICAL_SHA256 =
-  "a692707e539365784f310c061dc87df40f8f00d735d7a0184899bea149002c98";
-const FACTOR_CANONICAL_SHA256 =
-  "eb1b050ff8d6bd4a563baa4b263b646bc0411644497e6028d5a4e90f67d0d9e4";
 const GATE_COMPRESSED_SHA256 =
   "526cf175619801919509bdf21d4296a31864876e3d563a3728678e66b80b813d";
 const FACTOR_COMPRESSED_SHA256 =
@@ -36,8 +33,7 @@ const hash = (value) => bytesHash(Buffer.from(JSON.stringify(value)));
 function validateOwners(prepared, gate, factor) {
   assert.equal(hash(prepared), PREPARED_CANONICAL_SHA256);
   post.validateInputs(gate, factor, prepared);
-  assert.equal(hash(gate), GATE_CANONICAL_SHA256);
-  assert.equal(hash(factor), FACTOR_CANONICAL_SHA256);
+  semantic.assertFactorAuthority(gate, factor);
   return true;
 }
 

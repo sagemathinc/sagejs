@@ -8,6 +8,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const { compileKernel } = require("../../tools/native-kernel/compiler.cjs");
+const semantic = require("./row6_prepared_semantic_authority.cjs");
 
 const ROWS = 1130, DEGREE = 3, PLACES = 3, TARGET = 1137, RESERVE = 11420;
 const FIRST_COLUMNS = 1133;
@@ -117,7 +118,12 @@ function validateBoundary(prepared, factor, initial) {
     "sagejs.pari-class-group/row6-prepared-initial-relations-owner-v1");
   assert.equal(factor.authority.preparedAuthoritySha256, prepared.authoritySha256);
   assert.equal(initial.authority.preparedAuthoritySha256, prepared.authoritySha256);
-  assert.equal(initial.authority.factorOwnerSha256, factor.ownerSha256);
+  if (initial.authority.factorOwnerSemanticSha256 !== undefined) {
+    assert.equal(initial.authority.factorOwnerSemanticSha256,
+      semantic.semanticSha256(factor));
+  } else {
+    assert.equal(initial.authority.factorOwnerSha256, factor.ownerSha256);
+  }
   assert.deepEqual(factor.rootState.slice(0, 7),
     ["1", "9196", "9196", "1130", "740", "740", "1130"]);
   assert.deepEqual(initial.rootState,
