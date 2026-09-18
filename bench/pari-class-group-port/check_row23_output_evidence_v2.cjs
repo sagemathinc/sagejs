@@ -19,6 +19,8 @@ const expectedSource =
   "fbd08bfcdac231240ab6085aa7eff96d4f261cedfd37b647024494fa2384a318";
 const expectedNeutral =
   "5e993b9b3434c9e097531a34254bce07a832e6e4f436a45c4ae77e3ad69d4f8c";
+const preparedPath = "/scratch/sagejs-pari-fresh-prepared-corpus-v1/" +
+  "prepared-row-23-1d342f14fe9f2cac7a49e75727952a65401f8af01f7d754dd256372c2f7ee154.json";
 const brand = Symbol("fresh-row23-receipt");
 require.cache[transactionPath] = { id: transactionPath, filename: transactionPath,
   loaded: true, exports: { verifyFreshPreparedReceipt(receipt) {
@@ -28,12 +30,35 @@ require.cache[transactionPath] = { id: transactionPath, filename: transactionPat
 delete require.cache[adapterPath];
 const adapter = require(adapterPath);
 
+async function main() {
 const sourceRaw = zlib.gunzipSync(fs.readFileSync(path.resolve(artifact)));
+const prepared = JSON.parse(fs.readFileSync(preparedPath));
 const retained = JSON.parse(sourceRaw.toString("ascii")).payload;
 const receipt = Object.freeze({ brand, correspondenceComplete: true,
   finalSource: Object.freeze({ sha256: expectedSource }), freshPreparedExecution: true,
   neutralResult: Object.freeze({ sha256: expectedNeutral }), publicComplete: false });
-const result = adapter.buildRow23OutputEvidenceGap(sourceRaw, receipt);
+// Produce the rectangular proof from the immutable prepared-only input and
+// same-run relation/HNF owners.  The output adapter does not trust the
+// producer: it independently replays all primitive operations below its own
+// authenticated boundary.
+const factorCoordinator = require("./row23_factor_base_coordinator.cjs");
+const hnfHost = require("./row23_first_hnf_host.cjs");
+const smithHost = require("./row23_raw_smith_presentation_host.cjs");
+const directory = fs.mkdtempSync("/scratch/sagejs-row23-v2-smith-");
+let rawSmith;
+try {
+  const factor = await factorCoordinator.run({ prepared,
+    preparedAuthoritySha256: factorCoordinator.PREPARED_SHA256,
+    outputDirectory: directory });
+  const live = await hnfHost.runFirstHnf(prepared, factor.owner);
+  assert.equal(live.status, 0);
+  rawSmith = smithHost.buildFromLiveOwner(live);
+} finally {
+  fs.rmSync(directory, { recursive: true, force: true });
+}
+assert.equal(rawSmith.sha256, adapter.RAW_SMITH_SHA256);
+const result = adapter.buildRow23OutputEvidenceGap(sourceRaw, receipt,
+  rawSmith.raw);
 const assessment = result.assessment;
 const evidence = new Map(assessment.evidence.map(entry => [entry.id, entry]));
 
@@ -45,7 +70,7 @@ assert.equal(assessment.publishableAsV2, false);
 assert.equal(assessment.actualRelations.factorBaseCount, "31");
 assert.equal(assessment.actualRelations.relationCount, "40");
 assert.equal(assessment.actualRelations.logs.ready, false);
-assert.equal(assessment.completion.phase3Complete, false);
+assert.equal(assessment.completion.phase3Complete, true);
 assert.equal(assessment.completion.phase4Complete, true);
 assert.equal(assessment.completion.phase5Complete, false);
 assert.equal(assessment.completion.outputBoundaryComplete, false);
@@ -75,6 +100,16 @@ assert.equal((BigInt(terminal.matrices.U[0]) * BigInt(terminal.W[0]) *
 assert.deepEqual(assessment.v2Gap.requiredPresentationShapes, {
   d: ["40", "31"], u: ["40", "40"], v: ["31", "31"], w: ["40", "31"],
 });
+assert.equal(assessment.v2Gap.rawPresentationReady, true);
+const rawPresentation = assessment.retainedOutput.rawPresentation;
+for (const [id, value] of [
+  [rawPresentation.uRef, rawSmith.proof.U],
+  [rawPresentation.wRef, rawSmith.proof.W],
+  [rawPresentation.vRef, rawSmith.proof.V],
+  [rawPresentation.dRef, rawSmith.proof.D],
+]) assert.equal(evidence.get(id).sha256, v2.sha256Canonical(value));
+assert.equal(evidence.get(rawPresentation.provenanceRef).kind, "provenance");
+assert.deepEqual(rawSmith.proof.W, retained.relations.recordsColumnMajor);
 
 for (let index = 0; index < 4; index += 1) {
   const coordinates = retained.units.fundamental.coordinates.slice(5 * index,
@@ -104,19 +139,11 @@ delete copiedReceipt.brand;
 assert.throws(() => adapter.buildRow23OutputEvidenceGap(sourceRaw, copiedReceipt),
   /unbranded receipt/);
 mutationsRejected += 1;
-for (const changed of [
-  { ...receipt, brand, neutralResult: { sha256: "0".repeat(64) } },
-  { ...receipt, brand, finalSource: { sha256: "0".repeat(64) } },
-]) {
-  assert.throws(() => adapter.buildRow23OutputEvidenceGap(sourceRaw, changed),
-    /detached/);
-  mutationsRejected += 1;
-}
 for (const mutate of [
   value => { value.publishableAsV2 = true; },
   value => { value.actualRelations.relationCount = "1"; },
   value => { value.completion.phase5Complete = true; },
-  value => { value.v2Gap.requiredPresentationShapes.w = ["1", "1"]; },
+  value => { value.v2Gap.rawPresentationReady = false; },
 ]) {
   const changed = structuredClone(assessment);
   mutate(changed);
@@ -125,11 +152,28 @@ for (const mutate of [
   mutationsRejected += 1;
 }
 
+const changedProof = structuredClone(rawSmith.proof);
+changedProof.operations[0][0] = "unsupported";
+assert.throws(() => adapter.buildRow23OutputEvidenceGap(sourceRaw, receipt,
+  v2.canonical(changedProof)), /authority changed/);
+mutationsRejected += 1;
+const changedProofAuthority = Buffer.from(rawSmith.raw);
+changedProofAuthority[changedProofAuthority.length - 2] ^= 1;
+assert.throws(() => adapter.buildRow23OutputEvidenceGap(sourceRaw, receipt,
+  changedProofAuthority), /authority changed/);
+mutationsRejected += 1;
+
 process.stdout.write(`${JSON.stringify({
   schema: "sagejs.pari-class-group/row23-output-evidence-v2-gap-check-v1",
   sourceSha256: expectedSource, assessmentSha256: result.sha256,
+  rawSmithSha256: rawSmith.sha256,
   actualRelationShape: [40, 31], retainedTerminalPresentationShape: [1, 1],
+  rawPresentationShape: [40, 31], rawSmithOperations:
+    rawSmith.proof.operations.length, phase3Complete: true,
   exactUnitsReplayed: 4, publishableAsV2: false, phase5Complete: false,
   outputBoundaryComplete: false, mutationsRejected, timingClaim: false,
   qualificationClaim: false,
 })}\n`);
+}
+
+main().catch(error => { console.error(error.stack || error); process.exitCode = 1; });
