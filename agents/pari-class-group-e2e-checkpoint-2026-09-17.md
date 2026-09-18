@@ -98,6 +98,15 @@ native root publishes the exact 593-entry sparse basis and all principal
 records at 264,652 KiB peak RSS, while allocating no HNF or transformation
 history.  It deliberately stops before row 6's 14-pass relation/HNF schedule.
 
+Commit `40b654aad` now executes that complete schedule:
+`203 -> 1133`, one stall, `-> 1136`, ten stalls, and `-> 1137`, for 14
+collection passes in total.  All relation records, exact logs, `H`, dependent,
+`B`, `C`, permutation, and terminal relation identities match frozen W0 after
+worker exit.  The isolated replay took 125.593 seconds; a contention-heavy
+qualifying run took 322.253 seconds at 1,133,356 KiB peak RSS.  The immutable
+owner remains below the 4-GiB bound.  Analytic acceptance, exact class
+witnesses, units, and C7 remain the next row-6 cuts.
+
 Commits `bff9e5840` and `0e15a7d4d` add the pinned PARI 2.17.4 side of the
 row-14 prepared-field timing experiment.  It prepares `nfinit` outside the
 clock and times exactly `bnfinit0(prepared_nf,0,NULL,nbits2prec(192))`, retaining
@@ -119,7 +128,16 @@ the live root, 86.658 for relation/HNF, 5.082 for a now-removed projection,
 unit/getfu, and 0.044 for native `class_group_gen`.  This is diagnostic pending
 the cleaned focused receipt, but it already localizes essentially the whole
 remaining performance problem to relation/HNF and analytic/terminal-lattice
-machinery rather than unit or final class assembly.
+machinery rather than unit or final class assembly.  Commit `f6c99d9a8` then
+closes that boundary with a fully resident compute-only clock: Sage.js takes
+91.109736691 seconds and single-threaded PARI 2.17.4 takes 2.023787590 seconds
+on the development host.  The Sage partition is 1.383 seconds for the initial
+root, 89.392 for relation collection plus incremental HNF, 0.255 for analytic
+acceptance and terminal lattice, 0.016 for unit/getfu, and 0.061 for class
+generators.  Exact generators, regulator, torsion, work shape, RNG, and at least
+110 log bits agree.  No formal ratio is published from this single proof;
+per-pass relation-versus-HNF instrumentation and the required alternating
+campaign remain open.
 
 One prepared totally real cubic,
 `x^3 - 20018*x + 20034`, now has a genuinely connected internal result:
