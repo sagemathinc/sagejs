@@ -390,7 +390,8 @@ def pari_resident_generated_class_attempt(
     are constructed from generated KC/KCZ. Owners must be disjoint, except the
     internal views and their backing owners, which are used sequentially.
 
-    This entry is explicitly restricted to a prepared totally real cubic.
+    This entry is explicitly restricted to a prepared cubic with either
+    three real places or one real place and one complex pair.
     No general automorphism/cyclotomic-unit prelude, retry or honesty branch is
     implemented. Eager degree-cache fill and analytic preparation ordering are
     diagnostic boundaries, not a claim of full Buchall scheduling parity.
@@ -411,8 +412,8 @@ def pari_resident_generated_class_attempt(
         raise ValueError("short resident generated result/state owner")
     if prep_state[0] != 0:
         raise ValueError("cannot reuse a partial resident preparation")
-    if n != 3 or admission_real_count != 3 or precision != 192:
-        raise ValueError("resident generated fixed real cubic frontier")
+    if n != 3 or admission_real_count not in (1, 3) or precision != 192:
+        raise ValueError("resident generated fixed cubic frontier")
     if len(prep_polynomial) != 4:
         raise ValueError("resident generated cubic polynomial shape")
     pa0 = prep_polynomial[0]
@@ -429,7 +430,7 @@ def pari_resident_generated_class_attempt(
     if (
         prep_index < 1
         or pa3 != 1
-        or derived_discriminant <= 0
+        or (derived_discriminant > 0) != (admission_real_count == 3)
         or analytic_discriminant * prep_index * prep_index != derived_discriminant
         or analytic_roots_of_unity != 2
     ):

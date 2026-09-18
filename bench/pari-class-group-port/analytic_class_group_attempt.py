@@ -355,7 +355,7 @@ def pari_analytic_class_group_attempt(
     attempt_state[3] = 0
     analytic_log_discriminant[0] = pari_discriminant_log(analytic_discriminant)
     residue_bound, processed, hm, hp, he = pari_analytic_inverse_hr(
-        analytic_discriminant,
+        abs(analytic_discriminant),
         admission_real_count,
         (n - admission_real_count) // 2,
         analytic_roots_of_unity,
