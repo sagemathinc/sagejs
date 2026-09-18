@@ -48,6 +48,11 @@ async function worker(input) {
     "d9fd91b5bab2247dba17b77edde25daa9a0e2f8227baeb441925c40fe3dd5b08");
   assert.equal(result.terminal.relationIdentitySha256,
     "17608bc125082b69104323ce6e84f9f3102562e284bfc03ec834485532be15ac");
+  assert.deepEqual(result.classPresentation.invariants,
+    ["6", "3", "3", "3", "3", "3", "3", "3", "3"]);
+  assert.equal(result.classPresentation.classNumber, "39366");
+  assert.deepEqual(result.classPresentation.state,
+    [0, 0, 9, 0, 2, 0, 0, 243, 0, 0, 9, 243]);
   process.stdout.write(`${JSON.stringify({ result,
     measurement: { elapsedNs: String(elapsedNs), maxRssKiB: usage.maxRSS,
       userCpuMicros: usage.userCPUTime - startUsage.userCPUTime,

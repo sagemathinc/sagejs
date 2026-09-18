@@ -18,7 +18,7 @@ const EXPECTED = Object.freeze({
   unitCoordinatorSha256: "dc135ffdd504f2012945ebf5434c0cab4d48f268f6b0d26d5c499b7033cadc23",
   finalCoordinatorSha256: "58ce9efebe448739e2f9406d5754907870628b5def9b8eba28ac9f04289f75d7",
   terminalHostSha256: "802d86e73bae4f8dbc9a173dda4ee28a7981de55047cd6ae0c68d006da1ce833",
-  residentRelationRootSha256: "c4a53031501b7c33706dedee98c56eb9ab2650401b236f578fac9b6647859ee0",
+  residentRelationRootSha256: "9ec6bc1856ba1f01dcf38f67885110e6d2b6c60b14740f5c8954863cfa10e61a",
 });
 const sha = bytes => crypto.createHash("sha256").update(bytes).digest("hex");
 const source = name => fs.readFileSync(path.join(__dirname, name));
@@ -66,7 +66,8 @@ function inspect(inputPath = DEFAULT_INPUT) {
       "detached class/unit/final composition"],
     sourceCut: [
       "lower the prepared factor-base and analytic prefixes into the resident native graph",
-      "port the class-principal, compact-unit and exact-unit coordinators to callable native roots",
+      "derive the saturated raw relation kernel and class principal witnesses from retained HNF transforms",
+      "port the compact-unit and exact-unit coordinators to callable native roots",
       "connect those roots to the live terminal relation owner without gzip descriptors",
       "eliminate residual native-artifact cache lookup from the resident relation clock",
     ], sourceSha256: EXPECTED,

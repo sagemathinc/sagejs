@@ -30,6 +30,7 @@ const SOURCES = Object.freeze([
   "connected_hnfadd_acceptance.py",
   "row19_hnfadd_cup_suffix.py",
   "post_hnf_acceptance.py",
+  "row19_phase6_resident_class_private.py",
 ]);
 
 function runPython(moduleName, prepared) {
@@ -56,18 +57,24 @@ async function prepareResident(preparedInput) {
   // The underlying hosts still perform cheap cache lookup, which is disclosed
   // by this root and is not claimed as final qualification timing.
   const cacheRoot = process.env.SAGEJS_NATIVE_CACHE_DIR || null;
-  for (const source of SOURCES)
-    await compileKernel({ sourcePath: path.join(__dirname, source),
+  let classFn = null;
+  for (const source of SOURCES) {
+    const built = await compileKernel({ sourcePath: path.join(__dirname, source),
       ...(cacheRoot ? { cacheRoot } : {}) });
+    if (source === "row19_phase6_resident_class_private.py") {
+      classFn = require(built.modulePath).pari_row19_phase6_resident_class_private;
+      assert(classFn?.nativeAvailable);
+    }
+  }
   const context = Object.freeze({ prepared, prefix, catalog,
-    cacheRoot,
+    cacheRoot, classFn,
     preparedAuthoritySha256: authority.sha256,
     prefixSha256: hash(prefix), analyticCatalogSha256: hash(catalog) });
   PREPARED.add(context);
   return context;
 }
 
-function projection(first, completed) {
+function projection(first, completed, classPresentation) {
   const exact = completed.exact;
   return {
     schema: "sagejs.pari-class-group/row19-phase6-resident-relation-root-v1",
@@ -89,6 +96,7 @@ function projection(first, completed) {
       ancestrySha256: hash(exact.ancestry),
       relationIdentitySha256: hash(exact.relationIdentity),
     },
+    classPresentation,
     nextControl: completed.nextControl,
     ownerBytesUpperBound: completed.ownerBytesUpperBound,
     nativeCoreBytes: completed.nativeCoreBytes,
@@ -99,6 +107,7 @@ function projection(first, completed) {
       "terminal relation collection to 430 columns",
       "terminal HNF append and CUP suffix",
       "analytic inverse hR and acceptance",
+      "class-group Smith presentation",
     ]),
     serializedOwnersInsideRoot: 0,
     subprocessesInsideRoot: 0,
@@ -117,8 +126,21 @@ async function runResident(context) {
     context.prepared, context.prefix, context.catalog, first, null, null, options);
   assert.equal(completed.firstOwnerSha256, null);
   assert(completed.ownerBytesUpperBound < 4 * 1024 ** 3);
+  const classInvariants = context.classFn.createIntegerBuffer(9, 16);
+  const classNumber = context.classFn.createIntegerBuffer(1, 16);
+  const classState = context.classFn.createInt64Buffer(12);
+  const classStatus = context.classFn.gmp({ factor_count: 424n,
+    relation_count: 430n, class_dimension: 9n },
+  completed.resident.terminal.result_h, classInvariants, classNumber, classState);
+  assert.equal(classStatus, 0n);
+  const classPresentation = Object.freeze({
+    status: String(classStatus),
+    invariants: classInvariants.toArray().map(String),
+    classNumber: String(classNumber.toArray()[0]),
+    state: Array.from(classState).map(Number),
+  });
   const result = Object.freeze({
-    ...projection(first, completed),
+    ...projection(first, completed, classPresentation),
     preparedAuthoritySha256: context.preparedAuthoritySha256,
     prefixSha256: context.prefixSha256,
     analyticCatalogSha256: context.analyticCatalogSha256,
