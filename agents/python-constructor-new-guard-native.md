@@ -1,7 +1,8 @@
 # Python constructor custom-new guard
 
-Base: `958927947` (`agent/python-keyword-constructor-dispatch-main`, queued
-behind the reviewer-repaired attribute-store integration).
+Base: `3afb7d6f3` (`agent/python-keyword-constructor-dispatch-main`, the exact
+source of PR #316 after its merged attribute-store and exact-arithmetic
+prerequisites).
 
 ## Change
 
@@ -33,29 +34,31 @@ positional-only binding, and invalid initializer returns.
 
 ## Controlled measurements
 
-The idle `bench-1` Linux x64 host ran Node 26.5.1 and CPython 3.12.3. Ten
+The shared Linux x64 project host ran Node 26.9.0 and CPython 3.14.4. Ten
 alternating fresh processes ran each exact artifact; the first three samples
-were discarded. Each row contains 100,000 checked operations.
+were discarded. Compilation and startup are outside the measured regions. Each
+row contains 100,000 checked operations. This is a source-current local
+comparison; an idle benchmark host should independently confirm it.
 
 | Case | Keyword-constructor base | Candidate | Change | CPython | Candidate / CPython |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| positional function | 79.735 ms | 80.047 ms | flat | 8.756 ms | 9.1x |
-| keyword function | 197.241 ms | 199.371 ms | flat | 10.003 ms | 19.9x |
-| immediate keyword method | 258.474 ms | 259.237 ms | flat | 10.433 ms | 24.8x |
-| empty construction | 37.033 ms | 31.763 ms | **14.2% faster** | 7.548 ms | 4.2x |
-| no-op initializer | 60.420 ms | 54.615 ms | **9.6% faster** | 11.841 ms | 4.6x |
-| positional construction and method | 286.125 ms | 278.730 ms | **2.6% faster** | 22.537 ms | 12.4x |
-| keyword construction and method | 497.698 ms | 504.351 ms | flat | 37.088 ms | 13.6x |
+| positional function | 89.722 ms | 89.149 ms | flat | 11.555 ms | 7.72x |
+| keyword function | 168.500 ms | 167.521 ms | flat | 13.122 ms | 12.77x |
+| immediate keyword method | 168.326 ms | 168.134 ms | flat | 13.079 ms | 12.85x |
+| empty construction | 53.837 ms | 54.504 ms | flat | 8.721 ms | 6.25x |
+| no-op initializer | 78.003 ms | 68.862 ms | **11.72% faster** | 12.128 ms | 5.68x |
+| positional construction and method | 242.555 ms | 234.291 ms | **3.41% faster** | 19.458 ms | 12.04x |
+| keyword construction and method | 390.753 ms | 377.433 ms | **3.41% faster** | 35.900 ms | 10.51x |
 
 The base artifact SHA-256 is
-`8658a7e82e89e3c335d5e202495f6449920300dc264c201547b4e4036d544674`
-(24,442,406 bytes). The final candidate is
-`dc72202e1033ec346a476114c8383860061e3bcf5647f6c0bdac2f9a65bad30b`
-(24,441,502 bytes), 904 bytes smaller.
+`a950650d09955f60ab489da6e8a29c07efdcae971421720bb7c41381c8127527`
+(24,342,937 bytes). The final candidate is
+`2371d5010d0c2ee9ddebe7ce6dc6d75312d4b70c4ecf7a37cdb49dcf70eb0019`
+(24,341,229 bytes), 1,708 bytes smaller.
 
-Empty and no-op construction are now below the project's default 10x ratio
-rule, but field-heavy construction remains 12.4–13.6x CPython and keyword calls
-remain roughly 20–25x. This is not closure of M5.
+No-op initialization is now 5.68x CPython, but field-heavy positional
+construction remains 12.04x and keyword construction remains 10.51x. Keyword
+function and method calls remain roughly 12.8x. This is not closure of M5.
 
 ## Qualification
 
@@ -63,19 +66,18 @@ remain roughly 20–25x. This is not closure of M5.
   in 7m 29s.
 - The CPython differential corpus passes 505 cases with the same three
   intentional incompatibilities and no baseline drift.
-- All 104 selected constructor, lowering, runtime-hotpath, prepared-method, and
-  raw-ABI checks pass. The earlier qualification also covers live defaults in
-  Python and Sage modes.
+- All 128 selected constructor, lowering, runtime-hotpath, prepared-method, and
+  raw-ABI checks pass. The CPython differential corpus passes 505 of 508 cases,
+  with the same three intentional incompatibilities and no baseline drift.
 - All six pinned traitlets checks and the pinned decorator 5.2.1 and attrs
   25.4.0 workflows pass.
 - Strict CPython syntax, Ruff 0.16.0, and Pyright pass for 404 modules; merge
   invariants pass.
-- Core runtime is 902,476/903,000 bytes. No source, startup, browser, or
+- Core runtime is 902,325/903,000 bytes. No source, startup, browser, or
   performance budget changed.
 - The local startup gate is not a passing receipt: the candidate measured
-  417.9 ms normalized and its exact parent previously measured 430.8 ms, both
-  above the unchanged 400 ms budget. No budget was widened; merge-owned CI must
-  supply the startup/browser receipt.
+  415.5 ms normalized and its exact parent measured 411.9 ms, both above the
+  unchanged 400 ms budget. No budget was widened; merge-owned CI must supply
+  the startup/browser receipt.
 
-The branch remains queued behind its attribute and keyword-constructor
-prerequisites. It is not a release action.
+The branch remains queued behind PR #316. It is not a release action.
