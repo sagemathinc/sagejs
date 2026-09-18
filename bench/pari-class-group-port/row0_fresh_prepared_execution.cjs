@@ -7,6 +7,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 
+const auth = require("./prepared_nf_authentication.cjs");
 const neutral = require("./class_unit_correspondence_result.cjs");
 
 const PANEL_INDEX = 0;
@@ -16,6 +17,8 @@ const RECEIPT_SCHEMA =
   "sagejs.pari-class-group/row0-fresh-prepared-execution-v1";
 const EXPECTED_RESULT_SHA256 =
   "dbf645dd5bdf4eb2f27dbaa769d1c08d454c551318a32611b47a1a232754da58";
+const PREPARED_AUTHORITY_SHA256 =
+  "e02411d4b97fdf92606698198993085b352a0d79e5a66133ac61c601e43dbba9";
 const FRESH_RECEIPTS = new WeakSet();
 
 function writeImmutable(filename, bytes) {
@@ -32,11 +35,15 @@ function writeImmutable(filename, bytes) {
 }
 
 function validatePrepared(prepared) {
-  assert(Array.isArray(prepared) && prepared.length === 3,
-    "row-0 requires prepared, analytic, and Kummer fixture paths");
-  assert(prepared.every(value => typeof value === "string" && value.length > 0),
-    "row-0 fixture paths must be nonempty strings");
-  return [...prepared];
+  assert(prepared && typeof prepared === "object" && !Array.isArray(prepared),
+    "row-0 requires a normalized prepared-NF object");
+  const authority = auth.authenticatePreparedNf(prepared);
+  assert.equal(authority.sha256, PREPARED_AUTHORITY_SHA256,
+    "prepared input is outside the reviewed row-0 corridor");
+  return Object.freeze({
+    authoritySha256: authority.sha256,
+    data: structuredClone(prepared),
+  });
 }
 
 function exactTerminal(result) {
@@ -78,11 +85,13 @@ function exactTerminal(result) {
 
 async function runFreshPrepared(prepared, outputDirectory) {
   assert.equal(typeof outputDirectory, "string");
-  const fixturePaths = validatePrepared(prepared);
+  assert(outputDirectory.length > 0);
+  const preparedEnvelope = validatePrepared(prepared);
   // Keep compiler/native runtime loading behind the actual row-0 invocation;
   // merely importing the development registry remains a data-only operation.
-  const producer = require("./h1_class_unit_result_producer.cjs");
-  const result = await producer.produceH1ClassUnitResult(fixturePaths);
+  const producer = require("./row0_fresh_h1_result_producer.cjs");
+  const result = await producer.produceFreshH1ClassUnitResult(
+    preparedEnvelope.data);
   const payload = exactTerminal(result);
   const bytes = result.canonicalJSON();
   assert.equal(neutral.sha256Bytes(bytes), result.sha256,
@@ -98,6 +107,7 @@ async function runFreshPrepared(prepared, outputDirectory) {
     schema: RECEIPT_SCHEMA,
     panelIndex: PANEL_INDEX,
     fieldId: FIELD_ID,
+    preparedAuthoritySha256: preparedEnvelope.authoritySha256,
     path: filename,
     sha256: result.sha256,
     bytes: bytes.length,
@@ -110,7 +120,7 @@ async function runFreshPrepared(prepared, outputDirectory) {
     qualifiedTiming: false,
     reserveAccess: false,
     runtimeInputs: Object.freeze([
-      "prepared, analytic, and Kummer fixtures for the unified H1 root",
+      "authenticated normalized prepared-nf data",
     ]),
   };
   Object.defineProperty(receipt, "verifiedResult", {
@@ -127,6 +137,7 @@ async function runFreshPrepared(prepared, outputDirectory) {
 module.exports = {
   FIELD_ID,
   EXPECTED_RESULT_SHA256,
+  PREPARED_AUTHORITY_SHA256,
   PANEL_INDEX,
   RECEIPT_SCHEMA,
   isAuthenticFreshReceipt(receipt) { return FRESH_RECEIPTS.has(receipt); },

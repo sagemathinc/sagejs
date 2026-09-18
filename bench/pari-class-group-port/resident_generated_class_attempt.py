@@ -412,7 +412,11 @@ def pari_resident_generated_class_attempt(
         raise ValueError("short resident generated result/state owner")
     if prep_state[0] != 0:
         raise ValueError("cannot reuse a partial resident preparation")
-    if n != 3 or admission_real_count not in (1, 3) or precision != 192:
+    if (
+        n != 3
+        or (admission_real_count != 1 and admission_real_count != 3)
+        or precision != 192
+    ):
         raise ValueError("resident generated fixed cubic frontier")
     if len(prep_polynomial) != 4:
         raise ValueError("resident generated cubic polynomial shape")
