@@ -31,7 +31,7 @@ The computed compact transform is exactly
 ```text
 [0,0,0,0,0,1,0,0,
  0,0,0,0,0,1,3,1,
- 0,0,0,-1,1,0]
+ 0,0,0,0,0,-1,1,0]
 ```
 
 and agrees entry-for-entry with PARI's `fundamental_units.U`.  The reference
