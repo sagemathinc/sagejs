@@ -36,9 +36,12 @@ function publish(directory, owner) {
     bytes: plain.length, compressedBytes: compressed.length };
 }
 
-async function run(payload) {
-  if (!payload || JSON.stringify(Object.keys(payload).sort()) !==
-      JSON.stringify(["outputDirectory", "prepared", "preparedAuthoritySha256"]))
+async function runResident(payload) {
+  if (!payload || ![
+    ["prepared", "preparedAuthoritySha256"],
+    ["prepared", "preparedAuthoritySha256", "sourceAuthority"],
+    ["prepared", "preparedAuthoritySha256", "residentKernels", "sourceAuthority"],
+  ].some(keys => JSON.stringify(Object.keys(payload).sort()) === JSON.stringify(keys)))
     throw new Error("unreviewed row20 factor-base payload");
   const auth = require("./prepared_nf_authentication.cjs");
   const authority = auth.authenticatePreparedNf(payload.prepared);
@@ -50,10 +53,14 @@ async function run(payload) {
     throw new Error("row20 prepared identity changed");
 
   const { compileKernel } = require("../../tools/native-kernel/compiler.cjs");
-  const [built, indexBuilt] = await Promise.all([
-    compileKernel({ sourcePath: SOURCE }),
-    compileKernel({ sourcePath: INDEX_SOURCE }),
-  ]);
+  const [built, indexBuilt] = payload.residentKernels ?
+    [payload.residentKernels.factorBuilt, payload.residentKernels.indexBuilt] :
+    await Promise.all([
+      compileKernel({ sourcePath: SOURCE }),
+      compileKernel({ sourcePath: INDEX_SOURCE }),
+    ]);
+  if (!built?.modulePath || !indexBuilt?.modulePath)
+    throw new Error("invalid row20 resident factor kernels");
   const module = require(built.modulePath);
   const factor = module.pari_row21_quintic_factor_degrees;
   const descriptorsFn = module.pari_row21_prime_descriptors;
@@ -173,12 +180,19 @@ async function run(payload) {
     [0], buffer(kc, 4), buffer(kc, 4), buffer(3 * kc + 3, 4), buffer(kc, 4),
     buffer(kc, 4), permutation, subState));
   const perm = packedSlice(permutation, 0, kc);
+  const sourceAuthority = payload.sourceAuthority || {
+    sourceSha256: sha(fs.readFileSync(SOURCE)),
+    indexSourceSha256: sha(fs.readFileSync(INDEX_SOURCE)),
+    coreSha256: sha(fs.readFileSync(built.coreSourcePath)),
+    indexCoreSha256: sha(fs.readFileSync(indexBuilt.coreSourcePath)),
+  };
+  if (Object.keys(sourceAuthority).sort().join(",") !==
+      "coreSha256,indexCoreSha256,indexSourceSha256,sourceSha256" ||
+      Object.values(sourceAuthority).some(value => !/^[0-9a-f]{64}$/.test(value)))
+    throw new Error("invalid row20 resident source authority");
   const owner = {
     schema: SCHEMA,
-    authority: { preparedSha256: authority.sha256, sourceSha256: sha(fs.readFileSync(SOURCE)),
-      indexSourceSha256: sha(fs.readFileSync(INDEX_SOURCE)),
-      coreSha256: sha(fs.readFileSync(built.coreSourcePath)),
-      indexCoreSha256: sha(fs.readFileSync(indexBuilt.coreSourcePath)) },
+    authority: { preparedSha256: authority.sha256, ...sourceAuthority },
     field: { polynomial: p.prep_polynomial, discriminant: p.analytic_discriminant,
       degree: "5", signature: ["1", "2"], precision: p.precision },
     bounds: { C1: String(c1), C2: String(c2), KC: String(kc), KCZ: String(kcz),
@@ -189,10 +203,19 @@ async function run(payload) {
     provenance: { inputPolicy: "authenticated-prepared-nf-only",
       frozenAnswerInputs: false, catalogCeiling: "257", terminalPrime: String(primes.at(-1)) },
   };
-  return { ...publish(payload.outputDirectory, owner), owner };
+  return { owner, ownerSha256: sha(Buffer.from(`${canonical(owner)}\n`)) };
 }
 
-module.exports = { PREPARED_SHA256, SCHEMA, run };
+async function run(payload) {
+  if (!payload || JSON.stringify(Object.keys(payload).sort()) !==
+      JSON.stringify(["outputDirectory", "prepared", "preparedAuthoritySha256"]))
+    throw new Error("unreviewed row20 factor-base payload");
+  const resident = await runResident({ prepared: payload.prepared,
+    preparedAuthoritySha256: payload.preparedAuthoritySha256 });
+  return { ...publish(payload.outputDirectory, resident.owner), owner: resident.owner };
+}
+
+module.exports = { PREPARED_SHA256, SCHEMA, run, runResident };
 
 if (require.main === module) {
   let text = ""; process.stdin.setEncoding("utf8");

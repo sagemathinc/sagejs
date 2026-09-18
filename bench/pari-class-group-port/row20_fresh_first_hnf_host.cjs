@@ -96,12 +96,15 @@ function words(values, minimum = 1) {
   return result;
 }
 
-async function runFirstHnf(prepared, factorOwner, { hnfWords = 16 } = {}) {
+async function runFirstHnf(prepared, factorOwner, {
+  hnfWords = 16, residentBuilt = undefined, residentNames = undefined,
+} = {}) {
   assert.equal(factorOwner.schema,
     "sagejs.pari-class-group/row20-fresh-prepared-factor-base-v1");
   assert.equal(prepared.n, "5");
   const source = path.join(__dirname, "row20_connected_relation_hnf.py");
-  const names = signature(source), built = await compileKernel({ sourcePath: source });
+  const names = residentNames || signature(source);
+  const built = residentBuilt || await compileKernel({ sourcePath: source });
   const fn = require(built.modulePath).pari_connected_relation_hnf;
   const lengths = zeroLengths();
   const factor = factorOwner.factorBase;
@@ -241,4 +244,4 @@ async function runFirstHnf(prepared, factorOwner, { hnfWords = 16 } = {}) {
     ].map(name => [name, view(values[name]).map(String)])) };
 }
 
-module.exports = { runFirstHnf, zeroLengths };
+module.exports = { runFirstHnf, signature, zeroLengths };

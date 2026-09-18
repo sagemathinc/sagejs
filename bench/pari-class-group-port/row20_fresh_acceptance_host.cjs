@@ -56,8 +56,8 @@ function view(owner, length = owner.length) {
     .slice(0, length).map(String);
 }
 
-async function analyticInverseHr(prepared) {
-  const catalog = await compiled("row21_analytic_catalog.py",
+async function analyticInverseHr(prepared, resident = undefined) {
+  const catalog = resident?.catalog || await compiled("row21_analytic_catalog.py",
     "pari_row21_analytic_degree_catalog");
   const primes = prepared.analytic_primes.map(Number);
   const capacity = DEGREE * primes.length;
@@ -76,7 +76,7 @@ async function analyticInverseHr(prepared) {
   assert.equal(catalog.fn.gmp(...catalog.names.map(([name]) => cv[name])), 0n);
   const groups = Number(cv.state.toArray()[2]);
 
-  const analytic = await compiled("row14_post806_terminal.py",
+  const analytic = resident?.analytic || await compiled("row14_post806_terminal.py",
     "pari_row14_analytic_inverse_hr");
   const av = {
     discriminant: BigInt(prepared.analytic_discriminant),
@@ -117,7 +117,7 @@ async function analyticInverseHr(prepared) {
   };
 }
 
-async function runAcceptance(prepared, liveResult) {
+async function runAcceptance(prepared, liveResult, resident = undefined) {
   assert.equal(liveResult.status, 0);
   assert.deepEqual(liveResult.relationState, ["14", "190", "0", "7", "0", "14"]);
   assert.deepEqual(liveResult.chainState, [3, 0, 3, 14]);
@@ -125,8 +125,8 @@ async function runAcceptance(prepared, liveResult) {
   assert(liveResult.values?.hnf_result_h, "missing live H owner");
   assert(liveResult.values?.hnf_result_c, "missing live C owner");
 
-  const analytic = await analyticInverseHr(prepared);
-  const kernel = await compiled("post_hnf_acceptance.py",
+  const analytic = await analyticInverseHr(prepared, resident);
+  const kernel = resident?.acceptance || await compiled("post_hnf_acceptance.py",
     "pari_post_hnf_acceptance");
   const fn = kernel.fn;
   const size = ROWS * (ZERO_COLUMNS + 1);
@@ -219,4 +219,13 @@ async function runAcceptance(prepared, liveResult) {
   };
 }
 
-module.exports = { analyticInverseHr, runAcceptance };
+async function prepareResident() {
+  const [catalog, analytic, acceptance] = await Promise.all([
+    compiled("row21_analytic_catalog.py", "pari_row21_analytic_degree_catalog"),
+    compiled("row14_post806_terminal.py", "pari_row14_analytic_inverse_hr"),
+    compiled("post_hnf_acceptance.py", "pari_post_hnf_acceptance"),
+  ]);
+  return Object.freeze({ catalog, analytic, acceptance });
+}
+
+module.exports = { analyticInverseHr, prepareResident, runAcceptance };
