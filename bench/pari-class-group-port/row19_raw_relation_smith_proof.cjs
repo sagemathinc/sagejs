@@ -30,8 +30,7 @@ function strings(values) { return values.map(String); }
 
 function buildRow19RawRelationSmithProof(raw) {
   // Reuse the reviewed fail-closed source authentication before expanding it.
-  gap.assessRow19OutputEvidence(raw);
-  const payload = JSON.parse(raw.toString("ascii")).payload;
+  const payload = gap.authenticateRow19Correspondence(raw);
   const relations = entries(payload, "relation-records", ROWS * COLUMNS);
   const transform = entries(payload, "principal-relation-transform", ROWS * ROWS);
   const terminal = decode(payload, "terminal-hnf-state");

@@ -1,48 +1,73 @@
-# Row 19 output-evidence v2 migration gap
+# Row 19 output-evidence v2 projection
 
-Row 19 cannot yet publish a truthful
-`sagejs.pari-class-group/class-unit-output-evidence-v2` sidecar. The blocker is
-specific: the shared v2 schema requires the presentation proof to have the same
-dimensions as the declared relation surface.
+Row 19 now publishes a valid
+`sagejs.pari-class-group/class-unit-output-evidence-v2` sidecar for the phases
+whose evidence is retained. The sidecar remains explicit that the public
+output boundary is incomplete: general factor, reduce, and combine maps are
+still absent.
 
-The fresh row-19 result retains the real raw surface:
+## Phase 3: complete
+
+The immutable fresh result contains the actual relation surface:
 
 - 424 factor-base ideals, each a 3-by-3 HNF (`[424,9]`);
-- 430 relation vectors over that factor base (`[430,424]`);
-- 430 principal generators in degree-three coordinates (`[430,3]`); and
-- 430 raw log rows with 14 packed columns (`[430,14]`).
+- 430 relation vectors (`[430,424]`);
+- 430 principal generators (`[430,3]`); and
+- 430 packed log rows (`[430,14]`).
 
-It also retains a 430-by-430 raw-to-terminal relation transform. That owner is
-ancestry, not an authenticated Smith left transform. The corresponding full
-raw Smith right transform (`[424,424]`) and diagonal (`[430,424]`) are not
-retained.
+`row19_raw_relation_smith_proof.cjs` expands the retained 430-by-430 HNF
+ancestry and exact 9-by-9 terminal Smith result into full matrices
 
-Separately, the final class presentation retains exact 9-by-9 `U`, `W`, `Ui`,
-and `D`, and the checker independently replays `U W Ui = D` and obtains class
-number `39366`. Those matrices prove the later nine-generator class
-presentation. They must not be relabelled as a proof for the 430-by-424 raw
-relation matrix.
+```text
+U_raw [430,430] * R [430,424] * V_raw [424,424]
+    = D_raw [430,424].
+```
 
-## Machine-readable assessment
+The diagonal contains 415 copies of 1, eight copies of 3, and one copy of 6;
+its product is 39366. The v2 adapter consumes this proof without relabelling
+the smaller terminal presentation. It publishes dimension-matched evidence
+for `U_raw`, the raw relation matrix `R`, `V_raw`, and `D_raw`, plus the six
+relation dependencies and authenticated construction provenance. The shared
+v2 contract accepts this `smith_uwvd` presentation, so phase 3 is truthfully
+complete; there is no remaining schema capability gap.
 
-`row19_class_unit_output_evidence_v2.cjs` authenticates the immutable fresh v1
-result and emits a gap assessment containing typed identities and exact shapes
-for the raw relation owners and the separate final presentation. It records:
+## Phase 4: complete
 
-- missing owners `raw-smith-left-transform-430x430`,
-  `raw-smith-right-transform-424x424`, and
-  `raw-smith-diagonal-430x424`;
-- missing shared-schema capability `presentation-not-given-variant`;
-- phase 3 false;
-- phase 4 false by phase ordering, while explicitly recording that its compact
-  unit and PARI-packed regulator material is retained;
-- phase 5 and output-boundary completion false; and
-- no qualification or timing claim.
+The sidecar also binds all nine class-generator ideals and their exact
+principal-order witnesses. The retained presentation puts the order-six
+generator first; the adapter applies the authenticated Smith ordering
+`[1,2,3,4,5,6,7,8,0]` so the published generators match the normalized
+invariant factors `(3,3,3,3,3,3,3,3,6)`. It publishes the retained rank-one compact unit,
+its relation transform and logarithmic state, the rigorous regulator
+enclosure and acceptance evidence, and the order-two torsion generator. PARI
+declined to expand the unit for reason `LARGE` at 192 bits, which is represented
+by the contract's explicit `exactUnits.status = not_given` variant rather than
+treated as missing phase-4 evidence.
 
-The `buildRow19OutputEvidence` entry point deliberately fails rather than
-publishing a malformed v2 result. The checker demonstrates that the shared v2
-validator rejects an attempted 9-by-9 proof for the raw surface, replays the
-valid final 9-by-9 Smith identity separately, and rejects source mutation.
+## Remaining boundary
+
+Phase 5 and `outputBoundaryComplete` remain false. The exact missing list is:
+
+- `factor-map-material`;
+- `reduce-map-material`; and
+- `combine-map-material`.
+
+Each corresponding map is marked unready and publishes no fabricated map
+evidence. This is now an ordinary incomplete-but-valid v2 sidecar, not a v2
+presentation-shape gap. It makes no qualification or timing claim.
+
+## Independent replay
+
+The focused checker:
+
+1. authenticates the immutable fresh correspondence bytes;
+2. validates and canonical-round-trips the v2 sidecar;
+3. recomputes relation, class-witness, unit, regulator, and torsion evidence
+   hashes directly from retained owners;
+4. independently rebuilds the full raw Smith proof and exactly multiplies all
+   430-by-424 cells of `U_raw R V_raw = D_raw` using sparse raw rows;
+5. checks that the diagonal product is 39366; and
+6. rejects a one-byte source mutation.
 
 Run:
 

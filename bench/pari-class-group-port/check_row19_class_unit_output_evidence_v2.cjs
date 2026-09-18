@@ -2,110 +2,143 @@
 "use strict";
 
 // sagejs-test-tier: specialized
-// sagejs-test-portable: true
+// sagejs-test-platform: linux-x64
 
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const adapter = require("./row19_class_unit_output_evidence_v2.cjs");
+const proofApi = require("./row19_raw_relation_smith_proof.cjs");
 const v2 = require("./class_unit_output_evidence_v2.cjs");
 
-function matrix(entries, rows, columns) {
-  return Array.from({ length: rows }, (_, row) =>
-    entries.slice(row * columns, (row + 1) * columns).map(BigInt));
+function owner(payload, name) {
+  const result = payload.storage.find(candidate => candidate.name === name);
+  assert(result, `missing retained owner ${name}`);
+  return result.entries;
 }
-function multiply(left, right) {
-  return left.map(row => right[0].map((_, column) =>
-    row.reduce((sum, value, index) => sum + value * right[index][column], 0n)));
+function decoded(payload, name) {
+  return JSON.parse(Buffer.from(owner(payload, name).map(Number)).toString("ascii"));
 }
-function strings(value) { return value.map(row => row.map(String)); }
-function decodedOwner(raw, name) {
-  const envelope = JSON.parse(raw.toString("ascii"));
-  const owner = envelope.payload.storage.find(candidate => candidate.name === name);
-  assert(owner, `missing retained owner ${name}`);
-  return JSON.parse(Buffer.from(owner.entries.map(Number)).toString("ascii"));
-}
+function digest(value) { return v2.sha256Canonical(value); }
 
 function main(filename) {
   assert(filename, "usage: check_row19_class_unit_output_evidence_v2.cjs RESULT.json");
   const raw = fs.readFileSync(filename);
+  const payload = adapter.authenticateRow19Correspondence(raw);
+  const output = adapter.buildRow19OutputEvidence(raw);
+  v2.validate(output);
+  assert.deepEqual(v2.parseCanonical(v2.canonical(output)), output);
+  const evidence = new Map(output.evidence.map(entry => [entry.id, entry]));
+
+  assert.equal(output.completion.phase3Complete, true);
+  assert.equal(output.completion.phase4Complete, true);
+  assert.equal(output.completion.phase5Complete, false);
+  assert.equal(output.completion.outputBoundaryComplete, false);
+  assert.deepEqual(output.completion.missing,
+    ["combine-map-material", "factor-map-material", "reduce-map-material"]);
+  assert.equal(output.relations.relationCount, "430");
+  assert.equal(output.relations.factorBaseCount, "424");
+  assert.equal(output.presentation.variant, "smith_uwvd");
+
+  // Recompute every raw relation hash directly from the immutable result.
+  const factorBase = decoded(payload, "factor-base");
+  const relations = owner(payload, "relation-records");
+  assert.equal(evidence.get("factor-base-ideals").sha256,
+    digest(factorBase.idealHnfs));
+  assert.equal(evidence.get("relation-matrix").sha256, digest(relations));
+  assert.equal(evidence.get("raw-smith-w").sha256, digest(relations));
+  assert.equal(evidence.get("principal-generators").sha256,
+    digest(owner(payload, "relation-generators")));
+  assert.equal(evidence.get("relation-logs").sha256,
+    digest(owner(payload, "relation-logs")));
+
+  // Independently reconstruct the raw Smith proof, authenticate its hashes,
+  // and replay U R V = D on all 430*424 output cells.  Sparse raw relation
+  // rows keep this exact replay bounded.
+  const proof = proofApi.buildRow19RawRelationSmithProof(raw);
+  assert.equal(evidence.get("raw-smith-u").sha256, proof.materialSha256.u);
+  assert.equal(evidence.get("raw-smith-v").sha256, proof.materialSha256.v);
+  assert.equal(evidence.get("raw-smith-d").sha256, proof.materialSha256.d);
+  const sparse = Array.from({ length: proofApi.ROWS }, (_, row) => {
+    const answer = [];
+    for (let column = 0; column < proofApi.COLUMNS; column += 1) {
+      const value = BigInt(relations[row * proofApi.COLUMNS + column]);
+      if (value !== 0n) answer.push([column, value]);
+    }
+    return answer;
+  });
+  const fullU = proof.material.u.map(BigInt);
+  const fullV = proof.material.v.map(BigInt);
+  const fullD = proof.material.d.map(BigInt);
+  for (let row = 0; row < proofApi.ROWS; row += 1) {
+    const ur = Array(proofApi.COLUMNS).fill(0n);
+    for (let relation = 0; relation < proofApi.ROWS; relation += 1) {
+      const coefficient = fullU[row * proofApi.ROWS + relation];
+      if (coefficient === 0n) continue;
+      for (const [column, value] of sparse[relation])
+        ur[column] += coefficient * value;
+    }
+    const product = Array(proofApi.COLUMNS).fill(0n);
+    for (let inner = 0; inner < proofApi.COLUMNS; inner += 1) {
+      if (ur[inner] === 0n) continue;
+      for (let column = 0; column < proofApi.COLUMNS; column += 1) {
+        const value = fullV[inner * proofApi.COLUMNS + column];
+        if (value !== 0n) product[column] += ur[inner] * value;
+      }
+    }
+    assert.deepEqual(product,
+      fullD.slice(row * proofApi.COLUMNS, (row + 1) * proofApi.COLUMNS),
+      `raw Smith product row ${row}`);
+  }
+  assert.equal(proof.diagonalFactors.map(BigInt)
+    .reduce((product, value) => product * value, 1n), 39366n);
+
+  // Independently bind the published class and unit evidence to source
+  // owners rather than trusting their metadata.
+  const ideals = owner(payload, "class-generator-ideals");
+  const witnesses = decoded(payload, "class-order-witnesses");
+  const classOrder = [1, 2, 3, 4, 5, 6, 7, 8, 0];
+  for (let index = 0; index < 9; index += 1) {
+    const retainedIndex = classOrder[index];
+    assert.equal(evidence.get(`class-ideal-${index}`).sha256,
+      digest(ideals.slice(retainedIndex * 9, retainedIndex * 9 + 9)));
+    assert.equal(evidence.get(`class-witness-${index}`).sha256,
+      digest(witnesses[retainedIndex]));
+  }
+  const compactUnit = decoded(payload, "compact-fundamental-unit");
+  const regulator = decoded(payload, "regulator-enclosure");
+  assert.equal(evidence.get("unit-relation-transform").sha256,
+    digest(compactUnit.relationExponents));
+  assert.equal(evidence.get("regulator-enclosure").sha256,
+    digest(regulator.regulator));
+  assert.equal(evidence.get("torsion-generator").sha256,
+    digest(owner(payload, "torsion-generator")));
+
   const assessment = adapter.assessRow19OutputEvidence(raw);
-  assert.equal(assessment.status, "not-publishable-under-v2");
-  assert.equal(assessment.rawRelations.factorBaseCount, "424");
-  assert.equal(assessment.rawRelations.relationCount, "430");
-  assert.equal(assessment.rawRelations.logColumns, "14");
-  const rawEvidence = new Map(assessment.rawRelations.evidence.map(entry => [entry.id, entry]));
-  assert.deepEqual(rawEvidence.get("factor-base-ideals").shape, ["424", "9"]);
-  assert.deepEqual(rawEvidence.get("relation-matrix").shape, ["430", "424"]);
-  assert.deepEqual(rawEvidence.get("principal-generators").shape, ["430", "3"]);
-  assert.deepEqual(rawEvidence.get("relation-logs").shape, ["430", "14"]);
-
-  const presentation = decodedOwner(raw, "class-presentation");
-  const left = matrix(presentation.matrices.U, 9, 9);
-  const middle = matrix(presentation.terminalW, 9, 9);
-  const right = matrix(presentation.matrices.Ui, 9, 9);
-  const diagonal = matrix(presentation.matrices.D, 9, 9);
-  assert.deepEqual(strings(multiply(multiply(left, middle), right)), strings(diagonal));
-  assert.equal(diagonal.flatMap((row, index) => row[index] === 1n ? [] : [row[index]])
-    .reduce((product, factor) => product * factor, 1n), 39366n);
-
-  assert.deepEqual(assessment.missing.owners, ["raw-smith-diagonal-430x424",
-    "raw-smith-left-transform-430x430", "raw-smith-right-transform-424x424"]);
-  assert.deepEqual(assessment.missing.capability, ["presentation-not-given-variant"]);
-  assert.equal(assessment.completion.phase3Complete, false);
-  assert.equal(assessment.completion.phase4Complete, false);
-  assert.equal(assessment.completion.phase4MaterialRetained, true);
+  assert.equal(assessment.status, "valid-v2-incomplete-output-boundary");
+  assert.equal(assessment.completion.phase3Complete, true);
+  assert.equal(assessment.completion.phase4Complete, true);
   assert.equal(assessment.completion.phase5Complete, false);
-  assert.equal(assessment.completion.outputBoundaryComplete, false);
-  assert.equal(assessment.qualifiedTiming, false);
-  assert.throws(() => adapter.buildRow19OutputEvidence(raw),
-    /v2-requires-presentation-proof-shaped-like-raw-relation-surface/);
-
-  // Demonstrate the precise shared-schema obstruction: substituting the
-  // retained 9-by-9 proof into a 430-by-424 declaration is rejected.
-  const ancestry = assessment.retainedAncestry.principalRelationTransform;
-  const dependency = { ...ancestry, id: "raw-relation-dependency", kind: "dependency" };
-  const incompatible = {
-    schema: v2.SCHEMA,
-    field: assessment.field,
-    source: assessment.source,
-    evidence: [...assessment.rawRelations.evidence, ancestry, dependency,
-      ...assessment.retainedFinalPresentation.evidence].sort(
-        (a, b) => a.id.localeCompare(b.id)),
-    relations: { factorBaseCount: "424", factorBaseRef: "factor-base-ideals",
-      logColumns: "14", logsRef: "relation-logs",
-      principalGeneratorsRef: "principal-generators", relationCount: "430",
-      relationMatrixRef: "relation-matrix" },
-    presentation: { dependencyRefs: ["raw-relation-dependency"],
-      provenanceRefs: ["raw-to-terminal-principal-transform"], variant: "smith_uwvd",
-      proof: { dRef: "final-presentation-d", uRef: "final-presentation-u",
-        vRef: "final-presentation-ui", wRef: "final-presentation-w" } },
-    classGroup: { classNumber: "39366", generators: [], invariantFactors: [] },
-    unitGroup: {}, maps: {}, completion: {},
-  };
-  assert.throws(() => v2.validate(incompatible), /wrong evidence shape/);
+  assert.deepEqual(assessment.missing.owners, []);
+  assert.deepEqual(assessment.missing.capability, []);
+  assert.equal(assessment.outputEvidenceSha256, digest(output));
 
   const changed = Buffer.from(raw);
   changed[changed.length - 2] ^= 1;
-  assert.throws(() => adapter.assessRow19OutputEvidence(changed),
+  assert.throws(() => adapter.buildRow19OutputEvidence(changed),
     adapter.Row19OutputEvidenceFailure);
-  const forged = structuredClone(assessment);
-  forged.rawRelations.relationCount = "9";
-  assert.notEqual(v2.sha256Canonical(forged), v2.sha256Canonical(assessment));
 
   process.stdout.write(`${JSON.stringify({
-    schema: "sagejs.pari-class-group/row19-output-evidence-v2-gap-check-v1",
+    schema: "sagejs.pari-class-group/row19-output-evidence-v2-check-v2",
     correspondenceResultSha256: adapter.CORRESPONDENCE_SHA256,
-    assessmentSha256: v2.sha256Canonical(assessment),
-    rawRelationShape: [430, 424], principalGeneratorShape: [430, 3],
-    rawLogShape: [430, 14], factorBaseIdealShape: [424, 9],
-    finalPresentationShape: [9, 9], finalSmithIdentityReplayed: true,
-    classNumber: "39366", phase3Complete: false, phase4Complete: false,
-    phase4MaterialRetained: true, phase5Complete: false,
-    outputBoundaryComplete: false, publishableUnderV2: false,
-    missingOwners: assessment.missing.owners,
-    missingCapability: assessment.missing.capability,
-    incompatibleShapeRejected: true, sourceMutationRejected: true,
-    qualifiedTiming: false,
+    outputEvidenceSha256: digest(output),
+    assessmentSha256: digest(assessment),
+    rawRelationShape: [430, 424], rawSmithLeftShape: [430, 430],
+    rawSmithRightShape: [424, 424], rawSmithDiagonalShape: [430, 424],
+    fullRawSmithIdentityReplayed: true, classNumber: "39366",
+    phase3Complete: true, phase4Complete: true, phase5Complete: false,
+    outputBoundaryComplete: false, publishableUnderV2: true,
+    remainingMissing: output.completion.missing,
+    sourceMutationRejected: true, qualifiedTiming: false,
   })}\n`);
 }
 
