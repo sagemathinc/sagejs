@@ -66,6 +66,9 @@ function fmpzArgument(fn, param) {
   if (param.type === "NativeIntegerVector") {
     return `sagejs_native_fmpz_vector *${name}`;
   }
+  if (param.type.startsWith("Mapping:") || param.type.startsWith("Record:")) {
+    return `sagejs_native_record_${param.type.slice(param.type.indexOf(":") + 1)} ${name}`;
+  }
   const resource = resourceForFunctionType(fn, param.type);
   if (resource !== undefined) return `${resource.abi_type} ${name}`;
   throw new Error(`unsupported fmpz native parameter ${param.type}`);
@@ -122,6 +125,32 @@ function emitFmpzOperation(operation, context, indent) {
   const target = operation.target === undefined
     ? undefined
     : fmpzValue(operation.target, context);
+  if (operation.kind === "integer.workspace.allocate") {
+    const length = BigInt(operation.length);
+    const wordCapacity = BigInt(operation.wordCapacity);
+    const physicalLength = length === 0n ? 1n : length;
+    const physicalWords = length === 0n ? 1n : length * wordCapacity;
+    return [
+      `${indent}int32_t ${target}_sizes[${physicalLength}] = {0};`,
+      `${indent}uint64_t ${target}_limbs[${physicalWords}] = {0};`,
+      `${indent}${target}.sizes = ${target}_sizes;`,
+      `${indent}${target}.limbs = ${target}_limbs;`,
+      `${indent}${target}.length = (size_t) ${length};`,
+      `${indent}${target}.word_capacity = (size_t) ${wordCapacity};`,
+    ].join("\n");
+  }
+  if (operation.kind === "int64.workspace.allocate" ||
+      operation.kind === "float64.workspace.allocate") {
+    const length = BigInt(operation.length);
+    const physicalLength = length === 0n ? 1n : length;
+    const elementType = operation.kind === "int64.workspace.allocate"
+      ? "int64_t" : "double";
+    return [
+      `${indent}${elementType} ${target}_data[${physicalLength}] = {0};`,
+      `${indent}${target}.data = ${target}_data;`,
+      `${indent}${target}.length = (size_t) ${length};`,
+    ].join("\n");
+  }
   if (operation.kind === "diagnostic.stage.switch") {
     return `${indent}(void) ${fmpzValue(operation.stage, context)};`;
   }
@@ -160,6 +189,13 @@ function emitFmpzOperation(operation, context, indent) {
   }
   if (["bool.copy", "uint64.copy", "int64.copy"].includes(operation.kind)) {
     return `${indent}${target} = ${fmpzValue(operation.source, context)};`;
+  }
+  if (operation.kind === "record.copy") {
+    return `${indent}${target} = ${fmpzValue(operation.source, context)};`;
+  }
+  if (operation.kind === "record.get") {
+    return `${indent}${target} = ${fmpzValue(operation.source, context)}.` +
+      `sagejs_field_${operation.field};`;
   }
   if (operation.kind === "value.discard") {
     return `${indent}(void) ${fmpzValue(operation.source, context)};`;
@@ -984,6 +1020,13 @@ function fmpzDeclarations(fn) {
         param.type === "UInt64Buffer" ||
         param.type === "NativeIntegerVector" ||
         resourceForFunctionType(fn, param.type) !== undefined) continue;
+    if (param.type.startsWith("Mapping:") || param.type.startsWith("Record:")) {
+      declarations.push(
+        `    sagejs_native_record_${param.type.slice(param.type.indexOf(":") + 1)} ` +
+          `${cName(param.name)} = sagejs_arg_${param.name};`,
+      );
+      continue;
+    }
     declarations.push(
       `    ${param.type === "uint64" ? "uint64_t" : param.type === "int64" ? "int64_t" : "int"} ` +
         `${cName(param.name)} = sagejs_arg_${param.name};`,
@@ -1029,7 +1072,18 @@ function fmpzDeclarations(fn) {
       declarations.push(`    sagejs_uint64_buffer ${cName(local.name)};`);
       continue;
     }
+    if (local.type === "IntegerBuffer") {
+      declarations.push(`    sagejs_integer_buffer ${cName(local.name)} = {0};`);
+      continue;
+    }
     if (local.type === "Integer") continue;
+    if (local.type.startsWith("Mapping:") || local.type.startsWith("Record:")) {
+      declarations.push(
+        `    sagejs_native_record_${local.type.slice(local.type.indexOf(":") + 1)} ` +
+          `${cName(local.name)} = {0};`,
+      );
+      continue;
+    }
     if (!["uint64", "int64", "bool"].includes(local.type)) {
       throw new Error(`${fn.name}: unsupported fmpz local ${local.type}`);
     }

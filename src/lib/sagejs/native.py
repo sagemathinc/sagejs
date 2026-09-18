@@ -1439,6 +1439,40 @@ def integer_zeros(length: int) -> IntegerBuffer:
     return [0 for _index in range(length)]
 
 
+def integer_workspace(length: int, word_capacity: int) -> IntegerBuffer:
+    """Create a fixed local exact workspace for a compiled call graph.
+
+    Ordinary Python receives a fresh zero-filled list. Native compilation uses
+    fixed automatic storage whose per-entry magnitude is bounded by
+    `word_capacity` 64-bit words; exhausting that explicit bound fails the
+    native call instead of allocating. The workspace may be passed to private
+    native helpers but must not escape the call which creates it.
+    """
+    exact_length = int(length)
+    exact_capacity = int(word_capacity)
+    if exact_length < 0:
+        raise ValueError("integer workspace length must be nonnegative")
+    if exact_capacity <= 0:
+        raise ValueError("integer workspace word capacity must be positive")
+    return [0 for _index in range(exact_length)]
+
+
+def int64_workspace(length: int) -> Int64Buffer:
+    """Create a fixed local signed-64-bit workspace for a compiled call graph."""
+    exact_length = int(length)
+    if exact_length < 0:
+        raise ValueError("int64 workspace length must be nonnegative")
+    return [0 for _index in range(exact_length)]
+
+
+def float64_workspace(length: int) -> Float64Buffer:
+    """Create a fixed local binary64 workspace for a compiled call graph."""
+    exact_length = int(length)
+    if exact_length < 0:
+        raise ValueError("float64 workspace length must be nonnegative")
+    return [0.0 for _index in range(exact_length)]
+
+
 def kernel_int64_buffer(kernel: Any, source: Any) -> Any:
     """Pack a signed span when `kernel` is compiled, else return a list."""
     factory = getattr(kernel, "createInt64Buffer", None)
@@ -1834,11 +1868,13 @@ __all__ = [
     "float64_zeros",
     "int64_buffer",
     "int64_record",
+    "int64_workspace",
     "integer_buffer_view",
     "int64_zeros",
     "integer_buffer",
     "integer_buffer_values",
     "integer_zeros",
+    "integer_workspace",
     "execution_mode",
     "is_compiled",
     "is_native",
@@ -1850,6 +1886,7 @@ __all__ = [
     "kernel_float64_zeros",
     "kernel_uint64_buffer",
     "kernel_uint64_zeros",
+    "float64_workspace",
     "native",
     "prime_add",
     "prime_buffer",

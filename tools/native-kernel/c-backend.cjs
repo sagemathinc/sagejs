@@ -372,6 +372,9 @@ function internalArgument(fn, param) {
   if (isFloat64BufferType(param.type)) {
     return `sagejs_float64_buffer ${name}`;
   }
+  if (param.type.startsWith("Record:") || param.type.startsWith("Mapping:")) {
+    return `${recordCType(param.type.slice(param.type.indexOf(":") + 1))} ${name}`;
+  }
   if (param.type === "NativeIntegerVector") {
     return `sagejs_native_integer_vector *${name}`;
   }
@@ -711,6 +714,32 @@ function emitSparseRowsOperation(operation, context, indent) {
 
 function emitExactOperation(operation, context, indent) {
   const target = exactValue(operation.target, context);
+  if (operation.kind === "integer.workspace.allocate") {
+    const length = BigInt(operation.length);
+    const wordCapacity = BigInt(operation.wordCapacity);
+    const physicalLength = length === 0n ? 1n : length;
+    const physicalWords = length === 0n ? 1n : length * wordCapacity;
+    return [
+      `${indent}int32_t ${target}_sizes[${physicalLength}] = {0};`,
+      `${indent}uint64_t ${target}_limbs[${physicalWords}] = {0};`,
+      `${indent}${target}.sizes = ${target}_sizes;`,
+      `${indent}${target}.limbs = ${target}_limbs;`,
+      `${indent}${target}.length = (size_t) ${length};`,
+      `${indent}${target}.word_capacity = (size_t) ${wordCapacity};`,
+    ].join("\n");
+  }
+  if (operation.kind === "int64.workspace.allocate" ||
+      operation.kind === "float64.workspace.allocate") {
+    const length = BigInt(operation.length);
+    const physicalLength = length === 0n ? 1n : length;
+    const elementType = operation.kind === "int64.workspace.allocate"
+      ? "int64_t" : "double";
+    return [
+      `${indent}${elementType} ${target}_data[${physicalLength}] = {0};`,
+      `${indent}${target}.data = ${target}_data;`,
+      `${indent}${target}.length = (size_t) ${length};`,
+    ].join("\n");
+  }
   if (operation.kind === "integer.constant") {
     const machine = mpzMachineLiteral(target, operation.value);
     if (machine !== null) return `${indent}${machine};`;
@@ -2185,6 +2214,13 @@ function exactDeclarations(fn) {
     if (param.type === "Integer") continue;
     if (param.type === "NativeIntegerVector") continue;
     if (resourceForFunctionType(fn, param.type) !== undefined) continue;
+    if (param.type.startsWith("Record:") || param.type.startsWith("Mapping:")) {
+      declarations.push(
+        `    ${recordCType(param.type.slice(param.type.indexOf(":") + 1))} ` +
+          `${cName(param.name)} = sagejs_arg_${param.name};`,
+      );
+      continue;
+    }
     const type = param.type === "uint64"
       ? "uint64_t"
       : param.type === "int64"
@@ -2282,9 +2318,9 @@ function exactDeclarations(fn) {
     if (local.type === "Integer" || local.type.startsWith("IntegerSequence[")) {
       continue;
     }
-    if (local.type.startsWith("Record:")) {
+    if (local.type.startsWith("Record:") || local.type.startsWith("Mapping:")) {
       declarations.push(
-        `    ${recordCType(local.type.slice("Record:".length))} ` +
+        `    ${recordCType(local.type.slice(local.type.indexOf(":") + 1))} ` +
           `${cName(local.name)} = {0};`,
       );
       continue;
@@ -2573,6 +2609,37 @@ function resourceFailureRefreshStatements(fn, parameterValue = wrapperValue) {
   );
 }
 
+function closedMappingWrapperParts(fn, param, index, value, identifiers) {
+  if (!param.type.startsWith("Mapping:")) return null;
+  const name = param.type.slice("Mapping:".length);
+  const record = (fn.records || []).find((candidate) => candidate.name === name);
+  if (record?.layout !== "compiler-owned-closed-mapping") return null;
+  const declarations = [`    ${recordCType(name)} ${value} = {0};`];
+  const parsing = [];
+  for (const field of record.fields) {
+    const item = identifiers.fresh(`${value}_${field.name}`);
+    declarations.push(`    napi_value ${item} = NULL;`);
+    const getter = field.type === "uint64"
+      ? "get_uint64"
+      : field.type === "int64"
+        ? "get_int64"
+        : field.type === "bool"
+          ? "get_bool"
+          : null;
+    if (getter === null) {
+      throw new Error(`unsupported closed mapping field ${name}.${field.name}`);
+    }
+    parsing.push(
+      `if (!sagejs_native_check_napi(env, napi_get_named_property(env, ` +
+        `args[${index}], ${cString(field.name)}, &${item})) ||\n` +
+        `            !${getter}(env, ${item}, ` +
+        `&${value}.sagejs_field_${field.name}))\n` +
+        "            goto fail;",
+    );
+  }
+  return { declarations, parse: parsing.join("\n        ") };
+}
+
 function emitTaggedWrapper(fn, options = {}) {
   const identifiers = wrapperIdentifierContext(fn);
   const parameterValue = (param) => identifiers.parameter(param);
@@ -2591,7 +2658,13 @@ function emitTaggedWrapper(fn, options = {}) {
     let parse;
     let defaultValue;
     const resource = functionResource(fn, param.type);
-    if (resource !== undefined) {
+    const mapping = param.type.startsWith("Mapping:")
+      ? closedMappingWrapperParts(fn, param, index, value, identifiers)
+      : null;
+    if (mapping !== null) {
+      declarations.push(...mapping.declarations);
+      parse = mapping.parse;
+    } else if (resource !== undefined) {
       declarations.push(`    ${resourceHolderName(resource)} *${value} = NULL;`);
       parse = `if (!${resourceUnwrapName(resource)}(env, args[${index}], ` +
         `&${value}))\n            goto fail;`;
@@ -2818,7 +2891,13 @@ function emitExactWrapper(fn, options = {}) {
     let parse;
     let defaultValue;
     const resource = functionResource(fn, param.type);
-    if (resource !== undefined) {
+    const mapping = param.type.startsWith("Mapping:")
+      ? closedMappingWrapperParts(fn, param, index, value, identifiers)
+      : null;
+    if (mapping !== null) {
+      declarations.push(...mapping.declarations);
+      parse = mapping.parse;
+    } else if (resource !== undefined) {
       declarations.push(`    ${resourceHolderName(resource)} *${value} = NULL;`);
       parse = `if (!${resourceUnwrapName(resource)}(env, args[${index}], ` +
         `&${value}))\n            goto fail;`;
@@ -4650,6 +4729,10 @@ function coreHeader(ir, options = {}) {
         ? "sagejs_source_u64_buffer"
         : ["uint64", "PrimeModulusValue"].includes(field.type)
           ? "uint64_t"
+          : field.type === "int64"
+            ? "int64_t"
+            : field.type === "bool"
+              ? "int"
           : null;
       if (type === null) {
         throw new Error(

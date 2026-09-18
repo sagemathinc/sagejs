@@ -76,10 +76,20 @@ async function main() {
   await assert.rejects(() => host.prepareResident(prepared, changedGate, factor));
   boundaryMutationsRejected += 1;
 
-  const obstruction = path.join(__dirname,
+  const mappingSource = path.join(__dirname,
     "row6_phase6_resident_mapping_obstruction.py");
-  await assert.rejects(() => compileKernel({ sourcePath: obstruction }), error =>
-    /unsupported argument annotation AST_ItemAccess/.test(error.message));
+  const mappingBuilt = await compileKernel({ sourcePath: mappingSource });
+  const mappingModule = require(mappingBuilt.modulePath);
+  const mappingProjection = mappingModule.row6_mapping_owner_projection;
+  for (const implementation of [mappingProjection, mappingProjection.javascript,
+    mappingProjection.tagged, mappingProjection.gmp]) {
+    assert.equal(implementation({ classNumber: 4n }), 4n);
+  }
+  assert.throws(() => mappingProjection.gmp({ classNumber: -1n }),
+    /outside uint64/);
+  const mappingCore = fs.readFileSync(mappingBuilt.coreSourcePath, "utf8");
+  assert.match(mappingCore,
+    /sagejs_(?:local_tagged_)?owner\.sagejs_field_classNumber/);
 
   // Capacity failure happens before publication and cannot poison a fresh
   // invocation.  The root's -1 state is deliberately not a result state.
@@ -111,7 +121,7 @@ async function main() {
     capacityFailureRejectedBeforePublication: true,
     freshRecoveryByteIdentical: true,
     differentialAgainstPriorThreeAddonPath: true,
-    executableMappingAbiObstruction: true,
+    executableClosedMappingAbi: true,
     processCoordinatorAdapterFactory: true,
     timingEligible: false,
     ratioPublished: false,

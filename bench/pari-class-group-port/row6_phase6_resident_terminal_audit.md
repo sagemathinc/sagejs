@@ -72,14 +72,17 @@ boundaries that prevent a complete resident lifecycle:
    coordinators actually spawn CPython and serialize the owners. C7 then
    consumes those mapping-valued results.
 
-The last point has an executable minimal compiler diagnostic:
-`row6_phase6_resident_mapping_obstruction.py`. Compiling its one mapping-valued
-native argument currently fails with
-`unsupported argument annotation AST_ItemAccess`. This is not an argument for
-adding arbitrary Python dictionaries to the native ABI. The narrower and more
-credible next step is to translate the mathematical portions of the class and
-unit composers to bounded buffer inputs/outputs, leaving hashing, mutation
-replay, and publication inspection outside the mathematical call.
+The scalar part of the last point now has an executable compiler proof:
+`row6_phase6_resident_mapping_obstruction.py`. It declares a standard-library
+`TypedDict`, and the compiler validates and copies its required scalar fields
+into a fixed-layout value before native entry. The ordinary fallback remains a
+dictionary subscript. Generated native code contains neither dictionaries nor
+string lookup. Arbitrary `dict[str, int]`, dynamic keys, mutation, escape,
+nested mappings, and dynamically shaped values still fail closed. Thus this
+does not by itself connect the composers; their scalar owner projections can
+now use closed mappings, while variable data must still move through bounded
+typed buffers. Hashing, mutation replay, and publication inspection remain
+outside the mathematical call.
 
 ## Next connected cut
 
@@ -87,6 +90,7 @@ The next row-6 implementation should build one static invocation manifest for
 factor base, initial relations, collector, initial HNF, continuation HNFs, and
 the terminal root added here. It should retain ancestry as bounded transform
 state instead of rerunning HNF. Once the class/unit mapping work is expressed
-as typed buffers, C7 construction can inspect the completed buffers after the
-clock. Only that complete prepared-input graph may enable the process
+as closed scalar mappings plus typed buffers, C7 construction can inspect the
+completed buffers after the clock. Only that complete prepared-input graph may
+enable the process
 coordinator timing method.

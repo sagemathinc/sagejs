@@ -59,6 +59,10 @@ function taggedName(name) {
   return `sagejs_local_tagged_${name}`;
 }
 
+function recordType(type) {
+  return `sagejs_native_record_${type.slice(type.indexOf(":") + 1)}`;
+}
+
 function virtualUInt64Snapshot(claim, context) {
   const snapshot = context.virtualUInt64Snapshots.get(claim.viewTarget);
   if (snapshot === undefined) {
@@ -78,6 +82,9 @@ function scalarType(type, fn) {
   }
   if (type === "UInt64Buffer") return "sagejs_uint64_buffer";
   if (type === "IntegerBuffer") return "sagejs_integer_buffer";
+  if (type.startsWith("Record:") || type.startsWith("Mapping:")) {
+    return recordType(type);
+  }
   const resource = fn === undefined ? undefined : resourceForFunctionType(fn, type);
   if (resource !== undefined) return resource.abi_type;
   throw new Error(`unsupported tagged scalar type ${type}`);
@@ -403,6 +410,32 @@ function emitTaggedOperation(operation, context, indent) {
   const target = operation.target === undefined
     ? undefined
     : taggedValue(operation.target, context);
+  if (operation.kind === "integer.workspace.allocate") {
+    const length = BigInt(operation.length);
+    const wordCapacity = BigInt(operation.wordCapacity);
+    const physicalLength = length === 0n ? 1n : length;
+    const physicalWords = length === 0n ? 1n : length * wordCapacity;
+    return [
+      `${indent}int32_t ${target}_sizes[${physicalLength}] = {0};`,
+      `${indent}uint64_t ${target}_limbs[${physicalWords}] = {0};`,
+      `${indent}${target}.sizes = ${target}_sizes;`,
+      `${indent}${target}.limbs = ${target}_limbs;`,
+      `${indent}${target}.length = (size_t) ${length};`,
+      `${indent}${target}.word_capacity = (size_t) ${wordCapacity};`,
+    ].join("\n");
+  }
+  if (operation.kind === "int64.workspace.allocate" ||
+      operation.kind === "float64.workspace.allocate") {
+    const length = BigInt(operation.length);
+    const physicalLength = length === 0n ? 1n : length;
+    const elementType = operation.kind === "int64.workspace.allocate"
+      ? "int64_t" : "double";
+    return [
+      `${indent}${elementType} ${target}_data[${physicalLength}] = {0};`,
+      `${indent}${target}.data = ${target}_data;`,
+      `${indent}${target}.length = (size_t) ${length};`,
+    ].join("\n");
+  }
   if (operation.kind === "diagnostic.stage.switch") {
     return `${indent}(void) ${taggedValue(operation.stage, context)};`;
   }
@@ -479,6 +512,13 @@ function emitTaggedOperation(operation, context, indent) {
   }
   if (["bool.copy", "uint64.copy", "int64.copy"].includes(operation.kind)) {
     return `${indent}${target} = ${taggedValue(operation.source, context)};`;
+  }
+  if (operation.kind === "record.copy") {
+    return `${indent}${target} = ${taggedValue(operation.source, context)};`;
+  }
+  if (operation.kind === "record.get") {
+    return `${indent}${target} = ${taggedValue(operation.source, context)}.` +
+      `sagejs_field_${operation.field};`;
   }
   if (operation.kind === "uint64.binary") {
     const left = taggedValue(operation.left, context);
@@ -1575,7 +1615,8 @@ function emitTaggedFunction(fn, functions, options) {
     declarations.push(`    ${scalarType(local.type, fn)} ${taggedName(local.name)} = ` +
       `${local.type === "Int64Buffer" || local.type === "Int64Record" ||
         local.type === "IntegerBuffer" || local.type === "UInt64Buffer" ||
-        local.type === "Float64Buffer"
+        local.type === "Float64Buffer" || local.type.startsWith("Record:") ||
+        local.type.startsWith("Mapping:")
         ? "{0}" : "0"};`);
   }
   const integerNames = [

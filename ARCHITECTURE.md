@@ -234,6 +234,28 @@ Returning or retaining a borrowed record fails compilation. Nested or owned
 records remain unsupported until their construction, cleanup, and escape rules
 are specified here and enforced mechanically.
 
+A `typing.TypedDict` declaration may describe a closed, read-only scalar
+mapping boundary for an isolated kernel. This is not general native dictionary
+support. Every admitted key is a required literal-string field in the declared
+schema; current values are `uint64`, `int64`, or `bool`. The host validates and
+copies all fields once into a fixed-layout value before native entry. Compiled
+code may only read declared literal keys, and mappings may not be mutated,
+constructed in the kernel, returned, retained, nested, or used with dynamic
+keys. Arbitrary `dict[K, V]` annotations continue to fail compilation. The
+ordinary fallback receives the original Python mapping and executes the same
+subscript source body.
+
+Fixed local `IntegerBuffer`, `Int64Buffer`, and `Float64Buffer` workspaces use
+the explicit `integer_workspace`, `int64_workspace`, and `float64_workspace`
+constructors. Their shapes (and the exact workspace's 64-bit word capacity)
+are source literals, their aggregate automatic-storage budget is checked at
+compile time, and their zeroed backing storage is owned by the creating native
+invocation. They may be borrowed by private helpers in that invocation's call
+graph, but cannot escape. Exact capacity exhaustion fails the native call; it
+never silently allocates. Ordinary Python executes the same source with fresh
+zero-filled lists. This explicit contract is intentionally distinct from
+ordinary Python list allocation and does not reinterpret `[0] * n` globally.
+
 `NativeWorkspace` schemas group borrowed exact owners without introducing a
 second resident representation. Compilation flattens private helper parameters
 and field projections while preserving each owner's identity and lifetime.

@@ -705,15 +705,31 @@ function isNativeRecordClass(statement) {
     array(statement.bases)[0].name === "NativeRecord";
 }
 
+function isNativeMappingClass(statement) {
+  return nodeType(statement) === "AST_Class" &&
+    array(statement.bases).length === 1 &&
+    nodeType(array(statement.bases)[0]) === "AST_SymbolRef" &&
+    array(statement.bases)[0].name === "TypedDict";
+}
+
 function nativeRecordSchemas(topLevel, filename) {
-  const declarations = topLevel.filter(isNativeRecordClass);
-  const names = new Set(declarations.map((record) => record.name?.name));
-  const recordTypes = new Map(Array.from(names, (name) => [name, true]));
-  const supportedFields = new Set([
+  const declarations = topLevel.filter((statement) =>
+    isNativeRecordClass(statement) || isNativeMappingClass(statement)
+  );
+  const recordTypes = new Map(declarations.map((record) => {
+    const name = record.name?.name;
+    return [name, {
+      name,
+      type: `${isNativeMappingClass(record) ? "Mapping" : "Record"}:${name}`,
+    }];
+  }));
+  const nativeRecordFields = new Set([
     "UInt64Buffer", "uint64", "PrimeModulusValue",
   ]);
+  const nativeMappingFields = new Set(["uint64", "int64", "bool"]);
   const schemas = declarations.map((record) => {
     const name = record.name?.name;
+    const mapping = isNativeMappingClass(record);
     expect(isCIdentifier(name), `${filename}: native record name must be a C identifier`);
     expect(array(record.decorators).length === 0,
       `${filename}: native record ${name} may not have decorators`);
@@ -724,11 +740,14 @@ function nativeRecordSchemas(topLevel, filename) {
       const annotated = statement.body;
       expect(nodeType(annotated.target) === "AST_SymbolRef",
         `${filename}: native record ${name} fields must be simple names`);
+      expect(isCIdentifier(annotated.target.name),
+        `${filename}: native record ${name} field names must be C identifiers`);
       expect(annotated.value === undefined || annotated.value === null,
         `${filename}: native record ${name}.${annotated.target.name} may not have a default`);
       const type = canonicalType(annotated.annotation, recordTypes);
+      const supportedFields = mapping ? nativeMappingFields : nativeRecordFields;
       expect(type !== undefined && supportedFields.has(type),
-        `${filename}: unsupported native record field ` +
+        `${filename}: unsupported native ${mapping ? "mapping" : "record"} field ` +
           `${name}.${annotated.target.name}`);
       return { name: annotated.target.name, type };
     });
@@ -737,9 +756,12 @@ function nativeRecordSchemas(topLevel, filename) {
       `${filename}: native record ${name} has duplicate fields`);
     return {
       name,
-      type: `Record:${name}`,
-      layout: "compiler-owned-value",
-      ownership: "borrowed-fields",
+      type: `${mapping ? "Mapping" : "Record"}:${name}`,
+      layout: mapping
+        ? "compiler-owned-closed-mapping"
+        : "compiler-owned-value",
+      ownership: mapping ? "copied-scalar-fields" : "borrowed-fields",
+      ...(mapping ? { access: "literal-string-keys" } : {}),
       fields,
     };
   });
@@ -749,7 +771,7 @@ function nativeRecordSchemas(topLevel, filename) {
 function supportedModulePreamble(statement) {
   if (isEmptyDecoratorStatement(statement) ||
       nodeType(statement) === "AST_EmptyStatement") return true;
-  if (isNativeRecordClass(statement)) return true;
+  if (isNativeRecordClass(statement) || isNativeMappingClass(statement)) return true;
   if (isBundleClass(statement)) return true;
   if (nodeType(statement) !== "AST_Imports") return false;
   return array(statement.imports).every((item) => {
@@ -758,7 +780,9 @@ function supportedModulePreamble(statement) {
     return (
       importLevel(item) === 0 && moduleName === "math" && names.every((name) => ["sqrt", "isqrt", "gcd", "log", "log2", "atan", "exp", "pow", "ldexp", "frexp", "copysign"].includes(name))
     ) || (
-      moduleName === "typing" && names.every((name) => name === "Tuple")
+      moduleName === "typing" && names.every((name) =>
+        name === "Tuple" || name === "TypedDict"
+      )
     ) || (
       item.key === "sagejs.native"
     ) || (
@@ -1130,7 +1154,8 @@ async function lowerSource(source, filename, options = {}) {
         type === "Float64" ||
         type === "Float64Buffer" || type === "Int64Buffer" ||
         type === "Int64Record" || type === "IntegerBuffer" ||
-        type === "UInt64Buffer" || type?.startsWith("Record:")
+        type === "UInt64Buffer" || type?.startsWith("Record:") ||
+        type?.startsWith("Mapping:")
       )
     );
     if (completeSignature || partiallyTypedSelected) {
@@ -1144,6 +1169,11 @@ async function lowerSource(source, filename, options = {}) {
         !signature.returnType.startsWith("Record:"),
         `${fn.name.name}: compiler-owned records are borrowed values and ` +
           "may not be returned from a native kernel",
+      );
+      expect(
+        !signature.returnType.startsWith("Mapping:"),
+        `${fn.name.name}: compiler-owned closed mappings are borrowed values ` +
+          "and may not be returned from a native kernel",
       );
       expect(
         isIntegerSignature(signature) ||

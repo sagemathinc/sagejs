@@ -53,6 +53,9 @@ function wordType(type) {
   }
   if (type === "UInt64Buffer") return "sagejs_uint64_buffer";
   if (type === "IntegerBuffer") return "sagejs_integer_buffer";
+  if (type.startsWith("Mapping:") || type.startsWith("Record:")) {
+    return `sagejs_native_record_${type.slice(type.indexOf(":") + 1)}`;
+  }
   throw new Error(`unsupported machine-word type ${type}`);
 }
 
@@ -185,6 +188,32 @@ function emitWordOperation(operation, context, indent) {
     ? undefined
     : value(operation.target);
   const promote = () => context.promote(operation, indent);
+  if (operation.kind === "integer.workspace.allocate") {
+    const length = BigInt(operation.length);
+    const wordCapacity = BigInt(operation.wordCapacity);
+    const physicalLength = length === 0n ? 1n : length;
+    const physicalWords = length === 0n ? 1n : length * wordCapacity;
+    return [
+      `${indent}int32_t ${target}_sizes[${physicalLength}] = {0};`,
+      `${indent}uint64_t ${target}_limbs[${physicalWords}] = {0};`,
+      `${indent}${target}.sizes = ${target}_sizes;`,
+      `${indent}${target}.limbs = ${target}_limbs;`,
+      `${indent}${target}.length = (size_t) ${length};`,
+      `${indent}${target}.word_capacity = (size_t) ${wordCapacity};`,
+    ].join("\n");
+  }
+  if (operation.kind === "int64.workspace.allocate" ||
+      operation.kind === "float64.workspace.allocate") {
+    const length = BigInt(operation.length);
+    const physicalLength = length === 0n ? 1n : length;
+    const elementType = operation.kind === "int64.workspace.allocate"
+      ? "int64_t" : "double";
+    return [
+      `${indent}${elementType} ${target}_data[${physicalLength}] = {0};`,
+      `${indent}${target}.data = ${target}_data;`,
+      `${indent}${target}.length = (size_t) ${length};`,
+    ].join("\n");
+  }
   if (operation.kind === "diagnostic.stage.switch") {
     return `${indent}(void) ${value(operation.stage)};`;
   }
@@ -725,6 +754,13 @@ ${indent}}`;
   }
   if (operation.kind === "value.discard") {
     return `${indent}(void) ${value(operation.source)};`;
+  }
+  if (operation.kind === "record.copy") {
+    return `${indent}${target} = ${value(operation.source)};`;
+  }
+  if (operation.kind === "record.get") {
+    return `${indent}${target} = ${value(operation.source)}.` +
+      `sagejs_field_${operation.field};`;
   }
   throw new Error(`unsupported word C IR operation ${operation.kind}`);
 }

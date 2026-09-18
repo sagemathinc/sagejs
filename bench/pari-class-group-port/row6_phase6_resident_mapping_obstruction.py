@@ -1,15 +1,21 @@
-"""Minimal fixture for the remaining row-6 resident mapping obstruction.
+"""Minimal row-6 fixture for a closed mapping-valued native boundary.
 
-This file is intentionally not a supported native kernel.  The executable
-checker proves that the current compiler rejects the mapping-valued ABI used
-by the ordinary-Python class/unit evidence composers.  It is a diagnostic,
-not a proposed extension of the public native language.
+`TypedDict` keeps the dynamic fallback an ordinary Python dictionary while
+giving native compilation a finite, source-visible schema.  Native entry
+copies and validates these scalar fields once; no dictionary, string, hash
+table, or host callback enters the isolated call graph.
 """
 
-from sagejs.native import native
+from typing import TypedDict
+
+from sagejs.native import native, uint64
+
+
+class Row6ClassOwner(TypedDict):
+    classNumber: uint64
 
 
 @native
-def row6_mapping_owner_projection(owner: dict[str, int]) -> int:
+def row6_mapping_owner_projection(owner: Row6ClassOwner) -> int:
     """The smallest form of the current class/unit composer boundary."""
     return owner["classNumber"]

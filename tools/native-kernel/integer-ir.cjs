@@ -11,6 +11,7 @@ const {
 } = require("./uint64-operations.cjs");
 
 const MAX_SMALL_POWER = 64n;
+const MAX_LOCAL_WORKSPACE_BYTES = 1024n * 1024n;
 const TYPE_ALIASES = new Map([
   ["Integer", "Integer"],
   ["int", "Integer"],
@@ -177,7 +178,10 @@ function canonicalType(
   foreignResourceTypes = new Map(),
 ) {
   const raw = rawAnnotationName(annotation);
-  if (recordTypes.has(raw)) return `Record:${raw}`;
+  if (recordTypes.has(raw)) {
+    const schema = recordTypes.get(raw);
+    return typeof schema?.type === "string" ? schema.type : `Record:${raw}`;
+  }
   if (foreignResourceTypes.has(raw)) return raw;
   const scalar = TYPE_ALIASES.get(raw);
   if (scalar !== undefined) return scalar;
@@ -360,8 +364,13 @@ function signatureFromFunction(
     returnType !== undefined,
     `unsupported return annotation ${rawAnnotationName(fn.return_annotation) ?? nodeType(fn.return_annotation)}`,
   );
-  expect(context, fn.return_annotation ?? fn, returnType !== "IntegerBuffer",
-    "borrowed IntegerBuffer values cannot be returned from native kernels");
+  expect(
+    context,
+    fn.return_annotation ?? fn,
+    !["IntegerBuffer", "Int64Buffer", "Int64Record", "Float64Buffer",
+      "Float64Record", "UInt64Buffer"].includes(returnType),
+    "borrowed buffer values cannot be returned from native kernels",
+  );
   return { name: fn.name.name, params, returnType };
 }
 
@@ -382,7 +391,9 @@ function isIntegerSignature(signature) {
 }
 
 function copyKind(type) {
-  if (type.startsWith("Record:")) return "record.copy";
+  if (type.startsWith("Record:") || type.startsWith("Mapping:")) {
+    return "record.copy";
+  }
   if (type === "Float64") return "float64.copy";
   if (type === "Float64Buffer") return "float64.buffer.copy";
   if (type === "IntegerBuffer") return "integer.buffer.copy";
@@ -434,6 +445,7 @@ function createContext(
     lexicalLocals: new Set(array(fn.localvars).map((symbol) => symbol.name)),
     controlDepth: 0,
     loopDepth: 0,
+    localWorkspaceBytes: 0n,
     loopTargets: [],
     resourceScopeDepth: 0,
     locals: new Map(),
@@ -1166,6 +1178,7 @@ function lowerBoundedCollectionCall(node, context, operations) {
   const collection = liveBoundedCollection(expression.expression, context);
   const method = expression.property;
   const args = array(node.args);
+
   expect(
     context,
     node,
@@ -1419,6 +1432,68 @@ function lowerCall(node, context, operations) {
       `native ${name} requires positional arguments without expansion`);
   }
   const args = array(node.args);
+
+  if (["integer_workspace", "int64_workspace", "float64_workspace"].includes(name)) {
+    const exact = name === "integer_workspace";
+    const expectedArguments = exact ? 2 : 1;
+    expect(
+      context,
+      node,
+      args.length === expectedArguments &&
+        array(node.args?.kwarg_items).length === 0 &&
+        array(node.args?.kwargs).length === 0 && !node.args?.starargs,
+      `${name}() requires ${exact ? "literal length and word capacity" : "a literal length"}`,
+    );
+    expect(
+      context,
+      node,
+      context.controlDepth === 0 && context.loopDepth === 0,
+      `${name}() is only allowed in the top-level native function block`,
+    );
+    const length = integerLiteral(args[0]);
+    const wordCapacity = exact ? integerLiteral(args[1]) : 1n;
+    expect(
+      context,
+      args[0],
+      length !== undefined && length >= 0n,
+      `${name}() length must be a nonnegative integer literal`,
+    );
+    if (exact) {
+      expect(
+        context,
+        args[1],
+        wordCapacity !== undefined && wordCapacity > 0n,
+        "integer_workspace() word capacity must be a positive integer literal",
+      );
+    }
+    const bytes = exact
+      ? length * (4n + 8n * wordCapacity)
+      : length * 8n;
+    expect(
+      context,
+      node,
+      bytes <= MAX_LOCAL_WORKSPACE_BYTES &&
+        context.localWorkspaceBytes + bytes <= MAX_LOCAL_WORKSPACE_BYTES,
+      "fixed local workspaces exceed the 1 MiB native stack budget",
+    );
+    context.localWorkspaceBytes += bytes;
+    const type = exact
+      ? "IntegerBuffer"
+      : name === "int64_workspace" ? "Int64Buffer" : "Float64Buffer";
+    const target = temporary(context, node, type);
+    operations.push({
+      kind: exact
+        ? "integer.workspace.allocate"
+        : name === "int64_workspace"
+          ? "int64.workspace.allocate"
+          : "float64.workspace.allocate",
+      target,
+      length: length.toString(),
+      ...(exact ? { wordCapacity: wordCapacity.toString() } : {}),
+      storage: "fixed-automatic-zeroed",
+    });
+    return { name: target, type };
+  }
 
   if (["ldexp", "frexp", "copysign"].includes(context.mathFunctions.get(name))) {
     const kind = context.mathFunctions.get(name);
@@ -2106,6 +2181,12 @@ function lowerExpression(node, context, operations, expectedType = undefined) {
     );
     const name = source.type.slice("Record:".length);
     const record = recordSchema(context, node, name);
+    expect(
+      context,
+      node,
+      record.layout !== "compiler-owned-closed-mapping",
+      `${name} is a closed mapping and requires a literal string key`,
+    );
     const field = record.fields.find((candidate) =>
       candidate.name === node.property
     );
@@ -2142,6 +2223,43 @@ function lowerExpression(node, context, operations, expectedType = undefined) {
     const liveOwnerType = nodeType(node.expression) === "AST_SymbolRef"
       ? context.variables.get(node.expression.name)
       : undefined;
+    if (typeof liveOwnerType === "string" && liveOwnerType.startsWith("Mapping:")) {
+      const name = liveOwnerType.slice("Mapping:".length);
+      const record = recordSchema(context, node, name);
+      expect(
+        context,
+        node,
+        record.layout === "compiler-owned-closed-mapping",
+        `${name} is a compiler-owned record and requires attribute access`,
+      );
+      expect(
+        context,
+        node.property,
+        nodeType(node.property) === "AST_String",
+        `${name} mapping access requires a literal string key`,
+      );
+      const field = record.fields.find((candidate) =>
+        candidate.name === node.property.value
+      );
+      expect(
+        context,
+        node.property,
+        field !== undefined,
+        `${name} has no key ${node.property.value}`,
+      );
+      const source = lowerExpression(node.expression, context, operations);
+      const target = temporary(context, node, field.type);
+      operations.push({
+        kind: "record.get",
+        target,
+        source: source.name,
+        record: name,
+        field: field.name,
+        type: field.type,
+        access: "literal-string-key",
+      });
+      return { name: target, type: field.type };
+    }
     if (liveOwnerType === LIVE_INTEGER_VECTOR_TYPE) {
       const vector = liveIntegerVectorName(node.expression, context);
       const index = lowerLiveVectorIndex(
@@ -2656,8 +2774,8 @@ function assignScalar(targetNode, value, context, operations) {
     kind: copyKind(value.type),
     target: targetNode.name,
     source: value.name,
-    ...(value.type.startsWith("Record:")
-      ? { record: value.type.slice("Record:".length) }
+    ...((value.type.startsWith("Record:") || value.type.startsWith("Mapping:"))
+      ? { record: value.type.slice(value.type.indexOf(":") + 1) }
       : {}),
   });
   context.initialized.add(targetNode.name);
@@ -2835,6 +2953,13 @@ function lowerBufferAssignment(item, right, operator, context) {
       value: value.name,
     });
     return operations;
+  }
+  if (typeof liveOwnerType === "string" && liveOwnerType.startsWith("Mapping:")) {
+    fail(
+      context,
+      item,
+      "compiler-owned closed mappings are read-only",
+    );
   }
   const buffer = lowerExpression(item.expression, context, operations);
   if (buffer.type === "Float64Buffer") {
@@ -3409,8 +3534,8 @@ function lowerAssignment(statement, context) {
     expect(
       context,
       assign.annotation,
-      ["Integer", "uint64", "int64", "bool", "Float64", "IntegerBuffer", "UInt64Buffer"].includes(declaredType),
-      "native exact local annotation must be Integer, int, uint64, int64, bool, Float64, or a borrowed integer-buffer view",
+      ["Integer", "uint64", "int64", "bool", "Float64", "IntegerBuffer", "Int64Buffer", "Float64Buffer", "UInt64Buffer"].includes(declaredType),
+      "native exact local annotation must be Integer, int, uint64, int64, bool, Float64, or a supported buffer",
     );
     const operations = [];
     let value = lowerExpression(
@@ -3426,8 +3551,10 @@ function lowerAssignment(statement, context) {
     }
     if (declaredType === "IntegerBuffer") {
       expect(context, assign.value, operations.some((operation) =>
-        operation.kind === "integer.buffer.view" && operation.target === value.name),
-      "annotated IntegerBuffer locals require integer_buffer_view()");
+        (operation.kind === "integer.buffer.view" ||
+          operation.kind === "integer.workspace.allocate") &&
+          operation.target === value.name),
+      "annotated IntegerBuffer locals require integer_buffer_view() or integer_workspace()");
     }
     if (declaredType === "UInt64Buffer") {
       expect(context, assign.value, operations.some((operation) =>

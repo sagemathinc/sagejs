@@ -315,6 +315,15 @@ ${fn.name}.nativeAvailable = nativeAddon !== null;`;
 }
 
 function emitExactStatement(operation, indent, resourceStack = null) {
+  if (operation.kind === "integer.workspace.allocate" ||
+      operation.kind === "int64.workspace.allocate") {
+    return `${indent}${operation.target} = ` +
+      `Array(${operation.length}).fill(0n);`;
+  }
+  if (operation.kind === "float64.workspace.allocate") {
+    return `${indent}${operation.target} = ` +
+      `Array(${operation.length}).fill(0);`;
+  }
   if (operation.kind === "uint64.constant") {
     return `${indent}${operation.target} = ${operation.value}n;`;
   }
@@ -1028,7 +1037,16 @@ function exactResourceResult(fn, expression, native) {
   return `${adopt}(${expression}, ${JSON.stringify(metadata)})`;
 }
 
-function exactValidation(param) {
+function closedMappingSchema(fn, param) {
+  if (!param.type.startsWith("Mapping:")) return undefined;
+  const name = param.type.slice("Mapping:".length);
+  const record = (fn.records || []).find((candidate) => candidate.name === name);
+  return record?.layout === "compiler-owned-closed-mapping"
+    ? record
+    : undefined;
+}
+
+function exactValidation(param, fn) {
   if (param.resourceIdentity !== undefined) {
     return `  sagejsFfiPublicResource(${param.name}, ` +
       `${jsString(param.resourceIdentity)}, ${jsString(param.name)});`;
@@ -1060,30 +1078,53 @@ function exactValidation(param) {
   if (param.type === "Float64Buffer") {
     return `  float64BufferView(${param.name}, ${jsString(param.name)});`;
   }
+  const mapping = closedMappingSchema(fn, param);
+  if (mapping !== undefined) {
+    const lines = [
+      `  if (${param.name} === null || typeof ${param.name} !== "object") {`,
+      `    throw new TypeError(${jsString(param.name + " must be a " + mapping.name)});`,
+      "  }",
+    ];
+    for (const field of mapping.fields) {
+      const access = `${param.name}[${jsString(field.name)}]`;
+      if (field.type === "uint64") lines.push(uint64Validation(access));
+      else if (field.type === "int64") lines.push(int64Validation(access));
+      else if (field.type === "bool") {
+        lines.push(`  if (typeof ${access} !== "boolean") {`,
+          `    throw new TypeError(${jsString(param.name + "." + field.name + " must be a bool")});`,
+          "  }");
+      } else {
+        throw new Error(
+          `unsupported closed mapping field ${mapping.name}.${field.name}`,
+        );
+      }
+    }
+    return lines.join("\n");
+  }
   return `  if (typeof ${param.name} !== "boolean") {\n` +
     `    throw new TypeError("${param.name} must be a bool");\n` +
     "  }";
 }
 
 function uint64Validation(name) {
-  return `  if (!(typeof ${name} === "bigint" || Number.isSafeInteger(${name}))) {\n` +
-    `    nativeRaise("TypeError", "${name} must be an exact integer");\n` +
+  return `  if (!(typeof (${name}) === "bigint" || Number.isSafeInteger(${name}))) {\n` +
+    `    nativeRaise("TypeError", ${jsString(name + " must be an exact integer")});\n` +
     `  }\n` +
-    `  if (${name} < 0 || ${name} > 18446744073709551615n) {\n` +
-    `    nativeRaise("OverflowError", "${name} is outside uint64");\n` +
+    `  if ((${name}) < 0 || (${name}) > 18446744073709551615n) {\n` +
+    `    nativeRaise("OverflowError", ${jsString(name + " is outside uint64")});\n` +
     "  }";
 }
 
 function int64Validation(name) {
-  return `  if (!(typeof ${name} === "bigint" || Number.isSafeInteger(${name}))) {\n` +
-    `    nativeRaise("TypeError", "${name} must be an exact integer");\n` +
+  return `  if (!(typeof (${name}) === "bigint" || Number.isSafeInteger(${name}))) {\n` +
+    `    nativeRaise("TypeError", ${jsString(name + " must be an exact integer")});\n` +
     `  }\n` +
-    `  if (${name} < -9223372036854775808n || ${name} > 9223372036854775807n) {\n` +
-    `    nativeRaise("OverflowError", "${name} is outside int64");\n` +
+    `  if ((${name}) < -9223372036854775808n || (${name}) > 9223372036854775807n) {\n` +
+    `    nativeRaise("OverflowError", ${jsString(name + " is outside int64")});\n` +
     "  }";
 }
 
-function normalizedArgument(param) {
+function normalizedArgument(param, fn) {
   if (param.resourceIdentity !== undefined) {
     return `sagejsFfiPublicResource(${param.name}, ` +
       `${jsString(param.resourceIdentity)}, ${jsString(param.name)})`;
@@ -1102,6 +1143,14 @@ function normalizedArgument(param) {
   }
   if (param.type === "Float64Buffer") {
     return `float64BufferView(${param.name}, ${jsString(param.name)})`;
+  }
+  const mapping = closedMappingSchema(fn, param);
+  if (mapping !== undefined) {
+    return `{ ${mapping.fields.map((field) => {
+      const value = `${param.name}[${jsString(field.name)}]`;
+      return `${jsString(field.name)}: ` +
+        (["uint64", "int64"].includes(field.type) ? `BigInt(${value})` : value);
+    }).join(", ")} }`;
   }
   return param.name;
 }
@@ -1287,7 +1336,7 @@ function emitExactPublicFunction(fn, automaticSelection, diagnosticStageClock) {
   const params = fn.params.map((param) => param.name).join(", ");
   const declaredParams = exactParameters(fn);
   const normalized = fn.params.map((param) =>
-    `  const $sagejs$argument${param.name} = ${normalizedArgument(param)};`
+    `  const $sagejs$argument${param.name} = ${normalizedArgument(param, fn)};`
   );
   const args = fn.params.map((param) => `$sagejs$argument${param.name}`).join(", ");
   const fallbackArgs = fn.params.map((param) =>
@@ -1357,7 +1406,7 @@ ${fn.name}.diagnosticStageTrace = function () {
 ${selection.declaration}
 
 function validate_${fn.name}(${params}) {
-${fn.params.map(exactValidation).join("\n")}
+${fn.params.map((param) => exactValidation(param, fn)).join("\n")}
 }
 
 function backend_${fn.name}(${args}) {
