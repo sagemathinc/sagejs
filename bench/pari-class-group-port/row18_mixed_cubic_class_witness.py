@@ -93,7 +93,8 @@ def compose_row18_cyclic_class_witness(
     dimensions = owner.get("dimensions", {})
     rows = int(dimensions.get("factorBaseSize", 0))
     columns = int(dimensions.get("relationCount", 0))
-    if (rows, columns) != (41, 50):
+    kernel = int(dimensions.get("kernelRank", -1))
+    if rows != 41 or columns <= rows or kernel != columns - rows:
         raise Row18ClassWitnessFailure("wrong row-18 presentation dimensions")
     presentation = _integers(
         owner.get("presentation", {}).get("matrix"), rows * rows, "presentation"
