@@ -1,0 +1,467 @@
+{
+  "schema": "sagejs.pari-class-group/resident-state-layout-manifest/v1",
+  "name": "pari-class-unit-resident-state",
+  "layoutVersion": 1,
+  "status": "experimental-semantic-layout",
+  "upstream": {
+    "name": "PARI",
+    "version": "2.17.4",
+    "archiveSha256": "02651d99c391007d384b3fadbc20abc6916b77036f9e496c99e9ce8688ca4b53",
+    "buch2Sha256": "904ced8034732c7fcfe1da393e23950aac0862b085150fdc24ce1e31beb7d1ac"
+  },
+  "contract": {
+    "kind": "shared-semantic-owner-layout",
+    "abiStatus": "no-generated-signature-yet",
+    "statement": "This manifest names shared owner roles and specialization rules. It is not a claim that the current row-specific pipelines have one binary ABI.",
+    "specialization": "A generated signature must bind every symbolic dimension, select one allowed scalar domain for every role, and preserve the ownership and transaction rules below."
+  },
+  "scalarDomains": {
+    "bounded-i64": {
+      "storage": "Int64Buffer",
+      "meaning": "proved signed control value or coefficient",
+      "overflow": "revoke-fast-path-and-retry-exact"
+    },
+    "bounded-u64": {
+      "storage": "Uint64Buffer",
+      "meaning": "proved nonnegative residue, index, or counter",
+      "overflow": "revoke-fast-path-and-retry-exact"
+    },
+    "exact-integer": {
+      "storage": "IntegerBuffer",
+      "meaning": "arbitrary-precision mathematical integer",
+      "overflow": "not-applicable"
+    },
+    "binary64": {
+      "storage": "Float64Buffer",
+      "meaning": "source-correspondence floating decision value",
+      "overflow": "retry-at-source-specified-precision-or-fail"
+    },
+    "real-ball": {
+      "storage": "owned-real-ball-resource",
+      "meaning": "resident precision-aware real enclosure",
+      "overflow": "increase-precision-transactionally"
+    },
+    "canonical-byte": {
+      "storage": "immutable-byte-buffer",
+      "meaning": "canonical neutral publication",
+      "overflow": "not-applicable"
+    }
+  },
+  "dimensions": {
+    "one": "constant one",
+    "degree": "prepared maximal-order degree",
+    "embeddingPlaces": "realPlaces + complexPlaces",
+    "factorBaseCapacity": "allocated factor-base slots",
+    "factorBaseLength": "active factor-base slots, at most factorBaseCapacity",
+    "relationCapacity": "allocated relation rows",
+    "relationLength": "accepted relation rows, at most relationCapacity",
+    "presentationRank": "active relation-lattice rank, at most factorBaseLength",
+    "unitRank": "realPlaces + complexPlaces - 1",
+    "unitCount": "materialized independent units, at most unitRank",
+    "classGeneratorCount": "nontrivial normalized Smith factors",
+    "precisionBits": "current transactional archimedean precision",
+    "publicationBytes": "canonical neutral-envelope byte length"
+  },
+  "stages": [
+    {
+      "id": "prepared",
+      "ordinal": 0,
+      "commit": false
+    },
+    {
+      "id": "factor",
+      "ordinal": 1,
+      "commit": false
+    },
+    {
+      "id": "relation",
+      "ordinal": 2,
+      "commit": false
+    },
+    {
+      "id": "hnf",
+      "ordinal": 3,
+      "commit": false
+    },
+    {
+      "id": "acceptance",
+      "ordinal": 4,
+      "commit": false
+    },
+    {
+      "id": "unit",
+      "ordinal": 5,
+      "commit": false
+    },
+    {
+      "id": "class",
+      "ordinal": 6,
+      "commit": false
+    },
+    {
+      "id": "final",
+      "ordinal": 7,
+      "commit": true
+    }
+  ],
+  "retryEdges": [
+    [
+      "acceptance",
+      "relation",
+      "relation-deficiency-or-factor-base-growth"
+    ],
+    [
+      "acceptance",
+      "factor",
+      "factor-base-restart"
+    ],
+    [
+      "unit",
+      "relation",
+      "unit-rank-deficiency"
+    ],
+    [
+      "unit",
+      "acceptance",
+      "precision-restart"
+    ],
+    [
+      "class",
+      "acceptance",
+      "archimedean-cleanup-precision-restart"
+    ]
+  ],
+  "owners": [
+    {
+      "id": "prepared.exactField",
+      "role": "prepared",
+      "physicalShape": [
+        "degree",
+        "degree",
+        "degree"
+      ],
+      "logicalShape": [
+        "degree",
+        "degree",
+        "degree"
+      ],
+      "domain": "exact-integer",
+      "lifetime": [
+        "prepared",
+        "final"
+      ],
+      "ownership": "borrowed-read-only",
+      "notes": "Symbolic umbrella for authenticated basis, multiplication, index, and exact field metadata; a specialization may split it into disjoint owners."
+    },
+    {
+      "id": "prepared.archimedean",
+      "role": "prepared",
+      "physicalShape": [
+        "embeddingPlaces",
+        "degree"
+      ],
+      "logicalShape": [
+        "embeddingPlaces",
+        "degree"
+      ],
+      "domain": "real-ball",
+      "lifetime": [
+        "prepared",
+        "final"
+      ],
+      "ownership": "borrowed-read-only",
+      "notes": "Authenticated prepared embeddings at precisionBits; a binary64 specialization must separately prove that source path."
+    },
+    {
+      "id": "factor.ideals",
+      "role": "factor",
+      "physicalShape": [
+        "factorBaseCapacity",
+        "degree",
+        "degree"
+      ],
+      "logicalShape": [
+        "factorBaseLength",
+        "degree",
+        "degree"
+      ],
+      "domain": "exact-integer",
+      "lifetime": [
+        "factor",
+        "final"
+      ],
+      "ownership": "exclusive-mutable-owner"
+    },
+    {
+      "id": "factor.metadata",
+      "role": "factor",
+      "physicalShape": [
+        "factorBaseCapacity"
+      ],
+      "logicalShape": [
+        "factorBaseLength"
+      ],
+      "domain": "bounded-i64",
+      "lifetime": [
+        "factor",
+        "final"
+      ],
+      "ownership": "exclusive-mutable-owner"
+    },
+    {
+      "id": "relation.exponents",
+      "role": "relation",
+      "physicalShape": [
+        "relationCapacity",
+        "factorBaseCapacity"
+      ],
+      "logicalShape": [
+        "relationLength",
+        "factorBaseLength"
+      ],
+      "domain": "exact-integer",
+      "lifetime": [
+        "relation",
+        "final"
+      ],
+      "ownership": "exclusive-mutable-owner"
+    },
+    {
+      "id": "relation.archimedean",
+      "role": "relation",
+      "physicalShape": [
+        "relationCapacity",
+        "embeddingPlaces"
+      ],
+      "logicalShape": [
+        "relationLength",
+        "embeddingPlaces"
+      ],
+      "domain": "real-ball",
+      "lifetime": [
+        "relation",
+        "final"
+      ],
+      "ownership": "exclusive-mutable-owner"
+    },
+    {
+      "id": "hnf.presentation",
+      "role": "hnf",
+      "physicalShape": [
+        "factorBaseCapacity",
+        "factorBaseCapacity"
+      ],
+      "logicalShape": [
+        "presentationRank",
+        "presentationRank"
+      ],
+      "domain": "exact-integer",
+      "lifetime": [
+        "hnf",
+        "final"
+      ],
+      "ownership": "exclusive-mutable-owner"
+    },
+    {
+      "id": "hnf.relationToPresentation",
+      "role": "hnf",
+      "physicalShape": [
+        "relationCapacity",
+        "factorBaseCapacity"
+      ],
+      "logicalShape": [
+        "relationLength",
+        "presentationRank"
+      ],
+      "domain": "exact-integer",
+      "lifetime": [
+        "hnf",
+        "final"
+      ],
+      "ownership": "exclusive-mutable-owner"
+    },
+    {
+      "id": "hnf.presentationToRelation",
+      "role": "hnf",
+      "physicalShape": [
+        "factorBaseCapacity",
+        "relationCapacity"
+      ],
+      "logicalShape": [
+        "presentationRank",
+        "relationLength"
+      ],
+      "domain": "exact-integer",
+      "lifetime": [
+        "hnf",
+        "final"
+      ],
+      "ownership": "exclusive-mutable-owner"
+    },
+    {
+      "id": "unit.factoredGenerators",
+      "role": "unit",
+      "physicalShape": [
+        "unitRank",
+        "relationCapacity"
+      ],
+      "logicalShape": [
+        "unitCount",
+        "relationLength"
+      ],
+      "domain": "exact-integer",
+      "lifetime": [
+        "unit",
+        "final"
+      ],
+      "ownership": "exclusive-mutable-owner"
+    },
+    {
+      "id": "unit.logLattice",
+      "role": "unit",
+      "physicalShape": [
+        "unitRank",
+        "unitRank"
+      ],
+      "logicalShape": [
+        "unitCount",
+        "unitCount"
+      ],
+      "domain": "real-ball",
+      "lifetime": [
+        "unit",
+        "final"
+      ],
+      "ownership": "exclusive-mutable-owner"
+    },
+    {
+      "id": "unit.regulator",
+      "role": "unit",
+      "physicalShape": [
+        "one"
+      ],
+      "logicalShape": [
+        "one"
+      ],
+      "domain": "real-ball",
+      "lifetime": [
+        "unit",
+        "final"
+      ],
+      "ownership": "exclusive-mutable-owner"
+    },
+    {
+      "id": "class.smith",
+      "role": "class",
+      "physicalShape": [
+        "factorBaseCapacity"
+      ],
+      "logicalShape": [
+        "classGeneratorCount"
+      ],
+      "domain": "exact-integer",
+      "lifetime": [
+        "class",
+        "final"
+      ],
+      "ownership": "exclusive-mutable-owner"
+    },
+    {
+      "id": "class.generatorIdeals",
+      "role": "class",
+      "physicalShape": [
+        "factorBaseCapacity",
+        "degree",
+        "degree"
+      ],
+      "logicalShape": [
+        "classGeneratorCount",
+        "degree",
+        "degree"
+      ],
+      "domain": "exact-integer",
+      "lifetime": [
+        "class",
+        "final"
+      ],
+      "ownership": "exclusive-mutable-owner"
+    },
+    {
+      "id": "class.principalWitnesses",
+      "role": "class",
+      "physicalShape": [
+        "factorBaseCapacity",
+        "degree"
+      ],
+      "logicalShape": [
+        "classGeneratorCount",
+        "degree"
+      ],
+      "domain": "exact-integer",
+      "lifetime": [
+        "class",
+        "final"
+      ],
+      "ownership": "exclusive-mutable-owner",
+      "notes": "The coefficient-vector form is one admissible materialization; a specialization may retain an authenticated factored principal witness instead."
+    },
+    {
+      "id": "final.neutralEnvelope",
+      "role": "final",
+      "physicalShape": [
+        "publicationBytes"
+      ],
+      "logicalShape": [
+        "publicationBytes"
+      ],
+      "domain": "canonical-byte",
+      "lifetime": [
+        "final",
+        "final"
+      ],
+      "ownership": "immutable-publication-owner"
+    }
+  ],
+  "borrowingRules": [
+    "prepared.exactField and prepared.archimedean are borrowed read-only and must outlive every private stage invocation",
+    "mutable owners may be borrowed only synchronously by a later stage and may not escape that stage",
+    "a retry discards or rolls back every owner first created after its target stage",
+    "precision replacement is publish-on-success and may not mutate the last accepted archimedean owner",
+    "final.neutralEnvelope contains canonical copies or hashes and never borrows mutable storage",
+    "only the final stage may publish; every earlier stage is private and transaction-local"
+  ],
+  "currentSpecializations": [
+    {
+      "id": "fixed-cubic-positional-root",
+      "entry": "pari_resident_generated_class_attempt",
+      "evidence": "resident_candidate_owner_manifest.cjs",
+      "derivedFromThisManifest": false,
+      "reason": "predates this semantic layout and fixes one degree-three positional signature"
+    },
+    {
+      "id": "h1-private-buffer-selection",
+      "entry": "pari_fused_h1_matched_flag_zero_root",
+      "evidence": "h1_private_integer_buffer_layout.json",
+      "derivedFromThisManifest": false,
+      "reason": "selects proven-private exact buffers but does not describe the full resident state"
+    },
+    {
+      "id": "fresh-prepared-row-pipelines",
+      "entry": "runFreshPrepared",
+      "evidence": "fresh_prepared_development_registry.cjs",
+      "derivedFromThisManifest": false,
+      "reason": "row pipelines have bespoke internal layouts and only share the neutral transaction boundary"
+    }
+  ],
+  "signatureGeneration": {
+    "status": "not-yet-connected",
+    "requiredWork": [
+      "bind symbolic dimensions from authenticated prepared input and declared budgets",
+      "split umbrella roles into disjoint typed parameters or one typed internal resource",
+      "prove scalar ranges and select fixed-width domains only on proved paths",
+      "derive generated parameter order, mutability, and capacity checks from this manifest",
+      "emit a specialization manifest and reject hand-edited signature drift",
+      "migrate row-specific pipelines only after differential and mutation tests pass"
+    ]
+  }
+}
