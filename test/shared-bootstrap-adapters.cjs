@@ -114,6 +114,76 @@ test("shared attribute stores use only epoch-current unexposed cache entries", (
   assert.equal(fallbacks, 4);
 });
 
+test("shared ordinary stores preserve exceptional host layouts", () => {
+  const prototype = {};
+  const cache = new WeakMap([[prototype, new Map([["__proto__", 1], ["field", 1]])]]);
+  const fields = new WeakMap();
+  const api = context({
+    _builtins_store_cache: cache,
+    _builtins_descriptor_epoch: { value: 1 },
+    _builtins_instance_fields: fields,
+    _builtins_instance_namespaces: new WeakMap(),
+    ρσ_setattr: () => { throw new Error("unexpected fallback"); },
+    ρσ_getattr_internal: () => { throw new Error("unexpected read"); },
+    ρσ_getattr_missing: Symbol("missing"),
+  });
+
+  const receiver = Object.create(prototype);
+  api.ρσ_attr(receiver, "field", 1);
+  const first = Object.getOwnPropertyDescriptor(receiver, "field");
+  assert.deepEqual(first, { value: 1, writable: true, enumerable: true, configurable: true });
+  api.ρσ_attr(receiver, "field", 2);
+  assert.equal(receiver.field, 2);
+
+  Object.defineProperty(receiver, "field", {
+    value: 2, writable: false, enumerable: true, configurable: false,
+  });
+  let writeError;
+  try { api.ρσ_attr(receiver, "field", 3); } catch (error) { writeError = error; }
+  assert.equal(writeError?.name, "TypeError");
+  assert.match(writeError?.message ?? "", /Cannot redefine property: field/);
+  assert.equal(receiver.field, 2);
+
+  const nonconfigurable = Object.create(prototype);
+  api.ρσ_attr(nonconfigurable, "field", 1);
+  Object.defineProperty(nonconfigurable, "field", { configurable: false });
+  assert.throws(
+    () => api.ρσ_attr(nonconfigurable, "field", 2),
+    /Cannot redefine property: field/,
+  );
+  assert.equal(nonconfigurable.field, 1);
+
+  const nonenumerable = Object.create(prototype);
+  api.ρσ_attr(nonenumerable, "field", 1);
+  Object.defineProperty(nonenumerable, "field", { enumerable: false });
+  api.ρσ_attr(nonenumerable, "field", 2);
+  assert.deepEqual(Object.getOwnPropertyDescriptor(nonenumerable, "field"), {
+    value: 2, writable: true, enumerable: true, configurable: true,
+  });
+
+  const replacementPrototype = { changed: true };
+  api.ρσ_attr(receiver, "__proto__", replacementPrototype);
+  assert.equal(Object.getPrototypeOf(receiver), prototype);
+  assert.equal(receiver.__proto__, replacementPrototype);
+
+  const accessor = Object.create(prototype);
+  let setterCalls = 0;
+  Object.defineProperty(accessor, "field", {
+    get: () => 7, set: () => { setterCalls += 1; }, configurable: true,
+  });
+  api.ρσ_attr(accessor, "field", 3);
+  assert.equal(setterCalls, 0);
+  assert.deepEqual(Object.getOwnPropertyDescriptor(accessor, "field"), {
+    value: 3, writable: true, enumerable: true, configurable: true,
+  });
+
+  const sealed = Object.preventExtensions(Object.create(prototype));
+  assert.throws(
+    () => api.ρσ_attr(sealed, "field", 4),
+    /object is not extensible/,
+  );
+});
+
 test("shared keyword binding consumes literal packets without Python operators", () => {
   const receiver = {};
   function target(left, middle, right, keywords) {
