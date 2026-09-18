@@ -23,10 +23,10 @@ const probe = shared.createProbe({
       filename: "row23_phase6_resident_kernel_host.cjs",
       pattern: /compilerCacheLookupInsideRoot: true/,
       effect: "the connected root still enters compileKernel cache lookup paths per sample" },
-    { id: "eleven-native-call-resident-root",
+    { id: "fourteen-native-call-resident-root",
       filename: "row23_phase6_resident_kernel_host.cjs",
-      pattern: /nativeCallsInsideRoot: 11/,
-      effect: "eleven native entry/exit boundaries remain instead of one private generated graph" },
+      pattern: /nativeCallsInsideRoot: 14/,
+      effect: "fourteen native entry/exit boundaries remain instead of one private generated graph" },
   ],
   expected: {
     classGroup: { classNumber: "6", invariantFactors: ["6"], generatorCount: "1" },
@@ -37,5 +37,5 @@ const probe = shared.createProbe({
 module.exports = Object.freeze({ ...probe, async runProbe(options) {
   const result = await probe.runProbe(options);
   return { ...result, admission: { ...result.admission,
-    reason: "the serialization-free resident root still allocates owners, performs compiler-cache lookups, and crosses eleven native call boundaries inside its inclusive clock" } };
+    reason: "the serialization-free resident root still allocates owners, performs compiler-cache lookups, and crosses fourteen native call boundaries inside its inclusive clock" } };
 } });

@@ -137,7 +137,7 @@ async function runResident(resident) {
       finalReplayInsideRoot: false,
       allocationInsideRoot: true,
       compilerCacheLookupInsideRoot: true,
-      nativeCallsInsideRoot: 11,
+      nativeCallsInsideRoot: 14,
       qualifiedTiming: false }),
   };
   Object.defineProperty(result, "owners", { enumerable: false,

@@ -44,7 +44,7 @@ On the shared development host the inclusive diagnostic time was 60.621 s:
 
 These are **not qualification timings**.  They include per-invocation buffer
 allocation and compiler-cache lookup, ran on the busy shared development host,
-and cross eleven native entry/exit boundaries.  They are useful only as an
+and cross fourteen native entry/exit boundaries.  They are useful only as an
 inclusive attribution baseline.
 
 The result closes the former serialization/CPython-final-replay blocker.  It
@@ -54,7 +54,7 @@ remaining executable blockers are now exactly:
 1. split allocation from execution and reset/reuse all exact and floating
    owners outside the clock;
 2. resolve all compiled exports before entering the clock; and
-3. compose the eleven native calls into one private generated call graph (or
+3. compose the fourteen native calls into one private generated call graph (or
    measure that call ABI as negligible with an identical-storage control).
 
 `row23_phase6_timing_blocker_probe.cjs` names those three blockers and continues
