@@ -10,6 +10,26 @@ const { compileKernel } = require("../../tools/native-kernel/compiler.cjs");
 const { zeroLengths } = require("./row14_first_hnf_host.cjs");
 
 const ROWS = 799, DEGREE = 4, PLACES = 3, FIRST_COLUMNS = 802;
+const PROFILE_CLOCKS = Object.freeze({
+  pari_collect_and_log_relations: Object.freeze({
+    function: "pari_collect_and_log_relations",
+    stages: Object.freeze(["entry", "preflight", "relation-collector",
+      "log-embeddings", "return"]),
+    maximumVisits: 8,
+  }),
+  pari_hnfspec_complete: Object.freeze({
+    function: "pari_hnfspec_complete",
+    stages: Object.freeze(["entry", "preflight", "sparse-cleanup",
+      "cup-rank", "assembly-and-log-transform", "hnffinal", "publication"]),
+    maximumVisits: 10,
+  }),
+  pari_hnfadd: Object.freeze({
+    function: "pari_hnfadd",
+    stages: Object.freeze(["entry", "preflight", "assembly-and-log-products",
+      "rectangular-rank", "hnffinal", "publication"]),
+    maximumVisits: 10,
+  }),
+});
 const PREPARED_KEYS = ["admission_factorlimit", "admission_matrix_e",
   "admission_matrix_m", "admission_matrix_p", "admission_prime_limit",
   "admission_primes", "admission_products", "admission_real_count",
@@ -40,13 +60,81 @@ function words(values, minimum = 1) {
   return result;
 }
 
-async function compile(sourceName, exportName) {
+async function compile(sourceName, exportName, profile = false) {
   const source = path.join(__dirname, sourceName);
-  const built = await compileKernel({ sourcePath: source });
+  const options = { sourcePath: source };
+  if (profile) options.diagnosticStageClock = PROFILE_CLOCKS[exportName];
+  const built = await compileKernel(options);
   const fn = require(built.modulePath)[exportName];
   assert(fn?.nativeAvailable);
   return { fn, names: signature(source, exportName), built };
 }
+
+function record(profile, label, started) {
+  if (profile === null) return;
+  profile.outer.push({ label, nanoseconds: String(process.hrtime.bigint() - started) });
+}
+
+function timed(profile, label, action) {
+  if (profile === null) return action();
+  const started = process.hrtime.bigint();
+  try { return action(); } finally { record(profile, label, started); }
+}
+
+async function timedAsync(profile, label, action) {
+  if (profile === null) return action();
+  const started = process.hrtime.bigint();
+  try { return await action(); } finally { record(profile, label, started); }
+}
+
+function nativeTrace(fn) {
+  if (typeof fn.diagnosticStageTrace !== "function") return null;
+  const trace = fn.diagnosticStageTrace();
+  return {
+    ...trace,
+    rootNanoseconds: String(trace.rootNanoseconds),
+    totalsNanoseconds: Object.fromEntries(Object.entries(trace.totalsNanoseconds)
+      .map(([name, value]) => [name, String(value)])),
+    visits: trace.visits.map(visit => ({ ...visit,
+      nanoseconds: String(visit.nanoseconds) })),
+  };
+}
+
+function generatedFacts(compiled, root) {
+  const source = fs.readFileSync(compiled.built.coreSourcePath, "utf8");
+  const count = pattern => (source.match(pattern) || []).length;
+  const graph = compiled.built.ir.callGraph;
+  const reachable = new Set(), pending = [root];
+  while (pending.length !== 0) {
+    const name = pending.pop();
+    if (reachable.has(name)) continue;
+    reachable.add(name);
+    for (const callee of graph[name] || []) pending.push(callee);
+  }
+  const nativeStart = source.indexOf(`static int native_${root}(`);
+  const nativeHeader = nativeStart < 0 ? "" : source.slice(nativeStart,
+    source.indexOf("\n", nativeStart));
+  return {
+    root, cacheKey: compiled.built.cacheKey, cachedAddon: compiled.built.cached,
+    generatedBytes: Buffer.byteLength(source), generatedLines: source.split("\n").length,
+    reachableFunctions: reachable.size,
+    publicPrivateCloneCount: compiled.built.privateFunctions.length,
+    automaticSelectionCount: Object.keys(compiled.built.automaticSelections).length,
+    nativeRootScalarMpzParameters: countHeader(nativeHeader, /const mpz_t /g),
+    nativeFunctionDefinitions: count(/static int native_[a-zA-Z0-9_]+\([^;]*\)\n\{/g),
+    taggedFunctionDefinitions: count(/static int tagged_[a-zA-Z0-9_]+\([^;]*\)\n\{/g),
+    mpzSetSites: count(/\bmpz_set(?:_si|_ui)?\s*\(/g),
+    mpzArithmeticSites: count(/\bmpz_(?:add|sub|mul|fdiv_q|fdiv_r|neg|abs)\s*\(/g),
+    mpzInitSites: count(/\bmpz_init\s*\(/g),
+    mpzClearSites: count(/\bmpz_clear\s*\(/g),
+    integerBufferIndexSites: count(/\bsagejs_(?:mpz_)?integer_buffer_index\s*\(/g),
+    integerBufferGetMpzSites: count(/\bsagejs_integer_buffer_get_mpz\s*\(/g),
+    integerBufferGetInt64Sites: count(/\bsagejs_integer_buffer_get_int64\s*\(/g),
+    taggedToInt64Sites: count(/\bsagejs_tagged_to_int64\s*\(/g),
+  };
+}
+
+function countHeader(header, pattern) { return (header.match(pattern) || []).length; }
 
 function validateBoundary(prepared, root) {
   assert.deepEqual(Object.keys(prepared).sort(), ["authoritySha256", "data"]);
@@ -124,7 +212,7 @@ function collectorInput(preparedEnvelope, root) {
 }
 
 function allocate(compiled, input, lengths, { minimumWords = 8, compact = new Set() } = {}) {
-  let bytes = 0;
+  let bytes = 0, elements = 0, integerBuffers = 0, int64Buffers = 0, float64Buffers = 0;
   const values = {};
   for (const [name, kind] of compiled.names) {
     const supplied = input[name];
@@ -135,55 +223,92 @@ function allocate(compiled, input, lengths, { minimumWords = 8, compact = new Se
     }
     const length = supplied === undefined ? lengths[name] : supplied.length;
     assert.notEqual(length, undefined, `missing owner shape ${name}`);
+    elements += length;
     if (kind === "Float64Buffer") {
+      float64Buffers += 1;
       bytes += 8 * length;
       values[name] = compiled.fn.createFloat64Buffer(
         supplied === undefined ? length : supplied.map(Number));
     } else if (kind === "Int64Buffer") {
+      int64Buffers += 1;
       bytes += 8 * length;
       values[name] = compiled.fn.createInt64Buffer(
         supplied === undefined ? length : supplied.map(BigInt));
     } else {
+      integerBuffers += 1;
       const capacity = words(supplied, compact.has(name) ? 1 : minimumWords);
       bytes += length * (4 + 8 * capacity);
       values[name] = compiled.fn.createIntegerBuffer(length, capacity,
         supplied === undefined ? undefined : supplied.map(BigInt));
     }
   }
-  return { values, bytes };
+  return { values, bytes, elements, integerBuffers, int64Buffers, float64Buffers };
 }
 
-async function firstPreparedHnf(prepared, root) {
-  validateBoundary(prepared, root);
+async function firstPreparedHnf(prepared, root, options = {}) {
+  const profile = options.profile || null;
+  timed(profile, "initial.validate-boundary", () => validateBoundary(prepared, root));
   const lengths = zeroLengths();
-  const collector = await compile("collected_log_embeddings.py", "pari_collect_and_log_relations");
+  const collector = await timedAsync(profile, "initial.compile-collector", () =>
+    compile("collected_log_embeddings.py", "pari_collect_and_log_relations", profile !== null));
+  if (profile !== null) profile._compiled.push([collector, "pari_collect_and_log_relations"]);
   const compact = new Set(["relation_basis", "relation_records", "relation_hashes",
     "relation_metadata", "relation", "relation_scratch", "generators"]);
-  const allocated = allocate(collector, collectorInput(prepared, root), lengths,
-    { minimumWords: 8, compact });
+  const allocated = timed(profile, "initial.allocate-collector", () =>
+    allocate(collector, collectorInput(prepared, root), lengths,
+      { minimumWords: 8, compact }));
+  if (profile !== null) profile.allocations.push({ label: "initial.collector",
+    bytes: allocated.bytes, elements: allocated.elements,
+    integerBuffers: allocated.integerBuffers, int64Buffers: allocated.int64Buffers,
+    float64Buffers: allocated.float64Buffers });
   const cv = allocated.values;
-  const status = collector.fn.gmp(...collector.names.map(([name]) => cv[name]));
+  const status = timed(profile, "initial.collector", () =>
+    collector.fn.gmp(...collector.names.map(([name]) => cv[name])));
+  if (profile !== null) profile.native.push({ label: "initial.collector",
+    trace: nativeTrace(collector.fn) });
   assert(status === 0n || status === 1n);
   assert.deepEqual(cv.relation_state.toArray().map(String),
     ["802", "8110", "4", "0", "0", "802"]);
   assert.equal(Number(cv.log_completed.toArray()[0]), FIRST_COLUMNS);
 
-  const hnf = await compile("hnfspec_complete.py", "pari_hnfspec_complete");
+  const hnf = await timedAsync(profile, "initial.compile-hnfspec", () =>
+    compile("hnfspec_complete.py", "pari_hnfspec_complete", profile !== null));
+  if (profile !== null) profile._compiled.push([hnf, "pari_hnfspec_complete"]);
   const hnfInput = { rows: ROWS, columns: FIRST_COLUMNS, k0: 4, log_rows: PLACES,
     original: cv.relation_records.toArray().slice(0, ROWS * FIRST_COLUMNS),
     perm: root.factor.permutation, logs: cv.log_embeddings.toArray() };
   const hnfLengths = Object.fromEntries(hnf.names.map(([name]) =>
     [name, lengths[name === "pivots" ? "hnf_rank_pivots" : `hnf_${name}`]]));
   const hnfCompact = new Set(["cup_arena", "cup_frames"]);
-  const ha = allocate(hnf, hnfInput, hnfLengths, { minimumWords: 16, compact: hnfCompact });
-  assert.equal(hnf.fn.gmp(...hnf.names.map(([name]) => ha.values[name])), 0n);
+  const ha = timed(profile, "initial.allocate-hnfspec", () =>
+    allocate(hnf, hnfInput, hnfLengths, { minimumWords: 16, compact: hnfCompact }));
+  if (profile !== null) profile.allocations.push({ label: "initial.hnfspec",
+    bytes: ha.bytes, elements: ha.elements, integerBuffers: ha.integerBuffers,
+    int64Buffers: ha.int64Buffers, float64Buffers: ha.float64Buffers });
+  assert.equal(timed(profile, "initial.hnfspec", () =>
+    hnf.fn.gmp(...hnf.names.map(([name]) => ha.values[name]))), 0n);
+  if (profile !== null) profile.native.push({ label: "initial.hnfspec",
+    trace: nativeTrace(hnf.fn) });
   assert.deepEqual(Array.from(ha.values.state).map(Number),
     [3, 10, 792, 4, 7, 105, 0, 802, 0]);
   return { collector, cv, hnf: ha.values, ownerBytes: allocated.bytes + ha.bytes };
 }
 
-async function runPreparedGateC(prepared, root) {
-  const first = await firstPreparedHnf(prepared, root);
+async function warmPreparedGateC({ profile = false } = {}) {
+  // Compilation/loading belongs outside every mathematical timing boundary.
+  // The run still performs cache lookups so its control path is unchanged.
+  await compile("collected_log_embeddings.py", "pari_collect_and_log_relations", profile);
+  await compile("hnfspec_complete.py", "pari_hnfspec_complete", profile);
+  await compile("row14_next_pass.py", "pari_row14_prepare_next_pass");
+  await compile("hnfadd.py", "pari_hnfadd", profile);
+}
+
+async function runPreparedGateC(prepared, root, options = {}) {
+  const profile = options.profile
+    ? { outer: [], native: [], builds: [], allocations: [], _compiled: [] }
+    : null;
+  const gateStarted = profile === null ? 0n : process.hrtime.bigint();
+  const first = await firstPreparedHnf(prepared, root, { profile });
   const cv = first.cv;
   const resident = {
     h: first.hnf.result_h.toArray().slice(0, 9),
@@ -195,14 +320,19 @@ async function runPreparedGateC(prepared, root) {
   const snapshot = columns => ({ columns, state: resident.state.slice(),
     h: resident.h.map(String), dep: resident.dep.map(String), b: resident.b.map(String),
     c: resident.c.map(String), perm: resident.perm.map(String) });
-  const next = await compile("row14_next_pass.py", "pari_row14_prepare_next_pass");
-  const append = await compile("hnfadd.py", "pari_hnfadd");
+  const next = await timedAsync(profile, "continuation.compile-control", () =>
+    compile("row14_next_pass.py", "pari_row14_prepare_next_pass"));
+  const append = await timedAsync(profile, "continuation.compile-hnfadd", () =>
+    compile("hnfadd.py", "pari_hnfadd", profile !== null));
+  if (profile !== null) profile._compiled.push([append, "pari_hnfadd"]);
   const checkpoints = [snapshot(802)], expected = [804, 805, 806], passTrace = [];
   let checkpointIndex = 0, collectionPasses = 1, squash = 0, appendPeakBytes = 0;
   while (checkpointIndex < expected.length) {
     collectionPasses += 1;
     assert(collectionPasses <= 8, "row-14 continuation exceeded eight authentic passes");
     const need = ROWS - resident.state[0] - resident.state[2];
+    const passNumber = collectionPasses - 1;
+    const setupStarted = profile === null ? 0n : process.hrtime.bigint();
     const search = next.fn.createIntegerBuffer(ROWS, 1, cv.search_ideals.toArray());
     const outerPerm = next.fn.createIntegerBuffer(ROWS, 1, cv.outer_perm.toArray());
     const outer = next.fn.createInt64Buffer(Array.from(cv.outer_state));
@@ -212,6 +342,11 @@ async function runPreparedGateC(prepared, root) {
     const control = next.fn.createInt64Buffer(3), perm = next.fn.createInt64Buffer(resident.perm);
     assert.equal(next.fn.gmp(perm, BigInt(ROWS), BigInt(resident.state[0]), BigInt(need),
       BigInt(squash), search, outerPerm, 1n, outer, cache, schedule, completed, control), 0n);
+    record(profile, `pass-${passNumber}.control-and-setup`, setupStarted);
+    if (profile !== null) profile.allocations.push({
+      label: `pass-${passNumber}.control-and-setup`, bytes: 45304,
+      elements: 4058, integerBuffers: 8, int64Buffers: 6, float64Buffers: 0,
+    });
     const nextControl = Array.from(control).map(Number); squash = nextControl[1];
     cv.search_ideals = first.collector.fn.createIntegerBuffer(ROWS, 1, search.toArray());
     cv.outer_perm = first.collector.fn.createIntegerBuffer(ROWS, 1, outerPerm.toArray());
@@ -221,13 +356,17 @@ async function runPreparedGateC(prepared, root) {
     cv.log_completed = first.collector.fn.createIntegerBuffer(1, 1, completed.toArray());
     cv.search_count = BigInt(nextControl[0]); cv.outer_mode = 1n;
     cv.outer_ru = BigInt(PLACES); cv.scalar_prefix_count = 42n;
-    assert.equal(first.collector.fn.gmp(...first.collector.names.map(([name]) => cv[name])), 0n);
+    assert.equal(timed(profile, `pass-${passNumber}.collector`, () =>
+      first.collector.fn.gmp(...first.collector.names.map(([name]) => cv[name]))), 0n);
+    if (profile !== null) profile.native.push({ label: `pass-${passNumber}.collector`,
+      trace: nativeTrace(first.collector.fn) });
     const relationState = cv.relation_state.toArray().map(Number);
     const columns = relationState[0], oldColumns = resident.state[7];
     passTrace.push({ pass: collectionPasses - 1, need, searchCount: nextControl[0], squash,
       before: oldColumns, after: columns, schedule: Array.from(cv.schedule).map(Number),
       outer: Array.from(cv.outer_state).map(Number) });
     if (columns === oldColumns) continue;
+    const materializeStarted = profile === null ? 0n : process.hrtime.bigint();
     assert.equal(columns, expected[checkpointIndex]);
     const newColumns = columns - oldColumns;
     const newRelations = cv.relation_records.toArray().slice(oldColumns * ROWS, columns * ROWS);
@@ -250,18 +389,26 @@ async function runPreparedGateC(prepared, root) {
       b_columns: bColumns, logs: resident.c, total_columns: oldColumns,
       log_rows: PLACES, perm: resident.perm, rows: ROWS,
       new_relations: newRelations, new_columns: newColumns, new_logs: newLogs };
-    const av = {}; let bytes = 0;
+    const av = {}; let bytes = 0, elements = 0, integerBuffers = 0, int64Buffers = 0;
     for (const [name, kind] of append.names) {
       const supplied = explicit[name];
       if (!kind.endsWith("Buffer")) { av[name] = BigInt(supplied); continue; }
       const values = supplied === undefined ? Array(sizes[name]).fill(0n) : supplied.map(BigInt);
-      if (kind === "Int64Buffer") { bytes += 8*values.length;
+      elements += values.length;
+      if (kind === "Int64Buffer") { bytes += 8*values.length; int64Buffers += 1;
         av[name] = append.fn.createInt64Buffer(values); }
-      else { bytes += values.length*(4+8*16);
+      else { bytes += values.length*(4+8*16); integerBuffers += 1;
         av[name] = append.fn.createIntegerBuffer(values.length, 16, values); }
     }
+    if (profile !== null) profile.allocations.push({ label: `pass-${passNumber}.hnfadd`,
+      bytes, elements, integerBuffers, int64Buffers, float64Buffers: 0 });
+    record(profile, `pass-${passNumber}.materialize-and-allocate-hnfadd`, materializeStarted);
     appendPeakBytes = Math.max(appendPeakBytes, bytes);
-    assert.equal(append.fn.gmp(...append.names.map(([name]) => av[name])), 0n);
+    assert.equal(timed(profile, `pass-${passNumber}.hnfadd`, () =>
+      append.fn.gmp(...append.names.map(([name]) => av[name]))), 0n);
+    if (profile !== null) profile.native.push({ label: `pass-${passNumber}.hnfadd`,
+      trace: nativeTrace(append.fn) });
+    const publishStarted = profile === null ? 0n : process.hrtime.bigint();
     resident.state = Array.from(av.state).map(Number); resident.perm = Array.from(av.perm);
     const newH = resident.state[0], newB = resident.state[2], depRows = ROWS-newB-newH;
     resident.h = av.result_h.toArray().slice(0, newH*newH);
@@ -271,11 +418,17 @@ async function runPreparedGateC(prepared, root) {
     relationState[4] = columns;
     cv.relation_state = first.collector.fn.createIntegerBuffer(6, 1, relationState.map(BigInt));
     checkpoints.push(snapshot(columns)); checkpointIndex += 1;
+    record(profile, `pass-${passNumber}.publish-resident`, publishStarted);
   }
   const ownerBytesUpperBound = first.ownerBytes + appendPeakBytes;
   assert(ownerBytesUpperBound < 4 * 1024 ** 3);
+  if (profile !== null) {
+    profile.gateNanoseconds = String(process.hrtime.bigint() - gateStarted);
+    profile.builds = profile._compiled.map(([compiled, root]) => generatedFacts(compiled, root));
+    delete profile._compiled;
+  }
   return { collectorValues: cv, resident, checkpoints, passTrace, collectionPasses,
-    ownerBytesUpperBound, preparedRng: root.rng.slice() };
+    ownerBytesUpperBound, preparedRng: root.rng.slice(), ...(profile === null ? {} : { profile }) };
 }
 
-module.exports = { PREPARED_KEYS, runPreparedGateC, validateBoundary };
+module.exports = { PREPARED_KEYS, runPreparedGateC, validateBoundary, warmPreparedGateC };

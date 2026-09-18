@@ -4,7 +4,13 @@ Copyright (C) The PARI group. GPL-2.0-or-later, without warranty.
 This is a connected experimental segment, not the full buchall driver.
 """
 
-from sagejs.native import Float64Buffer, Int64Buffer, IntegerBuffer, native
+from sagejs.native import (
+    Float64Buffer,
+    Int64Buffer,
+    IntegerBuffer,
+    diagnostic_stage_switch,
+    native,
+)
 from .unreduced_small_norm import pari_collect_unreduced_ideals
 from .relation_log_embeddings import pari_append_relation_log_embeddings
 
@@ -194,12 +200,14 @@ def pari_collect_and_log_relations(
     The scalar prefix is the immutable count returned by initialization,
     retained by the caller across collection and retries.
     """
+    diagnostic_stage_switch(1)
     if (
         len(relation_state) < 1
         or scalar_prefix_count < 0
         or scalar_prefix_count > relation_state[0]
     ):
         raise ValueError("invalid scalar generator prefix")
+    diagnostic_stage_switch(2)
     status = pari_collect_unreduced_ideals(
         matrix,
         ideal,
@@ -365,6 +373,7 @@ def pari_collect_and_log_relations(
     )
     if status != 0:
         return status
+    diagnostic_stage_switch(3)
     pari_append_relation_log_embeddings(
         admission_matrix_m,
         admission_matrix_p,
@@ -388,4 +397,5 @@ def pari_collect_and_log_relations(
         log_stack,
         scalar_prefix_count,
     )
+    diagnostic_stage_switch(4)
     return status

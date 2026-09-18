@@ -6,7 +6,7 @@ Reuse certified initial rank and hnffinal; rational verification, CUP and
 unported exact multiplication dispatch remain frontiers, not rank answers.
 """
 
-from sagejs.native import Int64Buffer, IntegerBuffer, native
+from sagejs.native import Int64Buffer, IntegerBuffer, diagnostic_stage_switch, native
 
 from .hnfspec_rank_prefix import pari_rectangular_initial_pivots
 from .hnffinal import pari_hnffinal_nonempty
@@ -82,6 +82,7 @@ def pari_hnfadd(
     permutation checks are prototype overhead, not source timing work.
     Arithmetic/allocation exceptions may follow partial mutation.
     """
+    diagnostic_stage_switch(1)
     if new_columns == 0:
         return 1
     if (
@@ -159,6 +160,7 @@ def pari_hnfadd(
     for i in range(9):
         state[i] = -1
     state[7] = total_columns + new_columns
+    diagnostic_stage_switch(2)
     # zm_to_ZM(rowslicepermute(extramat,perm,1,lig)).
     for j in range(new_columns):
         for i in range(lig):
@@ -279,6 +281,7 @@ def pari_hnfadd(
         joined_logs[7 * log_rows * new_columns + i] = logs[
             7 * log_rows * zero_prefix + i
         ]
+    diagnostic_stage_switch(3)
     status = pari_rectangular_initial_pivots(
         joined, width, lig, rank_matrix, occupied, pivots, best, rank_state
     )
@@ -313,6 +316,7 @@ def pari_hnfadd(
     for j in range(b_columns):
         for i in range(lig):
             permuted_b[j * lig + i] = b[j * lig + profile[i] - 1]
+    diagnostic_stage_switch(4)
     status = pari_hnffinal_nonempty(
         matb,
         genuine,
@@ -344,6 +348,7 @@ def pari_hnfadd(
         state[6] = status
         state[8] = 2
         return status
+    diagnostic_stage_switch(5)
     for i in range(7 * log_rows * zero_prefix):
         result_c[i] = logs[i]
     for i in range(7 * log_rows * c_width):

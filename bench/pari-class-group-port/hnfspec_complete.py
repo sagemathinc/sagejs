@@ -8,7 +8,7 @@ rational rank verification, general exact Strassen/CRT and hnfadd_i
 remain explicit frontiers. No fixture supplies ranks or transformations.
 """
 
-from sagejs.native import Int64Buffer, IntegerBuffer, native
+from sagejs.native import Int64Buffer, IntegerBuffer, diagnostic_stage_switch, native
 
 from .hnfspec_cleanup import pari_hnfspec_cleanup
 from .hnfspec_cup_rank import pari_hnfspec_cup_rank_prefix
@@ -90,6 +90,7 @@ def pari_hnfspec_complete(
     insufficient CUP scratch therefore leaves a partial cleanup checkpoint.
     The caller chooses a bounded arena, not an original-size recursive arena.
     """
+    diagnostic_stage_switch(1)
     if rows < 0 or columns < 0 or k0 < 0 or k0 > rows or log_rows < 1:
         raise ValueError("invalid connected hnfspec dimensions")
     size = rows * columns
@@ -151,6 +152,7 @@ def pari_hnfspec_complete(
                 raise ValueError("invalid connected permutation")
     for i in range(9):
         state[i] = -1
+    diagnostic_stage_switch(2)
     cleanup_status = pari_hnfspec_cleanup(
         original,
         rows,
@@ -171,6 +173,7 @@ def pari_hnfspec_complete(
     )
     if cleanup_status != 0 and cleanup_status != 1:
         raise ValueError("incomplete cleanup checkpoint")
+    diagnostic_stage_switch(3)
     status = pari_hnfspec_cup_rank_prefix(
         extra,
         cleanup_state,
@@ -191,6 +194,7 @@ def pari_hnfspec_complete(
         state[6] = status
         state[8] = 1
         return status
+    diagnostic_stage_switch(4)
     pari_hnfspec_assemble_blocks(
         rows,
         k0,
@@ -228,6 +232,7 @@ def pari_hnfspec_complete(
             final_state[i] = 0
         final_state[2] = assembly_state[4]
     else:
+        diagnostic_stage_switch(5)
         status = pari_hnffinal_nonempty(
             matbnew,
             assembly_state[0],
@@ -259,6 +264,7 @@ def pari_hnfspec_complete(
             state[6] = status
             state[8] = 2
             return status
+    diagnostic_stage_switch(6)
     for i in range(7):
         state[i] = final_state[i]
     state[8] = 0
