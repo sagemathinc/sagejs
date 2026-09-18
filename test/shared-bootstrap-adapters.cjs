@@ -225,8 +225,14 @@ test("branded keyword constructors reuse prepared allocation", () => {
     this.value = keywords.value;
   }
   target.prototype = prototype;
+  target.__bases__ = [];
   const api = context({
     _internal_keyword_constructor_prototypes: new WeakSet([prototype]),
+    _internal_class_instance_function: () => false,
+    _internal_get_member: (value, name) => value[name],
+    _internal_type_is: (left, right) => left === right,
+    ρσ_native_jstype: (value) => typeof value,
+    _internal_has_own: Object.hasOwn,
   });
   const discarded = Object.create(prototype);
   const result = api.ρσ_interpolate_kwargs_constructor(
@@ -235,6 +241,20 @@ test("branded keyword constructors reuse prepared allocation", () => {
   assert.equal(result.value, 17);
   assert.equal(result, discarded);
   assert.deepEqual(calls, [[discarded, packet]]);
+
+  function replacement(value) {
+    calls.push([this, value]);
+    this.value = value;
+  }
+  replacement.prototype = prototype;
+  replacement.__argnames__ = ["value"];
+  const rebound = Object.create(prototype);
+  const reboundResult = api.ρσ_interpolate_kwargs_constructor(
+    rebound, false, replacement, [{ value: 23 }],
+  );
+  assert.equal(reboundResult, rebound);
+  assert.equal(rebound.value, 23);
+  assert.deepEqual(calls[1], [rebound, 23]);
 
   const receiver = {};
   assert.equal(
