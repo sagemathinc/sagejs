@@ -157,30 +157,41 @@ test("append-only journal refuses replacement and reconstructs one validated rec
   assert.equal(fs.readFileSync(journal, "utf8").trim().split("\n").length, 13);
 });
 
-test("reporter applies immutable A/B/C/D thresholds and keeps all failures in denominator", () => {
+test("reporter computes immutable thresholds but does not promote loose receipts", () => {
   const data = runner.validateManifest();
 
   const options = { manifestData: data, requireQualified: false };
   const a = reporter.aggregateReceipts(receiptsFor(data, 24, 1.5), options);
-  assert.equal(a.outcome, "A");
+  assert.equal(a.thresholdOutcome, "A");
+  assert.equal(a.outcome, "D");
+  assert.equal(a.qualificationDecisionEligible, false);
   assert.equal(a.completedMatched, 24);
   assert.equal(a.completionRate, 1);
   assert.equal(a.geometricMeanSlowdown, 1.5);
   assert.equal(a.p95Slowdown, 1.5);
 
   const b = reporter.aggregateReceipts(receiptsFor(data, 16, 2.5), options);
-  assert.equal(b.outcome, "B");
+  assert.equal(b.thresholdOutcome, "B");
+  assert.equal(b.outcome, "D");
   assert.equal(b.completedMatched, 16);
   assert.equal(b.failureCounts.unsupported_branch, 8);
   assert.equal(b.timingPopulation, 16);
   assert.equal(b.population, 24);
 
-  const c = reporter.aggregateReceipts(receiptsFor(data, 1, 4, 1.1, 0.8), options);
-  assert.equal(c.outcome, "C");
-  assert.equal(c.completedMatched, 1);
+  const c = reporter.determineThresholdOutcome({
+    completed: 1,
+    total: 24,
+    geometricMeanSlowdown: 4,
+    p95Slowdown: 4,
+    rankTwoStrata: new Set(["real-cubic"]),
+    secondsScaleCount: 1,
+    attributedGapFraction: 0.8,
+  });
+  assert.equal(c, "C");
 
   const d = reporter.aggregateReceipts(receiptsFor(data, 0, 4, 1.1, 0), options);
   assert.equal(d.outcome, "D");
+  assert.equal(d.thresholdOutcome, "D");
   assert.equal(d.geometricMeanSlowdown, null);
   assert.equal(d.p95Slowdown, null);
   assert.equal(d.completionRate, 0);
