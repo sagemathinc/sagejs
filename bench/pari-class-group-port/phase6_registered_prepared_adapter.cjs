@@ -130,6 +130,15 @@ async function prepareSage(panelIndex) {
       return { raw, projection: raw.projection, threadStarted };
     };
   }
+  if (panelIndex === 23) {
+    const host = require("./row23_phase6_sage_prepared_adapter.cjs");
+    const resident = await host.prepareResident(loadPrepared(panelIndex).filename);
+    return request => {
+      const threadStarted = process.threadCpuUsage();
+      const raw = host.runResident(resident);
+      return { raw, projection: raw.projection, threadStarted };
+    };
+  }
   throw new Error(`unsupported registered Sage.js row ${panelIndex}`);
 }
 
@@ -147,6 +156,9 @@ async function runPari(panelIndex, request) {
   } else if (panelIndex === 16) {
     module = require("./row16_phase6_pari_prepared_adapter.cjs");
     client = new module.Client(module.buildHelper());
+  } else if (panelIndex === 23) {
+    module = require("./row23_phase6_pari_prepared_adapter.cjs");
+    client = new module.Client(module.buildHelper());
   } else throw new Error(`unsupported registered PARI row ${panelIndex}`);
   await client.ready();
   try {
@@ -156,7 +168,9 @@ async function runPari(panelIndex, request) {
     if (panelIndex === 14) {
       const timing = require("./row14_sage_prepared_timing_adapter.cjs");
       projection = timing.commonProjectionFromPari(raw);
-    } else if (panelIndex === 16) projection = module.commonProjection(raw);
+    } else if ([16, 23].includes(panelIndex)) {
+      projection = module.commonProjection(raw);
+    }
     return { raw, projection, threadStarted };
   } finally { await client.close(); }
 }

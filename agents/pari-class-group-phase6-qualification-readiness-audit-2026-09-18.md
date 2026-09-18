@@ -23,7 +23,7 @@ The pinned local PARI installation also authenticates exactly:
   `fdc8f2d7ff050c8e8c6cb8994b0f9dc971267ac763eaf5cd927454937d37357f`.
 
 The field-neutral prepared-adapter registry now admits symmetric Sage.js/PARI
-pairs for development rows `0,1,3,4,14,16`.  Every registration names one
+pairs for development rows `0,1,3,4,14,16,23`.  Every registration names one
 common immutable semantic projection and is rejected unless both reviewed
 implementation modules and their required exports exist.  The runtime wrapper
 normalizes only already-computed results; it contains no mathematical
@@ -40,7 +40,7 @@ run during this audit.
 
 Full qualification is not ready, for four independent reasons:
 
-1. Development rows `6,8,10,11,13,18,19,20,21,23` lack matched
+1. Development rows `6,8,10,11,13,18,19,20,21` lack matched
    resident Sage/PARI prepared-kernel timing adapters and common semantic
    projections. Their correctness transactions are not timing adapters: they
    include subprocess, replay, publication, and filesystem work not present in
@@ -81,5 +81,5 @@ bench/pari-class-group-port/run_row14_matched_alternating_campaign.cjs \
 That command remains a row-14 candidate measurement, not the sealed 24-field
 qualification. The field-neutral interface and process-isolated 600-second
 per-arm journal now exist.  The next adapter work is to register the remaining
-ten development rows, preserving the same symmetric boundary before freezing
+nine development rows, preserving the same symmetric boundary before freezing
 and opening the eight reserves.

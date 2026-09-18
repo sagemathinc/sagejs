@@ -13,12 +13,26 @@ test("the first symmetric prepared-adapter wave is admitted statically", () => {
   assert.equal(inventory.executionEnabled, false);
   assert.equal(inventory.reserveOpeningEnabled, false);
   assert.deepEqual(inventory.rows.map(row => row.panelIndex),
-    [0, 1, 3, 4, 14, 16]);
+    [0, 1, 3, 4, 14, 16, 23]);
   assert(Object.isFrozen(registry.REGISTERED[0].expectedProjection));
   assert(Object.isFrozen(registry.REGISTERED[0].expectedProjection.field));
   assert(inventory.rows.every(row => row.sagePreparedKernelTiming &&
     row.pariPreparedKernelTiming && row.commonSemanticProjection &&
     row.mutuallyExclusiveStageTiming));
+});
+
+test("row 23 admits the same neutral quintic class-and-unit projection", () => {
+  const admitted = registry.preparedAdapterRegistration(23);
+  assert.deepEqual(admitted.expectedProjection, {
+    schema: "sagejs.pari-class-group/row23-phase6-common-projection-v1",
+    field: { id: "5.5.1002836007889.1",
+      polynomialAscending: ["341", "-970", "772", "-141", "-2", "1"] },
+    classGroup: { classNumber: "6", invariantFactors: ["6"] },
+    unitGroup: { rank: "4", regulatorPresent: true, torsionOrder: "2" },
+    completionMode: "flag-zero-class-and-unit-result",
+  });
+  assert.equal(admitted.workCounters.degree, "5");
+  assert.equal(admitted.workCounters.unitRank, "4");
 });
 
 test("registration rejects an incomplete implementation pair", () => {

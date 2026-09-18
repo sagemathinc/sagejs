@@ -128,6 +128,22 @@ const definitions = [
     pari: ["row16_phase6_pari_prepared_adapter.cjs", ["Client",
       "buildHelper", "commonProjection"]],
   },
+  {
+    panelIndex: 23,
+    expectedProjection: {
+      schema: "sagejs.pari-class-group/row23-phase6-common-projection-v1",
+      field: { id: "5.5.1002836007889.1",
+        polynomialAscending: ["341", "-970", "772", "-141", "-2", "1"] },
+      classGroup: { classNumber: "6", invariantFactors: ["6"] },
+      unitGroup: { rank: "4", regulatorPresent: true, torsionOrder: "2" },
+      completionMode: "flag-zero-class-and-unit-result",
+    },
+    workCounters: { classNumber: "6", degree: "5", unitRank: "4" },
+    sage: ["row23_phase6_sage_prepared_adapter.cjs", ["prepareResident",
+      "runResident", "semanticProjection"]],
+    pari: ["row23_phase6_pari_prepared_adapter.cjs", ["Client",
+      "buildHelper", "commonProjection"]],
+  },
 ];
 
 function descriptor(panelIndex, implementation, projectionSchema) {
