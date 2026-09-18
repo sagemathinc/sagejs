@@ -1,16 +1,17 @@
 "use strict";
 
-// Authenticated gap assessment over the immutable fresh row-0 correspondence.
-// It deliberately does not manufacture a v2 payload: the retained 8x8
-// terminal presentation and 15x8 maps do not prove a 66x73 right inverse for
-// the actual 73x66 relation matrix.
+// Row 0's additive output-evidence-v2 projection.  The full 73-by-66 Smith
+// proof is reconstructed from same-run retained HNF ancestry.  Phase 3 is
+// complete.  Unit material is published but phase 4 remains honest about the
+// missing independent saturation certificate; general maps remain incomplete.
 
 const crypto = require("node:crypto");
 const neutral = require("./class_unit_correspondence_result.cjs");
-const output = require("./class_unit_output_evidence_v2.cjs");
+const v2 = require("./class_unit_output_evidence_v2.cjs");
+const rawSmith = require("./row0_raw_relation_smith_proof.cjs");
 
 const ASSESSMENT_SCHEMA =
-  "sagejs.pari-class-group/row0-output-evidence-v2-gap-assessment-v1";
+  "sagejs.pari-class-group/row0-output-evidence-v2-assessment-v2";
 const CORRESPONDENCE_SHA256 =
   "dbf645dd5bdf4eb2f27dbaa769d1c08d454c551318a32611b47a1a232754da58";
 const FIELD_ID = "pari-2.17.4:x^3-20018*x+20034";
@@ -26,17 +27,15 @@ function storageMap(payload) {
 function owner(storage, name, length = undefined) {
   const value = storage.get(name);
   if (!value || value.logicalLength !== String(value.entries.length) ||
-      (length !== undefined && value.entries.length !== length)) {
+      (length !== undefined && value.entries.length !== length))
     fail(`row-0 owner ${name} changed`);
-  }
   return value.entries;
 }
 function decodeCanonicalBytes(entries, name) {
   const raw = Buffer.from(entries.map((entry, index) => {
     const byte = Number(entry);
-    if (!Number.isInteger(byte) || byte < 0 || byte > 255) {
+    if (!Number.isInteger(byte) || byte < 0 || byte > 255)
       fail(`${name}[${index}] is not a byte`);
-    }
     return byte;
   }));
   let value;
@@ -44,17 +43,17 @@ function decodeCanonicalBytes(entries, name) {
   catch (error) {
     throw new Row0OutputEvidenceFailure(`${name} is not JSON`, { cause: error });
   }
-  if (!output.canonical(value).equals(raw)) fail(`${name} is not canonical JSON`);
+  if (!v2.canonical(value).equals(raw)) fail(`${name} is not canonical JSON`);
   return value;
 }
 function evidence(id, kind, shape, material, encoding = "canonical_json") {
-  return { encoding, id, kind, sha256: output.sha256Canonical(material),
+  return { encoding, id, kind, sha256: v2.sha256Canonical(material),
     shape: shape.map(String) };
 }
-function openEnvelope(raw) {
-  if (!Buffer.isBuffer(raw) || sha256(raw) !== CORRESPONDENCE_SHA256) {
+
+function authenticateRow0Correspondence(raw) {
+  if (!Buffer.isBuffer(raw) || sha256(raw) !== CORRESPONDENCE_SHA256)
     fail("row-0 correspondence bytes lack their reviewed identity");
-  }
   let envelope;
   try { envelope = JSON.parse(raw.toString("ascii")); }
   catch (error) {
@@ -64,43 +63,42 @@ function openEnvelope(raw) {
   }
   if (!neutral.canonical(envelope).equals(raw) ||
       envelope.schema !== neutral.ENVELOPE_SCHEMA ||
-      envelope.payloadSha256 !== neutral.sha256Canonical(envelope.payload)) {
+      envelope.payloadSha256 !== neutral.sha256Canonical(envelope.payload))
     fail("row-0 correspondence envelope changed");
-  }
   neutral.validatePayload(envelope.payload);
-  return envelope.payload;
+  const payload = envelope.payload;
+  if (payload.field.id !== FIELD_ID || payload.source.pariVersion !== "2.17.4" ||
+      payload.source.pariSourceSha256 !== PARI_SOURCE_SHA256 ||
+      payload.classGroup.classNumber !== "1" ||
+      payload.classGroup.invariantFactors.length !== 0 ||
+      payload.unitGroup.rank !== "2" ||
+      payload.terminal.correspondence_complete !== true ||
+      payload.terminal.public_complete !== false)
+    fail("row-0 correspondence identity changed");
+  return payload;
 }
 
-function buildRow0OutputEvidenceGapAssessment(raw) {
-  const source = openEnvelope(raw);
-  if (source.field.id !== FIELD_ID || source.source.pariVersion !== "2.17.4" ||
-      source.source.pariSourceSha256 !== PARI_SOURCE_SHA256 ||
-      source.classGroup.classNumber !== "1" ||
-      source.classGroup.invariantFactors.length !== 0 ||
-      source.unitGroup.rank !== "2" ||
-      source.terminal.correspondence_complete !== true ||
-      source.terminal.public_complete !== false) {
-    fail("row-0 correspondence identity changed");
-  }
-  const storage = storageMap(source);
-  const get = (name, length) => owner(storage, `replay-${name}`, length);
-  const factorBase = get("packet_ideals", 66 * 9);
-  const relations = get("relation_records", 73 * 66);
-  const generators = get("generators", 73 * 3);
-  const relationLogs = get("log_embeddings", 73 * 21);
-  const terminal = {
-    left: get("final_left", 64),
-    leftInverse: get("final_left_inverse", 64),
-    presentation: get("final_presentation", 64),
-    presentationToRelation: get("final_presentation_to_relation", 120),
-    relationToPresentation: get("final_relation_to_presentation", 120),
-    right: get("final_right", 64),
-    rightInverse: get("final_right_inverse", 64),
-    smith: get("final_smith", 64),
-  };
-  const compactProvenance = get("final_compact_provenance", 14);
-  const retainedRelations = get("final_retained_relation_map", 146);
-  const packedLogs = get("precision_published_logs", 18);
+function collect(raw) {
+  const payload = authenticateRow0Correspondence(raw);
+  const storage = storageMap(payload);
+  const replay = (name, length) => owner(storage, `replay-${name}`, length);
+  const factorBase = replay("packet_ideals", 66 * 9);
+  const relations = replay("relation_records", 73 * 66);
+  const generators = replay("generators", 73 * 3);
+  const relationLogs = replay("log_embeddings", 73 * 21);
+  const proof = rawSmith.buildRow0RawRelationSmithProof(Object.freeze({
+    relation_records: relations,
+    hnf_transform: replay("hnf_transform", 73 * 73),
+    hnf_matbnew: replay("hnf_matbnew", 8 * 15),
+    hnf_hnf_transform: replay("hnf_hnf_transform", 15 * 15),
+    hnf_full_h: replay("hnf_full_h", 8 * 15),
+  }));
+  const dependencies = proof.material.u.slice(66 * 73);
+  const compactProvenance = replay("final_compact_provenance", 14);
+  const retainedRelations = replay("final_retained_relation_map", 146);
+  const packedLogs = replay("precision_published_logs", 18);
+  const precisionState = replay("precision_authority_state", 16);
+  const retryState = replay("precision_retry_state", 6);
   const exactCoordinates = owner(storage, "exact-unit-coordinates", 6);
   const exactNorms = owner(storage, "exact-unit-norms", 2);
   const torsion = owner(storage, "torsion-generator", 3);
@@ -116,91 +114,135 @@ function buildRow0OutputEvidenceGapAssessment(raw) {
     evidence("honesty-provenance", "provenance", [], honesty),
     evidence("principal-generators", "principal_generators", [73, 3], generators,
       "decimal_integer_matrix"),
-    evidence("regulator-authority", "regulator_acceptance", [], regulatorAuthority),
+    evidence("raw-relation-dependencies", "dependency", [7, 73], dependencies,
+      "decimal_integer_matrix"),
+    evidence("raw-smith-d", "presentation_diagonal", [73, 66], proof.material.d,
+      "decimal_integer_matrix"),
+    evidence("raw-smith-provenance", "provenance", [], {
+      ancestry: proof.ancestry, identity: proof.identity,
+      materialSha256: proof.materialSha256, source: proof.source,
+    }),
+    evidence("raw-smith-u", "presentation_transform_left", [73, 73],
+      proof.material.u, "decimal_integer_matrix"),
+    evidence("raw-smith-v", "presentation_transform_right", [66, 66],
+      proof.material.v, "decimal_integer_matrix"),
+    evidence("raw-smith-w", "presentation_transform_middle", [73, 66], relations,
+      "decimal_integer_matrix"),
+    evidence("regulator-acceptance", "regulator_acceptance", [],
+      regulatorAuthority),
     evidence("regulator-enclosure", "regulator_enclosure", [2], [
       regulatorHull.slice(0, 2), regulatorHull.slice(2, 4),
     ], "decimal_real_interval"),
+    evidence("regulator-precision", "regulator_precision", [], {
+      authoritySha256: regulatorAuthority.authority_sha256,
+      precisionBits: precisionState[2], state: precisionState,
+    }),
+    evidence("regulator-retry", "regulator_retry", [], retryState,
+      "decimal_integer_matrix"),
     evidence("relation-logs", "relation_logs", [73, 21], relationLogs),
     evidence("relation-matrix", "relation_matrix", [73, 66], relations,
-      "decimal_integer_matrix"),
-    evidence("terminal-left", "dependency", [8, 8], terminal.left,
-      "decimal_integer_matrix"),
-    evidence("terminal-left-inverse", "dependency", [8, 8], terminal.leftInverse,
-      "decimal_integer_matrix"),
-    evidence("terminal-presentation", "presentation_matrix", [8, 8],
-      terminal.presentation, "decimal_integer_matrix"),
-    evidence("terminal-presentation-to-relation", "dependency", [15, 8],
-      terminal.presentationToRelation, "decimal_integer_matrix"),
-    evidence("terminal-relation-to-presentation", "dependency", [15, 8],
-      terminal.relationToPresentation, "decimal_integer_matrix"),
-    evidence("terminal-right", "dependency", [8, 8], terminal.right,
-      "decimal_integer_matrix"),
-    evidence("terminal-right-inverse", "dependency", [8, 8], terminal.rightInverse,
-      "decimal_integer_matrix"),
-    evidence("terminal-smith", "presentation_diagonal", [8, 8], terminal.smith,
       "decimal_integer_matrix"),
     evidence("torsion-generator", "torsion_generator", [3], torsion,
       "decimal_integer_matrix"),
   ];
   for (let index = 0; index < 2; index += 1) {
-    const suffix = String(index + 1);
     entries.push(
-      evidence(`unit-${suffix}-coordinates`, "exact_unit_coordinates", [3],
+      evidence(`unit-${index}-coordinates`, "exact_unit_coordinates", [3],
         exactCoordinates.slice(3 * index, 3 * index + 3),
         "decimal_integer_matrix"),
-      evidence(`unit-${suffix}-log`, "compact_unit_log", [3],
+      evidence(`unit-${index}-log`, "compact_unit_log", [9],
         packedLogs.slice(9 * index, 9 * index + 9)),
-      evidence(`unit-${suffix}-norm`, "exact_unit_norm", [], exactNorms[index],
+      evidence(`unit-${index}-norm`, "exact_unit_norm", [], exactNorms[index],
         "decimal_integer_matrix"),
-      evidence(`unit-${suffix}-provenance`, "compact_unit_provenance", [],
-        compactProvenance.slice(7 * index, 7 * index + 7)),
-      evidence(`unit-${suffix}-relation-transform`,
+      evidence(`unit-${index}-provenance`, "compact_unit_provenance", [7],
+        compactProvenance.slice(7 * index, 7 * index + 7),
+        "decimal_integer_matrix"),
+      evidence(`unit-${index}-relation-transform`,
         "compact_unit_relation_transform", [73],
         retainedRelations.slice(73 * index, 73 * index + 73),
         "decimal_integer_matrix"),
     );
   }
   entries.sort((left, right) => left.id.localeCompare(right.id));
-  const assessment = {
-    authenticatedEvidence: entries,
-    candidate: { classNumber: "1", exactUnitCount: "2", invariantFactors: [],
-      regulatorKind: "rigorous_enclosure", torsionOrder: "2", unitRank: "2" },
-    completion: {
-      correspondenceComplete: true,
-      freshCorrespondence: true,
-      missing: ["combine-lazy-materialization",
-        "dimension-compatible-presentation-proof", "factor-lazy-materialization",
-        "independent-unit-saturation-certificate", "proved-factor-base-bound",
-        "public-api-integration", "reduce-lazy-materialization"],
-      outputBoundaryComplete: false,
-      phase3Complete: false,
-      phase4Complete: false,
-      phase5Complete: false,
-    },
-    field: { definingPolynomialAscending: [...source.field.definingPolynomialAscending],
-      degree: "3", id: FIELD_ID },
-    maps: {
-      combine: { missing: ["combine-lazy-materialization"], ready: false },
-      factor: { missing: ["factor-lazy-materialization"], ready: false },
-      reduce: { missing: ["reduce-lazy-materialization"], ready: false },
-    },
-    presentationGap: {
-      actualRelationMatrixShape: ["73", "66"],
-      requiredIdentityShape: ["66", "66"],
-      requiredRightInverseShape: ["66", "73"],
-      retainedPresentationShape: ["8", "8"],
-      retainedRelationMapShape: ["15", "8"],
-      status: "dimension-compatible-proof-not-retained",
-    },
-    schema: ASSESSMENT_SCHEMA,
+
+  const missing = ["combine-lazy-materialization", "factor-lazy-materialization",
+    "independent-unit-saturation-certificate", "proved-factor-base-bound",
+    "public-api-integration", "reduce-lazy-materialization"];
+  const output = {
+    schema: v2.SCHEMA,
+    field: { definingPolynomialAscending:
+        [...payload.field.definingPolynomialAscending], degree: "3", id: FIELD_ID },
     source: { correspondenceResultSha256: CORRESPONDENCE_SHA256,
       pariSourceSha256: PARI_SOURCE_SHA256, pariVersion: "2.17.4" },
-    v2Payload: null,
+    evidence: entries,
+    relations: { factorBaseCount: "66", factorBaseRef: "factor-base-ideals",
+      logColumns: "21", logsRef: "relation-logs",
+      principalGeneratorsRef: "principal-generators", relationCount: "73",
+      relationMatrixRef: "relation-matrix" },
+    presentation: { dependencyRefs: ["raw-relation-dependencies"],
+      proof: { dRef: "raw-smith-d", uRef: "raw-smith-u",
+        vRef: "raw-smith-v", wRef: "raw-smith-w" },
+      provenanceRefs: ["honesty-provenance", "raw-smith-provenance"],
+      variant: "smith_uwvd" },
+    classGroup: { classNumber: "1", generators: [], invariantFactors: [] },
+    unitGroup: {
+      compactUnits: Array.from({ length: 2 }, (_, index) => ({
+        logRef: `unit-${index}-log`, provenanceRef: `unit-${index}-provenance`,
+        relationTransformRef: `unit-${index}-relation-transform`,
+      })),
+      exactUnits: { status: "present",
+        units: Array.from({ length: 2 }, (_, index) => ({
+          coordinatesRef: `unit-${index}-coordinates`,
+          normRef: `unit-${index}-norm`,
+        })) },
+      rank: "2",
+      regulator: { acceptanceRef: "regulator-acceptance",
+        enclosureRef: "regulator-enclosure", kind: "rigorous_enclosure",
+        precisionBits: precisionState[2], precisionRef: "regulator-precision" },
+      torsion: { generatorRef: "torsion-generator", order: "2" },
+    },
+    maps: {
+      combine: { evidenceRefs: [], missing: ["combine-lazy-materialization"],
+        ready: false },
+      factor: { evidenceRefs: [], missing: ["factor-lazy-materialization"],
+        ready: false },
+      reduce: { evidenceRefs: [], missing: ["reduce-lazy-materialization"],
+        ready: false },
+    },
+    completion: { correspondenceComplete: true, freshCorrespondence: true,
+      missing, outputBoundaryComplete: false, phase3Complete: true,
+      phase4Complete: false, phase5Complete: false },
   };
-  output.canonical(assessment);
-  return Object.freeze({ assessment, sourcePayload: source });
+  v2.validate(output);
+  return { output: Object.freeze(output), payload, proof };
+}
+
+function buildRow0OutputEvidence(raw) { return collect(raw).output; }
+function assessRow0OutputEvidence(raw) {
+  const { output, proof } = collect(raw);
+  return Object.freeze({
+    schema: ASSESSMENT_SCHEMA,
+    source: output.source,
+    field: output.field,
+    status: "valid-v2-incomplete-output-boundary",
+    rawSmithPresentation: { diagonalFactors: proof.diagonalFactors,
+      identity: proof.identity, materialSha256: proof.materialSha256,
+      dimensions: proof.dimensions },
+    completion: { ...output.completion, phase4MaterialRetained: true },
+    missing: {
+      capability: ["independent-unit-saturation-certificate",
+        "proved-factor-base-bound"],
+      maps: ["combine-lazy-materialization", "factor-lazy-materialization",
+        "reduce-lazy-materialization"],
+      public: ["public-api-integration"],
+      reason: "phase-3-complete; phase-4-saturation-and-phase-5-maps-remain",
+    },
+    outputEvidenceSha256: v2.sha256Canonical(output),
+    qualifiedTiming: false,
+  });
 }
 
 module.exports = Object.freeze({ ASSESSMENT_SCHEMA, CORRESPONDENCE_SHA256,
   FIELD_ID, PARI_SOURCE_SHA256, Row0OutputEvidenceFailure,
-  buildRow0OutputEvidenceGapAssessment });
+  assessRow0OutputEvidence, authenticateRow0Correspondence,
+  buildRow0OutputEvidence });
