@@ -96,7 +96,8 @@ function words(values, minimum = 1) {
   return result;
 }
 
-async function runFirstHnf(prepared, factorOwner, { hnfWords = 16 } = {}) {
+async function runFirstHnf(prepared, factorOwner,
+  { hnfWords = 16, prepareOnly = false } = {}) {
   assert.equal(factorOwner.schema,
     "sagejs.pari-class-group/row23-prepared-factor-base-v1");
   assert.equal(prepared.n, "5");
@@ -228,6 +229,7 @@ async function runFirstHnf(prepared, factorOwner, { hnfWords = 16 } = {}) {
   }));
   assert(ownerBytes < 512*1024**2, "row-23 first-HNF owners exceed 512 MiB");
   const view = value => value.toArray ? value.toArray() : Array.from(value);
+  if (prepareOnly) return { status: null, ownerBytes, built, fn, names, values };
   let status;
   try {
     status = fn.gmp(...names.map(([name]) => values[name]));
