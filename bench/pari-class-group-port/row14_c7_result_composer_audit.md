@@ -97,12 +97,13 @@ Frozen W0 is not an input to this composition or replay.
 
 ## Validation receipt
 
-The complete capped checker passed twice against the immutable terminal class
-owner
-`74f83010d0ea113ee9c8614323a1c1c38efac1253a423778989ef9ab7bb87bef`
+The complete capped checker passed twice against the initial immutable terminal
+class owner and then passed again against its hardened, runtime-neutral successor
+`c9186b96f7c4845957ad4e6bb002a1d00862f95a4ed26a8d242ed07ce36fb47f`
 and authentic C5/C6 owner
 `763a91e02ed0f3245d561ba38430930f09eedf8dfce943d27130f7cc579ac212`.
-The two wall times were 25.7 and 26.4 seconds. Each run rejected 36 detached
+The original two wall times were 25.7 and 26.4 seconds; the hardened-owner run
+took 26.1 seconds. Each run rejected 36 detached
 authority, coordinated re-authorization, semantic join, re-seal, completion,
 and publication-conflict mutations. The second run also re-opened the existing
 mode-`0444` immutable publication, proving publication idempotence.
