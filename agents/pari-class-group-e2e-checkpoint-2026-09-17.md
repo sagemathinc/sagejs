@@ -12,6 +12,43 @@ plan gate.
 
 ## Current result
 
+### Post-checkpoint advances on 2026-09-18
+
+The integration spine has since crossed four additional, independently checked
+boundaries.  These advances do not enable Phase 6 and do not change the honest
+campaign outcome from **D**:
+
+- commit `78f9dd920` computes row 14's factor base and 42 initial relations from
+  the authenticated prepared-number-field projection rather than accepting the
+  historical capsule as an input;
+- commit `de485149e` connects that prepared root through the complete live
+  relation/HNF schedule `42 -> 802 -> 804 -> 805 -> 806`.  The capped run took
+  90.91 seconds and 1,227,312 KiB peak RSS.  All four checkpoint hashes and all
+  806 relation identities agree with frozen W0, which is admitted only after
+  live execution;
+- commits `9f095bed7` and `e452597cd` reconstruct the row-14 HNF ancestry and
+  exact order-24/order-8 class witnesses, then compose the neutral C7 result.
+  Thus row 14 now proves `Cl(K) = Z/8Z x Z/24Z`, class number 192, while
+  retaining rank-two compact-unit ancestry and the authentic
+  `not_given(LARGE)` outcome.  The C7 result is correspondence-complete and
+  public-incomplete.  The prepared Gate-C and terminal cuts are still separate
+  processes, so their times must not yet be summed or compared with a single
+  PARI `bnfinit` call;
+- commit `b5c292b9c` closes row 3 with class group `Z/6Z`, exact order witness,
+  compact rank-two units, regulator, torsion, and authentic
+  `not_given(LARGE)`; and commit `6b881db53` closes row 11 with class group
+  `(Z/2Z)^2`, two exact order-two witnesses, two 330-factor compact units,
+  regulator, torsion, and authentic `not_given(LARGE)`.  Row 11's capped cold
+  replay took 25.2 seconds and rejected 14 adversarial mutations.  Both rows
+  explicitly retain their frozen-W0 input limitation and make no qualified
+  timing or public-completion claim.
+
+The compiler spine also fixed relative native-import graph reachability,
+source-compiler convergence, and the stage-zero AST bridge at commits
+`f51105d1c`, `ee8dc34e3`, and `88f919534`.  A fresh self-host now converges in
+two passes and the full 94-module standard-library plus 67-module baselib cache
+build succeeds.
+
 One prepared totally real cubic,
 `x^3 - 20018*x + 20034`, now has a genuinely connected internal result:
 
@@ -232,19 +269,18 @@ certification or Phase-6 timing qualification.
 | 2 — relation/retry | Partial | Exact cubic collection, quartic repeated nonempty-`W` HNF appends, and isolated random-relation corridors exist. | Generic capacity growth, factor-base enlargement, natural random fallback, and all-sentinel closure remain. |
 | 3 — exact envelope | Partial | H1 full Smith replay and field-3 `[2,2]` relation/Smith state exist. The field-3 live process retains and independently cold-replays all 186,560 exact cells. All 301 principal relations replay exactly against the 288 retained factor-base ideals. A bounded canonical-HNF route proves rank 288, invariant factors `[2,2]`, order 4, exact suffix alignment, and an arbitrary-ideal receipt with an independently checked principal quotient. The exact 301-by-13 transform has been bound into the immutable field-3 composer: all 3,744 relation-kernel entries vanish, source-order packed replay matches every HNF/append checkpoint and terminal `A`, and both compact unit columns have exact kernel witnesses. Panel row 8 replays its authentic 150+1+1 schedule, all 152 principal ideals and norms, and `R*T=0`, `R*Q=I_143`. Panel row 1 proves its complete 51-dimensional presentation and cyclic order-three generator witness; row 4 now proves its cyclic order-two generator with an exact compact principal witness; mixed-cubic rows 16 and 18 prove `[3,3,3]` and `[18]` with exact order witnesses; row 20 proves the 14-relation right inverse and trivial presentation. | Generalize beyond these fields and close the remaining development-field envelope. |
 | 4 — units/precision | Partial | The real H1 cubic performs exact source-derived units and retries from 192 to 2304 bits. For field 3, all 301 real and complex log columns join into an immutable 6,321-cell raw owner; the authentic C3 transform, C4 analytic acceptance, C5 `cleanarch`, and native C6 embedding/`getfu` stages execute at 153088 bits. C5 retains a 301-by-2 compact transform with supports 227/227 and exact norms `+1,+1`; C6 faithfully terminates as `not_given(PRECI)`. Panel row 8 likewise reaches flag-zero `not_given(PRECI)` at 192 bits. Panel row 1 derives two exact units from all 58 raw relations using 16,384-bit exact storage and proves norms `+1,+1`. Row 4 derives two exact compact units with norms `(-1,+1)` and faithfully returns `not_given(LARGE)`, but frozen W0 still supplies the raw logs. Row 14 now executes authentic C5/C6 and faithfully terminates as `not_given(LARGE)` with its immutable source-policy result and mutation checks; compact unit-column ancestry remains open. Rows 16 and 18 publish exact norm-one rank-one units with their regulator owners. Row 20 authentically reaches successful flag-zero C6, publishes two exact quintic units, and proves both norms, inverses, and principal ideals. | Run the separately timed compact flag-one tier, replace row 4's W0 raw-log input, finish row 14's compact unit ancestry, and generalize the precision/unit path to the remaining development fields. |
-| 5 — honesty/final | Partial | One atomic H1 internal final result and mutation/replay contract exists. Field-3 C7 joins its exact class witnesses and compact PRECI units into a correspondence-complete, public-incomplete result. Panel-row-8 C7 does likewise for its trivial class group while preserving `not_given(PRECI)`. Panel-row-1 C7 joins class `[3]`, a genuine order-three generator witness, expanded exact units, regulator, torsion, and equal-bound honesty evidence. Row-4 C7 joins class `[2]`, its compact order witness, two exact factored units, `not_given(LARGE)`, regulator, and torsion while retaining the frozen-W0 input limitation. Mixed-cubic rows 16 and 18 join exact class witnesses, rank-one units, regulator, and torsion through the neutral C7 envelope. Row-20 C7 joins a trivial exact presentation to its successful expanded exact units and torsion. Eight of the sixteen frozen development fields are now internally correspondence-complete. A separate predeclared unequal-bound degree-five path authentically executes successful `be_honest`. | Row 14 ancestry/C7, the compact flag-one tier, independent Sage.js certification, remaining development fields, and general final replay remain open. |
+| 5 — honesty/final | Partial | One atomic H1 internal final result and mutation/replay contract exists. Field-3 C7 joins its exact class witnesses and compact PRECI units into a correspondence-complete, public-incomplete result. Panel-row-8 C7 does likewise for its trivial class group while preserving `not_given(PRECI)`. Panel-row-1 C7 joins class `[3]`, a genuine order-three generator witness, expanded exact units, regulator, torsion, and equal-bound honesty evidence. Row-4 C7 joins class `[2]`, its compact order witness, two exact factored units, `not_given(LARGE)`, regulator, and torsion while retaining the frozen-W0 input limitation. Mixed-cubic rows 16 and 18 join exact class witnesses, rank-one units, regulator, and torsion through the neutral C7 envelope. Row-20 C7 joins a trivial exact presentation to its successful expanded exact units and torsion. Rows 3 and 11 now add exact witnessed groups `[6]` and `[2,2]` with compact rank-two unit results, while row 14 adds exact witnessed group `[8,24]` and authentic rank-two `not_given(LARGE)`. Eleven of the sixteen frozen development fields are now internally correspondence-complete. A separate predeclared unequal-bound degree-five path authentically executes successful `be_honest`. | Fuse row 14's prepared Gate-C and terminal stages into one transaction, replace rows 3 and 11's frozen-W0 inputs, run the compact flag-one tier, add independent Sage.js certification, and close the remaining development fields. |
 | 6 — qualification | Partial | A real mutually exclusive seven-pair matched diagnostic conserves each root and leaves only `0.011 ms` median unattributed in Sage.js. Compiler campaign 1 preserved the exact result while removing 99.52% of callback allocation events; only 1.26x–1.69x stage gains prove allocation count is not the dominant residual gap. | Source stage cuts are not cross-implementation-identical, the 80% cross-source gap attribution gate remains unmet, and the frozen 24-field qualification has not run. |
 
 ## Next falsifiable cuts
 
-1. Finish panel row 14's source-operation ancestry from its live 806-relation
-   owner. Derive and independently replay the seven compact unit columns and
-   three class-presentation columns, then join their exact principal witnesses
-   to the already-live `[24,8]`, class-number-192 acceptance and authentic
-   `not_given(LARGE)` C5/C6 suffix. Keep the 4-GiB ceiling and fail closed on
-   every non-source arithmetic or missing transform.
+1. Fuse row 14's prepared root, Gate-C schedule, post-806 acceptance, HNF
+   ancestry, exact class witnesses, C5/C6, and C7 publication into one bounded,
+   atomic driver.  Its worker must receive only the authenticated prepared-field
+   projection; frozen W0 may be admitted only after worker exit.  Add a matched
+   PARI 2.17.4 prepared-`nfinit` adapter before reporting a ratio.
 2. Extend the same sealed owner/result machinery across the remaining frozen
-   12-field development ladder, preserving full relation/HNF provenance, exact
+   five-field development ladder, preserving full relation/HNF provenance, exact
    generator-order witnesses, source-order replay, and the
    `public_complete=false` certification boundary. Run the separately timed
    compact flag-one tier only after its genuine compact-factor path and matched
