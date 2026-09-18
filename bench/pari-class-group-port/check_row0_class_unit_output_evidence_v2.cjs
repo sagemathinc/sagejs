@@ -108,13 +108,13 @@ function main(filename) {
   assert.equal(output.presentation.variant, "smith_uwvd");
   assert.equal(output.completion.phase3Complete, true);
   assert.equal(output.completion.phase4Complete, true);
-  assert.equal(output.completion.phase5Complete, false);
+  assert.equal(output.completion.phase5Complete, true);
   assert.equal(output.completion.outputBoundaryComplete, false);
   assert(!output.completion.missing.includes(
     "independent-unit-saturation-certificate"));
   assert(output.completion.missing.includes("proved-factor-base-bound"));
   assert.deepEqual(Object.values(output.maps).map(value => value.ready),
-    [false, false, false]);
+    [true, true, true]);
 
   const relations = sourceOwner(source, "replay-relation_records");
   const proof = proofApi.buildRow0RawRelationSmithProof({
@@ -131,6 +131,14 @@ function main(filename) {
   assert.equal(evidence.get("raw-smith-u").sha256, digest(proof.material.u));
   assert.equal(evidence.get("raw-smith-v").sha256, digest(proof.material.v));
   assert.equal(evidence.get("raw-smith-d").sha256, digest(proof.material.d));
+  const mapMaterials = adapter.row0MapMaterials(proof);
+  for (const name of ["combine", "factor", "reduce"]) {
+    assert.deepEqual(output.maps[name], {
+      evidenceRefs: [`${name}-map`], missing: [], ready: true,
+    });
+    assert.equal(evidence.get(`${name}-map`).sha256,
+      digest(mapMaterials[name]));
+  }
   const smithCells = replayRawSmith(proof, relations);
   assert.deepEqual(proof.diagonalFactors, Array(66).fill("1"));
   assert.equal(proof.material.u.slice(66 * 73).length, 7 * 73);
@@ -164,7 +172,7 @@ function main(filename) {
   assert.equal(assessment.completion.phase3Complete, true);
   assert.equal(assessment.completion.phase4Complete, true);
   assert.equal(assessment.completion.phase4MaterialRetained, true);
-  assert.equal(assessment.completion.phase5Complete, false);
+  assert.equal(assessment.completion.phase5Complete, true);
   assert.deepEqual(assessment.missing.capability,
     ["proved-factor-base-bound"]);
   assert.equal(assessment.outputEvidenceSha256, digest(output));
@@ -178,13 +186,11 @@ function main(filename) {
   assert.throws(() => adapter.buildRow0OutputEvidence(raw, changedSaturation),
     adapter.Row0OutputEvidenceFailure);
   const changed = structuredClone(output);
-  changed.completion.phase4Complete = true;
-  changed.completion.phase5Complete = true;
   changed.completion.outputBoundaryComplete = true;
   assert.throws(() => v2.validate(changed), /missing list|map material/);
 
   process.stdout.write(`${JSON.stringify({
-    schema: "sagejs.pari-class-group/row0-output-evidence-v2-check-v2",
+    schema: "sagejs.pari-class-group/row0-output-evidence-v2-check-v3",
     correspondenceResultSha256: adapter.CORRESPONDENCE_SHA256,
     outputEvidenceSha256: digest(output), assessmentSha256: digest(assessment),
     rawRelationShape: [73, 66], rawSmithLeftShape: [73, 73],
@@ -192,7 +198,7 @@ function main(filename) {
     rawSmithCellsReplayed: smithCells, classNumber: "1",
     exactUnitsReplayed: 2, rigorousRegulatorReplayed: true,
     coldOwnerReplay: true, phase3Complete: true, phase4Complete: true,
-    phase4MaterialRetained: true, phase5Complete: false,
+    phase4MaterialRetained: true, phase5Complete: true,
     outputBoundaryComplete: false, publishableUnderV2: true,
     sourceMutationRejected: true, saturationMutationRejected: true,
     inflatedCompletionRejected: true,

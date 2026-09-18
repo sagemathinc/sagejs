@@ -3,9 +3,13 @@
 // Row 0's additive output-evidence-v2 projection.  The full 73-by-66 Smith
 // proof is reconstructed from same-run retained HNF ancestry.  Phase 3 is
 // complete.  Phase 4 additionally binds a detached, independently replayed
-// analytic unit-index certificate; general maps remain incomplete.
+// analytic unit-index certificate.  Source-transparent native arithmetic and
+// the full Smith identity supply factor/reduce/combine maps on arbitrary
+// fractional ideals supported by the retained factor base.
 
 const crypto = require("node:crypto");
+const fs = require("node:fs");
+const path = require("node:path");
 const neutral = require("./class_unit_correspondence_result.cjs");
 const v2 = require("./class_unit_output_evidence_v2.cjs");
 const rawSmith = require("./row0_raw_relation_smith_proof.cjs");
@@ -51,6 +55,41 @@ function decodeCanonicalBytes(entries, name) {
 function evidence(id, kind, shape, material, encoding = "canonical_json") {
   return { encoding, id, kind, sha256: v2.sha256Canonical(material),
     shape: shape.map(String) };
+}
+
+function row0MapMaterials(proof) {
+  const implementationSha256 = sha256(fs.readFileSync(path.join(__dirname,
+    "row0_general_ideal_maps.py")));
+  const nativeDependencySha256 = Object.freeze({
+    idealProduct: sha256(fs.readFileSync(path.join(__dirname,
+      "signed_prime_ideal_reduction.py"))),
+    multiplicationTensor: sha256(fs.readFileSync(path.join(__dirname,
+      "real_cubic_getfu_honesty.py"))),
+  });
+  const common = {
+    correspondenceResultSha256: CORRESPONDENCE_SHA256,
+    domain: "arbitrary-fractional-cubic-ideal-hnf-supported-on-retained-factor-base-with-word-hnf-modulus",
+    implementation:
+      "ordinary-cpython-parseable-source-with-source-transparent-native-arithmetic",
+    implementationSha256,
+    nativeDependencySha256,
+    rawSmithMaterialSha256: proof.materialSha256,
+  };
+  return Object.freeze({
+    factor: Object.freeze({ ...common, operation: "factor",
+      algorithm:
+        "exact-successive-prime-power-containment-with-complete-norm-and-hnf-reconstruction",
+      retainedOwners: ["replay-final_polynomial", "replay-packet_ideals",
+        "replay-packet_norms", "replay-prep_zk"],
+      rejectsOutsideSupport: true }),
+    reduce: Object.freeze({ ...common, operation: "reduce",
+      algorithm:
+        "full-smith-inverse-and-exact-signed-principal-relation-witness",
+      retainedOwners: ["replay-generators", "replay-relation_records"] }),
+    combine: Object.freeze({ ...common, operation: "combine",
+      algorithm: "signed-factor-tape-addition-followed-by-smith-reduction",
+      retainedOwners: ["replay-generators", "replay-relation_records"] }),
+  });
 }
 
 function authenticateSaturation(value, proof) {
@@ -154,6 +193,7 @@ function collect(raw, saturationEvidence) {
     hnf_hnf_transform: replay("hnf_hnf_transform", 15 * 15),
     hnf_full_h: replay("hnf_full_h", 8 * 15),
   }));
+  const mapMaterials = row0MapMaterials(proof);
   const saturation = authenticateSaturation(saturationEvidence, proof);
   const dependencies = proof.material.u.slice(66 * 73);
   const compactProvenance = replay("final_compact_provenance", 14);
@@ -171,8 +211,10 @@ function collect(raw, saturationEvidence) {
     "honesty evidence");
 
   const entries = [
+    evidence("combine-map", "combine_map", [], mapMaterials.combine),
     evidence("factor-base-ideals", "factor_base_ideals", [66, 9], factorBase,
       "decimal_integer_matrix"),
+    evidence("factor-map", "factor_map", [], mapMaterials.factor),
     evidence("honesty-provenance", "provenance", [], honesty),
     evidence("principal-generators", "principal_generators", [73, 3], generators,
       "decimal_integer_matrix"),
@@ -190,6 +232,7 @@ function collect(raw, saturationEvidence) {
       proof.material.v, "decimal_integer_matrix"),
     evidence("raw-smith-w", "presentation_transform_middle", [73, 66], relations,
       "decimal_integer_matrix"),
+    evidence("reduce-map", "reduce_map", [], mapMaterials.reduce),
     evidence("regulator-acceptance", "regulator_acceptance", [],
       regulatorAuthority),
     evidence("regulator-enclosure", "regulator_enclosure", [2], [
@@ -228,9 +271,7 @@ function collect(raw, saturationEvidence) {
   }
   entries.sort((left, right) => left.id.localeCompare(right.id));
 
-  const missing = ["combine-lazy-materialization", "factor-lazy-materialization",
-    "proved-factor-base-bound", "public-api-integration",
-    "reduce-lazy-materialization"];
+  const missing = ["proved-factor-base-bound", "public-api-integration"];
   const output = {
     schema: v2.SCHEMA,
     field: { definingPolynomialAscending:
@@ -265,16 +306,13 @@ function collect(raw, saturationEvidence) {
       torsion: { generatorRef: "torsion-generator", order: "2" },
     },
     maps: {
-      combine: { evidenceRefs: [], missing: ["combine-lazy-materialization"],
-        ready: false },
-      factor: { evidenceRefs: [], missing: ["factor-lazy-materialization"],
-        ready: false },
-      reduce: { evidenceRefs: [], missing: ["reduce-lazy-materialization"],
-        ready: false },
+      combine: { evidenceRefs: ["combine-map"], missing: [], ready: true },
+      factor: { evidenceRefs: ["factor-map"], missing: [], ready: true },
+      reduce: { evidenceRefs: ["reduce-map"], missing: [], ready: true },
     },
     completion: { correspondenceComplete: true, freshCorrespondence: true,
       missing, outputBoundaryComplete: false, phase3Complete: true,
-      phase4Complete: true, phase5Complete: false },
+      phase4Complete: true, phase5Complete: true },
   };
   v2.validate(output);
   return { output: Object.freeze(output), payload, proof };
@@ -296,10 +334,10 @@ function assessRow0OutputEvidence(raw, saturationEvidence) {
     completion: { ...output.completion, phase4MaterialRetained: true },
     missing: {
       capability: ["proved-factor-base-bound"],
-      maps: ["combine-lazy-materialization", "factor-lazy-materialization",
-        "reduce-lazy-materialization"],
+      maps: [],
       public: ["public-api-integration"],
-      reason: "phase-3-and-phase-4-complete; factor-bound-and-phase-5-maps-remain",
+      reason:
+        "phases-3-through-5-complete-on-retained-factor-base; global-factor-bound-and-public-integration-remain",
     },
     outputEvidenceSha256: v2.sha256Canonical(output),
     qualifiedTiming: false,
@@ -309,4 +347,4 @@ function assessRow0OutputEvidence(raw, saturationEvidence) {
 module.exports = Object.freeze({ ASSESSMENT_SCHEMA, CORRESPONDENCE_SHA256,
   FIELD_ID, PARI_SOURCE_SHA256, Row0OutputEvidenceFailure,
   assessRow0OutputEvidence, authenticateRow0Correspondence,
-  buildRow0OutputEvidence });
+  buildRow0OutputEvidence, row0MapMaterials });
