@@ -17,6 +17,7 @@ const row0 = require("./row0_fresh_prepared_execution.cjs");
 const row6 = require("./row6_fresh_prepared_transaction_host.cjs");
 const row13 = require("./row13_fresh_prepared_transaction.cjs");
 const row14 = require("./row14_fresh_prepared_execution.cjs");
+const row21 = require("./row21_fresh_prepared_transaction.cjs");
 
 const SCHEMA = "sagejs.pari-class-group/fresh-prepared-development-execution-v1";
 const FRESH_EXECUTIONS = new WeakSet();
@@ -25,6 +26,7 @@ const RUNNERS = new Map([
   [6, row6],
   [13, row13],
   [14, row14],
+  [21, row21],
 ]);
 
 function registeredRoot(root) {
