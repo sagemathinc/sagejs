@@ -1,7 +1,7 @@
 # Native omitted-positional default lookup
 
-Base: `aafe94c52` (`agent/python-keyword-target-native-classification`, queued
-behind the attribute, construction, and method-binding integration).
+Base: `929230116` (`agent/python-default-tail-keyword-main`, the source-current
+qualified keyword-prologue candidate).
 
 ## Change
 
@@ -20,46 +20,49 @@ function-default behavior.
 
 ## Controlled measurements
 
-The idle `bench-1` Linux x64 host ran Node 26.5.1 and CPython 3.12.3. Ten
+The shared Linux x64 project host ran Node 26.9.0 and CPython 3.14.4. Ten
 alternating fresh processes ran each exact artifact; the first three samples
-were discarded. Each row contains 100,000 checked operations.
+were discarded. Compilation and startup are outside the measured regions. Each
+row contains 100,000 checked operations.
 
-| Case | Native-target base | Candidate | Change | CPython | Candidate / CPython |
+| Case | Keyword-prologue base | Candidate | Change | CPython | Candidate / CPython |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| positional function | 82.280 ms | 80.640 ms | flat | 8.868 ms | 9.1x |
-| keyword function | 197.602 ms | 164.017 ms | **17.0% faster** | 10.040 ms | 16.3x |
-| immediate keyword method | 251.903 ms | 224.959 ms | **10.7% faster** | 10.435 ms | 21.6x |
-| empty construction | 31.369 ms | 30.890 ms | flat | 7.587 ms | 4.1x |
-| no-op initializer | 54.665 ms | 54.749 ms | flat | 12.031 ms | 4.6x |
-| positional construction and method | 285.335 ms | 290.104 ms | flat | 23.091 ms | 12.6x |
-| keyword construction and method | 503.551 ms | 507.044 ms | flat | 37.192 ms | 13.6x |
+| positional supplied-default control | 89.846 ms | 90.802 ms | flat | 11.539 ms | 7.87x |
+| keyword supplied-default control | 129.345 ms | 129.481 ms | flat | 12.468 ms | 10.38x |
+| positional omitted default | 121.572 ms | 92.957 ms | **23.54% faster** | 12.354 ms | 7.52x |
+| keyword omitted default | 182.193 ms | 150.356 ms | **17.47% faster** | 12.503 ms | 12.03x |
+| method omitted default | 189.848 ms | 161.334 ms | **15.02% faster** | 12.885 ms | 12.52x |
+| four omitted defaults | 241.391 ms | 164.324 ms | **31.93% faster** | 16.564 ms | 9.92x |
 
 The base artifact SHA-256 is
-`d4e402bebd68ae2cf3aee64e0bc98fc74d3bb252463e8693ff0bebcaeb13bb3c`
-(24,441,523 bytes). The candidate is
-`0d3a5b2b2254a6aca908e12389d33231101baeb76b5a90e7d91498d0fda7dae0`
-(24,441,169 bytes), 354 bytes smaller.
+`be8c164b0520667224cda7fcf98d88268d5fe975cf82482a4dad3c48ee648ebe`
+(24,337,175 bytes). The candidate is
+`770f5fde320f890f1e383cf2b3adca9cf5e95e8fe426cdea79499e590cd2f839`
+(24,336,982 bytes), 193 bytes smaller.
 
-The remaining keyword-function and keyword-method gaps are still 16.3x and
-21.6x CPython. Arithmetic and the rest of binding remain in the workload, so
-this result removes one measured layer without closing the common-call cliff.
+The remaining keyword-function and keyword-method gaps are still 12.03x and
+12.52x CPython. The scaling row reaches 9.92x, while a single positional
+omission remains 7.52x. This removes one measured layer without closing the
+common-call cliff.
 
 ## Qualification
 
-- The exact-source build converged in two self-hosting passes and completed.
+- The exact-source build converged in two self-hosting passes and completed in
+  7m 30s.
 - The CPython differential corpus passes 505 cases with the same three
   intentional incompatibilities and no baseline drift.
-- Thirty focused default, prepared-method, resolved-keyword, and raw-boundary
-  tests pass; dynamic initializer and pinned traitlets checks also pass.
+- All 107 focused default, prepared-method, dynamic-initializer, lowering, and
+  raw-boundary tests pass; all six pinned traitlets checks also pass.
 - The pinned decorator 5.2.1 and attrs 25.4.0 workflows pass.
 - Strict CPython syntax, Ruff 0.16.0, and Pyright pass for 404 modules; docs and
   merge invariants pass.
-- Core runtime falls from 902,633 to 902,367 bytes against the unchanged
+- Core runtime falls from 902,294 to 902,028 bytes against the unchanged
   903,000-byte budget. No source, startup, browser, or performance budget
   changed.
-- The local startup result is not a passing receipt: 424.8 ms normalized exceeds
-  the unchanged 400 ms budget. It remains far below the 1500 ms catastrophic
-  ceiling, but merge-owned CI must supply the startup/browser receipt.
+- The local startup result is not a passing receipt: the candidate measured
+  402.7 ms normalized and its exact parent measured 426.6 ms, both above the
+  unchanged 400 ms budget. Merge-owned CI must supply the startup/browser
+  receipt.
 
-The branch remains queued behind its prerequisites and has no stacked PR. It is
-not a release action.
+The branch remains queued behind the constructor and keyword-prologue
+candidates and has no stacked PR. It is not a release action.

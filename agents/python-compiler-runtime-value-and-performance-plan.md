@@ -572,20 +572,21 @@ bytes and core source is 902,294/903,000. Keyword paths still measure roughly
 `agents/python-default-tail-keyword-prologue.md`; keep this branch behind the
 constructor candidates.
 
-**2026-09-17 omitted-positional-default checkpoint:** keyword calls which omit
+**2026-09-18 omitted-positional-default replay:** keyword calls which omit
 a positional parameter repeatedly entered a compiled-Python shared helper to
 read and index the live `__defaults__` tuple. Moving exactly that helper's
-native property/check/index/error boundary to raw JavaScript improves keyword
-functions by 17.0% and immediate keyword methods by 10.7% in controlled exact-
-artifact comparisons; unrelated rows remain flat and the artifact shrinks 354
-bytes. Live default replacement, short/null defaults, and the existing argument
-error path remain tested. Core source falls to 902,367/903,000 bytes. Residual
-keyword-function and keyword-method gaps are still 16.3x and 21.6x CPython, so
-M5 remains open. Differential, default, mutation, traitlets, attrs/decorator,
-strict, docs, and merge gates pass. The local startup measurement remains above
-the unchanged budget and is not a receipt. Exact evidence is in
-`agents/python-positional-default-native.md`; keep this candidate behind its
-prerequisites.
+native property/check/index/error boundary to raw JavaScript improves one
+omitted default by 23.54% positionally, 17.47% through keyword dispatch, and
+15.02% through an immediate method. Four omissions improve 31.93%; supplied-
+default controls remain within 1.1%. Live default replacement, short/null
+defaults, and the existing argument error path remain tested. Core source falls
+to 902,028/903,000 bytes and the artifact shrinks 193 bytes. Residual positional,
+keyword-function, and method gaps are still 7.52x, 12.03x, and 12.52x CPython,
+so M5 remains open. Differential, default, mutation, traitlets,
+attrs/decorator, strict, docs, and merge gates pass. The local startup
+measurement remains above the unchanged budget and is not a receipt. Exact
+evidence is in `agents/python-positional-default-native.md`; keep this candidate
+behind the constructor and keyword-prologue candidates.
 
 Continue next with integration-aware qualification, the receiver-lookup campaign,
 and true handled-exception ownership. Generator/coroutine suspension makes a
