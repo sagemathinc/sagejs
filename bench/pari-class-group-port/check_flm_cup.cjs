@@ -70,7 +70,7 @@ for value in [-1,2147483659]:
  assert repr(a)==before
 for m,n in [(0,0),(0,5),(5,0)]:
  a=args(m,n);assert f(*a)==0 and a[7]==[0]*n and a[8][:3]==[0,0,n]
-a=args(70,200);assert f(*a)==-1 and a[7]==[77]*200 and a[8]==[-1]+[77]*7
+a=args(90,300);assert f(*a)==-1 and a[7]==[77]*300 and a[8]==[-1]+[77]*7
 print('CPython passed')
 `,path.resolve(__dirname,'../..'),path.resolve(__dirname,'../../src/lib')],{input:JSON.stringify([cases,expected])});
  const summary={cases:cases.length,cp:cp.trim(),ubsan:true,sourceSha256:hash(source),traceSha256:hash(trace),artifactDirectory:dir,qualifiedTiming:false};
@@ -93,9 +93,9 @@ print('CPython passed')
   for(const index of [0,4,5,6,7,8]){const a=args();a[index]=[];const before=structuredClone(a);assert.throws(()=>f[backend](...a));assert.deepEqual(a,before);}
   for(const value of [-1n,2147483659n]){const a=args();a[0][0]=value;const before=structuredClone(a);assert.throws(()=>f[backend](...a));assert.deepEqual(a,before);}
   for(const [m,n] of [[0,0],[0,5],[5,0]]){const a=args(m,n);assert.equal(f[backend](...a),0n);assert.deepEqual(a[7],Array(n).fill(0n));assert.deepEqual(a[8].slice(0,3),[0n,0n,BigInt(n)]);}
-  const a=args(70,200);assert.equal(f[backend](...a),-1n);assert.deepEqual(a[7],Array(200).fill(77n));assert.deepEqual(a[8],[-1n,...Array(7).fill(77n)]);
+  const a=args(90,300);assert.equal(f[backend](...a),-1n);assert.deepEqual(a[7],Array(300).fill(77n));assert.deepEqual(a[8],[-1n,...Array(7).fill(77n)]);
  }
- summary.atomicGuards=true;summary.emptyShapes=true;summary.boundedProductBridge=200000;
+ summary.atomicGuards=true;summary.emptyShapes=true;summary.boundedProductBridge=500000;
  summary.coreBytes=fs.statSync(built.coreSourcePath).size;summary.coreSha256=hash(fs.readFileSync(built.coreSourcePath));summary.backends=['javascript','gmp'];
  fs.writeFileSync(path.join(dir,'fixtures.json'),JSON.stringify({cases,expected,nativeOutputs:output,summary}));console.log(JSON.stringify(summary));
 })().catch(e=>{console.error(e);process.exitCode=1;});

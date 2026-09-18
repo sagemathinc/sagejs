@@ -9,9 +9,9 @@ function run(cmd,args,options={}){const r=spawnSync(cmd,args,{encoding:'utf8',ti
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'sagejs-atan-')),c=path.join(dir,'oracle.c'),exe=path.join(dir,'oracle');
  fs.writeFileSync(c,`#include "pari.h"
 int main(void){pari_init(64000000,10000);setrand(stoi(1729));long es[]={-1000,-101,-100,-65,-2,-1,0,1,2,65,512};
-for(long bits=64;bits<=384;bits+=64)for(long k=0;k<16;k++)for(long ei=0;ei<11;ei++)for(long sign=-1;sign<=1;sign+=2){pari_sp av=avma;long de;GEN m=addii(int2n(bits-1),randomi(int2n(bits-1)));if(k==0)m=int2n(bits-1);if(k==1)m=addii(int2n(bits-1),gen_1);if(k==2)m=subis(int2n(bits),1);if(sign<0)m=negi(m);GEN x=itor(m,bits);setexpo(x,es[ei]);GEN y=gatan(x,bits);pari_printf("%Ps %ld %ld %Ps %ld %ld\\n",m,bits,es[ei],signe(y)?mantissa_real(y,&de):gen_0,signe(y)?bit_prec(y):0,expo(y));avma=av;}pari_close();return 0;}`);
+for(long bits=64;bits<=448;bits+=64)for(long k=0;k<16;k++)for(long ei=0;ei<11;ei++)for(long sign=-1;sign<=1;sign+=2){pari_sp av=avma;long de;GEN m=addii(int2n(bits-1),randomi(int2n(bits-1)));if(k==0)m=int2n(bits-1);if(k==1)m=addii(int2n(bits-1),gen_1);if(k==2)m=subis(int2n(bits),1);if(sign<0)m=negi(m);GEN x=itor(m,bits);setexpo(x,es[ei]);GEN y=gatan(x,bits);pari_printf("%Ps %ld %ld %Ps %ld %ld\\n",m,bits,es[ei],signe(y)?mantissa_real(y,&de):gen_0,signe(y)?bit_prec(y):0,expo(y));avma=av;}pari_close();return 0;}`);
  run('cc',['-O2','-I'+path.join(pari,'src/headers'),'-I'+lib,c,'-L'+lib,'-Wl,-rpath,'+lib,'-lpari','-lm','-o',exe]);
- const trace=run(exe,[]),rows=trace.trim().split('\n').map(s=>s.split(' '));assert.equal(rows.length,2112);
+ const trace=run(exe,[]),rows=trace.trim().split('\n').map(s=>s.split(' '));assert.equal(rows.length,2464);
  run('python3',['-c',`import sys,json,importlib
 sys.path[:0]=sys.argv[1:3]
 f=importlib.import_module('bench.pari-class-group-port.real_arctangent').pari_real_arctangent

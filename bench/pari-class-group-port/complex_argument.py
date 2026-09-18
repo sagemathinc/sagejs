@@ -29,7 +29,7 @@ def pari_real_components_argument(
 ) -> tuple[int, int, int]:
     """Preserve the axis, exponent comparison and quadrant branches of mparg.
 
-    Each nonzero component is a full 64..384-bit mantissa. Zero components
+    Each nonzero component is a full 64..448-bit mantissa. Zero components
     carry their upstream absolute-error exponent and no mantissa precision.
     Both zero is excluded by the upstream caller. Inherited arctangent and
     constant construction limits remain explicit experimental boundaries.
@@ -39,10 +39,10 @@ def pari_real_components_argument(
     if (mx == 0 and px != 0) or (my == 0 and py != 0):
         raise ValueError("zero components carry no mantissa precision")
     if mx != 0:
-        if px < 64 or px > 384 or px % 64 != 0 or abs(mx).bit_length() != px:
+        if px < 64 or px > 448 or px % 64 != 0 or abs(mx).bit_length() != px:
             raise ValueError("unsupported real-component precision")
     if my != 0:
-        if py < 64 or py > 384 or py % 64 != 0 or abs(my).bit_length() != py:
+        if py < 64 or py > 448 or py % 64 != 0 or abs(my).bit_length() != py:
             raise ValueError("unsupported imaginary-component precision")
     if my == 0:
         if mx > 0:

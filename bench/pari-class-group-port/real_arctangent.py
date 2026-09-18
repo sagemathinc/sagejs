@@ -53,7 +53,7 @@ def pari_real_arctangent(
     """
     if mantissa == 0:
         return 0, 0, exponent
-    if precision < 64 or precision > 384 or precision % 64 != 0:
+    if precision < 64 or precision > 448 or precision % 64 != 0:
         raise ValueError("unsupported non-AGM arctangent precision")
     if abs(mantissa).bit_length() != precision:
         raise ValueError("arctangent requires a full mantissa")

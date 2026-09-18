@@ -142,9 +142,10 @@ def _pari_flm_cup_frame(
             return -1
         # PARI dispatches large blocks to Strassen-Winograd here.  The source
         # transparent port retains the exact cubic update only for bounded
-        # work, including row 14's first 61*54*54 update.  This is an
+        # work, including row 14's first 61*54*54 update and row 13's
+        # 72*72*71 prepared-HNF update.  This is an
         # algorithmic multiplication bridge, not a Strassen translation.
-        if bottom * rank1 * remaining > 200000:
+        if bottom * rank1 * remaining > 500000:
             return -1
         for i in range(bottom):
             for j in range(remaining):

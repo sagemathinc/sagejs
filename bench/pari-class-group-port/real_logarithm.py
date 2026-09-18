@@ -2,7 +2,7 @@
 
 Copyright (C) The PARI group. GPL-2.0-or-later, without warranty.
 Translate trans1.c:logr_abs and logr_aux, retaining their precision schedule.
-The supported 64--384-bit range includes the prepared-field precision.
+The supported 64--448-bit range includes the mixed-quartic prepared precision.
 This is the real absolute logarithm, not a replacement for complex `glog`.
 """
 
@@ -84,7 +84,7 @@ def pari_real_logarithm_multiword(
     Work buffers are disjoint; `cache` is the resident log(2) cache.
     Higher precision fails rather than substituting for the AGM branch.
     """
-    if precision < 64 or precision > 384 or precision % 64 != 0:
+    if precision < 64 or precision > 448 or precision % 64 != 0:
         raise ValueError("unsupported non-AGM logarithm precision")
     magnitude = abs(mantissa)
     if magnitude.bit_length() != precision:
