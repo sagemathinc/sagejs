@@ -273,13 +273,8 @@ def pari_row6_phase6_gate_prefix_root(
     gate_log_p: IntegerBuffer,
     gate_log_q: IntegerBuffer,
     gate_log_stack: IntegerBuffer,
-    gate_scalar_prefix_count: int,
     gate_initial_hnf_original: Int64Buffer,
-    gate_initial_hnf_rows: int,
-    gate_initial_hnf_columns: int,
     gate_initial_hnf_perm: Int64Buffer,
-    gate_initial_hnf_k0: int,
-    gate_initial_hnf_log_rows: int,
     gate_initial_hnf_mat: Int64Buffer,
     gate_initial_hnf_dense: IntegerBuffer,
     gate_initial_hnf_transform: IntegerBuffer,
@@ -508,8 +503,13 @@ def pari_row6_phase6_gate_prefix_root(
         factor_minidx,
         factor_root_state,
     )
-    if count != 1130:
+    factor_count = int(factor_root_state[3])
+    rational_group_count = int(factor_root_state[4])
+    if count != factor_count or factor_count < 1:
         return 11
+    unit_rank = factor_real_places + factor_complex_pairs - 1
+    relation_target = factor_count + 5 + unit_rank
+    relation_capacity = 10 * relation_target + 50
     initial_count = pari_row6_prepared_initial_relations(
         factor_polynomial,
         factor_discriminant,
@@ -519,31 +519,38 @@ def pari_row6_phase6_gate_prefix_root(
         factor_equation_index,
         factor_root_state,
         factor_random_state,
-        integer_buffer_view(factor_initial_primes, 0, 740),
-        integer_buffer_view(factor_initial_offsets, 0, 740),
-        integer_buffer_view(factor_initial_counts, 0, 740),
-        integer_buffer_view(factor_initial_complete, 0, 740),
-        integer_buffer_view(factor_ramification, 0, 1130),
+        integer_buffer_view(factor_initial_primes, 0, rational_group_count),
+        integer_buffer_view(factor_initial_offsets, 0, rational_group_count),
+        integer_buffer_view(factor_initial_counts, 0, rational_group_count),
+        integer_buffer_view(factor_initial_complete, 0, rational_group_count),
+        integer_buffer_view(factor_ramification, 0, factor_count),
         initial_relation_state,
-        initial_relation_basis,
-        initial_relation_records,
-        initial_relation_hashes,
-        initial_relation_metadata,
-        initial_relation,
-        initial_relation_scratch,
-        initial_relation_generators,
+        integer_buffer_view(initial_relation_basis, 0, factor_count * factor_count),
+        integer_buffer_view(
+            initial_relation_records, 0, relation_capacity * factor_count
+        ),
+        integer_buffer_view(initial_relation_hashes, 0, relation_capacity),
+        integer_buffer_view(initial_relation_metadata, 0, relation_capacity * 3),
+        integer_buffer_view(initial_relation, 0, factor_count),
+        integer_buffer_view(initial_relation_scratch, 0, factor_count),
+        integer_buffer_view(initial_relation_generators, 0, relation_capacity * 3),
         initial_root_state,
     )
-    if initial_count != 203:
+    if initial_count < 1:
         return 12
+    for i in range(19):
+        gate_outer_state[i] = 0
+    gate_outer_state[0] = relation_target - initial_count
+    gate_outer_state[1] = int(factor_root_state[7])
+    gate_outer_state[4] = factor_count + 1
     for i in range(len(gate_admission_prime_offsets)):
         gate_admission_prime_offsets[i] = -1
         gate_admission_prime_counts[i] = 0
-    for i in range(740):
+    for i in range(rational_group_count):
         prime = int(factor_initial_primes[i])
         gate_admission_prime_offsets[prime] = factor_initial_offsets[i]
         gate_admission_prime_counts[prime] = factor_initial_counts[i]
-    for i in range(1130):
+    for i in range(factor_count):
         gate_packet_ids[i] = i + 1
         descriptor = int(factor_selected_indices[i])
         gate_packet_generators[3 * i] = factor_catalog_generators[3 * descriptor]
@@ -601,10 +608,10 @@ def pari_row6_phase6_gate_prefix_root(
         gate_admission_rational_exponents,
         gate_admission_prime_offsets,
         gate_admission_prime_counts,
-        integer_buffer_view(factor_selected_tau, 0, 1130 * 9),
-        integer_buffer_view(factor_ramification, 0, 1130),
-        integer_buffer_view(factor_residue_degrees, 0, 1130),
-        integer_buffer_view(factor_inert_flags, 0, 1130),
+        integer_buffer_view(factor_selected_tau, 0, factor_count * 9),
+        integer_buffer_view(factor_ramification, 0, factor_count),
+        integer_buffer_view(factor_residue_degrees, 0, factor_count),
+        integer_buffer_view(factor_inert_flags, 0, factor_count),
         gate_admission_tau,
         gate_admission_x,
         gate_admission_y,
@@ -624,8 +631,8 @@ def pari_row6_phase6_gate_prefix_root(
         integer_buffer_view(factor_subfactor, 0, 4),
         gate_extra,
         gate_extra_count,
-        integer_buffer_view(factor_relation_primes, 0, 1130),
-        integer_buffer_view(factor_ramification, 0, 1130),
+        integer_buffer_view(factor_relation_primes, 0, factor_count),
+        integer_buffer_view(factor_ramification, 0, factor_count),
         initial_relation,
         initial_relation_state,
         initial_relation_basis,
@@ -681,17 +688,17 @@ def pari_row6_phase6_gate_prefix_root(
         gate_preparation_float_scratch,
         gate_preparation_temporary,
         gate_preparation_state,
-        integer_buffer_view(factor_permutation, 0, 1130),
-        gate_search_count,
+        integer_buffer_view(factor_permutation, 0, factor_count),
+        factor_count,
         gate_packet_ids,
-        integer_buffer_view(factor_packet_ideals, 0, 1130 * 9),
-        integer_buffer_view(factor_packet_norms, 0, 1130),
+        integer_buffer_view(factor_packet_ideals, 0, factor_count * 9),
+        integer_buffer_view(factor_packet_norms, 0, factor_count),
         gate_schedule,
         gate_construct_primes,
         factor_basis_table,
-        integer_buffer_view(factor_relation_primes, 0, 1130),
+        integer_buffer_view(factor_relation_primes, 0, factor_count),
         gate_packet_generators,
-        integer_buffer_view(factor_inert_flags, 0, 1130),
+        integer_buffer_view(factor_inert_flags, 0, factor_count),
         gate_hnf_generator,
         gate_hnf_matrix,
         gate_hnf_work,
@@ -711,7 +718,7 @@ def pari_row6_phase6_gate_prefix_root(
         gate_outer_mode,
         gate_outer_ru,
         gate_outer_state,
-        integer_buffer_view(factor_minidx, 0, 1130),
+        integer_buffer_view(factor_minidx, 0, factor_count),
         gate_outer_present,
         gate_outer_live,
         gate_outer_perm,
@@ -728,24 +735,25 @@ def pari_row6_phase6_gate_prefix_root(
         gate_log_p,
         gate_log_q,
         gate_log_stack,
-        gate_scalar_prefix_count,
+        initial_count,
     )
     if status != 0 and status != 1:
         return 20 + status
-    if initial_relation_state[0] != 1133 or gate_log_completed[0] != 1133:
+    if initial_relation_state[0] != gate_log_completed[0]:
         return 30
-    for i in range(1130 * 1133):
+    initial_columns = int(initial_relation_state[0])
+    for i in range(factor_count * initial_columns):
         gate_initial_hnf_original[i] = int(initial_relation_records[i])
-    for i in range(1130):
+    for i in range(factor_count):
         gate_initial_hnf_perm[i] = int(factor_permutation[i])
     status = pari_hnfspec_complete(
         gate_initial_hnf_original,
-        gate_initial_hnf_rows,
-        gate_initial_hnf_columns,
+        factor_count,
+        int(initial_relation_state[0]),
         gate_initial_hnf_perm,
-        gate_initial_hnf_k0,
+        int(factor_root_state[7]),
         gate_log_embeddings,
-        gate_initial_hnf_log_rows,
+        factor_real_places + factor_complex_pairs,
         gate_initial_hnf_mat,
         gate_initial_hnf_dense,
         gate_initial_hnf_transform,
@@ -790,11 +798,10 @@ def pari_row6_phase6_gate_prefix_root(
     )
     if status != 0:
         return 40 + status
-    if gate_initial_hnf_state[0] != 2 or gate_initial_hnf_state[2] != 1124:
-        return 50
-    for i in range(1130):
+    for i in range(factor_count):
         gate_ancestry_perm1[i] = gate_initial_hnf_perm[i]
-    initial_relation_state[4] = 1133
+    initial_relation_state[4] = initial_columns
+    log_stride = 7 * (factor_real_places + factor_complex_pairs)
     squash = 0
     checkpoint = 0
     for pass_index in range(13):
@@ -806,10 +813,12 @@ def pari_row6_phase6_gate_prefix_root(
             current_h_rows = int(gate_append1_state[0])
             current_b_columns = int(gate_append1_state[2])
             current_total = int(gate_append1_state[7])
-        need = 1130 - current_h_rows - current_b_columns
+        need = factor_count - current_h_rows - current_b_columns
+        if need <= 0:
+            break
         status = pari_row14_prepare_next_pass(
             gate_initial_hnf_perm,
-            1130,
+            factor_count,
             current_h_rows,
             need,
             squash,
@@ -872,10 +881,10 @@ def pari_row6_phase6_gate_prefix_root(
             gate_admission_rational_exponents,
             gate_admission_prime_offsets,
             gate_admission_prime_counts,
-            integer_buffer_view(factor_selected_tau, 0, 1130 * 9),
-            integer_buffer_view(factor_ramification, 0, 1130),
-            integer_buffer_view(factor_residue_degrees, 0, 1130),
-            integer_buffer_view(factor_inert_flags, 0, 1130),
+            integer_buffer_view(factor_selected_tau, 0, factor_count * 9),
+            integer_buffer_view(factor_ramification, 0, factor_count),
+            integer_buffer_view(factor_residue_degrees, 0, factor_count),
+            integer_buffer_view(factor_inert_flags, 0, factor_count),
             gate_admission_tau,
             gate_admission_x,
             gate_admission_y,
@@ -895,8 +904,8 @@ def pari_row6_phase6_gate_prefix_root(
             integer_buffer_view(factor_subfactor, 0, 4),
             gate_extra,
             gate_extra_count,
-            integer_buffer_view(factor_relation_primes, 0, 1130),
-            integer_buffer_view(factor_ramification, 0, 1130),
+            integer_buffer_view(factor_relation_primes, 0, factor_count),
+            integer_buffer_view(factor_ramification, 0, factor_count),
             initial_relation,
             initial_relation_state,
             initial_relation_basis,
@@ -952,17 +961,17 @@ def pari_row6_phase6_gate_prefix_root(
             gate_preparation_float_scratch,
             gate_preparation_temporary,
             gate_preparation_state,
-            integer_buffer_view(factor_permutation, 0, 1130),
+            integer_buffer_view(factor_permutation, 0, factor_count),
             int(gate_next_control[0]),
             gate_packet_ids,
-            integer_buffer_view(factor_packet_ideals, 0, 1130 * 9),
-            integer_buffer_view(factor_packet_norms, 0, 1130),
+            integer_buffer_view(factor_packet_ideals, 0, factor_count * 9),
+            integer_buffer_view(factor_packet_norms, 0, factor_count),
             gate_schedule,
             gate_construct_primes,
             factor_basis_table,
-            integer_buffer_view(factor_relation_primes, 0, 1130),
+            integer_buffer_view(factor_relation_primes, 0, factor_count),
             gate_packet_generators,
-            integer_buffer_view(factor_inert_flags, 0, 1130),
+            integer_buffer_view(factor_inert_flags, 0, factor_count),
             gate_hnf_generator,
             gate_hnf_matrix,
             gate_hnf_work,
@@ -982,7 +991,7 @@ def pari_row6_phase6_gate_prefix_root(
             gate_outer_mode,
             gate_outer_ru,
             gate_outer_state,
-            integer_buffer_view(factor_minidx, 0, 1130),
+            integer_buffer_view(factor_minidx, 0, factor_count),
             gate_outer_present,
             gate_outer_live,
             gate_outer_perm,
@@ -999,7 +1008,7 @@ def pari_row6_phase6_gate_prefix_root(
             gate_log_p,
             gate_log_q,
             gate_log_stack,
-            gate_scalar_prefix_count,
+            initial_count,
         )
         if status != 0 and status != 1:
             return 70 + status
@@ -1008,11 +1017,9 @@ def pari_row6_phase6_gate_prefix_root(
             continue
         new_columns = columns - current_total
         if checkpoint == 0:
-            if columns != 1136 or new_columns != 3:
-                return 80
-            for i in range(1130 * new_columns):
+            for i in range(factor_count * new_columns):
                 gate_append1_new_relations[i] = int(
-                    initial_relation_records[1130 * current_total + i]
+                    initial_relation_records[factor_count * current_total + i]
                 )
             status = pari_hnfadd(
                 gate_initial_hnf_result_h,
@@ -1022,13 +1029,15 @@ def pari_row6_phase6_gate_prefix_root(
                 current_b_columns,
                 gate_initial_hnf_result_c,
                 current_total,
-                3,
+                factor_real_places + factor_complex_pairs,
                 gate_initial_hnf_perm,
-                1130,
+                factor_count,
                 gate_append1_new_relations,
                 new_columns,
                 integer_buffer_view(
-                    gate_log_embeddings, 21 * current_total, 21 * new_columns
+                    gate_log_embeddings,
+                    log_stride * current_total,
+                    log_stride * new_columns,
                 ),
                 gate_append1_top,
                 gate_append1_exact_product,
@@ -1066,15 +1075,15 @@ def pari_row6_phase6_gate_prefix_root(
             if status != 0:
                 return 90 + status
             initial_relation_state[4] = columns
-            for i in range(1130):
+            for i in range(factor_count):
                 gate_ancestry_perm2[i] = gate_initial_hnf_perm[i]
             checkpoint = 1
+            if gate_append1_state[0] + gate_append1_state[2] >= factor_count:
+                break
         else:
-            if columns != 1137 or new_columns != 1:
-                return 100
-            for i in range(1130 * new_columns):
+            for i in range(factor_count * new_columns):
                 gate_append2_new_relations[i] = int(
-                    initial_relation_records[1130 * current_total + i]
+                    initial_relation_records[factor_count * current_total + i]
                 )
             status = pari_hnfadd(
                 gate_append1_result_h,
@@ -1084,13 +1093,15 @@ def pari_row6_phase6_gate_prefix_root(
                 current_b_columns,
                 gate_append1_result_c,
                 current_total,
-                3,
+                factor_real_places + factor_complex_pairs,
                 gate_initial_hnf_perm,
-                1130,
+                factor_count,
                 gate_append2_new_relations,
                 new_columns,
                 integer_buffer_view(
-                    gate_log_embeddings, 21 * current_total, 21 * new_columns
+                    gate_log_embeddings,
+                    log_stride * current_total,
+                    log_stride * new_columns,
                 ),
                 gate_append2_top,
                 gate_append2_exact_product,
@@ -1129,14 +1140,17 @@ def pari_row6_phase6_gate_prefix_root(
                 return 110 + status
             initial_relation_state[4] = columns
             checkpoint = 2
+            if gate_append2_state[0] + gate_append2_state[2] < factor_count:
+                return 119
             break
-    if checkpoint != 2:
-        return 120
-    if gate_append2_state[0] != 2 or gate_append2_state[2] != 1128:
-        return 121
     status = pari_row6_phase6_gate_ancestry_private(
         initial_relation_records,
         gate_log_embeddings,
+        factor_count,
+        initial_columns,
+        checkpoint,
+        factor_real_places + factor_complex_pairs,
+        gate_initial_hnf_state,
         gate_initial_hnf_assembly_state,
         gate_initial_hnf_transform,
         gate_initial_hnf_b,
@@ -1145,6 +1159,7 @@ def pari_row6_phase6_gate_prefix_root(
         gate_initial_hnf_full_dep,
         gate_initial_hnf_diagonal,
         gate_append1_rank_state,
+        gate_append1_state,
         gate_append1_permuted_b,
         gate_append1_transform,
         gate_append1_full_h,
@@ -1152,12 +1167,15 @@ def pari_row6_phase6_gate_prefix_root(
         gate_append1_diagonal,
         gate_ancestry_perm1,
         gate_append2_rank_state,
+        gate_append2_state,
         gate_append2_permuted_b,
         gate_append2_transform,
         gate_append2_full_h,
         gate_append2_full_dep,
         gate_append2_diagonal,
         gate_ancestry_perm2,
+        gate_initial_hnf_result_c,
+        gate_append1_result_c,
         gate_append2_result_c,
         gate_initial_hnf_perm,
         gate_ancestry_current,
@@ -1174,27 +1192,24 @@ def pari_row6_phase6_gate_prefix_root(
     )
     if status != 0:
         return 130 + status
+    if checkpoint == 0:
+        for i in range(9):
+            gate_append2_state[i] = gate_initial_hnf_state[i]
+        for i in range(gate_initial_hnf_state[0] * gate_initial_hnf_state[0]):
+            gate_append2_result_h[i] = gate_initial_hnf_result_h[i]
+        for i in range(log_stride * initial_columns):
+            gate_append2_result_c[i] = gate_initial_hnf_result_c[i]
+    elif checkpoint == 1:
+        for i in range(9):
+            gate_append2_state[i] = gate_append1_state[i]
+        for i in range(gate_append1_state[0] * gate_append1_state[0]):
+            gate_append2_result_h[i] = gate_append1_result_h[i]
+        for i in range(log_stride * gate_append1_state[7]):
+            gate_append2_result_c[i] = gate_append1_result_c[i]
     return 0
 
 
-from typing import TypedDict
-from sagejs.native import uint64
 from .row6_phase6_resident_terminal_root import pari_row6_phase6_resident_terminal_root
-
-
-class Row6UnitManifest(TypedDict):
-    columns: uint64
-    precision: uint64
-    unit_rank: uint64
-    expect_large: bool
-
-
-class Row6ClassManifest(TypedDict):
-    rows: uint64
-    columns: uint64
-    degree: uint64
-    kernel_columns: uint64
-    class_columns: uint64
 
 
 @native
@@ -1454,13 +1469,8 @@ def pari_row6_phase6_whole_prepared_root(
     gate_log_p: IntegerBuffer,
     gate_log_q: IntegerBuffer,
     gate_log_stack: IntegerBuffer,
-    gate_scalar_prefix_count: int,
     gate_initial_hnf_original: Int64Buffer,
-    gate_initial_hnf_rows: int,
-    gate_initial_hnf_columns: int,
     gate_initial_hnf_perm: Int64Buffer,
-    gate_initial_hnf_k0: int,
-    gate_initial_hnf_log_rows: int,
     gate_initial_hnf_mat: Int64Buffer,
     gate_initial_hnf_dense: IntegerBuffer,
     gate_initial_hnf_transform: IntegerBuffer,
@@ -1655,7 +1665,6 @@ def pari_row6_phase6_whole_prepared_root(
     terminal_class_number: IntegerBuffer,
     terminal_smith_state: Int64Buffer,
     terminal_terminal_state: Int64Buffer,
-    terminal_unit_manifest: Row6UnitManifest,
     terminal_unit_final_transform: IntegerBuffer,
     terminal_unit_bridge_transform: IntegerBuffer,
     terminal_unit_getfu_factor: IntegerBuffer,
@@ -1666,7 +1675,6 @@ def pari_row6_phase6_whole_prepared_root(
     terminal_unit_factor_state: Int64Buffer,
     terminal_unit_c6_state: Int64Buffer,
     terminal_unit_state: Int64Buffer,
-    terminal_class_manifest: Row6ClassManifest,
     terminal_class_factor_map: IntegerBuffer,
     terminal_class_state: Int64Buffer,
     terminal_resident_state: Int64Buffer,
@@ -1928,13 +1936,8 @@ def pari_row6_phase6_whole_prepared_root(
         gate_log_p,
         gate_log_q,
         gate_log_stack,
-        gate_scalar_prefix_count,
         gate_initial_hnf_original,
-        gate_initial_hnf_rows,
-        gate_initial_hnf_columns,
         gate_initial_hnf_perm,
-        gate_initial_hnf_k0,
-        gate_initial_hnf_log_rows,
         gate_initial_hnf_mat,
         gate_initial_hnf_dense,
         gate_initial_hnf_transform,
@@ -2059,8 +2062,17 @@ def pari_row6_phase6_whole_prepared_root(
     )
     if status != 0:
         return status
+    factor_count = int(factor_root_state[3])
+    factor_degree = len(factor_polynomial) - 1
+    places = factor_real_places + factor_complex_pairs
+    relation_columns = int(initial_relation_state[0])
+    kernel_columns = int(gate_ancestry_state[1])
+    class_columns = int(gate_ancestry_state[2])
+    terminal_preparation_state[0] = 3
+    terminal_preparation_state[2] = factor_count
+    terminal_preparation_state[3] = int(factor_root_state[4])
     index_row = -1
-    for i in range(1130):
+    for i in range(factor_count):
         if factor_relation_primes[i] == 3:
             index_row = i
             break
@@ -2112,14 +2124,14 @@ def pari_row6_phase6_whole_prepared_root(
         terminal_analytic_stack,
         terminal_inverse_hr,
         terminal_analytic_state,
-        1130,
-        2,
-        1128,
-        1137,
-        3,
-        3,
-        integer_buffer_view(gate_append2_result_h, 0, 4),
-        gate_append2_result_c,
+        factor_count,
+        class_columns,
+        factor_count - class_columns,
+        relation_columns,
+        places,
+        factor_degree,
+        integer_buffer_view(gate_append2_result_h, 0, class_columns * class_columns),
+        integer_buffer_view(gate_append2_result_c, 0, 7 * places * relation_columns),
         terminal_logs,
         terminal_tentative_class_number,
         terminal_zeta_factor,
@@ -2175,9 +2187,13 @@ def pari_row6_phase6_whole_prepared_root(
         terminal_class_number,
         terminal_smith_state,
         terminal_terminal_state,
-        terminal_unit_manifest,
-        gate_ancestry_accepted_arch,
-        gate_ancestry_accepted_signs,
+        kernel_columns,
+        factor_precision,
+        factor_real_places + factor_complex_pairs - 1,
+        integer_buffer_view(
+            gate_ancestry_accepted_arch, 0, 7 * places * kernel_columns
+        ),
+        integer_buffer_view(gate_ancestry_accepted_signs, 0, places * kernel_columns),
         gate_ancestry_phase_pi,
         gate_preparation_embedding,
         factor_basis_table,
@@ -2191,19 +2207,35 @@ def pari_row6_phase6_whole_prepared_root(
         terminal_unit_factor_state,
         terminal_unit_c6_state,
         terminal_unit_state,
-        terminal_class_manifest,
-        integer_buffer_view(initial_relation_records, 0, 1130 * 1137),
-        integer_buffer_view(initial_relation_generators, 0, 3 * 1137),
-        integer_buffer_view(factor_packet_ideals, 0, 9 * 1130),
-        integer_buffer_view(factor_packet_norms, 0, 1130),
+        factor_count,
+        relation_columns,
+        factor_degree,
+        kernel_columns,
+        class_columns,
+        integer_buffer_view(
+            initial_relation_records, 0, factor_count * relation_columns
+        ),
+        integer_buffer_view(
+            initial_relation_generators, 0, factor_degree * relation_columns
+        ),
+        integer_buffer_view(
+            factor_packet_ideals, 0, factor_degree * factor_degree * factor_count
+        ),
+        integer_buffer_view(factor_packet_norms, 0, factor_count),
         gate_packet_generators,
-        integer_buffer_view(factor_relation_primes, 0, 1130),
-        integer_buffer_view(factor_ramification, 0, 1130),
-        integer_buffer_view(factor_residue_degrees, 0, 1130),
-        integer_buffer_view(factor_inert_flags, 0, 1130),
+        integer_buffer_view(factor_relation_primes, 0, factor_count),
+        integer_buffer_view(factor_ramification, 0, factor_count),
+        integer_buffer_view(factor_residue_degrees, 0, factor_count),
+        integer_buffer_view(factor_inert_flags, 0, factor_count),
         factor_basis_table,
-        integer_buffer_view(gate_ancestry_raw_to_all, 0, 7 * 1137),
-        integer_buffer_view(gate_ancestry_raw_to_all, 7 * 1137, 2 * 1137),
+        integer_buffer_view(
+            gate_ancestry_raw_to_all, 0, kernel_columns * relation_columns
+        ),
+        integer_buffer_view(
+            gate_ancestry_raw_to_all,
+            kernel_columns * relation_columns,
+            class_columns * relation_columns,
+        ),
         gate_ancestry_active_rows,
         terminal_class_factor_map,
         terminal_class_state,

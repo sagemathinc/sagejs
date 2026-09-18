@@ -16,11 +16,11 @@ const SOURCE = path.join(__dirname, "row6_phase6_whole_prepared_root.generated.p
 const EXPORT = source.ROOT;
 const CACHE_ROOT = path.join(__dirname, ".sagejs-native-kernels");
 const THIN_EXPECTED = Object.freeze({
-  sourceHash: "ebca828faf28701ff170b9145d78c6847c1eabcd910a8474c1409276261979b9",
-  cacheKey: "d55bb2b7406a041ed50a6a4a8071c6bcd638d47082bc71ee3f0e25accd50fdcc",
+  sourceHash: "7dc3fb2da25525e835b864d42996deba1a452be8cf1ca7e699695c831c4fdb91",
+  cacheKey: "b0d1af238f251d5390718f21275d6464b67b7107537d6df8323150211d7b9e66",
   nativeAbi: 24,
-  manifestHash: "5c2bd7e796baa3b471a86db77d661535e6520b5a9b01011541c5a7e5e80d6030",
-  addonHash: "c25558cadc3c51782a69dc4b8515aabbc007fdae8f9c562e2b316dcb0278a251",
+  manifestHash: "c2e78fc25cb87d7c72613cf9496d67bbe2b23c01fdf73a7afd4562cc2409e71b",
+  addonHash: "bd0f0b33cd3cc7a466e41f95bee1a2814f96680795c122035f21d9928c9f01e9",
   signatureHash: "7bf37a81115d26e5d33ea398e641fb1b382a186442e676a8e79496bbd2f7973a",
 });
 
@@ -82,20 +82,13 @@ const LENGTHS = Object.freeze({
   unit_bridge_transform: 14, unit_getfu_factor: 4, unit_clean_logs: 18,
   unit_sign_phases: 6, unit_c5_state: 5, unit_c5_trace: 5,
   unit_factor_state: 2, unit_c6_state: 8, unit_state: 8,
-  class_factor_map: 2260, class_state: 12, resident_state: 14,
+  class_factor_map: 9 * 2048, class_state: 12, resident_state: 14,
 });
 
 function allocateOwned(fn, terminalNames) {
   const owned = {};
   for (const [name, kind] of terminalNames) {
     if (name === "cache_changed") owned[name] = true;
-    else if (name === "unit_manifest") owned[name] = Object.freeze({
-      columns: 7n, precision: 192n, unit_rank: 2n, expect_large: true,
-    });
-    else if (name === "class_manifest") owned[name] = Object.freeze({
-      rows: 1130n, columns: 1137n, degree: 3n,
-      kernel_columns: 7n, class_columns: 2n,
-    });
     else {
       const length = LENGTHS[name];
       assert.notEqual(length, undefined, `missing terminal length ${name}`);
@@ -107,12 +100,13 @@ function allocateOwned(fn, terminalNames) {
       }
     }
   }
-  owned.preparation_state.set([3n, 0n, 1130n, 740n, 0n, 0n, 0n, 0n]);
   return owned;
 }
 
-async function prepare(preparedEnvelope, factorOwner, initialOwner) {
-  const gate = await gateHost.prepare(preparedEnvelope, factorOwner, initialOwner);
+async function prepare(preparedEnvelope) {
+  assert.equal(arguments.length, 1,
+    "factor/relation owners are forbidden at the prepared-only boundary");
+  const gate = await gateHost.prepare(preparedEnvelope);
   const names = source.signature("row6_phase6_whole_prepared_root.generated.py", EXPORT);
   const loaded = loadAuthenticatedWholeKernel(names), fn = loaded.fn;
   assert.equal(fn?.nativeAvailable, true);
@@ -160,9 +154,11 @@ function run(resident) {
     timingEligible: false });
 }
 
-function createProcessCoordinatorAdapter(preparedEnvelope, factorOwner, initialOwner) {
+function createProcessCoordinatorAdapter(preparedEnvelope) {
+  assert.equal(arguments.length, 1,
+    "factor/relation owners are forbidden at the prepared-only boundary");
   return Object.freeze({ timingEligible: false,
-    prepareSample: () => prepare(preparedEnvelope, factorOwner, initialOwner),
+    prepareSample: () => prepare(preparedEnvelope),
     runCorrectness: resident => run(resident),
     runSample: () => {
       const error = new Error("row 6 whole-prepared root is not yet qualified");
@@ -173,5 +169,6 @@ function createProcessCoordinatorAdapter(preparedEnvelope, factorOwner, initialO
   });
 }
 
-module.exports = { EXPORT, LENGTHS, SOURCE,
+module.exports = { EXPORT, LENGTHS,
+  ROW6_PREPARED_LAYOUT: gateHost.ROW6_PREPARED_LAYOUT, SOURCE,
   createProcessCoordinatorAdapter, prepare, run };

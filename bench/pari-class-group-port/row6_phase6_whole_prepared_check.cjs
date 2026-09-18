@@ -8,7 +8,6 @@ const assert = require("node:assert/strict");
 const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
-const zlib = require("node:zlib");
 const host = require("./row6_phase6_whole_prepared_host.cjs");
 const source = require("./row6_phase6_whole_prepared_source.cjs");
 
@@ -33,16 +32,6 @@ function digestOwner(owner, count, start = 0) {
   return hash.digest("hex");
 }
 
-function readOwner(descriptor) {
-  const compressed = fs.readFileSync(descriptor.path);
-  assert.equal(sha(compressed), descriptor.compressedSha256);
-  const plain = zlib.gunzipSync(compressed);
-  assert.equal(sha(plain), descriptor.ownerSha256);
-  const owner = JSON.parse(plain);
-  owner.ownerSha256 = descriptor.ownerSha256;
-  return owner;
-}
-
 async function main() {
   const generatedBytes = Buffer.from(source.generate(), "utf8");
   const sourceBytes = fs.readFileSync(host.SOURCE);
@@ -55,9 +44,17 @@ async function main() {
   });
   const payload = JSON.parse(fs.readFileSync(
     process.argv[2] || "/tmp/row6-gate-payload.json", "utf8"));
-  const factor = readOwner(payload.factorOwner);
-  const initial = readOwner(payload.initialOwner);
-  const resident = await host.prepare(payload.prepared, factor, initial);
+  assert.equal(host.prepare.length, 1);
+  assert.equal(host.createProcessCoordinatorAdapter.length, 1);
+  const publicHost = fs.readFileSync(
+    path.join(__dirname, "row6_phase6_whole_prepared_host.cjs"), "utf8");
+  assert(!/\bfactorOwner\b|\binitialOwner\b/.test(publicHost),
+    "serialized factor/relation owner leaked into public host source");
+  await assert.rejects(() => host.prepare(payload.prepared, payload.factorOwner),
+    /forbidden at the prepared-only boundary/);
+  await assert.rejects(() => host.prepare({ ...payload.prepared,
+    factorOwner: payload.factorOwner }), /accepts only the prepared-number-field/);
+  const resident = await host.prepare(payload.prepared);
   const core = fs.readFileSync(resident.built.coreSourcePath, "utf8");
   for (const callee of ["native_pari_row6_phase6_gate_prefix_root",
     "native_pari_row6_phase6_resident_terminal_root"])
@@ -94,7 +91,7 @@ async function main() {
 
   const changed = structuredClone(payload.prepared);
   changed.data.prep_polynomial[0] = "2000000000019";
-  await assert.rejects(() => host.prepare(changed, factor, initial));
+  await assert.rejects(() => host.prepare(changed));
 
   process.stdout.write(`${JSON.stringify({
     schema: "sagejs.pari-class-group/row6-phase6-whole-prepared-check-v1",
@@ -116,6 +113,10 @@ async function main() {
     postCallOutputInspectionAndProjectionCopiesOutsideNativeExecutionBoundary: true,
     replayWithoutFreshOwnersRejected: true,
     preparedMutationRejected: true,
+    preparedOnlyBoundary: true,
+    factorRelationOwnersForbidden: true,
+    answerDerivedCapacityFixturesForbidden: true,
+    reviewedLayoutSchema: host.ROW6_PREPARED_LAYOUT.schema,
     completeClassAndUnits: true,
     timingEligible: false,
   }, null, 2)}\n`);

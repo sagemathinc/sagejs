@@ -9,8 +9,6 @@ workspaces.  No mapping-valued owner or dynamically allocated list enters the
 isolated graph.
 """
 
-from typing import TypedDict
-
 from sagejs.native import (
     Float64Buffer,
     Int64Buffer,
@@ -19,7 +17,6 @@ from sagejs.native import (
     int64_workspace,
     integer_workspace,
     native,
-    uint64,
 )
 
 from .unit_bridge_cubic import (
@@ -30,16 +27,11 @@ from .unit_bridge_cubic import (
 from .unit_reconstruction_signed import pari_getfu_signed_real_cubic
 
 
-class Row6UnitManifest(TypedDict):
-    columns: uint64
-    precision: uint64
-    unit_rank: uint64
-    expect_large: bool
-
-
 @native
 def pari_row6_phase6_resident_unit_private(
-    manifest: Row6UnitManifest,
+    columns: int,
+    precision: int,
+    unit_rank: int,
     accepted_arch: IntegerBuffer,
     accepted_signs: Int64Buffer,
     phase_pi: IntegerBuffer,
@@ -159,12 +151,12 @@ def pari_row6_phase6_resident_unit_private(
     exp_stack: IntegerBuffer = integer_workspace(128, 16)
 
     if (
-        manifest["columns"] != 7
-        or manifest["precision"] != 192
-        or manifest["unit_rank"] != 2
-        or not manifest["expect_large"]
-        or len(accepted_arch) != 147
-        or len(accepted_signs) != 21
+        columns < 1
+        or columns > 7
+        or precision < 64
+        or unit_rank != 2
+        or len(accepted_arch) < 21 * columns
+        or len(accepted_signs) < 3 * columns
         or len(phase_pi) != 3
         or len(relation_lattice) != 14
         or len(expected_regulator) != 3
@@ -186,9 +178,9 @@ def pari_row6_phase6_resident_unit_private(
     for i in range(8):
         unit_state[i] = 0
     unit_state[0] = -1
-    for i in range(147):
+    for i in range(21 * columns):
         arch_work[i] = accepted_arch[i]
-    for column in range(7):
+    for column in range(columns):
         for place in range(3):
             at = 21 * column + 7 * place + 4
             if accepted_signs[3 * column + place] == 1:
@@ -204,7 +196,7 @@ def pari_row6_phase6_resident_unit_private(
     status = pari_cubic_unit_bridge_prepare(
         arch_work,
         relation_lattice,
-        7,
+        columns,
         expected_regulator,
         u1,
         u2,
@@ -303,8 +295,8 @@ def pari_row6_phase6_resident_unit_private(
         factor_work,
         embedding_work,
         multiplication_basis,
-        192,
-        192,
+        precision,
+        precision,
         getfu_matep,
         transformed_arch,
         transformed_clean,
@@ -337,7 +329,7 @@ def pari_row6_phase6_resident_unit_private(
         return 20 + status
 
     status = pari_cubic_unit_compose_provenance(
-        bridge_transform_work, 7, factor_work, final_transform
+        bridge_transform_work, columns, factor_work, final_transform
     )
     unit_state[4] = status
     if status != 0:
@@ -360,10 +352,10 @@ def pari_row6_phase6_resident_unit_private(
     for i in range(8):
         c6_state_output[i] = c6_state[i]
     unit_state[0] = 0
-    unit_state[5] = 7
+    unit_state[5] = columns
     unit_state[6] = 2
-    unit_state[7] = 192
+    unit_state[7] = precision
     return 0
 
 
-__all__ = ["Row6UnitManifest", "pari_row6_phase6_resident_unit_private"]
+__all__ = ["pari_row6_phase6_resident_unit_private"]

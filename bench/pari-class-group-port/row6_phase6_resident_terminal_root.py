@@ -9,9 +9,7 @@ catalog, analytic inverse-`hR` computation, post-HNF acceptance, regulator
 reconstruction, and Smith output execute in one generated native call graph.
 """
 
-from typing import TypedDict
-
-from sagejs.native import Float64Buffer, Int64Buffer, IntegerBuffer, native, uint64
+from sagejs.native import Float64Buffer, Int64Buffer, IntegerBuffer, native
 
 from .row14_post806_terminal import (
     pari_row14_analytic_inverse_hr,
@@ -24,21 +22,6 @@ from .row6_phase6_resident_unit_private import (
 from .row6_phase6_resident_class_private import (
     pari_row6_phase6_resident_class_private,
 )
-
-
-class Row6UnitManifest(TypedDict):
-    columns: uint64
-    precision: uint64
-    unit_rank: uint64
-    expect_large: bool
-
-
-class Row6ClassManifest(TypedDict):
-    rows: uint64
-    columns: uint64
-    degree: uint64
-    kernel_columns: uint64
-    class_columns: uint64
 
 
 @native
@@ -148,7 +131,9 @@ def pari_row6_phase6_resident_terminal_root(
     class_number: IntegerBuffer,
     smith_state: Int64Buffer,
     terminal_state: Int64Buffer,
-    unit_manifest: Row6UnitManifest,
+    unit_columns: int,
+    unit_precision: int,
+    unit_rank: int,
     unit_accepted_arch: IntegerBuffer,
     unit_accepted_signs: Int64Buffer,
     unit_phase_pi: IntegerBuffer,
@@ -164,7 +149,11 @@ def pari_row6_phase6_resident_terminal_root(
     unit_factor_state: Int64Buffer,
     unit_c6_state: Int64Buffer,
     unit_state: Int64Buffer,
-    class_manifest: Row6ClassManifest,
+    class_rows: int,
+    class_columns: int,
+    class_degree: int,
+    class_kernel_columns: int,
+    class_presentation_columns: int,
     class_raw_relations: IntegerBuffer,
     class_principal_generators: IntegerBuffer,
     class_factor_ideals: IntegerBuffer,
@@ -323,7 +312,9 @@ def pari_row6_phase6_resident_terminal_root(
         return status
 
     status = pari_row6_phase6_resident_unit_private(
-        unit_manifest,
+        unit_columns,
+        unit_precision,
+        unit_rank,
         unit_accepted_arch,
         unit_accepted_signs,
         unit_phase_pi,
@@ -353,7 +344,11 @@ def pari_row6_phase6_resident_terminal_root(
         return status
 
     status = pari_row6_phase6_resident_class_private(
-        class_manifest,
+        class_rows,
+        class_columns,
+        class_degree,
+        class_kernel_columns,
+        class_presentation_columns,
         h,
         class_raw_relations,
         class_principal_generators,

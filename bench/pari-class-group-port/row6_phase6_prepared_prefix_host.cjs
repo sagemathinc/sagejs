@@ -9,7 +9,10 @@ const source = require("./row6_phase6_prepared_prefix_source.cjs");
 
 const SOURCE = path.join(__dirname, "row6_phase6_prepared_prefix_root.generated.py");
 const EXPORT = "pari_row6_phase6_prepared_prefix_root";
-const DEGREE = 3, MAX_IDEALS = 2048, CAPACITY = 11420;
+const DEGREE = 3, MAX_IDEALS = 2048;
+const MAX_ADDITIONAL_RELATIONS = 5 + DEGREE - 1;
+const MAX_RELATION_COLUMNS = MAX_IDEALS + MAX_ADDITIONAL_RELATIONS;
+const CAPACITY = 10 * MAX_RELATION_COLUMNS + 50;
 const PREPARED_AUTHORITY_SHA256 =
   "1620c2d7e9ab145eb7400c3dd0e5dc8c2c689ef88f250f2800dde05768b493a0";
 
@@ -87,10 +90,10 @@ function prepareWithKernel(prepared, built, fn) {
     minidx: ib(MAX_IDEALS, 2), root_state: ib(14, 2),
   };
   const initial = {
-    relation_state: ib(6, 2), relation_basis: ib(1130 * 1130, 1),
-    relation_records: ib(CAPACITY * 1130, 1), relation_hashes: ib(CAPACITY, 1),
-    relation_metadata: ib(CAPACITY * 3, 1), relation: ib(1130, 1),
-    relation_scratch: ib(1130, 1), relation_generators: ib(CAPACITY * 3, 1),
+    relation_state: ib(6, 2), relation_basis: ib(MAX_IDEALS * MAX_IDEALS, 1),
+    relation_records: ib(CAPACITY * MAX_IDEALS, 1), relation_hashes: ib(CAPACITY, 1),
+    relation_metadata: ib(CAPACITY * 3, 1), relation: ib(MAX_IDEALS, 1),
+    relation_scratch: ib(MAX_IDEALS, 1), relation_generators: ib(CAPACITY * 3, 1),
     root_state: ib(12, 2),
   };
   const inputs = {};

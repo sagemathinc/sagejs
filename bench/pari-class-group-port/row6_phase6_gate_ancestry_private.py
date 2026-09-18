@@ -83,6 +83,11 @@ def _row6_reverse_hnffinal(
 def pari_row6_phase6_gate_ancestry_private(
     relations: IntegerBuffer,
     raw_logs: IntegerBuffer,
+    factor_count: int,
+    initial_columns: int,
+    checkpoint_count: int,
+    places: int,
+    initial_state: Int64Buffer,
     initial_assembly: Int64Buffer,
     initial_cleanup_transform: IntegerBuffer,
     initial_trailing: IntegerBuffer,
@@ -91,6 +96,7 @@ def pari_row6_phase6_gate_ancestry_private(
     initial_full_dep: IntegerBuffer,
     initial_diagonal: Int64Buffer,
     append1_rank_state: IntegerBuffer,
+    append1_state: Int64Buffer,
     append1_trailing: IntegerBuffer,
     append1_transform: IntegerBuffer,
     append1_full_h: IntegerBuffer,
@@ -98,13 +104,16 @@ def pari_row6_phase6_gate_ancestry_private(
     append1_diagonal: Int64Buffer,
     append1_perm: Int64Buffer,
     append2_rank_state: IntegerBuffer,
+    append2_state: Int64Buffer,
     append2_trailing: IntegerBuffer,
     append2_transform: IntegerBuffer,
     append2_full_h: IntegerBuffer,
     append2_full_dep: IntegerBuffer,
     append2_diagonal: Int64Buffer,
     append2_perm: Int64Buffer,
-    terminal_c: IntegerBuffer,
+    initial_c: IntegerBuffer,
+    append1_c: IntegerBuffer,
+    append2_c: IntegerBuffer,
     terminal_perm: Int64Buffer,
     current: IntegerBuffer,
     old: IntegerBuffer,
@@ -118,88 +127,103 @@ def pari_row6_phase6_gate_ancestry_private(
     active_rows: Int64Buffer,
     state: Int64Buffer,
 ) -> int:
-    """Reverse the retained initial and two append HNFs without replay."""
-    if len(raw_to_all) < 9 * 1137:
+    """Reverse the live retained HNF checkpoints without replay."""
+    if checkpoint_count < 0 or checkpoint_count > 2 or factor_count < 1 or places < 1:
+        raise ValueError("invalid row-6 ancestry dimensions")
+    final_h_rows = int(initial_state[0])
+    final_kernel_rows = int(initial_state[4])
+    final_columns = initial_columns
+    if checkpoint_count >= 1:
+        final_h_rows = int(append1_state[0])
+        final_kernel_rows = int(append1_state[4])
+        final_columns = int(append1_state[7])
+    if checkpoint_count >= 2:
+        final_h_rows = int(append2_state[0])
+        final_kernel_rows = int(append2_state[4])
+        final_columns = int(append2_state[7])
+    terminal_c = initial_c
+    if checkpoint_count >= 1:
+        terminal_c = append1_c
+    if checkpoint_count >= 2:
+        terminal_c = append2_c
+    selected_rows = final_h_rows + final_kernel_rows
+    if selected_rows < 1 or len(raw_to_all) < selected_rows * final_columns:
         raise ValueError("short row-6 ancestry output")
-    for selected in range(9):
-        for i in range(1137):
+    for selected in range(selected_rows):
+        current_columns = final_columns
+        for i in range(final_columns):
             current[i] = 0
             old[i] = 0
         current[selected] = 1
-        output_offset = selected * 1137
-        for i in range(1137):
+        output_offset = selected * final_columns
+        for i in range(final_columns):
             raw_to_all[output_offset + i] = 0
 
-        # Reverse the 1,136 -> 1,137 append.
-        redundant = int(append2_rank_state[7])
-        local_rows = 3
-        _row6_reverse_hnffinal(
-            integer_buffer_view(current, 7, 1130),
-            local_rows - redundant,
-            redundant,
-            3,
-            1127,
-            append2_full_h,
-            append2_full_dep,
-            append2_trailing,
-            append2_transform,
-            append2_diagonal,
-            work,
-            joined,
-            trailing_work,
-        )
-        for column in range(7):
-            old[column] = current[column]
-        coefficient = joined[0]
-        raw_to_all[output_offset + 1136] = (
-            raw_to_all[output_offset + 1136] + coefficient
-        )
-        for k in range(1127):
-            old[9 + k] = (
-                old[9 + k]
-                - coefficient * relations[1136 * 1130 + int(append2_perm[3 + k]) - 1]
+        # Reverse each retained append.  The state owners describe the exact
+        # live shapes; backing-buffer capacity is not mathematical authority.
+        for reverse_index in range(checkpoint_count):
+            if reverse_index == 0 and checkpoint_count == 2:
+                old_total = int(append1_state[7])
+                old_h_rows = int(append1_state[0])
+                old_b_columns = int(append1_state[2])
+                rank_state = append2_rank_state
+                full_h = append2_full_h
+                full_dep = append2_full_dep
+                trailing = append2_trailing
+                transform = append2_transform
+                diagonal = append2_diagonal
+                permutation = append2_perm
+            else:
+                old_total = initial_columns
+                old_h_rows = int(initial_state[0])
+                old_b_columns = int(initial_state[2])
+                rank_state = append1_rank_state
+                full_h = append1_full_h
+                full_dep = append1_full_dep
+                trailing = append1_trailing
+                transform = append1_transform
+                diagonal = append1_diagonal
+                permutation = append1_perm
+            new_columns = current_columns - old_total
+            zero_prefix = old_total - old_b_columns - old_h_rows
+            lig = factor_count - old_b_columns
+            width = new_columns + old_h_rows
+            redundant = int(rank_state[7])
+            _row6_reverse_hnffinal(
+                integer_buffer_view(current, zero_prefix, width + old_b_columns),
+                lig - redundant,
+                redundant,
+                width,
+                old_b_columns,
+                full_h,
+                full_dep,
+                trailing,
+                transform,
+                diagonal,
+                work,
+                joined,
+                trailing_work,
             )
-        for column in range(1129):
-            old[7 + column] = old[7 + column] + joined[1 + column]
-        for i in range(1136):
-            current[i] = old[i]
-            old[i] = 0
-
-        # Reverse the 1,133 -> 1,136 append.
-        redundant = int(append1_rank_state[7])
-        local_rows = 6
-        _row6_reverse_hnffinal(
-            integer_buffer_view(current, 7, 1129),
-            local_rows - redundant,
-            redundant,
-            5,
-            1124,
-            append1_full_h,
-            append1_full_dep,
-            append1_trailing,
-            append1_transform,
-            append1_diagonal,
-            work,
-            joined,
-            trailing_work,
-        )
-        for column in range(7):
-            old[column] = current[column]
-        for column in range(3):
-            coefficient = joined[column]
-            raw_to_all[output_offset + 1133 + column] = (
-                raw_to_all[output_offset + 1133 + column] + coefficient
-            )
-            for k in range(1124):
-                old[9 + k] = (
-                    old[9 + k]
-                    - coefficient
-                    * relations[(1133 + column) * 1130 + int(append1_perm[6 + k]) - 1]
-                )
-        for column in range(1126):
-            old[7 + column] = old[7 + column] + joined[3 + column]
-        for i in range(1133):
-            current[i] = old[i]
+            for column in range(zero_prefix):
+                old[column] = current[column]
+            for column in range(new_columns):
+                coefficient = joined[column]
+                raw_to_all[output_offset + old_total + column] += coefficient
+                for k in range(old_b_columns):
+                    old[zero_prefix + old_h_rows + k] -= (
+                        coefficient
+                        * relations[
+                            (old_total + column) * factor_count
+                            + int(permutation[lig + k])
+                            - 1
+                        ]
+                    )
+            for column in range(old_h_rows + old_b_columns):
+                old[zero_prefix + column] += joined[new_columns + column]
+            current_columns = old_total
+            for i in range(current_columns):
+                current[i] = old[i]
+                old[i] = 0
 
         # Reverse the initial cleanup and hnffinal transformations.
         genuine = int(initial_assembly[0])
@@ -207,7 +231,7 @@ def pari_row6_phase6_gate_ancestry_private(
         width = int(initial_assembly[2])
         tail = int(initial_assembly[4])
         _row6_reverse_hnffinal(
-            integer_buffer_view(current, 0, 1133),
+            integer_buffer_view(current, 0, initial_columns),
             genuine,
             dependent,
             width,
@@ -221,40 +245,45 @@ def pari_row6_phase6_gate_ancestry_private(
             joined,
             trailing_work,
         )
-        for column in range(1133):
+        for column in range(initial_columns):
             coefficient = joined[column]
             if coefficient != 0:
-                for source in range(1133):
-                    value = initial_cleanup_transform[column * 1133 + source]
+                for source in range(initial_columns):
+                    value = initial_cleanup_transform[column * initial_columns + source]
                     if value != 0:
                         raw_to_all[output_offset + source] = (
                             raw_to_all[output_offset + source] + value * coefficient
                         )
 
-    for i in range(147):
+    final_columns = initial_columns
+    if checkpoint_count >= 1:
+        final_columns = int(append1_state[7])
+    if checkpoint_count >= 2:
+        final_columns = int(append2_state[7])
+    for i in range(7 * places * final_kernel_rows):
         accepted_arch[i] = terminal_c[i]
     phase_at = -1
-    for column in range(1137):
-        for place in range(3):
-            if raw_logs[(column * 3 + place) * 7] == 2 and phase_at < 0:
-                phase_at = (column * 3 + place) * 7
+    for column in range(final_columns):
+        for place in range(places):
+            if raw_logs[(column * places + place) * 7] == 2 and phase_at < 0:
+                phase_at = (column * places + place) * 7
     if phase_at < 0:
         return 1
     phase_pi[0] = raw_logs[phase_at + 4]
     phase_pi[1] = raw_logs[phase_at + 5]
     phase_pi[2] = raw_logs[phase_at + 6]
-    for kernel in range(7):
-        for place in range(3):
+    for kernel in range(final_kernel_rows):
+        for place in range(places):
             parity = 0
-            for column in range(1137):
-                if raw_logs[(column * 3 + place) * 7] == 2:
-                    if raw_to_all[kernel * 1137 + column] % 2 != 0:
+            for column in range(final_columns):
+                if raw_logs[(column * places + place) * 7] == 2:
+                    if raw_to_all[kernel * final_columns + column] % 2 != 0:
                         if parity == 0:
                             parity = 1
                         else:
                             parity = 0
-            accepted_signs[kernel * 3 + place] = parity
-            at = (kernel * 3 + place) * 7
+            accepted_signs[kernel * places + place] = parity
+            at = (kernel * places + place) * 7
             if parity != 0:
                 accepted_arch[at] = 2
                 accepted_arch[at + 4] = phase_pi[0]
@@ -265,11 +294,11 @@ def pari_row6_phase6_gate_ancestry_private(
                 accepted_arch[at + 4] = 0
                 accepted_arch[at + 5] = -1
                 accepted_arch[at + 6] = 0
-    active_rows[0] = terminal_perm[0] - 1
-    active_rows[1] = terminal_perm[1] - 1
-    state[0] = 9
-    state[1] = 7
-    state[2] = 2
+    for i in range(final_h_rows):
+        active_rows[i] = terminal_perm[i] - 1
+    state[0] = selected_rows
+    state[1] = final_kernel_rows
+    state[2] = final_h_rows
     return 0
 
 

@@ -93,17 +93,29 @@ async function main() {
     "generated row-6 Gate-C root is stale");
   const payload = JSON.parse(fs.readFileSync(
     process.argv[2] || "/tmp/row6-gate-payload.json", "utf8"));
-  const factor = readOwner(payload.factorOwner);
-  const initial = readOwner(payload.initialOwner);
-  let shapeOnly = gateHost.collectorInput(
-    payload.prepared, factor, initial, { dense: false });
+  assert.equal(host.prepare.length, 1);
+  assert.equal(host.createProcessCoordinatorAdapter.length, 1);
+  const publicHost = fs.readFileSync(
+    path.join(__dirname, "row6_phase6_gate_prefix_host.cjs"), "utf8");
+  assert(!/\bfactorOwner\b|\binitialOwner\b/.test(publicHost),
+    "serialized factor/relation owner leaked into public host source");
+  let shapeOnly = host.preparedCollectorInput(payload.prepared);
   for (const name of ["relation_basis", "relation_records", "relation_hashes",
     "relation_metadata", "generators"])
     assert.equal(shapeOnly[name], undefined,
       `shape-only aggregate input constructed detached ${name}`);
   shapeOnly = null;
   if (global.gc) global.gc();
-  const resident = await host.prepare(payload.prepared, factor, initial);
+  await assert.rejects(() => host.prepare(payload.prepared, payload.factorOwner),
+    /forbidden at the prepared-only boundary/);
+  await assert.rejects(() => host.prepare({ ...payload.prepared,
+    initialOwner: payload.initialOwner }), /accepts only the prepared-number-field/);
+  await assert.rejects(() => host.prepare({ ...payload.prepared,
+    authoritySha256: "0".repeat(64) }), /authority is not authenticated data/);
+  await assert.rejects(() => host.prepare({ ...payload.prepared,
+    data: { ...payload.prepared.data, relationCapacity: 11420 } }),
+  /unreviewed field/);
+  const resident = await host.prepare(payload.prepared);
   const result = host.run(resident);
   const gateDescriptor = JSON.parse(fs.readFileSync(
     process.argv[3] || "/tmp/row6-gate-worker.json", "utf8"));
@@ -166,7 +178,7 @@ async function main() {
   assert.throws(() => host.run(resident), /fresh (?:publication|state) owner/);
   const changed = structuredClone(payload.prepared);
   changed.data.prep_polynomial[0] = "2000000000019";
-  await assert.rejects(() => host.prepare(changed, factor, initial));
+  await assert.rejects(() => host.prepare(changed));
   process.stdout.write(`${JSON.stringify({
     schema: "sagejs.pari-class-group/row6-phase6-gate-prefix-check-v1",
     compilerCacheKey: resident.built.cacheKey,
@@ -179,6 +191,9 @@ async function main() {
     filesystemOwnerBoundariesInsideRun: 0,
     hostRelationCopiesInsideRun: 0,
     detachedDenseRelationInputConstructed: false,
+    preparedOnlyBoundary: true,
+    factorRelationOwnersForbidden: true,
+    reviewedLayoutSchema: host.ROW6_PREPARED_LAYOUT.schema,
     retainedInitialHnfTransforms: true,
     retainedContinuationHnfTransforms: true,
     replayWithoutFreshOwnersRejected: true,

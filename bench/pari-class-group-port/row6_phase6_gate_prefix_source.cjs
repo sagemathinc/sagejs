@@ -35,13 +35,13 @@ const COLLECTOR_ALIASES = Object.freeze({
   admission_factor_product: "int(factor_base_state[6])",
   admission_factorlimit: "factor_factor_limit",
   admission_prime_limit: "factor_prime_limit",
-  admission_group_tau: "integer_buffer_view(factor_selected_tau, 0, 1130 * 9)",
-  admission_group_e: "integer_buffer_view(factor_ramification, 0, 1130)",
-  admission_group_f: "integer_buffer_view(factor_residue_degrees, 0, 1130)",
-  admission_group_inert: "integer_buffer_view(factor_inert_flags, 0, 1130)",
+  admission_group_tau: "integer_buffer_view(factor_selected_tau, 0, factor_count * 9)",
+  admission_group_e: "integer_buffer_view(factor_ramification, 0, factor_count)",
+  admission_group_f: "integer_buffer_view(factor_residue_degrees, 0, factor_count)",
+  admission_group_inert: "integer_buffer_view(factor_inert_flags, 0, factor_count)",
   subfactor: "integer_buffer_view(factor_subfactor, 0, 4)",
-  relation_primes: "integer_buffer_view(factor_relation_primes, 0, 1130)",
-  ramification: "integer_buffer_view(factor_ramification, 0, 1130)",
+  relation_primes: "integer_buffer_view(factor_relation_primes, 0, factor_count)",
+  ramification: "integer_buffer_view(factor_ramification, 0, factor_count)",
   relation_state: "initial_relation_state",
   relation_basis: "initial_relation_basis",
   relation_records: "initial_relation_records",
@@ -50,24 +50,21 @@ const COLLECTOR_ALIASES = Object.freeze({
   relation: "initial_relation",
   relation_scratch: "initial_relation_scratch",
   generators: "initial_relation_generators",
-  search_ideals: "integer_buffer_view(factor_permutation, 0, 1130)",
-  packet_ideals: "integer_buffer_view(factor_packet_ideals, 0, 1130 * 9)",
-  packet_norms: "integer_buffer_view(factor_packet_norms, 0, 1130)",
+  search_ideals: "integer_buffer_view(factor_permutation, 0, factor_count)",
+  packet_ideals: "integer_buffer_view(factor_packet_ideals, 0, factor_count * 9)",
+  packet_norms: "integer_buffer_view(factor_packet_norms, 0, factor_count)",
   basis_table: "factor_basis_table",
-  packet_primes: "integer_buffer_view(factor_relation_primes, 0, 1130)",
-  packet_inert: "integer_buffer_view(factor_inert_flags, 0, 1130)",
-  outer_minidx: "integer_buffer_view(factor_minidx, 0, 1130)",
+  packet_primes: "integer_buffer_view(factor_relation_primes, 0, factor_count)",
+  packet_inert: "integer_buffer_view(factor_inert_flags, 0, factor_count)",
+  outer_minidx: "integer_buffer_view(factor_minidx, 0, factor_count)",
 });
 
 const HNF_ALIASES = Object.freeze({
   original: "gate_initial_hnf_original",
-  rows: "gate_initial_hnf_rows",
-  columns: "gate_initial_hnf_columns",
   perm: "gate_initial_hnf_perm",
-  k0: "gate_initial_hnf_k0",
   logs: "gate_log_embeddings",
-  log_rows: "gate_initial_hnf_log_rows",
 });
+const OMITTED_LOGICAL_INPUTS = new Set(["rows", "columns", "k0", "log_rows"]);
 
 function generate() {
   const prefixSig = signature("row6_phase6_prepared_prefix_root.generated.py", PREFIX);
@@ -92,11 +89,13 @@ function generate() {
   ];
   for (const [name, kind] of prefixSig) lines.push(`    ${name}: ${kind},`);
   for (const [name, kind] of collectorSig) {
-    if (!COLLECTOR_ALIASES[name]) lines.push(`    gate_${name}: ${kind},`);
+    if (!COLLECTOR_ALIASES[name] && name !== "scalar_prefix_count")
+      lines.push(`    gate_${name}: ${kind},`);
   }
   for (const [name, kind] of hnfSig) {
+    if (OMITTED_LOGICAL_INPUTS.has(name) || name === "logs") continue;
     if (!HNF_ALIASES[name]) lines.push(`    gate_initial_hnf_${name}: ${kind},`);
-    else if (name !== "logs") lines.push(`    ${HNF_ALIASES[name]}: ${kind},`);
+    else lines.push(`    ${HNF_ALIASES[name]}: ${kind},`);
   }
   lines.push("    gate_next_control: Int64Buffer,");
   for (const step of [1, 2]) for (const [name, kind] of appendSig) {
@@ -118,34 +117,57 @@ function generate() {
     `    count = ${FACTOR}(`,
   );
   for (const [name] of factorSig) lines.push(`        factor_${name},`);
-  lines.push("    )", "    if count != 1130:", "        return 11");
+  lines.push(
+    "    )",
+    "    factor_count = int(factor_root_state[3])",
+    "    rational_group_count = int(factor_root_state[4])",
+    "    if count != factor_count or factor_count < 1:",
+    "        return 11",
+    "    unit_rank = factor_real_places + factor_complex_pairs - 1",
+    "    relation_target = factor_count + 5 + unit_rank",
+    "    relation_capacity = 10 * relation_target + 50",
+  );
   const initialAliases = {
     polynomial: "factor_polynomial", discriminant: "factor_discriminant",
     real_places: "factor_real_places", complex_pairs: "factor_complex_pairs",
     precision: "factor_precision", equation_index: "factor_equation_index",
     factor_state: "factor_root_state", random_state: "factor_random_state",
-    rational_primes: "integer_buffer_view(factor_initial_primes, 0, 740)",
-    group_offsets: "integer_buffer_view(factor_initial_offsets, 0, 740)",
-    group_counts: "integer_buffer_view(factor_initial_counts, 0, 740)",
-    group_complete: "integer_buffer_view(factor_initial_complete, 0, 740)",
-    ramification: "integer_buffer_view(factor_ramification, 0, 1130)",
+    rational_primes: "integer_buffer_view(factor_initial_primes, 0, rational_group_count)",
+    group_offsets: "integer_buffer_view(factor_initial_offsets, 0, rational_group_count)",
+    group_counts: "integer_buffer_view(factor_initial_counts, 0, rational_group_count)",
+    group_complete: "integer_buffer_view(factor_initial_complete, 0, rational_group_count)",
+    ramification: "integer_buffer_view(factor_ramification, 0, factor_count)",
+    relation_basis: "integer_buffer_view(initial_relation_basis, 0, factor_count * factor_count)",
+    relation_records: "integer_buffer_view(initial_relation_records, 0, relation_capacity * factor_count)",
+    relation_hashes: "integer_buffer_view(initial_relation_hashes, 0, relation_capacity)",
+    relation_metadata: "integer_buffer_view(initial_relation_metadata, 0, relation_capacity * 3)",
+    relation: "integer_buffer_view(initial_relation, 0, factor_count)",
+    relation_scratch: "integer_buffer_view(initial_relation_scratch, 0, factor_count)",
+    relation_generators: "integer_buffer_view(initial_relation_generators, 0, relation_capacity * 3)",
   };
   lines.push(`    initial_count = ${INITIAL}(`);
   for (const [name] of initialSig) {
     const expression = initialAliases[name] || `initial_${name}`;
     lines.push(`        ${expression},`);
   }
-  lines.push("    )", "    if initial_count != 203:", "        return 12");
-  // Derive every factor-dependent collector table from the live prefix.
+  lines.push("    )", "    if initial_count < 1:", "        return 12");
+  // Derive every factor/relation-dependent collector table and logical count
+  // from states produced in this invocation.  The host supplies only zeroed
+  // storage ceilings plus authenticated prepared-number-field inputs.
   lines.push(
+    "    for i in range(19):",
+    "        gate_outer_state[i] = 0",
+    "    gate_outer_state[0] = relation_target - initial_count",
+    "    gate_outer_state[1] = int(factor_root_state[7])",
+    "    gate_outer_state[4] = factor_count + 1",
     "    for i in range(len(gate_admission_prime_offsets)):",
     "        gate_admission_prime_offsets[i] = -1",
     "        gate_admission_prime_counts[i] = 0",
-    "    for i in range(740):",
+    "    for i in range(rational_group_count):",
     "        prime = int(factor_initial_primes[i])",
     "        gate_admission_prime_offsets[prime] = factor_initial_offsets[i]",
     "        gate_admission_prime_counts[prime] = factor_initial_counts[i]",
-    "    for i in range(1130):",
+    "    for i in range(factor_count):",
     "        gate_packet_ids[i] = i + 1",
     "        descriptor = int(factor_selected_indices[i])",
     "        gate_packet_generators[3 * i] = factor_catalog_generators[3 * descriptor]",
@@ -154,31 +176,42 @@ function generate() {
     "        gate_outer_perm[i] = factor_permutation[i]",
     `    status = ${COLLECTOR}(`,
   );
-  for (const [name] of collectorSig)
-    lines.push(`        ${COLLECTOR_ALIASES[name] || `gate_${name}`},`);
+  for (const [name] of collectorSig) {
+    const expression = name === "scalar_prefix_count" ? "initial_count" :
+      name === "search_count" ? "factor_count" :
+      (COLLECTOR_ALIASES[name] || `gate_${name}`);
+    lines.push(`        ${expression},`);
+  }
   lines.push(
     "    )",
     "    if status != 0 and status != 1:",
     "        return 20 + status",
-    "    if initial_relation_state[0] != 1133 or gate_log_completed[0] != 1133:",
+    "    if initial_relation_state[0] != gate_log_completed[0]:",
     "        return 30",
-    "    for i in range(1130 * 1133):",
+    "    initial_columns = int(initial_relation_state[0])",
+    "    for i in range(factor_count * initial_columns):",
     "        gate_initial_hnf_original[i] = int(initial_relation_records[i])",
-    "    for i in range(1130):",
+    "    for i in range(factor_count):",
     "        gate_initial_hnf_perm[i] = int(factor_permutation[i])",
     `    status = ${HNF}(`,
   );
-  for (const [name] of hnfSig)
-    lines.push(`        ${HNF_ALIASES[name] || `gate_initial_hnf_${name}`},`);
+  for (const [name] of hnfSig) {
+    let expression = HNF_ALIASES[name] || `gate_initial_hnf_${name}`;
+    if (name === "rows") expression = "factor_count";
+    if (name === "columns") expression = "int(initial_relation_state[0])";
+    else if (name === "k0") expression = "int(factor_root_state[7])";
+    else if (name === "log_rows")
+      expression = "factor_real_places + factor_complex_pairs";
+    lines.push(`        ${expression},`);
+  }
   lines.push(
     "    )",
     "    if status != 0:",
     "        return 40 + status",
-    "    if gate_initial_hnf_state[0] != 2 or gate_initial_hnf_state[2] != 1124:",
-    "        return 50",
-    "    for i in range(1130):",
+    "    for i in range(factor_count):",
     "        gate_ancestry_perm1[i] = gate_initial_hnf_perm[i]",
-    "    initial_relation_state[4] = 1133",
+    "    initial_relation_state[4] = initial_columns",
+    "    log_stride = 7 * (factor_real_places + factor_complex_pairs)",
     "    squash = 0",
     "    checkpoint = 0",
     "    for pass_index in range(13):",
@@ -190,10 +223,12 @@ function generate() {
     "            current_h_rows = int(gate_append1_state[0])",
     "            current_b_columns = int(gate_append1_state[2])",
     "            current_total = int(gate_append1_state[7])",
-    "        need = 1130 - current_h_rows - current_b_columns",
+    "        need = factor_count - current_h_rows - current_b_columns",
+    "        if need <= 0:",
+    "            break",
     `        status = ${NEXT}(`,
     "            gate_initial_hnf_perm,",
-    "            1130,",
+    "            factor_count,",
     "            current_h_rows,",
     "            need,",
     "            squash,",
@@ -214,6 +249,7 @@ function generate() {
   for (const [name] of collectorSig) {
     let expression = COLLECTOR_ALIASES[name] || `gate_${name}`;
     if (name === "search_count") expression = "int(gate_next_control[0])";
+    else if (name === "scalar_prefix_count") expression = "initial_count";
     lines.push(`            ${expression},`);
   }
   lines.push(
@@ -225,11 +261,9 @@ function generate() {
     "            continue",
     "        new_columns = columns - current_total",
     "        if checkpoint == 0:",
-    "            if columns != 1136 or new_columns != 3:",
-    "                return 80",
-    "            for i in range(1130 * new_columns):",
+    "            for i in range(factor_count * new_columns):",
     "                gate_append1_new_relations[i] = int(",
-    "                    initial_relation_records[1130 * current_total + i]",
+    "                    initial_relation_records[factor_count * current_total + i]",
     "                )",
     `            status = ${APPEND}(`,
   );
@@ -238,9 +272,9 @@ function generate() {
       h: `${inputPrefix}_result_h`, dep: `${inputPrefix}_result_dep`,
       b: `${inputPrefix}_result_b`, logs: `${inputPrefix}_result_c`,
       perm: "gate_initial_hnf_perm",
-      new_logs: "integer_buffer_view(gate_log_embeddings, 21 * current_total, 21 * new_columns)",
+      new_logs: "integer_buffer_view(gate_log_embeddings, log_stride * current_total, log_stride * new_columns)",
       h_rows: "current_h_rows", b_columns: "current_b_columns",
-      total_columns: "current_total", log_rows: "3", rows: "1130",
+      total_columns: "current_total", log_rows: "factor_real_places + factor_complex_pairs", rows: "factor_count",
       new_columns: "new_columns",
     };
     for (const [name] of appendSig) {
@@ -254,15 +288,15 @@ function generate() {
     "            if status != 0:",
     "                return 90 + status",
     "            initial_relation_state[4] = columns",
-    "            for i in range(1130):",
+    "            for i in range(factor_count):",
     "                gate_ancestry_perm2[i] = gate_initial_hnf_perm[i]",
     "            checkpoint = 1",
+    "            if gate_append1_state[0] + gate_append1_state[2] >= factor_count:",
+    "                break",
     "        else:",
-    "            if columns != 1137 or new_columns != 1:",
-    "                return 100",
-    "            for i in range(1130 * new_columns):",
+    "            for i in range(factor_count * new_columns):",
     "                gate_append2_new_relations[i] = int(",
-    "                    initial_relation_records[1130 * current_total + i]",
+    "                    initial_relation_records[factor_count * current_total + i]",
     "                )",
     `            status = ${APPEND}(`,
   );
@@ -273,14 +307,17 @@ function generate() {
     "                return 110 + status",
     "            initial_relation_state[4] = columns",
     "            checkpoint = 2",
+    "            if gate_append2_state[0] + gate_append2_state[2] < factor_count:",
+    "                return 119",
     "            break",
-    "    if checkpoint != 2:",
-    "        return 120",
-    "    if gate_append2_state[0] != 2 or gate_append2_state[2] != 1128:",
-    "        return 121",
     `    status = ${ANCESTRY}(`,
     "        initial_relation_records,",
     "        gate_log_embeddings,",
+    "        factor_count,",
+    "        initial_columns,",
+    "        checkpoint,",
+    "        factor_real_places + factor_complex_pairs,",
+    "        gate_initial_hnf_state,",
     "        gate_initial_hnf_assembly_state,",
     "        gate_initial_hnf_transform,",
     "        gate_initial_hnf_b,",
@@ -289,6 +326,7 @@ function generate() {
     "        gate_initial_hnf_full_dep,",
     "        gate_initial_hnf_diagonal,",
     "        gate_append1_rank_state,",
+    "        gate_append1_state,",
     "        gate_append1_permuted_b,",
     "        gate_append1_transform,",
     "        gate_append1_full_h,",
@@ -296,12 +334,15 @@ function generate() {
     "        gate_append1_diagonal,",
     "        gate_ancestry_perm1,",
     "        gate_append2_rank_state,",
+    "        gate_append2_state,",
     "        gate_append2_permuted_b,",
     "        gate_append2_transform,",
     "        gate_append2_full_h,",
     "        gate_append2_full_dep,",
     "        gate_append2_diagonal,",
     "        gate_ancestry_perm2,",
+    "        gate_initial_hnf_result_c,",
+    "        gate_append1_result_c,",
     "        gate_append2_result_c,",
     "        gate_initial_hnf_perm,",
     "        gate_ancestry_current,",
@@ -318,6 +359,20 @@ function generate() {
     "    )",
     "    if status != 0:",
     "        return 130 + status",
+    "    if checkpoint == 0:",
+    "        for i in range(9):",
+    "            gate_append2_state[i] = gate_initial_hnf_state[i]",
+    "        for i in range(gate_initial_hnf_state[0] * gate_initial_hnf_state[0]):",
+    "            gate_append2_result_h[i] = gate_initial_hnf_result_h[i]",
+    "        for i in range(log_stride * initial_columns):",
+    "            gate_append2_result_c[i] = gate_initial_hnf_result_c[i]",
+    "    elif checkpoint == 1:",
+    "        for i in range(9):",
+    "            gate_append2_state[i] = gate_append1_state[i]",
+    "        for i in range(gate_append1_state[0] * gate_append1_state[0]):",
+    "            gate_append2_result_h[i] = gate_append1_result_h[i]",
+    "        for i in range(log_stride * gate_append1_state[7]):",
+    "            gate_append2_result_c[i] = gate_append1_result_c[i]",
     "    return 0", "", "", `__all__ = [\"${ROOT}\"]`, "",
   );
   // Keep the formatter outside the runtime/source-inspection import path.  It

@@ -7,28 +7,17 @@ cut performs its exact mathematical authentication over explicit buffers and
 publishes only bounded scalar/vector evidence for host-side object assembly.
 """
 
-from typing import TypedDict
-
 from sagejs.native import (
     Int64Buffer,
     IntegerBuffer,
     int64_workspace,
     integer_workspace,
     native,
-    uint64,
 )
 
 from .generator_order_witness import _pari_exact_cubic_ideal_multiply
 from .prime_ideal_hnf import pari_prime_ideal_hnf
 from .signed_prime_ideal_reduction import pari_cubic_mul_matrix
-
-
-class Row6ClassManifest(TypedDict):
-    rows: uint64
-    columns: uint64
-    degree: uint64
-    kernel_columns: uint64
-    class_columns: uint64
 
 
 def _determinant3(matrix: IntegerBuffer) -> int:
@@ -79,7 +68,11 @@ def _same_lattice3(left: IntegerBuffer, right: IntegerBuffer) -> bool:
 
 @native
 def pari_row6_phase6_resident_class_private(
-    manifest: Row6ClassManifest,
+    rows: int,
+    columns: int,
+    degree: int,
+    kernel_columns: int,
+    class_columns: int,
     terminal_h: IntegerBuffer,
     raw_relations: IntegerBuffer,
     principal_generators: IntegerBuffer,
@@ -110,52 +103,44 @@ def pari_row6_phase6_resident_class_private(
     ideal_hnf_work: IntegerBuffer = integer_workspace(27, 256)
     principal_generator: IntegerBuffer = integer_workspace(3, 256)
     principal_matrix: IntegerBuffer = integer_workspace(9, 256)
-    targets: Int64Buffer = int64_workspace(2)
+    targets: Int64Buffer = int64_workspace(9)
 
     if (
-        manifest["rows"] != 1130
-        or manifest["columns"] != 1137
-        or manifest["degree"] != 3
-        or manifest["kernel_columns"] != 7
-        or manifest["class_columns"] != 2
-        or len(terminal_h) != 4
-        or len(raw_relations) != 1130 * 1137
-        or len(principal_generators) != 3 * 1137
-        or len(factor_ideals) != 9 * 1130
-        or len(factor_norms) != 1130
-        or len(descriptor_generators) != 3 * 1130
-        or len(descriptor_primes) != 1130
-        or len(descriptor_e) != 1130
-        or len(descriptor_f) != 1130
-        or len(descriptor_inert) != 1130
+        rows < 1
+        or columns < 1
+        or degree != 3
+        or kernel_columns < 1
+        or class_columns < 1
+        or class_columns > 9
+        or len(terminal_h) < class_columns * class_columns
+        or len(raw_relations) < rows * columns
+        or len(principal_generators) < degree * columns
+        or len(factor_ideals) < degree * degree * rows
+        or len(factor_norms) < rows
+        or len(descriptor_generators) < degree * rows
+        or len(descriptor_primes) < rows
+        or len(descriptor_e) < rows
+        or len(descriptor_f) < rows
+        or len(descriptor_inert) < rows
         or len(multiplication_basis) != 27
-        or len(raw_to_unit_kernel) != 7 * 1137
-        or len(raw_to_presentation) != 2 * 1137
-        or len(active_rows) < 2
-        or len(factor_map) < 2 * 1130
+        or len(raw_to_unit_kernel) < kernel_columns * columns
+        or len(raw_to_presentation) < class_columns * columns
+        or len(active_rows) < class_columns
+        or len(factor_map) < class_columns * rows
         or len(class_state) < 12
     ):
         raise ValueError("unsupported row-6 resident class boundary")
     for i in range(12):
         class_state[i] = 0
     class_state[0] = -1
-    if (
-        terminal_h[0] != 2
-        or terminal_h[1] != 0
-        or terminal_h[2] != 0
-        or terminal_h[3] != 2
-    ):
-        class_state[0] = 1
-        return 1
-
-    # Seven selected unit columns must be exact relation kernels.
-    for kernel in range(7):
-        for row in range(1130):
+    # Selected unit columns must be exact relation kernels.
+    for kernel in range(kernel_columns):
+        for row in range(rows):
             value = 0
-            for source in range(1137):
+            for source in range(columns):
                 value += (
-                    raw_relations[source * 1130 + row]
-                    * raw_to_unit_kernel[kernel * 1137 + source]
+                    raw_relations[source * rows + row]
+                    * raw_to_unit_kernel[kernel * columns + source]
                 )
             if value != 0:
                 class_state[0] = 2
@@ -163,19 +148,31 @@ def pari_row6_phase6_resident_class_private(
                 class_state[2] = row
                 return 2
 
-    # Each class column has one coefficient-two pivot, at distinct rows.
-    for class_column in range(2):
+    # This bounded private verifier supports diagonal HNF presentations.  The
+    # diagonal coefficients are live terminal output, not embedded answers.
+    for class_column in range(class_columns):
+        for other in range(class_columns):
+            if (
+                other != class_column
+                and terminal_h[class_column * class_columns + other] != 0
+            ):
+                class_state[0] = 1
+                return 1
+        expected = terminal_h[class_column * class_columns + class_column]
+        if expected == 0:
+            class_state[0] = 1
+            return 1
         nonzero = 0
         target = -1
-        for row in range(1130):
+        for row in range(rows):
             value = 0
-            for source in range(1137):
+            for source in range(columns):
                 value += (
-                    raw_relations[source * 1130 + row]
-                    * raw_to_presentation[class_column * 1137 + source]
+                    raw_relations[source * rows + row]
+                    * raw_to_presentation[class_column * columns + source]
                 )
             if value != 0:
-                if value != 2:
+                if value != expected:
                     class_state[0] = 3
                     return 3
                 nonzero += 1
@@ -184,13 +181,15 @@ def pari_row6_phase6_resident_class_private(
             class_state[0] = 4
             return 4
         targets[class_column] = target
-    if targets[0] == targets[1]:
-        class_state[0] = 5
-        return 5
+    for left in range(class_columns):
+        for right in range(left):
+            if targets[left] == targets[right]:
+                class_state[0] = 5
+                return 5
 
     reconstructed = 0
     inert_count = 0
-    for index in range(1130):
+    for index in range(rows):
         prime = descriptor_primes[index]
         residue_degree = descriptor_f[index]
         ramification = descriptor_e[index]
@@ -231,14 +230,14 @@ def pari_row6_phase6_resident_class_private(
     checked_products = 0
     nonzero_entries = 0
     maximum_exponent = 0
-    for column in range(1137):
+    for column in range(columns):
         for i in range(9):
             product[i] = 0
         product[0] = 1
         product[4] = 1
         product[8] = 1
-        for row in range(1130):
-            exponent = raw_relations[column * 1130 + row]
+        for row in range(rows):
+            exponent = raw_relations[column * rows + row]
             if exponent < 0 or exponent > 32:
                 class_state[0] = 9
                 class_state[1] = column
@@ -275,25 +274,25 @@ def pari_row6_phase6_resident_class_private(
             class_state[1] = column
             return 11
 
-    for i in range(2 * 1130):
+    for i in range(class_columns * rows):
         factor_map[i] = 0
-    factor_map[targets[0]] = 1
-    factor_map[1130 + targets[1]] = 1
-    active_rows[0] = targets[0]
-    active_rows[1] = targets[1]
+    for class_column in range(class_columns):
+        factor_map[class_column * rows + targets[class_column]] = 1
+        active_rows[class_column] = targets[class_column]
     class_state[0] = 0
     class_state[1] = reconstructed
     class_state[2] = inert_count
-    class_state[3] = 1137
+    class_state[3] = columns
     class_state[4] = nonzero_entries
     class_state[5] = checked_products
     class_state[6] = maximum_exponent
     class_state[7] = targets[0]
-    class_state[8] = targets[1]
-    class_state[9] = 3
-    class_state[10] = 4
-    class_state[11] = 2
+    if class_columns > 1:
+        class_state[8] = targets[1]
+    class_state[9] = degree
+    class_state[10] = kernel_columns
+    class_state[11] = class_columns
     return 0
 
 
-__all__ = ["Row6ClassManifest", "pari_row6_phase6_resident_class_private"]
+__all__ = ["pari_row6_phase6_resident_class_private"]
