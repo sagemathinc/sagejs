@@ -13,7 +13,7 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 249,
+    "classified-native-file": 250,
     "declared-ffi": 480,
     "declared-ffi-resource": 37,
     "napi-export": 358,
@@ -9577,6 +9577,14 @@
       "id": "native-file:bench/pari-class-group-port/pari-stage-clock/pari_stage_clock_driver.c",
       "kind": "classified-native-file",
       "path": "bench/pari-class-group-port/pari-stage-clock/pari_stage_clock_driver.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:bench/pari-class-group-port/row14_pari_prepared_timing_adapter.c",
+      "kind": "classified-native-file",
+      "path": "bench/pari-class-group-port/row14_pari_prepared_timing_adapter.c",
       "disposition": "benchmark-reference",
       "review_status": "accepted",
       "lane": "arithmetic-algebra"
