@@ -81,6 +81,25 @@ def ρσ_exact_integer_add(left, right, missing):
     return r"""%js (()=>{const a=typeof left,b=typeof right,e=(t,v)=>t==="boolean"||t==="bigint"||t==="number"&&Number.isSafeInteger(v);if(!e(a,left)||!e(b,right))return missing;if(a!=="bigint"&&b!=="bigint"){const v=Number(left)+Number(right);if(Number.isSafeInteger(v))return v===0?0:v}return BigInt(left)+BigInt(right)})()"""
 
 
+def ρσ_exact_integer_divmod(left, right, op, missing):
+    return r"""%js (() => {
+        const leftType = typeof left, rightType = typeof right;
+        const exact = (type, value) => type === "boolean" || type === "bigint" || (type === "number" && Number.isSafeInteger(value));
+        if (!exact(leftType, left) || !exact(rightType, right) || right === false || right === 0 || right === 0n) return missing;
+        if (leftType !== "bigint" && rightType !== "bigint") {
+            const a = Number(left), b = Number(right), remainder = a % b;
+            let value = op ? remainder : Math.floor(a / b);
+            if (op && value !== 0 && (a < 0) !== (b < 0)) value += b;
+            return value === 0 ? 0 : value;
+        }
+        const a = BigInt(left), b = BigInt(right), remainder = a % b;
+        let value = op ? remainder : a / b;
+        if (remainder !== 0n && (a < 0n) !== (b < 0n)) value += op ? b : -1n;
+        const number = Number(value);
+        return Number.isSafeInteger(number) ? number === 0 ? 0 : number : value;
+    })()"""
+
+
 def ρσ_exact_shift(left, right, op, missing):
     return r"""%js (() => {
         const e = v => typeof v === "boolean" || typeof v === "bigint" ||

@@ -2355,22 +2355,17 @@ def _builtins_operator_truediv_exact_slow(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_mod(left: Any, right: Any) -> Any:
-    left_type = ρσ_python_jstype(left)
-    right_type = ρσ_python_jstype(right)
-    if (
-        runtime.strict_equal(left_type, "number")
-        and runtime.strict_equal(right_type, "number")
-        and runtime.number.isSafeInteger(left)
-        and runtime.number.isSafeInteger(right)
+    result = runtime.reflect.apply(
+        ρσ_exact_integer_divmod,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        runtime.undefined,
+        [left, right, 1, _BUILTINS_MISSING],
+    )
+    if result is not _BUILTINS_MISSING:
+        return result
+    if _builtins_exact_integer_primitive(left) and _builtins_exact_integer_primitive(
+        right
     ):
-        if runtime.strict_equal(right, 0):
-            raise runtime.zero_division_error("integer modulo by zero")
-        remainder = runtime.native_mod(left, right)
-        if runtime.strict_equal(remainder, 0):
-            return 0
-        if remainder < 0 and right > 0 or remainder > 0 and right < 0:
-            remainder = runtime.native_add(remainder, right)
-        return remainder
+        raise runtime.zero_division_error("integer modulo by zero")
     if _builtins_member_is_function(left, "__mod__"):
         result = _builtins_call_member(left, "__mod__", [right])
         if result is not NotImplemented:
@@ -2381,17 +2376,8 @@ def ρσ_operator_mod(left: Any, right: Any) -> Any:
             return result
     if runtime.equals(right, 0):
         raise runtime.zero_division_error("integer modulo by zero")
-    if _builtins_exact_integer_primitive(left) and _builtins_exact_integer_primitive(
-        right
-    ):
-        left_bigint = runtime.bigint(left)
-        right_bigint = runtime.bigint(right)
-        remainder = runtime.native_mod(left_bigint, right_bigint)
-        if not runtime.strict_equal(remainder, runtime.bigint(0)) and (
-            remainder < 0 and right_bigint > 0 or remainder > 0 and right_bigint < 0
-        ):
-            remainder = runtime.native_add(remainder, right_bigint)
-        return runtime.normalize_integer(remainder)
+    left_type = ρσ_python_jstype(left)
+    right_type = ρσ_python_jstype(right)
     if runtime.strict_equal(left_type, "bigint") or runtime.strict_equal(
         right_type, "bigint"
     ):
@@ -2672,31 +2658,17 @@ def ρσ_operator_rshift(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_floordiv(left: Any, right: Any) -> Any:
+    result = runtime.reflect.apply(
+        ρσ_exact_integer_divmod,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        runtime.undefined,
+        [left, right, 0, _BUILTINS_MISSING],
+    )
+    if result is not _BUILTINS_MISSING:
+        return result
     if _builtins_exact_integer_primitive(left) and _builtins_exact_integer_primitive(
         right
     ):
-        if (
-            runtime.strict_equal(right, 0)
-            or runtime.strict_equal(right, runtime.bigint(0))
-            or right is False
-        ):
-            raise runtime.zero_division_error("integer division or modulo by zero")
-        if runtime.strict_equal(
-            ρσ_python_jstype(left), "bigint"
-        ) or runtime.strict_equal(ρσ_python_jstype(right), "bigint"):
-            left_bigint = runtime.bigint(left)
-            right_bigint = runtime.bigint(right)
-            quotient = runtime.native_div(left_bigint, right_bigint)
-            remainder = runtime.native_mod(left_bigint, right_bigint)
-            if not runtime.strict_equal(remainder, runtime.bigint(0)) and (
-                left_bigint < 0
-                and right_bigint > 0
-                or left_bigint > 0
-                and right_bigint < 0
-            ):
-                quotient = runtime.native_sub(quotient, runtime.bigint(1))
-            return runtime.normalize_integer(quotient)
-        return runtime.math.floor(runtime.native_div(left, right))
+        raise runtime.zero_division_error("integer division or modulo by zero")
     if _builtins_member_is_function(left, "__floordiv__"):
         return _builtins_call_member(left, "__floordiv__", [right])
     if _builtins_member_is_function(right, "__rfloordiv__"):

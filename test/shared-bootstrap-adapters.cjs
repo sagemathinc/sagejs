@@ -9,7 +9,8 @@ const test = require("node:test");
 const root = join(__dirname, "..");
 const source = readFileSync(join(root, "src/baselib/bootstrap_shared.py"), "utf8");
 const names = ["ρσ_copy_method_metadata", "ρσ_native_method_adapter", "ρσ_unbound_method_adapter",
-  "ρσ_exact_integer_add", "ρσ_exact_shift", "ρσ_exact_integer_submul", "ρσ_int_pow",
+  "ρσ_exact_integer_add", "ρσ_exact_integer_divmod", "ρσ_exact_shift",
+  "ρσ_exact_integer_submul", "ρσ_int_pow",
   "ρσ_check_interrupt", "ρσ_normalize_exception", "ρσ_prepare_method_call",
   "ρσ_attr", "ρσ_interpolate_kwargs"];
 
@@ -252,6 +253,26 @@ test("shared exact integer arithmetic preserves primitive Python integers", () =
   assert.equal(add(1.5, 2, missing), missing);
   assert.equal(add(Number.MAX_SAFE_INTEGER + 1, 1, missing), missing);
   assert.equal(add({}, 1, missing), missing);
+});
+
+test("shared exact integer division and modulo preserve Python signs", () => {
+  const { ρσ_exact_integer_divmod: divmod } = context();
+  const missing = {};
+  const floor = (left, right) => divmod(left, right, 0, missing);
+  const mod = (left, right) => divmod(left, right, 1, missing);
+  assert.deepEqual([floor(7, 3), floor(-7, 3), floor(7, -3), floor(-7, -3)], [2, -3, -3, 2]);
+  assert.deepEqual([mod(7, 3), mod(-7, 3), mod(7, -3), mod(-7, -3)], [1, 2, -2, -1]);
+  assert.equal(floor(2n ** 60n, 3), 384307168202282325n);
+  assert.equal(mod(-(2n ** 60n), 7), 6);
+  assert.equal(floor(true, true), 1);
+  assert.equal(mod(true, 2), 1);
+  assert.equal(floor(1, 0), missing);
+  assert.equal(mod(1n, 0n), missing);
+  assert.equal(floor(1, false), missing);
+  assert.equal(mod(1, false), missing);
+  assert.equal(floor(1n, false), missing);
+  assert.equal(mod(1n, false), missing);
+  assert.equal(floor(1.5, 1), missing);
 });
 
 test("shared exact integer shifts preserve primitive Python integers", () => {
