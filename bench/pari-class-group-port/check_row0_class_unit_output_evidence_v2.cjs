@@ -12,6 +12,7 @@ const { spawnSync } = require("node:child_process");
 
 const adapter = require("./row0_class_unit_output_evidence_v2.cjs");
 const proofApi = require("./row0_raw_relation_smith_proof.cjs");
+const saturationApi = require("./check_row0_unit_saturation_evidence.cjs");
 const v2 = require("./class_unit_output_evidence_v2.cjs");
 
 function sourceOwner(source, name) {
@@ -98,17 +99,18 @@ function main(filename) {
     "usage: check_row0_class_unit_output_evidence_v2.cjs ROW0_RESULT.json");
   const raw = fs.readFileSync(path.resolve(filename));
   const source = adapter.authenticateRow0Correspondence(raw);
-  const output = adapter.buildRow0OutputEvidence(raw);
+  const saturation = saturationApi.buildAndColdReplay(filename);
+  const output = adapter.buildRow0OutputEvidence(raw, saturation);
   v2.validate(output);
   assert.deepEqual(v2.parseCanonical(v2.canonical(output)), output);
   const evidence = new Map(output.evidence.map(entry => [entry.id, entry]));
 
   assert.equal(output.presentation.variant, "smith_uwvd");
   assert.equal(output.completion.phase3Complete, true);
-  assert.equal(output.completion.phase4Complete, false);
+  assert.equal(output.completion.phase4Complete, true);
   assert.equal(output.completion.phase5Complete, false);
   assert.equal(output.completion.outputBoundaryComplete, false);
-  assert(output.completion.missing.includes(
+  assert(!output.completion.missing.includes(
     "independent-unit-saturation-certificate"));
   assert(output.completion.missing.includes("proved-factor-base-bound"));
   assert.deepEqual(Object.values(output.maps).map(value => value.ready),
@@ -144,6 +146,8 @@ function main(filename) {
       digest(norms[index]));
   }
   assert.deepEqual(sourceOwner(source, "torsion-generator"), ["-1", "0", "0"]);
+  assert.equal(evidence.get("unit-saturation-index-one").sha256,
+    digest(saturation));
   const regulator = decode(sourceOwner(source, "regulator-rigorous-authority"));
   assert.equal(regulator.evidence.live_regulator_contained, true);
   assert.equal(regulator.evidence.regulator_enclosure.rigorous, true);
@@ -155,19 +159,23 @@ function main(filename) {
   assert.equal(replay.factorBase, 66);
   assert.equal(replay.exactUnits, 2);
 
-  const assessment = adapter.assessRow0OutputEvidence(raw);
+  const assessment = adapter.assessRow0OutputEvidence(raw, saturation);
   assert.equal(assessment.status, "valid-v2-incomplete-output-boundary");
   assert.equal(assessment.completion.phase3Complete, true);
-  assert.equal(assessment.completion.phase4Complete, false);
+  assert.equal(assessment.completion.phase4Complete, true);
   assert.equal(assessment.completion.phase4MaterialRetained, true);
   assert.equal(assessment.completion.phase5Complete, false);
   assert.deepEqual(assessment.missing.capability,
-    ["independent-unit-saturation-certificate", "proved-factor-base-bound"]);
+    ["proved-factor-base-bound"]);
   assert.equal(assessment.outputEvidenceSha256, digest(output));
 
   const changedRaw = Buffer.from(raw);
   changedRaw[changedRaw.length - 2] ^= 1;
-  assert.throws(() => adapter.buildRow0OutputEvidence(changedRaw),
+  assert.throws(() => adapter.buildRow0OutputEvidence(changedRaw, saturation),
+    adapter.Row0OutputEvidenceFailure);
+  const changedSaturation = structuredClone(saturation);
+  changedSaturation.conclusion.unique_index = "2";
+  assert.throws(() => adapter.buildRow0OutputEvidence(raw, changedSaturation),
     adapter.Row0OutputEvidenceFailure);
   const changed = structuredClone(output);
   changed.completion.phase4Complete = true;
@@ -183,10 +191,11 @@ function main(filename) {
     rawSmithRightShape: [66, 66], rawSmithDiagonalShape: [73, 66],
     rawSmithCellsReplayed: smithCells, classNumber: "1",
     exactUnitsReplayed: 2, rigorousRegulatorReplayed: true,
-    coldOwnerReplay: true, phase3Complete: true, phase4Complete: false,
+    coldOwnerReplay: true, phase3Complete: true, phase4Complete: true,
     phase4MaterialRetained: true, phase5Complete: false,
     outputBoundaryComplete: false, publishableUnderV2: true,
-    sourceMutationRejected: true, inflatedCompletionRejected: true,
+    sourceMutationRejected: true, saturationMutationRejected: true,
+    inflatedCompletionRejected: true,
     qualifiedTiming: false,
   })}\n`);
 }

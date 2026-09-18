@@ -2,8 +2,8 @@
 
 // Row 0's additive output-evidence-v2 projection.  The full 73-by-66 Smith
 // proof is reconstructed from same-run retained HNF ancestry.  Phase 3 is
-// complete.  Unit material is published but phase 4 remains honest about the
-// missing independent saturation certificate; general maps remain incomplete.
+// complete.  Phase 4 additionally binds a detached, independently replayed
+// analytic unit-index certificate; general maps remain incomplete.
 
 const crypto = require("node:crypto");
 const neutral = require("./class_unit_correspondence_result.cjs");
@@ -17,6 +17,8 @@ const CORRESPONDENCE_SHA256 =
 const FIELD_ID = "pari-2.17.4:x^3-20018*x+20034";
 const PARI_SOURCE_SHA256 =
   "02651d99c391007d384b3fadbc20abc6916b77036f9e496c99e9ce8688ca4b53";
+const SATURATION_SCHEMA =
+  "sagejs.pari-class-group/row0-unit-saturation-evidence-v1";
 
 class Row0OutputEvidenceFailure extends Error {}
 function fail(message) { throw new Row0OutputEvidenceFailure(message); }
@@ -51,6 +53,65 @@ function evidence(id, kind, shape, material, encoding = "canonical_json") {
     shape: shape.map(String) };
 }
 
+function authenticateSaturation(value, proof) {
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    fail("row-0 saturation evidence is absent");
+  const material = structuredClone(value);
+  const digest = material.content_sha256;
+  delete material.content_sha256;
+  if (value.schema !== SATURATION_SCHEMA ||
+      digest !== v2.sha256Canonical(material) ||
+      value.source?.correspondence_sha256 !== CORRESPONDENCE_SHA256 ||
+      value.source?.field_id !== FIELD_ID)
+    fail("row-0 saturation evidence identity changed");
+  const premise = value.premise;
+  if (premise?.correspondence_sha256 !== CORRESPONDENCE_SHA256 ||
+      premise?.field_id !== FIELD_ID || premise?.class_number !== "1" ||
+      premise?.factor_base_generation_proved !== false ||
+      JSON.stringify(premise?.raw_smith_material_sha256) !==
+        JSON.stringify(proof.materialSha256))
+    fail("row-0 saturation premise changed");
+  const retainedCertificate = value.certificate;
+  if (!retainedCertificate || typeof retainedCertificate.canonical_json !== "string" ||
+      retainedCertificate.canonical_json_sha256 !==
+        sha256(Buffer.from(retainedCertificate.canonical_json, "ascii")))
+    fail("row-0 retained saturation certificate changed");
+  let certificate;
+  try { certificate = JSON.parse(retainedCertificate.canonical_json); }
+  catch (error) {
+    throw new Row0OutputEvidenceFailure("row-0 saturation certificate is not JSON", {
+      cause: error,
+    });
+  }
+  const certificateBody = structuredClone(certificate);
+  const certificateDigest = certificateBody?.content_sha256;
+  if (certificateBody) delete certificateBody.content_sha256;
+  const hr = certificate?.analytic_proof?.hr_index;
+  if (retainedCertificate.content_sha256 !== certificate?.content_sha256 ||
+      certificateDigest !== v2.sha256Canonical(certificateBody) ||
+      certificate.schema !==
+        "sagejs.pari-class-group/row0-conditional-analytic-unit-index-certificate-v1" ||
+      JSON.stringify(certificate.premise) !== JSON.stringify(premise) ||
+      certificate.configuration?.class_number !== "1" ||
+      hr?.lower_index !== 1 || hr?.upper_index !== 1 || hr?.unique_index !== 1 ||
+      hr?.rigorous !== true || certificate.analytic_proof?.regulator?.rigorous !== true ||
+      certificate.analytic_proof?.zeta_log_residue?.rigorous !== true)
+    fail("row-0 analytic saturation certificate changed");
+  const conclusion = value.conclusion;
+  if (!conclusion || Object.keys(conclusion).sort().join(",") !== [
+    "class_number_premise", "factor_base_generation_proved", "lower_index",
+    "public_class_unit_complete", "rigorous", "unique_index", "unit_index_one",
+    "upper_index",
+  ].sort().join(",") || conclusion.class_number_premise !== "1" ||
+      conclusion.lower_index !== "1" || conclusion.upper_index !== "1" ||
+      conclusion.unique_index !== "1" || conclusion.unit_index_one !== true ||
+      conclusion.rigorous !== true ||
+      conclusion.factor_base_generation_proved !== false ||
+      conclusion.public_class_unit_complete !== false)
+    fail("row-0 saturation conclusion changed");
+  return value;
+}
+
 function authenticateRow0Correspondence(raw) {
   if (!Buffer.isBuffer(raw) || sha256(raw) !== CORRESPONDENCE_SHA256)
     fail("row-0 correspondence bytes lack their reviewed identity");
@@ -78,7 +139,7 @@ function authenticateRow0Correspondence(raw) {
   return payload;
 }
 
-function collect(raw) {
+function collect(raw, saturationEvidence) {
   const payload = authenticateRow0Correspondence(raw);
   const storage = storageMap(payload);
   const replay = (name, length) => owner(storage, `replay-${name}`, length);
@@ -93,6 +154,7 @@ function collect(raw) {
     hnf_hnf_transform: replay("hnf_hnf_transform", 15 * 15),
     hnf_full_h: replay("hnf_full_h", 8 * 15),
   }));
+  const saturation = authenticateSaturation(saturationEvidence, proof);
   const dependencies = proof.material.u.slice(66 * 73);
   const compactProvenance = replay("final_compact_provenance", 14);
   const retainedRelations = replay("final_retained_relation_map", 146);
@@ -144,6 +206,7 @@ function collect(raw) {
       "decimal_integer_matrix"),
     evidence("torsion-generator", "torsion_generator", [3], torsion,
       "decimal_integer_matrix"),
+    evidence("unit-saturation-index-one", "provenance", [], saturation),
   ];
   for (let index = 0; index < 2; index += 1) {
     entries.push(
@@ -166,8 +229,8 @@ function collect(raw) {
   entries.sort((left, right) => left.id.localeCompare(right.id));
 
   const missing = ["combine-lazy-materialization", "factor-lazy-materialization",
-    "independent-unit-saturation-certificate", "proved-factor-base-bound",
-    "public-api-integration", "reduce-lazy-materialization"];
+    "proved-factor-base-bound", "public-api-integration",
+    "reduce-lazy-materialization"];
   const output = {
     schema: v2.SCHEMA,
     field: { definingPolynomialAscending:
@@ -211,15 +274,17 @@ function collect(raw) {
     },
     completion: { correspondenceComplete: true, freshCorrespondence: true,
       missing, outputBoundaryComplete: false, phase3Complete: true,
-      phase4Complete: false, phase5Complete: false },
+      phase4Complete: true, phase5Complete: false },
   };
   v2.validate(output);
   return { output: Object.freeze(output), payload, proof };
 }
 
-function buildRow0OutputEvidence(raw) { return collect(raw).output; }
-function assessRow0OutputEvidence(raw) {
-  const { output, proof } = collect(raw);
+function buildRow0OutputEvidence(raw, saturationEvidence) {
+  return collect(raw, saturationEvidence).output;
+}
+function assessRow0OutputEvidence(raw, saturationEvidence) {
+  const { output, proof } = collect(raw, saturationEvidence);
   return Object.freeze({
     schema: ASSESSMENT_SCHEMA,
     source: output.source,
@@ -230,12 +295,11 @@ function assessRow0OutputEvidence(raw) {
       dimensions: proof.dimensions },
     completion: { ...output.completion, phase4MaterialRetained: true },
     missing: {
-      capability: ["independent-unit-saturation-certificate",
-        "proved-factor-base-bound"],
+      capability: ["proved-factor-base-bound"],
       maps: ["combine-lazy-materialization", "factor-lazy-materialization",
         "reduce-lazy-materialization"],
       public: ["public-api-integration"],
-      reason: "phase-3-complete; phase-4-saturation-and-phase-5-maps-remain",
+      reason: "phase-3-and-phase-4-complete; factor-bound-and-phase-5-maps-remain",
     },
     outputEvidenceSha256: v2.sha256Canonical(output),
     qualifiedTiming: false,
