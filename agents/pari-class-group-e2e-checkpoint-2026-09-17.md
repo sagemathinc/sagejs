@@ -79,6 +79,13 @@ and source control state match the cold PARI trace.  The cached native call took
 0.845 seconds and 497,468 KiB peak RSS; the first compile-bearing successful
 child used 743,024 KiB.
 
+Commit `0bad7237f` continues that owner through the authentic initial-relation
+cut.  It derives 203 relations, target 1,137, need 934, missing 927, and state
+`[203,11420,927,7,0,1137]`, preserving all 66 RNG words.  The 0.086-second
+native root publishes the exact 593-entry sparse basis and all principal
+records at 264,652 KiB peak RSS, while allocating no HNF or transformation
+history.  It deliberately stops before row 6's 14-pass relation/HNF schedule.
+
 Commits `bff9e5840` and `0e15a7d4d` add the pinned PARI 2.17.4 side of the
 row-14 prepared-field timing experiment.  It prepares `nfinit` outside the
 clock and times exactly `bnfinit0(prepared_nf,0,NULL,nbits2prec(192))`, retaining
