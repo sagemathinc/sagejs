@@ -1,16 +1,16 @@
-"""Bounded multiple-right-hand-side integer reconstruction for ``getfu``.
+"""Bounded multiple-right-hand-side integer reconstruction for `getfu`.
 
 Copyright (C) The PARI group. GPL-2.0-or-later, without warranty.
 
-The row-specific ``getfu`` cuts solve the same mathematical problem with
+The row-specific `getfu` cuts solve the same mathematical problem with
 different fixed dimensions: recover integral-basis coordinates from several
 archimedean right-hand sides.  This module isolates that shared operation.
-Packed scalar triples have the representation used by ``regulator_scalar``;
+Packed scalar triples have the representation used by `regulator_scalar`;
 matrices and right-hand sides are column-major.
 
 The public output is transactional.  Singular systems, weak rounding, and
 coordinates outside the declared bit bound return a status without changing
-``output``.  Shape and representation violations raise before any arithmetic.
+`output`.  Shape and representation violations raise before any arithmetic.
 The ordinary Python body is also the source compiled by the native backends.
 """
 
@@ -52,9 +52,9 @@ def pari_bounded_getfu_multiple_rhs_reconstruct(
     """Solve and reconstruct at most eight integral coordinate columns.
 
     Return zero on success, one for a singular packed-scalar system, two when
-    the worst real rounding error does not prove ``minimum_accuracy_bits``, and
-    three when a reconstructed coordinate exceeds ``maximum_coordinate_bits``.
-    ``state`` is ``(status, dimension, rhs count, worst error, columns done)``.
+    the worst real rounding error does not prove `minimum_accuracy_bits`, and
+    three when a reconstructed coordinate exceeds `maximum_coordinate_bits`.
+    `state` is `(status, dimension, rhs count, worst error, columns done)`.
 
     Exact integer solutions have effectively infinite rounding accuracy.
     Fractions are accepted only when the solve has reduced them to integers;

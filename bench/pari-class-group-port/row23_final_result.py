@@ -1,11 +1,11 @@
-"""Immutable row-23 ``buchall_end``-equivalent result and cold replay.
+"""Immutable row-23 `buchall_end`-equivalent result and cold replay.
 
 This experiment-only composer joins authenticated prepared, factor-base,
 relation/HNF, analytic-acceptance, cyclic-class, and exact-unit owners.  It
 retains the complete active relation/logarithm/transformation state and
 replays every exact identity that is currently available, including the
 degree-five reduction and expanded ideal-power correspondence.  It
-intentionally keeps ``publicComplete`` false because PARI's analytic
+intentionally keeps `publicComplete` false because PARI's analytic
 assumptions are inherited and this is a row-specific internal result.
 """
 
@@ -198,7 +198,7 @@ def _integer_vector_digest(values: Sequence[int]) -> str:
 
 
 def _packed_cleanarch_quintic(source: Sequence[int]) -> list[int]:
-    """Replay PARI ``cleanarch`` for one totally-real quintic column."""
+    """Replay PARI `cleanarch` for one totally-real quintic column."""
     values = _integers(source, "raw class logarithm", 35)
     for row in range(5):
         at = 7 * row

@@ -1,7 +1,7 @@
 """Fresh-prepared compact rank-two unit suffix for panel row 3.
 
 This is the prepared-only entry point for the existing row-3 source replay,
-regulator bridge, and ``getfu(LARGE)`` arithmetic.  It consumes the live
+regulator bridge, and `getfu(LARGE)` arithmetic.  It consumes the live
 relation/HNF/acceptance owner; it never opens the retained driver trace.
 
 PARI 2.17.4 algorithm, copyright (C) The PARI group;

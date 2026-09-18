@@ -1,7 +1,7 @@
 """Totally-real cubic C5/C6 suffix for prepared panel row 6.
 
 This is a row-specific authenticated adapter around the reusable cubic unit
-bridge.  It deliberately stops at PARI's flag-zero ``not_given(LARGE)``
+bridge.  It deliberately stops at PARI's flag-zero `not_given(LARGE)`
 boundary while retaining the exact seven-by-two factored-unit transform.
 """
 

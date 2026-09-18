@@ -1,8 +1,8 @@
-"""Authenticated row-3 ``class_group_gen`` transaction after presentation.
+"""Authenticated row-3 `class_group_gen` transaction after presentation.
 
 This joins the retained row-3 presentation with its independently published
-reduced ``genback`` owner.  It recomputes the Smith request, terminal relation
-logs, ``Ga``, ``GD``, ``ga``, and PARI's internal ``clg2`` state.  No PARI
+reduced `genback` owner.  It recomputes the Smith request, terminal relation
+logs, `Ga`, `GD`, `ga`, and PARI's internal `clg2` state.  No PARI
 terminal class object or generator answer is an input.
 
 PARI 2.17.4 algorithm, copyright (C) The PARI group;

@@ -2,7 +2,7 @@
 
 The pristine W0 owner supplies prepared field state, retained principal
 relations, and source observables.  This module recomputes the raw logarithms,
-replays translated ``hnfspec_i``, reconstructs every factor ideal and
+replays translated `hnfspec_i`, reconstructs every factor ideal and
 principal relation, and derives the non-unit presentation before consulting
 the terminal class answer.
 

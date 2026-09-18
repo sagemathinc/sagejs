@@ -1,9 +1,9 @@
-"""Exact PARI 2.17.4 ``cleanarch`` specialization for row 19.
+"""Exact PARI 2.17.4 `cleanarch` specialization for row 19.
 
-Row 19 is a mixed cubic with signature ``(1, 1)``.  Packed logarithm
+Row 19 is a mixed cubic with signature `(1, 1)`.  Packed logarithm
 entries have two rows: one real place and one complex place.  This is the
-source-order specialization of ``buch2.c:cleanarch`` used immediately before
-``class_group_gen``; it is deliberately separate from unit cleanup.
+source-order specialization of `buch2.c:cleanarch` used immediately before
+`class_group_gen`; it is deliberately separate from unit cleanup.
 
 Copyright (C) The PARI group. GPL-2.0-or-later, without warranty.
 """
@@ -38,8 +38,8 @@ def pari_cleanarch_mixed_cubic_row19(
 ) -> int:
     """Normalize row-19 class logs transactionally.
 
-    This is ``cleanarch(Ce, 3, NULL, PREC)`` for ``R1 = 1`` and ``RU = 2``.
-    ``state`` contains status, completed columns, published columns, and the
+    This is `cleanarch(Ce, 3, NULL, PREC)` for `R1 = 1` and `RU = 2`.
+    `state` contains status, completed columns, published columns, and the
     greatest source exponent.  A failed argument-reduction precision check
     publishes no output.
     """

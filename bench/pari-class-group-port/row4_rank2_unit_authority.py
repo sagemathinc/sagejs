@@ -3,11 +3,11 @@
 This boundary starts from the authenticated row-4 relation presentation and
 the pristine relation trace.  It reruns the source HNF log schedule, derives
 the rank-two lattice transform, and retains each unit as an exact product of
-the 567 authenticated principal generators.  PARI's ``LARGE`` policy prevents
+the 567 authenticated principal generators.  PARI's `LARGE` policy prevents
 expanded power-basis coordinates; it does not prevent an exact factored unit
 or its ideal, norm, and real-sign certificates from being published.
 
-The pristine ``fundamental_units`` and terminal result events are deliberately
+The pristine `fundamental_units` and terminal result events are deliberately
 not read.  PARI 2.17.4 algorithm, copyright (C) The PARI group;
 GPL-2.0-or-later.
 """
@@ -128,7 +128,7 @@ def _bridge_with_exact_sign_fallback(
 ) -> dict[str, Any]:
     """Run the translated bridge through its known low-phase-precision stop.
 
-    Row 4 combines one kernel column with coefficient ``-35372943053``.
+    Row 4 combines one kernel column with coefficient `-35372943053`.
     The 192-bit raw phase loses 13 low bits and the generic bridge therefore
     stops before publishing approximate signs.  Its integer and real LLL
     transforms are already complete.  Below, signs are proved from exact root

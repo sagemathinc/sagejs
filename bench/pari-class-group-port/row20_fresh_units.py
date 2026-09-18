@@ -3,7 +3,7 @@
 Copyright (C) The PARI group. GPL-2.0-or-later, without warranty.
 
 This is the C3--C6 orchestration already audited in
-``row20_successful_c6.py``, with the retained-W0 comparison boundary removed.
+`row20_successful_c6.py`, with the retained-W0 comparison boundary removed.
 Its inputs are only the live compact logarithms, accepted relation lattice and
 regulator, plus authenticated normalized prepared-NF data.
 """

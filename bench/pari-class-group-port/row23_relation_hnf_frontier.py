@@ -2,7 +2,7 @@
 
 Copyright (C) The PARI group. GPL-2.0-or-later, without warranty.
 
-The owner executes PARI 2.17.4's rational ``init_rel`` prefix from the live
+The owner executes PARI 2.17.4's rational `init_rel` prefix from the live
 row-23 factor ordering.  It deliberately does not manufacture small-norm
 relations or import the frozen 40-column relation matrix.
 """

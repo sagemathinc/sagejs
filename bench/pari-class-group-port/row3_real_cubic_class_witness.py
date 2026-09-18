@@ -1,6 +1,6 @@
 """Exact compact order-six class witness for development-panel row 3.
 
-The authenticated row-3 presentation is ``diag(3, 2)``.  The product of its
+The authenticated row-3 presentation is `diag(3, 2)`.  The product of its
 two presentation ideals therefore has exact order six.  This producer keeps
 the principal relation proving its sixth power as a signed product of the
 retained relation generators; it never expands that potentially enormous

@@ -1,14 +1,14 @@
-"""Immutable row-21 ``buchall_end`` result and detached exact replay.
+"""Immutable row-21 `buchall_end` result and detached exact replay.
 
 This experiment-only publisher joins the authenticated row-21 relation/HNF,
 analytic-acceptance, factor-base, and exact-unit owners.  It deliberately does
 not call PARI and it does not read the frozen W0 trace.  The public claim stays
-``False`` because the PARI/GRH bounds and the floating regulator acceptance are
+`False` because the PARI/GRH bounds and the floating regulator acceptance are
 assumed rather than independently certified.
 
 The trivial class group is not accepted merely because an upstream owner says
-``h = 1``.  We recompute a column-Hermite transform of the retained 24 by 32
-relation matrix.  Its exact witness satisfies ``A * V = [0 | I_24]`` and hence
+`h = 1`.  We recompute a column-Hermite transform of the retained 24 by 32
+relation matrix.  Its exact witness satisfies `A * V = [0 | I_24]` and hence
 gives an integral right inverse for the relation map.
 """
 
@@ -219,7 +219,7 @@ def _determinant(entries: Sequence[int], size: int) -> int:
 
 
 def _extended_gcd(left: int, right: int) -> tuple[int, int, int]:
-    """Return ``u, v, d`` with ``u*left + v*right = d >= 0``."""
+    """Return `u, v, d` with `u*left + v*right = d >= 0`."""
     old_r, remainder = abs(left), abs(right)
     old_u, u = 1, 0
     old_v, v = 0, 1

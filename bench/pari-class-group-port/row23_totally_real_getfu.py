@@ -1,9 +1,9 @@
-"""PARI 2.17.4 totally-real quintic rank-four ``getfu`` suffix.
+"""PARI 2.17.4 totally-real quintic rank-four `getfu` suffix.
 
 Copyright (C) The PARI group. GPL-2.0-or-later, without warranty.
 
 The input is the live 5-by-4 logarithmic candidate matrix produced after
-``fixarch`` and private LLL.  This source exponentiates every real place,
+`fixarch` and private LLL.  This source exponentiates every real place,
 solves four embedding right-hand sides with the shared bounded solver, rounds
 integral-basis coordinates, and authenticates each result as an exact unit.
 """
@@ -51,7 +51,7 @@ def pari_row23_totally_real_getfu(
 ) -> int:
     """Exponentiate, reconstruct, and verify four totally-real units.
 
-    ``state`` is status, exponentials completed, solve status, exact units
+    `state` is status, exponentials completed, solve status, exact units
     checked, inverse mask, and maximum logarithm exponent.  Public units are
     transactional: no output cell changes before all four norm/inverse checks.
     """

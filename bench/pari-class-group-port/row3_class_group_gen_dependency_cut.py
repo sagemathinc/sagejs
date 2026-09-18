@@ -1,9 +1,9 @@
-"""Executable row-3 prefix of PARI 2.17.4 ``class_group_gen``.
+"""Executable row-3 prefix of PARI 2.17.4 `class_group_gen`.
 
-This deliberately stops before ``genback``.  Its only mathematical inputs are
+This deliberately stops before `genback`.  Its only mathematical inputs are
 the accepted two-column presentation and the terminal factor-base permutation.
-It computes the full Smith transformations, both inverse-HNF divisions, ``M1``
-and ``M2``, and the factor-base exponent vector which ``genback`` would consume.
+It computes the full Smith transformations, both inverse-HNF divisions, `M1`
+and `M2`, and the factor-base exponent vector which `genback` would consume.
 No class number, invariant, PARI generator, or reduced ideal is an input.
 
 PARI 2.17.4 algorithm, copyright (C) The PARI group;
@@ -42,12 +42,12 @@ def pari_row3_class_group_gen_dependency_cut(
     genback_exponents: IntegerBuffer,
     state: Int64Buffer,
 ) -> int:
-    """Compute the honest row-3 ``class_group_gen`` prefix and stop closed.
+    """Compute the honest row-3 `class_group_gen` prefix and stop closed.
 
-    ``state`` is status, Smith-complete, active generators, first and second
+    `state` is status, Smith-complete, active generators, first and second
     HNF-division completion, prepared genback columns, completed genback
-    columns, missing-owner code, and factor-base size.  Status ``1`` and
-    missing-owner code ``1`` mean that a source-derived reduced-ideal candidate
+    columns, missing-owner code, and factor-base size.  Status `1` and
+    missing-owner code `1` mean that a source-derived reduced-ideal candidate
     owner/backend is unavailable.  This is a diagnostic boundary, never a
     class-group result.
     """

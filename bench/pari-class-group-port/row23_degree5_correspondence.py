@@ -1,7 +1,7 @@
-"""Expanded row-23 ideal correspondence and degree-five ``idealred`` replay.
+"""Expanded row-23 ideal correspondence and degree-five `idealred` replay.
 
 This is a source-derived translation of the row-23 path through PARI 2.17.4
-``idealred0``/``idealpseudomin`` plus exact ideal arithmetic.  PARI algorithm,
+`idealred0`/`idealpseudomin` plus exact ideal arithmetic.  PARI algorithm,
 copyright (C) The PARI group; GPL-2.0-or-later, without warranty.
 """
 
@@ -198,7 +198,7 @@ def _gram_schmidt(
 
 
 def _lll_transform(matrix: Sequence[int]) -> tuple[list[int], list[int]]:
-    """Exact delta=.99 equivalent of the five-column ``ZM_lll(...,LLL_IM)`` path."""
+    """Exact delta=.99 equivalent of the five-column `ZM_lll(...,LLL_IM)` path."""
     basis = [[matrix[5 * row + column] for row in range(5)] for column in range(5)]
     transform = [[int(i == j) for i in range(5)] for j in range(5)]
     k = 1
@@ -229,7 +229,7 @@ def compose_row23_degree5_correspondence(
     prepared: dict[str, Any],
     ancestry: dict[str, str],
 ) -> dict[str, Any]:
-    """Expand the compact class witness and independently execute ``idealred``."""
+    """Expand the compact class witness and independently execute `idealred`."""
     if (
         class_owner.get("schema") != CLASS_SCHEMA
         or factor_owner.get("schema") != FACTOR_SCHEMA

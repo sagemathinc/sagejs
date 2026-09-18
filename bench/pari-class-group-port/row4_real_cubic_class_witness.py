@@ -1,10 +1,10 @@
 """Exact compact order-two class witness for development-panel row 4.
 
-The row-4 presentation contains a source-derived vector ``c`` satisfying
-``R*c = 2*e_s``.  Expanding ``product(alpha_j**c_j)`` is needlessly enormous.
+The row-4 presentation contains a source-derived vector `c` satisfying
+`R*c = 2*e_s`.  Expanding `product(alpha_j**c_j)` is needlessly enormous.
 This leaf instead retains that signed product exactly, replays every involved
-principal relation ``(alpha_j) = product(P_i**R_ij)``, and verifies the small
-ideal power ``P_s**2``.  Thus the compact product is an exact principal
+principal relation `(alpha_j) = product(P_i**R_ij)`, and verifies the small
+ideal power `P_s**2`.  Thus the compact product is an exact principal
 witness for the generator order relation without a common denominator or a
 huge algebraic intermediate.
 

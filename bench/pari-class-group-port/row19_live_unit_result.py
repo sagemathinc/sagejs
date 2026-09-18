@@ -3,8 +3,8 @@
 The owner consumed here already proves the primitive relation dependency.  This
 suffix authenticates it against the live terminal relation/log/generator state,
 checks the exact norm valuation and the regulator correspondence, and applies
-PARI 2.17.4's flag-zero ``getfu`` size policy.  The latter returns
-``not_given(LARGE)`` before factorback, so no expanded power-basis coordinate is
+PARI 2.17.4's flag-zero `getfu` size policy.  The latter returns
+`not_given(LARGE)` before factorback, so no expanded power-basis coordinate is
 required or published.
 """
 

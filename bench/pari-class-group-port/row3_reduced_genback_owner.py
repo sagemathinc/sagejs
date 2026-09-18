@@ -1,9 +1,9 @@
-"""Source-derived reduced ``genback`` owner for frozen panel row 3.
+"""Source-derived reduced `genback` owner for frozen panel row 3.
 
 The input is the authenticated row-3 presentation owner.  This module derives
 PARI's rounded T2 matrix from its retained exact embedding, computes the three
-T2/LLL candidates required by the signed request ``(1, -1)``, and executes the
-existing translated cubic ``genback`` arithmetic.  No PARI generator or
+T2/LLL candidates required by the signed request `(1, -1)`, and executes the
+existing translated cubic `genback` arithmetic.  No PARI generator or
 reduced ideal is an input.
 
 PARI 2.17.4 algorithm, copyright (C) The PARI group;

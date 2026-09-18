@@ -197,7 +197,7 @@ def pari_getfu_rank3_mixed_quintic(
     q: IntegerBuffer,
     stack: IntegerBuffer,
 ) -> int:
-    """Run signature ``(3, 1)`` exponentiation and exact reconstruction."""
+    """Run signature `(3, 1)` exponentiation and exact reconstruction."""
 
     if precision != 192:
         raise ValueError("row-21 getfu requires 192-bit precision")

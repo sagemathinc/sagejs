@@ -3,11 +3,11 @@
 This producer starts from the authenticated row-3 presentation and pristine
 relation trace.  It reruns the source HNF/log schedule, derives the rank-two
 unit transform, and retains both units as exact signed products of the 675
-authenticated principal relation generators.  PARI's flag-zero ``LARGE``
+authenticated principal relation generators.  PARI's flag-zero `LARGE`
 policy is reproduced faithfully, so expanded power-basis coordinates are not
 invented.
 
-The pristine ``fundamental_units`` and terminal result events are never read.
+The pristine `fundamental_units` and terminal result events are never read.
 PARI 2.17.4 algorithm, copyright (C) The PARI group;
 GPL-2.0-or-later.
 """

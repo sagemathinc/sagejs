@@ -3,8 +3,8 @@
 Copyright (C) The PARI group. GPL-2.0-or-later, without warranty.
 
 This is the bounded totally-real quintic cut needed by frozen panel row 23.
-It implements the two ``extract_full_lattice`` reductions, ``cleanarchunit``,
-``fixarch``, and the private ``getfu`` factor selection.  It deliberately
+It implements the two `extract_full_lattice` reductions, `cleanarchunit`,
+`fixarch`, and the private `getfu` factor selection.  It deliberately
 stops before the four-right-hand-side reconstruction: row 23 has no live
 relation/log owner from which those units could honestly be published.
 """
@@ -48,7 +48,7 @@ def pari_unit_integer_lattice_rank_four(
     dpe_float_scratch: Float64Buffer,
     integer_scratch: IntegerBuffer,
 ) -> int:
-    """Return PARI's ``U1`` for a four-row, rank-four lattice."""
+    """Return PARI's `U1` for a four-row, rank-four lattice."""
 
     rows = 4
     if columns < rows or columns >= 199:
@@ -171,7 +171,7 @@ def pari_unit_real_lattice_rank_four(
     integer_scratch: IntegerBuffer,
     state: IntegerBuffer,
 ) -> int:
-    """Run PARI's real LLL for a full-rank ``rows``-by-four matrix."""
+    """Run PARI's real LLL for a full-rank `rows`-by-four matrix."""
 
     columns = 4
     square = 16
@@ -264,7 +264,7 @@ def pari_unit_real_lattice_rank_four(
 def pari_unit_compose_rank_four(
     u1: IntegerBuffer, rows: int, u2: IntegerBuffer, output: IntegerBuffer
 ) -> int:
-    """Compute column-major ``U1 * U2``."""
+    """Compute column-major `U1 * U2`."""
 
     columns = 4
     if rows < 1 or len(u1) < rows * 4 or len(u2) < 16 or len(output) < rows * 4:
@@ -366,7 +366,7 @@ def pari_cleanarchunit_50_quintic(
     output: IntegerBuffer,
     state: IntegerBuffer,
 ) -> int:
-    """Apply the totally-real quintic ``cleanarchunit`` checks."""
+    """Apply the totally-real quintic `cleanarchunit` checks."""
 
     rows = 5
     columns = 4
@@ -593,7 +593,7 @@ def pari_prepare_getfu_50_quintic(
     arch_real: IntegerBuffer,
     clean_real: IntegerBuffer,
 ) -> int:
-    """Build totally-real ``fixarch(A)`` and apply a rank-four factor."""
+    """Build totally-real `fixarch(A)` and apply a rank-four factor."""
 
     rows = 5
     columns = 4

@@ -1,11 +1,11 @@
-"""Authenticated row-20 signature ``(1, 2)`` C3--C6 unit path.
+"""Authenticated row-20 signature `(1, 2)` C3--C6 unit path.
 
 PARI 2.17.4 algorithm, copyright (C) The PARI group;
 GPL-2.0-or-later.
 
 The arithmetic input stops at the prepared number field, the exact HNF
 logarithms, and the accepted rank-two relation lattice.  In particular, the
-``fundamental_units`` event is not an input.  Its ``U``, ``A``, and ``fu``
+`fundamental_units` event is not an input.  Its `U`, `A`, and `fu`
 members are read only after the connected computation returns, as a pristine
 comparison oracle.
 """
@@ -71,7 +71,7 @@ def pari_cleanarchunit_mixed_quintic(
     output: IntegerBuffer,
     state: Int64Buffer,
 ) -> int:
-    """Apply ``cleanarchunit`` for degree five and signature ``(1, 2)``."""
+    """Apply `cleanarchunit` for degree five and signature `(1, 2)`."""
 
     if precision != 192:
         raise ValueError("row-20 cleanarchunit requires 192-bit precision")
@@ -177,7 +177,7 @@ def pari_prepare_getfu_mixed_quintic(
     clean_real: IntegerBuffer,
     clean_imag: IntegerBuffer,
 ) -> int:
-    """Build degree-five ``fixarch(A)`` and apply a rank-two factor."""
+    """Build degree-five `fixarch(A)` and apply a rank-two factor."""
 
     if (
         len(clean) < 42
@@ -528,7 +528,7 @@ def pari_getfu_mixed_quintic(
     q: IntegerBuffer,
     stack: IntegerBuffer,
 ) -> int:
-    """Run the connected successful signature ``(1, 2)`` C6 suffix."""
+    """Run the connected successful signature `(1, 2)` C6 suffix."""
 
     if precision != 192:
         raise ValueError("row-20 getfu requires 192-bit precision")
