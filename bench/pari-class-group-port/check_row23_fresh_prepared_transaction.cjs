@@ -120,6 +120,10 @@ async function main() {
     const pipelineSource = fs.readFileSync(pipelinePath, "utf8");
     assert.match(pipelineSource,
       /correspondenceCoordinator\.compose\(/);
+    assert.match(pipelineSource,
+      /FreshRow23CorrespondenceAuthority/);
+    assert.match(pipelineSource,
+      /correspondence_authority=c/);
     assert.doesNotMatch(pipelineSource,
       /correspondenceCoordinator\.run\(/);
     assert.doesNotMatch(pipelineSource, /w0Path|panel-23|W0[^:]*fs\.read/);
@@ -132,6 +136,7 @@ async function main() {
       transactionLocalBrand: true,
       copiedReceiptRejected: true,
       degreeFiveComposeOnly: true,
+      sameRunCorrespondenceAuthority: true,
       w0Opened: false,
       timingClaim: false,
       reserveClaim: false,

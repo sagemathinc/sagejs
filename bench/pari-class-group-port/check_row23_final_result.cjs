@@ -42,6 +42,12 @@ source_arguments = (
 payload_a = m.build_row23_payload(*source_arguments)
 payload_b = m.build_row23_payload(*source_arguments)
 assert payload_a == payload_b
+corr_authority = m.FreshRow23CorrespondenceAuthority(
+    m.CORRESPONDENCE_SHA256, m.CORRESPONDENCE_CONTENT_SHA256
+)
+assert m.build_row23_payload(
+    *source_arguments, correspondence_authority=corr_authority
+) == payload_a
 publisher_a = m.AtomicRow23Publisher()
 publisher_b = m.AtomicRow23Publisher()
 result_a = publisher_a.publish(payload_a)
@@ -58,6 +64,25 @@ assert publisher_a.publish_file(output, copy.deepcopy(payload_a)) == artifact
 assert gzip.decompress(artifact.read_bytes()) == result_a.canonical_json
 authority = m.Row23ReplayAuthority(result_a.sha256)
 assert m.cold_replay_row23(result_a.canonical_json, authority) == result_a
+fresh_corr_authority = m.Row23ReplayAuthority(
+    result_a.sha256, correspondence_authority=corr_authority
+)
+assert m.cold_replay_row23(
+    result_a.canonical_json, fresh_corr_authority
+) == result_a
+
+for changed_corr_authority in (
+    m.FreshRow23CorrespondenceAuthority("0" * 64, m.CORRESPONDENCE_CONTENT_SHA256),
+    m.FreshRow23CorrespondenceAuthority(m.CORRESPONDENCE_SHA256, "0" * 64),
+):
+    try:
+        m.build_row23_payload(
+            *source_arguments, correspondence_authority=changed_corr_authority
+        )
+    except m.Row23FinalFailure:
+        pass
+    else:
+        raise AssertionError("changed same-run correspondence authority was accepted")
 
 # Invalid drafts never become observable.
 failed = m.AtomicRow23Publisher()

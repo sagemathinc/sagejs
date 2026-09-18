@@ -31,12 +31,16 @@ are confined to a mode-0700 temporary directory and removed in `finally`.
 7. the row23 terminal adapter and detached neutral replay, yielding an
    `ImmutableClassUnitCorrespondenceResult`.
 
-The retained final composer continues to require its historical pinned unit
-owner by default. The same-run path supplies a `FreshRow23UnitAuthority` with
+The retained final composer continues to require its historical pinned
+correspondence and unit owners by default. The same-run path supplies
+`FreshRow23CorrespondenceAuthority` and `FreshRow23UnitAuthority`, each with
 both the exact newline-terminated owner digest and the exact canonical embedded
-content digest. Final construction and every cold replay require that same
-two-digest authority; all existing exact unit, inverse, norm, sign, regulator,
-and ancestry checks remain active.
+content digest. This is necessary because source provenance is part of the
+correspondence owner: even a docstring-only composer edit correctly produces a
+new owner rather than silently matching the historical pin. Final construction
+and every cold replay require those same four out-of-band digests; all existing
+exact ideal, unit, inverse, norm, sign, regulator, and ancestry checks remain
+active. The historical no-authority path remains pinned and fail-closed.
 
 The degree-five coordinator's `run` entry point is never used because that
 entry point opens W0 after publication. This transaction has no W0 path,
@@ -50,14 +54,23 @@ pipeline to test the narrow request boundary without initiating the expensive
 genuine computation. It rejects seven owner/W0 injections, an extra prepared
 field, and a copied receipt; checks immutable publications and recursive
 receipt freezing; and statically confirms degree-five `compose` rather than
-`run` wiring.
+`run` wiring. It also confirms that the same-run correspondence authority is
+forwarded into final construction and cold replay.
 
 This audit makes no latency, memory-reserve, or production-readiness claim. A
 genuine run should be attempted only with the authenticated prepared row-23
 projection and suitable host resources after the focused wiring check passes.
 
-One genuine prepared-only invocation completed the entire chain without W0.
-It reproduced the retained final source SHA-256
-`fbd08bfcdac231240ab6085aa7eff96d4f261cedfd37b647024494fa2384a318`
-and returned a branded receipt whose hidden value is an
-`ImmutableClassUnitCorrespondenceResult`.
+One genuine prepared-only invocation completed the entire chain without W0
+after the correspondence-authority repair. It authenticated prepared authority
+`0bb8aa6665e3cfdb5184f53cb4ded97655007da9d08e9969c052f81a3640a299`,
+published same-run correspondence owner
+`169747a10b57a41ce647351d8798d653892a6ada1ef3f4390b02061da18f2cc1`,
+then published final source
+`e7b3859792692a5491a9d68315cdbd080c95dcda1f6996b4710ede1a43e5f286`
+and neutral result
+`027677c94d217d600cf88b9e743627ad63d3c0d5b2a0116b1d8ea436b025c2b5`.
+The branded receipt's hidden value is an
+`ImmutableClassUnitCorrespondenceResult`. The historical pinned final path
+still independently replays byte-for-byte as
+`fbd08bfcdac231240ab6085aa7eff96d4f261cedfd37b647024494fa2384a318`.

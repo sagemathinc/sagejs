@@ -95,20 +95,24 @@ function classInputs(live, factor) {
   };
 }
 
-function pythonFinal(preparedPath, publications, unitOwner) {
+function pythonFinal(preparedPath, publications, correspondenceOwner, unitOwner) {
+  const correspondenceContentSha256 =
+    neutral.sha256Canonical(correspondenceOwner);
   const unitContentSha256 = neutral.sha256Canonical(unitOwner);
   const program = String.raw`
 import base64,importlib,json,sys
 m=importlib.import_module("bench.pari-class-group-port.row23_final_result")
-a=m.FreshRow23UnitAuthority(expected_owner_sha256=sys.argv[8],expected_content_sha256=sys.argv[9])
-p=m.build_row23_payload(*sys.argv[1:8],unit_authority=a)
-r=m.AtomicRow23Publisher(m.Row23ReplayAuthority(unit_authority=a)).publish(p)
+c=m.FreshRow23CorrespondenceAuthority(expected_owner_sha256=sys.argv[8],expected_content_sha256=sys.argv[9])
+u=m.FreshRow23UnitAuthority(expected_owner_sha256=sys.argv[10],expected_content_sha256=sys.argv[11])
+p=m.build_row23_payload(*sys.argv[1:8],correspondence_authority=c,unit_authority=u)
+r=m.AtomicRow23Publisher(m.Row23ReplayAuthority(correspondence_authority=c,unit_authority=u)).publish(p)
 print(json.dumps({"raw":base64.b64encode(r.canonical_json).decode("ascii"),"sha256":r.sha256},separators=(",",":")))
 `;
   const run = spawnSync("python3", ["-c", program, preparedPath,
     publications.factor.path, publications.relation.path,
     publications.acceptance.path, publications.classWitness.path,
     publications.correspondence.path, publications.units.path,
+    publications.correspondence.ownerSha256, correspondenceContentSha256,
     publications.units.contentSha256, unitContentSha256], {
     cwd: ROOT, encoding: "utf8", timeout: 120_000,
     maxBuffer: 128 * 1024 * 1024,
@@ -117,25 +121,33 @@ print(json.dumps({"raw":base64.b64encode(r.canonical_json).decode("ascii"),"sha2
   const parsed = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1));
   const raw = Buffer.from(parsed.raw, "base64");
   assert.equal(sha(raw), parsed.sha256);
-  return { raw, sha256: parsed.sha256, unitAuthority: {
-    ownerSha256: publications.units.contentSha256,
-    contentSha256: unitContentSha256,
-  } };
+  return { raw, sha256: parsed.sha256,
+    correspondenceAuthority: {
+      ownerSha256: publications.correspondence.ownerSha256,
+      contentSha256: correspondenceContentSha256,
+    },
+    unitAuthority: {
+      ownerSha256: publications.units.contentSha256,
+      contentSha256: unitContentSha256,
+    } };
 }
 
 function pythonColdReplay(raw, expectedSha256, mathematicalAuthoritySha256,
-  unitAuthority) {
+  correspondenceAuthority, unitAuthority) {
   const program = String.raw`
 import importlib,json,sys
 m=importlib.import_module("bench.pari-class-group-port.row23_final_result")
 raw=sys.stdin.buffer.read()
-a=m.FreshRow23UnitAuthority(expected_owner_sha256=sys.argv[4],expected_content_sha256=sys.argv[5])
-r=m.cold_replay_row23(raw,m.Row23ReplayAuthority(expected_sha256=sys.argv[1],unit_authority=a))
+c=m.FreshRow23CorrespondenceAuthority(expected_owner_sha256=sys.argv[4],expected_content_sha256=sys.argv[5])
+u=m.FreshRow23UnitAuthority(expected_owner_sha256=sys.argv[6],expected_content_sha256=sys.argv[7])
+r=m.cold_replay_row23(raw,m.Row23ReplayAuthority(expected_sha256=sys.argv[1],correspondence_authority=c,unit_authority=u))
 p=r.detached_payload()
 print(json.dumps({"schema":sys.argv[2],"sourceSha256":r.sha256,"sourcePayloadSha256":json.loads(raw)["payloadSha256"],"mathematicalAuthoritySha256":sys.argv[3],"fieldId":"5.5.1002836007889.1","classNumber":p["classGroup"]["classNumber"],"invariantFactors":p["classGroup"]["invariantFactors"],"unitCount":p["units"]["fundamental"]["freeRank"],"correspondenceComplete":p["terminal"]["correspondenceComplete"],"publicComplete":p["terminal"]["publicComplete"]},sort_keys=True,separators=(",",":")))
 `;
   const run = spawnSync("python3", ["-c", program, expectedSha256,
     adapter.SOURCE_REPLAY_SCHEMA, mathematicalAuthoritySha256,
+    correspondenceAuthority.ownerSha256,
+    correspondenceAuthority.contentSha256,
     unitAuthority.ownerSha256, unitAuthority.contentSha256], {
     cwd: ROOT, input: raw, encoding: "utf8", timeout: 120_000,
     maxBuffer: 128 * 1024 * 1024,
@@ -144,7 +156,7 @@ print(json.dumps({"schema":sys.argv[2],"sourceSha256":r.sha256,"sourcePayloadSha
   return JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1));
 }
 
-function neutralResult(sourceRaw, unitAuthority) {
+function neutralResult(sourceRaw, correspondenceAuthority, unitAuthority) {
   const sourceSha256 = neutral.sha256Bytes(sourceRaw);
   const sourceEnvelope = JSON.parse(sourceRaw.toString("ascii"));
   const mathematicalAuthoritySha256 = neutral.sha256Canonical({
@@ -156,7 +168,7 @@ function neutralResult(sourceRaw, unitAuthority) {
   const sourceAuthority = adapter.createDetachedRow23SourceAuthority({
     mathematicalAuthoritySha256,
     replay: candidate => pythonColdReplay(candidate, sourceSha256,
-      mathematicalAuthoritySha256, unitAuthority),
+      mathematicalAuthoritySha256, correspondenceAuthority, unitAuthority),
     sourceSha256,
   });
   const prepared = adapter.prepareRow23NeutralResult(sourceRaw, sourceAuthority, {
@@ -238,8 +250,9 @@ async function runSameInvocation(prepared, directory) {
   const units = unitCoordinator.publish(unitOwner, path.join(directory, "units"));
 
   const final = pythonFinal(preparedPath, { factor, relation, acceptance,
-    classWitness, correspondence, units }, unitOwner);
-  const terminal = neutralResult(final.raw, final.unitAuthority);
+    classWitness, correspondence, units }, correspondenceOwner, unitOwner);
+  const terminal = neutralResult(final.raw, final.correspondenceAuthority,
+    final.unitAuthority);
   return {
     final,
     neutral: terminal,
