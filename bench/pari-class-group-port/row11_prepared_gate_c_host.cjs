@@ -96,6 +96,13 @@ async function timedAsync(profile, label, action) {
   try { return await action(); } finally { record(profile, label, started); }
 }
 
+function kernelTimed(clock, action) {
+  const started = process.hrtime.bigint();
+  try { return action(); } finally {
+    clock.nanoseconds += process.hrtime.bigint() - started; clock.calls += 1;
+  }
+}
+
 function nativeTrace(fn) {
   if (typeof fn.diagnosticStageTrace !== "function") return null;
   const trace = fn.diagnosticStageTrace();
@@ -405,14 +412,22 @@ function createInitialGateStorage(collector, hnfspec, prepared, root) {
 function claimInitialGateStorage(storage, collector, hnfspec, prepared, root) {
   assert.equal(storage.prepared, prepared,
     "prepared initial storage belongs to a different prepared envelope");
-  assert.equal(storage.root, root,
-    "prepared initial storage belongs to a different initial owner");
+  validateBoundary(prepared, root);
   assert.equal(storage.collector, collector,
     "prepared initial storage belongs to a different collector handle");
   assert.equal(storage.hnfspec, hnfspec,
     "prepared initial storage belongs to a different hnfspec handle");
-  assert.equal(storage.consumed, false, "prepared initial storage was already consumed");
-  storage.consumed = true;
+  const input = collectorInput(prepared, root);
+  resetTypedOwners(collector, storage.collectorStorage.values);
+  for (const [name, kind] of collector.names) {
+    const target = storage.collectorStorage.values[name], source = input[name];
+    if (source === undefined) continue;
+    if (!kind.endsWith("Buffer")) storage.collectorStorage.values[name] =
+      kind === "float" ? Number(source) : BigInt(source);
+    else if (kind === "Float64Buffer") target.set(source.map(Number));
+    else copyBufferPrefix(target, source, source.length);
+  }
+  storage.root = root; storage.consumed = true;
   return storage;
 }
 
@@ -509,6 +524,8 @@ function createContinuationControlStorage(next, cv) {
 async function firstPreparedHnf(prepared, root, options = {}) {
   const profile = options.profile || null;
   const kernels = options.kernels || null;
+  const kernelClock = options.kernelClock;
+  assert(kernelClock, "prepared Gate-C requires an explicit kernel clock");
   timed(profile, "initial.validate-boundary", () => validateBoundary(prepared, root));
   const lengths = zeroLengths();
   const collector = kernels?.collector || await timedAsync(
@@ -528,8 +545,8 @@ async function firstPreparedHnf(prepared, root, options = {}) {
     preparedStorage === null ? "initial.collector" : "prepared.initial.collector",
     allocated));
   const cv = allocated.values;
-  const status = timed(profile, "initial.collector", () =>
-    collector.fn.gmp(...collector.names.map(([name]) => cv[name])));
+  const status = timed(profile, "initial.collector", () => kernelTimed(kernelClock, () =>
+    collector.fn.gmp(...collector.names.map(([name]) => cv[name]))));
   if (profile !== null) profile.native.push({ label: "initial.collector",
     trace: nativeTrace(collector.fn) });
   assert(status === 0n || status === 1n);
@@ -555,8 +572,8 @@ async function firstPreparedHnf(prepared, root, options = {}) {
     loadInitialHnfspecStorage(preparedStorage, cv, root));
   if (profile !== null) profile.allocations.push(allocationFacts(
     preparedStorage === null ? "initial.hnfspec" : "prepared.initial.hnfspec", ha));
-  assert.equal(timed(profile, "initial.hnfspec", () =>
-    hnf.fn.gmp(...hnf.names.map(([name]) => ha.values[name]))), 0n);
+  assert.equal(timed(profile, "initial.hnfspec", () => kernelTimed(kernelClock, () =>
+    hnf.fn.gmp(...hnf.names.map(([name]) => ha.values[name])))), 0n);
   if (profile !== null) profile.native.push({ label: "initial.hnfspec",
     trace: nativeTrace(hnf.fn) });
   assert.deepEqual(Array.from(ha.values.state).map(Number),
@@ -578,8 +595,13 @@ async function warmPreparedGateC({ profile = false, prepared, root } = {}) {
     "prepared Gate-C storage requires both prepared and root owners");
   const initialStorage = prepared === undefined ? undefined :
     createInitialGateStorage(collector, hnfspec, prepared, root);
+  const continuationStorage = initialStorage === undefined ? undefined :
+    createContinuationControlStorage(next, initialStorage.collectorStorage.values);
+  const hnfaddStorage = initialStorage === undefined ? undefined :
+    createHnfaddTransactionStorage(hnfadd);
   return Object.freeze({ collector, hnfspec, next, hnfadd,
-    ...(initialStorage === undefined ? {} : { initialStorage }),
+    ...(initialStorage === undefined ? {} : { initialStorage, continuationStorage,
+      hnfaddStorage }),
     profile: Boolean(profile) });
 }
 
@@ -593,7 +615,8 @@ async function runPreparedGateC(prepared, root, options = {}) {
       "prepared Gate-C handle instrumentation mismatch");
   }
   const gateStarted = profile === null ? 0n : process.hrtime.bigint();
-  const first = await firstPreparedHnf(prepared, root, { profile, kernels });
+  const kernelClock = { nanoseconds: 0n, calls: 0 };
+  const first = await firstPreparedHnf(prepared, root, { profile, kernels, kernelClock });
   const cv = first.cv;
   const initialState = Array.from(first.hnf.state).map(Number);
   const initialHRows = initialState[0], initialBColumns = initialState[2];
@@ -615,10 +638,10 @@ async function runPreparedGateC(prepared, root, options = {}) {
     profile, "continuation.compile-hnfadd", () =>
       compile("hnfadd.py", "pari_hnfadd", profile !== null));
   if (profile !== null) profile._compiled.push([append, "pari_hnfadd"]);
-  const controlStorage = timed(profile, "continuation.allocate-control-storage", () =>
-    createContinuationControlStorage(next, cv));
-  const appendStorage = timed(profile, "continuation.allocate-hnfadd-storage", () =>
-    createHnfaddTransactionStorage(append));
+  const controlStorage = kernels?.continuationStorage || timed(profile,
+    "continuation.allocate-control-storage", () => createContinuationControlStorage(next, cv));
+  const appendStorage = kernels?.hnfaddStorage || timed(profile,
+    "continuation.allocate-hnfadd-storage", () => createHnfaddTransactionStorage(append));
   if (profile !== null) {
     profile.allocations.push({ label: "continuation.control-storage",
       bytes: controlStorage.bytes, elements: controlStorage.elements,
@@ -653,8 +676,8 @@ async function runPreparedGateC(prepared, root, options = {}) {
     }
     assert.equal(resident.perm.length, ROWS);
     for (let index = 0; index < ROWS; index += 1) perm[index] = BigInt(resident.perm[index]);
-    assert.equal(next.fn.gmp(perm, BigInt(ROWS), BigInt(resident.state[0]), BigInt(need),
-      BigInt(squash), search, outerPerm, 1n, outer, cache, schedule, completed, control), 0n);
+    assert.equal(kernelTimed(kernelClock, () => next.fn.gmp(perm, BigInt(ROWS), BigInt(resident.state[0]), BigInt(need),
+      BigInt(squash), search, outerPerm, 1n, outer, cache, schedule, completed, control)), 0n);
     record(profile, `pass-${passNumber}.control-and-setup`, setupStarted);
     const nextControl = Array.from(control).map(Number);
     const desiredSearch = checkpointIndex === 0 ? 1 : 3;
@@ -668,8 +691,8 @@ async function runPreparedGateC(prepared, root, options = {}) {
       writeIntegerSlot(cv.relation_state, 5, resident.state[7] + 2);
     cv.search_count = BigInt(desiredSearch); cv.outer_mode = 1n;
     cv.outer_ru = BigInt(PLACES); cv.scalar_prefix_count = 24n;
-    assert.equal(timed(profile, `pass-${passNumber}.collector`, () =>
-      first.collector.fn.gmp(...first.collector.names.map(([name]) => cv[name]))), 0n);
+    assert.equal(timed(profile, `pass-${passNumber}.collector`, () => kernelTimed(kernelClock,
+      () => first.collector.fn.gmp(...first.collector.names.map(([name]) => cv[name])))), 0n);
     if (profile !== null) profile.native.push({ label: `pass-${passNumber}.collector`,
       trace: nativeTrace(first.collector.fn) });
     const relationState = cv.relation_state.toArray().map(Number);
@@ -693,8 +716,8 @@ async function runPreparedGateC(prepared, root, options = {}) {
     const av = prepareHnfaddTransaction(
       appendStorage, append, resident.state, newColumns, explicit).values;
     record(profile, `pass-${passNumber}.reset-and-load-hnfadd`, materializeStarted);
-    assert.equal(timed(profile, `pass-${passNumber}.hnfadd`, () =>
-      append.fn.gmp(...append.names.map(([name]) => av[name]))), 0n);
+    assert.equal(timed(profile, `pass-${passNumber}.hnfadd`, () => kernelTimed(kernelClock,
+      () => append.fn.gmp(...append.names.map(([name]) => av[name])))), 0n);
     if (profile !== null) profile.native.push({ label: `pass-${passNumber}.hnfadd`,
       trace: nativeTrace(append.fn) });
     const publishStarted = profile === null ? 0n : process.hrtime.bigint();
@@ -717,6 +740,7 @@ async function runPreparedGateC(prepared, root, options = {}) {
     delete profile._compiled;
   }
   return { collectorValues: cv, resident, checkpoints, passTrace, collectionPasses,
+    kernelNanoseconds: String(kernelClock.nanoseconds), kernelNativeCalls: kernelClock.calls,
     ownerBytesUpperBound, preparedRng: root.rng.slice(), initialStorageReuse:
       kernels?.initialStorage === undefined ? null : {
         strategy: "authenticated-resident-fixed-owner-envelope",

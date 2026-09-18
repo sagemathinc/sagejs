@@ -59,6 +59,22 @@ function relationOwner(owners, count, rows) {
   return records;
 }
 
+function residentReset(owners) {
+  const actions = [];
+  for (const value of Object.values(owners)) {
+    if (value && value.sizes instanceof Int32Array && value.limbs instanceof BigUint64Array) {
+      const sizes = value.sizes.slice(), limbs = value.limbs.slice();
+      actions.push(() => { value.sizes.set(sizes); value.limbs.set(limbs); });
+    } else if (ArrayBuffer.isView(value)) {
+      const copy = value.slice(); actions.push(() => value.set(copy));
+    } else if (Array.isArray(value)) {
+      const copy = value.slice();
+      actions.push(() => { for (let i = 0; i < copy.length; i += 1) value[i] = copy[i]; });
+    }
+  }
+  return () => { for (const reset of actions) reset(); };
+}
+
 async function computePreparedInitialRoot(payload, options = {}) {
   assert.deepEqual(Object.keys(payload).sort(),
     ["outputDirectory", "prepared", "preparedAuthoritySha256"]);
@@ -175,6 +191,7 @@ async function computePreparedInitialRoot(payload, options = {}) {
       `${name} has the wrong ABI representation`);
     return owners[name];
   });
+  const resetResidentOwners = residentReset(owners);
   const started = process.hrtime.bigint();
   const count = fn.gmp(...args); // The only root invocation in this checker.
   const elapsedNs = process.hrtime.bigint() - started;
@@ -260,8 +277,13 @@ async function computePreparedInitialRoot(payload, options = {}) {
     publication: { gateA: true, gateB: true, gateCReady: true,
       collectionExecuted: false, terminalClassComputed: false },
   };
-  return { owner, state, elapsedNs: String(elapsedNs),
+  const result = { owner, state, elapsedNs: String(elapsedNs),
     maxRssKiB: owner.execution.maxRssKiB, coreSourcePath: built.coreSourcePath };
+  if (options.captureResident === true) Object.defineProperty(result, "residentInitial", {
+    enumerable: false, configurable: false, writable: false,
+    value: Object.freeze({ fn, args, owners, reset: resetResidentOwners, built }),
+  });
+  return result;
 }
 
 module.exports = { SOURCE, computePreparedInitialRoot };
