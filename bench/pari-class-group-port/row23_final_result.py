@@ -90,8 +90,24 @@ class Row23PublicationConflict(RuntimeError):
 
 
 @dataclass(frozen=True)
+class FreshRow23UnitAuthority:
+    """Exact same-run unit-owner authority supplied by the transaction host."""
+
+    expected_owner_sha256: str
+    expected_content_sha256: str
+
+    def __post_init__(self) -> None:
+        for value in (self.expected_owner_sha256, self.expected_content_sha256):
+            if len(value) != 64 or any(
+                char not in "0123456789abcdef" for char in value
+            ):
+                raise Row23FinalFailure("fresh row-23 unit authority is not a digest")
+
+
+@dataclass(frozen=True)
 class Row23ReplayAuthority:
     expected_sha256: str | None = None
+    unit_authority: FreshRow23UnitAuthority | None = None
 
 
 @dataclass(frozen=True)
@@ -611,6 +627,7 @@ def build_row23_payload(
     class_path: str | Path,
     correspondence_path: str | Path,
     unit_path: str | Path,
+    unit_authority: FreshRow23UnitAuthority | None = None,
 ) -> dict[str, Any]:
     """Build the complete honest row-23 internal assembly."""
     prepared = _load_prepared(prepared_path)
@@ -625,7 +642,17 @@ def build_row23_payload(
     correspondence, correspondence_sha = _load_gzip_owner(
         correspondence_path, CORRESPONDENCE_SCHEMA, CORRESPONDENCE_SHA256
     )
-    unit, unit_sha = _load_gzip_owner(unit_path, UNIT_SCHEMA, UNIT_SHA256)
+    expected_unit_sha = (
+        UNIT_SHA256 if unit_authority is None else unit_authority.expected_owner_sha256
+    )
+    expected_unit_content_sha = (
+        UNIT_CONTENT_SHA256
+        if unit_authority is None
+        else unit_authority.expected_content_sha256
+    )
+    unit, unit_sha = _load_gzip_owner(unit_path, UNIT_SCHEMA, expected_unit_sha)
+    if _sha256(_canonical(unit)) != expected_unit_content_sha:
+        raise Row23FinalFailure("row-23 unit content authority changed")
     if (
         factor.get("authority", {}).get("preparedSha256") != PREPARED_SHA256
         or relation.get("authority", {}).get("preparedSha256") != PREPARED_SHA256
@@ -828,11 +855,13 @@ def build_row23_payload(
             ],
         },
     }
-    _validate_payload(payload)
+    _validate_payload(payload, unit_authority)
     return payload
 
 
-def _validate_payload(payload: Any) -> None:
+def _validate_payload(
+    payload: Any, unit_authority: FreshRow23UnitAuthority | None = None
+) -> None:
     value = _exact_dict(
         payload,
         {
@@ -868,6 +897,14 @@ def _validate_payload(payload: Any) -> None:
         },
         "source",
     )
+    expected_unit_sha = (
+        UNIT_SHA256 if unit_authority is None else unit_authority.expected_owner_sha256
+    )
+    expected_unit_content_sha = (
+        UNIT_CONTENT_SHA256
+        if unit_authority is None
+        else unit_authority.expected_content_sha256
+    )
     if source != {
         "pariVersion": PARI_VERSION,
         "preparedSha256": PREPARED_SHA256,
@@ -876,7 +913,7 @@ def _validate_payload(payload: Any) -> None:
         "acceptanceOwnerSha256": ACCEPTANCE_SHA256,
         "classOwnerSha256": CLASS_SHA256,
         "degreeFiveCorrespondenceOwnerSha256": CORRESPONDENCE_SHA256,
-        "unitOwnerSha256": UNIT_SHA256,
+        "unitOwnerSha256": expected_unit_sha,
         "frozenW0RuntimeInput": False,
     }:
         raise Row23FinalFailure("source authority changed")
@@ -933,7 +970,7 @@ def _validate_payload(payload: Any) -> None:
         or owners["classWitness"]["contentSha256"] != CLASS_CONTENT_SHA256
         or owners["degreeFiveCorrespondence"]["contentSha256"]
         != CORRESPONDENCE_CONTENT_SHA256
-        or owners["units"]["contentSha256"] != UNIT_CONTENT_SHA256
+        or owners["units"]["contentSha256"] != expected_unit_content_sha
         or factor.get("schema") != FACTOR_SCHEMA
         or relation.get("schema") != RELATION_SCHEMA
         or acceptance.get("schema") != ACCEPTANCE_SCHEMA
@@ -1222,9 +1259,12 @@ def _validate_payload(payload: Any) -> None:
         raise Row23FinalFailure("terminal status changed")
 
 
-def _envelope(payload: Mapping[str, Any]) -> tuple[bytes, str]:
+def _envelope(
+    payload: Mapping[str, Any],
+    unit_authority: FreshRow23UnitAuthority | None = None,
+) -> tuple[bytes, str]:
     detached = json.loads(_canonical(dict(payload)))
-    _validate_payload(detached)
+    _validate_payload(detached, unit_authority)
     payload_raw = _canonical(detached)
     raw = _canonical(
         {"schema": SCHEMA, "payloadSha256": _sha256(payload_raw), "payload": detached}
@@ -1245,7 +1285,7 @@ def cold_replay_row23(
     payload_raw = _canonical(envelope["payload"])
     if envelope["payloadSha256"] != _sha256(payload_raw):
         raise Row23FinalFailure("row-23 payload hash changed")
-    _validate_payload(envelope["payload"])
+    _validate_payload(envelope["payload"], authority.unit_authority)
     canonical = _canonical(envelope)
     expected_raw = raw.encode("ascii") if isinstance(raw, str) else raw
     if canonical != expected_raw:
@@ -1265,7 +1305,7 @@ class AtomicRow23Publisher:
         self._current: ImmutableRow23Result | None = None
 
     def publish(self, payload: Mapping[str, Any]) -> ImmutableRow23Result:
-        raw, digest = _envelope(payload)
+        raw, digest = _envelope(payload, self._authority.unit_authority)
         candidate = cold_replay_row23(raw, self._authority)
         if candidate.sha256 != digest:
             raise Row23FinalFailure("row-23 envelope digest changed")
@@ -1309,6 +1349,7 @@ __all__ = [
     "CLASS_SHA256",
     "CORRESPONDENCE_SHA256",
     "FACTOR_SHA256",
+    "FreshRow23UnitAuthority",
     "ImmutableRow23Result",
     "PREPARED_SHA256",
     "RELATION_SHA256",
