@@ -56,7 +56,7 @@ const TERMINAL_ALIASES = Object.freeze({
   unit_precision: "factor_precision",
   unit_rank: "factor_real_places + factor_complex_pairs - 1",
   unit_accepted_arch: "integer_buffer_view(gate_ancestry_accepted_arch, 0, 7 * places * kernel_columns)",
-  unit_accepted_signs: "integer_buffer_view(gate_ancestry_accepted_signs, 0, places * kernel_columns)",
+  unit_accepted_signs: "int64_record(gate_ancestry_accepted_signs, 0, places * kernel_columns)",
   unit_phase_pi: "gate_ancestry_phase_pi",
   unit_preparation_embedding: "gate_preparation_embedding",
   unit_multiplication_basis: "factor_basis_table",
@@ -94,6 +94,7 @@ function generate() {
     .replace(/\n__all__ = \[[^\n]+\]\n?$/, "\n");
   const lines = [gateSource,
     "",
+    "from sagejs.native import int64_record",
     `from .row6_phase6_resident_terminal_root import ${TERMINAL}`,
     "",
     "",

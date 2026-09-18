@@ -2180,6 +2180,25 @@ function analyzeExactModule(functions) {
       }
     }
   }
+  // A lexical workspace has one owning GMP representation.  Every exact
+  // caller in its private call graph must stay in that representation too;
+  // otherwise tagged emission would reference a callee variant that cannot
+  // exist without converting or escaping the workspace.
+  const exactWorkspace = new Set(functions.filter((fn) =>
+    fn.kernelKind === "integer" &&
+    fn.locals.some((local) => local.type === "NativeWorkspaceArena")
+  ).map((fn) => fn.name));
+  let workspaceChanged = true;
+  while (workspaceChanged) {
+    workspaceChanged = false;
+    for (const fn of functions) {
+      if (fn.kernelKind !== "integer" || exactWorkspace.has(fn.name)) continue;
+      if ((fn.dependencies || []).some((name) => exactWorkspace.has(name))) {
+        exactWorkspace.add(fn.name);
+        workspaceChanged = true;
+      }
+    }
+  }
   for (const fn of functions) {
     if (fn.kernelKind !== "integer") continue;
     const profile = {
@@ -2187,6 +2206,15 @@ function analyzeExactModule(functions) {
       dependencyDepth: dependencyDepth(fn.name),
     };
     let backend = backendPolicy(fn, profile, recursive.has(fn.name), fmpzPolicies);
+    if (exactWorkspace.has(fn.name)) {
+      backend = {
+        kind: "gmp",
+        reason: fn.locals.some((local) => local.type === "NativeWorkspaceArena")
+          ? "a lexical live-exact workspace has one GMP ownership backend"
+          : "a private workspace-owning dependency requires the GMP call graph",
+        requiresExactWorkspace: true,
+      };
+    }
     if (mixedFloat64.has(fn.name)) {
       backend = {
         kind: "gmp",

@@ -7,6 +7,7 @@ from sagejs.native import (
     NativeWorkspaceArena,
     integer_buffer_view,
     native,
+    uint64,
 )
 from .row6_prepared_factor_base_root import pari_row6_prepared_factor_base_root
 from .row6_prepared_initial_relations import pari_row6_prepared_initial_relations
@@ -458,12 +459,16 @@ def pari_row6_phase6_gate_prefix_root(
     log_stride = 7 * (factor_real_places + factor_complex_pairs)
     initial_k0 = int(factor_root_state[7])
     with NativeWorkspaceArena(3000000000) as gate_workspace:
-        gate_ancestry_current = gate_workspace.integer_buffer(relation_target, 64)
-        gate_ancestry_old = gate_workspace.integer_buffer(relation_target, 64)
-        gate_ancestry_joined = gate_workspace.integer_buffer(relation_target, 64)
-        gate_ancestry_work = gate_workspace.integer_buffer(relation_target, 64)
+        gate_ancestry_current = gate_workspace.integer_buffer(
+            uint64(relation_target), 64
+        )
+        gate_ancestry_old = gate_workspace.integer_buffer(uint64(relation_target), 64)
+        gate_ancestry_joined = gate_workspace.integer_buffer(
+            uint64(relation_target), 64
+        )
+        gate_ancestry_work = gate_workspace.integer_buffer(uint64(relation_target), 64)
         gate_ancestry_trailing_work = gate_workspace.integer_buffer(
-            16 * factor_count, 32
+            uint64(16 * factor_count), 32
         )
         for i in range(19):
             gate_outer_state[i] = 0
@@ -670,73 +675,79 @@ def pari_row6_phase6_gate_prefix_root(
             return 30
         initial_columns = int(initial_relation_state[0])
         gate_initial_hnf_dense = gate_workspace.integer_buffer(
-            initial_k0 * initial_columns, 6
+            uint64(initial_k0 * initial_columns), 6
         )
         gate_initial_hnf_transform = gate_workspace.integer_buffer(
-            initial_columns * initial_columns, 16
+            uint64(initial_columns * initial_columns), 16
         )
         gate_initial_hnf_bottom = gate_workspace.integer_buffer(
-            (factor_count - initial_k0) * initial_columns, 6
+            uint64((factor_count - initial_k0) * initial_columns), 6
         )
         gate_initial_hnf_updated_dense = gate_workspace.integer_buffer(
-            initial_k0 * initial_columns, 6
+            uint64(initial_k0 * initial_columns), 6
         )
         gate_initial_hnf_extra = gate_workspace.integer_buffer(
-            factor_count * initial_columns, 6
+            uint64(factor_count * initial_columns), 6
         )
         gate_initial_hnf_rank_matrix = gate_workspace.integer_buffer(
-            factor_count * initial_columns, 6
+            uint64(factor_count * initial_columns), 6
         )
-        gate_initial_hnf_occupied = gate_workspace.integer_buffer(initial_columns, 6)
-        gate_initial_hnf_pivots = gate_workspace.integer_buffer(factor_count, 6)
-        gate_initial_hnf_best = gate_workspace.integer_buffer(factor_count, 6)
-        gate_initial_hnf_profile = gate_workspace.integer_buffer(factor_count + 1, 6)
-        gate_initial_hnf_rank_state = gate_workspace.integer_buffer(10, 6)
+        gate_initial_hnf_occupied = gate_workspace.integer_buffer(
+            uint64(initial_columns), 6
+        )
+        gate_initial_hnf_pivots = gate_workspace.integer_buffer(uint64(factor_count), 6)
+        gate_initial_hnf_best = gate_workspace.integer_buffer(uint64(factor_count), 6)
+        gate_initial_hnf_profile = gate_workspace.integer_buffer(
+            uint64(factor_count + 1), 6
+        )
+        gate_initial_hnf_rank_state = gate_workspace.integer_buffer(uint64(10), 6)
         gate_initial_hnf_matbnew = gate_workspace.integer_buffer(
-            factor_count * initial_columns, 6
+            uint64(factor_count * initial_columns), 6
         )
         gate_initial_hnf_dep = gate_workspace.integer_buffer(
-            factor_count * initial_columns, 6
+            uint64(factor_count * initial_columns), 6
         )
         gate_initial_hnf_b = gate_workspace.integer_buffer(
-            factor_count * initial_columns, 6
+            uint64(factor_count * initial_columns), 6
         )
         gate_initial_hnf_transformed_logs = gate_workspace.integer_buffer(
-            log_stride * initial_columns, 8
+            uint64(log_stride * initial_columns), 8
         )
         gate_initial_hnf_full_h = gate_workspace.integer_buffer(
-            factor_count * initial_columns, 16
+            uint64(factor_count * initial_columns), 16
         )
         gate_initial_hnf_hnf_transform = gate_workspace.integer_buffer(
-            initial_columns * initial_columns, 16
+            uint64(initial_columns * initial_columns), 16
         )
         gate_initial_hnf_lam = gate_workspace.integer_buffer(
-            initial_columns * initial_columns, 16
+            uint64(initial_columns * initial_columns), 16
         )
-        gate_initial_hnf_d = gate_workspace.integer_buffer(initial_columns + 1, 16)
+        gate_initial_hnf_d = gate_workspace.integer_buffer(
+            uint64(initial_columns + 1), 16
+        )
         gate_initial_hnf_full_dep = gate_workspace.integer_buffer(
-            factor_count * initial_columns, 16
+            uint64(factor_count * initial_columns), 16
         )
         gate_initial_hnf_work_b = gate_workspace.integer_buffer(
-            factor_count * initial_columns, 16
+            uint64(factor_count * initial_columns), 16
         )
         gate_initial_hnf_work_c = gate_workspace.integer_buffer(
-            log_stride * initial_columns, 8
+            uint64(log_stride * initial_columns), 8
         )
         gate_initial_hnf_result_h = gate_workspace.integer_buffer(
-            factor_count * initial_columns, 6
+            uint64(factor_count * initial_columns), 6
         )
         gate_initial_hnf_result_dep = gate_workspace.integer_buffer(
-            factor_count * initial_columns, 6
+            uint64(factor_count * initial_columns), 6
         )
         gate_initial_hnf_result_b = gate_workspace.integer_buffer(
-            factor_count * (initial_columns + factor_count), 6
+            uint64(factor_count * (initial_columns + factor_count)), 6
         )
         gate_initial_hnf_result_c = gate_workspace.integer_buffer(
-            log_stride * initial_columns, 8
+            uint64(log_stride * initial_columns), 8
         )
-        gate_initial_hnf_cup_arena = gate_workspace.integer_buffer(8_000_000, 2)
-        gate_initial_hnf_cup_frames = gate_workspace.integer_buffer(64, 2)
+        gate_initial_hnf_cup_arena = gate_workspace.integer_buffer(uint64(8_000_000), 2)
+        gate_initial_hnf_cup_frames = gate_workspace.integer_buffer(uint64(64), 2)
         for i in range(factor_count * initial_columns):
             gate_initial_hnf_original[i] = int(initial_relation_records[i])
         for i in range(factor_count):
@@ -804,93 +815,107 @@ def pari_row6_phase6_gate_prefix_root(
         if int(gate_initial_hnf_state[0]) < 1 or int(gate_initial_hnf_state[0]) > 16:
             return 51
         append_width_ceiling = 24
-        gate_append_top = gate_workspace.integer_buffer(append_lig_ceiling * 8, 16)
-        gate_append_exact_product = gate_workspace.integer_buffer(
-            append_lig_ceiling * 8, 16
+        gate_append_top = gate_workspace.integer_buffer(
+            uint64(append_lig_ceiling * 8), 16
         )
-        gate_append_log_product = gate_workspace.integer_buffer(log_stride * 8, 16)
-        gate_append_adjusted_logs = gate_workspace.integer_buffer(log_stride * 8, 16)
+        gate_append_exact_product = gate_workspace.integer_buffer(
+            uint64(append_lig_ceiling * 8), 16
+        )
+        gate_append_log_product = gate_workspace.integer_buffer(
+            uint64(log_stride * 8), 16
+        )
+        gate_append_adjusted_logs = gate_workspace.integer_buffer(
+            uint64(log_stride * 8), 16
+        )
         gate_append_joined = gate_workspace.integer_buffer(
-            append_lig_ceiling * append_width_ceiling, 16
+            uint64(append_lig_ceiling * append_width_ceiling), 16
         )
         gate_append_joined_logs = gate_workspace.integer_buffer(
-            log_stride * relation_target, 16
+            uint64(log_stride * relation_target), 16
         )
         gate_append_rank_matrix = gate_workspace.integer_buffer(
-            append_lig_ceiling * append_width_ceiling, 16
+            uint64(append_lig_ceiling * append_width_ceiling), 16
         )
-        gate_append_occupied = gate_workspace.integer_buffer(append_width_ceiling, 16)
-        gate_append_pivots = gate_workspace.integer_buffer(append_lig_ceiling, 16)
-        gate_append_best = gate_workspace.integer_buffer(append_lig_ceiling, 16)
-        gate_append_profile = gate_workspace.integer_buffer(append_lig_ceiling, 16)
-        gate_append1_rank_state = gate_workspace.integer_buffer(10, 16)
-        gate_append2_rank_state = gate_workspace.integer_buffer(10, 16)
+        gate_append_occupied = gate_workspace.integer_buffer(
+            uint64(append_width_ceiling), 16
+        )
+        gate_append_pivots = gate_workspace.integer_buffer(
+            uint64(append_lig_ceiling), 16
+        )
+        gate_append_best = gate_workspace.integer_buffer(uint64(append_lig_ceiling), 16)
+        gate_append_profile = gate_workspace.integer_buffer(
+            uint64(append_lig_ceiling), 16
+        )
+        gate_append1_rank_state = gate_workspace.integer_buffer(uint64(10), 16)
+        gate_append2_rank_state = gate_workspace.integer_buffer(uint64(10), 16)
         gate_append_matb = gate_workspace.integer_buffer(
-            append_lig_ceiling * append_width_ceiling, 16
+            uint64(append_lig_ceiling * append_width_ceiling), 16
         )
         gate_append_new_dep = gate_workspace.integer_buffer(
-            append_lig_ceiling * append_width_ceiling, 16
+            uint64(append_lig_ceiling * append_width_ceiling), 16
         )
         gate_append1_permuted_b = gate_workspace.integer_buffer(
-            append_lig_ceiling * factor_count, 16
+            uint64(append_lig_ceiling * factor_count), 16
         )
         gate_append2_permuted_b = gate_workspace.integer_buffer(
-            append_lig_ceiling * factor_count, 16
+            uint64(append_lig_ceiling * factor_count), 16
         )
         gate_append1_full_h = gate_workspace.integer_buffer(
-            append_lig_ceiling * append_width_ceiling, 16
+            uint64(append_lig_ceiling * append_width_ceiling), 16
         )
         gate_append2_full_h = gate_workspace.integer_buffer(
-            append_lig_ceiling * append_width_ceiling, 16
+            uint64(append_lig_ceiling * append_width_ceiling), 16
         )
         gate_append1_transform = gate_workspace.integer_buffer(
-            append_width_ceiling * append_width_ceiling, 16
+            uint64(append_width_ceiling * append_width_ceiling), 16
         )
         gate_append2_transform = gate_workspace.integer_buffer(
-            append_width_ceiling * append_width_ceiling, 16
+            uint64(append_width_ceiling * append_width_ceiling), 16
         )
         gate_append_lam = gate_workspace.integer_buffer(
-            append_width_ceiling * append_width_ceiling, 16
+            uint64(append_width_ceiling * append_width_ceiling), 16
         )
-        gate_append_d = gate_workspace.integer_buffer(append_width_ceiling + 1, 16)
+        gate_append_d = gate_workspace.integer_buffer(
+            uint64(append_width_ceiling + 1), 16
+        )
         gate_append1_full_dep = gate_workspace.integer_buffer(
-            append_lig_ceiling * append_width_ceiling, 16
+            uint64(append_lig_ceiling * append_width_ceiling), 16
         )
         gate_append2_full_dep = gate_workspace.integer_buffer(
-            append_lig_ceiling * append_width_ceiling, 16
+            uint64(append_lig_ceiling * append_width_ceiling), 16
         )
         gate_append_work_b = gate_workspace.integer_buffer(
-            append_lig_ceiling * factor_count, 16
+            uint64(append_lig_ceiling * factor_count), 16
         )
         gate_append_work_c = gate_workspace.integer_buffer(
-            log_stride * relation_target, 16
+            uint64(log_stride * relation_target), 16
         )
         gate_append_final_c = gate_workspace.integer_buffer(
-            log_stride * relation_target, 16
+            uint64(log_stride * relation_target), 16
         )
         gate_append1_result_h = gate_workspace.integer_buffer(
-            append_lig_ceiling * append_lig_ceiling, 16
+            uint64(append_lig_ceiling * append_lig_ceiling), 16
         )
         gate_append2_result_h = gate_workspace.integer_buffer(
-            append_lig_ceiling * append_lig_ceiling, 16
+            uint64(append_lig_ceiling * append_lig_ceiling), 16
         )
         gate_append1_result_dep = gate_workspace.integer_buffer(
-            append_lig_ceiling * append_lig_ceiling, 16
+            uint64(append_lig_ceiling * append_lig_ceiling), 16
         )
         gate_append2_result_dep = gate_workspace.integer_buffer(
-            append_lig_ceiling * append_lig_ceiling, 16
+            uint64(append_lig_ceiling * append_lig_ceiling), 16
         )
         gate_append1_result_b = gate_workspace.integer_buffer(
-            append_lig_ceiling * factor_count, 16
+            uint64(append_lig_ceiling * factor_count), 16
         )
         gate_append2_result_b = gate_workspace.integer_buffer(
-            append_lig_ceiling * factor_count, 16
+            uint64(append_lig_ceiling * factor_count), 16
         )
         gate_append1_result_c = gate_workspace.integer_buffer(
-            log_stride * relation_target, 16
+            uint64(log_stride * relation_target), 16
         )
         gate_append2_result_c = gate_workspace.integer_buffer(
-            log_stride * relation_target, 16
+            uint64(log_stride * relation_target), 16
         )
         for i in range(factor_count):
             gate_ancestry_perm1[i] = gate_initial_hnf_perm[i]
@@ -1336,6 +1361,7 @@ def pari_row6_phase6_gate_prefix_root(
         return 0
 
 
+from sagejs.native import int64_record
 from .row6_phase6_resident_terminal_root import pari_row6_phase6_resident_terminal_root
 
 
@@ -2152,7 +2178,7 @@ def pari_row6_phase6_whole_prepared_root(
         integer_buffer_view(
             gate_ancestry_accepted_arch, 0, 7 * places * kernel_columns
         ),
-        integer_buffer_view(gate_ancestry_accepted_signs, 0, places * kernel_columns),
+        int64_record(gate_ancestry_accepted_signs, 0, places * kernel_columns),
         gate_ancestry_phase_pi,
         gate_preparation_embedding,
         factor_basis_table,

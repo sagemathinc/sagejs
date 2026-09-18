@@ -45,7 +45,8 @@ The compiler ABI now expresses the exact workspaces inside one lexical
 `NativeWorkspaceArena`.  The root derives HNF and append lengths from its live,
 authenticated factor/relation states, checks the 16-row and eight-new-column
 policy ceilings, and charges every packed allocation against a fixed
-3,000,000,000-byte arena budget.  Scratch with disjoint phase lifetimes is
+3,000,000,000-byte arena budget.  Every reviewed dynamic length crosses the
+arena ABI through an explicit checked `uint64(...)` conversion.  Scratch with disjoint phase lifetimes is
 reused between append checkpoints; only compact terminal-facing H, B, C and
 ancestry outputs cross the arena boundary.  Arena children cannot escape the
 native root.
@@ -94,11 +95,90 @@ dimensions are an oracle for accounting only: they do not select any storage
 length or capacity in the host.
 
 The frozen source-only arena graph has generated Gate SHA-256
-`7724317bf2585ea8a4a81d55b8c633c3cb718ab931fd816e8705a56d8939904f`
+`82a4731e562b32533e189746c702c8188ac1e2502124af30e551444c6707f021`
 and generated whole-root SHA-256
-`3c426a7e0cc92fce11ac6c0d512768bb74926cf3201f124f5627d5dd6b948e4c`.
+`bdc531acc44923b0db519b11016a8c27f8ef90242ba3db176bf3cc34cbb29334`.
 Both files match their generators byte-for-byte.  These are source identities,
 not compiled-cache or execution receipts.
+
+## Arena compile progression and linked result
+
+The first four bounded compile-only attempts stopped before linking, owner
+construction, or mathematical execution.  All used
+isolated `/scratch` caches, a 600-second wall/CPU envelope, and a recursive
+descendant-tree 4 GiB RSS kill boundary:
+
+| attempt | wall | user | sys | sampled descendant RSS peak | result |
+| --- | ---: | ---: | ---: | ---: | --- |
+| inferred exact lengths | 45.574 s | 63.97 s | 1.76 s | 845,512 KiB | `workspace IntegerBuffer length must be uint64` |
+| explicit `uint64(...)` calls | 45.123 s | 62.41 s | 1.88 s | 832,760 KiB | `unsupported call to uint64` |
+| checked contextual `uint64(...)` lowering | 45.591 s | 63.29 s | 1.77 s | 844,336 KiB | `integer_buffer_view() requires an IntegerBuffer` for an `Int64Buffer` signs owner |
+| typed `Int64Record` signs view | 59.953 s | 78.12 s | 4.10 s | 2,346,036 KiB | generated C calls unavailable `tagged_pari_row6_phase6_gate_prefix_root` |
+
+No attempt breached its resource boundary.  The first three produced no cache
+key or generated-code artifact.  After the second result, contextual arena length
+lowering was extended so `uint64(exact_expression)` uses the same checked
+exact-to-word conversion as `checked_uint64(...)`; its focused IR, native,
+negative-range, sanitizer, and cleanup tests pass.  The third attempt proves
+that conversion is no longer the compile blocker and exposes an independent
+source mismatch at the terminal call: `gate_ancestry_accepted_signs` is an
+`Int64Buffer`, but the generated call wrapped it in `integer_buffer_view(...)`.
+That mismatch is now corrected with a bounded `Int64Record` view and a focused
+call-compatibility regression.  The fourth attempt completed lowering and
+emitted 112,005,401 bytes of core C under cache key
+`81fcce230886ae676a1354376f8384a2155e6d37d7b1e27431f1821edfcf016f`.
+Compilation then failed because the tagged whole-root variant calls
+`tagged_pari_row6_phase6_gate_prefix_root`, while the workspace-owning Gate
+root has only a native/GMP implementation.  The incomplete cache has manifest
+SHA-256 `b72ee2dfc92e63082e1536d82487aca1dc67c77f04d47bd6463ffeed5f73702d`,
+core-C SHA-256
+`39650564fc36a83c94b27ff379ac94dae304c1f15c69f2aa9c4ed270383eeb00`,
+adapter-C SHA-256
+`a3dde4f2b4e9780c6db54b30db9e41aa1d9fab10821e0037622a504336a3f724`,
+and JS-module SHA-256
+`e6b6470a48d7fa17fe208e211a70aa32f5593d14278ccd279341919441eb8bb7`;
+no addon exists.  Therefore
+that fourth source remained deliberately fail-closed and had no linked or
+executed current-graph claim.
+
+A fifth compile-only attempt propagates exact-workspace ownership backward
+through the private call graph, so a caller of the workspace-owning Gate root
+uses the native/GMP call ABI instead of requesting an unavailable tagged
+variant.  It completed and linked the current whole prepared graph:
+
+| wall | user | sys | result |
+| ---: | ---: | ---: | --- |
+| 435.23 s | 450.03 s | 8.42 s | linked native addon, exit success |
+
+The detached continuous resource-monitor wrapper disappeared before this
+attempt completed, so it produced no authoritative peak-RSS or monitor-status
+receipt.  A direct live sample near the compiler's maximum observed `cc1` at
+2,338,092 KiB, the parent Node process at 926,440 KiB, and the remaining
+compiler/process wrappers at 91,308 KiB: about 3.35 GB (3.20 GiB) aggregate.
+That observation is below 4 GiB, but it is a sample rather than proof of the
+true peak and must not be reported as a qualified memory receipt.
+
+The successful cache key is
+`592828820f5555fea18baee26ef5483e6f4dd8720f8401b3fb3fe5853028acfa`.
+Its frozen compile-only artifacts are:
+
+| artifact | SHA-256 | bytes |
+| --- | --- | ---: |
+| adapter C | `82b35d9c42a9063e4b33f6022f68fc888afc9ecaddcd9201c45058f88fee1611` | 4,038,169 |
+| core C | `42ce74155836d496b4960958bb1cf53fc4438488a1da32160ee0423c4367dad4` | 111,806,904 |
+| core header | `db46f8a7760e4369f1b5404bd27072211908fb661e717c7230bf8e15f712368d` | 298,558 |
+| generated JS module | `8e3faa836de0a4c19935bae48b94717d4981e8d659094a91404f2cc70749439c` | 15,159,256 |
+| manifest | `3b8fc6a0eeebc2135987945f8ef241229e2a240219708608437ddd5436b1a1e5` | 133,624,867 |
+| native addon | `576d6c585fdf6effac75e638bd2c85a921a10911a3dac1f22cb74eea2aed4638` | 17,464,128 |
+
+An independent read-only review approved the workspace call-dispatch change.
+The focused arena suite passes all five tests, including native execution,
+negative-range checks, ASan, UBSan, LeakSanitizer, lexical cleanup, transitive
+workspace dispatch, and a nonzero-offset `Int64Record` call.  The adjacent
+exact-buffer and mixed exact/Float64 suites pass five tests with one expected
+WASI-toolchain skip.  This is still compile and compiler-regression evidence
+only: no row-6 owner was constructed and no row-6 mathematical function was
+executed.  `STORAGE_PLAN_REVIEWED` and `timingEligible` therefore remain false.
 Immediately before arena integration, a compile-only check of the corrected
 live-stride Gate root completed successfully.  This is retained as historical
 compiler evidence, not as a build of the current arena graph.  Evidence was

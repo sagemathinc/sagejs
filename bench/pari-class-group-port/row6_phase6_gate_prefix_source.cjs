@@ -181,7 +181,7 @@ function generate() {
   const lines = [
     '\"\"\"Connected row-6 prepared prefix through the first genuine HNF.\"\"\"',
     "",
-    "from sagejs.native import Float64Buffer, Int64Buffer, IntegerBuffer, NativeWorkspaceArena, integer_buffer_view, native",
+    "from sagejs.native import Float64Buffer, Int64Buffer, IntegerBuffer, NativeWorkspaceArena, integer_buffer_view, native, uint64",
     `from .row6_prepared_factor_base_root import ${FACTOR}`,
     `from .row6_prepared_initial_relations import ${INITIAL}`,
     `from .collected_log_embeddings import ${COLLECTOR}`,
@@ -269,11 +269,11 @@ function generate() {
   );
   const workspaceBodyStart = lines.length;
   lines.push(
-    "    gate_ancestry_current = gate_workspace.integer_buffer(relation_target, 64)",
-    "    gate_ancestry_old = gate_workspace.integer_buffer(relation_target, 64)",
-    "    gate_ancestry_joined = gate_workspace.integer_buffer(relation_target, 64)",
-    "    gate_ancestry_work = gate_workspace.integer_buffer(relation_target, 64)",
-    "    gate_ancestry_trailing_work = gate_workspace.integer_buffer(16 * factor_count, 32)",
+    "    gate_ancestry_current = gate_workspace.integer_buffer(uint64(relation_target), 64)",
+    "    gate_ancestry_old = gate_workspace.integer_buffer(uint64(relation_target), 64)",
+    "    gate_ancestry_joined = gate_workspace.integer_buffer(uint64(relation_target), 64)",
+    "    gate_ancestry_work = gate_workspace.integer_buffer(uint64(relation_target), 64)",
+    "    gate_ancestry_trailing_work = gate_workspace.integer_buffer(uint64(16 * factor_count), 32)",
   );
   // Derive every factor/relation-dependent collector table and logical count
   // from states produced in this invocation.  The host supplies only zeroed
@@ -318,7 +318,7 @@ function generate() {
     if (kind !== "IntegerBuffer" || HNF_ALIASES[name]) continue;
     const length = HNF_INTEGER_LENGTHS[name];
     assert(length, `missing arena HNF length ${name}`);
-    lines.push(`    gate_initial_hnf_${name} = gate_workspace.integer_buffer(${length}, ${hnfWords(name)})`);
+    lines.push(`    gate_initial_hnf_${name} = gate_workspace.integer_buffer(uint64(${length}), ${hnfWords(name)})`);
   }
   lines.push(
     "    for i in range(factor_count * initial_columns):",
@@ -355,10 +355,10 @@ function generate() {
     const length = APPEND_INTEGER_LENGTHS[name];
     assert(length, `missing arena append length ${name}`);
     if (APPEND_REUSABLE_INTEGER.has(name)) {
-      lines.push(`    gate_append_${name} = gate_workspace.integer_buffer(${length}, 16)`);
+      lines.push(`    gate_append_${name} = gate_workspace.integer_buffer(uint64(${length}), 16)`);
     } else {
       for (const step of [1, 2])
-        lines.push(`    gate_append${step}_${name} = gate_workspace.integer_buffer(${length}, 16)`);
+        lines.push(`    gate_append${step}_${name} = gate_workspace.integer_buffer(uint64(${length}), 16)`);
     }
   }
   lines.push(

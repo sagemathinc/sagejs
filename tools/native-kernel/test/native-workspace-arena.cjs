@@ -22,7 +22,7 @@ const flintPrefix = resolve(
 );
 
 const source = String.raw`
-from sagejs.native import IntegerBuffer, NativeWorkspaceArena, integer_buffer_view, native, uint64
+from sagejs.native import Int64Buffer, IntegerBuffer, NativeWorkspaceArena, int64_record, integer_buffer_view, native, uint64
 
 
 def fill_workspace(
@@ -39,6 +39,15 @@ def fill_workspace(
             return -7
         index += 1
     return 0
+
+
+def first_sign(signs: Int64Buffer) -> int:
+    return int(signs[0])
+
+
+@native
+def int64_view_argument(signs: Int64Buffer, length: uint64) -> int:
+    return first_sign(int64_record(signs, 1, length))
 
 
 @native
@@ -67,6 +76,28 @@ def workspace_early_return(
     with NativeWorkspaceArena(memory_limit) as arena:
         values = arena.integer_buffer(length, 2)
         return fill_workspace(values, output, length, 1)
+
+
+@native
+def workspace_parent(
+    output: IntegerBuffer,
+    length: uint64,
+    memory_limit: uint64,
+) -> int:
+    return workspace_success(output, length, memory_limit)
+
+
+@native
+def workspace_explicit_uint64(
+    output: IntegerBuffer,
+    length: int,
+    memory_limit: uint64,
+) -> int:
+    with NativeWorkspaceArena(memory_limit) as arena:
+        values = arena.integer_buffer(uint64(length + 1), 2)
+        values[length] = length
+        output[0] = values[length]
+        return output[0]
 `;
 
 function functionBody(text, marker) {
@@ -97,10 +128,37 @@ test("NativeWorkspaceArena lowers to checked packed storage with lexical cleanup
   assert.equal(root.hostCallable, true);
   assert.equal(root.analysis.backend.kind, "gmp");
   assert.equal(root.analysis.storage.escapedValues.length, 0);
+  const parent = ir.functions.find((fn) => fn.name === "workspace_parent");
+  assert.equal(parent.analysis.backend.kind, "gmp");
+  assert.equal(parent.analysis.backend.requiresExactWorkspace, true);
+  assert(
+    ir.functions.some((fn) => fn.name === "int64_view_argument"),
+    "an Int64Record view must satisfy an Int64Buffer call parameter",
+  );
+
+  const explicit = ir.functions.find(
+    (fn) => fn.name === "workspace_explicit_uint64",
+  );
+  const explicitScope = explicit.body.find((operation) =>
+    operation.kind === "workspace.arena.scope"
+  );
+  assert(explicitScope);
+  assert.equal(explicitScope.children[0].wordCapacity, "2");
+  assert.ok(
+    explicitScope.body.some(
+      (operation) => operation.kind === "uint64.from_integer_checked",
+    ),
+    "explicit uint64 arena length must use a checked exact-to-word conversion",
+  );
 
   const core = generateHostCore(ir);
   assert.equal(core.audit.hostCallbacks, 0);
   const generated = core.source;
+  assert.doesNotMatch(generated, /static int tagged_workspace_parent\(/u);
+  assert.match(
+    functionBody(generated, "static int native_workspace_parent("),
+    /native_workspace_success\(/u,
+  );
   assert.match(generated, /typedef struct\s*\{\s*uint64_t limit;\s*uint64_t charged;\s*int open;\s*\} sagejs_native_workspace_arena;/u);
   assert.match(generated, /exact_capacity > SIZE_MAX \/ exact_length/u);
   assert.match(generated, /total > arena->limit - arena->charged/u);
@@ -144,6 +202,9 @@ test("NativeWorkspaceArena executes success, early return, and budget failure", 
     const module = require(compiled.modulePath);
     const success = module.workspace_success;
     const early = module.workspace_early_return;
+    const parent = module.workspace_parent;
+    const explicit = module.workspace_explicit_uint64;
+    const int64View = module.int64_view_argument;
     assert.equal(success.nativeAvailable, true);
     for (let iteration = 0; iteration < 32; iteration += 1) {
       const output = success.createIntegerBuffer(8, 2);
@@ -171,6 +232,23 @@ test("NativeWorkspaceArena executes success, early return, and budget failure", 
     assert.throws(
       () => success.javascript(javascriptOutput, 8n, 255n),
       /NativeWorkspaceArena memory limit exceeded/u,
+    );
+    const parentOutput = parent.createIntegerBuffer(8, 2);
+    assert.equal(parent.gmp(parentOutput, 8n, 256n), 8n);
+    assert.deepEqual(parentOutput.toArray(), [1n, 4n, 9n, 16n, 25n, 36n, 49n, 64n]);
+    const explicitOutput = explicit.createIntegerBuffer(1, 1);
+    assert.equal(explicit.gmp(explicitOutput, 7n, 256n), 7n);
+    assert.deepEqual(explicitOutput.toArray(), [7n]);
+    assert.throws(
+      () => explicit.gmp(explicitOutput, -2n, 256n),
+      /integer is outside unsigned 64-bit/u,
+    );
+    const signs = int64View.createInt64Buffer([11n, -22n, 33n, -44n]);
+    assert.equal(int64View.gmp(signs, 2n), -22n);
+    assert.equal(int64View.javascript([11n, -22n, 33n, -44n], 2n), -22n);
+    assert.throws(
+      () => int64View.gmp(signs, 4n),
+      /Int64Record is outside its buffer/u,
     );
   } finally {
     rmSync(temporary, { recursive: true, force: true });

@@ -3182,7 +3182,8 @@ function emitExactWrappers(fn, options = {}) {
     options.diagnosticStageClock?.function === fn.name;
   const ownsDirectExactStorage =
     fn.params.some((param) => isLiveExactOwnerType(param.type)) ||
-    fn.locals.some((local) => isLiveExactOwnerType(local.type));
+    fn.locals.some((local) => isLiveExactOwnerType(local.type)) ||
+    fn.analysis?.backend?.requiresExactWorkspace === true;
   if (fn.analysis?.backend?.kind === "fmpz" || ownsDirectExactStorage) {
     const taggedWrapper = fn.analysis?.backend?.kind === "fmpz"
       ? [emitTaggedWrapper(fn, {
@@ -5312,6 +5313,7 @@ function generateHostCore(ir, options = {}) {
   const bridgeFunctions = exact.filter((fn) =>
     !fn.params.some((param) => isLiveExactOwnerType(param.type)) &&
     !fn.locals.some((local) => local.type === "NativeWorkspaceArena") &&
+    fn.analysis?.backend?.requiresExactWorkspace !== true &&
     fn.analysis?.fmpzExact?.hostBoundary !== "none-internal-borrowed-aggregate-only"
   );
   const checkedVariants = checkedRegions.flatMap((region) => region.variants);

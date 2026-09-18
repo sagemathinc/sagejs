@@ -903,7 +903,51 @@ function emitFloat64Constant(context, node, operations, value) {
   return { name: target, type: "Float64" };
 }
 
+function lowerCheckedUint64Value(node, context, operations) {
+  const literal = integerLiteral(node);
+  if (literal !== undefined && literal >= 0n && literal < (1n << 64n)) {
+    return emitUint64Constant(context, node, operations, literal);
+  }
+  const value = lowerExpression(node, context, operations);
+  // A uint64 value has already crossed a checked boundary (or comes from
+  // word arithmetic). Rechecking it must not box it into an exact integer.
+  // Lower the expression first so calls and other effects are retained.
+  if (value.type === "uint64") return value;
+  if (value.type === "int64") {
+    const target = temporary(context, node, "uint64");
+    operations.push({
+      kind: "uint64.from_int64_checked",
+      target,
+      source: value.name,
+    });
+    return { name: target, type: "uint64" };
+  }
+  const source = coerceInteger(value, context, node, operations);
+  const target = temporary(context, node, "uint64");
+  operations.push({
+    kind: "uint64.from_integer_checked",
+    target,
+    source: source.name,
+  });
+  return { name: target, type: "uint64" };
+}
+
 function lowerUint64Operand(node, context, operations) {
+  if (
+    nodeType(node) === "AST_Call" &&
+    nodeType(node.expression) === "AST_SymbolRef" &&
+    node.expression.name === "uint64"
+  ) {
+    const args = array(node.args);
+    expect(
+      context,
+      node,
+      args.length === 1 && array(node.args?.kwarg_items).length === 0 &&
+        !node.args?.starargs,
+      "uint64() requires one positional argument",
+    );
+    return lowerCheckedUint64Value(args[0], context, operations);
+  }
   return lowerExpression(node, context, operations, "uint64");
 }
 
@@ -1781,37 +1825,7 @@ function lowerCall(node, context, operations) {
         !node.args?.starargs,
       "checked_uint64() requires one positional argument",
     );
-    const literal = integerLiteral(args[0]);
-    if (literal !== undefined && literal >= 0n && literal < (1n << 64n)) {
-      return emitUint64Constant(context, args[0], operations, literal);
-    }
-    const value = lowerExpression(args[0], context, operations);
-    // A uint64 value has already crossed a checked boundary (or comes from
-    // word arithmetic). Rechecking it must not box it into an exact integer.
-    // Lower the expression first so calls and other effects are retained.
-    if (value.type === "uint64") return value;
-    if (value.type === "int64") {
-      const target = temporary(context, node, "uint64");
-      operations.push({
-        kind: "uint64.from_int64_checked",
-        target,
-        source: value.name,
-      });
-      return { name: target, type: "uint64" };
-    }
-    const source = coerceInteger(
-      value,
-      context,
-      args[0],
-      operations,
-    );
-    const target = temporary(context, node, "uint64");
-    operations.push({
-      kind: "uint64.from_integer_checked",
-      target,
-      source: source.name,
-    });
-    return { name: target, type: "uint64" };
+    return lowerCheckedUint64Value(args[0], context, operations);
   }
 
   if (name === "diagnostic_stage_switch") {
@@ -2109,7 +2123,8 @@ function lowerCall(node, context, operations) {
       context,
       arg || node,
       value.type === expectedType ||
-        (expectedType === "IntegerBuffer" && isIntegerBufferType(value.type)),
+        (expectedType === "IntegerBuffer" && isIntegerBufferType(value.type)) ||
+        (expectedType === "Int64Buffer" && INT64_BUFFER_TYPES.has(value.type)),
       `${name} argument ${index + 1} expects ${expectedType}, got ${value.type}`,
     );
     return value;

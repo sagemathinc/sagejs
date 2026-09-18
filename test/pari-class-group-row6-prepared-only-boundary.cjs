@@ -96,16 +96,22 @@ test("large exact workspaces are arena-local and cannot escape", () => {
   const generated = sourceText("row6_phase6_gate_prefix_root.generated.py");
   assert(generated.includes(
     "with NativeWorkspaceArena(3000000000) as gate_workspace:"));
-  assert(generated.includes(
-    "gate_initial_hnf_transform = gate_workspace.integer_buffer("));
+  assert(/gate_initial_hnf_transform = gate_workspace\.integer_buffer\(\s*uint64\(/
+    .test(generated));
   assert(generated.indexOf("initial_columns = int(initial_relation_state[0])") <
     generated.indexOf("gate_initial_hnf_transform = gate_workspace.integer_buffer("),
   "HNF ownership must use the live post-collector column count");
   assert(generated.includes(
     "gate_append1_result_b = gate_workspace.integer_buffer("));
   assert.equal((generated.match(
-    /gate_append_top = gate_workspace\.integer_buffer\(/g) || []).length, 1,
+    /gate_append_top = gate_workspace\.integer_buffer\(\s*uint64\(/g) || []).length, 1,
   "append scratch must be allocated once and reused by both checkpoints");
+  const allocations = [...generated.matchAll(/gate_workspace\.integer_buffer\(/g)];
+  assert(allocations.length > 40);
+  for (const allocation of allocations)
+    assert(/^\s*uint64\(/.test(generated.slice(
+      allocation.index + allocation[0].length,
+      allocation.index + allocation[0].length + 80)), allocation.index);
   assert(generated.includes("gate_final_h: IntegerBuffer,"));
   assert(generated.includes("gate_final_b: IntegerBuffer,"));
   assert(generated.includes("gate_final_c: IntegerBuffer,"));
@@ -151,6 +157,18 @@ test("native root derives logical state from live prefix", () => {
   assert(generated.includes("int(factor_root_state[7]),"));
   assert(!generated.includes("        gate_scalar_prefix_count,\n    )"));
   assert.equal(generated, source.generate());
+});
+
+test("terminal signs use the typed Int64Buffer view", () => {
+  const generated = sourceText("row6_phase6_whole_prepared_root.generated.py");
+  assert.match(
+    generated,
+    /int64_record\(gate_ancestry_accepted_signs, 0, places \* kernel_columns\)/u,
+  );
+  assert.doesNotMatch(
+    generated,
+    /integer_buffer_view\(gate_ancestry_accepted_signs,/u,
+  );
 });
 
 test("reverse append correction uses the live permutation split", () => {
