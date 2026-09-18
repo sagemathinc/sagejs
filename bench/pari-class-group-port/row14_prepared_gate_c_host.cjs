@@ -10,6 +10,17 @@ const { compileKernel } = require("../../tools/native-kernel/compiler.cjs");
 const { zeroLengths } = require("./row14_first_hnf_host.cjs");
 
 const ROWS = 799, DEGREE = 4, PLACES = 3, FIRST_COLUMNS = 802;
+// These are the three authenticated nonempty continuation shapes.  Empty
+// collector passes do not enter hnfadd.  Keeping the shapes here makes the
+// reusable owner envelope independent of any answer produced during the run.
+const APPEND_SHAPES = Object.freeze([
+  Object.freeze({ oldState: Object.freeze([3, 10, 792, 4, 7, 105, 0, 802, 0]),
+    newColumns: 2 }),
+  Object.freeze({ oldState: Object.freeze([4, 11, 793, 2, 7, 1, 0, 804, 0]),
+    newColumns: 1 }),
+  Object.freeze({ oldState: Object.freeze([2, 9, 796, 1, 7, 3, 0, 805, 0]),
+    newColumns: 1 }),
+]);
 const PROFILE_CLOCKS = Object.freeze({
   pari_collect_and_log_relations: Object.freeze({
     function: "pari_collect_and_log_relations",
@@ -245,6 +256,193 @@ function allocate(compiled, input, lengths, { minimumWords = 8, compact = new Se
   return { values, bytes, elements, integerBuffers, int64Buffers, float64Buffers };
 }
 
+function appendSizes(state, newColumns) {
+  const hRows = state[0], bColumns = state[2], totalColumns = state[7];
+  const lig = ROWS - bColumns, width = hRows + newColumns;
+  const cWidth = width + bColumns, depRows = lig - hRows;
+  return {
+    h: hRows*hRows, dep: depRows*hRows, b: lig*bColumns,
+    logs: 7*PLACES*totalColumns, perm: ROWS,
+    new_relations: ROWS*newColumns, new_logs: 7*PLACES*newColumns,
+    top: lig*newColumns, exact_product: lig*newColumns,
+    log_product: 7*PLACES*newColumns, adjusted_logs: 7*PLACES*newColumns,
+    joined: lig*width, joined_logs: 7*PLACES*cWidth,
+    rank_matrix: lig*width, occupied: width, pivots: lig, best: lig,
+    profile: lig, rank_state: 10, perm_work: ROWS, matb: lig*width,
+    new_dep: lig*width, permuted_b: lig*bColumns, full_h: lig*width,
+    transform: width*width, lam: width*width, d: width+1, hnf_state: 11,
+    full_dep: lig*width, work_b: lig*bColumns,
+    work_c: 7*PLACES*cWidth, diagonal: lig, final_c: 7*PLACES*cWidth,
+    result_h: lig*lig, result_dep: lig*lig,
+    result_b: lig*(bColumns+lig),
+    result_c: 7*PLACES*(totalColumns+newColumns), final_state: 7, state: 9,
+  };
+}
+
+function appendCapacityEnvelope() {
+  const answer = {};
+  for (const shape of APPEND_SHAPES) {
+    for (const [name, length] of Object.entries(
+      appendSizes(shape.oldState, shape.newColumns))) {
+      answer[name] = Math.max(answer[name] || 0, length);
+    }
+  }
+  return Object.freeze(answer);
+}
+
+const APPEND_CAPACITIES = appendCapacityEnvelope();
+
+function packedIntegerOwner(value) {
+  return value !== null && typeof value === "object" &&
+    value.sizes instanceof Int32Array && value.limbs instanceof BigUint64Array &&
+    Number.isSafeInteger(value.length) && Number.isSafeInteger(value.wordCapacity) &&
+    value.sizes.length >= value.length &&
+    value.limbs.length >= value.length * value.wordCapacity;
+}
+
+function exactBufferValue(source, index) {
+  if (source?.integerRegion === true)
+    return exactBufferValue(source.owner, source.offset + index);
+  if (!packedIntegerOwner(source)) return BigInt(source[index]);
+  const signedWords = source.sizes[index], count = Math.abs(signedWords);
+  assert(count <= source.wordCapacity, "source IntegerBuffer slot exceeds capacity");
+  let result = 0n, offset = index * source.wordCapacity;
+  for (let word = count - 1; word >= 0; word -= 1)
+    result = (result << 64n) + source.limbs[offset + word];
+  return signedWords < 0 ? -result : result;
+}
+
+function integerRegion(owner, offset, length) {
+  assert(packedIntegerOwner(owner), "IntegerBuffer region requires packed owner");
+  assert(Number.isSafeInteger(offset) && Number.isSafeInteger(length) &&
+    offset >= 0 && length >= 0 && offset + length <= owner.length,
+  "IntegerBuffer region is outside its owner");
+  return Object.freeze({ integerRegion: true, owner, offset, length });
+}
+
+function writeIntegerSlot(target, index, raw) {
+  let value = BigInt(raw), negative = value < 0n;
+  if (negative) value = -value;
+  const offset = index * target.wordCapacity;
+  let count = 0;
+  while (value !== 0n) {
+    assert(count < target.wordCapacity, "reusable IntegerBuffer capacity exceeded");
+    target.limbs[offset + count] = BigInt.asUintN(64, value);
+    value >>= 64n; count += 1;
+  }
+  target.sizes[index] = negative ? -count : count;
+}
+
+function copyBufferPrefix(target, source, count) {
+  assert(Number.isSafeInteger(count) && count >= 0 && count <= target.length,
+    "invalid reusable owner logical prefix");
+  const sourceLength = packedIntegerOwner(source) ? source.length : source.length;
+  assert(Number.isSafeInteger(sourceLength) && sourceLength >= count,
+    "short reusable owner source");
+  if (target instanceof BigInt64Array) {
+    for (let index = 0; index < count; index += 1) {
+      const value = exactBufferValue(source, index);
+      assert(value >= -(1n << 63n) && value < (1n << 63n),
+        "reusable Int64Buffer value is outside signed int64");
+      target[index] = value;
+    }
+    return;
+  }
+  assert(packedIntegerOwner(target), "unknown reusable owner kind");
+  for (let index = 0; index < count; index += 1)
+    writeIntegerSlot(target, index, exactBufferValue(source, index));
+}
+
+function resetReusableOwner(owner) {
+  if (owner instanceof BigInt64Array) owner.fill(0n);
+  else {
+    assert(packedIntegerOwner(owner), "unknown reusable owner kind");
+    // A zero signed size is the canonical semantic zero.  Limbs are ignored
+    // and overwritten before becoming live, so no O(capacity*words) wipe is
+    // needed between transactions.
+    owner.sizes.fill(0);
+  }
+}
+
+function createHnfaddTransactionStorage(append) {
+  const values = {}, capacities = { ...APPEND_CAPACITIES };
+  let bytes = 0, elements = 0, integerBuffers = 0, int64Buffers = 0;
+  for (const [name, kind] of append.names) {
+    if (!kind.endsWith("Buffer")) continue;
+    const length = capacities[name];
+    assert.notEqual(length, undefined, `missing reusable capacity ${name}`);
+    assert(kind === "IntegerBuffer" || kind === "Int64Buffer",
+      `unreviewed reusable owner type ${kind}`);
+    elements += length;
+    if (kind === "Int64Buffer") {
+      values[name] = append.fn.createInt64Buffer(length);
+      bytes += 8*length; int64Buffers += 1;
+    } else {
+      values[name] = append.fn.createIntegerBuffer(length, 16);
+      bytes += length*(4+8*16); integerBuffers += 1;
+    }
+  }
+  assert.equal(integerBuffers + int64Buffers,
+    append.names.filter(([, kind]) => kind.endsWith("Buffer")).length);
+  return { values, capacities: Object.freeze(capacities), bytes, elements,
+    integerBuffers, int64Buffers, ownerConstructions: integerBuffers + int64Buffers,
+    resets: 0 };
+}
+
+function prepareHnfaddTransaction(storage, append, state, newColumns, explicit) {
+  const shape = APPEND_SHAPES.find(candidate =>
+    candidate.newColumns === newColumns &&
+    candidate.oldState.every((value, index) => value === state[index]));
+  assert(shape, "unreviewed row-14 hnfadd transaction shape");
+  const logical = appendSizes(state, newColumns);
+  const requiredInputs = ["h", "dep", "b", "logs", "perm", "new_relations", "new_logs"];
+  for (const name of requiredInputs) {
+    const supplied = explicit[name];
+    assert.notEqual(supplied, undefined, `missing reusable hnfadd input ${name}`);
+    const length = supplied.length;
+    assert.equal(length, logical[name], `noncanonical logical prefix ${name}`);
+  }
+  for (const [name, kind] of append.names) {
+    if (!kind.endsWith("Buffer")) continue;
+    assert(storage.capacities[name] >= logical[name], `short reusable capacity ${name}`);
+    resetReusableOwner(storage.values[name]);
+  }
+  for (const name of requiredInputs)
+    copyBufferPrefix(storage.values[name], explicit[name], logical[name]);
+  const scalars = {
+    h_rows: state[0], b_columns: state[2], total_columns: state[7],
+    log_rows: PLACES, rows: ROWS, new_columns: newColumns,
+  };
+  for (const [name, kind] of append.names) {
+    if (!kind.endsWith("Buffer")) {
+      assert.notEqual(scalars[name], undefined, `missing reusable scalar ${name}`);
+      storage.values[name] = BigInt(scalars[name]);
+    }
+  }
+  storage.resets += 1;
+  return { values: storage.values, logical };
+}
+
+function createContinuationControlStorage(next, cv) {
+  const integer = ["search_ideals", "outer_perm", "relation_state", "log_completed"];
+  const int64 = ["outer_state", "schedule"];
+  for (const name of integer) assert(packedIntegerOwner(cv[name]),
+    `continuation owner ${name} is not a packed IntegerBuffer`);
+  for (const name of int64) assert(cv[name] instanceof BigInt64Array,
+    `continuation owner ${name} is not an Int64Buffer`);
+  assert.equal(cv.search_ideals.length, ROWS);
+  assert.equal(cv.outer_perm.length, ROWS);
+  assert.equal(cv.relation_state.length, 6);
+  assert.equal(cv.log_completed.length, 1);
+  assert.equal(cv.outer_state.length, 19);
+  assert.equal(cv.schedule.length, 4);
+  return { search: cv.search_ideals, outerPerm: cv.outer_perm,
+    outer: cv.outer_state, cache: cv.relation_state, schedule: cv.schedule,
+    completed: cv.log_completed, control: next.fn.createInt64Buffer(3),
+    perm: next.fn.createInt64Buffer(ROWS), ownerConstructions: 2,
+    bytes: 8*(3+ROWS), elements: 3+ROWS };
+}
+
 async function firstPreparedHnf(prepared, root, options = {}) {
   const profile = options.profile || null;
   const kernels = options.kernels || null;
@@ -339,35 +537,37 @@ async function runPreparedGateC(prepared, root, options = {}) {
     profile, "continuation.compile-hnfadd", () =>
       compile("hnfadd.py", "pari_hnfadd", profile !== null));
   if (profile !== null) profile._compiled.push([append, "pari_hnfadd"]);
+  const controlStorage = timed(profile, "continuation.allocate-control-storage", () =>
+    createContinuationControlStorage(next, cv));
+  const appendStorage = timed(profile, "continuation.allocate-hnfadd-storage", () =>
+    createHnfaddTransactionStorage(append));
+  if (profile !== null) {
+    profile.allocations.push({ label: "continuation.control-storage",
+      bytes: controlStorage.bytes, elements: controlStorage.elements,
+      integerBuffers: 0, int64Buffers: controlStorage.ownerConstructions,
+      float64Buffers: 0 });
+    profile.allocations.push({ label: "continuation.hnfadd-storage",
+      bytes: appendStorage.bytes, elements: appendStorage.elements,
+      integerBuffers: appendStorage.integerBuffers,
+      int64Buffers: appendStorage.int64Buffers, float64Buffers: 0 });
+  }
   const checkpoints = [snapshot(802)], expected = [804, 805, 806], passTrace = [];
-  let checkpointIndex = 0, collectionPasses = 1, squash = 0, appendPeakBytes = 0;
+  let checkpointIndex = 0, collectionPasses = 1, squash = 0;
   while (checkpointIndex < expected.length) {
     collectionPasses += 1;
     assert(collectionPasses <= 8, "row-14 continuation exceeded eight authentic passes");
     const need = ROWS - resident.state[0] - resident.state[2];
     const passNumber = collectionPasses - 1;
     const setupStarted = profile === null ? 0n : process.hrtime.bigint();
-    const search = next.fn.createIntegerBuffer(ROWS, 1, cv.search_ideals.toArray());
-    const outerPerm = next.fn.createIntegerBuffer(ROWS, 1, cv.outer_perm.toArray());
-    const outer = next.fn.createInt64Buffer(Array.from(cv.outer_state));
-    const cache = next.fn.createIntegerBuffer(6, 1, cv.relation_state.toArray());
-    const schedule = next.fn.createInt64Buffer(Array.from(cv.schedule));
-    const completed = next.fn.createIntegerBuffer(1, 1, cv.log_completed.toArray());
-    const control = next.fn.createInt64Buffer(3), perm = next.fn.createInt64Buffer(resident.perm);
+    const { search, outerPerm, outer, cache, schedule, completed, control, perm } =
+      controlStorage;
+    control.fill(0n);
+    assert.equal(resident.perm.length, ROWS);
+    for (let index = 0; index < ROWS; index += 1) perm[index] = BigInt(resident.perm[index]);
     assert.equal(next.fn.gmp(perm, BigInt(ROWS), BigInt(resident.state[0]), BigInt(need),
       BigInt(squash), search, outerPerm, 1n, outer, cache, schedule, completed, control), 0n);
     record(profile, `pass-${passNumber}.control-and-setup`, setupStarted);
-    if (profile !== null) profile.allocations.push({
-      label: `pass-${passNumber}.control-and-setup`, bytes: 45304,
-      elements: 4058, integerBuffers: 8, int64Buffers: 6, float64Buffers: 0,
-    });
     const nextControl = Array.from(control).map(Number); squash = nextControl[1];
-    cv.search_ideals = first.collector.fn.createIntegerBuffer(ROWS, 1, search.toArray());
-    cv.outer_perm = first.collector.fn.createIntegerBuffer(ROWS, 1, outerPerm.toArray());
-    cv.outer_state = first.collector.fn.createInt64Buffer(Array.from(outer));
-    cv.relation_state = first.collector.fn.createIntegerBuffer(6, 1, cache.toArray());
-    cv.schedule = first.collector.fn.createInt64Buffer(Array.from(schedule));
-    cv.log_completed = first.collector.fn.createIntegerBuffer(1, 1, completed.toArray());
     cv.search_count = BigInt(nextControl[0]); cv.outer_mode = 1n;
     cv.outer_ru = BigInt(PLACES); cv.scalar_prefix_count = 42n;
     assert.equal(timed(profile, `pass-${passNumber}.collector`, () =>
@@ -383,41 +583,18 @@ async function runPreparedGateC(prepared, root, options = {}) {
     const materializeStarted = profile === null ? 0n : process.hrtime.bigint();
     assert.equal(columns, expected[checkpointIndex]);
     const newColumns = columns - oldColumns;
-    const newRelations = cv.relation_records.toArray().slice(oldColumns * ROWS, columns * ROWS);
-    const newLogs = cv.log_embeddings.toArray().slice(oldColumns * 7 * PLACES,
-      columns * 7 * PLACES);
     const hRows = resident.state[0], bColumns = resident.state[2];
-    const lig = ROWS - bColumns, width = hRows + newColumns, cWidth = width + bColumns;
-    const sizes = { top: lig*newColumns, exact_product: lig*newColumns,
-      log_product: 7*PLACES*newColumns, adjusted_logs: 7*PLACES*newColumns,
-      joined: lig*width, joined_logs: 7*PLACES*cWidth, rank_matrix: lig*width,
-      occupied: width, pivots: lig, best: lig, profile: lig, rank_state: 10,
-      perm_work: ROWS, matb: lig*width, new_dep: lig*width,
-      permuted_b: lig*bColumns, full_h: lig*width, transform: width*width,
-      lam: width*width, d: width+1, hnf_state: 11, full_dep: lig*width,
-      work_b: lig*bColumns, work_c: 7*PLACES*cWidth, diagonal: lig,
-      final_c: 7*PLACES*cWidth, result_h: lig*lig, result_dep: lig*lig,
-      result_b: lig*(bColumns+lig), result_c: 7*PLACES*columns,
-      final_state: 7, state: 9 };
     const explicit = { h: resident.h, h_rows: hRows, dep: resident.dep, b: resident.b,
       b_columns: bColumns, logs: resident.c, total_columns: oldColumns,
       log_rows: PLACES, perm: resident.perm, rows: ROWS,
-      new_relations: newRelations, new_columns: newColumns, new_logs: newLogs };
-    const av = {}; let bytes = 0, elements = 0, integerBuffers = 0, int64Buffers = 0;
-    for (const [name, kind] of append.names) {
-      const supplied = explicit[name];
-      if (!kind.endsWith("Buffer")) { av[name] = BigInt(supplied); continue; }
-      const values = supplied === undefined ? Array(sizes[name]).fill(0n) : supplied.map(BigInt);
-      elements += values.length;
-      if (kind === "Int64Buffer") { bytes += 8*values.length; int64Buffers += 1;
-        av[name] = append.fn.createInt64Buffer(values); }
-      else { bytes += values.length*(4+8*16); integerBuffers += 1;
-        av[name] = append.fn.createIntegerBuffer(values.length, 16, values); }
-    }
-    if (profile !== null) profile.allocations.push({ label: `pass-${passNumber}.hnfadd`,
-      bytes, elements, integerBuffers, int64Buffers, float64Buffers: 0 });
-    record(profile, `pass-${passNumber}.materialize-and-allocate-hnfadd`, materializeStarted);
-    appendPeakBytes = Math.max(appendPeakBytes, bytes);
+      new_relations: integerRegion(cv.relation_records, oldColumns*ROWS,
+        newColumns*ROWS),
+      new_columns: newColumns,
+      new_logs: integerRegion(cv.log_embeddings, oldColumns*7*PLACES,
+        newColumns*7*PLACES) };
+    const av = prepareHnfaddTransaction(
+      appendStorage, append, resident.state, newColumns, explicit).values;
+    record(profile, `pass-${passNumber}.reset-and-load-hnfadd`, materializeStarted);
     assert.equal(timed(profile, `pass-${passNumber}.hnfadd`, () =>
       append.fn.gmp(...append.names.map(([name]) => av[name]))), 0n);
     if (profile !== null) profile.native.push({ label: `pass-${passNumber}.hnfadd`,
@@ -430,11 +607,11 @@ async function runPreparedGateC(prepared, root, options = {}) {
     resident.b = av.result_b.toArray().slice(0, (ROWS-newB)*newB);
     resident.c = av.result_c.toArray().slice(0, 7*PLACES*columns);
     relationState[4] = columns;
-    cv.relation_state = first.collector.fn.createIntegerBuffer(6, 1, relationState.map(BigInt));
+    copyBufferPrefix(cv.relation_state, relationState, relationState.length);
     checkpoints.push(snapshot(columns)); checkpointIndex += 1;
     record(profile, `pass-${passNumber}.publish-resident`, publishStarted);
   }
-  const ownerBytesUpperBound = first.ownerBytes + appendPeakBytes;
+  const ownerBytesUpperBound = first.ownerBytes + appendStorage.bytes + controlStorage.bytes;
   assert(ownerBytesUpperBound < 4 * 1024 ** 3);
   if (profile !== null) {
     profile.gateNanoseconds = String(process.hrtime.bigint() - gateStarted);
@@ -442,7 +619,20 @@ async function runPreparedGateC(prepared, root, options = {}) {
     delete profile._compiled;
   }
   return { collectorValues: cv, resident, checkpoints, passTrace, collectionPasses,
-    ownerBytesUpperBound, preparedRng: root.rng.slice(), executionBoundary: {
+    ownerBytesUpperBound, preparedRng: root.rng.slice(), storageReuse: {
+      strategy: "validated-fixed-envelope-reset-logical-state",
+      hnfaddTransactions: appendStorage.resets,
+      continuationPasses: collectionPasses - 1,
+      legacyOwnerConstructions: (collectionPasses - 1)*14 + appendStorage.resets*39,
+      reusedOwnerConstructions: controlStorage.ownerConstructions +
+        appendStorage.ownerConstructions,
+      legacyZeroArrays: appendStorage.resets*32,
+      reusedZeroArrays: 0,
+      controlOwnersConstructedOnce: controlStorage.ownerConstructions,
+      hnfaddOwnersConstructedOnce: appendStorage.ownerConstructions,
+      capacityElements: appendStorage.elements,
+      capacityBytes: appendStorage.bytes,
+    }, executionBoundary: {
       compilationInsideRun: kernels === null,
       residentHandleCount: kernels === null ? 0 : 4,
       residentHandleCacheKeys: kernels === null ? [] : [
@@ -452,4 +642,6 @@ async function runPreparedGateC(prepared, root, options = {}) {
     }, ...(profile === null ? {} : { profile }) };
 }
 
-module.exports = { PREPARED_KEYS, runPreparedGateC, validateBoundary, warmPreparedGateC };
+module.exports = { APPEND_CAPACITIES, APPEND_SHAPES, PREPARED_KEYS,
+  createContinuationControlStorage, createHnfaddTransactionStorage,
+  prepareHnfaddTransaction, runPreparedGateC, validateBoundary, warmPreparedGateC };
