@@ -56,7 +56,7 @@ function view(owner, length = owner.length) {
     .slice(0, length).map(String);
 }
 
-async function analyticInverseHr(prepared, resident = undefined) {
+async function analyticInverseHr(prepared, resident = undefined, { defer = false } = {}) {
   const catalog = resident?.catalog || await compiled("row21_analytic_catalog.py",
     "pari_row21_analytic_degree_catalog");
   const primes = prepared.analytic_primes.map(Number);
@@ -73,9 +73,6 @@ async function analyticInverseHr(prepared, resident = undefined) {
     pattern_multiplicities: integer(catalog.fn, capacity, 1),
     state: integer(catalog.fn, 4, 1),
   };
-  assert.equal(catalog.fn.gmp(...catalog.names.map(([name]) => cv[name])), 0n);
-  const groups = Number(cv.state.toArray()[2]);
-
   const analytic = resident?.analytic || await compiled("row14_post806_terminal.py",
     "pari_row14_analytic_inverse_hr");
   const av = {
@@ -84,13 +81,11 @@ async function analyticInverseHr(prepared, resident = undefined) {
     complex_places: 2n,
     roots_of_unity: BigInt(prepared.analytic_roots_of_unity),
     log_discriminant: float64(analytic.fn, 1),
-    primes: integer(analytic.fn, primes.length, 1, primes),
-    offsets: integer(analytic.fn, primes.length, 1, cv.pattern_offsets.toArray()),
-    counts: integer(analytic.fn, primes.length, 1, cv.pattern_counts.toArray()),
-    degrees: integer(analytic.fn, groups, 1,
-      cv.pattern_degrees.toArray().slice(0, groups)),
-    multiplicities: integer(analytic.fn, groups, 1,
-      cv.pattern_multiplicities.toArray().slice(0, groups)),
+    primes: cv.primes,
+    offsets: cv.pattern_offsets,
+    counts: cv.pattern_counts,
+    degrees: cv.pattern_degrees,
+    multiplicities: cv.pattern_multiplicities,
     coefficients: float64(analytic.fn, 7),
     table: float64(analytic.fn, 31),
     tail: float64(analytic.fn, 1),
@@ -107,17 +102,29 @@ async function analyticInverseHr(prepared, resident = undefined) {
     inverse_hr: integer(analytic.fn, 3),
     state: int64(analytic.fn, 2),
   };
-  assert.equal(analytic.fn.gmp(...analytic.names.map(([name]) => av[name])), 0n);
+  const invocation = { analytic, av, catalog, cv,
+    analyticArgs: analytic.names.map(([name]) => av[name]),
+    catalogArgs: catalog.names.map(([name]) => cv[name]) };
+  if (defer) return invocation;
+  return invokeAnalyticInverseHr(invocation);
+}
+
+function invokeAnalyticInverseHr(invocation) {
+  const { analytic, av, catalog, cv } = invocation;
+  assert.equal(catalog.fn.gmp(...invocation.catalogArgs), 0n);
+  assert.equal(analytic.fn.gmp(...invocation.analyticArgs), 0n);
   return {
     inverseHr: view(av.inverse_hr),
     state: Array.from(av.state, Number),
     catalogState: view(cv.state),
-    catalogBuilt: catalog.built,
+    catalogBuilt: catalog.built, invocation,
     analyticBuilt: analytic.built,
   };
 }
 
-async function runAcceptance(prepared, liveResult, resident = undefined) {
+async function runAcceptance(prepared, liveResult, resident = undefined, {
+  defer = false, analyticInvocation = undefined,
+} = {}) {
   assert.equal(liveResult.status, 0);
   assert.deepEqual(liveResult.relationState, ["14", "190", "0", "7", "0", "14"]);
   assert.deepEqual(liveResult.chainState, [3, 0, 3, 14]);
@@ -125,7 +132,9 @@ async function runAcceptance(prepared, liveResult, resident = undefined) {
   assert(liveResult.values?.hnf_result_h, "missing live H owner");
   assert(liveResult.values?.hnf_result_c, "missing live C owner");
 
-  const analytic = await analyticInverseHr(prepared, resident);
+  const analytic = analyticInvocation ?
+    invokeAnalyticInverseHr(analyticInvocation) :
+    await analyticInverseHr(prepared, resident);
   const kernel = resident?.acceptance || await compiled("post_hnf_acceptance.py",
     "pari_post_hnf_acceptance");
   const fn = kernel.fn;
@@ -141,7 +150,8 @@ async function runAcceptance(prepared, liveResult, resident = undefined) {
     degree: BigInt(DEGREE),
     h: integer(fn, 0),
     c: liveResult.values.hnf_result_c,
-    inverse_hr: integer(fn, 3, 16, analytic.inverseHr),
+    inverse_hr: analytic.invocation?.av.inverse_hr ||
+      integer(fn, 3, 16, analytic.inverseHr),
     cache_changed: true,
   };
   const lengths = {
@@ -200,7 +210,15 @@ async function runAcceptance(prepared, liveResult, resident = undefined) {
     values[name] = kind === "Int64Buffer" ? int64(fn, length) :
       integer(fn, length, 32);
   }
-  const status = Number(fn.gmp(...kernel.names.map(([name]) => values[name])));
+  const invocation = { analytic, kernel, values,
+    args: kernel.names.map(([name]) => values[name]) };
+  if (defer) return invocation;
+  return invokeAcceptance(invocation);
+}
+
+function invokeAcceptance(invocation) {
+  const { analytic, kernel, values } = invocation;
+  const status = Number(kernel.fn.gmp(...invocation.args));
   return {
     status,
     values,
@@ -228,4 +246,5 @@ async function prepareResident() {
   return Object.freeze({ catalog, analytic, acceptance });
 }
 
-module.exports = { analyticInverseHr, prepareResident, runAcceptance };
+module.exports = { analyticInverseHr, invokeAcceptance,
+  invokeAnalyticInverseHr, prepareResident, runAcceptance };

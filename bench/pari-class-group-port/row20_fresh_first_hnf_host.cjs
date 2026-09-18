@@ -98,6 +98,7 @@ function words(values, minimum = 1) {
 
 async function runFirstHnf(prepared, factorOwner, {
   hnfWords = 16, residentBuilt = undefined, residentNames = undefined,
+  defer = false,
 } = {}) {
   assert.equal(factorOwner.schema,
     "sagejs.pari-class-group/row20-fresh-prepared-factor-base-v1");
@@ -223,10 +224,18 @@ async function runFirstHnf(prepared, factorOwner, {
       supplied === undefined ? undefined : supplied.map(BigInt))];
   }));
   assert(ownerBytes < 512*1024**2, "row-20 fresh first-HNF owners exceed 512 MiB");
+  const invocation = { ownerBytes, built, fn, values, names,
+    args: names.map(([name]) => values[name]) };
+  if (defer) return invocation;
+  return invokeFirstHnf(invocation);
+}
+
+function invokeFirstHnf(invocation) {
+  const { ownerBytes, built, fn, values, names, args } = invocation;
   const view = value => value.toArray ? value.toArray() : Array.from(value);
   let status;
   try {
-    status = fn.gmp(...names.map(([name]) => values[name]));
+    status = fn.gmp(...args);
   } catch (error) {
     error.row20State = Object.fromEntries([
       "relation_state", "chain_state", "hnf_sparse_state",
@@ -234,7 +243,7 @@ async function runFirstHnf(prepared, factorOwner, {
     ].map(name => [name, view(values[name]).map(String)]));
     throw error;
   }
-  return { status: Number(status), ownerBytes, built, values, relationState:
+  return { status: Number(status), ownerBytes, built, values, names, relationState:
     view(values.relation_state).map(String), chainState: view(values.chain_state).map(Number),
     hnfState: view(values.hnf_state).map(Number),
     collectorState: Object.fromEntries([
@@ -244,4 +253,4 @@ async function runFirstHnf(prepared, factorOwner, {
     ].map(name => [name, view(values[name]).map(String)])) };
 }
 
-module.exports = { runFirstHnf, signature, zeroLengths };
+module.exports = { invokeFirstHnf, runFirstHnf, signature, zeroLengths };

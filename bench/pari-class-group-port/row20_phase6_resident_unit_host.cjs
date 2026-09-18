@@ -26,6 +26,14 @@ function strings(owner, length = owner.length) {
   return (owner.toArray ? owner.toArray() : Array.from(owner))
     .slice(0, length).map(String);
 }
+function snapshot(owner) {
+  if (owner.sizes && owner.limbs) {
+    const sizes = owner.sizes.slice(), limbs = owner.limbs.slice();
+    return () => { owner.sizes.set(sizes); owner.limbs.set(limbs); };
+  }
+  const values = owner.slice();
+  return () => owner.set(values);
+}
 
 async function prepare(prepared) {
   const built = await compileKernel({ sourcePath: SOURCE,
@@ -72,17 +80,30 @@ async function prepare(prepared) {
     else if (floatNames.has(name)) values[name] = float64(fn, sizes[name]);
     else values[name] = integer(fn, sizes[name], 64);
   }
-  return { built, fn, names: signature(), values };
+  const reset = Object.values(values).filter(value => typeof value === "object")
+    .map(snapshot);
+  return { built, fn, names: signature(), values, reset };
 }
 
-function run(resident, hnf, acceptance) {
-  assert.equal(hnf.status, 0);
-  assert.equal(acceptance.status, 0);
+function reset(resident) { for (const restore of resident.reset) restore(); }
+
+function bindInputs(resident, hnf, acceptance) {
   const inputs = { ...resident.values,
     exact_logs: hnf.values.hnf_result_c,
     relation_lattice: acceptance.values.relations,
     regulator: acceptance.values.regulator };
-  const status = resident.fn.gmp(...resident.names.map(([name]) => inputs[name]));
+  resident.inputs = inputs;
+  resident.args = resident.names.map(([name]) => inputs[name]);
+  return resident;
+}
+
+function runNative(resident) {
+  assert(resident.args, "row-20 resident unit inputs are not bound");
+  return resident.fn.gmp(...resident.args);
+}
+
+function projection(resident, status) {
+  const inputs = resident.inputs;
   const summary = {
     status: Number(status),
     units: strings(inputs.output_units, 10),
@@ -98,4 +119,12 @@ function run(resident, hnf, acceptance) {
   return summary;
 }
 
-module.exports = { EXPORT, SOURCE, prepare, run };
+function run(resident, hnf, acceptance) {
+  assert.equal(hnf.status, 0);
+  assert.equal(acceptance.status, 0);
+  bindInputs(resident, hnf, acceptance);
+  return projection(resident, runNative(resident));
+}
+
+module.exports = { EXPORT, SOURCE, bindInputs, prepare, projection, reset, run,
+  runNative };
