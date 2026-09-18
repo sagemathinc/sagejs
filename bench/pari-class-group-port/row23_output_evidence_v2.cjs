@@ -2,16 +2,16 @@
 
 // Authenticated row-23 assessment of the additive v2 output contract. The
 // retained source contains the genuine 40x31 relation collection and a later
-// compressed 1x1 Smith proof.  A same-run raw Smith producer now supplies the
-// dimension-matched 40x31 proof separately.  This adapter independently
-// replays that proof before reporting phase 3 complete; relation logarithms
-// and public factor/reduce/combine maps remain honest output-boundary gaps.
+// compressed 1x1 Smith proof. Same-run owners supply the dimension-matched
+// 40x31 proof, raw 40x35 logarithms, and supported-ideal maps separately. This
+// adapter authenticates and independently replays them before publishing v2.
 
 const neutral = require("./class_unit_correspondence_result.cjs");
 const v2 = require("./class_unit_output_evidence_v2.cjs");
 const transaction = require("./row23_fresh_prepared_transaction.cjs");
+const liveEvidenceApi = require("./row23_logs_supported_maps_owner.cjs");
 
-const SCHEMA = "sagejs.pari-class-group/row23-output-evidence-v2-gap-v1";
+const SCHEMA = v2.SCHEMA;
 const SOURCE_SCHEMA = "sagejs.pari-class-group/row23-final-buchall-end-v1";
 const SOURCE_SHA256 =
   "fbd08bfcdac231240ab6085aa7eff96d4f261cedfd37b647024494fa2384a318";
@@ -22,7 +22,7 @@ const CORRESPONDENCE_RESULT_SHA256 =
 const PARI_SOURCE_SHA256 =
   "02651d99c391007d384b3fadbc20abc6916b77036f9e496c99e9ce8688ca4b53";
 const ASSESSMENT_SHA256 =
-  "fd26d09f1650d10e3d1f7f4e67091aa7eb850b2c92a6811161def1020af353a6";
+  "d0975e456e5509e8a788fdc7a493b2271c1235f2699820f173edc6015ffd53d1";
 const RAW_SMITH_SCHEMA =
   "sagejs.pari-class-group/row23-raw-smith-presentation-v1";
 const RAW_SMITH_SHA256 =
@@ -209,8 +209,10 @@ function verifyFreshSource(receipt) {
     fail("fresh row-23 receipt is detached from the retained source");
 }
 
-function buildRow23OutputEvidenceGap(sourceRaw, freshReceipt, rawSmithProof) {
+function buildRow23OutputEvidenceGap(sourceRaw, freshReceipt, rawSmithProof,
+  liveEvidence) {
   verifyFreshSource(freshReceipt);
+  liveEvidenceApi.verify(liveEvidence);
   const source = openSource(sourceRaw);
   const field = source.field;
   same(field.polynomial, ["341", "-970", "772", "-141", "-2", "1"],
@@ -231,6 +233,17 @@ function buildRow23OutputEvidenceGap(sourceRaw, freshReceipt, rawSmithProof) {
       relations.principalGenerators.length !== 200)
     fail("actual relation collection changed shape");
   const rawSmith = verifyRawSmith(rawSmithProof, relations.recordsColumnMajor);
+  if (liveEvidence?.schema !==
+      "sagejs.pari-class-group/row23-logs-supported-maps-owner-v1" ||
+      liveEvidence.externalPariRuntime !== false ||
+      !Array.isArray(liveEvidence.logs) || liveEvidence.logs.length !== 40 * 35 ||
+      liveEvidence.logShape?.join(",") !== "40,35" ||
+      liveEvidence.mapReceipt?.maps?.factor !== true ||
+      liveEvidence.mapReceipt?.maps?.reduce !== true ||
+      liveEvidence.mapReceipt?.maps?.combine !== true ||
+      liveEvidence.native?.length !== 4 ||
+      liveEvidence.native.some(probe => probe.state?.[0] !== "0"))
+    fail("fresh row-23 log/map owner changed");
 
   const classGroup = source.classGroup;
   if (classGroup.classNumber !== "6") fail("class number changed");
@@ -326,70 +339,87 @@ function buildRow23OutputEvidenceGap(sourceRaw, freshReceipt, rawSmithProof) {
         unitTransforms[index], "decimal_integer_matrix"),
     );
   }
+  const dependency = rawSmith.proof.U.slice(31 * 40);
+  const mapCommon = {
+    domain: liveEvidence.mapReceipt.domain,
+    externalPariRuntime: false,
+    mapReceiptContentSha256: liveEvidence.mapReceipt.contentSha256,
+    mapSourceSha256: liveEvidence.mapSourceSha256,
+    nativeBackend: liveEvidence.nativeBackend,
+    nativeScope: "smith-reduction-and-combine-core",
+    nativeProbeCount: String(liveEvidence.native.length),
+    nativeSourceSha256: liveEvidence.nativeSourceSha256,
+    factorFrontEnd: "ordinary-python-translated-exact-valuation",
+    rawSmithProofSha256: RAW_SMITH_SHA256,
+  };
+  entries.push(
+    evidence("actual-relation-log-matrix", "relation_logs", [40, 35],
+      liveEvidence.logs, "opaque_canonical_bytes"),
+    evidence("raw-relation-dependencies", "dependency", [9, 40], dependency,
+      "decimal_integer_matrix"),
+    evidence("combine-map-material", "combine_map", [],
+      { ...mapCommon, operation: "combine",
+        law: "signed-factor-tape-addition-followed-by-native-smith-reduction" }),
+    evidence("factor-map-material", "factor_map", [],
+      { ...mapCommon, operation: "factor",
+        law: "translated-prepared-valuations-with-complete-norm-support-check" }),
+    evidence("reduce-map-material", "reduce_map", [],
+      { ...mapCommon, operation: "reduce",
+        law: "native-smith-coordinate-and-exact-signed-relation-witness" }),
+  );
   entries.sort((left, right) => left.id.localeCompare(right.id));
 
-  const missing = ["actual-relation-log-matrix", "combine-map-material",
-    "factor-map-material", "reduce-map-material"];
   const assessment = {
-    actualRelations: {
-      factorBaseCount: "31", factorBaseRef: "actual-factor-base",
-      layout: "retained-column-major-31-by-40-logical-relations-40-by-31",
-      logs: { missing: ["actual-relation-log-matrix"], ready: false },
-      principalGeneratorsRef: "actual-principal-generators", relationCount: "40",
-      relationMatrixRef: "actual-relation-matrix-column-major",
-    },
-    completion: { correspondenceComplete: true, freshCorrespondence: true,
-      missing, outputBoundaryComplete: false, phase3Complete: true,
-      phase4Complete: true, phase5Complete: false },
-    evidence: entries,
+    schema: SCHEMA,
     field: { definingPolynomialAscending: [...field.polynomial], degree: "5",
       id: field.label },
-    maps: {
-      combine: { missing: ["combine-map-material"], ready: false },
-      factor: { missing: ["factor-map-material"], ready: false },
-      reduce: { missing: ["reduce-map-material"], ready: false },
-    },
-    publishableAsV2: false,
-    retainedOutput: {
-      classGroup: { classNumber: "6", generatorIdealRef: "class-ideal",
-        invariantFactors: ["6"], principalWitnessRef: "class-principal-witness" },
+    source: { correspondenceResultSha256: CORRESPONDENCE_RESULT_SHA256,
+      pariSourceSha256: PARI_SOURCE_SHA256, pariVersion: "2.17.4" },
+    evidence: entries,
+    relations: { factorBaseCount: "31", factorBaseRef: "actual-factor-base",
+      logColumns: "35", logsRef: "actual-relation-log-matrix",
+      principalGeneratorsRef: "actual-principal-generators", relationCount: "40",
+      relationMatrixRef: "actual-relation-matrix-column-major" },
+    presentation: { dependencyRefs: ["raw-relation-dependencies"],
+      proof: { dRef: "raw-presentation-d", uRef: "raw-presentation-u",
+        vRef: "raw-presentation-v", wRef: "raw-presentation-w" },
+      provenanceRefs: ["raw-presentation-provenance"], variant: "smith_uwvd" },
+    classGroup: { classNumber: "6", invariantFactors: ["6"], generators: [{
+      archimedeanRefs: [], idealRef: "class-ideal", order: "6",
+      principalWitnessRef: "class-principal-witness",
+    }] },
+    unitGroup: {
+      rank: "4",
+      compactUnits: Array.from({ length: 4 }, (_, index) => ({
+        logRef: `unit-${index}-log`, provenanceRef: `unit-${index}-provenance`,
+        relationTransformRef: `unit-${index}-transform`,
+      })),
+      exactUnits: { status: "present", units: Array.from({ length: 4 },
+        (_, index) => ({ coordinatesRef: `unit-${index}-coordinates`,
+          normRef: `unit-${index}-norm` })) },
       regulator: { acceptanceRef: "regulator-acceptance",
         kind: "pari_packed_accepted", packedValueRef: "regulator-packed",
         precisionBits: "256", precisionRef: "regulator-precision",
         retryRef: "regulator-retry" },
-      terminalPresentation: { dRef: "terminal-presentation-d",
-        identity: "U W V = D", shape: ["1", "1"],
-        uRef: "terminal-presentation-u", vRef: "terminal-presentation-v",
-        wRef: "terminal-presentation-w" },
-      rawPresentation: { dRef: "raw-presentation-d",
-        identity: "U W V = D", independentlyReplayed: true,
-        provenanceRef: "raw-presentation-provenance", shape: ["40", "31"],
-        uRef: "raw-presentation-u", vRef: "raw-presentation-v",
-        wRef: "raw-presentation-w" },
       torsion: { generatorRef: "torsion-generator", order: "2" },
-      units: Array.from({ length: 4 }, (_, index) => ({
-        coordinatesRef: `unit-${index}-coordinates`, logRef: `unit-${index}-log`,
-        normRef: `unit-${index}-norm`, provenanceRef: `unit-${index}-provenance`,
-        transformRef: `unit-${index}-transform`,
-      })),
     },
-    schema: SCHEMA,
-    source: { correspondenceResultSha256: CORRESPONDENCE_RESULT_SHA256,
-      pariSourceSha256: PARI_SOURCE_SHA256, pariVersion: "2.17.4",
-      retainedSourceSha256: SOURCE_SHA256 },
-    v2Gap: { contractSchema: v2.SCHEMA,
-      reason: "relation logarithms and factor/reduce/combine maps remain absent",
-      rawPresentationReady: true,
-      requiredPresentationShapes: { d: ["40", "31"], u: ["40", "40"],
-        v: ["31", "31"], w: ["40", "31"] } },
+    maps: {
+      combine: { evidenceRefs: ["combine-map-material"], missing: [], ready: true },
+      factor: { evidenceRefs: ["factor-map-material"], missing: [], ready: true },
+      reduce: { evidenceRefs: ["reduce-map-material"], missing: [], ready: true },
+    },
+    completion: { correspondenceComplete: true, freshCorrespondence: true,
+      missing: [], outputBoundaryComplete: true, phase3Complete: true,
+      phase4Complete: true, phase5Complete: true },
   };
+  v2.validate(assessment);
   return Object.freeze({ assessment, bytes: v2.canonical(assessment),
     sha256: v2.sha256Canonical(assessment) });
 }
 
 function parseRow23OutputEvidenceGap(raw) {
   if (!Buffer.isBuffer(raw) || neutral.sha256Bytes(raw) !== ASSESSMENT_SHA256)
-    fail("row-23 v2 gap assessment authority changed");
+    fail("row-23 v2 assessment authority changed");
   let assessment;
   try { assessment = JSON.parse(raw.toString("ascii")); }
   catch (error) {
@@ -397,12 +427,12 @@ function parseRow23OutputEvidenceGap(raw) {
       { cause: error });
   }
   if (!v2.canonical(assessment).equals(raw) || assessment.schema !== SCHEMA ||
-      assessment.publishableAsV2 !== false ||
       assessment.completion?.phase3Complete !== true ||
-      assessment.completion?.phase5Complete !== false ||
-      assessment.actualRelations?.factorBaseCount !== "31" ||
-      assessment.actualRelations?.relationCount !== "40")
-    fail("row-23 v2 gap assessment semantics changed");
+      assessment.completion?.phase5Complete !== true ||
+      assessment.relations?.factorBaseCount !== "31" ||
+      assessment.relations?.relationCount !== "40")
+    fail("row-23 v2 assessment semantics changed");
+  v2.validate(assessment);
   return assessment;
 }
 

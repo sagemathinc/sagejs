@@ -15,6 +15,7 @@ assert(artifact, "usage: check_row23_output_evidence_v2.cjs ROW23-FINAL.json.gz"
 const transactionPath = require.resolve("./row23_fresh_prepared_transaction.cjs");
 const adapterPath = require.resolve("./row23_output_evidence_v2.cjs");
 const v2 = require("./class_unit_output_evidence_v2.cjs");
+const liveEvidenceHost = require("./row23_logs_supported_maps_owner.cjs");
 const expectedSource =
   "fbd08bfcdac231240ab6085aa7eff96d4f261cedfd37b647024494fa2384a318";
 const expectedNeutral =
@@ -45,7 +46,7 @@ const factorCoordinator = require("./row23_factor_base_coordinator.cjs");
 const hnfHost = require("./row23_first_hnf_host.cjs");
 const smithHost = require("./row23_raw_smith_presentation_host.cjs");
 const directory = fs.mkdtempSync("/scratch/sagejs-row23-v2-smith-");
-let rawSmith;
+let rawSmith, liveEvidence;
 try {
   const factor = await factorCoordinator.run({ prepared,
     preparedAuthoritySha256: factorCoordinator.PREPARED_SHA256,
@@ -53,12 +54,14 @@ try {
   const live = await hnfHost.runFirstHnf(prepared, factor.owner);
   assert.equal(live.status, 0);
   rawSmith = smithHost.buildFromLiveOwner(live);
+  liveEvidence = await liveEvidenceHost.buildFromLiveOwner(live, factor.owner,
+    rawSmith.proof, retained);
 } finally {
   fs.rmSync(directory, { recursive: true, force: true });
 }
 assert.equal(rawSmith.sha256, adapter.RAW_SMITH_SHA256);
 const result = adapter.buildRow23OutputEvidenceGap(sourceRaw, receipt,
-  rawSmith.raw);
+  rawSmith.raw, liveEvidence);
 const assessment = result.assessment;
 const evidence = new Map(assessment.evidence.map(entry => [entry.id, entry]));
 
@@ -66,18 +69,16 @@ assert.equal(result.sha256, v2.sha256Canonical(assessment));
 assert.equal(result.sha256, adapter.ASSESSMENT_SHA256);
 assert(result.bytes.equals(v2.canonical(assessment)));
 assert.deepEqual(adapter.parseRow23OutputEvidenceGap(result.bytes), assessment);
-assert.equal(assessment.publishableAsV2, false);
-assert.equal(assessment.actualRelations.factorBaseCount, "31");
-assert.equal(assessment.actualRelations.relationCount, "40");
-assert.equal(assessment.actualRelations.logs.ready, false);
+assert.equal(assessment.relations.factorBaseCount, "31");
+assert.equal(assessment.relations.relationCount, "40");
+assert.equal(assessment.relations.logColumns, "35");
 assert.equal(assessment.completion.phase3Complete, true);
 assert.equal(assessment.completion.phase4Complete, true);
-assert.equal(assessment.completion.phase5Complete, false);
-assert.equal(assessment.completion.outputBoundaryComplete, false);
+assert.equal(assessment.completion.phase5Complete, true);
+assert.equal(assessment.completion.outputBoundaryComplete, true);
 assert.deepEqual(Object.values(assessment.maps).map(map => map.ready),
-  [false, false, false]);
-assert.throws(() => v2.validate(assessment), /payload fields must be exactly/,
-  "gap assessment was accidentally publishable as v2");
+  [true, true, true]);
+assert.equal(v2.validate(assessment), assessment);
 
 assert.equal(evidence.get("actual-factor-base").sha256,
   v2.sha256Canonical(retained.factorBase.ideals));
@@ -97,19 +98,24 @@ for (const [id, value] of [
 ]) assert.equal(evidence.get(id).sha256, v2.sha256Canonical(value));
 assert.equal((BigInt(terminal.matrices.U[0]) * BigInt(terminal.W[0]) *
   BigInt(terminal.matrices.V[0])).toString(), terminal.matrices.D[0]);
-assert.deepEqual(assessment.v2Gap.requiredPresentationShapes, {
-  d: ["40", "31"], u: ["40", "40"], v: ["31", "31"], w: ["40", "31"],
-});
-assert.equal(assessment.v2Gap.rawPresentationReady, true);
-const rawPresentation = assessment.retainedOutput.rawPresentation;
+const rawPresentation = assessment.presentation.proof;
 for (const [id, value] of [
   [rawPresentation.uRef, rawSmith.proof.U],
   [rawPresentation.wRef, rawSmith.proof.W],
   [rawPresentation.vRef, rawSmith.proof.V],
   [rawPresentation.dRef, rawSmith.proof.D],
 ]) assert.equal(evidence.get(id).sha256, v2.sha256Canonical(value));
-assert.equal(evidence.get(rawPresentation.provenanceRef).kind, "provenance");
+assert.equal(evidence.get(assessment.presentation.provenanceRefs[0]).kind,
+  "provenance");
 assert.deepEqual(rawSmith.proof.W, retained.relations.recordsColumnMajor);
+assert.equal(evidence.get("actual-relation-log-matrix").sha256,
+  v2.sha256Canonical(liveEvidence.logs));
+assert.deepEqual(evidence.get("actual-relation-log-matrix").shape, ["40", "35"]);
+assert.equal(liveEvidence.externalPariRuntime, false);
+assert.deepEqual(liveEvidence.mapReceipt.maps,
+  { combine: true, factor: true, reduce: true });
+assert.throws(() => adapter.buildRow23OutputEvidenceGap(sourceRaw, receipt,
+  rawSmith.raw, structuredClone(liveEvidence)), /same-process authority/);
 
 for (let index = 0; index < 4; index += 1) {
   const coordinates = retained.units.fundamental.coordinates.slice(5 * index,
@@ -140,38 +146,40 @@ assert.throws(() => adapter.buildRow23OutputEvidenceGap(sourceRaw, copiedReceipt
   /unbranded receipt/);
 mutationsRejected += 1;
 for (const mutate of [
-  value => { value.publishableAsV2 = true; },
-  value => { value.actualRelations.relationCount = "1"; },
-  value => { value.completion.phase5Complete = true; },
-  value => { value.v2Gap.rawPresentationReady = false; },
+  value => { value.relations.relationCount = "1"; },
+  value => { value.completion.phase5Complete = false; },
+  value => { value.maps.factor.ready = false; },
+  value => { value.presentation.proof.wRef = "absent"; },
 ]) {
   const changed = structuredClone(assessment);
   mutate(changed);
   assert.throws(() => adapter.parseRow23OutputEvidenceGap(v2.canonical(changed)),
-    /authority changed/);
+    /changed|absent|wrong|unready|completion|evidence|must not be empty/);
   mutationsRejected += 1;
 }
 
 const changedProof = structuredClone(rawSmith.proof);
 changedProof.operations[0][0] = "unsupported";
 assert.throws(() => adapter.buildRow23OutputEvidenceGap(sourceRaw, receipt,
-  v2.canonical(changedProof)), /authority changed/);
+  v2.canonical(changedProof), liveEvidence), /authority changed/);
 mutationsRejected += 1;
 const changedProofAuthority = Buffer.from(rawSmith.raw);
 changedProofAuthority[changedProofAuthority.length - 2] ^= 1;
 assert.throws(() => adapter.buildRow23OutputEvidenceGap(sourceRaw, receipt,
-  changedProofAuthority), /authority changed/);
+  changedProofAuthority, liveEvidence), /authority changed/);
 mutationsRejected += 1;
 
 process.stdout.write(`${JSON.stringify({
-  schema: "sagejs.pari-class-group/row23-output-evidence-v2-gap-check-v1",
+  schema: "sagejs.pari-class-group/row23-output-evidence-v2-check-v2",
   sourceSha256: expectedSource, assessmentSha256: result.sha256,
   rawSmithSha256: rawSmith.sha256,
   actualRelationShape: [40, 31], retainedTerminalPresentationShape: [1, 1],
   rawPresentationShape: [40, 31], rawSmithOperations:
     rawSmith.proof.operations.length, phase3Complete: true,
-  exactUnitsReplayed: 4, publishableAsV2: false, phase5Complete: false,
-  outputBoundaryComplete: false, mutationsRejected, timingClaim: false,
+  exactUnitsReplayed: 4, publishableAsV2: true, phase5Complete: true,
+  outputBoundaryComplete: true, relationLogShape: [40, 35],
+  nativeMapProbes: liveEvidence.native.length,
+  mutationsRejected, timingClaim: false,
   qualificationClaim: false,
 })}\n`);
 }
