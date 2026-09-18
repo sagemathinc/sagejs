@@ -98,4 +98,3 @@ node bench/pari-class-group-port/row14_pari_prepared_timing_check.cjs
 The check builds against the pinned private library, performs repeated live
 computations, validates exact output and provenance, exercises the alternating
 schedule, and rejects mutations of every material output family.
-
