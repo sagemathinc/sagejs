@@ -9,6 +9,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const worker = require("./qualification_arm_worker.cjs");
+const row14NativeProvenance = require("./row14_live_native_provenance.cjs");
 
 const REGISTRY_SCHEMA =
   "sagejs.pari-class-group/phase6-prepared-adapter-registry-v2";
@@ -76,9 +77,68 @@ function deepFreeze(value) {
 
 // This is the sole production trust root for v2 admission. Entries must be
 // reviewed and committed here; callers cannot inject an alternate authority.
-// It is intentionally empty until the first complete row-specific evidence
-// bundle and sample contract have been reviewed.
-const TRUSTED_V2_ADMISSIONS = deepFreeze([]);
+// Row 14 is the first admission.  Its literal verifier/evidence hashes make
+// this committed array the authority; callers still cannot inject trust.
+const ROW14_V2_VERIFIER = path.join(__dirname,
+  "row14_phase6_matched_state_verifier.cjs");
+const ROW14_V2_EVIDENCE = path.join(__dirname,
+  "row14_phase6_matched_state_evidence_v2.json");
+const TRUSTED_V2_ADMISSIONS = deepFreeze([{
+  schema: CAPABILITY_SCHEMA,
+  panelIndex: 14,
+  fieldId:
+    "generated-sha256-e1d4643ab62bde9546d63340545e5302c2cef517222d569e634fb5e2093f6413",
+  matchedOutputSchema:
+    "sagejs.pari-class-group/row14-phase6-matched-output-v2",
+  sageCorrectness: {
+    coverage: Object.fromEntries(CORRECTNESS_COVERAGE_KEYS.map(key => [key, true])),
+    evidence: { modulePath: ROW14_V2_EVIDENCE,
+      schema:
+        "sagejs.pari-class-group/row14-phase6-matched-state-evidence-v2",
+      sha256:
+        "29420bd4190155d099bfb77ed366db7752e4841c07419aea7c45cca7287c71d5" },
+    leanSemanticDigest:
+      "4ee64df04c4d0e5fab66b0978909eae6001a2e36b4526ead143f5ce700cad949",
+    mutationNames: [...MUTATION_FAMILIES],
+    verifier: { exportName: "verifySageCorrectnessEvidence",
+      modulePath: ROW14_V2_VERIFIER,
+      sha256:
+        "1a335637ee8d7d89067c1928f6e6c5dfa3f3f3f51ad91cab0cb3bf0acf6c7aae" },
+  },
+  matchedSample: {
+    verifier: { exportName: "verifyMatchedSample",
+      modulePath: ROW14_V2_VERIFIER,
+      sha256:
+        "1a335637ee8d7d89067c1928f6e6c5dfa3f3f3f51ad91cab0cb3bf0acf6c7aae" },
+    contract: {
+      cpuPolicy: {
+        sagejs: { availability: "required",
+          authorities: ["process-thread-self"] },
+        pari: { availability: "optional",
+          authorities: ["pari-child-rusage",
+            "unavailable-parent-cannot-measure-child"] },
+      },
+      nativeCallObservationSchema:
+        "sagejs.pari-class-group/row14-phase6-native-call-observation-v1",
+      precisionStateSchema:
+        "sagejs.pari-class-group/row14-phase6-precision-state-v1",
+      provenanceByImplementation: require(ROW14_V2_VERIFIER)
+        .PROVENANCE_BY_IMPLEMENTATION,
+      retryStateSchema:
+        "sagejs.pari-class-group/row14-phase6-retry-state-v1",
+      stageTimingLeafKeys: ["relationRetry", "sparseHnfSnfTransform",
+        "unitRegulator", "honestyGeneratorsFinal"],
+      stateEnvelopeSchema:
+        "sagejs.pari-class-group/row14-phase6-state-envelope-v1",
+      terminalStateSchema:
+        "sagejs.pari-class-group/row14-phase6-terminal-state-v1",
+      workCounterKeys: ["classHnfColumns", "degree", "factorBaseSize",
+        "logEmbeddingColumns", "logEmbeddingRows"],
+      workObservationSchema:
+        "sagejs.pari-class-group/row14-phase6-work-observation-v1",
+    },
+  },
+}]);
 
 // These are the rows for which phase6_registered_prepared_adapter.cjs has both
 // a Sage.js preparation path and a PARI execution path. Diagnostic inventory is
@@ -546,19 +606,35 @@ function validateCapability(capability, registration) {
   assert(verdict && typeof verdict === "object" && !Array.isArray(verdict),
     "v2 evidence verifier returned no verdict");
   exactKeys(verdict, ["coverage", "evidenceSchema", "leanSemanticDigest",
-    "matchedReady", "mutationCoverage", "panelIndex"],
+    "matchedReady", "mutationCoverage", "mutationMechanisms", "panelIndex",
+    "replaySha256", "sourceOwnerArithmeticMutations"],
   "v2 verifier verdict");
   assert.equal(verdict.panelIndex, registration.panelIndex);
   assert.equal(verdict.evidenceSchema, correctness.evidence.schema);
   assert.equal(verdict.matchedReady, true);
   assert.equal(verdict.leanSemanticDigest, correctness.leanSemanticDigest,
     "correctness verifier lean semantics differ from trust authority");
+  assert.match(verdict.replaySha256, SHA256,
+    "correctness verifier omitted source-backed replay authority");
   assert.deepEqual(verdict.coverage, correctness.coverage);
   exactKeys(verdict.mutationCoverage, MUTATION_FAMILIES,
     "Sage.js correctness mutation coverage");
   for (const name of MUTATION_FAMILIES)
     assert.equal(verdict.mutationCoverage[name], true,
       `Sage.js correctness evidence lacks mutation ${name}`);
+  exactKeys(verdict.mutationMechanisms, MUTATION_FAMILIES,
+    "Sage.js correctness mutation mechanisms");
+  for (const name of MUTATION_FAMILIES)
+    assert.equal(verdict.mutationMechanisms[name],
+      "authenticated-envelope-rejection");
+  exactKeys(verdict.sourceOwnerArithmeticMutations,
+    ["classPrincipalWitness", "compactUnitEquation", "generalIdealMaps",
+      "rawPrincipalEquation", "regulatorLogLattice", "signedGeneratorEquation",
+      "smithRelation"],
+  "source-owner arithmetic mutations");
+  for (const accepted of Object.values(verdict.sourceOwnerArithmeticMutations))
+    assert.equal(accepted, true,
+      "source-owner arithmetic mutation was not rejected");
   return capability;
 }
 
@@ -623,7 +699,8 @@ function validateMatchedSampleShape({ registration, capability, implementation,
   const state = sample.output.matchedState;
   exactKeys(state, ["classGroup", "precision", "regulator", "retry",
     "terminal", "torsion", "unitGroup"], "v2 complete matched state");
-  exactKeys(state.classGroup, ["classNumber", "invariantFactors"],
+  exactKeys(state.classGroup,
+    ["classNumber", "generatorIdealHnfs", "invariantFactors"],
     "v2 timed class group");
   positiveIntegerString(state.classGroup.classNumber, "class number");
   assert.equal(state.classGroup.classNumber,
@@ -646,6 +723,24 @@ function validateMatchedSampleShape({ registration, capability, implementation,
   }
   assert.equal(invariantProduct, BigInt(state.classGroup.classNumber),
     "class invariant factors do not multiply to the class number");
+  assert(Array.isArray(state.classGroup.generatorIdealHnfs),
+    "class generator ideals must be an array");
+  assert.equal(state.classGroup.generatorIdealHnfs.length,
+    state.classGroup.invariantFactors.length,
+    "class generator ideal count differs from class invariants");
+  const degree = Number(registration.expectedWorkMetadata.degree);
+  for (const [generatorIndex, ideal] of
+    state.classGroup.generatorIdealHnfs.entries()) {
+    assert(Array.isArray(ideal) && ideal.length === degree,
+      `class generator ideal ${generatorIndex} has the wrong row count`);
+    for (const row of ideal) {
+      assert(Array.isArray(row) && row.length === degree,
+        `class generator ideal ${generatorIndex} has the wrong column count`);
+      for (const cell of row)
+        assert.match(cell, /^-?(0|[1-9][0-9]*)$/,
+          "class generator ideal entry is not canonical");
+    }
+  }
   exactKeys(state.unitGroup, ["basis", "mode", "notGivenState", "rank"],
     "v2 unit group");
   nonnegativeIntegerString(state.unitGroup.rank, "unit rank");
@@ -711,7 +806,14 @@ function validateMatchedSampleShape({ registration, capability, implementation,
   assert.notDeepEqual(observations.workCounters.derivationEvidence,
     observations.nativeCalls.derivationEvidence,
     "work and native-call observations require distinct derivation evidence");
-  assert.deepEqual(observations.provenance, expectedProvenance,
+  if (implementation === "sagejs" && registration.panelIndex === 14) {
+    exactKeys(observations.provenance, ["declared", "liveNative"],
+      "row-14 Sage provenance observation");
+    assert.deepEqual(observations.provenance.declared, expectedProvenance,
+      "declared provenance differs from implementation-specific authority");
+    const live = observations.provenance.liveNative;
+    row14NativeProvenance.verifyRow14LiveNativeProvenance(live);
+  } else assert.deepEqual(observations.provenance, expectedProvenance,
     "observed provenance differs from implementation-specific authority");
 
   const cpuPolicy = contract.cpuPolicy[implementation];

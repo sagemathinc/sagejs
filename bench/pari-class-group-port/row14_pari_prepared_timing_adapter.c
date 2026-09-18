@@ -25,6 +25,15 @@ nanoseconds(struct timespec value)
        + (uint64_t)value.tv_nsec;
 }
 
+static uint64_t
+rusage_nanoseconds(struct rusage value)
+{
+  return ((uint64_t)value.ru_utime.tv_sec +
+          (uint64_t)value.ru_stime.tv_sec) * UINT64_C(1000000000)
+       + ((uint64_t)value.ru_utime.tv_usec +
+          (uint64_t)value.ru_stime.tv_usec) * UINT64_C(1000);
+}
+
 static void
 emit_integer(GEN value)
 {
@@ -134,17 +143,20 @@ static void
 emit_run(GEN nf, const char *seed)
 {
   struct timespec begin, end;
-  struct rusage usage;
+  struct rusage usage, usage_begin;
   GEN bnf, cyc, generators, logs, torsion_basis, fu;
   long degree, rank, factor_base_size, log_rows, log_columns;
-  uint64_t elapsed;
+  uint64_t elapsed, cpu_elapsed;
 
   setrand(gp_read_str(seed));
+  getrusage(RUSAGE_SELF, &usage_begin);
   clock_gettime(CLOCK_MONOTONIC, &begin);
   bnf = bnfinit0(nf, 0, NULL, nbits2prec(192));
   clock_gettime(CLOCK_MONOTONIC, &end);
+  getrusage(RUSAGE_SELF, &usage);
   if (!bnf) pari_err(e_MISC, "row-14 bnfinit flag zero failed");
   elapsed = nanoseconds(end) - nanoseconds(begin);
+  cpu_elapsed = rusage_nanoseconds(usage) - rusage_nanoseconds(usage_begin);
 
   degree = nf_get_degree(nf);
   rank = nf_get_r1(nf) + nf_get_r2(nf) - 1;
@@ -156,10 +168,10 @@ emit_run(GEN nf, const char *seed)
   factor_base_size = lg(gel(bnf, 5)) - 1;
   log_columns = lg(logs) - 1;
   log_rows = log_columns ? lg(gel(logs, 1)) - 1 : 0;
-  getrusage(RUSAGE_SELF, &usage);
-
   printf("{\"schema\":\"sagejs.pari-class-group/row14-pari-prepared-sample-v1\","
-         "\"kernelNanoseconds\":\"%" PRIu64 "\",\"result\":{", elapsed);
+         "\"kernelNanoseconds\":\"%" PRIu64 "\","
+         "\"cpuNanoseconds\":\"%" PRIu64 "\",\"result\":{",
+         elapsed, cpu_elapsed);
   printf("\"field\":{\"id\":\"%s\",\"polynomialAscending\":["
          "\"-200000002\",\"-200000002\",\"0\",\"0\",\"1\"]},",
          FIELD_ID);

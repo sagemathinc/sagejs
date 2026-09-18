@@ -22,16 +22,18 @@ const digest = value => crypto.createHash("sha256").update(canonical(value))
   .digest("hex");
 const DIAGNOSTIC_ROWS = [0, 1, 3, 4, 8, 10, 11, 14, 16, 18, 19, 20, 23];
 
-test("v2 inventory fails closed while retaining diagnostic implementations", () => {
+test("v2 inventory admits only reviewed row 14 and retains diagnostics", () => {
   const inventory = registry.inventory();
   assert.equal(inventory.schema,
     "sagejs.pari-class-group/phase6-prepared-adapter-registry-v2");
   assert.equal(inventory.executionEnabled, false);
   assert.equal(inventory.reserveOpeningEnabled, false);
-  assert.deepEqual(inventory.rows, []);
+  assert.deepEqual(inventory.rows.map(row => row.panelIndex), [14]);
+  assert.equal(inventory.rows[0].status, "v2-evidence-verified");
+  assert.equal(inventory.rows[0].matchedReady, true);
   assert.deepEqual(inventory.diagnosticRows.map(row => row.panelIndex),
     DIAGNOSTIC_ROWS);
-  for (const row of inventory.diagnosticRows) {
+  for (const row of inventory.diagnosticRows.filter(row => row.panelIndex !== 14)) {
     assert.equal(row.status, "diagnostic-only");
     assert.equal(row.matchedReady, false);
     assert.equal(row.sagePreparedKernelTiming, false);
@@ -41,23 +43,24 @@ test("v2 inventory fails closed while retaining diagnostic implementations", () 
   }
 });
 
-test("legacy projections and expected work are diagnostic metadata only", () => {
-  const row = registry.diagnosticPreparedAdapterRegistration(14);
+test("legacy projections and expected work remain diagnostic metadata only", () => {
+  const row = registry.diagnosticPreparedAdapterRegistration(11);
   assert.equal(row.admissionCapability, null);
-  assert.equal(row.expectedDiagnosticProjection.classGroup.classNumber, "192");
+  assert.equal(row.expectedDiagnosticProjection.classGroup.classNumber, "4");
   assert.equal(row.diagnosticProjectionSchema,
-    "sagejs.pari-class-group/row14-prepared-common-projection-v1");
+    "sagejs.pari-class-group/row11-phase6-neutral-exact-projection-v1");
   assert.equal(row.matchedOutputSchema, null);
   assert.deepEqual(row.expectedWorkMetadata,
-    { classNumber: "192", degree: "4", unitRank: "2" });
+    { classNumber: "4", degree: "4", unitRank: "2" });
   assert(Object.isFrozen(row.expectedDiagnosticProjection));
   assert(Object.isFrozen(row.admission.missingCapabilities));
-  assert.throws(() => registry.preparedAdapterRegistration(14),
+  assert.throws(() => registry.preparedAdapterRegistration(11),
     /diagnostic-only; missing v2 capabilities: sage-correctness-evidence-verifier/);
 });
 
 test("self-asserted v2 capabilities cannot create production trust", () => {
-  assert.deepEqual(registry.TRUSTED_V2_ADMISSIONS, []);
+  assert.deepEqual(registry.TRUSTED_V2_ADMISSIONS.map(value => value.panelIndex),
+    [14]);
   assert(Object.isFrozen(registry.TRUSTED_V2_ADMISSIONS));
   assert.deepEqual(registry.REQUIRED_CAPABILITIES, [
     "sage-correctness-evidence-verifier",
@@ -163,7 +166,11 @@ function auditSampleFixture(implementation = "pari") {
     schema: registration.matchedOutputSchema,
     field: { id: registration.fieldId, polynomialAscending: ["8", "0", "1"] },
     matchedState: {
-      classGroup: { classNumber: "8", invariantFactors: ["2", "4"] },
+      classGroup: { classNumber: "8", invariantFactors: ["2", "4"],
+        generatorIdealHnfs: [
+          [["1", "0"], ["0", "1"]],
+          [["2", "0"], ["0", "1"]],
+        ] },
       unitGroup: { basis: null, mode: "not_given", notGivenState: {
         reason: "large" }, rank: "2" },
       regulator: { value: "1.25" },
@@ -234,8 +241,9 @@ test("matched sample shape permits zero work and honest missing PARI CPU", () =>
   assert.equal(registry.validateMatchedSampleForAudit(fixture),
     fixture.verified.sample);
   assert.equal(Object.hasOwn(
-    fixture.verified.sample.output.matchedState.classGroup, "generators"), false,
-  "timed matched output must not require Sage-only principal witnesses");
+    fixture.verified.sample.output.matchedState.classGroup,
+    "generatorIdealHnfs"), true,
+  "timed output retains standard generator ideals but not principal witnesses");
   assert.equal(Object.hasOwn(fixture.verified.sample, "replay"), false,
     "full Sage replay belongs to admission evidence, not each timed arm");
 });
@@ -315,7 +323,7 @@ test("registration still rejects incomplete implementation diagnostics", () => {
 
 test("runtime factory cannot execute a diagnostic-only row", async () => {
   await assert.rejects(() => wrapper.createRegisteredPreparedAdapter(
-    { panelIndex: 14, implementation: "sagejs" }),
+    { panelIndex: 0, implementation: "sagejs" }),
   /diagnostic-only; missing v2 capabilities/);
 });
 
@@ -348,11 +356,12 @@ test("legacy projection, replay, and counter manufacture is retired", () => {
     { resourceCounters: { nativeCalls: "7" } }), "7");
 });
 
-test("row 14 remains diagnostic despite its stronger comparison path", () => {
-  const row14 = registry.diagnosticPreparedAdapterRegistration(14);
+test("row 14 is the sole strict-v2 admission", () => {
+  const row14 = registry.preparedAdapterRegistration(14);
   const timing = require("../bench/pari-class-group-port/row14_sage_prepared_timing_adapter.cjs");
   assert.equal(typeof timing.compareWithPari, "function");
-  assert.equal(row14.admission.matchedReady, false);
-  assert.deepEqual(row14.admission.missingCapabilities,
-    registry.REQUIRED_CAPABILITIES);
+  assert.equal(row14.admission.matchedReady, true);
+  assert.equal(row14.admission.status, "v2-evidence-verified");
+  assert.deepEqual(row14.admission.missingCapabilities, []);
+  assert.equal(row14.admissionCapability.panelIndex, 14);
 });

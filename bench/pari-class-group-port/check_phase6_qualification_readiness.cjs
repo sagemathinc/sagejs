@@ -16,15 +16,18 @@ assert.throws(() => readiness.parseCpuList("4-2"));
 assert.deepEqual(readiness.DEVELOPMENT_INDICES,
   [0, 1, 3, 4, 6, 8, 10, 11, 13, 14, 16, 18, 19, 20, 21, 23]);
 const inventory = readiness.timingInventory();
-assert.deepEqual(inventory.matchedReady, []);
-assert.deepEqual(inventory.missingMatchedTiming, readiness.DEVELOPMENT_INDICES);
+assert.deepEqual(inventory.matchedReady, [14]);
+assert.deepEqual(inventory.missingMatchedTiming,
+  readiness.DEVELOPMENT_INDICES.filter(index => index !== 14));
 const adapterInventory = require("./phase6_prepared_adapter_registry.cjs")
   .inventory();
-assert.deepEqual(adapterInventory.rows, []);
+assert.deepEqual(adapterInventory.rows.map(row => row.panelIndex), [14]);
 assert.deepEqual(adapterInventory.diagnosticRows.map(row => row.panelIndex),
   [0, 1, 3, 4, 8, 10, 11, 14, 16, 18, 19, 20, 23]);
-assert(adapterInventory.diagnosticRows.every(row =>
-  row.matchedReady === false && row.missingCapabilities.length === 12));
+assert(adapterInventory.diagnosticRows.filter(row => row.panelIndex !== 14)
+  .every(row => row.matchedReady === false && row.missingCapabilities.length === 12));
+assert.equal(adapterInventory.diagnosticRows.find(row => row.panelIndex === 14)
+  .matchedReady, true);
 const pari = readiness.authenticatePari();
 assert.equal(pari.authenticated, true);
 assert.deepEqual(pari.hashes, {
@@ -52,9 +55,9 @@ if (process.argv.length === 4) {
   });
   assert.equal(report.correctness.completedDevelopmentFields, 16);
   assert.equal(report.correctness.developmentAggregateAuthenticated, true);
-  assert.deepEqual(report.timing.matchedDevelopmentRows, []);
+  assert.deepEqual(report.timing.matchedDevelopmentRows, [14]);
   assert.deepEqual(report.timing.missingDevelopmentRows,
-    readiness.DEVELOPMENT_INDICES);
+    readiness.DEVELOPMENT_INDICES.filter(index => index !== 14));
   assert.equal(report.timing.row14CampaignPhase6Qualified, false);
   assert.equal(report.reserves.opened, 0);
   assert.equal(report.fullQualificationReady, false);

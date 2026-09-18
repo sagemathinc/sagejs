@@ -282,8 +282,71 @@ function collectRow14LiveNativeProvenance(resident, options = {}) {
   return Object.freeze(result);
 }
 
+function verifyFileEvidence(value, label) {
+  assert(value && typeof value === "object" && !Array.isArray(value),
+    `${label} file evidence is absent`);
+  assert.equal(typeof value.path, "string", `${label} path is absent`);
+  assert.match(value.sha256, SHA256, `${label} hash is absent`);
+  const current = fileEvidence(value.path, label);
+  assert.deepEqual(current, value, `${label} file evidence changed`);
+}
+
+function verifyCompilerAuthority(value) {
+  assert(value && typeof value === "object" && !Array.isArray(value));
+  const { sha256: claimed, ...body } = value;
+  assert.match(claimed, SHA256);
+  assert.equal(sha256(stableJson(body)), claimed,
+    "native compiler authority digest changed");
+  verifyFileEvidence(value.compiler.invoked, "invoked C compiler");
+  verifyFileEvidence(value.compiler.resolved, "resolved C compiler");
+  verifyFileEvidence(value.node.executable, "Node executable");
+  verifyFileEvidence(value.nodeGyp, "node-gyp entry point");
+  verifyFileEvidence(value.nativeHeader, "native ABI header");
+  value.compilerSources.forEach((item, index) =>
+    verifyFileEvidence(item, `native compiler source ${index}`));
+  value.declarationFiles.forEach((item, index) =>
+    verifyFileEvidence(item, `FFI declaration ${index}`));
+}
+
+function verifyRow14LiveNativeProvenance(value) {
+  assert(value && typeof value === "object" && !Array.isArray(value));
+  assert.equal(value.schema, SCHEMA);
+  assert.equal(value.collectionBoundary,
+    "post-warmup-resident-built-objects-no-kernel-execution");
+  assert.equal(value.buildCount, 13);
+  assert(Array.isArray(value.builds) && value.builds.length === 13);
+  assert.equal(new Set(value.builds.map(built => built.cacheKey)).size, 13,
+    "native provenance contains duplicate cache keys");
+  for (const built of value.builds) {
+    assert.equal(built.schema, BUILD_SCHEMA);
+    assert.match(built.cacheKey, SHA256);
+    assert.match(built.sourceHash, SHA256);
+    const { labels, sha256: claimed, ...body } = built;
+    assert(Array.isArray(labels) && labels.length > 0);
+    assert.match(claimed, SHA256);
+    assert.equal(sha256(stableJson(body)), claimed,
+      `${built.label} built-object digest changed`);
+    for (const [name, item] of Object.entries(built.artifacts))
+      verifyFileEvidence(item, `${built.label} ${name}`);
+    built.dependencies.forEach((item, index) =>
+      verifyFileEvidence({ path: item.path, bytes: item.bytes,
+        sha256: item.sha256 }, `${built.label} dependency ${index}`));
+    built.runtimeDependencies.forEach((item, index) =>
+      verifyFileEvidence({ path: item.path, bytes: item.bytes,
+        sha256: item.sha256 }, `${built.label} runtime dependency ${index}`));
+    verifyFileEvidence(built.loader.loadedBinary,
+      `${built.label} loaded binary`);
+  }
+  if (value.toolchain !== null) verifyCompilerAuthority(value.toolchain);
+  const { sha256: claimed, ...body } = value;
+  assert.match(claimed, SHA256);
+  assert.equal(sha256(stableJson(body)), claimed,
+    "row-14 top-level native provenance digest changed");
+  return value;
+}
+
 module.exports = {
   BUILD_SCHEMA, SCHEMA, collectBuiltObjectProvenance,
   collectRow14LiveNativeProvenance, compilerAuthority, fileEvidence,
-  row14BuiltObjects, stableJson,
+  row14BuiltObjects, stableJson, verifyRow14LiveNativeProvenance,
 };

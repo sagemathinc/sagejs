@@ -170,11 +170,13 @@ function validateTriplet(value, name) {
 
 function validateSample(sample) {
   exactKeys(sample, [
-    "schema", "kernelNanoseconds", "result", "work", "rng", "processMaxRssKiB",
+    "schema", "kernelNanoseconds", "cpuNanoseconds", "result", "work", "rng",
+    "processMaxRssKiB",
   ], "PARI row-14 sample");
   assert.equal(sample.schema,
     "sagejs.pari-class-group/row14-pari-prepared-sample-v1");
   canonicalUnsigned(sample.kernelNanoseconds, "bnfinit kernel", { positive: true });
+  canonicalUnsigned(sample.cpuNanoseconds, "bnfinit child CPU", { positive: true });
   canonicalUnsigned(sample.processMaxRssKiB, "maximum RSS", { positive: true });
   exactKeys(sample.result, ["field", "classGroup", "unitGroup", "terminal"], "result");
   assert.equal(sample.result.field.id, FIELD_ID);

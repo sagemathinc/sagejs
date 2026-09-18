@@ -109,14 +109,17 @@ test("row 14 Gate C exposes source-aligned relation and HNF switches", () => {
     /exclusive Gate-C stage timing requires precompiled resident kernels/);
 });
 
-test("row 14 resident clock leaves mixed post-806 work residual", () => {
+test("row 14 resident clock leaves both mixed native roots residual", () => {
   const host = source("bench/pari-class-group-port/row14_matched_kernel_clock_host.cjs");
   const post = host.indexOf("runRow14Post806TerminalFromOwners");
   const unit = host.indexOf('exclusive.switchStage("unit-regulator")', post);
-  const klass = host.indexOf('exclusive.switchStage("honesty-generators-final")', unit);
-  assert(post >= 0 && unit > post && klass > unit);
+  const residual = host.indexOf('exclusive.switchStage("unattributed-remainder")', unit);
+  const klass = host.indexOf("runClassAssembly", residual);
+  assert(post >= 0 && unit > post && residual > unit && klass > residual);
   assert.doesNotMatch(host.slice(post, unit), /exclusive\.switchStage\("unit-regulator"\)/);
   assert.match(host.slice(post, unit), /conservatively leave all of it in[\s\S]*explicit residual/);
+  assert.doesNotMatch(host.slice(unit, klass), /honesty-generators-final/);
+  assert.match(host.slice(unit, klass), /full Smith transform[\s\S]*remains residual/);
 });
 
 test("exclusive row 14 segments conserve the root and mutations fail", () => {

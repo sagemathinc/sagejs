@@ -182,7 +182,7 @@ function collect(raw, ancestryInput, metadataOwner) {
     evidence("regulator-packed", "pari_packed_regulator", regulator, [3],
       "decimal_integer_matrix"),
     evidence("regulator-precision", "regulator_precision",
-      { precisionBits: "256" }, []),
+      { precisionBits: "192" }, []),
     evidence("regulator-retry", "regulator_retry", honesty, [6],
       "decimal_integer_matrix"),
     evidence("torsion-generator", "torsion_generator", torsion, [4],
@@ -221,16 +221,18 @@ function collect(raw, ancestryInput, metadataOwner) {
         vRef: "raw-smith-v", wRef: "raw-smith-w" },
       provenanceRefs: ["raw-smith-provenance"], variant: "smith_uwvd" },
     classGroup: { classNumber: "192", invariantFactors: ["8", "24"],
-      generators: ["8", "24"].map((order, index) => ({ archimedeanRefs: [],
-        idealRef: `class-ideal-${index}`, order,
-        principalWitnessRef: `class-witness-${index}` })) },
+      // The retained PARI owners are in source order [24, 8].  Normalize the
+      // complete generator tuple, not merely the invariant-factor list.
+      generators: [1, 0].map((sourceIndex, index) => ({ archimedeanRefs: [],
+        idealRef: `class-ideal-${sourceIndex}`, order: ["8", "24"][index],
+        principalWitnessRef: `class-witness-${sourceIndex}` })) },
     unitGroup: { compactUnits: [0, 1].map(index => ({
       logRef: `unit-log-${index}`, provenanceRef: `unit-provenance-${index}`,
       relationTransformRef: `unit-relation-transform-${index}` })),
-      exactUnits: { precisionBits: "256", reason: "LARGE", status: "not_given" },
+      exactUnits: { precisionBits: "192", reason: "LARGE", status: "not_given" },
       rank: "2", regulator: { acceptanceRef: "regulator-acceptance",
         kind: "pari_packed_accepted", packedValueRef: "regulator-packed",
-        precisionBits: "256", precisionRef: "regulator-precision",
+        precisionBits: "192", precisionRef: "regulator-precision",
         retryRef: "regulator-retry" },
       torsion: { generatorRef: "torsion-generator", order: "2" } },
     maps: {

@@ -371,10 +371,13 @@ async function runResident(resident) {
   exclusive.switchStage("unit-regulator");
   const units = runUnitSuffix(resident.units, accepted, post806, metadata.metadata.prepared);
   mark("unitLatticeAndGetfu");
-  exclusive.switchStage("honesty-generators-final");
+  // Class assembly begins with a full Smith transform before constructing the
+  // final generators.  Its one native root therefore has no exclusive
+  // honesty/generator ownership and remains residual until an internal cut is
+  // available.
+  exclusive.switchStage("unattributed-remainder");
   const klass = runClassAssembly(resident.classAssembly, accepted, metadata.metadata);
   mark("classGroupGen");
-  exclusive.switchStage("unattributed-remainder");
   const exclusiveStageTiming = exclusive.finish();
   assert.deepEqual(Object.keys(exclusiveStageTiming.stageTotalsNanoseconds), ALL_STAGES);
   assert.equal(Object.values(exclusiveStageTiming.stageTotalsNanoseconds)

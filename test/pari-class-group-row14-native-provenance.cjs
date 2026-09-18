@@ -91,8 +91,19 @@ test("row-14 provenance closes 13 unique warmed native built objects", () => {
     assert(report.builds.every(row => row.artifacts.addon.sha256.length === 64));
     assert(report.builds.every(row => row.dependencies.length === 2));
     assert.equal(report.builds[9].labels.length, 3);
+    assert.equal(provenance.verifyRow14LiveNativeProvenance(report), report);
+
+    const changedBuild = structuredClone(report);
+    changedBuild.builds[0].sourceHash = "0".repeat(64);
+    assert.throws(() => provenance.verifyRow14LiveNativeProvenance(changedBuild),
+      /built-object digest changed/);
+    const changedTop = structuredClone(report);
+    changedTop.collectionBoundary = "untrusted";
+    assert.throws(() => provenance.verifyRow14LiveNativeProvenance(changedTop));
 
     fs.appendFileSync(path.join(root, "dependency-4.py"), "MUTATION = 1\n");
+    assert.throws(() => provenance.verifyRow14LiveNativeProvenance(report),
+      /file evidence changed/);
     assert.throws(() => provenance.collectRow14LiveNativeProvenance(resident, {
       inspectRuntimeDependencies: false, collectToolchain: false,
     }), /changed after native warmup/);

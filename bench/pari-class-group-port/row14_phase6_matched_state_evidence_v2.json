@@ -1,0 +1,987 @@
+{
+  "schema": "sagejs.pari-class-group/row14-phase6-matched-state-evidence-v2",
+  "panelIndex": 14,
+  "field": {
+    "id": "generated-sha256-e1d4643ab62bde9546d63340545e5302c2cef517222d569e634fb5e2093f6413",
+    "polynomialAscending": [
+      "-200000002",
+      "-200000002",
+      "0",
+      "0",
+      "1"
+    ]
+  },
+  "classUnitOutput": {
+    "schema": "sagejs.pari-class-group/class-unit-output-evidence-v2",
+    "field": {
+      "definingPolynomialAscending": [
+        "-200000002",
+        "-200000002",
+        "0",
+        "0",
+        "1"
+      ],
+      "degree": "4",
+      "id": "generated-sha256-e1d4643ab62bde9546d63340545e5302c2cef517222d569e634fb5e2093f6413"
+    },
+    "source": {
+      "correspondenceResultSha256": "edb2b0bdf5753497b51e4b4a34229c3ad8977de8b877de72005a18472d43cff2",
+      "pariSourceSha256": "02651d99c391007d384b3fadbc20abc6916b77036f9e496c99e9ce8688ca4b53",
+      "pariVersion": "2.17.4"
+    },
+    "evidence": [
+      {
+        "encoding": "decimal_integer_matrix",
+        "id": "class-ideal-0",
+        "kind": "class_generator_ideal",
+        "sha256": "2e1be6b4ea4bb8a5d25f5208f879adca585b586e4408f56e8c1b8aa463040919",
+        "shape": [
+          "4",
+          "4"
+        ]
+      },
+      {
+        "encoding": "decimal_integer_matrix",
+        "id": "class-ideal-1",
+        "kind": "class_generator_ideal",
+        "sha256": "db68f48287cbbe689f9a9208c3c0658c7b61704dc48654318ecd6ed9bda7d67b",
+        "shape": [
+          "4",
+          "4"
+        ]
+      },
+      {
+        "encoding": "decimal_integer_matrix",
+        "id": "class-witness-0",
+        "kind": "principal_order_witness",
+        "sha256": "cff59aa52093c6b658e7353776ad5f2864e5ced040b4f75006010982b0e0efa3",
+        "shape": [
+          "806"
+        ]
+      },
+      {
+        "encoding": "decimal_integer_matrix",
+        "id": "class-witness-1",
+        "kind": "principal_order_witness",
+        "sha256": "c0a50bada797e0a091a7c51d9fe6f6876a235b4b01883a772c105b1edb151c96",
+        "shape": [
+          "806"
+        ]
+      },
+      {
+        "encoding": "canonical_json",
+        "id": "combine-map",
+        "kind": "combine_map",
+        "sha256": "aaa73960dbdb6e786820c78457fa531c94be2ff6e4a11e1d24efbca4dd82445e",
+        "shape": []
+      },
+      {
+        "encoding": "decimal_integer_matrix",
+        "id": "factor-base-ideals",
+        "kind": "factor_base_ideals",
+        "sha256": "cd1ef75e096fe58e4599b54eafb92d581857e83fbc299e43d9a6765bd6fe70ce",
+        "shape": [
+          "799",
+          "16"
+        ]
+      },
+      {
+        "encoding": "canonical_json",
+        "id": "factor-map",
+        "kind": "factor_map",
+        "sha256": "2c44ef787dbe81a288207976f8e892ec0cddd8063adb739a18a61a7d34de1504",
+        "shape": []
+      },
+      {
+        "encoding": "decimal_integer_matrix",
+        "id": "principal-generators",
+        "kind": "principal_generators",
+        "sha256": "00533df7a974867b1b01544fe9ac1bee5871052a89016dba16ff56bd7aebcd59",
+        "shape": [
+          "806",
+          "4"
+        ]
+      },
+      {
+        "encoding": "decimal_integer_matrix",
+        "id": "raw-relation-dependencies",
+        "kind": "dependency",
+        "sha256": "f5e855babbbd3d230b35987ba092910d2bce9e04a3aaeae483bc254cc446b3bc",
+        "shape": [
+          "7",
+          "806"
+        ]
+      },
+      {
+        "encoding": "decimal_integer_matrix",
+        "id": "raw-smith-d",
+        "kind": "presentation_diagonal",
+        "sha256": "0f59ce6bf71550e788c2ae8349ce415360e5c6cd04320fd5ba2cf79e6c684dba",
+        "shape": [
+          "806",
+          "799"
+        ]
+      },
+      {
+        "encoding": "canonical_json",
+        "id": "raw-smith-provenance",
+        "kind": "provenance",
+        "sha256": "1674edc6a5ed1dde3c8830f268d55fb750249f3c2a5635aec4a23fc4b26a4d35",
+        "shape": []
+      },
+      {
+        "encoding": "decimal_integer_matrix",
+        "id": "raw-smith-u",
+        "kind": "presentation_transform_left",
+        "sha256": "819bcfe2bba45872fdcb529f8c1b7f55963012d9fb038c9fee9268ad180d7db8",
+        "shape": [
+          "806",
+          "806"
+        ]
+      },
+      {
+        "encoding": "decimal_integer_matrix",
+        "id": "raw-smith-v",
+        "kind": "presentation_transform_right",
+        "sha256": "92efd71d2a319bd88bfd4ab089d726ea074d2841df2b516ea5082426a8276613",
+        "shape": [
+          "799",
+          "799"
+        ]
+      },
+      {
+        "encoding": "decimal_integer_matrix",
+        "id": "raw-smith-w",
+        "kind": "presentation_transform_middle",
+        "sha256": "011be48f351b237a725ddd6561da15cd8194539b4a3aea0754ed50ccc070ff08",
+        "shape": [
+          "806",
+          "799"
+        ]
+      },
+      {
+        "encoding": "canonical_json",
+        "id": "reduce-map",
+        "kind": "reduce_map",
+        "sha256": "76a2f81c73f0d6aef853af4c7c416722434ac2c75cb64259363f229bb186f4b2",
+        "shape": []
+      },
+      {
+        "encoding": "canonical_json",
+        "id": "regulator-acceptance",
+        "kind": "regulator_acceptance",
+        "sha256": "455e1b7906c56afb12e3f8b6b7d54d0d99d92bbe4281af7f9186a2e3393738ea",
+        "shape": []
+      },
+      {
+        "encoding": "decimal_integer_matrix",
+        "id": "regulator-packed",
+        "kind": "pari_packed_regulator",
+        "sha256": "7db5f1b09e7d7740498aa0c53a8e6738b8f9da65f000e1b768a24064db2b7db7",
+        "shape": [
+          "3"
+        ]
+      },
+      {
+        "encoding": "canonical_json",
+        "id": "regulator-precision",
+        "kind": "regulator_precision",
+        "sha256": "fc64b32be420884201de8f99e54e352415b64ad723506f6ea0faca67fbaca409",
+        "shape": []
+      },
+      {
+        "encoding": "decimal_integer_matrix",
+        "id": "regulator-retry",
+        "kind": "regulator_retry",
+        "sha256": "d70ff8819e9dcd941388a8ce744ce264b9c3496225b97c104f497293be32cfa8",
+        "shape": [
+          "6"
+        ]
+      },
+      {
+        "encoding": "opaque_canonical_bytes",
+        "id": "relation-logs",
+        "kind": "relation_logs",
+        "sha256": "55809b7e2b87e6e8081c2a3da5941676ed2501c8f5cd00b43306dfc7709d5a62",
+        "shape": [
+          "806",
+          "21"
+        ]
+      },
+      {
+        "encoding": "decimal_integer_matrix",
+        "id": "relation-matrix",
+        "kind": "relation_matrix",
+        "sha256": "011be48f351b237a725ddd6561da15cd8194539b4a3aea0754ed50ccc070ff08",
+        "shape": [
+          "806",
+          "799"
+        ]
+      },
+      {
+        "encoding": "decimal_integer_matrix",
+        "id": "torsion-generator",
+        "kind": "torsion_generator",
+        "sha256": "1bc55e595a59217e08193735b8f02d02bb5b0919f66e09fee6636aa347fbe744",
+        "shape": [
+          "4"
+        ]
+      },
+      {
+        "encoding": "decimal_integer_matrix",
+        "id": "unit-log-0",
+        "kind": "compact_unit_log",
+        "sha256": "cc7535419247cd19142b0f01fd7cbc401c4ee3d394f8a8871a3a26a6388cded6",
+        "shape": [
+          "21"
+        ]
+      },
+      {
+        "encoding": "decimal_integer_matrix",
+        "id": "unit-log-1",
+        "kind": "compact_unit_log",
+        "sha256": "cfb742057e842bae86037fc17306aa1d3680ffad5581c0fa2eb91118c41b3e71",
+        "shape": [
+          "21"
+        ]
+      },
+      {
+        "encoding": "canonical_json",
+        "id": "unit-provenance-0",
+        "kind": "compact_unit_provenance",
+        "sha256": "e2043cdb0e1e03bf272608335e0c49b932bb2863d142c05c463bd6519c1379cb",
+        "shape": []
+      },
+      {
+        "encoding": "canonical_json",
+        "id": "unit-provenance-1",
+        "kind": "compact_unit_provenance",
+        "sha256": "e2b53d3c39e4ae7d9a0d051b79e181603e451b53c1582a364de432b6feaf765f",
+        "shape": []
+      },
+      {
+        "encoding": "decimal_integer_matrix",
+        "id": "unit-relation-transform-0",
+        "kind": "compact_unit_relation_transform",
+        "sha256": "62d28137962fd6d3d2d7593cf7c6353cf277534733d8fb12f8ab2f0355441916",
+        "shape": [
+          "806"
+        ]
+      },
+      {
+        "encoding": "decimal_integer_matrix",
+        "id": "unit-relation-transform-1",
+        "kind": "compact_unit_relation_transform",
+        "sha256": "901fa44970086fc9e0fd8bf98e00c2450f0699f28ba5df1feb15fa954c0738d7",
+        "shape": [
+          "806"
+        ]
+      }
+    ],
+    "relations": {
+      "factorBaseCount": "799",
+      "factorBaseRef": "factor-base-ideals",
+      "logColumns": "21",
+      "logsRef": "relation-logs",
+      "principalGeneratorsRef": "principal-generators",
+      "relationCount": "806",
+      "relationMatrixRef": "relation-matrix"
+    },
+    "presentation": {
+      "dependencyRefs": [
+        "raw-relation-dependencies"
+      ],
+      "proof": {
+        "dRef": "raw-smith-d",
+        "uRef": "raw-smith-u",
+        "vRef": "raw-smith-v",
+        "wRef": "raw-smith-w"
+      },
+      "provenanceRefs": [
+        "raw-smith-provenance"
+      ],
+      "variant": "smith_uwvd"
+    },
+    "classGroup": {
+      "classNumber": "192",
+      "invariantFactors": [
+        "8",
+        "24"
+      ],
+      "generators": [
+        {
+          "archimedeanRefs": [],
+          "idealRef": "class-ideal-1",
+          "order": "8",
+          "principalWitnessRef": "class-witness-1"
+        },
+        {
+          "archimedeanRefs": [],
+          "idealRef": "class-ideal-0",
+          "order": "24",
+          "principalWitnessRef": "class-witness-0"
+        }
+      ]
+    },
+    "unitGroup": {
+      "compactUnits": [
+        {
+          "logRef": "unit-log-0",
+          "provenanceRef": "unit-provenance-0",
+          "relationTransformRef": "unit-relation-transform-0"
+        },
+        {
+          "logRef": "unit-log-1",
+          "provenanceRef": "unit-provenance-1",
+          "relationTransformRef": "unit-relation-transform-1"
+        }
+      ],
+      "exactUnits": {
+        "precisionBits": "192",
+        "reason": "LARGE",
+        "status": "not_given"
+      },
+      "rank": "2",
+      "regulator": {
+        "acceptanceRef": "regulator-acceptance",
+        "kind": "pari_packed_accepted",
+        "packedValueRef": "regulator-packed",
+        "precisionBits": "192",
+        "precisionRef": "regulator-precision",
+        "retryRef": "regulator-retry"
+      },
+      "torsion": {
+        "generatorRef": "torsion-generator",
+        "order": "2"
+      }
+    },
+    "maps": {
+      "combine": {
+        "evidenceRefs": [
+          "combine-map"
+        ],
+        "missing": [],
+        "ready": true
+      },
+      "factor": {
+        "evidenceRefs": [
+          "factor-map"
+        ],
+        "missing": [],
+        "ready": true
+      },
+      "reduce": {
+        "evidenceRefs": [
+          "reduce-map"
+        ],
+        "missing": [],
+        "ready": true
+      }
+    },
+    "completion": {
+      "correspondenceComplete": true,
+      "freshCorrespondence": true,
+      "missing": [],
+      "outputBoundaryComplete": true,
+      "phase3Complete": true,
+      "phase4Complete": true,
+      "phase5Complete": true
+    }
+  },
+  "classUnitOutputSha256": "e1c39bb437ff52efc4b03cc1d195756c5e61b4deef0b8b1ffa845553fe6f1519",
+  "matchedState": {
+    "classGroup": {
+      "classNumber": "192",
+      "invariantFactors": [
+        "8",
+        "24"
+      ],
+      "generatorIdealHnfs": [
+        [
+          [
+            "334218769636951",
+            "58264613846794",
+            "132395815055232",
+            "140653091603643"
+          ],
+          [
+            "0",
+            "1",
+            "0",
+            "0"
+          ],
+          [
+            "0",
+            "0",
+            "1",
+            "0"
+          ],
+          [
+            "0",
+            "0",
+            "0",
+            "1"
+          ]
+        ],
+        [
+          [
+            "5099",
+            "1784",
+            "2435",
+            "3663"
+          ],
+          [
+            "0",
+            "1",
+            "0",
+            "0"
+          ],
+          [
+            "0",
+            "0",
+            "1",
+            "0"
+          ],
+          [
+            "0",
+            "0",
+            "0",
+            "1"
+          ]
+        ]
+      ]
+    },
+    "unitGroup": {
+      "basis": null,
+      "mode": "not_given",
+      "notGivenState": {
+        "precisionBits": "192",
+        "reason": "LARGE",
+        "status": "not_given"
+      },
+      "rank": "2"
+    },
+    "regulator": {
+      "value": [
+        "81286872183153500261162314966675306285467183490741584490233697199637458337870",
+        "256",
+        "210"
+      ]
+    },
+    "torsion": {
+      "generator": [
+        "-1",
+        "0",
+        "0",
+        "0"
+      ],
+      "order": "2"
+    },
+    "terminal": {
+      "schema": "sagejs.pari-class-group/row14-phase6-terminal-state-v1",
+      "status": "pari-flag-zero-complete",
+      "correspondenceAssumed": true,
+      "publicCertified": false
+    },
+    "precision": {
+      "schema": "sagejs.pari-class-group/row14-phase6-precision-state-v1",
+      "requestedBits": "192",
+      "packedRealBits": "256",
+      "convention": "PARI-nbits2prec-word-rounded"
+    },
+    "retry": {
+      "schema": "sagejs.pari-class-group/row14-phase6-retry-state-v1",
+      "precisionRetries": "0",
+      "terminalReason": "LARGE-not-precision-failure"
+    }
+  },
+  "coverage": {
+    "class-invariants": true,
+    "class-generator-ideals-orders-principal-witnesses": true,
+    "unit-compact-or-factored-basis-or-exact-not-given": true,
+    "regulator-value-and-log-lattice-semantics": true,
+    "torsion": true,
+    "terminal-precision-retry-state": true,
+    "independent-replay-distinct-from-output": true,
+    "replay-mutation-coverage": true,
+    "source-and-provenance-hashes": true
+  },
+  "mutationFamilies": [
+    "class-invariants",
+    "class-generators",
+    "class-principal-witnesses",
+    "unit-basis",
+    "regulator-log-lattice",
+    "torsion",
+    "terminal-state",
+    "precision-state",
+    "retry-state",
+    "replay-authority",
+    "work-counters",
+    "native-calls",
+    "source-provenance"
+  ],
+  "workAuthority": {
+    "classHnfColumns": "3",
+    "degree": "4",
+    "factorBaseSize": "799",
+    "logEmbeddingColumns": "2",
+    "logEmbeddingRows": "3",
+    "relationCount": "806"
+  },
+  "nativeCallAuthority": {
+    "formula": "18 + 2*(collectionPasses-1) + (acceptedCheckpoints-1)",
+    "roots": [
+      "prepared-initial",
+      "gate-collector-hnf",
+      "post-terminal",
+      "rank-two-unit-suffix",
+      "class-group-assembly"
+    ]
+  },
+  "replayAuthority": {
+    "schema": "sagejs.pari-class-group/row14-independent-static-math-replay-v1",
+    "replaySha256": "bd290b08da5fd6b2835f15fd57a19f004f430b78369f7b4a8ab55513558dd291",
+    "summary": {
+      "schema": "sagejs.pari-class-group/row14-independent-static-math-replay-v1",
+      "authoritySha256": {
+        "result": {
+          "compressed": "56eaa8390b3674597bbbfb4245edf3a40e9e119846bd7dc0d0a690e07a852d5e",
+          "plain": "edb2b0bdf5753497b51e4b4a34229c3ad8977de8b877de72005a18472d43cff2"
+        },
+        "ancestry": {
+          "compressed": "cb4cca419fc99d9cf69468039d4833828ebeba652c7d635d080347780a2e6cd3",
+          "plain": "edcf30d39bef8b4be30f668f5245227ebeb74932c2756779a7013bccbdba0ef9"
+        },
+        "metadata": {
+          "compressed": "56352e8cf74cfbd83b2035f8a9cee141d5833538eb81cf289de87afb83644ca1",
+          "plain": "7826088b03a22a7d902831da2add844d01dc8cceda1519ab4aed9702f6f3f568"
+        }
+      },
+      "outputSha256": "e1c39bb437ff52efc4b03cc1d195756c5e61b4deef0b8b1ffa845553fe6f1519",
+      "identityCells": "643994",
+      "determinantU": "-1",
+      "determinantV": "-1",
+      "classReplay": {
+        "equationCells": 1598,
+        "membershipChecks": 32
+      },
+      "unitReplay": {
+        "compositionCells": 1612,
+        "kernelCells": 1598
+      },
+      "torsionReplay": {
+        "exactRealRootCount": 2,
+        "realEmbedding": true,
+        "completenessArgument": "real-root-of-unity-is-plus-or-minus-one",
+        "generatorPowerBasis": [
+          "-1",
+          "0",
+          "0",
+          "0"
+        ],
+        "order": "2"
+      },
+      "python": {
+        "classIdealMutationRejected": true,
+        "classReplay": {
+          "classGeneratorIdealReplayGaps": [
+            {
+              "generator": 1,
+              "missingOwner": "signed-class-generator-reduction-witness",
+              "reason": "negative factor exponents require retained inverse and principal-scaling data"
+            }
+          ],
+          "classGeneratorIdealsDirectlyReplayed": 1,
+          "classNumber": 192,
+          "factorBaseSize": 799,
+          "fieldId": "generated-sha256-e1d4643ab62bde9546d63340545e5302c2cef517222d569e634fb5e2093f6413",
+          "generatorCount": 2,
+          "invariantFactors": [
+            8,
+            24
+          ],
+          "missingOwners": [],
+          "nonzeroRelationEntries": 4858,
+          "orderRelationsReplayed": 2,
+          "presentationColumns": 3,
+          "presentationCoordinates": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              -2,
+              -1,
+              -1
+            ]
+          ],
+          "principalIdealMultiplications": 4962,
+          "principalRelationsReplayed": 806,
+          "qualifiedTiming": false,
+          "relationCount": 806,
+          "sourceGeneratorOrders": [
+            24,
+            8
+          ]
+        },
+        "classWitnessMutationRejected": true,
+        "compactMutationRejected": true,
+        "compactState": [
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          2,
+          2,
+          -70,
+          -67,
+          -1,
+          0,
+          1
+        ],
+        "principal": {
+          "idealProducts": 4962,
+          "maximumRawExponent": 10,
+          "nonzeroRelationEntries": 4858,
+          "principalEquations": 806
+        },
+        "principalMutationRejected": true,
+        "signedGeneratorMutationRejected": true,
+        "signedGeneratorReplay": {
+          "candidateCount": 7,
+          "candidates": [
+            [
+              5099,
+              0,
+              0,
+              0
+            ],
+            [
+              25999801,
+              0,
+              0,
+              0
+            ],
+            [
+              56861,
+              -11,
+              0,
+              0
+            ],
+            [
+              22,
+              1,
+              0,
+              0
+            ],
+            [
+              -30151186825648964,
+              83085512275137,
+              16518741033,
+              -17982819
+            ],
+            [
+              -229,
+              1,
+              0,
+              0
+            ],
+            [
+              -822310719931774700,
+              -6114803664512006,
+              -2453125764292,
+              -47408694981
+            ]
+          ],
+          "factorMapPivots": [
+            692,
+            767,
+            796
+          ],
+          "generatorWitnesses": [
+            {
+              "equation": "G^order = principal(raw-principal-product * reduction-scaling^(-order))",
+              "order": 8,
+              "principalCorrectionFactors": [
+                {
+                  "denominator": 1,
+                  "exponent": 8,
+                  "kind": 1,
+                  "values": [
+                    56861,
+                    -11,
+                    0,
+                    0
+                  ]
+                },
+                {
+                  "denominator": 1,
+                  "exponent": 8,
+                  "kind": 1,
+                  "values": [
+                    22,
+                    1,
+                    0,
+                    0
+                  ]
+                },
+                {
+                  "denominator": 1,
+                  "exponent": -8,
+                  "kind": 1,
+                  "values": [
+                    -30262898849522,
+                    163687123428,
+                    459927411,
+                    1457523
+                  ]
+                },
+                {
+                  "denominator": 1,
+                  "exponent": 8,
+                  "kind": 0,
+                  "values": [
+                    23015196255455,
+                    0,
+                    0,
+                    0
+                  ]
+                },
+                {
+                  "denominator": 1,
+                  "exponent": 8,
+                  "kind": 1,
+                  "values": [
+                    -229,
+                    1,
+                    0,
+                    0
+                  ]
+                },
+                {
+                  "denominator": 1,
+                  "exponent": -8,
+                  "kind": 1,
+                  "values": [
+                    -3835544247533737,
+                    20476655080234,
+                    -32976052318,
+                    -85030505
+                  ]
+                },
+                {
+                  "denominator": 1,
+                  "exponent": 8,
+                  "kind": 0,
+                  "values": [
+                    334218769636951,
+                    0,
+                    0,
+                    0
+                  ]
+                }
+              ],
+              "publishedIndex": 0,
+              "rawPrincipalCoefficientCount": 806,
+              "rawPrincipalCoefficientOffset": 806,
+              "reductionFactors": [
+                {
+                  "denominator": 1,
+                  "exponent": -1,
+                  "kind": 1,
+                  "values": [
+                    56861,
+                    -11,
+                    0,
+                    0
+                  ]
+                },
+                {
+                  "denominator": 1,
+                  "exponent": -1,
+                  "kind": 1,
+                  "values": [
+                    22,
+                    1,
+                    0,
+                    0
+                  ]
+                },
+                {
+                  "denominator": 1,
+                  "exponent": 1,
+                  "kind": 1,
+                  "values": [
+                    -30262898849522,
+                    163687123428,
+                    459927411,
+                    1457523
+                  ]
+                },
+                {
+                  "denominator": 1,
+                  "exponent": -1,
+                  "kind": 0,
+                  "values": [
+                    23015196255455,
+                    0,
+                    0,
+                    0
+                  ]
+                },
+                {
+                  "denominator": 1,
+                  "exponent": -1,
+                  "kind": 1,
+                  "values": [
+                    -229,
+                    1,
+                    0,
+                    0
+                  ]
+                },
+                {
+                  "denominator": 1,
+                  "exponent": 1,
+                  "kind": 1,
+                  "values": [
+                    -3835544247533737,
+                    20476655080234,
+                    -32976052318,
+                    -85030505
+                  ]
+                },
+                {
+                  "denominator": 1,
+                  "exponent": -1,
+                  "kind": 0,
+                  "values": [
+                    334218769636951,
+                    0,
+                    0,
+                    0
+                  ]
+                }
+              ],
+              "smithQuotient": [
+                -2,
+                -1,
+                -1
+              ],
+              "sourceIndex": 1
+            },
+            {
+              "equation": "G^order = principal(raw-principal-product * reduction-scaling^(-order))",
+              "order": 24,
+              "principalCorrectionFactors": [],
+              "publishedIndex": 1,
+              "rawPrincipalCoefficientCount": 806,
+              "rawPrincipalCoefficientOffset": 0,
+              "reductionFactors": [],
+              "smithQuotient": [
+                1,
+                0,
+                0
+              ],
+              "sourceIndex": 0
+            }
+          ],
+          "missingOwners": [],
+          "oppositePrincipalCorrectionsRejected": 1,
+          "principalIdealMultiplications": 4962,
+          "principalOrderWitnessesReplayed": 2,
+          "publishedInvariantFactors": [
+            8,
+            24
+          ],
+          "qualifiedTiming": false,
+          "rawPrincipalRelationsReplayed": 806,
+          "schema": "sagejs.pari-class-group/row14-signed-generator-witness-v1",
+          "signedGeneratorIdealReductionsReplayed": 2,
+          "signedSmithQuotients": [
+            [
+              -2,
+              -1,
+              -1
+            ],
+            [
+              1,
+              0,
+              0
+            ]
+          ],
+          "sourceSmithQuotients": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              -2,
+              -1,
+              -1
+            ]
+          ]
+        }
+      },
+      "generalMaps": {
+        "schema": "sagejs.pari-class-group/row14-general-ideal-maps-check-v1",
+        "contentSha256": "7c2c479c916669830b842376b0d9e60dd7ef8fc9a826f640b153a14dce927c99",
+        "factorBasePrimeRoundTrips": 799,
+        "arbitraryIntegralAndFractionalSupportedIdeals": true,
+        "exactSmithReductionWitnesses": true,
+        "combineLawReplayed": true,
+        "sourceMutationsRejected": [
+          "factor-metadata-tau",
+          "raw-smith-v"
+        ],
+        "qualifiedTiming": false
+      },
+      "mathematicalMutations": {
+        "smithRelation": true,
+        "classPrincipalWitness": true,
+        "compactUnitEquation": true,
+        "rawPrincipalEquation": true,
+        "regulatorLogLattice": true,
+        "generalIdealMaps": true,
+        "signedGeneratorEquation": true
+      },
+      "replaySha256": "bd290b08da5fd6b2835f15fd57a19f004f430b78369f7b4a8ab55513558dd291"
+    }
+  },
+  "sourceAuthorities": {
+    "fixtures": {
+      "result": {
+        "compressed": "56eaa8390b3674597bbbfb4245edf3a40e9e119846bd7dc0d0a690e07a852d5e",
+        "plain": "edb2b0bdf5753497b51e4b4a34229c3ad8977de8b877de72005a18472d43cff2"
+      },
+      "ancestry": {
+        "compressed": "cb4cca419fc99d9cf69468039d4833828ebeba652c7d635d080347780a2e6cd3",
+        "plain": "edcf30d39bef8b4be30f668f5245227ebeb74932c2756779a7013bccbdba0ef9"
+      },
+      "metadata": {
+        "compressed": "56352e8cf74cfbd83b2035f8a9cee141d5833538eb81cf289de87afb83644ca1",
+        "plain": "7826088b03a22a7d902831da2add844d01dc8cceda1519ab4aed9702f6f3f568"
+      }
+    },
+    "replaySources": {
+      "check_row14_general_ideal_maps.cjs": "cd036e1813ec8194170d0f5f9576e6d162c74a93a21eddee4fafa0f74393f908",
+      "class_unit_output_evidence_v2.cjs": "81fafa6654e181d7acc15dd90b9aab0b5fa75b21e85bc0636e7676212091f1da",
+      "field3_relation_replay_map.py": "0e295ac264fd8f0756f1b5b325a44084618f25d7c40947369c1eeccfb442af28",
+      "independent_rich_quartic_class_replay.py": "540cd82a1c0dec128d60f3b8d880e7c3db439bc24b5024d4520947d683d8e6a6",
+      "row14_class_unit_output_evidence_v2.cjs": "aa7530a3bfb0e7c1a695620113466d15049f1af8a74534592c794ed08dd9a901",
+      "row14_full_raw_smith_ancestry.cjs": "0a49b931becd1497d12e64ff9865f7377432a36b4178bc36712b5a476b50a187",
+      "row14_general_ideal_maps.py": "e93609da39db54cdcbb12003de5f4ccf66e84fe45b70906d783649c47dfeab02",
+      "h1_exclusive_stage_timing.cjs": "2e6dff2c94c3f705a3821aab9f98a3b6bc4c5b63dce6ea569b70fa8fac0437b0",
+      "row14_live_native_provenance.cjs": "42eb23da18ba54028eddab0d804456cf6af9faca5d70523681aa01e9dddc77ba",
+      "row14_phase6_static_math_replay.cjs": "ecbf0e7b1d8e811cc57cd4e501f2e17ffa35a25e35f939d0b286591bbf1ce3e7",
+      "row14_rank2_c5_c6.py": "b5489b63480bc2763f6be59a134da2bec0fcd519b1457bb202ae0eb09aa29a05",
+      "row14_signed_generator_witness.py": "2ed87b6c4ec60dd3fe3b87300532d12ead95815d8422200115096d71f32cdd83",
+      "row14_terminal_class_owner.py": "155342083f8418a25c052ce2b6f51fd41598c6f9c7086a7377156984260a0f64"
+    }
+  }
+}

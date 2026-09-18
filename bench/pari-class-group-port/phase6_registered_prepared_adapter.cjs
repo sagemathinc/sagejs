@@ -86,10 +86,17 @@ async function prepareSage(panelIndex) {
     const preparedEnvelope = { authoritySha256:
       authentication.authenticatePreparedNf(prepared).sha256, data: prepared };
     const resident = await host.prepareResident(preparedEnvelope);
+    const nativeProvenance = require("./row14_live_native_provenance.cjs")
+      .collectRow14LiveNativeProvenance(resident);
     return async request => {
+      const cpuBefore = process.threadCpuUsage();
       const raw = await host.runResident(resident);
+      const cpu = process.threadCpuUsage(cpuBefore);
       const semantic = campaign.sageProjection(raw);
       return { raw,
+        wrapperObservation: { cpuNanoseconds:
+          String((cpu.user + cpu.system) * 1000),
+        authority: "process-thread-self", nativeProvenance },
         diagnosticProjection: timing.commonProjectionFromSage(semantic) };
     };
   }
@@ -184,7 +191,11 @@ async function runPari(panelIndex, request) {
     } else if ([16, 23].includes(panelIndex)) {
       projection = module.commonProjection(raw);
     }
-    return { raw, diagnosticProjection: projection };
+    return { raw, wrapperObservation: panelIndex === 14 ? {
+      cpuNanoseconds: raw.cpuNanoseconds,
+      authority: "pari-child-rusage",
+      buildProvenance: client.build.provenance,
+    } : undefined, diagnosticProjection: projection };
   } finally { await client.close(); }
 }
 
@@ -207,13 +218,24 @@ async function createRegisteredPreparedAdapter(configuration) {
       const result = implementation === "sagejs"
         ? await sage(request) : await runPari(panelIndex, request);
       const verified = await verifier({ implementation, request,
-        raw: result.raw, diagnosticProjection: result.diagnosticProjection });
+        raw: result.raw, diagnosticProjection: result.diagnosticProjection,
+        wrapperObservation: result.wrapperObservation });
       return admissionRegistry().validateMatchedSampleV2({
         registration: admitted,
         capability: admitted.admissionCapability,
         implementation,
         verified,
       });
+    },
+    async runFreshVerified(request) {
+      const result = implementation === "sagejs"
+        ? await sage(request) : await runPari(panelIndex, request);
+      const verified = await verifier({ implementation, request,
+        raw: result.raw, diagnosticProjection: result.diagnosticProjection,
+        wrapperObservation: result.wrapperObservation });
+      admissionRegistry().validateMatchedSampleV2({ registration: admitted,
+        capability: admitted.admissionCapability, implementation, verified });
+      return verified;
     },
   };
 }
