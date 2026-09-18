@@ -143,3 +143,49 @@ test("exact subtraction and multiplication preserve overflow and in-place dispat
     ].join("\n"),
   );
 });
+
+test("exact power preserves Python negatives and in-place dispatch", async (t) => {
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+  const result = await session.evaluate(
+    [
+      "print(repr(3 ** 7), type(3 ** 7) is int)",
+      "print(repr(2 ** 53), type(2 ** 53) is int)",
+      "print(repr((-2) ** 3), repr((-2) ** 4))",
+      "print(repr(2 ** -1), type(2 ** -1) is float)",
+      "negative_in_place = 2",
+      "negative_in_place **= -1",
+      "print(repr(negative_in_place), type(negative_in_place) is float)",
+      "print(repr(2.0 ** 3), type(2.0 ** 3) is float)",
+      "class UsesIpow:",
+      "    def __init__(self):",
+      "        self.calls = []",
+      "    def __ipow__(self, other):",
+      "        self.calls.append(('ipow', other))",
+      "        return self",
+      "item = UsesIpow()",
+      "same = item",
+      "item **= 5",
+      "print(item is same, item.calls)",
+      "class UsesPow:",
+      "    def __pow__(self, other):",
+      "        return ('pow', other)",
+      "fallback = UsesPow()",
+      "fallback **= 6",
+      "print(fallback)",
+    ].join("\n"),
+  );
+  assert.equal(
+    result.stdout.trim(),
+    [
+      "2187 True",
+      "9007199254740992 True",
+      "-8 16",
+      "0.5 True",
+      "0.5 True",
+      "8.0 True",
+      "True [('ipow', 5)]",
+      "('pow', 6)",
+    ].join("\n"),
+  );
+});

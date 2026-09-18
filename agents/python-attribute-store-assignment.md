@@ -1,6 +1,6 @@
 # Python ordinary-store assignment fast path
 
-Base: `d317a30b7` (`origin/main` after PR #314).
+Base: `a44bae747` (`origin/main` after PR #315).
 
 ## Change
 
@@ -31,9 +31,11 @@ non-configurable tracked property also retains the original redefinition error,
 and an externally changed non-enumerable property is restored to the ordinary
 enumerable layout rather than silently preserving that mutation.
 
-Merging current main initially put the core runtime 179 bytes over its unchanged
-budget. Compacting the existing private exact-integer-add JavaScript boundary,
-without changing its classification or promotion logic, recovered that space.
+Merging current main initially put the core runtime 57 bytes over its unchanged
+budget. Consolidating private locals inside the attribute-store boundary,
+without changing its proof or operation order, recovered 90 bytes. Together
+with the earlier exact-integer-add consolidation, the source-current candidate
+is 33 bytes below the budget.
 
 ## Controlled measurements
 
@@ -78,7 +80,7 @@ remain open cliffs; this result does not close M5.
 ## Qualification
 
 - The reviewer-repaired, current-main build converged in two passes and
-  completed in 7m 28s.
+  completed in 9m 10s on the shared project host.
 - All 225 portable files and 18 directly focused/runtime checks pass.
 - The 508-case CPython 3.14.4 differential baseline matches: 505 passes and
   three reviewed intentional incompatibilities.
@@ -86,7 +88,7 @@ remain open cliffs; this result does not close M5.
   checks and the pinned attrs 25.4.0/decorator 5.2.1 workflows pass.
 - Strict CPython syntax, Ruff 0.16.0, and Pyright pass for 404 modules.
 - Generated documentation and merge invariants pass. The current-main core
-  runtime is 902,811/903,000 bytes. No source, startup, browser, or performance
+  runtime is 902,967/903,000 bytes. No source, startup, browser, or performance
   budget changed. The local host lacks the optional FLINT addon, so the broad
   compiler and integration commands stop only at their native-dependent
   fixtures; all reached non-native fixtures pass, and CI owns the native

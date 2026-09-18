@@ -106,6 +106,10 @@ def ρσ_exact_integer_submul(left, right, multiply, missing):
     return r"""%js (()=>{const a=typeof left,b=typeof right,e=(t,v)=>t==="boolean"||t==="bigint"||t==="number"&&Number.isSafeInteger(v);if(!e(a,left)||!e(b,right))return missing;if(a!=="bigint"&&b!=="bigint"){const v=multiply?Number(left)*Number(right):Number(left)-Number(right);if(Number.isSafeInteger(v))return v===0?0:v}return multiply?BigInt(left)*BigInt(right):BigInt(left)-BigInt(right)})()"""
 
 
+def ρσ_int_pow(left, right, missing):
+    return r"""%js (()=>{const a=typeof left,b=typeof right,e=(t,v)=>t==="boolean"||t==="bigint"||t==="number"&&Number.isSafeInteger(v);if(!e(a,left)||!e(b,right)||right<0)return missing;if(a!=="bigint"&&b!=="bigint"){const v=Number(left)**Number(right);if(Number.isSafeInteger(v))return v===0?0:v}return BigInt(left)**BigInt(right)})()"""
+
+
 def ρσ_check_interrupt():
     return r"""%js (() => {
         const state = globalThis.__sagejs_interrupt_state__;
@@ -153,7 +157,7 @@ def ρσ_prepare_method_call(value, name):
 
 
 def ρσ_attr(value, name, member):
-    return r"""%js (()=>{const r=arguments.length<3,p=value==null?0:Object.getPrototypeOf(value),c=p&&_builtins_store_cache.get(p),h=Object.hasOwn;if(c&&c.get(name)===_builtins_descriptor_epoch.value&&!_builtins_instance_namespaces.has(value)&&(r?h(value,name):!h(value,"__setattr__"))){if(r)return value[name];let f=_builtins_instance_fields.get(value);if(f===undefined){f=new Set;_builtins_instance_fields.set(value,f)}const d=Object.getOwnPropertyDescriptor(value,name);if(f.has(name)&&d&&h(d,"value")&&d.writable&&d.enumerable&&d.configurable){value[name]=member;return null}if(!d&&name!=="__proto__"&&Object.isExtensible(value)){value[name]=member;const n=Object.getOwnPropertyDescriptor(value,name);if(n&&h(n,"value")){f.add(name);return null}}Object.defineProperty(value,name,{value:member,writable:true,enumerable:true,configurable:true});f.add(name);return null}return r?ρσ_getattr_internal(value,name,ρσ_getattr_missing):ρσ_setattr(value,name,member)})()"""
+    return r"""%js (()=>{const o=Object,r=arguments.length<3,n=name,p=value==null?0:o.getPrototypeOf(value),c=p&&_builtins_store_cache.get(p),h=o.hasOwn,i=_builtins_instance_fields;if(c&&c.get(n)===_builtins_descriptor_epoch.value&&!_builtins_instance_namespaces.has(value)&&(r?h(value,n):!h(value,"__setattr__"))){if(r)return value[n];let f=i.get(value);if(!f)i.set(value,f=new Set);const d=o.getOwnPropertyDescriptor(value,n);if(d&&f.has(n)&&h(d,"value")&&d.writable&&d.enumerable&&d.configurable){value[n]=member;return null}if(!d&&n!=="__proto__"&&o.isExtensible(value)){value[n]=member;const q=o.getOwnPropertyDescriptor(value,n);if(q&&h(q,"value")){f.add(n);return null}}o.defineProperty(value,n,{value:member,writable:true,enumerable:true,configurable:true});f.add(n);return null}return r?ρσ_getattr_internal(value,n,ρσ_getattr_missing):ρσ_setattr(value,n,member)})()"""
 
 
 def ρσ_interpolate_kwargs(receiver, target_function, supplied_args):
