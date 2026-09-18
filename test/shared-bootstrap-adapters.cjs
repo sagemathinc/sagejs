@@ -9,7 +9,7 @@ const test = require("node:test");
 const root = join(__dirname, "..");
 const source = readFileSync(join(root, "src/baselib/bootstrap_shared.py"), "utf8");
 const names = ["ρσ_copy_method_metadata", "ρσ_native_method_adapter", "ρσ_unbound_method_adapter",
-  "ρσ_exact_integer_add", "ρσ_exact_shift", "ρσ_exact_integer_submul",
+  "ρσ_exact_integer_add", "ρσ_exact_shift", "ρσ_exact_integer_submul", "ρσ_int_pow",
   "ρσ_check_interrupt", "ρσ_normalize_exception", "ρσ_prepare_method_call",
   "ρσ_attr", "ρσ_interpolate_kwargs"];
 
@@ -227,7 +227,11 @@ test("shared bootstrap owns its low-level adapters and metadata copier", () => {
 });
 
 test("shared exact integer arithmetic preserves primitive Python integers", () => {
-  const { ρσ_exact_integer_add: add, ρσ_exact_integer_submul: submul } = context();
+  const {
+    ρσ_exact_integer_add: add,
+    ρσ_exact_integer_submul: submul,
+    ρσ_int_pow: power,
+  } = context();
   const missing = {};
   const subtract = (left, right) => submul(left, right, false, missing);
   const multiply = (left, right) => submul(left, right, true, missing);
@@ -241,6 +245,10 @@ test("shared exact integer arithmetic preserves primitive Python integers", () =
   assert.equal(subtract(4n, true), 3n);
   assert.equal(multiply(3037000500, 3037000500), 9223372037000250000n);
   assert.equal(multiply(4n, true), 4n);
+  assert.equal(power(3, 7, missing), 2187);
+  assert.equal(power(2, 53, missing), 9007199254740992n);
+  assert.equal(power(-2n, 3, missing), -8n);
+  assert.equal(power(2, -1, missing), missing);
   assert.equal(add(1.5, 2, missing), missing);
   assert.equal(add(Number.MAX_SAFE_INTEGER + 1, 1, missing), missing);
   assert.equal(add({}, 1, missing), missing);

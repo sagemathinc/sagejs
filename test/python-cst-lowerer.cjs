@@ -956,6 +956,21 @@ test("Python augmented division selects true division instead of Sage rationals"
   }
 });
 
+test("Python augmented power keeps negative integer results floating", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse("value **= -1\n", parserOptions);
+    const output = new compiler.OutputStream(outputOptions);
+    ast.print(output);
+    const javascript = output.get();
+    assert.match(javascript, /ρσ_operator_ipow_python_exact/);
+    assert.doesNotMatch(javascript, /ρσ_operator_ipow_exact/);
+  } finally {
+    frontend.close();
+  }
+});
+
 test("leading class assignments are available to method defaults", async () => {
   const compiler = createCompiler();
   const frontend = await createPythonCompilerFrontend(compiler, "python");
