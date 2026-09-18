@@ -59,6 +59,13 @@ function evidence(id, kind, shape, material, encoding = "canonical_json") {
   };
 }
 
+function transpose(values, rows, columns, name) {
+  array(values, rows * columns, name);
+  return Array.from({ length: columns }, (_, column) =>
+    Array.from({ length: rows }, (_, row) => values[row * columns + column]),
+  ).flat();
+}
+
 function openSource(sourceRaw) {
   if (!Buffer.isBuffer(sourceRaw) || sha256(sourceRaw) !== SOURCE_SHA256) {
     fail("row-21 source envelope lacks its reviewed identity");
@@ -111,6 +118,8 @@ function buildRow21OutputEvidenceV2(sourceRaw) {
   }
   const presentation = plain(classGroup.presentation, "presentation");
   array(presentation.rightInverse, 32 * 24, "presentation right inverse");
+  const leftInverse = transpose(presentation.rightInverse, 32, 24,
+    "presentation right inverse");
   const smith = plain(classGroup.smith, "Smith presentation");
   const identity = array(smith.diagonal, 24 * 24, "Smith identity");
 
@@ -160,6 +169,10 @@ function buildRow21OutputEvidenceV2(sourceRaw) {
       sourcePayloadSha256: SOURCE_PAYLOAD_SHA256,
       terminal,
     }),
+    evidence("presentation-right-inverse", "presentation_right_inverse",
+      ["24", "32"], leftInverse, "decimal_integer_matrix"),
+    evidence("presentation-matrix", "presentation_matrix", ["32", "24"],
+      relationEntries, "decimal_integer_matrix"),
     evidence("principal-generators", "principal_generators", ["32", "5"],
       principalGenerators, "decimal_integer_matrix"),
     evidence("regulator-acceptance", "regulator_acceptance", [], {
@@ -245,7 +258,7 @@ function buildRow21OutputEvidenceV2(sourceRaw) {
       outputBoundaryComplete: false,
       phase3Complete: true,
       phase4Complete: true,
-      phase5Complete: true,
+      phase5Complete: false,
     },
     evidence: entries,
     field: {
@@ -260,9 +273,11 @@ function buildRow21OutputEvidenceV2(sourceRaw) {
     },
     presentation: {
       dependencyRefs: ["presentation-dependency"],
-      proof: { identityRef: "presentation-identity" },
+      proof: { identityRef: "presentation-identity",
+        matrixRef: "presentation-matrix",
+        rightInverseRef: "presentation-right-inverse" },
       provenanceRefs: ["presentation-provenance"],
-      variant: "trivial_identity",
+      variant: "right_inverse",
     },
     relations: {
       factorBaseCount: "24",

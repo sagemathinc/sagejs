@@ -25,6 +25,17 @@ function clone(value) {
   return structuredClone(value);
 }
 
+function matrix(values, rows, columns) {
+  return Array.from({ length: rows }, (_, row) =>
+    values.slice(row * columns, (row + 1) * columns).map(BigInt));
+}
+
+function multiply(left, right) {
+  return left.map(row => right[0].map((_, column) =>
+    row.reduce((sum, value, index) =>
+      sum + value * right[index][column], 0n)));
+}
+
 function rejected(payload, mutate, pattern) {
   const changed = clone(payload);
   mutate(changed);
@@ -48,7 +59,7 @@ function main() {
   assert.equal(payload.unitGroup.regulator.kind, "pari_packed_accepted");
   assert.equal(payload.completion.correspondenceComplete, true);
   assert.equal(payload.completion.freshCorrespondence, true);
-  assert.equal(payload.completion.phase5Complete, true);
+  assert.equal(payload.completion.phase5Complete, false);
   assert.equal(payload.completion.outputBoundaryComplete, false);
   assert.equal(payload.source.correspondenceResultSha256,
     adapter.CORRESPONDENCE_RESULT_SHA256);
@@ -66,6 +77,16 @@ function main() {
     output.sha256Canonical(source.regulator.value));
   assert.equal(byId.get("torsion-generator").sha256,
     output.sha256Canonical(source.units.torsion.generator));
+  const relations = matrix(source.relations.recordsColumnMajor, 32, 24);
+  const rightInverse = matrix(
+    Array.from({ length: 24 }, (_, column) =>
+      Array.from({ length: 32 }, (_, row) =>
+        source.classGroup.presentation.rightInverse[row * 24 + column]),
+    ).flat(), 24, 32);
+  const identity = multiply(rightInverse, relations);
+  assert.deepEqual(identity.map(row => row.map(String)),
+    matrix(source.classGroup.smith.diagonal, 24, 24)
+      .map(row => row.map(String)));
   for (let index = 0; index < 3; index += 1) {
     assert.equal(byId.get(`unit-${index + 1}-coordinates`).sha256,
       output.sha256Canonical(source.units.fundamental.coordinates.slice(
@@ -77,6 +98,7 @@ function main() {
   assert.throws(() => adapter.buildRow21OutputEvidenceV2(changedSource),
     /reviewed identity/);
   rejected(payload, value => {
+    value.completion.phase5Complete = true;
     value.completion.outputBoundaryComplete = true;
     value.completion.missing = [];
   }, /lacks map material/);

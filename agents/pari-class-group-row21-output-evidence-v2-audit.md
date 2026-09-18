@@ -34,8 +34,11 @@ regulator is truthfully tagged `pari_packed_accepted`, not
 
 ## Deliberately incomplete boundary
 
-The row-21 correspondence was freshly computed and its phases 3, 4, and 5
-reached the retained terminal state.  Nevertheless
+The row-21 correspondence was freshly computed and its phases 3 and 4 reached
+the retained terminal state. The relation presentation is published with its
+exact integral left inverse (the source calls the transposed object a right
+inverse), and the checker independently replays the resulting identity.
+Nevertheless
 `outputBoundaryComplete = false`.  The explicit missing list contains:
 
 - the omitted lazy factor, reduce, and combine map materializations;
@@ -45,6 +48,8 @@ reached the retained terminal state.  Nevertheless
 - integration with the public API.
 
 All three map records are consequently unready and publish no map evidence.
+Because the campaign plan includes these maps in Phase 5, `phase5Complete` is
+also false even though the row-specific final `buchall_end` assembly completed.
 This preserves the distinction between a complete upstream-assumed PARI
 correspondence and a complete public/certified output boundary.
 
