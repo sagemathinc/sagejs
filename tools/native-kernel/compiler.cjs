@@ -977,16 +977,106 @@ function normalizeDiagnosticStageClock(value, ir) {
   });
 }
 
-async function compileKernel(options) {
+const residentKernelBuilds = new Map();
+const RESIDENT_KERNEL_BUILD_LIMIT = 4;
+
+function stableJson(value) {
+  if (value === undefined) return "undefined";
+  if (typeof value === "bigint") return JSON.stringify(`${value}n`);
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  return `{${Object.keys(value).sort().map((key) =>
+    `${JSON.stringify(key)}:${stableJson(value[key])}`).join(",")}}`;
+}
+
+function residentRequestKey(options, sourcePath, cacheRoot) {
+  return stableJson({
+    cacheRoot,
+    sourcePath,
+    functions: options.functions,
+    profileSymbols: options.profileSymbols === true,
+    automaticSelections: options.automaticSelections ?? {},
+    diagnosticStageClock: options.diagnosticStageClock ?? null,
+  });
+}
+
+function residentCompilerAuthority(ir, options, cacheRoot) {
+  const usesSpecializedPrimeField = ir.functions.some(
+    (fn) => fn.kernelKind === "prime-field-matrix",
+  );
+  const usesSourcePrimeField = ir.functions.some(
+    (fn) => fn.kernelKind === "prime-field-source",
+  );
+  return stableJson({
+    nativeAbi: NATIVE_ABI_VERSION,
+    backend: backendFingerprint(),
+    platform: process.platform,
+    architecture: process.arch,
+    nodeModulesAbi: process.versions.modules,
+    toolchain: toolchainFingerprint(),
+    foreignToolchains: (ir.foreignLibraries || []).map((library) => ({
+      id: library.id,
+      prefix: foreignPrefix(library),
+    })),
+    foreignInputs: foreignCompilationInputs(ir, { cacheRoot }),
+    primeFieldTuning: usesSpecializedPrimeField ? primeFieldTuning() : null,
+    sourceBoundsChecked: usesSourcePrimeField ? sourceBoundsCheck() : null,
+    profileSymbols: options.profileSymbols === true,
+    mpfr: "4.2.2",
+    mpc: mpcVersion,
+  });
+}
+
+function residentSourcesCurrent(sourcePath, sourceHash, ir) {
+  try {
+    if (sha256(readFileSync(sourcePath, "utf8")) !== sourceHash) return false;
+    for (const dependency of ir.nativeSourceDependencies || []) {
+      const filename = resolve(dependency.path);
+      if (sha256(readFileSync(filename, "utf8")) !== dependency.sha256) {
+        return false;
+      }
+    }
+    return true;
+  } catch (_error) {
+    return false;
+  }
+}
+
+function residentArtifactsCurrent(result) {
+  return [
+    result.addonPath,
+    result.modulePath,
+    result.manifestPath,
+    result.coreSourcePath,
+    result.coreHeaderPath,
+    ...(result.shimSourcePath === null ? [] : [
+      result.shimSourcePath,
+      result.shimHeaderPath,
+    ]),
+  ].every((filename) => existsSync(filename));
+}
+
+function trimResidentKernelBuilds() {
+  if (residentKernelBuilds.size <= RESIDENT_KERNEL_BUILD_LIMIT) return;
+  for (const [key, entry] of residentKernelBuilds) {
+    if (residentKernelBuilds.size <= RESIDENT_KERNEL_BUILD_LIMIT) break;
+    // Never evict an in-flight build: concurrent callers must continue to
+    // share its single compilation and receive the same success or failure.
+    if (entry.settled) residentKernelBuilds.delete(key);
+  }
+}
+
+async function compileKernelFromSource(
+  options,
+  { sourcePath, source, sourceHash, cacheRoot },
+) {
   // Use the physical source identity everywhere the compiler records or
   // hashes a kernel.  macOS exposes its temporary directory through both
   // /var and /private/var; symlinked project roots create the same issue on
   // every host.  Recording the lexical spelling here makes a valid artifact
   // undiscoverable when the runtime imports the same file through another
   // spelling of that path.
-  const sourcePath = realpathSync(resolve(options.sourcePath));
   const sourceKey = options.sourceKey;
-  const source = readFileSync(sourcePath, "utf8");
   if (
     options.profileSymbols !== undefined &&
     typeof options.profileSymbols !== "boolean"
@@ -994,11 +1084,6 @@ async function compileKernel(options) {
     throw new TypeError("profileSymbols must be a boolean when provided");
   }
   const profileSymbols = options.profileSymbols === true;
-  const sourceHash = sha256(source);
-  const cacheRoot = resolve(
-    options.cacheRoot ||
-      join(dirname(sourcePath), ".sagejs-native-kernels"),
-  );
   const resolveNativeImport = createNativeImportResolver({
     root,
     lowerSource,
@@ -1095,6 +1180,7 @@ async function compileKernel(options) {
       moduleIdentity,
       cached: true,
       ir,
+      manifestPath,
       modulePath,
       outputPath,
       coreSourcePath,
@@ -1239,6 +1325,7 @@ async function compileKernel(options) {
     moduleIdentity,
     cached: false,
     ir,
+    manifestPath,
     modulePath,
     outputPath,
     coreSourcePath,
@@ -1254,6 +1341,109 @@ async function compileKernel(options) {
     exceptionShields: exceptionShims === null ? [] :
       exceptionShims.functions.map((fn) => fn.call_plan.symbol),
   };
+}
+
+async function compileKernel(options) {
+  // A prepared mathematical transaction commonly asks for the same giant
+  // source-transparent graph while warming it and again while entering its
+  // timed phase.  The content-addressed filesystem cache alone used to lower
+  // the complete graph both times before it could discover the existing
+  // addon.  Retain the completed lowering in this process, but validate every
+  // source, compiler/toolchain input and foreign input before reusing it.
+  if (
+    options.profileSymbols !== undefined &&
+    typeof options.profileSymbols !== "boolean"
+  ) {
+    throw new TypeError("profileSymbols must be a boolean when provided");
+  }
+  const sourcePath = realpathSync(resolve(options.sourcePath));
+  const source = readFileSync(sourcePath, "utf8");
+  const sourceHash = sha256(source);
+  const cacheRoot = resolve(
+    options.cacheRoot ||
+      join(dirname(sourcePath), ".sagejs-native-kernels"),
+  );
+  // AbortSignal is request-local authority.  Sharing an in-flight promise
+  // would let one caller cancel another caller's build, or let a resident hit
+  // silently ignore the later caller's cancellation.  Keep signal-bearing
+  // requests on the ordinary content-addressed path.
+  if (options.signal !== undefined) {
+    const result = await compileKernelFromSource(options, {
+      sourcePath,
+      source,
+      sourceHash,
+      cacheRoot,
+    });
+    return { ...result, residentCached: false };
+  }
+  const requestKey = residentRequestKey(
+    options,
+    sourcePath,
+    cacheRoot,
+  );
+  const existing = residentKernelBuilds.get(requestKey);
+  if (existing !== undefined) {
+    const result = await existing.promise;
+    const current = existing.sourceHash === sourceHash &&
+      residentArtifactsCurrent(result) &&
+      residentSourcesCurrent(sourcePath, existing.sourceHash, result.ir) &&
+      residentCompilerAuthority(result.ir, options, cacheRoot) ===
+        existing.authority;
+    if (current) {
+      // Refresh insertion order so the bounded map behaves as an LRU for
+      // completed compilations while preserving promise identity.
+      residentKernelBuilds.delete(requestKey);
+      residentKernelBuilds.set(requestKey, existing);
+      writeDiscoveryIndex(
+        cacheRoot,
+        sourcePath,
+        sourceHash,
+        result.cacheKey,
+        result.moduleIdentity,
+        options.sourceKey,
+        {
+          nativeAbi: result.nativeAbi,
+          foreignDeclarations: result.foreignDeclarations,
+          privateFunctions: result.privateFunctions,
+        },
+      );
+      return { ...result, cached: true, residentCached: true };
+    }
+    if (residentKernelBuilds.get(requestKey) === existing) {
+      residentKernelBuilds.delete(requestKey);
+    }
+    return compileKernel(options);
+  }
+
+  const entry = {
+    promise: null,
+    authority: null,
+    settled: false,
+    sourceHash,
+  };
+  entry.promise = (async () => {
+    const result = await compileKernelFromSource(options, {
+      sourcePath,
+      source,
+      sourceHash,
+      cacheRoot,
+    });
+    entry.authority = residentCompilerAuthority(result.ir, options, cacheRoot);
+    entry.settled = true;
+    trimResidentKernelBuilds();
+    return result;
+  })();
+  residentKernelBuilds.set(requestKey, entry);
+  try {
+    const result = await entry.promise;
+    return { ...result, residentCached: false };
+  } catch (error) {
+    entry.settled = true;
+    if (residentKernelBuilds.get(requestKey) === entry) {
+      residentKernelBuilds.delete(requestKey);
+    }
+    throw error;
+  }
 }
 
 module.exports = {
