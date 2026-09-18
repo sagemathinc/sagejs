@@ -95,7 +95,7 @@ def ρσ_exact_integer_divmod(left, right, op, missing):
     return r"""%js (() => {
         const leftType = typeof left, rightType = typeof right;
         const exact = (type, value) => type === "boolean" || type === "bigint" || (type === "number" && Number.isSafeInteger(value));
-        if (!exact(leftType, left) || !exact(rightType, right) || right === 0 || right === 0n) return missing;
+        if (!exact(leftType, left) || !exact(rightType, right) || right === false || right === 0 || right === 0n) return missing;
         if (leftType !== "bigint" && rightType !== "bigint") {
             const a = Number(left), b = Number(right), remainder = a % b;
             let value = op ? remainder : Math.floor(a / b);

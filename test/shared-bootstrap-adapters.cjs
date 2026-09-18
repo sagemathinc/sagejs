@@ -189,6 +189,10 @@ test("shared exact integer division and modulo preserve Python signs", () => {
   assert.equal(mod(true, 2), 1);
   assert.equal(floor(1, 0), missing);
   assert.equal(mod(1n, 0n), missing);
+  assert.equal(floor(1, false), missing);
+  assert.equal(mod(1, false), missing);
+  assert.equal(floor(1n, false), missing);
+  assert.equal(mod(1n, false), missing);
   assert.equal(floor(1.5, 1), missing);
 });
 

@@ -11,15 +11,17 @@ both operands once and computes Python's floor quotient or divisor-signed
 remainder directly.  Safe results remain JavaScript numbers and wide results
 remain `BigInt`.
 
-The boundary deliberately declines zero divisors, floats, unsafe foreign
-numbers, and objects.  Those cases retain the existing Python/Sage path, error
+The boundary deliberately declines zero divisors, including the exact-integer
+value `False`, floats, unsafe foreign numbers, and objects. Those cases retain
+the existing Python/Sage path, error
 messages, reflected methods, and custom dispatch.  Augmented `//=` and `%=`
 also retain the general in-place protocol; adding a second shortcut there was
 not necessary for the measured binary cliff and exceeded the unchanged core
 budget.  The helper is private and adds no public runtime capability.
 
 Focused tests cover all four operand-sign combinations, booleans, wide
-integers, canonical zero, exact zero-division exception types and messages,
+integers, canonical zero, number and BigInt numerators divided or reduced by
+`False`, augmented `//=`/`%=`, exact zero-division exception types and messages,
 custom modulo dispatch, and custom in-place floor division.
 
 ## Controlled measurements
