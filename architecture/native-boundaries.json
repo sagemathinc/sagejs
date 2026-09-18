@@ -13,7 +13,7 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 250,
+    "classified-native-file": 251,
     "declared-ffi": 480,
     "declared-ffi-resource": 37,
     "napi-export": 358,
@@ -9556,6 +9556,14 @@
       "disposition": "benchmark-reference",
       "review_status": "accepted",
       "lane": "integration"
+    },
+    {
+      "id": "native-file:bench/pari-class-group-port/pari_compact_flag_one_development_authority.c",
+      "kind": "classified-native-file",
+      "path": "bench/pari-class-group-port/pari_compact_flag_one_development_authority.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra"
     },
     {
       "id": "native-file:bench/pari-class-group-port/pari_compact_flag_one_row20_authority.c",
