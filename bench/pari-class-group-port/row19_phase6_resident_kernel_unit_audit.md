@@ -51,8 +51,17 @@ and factor-base exponent hash
 
 The root retains those owners together with `M1`, `Uir`, the compact unit and
 inverse, and the raw presentation map in its private live-owner table. Its
-public projection is a final exact **factored** class-and-unit result: class
-group, nine complete principal witnesses, rank-one unit and inverse, and the
-GRH assumption. No owner is serialized. Expanded integral-basis unit
-coordinates remain intentionally absent, and public API integration remains
-outside this diagnostic root.
+public projection is a compact receipt for a capability-backed exact
+**factored** class-and-unit result: class group, nine complete principal
+witnesses, rank-one unit and inverse, and the GRH assumption.
+`materializeFinalFactored(result)` copies every retained transform, factor, and
+logical replay prefix only after timing. No owner is serialized inside the
+resident boundary. Expanded integral-basis unit coordinates remain
+intentionally absent, and public API integration remains outside this
+diagnostic root.
+
+The bounded capability check is
+`/scratch/row19-phase6-resident-final-capability-check-v2.json`, SHA-256
+`cf037b2b6f0d4aacb7d16fda7463eb152188f5333bb135b93ce1ce078f233d9c`.
+It records a 92.660-second diagnostic resident computation and 1,023,296 KiB
+maximum RSS; these are not qualification timings.
