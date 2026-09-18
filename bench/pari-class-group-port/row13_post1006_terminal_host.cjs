@@ -144,9 +144,9 @@ function validateOwners(owner, metadataReceipt) {
   return metadataReceipt.metadata;
 }
 
-async function runRow13Post1006Terminal(owner, metadataReceipt) {
+async function runRow13Post1006Terminal(owner, metadataReceipt, options = {}) {
   const metadata = validateOwners(owner, metadataReceipt);
-  const catalog = await compiled(
+  const catalog = options.catalog || await compiled(
     "prime_degree_catalog.py",
     "pari_prime_degree_catalog",
   );
@@ -190,7 +190,7 @@ async function runRow13Post1006Terminal(owner, metadataReceipt) {
     0n,
   );
 
-  const terminal = await compiled(
+  const terminal = options.terminal || await compiled(
     "row14_post806_terminal.py",
     "pari_row14_post806_terminal",
   );
@@ -393,6 +393,7 @@ async function runRow13Post1006Terminal(owner, metadataReceipt) {
 module.exports = {
   ACCEPTED_SCHEMA,
   METADATA_SCHEMA,
+  compiled,
   runRow13Post1006Terminal,
   validateOwners,
 };

@@ -85,7 +85,8 @@ function transformLogs(kernels, entries, coefficients, inner) {
   return values(output);
 }
 
-function runUnitSuffix(kernels, accepted, post806, prepared) {
+function runUnitSuffix(kernels, accepted, post806, prepared, precision = 192,
+  expectedGetfuHeight = 38) {
   const lattice = post806.unitRelations.map(BigInt);
   const packed = accepted.final.c.slice(0, 147).map(BigInt);
 
@@ -128,7 +129,7 @@ function runUnitSuffix(kernels, accepted, post806, prepared) {
   const cleanState = int64(cleanKernel.fn, 6);
   assert.equal(invoke(cleanKernel, { source: integer(cleanKernel.fn, arch),
     expected_regulator: integer(cleanKernel.fn, post806.regulator.map(BigInt)),
-    precision: 192n, pi_cache: integer(cleanKernel.fn, 3),
+    precision: BigInt(precision), pi_cache: integer(cleanKernel.fn, 3),
     a: integer(cleanKernel.fn, 1024), b: integer(cleanKernel.fn, 1024),
     p: integer(cleanKernel.fn, 1024), q: integer(cleanKernel.fn, 1024),
     stack: integer(cleanKernel.fn, 2048), scratch: integer(cleanKernel.fn, 42),
@@ -180,7 +181,7 @@ function runUnitSuffix(kernels, accepted, post806, prepared) {
     embedding_real: integer(getfu.fn, embeddingReal),
     embedding_imag: integer(getfu.fn, embeddingImag),
     multiplication_basis: integer(getfu.fn, prepared.basis_table.map(BigInt)),
-    precision: 192n, exponential_real: integer(getfu.fn, 18),
+    precision: BigInt(precision), exponential_real: integer(getfu.fn, 18),
     exponential_imag: integer(getfu.fn, 18), split_matrix: integer(getfu.fn, 48),
     split_rhs: integer(getfu.fn, 24), solve_work: integer(getfu.fn, 48),
     solve_rhs: integer(getfu.fn, 24), solved: integer(getfu.fn, 24),
@@ -194,7 +195,8 @@ function runUnitSuffix(kernels, accepted, post806, prepared) {
     p: integer(getfu.fn, 512), q: integer(getfu.fn, 512),
     stack: integer(getfu.fn, 91) });
   assert.equal(getfuStatus, 2n);
-  assert.deepEqual(Array.from(state, Number), [2, 38, 0, 0, 0, 0, 0, 1]);
+  assert.deepEqual(Array.from(state, Number),
+    [2, expectedGetfuHeight, 0, 0, 0, 0, 0, 1]);
   return { archimedeanUnits: values(clean), candidate: values(finalCandidate),
     factor, lattice, regulator: post806.regulator.map(BigInt),
     transform: values(unitTransform), getfuState: Array.from(state, Number) };
@@ -344,4 +346,4 @@ async function runResident(resident) {
     stageNanoseconds: stages, maxRssKiB: process.resourceUsage().maxRSS };
 }
 
-module.exports = { prepareResident, runResident };
+module.exports = { prepareResident, runResident, runUnitSuffix };

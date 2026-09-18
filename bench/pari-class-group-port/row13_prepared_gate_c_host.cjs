@@ -7,6 +7,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const { compileKernel } = require("../../tools/native-kernel/compiler.cjs");
+const { reverseSchedule } = require("./relation_column_ancestry.cjs");
 function zeroLengths() {
   const n = DEGREE, rows = ROWS, columns = TARGET, k0 = 4;
   const size = rows * columns, square = columns * columns;
@@ -101,6 +102,16 @@ function array(owner) {
   return owner.toArray ? owner.toArray() : Array.from(owner);
 }
 
+function hnfStep(values, rows, depRows, columns, tail, trailingName,
+  transformName) {
+  return { rows, depRows, columns, tail,
+    trailing: array(values[trailingName]).slice(0, (rows + depRows) * tail),
+    transform: array(values[transformName]).slice(0, columns * columns),
+    fullH: array(values.full_h).slice(0, rows * columns),
+    fullDep: array(values.full_dep).slice(0, depRows * columns),
+    diagonal: array(values.diagonal).slice(0, rows) };
+}
+
 function words(values, minimum = 1) {
   let result = minimum;
   for (const raw of values || []) {
@@ -110,9 +121,9 @@ function words(values, minimum = 1) {
   return result;
 }
 
-async function compile(sourceName, exportName) {
+async function compile(sourceName, exportName, cacheRoot = undefined) {
   const source = path.join(__dirname, sourceName);
-  const built = await compileKernel({ sourcePath: source });
+  const built = await compileKernel({ sourcePath: source, cacheRoot });
   const fn = require(built.modulePath)[exportName];
   assert(fn?.nativeAvailable);
   return { fn, names: signature(source, exportName), built };
@@ -226,10 +237,11 @@ function allocate(compiled, input, lengths, {
   return { values, bytes };
 }
 
-async function firstPreparedHnf(prepared, root) {
+async function firstPreparedHnf(prepared, root, kernels = null) {
   validateBoundary(prepared, root);
   const lengths = zeroLengths();
-  const collector = await compile("collected_log_embeddings.py", "pari_collect_and_log_relations");
+  const collector = kernels?.collector || await compile(
+    "collected_log_embeddings.py", "pari_collect_and_log_relations");
   const compact = new Set(["relation_records", "relation_hashes",
     "relation_metadata", "relation", "relation_scratch"]);
   const allocated = allocate(collector, collectorInput(prepared, root), lengths,
@@ -241,7 +253,8 @@ async function firstPreparedHnf(prepared, root) {
     ["995", "10110", "11", "0", "0", "995"]);
   assert.equal(Number(cv.log_completed.toArray()[0]), FIRST_COLUMNS);
 
-  const hnf = await compile("hnfspec_complete.py", "pari_hnfspec_complete");
+  const hnf = kernels?.hnfspec || await compile(
+    "hnfspec_complete.py", "pari_hnfspec_complete");
   const hnfInput = { rows: ROWS, columns: FIRST_COLUMNS, k0: 4, log_rows: PLACES,
     original: cv.relation_records.toArray().slice(0, ROWS * FIRST_COLUMNS),
     perm: root.factor.permutation, logs: cv.log_embeddings.toArray() };
@@ -266,11 +279,33 @@ async function firstPreparedHnf(prepared, root) {
   const firstState = Array.from(ha.values.state).map(Number);
   assert.deepEqual([firstState[0], firstState[2], firstState[3], firstState[7]],
     [1, 987, 11, FIRST_COLUMNS]);
-  return { collector, cv, hnf: ha.values, ownerBytes: allocated.bytes + ha.bytes };
+  const assembly = Array.from(ha.values.assembly_state).map(Number);
+  const [genuine, redundant, width, lig, tail] = assembly;
+  assert.equal(genuine + redundant, lig);
+  assert.equal(width + tail, FIRST_COLUMNS);
+  const ancestry = { columns: FIRST_COLUMNS,
+    cleanupTransform: array(ha.values.transform).slice(0, FIRST_COLUMNS ** 2),
+    hnf: hnfStep(ha.values, genuine, redundant, width, tail, "b",
+      "hnf_transform") };
+  return { collector, cv, hnf: ha.values, ancestry,
+    ownerBytes: allocated.bytes + ha.bytes };
 }
 
-async function runPreparedGateC(prepared, root) {
-  const first = await firstPreparedHnf(prepared, root);
+async function warmPreparedGateC({ cacheRoot = undefined } = {}) {
+  // Compile sequentially.  Each graph is large enough that concurrent
+  // node-gyp jobs needlessly multiply peak memory on the 4-GiB worker.
+  return {
+    collector: await compile(
+      "collected_log_embeddings.py", "pari_collect_and_log_relations", cacheRoot),
+    hnfspec: await compile("hnfspec_complete.py", "pari_hnfspec_complete", cacheRoot),
+    next: await compile("row14_next_pass.py", "pari_row14_prepare_next_pass", cacheRoot),
+    hnfadd: await compile("hnfadd.py", "pari_hnfadd", cacheRoot),
+  };
+}
+
+async function runPreparedGateC(prepared, root, options = {}) {
+  const kernels = options.kernels || null;
+  const first = await firstPreparedHnf(prepared, root, kernels);
   const cv = first.cv;
   const firstState = Array.from(first.hnf.state).map(Number);
   const firstHRows = firstState[0], firstBColumns = firstState[2];
@@ -289,9 +324,10 @@ async function runPreparedGateC(prepared, root) {
   const snapshot = columns => ({ columns, state: resident.state.slice(),
     h: resident.h.map(String), dep: resident.dep.map(String), b: resident.b.map(String),
     c: resident.c.map(String), perm: resident.perm.map(String) });
-  const next = await compile("row14_next_pass.py", "pari_row14_prepare_next_pass");
-  const append = await compile("hnfadd.py", "pari_hnfadd");
-  const checkpoints = [snapshot(FIRST_COLUMNS)],
+  const next = kernels?.next || await compile(
+    "row14_next_pass.py", "pari_row14_prepare_next_pass");
+  const append = kernels?.hnfadd || await compile("hnfadd.py", "pari_hnfadd");
+  const checkpoints = [snapshot(FIRST_COLUMNS)], appendSteps = [],
     expected = [996, 999, 1000, 1001, 1002, 1005, 1006], passTrace = [];
   let checkpointIndex = 0, collectionPasses = 1, squash = 0, appendPeakBytes = 0;
   while (checkpointIndex < expected.length) {
@@ -365,6 +401,15 @@ async function runPreparedGateC(prepared, root) {
     }
     appendPeakBytes = Math.max(appendPeakBytes, bytes);
     assert.equal(append.fn.gmp(...append.names.map(([name]) => av[name])), 0n);
+    const rankState = Array.from(av.rank_state).map(Number);
+    const appendRedundant = rankState[7];
+    assert.equal(rankState[2], appendRedundant);
+    const appendGenuine = lig - appendRedundant;
+    appendSteps.push({ oldTotal: oldColumns, newColumns,
+      zeroPrefix: oldColumns - bColumns - hRows, hRows, bColumns,
+      perm: resident.perm.slice(), newRelations, rows: ROWS,
+      hnf: hnfStep(av, appendGenuine, appendRedundant, width, bColumns,
+        "permuted_b", "transform") });
     resident.state = Array.from(av.state).map(Number); resident.perm = Array.from(av.perm);
     const newH = resident.state[0], newB = resident.state[2], depRows = ROWS-newB-newH;
     resident.h = av.result_h.toArray().slice(0, newH*newH);
@@ -377,8 +422,20 @@ async function runPreparedGateC(prepared, root) {
   }
   const ownerBytesUpperBound = first.ownerBytes + appendPeakBytes;
   assert(ownerBytesUpperBound < 4 * 1024 ** 3);
+  const transforms = reverseSchedule(TARGET,
+    Array.from({ length: 8 }, (_, index) => index), first.ancestry,
+    appendSteps);
   return { collectorValues: cv, resident, checkpoints, passTrace, collectionPasses,
-    ownerBytesUpperBound, preparedRng: root.rng.slice() };
+    ownerBytesUpperBound, preparedRng: root.rng.slice(),
+    rawToUnitKernel: transforms.slice(0, 7).flat().map(String),
+    rawToPresentation: transforms[7].map(String),
+    executionBoundary: {
+      compilationInsideRun: kernels === null,
+      residentHandleCount: kernels === null ? 0 : 4,
+      subprocessesInsideRun: false,
+      filesystemInsideRun: false,
+    } };
 }
 
-module.exports = { PREPARED_KEYS, runPreparedGateC, validateBoundary };
+module.exports = { PREPARED_KEYS, runPreparedGateC, validateBoundary,
+  warmPreparedGateC };

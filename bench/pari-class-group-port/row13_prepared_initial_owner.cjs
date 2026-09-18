@@ -63,7 +63,7 @@ function relationOwner(owners, count, rows) {
   return records;
 }
 
-async function computePreparedInitialOwner(payload) {
+async function computePreparedInitialOwner(payload, options = {}) {
   assert.deepEqual(Object.keys(payload).sort(),
     ["prepared", "preparedAuthoritySha256"]);
   const allowedPrepared = ["admission_factorlimit", "admission_matrix_e",
@@ -77,7 +77,7 @@ async function computePreparedInitialOwner(payload) {
     "root child received an unreviewed prepared field");
 
   const { compileKernel } = require("../../tools/native-kernel/compiler.cjs");
-  const built = await compileKernel({ sourcePath: SOURCE });
+  const built = options.built || await compileKernel({ sourcePath: SOURCE });
   const module = require(built.modulePath);
   const fn = module.pari_row13_prepared_initial_root;
   assert.equal(fn.nativeAvailable, true);

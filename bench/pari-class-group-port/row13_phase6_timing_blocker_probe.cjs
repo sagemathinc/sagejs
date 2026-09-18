@@ -1,8 +1,6 @@
 "use strict";
 
-// Executable Phase-6 source cut for row 13.  This is deliberately not a
-// timing adapter: the only prepared-input entry point still includes host
-// orchestration and publication that stock PARI's bnfinit0 clock excludes.
+// Legacy-named executable audit for the now-closed row-13 timing blocker.
 
 const assert = require("node:assert/strict");
 const crypto = require("node:crypto");
@@ -40,20 +38,26 @@ function inspect(inputPath = DEFAULT_INPUT) {
   assert.match(host, /fs\.writeFileSync\(/);
   assert.doesNotMatch(host, /function prepareResident\(/);
   assert.doesNotMatch(host, /function runResident\(/);
+  const resident = source("row13_phase6_resident_kernel_host.cjs")
+    .toString("utf8");
+  assert.match(resident, /async function prepareResident\(/);
+  assert.match(resident, /async function runResident\(/);
+  assert.match(resident, /compilationInsideClock: false/);
+  assert.match(resident, /subprocessesInsideClock: false/);
+  assert.match(resident, /filesystemInsideClock: false/);
   return {
     schema: "sagejs.pari-class-group/row13-phase6-timing-blocker-v1",
     panelIndex: 13, fieldId:
       "generated-sha256-353468f1887e96f5a2f66e3121564636ed8cdbd75bde6571609627bbe8586e33",
     preparedAuthoritySha256: authority.sha256,
     freshInputAuthenticated: true, changedPreparedInputRejected: true,
-    residentPreparedKernelTimingReady: false,
-    forbiddenCurrentClockWork: ["host stage orchestration", "owner publication",
-      "filesystem writes", "detached result construction"],
+    residentPreparedKernelTimingReady: true,
+    forbiddenCurrentClockWork: [],
     sourceCut: [
-      "compile every kernel used by row13_terminal_transaction_host.cjs before timing",
-      "allocate and retain the initial, Gate-C, accepted, post-1006, class and unit owners once",
-      "add prepareResident(prepared) and runResident(resident) with one inclusive root clock",
-      "move hashing, mutation replay and result publication after that clock",
+      "all native kernels compile before the inclusive root clock",
+      "one resident process retains all compiled mathematical handles",
+      "prepareResident(prepared) and runResident(resident) expose the exact boundary",
+      "hashing, mutation replay and result publication occur after that clock",
     ],
     sourceSha256: EXPECTED,
   };
