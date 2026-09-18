@@ -213,6 +213,30 @@ test("shared keyword binding consumes literal packets without Python operators",
   assert.deepEqual(Array.from(result).slice(0, 4), [receiver, 3, undefined, 5]);
   assert.deepEqual(Object.keys(result[4]), []);
 
+  const receiverlessApi = context({
+    _internal_class_instance_function: () => { throw new Error("classified receiver"); },
+    _internal_get_member: (value, name) => value[name],
+    _internal_type_is: (value, expected) => value === expected,
+    _internal_has_own: (value, name) => Object.hasOwn(value, name),
+    _internal_keyword_constructor_prototypes: new WeakSet(),
+    ρσ_native_jstype: (value) => typeof value,
+    ρσ_exception_value: value => value,
+  });
+  const receiverlessPacket = { left: 4, right: 6 };
+  const receiverless = receiverlessApi.ρσ_interpolate_kwargs(
+    undefined, target, [receiverlessPacket]);
+  assert.deepEqual(Array.from(receiverless).slice(1, 4), [4, undefined, 6]);
+  assert.deepEqual(Object.keys(receiverless[4]), []);
+  function defaultTailTarget(required, keywordPacket) {
+    return [required, keywordPacket.optional, keywordPacket];
+  }
+  defaultTailTarget.__argnames__ = ["required", "optional"];
+  defaultTailTarget.__handles_kwarg_interpolation__ = 2;
+  const defaultTailPacket = { required: 8, optional: 9 };
+  const defaultTail = receiverlessApi.ρσ_interpolate_kwargs(
+    undefined, defaultTailTarget, [defaultTailPacket]);
+  assert.deepEqual(Array.from(defaultTail).slice(0, 2), [8, 9]);
+  assert.deepEqual(defaultTail[2], { optional: 9 });
   assert.throws(
     () => api.ρσ_interpolate_kwargs(undefined, target, [1, { left: 2 }]),
     /multiple values for argument 'left'/,
@@ -221,6 +245,19 @@ test("shared keyword binding consumes literal packets without Python operators",
     () => api.ρσ_interpolate_kwargs(undefined, target, [{ unknown: 2 }]),
     /unexpected keyword argument 'unknown'/,
   );
+
+  function targetWithResidual(left, keywords) {
+    return [left, keywords];
+  }
+  targetWithResidual.__argnames__ = ["left"];
+  targetWithResidual.__kwonly__ = ["option"];
+  targetWithResidual.__varkw__ = true;
+  targetWithResidual.__handles_kwarg_interpolation__ = true;
+  const residualPacket = { left: 13, option: 17, extra: 19 };
+  const residual = api.ρσ_interpolate_kwargs(
+    undefined, targetWithResidual, [residualPacket]);
+  assert.equal(residual[0], 13);
+  assert.deepEqual(residual[1], { option: 17, extra: 19 });
 });
 
 test("branded keyword constructors reuse prepared allocation", () => {

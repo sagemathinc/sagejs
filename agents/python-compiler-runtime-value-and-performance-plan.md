@@ -514,6 +514,65 @@ field-bearing construction remains 10.51–12.04x and keyword calls roughly
 `agents/python-constructor-new-guard-native.md`. Keep this candidate behind PR
 #316, now merged, and keep M5 open.
 
+**2026-09-17 single-pass keyword-binding checkpoint:** the authenticated
+generated-function path validated keyword packet keys, then scanned every
+positional parameter again to copy and delete recognized values. It now
+consumes each recognized named property during the validation pass while
+retaining keyword-only and `**kwargs` entries for the generated prologue.
+Controlled exact-artifact measurements improve keyword functions by 4.9% and
+immediate keyword methods by 2.8%; unrelated rows remain within run dispersion.
+The artifact and core source both shrink 282 bytes to 902,332/903,000. Residual
+keyword-function, keyword-method, and keyword-construction gaps remain 8.6x,
+13.8x, and 11.6x CPython, so M5 remains open. Differential, direct-boundary,
+default, mutation, traitlets, attrs/decorator, strict, docs, and merge gates
+pass. The unchanged local startup gate remains above budget and is not called a
+receipt. Exact evidence is in `agents/python-keyword-single-pass-binding.md`;
+keep this candidate behind its prerequisites.
+
+**2026-09-17 receiverless keyword-classification follow-up:** the binder still
+called the authoritative class-instance-method classifier for ordinary
+receiverless functions even though that classifier's first condition rejects a
+null or undefined receiver. Moving the identical guard to the shared raw
+boundary improves keyword functions another 3.9%, from 86.702 ms to 83.293 ms
+per 100,000 calls and from 8.5x to 8.2x CPython; every other matrix row remains
+flat. A throwing-classifier boundary test proves receiverless calls bypass it,
+while non-null class/metaclass and instance paths are unchanged. Full
+differential, focused, traitlets, attrs/decorator, strict, docs, and merge gates
+pass at 902,348/903,000 core bytes. Evidence is folded into
+`agents/python-keyword-single-pass-binding.md`; M5 remains open.
+
+**2026-09-17 generated default-tail ownership checkpoint:** generated function
+prologues already read source-defaulted positional parameters from keyword
+packets, but the shared binder first copied/deleted the same values into sparse
+positional arrays. The existing internal handler slot now encodes a one-based
+count of the trailing parameters owned by that prologue; counts survive
+bound/unbound and constructor adapters, while handwritten boolean handlers
+retain the complete path. Controlled exact-artifact measurements improve
+keyword functions by 48.3%, immediate keyword methods by 31.7%, and keyword
+construction plus a method by 10.6%; positional rows remain flat and the
+artifact shrinks 3,335 bytes. Residual gaps are still 4.2x, 9.3x, and 10.6x
+CPython, so M5 remains open. The audit also fixes positional-only defaults being
+incorrectly consumed from `**kwargs`; `f(a=2)` for
+`def f(a=1, /, **kw)` now agrees with CPython as `(1, {"a": 2})`. Full
+differential, 49 focused/traitlets checks, attrs/decorator, strict, docs, merge,
+and source budgets pass at 902,583/903,000 core bytes. Compiler tests not
+requiring the absent optional FLINT addon pass. Exact evidence is in
+`agents/python-default-tail-keyword-prologue.md`; keep the candidate behind its
+prerequisites.
+
+**2026-09-18 source-current keyword-prologue replay:** the single-pass binder,
+receiverless classification guard, and default-tail ownership changes have been
+replayed as one coherent unit on the qualified constructor stack. Ten-process
+exact-artifact measurements improve a defaulted keyword function by 4.49%, an
+immediate defaulted method by 7.84%, and keyword construction by 3.58%; controls
+remain within about 3%. A positional required argument plus one supplied
+default improves 27.70%, while four supplied defaults improve 9.23%, confirming
+that the benefit follows the redundant tail work. The artifact shrinks 4,054
+bytes and current integrated core source is 902,417/903,000. Keyword paths still measure roughly
+10.2x--14.5x CPython, so M5 remains open. Current evidence is in
+`agents/python-default-tail-keyword-prologue.md`; this branch is now the direct
+follow-up to merged PR #317.
+
 Continue next with integration-aware qualification, the receiver-lookup campaign,
 and true handled-exception ownership. Generator/coroutine suspension makes a
 single global active-exception pointer unsafe: preserve owned handlers while
