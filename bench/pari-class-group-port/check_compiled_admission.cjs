@@ -63,7 +63,7 @@ print(json.dumps(expected))
       else assert.deepEqual([mod.pari_prepared_admission_front[backend](...args),p,e],reference);
     }
   }
-  assert(counts.every(n=>n>0),`missing a stage control: ${counts}`);
+  assert(counts[0]>0&&counts[1]>0&&counts[2]===0&&counts[3]>0&&counts[4]>0,`unexpected stage controls after arbitrary smooth completion: ${counts}`);
   assert(completedDegrees.has(3)&&completedDegrees.has(4));
   console.log(`${expected.length} connected admission-front cases match PARI stage controls and CPython/JS/GMP/tagged; stages=${counts.join(',')}`);
 })().catch(error=>{console.error(error);process.exitCode=1;});

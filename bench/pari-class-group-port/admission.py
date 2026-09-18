@@ -6,7 +6,7 @@ This is not complete relation admission: prime-ideal division remains pending.
 
 from sagejs.native import IntegerBuffer, native
 from .short_product import pari_prepared_factorgen_numerical, pari_prime_to_part
-from .factorization import pari_word_factor_front
+from .factorization import pari_smooth_factor_from_catalog, pari_word_factor_front
 
 
 @native
@@ -78,7 +78,7 @@ def pari_prepared_factor_norm(
 ) -> tuple[int, int, int]:
     """can_factor through absZ_factor: stage, rational factor count, residual.
 
-    Stages remain 1 nonsmooth, 2 unported factorization, 3 norm factored.
+    Stages remain 1 nonsmooth, 2 unresolved factorization, 3 norm factored.
     """
     absolute_norm = abs(norm)
     if absolute_norm == 1:
@@ -90,7 +90,16 @@ def pari_prepared_factor_norm(
     if abs(pari_prime_to_part(norm, factor_product)) != 1:
         return 1, 0, absolute_norm
     if absolute_norm.bit_length() > 64:
-        return 2, 0, absolute_norm
+        count, residual = pari_smooth_factor_from_catalog(
+            absolute_norm,
+            primes,
+            factor_primes,
+            factor_exponents,
+            0,
+        )
+        if residual != 1:
+            return 2, count, residual
+        return 3, count, 1
     count, residual = pari_word_factor_front(
         absolute_norm,
         primes,

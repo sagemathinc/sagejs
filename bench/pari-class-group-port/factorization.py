@@ -268,6 +268,46 @@ def pari_complete_word_from_catalog(
 
 
 @native
+def pari_smooth_factor_from_catalog(
+    n: int,
+    primes: IntegerBuffer,
+    out_primes: IntegerBuffer,
+    out_exponents: IntegerBuffer,
+    count: int,
+) -> tuple[int, int]:
+    """Factor the part of an arbitrary integer supported by a prime catalog.
+
+    This is the exact, source-transparent continuation needed after PARI's
+    `Z_ppo(n, prodZ) == 1` smoothness test.  That test proves that every prime
+    divisor belongs to the prepared catalog, so no general-purpose factoring
+    heuristic is needed here: exact division by the authenticated primes must
+    consume the integer.  Returning a residual preserves a fail-closed dynamic
+    fallback when callers use the helper without that proof.
+    """
+    if n < 1 or len(primes) == 0 or count < 0:
+        raise ValueError("smooth factor input outside prepared contract")
+    for i in range(len(primes)):
+        prime = primes[i]
+        if prime < 2:
+            raise ValueError("prepared prime catalog contains an invalid entry")
+        exponent = 0
+        while n % prime == 0:
+            n //= prime
+            exponent += 1
+        if exponent != 0:
+            if count >= len(out_primes) or count >= len(out_exponents):
+                raise ValueError("factor output capacity exhausted")
+            if count != 0 and out_primes[count - 1] >= prime:
+                raise ValueError("smooth catalog factorization would break order")
+            out_primes[count] = prime
+            out_exponents[count] = exponent
+            count += 1
+            if n == 1:
+                return count, 1
+    return count, n
+
+
+@native
 def pari_word_factor_front(
     n: int,
     primes: IntegerBuffer,
