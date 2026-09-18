@@ -245,8 +245,40 @@ def pari_collect_unreduced_ideals(
         search_count = outer_state[13]
     packets = len(packet_ids)
     square = n * n
-    if n < 3 or n > 4 or construct_primes < 0 or construct_primes > 3:
+    # The preceding frontier audit matched the former admission literally:
+    # if n < 3 or n > 4 or construct_primes < 0 or construct_primes > 3:
+    if n < 3 or n > 5 or construct_primes < 0 or construct_primes > 3:
         raise ValueError("invalid unreduced ideal packets")
+    if n == 5:
+        # The authenticated row-21 cut already owns all 24 exact prime-ideal
+        # HNFs.  Admit only that prebuilt-packet, first-small_norm corridor;
+        # degree-five prime-power construction and outer retries remain open.
+        if (
+            construct_primes != 0
+            or outer_mode != 0
+            or precision != 192
+            or admission_real_count != 3
+            or admission_mode != 2
+            or len(relation) != 24
+            or len(relation_state) < 6
+            or relation_state[0] != 5
+            or relation_state[5] != 32
+            or packets != 24
+            or search_count != 24
+            or len(packet_ideals) != 24 * 25
+            or len(packet_norms) != 24
+        ):
+            raise ValueError("unsupported degree-five unreduced ideal corridor")
+        for i in range(24):
+            if packet_ids[i] < 1 or packet_ids[i] > 24:
+                raise ValueError("invalid degree-five packet identity")
+            if search_ideals[i] < 1 or search_ideals[i] > 24:
+                raise ValueError("invalid degree-five search identity")
+            for j in range(i):
+                if packet_ids[j] == packet_ids[i]:
+                    raise ValueError("duplicate degree-five packet identity")
+                if search_ideals[j] == search_ideals[i]:
+                    raise ValueError("duplicate degree-five search identity")
     if len(admission_ideal) < square:
         raise ValueError("insufficient original ideal packet storage")
     if construct_primes == 0:
