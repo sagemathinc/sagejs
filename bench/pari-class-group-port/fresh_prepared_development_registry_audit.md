@@ -31,8 +31,12 @@ Genuine focused executions validated:
 - row 13: neutral result
   `17ccbab46e27cae538d8958f4eb0a760fbbbfde112ea26b784dcc54057505b73`,
   class group `[2]`, class number 2.
+- row 14: neutral result
+  `edb2b0bdf5753497b51e4b4a34229c3ad8977de8b877de72005a18472d43cff2`,
+  payload
+  `3e6e104f836e3c61b988fffa2a94d2b5ba1a6793b7e7ae458422005a74acf0fe`,
+  class group `[8, 24]`, class number 192.
 
-Row 14's strict wrapper and negative authority tests pass; its expensive genuine
-execution remains a separate validation step.  Row 0 is not admitted yet: its
-unified native root returns a matched semantic projection, but the reusable
-producer does not yet retain an `ImmutableClassUnitCorrespondenceResult`.
+Row 0 is not admitted yet: its unified native root returns a matched semantic
+projection, but the reusable producer does not yet retain an
+`ImmutableClassUnitCorrespondenceResult`.
