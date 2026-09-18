@@ -12,6 +12,18 @@ plan gate.
 
 ## Current result
 
+### Row 6 post-Gate-C terminal arithmetic
+
+The authenticated row-6 Gate-C and factor-base owners now feed the shared
+ordinary-Python post-HNF/analytic/Smith kernel without using the frozen PARI
+transcript at runtime. Under a 4 GiB/600 second cap the first sealed run took
+25.482 seconds at 515,372 KiB peak RSS and independently returned class number
+`4`, invariant factors `[2, 2]`, and the exact expected 192-bit regulator and
+rank-two relation lattice. Nine input/output mutations were rejected. This is
+a connected arithmetic boundary, not yet a completed class-and-unit result:
+full Smith ancestry, exact class witnesses, fundamental-unit reconstruction,
+and C7 assembly remain open.
+
 ### Post-checkpoint advances on 2026-09-18
 
 The integration spine has since crossed four additional, independently checked
