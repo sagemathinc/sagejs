@@ -69,22 +69,32 @@ function runPython(arguments_, input = undefined) {
   return child.stdout;
 }
 
-function buildFinalSource(paths) {
+function buildFinalSource(paths, unitAuthority) {
   const program = String.raw`
 import importlib.util,sys
 spec=importlib.util.spec_from_file_location("row21_final_result",sys.argv[1])
 m=importlib.util.module_from_spec(spec)
 sys.modules[spec.name]=m
 spec.loader.exec_module(m)
-payload=m.build_row21_payload(*sys.argv[2:7])
-result=m.AtomicRow21Publisher().publish(payload)
+authority=m.FreshRow21UnitAuthority(expected_owner_sha256=sys.argv[7],expected_content_sha256=sys.argv[8])
+for bad in (
+ m.FreshRow21UnitAuthority(expected_owner_sha256="0"*64,expected_content_sha256=sys.argv[8]),
+ m.FreshRow21UnitAuthority(expected_owner_sha256=sys.argv[7],expected_content_sha256="0"*64),
+):
+ try:m.build_row21_payload(*sys.argv[2:7],unit_authority=bad)
+ except m.Row21FinalFailure:pass
+ else:raise AssertionError("mutated same-run row-21 unit authority was accepted")
+payload=m.build_row21_payload(*sys.argv[2:7],unit_authority=authority)
+result=m.AtomicRow21Publisher(m.Row21ReplayAuthority(unit_authority=authority)).publish(payload)
 sys.stdout.buffer.write(result.canonical_json)
 `;
   return runPython(["-c", program, FINAL_SOURCE, paths.prepared, paths.factor,
-    paths.firstHnf, paths.acceptance, paths.units]);
+    paths.firstHnf, paths.acceptance, paths.units,
+    unitAuthority.ownerSha256, unitAuthority.contentSha256]);
 }
 
-function replayFinalSource(candidate, sourceSha256, mathematicalAuthoritySha256) {
+function replayFinalSource(candidate, sourceSha256, mathematicalAuthoritySha256,
+  unitAuthority) {
   const program = String.raw`
 import importlib.util,json,sys
 spec=importlib.util.spec_from_file_location("row21_final_result",sys.argv[1])
@@ -92,7 +102,12 @@ m=importlib.util.module_from_spec(spec)
 sys.modules[spec.name]=m
 spec.loader.exec_module(m)
 raw=sys.stdin.buffer.read()
-result=m.cold_replay_row21(raw,m.Row21ReplayAuthority(sys.argv[2]))
+unit=m.FreshRow21UnitAuthority(expected_owner_sha256=sys.argv[5],expected_content_sha256=sys.argv[6])
+result=m.cold_replay_row21(raw,m.Row21ReplayAuthority(sys.argv[2],unit))
+bad=m.FreshRow21UnitAuthority(expected_owner_sha256="0"*64,expected_content_sha256=sys.argv[6])
+try:m.cold_replay_row21(raw,m.Row21ReplayAuthority(sys.argv[2],bad))
+except m.Row21FinalFailure:pass
+else:raise AssertionError("mutated replay unit authority was accepted")
 p=result.detached_payload()
 sys.stdout.write(json.dumps({
  "schema":sys.argv[3],"sourceSha256":result.sha256,
@@ -105,11 +120,12 @@ sys.stdout.write(json.dumps({
 },sort_keys=True,separators=(",",":")))
 `;
   return JSON.parse(runPython(["-c", program, FINAL_SOURCE, sourceSha256,
-    adapter.SOURCE_REPLAY_SCHEMA, mathematicalAuthoritySha256], candidate)
+    adapter.SOURCE_REPLAY_SCHEMA, mathematicalAuthoritySha256,
+    unitAuthority.ownerSha256, unitAuthority.contentSha256], candidate)
   .toString("utf8"));
 }
 
-function publishNeutral(sourceRaw) {
+function publishNeutral(sourceRaw, unitAuthority) {
   const sourceSha256 = neutral.sha256Bytes(sourceRaw);
   const sourceEnvelope = JSON.parse(sourceRaw.toString("ascii"));
   const mathematicalAuthoritySha256 = neutral.sha256Canonical({
@@ -122,7 +138,7 @@ function publishNeutral(sourceRaw) {
     sourceSha256,
     mathematicalAuthoritySha256,
     replay: candidate => replayFinalSource(candidate, sourceSha256,
-      mathematicalAuthoritySha256),
+      mathematicalAuthoritySha256, unitAuthority),
   });
   const prepared = adapter.prepareRow21NeutralResult(sourceRaw, sourceAuthority, {
     publicationReplaySchema: REPLAY_SCHEMA,
@@ -189,14 +205,18 @@ async function runFreshPrepared(prepared, outputDirectory) {
     fs.writeFileSync(preparedPath,
       Buffer.from(`${JSON.stringify(preparedEnvelope.data)}\n`),
       { flag: "wx", mode: 0o400 });
+    const unitAuthority = {
+      ownerSha256: units.ownerSha256,
+      contentSha256: neutral.sha256Canonical(units.owner),
+    };
     const sourceRaw = buildFinalSource({
       prepared: preparedPath,
       factor: factor.path,
       firstHnf: hnf.path,
       acceptance: accepted.path,
       units: units.path,
-    });
-    const published = publishNeutral(sourceRaw);
+    }, unitAuthority);
+    const published = publishNeutral(sourceRaw, unitAuthority);
     const resultRaw = published.verifiedResult.canonicalJSON();
     const resultSha256 = published.verifiedResult.sha256;
     const resultPath = path.join(outputDirectory,
@@ -207,6 +227,8 @@ async function runFreshPrepared(prepared, outputDirectory) {
       result: { path: resultPath, sha256: resultSha256, bytes: resultRaw.length,
         mathematicalAuthoritySha256: published.mathematicalAuthoritySha256 },
       preparedAuthoritySha256: preparedEnvelope.authoritySha256,
+      unitAuthority,
+      unitAuthorityMutationsRejected: 3,
       finalSourceSha256: published.sourceSha256,
       freshPreparedExecution: true,
       retainedRuntimeInputs: false,

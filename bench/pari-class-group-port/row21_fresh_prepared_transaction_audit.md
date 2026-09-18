@@ -16,6 +16,16 @@ coordinators' required filesystem forms are written only below a mode-0700
 transaction directory and that directory is removed in `finally` before the
 receipt returns.  No prior retained owner can enter the transaction.
 
+The live unit owner is intentionally not required to reproduce the historical
+retained owner's byte digest.  The transaction derives its exact owner SHA-256
+and canonical-content SHA-256 after the same-run unit coordinator has
+authenticated the prepared and acceptance ancestry.  A frozen
+`FreshRow21UnitAuthority` carries those two digests through final assembly,
+atomic publication, and detached cold replay.  Omitting that authority keeps
+the standalone/historical path pinned to the reviewed retained owner; it does
+not create a permissive fallback.  Independent owner-digest, content-digest,
+and replay-authority mutations are rejected before publication.
+
 The final Python assembler is still the ordinary CPython-parseable
 `row21_final_result.py`.  It consumes transaction-local serializations, derives
 the exact class-number-one right inverse, checks all three exact units and

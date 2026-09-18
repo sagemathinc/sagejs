@@ -143,6 +143,9 @@ async function main() {
   assert.equal(receipt.torsionOrder, "2");
   assert.equal(receipt.correspondenceComplete, true);
   assert.equal(receipt.publicComplete, false);
+  assert.match(receipt.unitAuthority.ownerSha256, /^[0-9a-f]{64}$/);
+  assert.match(receipt.unitAuthority.contentSha256, /^[0-9a-f]{64}$/);
+  assert.equal(receipt.unitAuthorityMutationsRejected, 3);
   for (const forbidden of ["elapsedNs", "stageElapsedNs", "maxRssKiB",
     "reserve", "capacityReserve"])
     assert.equal(Object.hasOwn(receipt, forbidden), false);
