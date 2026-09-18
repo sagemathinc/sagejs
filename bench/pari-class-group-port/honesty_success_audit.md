@@ -20,28 +20,23 @@ groups and offsets, prime ideals, norms, support product, prime tables, and
 fresh disjoint workspaces. No scheduler observation is derived from the PARI
 answer.
 
-## Exact blocker
+## Historical blocker and closure
 
-Each fresh CPython call reaches `pari_ranked_ideal_preparation`, which rejects
-degree five with `ValueError("invalid ranked ideal preparation input")` before
-executing a collector probe. The calls are transactional: every observable
-input and workspace is byte-for-byte unchanged after rejection.
+The first version of this audit stopped honestly at the degree-five ranked
+preparation boundary: integer rank, LLL selection, FLATTER, and ranked-basis
+code accepted only degrees three and four. That blocker has since been closed.
 
-This is a connected primitive boundary, not one guard that can safely be
-deleted:
+`check_honesty_success_live_first_probe.cjs` now sends only prepared field,
+factor-base, ideal, and scheduler owners to the Sage-side computation. The
+translated degree-five collector computes all six successful observations
+afresh, and the translated scheduler consumes them without receiving PARI's
+status vector or frozen branch answers. Exact attempt counts are
+`[35,157,41,1,3,23]`; all six statuses are one, three transient `KCZ`
+increments occur, and the terminal path restores `KCZ` from six to three.
 
-- `ideal_ranked_preparation.py` rejects `n > 4`.
-- `lll_rank.py::pari_initial_integer_rank` rejects `n > 4`.
-- `lll_selection.py::pari_lll_select_full_rank` accepts only degrees 3 and 4.
-- `flatter.py::pari_flatter` accepts only degrees 3 and 4.
-
-Consequently the six inputs in `honesty_success.py` have **not** been replaced.
-Doing so would make PARI's observed answers into runtime probe bits, violating
-the experiment's independence requirement. Native compilation was not attempted
-after the ordinary same-source Python path proved unable to enter the collector.
-
-The next implementation unit is therefore a degree-5 generalization of the
-ranked integer-rank, LLL selection, FLATTER, and ranked-basis graph, tested first
-against the exported row-21 preparation. Only after that graph produces six
-actual Sage.js collector observations may they be connected to the honesty
-scheduler.
+The connected checker retains the earlier transactional rejection controls and
+adds a failed-observation mutation proving that scheduler progress depends on
+the live collector result. See `honesty_success_live_first_probe_audit.md` for
+the authenticated source hashes, native backend checks, and remaining scope:
+this closes the selected unequal-bound immediate-success path, not general
+automorphism or failure/retry honesty.
