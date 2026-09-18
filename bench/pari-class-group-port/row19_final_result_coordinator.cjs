@@ -106,9 +106,10 @@ function validateTerminal(owner) {
     fail("terminal relation identity changed");
   integers(owner.regulator, 3, "regulator");
 }
-function validateUnit(owner) {
-  if (owner.fieldId !== FIELD_ID || owner.ancestry?.terminalOwnerSha256 !== TERMINAL_SHA256 ||
-      owner.ancestry?.terminalCompressedSha256 !== TERMINAL_COMPRESSED_SHA256 ||
+function validateUnit(owner, expected = { terminal: TERMINAL_SHA256,
+  terminalCompressed: TERMINAL_COMPRESSED_SHA256 }) {
+  if (owner.fieldId !== FIELD_ID || owner.ancestry?.terminalOwnerSha256 !== expected.terminal ||
+      owner.ancestry?.terminalCompressedSha256 !== expected.terminalCompressed ||
       owner.outcome?.status !== "success" || owner.outcome?.correspondenceComplete !== true ||
       owner.outcome?.usedFrozenW0 !== false || owner.outcome?.expandedCoordinatesRequired !== false ||
       owner.compactAlgebraicUnit?.representation !==
@@ -140,10 +141,11 @@ function validateUnit(owner) {
   for (const name of ["regulator", "regulatorResidual", "productFormulaResidual"])
     integers(owner.logCertificate[name], 2, `unit ${name}`);
 }
-function validateClass(owner, terminal) {
-  if (owner.ancestry?.terminalOwnerSha256 !== TERMINAL_SHA256 ||
-      owner.ancestry?.firstHnfOwnerSha256 !== FIRST_SHA256 ||
-      owner.ancestry?.firstHnfCompressedSha256 !== FIRST_COMPRESSED_SHA256 ||
+function validateClass(owner, terminal, expected = { terminal: TERMINAL_SHA256,
+  first: FIRST_SHA256, firstCompressed: FIRST_COMPRESSED_SHA256 }) {
+  if (owner.ancestry?.terminalOwnerSha256 !== expected.terminal ||
+      owner.ancestry?.firstHnfOwnerSha256 !== expected.first ||
+      owner.ancestry?.firstHnfCompressedSha256 !== expected.firstCompressed ||
       owner.ancestry?.preparedAuthoritySha256 !== terminal.authority?.preparedAuthoritySha256 ||
       owner.completion?.principalIdealOrderWitnessesComplete !== true ||
       owner.completion?.classArchimedeanAssemblyComplete !== true ||
@@ -299,19 +301,19 @@ function verifyTerminalValuationIdentity(classOwner, terminal) {
   return true;
 }
 
-function compose(descriptors) {
+function composeWithExpected(descriptors, expected, retained) {
   if (!descriptors?.classOwner) {
     fail("missing raw-to-terminal principal-relation/class owner");
   }
-  if (SUPERSEDED_CLASS_SHA256.has(descriptors.classOwner.ownerSha256))
+  if (retained && SUPERSEDED_CLASS_SHA256.has(descriptors.classOwner.ownerSha256))
     fail("superseded principal class owner is revoked");
-  if (descriptors.classOwner.ownerSha256 !== CLASS_SHA256 ||
-      descriptors.classOwner.compressedSha256 !== CLASS_COMPRESSED_SHA256)
+  if (descriptors.classOwner.ownerSha256 !== expected.classOwner ||
+      descriptors.classOwner.compressedSha256 !== expected.classCompressed)
     fail("principal class owner is not the corrected authority");
   const terminal = readGzip(descriptors.terminal, "terminal", TERMINAL_SCHEMA,
-    { owner: TERMINAL_SHA256, compressed: TERMINAL_COMPRESSED_SHA256 }).owner;
+    { owner: expected.terminal, compressed: expected.terminalCompressed }).owner;
   const unit = readGzip(descriptors.unit, "rank-one unit", UNIT_SCHEMA,
-    { owner: UNIT_SHA256, compressed: UNIT_COMPRESSED_SHA256 }).owner;
+    { owner: expected.unit, compressed: expected.unitCompressed }).owner;
   const classRead = readGzip(descriptors.classOwner, "principal class", CLASS_SCHEMA);
   let classApi;
   try { classApi = require("./row19_class_group_principal_coordinator.cjs"); }
@@ -323,7 +325,8 @@ function compose(descriptors) {
   catch (error) { throw new Row19FinalResultFailure("unit replay authority unavailable", { cause: error }); }
   if (typeof unitApi.verifyOwner !== "function") fail("unit replay authority changed");
   unitApi.verifyOwner(unit, unit.ancestry);
-  validateTerminal(terminal); validateUnit(unit); validateClass(classRead.owner, terminal);
+  validateTerminal(terminal); validateUnit(unit, expected);
+  validateClass(classRead.owner, terminal, expected);
   if (unit.ancestry.relationsSha256 !== sha(Buffer.from(JSON.stringify(
       terminal.relationIdentity.records))) ||
       unit.ancestry.logsSha256 !== sha(Buffer.from(JSON.stringify(
@@ -397,7 +400,8 @@ function compose(descriptors) {
       independentSageCertification: false,
       status: "complete-internal-upstream-assumed-result",
     },
-    sourceBoundary: { usedW0RuntimeData: false, retainedLiveOwners: true,
+    sourceBoundary: { usedW0RuntimeData: false, retainedLiveOwners: retained,
+      ...(retained ? {} : { freshPreparedInput: true, privateSameRunOwners: true }),
       qualifiedTiming: false, expandedFundamentalUnit: false,
       expandedFundamentalUnitReason: "PARI flag-zero not_given(LARGE)",
       lazyPublicMaterializations: ["makeunits", "makematal", "makecycgen"] },
@@ -412,6 +416,29 @@ function compose(descriptors) {
     sourceBoundary: hashValue(payload.sourceBoundary), completion: hashValue(payload.completion) };
   return { ...payload, materialDigests: material,
     sealSha256: hashValue({ payload, materialDigests: material }) };
+}
+
+function compose(descriptors) {
+  return composeWithExpected(descriptors, {
+    terminal: TERMINAL_SHA256, terminalCompressed: TERMINAL_COMPRESSED_SHA256,
+    first: FIRST_SHA256, firstCompressed: FIRST_COMPRESSED_SHA256,
+    unit: UNIT_SHA256, unitCompressed: UNIT_COMPRESSED_SHA256,
+    classOwner: CLASS_SHA256, classCompressed: CLASS_COMPRESSED_SHA256,
+  }, true);
+}
+
+function composeFresh(descriptors) {
+  if (!descriptors?.first) fail("missing fresh first-HNF owner");
+  return composeWithExpected(descriptors, {
+    terminal: descriptors.terminal.ownerSha256,
+    terminalCompressed: descriptors.terminal.compressedSha256,
+    first: descriptors.first.ownerSha256,
+    firstCompressed: descriptors.first.compressedSha256,
+    unit: descriptors.unit.ownerSha256,
+    unitCompressed: descriptors.unit.compressedSha256,
+    classOwner: descriptors.classOwner.ownerSha256,
+    classCompressed: descriptors.classOwner.compressedSha256,
+  }, false);
 }
 
 function verifyOwner(owner, expectedAncestry = null) {
@@ -515,6 +542,7 @@ if (require.main === module) {
   try { main(); } catch (error) { process.stderr.write(`${error.message}\n`); process.exitCode = 1; }
 }
 module.exports = { CLASS_SCHEMA, Row19FinalResultFailure, SCHEMA, compose, publish,
+  composeFresh,
   CLASS_SHA256, CLASS_COMPRESSED_SHA256, REVOKED_FINAL_SHA256,
   FIRST_SHA256, FIRST_COMPRESSED_SHA256,
   UNIT_SHA256, UNIT_COMPRESSED_SHA256, TERMINAL_SHA256, TERMINAL_COMPRESSED_SHA256,

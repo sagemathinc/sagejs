@@ -17,6 +17,7 @@ const row0 = require("./row0_fresh_prepared_execution.cjs");
 const row6 = require("./row6_fresh_prepared_transaction_host.cjs");
 const row13 = require("./row13_fresh_prepared_transaction.cjs");
 const row14 = require("./row14_fresh_prepared_execution.cjs");
+const row19 = require("./row19_fresh_prepared_transaction.cjs");
 const row21 = require("./row21_fresh_prepared_transaction.cjs");
 
 const SCHEMA = "sagejs.pari-class-group/fresh-prepared-development-execution-v1";
@@ -26,6 +27,7 @@ const RUNNERS = new Map([
   [6, row6],
   [13, row13],
   [14, row14],
+  [19, row19],
   [21, row21],
 ]);
 

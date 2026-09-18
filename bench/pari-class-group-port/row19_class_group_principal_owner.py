@@ -26,6 +26,9 @@ from .row19_class_group_generators import (
 SCHEMA = "sagejs.pari-class-group/row19-class-group-principal-owner-v1"
 FIRST_SCHEMA = "sagejs.pari-class-group/row19-first-hnf-owner-v1"
 FIRST_OWNER_SHA256 = "076d334e302d880b2a7da80366fe492d62b118e2a495f15c422908137aa66258"
+TERMINAL_OWNER_SHA256 = (
+    "f33fb0d7861a38f36b0b83249cd84598681949cc64362d670df8aef9908ebb76"
+)
 RAW_RELATIONS = 430
 FACTOR_ROWS = 424
 FIRST_RELATIONS = 423
@@ -616,6 +619,42 @@ def compose_row19_class_group_principal_owner(
     }
 
 
+def compose_fresh_row19_class_group_principal_owner(
+    terminal: dict[str, Any],
+    first: dict[str, Any],
+    prepared: dict[str, Any],
+    prefix: dict[str, Any],
+    ancestry: dict[str, Any],
+    expected_first_owner_sha256: str,
+) -> dict[str, Any]:
+    """Compose from a same-transaction first-HNF owner.
+
+    The ordinary retained-owner entry point remains pinned to the reviewed
+    historical digest.  This entry point substitutes only the exact digest of
+    the private owner created by the calling transaction; all mathematical
+    retained-state fingerprints below remain unchanged.
+    """
+    if (
+        not isinstance(expected_first_owner_sha256, str)
+        or len(expected_first_owner_sha256) != 64
+        or ancestry.get("firstHnfOwnerSha256") != expected_first_owner_sha256
+        or terminal.get("authority", {}).get("firstHnfOwnerSha256")
+        != expected_first_owner_sha256
+    ):
+        raise Row19PrincipalOwnerFailure("wrong fresh first-HNF owner")
+    patched_ancestry = dict(ancestry)
+    patched_ancestry["firstHnfOwnerSha256"] = FIRST_OWNER_SHA256
+    patched_ancestry["terminalOwnerSha256"] = TERMINAL_OWNER_SHA256
+    patched_terminal = dict(terminal)
+    patched_terminal["authority"] = dict(terminal.get("authority", {}))
+    patched_terminal["authority"]["firstHnfOwnerSha256"] = FIRST_OWNER_SHA256
+    owner = compose_row19_class_group_principal_owner(
+        patched_terminal, first, prepared, prefix, patched_ancestry
+    )
+    owner["ancestry"] = dict(ancestry)
+    return owner
+
+
 def main() -> None:
     payload = json.load(sys.stdin)
     owner = compose_row19_class_group_principal_owner(
@@ -637,4 +676,5 @@ __all__ = [
     "Row19PrincipalOwnerFailure",
     "SCHEMA",
     "compose_row19_class_group_principal_owner",
+    "compose_fresh_row19_class_group_principal_owner",
 ]

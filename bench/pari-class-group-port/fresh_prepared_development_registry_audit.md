@@ -5,7 +5,8 @@ an execution was fresh from an enumerable JSON claim.  The execution registry
 therefore admits only the exact in-process receipt object returned by a
 registered prepared-input transaction.
 
-Rows 0, 6, 13, 14, and 21 currently implement this boundary.  Each transaction:
+Rows 0, 6, 13, 14, 19, and 21 currently implement this boundary.  Each
+transaction:
 
 1. starts from its authenticated prepared-number-field input;
 2. computes all intermediate owners privately;
@@ -42,6 +43,10 @@ Genuine focused executions validated:
 - row 21: neutral result
   `df3dddcf96d6cb77c6f9f4003eaeff4c68485d9c1cb48b4e39f7f23a0eab1c8a`,
   exact rank-three units and trivial class group.
+- row 19: neutral result
+  `a9642e255d536cde1c13740b0452bbdedf917cc851b753c2ec6152df2622eb66`,
+  including nine exact class-generator power witnesses and compact rank-one
+  unit data.
 
 Row 0 reuses the genuine unified prepared-H1 root, its independent cold replay,
 and neutral publisher.  Its fresh wrapper persists only the verified canonical

@@ -25,6 +25,7 @@ const PARI_SOURCE_SHA256 =
   "02651d99c391007d384b3fadbc20abc6916b77036f9e496c99e9ce8688ca4b53";
 const INTEGER = /^(0|-?[1-9][0-9]*)$/;
 const SHA256 = /^[0-9a-f]{64}$/;
+const FRESH_PREPARED = new WeakSet();
 
 class Row19ClassUnitAdapterFailure extends Error {}
 function fail(message) { throw new Row19ClassUnitAdapterFailure(message); }
@@ -70,12 +71,12 @@ function canonicalBytes(value) {
   return [...neutral.canonical(value)].map(entry => String(entry));
 }
 
-function openBoundary(boundary) {
+function openBoundary(boundary, expected = { final: FINAL_OWNER_SHA256 }) {
   const input = plain(boundary, "row-19 final-owner boundary");
   const owner = structuredClone(plain(input.owner, "row-19 final owner"));
   const authority = plain(input.authority, "row-19 final-owner authority");
   if (digest(authority.ownerSha256, "row-19 final owner digest") !==
-      FINAL_OWNER_SHA256 || authority.replaySchema !== INPUT_REPLAY_SCHEMA ||
+      expected.final || authority.replaySchema !== INPUT_REPLAY_SCHEMA ||
       typeof authority.replay !== "function") fail("row-19 input authority changed");
   let receipt;
   try { receipt = authority.replay(structuredClone(owner)); }
@@ -87,7 +88,7 @@ function openBoundary(boundary) {
   const mathematicalAuthoritySha256 = digest(
     receipt.mathematicalAuthoritySha256, "row-19 mathematical authority");
   if (receipt.schema !== INPUT_REPLAY_SCHEMA || receipt.accepted !== true ||
-      receipt.ownerSha256 !== FINAL_OWNER_SHA256 || receipt.fieldId !== FIELD_ID ||
+      receipt.ownerSha256 !== expected.final || receipt.fieldId !== FIELD_ID ||
       receipt.firstStageValuationCells !== 424 * 423 ||
       receipt.terminalValuationCells !== 424 * 430 ||
       receipt.generatorPowerEqualities !== 9 ||
@@ -96,11 +97,12 @@ function openBoundary(boundary) {
   return { mathematicalAuthoritySha256, owner, receipt };
 }
 
-function validateFinal(opened) {
+function validateFinal(opened, expected = { classOwner: CLASS_OWNER_SHA256,
+  unitOwner: UNIT_OWNER_SHA256 }) {
   const value = opened.owner;
   if (value.schema !== FINAL_SCHEMA || value.field?.id !== FIELD_ID ||
-      value.ancestry?.classOwnerSha256 !== CLASS_OWNER_SHA256 ||
-      value.ancestry?.unitOwnerSha256 !== UNIT_OWNER_SHA256)
+      value.ancestry?.classOwnerSha256 !== expected.classOwner ||
+      value.ancestry?.unitOwnerSha256 !== expected.unitOwner)
     fail("row-19 final identity changed");
   equal(value.field.definingPolynomial, POLYNOMIAL, "row-19 polynomial");
   equal(value.field.signature, [1, 1], "row-19 signature");
@@ -245,13 +247,33 @@ function prepareRow19ClassUnitResult(boundary, options = {}) {
     usedW0RuntimeData: false });
 }
 
+function prepareFreshRow19ClassUnitResult(boundary, ownerDigests) {
+  const expected = plain(ownerDigests, "fresh row-19 owner digests");
+  for (const name of ["final", "classOwner", "unitOwner"])
+    digest(expected[name], `fresh row-19 ${name} digest`);
+  const evidence = validateFinal(openBoundary(boundary, expected), expected);
+  const payload = payloadOf(evidence, PUBLICATION_REPLAY_SCHEMA);
+  const raw = neutral.sealClassUnitCorrespondenceResult(payload);
+  const prepared = frozen({ correspondenceComplete: true, fieldId: FIELD_ID,
+    finalOwnerSha256: expected.final, freshPreparedInput: true,
+    mathematicalAuthoritySha256: evidence.opened.mathematicalAuthoritySha256,
+    publicComplete: false, qualifiedTiming: false, schema: COMPOSITION_SCHEMA,
+    sealedEnvelopeHex: raw.toString("hex"), sealedEnvelopeSha256: neutral.sha256Bytes(raw),
+    status: "ready-for-out-of-band-publication-authority",
+    usedW0RuntimeData: false });
+  FRESH_PREPARED.add(prepared);
+  return prepared;
+}
+
 function publishPreparedRow19ClassUnitResult(prepared, authority, publisher = undefined) {
   const value = plain(prepared, "prepared row-19 result");
   if (value.schema !== COMPOSITION_SCHEMA ||
       value.status !== "ready-for-out-of-band-publication-authority" ||
-      value.finalOwnerSha256 !== FINAL_OWNER_SHA256 ||
+      (!FRESH_PREPARED.has(value) && value.finalOwnerSha256 !== FINAL_OWNER_SHA256) ||
       value.correspondenceComplete !== true || value.publicComplete !== false ||
-      value.usedW0RuntimeData !== false || value.freshPreparedInput !== false ||
+      value.usedW0RuntimeData !== false ||
+      (value.freshPreparedInput !== false &&
+        !(value.freshPreparedInput === true && FRESH_PREPARED.has(value))) ||
       value.qualifiedTiming !== false || typeof value.sealedEnvelopeHex !== "string" ||
       !/^(?:[0-9a-f]{2})+$/.test(value.sealedEnvelopeHex))
     fail("row-19 result is not ready for publication");
@@ -268,4 +290,6 @@ function publishPreparedRow19ClassUnitResult(prepared, authority, publisher = un
 module.exports = { CLASS_OWNER_SHA256, COMPOSITION_SCHEMA, FIELD_ID,
   FINAL_OWNER_SHA256, INPUT_REPLAY_SCHEMA, PARI_SOURCE_SHA256, POLYNOMIAL,
   PUBLICATION_REPLAY_SCHEMA, Row19ClassUnitAdapterFailure, UNIT_OWNER_SHA256,
-  prepareRow19ClassUnitResult, publishPreparedRow19ClassUnitResult };
+  isAuthenticFreshPrepared(value) { return FRESH_PREPARED.has(value); },
+  prepareFreshRow19ClassUnitResult, prepareRow19ClassUnitResult,
+  publishPreparedRow19ClassUnitResult };

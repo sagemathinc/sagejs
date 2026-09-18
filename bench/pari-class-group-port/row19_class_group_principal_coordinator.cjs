@@ -169,6 +169,42 @@ runpy.run_module('bench.pari-class-group-port.row19_class_group_principal_owner'
   return { owner, receipt: publishOwner(owner, outputDirectory) };
 }
 
+function buildFreshOwner({ terminalDescriptor, firstDescriptor, prepared, prefix,
+  preparedAuthoritySha256, outputDirectory }) {
+  const terminal = readGzipOwner(terminalDescriptor);
+  const first = readGzipOwner(firstDescriptor);
+  assert.equal(first.schema, "sagejs.pari-class-group/row19-first-hnf-owner-v1");
+  assert.equal(terminal.schema,
+    "sagejs.pari-class-group/row19-terminal-continuation-owner-v1");
+  const ancestry = { terminalOwnerSha256: terminalDescriptor.ownerSha256,
+    terminalCompressedSha256: terminalDescriptor.compressedSha256,
+    firstHnfOwnerSha256: firstDescriptor.ownerSha256,
+    firstHnfCompressedSha256: firstDescriptor.compressedSha256,
+    preparedAuthoritySha256,
+    preparedProjectionSha256: hash(prepared), prefixSha256: hash(prefix),
+    prefixProjectionSha256: pythonProjectionHash(prefix) };
+  assert.equal(terminal.authority.preparedAuthoritySha256, preparedAuthoritySha256);
+  assert.equal(terminal.authority.firstHnfOwnerSha256, firstDescriptor.ownerSha256);
+  assert.equal(terminal.authority.prefixSha256, ancestry.prefixSha256);
+  const program = `
+import json,sys
+sys.path.extend(['src/lib','src/baselib','.'])
+from importlib import import_module
+m=import_module('bench.pari-class-group-port.row19_class_group_principal_owner')
+p=json.load(sys.stdin)
+json.dump(m.compose_fresh_row19_class_group_principal_owner(
+ p['terminal'],p['first'],p['prepared'],p['prefix'],p['ancestry'],p['expected']),
+ sys.stdout,separators=(',',':'))`;
+  const run = spawnSync("python3", ["-c", program], { cwd: ROOT,
+    input: JSON.stringify({ terminal, first, prepared, prefix, ancestry,
+      expected: firstDescriptor.ownerSha256 }), encoding: "utf8", timeout: 600_000,
+    maxBuffer: 128 * 1024 * 1024 });
+  assert.equal(run.status, 0, run.stderr || String(run.error));
+  const owner = JSON.parse(run.stdout);
+  verifyOwner(owner, ancestry);
+  return { owner, receipt: publishOwner(owner, outputDirectory) };
+}
+
 module.exports = { SCHEMA, TERMINAL_SHA256, TERMINAL_COMPRESSED_SHA256,
   FIRST_SHA256, FIRST_COMPRESSED_SHA256, readGzipOwner, verifyOwner,
-  publishOwner, buildOwner };
+  publishOwner, buildFreshOwner, buildOwner };
