@@ -29,18 +29,43 @@ const RECORD_RESERVE = 10110;
 // outside the boundary's structural subset.
 const PREPARED_CANONICAL_SHA256 =
   "8e1ca4ebfd65d2e8c138924897f7cc060e7336089ebbeb7841387899ae4b96a6";
-const ROOT_CANONICAL_SHA256 =
-  "b10eab9b6a39b59286171d270fc29a4f7e3c1b5b7ed4288d1de278f1d615380b";
+// Root identity is mathematical/provenance identity.  Per-process telemetry
+// is retained when present but cannot change the authority of the root.
+const ROOT_SEMANTIC_SCHEMA =
+  "sagejs.pari-class-group/row13-prepared-root-semantic-v1";
+const ROOT_SEMANTIC_SHA256 =
+  "989aa45eb0792587c6fa8a92d6162c899878fbd61a7a6518b32efed2457ae46c";
 
 const sha256 = (bytes) =>
   crypto.createHash("sha256").update(bytes).digest("hex");
 const hash = (value) => sha256(Buffer.from(JSON.stringify(value)));
 const strings = (values) => values.map(String);
 
+function semanticRoot(root) {
+  const value = structuredClone(root);
+  assert(value.execution && typeof value.execution === "object");
+  const telemetry = ["elapsedNs", "maxRssKiB"].filter((key) =>
+    Object.hasOwn(value.execution, key));
+  assert(telemetry.length === 0 || telemetry.length === 2,
+    "root execution telemetry must be wholly present or absent");
+  if (telemetry.length) {
+    assert.match(value.execution.elapsedNs, /^(0|[1-9][0-9]*)$/);
+    assert(Number.isSafeInteger(value.execution.maxRssKiB) &&
+      value.execution.maxRssKiB >= 0);
+  }
+  delete value.execution.elapsedNs;
+  delete value.execution.maxRssKiB;
+  return value;
+}
+
+function semanticRootAuthority(root) {
+  return { schema: ROOT_SEMANTIC_SCHEMA, sha256: hash(semanticRoot(root)) };
+}
+
 function synthesizeMetadata(preparedEnvelope, root) {
   validateBoundary(preparedEnvelope, root);
   assert.equal(hash(preparedEnvelope), PREPARED_CANONICAL_SHA256);
-  assert.equal(hash(root), ROOT_CANONICAL_SHA256);
+  assert.equal(semanticRootAuthority(root).sha256, ROOT_SEMANTIC_SHA256);
   const prepared = structuredClone(preparedEnvelope.data);
   const descriptorGenerators = root.selectedDescriptors.flatMap(
     (row) => row.generator,
@@ -48,7 +73,7 @@ function synthesizeMetadata(preparedEnvelope, root) {
   const metadata = {
     authority: {
       preparedAuthoritySha256: preparedEnvelope.authoritySha256,
-      preparedRootSha256: hash(root),
+      preparedRootSha256: semanticRootAuthority(root).sha256,
       tauAuthority:
         "authenticated-initial-factor-descriptor-column-to-row",
     },
@@ -125,7 +150,7 @@ function acceptedOwner(preparedEnvelope, root, live, metadataReceipt) {
     },
     ancestry: {
       preparedAuthoritySha256: preparedEnvelope.authoritySha256,
-      preparedRootSha256: hash(root),
+      preparedRootSha256: semanticRootAuthority(root).sha256,
       factorMetadataSha256: metadataReceipt.metadataSha256,
     },
     schedule: {
@@ -369,5 +394,7 @@ module.exports = {
   acceptedOwner,
   runPreparedComplete,
   runThroughPost1006,
+  semanticRoot,
+  semanticRootAuthority,
   synthesizeMetadata,
 };
