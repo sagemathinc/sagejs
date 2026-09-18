@@ -62,3 +62,14 @@ The receipt is diagnostic, untimed, and not qualification evidence.
 For a compiler-only smoke test, `--protocol-only` uses the documented row-3
 diagonal presentation and identity permutation, labels the receipt
 `authenticOwnerChecked=false`, and makes no frozen-owner claim.
+
+The authentic run rebuilt immutable presentation owner
+`200190446c7128e2fe8d549924f76c1ddfce205f857a0d55a1d523d287dd868b`
+from pristine W0
+`8ef5cd64a3baaf0ff6f3e57951cdb0d1a7549879aef6dd089d5a69b39da970b9`.
+CPython, JavaScript, GMP, and tagged execution agreed on
+`D = diag(6,1)`, `Uir = [[1,0],[-1,0]]`, `M1 = [[2],[-3]]`, and
+`M2 = [[-1,-1],[1,1]]`.  The one active genback request has signed
+exponents `+1` and `-1` at original factor-base indices 4 and 74.  The
+receipt set `authenticOwnerChecked=true`, then stopped at the declared missing
+owner without constructing a generator ideal.
