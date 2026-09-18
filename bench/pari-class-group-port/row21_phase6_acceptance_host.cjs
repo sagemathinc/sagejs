@@ -29,9 +29,9 @@ function view(owner, length = owner.length) {
     .slice(0, length).map(String);
 }
 
-async function prepareResident() {
+async function prepareResident(inputPath) {
   source.materialize();
-  const connected = await connectedHost.prepareResident();
+  const connected = await connectedHost.prepareResident(inputPath);
   const built = await compileKernel({ sourcePath: source.OUTPUT });
   const fn = require(built.modulePath)[source.EXPORT];
   assert.equal(fn?.nativeAvailable, true);

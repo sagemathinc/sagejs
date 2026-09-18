@@ -66,6 +66,10 @@ async function genuine() {
       entry.entries[0] = entry.entries[0] === "0" ? "1" : "0"; },
     value => { value.field.definingPolynomialAscending[0] = "37"; },
     value => { value.source.assumptions[0].statement += " mutated"; },
+    value => { value.source.pariSourceSha256 = "0".repeat(64); },
+    value => { value.honesty.sourcePolicy += "-mutated"; },
+    value => { value.honesty.outcome = "equal-bound-source-skip"; },
+    value => { value.field.id = "5.3.1009349859375.4"; },
     value => { value.terminal.status = "not-complete"; },
   ]) {
     const changed = structuredClone(payload); mutate(changed);

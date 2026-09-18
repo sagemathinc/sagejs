@@ -72,9 +72,9 @@ const lengths = Object.freeze({
   u_output_norms: 3, u_output_real_signs: 9,
 });
 
-async function prepareResident() {
+async function prepareResident(inputPath) {
   source.materialize();
-  const acceptance = await acceptanceHost.prepareResident();
+  const acceptance = await acceptanceHost.prepareResident(inputPath);
   const built = await compileKernel({ sourcePath: source.OUTPUT });
   const fn = require(built.modulePath)[source.EXPORT];
   assert.equal(fn?.nativeAvailable, true);

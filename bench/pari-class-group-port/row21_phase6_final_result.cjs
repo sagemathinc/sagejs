@@ -1,13 +1,13 @@
 "use strict";
 
-// Immutable, capability-backed row-21 result over the resident Phase-6 root.
-// The native clock ends in row21_phase6_unit_host before any projection,
+// Immutable, capability-backed row-21 result over the prepared Phase-6 aggregate.
+// The native clock ends in row21_phase6_prepared_aggregate_host before projection,
 // witness construction, canonicalization, replay, or publication happens.
 
 const assert = require("node:assert/strict");
 const crypto = require("node:crypto");
 const neutral = require("./class_unit_correspondence_result.cjs");
-const unitHost = require("./row21_phase6_unit_host.cjs");
+const aggregateHost = require("./row21_phase6_prepared_aggregate_host.cjs");
 
 const FIELD_ID = "5.3.1009349859375.3";
 const PREPARED_AUTHORITY =
@@ -18,6 +18,9 @@ const REPLAY_SCHEMA =
   "sagejs.pari-class-group/row21-phase6-resident-result-replay-v1";
 const RESULT_SCHEMA =
   "sagejs.pari-class-group/row21-phase6-resident-result-v1";
+const HONESTY_OUTCOME = "not-required";
+const HONESTY_SOURCE_POLICY =
+  "resident-PARI-2.17.4-equal-bound-correspondence";
 const DEGREE = 5;
 const ROWS = 24;
 const COLUMNS = 32;
@@ -262,6 +265,9 @@ function capabilityBundle(resident, projection) {
     relation,
     nativeCapability("class-number", "class-number",
       v.t_accept_class_number, 1),
+    // The neutral payload contract names this role `regulator-enclosure`.
+    // Here it is PARI's packed accepted value under the explicit assumption
+    // below, not an independently replayed rigorous enclosure.
     nativeCapability("accepted-regulator", "regulator-enclosure",
       v.t_accept_regulator, 3),
     nativeCapability("analytic-inverse-hr", "analytic-inverse-hr", v.t_inverse_hr, 3),
@@ -295,6 +301,8 @@ function capabilityBundle(resident, projection) {
       v.u_output_logs_imag, 36),
     nativeCapability("native-terminal-state", "native-terminal-state",
       v.unit_terminal_state, 14),
+    nativeCapability("prepared-aggregate-state", "prepared-aggregate-state",
+      v.aggregate_state, 6),
   ];
   const presentation = columnHnfWitness(readCapability(relation));
   capabilities.push(derivedCapability("class-presentation", "class-presentation", () => {
@@ -317,6 +325,14 @@ function capabilityBundle(resident, projection) {
   ]));
   capabilities.push(derivedCapability("assumption-evidence", "assumption-evidence",
     () => [...neutral.canonical(assumptions())].map(String)));
+  capabilities.push(derivedCapability("source-metadata", "source-metadata", () => [
+    ...neutral.canonical({ pariSourceSha256: PARI_SOURCE_SHA256,
+      pariVersion: "2.17.4", replaySchema: REPLAY_SCHEMA }),
+  ].map(String)));
+  capabilities.push(derivedCapability("honesty-metadata", "honesty-metadata", () => [
+    ...neutral.canonical({ outcome: HONESTY_OUTCOME,
+      sourcePolicy: HONESTY_SOURCE_POLICY }),
+  ].map(String)));
   return Object.freeze({ capabilities: Object.freeze(capabilities), presentation });
 }
 
@@ -345,8 +361,8 @@ function payloadFromCapabilities(resident, bundle) {
       presentationOwner: "class-presentation" },
     field: { definingPolynomialAscending: prepared.prep_polynomial.map(String),
       degree: "5", id: FIELD_ID },
-    honesty: { evidenceOwner: "honesty-evidence", outcome: "not-required",
-      sourcePolicy: "resident-PARI-2.17.4-equal-bound-correspondence" },
+    honesty: { evidenceOwner: "honesty-evidence", outcome: HONESTY_OUTCOME,
+      sourcePolicy: HONESTY_SOURCE_POLICY },
     schema: neutral.PAYLOAD_SCHEMA,
     source: { assumptions: assumptions(),
       correspondence: "upstream-assumed-pari-correspondence",
@@ -380,6 +396,19 @@ function replayPayload(payload, capabilities, mathematicalAuthoritySha256) {
   if (!same([...neutral.canonical(payload.source.assumptions)].map(String),
       logical(owners.get("assumption-evidence"))))
     fail("source assumptions changed");
+  if (!same([...neutral.canonical({
+    pariSourceSha256: payload.source.pariSourceSha256,
+    pariVersion: payload.source.pariVersion,
+    replaySchema: payload.source.replaySchema,
+  })].map(String), logical(owners.get("source-metadata"))))
+    fail("fixed PARI source metadata changed");
+  if (!same([...neutral.canonical({
+    outcome: payload.honesty.outcome,
+    sourcePolicy: payload.honesty.sourcePolicy,
+  })].map(String), logical(owners.get("honesty-metadata"))))
+    fail("honesty policy metadata changed");
+  if (payload.field.id !== FIELD_ID)
+    fail("field identity changed");
   if (!same(payload.field.definingPolynomialAscending,
       logical(owners.get("prepared-polynomial"))) || context[0] !== payload.field.degree ||
       context[3] !== payload.unitGroup.torsionOrder)
@@ -407,6 +436,8 @@ function replayPayload(payload, capabilities, mathematicalAuthoritySha256) {
   if (!same(logical(owners.get("acceptance-state")), ["2", "0", "0"]) ||
       !same(logical(owners.get("native-terminal-state")),
         ["0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "1", "1"]) ||
+      !same(logical(owners.get("prepared-aggregate-state")),
+        ["0", "0", "8", "2", "1", "1"]) ||
       payload.classGroup.classNumber !== logical(owners.get("class-number"))[0] ||
       payload.classGroup.classNumber !== "1" || payload.classGroup.invariantFactors.length)
     fail("terminal class-and-unit state changed");
@@ -424,14 +455,14 @@ function replayPayload(payload, capabilities, mathematicalAuthoritySha256) {
 }
 
 async function prepareResident(inputPath) {
-  const resident = await unitHost.prepareResident(inputPath);
+  const resident = await aggregateHost.prepareResident(inputPath);
   RESIDENTS.add(resident);
   return resident;
 }
 
 function computeCandidate(resident) {
   if (!RESIDENTS.has(resident)) fail("resident capability is not authentic");
-  const invocation = unitHost.runInvocation(resident);
+  const invocation = aggregateHost.runInvocation(resident);
   const bundle = capabilityBundle(resident, invocation.projection);
   const payload = payloadFromCapabilities(resident, bundle);
   const raw = neutral.sealClassUnitCorrespondenceResult(payload);
