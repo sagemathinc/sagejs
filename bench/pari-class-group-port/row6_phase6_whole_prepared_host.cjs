@@ -85,22 +85,54 @@ const LENGTHS = Object.freeze({
   class_factor_map: 9 * 2048, class_state: 12, resident_state: 14,
 });
 
+function terminalStorageAccounting() {
+  const terminalNames = source.signature(
+    "row6_phase6_resident_terminal_root.py", source.TERMINAL)
+    .filter(([name]) => !source.TERMINAL_ALIASES[name]);
+  let total = 0;
+  for (const [name, kind] of terminalNames) {
+    if (name === "cache_changed") continue;
+    const length = LENGTHS[name];
+    assert.notEqual(length, undefined, `missing terminal length ${name}`);
+    total += kind === "IntegerBuffer" ? length * (4 + 8 * 16) : length * 8;
+  }
+  const limit = gateHost.ROW6_PREPARED_LAYOUT.storagePlan.terminalExternalBytes;
+  assert(total <= limit, "row-6 terminal owners exceed reviewed storage budget");
+  return Object.freeze({ limit, total });
+}
+
 function allocateOwned(fn, terminalNames) {
   const owned = {};
+  let allocatedBytes = 0;
+  const limit = gateHost.ROW6_PREPARED_LAYOUT.storagePlan.terminalExternalBytes;
+  const reserve = bytes => {
+    if (!Number.isSafeInteger(bytes) || bytes < 0 || allocatedBytes + bytes > limit) {
+      const error = new Error("row-6 terminal owners exceed reviewed storage budget");
+      error.code = "SAGEJS_ROW6_TERMINAL_EXTERNAL_STORAGE_LIMIT";
+      throw error;
+    }
+    allocatedBytes += bytes;
+  };
   for (const [name, kind] of terminalNames) {
     if (name === "cache_changed") owned[name] = true;
     else {
       const length = LENGTHS[name];
       assert.notEqual(length, undefined, `missing terminal length ${name}`);
-      if (kind === "Int64Buffer") owned[name] = fn.createInt64Buffer(length);
-      else if (kind === "Float64Buffer") owned[name] = fn.createFloat64Buffer(length);
+      if (kind === "Int64Buffer") {
+        reserve(length * 8);
+        owned[name] = fn.createInt64Buffer(length);
+      } else if (kind === "Float64Buffer") {
+        reserve(length * 8);
+        owned[name] = fn.createFloat64Buffer(length);
+      }
       else {
         assert.equal(kind, "IntegerBuffer", `unsupported terminal type ${kind}`);
+        reserve(length * (4 + 8 * 16));
         owned[name] = fn.createIntegerBuffer(length, 16);
       }
     }
   }
-  return owned;
+  return Object.freeze({ allocatedBytes, owned });
 }
 
 async function prepare(preparedEnvelope) {
@@ -119,7 +151,8 @@ async function prepare(preparedEnvelope) {
   const terminalNames = source.signature(
     "row6_phase6_resident_terminal_root.py", source.TERMINAL)
     .filter(([name]) => !source.TERMINAL_ALIASES[name]);
-  const owned = allocateOwned(fn, terminalNames);
+  const terminalAllocation = allocateOwned(fn, terminalNames);
+  const owned = terminalAllocation.owned;
   const pool = { ...gate.inputs };
   for (const [name] of terminalNames) pool[`terminal_${name}`] = owned[name];
   const inputs = Object.fromEntries(names.map(([name]) => {
@@ -127,6 +160,7 @@ async function prepare(preparedEnvelope) {
     return [name, pool[name]];
   }));
   return Object.freeze({ built, fn, gate, inputs,
+    terminalAllocatedBytes: terminalAllocation.allocatedBytes,
     names: Object.freeze(names.map(Object.freeze)), owned });
 }
 
@@ -171,4 +205,4 @@ function createProcessCoordinatorAdapter(preparedEnvelope) {
 
 module.exports = { EXPORT, LENGTHS,
   ROW6_PREPARED_LAYOUT: gateHost.ROW6_PREPARED_LAYOUT, SOURCE,
-  createProcessCoordinatorAdapter, prepare, run };
+  createProcessCoordinatorAdapter, prepare, run, terminalStorageAccounting };

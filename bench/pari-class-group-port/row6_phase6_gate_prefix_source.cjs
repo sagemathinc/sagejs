@@ -6,6 +6,8 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const prefix = require("./row6_phase6_prepared_prefix_source.cjs");
+const { ROW6_PREPARED_LAYOUT } = require(
+  "./row6_phase6_whole_prepared_layout.cjs");
 
 const ROOT = "pari_row6_phase6_gate_prefix_root";
 const PREFIX = "pari_row6_phase6_prepared_prefix_root";
@@ -16,6 +18,7 @@ const HNF = "pari_hnfspec_complete";
 const NEXT = "pari_row14_prepare_next_pass";
 const APPEND = "pari_hnfadd";
 const ANCESTRY = "pari_row6_phase6_gate_ancestry_private";
+const WORKSPACE_LIMIT_BYTES = ROW6_PREPARED_LAYOUT.storagePlan.nativeWorkspaceBytes;
 
 function signature(file, name) {
   const source = fs.readFileSync(path.join(__dirname, file), "utf8");
@@ -66,6 +69,107 @@ const HNF_ALIASES = Object.freeze({
 });
 const OMITTED_LOGICAL_INPUTS = new Set(["rows", "columns", "k0", "log_rows"]);
 
+const HNF_INTEGER_LENGTHS = Object.freeze({
+  dense: "initial_k0 * initial_columns",
+  transform: "initial_columns * initial_columns",
+  bottom: "(factor_count - initial_k0) * initial_columns",
+  updated_dense: "initial_k0 * initial_columns",
+  extra: "factor_count * initial_columns",
+  rank_matrix: "factor_count * initial_columns",
+  occupied: "initial_columns",
+  pivots: "factor_count",
+  best: "factor_count",
+  profile: "factor_count + 1",
+  rank_state: "10",
+  matbnew: "factor_count * initial_columns",
+  dep: "factor_count * initial_columns",
+  b: "factor_count * initial_columns",
+  transformed_logs: "log_stride * initial_columns",
+  full_h: "factor_count * initial_columns",
+  hnf_transform: "initial_columns * initial_columns",
+  lam: "initial_columns * initial_columns",
+  d: "initial_columns + 1",
+  full_dep: "factor_count * initial_columns",
+  work_b: "factor_count * initial_columns",
+  work_c: "log_stride * initial_columns",
+  result_h: "factor_count * initial_columns",
+  result_dep: "factor_count * initial_columns",
+  result_b: "factor_count * (initial_columns + factor_count)",
+  result_c: "log_stride * initial_columns",
+  cup_arena: "8_000_000",
+  cup_frames: "64",
+});
+
+function hnfWords(name) {
+  if (["transform", "full_h", "hnf_transform", "lam", "d", "full_dep",
+    "work_b"].includes(name)) return 16;
+  if (["transformed_logs", "work_c", "result_c"].includes(name)) return 8;
+  if (["cup_arena", "cup_frames"].includes(name)) return 2;
+  return 6;
+}
+
+const APPEND_INTEGER_LENGTHS = Object.freeze({
+  top: "append_lig_ceiling * 8",
+  exact_product: "append_lig_ceiling * 8",
+  log_product: "log_stride * 8",
+  adjusted_logs: "log_stride * 8",
+  joined: "append_lig_ceiling * append_width_ceiling",
+  joined_logs: "log_stride * relation_target",
+  rank_matrix: "append_lig_ceiling * append_width_ceiling",
+  occupied: "append_width_ceiling",
+  pivots: "append_lig_ceiling",
+  best: "append_lig_ceiling",
+  profile: "append_lig_ceiling",
+  rank_state: "10",
+  matb: "append_lig_ceiling * append_width_ceiling",
+  new_dep: "append_lig_ceiling * append_width_ceiling",
+  permuted_b: "append_lig_ceiling * factor_count",
+  full_h: "append_lig_ceiling * append_width_ceiling",
+  transform: "append_width_ceiling * append_width_ceiling",
+  lam: "append_width_ceiling * append_width_ceiling",
+  d: "append_width_ceiling + 1",
+  full_dep: "append_lig_ceiling * append_width_ceiling",
+  work_b: "append_lig_ceiling * factor_count",
+  work_c: "log_stride * relation_target",
+  final_c: "log_stride * relation_target",
+  result_h: "append_lig_ceiling * append_lig_ceiling",
+  result_dep: "append_lig_ceiling * append_lig_ceiling",
+  result_b: "append_lig_ceiling * factor_count",
+  result_c: "log_stride * relation_target",
+});
+const APPEND_REUSABLE_INTEGER = new Set([
+  "top", "exact_product", "log_product", "adjusted_logs", "joined",
+  "joined_logs", "rank_matrix", "occupied", "pivots", "best", "profile",
+  "matb", "new_dep", "lam", "d", "work_b", "work_c", "final_c",
+]);
+
+function workspaceAccounting({ factorCount, initialColumns, initialK0,
+  initialBColumns, places, relationTarget }) {
+  const values = {
+    factor_count: factorCount,
+    initial_columns: initialColumns,
+    initial_k0: initialK0,
+    log_stride: 7 * places,
+    relation_target: relationTarget,
+    append_lig_ceiling: factorCount - initialBColumns,
+    append_width_ceiling: 24,
+  };
+  const length = expression => Function(...Object.keys(values),
+    `"use strict"; return ${expression};`)(...Object.values(values));
+  let hnf = 0;
+  for (const [name, expression] of Object.entries(HNF_INTEGER_LENGTHS))
+    hnf += length(expression) * (4 + 8 * hnfWords(name));
+  let append = 0;
+  for (const [name, expression] of Object.entries(APPEND_INTEGER_LENGTHS))
+    append += length(expression) * (4 + 8 * 16) *
+      (APPEND_REUSABLE_INTEGER.has(name) ? 1 : 2);
+  const ancestry = 4 * relationTarget * (4 + 8 * 64) +
+    16 * factorCount * (4 + 8 * 32);
+  const total = hnf + append + ancestry;
+  return Object.freeze({ ancestry, append, hnf,
+    limit: WORKSPACE_LIMIT_BYTES, total });
+}
+
 function generate() {
   const prefixSig = signature("row6_phase6_prepared_prefix_root.generated.py", PREFIX);
   const factorSig = signature("row6_prepared_factor_base_root.py", FACTOR);
@@ -77,7 +181,7 @@ function generate() {
   const lines = [
     '\"\"\"Connected row-6 prepared prefix through the first genuine HNF.\"\"\"',
     "",
-    "from sagejs.native import Float64Buffer, Int64Buffer, IntegerBuffer, integer_buffer_view, native",
+    "from sagejs.native import Float64Buffer, Int64Buffer, IntegerBuffer, NativeWorkspaceArena, integer_buffer_view, native",
     `from .row6_prepared_factor_base_root import ${FACTOR}`,
     `from .row6_prepared_initial_relations import ${INITIAL}`,
     `from .collected_log_embeddings import ${COLLECTOR}`,
@@ -94,23 +198,28 @@ function generate() {
   }
   for (const [name, kind] of hnfSig) {
     if (OMITTED_LOGICAL_INPUTS.has(name) || name === "logs") continue;
+    if (kind === "IntegerBuffer") continue;
     if (!HNF_ALIASES[name]) lines.push(`    gate_initial_hnf_${name}: ${kind},`);
     else lines.push(`    ${HNF_ALIASES[name]}: ${kind},`);
   }
   lines.push("    gate_next_control: Int64Buffer,");
   for (const step of [1, 2]) for (const [name, kind] of appendSig) {
-    if (kind.endsWith("Buffer") && !appendBorrowed.has(name))
+    if (kind.endsWith("Buffer") && kind !== "IntegerBuffer" &&
+        !appendBorrowed.has(name))
       lines.push(`    gate_append${step}_${name}: ${kind},`);
   }
   for (const [name, kind] of [
     ["perm1", "Int64Buffer"], ["perm2", "Int64Buffer"],
-    ["current", "IntegerBuffer"], ["old", "IntegerBuffer"],
-    ["joined", "IntegerBuffer"], ["work", "IntegerBuffer"],
-    ["trailing_work", "IntegerBuffer"], ["raw_to_all", "IntegerBuffer"],
+    ["raw_to_all", "IntegerBuffer"],
     ["accepted_arch", "IntegerBuffer"],
     ["accepted_signs", "Int64Buffer"], ["phase_pi", "IntegerBuffer"],
     ["active_rows", "Int64Buffer"], ["state", "Int64Buffer"],
   ]) lines.push(`    gate_ancestry_${name}: ${kind},`);
+  lines.push(
+    "    gate_final_h: IntegerBuffer,",
+    "    gate_final_b: IntegerBuffer,",
+    "    gate_final_c: IntegerBuffer,",
+  );
   lines.push(
     ") -> int:",
     '    \"\"\"Run the authenticated prefix, relation pass, logs and first HNF.\"\"\"',
@@ -150,7 +259,22 @@ function generate() {
     const expression = initialAliases[name] || `initial_${name}`;
     lines.push(`        ${expression},`);
   }
-  lines.push("    )", "    if initial_count < 1:", "        return 12");
+  lines.push(
+    "    )",
+    "    if initial_count < 1:",
+    "        return 12",
+    "    log_stride = 7 * (factor_real_places + factor_complex_pairs)",
+    "    initial_k0 = int(factor_root_state[7])",
+    `    with NativeWorkspaceArena(${WORKSPACE_LIMIT_BYTES}) as gate_workspace:`,
+  );
+  const workspaceBodyStart = lines.length;
+  lines.push(
+    "    gate_ancestry_current = gate_workspace.integer_buffer(relation_target, 64)",
+    "    gate_ancestry_old = gate_workspace.integer_buffer(relation_target, 64)",
+    "    gate_ancestry_joined = gate_workspace.integer_buffer(relation_target, 64)",
+    "    gate_ancestry_work = gate_workspace.integer_buffer(relation_target, 64)",
+    "    gate_ancestry_trailing_work = gate_workspace.integer_buffer(16 * factor_count, 32)",
+  );
   // Derive every factor/relation-dependent collector table and logical count
   // from states produced in this invocation.  The host supplies only zeroed
   // storage ceilings plus authenticated prepared-number-field inputs.
@@ -189,6 +313,14 @@ function generate() {
     "    if initial_relation_state[0] != gate_log_completed[0]:",
     "        return 30",
     "    initial_columns = int(initial_relation_state[0])",
+  );
+  for (const [name, kind] of hnfSig) {
+    if (kind !== "IntegerBuffer" || HNF_ALIASES[name]) continue;
+    const length = HNF_INTEGER_LENGTHS[name];
+    assert(length, `missing arena HNF length ${name}`);
+    lines.push(`    gate_initial_hnf_${name} = gate_workspace.integer_buffer(${length}, ${hnfWords(name)})`);
+  }
+  lines.push(
     "    for i in range(factor_count * initial_columns):",
     "        gate_initial_hnf_original[i] = int(initial_relation_records[i])",
     "    for i in range(factor_count):",
@@ -208,10 +340,31 @@ function generate() {
     "    )",
     "    if status != 0:",
     "        return 40 + status",
+    "    append_lig_ceiling = factor_count - int(gate_initial_hnf_state[2])",
+    "    initial_reverse_lig = int(gate_initial_hnf_assembly_state[0]) + int(gate_initial_hnf_assembly_state[1])",
+    "    if append_lig_ceiling < 1 or append_lig_ceiling > 16:",
+    "        return 49",
+    "    if initial_reverse_lig < 1 or initial_reverse_lig > 16:",
+    "        return 50",
+    "    if int(gate_initial_hnf_state[0]) < 1 or int(gate_initial_hnf_state[0]) > 16:",
+    "        return 51",
+    "    append_width_ceiling = 24",
+  );
+  for (const [name, kind] of appendSig) {
+    if (kind !== "IntegerBuffer" || appendBorrowed.has(name)) continue;
+    const length = APPEND_INTEGER_LENGTHS[name];
+    assert(length, `missing arena append length ${name}`);
+    if (APPEND_REUSABLE_INTEGER.has(name)) {
+      lines.push(`    gate_append_${name} = gate_workspace.integer_buffer(${length}, 16)`);
+    } else {
+      for (const step of [1, 2])
+        lines.push(`    gate_append${step}_${name} = gate_workspace.integer_buffer(${length}, 16)`);
+    }
+  }
+  lines.push(
     "    for i in range(factor_count):",
     "        gate_ancestry_perm1[i] = gate_initial_hnf_perm[i]",
     "    initial_relation_state[4] = initial_columns",
-    "    log_stride = 7 * (factor_real_places + factor_complex_pairs)",
     "    squash = 0",
     "    checkpoint = 0",
     "    for pass_index in range(13):",
@@ -260,6 +413,8 @@ function generate() {
     "        if columns == current_total:",
     "            continue",
     "        new_columns = columns - current_total",
+    "        if new_columns < 1 or new_columns > 8:",
+    "            return 89",
     "        if checkpoint == 0:",
     "            for i in range(factor_count * new_columns):",
     "                gate_append1_new_relations[i] = int(",
@@ -278,7 +433,8 @@ function generate() {
       new_columns: "new_columns",
     };
     for (const [name] of appendSig) {
-      const expression = input[name] || `gate_append${step}_${name}`;
+      const expression = input[name] || (APPEND_REUSABLE_INTEGER.has(name) ?
+        `gate_append_${name}` : `gate_append${step}_${name}`);
       lines.push(`                ${expression},`);
     }
   }
@@ -287,6 +443,10 @@ function generate() {
     "            )",
     "            if status != 0:",
     "                return 90 + status",
+    "            if factor_count - int(gate_append1_state[2]) > append_lig_ceiling:",
+    "                return 99",
+    "            if int(gate_append1_state[0]) > 16:",
+    "                return 100",
     "            initial_relation_state[4] = columns",
     "            for i in range(factor_count):",
     "                gate_ancestry_perm2[i] = gate_initial_hnf_perm[i]",
@@ -305,6 +465,10 @@ function generate() {
     "            )",
     "            if status != 0:",
     "                return 110 + status",
+    "            if factor_count - int(gate_append2_state[2]) > append_lig_ceiling:",
+    "                return 118",
+    "            if int(gate_append2_state[0]) > 16:",
+    "                return 118",
     "            initial_relation_state[4] = columns",
     "            checkpoint = 2",
     "            if gate_append2_state[0] + gate_append2_state[2] < factor_count:",
@@ -364,6 +528,9 @@ function generate() {
     "            gate_append2_state[i] = gate_initial_hnf_state[i]",
     "        for i in range(gate_initial_hnf_state[0] * gate_initial_hnf_state[0]):",
     "            gate_append2_result_h[i] = gate_initial_hnf_result_h[i]",
+    "        initial_lig = factor_count - int(gate_initial_hnf_state[2])",
+    "        for i in range(initial_lig * int(gate_initial_hnf_state[2])):",
+    "            gate_append2_result_b[i] = gate_initial_hnf_result_b[i]",
     "        for i in range(log_stride * initial_columns):",
     "            gate_append2_result_c[i] = gate_initial_hnf_result_c[i]",
     "    elif checkpoint == 1:",
@@ -371,10 +538,36 @@ function generate() {
     "            gate_append2_state[i] = gate_append1_state[i]",
     "        for i in range(gate_append1_state[0] * gate_append1_state[0]):",
     "            gate_append2_result_h[i] = gate_append1_result_h[i]",
+    "        append1_lig = factor_count - int(gate_append1_state[2])",
+    "        for i in range(append1_lig * int(gate_append1_state[2])):",
+    "            gate_append2_result_b[i] = gate_append1_result_b[i]",
     "        for i in range(log_stride * gate_append1_state[7]):",
     "            gate_append2_result_c[i] = gate_append1_result_c[i]",
+    "    final_h_rows = int(gate_append2_state[0])",
+    "    final_b_columns = int(gate_append2_state[2])",
+    "    final_columns = int(gate_append2_state[7])",
+    "    final_lig = factor_count - final_b_columns",
+    "    if final_h_rows < 1 or final_h_rows > 16 or final_lig < 1 or final_lig > 16:",
+    "        return 131",
+    "    if len(gate_final_h) < 16 * 16:",
+    "        return 132",
+    "    if len(gate_final_b) < 16 * factor_count:",
+    "        return 133",
+    "    if len(gate_final_c) < log_stride * relation_target:",
+    "        return 134",
+    "    for i in range(final_h_rows * final_h_rows):",
+    "        gate_final_h[i] = gate_append2_result_h[i]",
+    "    for i in range(final_lig * final_b_columns):",
+    "        gate_final_b[i] = gate_append2_result_b[i]",
+    "    for i in range(log_stride * final_columns):",
+    "        gate_final_c[i] = gate_append2_result_c[i]",
     "    return 0", "", "", `__all__ = [\"${ROOT}\"]`, "",
   );
+  const workspaceBodyEnd = lines.lastIndexOf("    return 0");
+  assert(workspaceBodyEnd >= workspaceBodyStart);
+  for (let i = workspaceBodyStart; i <= workspaceBodyEnd; i++) {
+    if (lines[i] !== "") lines[i] = `    ${lines[i]}`;
+  }
   // Keep the formatter outside the runtime/source-inspection import path.  It
   // loads Ruff's WASM module and is needed only when regenerating this file.
   const { formatPythonSource } = require("../../tools/python-format.cjs");
@@ -382,4 +575,5 @@ function generate() {
 }
 
 if (require.main === module) process.stdout.write(generate());
-module.exports = { COLLECTOR_ALIASES, HNF_ALIASES, ROOT, generate, signature };
+module.exports = { COLLECTOR_ALIASES, HNF_ALIASES, ROOT,
+  WORKSPACE_LIMIT_BYTES, generate, signature, workspaceAccounting };

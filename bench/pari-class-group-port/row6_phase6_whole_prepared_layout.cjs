@@ -53,6 +53,17 @@ const ROW6_PREPARED_LAYOUT = deepFreeze({
     maxClassRows: 16,
     maxSelectedRows: 23,
   },
+  storagePlan: {
+    // Each boundary is enforced independently before allocation.  Their sum
+    // is explicit-owner storage, not a process RSS promise; the remaining
+    // 319,967,296 bytes below 4 GiB are left for the addon and runtime.
+    preparedPrefixBytes: 625_000_000,
+    gateExternalBytes: 300_000_000,
+    nativeWorkspaceBytes: 3_000_000_000,
+    terminalExternalBytes: 50_000_000,
+    explicitOwnerBytes: 3_975_000_000,
+    processCeilingBytes: 4 * 1024 ** 3,
+  },
 });
 
 function assertLayout() {
@@ -77,6 +88,12 @@ function assertLayout() {
     if (!Number.isSafeInteger(words) || words <= 0)
       throw new Error(`invalid row-6 word ceiling ${name}`);
   }
+  const storage = ROW6_PREPARED_LAYOUT.storagePlan;
+  if (storage.explicitOwnerBytes !==
+        storage.preparedPrefixBytes + storage.gateExternalBytes +
+        storage.nativeWorkspaceBytes + storage.terminalExternalBytes ||
+      storage.explicitOwnerBytes >= storage.processCeilingBytes)
+    throw new Error("invalid row-6 prepared-only storage budget");
   return ROW6_PREPARED_LAYOUT;
 }
 

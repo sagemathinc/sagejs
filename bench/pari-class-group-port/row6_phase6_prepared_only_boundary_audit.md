@@ -41,18 +41,68 @@ The unit path now publishes only the status and dimensions it actually
 computed; any `not_given(PRECI)`/`LARGE` interpretation belongs to the
 post-run oracle, not to computational admission.
 
-The compiler ABI can express a maximum-sized owner plus a live
-`integer_buffer_view(start, length)`, including runtime strides.  A separate
-resource issue remains before the heavy differential run: naively allocating
-every dense HNF, HNF-add, and ancestry owner simultaneously at the 2,048-row
-policy maximum exceeds the normal 4 GiB worker budget.  The clean next step is
-reviewed phase-lifetime owner reuse (or a bounded native arena), not restoring
-answer-shaped host allocation.  No heavy compile is claimed by this audit.
-The host is explicitly fail-closed with
-`SAGEJS_ROW6_MAX_STORAGE_PLAN_REQUIRED` until that reuse design is reviewed;
-it cannot accidentally attempt the 13.2 GiB conservative allocation.
-A fresh compile-only check of the corrected live-stride Gate root completed
-successfully.  Evidence was inspected at `2026-09-18T19:56:09.495Z`:
+The compiler ABI now expresses the exact workspaces inside one lexical
+`NativeWorkspaceArena`.  The root derives HNF and append lengths from its live,
+authenticated factor/relation states, checks the 16-row and eight-new-column
+policy ceilings, and charges every packed allocation against a fixed
+3,000,000,000-byte arena budget.  Scratch with disjoint phase lifetimes is
+reused between append checkpoints; only compact terminal-facing H, B, C and
+ancestry outputs cross the arena boundary.  Arena children cannot escape the
+native root.
+
+Each live `new_columns = columns - current_total` batch is rejected unless it
+lies in `[1, 8]` immediately after derivation and before either checkpoint can
+copy relations, form an integer-buffer view, or enter `hnfadd`.  Thus the
+eight-column allocation ceiling is also an enforced indexing/call boundary,
+not merely an accounting assumption.
+
+Every remaining owner family has a separate fail-closed budget:
+
+| owner family | enforced ceiling (bytes) |
+| --- | ---: |
+| authenticated prepared prefix | 625,000,000 |
+| external Gate coordination/results | 300,000,000 |
+| native workspace arena | 3,000,000,000 |
+| terminal outputs/workspace | 50,000,000 |
+| **explicit-owner ceiling** | **3,975,000,000** |
+
+This is 319,967,296 bytes below 4 GiB.  That margin belongs to the addon and
+runtime; the table is an explicit-owner bound, not an RSS promise.  The host
+remains explicitly fail-closed with
+`SAGEJS_ROW6_MAX_STORAGE_PLAN_REQUIRED` while the new generated graph awaits a
+fresh compile review, so this source-cleanup step cannot execute the
+mathematical root.
+
+As a non-authoritative differential accounting check, substituting the
+already observed live row-6 dimensions (1,130 factor rows, 1,133 initial
+columns, initial B-width 1,124, target 1,137) gives:
+
+| live family | bytes |
+| --- | ---: |
+| prepared prefix | 600,236,372 |
+| external Gate owners | 161,395,072 |
+| initial-HNF arena owners | 1,846,386,376 |
+| ancestry arena owners | 7,047,568 |
+| both append worksets after reuse | 20,701,296 |
+| terminal external owners | 2,656,700 |
+| **projected explicit peak** | **2,638,423,384 (2.4572 GiB)** |
+
+The arena reaches 1,853,433,944 bytes after initial-HNF plus ancestry storage
+and 1,874,135,240 bytes after append storage.  Reusing same-name append scratch
+between the two sequential checkpoints saves 10,568,184 bytes.  These observed
+dimensions are an oracle for accounting only: they do not select any storage
+length or capacity in the host.
+
+The frozen source-only arena graph has generated Gate SHA-256
+`7724317bf2585ea8a4a81d55b8c633c3cb718ab931fd816e8705a56d8939904f`
+and generated whole-root SHA-256
+`3c426a7e0cc92fce11ac6c0d512768bb74926cf3201f124f5627d5dd6b948e4c`.
+Both files match their generators byte-for-byte.  These are source identities,
+not compiled-cache or execution receipts.
+Immediately before arena integration, a compile-only check of the corrected
+live-stride Gate root completed successfully.  This is retained as historical
+compiler evidence, not as a build of the current arena graph.  Evidence was
+inspected at `2026-09-18T19:56:09.495Z`:
 
 | artifact | SHA-256 | bytes | mtime (UTC) |
 | --- | --- | ---: | --- |
@@ -76,13 +126,14 @@ dependency has SHA-256
 `22b6ac090d23b8dd73e0caff48d2f118c0277ea4686902b90f2befc405b250f8`
 and mtime `2026-09-18T19:39:50.645Z`.
 
-This proves the compiler accepts the corrected dimension-driven buffer views
-and reverse-ancestry graph.  It is not an execution receipt: the compile-only
-command did not call `prepare`, invoke the addon, construct owners, or execute
-the mathematical root.
+This proved that the pre-arena compiler accepted the corrected
+dimension-driven buffer views and reverse-ancestry graph.  It is not an
+execution receipt and does not authenticate the current arena source: the
+compile-only command did not call `prepare`, invoke the addon, construct
+owners, or execute the mathematical root.
 
-The exact current conservative byte ledger (using each owner's declared word
-capacity) is:
+For comparison, the superseded all-host conservative byte ledger (using each
+owner's old maximum declared capacity) was:
 
 | family | bytes | GiB |
 | --- | ---: | ---: |

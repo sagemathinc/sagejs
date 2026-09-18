@@ -56,7 +56,47 @@ const ROW6_CAPACITY_LEDGER = Object.freeze({
   "ancestry.phase_pi": Object.freeze({ highWater: 5, capacity: 16 }),
 });
 
+function createStorageBudget(limit, code) {
+  let used = 0;
+  return Object.freeze({
+    get used() { return used; },
+    limit,
+    reserve(bytes) {
+      assert(Number.isSafeInteger(bytes) && bytes >= 0,
+        "invalid row-6 storage charge");
+      if (used + bytes > limit) {
+        const error = new Error("row-6 external owners exceed reviewed storage budget");
+        error.code = code;
+        throw error;
+      }
+      used += bytes;
+    },
+  });
+}
+
 function signature(file, name) { return source.signature(file, name); }
+
+function allocationBytes(names, input, lengths, options = {}) {
+  const compact = options.compact || new Set(), wide = options.wide || new Set();
+  const capacities = options.capacities || {};
+  let bytes = 0;
+  for (const [name, kind] of names) {
+    if (!kind.endsWith("Buffer")) continue;
+    const supplied = input[name];
+    const length = supplied === undefined ? lengths[name] : supplied.length;
+    assert.notEqual(length, undefined, `missing planned length ${name}`);
+    if (kind === "Float64Buffer" || kind === "Int64Buffer") bytes += length * 8;
+    else {
+      const capacity = capacities[name] ?? (compact.has(name) ?
+        options.compactWords : wide.has(name) ? options.wideWords :
+          options.minimumWords);
+      assert(Number.isSafeInteger(capacity) && capacity > 0,
+        `missing planned fixed word ceiling ${name}`);
+      bytes += length * (4 + 8 * capacity);
+    }
+  }
+  return bytes;
+}
 
 function allocate(fn, names, input, lengths, options = {}) {
   const compact = options.compact || new Set(), wide = options.wide || new Set();
@@ -73,10 +113,12 @@ function allocate(fn, names, input, lengths, options = {}) {
     const length = supplied === undefined ? lengths[name] : supplied.length;
     assert.notEqual(length, undefined, `missing length ${name}`);
     if (kind === "Float64Buffer") {
+      options.budget?.reserve(length * 8);
       output[name] = fn.createFloat64Buffer(
         supplied === undefined ? length : supplied.map(Number));
       allocatedBytes += length * 8;
     } else if (kind === "Int64Buffer") {
+      options.budget?.reserve(length * 8);
       output[name] = fn.createInt64Buffer(
         supplied === undefined ? length : supplied.map(BigInt));
       allocatedBytes += length * 8;
@@ -88,6 +130,7 @@ function allocate(fn, names, input, lengths, options = {}) {
           options.minimumWords);
       assert(Number.isSafeInteger(capacity) && capacity > 0,
         `missing fixed word ceiling ${name}`);
+      options.budget?.reserve(length * (4 + 8 * capacity));
       try {
         output[name] = fn.createIntegerBuffer(length, capacity,
           supplied === undefined ? undefined : supplied.map(BigInt));
@@ -260,6 +303,78 @@ function appendLayoutLengths() {
   };
 }
 
+function gateExternalStorageAccounting(preparedEnvelope) {
+  const layout = assertLayout();
+  const aggregateNames = signature(
+    "row6_phase6_gate_prefix_root.generated.py", EXPORT);
+  const aggregateNameSet = new Set(aggregateNames.map(([name]) => name));
+  const lengths = layoutLengths();
+  const collectorInput = preparedCollectorInput(preparedEnvelope);
+  const collectorNames = signature(
+    "collected_log_embeddings.py", "pari_collect_and_log_relations");
+  const collectorOwnedNames = collectorNames.filter(([name]) =>
+    !source.COLLECTOR_ALIASES[name]);
+  const collectorPolicy = {
+    minimumWords: layout.integerWords.collectorDefault,
+    compactWords: layout.integerWords.collectorCompact,
+    wideWords: layout.integerWords.collectorDefault,
+    compact: new Set(["relation_records", "relation_hashes", "relation_metadata",
+      "relation", "relation_scratch"]),
+  };
+  const collector = allocationBytes(
+    collectorOwnedNames, collectorInput, lengths, collectorPolicy);
+
+  const hnfNames = signature("hnfspec_complete.py", "pari_hnfspec_complete");
+  const hnfLengths = Object.fromEntries(hnfNames.map(([name]) => [name,
+    lengths[name === "pivots" ? "hnf_rank_pivots" : `hnf_${name}`]]));
+  const hnfLogicalNames = new Set(["rows", "columns", "k0", "log_rows"]);
+  const hnfOwnedNames = hnfNames.filter(([name]) =>
+    !source.HNF_ALIASES[name] && !hnfLogicalNames.has(name) &&
+    aggregateNameSet.has(`gate_initial_hnf_${name}`));
+  const hnfPolicy = {
+    minimumWords: layout.integerWords.hnfDefault,
+    compactWords: layout.integerWords.collectorCompact,
+    wideWords: layout.integerWords.hnfWide,
+    compact: new Set(["cup_arena", "cup_frames"]),
+    capacities: { transformed_logs: layout.integerWords.hnfLogs,
+      work_c: layout.integerWords.hnfLogs,
+      result_c: layout.integerWords.hnfLogs },
+    wide: new Set(["transform", "full_h", "hnf_transform", "lam", "d",
+      "full_dep", "work_b"]),
+  };
+  const hnf = allocationBytes(hnfOwnedNames, {}, hnfLengths, hnfPolicy) +
+    8 * (layout.dimensions.maxFactorIdeals *
+      layout.dimensions.maxRelationColumns + layout.dimensions.maxFactorIdeals);
+
+  const appendNames = signature("hnfadd.py", "pari_hnfadd");
+  const appendBorrowed = new Set(["h", "dep", "b", "logs", "perm", "new_logs"]);
+  const appendOwned = appendNames.filter(([name, kind]) =>
+    kind.endsWith("Buffer") && !appendBorrowed.has(name) &&
+    aggregateNameSet.has(`gate_append1_${name}`));
+  const appendPolicy = { minimumWords: layout.integerWords.append,
+    compactWords: layout.integerWords.append,
+    wideWords: layout.integerWords.append };
+  const oneAppend = allocationBytes(
+    appendOwned, {}, appendLayoutLengths(), appendPolicy);
+  const d = layout.dimensions, a = layout.ancestryCeilings;
+  const coordination = 3 * 8;
+  const ancestry = 2 * d.maxFactorIdeals * 8 +
+    a.maxSelectedRows * d.maxRelationColumns * (4 + 8 * 64) +
+    7 * d.places * a.maxKernelRows * (4 + 8 * 16) +
+    d.places * a.maxKernelRows * 8 + 3 * (4 + 8 * 16) +
+    a.maxClassRows * 8 + 3 * 8;
+  const final = a.maxClassRows ** 2 * (4 + 8 * layout.integerWords.append) +
+    a.maxClassRows * d.maxFactorIdeals *
+      (4 + 8 * layout.integerWords.append) +
+    7 * d.places * d.maxRelationColumns *
+      (4 + 8 * layout.integerWords.hnfLogs);
+  const total = collector + hnf + 2 * oneAppend + coordination + ancestry + final;
+  assert(total <= layout.storagePlan.gateExternalBytes,
+    "row-6 planned gate owners exceed reviewed storage budget");
+  return Object.freeze({ ancestry, append: 2 * oneAppend, collector,
+    coordination, final, hnf, limit: layout.storagePlan.gateExternalBytes, total });
+}
+
 async function prepare(preparedEnvelope) {
   assert.equal(arguments.length, 1,
     "factor/relation owners are forbidden at the prepared-only boundary");
@@ -273,6 +388,10 @@ async function prepare(preparedEnvelope) {
   }
   const aggregateNames = signature(
     "row6_phase6_gate_prefix_root.generated.py", EXPORT);
+  const aggregateNameSet = new Set(aggregateNames.map(([name]) => name));
+  const externalBudget = createStorageBudget(
+    layout.storagePlan.gateExternalBytes,
+    "SAGEJS_ROW6_GATE_EXTERNAL_STORAGE_LIMIT");
   const fn = loadThinCachedKernel({ sourcePath: SOURCE, cacheRoot: CACHE_ROOT,
     entry: EXPORT, signature: aggregateNames, expected: THIN_EXPECTED });
   const outputPath = path.join(CACHE_ROOT, THIN_EXPECTED.cacheKey);
@@ -288,6 +407,7 @@ async function prepare(preparedEnvelope) {
   const collectorAliases = source.COLLECTOR_ALIASES;
   const collectorOwnedNames = collectorNames.filter(([name]) => !collectorAliases[name]);
   const collector = allocate(fn, collectorOwnedNames, collectorInput, lengths, {
+    budget: externalBudget,
     minimumWords: layout.integerWords.collectorDefault,
     compactWords: layout.integerWords.collectorCompact,
     wideWords: layout.integerWords.collectorDefault,
@@ -301,8 +421,10 @@ async function prepare(preparedEnvelope) {
   const hnfInput = {};
   const hnfLogicalNames = new Set(["rows", "columns", "k0", "log_rows"]);
   const hnfOwnedNames = hnfNames.filter(([name]) =>
-    !source.HNF_ALIASES[name] && !hnfLogicalNames.has(name));
+    !source.HNF_ALIASES[name] && !hnfLogicalNames.has(name) &&
+    aggregateNameSet.has(`gate_initial_hnf_${name}`));
   const hnf = allocate(fn, hnfOwnedNames, hnfInput, hnfLengths, {
+    budget: externalBudget,
     minimumWords: layout.integerWords.hnfDefault,
     compactWords: layout.integerWords.collectorCompact,
     wideWords: layout.integerWords.hnfWide,
@@ -313,9 +435,17 @@ async function prepare(preparedEnvelope) {
     wide: new Set(["transform", "full_h", "hnf_transform", "lam", "d",
       "full_dep", "work_b"]),
   });
-  hnf.original = fn.createInt64Buffer(
+  const createInt64 = length => {
+    externalBudget.reserve(length * 8);
+    return fn.createInt64Buffer(length);
+  };
+  const createInteger = (length, words) => {
+    externalBudget.reserve(length * (4 + 8 * words));
+    return fn.createIntegerBuffer(length, words);
+  };
+  hnf.original = createInt64(
     layout.dimensions.maxFactorIdeals * layout.dimensions.maxRelationColumns);
-  hnf.perm = fn.createInt64Buffer(layout.dimensions.maxFactorIdeals);
+  hnf.perm = createInt64(layout.dimensions.maxFactorIdeals);
 
   const inputs = { ...prefix.inputs };
   for (const [name] of collectorOwnedNames) inputs[`gate_${name}`] = collector[name];
@@ -327,8 +457,10 @@ async function prepare(preparedEnvelope) {
   const appendBorrowed = new Set(["h", "dep", "b", "logs", "perm", "new_logs"]);
   const appendSizes = appendLayoutLengths();
   const appendOwned = appendNames.filter(([name, kind]) =>
-    kind.endsWith("Buffer") && !appendBorrowed.has(name));
-  const appendPolicy = { minimumWords: layout.integerWords.append,
+    kind.endsWith("Buffer") && !appendBorrowed.has(name) &&
+    aggregateNameSet.has(`gate_append1_${name}`));
+  const appendPolicy = { budget: externalBudget,
+    minimumWords: layout.integerWords.append,
     compactWords: layout.integerWords.append,
     wideWords: layout.integerWords.append };
   const append1 = allocate(fn, appendOwned, {}, appendSizes, appendPolicy);
@@ -337,32 +469,46 @@ async function prepare(preparedEnvelope) {
     inputs[`gate_append1_${name}`] = append1[name];
     inputs[`gate_append2_${name}`] = append2[name];
   }
-  inputs.gate_next_control = fn.createInt64Buffer(3);
-  const ancestry = {
-    perm1: fn.createInt64Buffer(layout.dimensions.maxFactorIdeals),
-    perm2: fn.createInt64Buffer(layout.dimensions.maxFactorIdeals),
-    current: fn.createIntegerBuffer(layout.dimensions.maxRelationColumns, 64),
-    old: fn.createIntegerBuffer(layout.dimensions.maxRelationColumns, 64),
-    joined: fn.createIntegerBuffer(layout.dimensions.maxRelationColumns, 64),
-    work: fn.createIntegerBuffer(layout.dimensions.maxRelationColumns, 64),
-    trailing_work: fn.createIntegerBuffer(
-      layout.dimensions.maxFactorIdeals ** 2, 32),
-    raw_to_all: fn.createIntegerBuffer(
+  inputs.gate_next_control = createInt64(3);
+  const ancestryCandidates = {
+    perm1: createInt64(layout.dimensions.maxFactorIdeals),
+    perm2: createInt64(layout.dimensions.maxFactorIdeals),
+    raw_to_all: createInteger(
       layout.ancestryCeilings.maxSelectedRows *
       layout.dimensions.maxRelationColumns, 64),
-    accepted_arch: fn.createIntegerBuffer(
+    accepted_arch: createInteger(
       7 * layout.dimensions.places * layout.ancestryCeilings.maxKernelRows, 16),
-    accepted_signs: fn.createInt64Buffer(
+    accepted_signs: createInt64(
       layout.dimensions.places * layout.ancestryCeilings.maxKernelRows),
-    phase_pi: fn.createIntegerBuffer(3, 16),
-    active_rows: fn.createInt64Buffer(layout.ancestryCeilings.maxClassRows),
-    state: fn.createInt64Buffer(3),
+    phase_pi: createInteger(3, 16),
+    active_rows: createInt64(layout.ancestryCeilings.maxClassRows),
+    state: createInt64(3),
   };
+  const ancestry = Object.fromEntries(Object.entries(ancestryCandidates).filter(
+    ([name]) => aggregateNameSet.has(`gate_ancestry_${name}`)));
   for (const [name, value] of Object.entries(ancestry))
     inputs[`gate_ancestry_${name}`] = value;
+  const final = {
+    h: createInteger(
+      layout.ancestryCeilings.maxClassRows ** 2,
+      layout.integerWords.append),
+    b: createInteger(
+      layout.ancestryCeilings.maxClassRows *
+      layout.dimensions.maxFactorIdeals,
+      layout.integerWords.append),
+    c: createInteger(
+      7 * layout.dimensions.places * layout.dimensions.maxRelationColumns,
+      layout.integerWords.hnfLogs),
+  };
+  for (const [name, value] of Object.entries(final))
+    inputs[`gate_final_${name}`] = value;
+  append2.result_h = final.h;
+  append2.result_b = final.b;
+  append2.result_c = final.c;
   const names = aggregateNames;
-  return Object.freeze({ ancestry, append1, append2, built, collector, fn, hnf,
-    inputs, names: Object.freeze(names.map(Object.freeze)), prefix });
+  return Object.freeze({ ancestry, append1, append2, built, collector,
+    externalAllocatedBytes: externalBudget.used, fn, hnf,
+    final, inputs, names: Object.freeze(names.map(Object.freeze)), prefix });
 }
 
 function run(resident) {
@@ -407,5 +553,6 @@ function createProcessCoordinatorAdapter(preparedEnvelope) {
 
 module.exports = { EXPORT, ROW6_CAPACITY_LEDGER, ROW6_PREPARED_LAYOUT, SOURCE,
   STORAGE_PLAN_REVIEWED, appendLayoutLengths, createProcessCoordinatorAdapter, prepare,
-  assertAuthenticatedEnvelope, layoutLengths, preparedCollectorInput, run,
+  assertAuthenticatedEnvelope, gateExternalStorageAccounting, layoutLengths,
+  preparedCollectorInput, run,
   validatePreparedOnlyBoundary, validatePreparedEnvelopeShape };

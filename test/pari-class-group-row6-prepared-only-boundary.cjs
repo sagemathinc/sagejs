@@ -50,6 +50,85 @@ test("layout is immutable and uses policy ceilings", () => {
   assert.equal(whole.ROW6_PREPARED_LAYOUT, layout);
   assert.equal(gate.STORAGE_PLAN_REVIEWED, false,
     "unsafe maximum allocation must remain fail-closed pending reuse review");
+  const storage = layout.storagePlan;
+  assert.equal(storage.explicitOwnerBytes,
+    storage.preparedPrefixBytes + storage.gateExternalBytes +
+      storage.nativeWorkspaceBytes + storage.terminalExternalBytes);
+  assert(storage.explicitOwnerBytes < storage.processCeilingBytes);
+});
+
+test("arena plan bounds peak explicit ownership below four GiB", () => {
+  const arena = source.workspaceAccounting({ factorCount: 1130,
+    initialColumns: 1133, initialK0: 4, initialBColumns: 1124,
+    places: 3, relationTarget: 1137 });
+  assert.deepEqual(arena, {
+    ancestry: 7047568,
+    append: 20701296,
+    hnf: 1846386376,
+    limit: 3000000000,
+    total: 1874135240,
+  });
+  assert(arena.total < arena.limit);
+  const prepared = { data: {
+    admission_matrix_m: Array(9).fill(0),
+    admission_matrix_p: Array(9).fill(0),
+    admission_matrix_e: Array(9).fill(0),
+    preparation_rounded_embedding: Array(9).fill(0),
+    preparation_embedding: Array(27).fill(0),
+  } };
+  const external = gate.gateExternalStorageAccounting(prepared);
+  assert.deepEqual(external, {
+    ancestry: 24441628,
+    append: 328112,
+    collector: 61927184,
+    coordination: 24,
+    final: 7293708,
+    hnf: 67404416,
+    limit: 300000000,
+    total: 161395072,
+  });
+  assert.deepEqual(whole.terminalStorageAccounting(), {
+    limit: 50000000, total: 2656700,
+  });
+});
+
+test("large exact workspaces are arena-local and cannot escape", () => {
+  const generated = sourceText("row6_phase6_gate_prefix_root.generated.py");
+  assert(generated.includes(
+    "with NativeWorkspaceArena(3000000000) as gate_workspace:"));
+  assert(generated.includes(
+    "gate_initial_hnf_transform = gate_workspace.integer_buffer("));
+  assert(generated.indexOf("initial_columns = int(initial_relation_state[0])") <
+    generated.indexOf("gate_initial_hnf_transform = gate_workspace.integer_buffer("),
+  "HNF ownership must use the live post-collector column count");
+  assert(generated.includes(
+    "gate_append1_result_b = gate_workspace.integer_buffer("));
+  assert.equal((generated.match(
+    /gate_append_top = gate_workspace\.integer_buffer\(/g) || []).length, 1,
+  "append scratch must be allocated once and reused by both checkpoints");
+  assert(generated.includes("gate_final_h: IntegerBuffer,"));
+  assert(generated.includes("gate_final_b: IntegerBuffer,"));
+  assert(generated.includes("gate_final_c: IntegerBuffer,"));
+  const signature = generated.slice(0, generated.indexOf(") -> int:"));
+  for (const forbidden of ["gate_initial_hnf_transform:",
+    "gate_append1_result_b:", "gate_ancestry_trailing_work:"])
+    assert(!signature.includes(forbidden), forbidden);
+});
+
+test("live append width is guarded before either fixed-capacity copy", () => {
+  const generated = sourceText("row6_phase6_gate_prefix_root.generated.py");
+  const assignment = generated.indexOf(
+    "new_columns = columns - current_total");
+  const guard = generated.indexOf(
+    "if new_columns < 1 or new_columns > 8:", assignment);
+  const append1Copy = generated.indexOf(
+    "gate_append1_new_relations[i] = int(", assignment);
+  const append2Copy = generated.indexOf(
+    "gate_append2_new_relations[i] = int(", assignment);
+  assert(assignment >= 0 && guard > assignment);
+  assert(guard < append1Copy, "append1 copy precedes live width guard");
+  assert(guard < append2Copy, "append2 copy precedes live width guard");
+  assert(generated.slice(guard, append1Copy).includes("return 89"));
 });
 
 test("append storage does not encode observed 3 then 1 answer", () => {

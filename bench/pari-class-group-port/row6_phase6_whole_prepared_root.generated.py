@@ -4,6 +4,7 @@ from sagejs.native import (
     Float64Buffer,
     Int64Buffer,
     IntegerBuffer,
+    NativeWorkspaceArena,
     integer_buffer_view,
     native,
 )
@@ -276,126 +277,42 @@ def pari_row6_phase6_gate_prefix_root(
     gate_initial_hnf_original: Int64Buffer,
     gate_initial_hnf_perm: Int64Buffer,
     gate_initial_hnf_mat: Int64Buffer,
-    gate_initial_hnf_dense: IntegerBuffer,
-    gate_initial_hnf_transform: IntegerBuffer,
     gate_initial_hnf_vmax: Int64Buffer,
     gate_initial_hnf_found: Int64Buffer,
     gate_initial_hnf_sparse_state: Int64Buffer,
-    gate_initial_hnf_bottom: IntegerBuffer,
-    gate_initial_hnf_updated_dense: IntegerBuffer,
-    gate_initial_hnf_extra: IntegerBuffer,
     gate_initial_hnf_cleanup_state: Int64Buffer,
-    gate_initial_hnf_rank_matrix: IntegerBuffer,
-    gate_initial_hnf_occupied: IntegerBuffer,
-    gate_initial_hnf_pivots: IntegerBuffer,
-    gate_initial_hnf_best: IntegerBuffer,
-    gate_initial_hnf_profile: IntegerBuffer,
-    gate_initial_hnf_rank_state: IntegerBuffer,
     gate_initial_hnf_perm_work: Int64Buffer,
-    gate_initial_hnf_matbnew: IntegerBuffer,
-    gate_initial_hnf_dep: IntegerBuffer,
-    gate_initial_hnf_b: IntegerBuffer,
     gate_initial_hnf_assembly_state: Int64Buffer,
-    gate_initial_hnf_transformed_logs: IntegerBuffer,
-    gate_initial_hnf_full_h: IntegerBuffer,
-    gate_initial_hnf_hnf_transform: IntegerBuffer,
-    gate_initial_hnf_lam: IntegerBuffer,
-    gate_initial_hnf_d: IntegerBuffer,
     gate_initial_hnf_hnf_state: Int64Buffer,
-    gate_initial_hnf_full_dep: IntegerBuffer,
-    gate_initial_hnf_work_b: IntegerBuffer,
-    gate_initial_hnf_work_c: IntegerBuffer,
     gate_initial_hnf_diagonal: Int64Buffer,
-    gate_initial_hnf_result_h: IntegerBuffer,
-    gate_initial_hnf_result_dep: IntegerBuffer,
-    gate_initial_hnf_result_b: IntegerBuffer,
-    gate_initial_hnf_result_c: IntegerBuffer,
     gate_initial_hnf_final_state: Int64Buffer,
     gate_initial_hnf_state: Int64Buffer,
-    gate_initial_hnf_cup_arena: IntegerBuffer,
-    gate_initial_hnf_cup_frames: IntegerBuffer,
     gate_initial_hnf_cup_solve_state: Int64Buffer,
     gate_initial_hnf_cup_state: Int64Buffer,
     gate_next_control: Int64Buffer,
     gate_append1_new_relations: Int64Buffer,
-    gate_append1_top: IntegerBuffer,
-    gate_append1_exact_product: IntegerBuffer,
-    gate_append1_log_product: IntegerBuffer,
-    gate_append1_adjusted_logs: IntegerBuffer,
-    gate_append1_joined: IntegerBuffer,
-    gate_append1_joined_logs: IntegerBuffer,
-    gate_append1_rank_matrix: IntegerBuffer,
-    gate_append1_occupied: IntegerBuffer,
-    gate_append1_pivots: IntegerBuffer,
-    gate_append1_best: IntegerBuffer,
-    gate_append1_profile: IntegerBuffer,
-    gate_append1_rank_state: IntegerBuffer,
     gate_append1_perm_work: Int64Buffer,
-    gate_append1_matb: IntegerBuffer,
-    gate_append1_new_dep: IntegerBuffer,
-    gate_append1_permuted_b: IntegerBuffer,
-    gate_append1_full_h: IntegerBuffer,
-    gate_append1_transform: IntegerBuffer,
-    gate_append1_lam: IntegerBuffer,
-    gate_append1_d: IntegerBuffer,
     gate_append1_hnf_state: Int64Buffer,
-    gate_append1_full_dep: IntegerBuffer,
-    gate_append1_work_b: IntegerBuffer,
-    gate_append1_work_c: IntegerBuffer,
     gate_append1_diagonal: Int64Buffer,
-    gate_append1_final_c: IntegerBuffer,
-    gate_append1_result_h: IntegerBuffer,
-    gate_append1_result_dep: IntegerBuffer,
-    gate_append1_result_b: IntegerBuffer,
-    gate_append1_result_c: IntegerBuffer,
     gate_append1_final_state: Int64Buffer,
     gate_append1_state: Int64Buffer,
     gate_append2_new_relations: Int64Buffer,
-    gate_append2_top: IntegerBuffer,
-    gate_append2_exact_product: IntegerBuffer,
-    gate_append2_log_product: IntegerBuffer,
-    gate_append2_adjusted_logs: IntegerBuffer,
-    gate_append2_joined: IntegerBuffer,
-    gate_append2_joined_logs: IntegerBuffer,
-    gate_append2_rank_matrix: IntegerBuffer,
-    gate_append2_occupied: IntegerBuffer,
-    gate_append2_pivots: IntegerBuffer,
-    gate_append2_best: IntegerBuffer,
-    gate_append2_profile: IntegerBuffer,
-    gate_append2_rank_state: IntegerBuffer,
     gate_append2_perm_work: Int64Buffer,
-    gate_append2_matb: IntegerBuffer,
-    gate_append2_new_dep: IntegerBuffer,
-    gate_append2_permuted_b: IntegerBuffer,
-    gate_append2_full_h: IntegerBuffer,
-    gate_append2_transform: IntegerBuffer,
-    gate_append2_lam: IntegerBuffer,
-    gate_append2_d: IntegerBuffer,
     gate_append2_hnf_state: Int64Buffer,
-    gate_append2_full_dep: IntegerBuffer,
-    gate_append2_work_b: IntegerBuffer,
-    gate_append2_work_c: IntegerBuffer,
     gate_append2_diagonal: Int64Buffer,
-    gate_append2_final_c: IntegerBuffer,
-    gate_append2_result_h: IntegerBuffer,
-    gate_append2_result_dep: IntegerBuffer,
-    gate_append2_result_b: IntegerBuffer,
-    gate_append2_result_c: IntegerBuffer,
     gate_append2_final_state: Int64Buffer,
     gate_append2_state: Int64Buffer,
     gate_ancestry_perm1: Int64Buffer,
     gate_ancestry_perm2: Int64Buffer,
-    gate_ancestry_current: IntegerBuffer,
-    gate_ancestry_old: IntegerBuffer,
-    gate_ancestry_joined: IntegerBuffer,
-    gate_ancestry_work: IntegerBuffer,
-    gate_ancestry_trailing_work: IntegerBuffer,
     gate_ancestry_raw_to_all: IntegerBuffer,
     gate_ancestry_accepted_arch: IntegerBuffer,
     gate_ancestry_accepted_signs: Int64Buffer,
     gate_ancestry_phase_pi: IntegerBuffer,
     gate_ancestry_active_rows: Int64Buffer,
     gate_ancestry_state: Int64Buffer,
+    gate_final_h: IntegerBuffer,
+    gate_final_b: IntegerBuffer,
+    gate_final_c: IntegerBuffer,
 ) -> int:
     """Run the authenticated prefix, relation pass, logs and first HNF."""
     count = pari_row6_prepared_factor_base_root(
@@ -538,302 +455,39 @@ def pari_row6_phase6_gate_prefix_root(
     )
     if initial_count < 1:
         return 12
-    for i in range(19):
-        gate_outer_state[i] = 0
-    gate_outer_state[0] = relation_target - initial_count
-    gate_outer_state[1] = int(factor_root_state[7])
-    gate_outer_state[4] = factor_count + 1
-    for i in range(len(gate_admission_prime_offsets)):
-        gate_admission_prime_offsets[i] = -1
-        gate_admission_prime_counts[i] = 0
-    for i in range(rational_group_count):
-        prime = int(factor_initial_primes[i])
-        gate_admission_prime_offsets[prime] = factor_initial_offsets[i]
-        gate_admission_prime_counts[prime] = factor_initial_counts[i]
-    for i in range(factor_count):
-        gate_packet_ids[i] = i + 1
-        descriptor = int(factor_selected_indices[i])
-        gate_packet_generators[3 * i] = factor_catalog_generators[3 * descriptor]
-        gate_packet_generators[3 * i + 1] = factor_catalog_generators[
-            3 * descriptor + 1
-        ]
-        gate_packet_generators[3 * i + 2] = factor_catalog_generators[
-            3 * descriptor + 2
-        ]
-        gate_outer_perm[i] = factor_permutation[i]
-    status = pari_collect_and_log_relations(
-        gate_matrix,
-        gate_ideal,
-        gate_n,
-        gate_precision,
-        gate_scale,
-        gate_track_small,
-        gate_reduction,
-        gate_vectors,
-        gate_betas,
-        gate_norms,
-        gate_column,
-        gate_float_q,
-        gate_float_v,
-        gate_bound,
-        gate_cache,
-        gate_a,
-        gate_b,
-        gate_p,
-        gate_q,
-        gate_stack,
-        gate_x,
-        gate_y,
-        gate_z,
-        gate_inc,
-        gate_state,
-        gate_cursor_output,
-        gate_element,
-        gate_counters,
-        gate_admission_matrix_m,
-        gate_admission_matrix_p,
-        gate_admission_matrix_e,
-        factor_embedding_m,
-        factor_embedding_p,
-        factor_embedding_e,
-        gate_admission_real_count,
-        gate_admission_ideal,
-        gate_admission_mode,
-        int(factor_base_state[6]),
-        factor_runtime_primes,
-        factor_runtime_products,
-        factor_factor_limit,
-        factor_prime_limit,
-        gate_admission_rational_factors,
-        gate_admission_rational_exponents,
-        gate_admission_prime_offsets,
-        gate_admission_prime_counts,
-        integer_buffer_view(factor_selected_tau, 0, factor_count * 9),
-        integer_buffer_view(factor_ramification, 0, factor_count),
-        integer_buffer_view(factor_residue_degrees, 0, factor_count),
-        integer_buffer_view(factor_inert_flags, 0, factor_count),
-        gate_admission_tau,
-        gate_admission_x,
-        gate_admission_y,
-        gate_admission_spare,
-        gate_admission_stack,
-        gate_admission_primitive,
-        gate_admission_columns,
-        gate_admission_values,
-        gate_admission_temporary,
-        gate_admission_indices,
-        gate_admission_exponents,
-        gate_diagnostic,
-        gate_nrelid,
-        gate_track_fact,
-        gate_jid0,
-        gate_e0,
-        integer_buffer_view(factor_subfactor, 0, 4),
-        gate_extra,
-        gate_extra_count,
-        integer_buffer_view(factor_relation_primes, 0, factor_count),
-        integer_buffer_view(factor_ramification, 0, factor_count),
-        initial_relation,
-        initial_relation_state,
-        initial_relation_basis,
-        initial_relation_records,
-        initial_relation_hashes,
-        initial_relation_metadata,
-        initial_relation_scratch,
-        initial_relation_generators,
-        gate_progress,
-        gate_preparation_rounded_embedding,
-        gate_preparation_embedding,
-        gate_preparation_original,
-        gate_preparation_basis,
-        gate_preparation_transform,
-        gate_preparation_flags,
-        gate_preparation_rank_diagnostic,
-        gate_preparation_selection,
-        gate_preparation_stages,
-        gate_preparation_flatter_input,
-        gate_preparation_current,
-        gate_preparation_flatter_transform,
-        gate_preparation_total_work,
-        gate_preparation_step_t,
-        gate_preparation_step_s,
-        gate_preparation_product,
-        gate_preparation_next_basis,
-        gate_preparation_y,
-        gate_preparation_diagnostic,
-        gate_preparation_r1,
-        gate_preparation_r2,
-        gate_preparation_r3,
-        gate_preparation_t1,
-        gate_preparation_t2,
-        gate_preparation_t3,
-        gate_preparation_integers,
-        gate_preparation_inverse,
-        gate_preparation_first,
-        gate_preparation_second,
-        gate_preparation_final,
-        gate_preparation_rounded,
-        gate_preparation_mu,
-        gate_preparation_r,
-        gate_preparation_s,
-        gate_preparation_approximate,
-        gate_preparation_exponents,
-        gate_preparation_float_gram,
-        gate_preparation_gram,
-        gate_preparation_mu_exponents,
-        gate_preparation_r_exponents,
-        gate_preparation_s_exponents,
-        gate_preparation_alpha,
-        gate_preparation_column_exponents,
-        gate_preparation_float_scratch,
-        gate_preparation_temporary,
-        gate_preparation_state,
-        integer_buffer_view(factor_permutation, 0, factor_count),
-        factor_count,
-        gate_packet_ids,
-        integer_buffer_view(factor_packet_ideals, 0, factor_count * 9),
-        integer_buffer_view(factor_packet_norms, 0, factor_count),
-        gate_schedule,
-        gate_construct_primes,
-        factor_basis_table,
-        integer_buffer_view(factor_relation_primes, 0, factor_count),
-        gate_packet_generators,
-        integer_buffer_view(factor_inert_flags, 0, factor_count),
-        gate_hnf_generator,
-        gate_hnf_matrix,
-        gate_hnf_work,
-        gate_hnf_pivots,
-        gate_power_ideal,
-        gate_power_alpha,
-        gate_power_metadata,
-        gate_power_primitive,
-        gate_power_temporary,
-        gate_power_diagnostic,
-        gate_power_multiplication,
-        gate_power_work,
-        gate_power_triangular,
-        gate_power_moduli,
-        gate_product_primitive,
-        gate_product_matrix,
-        gate_outer_mode,
-        gate_outer_ru,
-        gate_outer_state,
-        integer_buffer_view(factor_minidx, 0, factor_count),
-        gate_outer_present,
-        gate_outer_live,
-        gate_outer_perm,
-        gate_outer_multiplier,
-        gate_log_precision,
-        gate_log_completed,
-        gate_log_embeddings,
-        gate_log_coordinates,
-        gate_log_column,
-        gate_log_cache,
-        gate_log_pi_cache,
-        gate_log_a,
-        gate_log_b,
-        gate_log_p,
-        gate_log_q,
-        gate_log_stack,
-        initial_count,
-    )
-    if status != 0 and status != 1:
-        return 20 + status
-    if initial_relation_state[0] != gate_log_completed[0]:
-        return 30
-    initial_columns = int(initial_relation_state[0])
-    for i in range(factor_count * initial_columns):
-        gate_initial_hnf_original[i] = int(initial_relation_records[i])
-    for i in range(factor_count):
-        gate_initial_hnf_perm[i] = int(factor_permutation[i])
-    status = pari_hnfspec_complete(
-        gate_initial_hnf_original,
-        factor_count,
-        int(initial_relation_state[0]),
-        gate_initial_hnf_perm,
-        int(factor_root_state[7]),
-        gate_log_embeddings,
-        factor_real_places + factor_complex_pairs,
-        gate_initial_hnf_mat,
-        gate_initial_hnf_dense,
-        gate_initial_hnf_transform,
-        gate_initial_hnf_vmax,
-        gate_initial_hnf_found,
-        gate_initial_hnf_sparse_state,
-        gate_initial_hnf_bottom,
-        gate_initial_hnf_updated_dense,
-        gate_initial_hnf_extra,
-        gate_initial_hnf_cleanup_state,
-        gate_initial_hnf_rank_matrix,
-        gate_initial_hnf_occupied,
-        gate_initial_hnf_pivots,
-        gate_initial_hnf_best,
-        gate_initial_hnf_profile,
-        gate_initial_hnf_rank_state,
-        gate_initial_hnf_perm_work,
-        gate_initial_hnf_matbnew,
-        gate_initial_hnf_dep,
-        gate_initial_hnf_b,
-        gate_initial_hnf_assembly_state,
-        gate_initial_hnf_transformed_logs,
-        gate_initial_hnf_full_h,
-        gate_initial_hnf_hnf_transform,
-        gate_initial_hnf_lam,
-        gate_initial_hnf_d,
-        gate_initial_hnf_hnf_state,
-        gate_initial_hnf_full_dep,
-        gate_initial_hnf_work_b,
-        gate_initial_hnf_work_c,
-        gate_initial_hnf_diagonal,
-        gate_initial_hnf_result_h,
-        gate_initial_hnf_result_dep,
-        gate_initial_hnf_result_b,
-        gate_initial_hnf_result_c,
-        gate_initial_hnf_final_state,
-        gate_initial_hnf_state,
-        gate_initial_hnf_cup_arena,
-        gate_initial_hnf_cup_frames,
-        gate_initial_hnf_cup_solve_state,
-        gate_initial_hnf_cup_state,
-    )
-    if status != 0:
-        return 40 + status
-    for i in range(factor_count):
-        gate_ancestry_perm1[i] = gate_initial_hnf_perm[i]
-    initial_relation_state[4] = initial_columns
     log_stride = 7 * (factor_real_places + factor_complex_pairs)
-    squash = 0
-    checkpoint = 0
-    for pass_index in range(13):
-        if checkpoint == 0:
-            current_h_rows = int(gate_initial_hnf_state[0])
-            current_b_columns = int(gate_initial_hnf_state[2])
-            current_total = int(gate_initial_hnf_state[7])
-        else:
-            current_h_rows = int(gate_append1_state[0])
-            current_b_columns = int(gate_append1_state[2])
-            current_total = int(gate_append1_state[7])
-        need = factor_count - current_h_rows - current_b_columns
-        if need <= 0:
-            break
-        status = pari_row14_prepare_next_pass(
-            gate_initial_hnf_perm,
-            factor_count,
-            current_h_rows,
-            need,
-            squash,
-            factor_permutation,
-            gate_outer_perm,
-            1,
-            gate_outer_state,
-            initial_relation_state,
-            gate_schedule,
-            gate_log_completed,
-            gate_next_control,
+    initial_k0 = int(factor_root_state[7])
+    with NativeWorkspaceArena(3000000000) as gate_workspace:
+        gate_ancestry_current = gate_workspace.integer_buffer(relation_target, 64)
+        gate_ancestry_old = gate_workspace.integer_buffer(relation_target, 64)
+        gate_ancestry_joined = gate_workspace.integer_buffer(relation_target, 64)
+        gate_ancestry_work = gate_workspace.integer_buffer(relation_target, 64)
+        gate_ancestry_trailing_work = gate_workspace.integer_buffer(
+            16 * factor_count, 32
         )
-        if status != 0:
-            return 60 + status
-        squash = int(gate_next_control[1])
+        for i in range(19):
+            gate_outer_state[i] = 0
+        gate_outer_state[0] = relation_target - initial_count
+        gate_outer_state[1] = int(factor_root_state[7])
+        gate_outer_state[4] = factor_count + 1
+        for i in range(len(gate_admission_prime_offsets)):
+            gate_admission_prime_offsets[i] = -1
+            gate_admission_prime_counts[i] = 0
+        for i in range(rational_group_count):
+            prime = int(factor_initial_primes[i])
+            gate_admission_prime_offsets[prime] = factor_initial_offsets[i]
+            gate_admission_prime_counts[prime] = factor_initial_counts[i]
+        for i in range(factor_count):
+            gate_packet_ids[i] = i + 1
+            descriptor = int(factor_selected_indices[i])
+            gate_packet_generators[3 * i] = factor_catalog_generators[3 * descriptor]
+            gate_packet_generators[3 * i + 1] = factor_catalog_generators[
+                3 * descriptor + 1
+            ]
+            gate_packet_generators[3 * i + 2] = factor_catalog_generators[
+                3 * descriptor + 2
+            ]
+            gate_outer_perm[i] = factor_permutation[i]
         status = pari_collect_and_log_relations(
             gate_matrix,
             gate_ideal,
@@ -962,7 +616,7 @@ def pari_row6_phase6_gate_prefix_root(
             gate_preparation_temporary,
             gate_preparation_state,
             integer_buffer_view(factor_permutation, 0, factor_count),
-            int(gate_next_control[0]),
+            factor_count,
             gate_packet_ids,
             integer_buffer_view(factor_packet_ideals, 0, factor_count * 9),
             integer_buffer_view(factor_packet_norms, 0, factor_count),
@@ -1011,202 +665,675 @@ def pari_row6_phase6_gate_prefix_root(
             initial_count,
         )
         if status != 0 and status != 1:
-            return 70 + status
-        columns = int(initial_relation_state[0])
-        if columns == current_total:
-            continue
-        new_columns = columns - current_total
-        if checkpoint == 0:
-            for i in range(factor_count * new_columns):
-                gate_append1_new_relations[i] = int(
-                    initial_relation_records[factor_count * current_total + i]
-                )
-            status = pari_hnfadd(
-                gate_initial_hnf_result_h,
-                current_h_rows,
-                gate_initial_hnf_result_dep,
-                gate_initial_hnf_result_b,
-                current_b_columns,
-                gate_initial_hnf_result_c,
-                current_total,
-                factor_real_places + factor_complex_pairs,
-                gate_initial_hnf_perm,
-                factor_count,
-                gate_append1_new_relations,
-                new_columns,
-                integer_buffer_view(
-                    gate_log_embeddings,
-                    log_stride * current_total,
-                    log_stride * new_columns,
-                ),
-                gate_append1_top,
-                gate_append1_exact_product,
-                gate_append1_log_product,
-                gate_append1_adjusted_logs,
-                gate_append1_joined,
-                gate_append1_joined_logs,
-                gate_append1_rank_matrix,
-                gate_append1_occupied,
-                gate_append1_pivots,
-                gate_append1_best,
-                gate_append1_profile,
-                gate_append1_rank_state,
-                gate_append1_perm_work,
-                gate_append1_matb,
-                gate_append1_new_dep,
-                gate_append1_permuted_b,
-                gate_append1_full_h,
-                gate_append1_transform,
-                gate_append1_lam,
-                gate_append1_d,
-                gate_append1_hnf_state,
-                gate_append1_full_dep,
-                gate_append1_work_b,
-                gate_append1_work_c,
-                gate_append1_diagonal,
-                gate_append1_final_c,
-                gate_append1_result_h,
-                gate_append1_result_dep,
-                gate_append1_result_b,
-                gate_append1_result_c,
-                gate_append1_final_state,
-                gate_append1_state,
-            )
-            if status != 0:
-                return 90 + status
-            initial_relation_state[4] = columns
-            for i in range(factor_count):
-                gate_ancestry_perm2[i] = gate_initial_hnf_perm[i]
-            checkpoint = 1
-            if gate_append1_state[0] + gate_append1_state[2] >= factor_count:
+            return 20 + status
+        if initial_relation_state[0] != gate_log_completed[0]:
+            return 30
+        initial_columns = int(initial_relation_state[0])
+        gate_initial_hnf_dense = gate_workspace.integer_buffer(
+            initial_k0 * initial_columns, 6
+        )
+        gate_initial_hnf_transform = gate_workspace.integer_buffer(
+            initial_columns * initial_columns, 16
+        )
+        gate_initial_hnf_bottom = gate_workspace.integer_buffer(
+            (factor_count - initial_k0) * initial_columns, 6
+        )
+        gate_initial_hnf_updated_dense = gate_workspace.integer_buffer(
+            initial_k0 * initial_columns, 6
+        )
+        gate_initial_hnf_extra = gate_workspace.integer_buffer(
+            factor_count * initial_columns, 6
+        )
+        gate_initial_hnf_rank_matrix = gate_workspace.integer_buffer(
+            factor_count * initial_columns, 6
+        )
+        gate_initial_hnf_occupied = gate_workspace.integer_buffer(initial_columns, 6)
+        gate_initial_hnf_pivots = gate_workspace.integer_buffer(factor_count, 6)
+        gate_initial_hnf_best = gate_workspace.integer_buffer(factor_count, 6)
+        gate_initial_hnf_profile = gate_workspace.integer_buffer(factor_count + 1, 6)
+        gate_initial_hnf_rank_state = gate_workspace.integer_buffer(10, 6)
+        gate_initial_hnf_matbnew = gate_workspace.integer_buffer(
+            factor_count * initial_columns, 6
+        )
+        gate_initial_hnf_dep = gate_workspace.integer_buffer(
+            factor_count * initial_columns, 6
+        )
+        gate_initial_hnf_b = gate_workspace.integer_buffer(
+            factor_count * initial_columns, 6
+        )
+        gate_initial_hnf_transformed_logs = gate_workspace.integer_buffer(
+            log_stride * initial_columns, 8
+        )
+        gate_initial_hnf_full_h = gate_workspace.integer_buffer(
+            factor_count * initial_columns, 16
+        )
+        gate_initial_hnf_hnf_transform = gate_workspace.integer_buffer(
+            initial_columns * initial_columns, 16
+        )
+        gate_initial_hnf_lam = gate_workspace.integer_buffer(
+            initial_columns * initial_columns, 16
+        )
+        gate_initial_hnf_d = gate_workspace.integer_buffer(initial_columns + 1, 16)
+        gate_initial_hnf_full_dep = gate_workspace.integer_buffer(
+            factor_count * initial_columns, 16
+        )
+        gate_initial_hnf_work_b = gate_workspace.integer_buffer(
+            factor_count * initial_columns, 16
+        )
+        gate_initial_hnf_work_c = gate_workspace.integer_buffer(
+            log_stride * initial_columns, 8
+        )
+        gate_initial_hnf_result_h = gate_workspace.integer_buffer(
+            factor_count * initial_columns, 6
+        )
+        gate_initial_hnf_result_dep = gate_workspace.integer_buffer(
+            factor_count * initial_columns, 6
+        )
+        gate_initial_hnf_result_b = gate_workspace.integer_buffer(
+            factor_count * (initial_columns + factor_count), 6
+        )
+        gate_initial_hnf_result_c = gate_workspace.integer_buffer(
+            log_stride * initial_columns, 8
+        )
+        gate_initial_hnf_cup_arena = gate_workspace.integer_buffer(8_000_000, 2)
+        gate_initial_hnf_cup_frames = gate_workspace.integer_buffer(64, 2)
+        for i in range(factor_count * initial_columns):
+            gate_initial_hnf_original[i] = int(initial_relation_records[i])
+        for i in range(factor_count):
+            gate_initial_hnf_perm[i] = int(factor_permutation[i])
+        status = pari_hnfspec_complete(
+            gate_initial_hnf_original,
+            factor_count,
+            int(initial_relation_state[0]),
+            gate_initial_hnf_perm,
+            int(factor_root_state[7]),
+            gate_log_embeddings,
+            factor_real_places + factor_complex_pairs,
+            gate_initial_hnf_mat,
+            gate_initial_hnf_dense,
+            gate_initial_hnf_transform,
+            gate_initial_hnf_vmax,
+            gate_initial_hnf_found,
+            gate_initial_hnf_sparse_state,
+            gate_initial_hnf_bottom,
+            gate_initial_hnf_updated_dense,
+            gate_initial_hnf_extra,
+            gate_initial_hnf_cleanup_state,
+            gate_initial_hnf_rank_matrix,
+            gate_initial_hnf_occupied,
+            gate_initial_hnf_pivots,
+            gate_initial_hnf_best,
+            gate_initial_hnf_profile,
+            gate_initial_hnf_rank_state,
+            gate_initial_hnf_perm_work,
+            gate_initial_hnf_matbnew,
+            gate_initial_hnf_dep,
+            gate_initial_hnf_b,
+            gate_initial_hnf_assembly_state,
+            gate_initial_hnf_transformed_logs,
+            gate_initial_hnf_full_h,
+            gate_initial_hnf_hnf_transform,
+            gate_initial_hnf_lam,
+            gate_initial_hnf_d,
+            gate_initial_hnf_hnf_state,
+            gate_initial_hnf_full_dep,
+            gate_initial_hnf_work_b,
+            gate_initial_hnf_work_c,
+            gate_initial_hnf_diagonal,
+            gate_initial_hnf_result_h,
+            gate_initial_hnf_result_dep,
+            gate_initial_hnf_result_b,
+            gate_initial_hnf_result_c,
+            gate_initial_hnf_final_state,
+            gate_initial_hnf_state,
+            gate_initial_hnf_cup_arena,
+            gate_initial_hnf_cup_frames,
+            gate_initial_hnf_cup_solve_state,
+            gate_initial_hnf_cup_state,
+        )
+        if status != 0:
+            return 40 + status
+        append_lig_ceiling = factor_count - int(gate_initial_hnf_state[2])
+        initial_reverse_lig = int(gate_initial_hnf_assembly_state[0]) + int(
+            gate_initial_hnf_assembly_state[1]
+        )
+        if append_lig_ceiling < 1 or append_lig_ceiling > 16:
+            return 49
+        if initial_reverse_lig < 1 or initial_reverse_lig > 16:
+            return 50
+        if int(gate_initial_hnf_state[0]) < 1 or int(gate_initial_hnf_state[0]) > 16:
+            return 51
+        append_width_ceiling = 24
+        gate_append_top = gate_workspace.integer_buffer(append_lig_ceiling * 8, 16)
+        gate_append_exact_product = gate_workspace.integer_buffer(
+            append_lig_ceiling * 8, 16
+        )
+        gate_append_log_product = gate_workspace.integer_buffer(log_stride * 8, 16)
+        gate_append_adjusted_logs = gate_workspace.integer_buffer(log_stride * 8, 16)
+        gate_append_joined = gate_workspace.integer_buffer(
+            append_lig_ceiling * append_width_ceiling, 16
+        )
+        gate_append_joined_logs = gate_workspace.integer_buffer(
+            log_stride * relation_target, 16
+        )
+        gate_append_rank_matrix = gate_workspace.integer_buffer(
+            append_lig_ceiling * append_width_ceiling, 16
+        )
+        gate_append_occupied = gate_workspace.integer_buffer(append_width_ceiling, 16)
+        gate_append_pivots = gate_workspace.integer_buffer(append_lig_ceiling, 16)
+        gate_append_best = gate_workspace.integer_buffer(append_lig_ceiling, 16)
+        gate_append_profile = gate_workspace.integer_buffer(append_lig_ceiling, 16)
+        gate_append1_rank_state = gate_workspace.integer_buffer(10, 16)
+        gate_append2_rank_state = gate_workspace.integer_buffer(10, 16)
+        gate_append_matb = gate_workspace.integer_buffer(
+            append_lig_ceiling * append_width_ceiling, 16
+        )
+        gate_append_new_dep = gate_workspace.integer_buffer(
+            append_lig_ceiling * append_width_ceiling, 16
+        )
+        gate_append1_permuted_b = gate_workspace.integer_buffer(
+            append_lig_ceiling * factor_count, 16
+        )
+        gate_append2_permuted_b = gate_workspace.integer_buffer(
+            append_lig_ceiling * factor_count, 16
+        )
+        gate_append1_full_h = gate_workspace.integer_buffer(
+            append_lig_ceiling * append_width_ceiling, 16
+        )
+        gate_append2_full_h = gate_workspace.integer_buffer(
+            append_lig_ceiling * append_width_ceiling, 16
+        )
+        gate_append1_transform = gate_workspace.integer_buffer(
+            append_width_ceiling * append_width_ceiling, 16
+        )
+        gate_append2_transform = gate_workspace.integer_buffer(
+            append_width_ceiling * append_width_ceiling, 16
+        )
+        gate_append_lam = gate_workspace.integer_buffer(
+            append_width_ceiling * append_width_ceiling, 16
+        )
+        gate_append_d = gate_workspace.integer_buffer(append_width_ceiling + 1, 16)
+        gate_append1_full_dep = gate_workspace.integer_buffer(
+            append_lig_ceiling * append_width_ceiling, 16
+        )
+        gate_append2_full_dep = gate_workspace.integer_buffer(
+            append_lig_ceiling * append_width_ceiling, 16
+        )
+        gate_append_work_b = gate_workspace.integer_buffer(
+            append_lig_ceiling * factor_count, 16
+        )
+        gate_append_work_c = gate_workspace.integer_buffer(
+            log_stride * relation_target, 16
+        )
+        gate_append_final_c = gate_workspace.integer_buffer(
+            log_stride * relation_target, 16
+        )
+        gate_append1_result_h = gate_workspace.integer_buffer(
+            append_lig_ceiling * append_lig_ceiling, 16
+        )
+        gate_append2_result_h = gate_workspace.integer_buffer(
+            append_lig_ceiling * append_lig_ceiling, 16
+        )
+        gate_append1_result_dep = gate_workspace.integer_buffer(
+            append_lig_ceiling * append_lig_ceiling, 16
+        )
+        gate_append2_result_dep = gate_workspace.integer_buffer(
+            append_lig_ceiling * append_lig_ceiling, 16
+        )
+        gate_append1_result_b = gate_workspace.integer_buffer(
+            append_lig_ceiling * factor_count, 16
+        )
+        gate_append2_result_b = gate_workspace.integer_buffer(
+            append_lig_ceiling * factor_count, 16
+        )
+        gate_append1_result_c = gate_workspace.integer_buffer(
+            log_stride * relation_target, 16
+        )
+        gate_append2_result_c = gate_workspace.integer_buffer(
+            log_stride * relation_target, 16
+        )
+        for i in range(factor_count):
+            gate_ancestry_perm1[i] = gate_initial_hnf_perm[i]
+        initial_relation_state[4] = initial_columns
+        squash = 0
+        checkpoint = 0
+        for pass_index in range(13):
+            if checkpoint == 0:
+                current_h_rows = int(gate_initial_hnf_state[0])
+                current_b_columns = int(gate_initial_hnf_state[2])
+                current_total = int(gate_initial_hnf_state[7])
+            else:
+                current_h_rows = int(gate_append1_state[0])
+                current_b_columns = int(gate_append1_state[2])
+                current_total = int(gate_append1_state[7])
+            need = factor_count - current_h_rows - current_b_columns
+            if need <= 0:
                 break
-        else:
-            for i in range(factor_count * new_columns):
-                gate_append2_new_relations[i] = int(
-                    initial_relation_records[factor_count * current_total + i]
-                )
-            status = pari_hnfadd(
-                gate_append1_result_h,
-                current_h_rows,
-                gate_append1_result_dep,
-                gate_append1_result_b,
-                current_b_columns,
-                gate_append1_result_c,
-                current_total,
-                factor_real_places + factor_complex_pairs,
+            status = pari_row14_prepare_next_pass(
                 gate_initial_hnf_perm,
                 factor_count,
-                gate_append2_new_relations,
-                new_columns,
-                integer_buffer_view(
-                    gate_log_embeddings,
-                    log_stride * current_total,
-                    log_stride * new_columns,
-                ),
-                gate_append2_top,
-                gate_append2_exact_product,
-                gate_append2_log_product,
-                gate_append2_adjusted_logs,
-                gate_append2_joined,
-                gate_append2_joined_logs,
-                gate_append2_rank_matrix,
-                gate_append2_occupied,
-                gate_append2_pivots,
-                gate_append2_best,
-                gate_append2_profile,
-                gate_append2_rank_state,
-                gate_append2_perm_work,
-                gate_append2_matb,
-                gate_append2_new_dep,
-                gate_append2_permuted_b,
-                gate_append2_full_h,
-                gate_append2_transform,
-                gate_append2_lam,
-                gate_append2_d,
-                gate_append2_hnf_state,
-                gate_append2_full_dep,
-                gate_append2_work_b,
-                gate_append2_work_c,
-                gate_append2_diagonal,
-                gate_append2_final_c,
-                gate_append2_result_h,
-                gate_append2_result_dep,
-                gate_append2_result_b,
-                gate_append2_result_c,
-                gate_append2_final_state,
-                gate_append2_state,
+                current_h_rows,
+                need,
+                squash,
+                factor_permutation,
+                gate_outer_perm,
+                1,
+                gate_outer_state,
+                initial_relation_state,
+                gate_schedule,
+                gate_log_completed,
+                gate_next_control,
             )
             if status != 0:
-                return 110 + status
-            initial_relation_state[4] = columns
-            checkpoint = 2
-            if gate_append2_state[0] + gate_append2_state[2] < factor_count:
-                return 119
-            break
-    status = pari_row6_phase6_gate_ancestry_private(
-        initial_relation_records,
-        gate_log_embeddings,
-        factor_count,
-        initial_columns,
-        checkpoint,
-        factor_real_places + factor_complex_pairs,
-        gate_initial_hnf_state,
-        gate_initial_hnf_assembly_state,
-        gate_initial_hnf_transform,
-        gate_initial_hnf_b,
-        gate_initial_hnf_hnf_transform,
-        gate_initial_hnf_full_h,
-        gate_initial_hnf_full_dep,
-        gate_initial_hnf_diagonal,
-        gate_append1_rank_state,
-        gate_append1_state,
-        gate_append1_permuted_b,
-        gate_append1_transform,
-        gate_append1_full_h,
-        gate_append1_full_dep,
-        gate_append1_diagonal,
-        gate_ancestry_perm1,
-        gate_append2_rank_state,
-        gate_append2_state,
-        gate_append2_permuted_b,
-        gate_append2_transform,
-        gate_append2_full_h,
-        gate_append2_full_dep,
-        gate_append2_diagonal,
-        gate_ancestry_perm2,
-        gate_initial_hnf_result_c,
-        gate_append1_result_c,
-        gate_append2_result_c,
-        gate_initial_hnf_perm,
-        gate_ancestry_current,
-        gate_ancestry_old,
-        gate_ancestry_joined,
-        gate_ancestry_work,
-        gate_ancestry_trailing_work,
-        gate_ancestry_raw_to_all,
-        gate_ancestry_accepted_arch,
-        gate_ancestry_accepted_signs,
-        gate_ancestry_phase_pi,
-        gate_ancestry_active_rows,
-        gate_ancestry_state,
-    )
-    if status != 0:
-        return 130 + status
-    if checkpoint == 0:
-        for i in range(9):
-            gate_append2_state[i] = gate_initial_hnf_state[i]
-        for i in range(gate_initial_hnf_state[0] * gate_initial_hnf_state[0]):
-            gate_append2_result_h[i] = gate_initial_hnf_result_h[i]
-        for i in range(log_stride * initial_columns):
-            gate_append2_result_c[i] = gate_initial_hnf_result_c[i]
-    elif checkpoint == 1:
-        for i in range(9):
-            gate_append2_state[i] = gate_append1_state[i]
-        for i in range(gate_append1_state[0] * gate_append1_state[0]):
-            gate_append2_result_h[i] = gate_append1_result_h[i]
-        for i in range(log_stride * gate_append1_state[7]):
-            gate_append2_result_c[i] = gate_append1_result_c[i]
-    return 0
+                return 60 + status
+            squash = int(gate_next_control[1])
+            status = pari_collect_and_log_relations(
+                gate_matrix,
+                gate_ideal,
+                gate_n,
+                gate_precision,
+                gate_scale,
+                gate_track_small,
+                gate_reduction,
+                gate_vectors,
+                gate_betas,
+                gate_norms,
+                gate_column,
+                gate_float_q,
+                gate_float_v,
+                gate_bound,
+                gate_cache,
+                gate_a,
+                gate_b,
+                gate_p,
+                gate_q,
+                gate_stack,
+                gate_x,
+                gate_y,
+                gate_z,
+                gate_inc,
+                gate_state,
+                gate_cursor_output,
+                gate_element,
+                gate_counters,
+                gate_admission_matrix_m,
+                gate_admission_matrix_p,
+                gate_admission_matrix_e,
+                factor_embedding_m,
+                factor_embedding_p,
+                factor_embedding_e,
+                gate_admission_real_count,
+                gate_admission_ideal,
+                gate_admission_mode,
+                int(factor_base_state[6]),
+                factor_runtime_primes,
+                factor_runtime_products,
+                factor_factor_limit,
+                factor_prime_limit,
+                gate_admission_rational_factors,
+                gate_admission_rational_exponents,
+                gate_admission_prime_offsets,
+                gate_admission_prime_counts,
+                integer_buffer_view(factor_selected_tau, 0, factor_count * 9),
+                integer_buffer_view(factor_ramification, 0, factor_count),
+                integer_buffer_view(factor_residue_degrees, 0, factor_count),
+                integer_buffer_view(factor_inert_flags, 0, factor_count),
+                gate_admission_tau,
+                gate_admission_x,
+                gate_admission_y,
+                gate_admission_spare,
+                gate_admission_stack,
+                gate_admission_primitive,
+                gate_admission_columns,
+                gate_admission_values,
+                gate_admission_temporary,
+                gate_admission_indices,
+                gate_admission_exponents,
+                gate_diagnostic,
+                gate_nrelid,
+                gate_track_fact,
+                gate_jid0,
+                gate_e0,
+                integer_buffer_view(factor_subfactor, 0, 4),
+                gate_extra,
+                gate_extra_count,
+                integer_buffer_view(factor_relation_primes, 0, factor_count),
+                integer_buffer_view(factor_ramification, 0, factor_count),
+                initial_relation,
+                initial_relation_state,
+                initial_relation_basis,
+                initial_relation_records,
+                initial_relation_hashes,
+                initial_relation_metadata,
+                initial_relation_scratch,
+                initial_relation_generators,
+                gate_progress,
+                gate_preparation_rounded_embedding,
+                gate_preparation_embedding,
+                gate_preparation_original,
+                gate_preparation_basis,
+                gate_preparation_transform,
+                gate_preparation_flags,
+                gate_preparation_rank_diagnostic,
+                gate_preparation_selection,
+                gate_preparation_stages,
+                gate_preparation_flatter_input,
+                gate_preparation_current,
+                gate_preparation_flatter_transform,
+                gate_preparation_total_work,
+                gate_preparation_step_t,
+                gate_preparation_step_s,
+                gate_preparation_product,
+                gate_preparation_next_basis,
+                gate_preparation_y,
+                gate_preparation_diagnostic,
+                gate_preparation_r1,
+                gate_preparation_r2,
+                gate_preparation_r3,
+                gate_preparation_t1,
+                gate_preparation_t2,
+                gate_preparation_t3,
+                gate_preparation_integers,
+                gate_preparation_inverse,
+                gate_preparation_first,
+                gate_preparation_second,
+                gate_preparation_final,
+                gate_preparation_rounded,
+                gate_preparation_mu,
+                gate_preparation_r,
+                gate_preparation_s,
+                gate_preparation_approximate,
+                gate_preparation_exponents,
+                gate_preparation_float_gram,
+                gate_preparation_gram,
+                gate_preparation_mu_exponents,
+                gate_preparation_r_exponents,
+                gate_preparation_s_exponents,
+                gate_preparation_alpha,
+                gate_preparation_column_exponents,
+                gate_preparation_float_scratch,
+                gate_preparation_temporary,
+                gate_preparation_state,
+                integer_buffer_view(factor_permutation, 0, factor_count),
+                int(gate_next_control[0]),
+                gate_packet_ids,
+                integer_buffer_view(factor_packet_ideals, 0, factor_count * 9),
+                integer_buffer_view(factor_packet_norms, 0, factor_count),
+                gate_schedule,
+                gate_construct_primes,
+                factor_basis_table,
+                integer_buffer_view(factor_relation_primes, 0, factor_count),
+                gate_packet_generators,
+                integer_buffer_view(factor_inert_flags, 0, factor_count),
+                gate_hnf_generator,
+                gate_hnf_matrix,
+                gate_hnf_work,
+                gate_hnf_pivots,
+                gate_power_ideal,
+                gate_power_alpha,
+                gate_power_metadata,
+                gate_power_primitive,
+                gate_power_temporary,
+                gate_power_diagnostic,
+                gate_power_multiplication,
+                gate_power_work,
+                gate_power_triangular,
+                gate_power_moduli,
+                gate_product_primitive,
+                gate_product_matrix,
+                gate_outer_mode,
+                gate_outer_ru,
+                gate_outer_state,
+                integer_buffer_view(factor_minidx, 0, factor_count),
+                gate_outer_present,
+                gate_outer_live,
+                gate_outer_perm,
+                gate_outer_multiplier,
+                gate_log_precision,
+                gate_log_completed,
+                gate_log_embeddings,
+                gate_log_coordinates,
+                gate_log_column,
+                gate_log_cache,
+                gate_log_pi_cache,
+                gate_log_a,
+                gate_log_b,
+                gate_log_p,
+                gate_log_q,
+                gate_log_stack,
+                initial_count,
+            )
+            if status != 0 and status != 1:
+                return 70 + status
+            columns = int(initial_relation_state[0])
+            if columns == current_total:
+                continue
+            new_columns = columns - current_total
+            if new_columns < 1 or new_columns > 8:
+                return 89
+            if checkpoint == 0:
+                for i in range(factor_count * new_columns):
+                    gate_append1_new_relations[i] = int(
+                        initial_relation_records[factor_count * current_total + i]
+                    )
+                status = pari_hnfadd(
+                    gate_initial_hnf_result_h,
+                    current_h_rows,
+                    gate_initial_hnf_result_dep,
+                    gate_initial_hnf_result_b,
+                    current_b_columns,
+                    gate_initial_hnf_result_c,
+                    current_total,
+                    factor_real_places + factor_complex_pairs,
+                    gate_initial_hnf_perm,
+                    factor_count,
+                    gate_append1_new_relations,
+                    new_columns,
+                    integer_buffer_view(
+                        gate_log_embeddings,
+                        log_stride * current_total,
+                        log_stride * new_columns,
+                    ),
+                    gate_append_top,
+                    gate_append_exact_product,
+                    gate_append_log_product,
+                    gate_append_adjusted_logs,
+                    gate_append_joined,
+                    gate_append_joined_logs,
+                    gate_append_rank_matrix,
+                    gate_append_occupied,
+                    gate_append_pivots,
+                    gate_append_best,
+                    gate_append_profile,
+                    gate_append1_rank_state,
+                    gate_append1_perm_work,
+                    gate_append_matb,
+                    gate_append_new_dep,
+                    gate_append1_permuted_b,
+                    gate_append1_full_h,
+                    gate_append1_transform,
+                    gate_append_lam,
+                    gate_append_d,
+                    gate_append1_hnf_state,
+                    gate_append1_full_dep,
+                    gate_append_work_b,
+                    gate_append_work_c,
+                    gate_append1_diagonal,
+                    gate_append_final_c,
+                    gate_append1_result_h,
+                    gate_append1_result_dep,
+                    gate_append1_result_b,
+                    gate_append1_result_c,
+                    gate_append1_final_state,
+                    gate_append1_state,
+                )
+                if status != 0:
+                    return 90 + status
+                if factor_count - int(gate_append1_state[2]) > append_lig_ceiling:
+                    return 99
+                if int(gate_append1_state[0]) > 16:
+                    return 100
+                initial_relation_state[4] = columns
+                for i in range(factor_count):
+                    gate_ancestry_perm2[i] = gate_initial_hnf_perm[i]
+                checkpoint = 1
+                if gate_append1_state[0] + gate_append1_state[2] >= factor_count:
+                    break
+            else:
+                for i in range(factor_count * new_columns):
+                    gate_append2_new_relations[i] = int(
+                        initial_relation_records[factor_count * current_total + i]
+                    )
+                status = pari_hnfadd(
+                    gate_append1_result_h,
+                    current_h_rows,
+                    gate_append1_result_dep,
+                    gate_append1_result_b,
+                    current_b_columns,
+                    gate_append1_result_c,
+                    current_total,
+                    factor_real_places + factor_complex_pairs,
+                    gate_initial_hnf_perm,
+                    factor_count,
+                    gate_append2_new_relations,
+                    new_columns,
+                    integer_buffer_view(
+                        gate_log_embeddings,
+                        log_stride * current_total,
+                        log_stride * new_columns,
+                    ),
+                    gate_append_top,
+                    gate_append_exact_product,
+                    gate_append_log_product,
+                    gate_append_adjusted_logs,
+                    gate_append_joined,
+                    gate_append_joined_logs,
+                    gate_append_rank_matrix,
+                    gate_append_occupied,
+                    gate_append_pivots,
+                    gate_append_best,
+                    gate_append_profile,
+                    gate_append2_rank_state,
+                    gate_append2_perm_work,
+                    gate_append_matb,
+                    gate_append_new_dep,
+                    gate_append2_permuted_b,
+                    gate_append2_full_h,
+                    gate_append2_transform,
+                    gate_append_lam,
+                    gate_append_d,
+                    gate_append2_hnf_state,
+                    gate_append2_full_dep,
+                    gate_append_work_b,
+                    gate_append_work_c,
+                    gate_append2_diagonal,
+                    gate_append_final_c,
+                    gate_append2_result_h,
+                    gate_append2_result_dep,
+                    gate_append2_result_b,
+                    gate_append2_result_c,
+                    gate_append2_final_state,
+                    gate_append2_state,
+                )
+                if status != 0:
+                    return 110 + status
+                if factor_count - int(gate_append2_state[2]) > append_lig_ceiling:
+                    return 118
+                if int(gate_append2_state[0]) > 16:
+                    return 118
+                initial_relation_state[4] = columns
+                checkpoint = 2
+                if gate_append2_state[0] + gate_append2_state[2] < factor_count:
+                    return 119
+                break
+        status = pari_row6_phase6_gate_ancestry_private(
+            initial_relation_records,
+            gate_log_embeddings,
+            factor_count,
+            initial_columns,
+            checkpoint,
+            factor_real_places + factor_complex_pairs,
+            gate_initial_hnf_state,
+            gate_initial_hnf_assembly_state,
+            gate_initial_hnf_transform,
+            gate_initial_hnf_b,
+            gate_initial_hnf_hnf_transform,
+            gate_initial_hnf_full_h,
+            gate_initial_hnf_full_dep,
+            gate_initial_hnf_diagonal,
+            gate_append1_rank_state,
+            gate_append1_state,
+            gate_append1_permuted_b,
+            gate_append1_transform,
+            gate_append1_full_h,
+            gate_append1_full_dep,
+            gate_append1_diagonal,
+            gate_ancestry_perm1,
+            gate_append2_rank_state,
+            gate_append2_state,
+            gate_append2_permuted_b,
+            gate_append2_transform,
+            gate_append2_full_h,
+            gate_append2_full_dep,
+            gate_append2_diagonal,
+            gate_ancestry_perm2,
+            gate_initial_hnf_result_c,
+            gate_append1_result_c,
+            gate_append2_result_c,
+            gate_initial_hnf_perm,
+            gate_ancestry_current,
+            gate_ancestry_old,
+            gate_ancestry_joined,
+            gate_ancestry_work,
+            gate_ancestry_trailing_work,
+            gate_ancestry_raw_to_all,
+            gate_ancestry_accepted_arch,
+            gate_ancestry_accepted_signs,
+            gate_ancestry_phase_pi,
+            gate_ancestry_active_rows,
+            gate_ancestry_state,
+        )
+        if status != 0:
+            return 130 + status
+        if checkpoint == 0:
+            for i in range(9):
+                gate_append2_state[i] = gate_initial_hnf_state[i]
+            for i in range(gate_initial_hnf_state[0] * gate_initial_hnf_state[0]):
+                gate_append2_result_h[i] = gate_initial_hnf_result_h[i]
+            initial_lig = factor_count - int(gate_initial_hnf_state[2])
+            for i in range(initial_lig * int(gate_initial_hnf_state[2])):
+                gate_append2_result_b[i] = gate_initial_hnf_result_b[i]
+            for i in range(log_stride * initial_columns):
+                gate_append2_result_c[i] = gate_initial_hnf_result_c[i]
+        elif checkpoint == 1:
+            for i in range(9):
+                gate_append2_state[i] = gate_append1_state[i]
+            for i in range(gate_append1_state[0] * gate_append1_state[0]):
+                gate_append2_result_h[i] = gate_append1_result_h[i]
+            append1_lig = factor_count - int(gate_append1_state[2])
+            for i in range(append1_lig * int(gate_append1_state[2])):
+                gate_append2_result_b[i] = gate_append1_result_b[i]
+            for i in range(log_stride * gate_append1_state[7]):
+                gate_append2_result_c[i] = gate_append1_result_c[i]
+        final_h_rows = int(gate_append2_state[0])
+        final_b_columns = int(gate_append2_state[2])
+        final_columns = int(gate_append2_state[7])
+        final_lig = factor_count - final_b_columns
+        if final_h_rows < 1 or final_h_rows > 16 or final_lig < 1 or final_lig > 16:
+            return 131
+        if len(gate_final_h) < 16 * 16:
+            return 132
+        if len(gate_final_b) < 16 * factor_count:
+            return 133
+        if len(gate_final_c) < log_stride * relation_target:
+            return 134
+        for i in range(final_h_rows * final_h_rows):
+            gate_final_h[i] = gate_append2_result_h[i]
+        for i in range(final_lig * final_b_columns):
+            gate_final_b[i] = gate_append2_result_b[i]
+        for i in range(log_stride * final_columns):
+            gate_final_c[i] = gate_append2_result_c[i]
+        return 0
 
 
 from .row6_phase6_resident_terminal_root import pari_row6_phase6_resident_terminal_root
@@ -1472,126 +1599,42 @@ def pari_row6_phase6_whole_prepared_root(
     gate_initial_hnf_original: Int64Buffer,
     gate_initial_hnf_perm: Int64Buffer,
     gate_initial_hnf_mat: Int64Buffer,
-    gate_initial_hnf_dense: IntegerBuffer,
-    gate_initial_hnf_transform: IntegerBuffer,
     gate_initial_hnf_vmax: Int64Buffer,
     gate_initial_hnf_found: Int64Buffer,
     gate_initial_hnf_sparse_state: Int64Buffer,
-    gate_initial_hnf_bottom: IntegerBuffer,
-    gate_initial_hnf_updated_dense: IntegerBuffer,
-    gate_initial_hnf_extra: IntegerBuffer,
     gate_initial_hnf_cleanup_state: Int64Buffer,
-    gate_initial_hnf_rank_matrix: IntegerBuffer,
-    gate_initial_hnf_occupied: IntegerBuffer,
-    gate_initial_hnf_pivots: IntegerBuffer,
-    gate_initial_hnf_best: IntegerBuffer,
-    gate_initial_hnf_profile: IntegerBuffer,
-    gate_initial_hnf_rank_state: IntegerBuffer,
     gate_initial_hnf_perm_work: Int64Buffer,
-    gate_initial_hnf_matbnew: IntegerBuffer,
-    gate_initial_hnf_dep: IntegerBuffer,
-    gate_initial_hnf_b: IntegerBuffer,
     gate_initial_hnf_assembly_state: Int64Buffer,
-    gate_initial_hnf_transformed_logs: IntegerBuffer,
-    gate_initial_hnf_full_h: IntegerBuffer,
-    gate_initial_hnf_hnf_transform: IntegerBuffer,
-    gate_initial_hnf_lam: IntegerBuffer,
-    gate_initial_hnf_d: IntegerBuffer,
     gate_initial_hnf_hnf_state: Int64Buffer,
-    gate_initial_hnf_full_dep: IntegerBuffer,
-    gate_initial_hnf_work_b: IntegerBuffer,
-    gate_initial_hnf_work_c: IntegerBuffer,
     gate_initial_hnf_diagonal: Int64Buffer,
-    gate_initial_hnf_result_h: IntegerBuffer,
-    gate_initial_hnf_result_dep: IntegerBuffer,
-    gate_initial_hnf_result_b: IntegerBuffer,
-    gate_initial_hnf_result_c: IntegerBuffer,
     gate_initial_hnf_final_state: Int64Buffer,
     gate_initial_hnf_state: Int64Buffer,
-    gate_initial_hnf_cup_arena: IntegerBuffer,
-    gate_initial_hnf_cup_frames: IntegerBuffer,
     gate_initial_hnf_cup_solve_state: Int64Buffer,
     gate_initial_hnf_cup_state: Int64Buffer,
     gate_next_control: Int64Buffer,
     gate_append1_new_relations: Int64Buffer,
-    gate_append1_top: IntegerBuffer,
-    gate_append1_exact_product: IntegerBuffer,
-    gate_append1_log_product: IntegerBuffer,
-    gate_append1_adjusted_logs: IntegerBuffer,
-    gate_append1_joined: IntegerBuffer,
-    gate_append1_joined_logs: IntegerBuffer,
-    gate_append1_rank_matrix: IntegerBuffer,
-    gate_append1_occupied: IntegerBuffer,
-    gate_append1_pivots: IntegerBuffer,
-    gate_append1_best: IntegerBuffer,
-    gate_append1_profile: IntegerBuffer,
-    gate_append1_rank_state: IntegerBuffer,
     gate_append1_perm_work: Int64Buffer,
-    gate_append1_matb: IntegerBuffer,
-    gate_append1_new_dep: IntegerBuffer,
-    gate_append1_permuted_b: IntegerBuffer,
-    gate_append1_full_h: IntegerBuffer,
-    gate_append1_transform: IntegerBuffer,
-    gate_append1_lam: IntegerBuffer,
-    gate_append1_d: IntegerBuffer,
     gate_append1_hnf_state: Int64Buffer,
-    gate_append1_full_dep: IntegerBuffer,
-    gate_append1_work_b: IntegerBuffer,
-    gate_append1_work_c: IntegerBuffer,
     gate_append1_diagonal: Int64Buffer,
-    gate_append1_final_c: IntegerBuffer,
-    gate_append1_result_h: IntegerBuffer,
-    gate_append1_result_dep: IntegerBuffer,
-    gate_append1_result_b: IntegerBuffer,
-    gate_append1_result_c: IntegerBuffer,
     gate_append1_final_state: Int64Buffer,
     gate_append1_state: Int64Buffer,
     gate_append2_new_relations: Int64Buffer,
-    gate_append2_top: IntegerBuffer,
-    gate_append2_exact_product: IntegerBuffer,
-    gate_append2_log_product: IntegerBuffer,
-    gate_append2_adjusted_logs: IntegerBuffer,
-    gate_append2_joined: IntegerBuffer,
-    gate_append2_joined_logs: IntegerBuffer,
-    gate_append2_rank_matrix: IntegerBuffer,
-    gate_append2_occupied: IntegerBuffer,
-    gate_append2_pivots: IntegerBuffer,
-    gate_append2_best: IntegerBuffer,
-    gate_append2_profile: IntegerBuffer,
-    gate_append2_rank_state: IntegerBuffer,
     gate_append2_perm_work: Int64Buffer,
-    gate_append2_matb: IntegerBuffer,
-    gate_append2_new_dep: IntegerBuffer,
-    gate_append2_permuted_b: IntegerBuffer,
-    gate_append2_full_h: IntegerBuffer,
-    gate_append2_transform: IntegerBuffer,
-    gate_append2_lam: IntegerBuffer,
-    gate_append2_d: IntegerBuffer,
     gate_append2_hnf_state: Int64Buffer,
-    gate_append2_full_dep: IntegerBuffer,
-    gate_append2_work_b: IntegerBuffer,
-    gate_append2_work_c: IntegerBuffer,
     gate_append2_diagonal: Int64Buffer,
-    gate_append2_final_c: IntegerBuffer,
-    gate_append2_result_h: IntegerBuffer,
-    gate_append2_result_dep: IntegerBuffer,
-    gate_append2_result_b: IntegerBuffer,
-    gate_append2_result_c: IntegerBuffer,
     gate_append2_final_state: Int64Buffer,
     gate_append2_state: Int64Buffer,
     gate_ancestry_perm1: Int64Buffer,
     gate_ancestry_perm2: Int64Buffer,
-    gate_ancestry_current: IntegerBuffer,
-    gate_ancestry_old: IntegerBuffer,
-    gate_ancestry_joined: IntegerBuffer,
-    gate_ancestry_work: IntegerBuffer,
-    gate_ancestry_trailing_work: IntegerBuffer,
     gate_ancestry_raw_to_all: IntegerBuffer,
     gate_ancestry_accepted_arch: IntegerBuffer,
     gate_ancestry_accepted_signs: Int64Buffer,
     gate_ancestry_phase_pi: IntegerBuffer,
     gate_ancestry_active_rows: Int64Buffer,
     gate_ancestry_state: Int64Buffer,
+    gate_final_h: IntegerBuffer,
+    gate_final_b: IntegerBuffer,
+    gate_final_c: IntegerBuffer,
     terminal_index_ideals: IntegerBuffer,
     terminal_index_ranks: IntegerBuffer,
     terminal_catalog_state: IntegerBuffer,
@@ -1939,126 +1982,42 @@ def pari_row6_phase6_whole_prepared_root(
         gate_initial_hnf_original,
         gate_initial_hnf_perm,
         gate_initial_hnf_mat,
-        gate_initial_hnf_dense,
-        gate_initial_hnf_transform,
         gate_initial_hnf_vmax,
         gate_initial_hnf_found,
         gate_initial_hnf_sparse_state,
-        gate_initial_hnf_bottom,
-        gate_initial_hnf_updated_dense,
-        gate_initial_hnf_extra,
         gate_initial_hnf_cleanup_state,
-        gate_initial_hnf_rank_matrix,
-        gate_initial_hnf_occupied,
-        gate_initial_hnf_pivots,
-        gate_initial_hnf_best,
-        gate_initial_hnf_profile,
-        gate_initial_hnf_rank_state,
         gate_initial_hnf_perm_work,
-        gate_initial_hnf_matbnew,
-        gate_initial_hnf_dep,
-        gate_initial_hnf_b,
         gate_initial_hnf_assembly_state,
-        gate_initial_hnf_transformed_logs,
-        gate_initial_hnf_full_h,
-        gate_initial_hnf_hnf_transform,
-        gate_initial_hnf_lam,
-        gate_initial_hnf_d,
         gate_initial_hnf_hnf_state,
-        gate_initial_hnf_full_dep,
-        gate_initial_hnf_work_b,
-        gate_initial_hnf_work_c,
         gate_initial_hnf_diagonal,
-        gate_initial_hnf_result_h,
-        gate_initial_hnf_result_dep,
-        gate_initial_hnf_result_b,
-        gate_initial_hnf_result_c,
         gate_initial_hnf_final_state,
         gate_initial_hnf_state,
-        gate_initial_hnf_cup_arena,
-        gate_initial_hnf_cup_frames,
         gate_initial_hnf_cup_solve_state,
         gate_initial_hnf_cup_state,
         gate_next_control,
         gate_append1_new_relations,
-        gate_append1_top,
-        gate_append1_exact_product,
-        gate_append1_log_product,
-        gate_append1_adjusted_logs,
-        gate_append1_joined,
-        gate_append1_joined_logs,
-        gate_append1_rank_matrix,
-        gate_append1_occupied,
-        gate_append1_pivots,
-        gate_append1_best,
-        gate_append1_profile,
-        gate_append1_rank_state,
         gate_append1_perm_work,
-        gate_append1_matb,
-        gate_append1_new_dep,
-        gate_append1_permuted_b,
-        gate_append1_full_h,
-        gate_append1_transform,
-        gate_append1_lam,
-        gate_append1_d,
         gate_append1_hnf_state,
-        gate_append1_full_dep,
-        gate_append1_work_b,
-        gate_append1_work_c,
         gate_append1_diagonal,
-        gate_append1_final_c,
-        gate_append1_result_h,
-        gate_append1_result_dep,
-        gate_append1_result_b,
-        gate_append1_result_c,
         gate_append1_final_state,
         gate_append1_state,
         gate_append2_new_relations,
-        gate_append2_top,
-        gate_append2_exact_product,
-        gate_append2_log_product,
-        gate_append2_adjusted_logs,
-        gate_append2_joined,
-        gate_append2_joined_logs,
-        gate_append2_rank_matrix,
-        gate_append2_occupied,
-        gate_append2_pivots,
-        gate_append2_best,
-        gate_append2_profile,
-        gate_append2_rank_state,
         gate_append2_perm_work,
-        gate_append2_matb,
-        gate_append2_new_dep,
-        gate_append2_permuted_b,
-        gate_append2_full_h,
-        gate_append2_transform,
-        gate_append2_lam,
-        gate_append2_d,
         gate_append2_hnf_state,
-        gate_append2_full_dep,
-        gate_append2_work_b,
-        gate_append2_work_c,
         gate_append2_diagonal,
-        gate_append2_final_c,
-        gate_append2_result_h,
-        gate_append2_result_dep,
-        gate_append2_result_b,
-        gate_append2_result_c,
         gate_append2_final_state,
         gate_append2_state,
         gate_ancestry_perm1,
         gate_ancestry_perm2,
-        gate_ancestry_current,
-        gate_ancestry_old,
-        gate_ancestry_joined,
-        gate_ancestry_work,
-        gate_ancestry_trailing_work,
         gate_ancestry_raw_to_all,
         gate_ancestry_accepted_arch,
         gate_ancestry_accepted_signs,
         gate_ancestry_phase_pi,
         gate_ancestry_active_rows,
         gate_ancestry_state,
+        gate_final_h,
+        gate_final_b,
+        gate_final_c,
     )
     if status != 0:
         return status
@@ -2130,8 +2089,8 @@ def pari_row6_phase6_whole_prepared_root(
         relation_columns,
         places,
         factor_degree,
-        integer_buffer_view(gate_append2_result_h, 0, class_columns * class_columns),
-        integer_buffer_view(gate_append2_result_c, 0, 7 * places * relation_columns),
+        integer_buffer_view(gate_final_h, 0, class_columns * class_columns),
+        integer_buffer_view(gate_final_c, 0, 7 * places * relation_columns),
         terminal_logs,
         terminal_tentative_class_number,
         terminal_zeta_factor,

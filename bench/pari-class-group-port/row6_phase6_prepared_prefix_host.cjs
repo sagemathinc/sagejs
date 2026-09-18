@@ -6,6 +6,8 @@ const path = require("node:path");
 const { compileKernel } = require("../../tools/native-kernel/compiler.cjs");
 const authentication = require("./prepared_nf_authentication.cjs");
 const source = require("./row6_phase6_prepared_prefix_source.cjs");
+const { ROW6_PREPARED_LAYOUT } = require(
+  "./row6_phase6_whole_prepared_layout.cjs");
 
 const SOURCE = path.join(__dirname, "row6_phase6_prepared_prefix_root.generated.py");
 const EXPORT = "pari_row6_phase6_prepared_prefix_root";
@@ -24,10 +26,27 @@ function prepareWithKernel(prepared, built, fn) {
   assert.equal(authentication.authenticatePreparedNf(prepared).sha256,
     PREPARED_AUTHORITY_SHA256);
   assert.equal(fn?.nativeAvailable, true);
-  const ib = (length, words = 8, values) => fn.createIntegerBuffer(
-    length, words, values === undefined ? undefined : values.map(BigInt));
-  const fb = (length, values) => fn.createFloat64Buffer(
-    values === undefined ? length : values.map(Number));
+  let allocatedBytes = 0;
+  const reserve = bytes => {
+    if (!Number.isSafeInteger(bytes) || bytes < 0 ||
+        allocatedBytes + bytes >
+          ROW6_PREPARED_LAYOUT.storagePlan.preparedPrefixBytes) {
+      const error = new Error("row-6 prepared prefix exceeds reviewed storage budget");
+      error.code = "SAGEJS_ROW6_PREPARED_PREFIX_STORAGE_LIMIT";
+      throw error;
+    }
+    allocatedBytes += bytes;
+  };
+  const ib = (length, words = 8, values) => {
+    reserve(length * (4 + 8 * words));
+    return fn.createIntegerBuffer(
+      length, words, values === undefined ? undefined : values.map(BigInt));
+  };
+  const fb = (length, values) => {
+    reserve(length * 8);
+    return fn.createFloat64Buffer(
+      values === undefined ? length : values.map(Number));
+  };
   const p = prepared.admission_primes.length, descriptors = p * DEGREE;
   const productValues = prepared.admission_products.map(BigInt);
   const productWords = Math.max(1, ...productValues.map(value =>
@@ -102,7 +121,7 @@ function prepareWithKernel(prepared, built, fn) {
   for (const [name] of source.signature("row6_prepared_initial_relations.py",
     "pari_row6_prepared_initial_relations"))
     if (Object.hasOwn(initial, name)) inputs[`initial_${name}`] = initial[name];
-  return Object.freeze({ built, factor, fn, initial, inputs,
+  return Object.freeze({ allocatedBytes, built, factor, fn, initial, inputs,
     args: Object.freeze(Object.values(inputs)) });
 }
 
