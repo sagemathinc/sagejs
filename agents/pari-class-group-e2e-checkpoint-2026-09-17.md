@@ -63,6 +63,26 @@ relation state `[54,10110,945,7,0,1006]` at 634,900 KiB peak RSS.  Frozen W0 is
 admitted only after worker exit; every descriptor, basis cell, and relation
 agrees exactly even though the live RNG state legitimately differs.
 
+Commit `f5d660bf6` crosses a separate generality frontier for row 6.  Its live
+prepared-input factor-base root reaches `KC=1130`, beyond the old fixed 1024
+ceiling, under a predeclared 2048-ideal admission bound while allocating zero
+relation/HNF matrix cells.  It also computes the index-dividing prime `p=3`
+through the translated maximal-order radical, quotient split, complement, and
+descriptor path instead of importing a frozen packet.  All 1,130 descriptors
+and source control state match the cold PARI trace.  The cached native call took
+0.845 seconds and 497,468 KiB peak RSS; the first compile-bearing successful
+child used 743,024 KiB.
+
+Commits `bff9e5840` and `0e15a7d4d` add the pinned PARI 2.17.4 side of the
+row-14 prepared-field timing experiment.  It prepares `nfinit` outside the
+clock and times exactly `bnfinit0(prepared_nf,0,NULL,nbits2prec(192))`, retaining
+the matched class, generator, rank-two log/regulator, torsion, work-state, and
+`not_given(LARGE)` projection.  On the development host, preparation took about
+4 ms and two diagnostic class-and-unit kernels took 1.902 and 1.787 seconds.
+The adapter deliberately publishes no ratio: the Sage.js transaction still
+includes detached certification and publication work excluded from PARI's
+kernel clock, so a matched Sage-side timing partition is the next prerequisite.
+
 One prepared totally real cubic,
 `x^3 - 20018*x + 20034`, now has a genuinely connected internal result:
 
