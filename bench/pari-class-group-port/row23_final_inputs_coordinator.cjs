@@ -113,6 +113,12 @@ function relationProjection(live, factorSha256) {
       terminalPermutation: strings(value.hnf_perm, 31),
       exactLogShape: [9, 5, 7],
       exactLogs: strings(value.hnf_result_c, 9 * 5 * 7),
+      // hnffinal places the single nonunit class column immediately after
+      // the nine retained kernel columns (final state zc=9, nonunit=1).
+      // Retain that one initialized column without exposing the uninitialized
+      // capacity tail of the 31-column destination workspace.
+      exactClassLogShape: [1, 5, 7],
+      exactClassLog: strings(value.hnf_result_c, 10 * 5 * 7).slice(9 * 5 * 7),
     },
     provenance: {
       preparedInputOnly: true,

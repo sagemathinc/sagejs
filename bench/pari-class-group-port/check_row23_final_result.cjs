@@ -9,8 +9,8 @@ const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 
 const argumentsList = process.argv.slice(2);
-assert(argumentsList.length >= 7,
-  "usage: check_row23_final_result.cjs PREPARED FACTOR RELATION ACCEPTANCE CLASS UNITS W0 [OUTPUT]");
+assert(argumentsList.length >= 8,
+  "usage: check_row23_final_result.cjs PREPARED FACTOR RELATION ACCEPTANCE CLASS CORRESPONDENCE UNITS W0 [OUTPUT]");
 const modulePath = path.join(__dirname, "row23_final_result.py");
 
 const program = String.raw`
@@ -30,11 +30,13 @@ m = importlib.util.module_from_spec(spec)
 sys.modules[spec.name] = m
 spec.loader.exec_module(m)
 
-prepared, factor, relation, acceptance, class_owner, units, w0 = sys.argv[2:9]
-output = Path(sys.argv[9]) if len(sys.argv) > 9 and sys.argv[9] else Path(
+prepared, factor, relation, acceptance, class_owner, correspondence, units, w0 = sys.argv[2:10]
+output = Path(sys.argv[10]) if len(sys.argv) > 10 and sys.argv[10] else Path(
     "/scratch/sagejs-row23-final-result"
 )
-source_arguments = (prepared, factor, relation, acceptance, class_owner, units)
+source_arguments = (
+    prepared, factor, relation, acceptance, class_owner, correspondence, units
+)
 
 # The complete live-owner transaction finishes before W0 is opened.
 payload_a = m.build_row23_payload(*source_arguments)
@@ -109,6 +111,7 @@ material_paths = [
     ("source", "relationOwnerSha256"),
     ("source", "acceptanceOwnerSha256"),
     ("source", "classOwnerSha256"),
+    ("source", "degreeFiveCorrespondenceOwnerSha256"),
     ("source", "unitOwnerSha256"),
     ("source", "frozenW0RuntimeInput"),
     ("field", "polynomial", 0),
@@ -119,6 +122,7 @@ material_paths = [
     ("owners", "relationHnf", "value", "relations", "recordsColumnMajor", 0),
     ("owners", "acceptance", "value", "acceptance", "regulator", 0),
     ("owners", "classWitness", "value", "presentation", "W", 0),
+    ("owners", "degreeFiveCorrespondence", "value", "idealred", "pseudomin", 0),
     ("owners", "units", "value", "unitsIntegralBasis", 0, 0),
     ("factorBase", "rationalPrimes", 0),
     ("factorBase", "descriptors", 0, 0),
@@ -140,7 +144,10 @@ material_paths = [
     ("hnf", "terminalB", 0),
     ("hnf", "terminalPermutation", 0),
     ("hnf", "exactLogs", 0),
+    ("hnf", "exactClassLog", 0),
     ("logarithms", "exactHnf", 0),
+    ("logarithms", "rawClassColumn", 0),
+    ("logarithms", "cleanedClassColumn", 0),
     ("logarithms", "analyticPacked", 0),
     ("logarithms", "coordinates", 0),
     ("logarithms", "relationLattice", 0),
@@ -152,6 +159,8 @@ material_paths = [
     ("classGroup", "compactPrincipalOrderWitnesses", 0,
         "rawRelationCoefficients", 0),
     ("classGroup", "genback", "candidateIdealHnf", 0),
+    ("classGroup", "genback", "reducedGeneratorIdealHnf", 0),
+    ("classGroup", "expandedPrincipalGenerator", 0),
     ("units", "torsion", "order"),
     ("units", "torsion", "generator", 0),
     ("units", "fundamental", "coordinates", 0),
@@ -169,13 +178,15 @@ material_paths = [
     ("regulator", "rigorousEnclosure"),
     ("buchall", "clg1", "classNumber"),
     ("buchall", "clg2", "values", 0, 0),
-    ("buchall", "clg2", "values", 1, "value", "relationExponents", 0),
-    ("buchall", "clg2", "values", 2),
+    ("buchall", "clg2", "values", 1, "entries", 0),
+    ("buchall", "clg2", "values", 2, "entries", 0),
+    ("buchall", "clg2", "values", 3, "entries", 0, "factorValues"),
     ("buchall", "clg2", "pariClg2ExactShapeComplete"),
     ("buchall", "terminalState", 0),
     ("assumptions", 0),
     ("limitations", "degreeFiveIdealredExecuted"),
     ("limitations", "expandedIdealProductReplayComplete"),
+    ("limitations", "clg2CorrespondenceComplete"),
     ("limitations", "reason"),
     ("terminal", "status"),
     ("terminal", "buchallEndEquivalentAssemblyComplete"),
@@ -202,6 +213,7 @@ owner_attacks = [
     ("relationHnf", ("relations", "recordsColumnMajor", 0)),
     ("acceptance", ("acceptance", "regulator", 0)),
     ("classWitness", ("presentation", "W", 0)),
+    ("degreeFiveCorrespondence", ("idealred", "pseudomin", 0)),
     ("units", ("unitsIntegralBasis", 0, 0)),
 ]
 for owner_name, nested in owner_attacks:
@@ -224,6 +236,7 @@ for index, (label, filename, compressed) in enumerate((
     ("relation", relation, True),
     ("acceptance", acceptance, True),
     ("class", class_owner, True),
+    ("correspondence", correspondence, True),
     ("units", units, True),
 )):
     raw = gzip.decompress(Path(filename).read_bytes()) if compressed else Path(filename).read_bytes()
@@ -269,6 +282,20 @@ reference_hnf = [
     for row in range(5) for column in range(5)
 ]
 assert reference_hnf == payload_a["classGroup"]["generatorIdeals"][0]
+reference_clg2 = event("class_group_output")["clg2"]["values"]
+assert [entry["value"] for entry in reference_clg2[0]["values"][0]["values"]] == ["1"]
+assert [entry["value"] for entry in reference_clg2[1]["values"][0]["values"]] == ["0"] * 5
+assert len(reference_clg2[2]["values"]) == 1
+assert len(reference_clg2[2]["values"][0]["values"]) == 5
+reference_ge = reference_clg2[3]["values"][0]["values"]
+assert len(reference_ge) == 2
+assert all(column["values"] == [] for column in reference_ge)
+assert reference_clg2[4]["values"][0]["values"][0]["value"] == "1"
+assert reference_clg2[5]["values"][0]["values"][0]["value"] == "0"
+assert payload_a["buchall"]["clg2"]["values"][1]["entries"] == ["0"] * 5
+assert payload_a["buchall"]["clg2"]["values"][3]["entries"] == [
+    {"factorValues": [], "factorExponents": []}
+]
 
 print(json.dumps({
     "schema": m.SCHEMA,
@@ -280,6 +307,7 @@ print(json.dumps({
     "invariantFactors": [6],
     "relationShape": [31, 40],
     "exactHnfLogCells": 315,
+    "exactClassLogCells": 35,
     "unitRank": 4,
     "unitNorms": list(map(int, payload_a["units"]["fundamental"]["norms"])),
     "regulator": payload_a["regulator"]["value"],
@@ -290,9 +318,10 @@ print(json.dumps({
     "concurrentIdempotentPublications": len(published),
     "w0OpenedPostcomputeOnly": True,
     "buchallEndEquivalentAssemblyComplete": True,
-    "correspondenceComplete": False,
+    "correspondenceComplete": True,
     "publicComplete": False,
-    "honestDegreeFiveIdealArithmeticGap": True,
+    "degreeFiveIdealCorrespondenceComplete": True,
+    "gdEquivalenceAuthority": "live J^6 principal generator and source cleanarch",
 }, sort_keys=True))
 `;
 

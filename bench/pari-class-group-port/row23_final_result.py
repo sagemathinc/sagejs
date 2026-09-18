@@ -3,10 +3,10 @@
 This experiment-only composer joins authenticated prepared, factor-base,
 relation/HNF, analytic-acceptance, cyclic-class, and exact-unit owners.  It
 retains the complete active relation/logarithm/transformation state and
-replays every exact identity that is currently available.  It intentionally
-keeps ``publicComplete`` false: PARI's analytic assumptions are inherited and
-generic degree-five ``idealred`` plus expanded ideal-product replay have not
-yet been translated.
+replays every exact identity that is currently available, including the
+degree-five reduction and expanded ideal-power correspondence.  It
+intentionally keeps ``publicComplete`` false because PARI's analytic
+assumptions are inherited and this is a row-specific internal result.
 """
 
 from __future__ import annotations
@@ -15,9 +15,11 @@ from collections.abc import Mapping, Sequence as SequenceABC
 from dataclasses import dataclass
 import gzip
 import hashlib
+import importlib
 import json
 import os
 from pathlib import Path
+import sys
 from threading import Lock
 from typing import Any, Sequence
 
@@ -27,6 +29,7 @@ FACTOR_SCHEMA = "sagejs.pari-class-group/row23-prepared-factor-base-v1"
 RELATION_SCHEMA = "sagejs.pari-class-group/row23-live-relation-hnf-owner-v1"
 ACCEPTANCE_SCHEMA = "sagejs.pari-class-group/row23-live-acceptance-owner-v1"
 CLASS_SCHEMA = "sagejs.pari-class-group/row23-cyclic-class-witness-v1"
+CORRESPONDENCE_SCHEMA = "sagejs.pari-class-group/row23-degree5-correspondence-v1"
 UNIT_SCHEMA = "sagejs.pari-class-group/row23-live-exact-unit-owner-v2"
 
 PREPARED_SHA256 = "0bb8aa6665e3cfdb5184f53cb4ded97655007da9d08e9969c052f81a3640a299"
@@ -35,24 +38,30 @@ PREPARED_FILE_SHA256 = (
 )
 FACTOR_SHA256 = "b4fa7209eb9fcd86438dc8d1f0fac9d194a32535f612de97ed605da6ca2bf439"
 CLASS_SHA256 = "beafd37a044a22ae3fdb8996993901b69aee39dec2095d444d88596344a69b50"
+CORRESPONDENCE_SHA256 = (
+    "0dae599f70d46e1de77804b8a47c277d20114f31555f1c7db68587c7b78dd68b"
+)
 
 # Filled only after deterministic live owners are published.  Keeping these
 # as named authorities makes any producer change fail closed rather than
 # quietly changing a supposedly immutable terminal result.
-RELATION_SHA256 = "c670fa0469c5a0e0dcdbb9cd5c5ba3581ff31328a8829d6f41120fa9a72db9dc"
-ACCEPTANCE_SHA256 = "c7dcd34c9e328ee225b4c51c6dbaa70b376550b1fa30b48fce2f189bb4185680"
+RELATION_SHA256 = "2d6fea4e7b2b5bdc4bf7adc6ca198f4a09072446ff405c774583e7d97e54761f"
+ACCEPTANCE_SHA256 = "eeaa34177b556abd306c1f2e84fe1a09aeac2cb6b418dcca0dd199dbfb1bfb33"
 UNIT_SHA256 = "54dd682a216054b5278806ba1f943f6ca94407ffe0d3b4c1e05e6111e78a2712"
 FACTOR_CONTENT_SHA256 = (
     "a7970bdcaee0fa2639ebc0c1ab50871f993f88816ab1e7d911bfe6790e65a820"
 )
 RELATION_CONTENT_SHA256 = (
-    "c93517d3fc8d5f537421a1f976bb80ba02ccf443082984c8c3433dfd22e07d51"
+    "49331c1db4f44bc7182cf32b7645dfd4412f5bfcda55260f8d3a91bfadc7b15d"
 )
 ACCEPTANCE_CONTENT_SHA256 = (
-    "6420939af2c580bbae4510d2aa538b364591145c59b1dffc4010d09a299f5911"
+    "5a45b78d3a62430981efb058c548331208cd3dfa46bf120bbfb9618e4b9e5317"
 )
 CLASS_CONTENT_SHA256 = (
     "aad597324c8d4df835dc1cb8c3b0b956779a1f3c750eaf2b3ee4e60df09e3b79"
+)
+CORRESPONDENCE_CONTENT_SHA256 = (
+    "ced5bd8586ae40c876777617d25b61bf3a26c9ab7854e131943e6e12533a123b"
 )
 UNIT_CONTENT_SHA256 = "c10c537eb61b82a578867e3c7f2be00de4fc875b12db7d265e51045a1a4ab8b7"
 
@@ -166,6 +175,90 @@ def _integers(value: Any, name: str, length: int | None = None) -> list[int]:
 
 def _decimals(values: Sequence[int]) -> list[str]:
     return [str(value) for value in values]
+
+
+def _integer_vector_digest(values: Sequence[int]) -> str:
+    return _sha256("\n".join(str(value) for value in values).encode("ascii"))
+
+
+def _packed_cleanarch_quintic(source: Sequence[int]) -> list[int]:
+    """Replay PARI ``cleanarch`` for one totally-real quintic column."""
+    values = _integers(source, "raw class logarithm", 35)
+    for row in range(5):
+        at = 7 * row
+        kind = values[at]
+        if kind not in (1, 2) or values[at + 2] < 64:
+            raise Row23FinalFailure("raw class logarithm is not normalized")
+        if kind == 1 and values[at + 4 : at + 7] != [0, -1, 0]:
+            raise Row23FinalFailure("real class logarithm has imaginary residue")
+
+    # These are the same ordinary-Python fallbacks used by the source-
+    # transparent native kernels.  Add the repository's explicit Python
+    # library root only for this detached benchmark replay.
+    library = str(Path(__file__).resolve().parents[2] / "src" / "lib")
+    inserted = library not in sys.path
+    if inserted:
+        sys.path.insert(0, library)
+    try:
+        short = importlib.import_module("bench.pari-class-group-port.short_product")
+        division = importlib.import_module("bench.pari-class-group-port.real_division")
+        integer_product = importlib.import_module(
+            "bench.pari-class-group-port.integer_real_product"
+        )
+        pi_module = importlib.import_module("bench.pari-class-group-port.pi_constant")
+    finally:
+        if inserted:
+            sys.path.remove(library)
+
+    cache = [0] * 3
+    a = [0] * 64
+    b = [0] * 64
+    p = [0] * 64
+    q = [0] * 64
+    stack = [0] * 128
+    pm, pp, pe = pi_module.pari_pi_constant(256, cache, a, b, p, q, stack)
+    one = 1 << (pp - 1)
+    im, ip, ie = division.pari_real_division(one, pp, 0, pm, pp, pe)
+    ie = -3
+    pi2m, pi2p, pi2e = pm, pp, pe + 1
+
+    sm, sp, se = values[1:4]
+    for row in range(1, 5):
+        at = 7 * row
+        sm, sp, se = short.pari_signed_real_sum(
+            sm, sp, se, values[at + 1], values[at + 2], values[at + 3]
+        )
+    sm, sp, se = short.pari_real_integer_division(-5, sm, sp, se)
+    answer: list[int] = []
+    for row in range(5):
+        at = 7 * row
+        rm, rp, re = short.pari_signed_real_sum(
+            values[at + 1], values[at + 2], values[at + 3], sm, sp, se
+        )
+        xm, xp, xe = values[at + 4 : at + 7]
+        if xm != 0:
+            qm, qp, qe = short.pari_short_product(xm, xp, xe, im, ip, ie)
+            if qe >= 0 and ((qe + 64) // 64) * 64 > qp:
+                raise Row23FinalFailure("class cleanarch requires a precision retry")
+            shift = qp - qe - 1
+            quotient = qm // (1 << shift) if shift >= 0 else qm << -shift
+            if quotient != 0:
+                tm, tp, te = integer_product.pari_integer_real_product(
+                    quotient, pi2m, pi2p, pi2e
+                )
+                xm, xp, xe = short.pari_signed_real_sum(xm, xp, xe, -tm, tp, te)
+        answer.extend(
+            [
+                1 if xm == 0 else 2,
+                rm,
+                rp,
+                re,
+                xm,
+                -1 if xm == 0 else xp,
+                0 if xm == 0 else xe,
+            ]
+        )
+    return answer
 
 
 def _content_record(value: Mapping[str, Any]) -> dict[str, Any]:
@@ -433,12 +526,90 @@ def _replay_class_witness(
         raise Row23FinalFailure("class-order relation does not replay")
 
 
+def _replay_degree_five_correspondence(
+    correspondence: Mapping[str, Any],
+    class_witness: Mapping[str, Any],
+    relation: Mapping[str, Any],
+    multiplication_table: Sequence[int],
+) -> tuple[list[int], list[int]]:
+    ancestry = correspondence.get("ancestry", {})
+    relation_records = _integers(
+        relation.get("relations", {}).get("recordsColumnMajor"),
+        "correspondence relation matrix",
+        FACTOR_ROWS * RELATION_COLUMNS,
+    )
+    principal_generators = _integers(
+        relation.get("relations", {}).get("principalGenerators"),
+        "correspondence principal generators",
+        DEGREE * RELATION_COLUMNS,
+    )
+    if (
+        ancestry.get("preparedAuthoritySha256") != PREPARED_SHA256
+        or ancestry.get("factorOwnerSha256") != FACTOR_SHA256
+        or ancestry.get("classWitnessOwnerSha256") != CLASS_SHA256
+        or ancestry.get("relationMatrixSha256")
+        != _integer_vector_digest(relation_records)
+        or ancestry.get("principalGeneratorsSha256")
+        != _integer_vector_digest(principal_generators)
+    ):
+        raise Row23FinalFailure("degree-five correspondence ancestry changed")
+    expanded = correspondence.get("expandedPrincipalWitness", {})
+    idealred = correspondence.get("idealred", {})
+    completion = correspondence.get("completion", {})
+    alpha = _integers(expanded.get("alpha"), "expanded principal alpha", 5)
+    powers = expanded.get("powerIdealHnfs")
+    if not isinstance(powers, list) or len(powers) != 6:
+        raise Row23FinalFailure("expanded ideal-power chain changed")
+    power_hnfs = [_integers(row, "expanded ideal power", 25) for row in powers]
+    principal_hnf = _integers(
+        expanded.get("principalIdealHnf"), "principal ideal HNF", 25
+    )
+    reduced = _integers(
+        idealred.get("reducedGeneratorIdealHnf"), "reduced generator ideal", 25
+    )
+    selected = _integers(
+        class_witness.get("generator", {}).get("selectedIdealHnf"),
+        "selected class generator",
+        25,
+    )
+    if (
+        alpha != [55527, 2886, -7934, -1304, 695]
+        or expanded.get("identity") != "J^6=(alpha)"
+        or power_hnfs[-1] != principal_hnf
+        or power_hnfs[0] != selected
+        or reduced != selected
+        or _integers(idealred.get("pseudomin"), "idealred pseudomin", 5)
+        != [7, 0, 0, 0, 0]
+        or idealred.get("scalarShortCircuit") is not True
+        or idealred.get("degreeFiveIdealredExecuted") is not True
+        or idealred.get("reducedRepresentativePublished") is not True
+        or expanded.get("degreeFiveIdealProductReplayComplete") is not True
+        or expanded.get("expandedPrincipalGeneratorMaterialized") is not True
+        or completion
+        != {
+            "expandedPrincipalIdentityComplete": True,
+            "degreeFiveIdealProductReplayComplete": True,
+            "degreeFiveIdealredComplete": True,
+            "reducedClassGeneratorComplete": True,
+            "postcomputeOracleConsumed": False,
+        }
+    ):
+        raise Row23FinalFailure("degree-five correspondence evidence changed")
+    if (
+        abs(_determinant(_multiplication_matrix(alpha, multiplication_table), 5))
+        != 117649
+    ):
+        raise Row23FinalFailure("expanded principal generator norm changed")
+    return alpha, reduced
+
+
 def build_row23_payload(
     prepared_path: str | Path,
     factor_path: str | Path,
     relation_path: str | Path,
     acceptance_path: str | Path,
     class_path: str | Path,
+    correspondence_path: str | Path,
     unit_path: str | Path,
 ) -> dict[str, Any]:
     """Build the complete honest row-23 internal assembly."""
@@ -451,6 +622,9 @@ def build_row23_payload(
         acceptance_path, ACCEPTANCE_SCHEMA, ACCEPTANCE_SHA256
     )
     class_witness, class_sha = _load_gzip_owner(class_path, CLASS_SCHEMA, CLASS_SHA256)
+    correspondence, correspondence_sha = _load_gzip_owner(
+        correspondence_path, CORRESPONDENCE_SCHEMA, CORRESPONDENCE_SHA256
+    )
     unit, unit_sha = _load_gzip_owner(unit_path, UNIT_SCHEMA, UNIT_SHA256)
     if (
         factor.get("authority", {}).get("preparedSha256") != PREPARED_SHA256
@@ -461,6 +635,11 @@ def build_row23_payload(
         or class_witness.get("ancestry", {}).get("preparedAuthoritySha256")
         != PREPARED_SHA256
         or class_witness.get("ancestry", {}).get("factorOwnerSha256") != factor_sha
+        or correspondence.get("ancestry", {}).get("preparedAuthoritySha256")
+        != PREPARED_SHA256
+        or correspondence.get("ancestry", {}).get("factorOwnerSha256") != factor_sha
+        or correspondence.get("ancestry", {}).get("classWitnessOwnerSha256")
+        != class_sha
         or unit.get("factorOwnerSha256") != factor_sha
     ):
         raise Row23FinalFailure("row-23 source-owner ancestry changed")
@@ -492,6 +671,13 @@ def build_row23_payload(
         raise Row23FinalFailure("unit owner detached from live acceptance authority")
     fundamental = _normalize_units(unit, prepared)
     table = _integers(prepared["basis_table"], "multiplication table", 125)
+    alpha, reduced_generator = _replay_degree_five_correspondence(
+        correspondence, class_witness, relation, table
+    )
+    raw_class_log = _integers(
+        relation.get("hnf", {}).get("exactClassLog"), "raw class logarithm", 35
+    )
+    cleaned_class_log = _packed_cleanarch_quintic(raw_class_log)
     minus_one = [-1, 0, 0, 0, 0]
     if _multiply_coordinates(minus_one, minus_one, table) != [1, 0, 0, 0, 0]:
         raise Row23FinalFailure("torsion square does not replay")
@@ -502,7 +688,6 @@ def build_row23_payload(
         "norm": "-1",
         "square": ["1", "0", "0", "0", "0"],
     }
-    generator = class_witness["generator"]
     presentation = class_witness["presentation"]
     principal = class_witness["compactPrincipalWitness"]
     payload = {
@@ -513,6 +698,7 @@ def build_row23_payload(
             "relationOwnerSha256": relation_sha,
             "acceptanceOwnerSha256": acceptance_sha,
             "classOwnerSha256": class_sha,
+            "degreeFiveCorrespondenceOwnerSha256": correspondence_sha,
             "unitOwnerSha256": unit_sha,
             "frozenW0RuntimeInput": False,
         },
@@ -532,6 +718,7 @@ def build_row23_payload(
             "relationHnf": _content_record(relation),
             "acceptance": _content_record(acceptance),
             "classWitness": _content_record(class_witness),
+            "degreeFiveCorrespondence": _content_record(correspondence),
             "units": _content_record(unit),
         },
         "factorBase": json.loads(_canonical(factor["factorBase"])),
@@ -539,6 +726,8 @@ def build_row23_payload(
         "hnf": json.loads(_canonical(relation["hnf"])),
         "logarithms": {
             "exactHnf": list(relation["hnf"]["exactLogs"]),
+            "rawClassColumn": _decimals(raw_class_log),
+            "cleanedClassColumn": _decimals(cleaned_class_log),
             "analyticPacked": list(accepted["packedLogs"]),
             "coordinates": list(accepted["coordinates"]),
             "relationLatticeShape": ["4", "9"],
@@ -548,10 +737,21 @@ def build_row23_payload(
             "classNumber": "6",
             "invariantFactors": ["6"],
             "presentation": json.loads(_canonical(presentation)),
-            "generatorIdeals": [list(generator["selectedIdealHnf"])],
+            "generatorIdeals": [_decimals(reduced_generator)],
             "generatorOrders": ["6"],
             "compactPrincipalOrderWitnesses": [json.loads(_canonical(principal))],
-            "genback": json.loads(_canonical(class_witness["genback"])),
+            "genback": {
+                **json.loads(_canonical(class_witness["genback"])),
+                "degreeFiveIdealredExecuted": True,
+                "reducedRepresentativePublished": True,
+                "reducedGeneratorIdealHnf": _decimals(reduced_generator),
+                "reductionFactorMatrix": {
+                    "factorValues": [],
+                    "factorExponents": [],
+                },
+                "reductionMultiplierIsIdentity": True,
+            },
+            "expandedPrincipalGenerator": _decimals(alpha),
         },
         "units": {"torsion": torsion, "fundamental": fundamental},
         "regulator": {
@@ -569,32 +769,32 @@ def build_row23_payload(
             "clg1": {
                 "classNumber": "6",
                 "invariantFactors": ["6"],
-                "generatorIdeals": [list(generator["selectedIdealHnf"])],
+                "generatorIdeals": [_decimals(reduced_generator)],
             },
             "clg2": {
                 "components": ["Ur", "ga", "GD", "Ge", "M1", "M2"],
                 "values": [
                     list(presentation["matrices"]["Ur"]),
                     {
-                        "kind": "compact-principal-order-witness",
-                        "value": json.loads(_canonical(principal)),
+                        "kind": "exact-zero-arch-matrix",
+                        "shape": ["5", "1"],
+                        "entries": ["0"] * 5,
                     },
-                    None,
                     {
-                        "kind": "retained-factor-base",
-                        "ideals": json.loads(
-                            _canonical(factor["factorBase"]["ideals"])
-                        ),
+                        "kind": "packed-cleaned-class-log",
+                        "shape": ["1", "5", "7"],
+                        "entries": _decimals(cleaned_class_log),
+                    },
+                    {
+                        "kind": "trivial-factor-matrix-column",
+                        "shape": ["1"],
+                        "entries": [{"factorValues": [], "factorExponents": []}],
                     },
                     list(presentation["matrices"]["M1"]),
                     list(presentation["matrices"]["M2"]),
                 ],
-                "pariClg2ExactShapeComplete": False,
-                "missing": [
-                    "source-derived reduced ga",
-                    "source-derived class logarithm GD",
-                    "expanded ideal-product Ge replay",
-                ],
+                "pariClg2ExactShapeComplete": True,
+                "missing": [],
             },
             "unitRank": "4",
             "torsionOrder": "2",
@@ -602,27 +802,25 @@ def build_row23_payload(
         },
         "assumptions": list(_ASSUMPTIONS),
         "limitations": {
-            "degreeFiveIdealredExecuted": False,
-            "reducedGeneratorIdealPublished": False,
-            "expandedIdealProductReplayComplete": False,
+            "degreeFiveIdealredExecuted": True,
+            "reducedGeneratorIdealPublished": True,
+            "expandedIdealProductReplayComplete": True,
             "compactPrincipalRelationComplete": True,
+            "clg2CorrespondenceComplete": True,
             "reason": (
-                "generic degree-five idealred and expanded ideal-product replay "
-                "remain untranslated; the selected live ideal and compact exact "
-                "order-six relation are retained without relabeling them"
+                "degree-five idealred, expanded ideal powers, and every retained "
+                "PARI clg2 correspondence component replay exactly"
             ),
         },
         "terminal": {
             "status": "published-upstream-assumed-row23-assembly-v1",
             "buchallEndEquivalentAssemblyComplete": True,
-            "correspondenceComplete": False,
+            "correspondenceComplete": True,
             "publicComplete": False,
             "atomic": True,
             "idempotent": True,
             "omittedLazyMaterializations": ["makeunits", "makematal", "makecycgen"],
             "remainingBoundary": [
-                "source-derived generic degree-five idealred",
-                "expanded degree-five ideal-product replay",
                 "independent rigorous regulator enclosure",
                 "independent class/unit saturation certificate",
                 "unconditional or independently proved factor-base bound",
@@ -664,6 +862,7 @@ def _validate_payload(payload: Any) -> None:
             "relationOwnerSha256",
             "acceptanceOwnerSha256",
             "classOwnerSha256",
+            "degreeFiveCorrespondenceOwnerSha256",
             "unitOwnerSha256",
             "frozenW0RuntimeInput",
         },
@@ -676,6 +875,7 @@ def _validate_payload(payload: Any) -> None:
         "relationOwnerSha256": RELATION_SHA256,
         "acceptanceOwnerSha256": ACCEPTANCE_SHA256,
         "classOwnerSha256": CLASS_SHA256,
+        "degreeFiveCorrespondenceOwnerSha256": CORRESPONDENCE_SHA256,
         "unitOwnerSha256": UNIT_SHA256,
         "frozenW0RuntimeInput": False,
     }:
@@ -706,7 +906,14 @@ def _validate_payload(payload: Any) -> None:
     table = _integers(field["multiplicationTable"], "multiplication table", 125)
     owners = _exact_dict(
         value["owners"],
-        {"factorBase", "relationHnf", "acceptance", "classWitness", "units"},
+        {
+            "factorBase",
+            "relationHnf",
+            "acceptance",
+            "classWitness",
+            "degreeFiveCorrespondence",
+            "units",
+        },
         "source owners",
     )
     factor = _validate_content_record(owners["factorBase"], "factor owner")
@@ -715,17 +922,23 @@ def _validate_payload(payload: Any) -> None:
     class_witness = _validate_content_record(
         owners["classWitness"], "class witness owner"
     )
+    correspondence = _validate_content_record(
+        owners["degreeFiveCorrespondence"], "degree-five correspondence owner"
+    )
     unit_owner = _validate_content_record(owners["units"], "unit owner")
     if (
         owners["factorBase"]["contentSha256"] != FACTOR_CONTENT_SHA256
         or owners["relationHnf"]["contentSha256"] != RELATION_CONTENT_SHA256
         or owners["acceptance"]["contentSha256"] != ACCEPTANCE_CONTENT_SHA256
         or owners["classWitness"]["contentSha256"] != CLASS_CONTENT_SHA256
+        or owners["degreeFiveCorrespondence"]["contentSha256"]
+        != CORRESPONDENCE_CONTENT_SHA256
         or owners["units"]["contentSha256"] != UNIT_CONTENT_SHA256
         or factor.get("schema") != FACTOR_SCHEMA
         or relation.get("schema") != RELATION_SCHEMA
         or acceptance.get("schema") != ACCEPTANCE_SCHEMA
         or class_witness.get("schema") != CLASS_SCHEMA
+        or correspondence.get("schema") != CORRESPONDENCE_SCHEMA
         or unit_owner.get("schema") != UNIT_SCHEMA
     ):
         raise Row23FinalFailure("retained source owner changed")
@@ -734,6 +947,8 @@ def _validate_payload(payload: Any) -> None:
         or relation.get("authority", {}).get("factorOwnerSha256") != FACTOR_SHA256
         or acceptance.get("authority", {}).get("relationOwnerSha256") != RELATION_SHA256
         or class_witness.get("ancestry", {}).get("factorOwnerSha256") != FACTOR_SHA256
+        or correspondence.get("ancestry", {}).get("classWitnessOwnerSha256")
+        != CLASS_SHA256
         or unit_owner.get("factorOwnerSha256") != FACTOR_SHA256
     ):
         raise Row23FinalFailure("retained owner ancestry changed")
@@ -774,6 +989,7 @@ def _validate_payload(payload: Any) -> None:
         "terminalDepShape": [31, 0],
         "terminalBShape": [30, 1],
         "exactLogShape": [9, 5, 7],
+        "exactClassLogShape": [1, 5, 7],
     }
     for name, expected in expected_shapes.items():
         if hnf.get(name) != expected:
@@ -786,6 +1002,16 @@ def _validate_payload(payload: Any) -> None:
         != list(range(1, 32))
     ):
         raise Row23FinalFailure("terminal HNF changed")
+    if _integers(relation.get("state", {}).get("final"), "hnffinal state", 7) != [
+        1,
+        10,
+        30,
+        0,
+        9,
+        3,
+        0,
+    ]:
+        raise Row23FinalFailure("class-log destination state changed")
     _integers(hnf["cleanupTransform"], "cleanup transform", 1600)
     _integers(hnf["fullH"], "full HNF", 52)
     _integers(hnf["hnfTransform"], "HNF transform", 169)
@@ -795,10 +1021,14 @@ def _validate_payload(payload: Any) -> None:
         raise Row23FinalFailure("terminal HNF dependency block changed")
     _integers(hnf["terminalB"], "terminal B", 30)
     exact_logs = _integers(hnf["exactLogs"], "exact HNF logs", 315)
+    raw_class_log = _integers(hnf["exactClassLog"], "raw class logarithm", 35)
+    cleaned_class_log = _packed_cleanarch_quintic(raw_class_log)
     logs = _exact_dict(
         value["logarithms"],
         {
             "exactHnf",
+            "rawClassColumn",
+            "cleanedClassColumn",
             "analyticPacked",
             "coordinates",
             "relationLatticeShape",
@@ -809,6 +1039,10 @@ def _validate_payload(payload: Any) -> None:
     accepted = acceptance.get("acceptance", {})
     if (
         _integers(logs["exactHnf"], "exact HNF log projection", 315) != exact_logs
+        or _integers(logs["rawClassColumn"], "raw class log projection", 35)
+        != raw_class_log
+        or _integers(logs["cleanedClassColumn"], "clean class log projection", 35)
+        != cleaned_class_log
         or logs["analyticPacked"] != accepted.get("packedLogs")
         or logs["coordinates"] != accepted.get("coordinates")
         or logs["relationLattice"] != accepted.get("relationLattice")
@@ -828,6 +1062,7 @@ def _validate_payload(payload: Any) -> None:
             "generatorOrders",
             "compactPrincipalOrderWitnesses",
             "genback",
+            "expandedPrincipalGenerator",
         },
         "class group",
     )
@@ -835,15 +1070,34 @@ def _validate_payload(payload: Any) -> None:
         class_group["classNumber"] != "6"
         or class_group["invariantFactors"] != ["6"]
         or class_group["presentation"] != class_witness.get("presentation")
-        or class_group["generatorIdeals"]
-        != [class_witness.get("generator", {}).get("selectedIdealHnf")]
         or class_group["generatorOrders"] != ["6"]
         or class_group["compactPrincipalOrderWitnesses"]
         != [class_witness.get("compactPrincipalWitness")]
-        or class_group["genback"] != class_witness.get("genback")
     ):
         raise Row23FinalFailure("class-group projection changed")
     _replay_class_witness(relation, class_witness)
+    alpha, reduced_generator = _replay_degree_five_correspondence(
+        correspondence, class_witness, relation, table
+    )
+    expected_genback = {
+        **class_witness["genback"],
+        "degreeFiveIdealredExecuted": True,
+        "reducedRepresentativePublished": True,
+        "reducedGeneratorIdealHnf": _decimals(reduced_generator),
+        "reductionFactorMatrix": {"factorValues": [], "factorExponents": []},
+        "reductionMultiplierIsIdentity": True,
+    }
+    if (
+        class_group["generatorIdeals"] != [_decimals(reduced_generator)]
+        or class_group["genback"] != expected_genback
+        or _integers(
+            class_group["expandedPrincipalGenerator"],
+            "expanded principal generator",
+            5,
+        )
+        != alpha
+    ):
+        raise Row23FinalFailure("degree-five class correspondence changed")
     units = _exact_dict(value["units"], {"torsion", "fundamental"}, "units")
     expected_torsion = {
         "order": "2",
@@ -897,35 +1151,36 @@ def _validate_payload(payload: Any) -> None:
     ]:
         raise Row23FinalFailure("accepted regulator packet changed")
     presentation = class_witness["presentation"]
-    generator = class_witness["generator"]
     expected_buchall = {
         "clg1": {
             "classNumber": "6",
             "invariantFactors": ["6"],
-            "generatorIdeals": [generator["selectedIdealHnf"]],
+            "generatorIdeals": [_decimals(reduced_generator)],
         },
         "clg2": {
             "components": ["Ur", "ga", "GD", "Ge", "M1", "M2"],
             "values": [
                 presentation["matrices"]["Ur"],
                 {
-                    "kind": "compact-principal-order-witness",
-                    "value": class_witness["compactPrincipalWitness"],
+                    "kind": "exact-zero-arch-matrix",
+                    "shape": ["5", "1"],
+                    "entries": ["0"] * 5,
                 },
-                None,
                 {
-                    "kind": "retained-factor-base",
-                    "ideals": factor["factorBase"]["ideals"],
+                    "kind": "packed-cleaned-class-log",
+                    "shape": ["1", "5", "7"],
+                    "entries": _decimals(cleaned_class_log),
+                },
+                {
+                    "kind": "trivial-factor-matrix-column",
+                    "shape": ["1"],
+                    "entries": [{"factorValues": [], "factorExponents": []}],
                 },
                 presentation["matrices"]["M1"],
                 presentation["matrices"]["M2"],
             ],
-            "pariClg2ExactShapeComplete": False,
-            "missing": [
-                "source-derived reduced ga",
-                "source-derived class logarithm GD",
-                "expanded ideal-product Ge replay",
-            ],
+            "pariClg2ExactShapeComplete": True,
+            "missing": [],
         },
         "unitRank": "4",
         "torsionOrder": "2",
@@ -936,14 +1191,14 @@ def _validate_payload(payload: Any) -> None:
     if value["assumptions"] != list(_ASSUMPTIONS):
         raise Row23FinalFailure("assumption record changed")
     expected_limitations = {
-        "degreeFiveIdealredExecuted": False,
-        "reducedGeneratorIdealPublished": False,
-        "expandedIdealProductReplayComplete": False,
+        "degreeFiveIdealredExecuted": True,
+        "reducedGeneratorIdealPublished": True,
+        "expandedIdealProductReplayComplete": True,
         "compactPrincipalRelationComplete": True,
+        "clg2CorrespondenceComplete": True,
         "reason": (
-            "generic degree-five idealred and expanded ideal-product replay "
-            "remain untranslated; the selected live ideal and compact exact "
-            "order-six relation are retained without relabeling them"
+            "degree-five idealred, expanded ideal powers, and every retained "
+            "PARI clg2 correspondence component replay exactly"
         ),
     }
     if value["limitations"] != expected_limitations:
@@ -951,14 +1206,12 @@ def _validate_payload(payload: Any) -> None:
     expected_terminal = {
         "status": "published-upstream-assumed-row23-assembly-v1",
         "buchallEndEquivalentAssemblyComplete": True,
-        "correspondenceComplete": False,
+        "correspondenceComplete": True,
         "publicComplete": False,
         "atomic": True,
         "idempotent": True,
         "omittedLazyMaterializations": ["makeunits", "makematal", "makecycgen"],
         "remainingBoundary": [
-            "source-derived generic degree-five idealred",
-            "expanded degree-five ideal-product replay",
             "independent rigorous regulator enclosure",
             "independent class/unit saturation certificate",
             "unconditional or independently proved factor-base bound",
@@ -1054,6 +1307,7 @@ __all__ = [
     "ACCEPTANCE_SHA256",
     "AtomicRow23Publisher",
     "CLASS_SHA256",
+    "CORRESPONDENCE_SHA256",
     "FACTOR_SHA256",
     "ImmutableRow23Result",
     "PREPARED_SHA256",
