@@ -1,3 +1,4 @@
+# DISABLED: full-runtime lazy-package fixture, run by extension-multivariate.cjs
 """Public finite-extension polynomial arithmetic and resident-spill regression."""
 
 import sagejs.polynomial_algorithms.extension_mpoly_backend as storage

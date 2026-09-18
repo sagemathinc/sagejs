@@ -1,3 +1,4 @@
+# DISABLED: full-runtime lazy-package fixture, run by extension-geometry.cjs
 """Core scheme operations over genuine extension coefficients."""
 
 assert globals().get("_extension_field_selection") in (None, 4, 9, 27)

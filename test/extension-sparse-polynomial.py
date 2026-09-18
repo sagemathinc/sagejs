@@ -1,3 +1,4 @@
+# DISABLED: full-runtime lazy-package fixture, run by extension-sparse-polynomial.cjs
 """Exact sparse substrate checks using the actual Sage.js field parents."""
 
 from sagejs.polynomial_algorithms.exact_field import ExactField

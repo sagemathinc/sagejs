@@ -1,3 +1,4 @@
+# DISABLED: full-runtime lazy-package fixture, run by extension-ideals.cjs
 """Public exact-field dispatch, certificates, and quotient order conversion."""
 
 from sagejs.polynomial_algorithms.exact_field import ExactField
