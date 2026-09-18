@@ -159,6 +159,7 @@ async function runFreshPrepared(prepared, outputDirectory) {
     const receipt = {
       ...neutralReceipt,
       schema: "sagejs.pari-class-group/row6-fresh-prepared-receipt-v1",
+      preparedAuthoritySha256: preparedEnvelope.authoritySha256,
       freshPreparedExecution: true,
       retainedRuntimeInputs: false,
       retainedOwnersRuntimeInputs: false,
@@ -166,6 +167,7 @@ async function runFreshPrepared(prepared, outputDirectory) {
       runtimeInputs: ["authenticated normalized prepared-nf data"],
       semanticAuthority: {
         schema: semantic.SCHEMA,
+        preparedAuthoritySha256: preparedEnvelope.authoritySha256,
         factorSha256: semantic.semanticSha256(built.factor),
         initialSha256: semantic.semanticSha256(built.initial),
         gateSha256: semantic.semanticSha256(gate),

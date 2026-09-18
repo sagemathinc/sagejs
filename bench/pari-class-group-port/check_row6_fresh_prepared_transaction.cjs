@@ -25,6 +25,10 @@ async function worker(payload) {
   const host = require("./row6_fresh_prepared_transaction_host.cjs");
   const receipt = await host.runFreshPrepared(payload.prepared,
     payload.outputDirectory);
+  assert.equal(receipt.preparedAuthoritySha256,
+    host.validatePrepared(payload.prepared).authoritySha256);
+  assert.equal(receipt.semanticAuthority.preparedAuthoritySha256,
+    receipt.preparedAuthoritySha256);
   assert.equal(host.isAuthenticFreshReceipt(receipt), true);
   assert.equal(host.isAuthenticFreshReceipt({ ...receipt }), false);
   assert(receipt.verifiedResult,
@@ -125,6 +129,9 @@ function main() {
   assert.equal(receipt.schema,
     "sagejs.pari-class-group/row6-fresh-prepared-receipt-v1");
   assert.equal(receipt.freshPreparedExecution, true);
+  assert.equal(receipt.preparedAuthoritySha256, envelope.authoritySha256);
+  assert.equal(receipt.semanticAuthority.preparedAuthoritySha256,
+    envelope.authoritySha256);
   assert.equal(receipt.retainedRuntimeInputs, false);
   assert.equal(receipt.frozenW0RuntimeInput, false);
   assert.deepEqual(receipt.runtimeInputs,

@@ -188,11 +188,11 @@ async function executeBoundedRow(row, temporaryRoot) {
         }
       });
     });
-    assert.equal(exit.signal, null,
-      `fresh-prepared row ${row.panelIndex} ended by signal ${exit.signal}`);
-    if (exit.code !== 0) {
+    if (exit.signal !== null || exit.code !== 0) {
       const diagnostic = fs.readFileSync(path.join(rowDirectory, "child.log"), "utf8");
-      assert.fail(`fresh-prepared row ${row.panelIndex} failed (${exit.code}):\n${diagnostic.slice(-12000)}`);
+      const status = exit.signal === null ? `exit ${exit.code}`
+        : `signal ${exit.signal}`;
+      assert.fail(`fresh-prepared row ${row.panelIndex} failed (${status}):\n${diagnostic.slice(-12000)}`);
     }
     const stat = fs.statSync(receiptPath);
     assert.equal(stat.mode & 0o222, 0, "child receipt is writable");
