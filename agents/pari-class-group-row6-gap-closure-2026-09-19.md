@@ -9,13 +9,13 @@ x^3 - 2000000000010*x + 2000000000018
 ```
 
 the final GMP-only Sage.js artifact computes the complete class-and-unit result
-in a median **13,046.130473 ms** over five fresh-process executions. The frozen
+in a median **9,602.219511 ms** over five fresh-process executions. The frozen
 pristine PARI 2.17.4 control is **3,886.499614 ms**, so the remaining complete
-prepared-field gap is **3.3568x**.
+prepared-field gap is **2.4707x**.
 
 The campaign began from the qualified Sage.js artifact at **62,904.424963 ms**,
-or **16.185x** PARI. The retained implementation is therefore **4.8217x** faster
-than that artifact and removes **79.26%** of its wall time. It does not yet
+or **16.185x** PARI. The retained implementation is therefore **6.5510x** faster
+than that artifact and removes **84.74%** of its wall time. It does not yet
 claim parity with PARI.
 
 All five final executions reproduced the class number `4`, invariant factors
@@ -37,32 +37,32 @@ compiler validation changes. The five fresh-process times, in ascending order,
 were:
 
 ```text
-12,990.641916 ms
-13,033.042756 ms
-13,046.130473 ms
-13,055.012792 ms
-13,115.294507 ms
+9,554.376304 ms
+9,597.346233 ms
+9,602.219511 ms
+9,614.327607 ms
+9,635.811903 ms
 ```
 
 The matched ratios are:
 
 | reference | time | Sage.js/reference |
 | --- | ---: | ---: |
-| pristine PARI 2.17.4 | 3,886.499614 ms | 3.3568x |
-| instrumented PARI 2.17.4 | 3,900.733214 ms | 3.3440x |
-| original Sage.js artifact | 62,904.424963 ms | 0.2074x (4.8217x speedup) |
+| pristine PARI 2.17.4 | 3,886.499614 ms | 2.4707x |
+| instrumented PARI 2.17.4 | 3,900.728954 ms | 2.4616x |
+| original Sage.js artifact | 62,904.424963 ms | 0.1526x (6.5510x speedup) |
 
 The final non-diagnostic artifact is content-addressed by cache key
-`658f694a38ad3c7caf8c8652ec953a05431733d82aca6b7ea32fca9896464074`:
+`79918812be454ffd91889445916b07e4672fd1b7a4868464a0902808a280582e`:
 
 | artifact | bytes | SHA-256 |
 | --- | ---: | --- |
-| generated core C | 28,962,264 | `6a14ce1f9954e1aebf3d0c526703321375171af9d9654324a127f8190374e8ac` |
-| manifest | 86,774,166 | `131ab9171b37b61f25776520428b9ebd74c48826b8adba0f88a5a134866e5c86` |
-| native addon | 2,923,336 | `f21c042bb99bab9f3181e69f60afefc2be72aeb6fe1d95a6d6420b8cd773fba8` |
+| generated core C | 29,351,003 | `916989591f5f2092f19de5210e3efa080e2a1b5697895105d7433c55f7d089f5` |
+| manifest | 87,939,387 | `e97099f178ee72e7b9c262b0d64f3e1a00778b6df202c1de48f96db68ddec45f` |
+| native addon | 2,960,200 | `64bb7f056c3b99afe66d459a663eff377eabdaf571db5732e47aaa78c72009f0` |
 
 The generated whole-root source SHA-256 is
-`0439de6bd39a198323753c25790211b17f102473f6bde07cb737a075d6d2355c`.
+`ac2297536f8a0dcfd07517bfc3236fc28668e032a177d93208896c7b50c371f7`.
 
 ## What closed the gap
 
@@ -75,8 +75,14 @@ machine facts that its C implementation relies on:
   import/temporary/export cycles;
 - HNF and reverse-ancestry loops reuse resident storage and perform direct
   slot/range operations;
+- the sparse HNF prefix and bounded cleanup retain their transformation in a
+  reused signed-word owner, avoiding an intermediate 1,137-by-1,137 GMP
+  transformation and its copy;
 - the all-real cubic norm path keeps bounded precision/exponent metadata and
   avoids tagged/native duplication;
+- the row-6 monic cubic collector recovers the exact homogeneous norm form once
+  from nine guarded embedding probes, then evaluates that exact polynomial for
+  each candidate instead of reconstructing its norm numerically;
 - log transformations use bounded metadata and direct modular range updates;
 - small private helpers can opt into source-transparent `@native_inline`, while
   public functions retain their checked ABI and dynamic fallback;
@@ -99,23 +105,45 @@ Python can express the relevant number-theoretic kernel without an inherent
 50x penalty. The compiler must retain boundedness, ownership, representation,
 and call-graph facts across the complete private graph.
 
+The cubic specialization is deliberately proof-gated rather than a row-6
+answer table. It is enabled only for a degree-three, all-real embedding basis
+whose first column is exactly `[1, 1, 1]`; all nine nontrivial recovery probes
+must satisfy PARI's `error <= -32` guard. The dynamic implementation and every
+unproved case retain the ordinary numerical path.
+
 ## Profile and remaining gap
 
-A diagnostic build immediately preceding the final micro-optimizations took
-about 13.52 seconds and attributed the root approximately as follows:
+A diagnostic build of the final source took **9,597.464043 ms** at the external
+boundary and **9,509.784185 ms** inside the instrumented root. It attributed
+the root as follows:
 
 | Sage.js region | time | share of profiled root |
 | --- | ---: | ---: |
-| preparation, factor base, initial relations | 0.857 s | 6.3% |
-| relation collection | 4.876 s | 36.1% |
-| initial HNF | 5.690 s | 42.1% |
-| relation/HNF continuations | 0.169 s | 1.2% |
-| reverse ancestry | 1.147 s | 8.5% |
-| terminal class and units | 0.680 s | 5.0% |
+| preparation, factor base, initial relations | 0.881398 s | 9.3% |
+| relation collection | 3.192800 s | 33.6% |
+| initial HNF | 5.070329 s | 53.3% |
+| relation/HNF continuations | 0.083151 s | 0.9% |
+| reverse ancestry | 0.222566 s | 2.3% |
+| terminal class and units | 0.059528 s | 0.6% |
+| completion | 0.000013 s | <0.1% |
 
 The boundaries and diagnostic overhead are not identical to the final artifact,
 so these values are optimization attribution rather than a second qualified
-timing result. Deeper probes found:
+timing result.
+
+PARI's instrumented boundaries are coarser and not isomorphic to the Sage.js
+ones. The closest honest stage aggregation is:
+
+| matched region | Sage.js diagnostic | PARI 2.17.4 instrumented | ratio |
+| --- | ---: | ---: | ---: |
+| relation side (preparation + initial + collection) | 4.074198 s | 1.100174 s | 3.7033x |
+| matrix side (initial HNF + continuations + ancestry) | 5.376046 s | 2.791358 s | 1.9259x |
+| remaining terminal/control work | 0.059541 s | 0.009196 s | 6.4743x |
+| complete measured computation | 9.602220 s | 3.886500 s | 2.4707x |
+
+The first two rows are the useful comparison. “Terminal/control” is a residual
+of differently placed clocks and is too small and structurally different to
+interpret as an algorithmic 6.47x result. Deeper probes found:
 
 - the first `hnffinal` call spent about 2.321 s in HNF/LLL and 0.677 s in
   propagation, across 648,983 reductions and 620,475 Euclidean quotient cases;
@@ -124,20 +152,23 @@ timing result. Deeper probes found:
 - candidate admission dominated enumeration; numerical norm construction was
   the largest measured subregion of prepared `factorgen`.
 
-A fresh follow-up profile localized candidate work further: enumeration took
-about 0.893 s and admission 2.481 s. Within admission, numerical norm work took
-about 1.668 s and factor/division work 0.794 s. The numerical component split
-into about 1.189 s for the cubic matrix norm, 0.306 s for ideal division, and
-0.138 s for final rounding. Within the norm, embedding rows accounted for
-about 0.975 s and real products about 0.258 s. Diagnostic stage-clock overhead
-and boundaries mean these are attribution measurements, not qualified timing.
+An earlier profile localized candidate work further: enumeration took about
+0.893 s and admission 2.481 s. Within admission, repeated numerical norm work
+took about 1.668 s and factor/division work 0.794 s. The retained exact cubic
+form removes almost all of that repeated numerical norm work; the final root
+profile measures relation collection at 3.193 s rather than the earlier 4.876 s.
+Diagnostic stage-clock overhead and boundaries mean these are attribution
+measurements, not qualified timing.
 
-The next credible route from 3.36x to parity is therefore targeted rather than
-architectural: reduce Euclidean/HNF packed-buffer traffic, specialize the
-bounded numerical norm/admission cone without growing code, and then reduce
-the remaining reverse-ancestry transformation traffic. The campaign gives a
-measured strategy for those steps, but does not assert that their sum must
-reach parity.
+The next credible route from 2.47x to parity is now sharply concentrated:
+reduce the initial HNF's exact packed-buffer traffic and close the remaining
+relation-side factor/division gap. A width probe found that the authentic HNF
+transformation reaches **612 bits** internally even though its final matrix fits
+signed 64-bit words. Thus final boundedness cannot simply be propagated
+backward: a competitive fixed-width HNF path needs roughly ten 64-bit limbs
+plus wider temporaries, or checked promotion, rather than an `int64`/`int128`
+annotation. The campaign gives a measured strategy for those steps, but does
+not assert that their sum must reach parity.
 
 ## Rejected experiments
 
@@ -157,6 +188,11 @@ medians regressed or failed to beat the retained artifact:
 - selectively forcing the isolated word-real product inline;
 - bypassing the checked word-real product at the log-transform boundary;
 - direct packed range updates for the sparse HNF `A` row and `lam` scalar.
+- replacing the whole HNF transformation by `int64` storage (checked overflow
+  was reached; the exact trace subsequently measured a 612-bit peak);
+- forcing the private `factorgen` wrapper inline;
+- retaining extra square/monomial temporaries in the exact cubic-form
+  evaluation, which slightly regressed the fresh-process median.
 
 This is important negative evidence: broad inlining and larger fused regions
 increase code size and instruction-cache pressure. The winning compiler policy
@@ -166,6 +202,10 @@ is selective proof propagation plus narrowly chosen private inlining.
 
 - five authenticated final row-6 executions, each with all replay hashes and
   the final class/unit projection checked;
+- a separate authenticated public-host execution against the pinned local
+  content-addressed cache;
+- one exact final-source diagnostic execution with root and gate markers,
+  producing the stage table above while reproducing every replay hash;
 - generated gate and whole-root sources are byte-for-byte fresh;
 - focused native-inline and signed-word compiler tests pass across native,
   JavaScript, dynamic Sage.js, and CPython execution;
@@ -178,3 +218,10 @@ is selective proof propagation plus narrowly chosen private inlining.
 file `test/pari-class-group-generic-pari-prepared-adapter.cjs` lacks its
 required co-located `sagejs-test-tier` declaration. This is a pre-existing
 repository metadata blocker, not a failure in the row-6 changes.
+
+The older standalone `check_hnfspec_sparse.cjs`/cleanup fixture also rejects a
+large synthetic signed-word case before reaching the changed cleanup path. The
+same CPython result is produced by the pre-change `HEAD` implementation, so it
+is a pre-existing oracle/translation mismatch rather than a regression from
+the retained word-transform storage. The authentic row-6 HNF path is covered
+by the six exact replay digests in every final and diagnostic execution.

@@ -14,6 +14,7 @@ from sagejs.native import (
 
 from .candidate_admission import pari_next_smooth_candidate
 from .relation_insertion import pari_insert_smooth_relation
+from .short_product import pari_prepare_monic_cubic_norm_form
 
 
 @native
@@ -138,6 +139,26 @@ def pari_collect_ideal_relations(
                 or metadata_exponent > 9223372036854775807
             ):
                 bounded_real = 0
+    if (
+        bounded_real != 0
+        and n == 3
+        and admission_matrix_m[0] == 1
+        and admission_matrix_m[3] == 1
+        and admission_matrix_m[6] == 1
+        and admission_matrix_p[0] == -1
+        and admission_matrix_p[3] == -1
+        and admission_matrix_p[6] == -1
+        and pari_prepare_monic_cubic_norm_form(
+            admission_matrix_m,
+            admission_matrix_p,
+            admission_matrix_e,
+            admission_embedding_m,
+            admission_embedding_p,
+            admission_embedding_e,
+        )
+        != 0
+    ):
+        bounded_real = 2
     if progress[2] != 0:
         return int(progress[3])
     while True:

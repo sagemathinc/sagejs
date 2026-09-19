@@ -58,6 +58,7 @@ def pari_row6_phase6_resident_terminal_root(
     full_counts: IntegerBuffer,
     full_degrees: IntegerBuffer,
     catalog_state: IntegerBuffer,
+    degree_catalog_ready: bool,
     log_discriminant: Float64Buffer,
     analytic_coefficients: Float64Buffer,
     analytic_table: Float64Buffer,
@@ -185,31 +186,40 @@ def pari_row6_phase6_resident_terminal_root(
         resident_state[i] = 0
     resident_state[0] = -1
 
-    status = pari_row6_prime_degree_catalog(
-        coefficients_exact,
-        degree,
-        equation_index,
-        analytic_primes,
-        prime_count,
-        index_prime,
-        index_ideals,
-        index_ranks,
-        index_count,
-        catalog_workspace,
-        factor_degrees,
-        factor_exponents,
-        group_degrees,
-        group_counts,
-        local_state,
-        pattern_offsets,
-        pattern_counts,
-        pattern_degrees,
-        pattern_multiplicities,
-        full_offsets,
-        full_counts,
-        full_degrees,
-        catalog_state,
-    )
+    status = 0
+    if degree_catalog_ready:
+        if (
+            len(catalog_state) < 4
+            or catalog_state[0] != 0
+            or catalog_state[1] != prime_count
+        ):
+            raise ValueError("invalid prepared row-6 degree catalog")
+    else:
+        status = pari_row6_prime_degree_catalog(
+            coefficients_exact,
+            degree,
+            equation_index,
+            analytic_primes,
+            prime_count,
+            index_prime,
+            index_ideals,
+            index_ranks,
+            index_count,
+            catalog_workspace,
+            factor_degrees,
+            factor_exponents,
+            group_degrees,
+            group_counts,
+            local_state,
+            pattern_offsets,
+            pattern_counts,
+            pattern_degrees,
+            pattern_multiplicities,
+            full_offsets,
+            full_counts,
+            full_degrees,
+            catalog_state,
+        )
     resident_state[1] = catalog_state[0]
     if status != 0:
         resident_state[0] = status

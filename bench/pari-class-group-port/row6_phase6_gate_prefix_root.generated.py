@@ -1293,11 +1293,6 @@ def pari_row6_phase6_gate_prefix_root(
                 if gate_append2_state[0] + gate_append2_state[2] < factor_count:
                     return 119
                 break
-        initial_retained = checked_int64(int(gate_initial_hnf_sparse_state[0]) - 1)
-        for word_index in range(initial_retained * initial_retained):
-            gate_initial_hnf_mat[word_index] = checked_int64(
-                gate_initial_hnf_transform[word_index]
-            )
         diagnostic_stage_switch(4)
         status = pari_row6_phase6_gate_ancestry_private(
             initial_relation_records,
@@ -1308,7 +1303,7 @@ def pari_row6_phase6_gate_prefix_root(
             factor_real_places + factor_complex_pairs,
             gate_initial_hnf_state,
             gate_initial_hnf_assembly_state,
-            gate_initial_hnf_mat,
+            gate_initial_hnf_original,
             gate_initial_hnf_b,
             gate_initial_hnf_hnf_transform,
             gate_initial_hnf_full_h,

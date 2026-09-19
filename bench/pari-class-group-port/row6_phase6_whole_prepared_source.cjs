@@ -44,6 +44,7 @@ const TERMINAL_ALIASES = Object.freeze({
   full_offsets: "factor_full_offsets",
   full_counts: "factor_full_counts",
   full_degrees: "factor_full_degrees",
+  degree_catalog_ready: "True",
   factor_count: "factor_count",
   h_rows: "class_columns",
   b_columns: "factor_count - class_columns",
@@ -134,6 +135,8 @@ function generate() {
     "    for i in range(9):",
     "        terminal_index_ideals[i] = factor_selected_tau[9 * index_row + i]",
     "    terminal_index_ranks[0] = 2",
+    "    for i in range(4):",
+    "        terminal_catalog_state[i] = factor_degree_state[i]",
     "    diagnostic_stage_switch(5)",
     `    status = ${TERMINAL}(`,
   );

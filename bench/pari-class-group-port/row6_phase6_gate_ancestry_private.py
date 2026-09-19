@@ -57,6 +57,9 @@ def _row6_reverse_hnffinal(
     work: IntegerBuffer,
     result: IntegerBuffer,
     trailing_work: IntegerBuffer,
+    quotient_cache: IntegerBuffer,
+    quotient_cache_offset: int64,
+    use_quotient_cache: int64,
 ) -> int64:
     """Reverse one literal `hnffinal` stage for one selected column."""
     diagnostic_stage_switch(0)
@@ -75,8 +78,9 @@ def _row6_reverse_hnffinal(
         work[i] = 0
     for i in range(range_stop):
         result[i] = 0
-    for i in range(trailing_length):
-        trailing_work[i] = trailing[i]
+    if use_quotient_cache == 0:
+        for i in range(trailing_length):
+            trailing_work[i] = trailing[i]
     diagnostic_stage_switch(1)
     for column in range(zero_columns):
         work[column] = output[column]
@@ -102,28 +106,32 @@ def _row6_reverse_hnffinal(
         h = full_h[(zero_columns + row) * rows + row]
         for column in range(tail):
             at = column * lig + dependent_rows + row
-            quotient = trailing_work[at]
-            if diagonal[row] == 0:
-                quotient = quotient // h
+            if use_quotient_cache != 0:
+                quotient = quotient_cache[quotient_cache_offset + row * tail + column]
+            else:
+                quotient = trailing_work[at]
+                if diagonal[row] == 0:
+                    quotient = quotient // h
             if quotient != 0:
-                destination = column * lig
-                source = (zero_columns + row) * dependent_rows
-                integer_buffer_addmul_range_from(
-                    trailing_work,
-                    destination,
-                    full_dep,
-                    source,
-                    dependent_rows,
-                    -quotient,
-                )
-                integer_buffer_addmul_range_from(
-                    trailing_work,
-                    destination + dependent_rows,
-                    full_h,
-                    (zero_columns + row) * rows,
-                    rows,
-                    -quotient,
-                )
+                if use_quotient_cache == 0:
+                    destination = column * lig
+                    source = (zero_columns + row) * dependent_rows
+                    integer_buffer_addmul_range_from(
+                        trailing_work,
+                        destination,
+                        full_dep,
+                        source,
+                        dependent_rows,
+                        -quotient,
+                    )
+                    integer_buffer_addmul_range_from(
+                        trailing_work,
+                        destination + dependent_rows,
+                        full_h,
+                        (zero_columns + row) * rows,
+                        rows,
+                        -quotient,
+                    )
                 integer_buffer_addmul_from(
                     work,
                     zero_columns + row,
@@ -147,6 +155,65 @@ def _row6_reverse_hnffinal(
     for column in range(tail):
         result[columns + column] = output[columns + column]
     diagnostic_stage_switch(5)
+    return 0
+
+
+@native
+def _row6_reverse_hnffinal_quotients(
+    rows: int64,
+    dependent_rows: int64,
+    columns: int64,
+    tail: int64,
+    full_h: IntegerBuffer,
+    full_dep: IntegerBuffer,
+    trailing: IntegerBuffer,
+    diagonal: Int64Buffer,
+    trailing_work: IntegerBuffer,
+    quotient_cache: IntegerBuffer,
+    quotient_cache_offset: int64,
+) -> int64:
+    """Compute the output-independent reverse elimination schedule once."""
+    lig: int64 = rows + dependent_rows
+    zero_columns: int64 = columns - rows
+    trailing_length: int64 = lig * tail
+    if (
+        quotient_cache_offset < 0
+        or len(quotient_cache) < quotient_cache_offset + rows * tail
+        or len(trailing_work) < trailing_length
+    ):
+        raise ValueError("short reverse HNF quotient cache")
+    i: int64 = 0
+    row: int64 = 0
+    row_offset: int64 = 0
+    column: int64 = 0
+    for i in range(trailing_length):
+        trailing_work[i] = trailing[i]
+    for row_offset in range(rows):
+        row = rows - 1 - row_offset
+        h = full_h[(zero_columns + row) * rows + row]
+        for column in range(tail):
+            at: int64 = column * lig + dependent_rows + row
+            quotient = trailing_work[at]
+            if diagonal[row] == 0:
+                quotient = quotient // h
+            quotient_cache[quotient_cache_offset + row * tail + column] = quotient
+            if quotient != 0:
+                integer_buffer_addmul_range_from(
+                    trailing_work,
+                    column * lig,
+                    full_dep,
+                    (zero_columns + row) * dependent_rows,
+                    dependent_rows,
+                    -quotient,
+                )
+                integer_buffer_addmul_range_from(
+                    trailing_work,
+                    column * lig + dependent_rows,
+                    full_h,
+                    (zero_columns + row) * rows,
+                    rows,
+                    -quotient,
+                )
     return 0
 
 
@@ -232,6 +299,24 @@ def pari_row6_phase6_gate_ancestry_private(
     kernel: int64 = 0
     place: int64 = 0
     range_stop: int64 = 0
+    initial_genuine: int64 = initial_assembly[0]
+    initial_dependent: int64 = initial_assembly[1]
+    initial_width: int64 = initial_assembly[2]
+    initial_tail: int64 = initial_assembly[4]
+    quotient_cache_offset: int64 = 0
+    _row6_reverse_hnffinal_quotients(
+        initial_genuine,
+        initial_dependent,
+        initial_width,
+        initial_tail,
+        initial_full_h,
+        initial_full_dep,
+        initial_trailing,
+        initial_diagonal,
+        trailing_work,
+        initial_trailing,
+        quotient_cache_offset,
+    )
     for selected in range(selected_rows):
         diagnostic_stage_switch(1)
         current_columns: int64 = final_columns
@@ -287,6 +372,9 @@ def pari_row6_phase6_gate_ancestry_private(
                 work,
                 joined,
                 trailing_work,
+                initial_trailing,
+                quotient_cache_offset,
+                checked_int64(0),
             )
             for column in range(zero_prefix):
                 old[column] = current[column]
@@ -312,16 +400,12 @@ def pari_row6_phase6_gate_ancestry_private(
 
         # Reverse the initial cleanup and hnffinal transformations.
         diagnostic_stage_switch(2)
-        genuine: int64 = initial_assembly[0]
-        dependent: int64 = initial_assembly[1]
-        width = initial_assembly[2]
-        tail: int64 = initial_assembly[4]
         _row6_reverse_hnffinal(
             integer_buffer_view(current, 0, initial_columns64),
-            genuine,
-            dependent,
-            width,
-            tail,
+            initial_genuine,
+            initial_dependent,
+            initial_width,
+            initial_tail,
             initial_full_h,
             initial_full_dep,
             initial_trailing,
@@ -330,6 +414,9 @@ def pari_row6_phase6_gate_ancestry_private(
             work,
             joined,
             trailing_work,
+            initial_trailing,
+            quotient_cache_offset,
+            checked_int64(1),
         )
         diagnostic_stage_switch(3)
         _row6_cleanup_transform_product(

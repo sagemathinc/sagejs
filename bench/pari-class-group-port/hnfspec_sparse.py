@@ -120,7 +120,7 @@ def pari_hnfspec_swap_exact_int64(
 
 
 @native
-def pari_hnfspec_sparse_prefix(
+def _pari_hnfspec_sparse_prefix_core(
     mat0: Int64Buffer,
     rows: int64,
     columns: int64,
@@ -133,6 +133,8 @@ def pari_hnfspec_sparse_prefix(
     vmax: Int64Buffer,
     found: Int64Buffer,
     state: Int64Buffer,
+    word_transform: Int64Buffer,
+    use_word_transform: int64,
 ) -> int64:
     """Copy the retained columns, then execute all three sparse phases.
 
@@ -162,6 +164,8 @@ def pari_hnfspec_sparse_prefix(
         raise ValueError("short sparse prefix matrix workspace")
     if len(vmax) < retained or (has_t != 0 and len(transform) < retained * retained):
         raise ValueError("short sparse prefix transformation workspace")
+    if use_word_transform != 0 and len(word_transform) < retained * retained:
+        raise ValueError("short sparse prefix word transformation workspace")
     i: int64 = 0
     j: int64 = 0
     for i in range(rows):
@@ -185,8 +189,14 @@ def pari_hnfspec_sparse_prefix(
     if has_t != 0:
         for j in range(retained):
             for i in range(retained):
-                transform[j * retained + i] = 0
-            transform[j * retained + j] = 1
+                if use_word_transform != 0:
+                    word_transform[j * retained + i] = 0
+                else:
+                    transform[j * retained + i] = 0
+            if use_word_transform != 0:
+                word_transform[j * retained + j] = 1
+            else:
+                transform[j * retained + j] = 1
     i = rows
     lig: int64 = rows
     col: int64 = retained
@@ -218,7 +228,10 @@ def pari_hnfspec_sparse_prefix(
             perm[i - 1] = perm[lig - 1]
             perm[lig - 1] = temporary
             if has_t != 0:
-                pari_hnfspec_swap_exact_int64(transform, retained, n, col)
+                if use_word_transform != 0:
+                    pari_hnfspec_swap_words(word_transform, retained, n, col)
+                else:
+                    pari_hnfspec_swap_exact_int64(transform, retained, n, col)
             pari_hnfspec_swap_words(mat, rows, n, col)
             if mat[(col - 1) * rows + perm[lig - 1] - 1] < 0:
                 # Phase 1 EXCLUDES the pivot row: preserve its literal -1.
@@ -229,10 +242,16 @@ def pari_hnfspec_sparse_prefix(
                     mat[at] = pari_hnfspec_word(value)
                 if has_t != 0:
                     i = 0
-                    while transform[(col - 1) * retained + i] == 0:
-                        i += 1
-                    at = (col - 1) * retained + i
-                    transform[at] = -transform[at]
+                    if use_word_transform != 0:
+                        while word_transform[(col - 1) * retained + i] == 0:
+                            i += 1
+                        at = (col - 1) * retained + i
+                        word_transform[at] = checked_int64(-word_transform[at])
+                    else:
+                        while transform[(col - 1) * retained + i] == 0:
+                            i += 1
+                        at = (col - 1) * retained + i
+                        transform[at] = -transform[at]
             lig -= 1
             col -= 1
             i = lig
@@ -254,7 +273,10 @@ def pari_hnfspec_sparse_prefix(
         perm[lig - 1] = temporary
         pari_hnfspec_swap_words(mat, rows, n, col)
         if has_t != 0:
-            pari_hnfspec_swap_exact_int64(transform, retained, n, col)
+            if use_word_transform != 0:
+                pari_hnfspec_swap_words(word_transform, retained, n, col)
+            else:
+                pari_hnfspec_swap_exact_int64(transform, retained, n, col)
         if mat[(col - 1) * rows + perm[lig - 1] - 1] < 0:
             range_start = lk0 + 1
             range_stop = lig + 1
@@ -265,7 +287,10 @@ def pari_hnfspec_sparse_prefix(
             if has_t != 0:
                 for i in range(retained):
                     at = (col - 1) * retained + i
-                    transform[at] = -transform[at]
+                    if use_word_transform != 0:
+                        word_transform[at] = checked_int64(-word_transform[at])
+                    else:
+                        transform[at] = -transform[at]
         range_start = 1
         for j in range(range_start, col):
             t = mat[(j - 1) * rows + perm[lig - 1] - 1]
@@ -287,7 +312,14 @@ def pari_hnfspec_sparse_prefix(
             if has_t != 0:
                 for i in range(retained):
                     at = (j - 1) * retained + i
-                    transform[at] -= t * transform[(col - 1) * retained + i]
+                    if use_word_transform != 0:
+                        transform_value: int64 = checked_int64(
+                            word_transform[at]
+                            - t * word_transform[(col - 1) * retained + i]
+                        )
+                        word_transform[at] = transform_value
+                    else:
+                        transform[at] -= t * transform[(col - 1) * retained + i]
         lig -= 1
         col -= 1
         state[10] += 1
@@ -322,7 +354,10 @@ def pari_hnfspec_sparse_prefix(
         perm[lig - 1] = temporary
         pari_hnfspec_swap_words(mat, rows, n, col)
         if has_t != 0:
-            pari_hnfspec_swap_exact_int64(transform, retained, n, col)
+            if use_word_transform != 0:
+                pari_hnfspec_swap_words(word_transform, retained, n, col)
+            else:
+                pari_hnfspec_swap_exact_int64(transform, retained, n, col)
         if mat[(col - 1) * rows + perm[lig - 1] - 1] < 0:
             range_start = lk0 + 1
             range_stop = lig + 1
@@ -333,7 +368,10 @@ def pari_hnfspec_sparse_prefix(
             if has_t != 0:
                 for i in range(retained):
                     at = (col - 1) * retained + i
-                    transform[at] = -transform[at]
+                    if use_word_transform != 0:
+                        word_transform[at] = checked_int64(-word_transform[at])
+                    else:
+                        transform[at] = -transform[at]
         range_start = 1
         for j in range(range_start, col):
             t = mat[(j - 1) * rows + perm[lig - 1] - 1]
@@ -361,7 +399,14 @@ def pari_hnfspec_sparse_prefix(
             if has_t != 0:
                 for i in range(retained):
                     at = (j - 1) * retained + i
-                    transform[at] -= t * transform[(col - 1) * retained + i]
+                    if use_word_transform != 0:
+                        transform_value = checked_int64(
+                            word_transform[at]
+                            - t * word_transform[(col - 1) * retained + i]
+                        )
+                        word_transform[at] = transform_value
+                    else:
+                        transform[at] -= t * transform[(col - 1) * retained + i]
         if stopped != 0:
             break
         lig -= 1
@@ -377,3 +422,37 @@ def pari_hnfspec_sparse_prefix(
     state[7] = s
     state[12] = initial_vmax_count
     return stopped
+
+
+@native
+def pari_hnfspec_sparse_prefix(
+    mat0: Int64Buffer,
+    rows: int64,
+    columns: int64,
+    perm: Int64Buffer,
+    k0: int64,
+    c_rows: int64,
+    mat: Int64Buffer,
+    dense: IntegerBuffer,
+    transform: IntegerBuffer,
+    vmax: Int64Buffer,
+    found: Int64Buffer,
+    state: Int64Buffer,
+) -> int64:
+    """Run the public sparse prefix while preserving the source matrix."""
+    return _pari_hnfspec_sparse_prefix_core(
+        mat0,
+        rows,
+        columns,
+        perm,
+        k0,
+        c_rows,
+        mat,
+        dense,
+        transform,
+        vmax,
+        found,
+        state,
+        mat,
+        0,
+    )

@@ -278,6 +278,88 @@ def pari_bounded_embedding_row(
 
 
 @native
+def _pari_bounded_monic_cubic_embedding_row(
+    mantissas: IntegerBuffer,
+    precisions: IntegerBuffer,
+    exponents: IntegerBuffer,
+    coefficients: IntegerBuffer,
+    offset: int64,
+) -> tuple[int, int64, int64]:
+    """Trusted `[1, real, real]` cubic embedding row.
+
+    The enclosing norm kernel checks this row shape for all three rows.  Its
+    prepared-field boundary has already proved the two real entries normalized
+    and their precision/exponent metadata machine-sized.
+    """
+    coefficient1 = coefficients[1]
+    coefficient2 = coefficients[2]
+    if coefficient1 == 0:
+        if coefficient2 == 0:
+            return coefficients[0], checked_int64(-1), checked_int64(0)
+        term, term_precision, term_exponent = pari_bounded_word_integer_real_product(
+            coefficient2,
+            mantissas[offset + 2],
+            integer_buffer_get_int64(precisions, offset + 2),
+            integer_buffer_get_int64(exponents, offset + 2),
+        )
+        return pari_bounded_word_integer_real_sum(
+            coefficients[0], term, term_precision, term_exponent
+        )
+    value, precision, exponent = pari_bounded_word_integer_real_product(
+        coefficient1,
+        mantissas[offset + 1],
+        integer_buffer_get_int64(precisions, offset + 1),
+        integer_buffer_get_int64(exponents, offset + 1),
+    )
+    value, precision, exponent = pari_bounded_word_integer_real_sum(
+        coefficients[0], value, precision, exponent
+    )
+    if coefficient2 == 0:
+        return value, precision, exponent
+    term, term_precision, term_exponent = pari_bounded_word_integer_real_product(
+        coefficient2,
+        mantissas[offset + 2],
+        integer_buffer_get_int64(precisions, offset + 2),
+        integer_buffer_get_int64(exponents, offset + 2),
+    )
+    return _pari_bounded_signed_real_sum_trusted(
+        value, precision, exponent, term, term_precision, term_exponent
+    )
+
+
+@native
+def _pari_bounded_monic_cubic_matrix_norm(
+    matrix_m: IntegerBuffer,
+    matrix_p: IntegerBuffer,
+    matrix_e: IntegerBuffer,
+    coefficients: IntegerBuffer,
+) -> tuple[int, int64, int64]:
+    """Trusted norm for a three-row `[1, real, real]` embedding matrix."""
+    diagnostic_stage_switch(1)
+    value, precision, exponent = _pari_bounded_monic_cubic_embedding_row(
+        matrix_m, matrix_p, matrix_e, coefficients, checked_int64(0)
+    )
+    diagnostic_stage_switch(2)
+    term, term_precision, term_exponent = _pari_bounded_monic_cubic_embedding_row(
+        matrix_m, matrix_p, matrix_e, coefficients, checked_int64(3)
+    )
+    diagnostic_stage_switch(3)
+    value, precision, exponent = _pari_bounded_short_product_trusted(
+        value, precision, exponent, term, term_precision, term_exponent
+    )
+    diagnostic_stage_switch(2)
+    term, term_precision, term_exponent = _pari_bounded_monic_cubic_embedding_row(
+        matrix_m, matrix_p, matrix_e, coefficients, checked_int64(6)
+    )
+    diagnostic_stage_switch(3)
+    value, precision, exponent = _pari_bounded_short_product_trusted(
+        value, precision, exponent, term, term_precision, term_exponent
+    )
+    diagnostic_stage_switch(0)
+    return value, precision, exponent
+
+
+@native
 def pari_bounded_real_matrix_norm(
     matrix_m: IntegerBuffer,
     matrix_p: IntegerBuffer,
@@ -335,6 +417,24 @@ def pari_bounded_real_matrix_norm_fused(
     """
     if degree < 1 or degree > 5:
         raise ValueError("unsupported bounded matrix degree")
+    if (
+        degree == 3
+        and integer_buffer_get_int64(matrix_p, checked_int64(0)) == -1
+        and integer_buffer_get_int64(matrix_p, checked_int64(3)) == -1
+        and integer_buffer_get_int64(matrix_p, checked_int64(6)) == -1
+        and matrix_m[0] == 1
+        and matrix_m[3] == 1
+        and matrix_m[6] == 1
+        and integer_buffer_get_int64(matrix_p, checked_int64(1)) != -1
+        and integer_buffer_get_int64(matrix_p, checked_int64(2)) != -1
+        and integer_buffer_get_int64(matrix_p, checked_int64(4)) != -1
+        and integer_buffer_get_int64(matrix_p, checked_int64(5)) != -1
+        and integer_buffer_get_int64(matrix_p, checked_int64(7)) != -1
+        and integer_buffer_get_int64(matrix_p, checked_int64(8)) != -1
+    ):
+        return _pari_bounded_monic_cubic_matrix_norm(
+            matrix_m, matrix_p, matrix_e, coefficients
+        )
     diagnostic_stage_switch(1)
     value, precision, exponent = pari_bounded_embedding_row(
         matrix_m, matrix_p, matrix_e, coefficients, checked_int64(0), degree

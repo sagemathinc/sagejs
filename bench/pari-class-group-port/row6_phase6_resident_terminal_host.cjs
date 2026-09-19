@@ -129,7 +129,7 @@ function prepareInvocation(resident) {
     full_offsets: allocateInteger(fn, primeCount),
     full_counts: allocateInteger(fn, primeCount),
     full_degrees: allocateInteger(fn, degreeCapacity),
-    catalog_state: allocateInteger(fn, 4),
+    catalog_state: allocateInteger(fn, 4), degree_catalog_ready: false,
     log_discriminant: allocateFloat64(fn, 1),
     analytic_coefficients: allocateFloat64(fn, 7),
     analytic_table: allocateFloat64(fn, 31), analytic_tail: allocateFloat64(fn, 1),

@@ -152,6 +152,121 @@ def pari_round_real(m: int, e: int, exponent: int) -> tuple[int, int]:
 
 
 @native
+def pari_prepare_monic_cubic_norm_form(
+    matrix_m: IntegerBuffer,
+    matrix_p: IntegerBuffer,
+    matrix_e: IntegerBuffer,
+    form0: IntegerBuffer,
+    form1: IntegerBuffer,
+    form2: IntegerBuffer,
+) -> int:
+    """Recover a prepared `[1, *, *]` basis's exact cubic norm form."""
+    if (
+        len(matrix_m) < 9
+        or len(matrix_p) < 9
+        or len(matrix_e) < 9
+        or len(form0) < 3
+        or len(form1) < 3
+        or len(form2) < 3
+    ):
+        raise ValueError("short cubic norm-form storage")
+    values = form0
+    n100 = 1
+    values[0] = 0
+    values[1] = 1
+    values[2] = 0
+    m010, p010, e010 = pari_bounded_real_matrix_norm_fused(
+        matrix_m, matrix_p, matrix_e, values, checked_int64(3)
+    )
+    n010, error010 = pari_round_real(m010, int(p010) - int(e010) - 1, int(e010))
+    values[0] = 0
+    values[1] = 0
+    values[2] = 1
+    m001, p001, e001 = pari_bounded_real_matrix_norm_fused(
+        matrix_m, matrix_p, matrix_e, values, checked_int64(3)
+    )
+    n001, error001 = pari_round_real(m001, int(p001) - int(e001) - 1, int(e001))
+    values[0] = 1
+    values[1] = 1
+    values[2] = 0
+    m110, p110, e110 = pari_bounded_real_matrix_norm_fused(
+        matrix_m, matrix_p, matrix_e, values, checked_int64(3)
+    )
+    n110, error110 = pari_round_real(m110, int(p110) - int(e110) - 1, int(e110))
+    values[1] = -1
+    m1n10, p1n10, e1n10 = pari_bounded_real_matrix_norm_fused(
+        matrix_m, matrix_p, matrix_e, values, checked_int64(3)
+    )
+    n1n10, error1n10 = pari_round_real(m1n10, int(p1n10) - int(e1n10) - 1, int(e1n10))
+    values[0] = 1
+    values[1] = 0
+    values[2] = 1
+    m101, p101, e101 = pari_bounded_real_matrix_norm_fused(
+        matrix_m, matrix_p, matrix_e, values, checked_int64(3)
+    )
+    n101, error101 = pari_round_real(m101, int(p101) - int(e101) - 1, int(e101))
+    values[2] = -1
+    m10n1, p10n1, e10n1 = pari_bounded_real_matrix_norm_fused(
+        matrix_m, matrix_p, matrix_e, values, checked_int64(3)
+    )
+    n10n1, error10n1 = pari_round_real(m10n1, int(p10n1) - int(e10n1) - 1, int(e10n1))
+    values[0] = 0
+    values[1] = 1
+    values[2] = 1
+    m011, p011, e011 = pari_bounded_real_matrix_norm_fused(
+        matrix_m, matrix_p, matrix_e, values, checked_int64(3)
+    )
+    n011, error011 = pari_round_real(m011, int(p011) - int(e011) - 1, int(e011))
+    values[2] = -1
+    m01n1, p01n1, e01n1 = pari_bounded_real_matrix_norm_fused(
+        matrix_m, matrix_p, matrix_e, values, checked_int64(3)
+    )
+    n01n1, error01n1 = pari_round_real(m01n1, int(p01n1) - int(e01n1) - 1, int(e01n1))
+    values[0] = 1
+    values[1] = 1
+    values[2] = 1
+    m111, p111, e111 = pari_bounded_real_matrix_norm_fused(
+        matrix_m, matrix_p, matrix_e, values, checked_int64(3)
+    )
+    n111, error111 = pari_round_real(m111, int(p111) - int(e111) - 1, int(e111))
+    if (
+        error010 > -32
+        or error001 > -32
+        or error110 > -32
+        or error1n10 > -32
+        or error101 > -32
+        or error10n1 > -32
+        or error011 > -32
+        or error01n1 > -32
+        or error111 > -32
+    ):
+        return 0
+    c_plus_e = n110 - n100 - n010
+    minus_c_plus_e = n1n10 - n100 + n010
+    c = (c_plus_e - minus_c_plus_e) // 2
+    e = (c_plus_e + minus_c_plus_e) // 2
+    d_plus_f = n101 - n100 - n001
+    minus_d_plus_f = n10n1 - n100 + n001
+    d = (d_plus_f - minus_d_plus_f) // 2
+    f = (d_plus_f + minus_d_plus_f) // 2
+    g_plus_h = n011 - n010 - n001
+    minus_g_plus_h = n01n1 + n010 - n001
+    g = (g_plus_h - minus_g_plus_h) // 2
+    h = (g_plus_h + minus_g_plus_h) // 2
+    mixed = n111 - n100 - n010 - n001 - c - d - e - f - g - h
+    form0[0] = n010
+    form0[1] = n001
+    form0[2] = c
+    form1[0] = d
+    form1[1] = e
+    form1[2] = f
+    form2[0] = g
+    form2[1] = h
+    form2[2] = mixed
+    return 1
+
+
+@native
 def pari_real_integer_division(
     integer: int, m: int, p: int, e: int
 ) -> tuple[int, int, int]:
@@ -767,6 +882,27 @@ def pari_prepared_factorgen_numerical(
     """
     if ideal_norm < 0:
         raise ValueError("ideal norm must be positive or absent")
+    if bounded_real == 2:
+        c0 = coefficients[0]
+        c1 = coefficients[1]
+        c2 = coefficients[2]
+        norm = (
+            c0 * c0 * c0
+            + values_m[0] * c1 * c1 * c1
+            + values_m[1] * c2 * c2 * c2
+            + values_m[2] * c0 * c0 * c1
+            + values_p[0] * c0 * c0 * c2
+            + values_p[1] * c0 * c1 * c1
+            + values_p[2] * c0 * c2 * c2
+            + values_e[0] * c1 * c1 * c2
+            + values_e[1] * c1 * c2 * c2
+            + values_e[2] * c0 * c1 * c2
+        )
+        if ideal_norm != 0:
+            if norm % ideal_norm != 0:
+                raise ValueError("nonintegral prepared cubic norm quotient")
+            norm //= ideal_norm
+        return norm, -64, 1
     diagnostic_stage_switch(1)
     if bounded_real != 0:
         if real_count != degree or degree < 1 or degree > 5:

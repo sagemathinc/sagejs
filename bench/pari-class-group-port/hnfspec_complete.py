@@ -242,26 +242,12 @@ def pari_hnfspec_complete(
                 logs, log_rows * retained, mat, metadata_offset
             )
         if bounded_logs:
-            for j in range(retained):
-                for i in range(rows, retained):
-                    coefficient = transform[j * retained + i]
-                    if (
-                        coefficient < -9223372036854775808
-                        or coefficient > 9223372036854775807
-                    ):
-                        bounded_logs = False
-                        break
-                if not bounded_logs:
-                    break
-        if bounded_logs:
             range_start = retained - 1
             range_stop = -1
             for j in range(range_start, range_stop, range_step):
-                range_start = rows - 1
+                range_start = retained - 1
                 for i in range(range_start, range_stop, range_step):
-                    mat[j * retained + i] = mat[j * rows + i]
-                for i in range(rows, retained):
-                    mat[j * retained + i] = checked_int64(transform[j * retained + i])
+                    mat[j * retained + i] = original[j * retained + i]
             _pari_log_matrix_transform_bounded_word_zero_exact(
                 logs,
                 mat,
@@ -275,9 +261,9 @@ def pari_hnfspec_complete(
         else:
             _pari_log_matrix_transform_word_coefficients_nongeneric(
                 logs,
-                mat,
+                original,
                 transform,
-                rows,
+                retained,
                 log_rows,
                 retained,
                 retained,

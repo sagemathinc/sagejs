@@ -27,7 +27,10 @@ from sagejs.native import (
     native,
 )
 
-from .hnfspec_sparse import pari_hnfspec_sparse_prefix
+from .hnfspec_sparse import (
+    _pari_hnfspec_sparse_prefix_core,
+    pari_hnfspec_sparse_prefix,
+)
 
 
 @native
@@ -66,7 +69,10 @@ def _pari_hnfspec_cleanup_bounded_transform(
         raise ValueError("short bounded cleanup exact workspace")
     if len(state) < 10:
         raise ValueError("short bounded cleanup state")
-    result: int64 = pari_hnfspec_sparse_prefix(
+    # `mat0` is dead after the sparse matrix/dense snapshot copy. Reuse its
+    # signed-word owner for the bounded transform and materialize GMP storage
+    # only once, after all sparse and cleanup updates are complete.
+    result: int64 = _pari_hnfspec_sparse_prefix_core(
         mat0,
         rows,
         columns,
@@ -79,6 +85,8 @@ def _pari_hnfspec_cleanup_bounded_transform(
         vmax,
         found,
         sparse_state,
+        mat0,
+        1,
     )
     diagnostic_stage_switch(2)
     co: int64 = sparse_state[0]
@@ -104,10 +112,6 @@ def _pari_hnfspec_cleanup_bounded_transform(
     for j in range(retained):
         for i in range(k0, rows):
             bottom[j * stride + i - k0] = mat[j * rows + perm[i] - 1]
-    if has_t != 0:
-        for j in range(retained):
-            for h in range(word_rows):
-                mat[j * word_rows + h] = checked_int64(transform[j * retained + h])
     diagnostic_stage_switch(3)
     i = rows - 1
     while i > lig:
@@ -139,19 +143,15 @@ def _pari_hnfspec_cleanup_bounded_transform(
                     -value,
                 )
             if has_t != 0:
-                destination_start = checked_int64((j - 1) * word_rows)
-                source_start = checked_int64((k - 1) * word_rows)
+                destination_start = checked_int64((j - 1) * retained)
+                source_start = checked_int64((k - 1) * retained)
                 int64_buffer_addmul_range(
-                    mat,
+                    mat0,
                     destination_start,
                     source_start,
-                    word_rows,
+                    retained,
                     checked_int64(-value),
                 )
-                for h in range(word_rows, retained):
-                    transform[(j - 1) * retained + h] -= (
-                        value * transform[(k - 1) * retained + h]
-                    )
         i -= 1
     diagnostic_stage_switch(4)
     nlze: int64 = lk0 - k0
@@ -161,16 +161,10 @@ def _pari_hnfspec_cleanup_bounded_transform(
             value = dense[j * k0 + i]
             if has_t != 0:
                 value = 0
-                for h in range(word_rows):
-                    value += dense[h * k0 + i] * mat[j * word_rows + h]
-                for h in range(word_rows, retained):
-                    value += dense[h * k0 + i] * transform[j * retained + h]
+                for h in range(retained):
+                    value += dense[h * k0 + i] * mat0[j * retained + h]
             updated_dense[j * k0 + i] = value
     diagnostic_stage_switch(5)
-    if has_t != 0:
-        for j in range(retained):
-            for h in range(word_rows):
-                transform[j * retained + h] = mat[j * word_rows + h]
     for j in range(col):
         for i in range(k0):
             extra[j * (lnz - 1) + i] = updated_dense[j * k0 + i]

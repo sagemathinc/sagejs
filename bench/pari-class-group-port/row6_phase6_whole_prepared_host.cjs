@@ -16,12 +16,12 @@ const SOURCE = path.join(__dirname, "row6_phase6_whole_prepared_root.generated.p
 const EXPORT = source.ROOT;
 const CACHE_ROOT = path.join(__dirname, ".sagejs-native-kernels");
 const THIN_EXPECTED = Object.freeze({
-  sourceHash: "7dc3fb2da25525e835b864d42996deba1a452be8cf1ca7e699695c831c4fdb91",
-  cacheKey: "b0d1af238f251d5390718f21275d6464b67b7107537d6df8323150211d7b9e66",
+  sourceHash: "ac2297536f8a0dcfd07517bfc3236fc28668e032a177d93208896c7b50c371f7",
+  cacheKey: "79918812be454ffd91889445916b07e4672fd1b7a4868464a0902808a280582e",
   nativeAbi: 24,
-  manifestHash: "c2e78fc25cb87d7c72613cf9496d67bbe2b23c01fdf73a7afd4562cc2409e71b",
-  addonHash: "bd0f0b33cd3cc7a466e41f95bee1a2814f96680795c122035f21d9928c9f01e9",
-  signatureHash: "7bf37a81115d26e5d33ea398e641fb1b382a186442e676a8e79496bbd2f7973a",
+  manifestHash: "e97099f178ee72e7b9c262b0d64f3e1a00778b6df202c1de48f96db68ddec45f",
+  addonHash: "64bb7f056c3b99afe66d459a663eff377eabdaf571db5732e47aaa78c72009f0",
+  signatureHash: "97f9fb7cafb1bf419ce508410d62828f8bfb0a488b0b976e851657faaedc1ef4",
 });
 
 function loadAuthenticatedWholeKernel(signature) {
