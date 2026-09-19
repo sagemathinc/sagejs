@@ -283,6 +283,12 @@ function emitOperation(operation, locals, indent) {
     return `${indent}mpz_${operation.operation}(${nativeValue(target)}, ` +
       `${nativeValue(left)}, ${nativeValue(right)});`;
   }
+  if (operation.kind === "integer.mul_int64") {
+    return `${indent}sagejs_mpz_mul_int64(` +
+      `${nativeValue(locals.get(operation.target))}, ` +
+      `${nativeValue(locals.get(operation.integer))}, ` +
+      `${nativeValue(locals.get(operation.scalar))});`;
+  }
   if (operation.kind === "real.copy") {
     return `${indent}mpfr_set(${nativeValue(locals.get(operation.target))}, ` +
       `${nativeValue(locals.get(operation.source))}, MPFR_RNDN);`;
@@ -486,6 +492,25 @@ function validateResidentExactScratch(functions) {
   for (const name of exact.keys()) visit(name);
 }
 
+function exactForceInlineCandidate(fn) {
+  const execution = fn.analysis?.execution;
+  const storage = fn.analysis?.storage;
+  if (fn.hostCallable || execution === undefined || storage === undefined) {
+    return false;
+  }
+  if (fn.forceInline === true) return true;
+  const operations =
+    execution.arithmeticOperations +
+    execution.integerGrowthOperations +
+    execution.uint64ArithmeticOperations +
+    execution.uint64BitwiseOperations;
+  const loops = execution.rangeLoops + execution.whileLoops;
+  const leaf = execution.nativeCalls === 0 &&
+    execution.dependencyDepth === 0 && loops <= 1 &&
+    operations <= 32 && storage.scratchSlots <= 8;
+  return leaf;
+}
+
 function internalSignature(fn, prototype = false) {
   const residentScratch = fn.analysis?.residentExactScratch;
   const argumentsList = [
@@ -498,7 +523,20 @@ function internalSignature(fn, prototype = false) {
     ...internalResults(fn, fn.returnType),
     ...fn.params.map((param) => internalArgument(fn, param)),
   ].join(", ");
-  return `static int native_${fn.name}(${argumentsList})${prototype ? ";" : ""}`;
+  const linkage = exactForceInlineCandidate(fn)
+    ? "SAGEJS_EXACT_FORCE_INLINE"
+    : "static";
+  return `${linkage} int native_${fn.name}(${argumentsList})${prototype ? ";" : ""}`;
+}
+
+function generateExactInliningSupport() {
+  return `#if defined(_MSC_VER)
+#define SAGEJS_EXACT_FORCE_INLINE static __forceinline
+#elif defined(__GNUC__) || defined(__clang__)
+#define SAGEJS_EXACT_FORCE_INLINE static inline __attribute__((always_inline))
+#else
+#define SAGEJS_EXACT_FORCE_INLINE static inline
+#endif`;
 }
 
 function emitBoundedCollectionOperation(operation, context, indent) {
@@ -1056,6 +1094,57 @@ function emitExactOperation(operation, context, indent) {
       `${indent}}`,
     ].join("\n");
   }
+  if (operation.kind === "int64.buffer.addmul_range") {
+    const buffer = exactValue(operation.buffer, context);
+    const destination = exactValue(operation.destination, context);
+    const source = exactValue(operation.source, context);
+    const length = exactValue(operation.length, context);
+    const multiplier = exactValue(operation.multiplier, context);
+    return [
+      `${indent}{`,
+      `${indent}    const int64_t sagejs_range_length = ${length};`,
+      `${indent}    if (sagejs_range_length > INT64_C(0))`,
+      `${indent}    {`,
+      `${indent}        if (${destination} < INT64_C(0) || ` +
+        `${source} < INT64_C(0) || ` +
+        `(uint64_t) ${destination} > (uint64_t) ${buffer}.length || ` +
+        `(uint64_t) ${source} > (uint64_t) ${buffer}.length || ` +
+        `(uint64_t) sagejs_range_length > ` +
+        `(uint64_t) ${buffer}.length - (uint64_t) ${destination} || ` +
+        `(uint64_t) sagejs_range_length > ` +
+        `(uint64_t) ${buffer}.length - (uint64_t) ${source})`,
+      `${indent}        {`,
+      statusFailure("range", "Int64 buffer range out of range", `${indent}            `),
+      `${indent}            goto fail;`,
+      `${indent}        }`,
+      `${indent}        const size_t sagejs_range_destination = ` +
+        `(size_t) ${destination};`,
+      `${indent}        const size_t sagejs_range_source = (size_t) ${source};`,
+      `${indent}        const size_t sagejs_range_count = ` +
+        `(size_t) sagejs_range_length;`,
+      `${indent}        for (size_t sagejs_range_offset = 0; ` +
+        `sagejs_range_offset < sagejs_range_count; sagejs_range_offset += 1)`,
+      `${indent}        {`,
+      `${indent}            int64_t sagejs_product = 0;`,
+      `${indent}            int64_t sagejs_sum = 0;`,
+      `${indent}            if (!sagejs_word_mul_int64(${multiplier}, ` +
+        `${buffer}.data[sagejs_range_source + sagejs_range_offset], ` +
+        `&sagejs_product) ||`,
+      `${indent}                !sagejs_word_add_int64(` +
+        `${buffer}.data[sagejs_range_destination + sagejs_range_offset], ` +
+        `sagejs_product, &sagejs_sum))`,
+      `${indent}            {`,
+      statusFailure("range", "int64 arithmetic overflow", `${indent}                `),
+      `${indent}                goto fail;`,
+      `${indent}            }`,
+      `${indent}            ${buffer}.data[` +
+        `sagejs_range_destination + sagejs_range_offset] = sagejs_sum;`,
+      `${indent}        }`,
+      `${indent}    }`,
+      `${indent}    ${exactValue(operation.target, context)} = INT64_C(0);`,
+      `${indent}}`,
+    ].join("\n");
+  }
   if (operation.kind === "integer.buffer.copy") {
     return `${indent}${target} = ${exactValue(operation.source, context)};`;
   }
@@ -1065,11 +1154,19 @@ function emitExactOperation(operation, context, indent) {
   }
   if (operation.kind === "integer.buffer.get") {
     const buffer = exactValue(operation.buffer, context);
+    const index = exactValue(operation.index, context);
+    const indexCheck = operation.indexType === "int64"
+      ? `sagejs_integer_buffer_index(&${buffer}, ${index}, ` +
+        `&sagejs_buffer_position)`
+      : operation.indexType === "uint64"
+      ? `${index} < (uint64_t) ${buffer}.length`
+      : `sagejs_mpz_integer_buffer_index(&${buffer}, ${index}, ` +
+        `&sagejs_buffer_position)`;
     return [
       `${indent}{`,
-      `${indent}    size_t sagejs_buffer_position;`,
-      `${indent}    if (!sagejs_mpz_integer_buffer_index(&${buffer}, ` +
-        `${exactValue(operation.index, context)}, &sagejs_buffer_position))`,
+      `${indent}    size_t sagejs_buffer_position = ` +
+        `${operation.indexType === "uint64" ? `(size_t) ${index}` : "0"};`,
+      `${indent}    if (!(${indexCheck}))`,
       `${indent}    {`,
       statusFailure("range", "IntegerBuffer index out of range", `${indent}        `),
       `${indent}        goto fail;`,
@@ -1081,19 +1178,393 @@ function emitExactOperation(operation, context, indent) {
   }
   if (operation.kind === "integer.buffer.set") {
     const buffer = exactValue(operation.buffer, context);
+    const index = exactValue(operation.index, context);
+    const indexCheck = operation.indexType === "int64"
+      ? `sagejs_integer_buffer_index(&${buffer}, ${index}, ` +
+        `&sagejs_buffer_position)`
+      : operation.indexType === "uint64"
+      ? `${index} < (uint64_t) ${buffer}.length`
+      : `sagejs_mpz_integer_buffer_index(&${buffer}, ${index}, ` +
+        `&sagejs_buffer_position)`;
+    const setValue = operation.valueType === "int64"
+      ? `sagejs_integer_buffer_set_int64(&${buffer}, ` +
+        `sagejs_buffer_position, ${exactValue(operation.value, context)});`
+      : `if (!sagejs_integer_buffer_set_mpz(status, ` +
+        `&${buffer}, sagejs_buffer_position, ` +
+        `${exactValue(operation.value, context)}))\n` +
+        `${indent}        goto fail;`;
     return [
       `${indent}{`,
-      `${indent}    size_t sagejs_buffer_position;`,
-      `${indent}    if (!sagejs_mpz_integer_buffer_index(&${buffer}, ` +
-        `${exactValue(operation.index, context)}, &sagejs_buffer_position))`,
+      `${indent}    size_t sagejs_buffer_position = ` +
+        `${operation.indexType === "uint64" ? `(size_t) ${index}` : "0"};`,
+      `${indent}    if (!(${indexCheck}))`,
       `${indent}    {`,
       statusFailure("range", "IntegerBuffer index out of range", `${indent}        `),
       `${indent}        goto fail;`,
       `${indent}    }`,
-      `${indent}    if (!sagejs_integer_buffer_set_mpz(status, ` +
-        `&${buffer}, sagejs_buffer_position, ` +
-        `${exactValue(operation.value, context)}))`,
+      `${indent}    ${setValue}`,
+      `${indent}}`,
+    ].join("\n");
+  }
+  if (operation.kind === "integer.buffer.slot_copy") {
+    const buffer = exactValue(operation.buffer, context);
+    const sourceBuffer = exactValue(operation.sourceBuffer, context);
+    const index = exactValue(operation.index, context);
+    const sourceIndex = exactValue(operation.sourceIndex, context);
+    const indexCheck = operation.indexType === "int64"
+      ? `sagejs_integer_buffer_index(&${buffer}, ${index}, ` +
+        `&sagejs_buffer_position)`
+      : operation.indexType === "uint64"
+      ? `${index} < (uint64_t) ${buffer}.length`
+      : `sagejs_mpz_integer_buffer_index(&${buffer}, ${index}, ` +
+        `&sagejs_buffer_position)`;
+    const sourceIndexCheck = operation.sourceIndexType === "int64"
+      ? `sagejs_integer_buffer_index(&${sourceBuffer}, ${sourceIndex}, ` +
+        `&sagejs_source_position)`
+      : operation.sourceIndexType === "uint64"
+      ? `${sourceIndex} < (uint64_t) ${sourceBuffer}.length`
+      : `sagejs_mpz_integer_buffer_index(&${sourceBuffer}, ${sourceIndex}, ` +
+        `&sagejs_source_position)`;
+    return [
+      `${indent}{`,
+      `${indent}    size_t sagejs_buffer_position = ` +
+        `${operation.indexType === "uint64" ? `(size_t) ${index}` : "0"};`,
+      `${indent}    size_t sagejs_source_position = ` +
+        `${operation.sourceIndexType === "uint64" ? `(size_t) ${sourceIndex}` : "0"};`,
+      `${indent}    if (!(${indexCheck}) || !(${sourceIndexCheck}))`,
+      `${indent}    {`,
+      statusFailure("range", "IntegerBuffer index out of range", `${indent}        `),
       `${indent}        goto fail;`,
+      `${indent}    }`,
+      `${indent}    if (!sagejs_integer_buffer_copy_slot(status, &${buffer}, ` +
+        `sagejs_buffer_position, &${sourceBuffer}, sagejs_source_position))`,
+      `${indent}        goto fail;`,
+      `${indent}}`,
+    ].join("\n");
+  }
+  if (operation.kind === "integer.buffer.addmul") {
+    const buffer = exactValue(operation.buffer, context);
+    const destination = exactValue(operation.destination, context);
+    const source = exactValue(operation.source, context);
+    const indexCheck = (value, type, position) => type === "int64"
+      ? `sagejs_integer_buffer_index(&${buffer}, ${value}, &${position})`
+      : type === "uint64"
+      ? `${value} < (uint64_t) ${buffer}.length`
+      : `sagejs_mpz_integer_buffer_index(&${buffer}, ${value}, &${position})`;
+    return [
+      `${indent}{`,
+      `${indent}    size_t sagejs_destination_position = ` +
+        `${operation.destinationType === "uint64" ? `(size_t) ${destination}` : "0"};`,
+      `${indent}    size_t sagejs_source_position = ` +
+        `${operation.sourceType === "uint64" ? `(size_t) ${source}` : "0"};`,
+      `${indent}    if (!(${indexCheck(destination, operation.destinationType,
+        "sagejs_destination_position")}) || !(${indexCheck(source,
+        operation.sourceType, "sagejs_source_position")}))`,
+      `${indent}    {`,
+      statusFailure("range", "IntegerBuffer index out of range", `${indent}        `),
+      `${indent}        goto fail;`,
+      `${indent}    }`,
+      `${indent}    if (!sagejs_integer_buffer_addmul_slot(status, &${buffer}, ` +
+        `sagejs_destination_position, &${buffer}, sagejs_source_position, ` +
+        `${exactValue(operation.multiplier, context)}))`,
+      `${indent}        goto fail;`,
+      `${indent}    ${exactValue(operation.target, context)} = INT64_C(0);`,
+      `${indent}}`,
+    ].join("\n");
+  }
+  if (operation.kind === "integer.buffer.addmul_from") {
+    const buffer = exactValue(operation.buffer, context);
+    const sourceBuffer = exactValue(operation.sourceBuffer, context);
+    const destination = exactValue(operation.destination, context);
+    const source = exactValue(operation.source, context);
+    const indexCheck = (owner, value, type, position) => type === "int64"
+      ? `sagejs_integer_buffer_index(&${owner}, ${value}, &${position})`
+      : type === "uint64"
+      ? `${value} < (uint64_t) ${owner}.length`
+      : `sagejs_mpz_integer_buffer_index(&${owner}, ${value}, &${position})`;
+    return [
+      `${indent}{`,
+      `${indent}    size_t sagejs_destination_position = ` +
+        `${operation.destinationType === "uint64" ? `(size_t) ${destination}` : "0"};`,
+      `${indent}    size_t sagejs_source_position = ` +
+        `${operation.sourceType === "uint64" ? `(size_t) ${source}` : "0"};`,
+      `${indent}    if (!(${indexCheck(buffer, destination,
+        operation.destinationType, "sagejs_destination_position")}) || ` +
+        `!(${indexCheck(sourceBuffer, source, operation.sourceType,
+          "sagejs_source_position")}))`,
+      `${indent}    {`,
+      statusFailure("range", "IntegerBuffer index out of range", `${indent}        `),
+      `${indent}        goto fail;`,
+      `${indent}    }`,
+      `${indent}    if (!sagejs_integer_buffer_addmul_slot(status, &${buffer}, ` +
+        `sagejs_destination_position, &${sourceBuffer}, sagejs_source_position, ` +
+        `${exactValue(operation.multiplier, context)}))`,
+      `${indent}        goto fail;`,
+      `${indent}    ${exactValue(operation.target, context)} = INT64_C(0);`,
+      `${indent}}`,
+    ].join("\n");
+  }
+  if (operation.kind === "integer.buffer.addmul_range") {
+    const buffer = exactValue(operation.buffer, context);
+    const destination = exactValue(operation.destination, context);
+    const source = exactValue(operation.source, context);
+    const length = exactValue(operation.length, context);
+    return [
+      `${indent}{`,
+      `${indent}    const int64_t sagejs_range_length = ${length};`,
+      `${indent}    if (sagejs_range_length > INT64_C(0))`,
+      `${indent}    {`,
+      `${indent}        if (${destination} < INT64_C(0) || ` +
+        `${source} < INT64_C(0) || ` +
+        `(uint64_t) ${destination} > (uint64_t) ${buffer}.length || ` +
+        `(uint64_t) ${source} > (uint64_t) ${buffer}.length || ` +
+        `(uint64_t) sagejs_range_length > ` +
+        `(uint64_t) ${buffer}.length - (uint64_t) ${destination} || ` +
+        `(uint64_t) sagejs_range_length > ` +
+        `(uint64_t) ${buffer}.length - (uint64_t) ${source})`,
+      `${indent}        {`,
+      statusFailure("range", "IntegerBuffer range out of range", `${indent}            `),
+      `${indent}            goto fail;`,
+      `${indent}        }`,
+      `${indent}        const size_t sagejs_range_destination_position = ` +
+        `(size_t) ${destination};`,
+      `${indent}        const size_t sagejs_range_source_position = ` +
+        `(size_t) ${source};`,
+      `${indent}        const size_t sagejs_range_count = ` +
+        `(size_t) sagejs_range_length;`,
+      `${indent}        for (size_t sagejs_range_offset = sagejs_range_count; ` +
+        `sagejs_range_offset-- > 0;)`,
+      `${indent}            if (!sagejs_integer_buffer_addmul_slot(status, ` +
+        `&${buffer}, sagejs_range_destination_position + sagejs_range_offset, ` +
+        `&${buffer}, sagejs_range_source_position + sagejs_range_offset, ` +
+        `${exactValue(operation.multiplier, context)}))`,
+      `${indent}                goto fail;`,
+      `${indent}    }`,
+      `${indent}    ${exactValue(operation.target, context)} = INT64_C(0);`,
+      `${indent}}`,
+    ].join("\n");
+  }
+  if (operation.kind === "integer.buffer.addmul_range_from") {
+    const buffer = exactValue(operation.buffer, context);
+    const sourceBuffer = exactValue(operation.sourceBuffer, context);
+    const destination = exactValue(operation.destination, context);
+    const source = exactValue(operation.source, context);
+    const length = exactValue(operation.length, context);
+    return [
+      `${indent}{`,
+      `${indent}    const int64_t sagejs_range_length = ${length};`,
+      `${indent}    if (sagejs_range_length > INT64_C(0))`,
+      `${indent}    {`,
+      `${indent}        if (${destination} < INT64_C(0) || ` +
+        `${source} < INT64_C(0) || ` +
+        `(uint64_t) ${destination} > (uint64_t) ${buffer}.length || ` +
+        `(uint64_t) ${source} > (uint64_t) ${sourceBuffer}.length || ` +
+        `(uint64_t) sagejs_range_length > ` +
+        `(uint64_t) ${buffer}.length - (uint64_t) ${destination} || ` +
+        `(uint64_t) sagejs_range_length > ` +
+        `(uint64_t) ${sourceBuffer}.length - (uint64_t) ${source})`,
+      `${indent}        {`,
+      statusFailure("range", "IntegerBuffer range out of range", `${indent}            `),
+      `${indent}            goto fail;`,
+      `${indent}        }`,
+      `${indent}        const size_t sagejs_range_destination_position = ` +
+        `(size_t) ${destination};`,
+      `${indent}        const size_t sagejs_range_source_position = ` +
+        `(size_t) ${source};`,
+      `${indent}        const size_t sagejs_range_count = ` +
+        `(size_t) sagejs_range_length;`,
+      `${indent}        for (size_t sagejs_range_offset = 0; ` +
+        `sagejs_range_offset < sagejs_range_count; sagejs_range_offset += 1)`,
+      `${indent}            if (!sagejs_integer_buffer_addmul_slot(status, ` +
+        `&${buffer}, sagejs_range_destination_position + sagejs_range_offset, ` +
+        `&${sourceBuffer}, sagejs_range_source_position + sagejs_range_offset, ` +
+        `${exactValue(operation.multiplier, context)}))`,
+      `${indent}                goto fail;`,
+      `${indent}    }`,
+      `${indent}    ${exactValue(operation.target, context)} = INT64_C(0);`,
+      `${indent}}`,
+    ].join("\n");
+  }
+  if (operation.kind === "integer.buffer.mod_addmul_range_from") {
+    const buffer = exactValue(operation.buffer, context);
+    const sourceBuffer = exactValue(operation.sourceBuffer, context);
+    const destination = exactValue(operation.destination, context);
+    const source = exactValue(operation.source, context);
+    const length = exactValue(operation.length, context);
+    const multiplier = exactValue(operation.multiplier, context);
+    const modulus = exactValue(operation.modulus, context);
+    return [
+      `${indent}{`,
+      `${indent}    const int64_t sagejs_range_length = ${length};`,
+      `${indent}    const int64_t sagejs_range_modulus = ${modulus};`,
+      `${indent}    if (sagejs_range_modulus <= INT64_C(0))`,
+      `${indent}    {`,
+      statusFailure("error", "modulus must be positive", `${indent}        `),
+      `${indent}        goto fail;`,
+      `${indent}    }`,
+      `${indent}    if (sagejs_range_length > INT64_C(0))`,
+      `${indent}    {`,
+      `${indent}        if (${destination} < INT64_C(0) || ` +
+        `${source} < INT64_C(0) || ` +
+        `(uint64_t) ${destination} > (uint64_t) ${buffer}.length || ` +
+        `(uint64_t) ${source} > (uint64_t) ${sourceBuffer}.length || ` +
+        `(uint64_t) sagejs_range_length > ` +
+        `(uint64_t) ${buffer}.length - (uint64_t) ${destination} || ` +
+        `(uint64_t) sagejs_range_length > ` +
+        `(uint64_t) ${sourceBuffer}.length - (uint64_t) ${source})`,
+      `${indent}        {`,
+      statusFailure("range", "IntegerBuffer range out of range", `${indent}            `),
+      `${indent}            goto fail;`,
+      `${indent}        }`,
+      `${indent}        const size_t sagejs_range_destination_position = ` +
+        `(size_t) ${destination};`,
+      `${indent}        const size_t sagejs_range_source_position = ` +
+        `(size_t) ${source};`,
+      `${indent}        const size_t sagejs_range_count = ` +
+        `(size_t) sagejs_range_length;`,
+      `${indent}        for (size_t sagejs_range_offset = 0; ` +
+        `sagejs_range_offset < sagejs_range_count; sagejs_range_offset += 1)`,
+      `${indent}        {`,
+      `${indent}            int64_t sagejs_destination_value = 0;`,
+      `${indent}            int64_t sagejs_source_value = 0;`,
+      `${indent}            int64_t sagejs_product = 0;`,
+      `${indent}            int64_t sagejs_sum = 0;`,
+      `${indent}            if (!sagejs_integer_buffer_get_int64(&${buffer}, ` +
+        `sagejs_range_destination_position + sagejs_range_offset, ` +
+        `&sagejs_destination_value) ||`,
+      `${indent}                !sagejs_integer_buffer_get_int64(&${sourceBuffer}, ` +
+        `sagejs_range_source_position + sagejs_range_offset, ` +
+        `&sagejs_source_value))`,
+      `${indent}            {`,
+      statusFailure("range", "integer is outside signed 64-bit", `${indent}                `),
+      `${indent}                goto fail;`,
+      `${indent}            }`,
+      `${indent}            if (!sagejs_word_mul_int64(${multiplier}, ` +
+        `sagejs_source_value, &sagejs_product) ||`,
+      `${indent}                !sagejs_word_add_int64(sagejs_destination_value, ` +
+        `sagejs_product, &sagejs_sum))`,
+      `${indent}            {`,
+      statusFailure("range", "int64 arithmetic overflow", `${indent}                `),
+      `${indent}                goto fail;`,
+      `${indent}            }`,
+      `${indent}            sagejs_sum %= sagejs_range_modulus;`,
+      `${indent}            if (sagejs_sum < INT64_C(0))`,
+      `${indent}                sagejs_sum += sagejs_range_modulus;`,
+      `${indent}            sagejs_integer_buffer_set_int64(&${buffer}, ` +
+        `sagejs_range_destination_position + sagejs_range_offset, sagejs_sum);`,
+      `${indent}        }`,
+      `${indent}    }`,
+      `${indent}    ${exactValue(operation.target, context)} = INT64_C(0);`,
+      `${indent}}`,
+    ].join("\n");
+  }
+  if (operation.kind === "integer.buffer.swap_range") {
+    const buffer = exactValue(operation.buffer, context);
+    const left = exactValue(operation.left, context);
+    const right = exactValue(operation.right, context);
+    const length = exactValue(operation.length, context);
+    return [
+      `${indent}{`,
+      `${indent}    const int64_t sagejs_range_length = ${length};`,
+      `${indent}    if (sagejs_range_length > INT64_C(0))`,
+      `${indent}    {`,
+      `${indent}        if (${left} < INT64_C(0) || ${right} < INT64_C(0) || ` +
+        `(uint64_t) ${left} > (uint64_t) ${buffer}.length || ` +
+        `(uint64_t) ${right} > (uint64_t) ${buffer}.length || ` +
+        `(uint64_t) sagejs_range_length > ` +
+        `(uint64_t) ${buffer}.length - (uint64_t) ${left} || ` +
+        `(uint64_t) sagejs_range_length > ` +
+        `(uint64_t) ${buffer}.length - (uint64_t) ${right})`,
+      `${indent}        {`,
+      statusFailure("range", "IntegerBuffer range out of range", `${indent}            `),
+      `${indent}            goto fail;`,
+      `${indent}        }`,
+      `${indent}        const size_t sagejs_range_left = (size_t) ${left};`,
+      `${indent}        const size_t sagejs_range_right = (size_t) ${right};`,
+      `${indent}        const size_t sagejs_range_count = ` +
+        `(size_t) sagejs_range_length;`,
+      `${indent}        for (size_t sagejs_range_offset = 0; ` +
+        `sagejs_range_offset < sagejs_range_count; sagejs_range_offset += 1)`,
+      `${indent}            sagejs_integer_buffer_swap_slot(&${buffer}, ` +
+        `sagejs_range_left + sagejs_range_offset, ` +
+        `sagejs_range_right + sagejs_range_offset);`,
+      `${indent}    }`,
+      `${indent}    ${exactValue(operation.target, context)} = INT64_C(0);`,
+      `${indent}}`,
+    ].join("\n");
+  }
+  if (operation.kind === "integer.buffer.negate_range") {
+    const buffer = exactValue(operation.buffer, context);
+    const start = exactValue(operation.start, context);
+    const length = exactValue(operation.length, context);
+    return [
+      `${indent}{`,
+      `${indent}    const int64_t sagejs_range_length = ${length};`,
+      `${indent}    if (sagejs_range_length > INT64_C(0))`,
+      `${indent}    {`,
+      `${indent}        if (${start} < INT64_C(0) || ` +
+        `(uint64_t) ${start} > (uint64_t) ${buffer}.length || ` +
+        `(uint64_t) sagejs_range_length > ` +
+        `(uint64_t) ${buffer}.length - (uint64_t) ${start})`,
+      `${indent}        {`,
+      statusFailure("range", "IntegerBuffer range out of range", `${indent}            `),
+      `${indent}            goto fail;`,
+      `${indent}        }`,
+      `${indent}        sagejs_integer_buffer_negate_range(&${buffer}, ` +
+        `(size_t) ${start}, (size_t) sagejs_range_length);`,
+      `${indent}    }`,
+      `${indent}    ${exactValue(operation.target, context)} = INT64_C(0);`,
+      `${indent}}`,
+    ].join("\n");
+  }
+  if (operation.kind === "integer.buffer.get_int64") {
+    const buffer = exactValue(operation.buffer, context);
+    const index = exactValue(operation.index, context);
+    const indexCheck = operation.indexType === "int64"
+      ? `sagejs_integer_buffer_index(&${buffer}, ${index}, &sagejs_buffer_position)`
+      : operation.indexType === "uint64"
+      ? `${index} < (uint64_t) ${buffer}.length`
+      : `sagejs_mpz_integer_buffer_index(&${buffer}, ${index}, &sagejs_buffer_position)`;
+    return [
+      `${indent}{`,
+      `${indent}    size_t sagejs_buffer_position = ` +
+        `${operation.indexType === "uint64" ? `(size_t) ${index}` : "0"};`,
+      `${indent}    if (!(${indexCheck}))`,
+      `${indent}    {`,
+      statusFailure("range", "IntegerBuffer index out of range", `${indent}        `),
+      `${indent}        goto fail;`,
+      `${indent}    }`,
+      `${indent}    if (!sagejs_integer_buffer_get_int64(&${buffer}, ` +
+        `sagejs_buffer_position, &${exactValue(operation.target, context)}))`,
+      `${indent}    {`,
+      statusFailure("range", "integer is outside signed 64-bit", `${indent}        `),
+      `${indent}        goto fail;`,
+      `${indent}    }`,
+      `${indent}}`,
+    ].join("\n");
+  }
+  if (operation.kind === "integer.buffer.sign") {
+    const buffer = exactValue(operation.buffer, context);
+    const index = exactValue(operation.index, context);
+    const indexCheck = operation.indexType === "int64"
+      ? `sagejs_integer_buffer_index(&${buffer}, ${index}, &sagejs_buffer_position)`
+      : operation.indexType === "uint64"
+      ? `${index} < (uint64_t) ${buffer}.length`
+      : `sagejs_mpz_integer_buffer_index(&${buffer}, ${index}, &sagejs_buffer_position)`;
+    return [
+      `${indent}{`,
+      `${indent}    size_t sagejs_buffer_position = ` +
+        `${operation.indexType === "uint64" ? `(size_t) ${index}` : "0"};`,
+      `${indent}    if (!(${indexCheck}))`,
+      `${indent}    {`,
+      statusFailure("range", "IntegerBuffer index out of range", `${indent}        `),
+      `${indent}        goto fail;`,
+      `${indent}    }`,
+      `${indent}    const int32_t sagejs_buffer_size = ` +
+        `${buffer}.sizes[sagejs_buffer_position];`,
+      `${indent}    ${exactValue(operation.target, context)} = ` +
+        `sagejs_buffer_size < 0 ? INT64_C(-1) : ` +
+        `(sagejs_buffer_size > 0 ? INT64_C(1) : INT64_C(0));`,
       `${indent}}`,
     ].join("\n");
   }
@@ -1561,6 +2032,11 @@ function emitExactOperation(operation, context, indent) {
       ].join("\n");
     }
     throw new Error(`unsupported exact integer operation ${operation.operation}`);
+  }
+  if (operation.kind === "integer.mul_int64") {
+    return `${indent}sagejs_mpz_mul_int64(${target}, ` +
+      `${exactValue(operation.integer, context)}, ` +
+      `${exactValue(operation.scalar, context)});`;
   }
   if (operation.kind === "uint64.binary") {
     const left = exactValue(operation.left, context);
@@ -2234,7 +2710,6 @@ function exactDeclarations(fn) {
       initialization.push(
         `    sagejs_scratch_${slot} = sagejs_exact_scratch_frame +`,
         `        sagejs_exact_scratch_base + ${slot};`,
-        `    mpz_set_ui(sagejs_scratch_${slot}, 0);`,
       );
     }
     cleanup.unshift(
@@ -4086,6 +4561,157 @@ ${privateBuffers ? `    sagejs_private_integer_buffer_state *sagejs_private_stat
     return 1;
 }
 
+static int sagejs_integer_buffer_addmul_slot(
+    sagejs_native_status *status,
+    sagejs_integer_buffer *buffer,
+    size_t destination_position,
+    const sagejs_integer_buffer *source_buffer,
+    size_t source_position,
+    const mpz_t multiplier)
+{
+    const int32_t destination_size = buffer->sizes[destination_position];
+    const int32_t source_size = source_buffer->sizes[source_position];
+    const size_t destination_count = destination_size < 0
+        ? (size_t) (-(int64_t) destination_size) : (size_t) destination_size;
+    const size_t source_count = source_size < 0
+        ? (size_t) (-(int64_t) source_size) : (size_t) source_size;
+    const size_t multiplier_count = (size_t) mpz_size(multiplier);
+    const size_t product_bound = source_count + multiplier_count;
+    const size_t result_bound =
+        (destination_count > product_bound ? destination_count : product_bound) + 1;
+    uint64_t *destination_slot = buffer->limbs +
+        destination_position * buffer->word_capacity;
+    const uint64_t *source_slot = source_buffer->limbs +
+        source_position * source_buffer->word_capacity;
+    if (source_count == 0 || multiplier_count == 0)
+        return 1;
+    if (result_bound <= buffer->word_capacity &&
+        buffer->word_capacity <= (size_t) INT_MAX &&
+        source_buffer->word_capacity <= (size_t) INT_MAX)
+    {
+        __mpz_struct destination_view = {
+            (int) buffer->word_capacity, destination_size,
+            (mp_limb_t *) destination_slot
+        };
+        __mpz_struct source_view = {
+            (int) source_buffer->word_capacity, source_size,
+            (mp_limb_t *) source_slot
+        };
+        mpz_addmul(&destination_view, &source_view, multiplier);
+        if (destination_view._mp_d != (mp_limb_t *) destination_slot ||
+            (size_t) (destination_view._mp_size < 0
+                ? -(int64_t) destination_view._mp_size
+                : destination_view._mp_size) > buffer->word_capacity)
+        {
+            sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,
+                "IntegerBuffer word capacity exceeded");
+            return 0;
+        }
+        buffer->sizes[destination_position] = destination_view._mp_size;
+${privateBuffers ? `        sagejs_private_integer_buffer_state *sagejs_private_state =
+            sagejs_private_integer_buffer_lookup(buffer);
+        if (sagejs_private_state != NULL)
+            sagejs_private_integer_buffer_mark(
+                sagejs_private_state, destination_position);` : ""}
+        return 1;
+    }
+    mpz_t destination_copy;
+    mpz_t source_copy;
+    mpz_init(destination_copy);
+    mpz_init(source_copy);
+    sagejs_integer_buffer_get_mpz(
+        buffer, destination_position, destination_copy);
+    sagejs_integer_buffer_get_mpz(source_buffer, source_position, source_copy);
+    mpz_addmul(destination_copy, source_copy, multiplier);
+    const int ok = sagejs_integer_buffer_set_mpz(
+        status, buffer, destination_position, destination_copy);
+    mpz_clear(source_copy);
+    mpz_clear(destination_copy);
+    return ok;
+}
+
+static int sagejs_integer_buffer_copy_slot(
+    sagejs_native_status *status,
+    sagejs_integer_buffer *destination,
+    size_t destination_position,
+    const sagejs_integer_buffer *source,
+    size_t source_position)
+{
+    const int32_t signed_size = source->sizes[source_position];
+    const size_t count = signed_size < 0
+        ? (size_t) (-(int64_t) signed_size) : (size_t) signed_size;
+    if (count > destination->word_capacity)
+    {
+        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,
+            "IntegerBuffer word capacity exceeded");
+        return 0;
+    }
+    uint64_t *destination_slot = destination->limbs +
+        destination_position * destination->word_capacity;
+    const uint64_t *source_slot = source->limbs +
+        source_position * source->word_capacity;
+    if (count != 0)
+        memmove(destination_slot, source_slot, count * sizeof(*destination_slot));
+    destination->sizes[destination_position] = signed_size;
+${privateBuffers ? `    sagejs_private_integer_buffer_state *sagejs_private_state =
+        sagejs_private_integer_buffer_lookup(destination);
+    if (sagejs_private_state != NULL)
+        sagejs_private_integer_buffer_mark(
+            sagejs_private_state, destination_position);` : ""}
+    return 1;
+}
+
+static void sagejs_integer_buffer_swap_slot(
+    sagejs_integer_buffer *buffer,
+    size_t left_position,
+    size_t right_position)
+{
+    const int32_t left_size = buffer->sizes[left_position];
+    const int32_t right_size = buffer->sizes[right_position];
+    const size_t left_count = left_size < 0
+        ? (size_t) (-(int64_t) left_size) : (size_t) left_size;
+    const size_t right_count = right_size < 0
+        ? (size_t) (-(int64_t) right_size) : (size_t) right_size;
+    const size_t limb_count = left_count > right_count
+        ? left_count : right_count;
+    uint64_t *left_slot = buffer->limbs +
+        left_position * buffer->word_capacity;
+    uint64_t *right_slot = buffer->limbs +
+        right_position * buffer->word_capacity;
+    for (size_t limb = 0; limb < limb_count; limb += 1)
+    {
+        const uint64_t word = left_slot[limb];
+        left_slot[limb] = right_slot[limb];
+        right_slot[limb] = word;
+    }
+    buffer->sizes[left_position] = right_size;
+    buffer->sizes[right_position] = left_size;
+${privateBuffers ? `    sagejs_private_integer_buffer_state *sagejs_private_state =
+        sagejs_private_integer_buffer_lookup(buffer);
+    if (sagejs_private_state != NULL)
+    {
+        sagejs_private_integer_buffer_mark(sagejs_private_state, left_position);
+        sagejs_private_integer_buffer_mark(sagejs_private_state, right_position);
+    }` : ""}
+}
+
+static void sagejs_integer_buffer_negate_range(
+    sagejs_integer_buffer *buffer,
+    size_t start,
+    size_t length)
+{
+    const size_t stop = start + length;
+    for (size_t position = start; position < stop; position += 1)
+        buffer->sizes[position] = -buffer->sizes[position];
+${privateBuffers ? `    sagejs_private_integer_buffer_state *sagejs_private_state =
+        sagejs_private_integer_buffer_lookup(buffer);
+    if (sagejs_private_state != NULL && length != 0)
+    {
+        sagejs_private_integer_buffer_mark(sagejs_private_state, start);
+        sagejs_private_integer_buffer_mark(sagejs_private_state, stop - 1);
+    }` : ""}
+}
+
 static int sagejs_integer_buffer_get_int64(
     const sagejs_integer_buffer *buffer,
     size_t position,
@@ -4130,6 +4756,71 @@ static void sagejs_integer_buffer_set_int64(
        loops proportional to capacity and rewrote slot[0] immediately. */
     slot[0] = magnitude;
     buffer->sizes[position] = magnitude == 0 ? 0 : (negative ? -1 : 1);
+}
+
+static int sagejs_integer_buffer_mod_addmul_range_from(
+    sagejs_native_status *status,
+    sagejs_integer_buffer *destination_buffer,
+    int64_t destination_start,
+    const sagejs_integer_buffer *source_buffer,
+    int64_t source_start,
+    int64_t length,
+    int64_t multiplier,
+    int64_t modulus)
+{
+    if (modulus <= INT64_C(0))
+    {
+        sagejs_native_status_set(
+            status, SAGEJS_NATIVE_ERROR, "modulus must be positive");
+        return 0;
+    }
+    if (length <= INT64_C(0))
+        return 1;
+    if (destination_start < INT64_C(0) || source_start < INT64_C(0) ||
+        (uint64_t) destination_start > (uint64_t) destination_buffer->length ||
+        (uint64_t) source_start > (uint64_t) source_buffer->length ||
+        (uint64_t) length > (uint64_t) destination_buffer->length -
+            (uint64_t) destination_start ||
+        (uint64_t) length > (uint64_t) source_buffer->length -
+            (uint64_t) source_start)
+    {
+        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,
+            "IntegerBuffer range out of range");
+        return 0;
+    }
+    const size_t destination_position = (size_t) destination_start;
+    const size_t source_position = (size_t) source_start;
+    const size_t count = (size_t) length;
+    for (size_t offset = 0; offset < count; offset += 1)
+    {
+        int64_t destination_value = 0;
+        int64_t source_value = 0;
+        int64_t product = 0;
+        int64_t sum = 0;
+        if (!sagejs_integer_buffer_get_int64(
+                destination_buffer, destination_position + offset,
+                &destination_value) ||
+            !sagejs_integer_buffer_get_int64(
+                source_buffer, source_position + offset, &source_value))
+        {
+            sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,
+                "integer is outside signed 64-bit");
+            return 0;
+        }
+        if (!sagejs_word_mul_int64(multiplier, source_value, &product) ||
+            !sagejs_word_add_int64(destination_value, product, &sum))
+        {
+            sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,
+                "int64 arithmetic overflow");
+            return 0;
+        }
+        sum %= modulus;
+        if (sum < INT64_C(0))
+            sum += modulus;
+        sagejs_integer_buffer_set_int64(
+            destination_buffer, destination_position + offset, sum);
+    }
+    return 1;
 }
 
 static void sagejs_integer_buffer_get_tagged(
@@ -5391,6 +6082,7 @@ function generateHostCore(ir, options = {}) {
   const pieces = [
     generateStatusRuntime(),
     generateDiagnosticStageClockSupport(options.diagnosticStageClock),
+    exact.length > 0 ? generateExactInliningSupport() : "",
     exact.length > 0 ? GMP_CHECKPOINT_ALLOCATOR_C_SOURCE : "",
     exact.length > 0 ? generateExactCoreRuntime() : "",
     fmpz.selected.length > 0 ? FMPZ_EXACT_RUNTIME_C_SOURCE : "",

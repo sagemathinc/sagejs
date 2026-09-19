@@ -5,7 +5,14 @@ Generator objects are represented by caller-owned nonzero identifiers; this
 does not construct, clone or evaluate the underlying field elements.
 """
 
-from sagejs.native import IntegerBuffer, native
+from sagejs.native import (
+    IntegerBuffer,
+    checked_int64,
+    int64,
+    integer_buffer_get_int64,
+    integer_buffer_mod_addmul_range_from,
+    native,
+)
 
 
 @native
@@ -235,11 +242,11 @@ def pari_prepared_add_relation(
     relative original index and automorphism id for each record. nz is the
     upstream one-based first-nonzero hint, not recomputed here.
     """
-    n = int(len(relation))
+    n: int64 = checked_int64(len(relation))
     if len(state) < 4 or nz < 1 or nz > n + 1:
         raise ValueError("invalid relation cache state")
-    last = state[0]
-    capacity = state[1]
+    last: int64 = integer_buffer_get_int64(state, 0)
+    capacity: int64 = integer_buffer_get_int64(state, 1)
     if last < 0 or capacity < last or len(basis) < n * n or len(scratch) < n:
         raise ValueError("invalid relation cache dimensions")
     if (
@@ -248,72 +255,91 @@ def pari_prepared_add_relation(
         or len(metadata) < capacity * 3
     ):
         raise ValueError("insufficient relation cache storage")
-    k = 0
+    k: int64 = 0
+    zero: int64 = 0
+    one: int64 = 1
+    modulus: int64 = 27449
     if nz != n + 1:
-        row = last - 1
+        row: int64 = last - 1
         while row >= 0:
-            if hashes[row] == nz:
-                index = nz - 1
-                while index < n and relation[index] == records[row * n + index]:
+            if integer_buffer_get_int64(hashes, row) == nz:
+                index: int64 = checked_int64(nz - 1)
+                while index < n and integer_buffer_get_int64(
+                    relation, index
+                ) == integer_buffer_get_int64(records, row * n + index):
                     index += 1
                 if index == n:
                     return -1, 0
             row -= 1
         if last >= capacity:
             return 0, 0
-        if state[2] != 0:
+        if integer_buffer_get_int64(state, 2) != 0:
             for copied in range(n):
-                scratch[copied] = relation[copied]
+                scratch[copied] = integer_buffer_get_int64(relation, copied)
             k = n
-            while k > 0 and scratch[k - 1] == 0:
+            while k > 0 and integer_buffer_get_int64(scratch, k - 1) == 0:
                 k -= 1
             while k > 0:
-                column = (k - 1) * n
-                if basis[column + k - 1] != 0:
-                    ak = scratch[k - 1]
-                    for i in range(k - 1):
-                        if basis[column + i] != 0:
-                            scratch[i] = (
-                                (scratch[i] + ak * (27449 - basis[column + i]))
-                                % (1 << 64)
-                            ) % 27449
+                column: int64 = (k - 1) * n
+                if integer_buffer_get_int64(basis, column + k - 1) != 0:
+                    ak: int64 = integer_buffer_get_int64(scratch, k - 1)
+                    integer_buffer_mod_addmul_range_from(
+                        scratch, zero, basis, column, k - one, -ak, modulus
+                    )
                     scratch[k - 1] = 0
-                    while k > 0 and scratch[k - 1] == 0:
+                    while k > 0 and integer_buffer_get_int64(scratch, k - 1) == 0:
                         k -= 1
                 else:
-                    inverse = pari_relation_mod_inverse(scratch[k - 1])
-                    i = k - 2
-                    while i >= 0:
-                        ai = scratch[i]
-                        base = i * n
-                        if ai != 0 and basis[base + i] != 0:
+                    inverse: int64 = checked_int64(
+                        pari_relation_mod_inverse(
+                            integer_buffer_get_int64(scratch, k - 1)
+                        )
+                    )
+                    elimination_i: int64 = k - 2
+                    while elimination_i >= 0:
+                        ai: int64 = integer_buffer_get_int64(scratch, elimination_i)
+                        base: int64 = elimination_i * n
+                        if (
+                            ai != 0
+                            and integer_buffer_get_int64(basis, base + elimination_i)
+                            != 0
+                        ):
                             ai = 27449 - ai
-                            for j in range(i):
-                                if basis[base + j] != 0:
-                                    scratch[j] = (
-                                        (scratch[j] + ai * basis[base + j]) % (1 << 64)
-                                    ) % 27449
-                            scratch[i] = 0
-                        i -= 1
+                            integer_buffer_mod_addmul_range_from(
+                                scratch,
+                                zero,
+                                basis,
+                                base,
+                                elimination_i,
+                                ai,
+                                modulus,
+                            )
+                            scratch[elimination_i] = 0
+                        elimination_i -= 1
                     for i in range(k - 1):
-                        if scratch[i] != 0:
-                            basis[column + i] = (
-                                (scratch[i] * inverse) % (1 << 64)
-                            ) % 27449
+                        scratch_value: int64 = integer_buffer_get_int64(scratch, i)
+                        if scratch_value != 0:
+                            basis[column + i] = (scratch_value * inverse) % 27449
                     basis[column + k - 1] = 1
                     # Preserve the upstream strict i<n bound (last column excluded).
-                    for upper in range(k, n - 1):
-                        base = upper * n
-                        ck = basis[base + k - 1]
+                    upper: int64 = k
+                    upper_stop: int64 = n - one
+                    while upper < upper_stop:
+                        upper_base: int64 = upper * n
+                        ck: int64 = integer_buffer_get_int64(basis, upper_base + k - 1)
                         if ck != 0:
                             ck = 27449 - ck
-                            for j in range(k - 1):
-                                if basis[column + j] != 0:
-                                    basis[base + j] = (
-                                        (basis[base + j] + ck * basis[column + j])
-                                        % (1 << 64)
-                                    ) % 27449
-                            basis[base + k - 1] = 0
+                            integer_buffer_mod_addmul_range_from(
+                                basis,
+                                upper_base,
+                                basis,
+                                column,
+                                k - one,
+                                ck,
+                                modulus,
+                            )
+                            basis[upper_base + k - 1] = 0
+                        upper += one
                     state[2] -= 1
                     break
         else:
@@ -328,7 +354,7 @@ def pari_prepared_add_relation(
             raise ValueError("zero relation exceeds allocated cache")
         if k == 0 and state[3] != 0 and nz < n + 1:
             state[3] -= 1
-            k = last + 1 + state[2]
+            k = checked_int64(last + 1 + state[2])
         for copied in range(n):
             records[last * n + copied] = relation[copied]
         hashes[last] = nz
@@ -337,5 +363,5 @@ def pari_prepared_add_relation(
             metadata[last * 3 + 1] = last + 1 - original
         metadata[last * 3 + 2] = automorphism
         state[0] = last + 1
-        return k, 1
-    return k, 0
+        return int(k), 1
+    return int(k), 0

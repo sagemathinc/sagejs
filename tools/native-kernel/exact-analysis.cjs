@@ -63,6 +63,8 @@ function operationInputs(operation) {
       return [operation.base];
     case "integer.mod_uint64":
       return [operation.left, operation.right];
+    case "integer.mul_int64":
+      return [operation.integer, operation.scalar];
     case "integer.binary":
     case "integer.gcd":
     case "integer.shift":
@@ -92,6 +94,14 @@ function operationInputs(operation) {
       return [operation.buffer, operation.index];
     case "int64.buffer.set":
       return [operation.buffer, operation.index, operation.value];
+    case "int64.buffer.addmul_range":
+      return [
+        operation.buffer,
+        operation.destination,
+        operation.source,
+        operation.length,
+        operation.multiplier,
+      ];
     case "integer.buffer.copy":
       return [operation.source];
     case "integer.buffer.length":
@@ -100,6 +110,68 @@ function operationInputs(operation) {
       return [operation.buffer, operation.index];
     case "integer.buffer.set":
       return [operation.buffer, operation.index, operation.value];
+    case "integer.buffer.slot_copy":
+      return [
+        operation.buffer,
+        operation.index,
+        operation.sourceBuffer,
+        operation.sourceIndex,
+      ];
+    case "integer.buffer.addmul":
+      return [
+        operation.buffer,
+        operation.destination,
+        operation.source,
+        operation.multiplier,
+      ];
+    case "integer.buffer.addmul_from":
+      return [
+        operation.buffer,
+        operation.destination,
+        operation.sourceBuffer,
+        operation.source,
+        operation.multiplier,
+      ];
+    case "integer.buffer.addmul_range":
+      return [
+        operation.buffer,
+        operation.destination,
+        operation.source,
+        operation.length,
+        operation.multiplier,
+      ];
+    case "integer.buffer.addmul_range_from":
+      return [
+        operation.buffer,
+        operation.destination,
+        operation.sourceBuffer,
+        operation.source,
+        operation.length,
+        operation.multiplier,
+      ];
+    case "integer.buffer.mod_addmul_range_from":
+      return [
+        operation.buffer,
+        operation.destination,
+        operation.sourceBuffer,
+        operation.source,
+        operation.length,
+        operation.multiplier,
+        operation.modulus,
+      ];
+    case "integer.buffer.swap_range":
+      return [
+        operation.buffer,
+        operation.left,
+        operation.right,
+        operation.length,
+      ];
+    case "integer.buffer.negate_range":
+      return [operation.buffer, operation.start, operation.length];
+    case "integer.buffer.get_int64":
+      return [operation.buffer, operation.index];
+    case "integer.buffer.sign":
+      return [operation.buffer, operation.index];
     case "uint64.buffer.copy":
       return [operation.source];
     case "uint64.buffer.length":
@@ -619,6 +691,7 @@ function executionProfile(fn) {
     operation(operation) {
       if (
         operation.kind === "integer.binary" ||
+        operation.kind === "integer.mul_int64" ||
         operation.kind === "integer.gcd" ||
         operation.kind === "integer.isqrt" ||
         operation.kind === "integer.pow_uint" ||
@@ -633,6 +706,7 @@ function executionProfile(fn) {
       if (
         (operation.kind === "integer.binary" &&
           ["mul", "floordiv", "mod"].includes(operation.operation)) ||
+        operation.kind === "integer.mul_int64" ||
         operation.kind === "integer.pow_uint" ||
         operation.kind === "integer.divmod" ||
         operation.kind === "integer.mod_uint64" ||
@@ -641,6 +715,90 @@ function executionProfile(fn) {
         profile.integerGrowthOperations += 1;
       }
       if (operation.kind === "integer.buffer.get") {
+        profile.integerBufferLoads += 1;
+        if (integerBufferParameters.has(operation.buffer)) {
+          integerBufferLoadParameters.add(operation.buffer);
+        }
+      }
+      if (operation.kind === "integer.buffer.slot_copy") {
+        profile.integerBufferLoads += 1;
+        if (integerBufferParameters.has(operation.sourceBuffer)) {
+          integerBufferLoadParameters.add(operation.sourceBuffer);
+        }
+      }
+      if (operation.kind === "integer.buffer.addmul") {
+        profile.arithmeticOperations += 2;
+        profile.integerGrowthOperations += 1;
+        profile.integerBufferLoads += 2;
+        if (integerBufferParameters.has(operation.buffer)) {
+          integerBufferLoadParameters.add(operation.buffer);
+        }
+      }
+      if (operation.kind === "integer.buffer.addmul_from") {
+        profile.arithmeticOperations += 2;
+        profile.integerGrowthOperations += 1;
+        profile.integerBufferLoads += 2;
+        for (const buffer of [operation.buffer, operation.sourceBuffer]) {
+          if (integerBufferParameters.has(buffer)) {
+            integerBufferLoadParameters.add(buffer);
+          }
+        }
+      }
+      if (operation.kind === "integer.buffer.addmul_range") {
+        profile.arithmeticOperations += 2;
+        profile.integerGrowthOperations += 1;
+        profile.integerBufferLoads += 2;
+        profile.rangeLoops += 1;
+        if (integerBufferParameters.has(operation.buffer)) {
+          integerBufferLoadParameters.add(operation.buffer);
+        }
+      }
+      if (operation.kind === "integer.buffer.addmul_range_from") {
+        profile.arithmeticOperations += 2;
+        profile.integerGrowthOperations += 1;
+        profile.integerBufferLoads += 2;
+        profile.rangeLoops += 1;
+        for (const buffer of [operation.buffer, operation.sourceBuffer]) {
+          if (integerBufferParameters.has(buffer)) {
+            integerBufferLoadParameters.add(buffer);
+          }
+        }
+      }
+      if (operation.kind === "integer.buffer.mod_addmul_range_from") {
+        profile.arithmeticOperations += 3;
+        profile.integerBufferLoads += 2;
+        profile.rangeLoops += 1;
+        for (const buffer of [operation.buffer, operation.sourceBuffer]) {
+          if (integerBufferParameters.has(buffer)) {
+            integerBufferLoadParameters.add(buffer);
+          }
+        }
+      }
+      if (operation.kind === "integer.buffer.swap_range") {
+        profile.integerBufferLoads += 2;
+        profile.rangeLoops += 1;
+        if (integerBufferParameters.has(operation.buffer)) {
+          integerBufferLoadParameters.add(operation.buffer);
+        }
+      }
+      if (operation.kind === "integer.buffer.negate_range") {
+        profile.integerBufferLoads += 1;
+        profile.rangeLoops += 1;
+        if (integerBufferParameters.has(operation.buffer)) {
+          integerBufferLoadParameters.add(operation.buffer);
+        }
+      }
+      if (operation.kind === "int64.buffer.addmul_range") {
+        profile.arithmeticOperations += 2;
+        profile.rangeLoops += 1;
+      }
+      if (operation.kind === "integer.buffer.get_int64") {
+        profile.integerBufferLoads += 1;
+        if (integerBufferParameters.has(operation.buffer)) {
+          integerBufferLoadParameters.add(operation.buffer);
+        }
+      }
+      if (operation.kind === "integer.buffer.sign") {
         profile.integerBufferLoads += 1;
         if (integerBufferParameters.has(operation.buffer)) {
           integerBufferLoadParameters.add(operation.buffer);
@@ -767,11 +925,13 @@ function localEffects(fn) {
       if (
         operation.kind === "int64.buffer.get" ||
         operation.kind === "int64.buffer.set" ||
+        operation.kind === "int64.buffer.addmul_range" ||
         operation.kind === "int64.record.view" ||
         operation.kind === "integer.buffer.view" ||
         operation.kind === "uint64.buffer.view" ||
         operation.kind === "integer.buffer.get" ||
         operation.kind === "integer.buffer.set" ||
+        operation.kind === "integer.buffer.slot_copy" ||
         operation.kind === "uint64.buffer.get" ||
         operation.kind === "uint64.buffer.set" ||
         operation.kind === "float64.buffer.get" ||
@@ -835,7 +995,9 @@ function localEffects(fn) {
         mayRaise.add("MemoryError");
       }
       if (operation.kind === "int64.buffer.set" ||
-          operation.kind === "integer.buffer.set") {
+          operation.kind === "int64.buffer.addmul_range" ||
+          operation.kind === "integer.buffer.set" ||
+          operation.kind === "integer.buffer.slot_copy") {
         mayRaise.add("OverflowError");
       }
       if (operation.kind === "raise") mayRaise.add(operation.exception);
@@ -910,7 +1072,15 @@ function bufferWrites(fn, dependencyEffects) {
           statement.kind === "uint64.buffer.view") {
         changed = addAlias(statement.target, roots(statement.buffer)) || changed;
       } else if (statement.kind === "int64.buffer.set" ||
+          statement.kind === "int64.buffer.addmul_range" ||
           statement.kind === "integer.buffer.set" ||
+          statement.kind === "integer.buffer.slot_copy" ||
+          statement.kind === "integer.buffer.addmul_from" ||
+          statement.kind === "integer.buffer.addmul_range" ||
+          statement.kind === "integer.buffer.addmul_range_from" ||
+          statement.kind === "integer.buffer.mod_addmul_range_from" ||
+          statement.kind === "integer.buffer.swap_range" ||
+          statement.kind === "integer.buffer.negate_range" ||
           statement.kind === "uint64.buffer.set" ||
           statement.kind === "float64.buffer.set") {
         for (const root of roots(statement.buffer)) writes.add(root);
@@ -1424,6 +1594,7 @@ const FMPZ_OPERATION_KINDS = new Set([
   "integer.buffer.get",
   "integer.buffer.length",
   "integer.buffer.set",
+  "integer.buffer.slot_copy",
   "integer.compare",
   "integer.constant",
   "integer.copy",
@@ -1431,6 +1602,7 @@ const FMPZ_OPERATION_KINDS = new Set([
   "integer.from_uint64",
   "integer.from_int64",
   "integer.mod_uint64",
+  "integer.mul_int64",
   "integer.neg",
   "integer.pow_uint",
   "integer.truth",

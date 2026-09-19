@@ -12,9 +12,8 @@ IDs. Mat/dense/T keep all retained columns, including the eliminated columns.
 Dense snapshots precede all column operations. Only the initial live vmax
 prefix is defined, as in C. Buffers must not alias. `T` is exact IntegerBuffer
 storage; words and indices use Int64Buffer, pinning the upstream 64-bit model.
-Scalar dimensions, loop indices and arithmetic retain Python `int` semantics:
-native lowering uses exact GMP integers, including index-expression overhead.
-Word buffer storage alone does not make this an unboxed word implementation.
+Scalar dimensions, loop indices, and signed sparse words use checked `int64`
+arithmetic.  Exact transformation coefficients remain in `IntegerBuffer`.
 The quadratic permutation validation is added prototype boundary overhead,
 not work performed by upstream; a future context owner could validate once.
 
@@ -31,21 +30,30 @@ In particular the INITIAL vmax scan deliberately uses physical matj[i], not
 matj[perm[i]]. Do not correct that indexing when porting this source prefix.
 """
 
-from sagejs.native import Int64Buffer, IntegerBuffer, checked_float64, native
+from sagejs.native import (
+    Int64Buffer,
+    IntegerBuffer,
+    checked_float64,
+    checked_int64,
+    int64,
+    integer_buffer_swap_range,
+    native,
+)
 
 
 @native
 def pari_hnfspec_count(
-    mat: Int64Buffer, rows: int, row: int, length: int, found: Int64Buffer
-) -> int:
+    mat: Int64Buffer, rows: int64, row: int64, length: int64, found: Int64Buffer
+) -> int64:
     """Return count or -1, updating the last encountered unit index in found."""
     if row < 1 or row > rows or length < 0 or len(mat) < rows * length:
         raise ValueError("invalid sparse count dimensions")
     if len(found) < 1:
         raise ValueError("short sparse count state")
-    count = 0
+    count: int64 = 0
+    j: int64 = 0
     for j in range(length):
-        value = mat[j * rows + row - 1]
+        value: int64 = mat[j * rows + row - 1]
         if value <= -9223372036854775808:
             raise ValueError("undefined upstream word absolute value")
         if value != 0:
@@ -57,13 +65,15 @@ def pari_hnfspec_count(
 
 
 @native
-def pari_hnfspec_count2(mat: Int64Buffer, rows: int, row: int, length: int) -> int:
+def pari_hnfspec_count2(
+    mat: Int64Buffer, rows: int64, row: int64, length: int64
+) -> int64:
     """Return the last +/-1 column, scanning backwards exactly as count2."""
     if row < 1 or row > rows or length < 0 or len(mat) < rows * length:
         raise ValueError("invalid sparse count dimensions")
-    j = length
+    j: int64 = length
     while j > 0:
-        value = mat[(j - 1) * rows + row - 1]
+        value: int64 = mat[(j - 1) * rows + row - 1]
         if value <= -9223372036854775808:
             raise ValueError("undefined upstream word absolute value")
         if value == 1 or value == -1:
@@ -73,17 +83,18 @@ def pari_hnfspec_count2(mat: Int64Buffer, rows: int, row: int, length: int) -> i
 
 
 @native
-def pari_hnfspec_word(value: int) -> int:
+def pari_hnfspec_word(value: int64) -> int64:
     """A stored sparse word must also admit the source's subsequent labs."""
-    if value <= -9223372036854775808 or value >= 9223372036854775808:
+    if value <= -9223372036854775808:
         raise ValueError("undefined upstream sparse word overflow")
     return value
 
 
 @native
-def pari_hnfspec_swap_words(mat: Int64Buffer, rows: int, a: int, b: int) -> int:
+def pari_hnfspec_swap_words(mat: Int64Buffer, rows: int64, a: int64, b: int64) -> int64:
+    i: int64 = 0
     for i in range(rows):
-        temporary = mat[(a - 1) * rows + i]
+        temporary: int64 = mat[(a - 1) * rows + i]
         mat[(a - 1) * rows + i] = mat[(b - 1) * rows + i]
         mat[(b - 1) * rows + i] = temporary
     return 0
@@ -99,20 +110,30 @@ def pari_hnfspec_swap_exact(mat: IntegerBuffer, rows: int, a: int, b: int) -> in
 
 
 @native
+def pari_hnfspec_swap_exact_int64(
+    mat: IntegerBuffer, rows: int64, a: int64, b: int64
+) -> int64:
+    left_start: int64 = checked_int64((a - 1) * rows)
+    right_start: int64 = checked_int64((b - 1) * rows)
+    integer_buffer_swap_range(mat, left_start, right_start, rows)
+    return 0
+
+
+@native
 def pari_hnfspec_sparse_prefix(
     mat0: Int64Buffer,
-    rows: int,
-    columns: int,
+    rows: int64,
+    columns: int64,
     perm: Int64Buffer,
-    k0: int,
-    c_rows: int,
+    k0: int64,
+    c_rows: int64,
     mat: Int64Buffer,
     dense: IntegerBuffer,
     transform: IntegerBuffer,
     vmax: Int64Buffer,
     found: Int64Buffer,
     state: Int64Buffer,
-) -> int:
+) -> int64:
     """Copy the retained columns, then execute all three sparse phases.
 
     The dense rows are perm-selected at entry, not necessarily the physical
@@ -129,32 +150,36 @@ def pari_hnfspec_sparse_prefix(
         raise ValueError("short sparse prefix input")
     if len(found) < 1 or len(state) < 13:
         raise ValueError("short sparse prefix state")
-    li = rows + 1
-    co = columns + 1
+    li: int64 = rows + 1
+    co: int64 = columns + 1
     if co > 300 and checked_float64(co) > 1.5 * checked_float64(li):
-        co = int(1.2 * checked_float64(li))
-    retained = co - 1
-    has_t = 0
+        co = checked_int64(int(1.2 * checked_float64(li)))
+    retained: int64 = co - 1
+    has_t: int64 = 0
     if k0 != 0 or (retained > 0 and c_rows > 0):
         has_t = 1
     if len(mat) < rows * retained or len(dense) < k0 * retained:
         raise ValueError("short sparse prefix matrix workspace")
     if len(vmax) < retained or (has_t != 0 and len(transform) < retained * retained):
         raise ValueError("short sparse prefix transformation workspace")
+    i: int64 = 0
+    j: int64 = 0
     for i in range(rows):
         if perm[i] < 1 or perm[i] > rows:
             raise ValueError("invalid sparse row permutation")
         for j in range(i):
             if perm[i] == perm[j]:
                 raise ValueError("invalid sparse row permutation")
-    for i in range(rows * retained):
+    range_stop: int64 = rows * retained
+    for i in range(range_stop):
         pari_hnfspec_word(mat0[i])
     for j in range(retained):
         for i in range(rows):
             mat[j * rows + i] = mat0[j * rows + i]
         for i in range(k0):
             dense[j * k0 + i] = mat0[j * rows + perm[i] - 1]
-    for i in range(13):
+    range_stop = 13
+    for i in range(range_stop):
         state[i] = 0
     found[0] = 0
     if has_t != 0:
@@ -163,10 +188,19 @@ def pari_hnfspec_sparse_prefix(
                 transform[j * retained + i] = 0
             transform[j * retained + j] = 1
     i = rows
-    lig = rows
-    col = retained
-    lk0 = k0
-    n = 0
+    lig: int64 = rows
+    col: int64 = retained
+    lk0: int64 = k0
+    n: int64 = 0
+    count: int64 = 0
+    temporary: int64 = 0
+    at: int64 = 0
+    t: int64 = 0
+    value: int64 = 0
+    absolute: int64 = 0
+    pivot: int64 = 0
+    product: int64 = 0
+    range_start: int64 = 0
     while i > lk0 and col != 0:
         count = pari_hnfspec_count(mat, rows, perm[i - 1], col, found)
         n = found[0]
@@ -184,13 +218,15 @@ def pari_hnfspec_sparse_prefix(
             perm[i - 1] = perm[lig - 1]
             perm[lig - 1] = temporary
             if has_t != 0:
-                pari_hnfspec_swap_exact(transform, retained, n, col)
+                pari_hnfspec_swap_exact_int64(transform, retained, n, col)
             pari_hnfspec_swap_words(mat, rows, n, col)
             if mat[(col - 1) * rows + perm[lig - 1] - 1] < 0:
                 # Phase 1 EXCLUDES the pivot row: preserve its literal -1.
-                for i in range(lk0 + 1, lig):
+                range_start = lk0 + 1
+                for i in range(range_start, lig):
                     at = (col - 1) * rows + perm[i - 1] - 1
-                    mat[at] = pari_hnfspec_word(-mat[at])
+                    value = checked_int64(-mat[at])
+                    mat[at] = pari_hnfspec_word(value)
                 if has_t != 0:
                     i = 0
                     while transform[(col - 1) * retained + i] == 0:
@@ -202,7 +238,7 @@ def pari_hnfspec_sparse_prefix(
             i = lig
             continue
         i -= 1
-    s = 0
+    s: int64 = 0
     while lig > lk0 and col != 0 and s < 4611686018427387904:
         i = lig
         while i > lk0:
@@ -218,28 +254,34 @@ def pari_hnfspec_sparse_prefix(
         perm[lig - 1] = temporary
         pari_hnfspec_swap_words(mat, rows, n, col)
         if has_t != 0:
-            pari_hnfspec_swap_exact(transform, retained, n, col)
+            pari_hnfspec_swap_exact_int64(transform, retained, n, col)
         if mat[(col - 1) * rows + perm[lig - 1] - 1] < 0:
-            for i in range(lk0 + 1, lig + 1):
+            range_start = lk0 + 1
+            range_stop = lig + 1
+            for i in range(range_start, range_stop):
                 at = (col - 1) * rows + perm[i - 1] - 1
-                mat[at] = pari_hnfspec_word(-mat[at])
+                value = checked_int64(-mat[at])
+                mat[at] = pari_hnfspec_word(value)
             if has_t != 0:
                 for i in range(retained):
                     at = (col - 1) * retained + i
                     transform[at] = -transform[at]
-        for j in range(1, col):
+        range_start = 1
+        for j in range(range_start, col):
             t = mat[(j - 1) * rows + perm[lig - 1] - 1]
             if t == 0:
                 continue
-            for i in range(lk0 + 1, lig + 1):
+            range_start = lk0 + 1
+            range_stop = lig + 1
+            for i in range(range_start, range_stop):
                 at = (j - 1) * rows + perm[i - 1] - 1
                 pivot = mat[(col - 1) * rows + perm[i - 1] - 1]
                 if t == 1:
-                    value = pari_hnfspec_word(mat[at] - pivot)
+                    value = checked_int64(mat[at] - pivot)
                 else:
-                    value = pari_hnfspec_word(mat[at] + pivot)
-                mat[at] = value
-                absolute = abs(value)
+                    value = checked_int64(mat[at] + pivot)
+                mat[at] = pari_hnfspec_word(value)
+                absolute = checked_int64(abs(value))
                 if absolute > s:
                     s = absolute
             if has_t != 0:
@@ -249,16 +291,20 @@ def pari_hnfspec_sparse_prefix(
         lig -= 1
         col -= 1
         state[10] += 1
-    initial_vmax_count = col
-    for j in range(1, col + 1):
+    initial_vmax_count: int64 = col
+    range_start = 1
+    range_stop = col + 1
+    for j in range(range_start, range_stop):
         s = 0
         # Deliberately physical rows, exactly upstream's matj[i] scan.
-        for i in range(lk0 + 1, lig + 1):
-            absolute = abs(mat[(j - 1) * rows + i - 1])
+        range_start = lk0 + 1
+        range_stop = lig + 1
+        for i in range(range_start, range_stop):
+            absolute = checked_int64(abs(mat[(j - 1) * rows + i - 1]))
             if absolute > s:
                 s = absolute
         vmax[j - 1] = s
-    stopped = 0
+    stopped: int64 = 0
     while lig > lk0 and col != 0:
         i = lig
         while i > lk0:
@@ -276,34 +322,39 @@ def pari_hnfspec_sparse_prefix(
         perm[lig - 1] = temporary
         pari_hnfspec_swap_words(mat, rows, n, col)
         if has_t != 0:
-            pari_hnfspec_swap_exact(transform, retained, n, col)
+            pari_hnfspec_swap_exact_int64(transform, retained, n, col)
         if mat[(col - 1) * rows + perm[lig - 1] - 1] < 0:
-            for i in range(lk0 + 1, lig + 1):
+            range_start = lk0 + 1
+            range_stop = lig + 1
+            for i in range(range_start, range_stop):
                 at = (col - 1) * rows + perm[i - 1] - 1
-                mat[at] = pari_hnfspec_word(-mat[at])
+                value = checked_int64(-mat[at])
+                mat[at] = pari_hnfspec_word(value)
             if has_t != 0:
                 for i in range(retained):
                     at = (col - 1) * retained + i
                     transform[at] = -transform[at]
-        for j in range(1, col):
+        range_start = 1
+        for j in range(range_start, col):
             t = mat[(j - 1) * rows + perm[lig - 1] - 1]
             if t == 0:
                 continue
             if (
                 vmax[col - 1] != 0
-                and abs(t) >= (9223372036854775808 - vmax[j - 1]) // vmax[col - 1]
+                and checked_int64(abs(t))
+                > (9223372036854775807 - vmax[j - 1]) // vmax[col - 1]
             ):
                 stopped = 1
                 break
             s = 0
-            for i in range(lk0 + 1, lig + 1):
+            range_start = lk0 + 1
+            range_stop = lig + 1
+            for i in range(range_start, range_stop):
                 at = (j - 1) * rows + perm[i - 1] - 1
                 product = t * mat[(col - 1) * rows + perm[i - 1] - 1]
-                if product < -9223372036854775808 or product >= 9223372036854775808:
-                    raise ValueError("undefined upstream sparse word product overflow")
-                value = pari_hnfspec_word(mat[at] - product)
-                mat[at] = value
-                absolute = abs(value)
+                value = checked_int64(mat[at] - product)
+                mat[at] = pari_hnfspec_word(value)
+                absolute = checked_int64(abs(value))
                 if absolute > s:
                     s = absolute
             vmax[j - 1] = s

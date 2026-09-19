@@ -8,24 +8,36 @@ rational rank verification, general exact Strassen/CRT and hnfadd_i
 remain explicit frontiers. No fixture supplies ranks or transformations.
 """
 
-from sagejs.native import Int64Buffer, IntegerBuffer, diagnostic_stage_switch, native
+from sagejs.native import (
+    Int64Buffer,
+    IntegerBuffer,
+    checked_int64,
+    diagnostic_stage_switch,
+    native,
+)
 
-from .hnfspec_cleanup import pari_hnfspec_cleanup
+from .hnfspec_cleanup import _pari_hnfspec_cleanup_bounded_transform
 from .hnfspec_cup_rank import pari_hnfspec_cup_rank_prefix
 from .hnfspec_assembly import pari_hnfspec_assemble_blocks
-from .log_matrix_transform import pari_log_matrix_transform, pari_validate_log_entries
+from .log_matrix_transform import (
+    _pari_log_matrix_transform_bounded_word_zero_exact,
+    _pari_pack_log_metadata_zero_exact,
+    _pari_log_matrix_transform_int64,
+    _pari_log_matrix_transform_word_coefficients_nongeneric,
+    pari_validate_log_entries,
+)
 from .hnffinal import pari_hnffinal_nonempty
 
 
 @native
 def pari_hnfspec_complete(
     original: Int64Buffer,
-    rows: int,
-    columns: int,
+    rows: int64,
+    columns: int64,
     perm: Int64Buffer,
-    k0: int,
+    k0: int64,
     logs: IntegerBuffer,
-    log_rows: int,
+    log_rows: int64,
     mat: Int64Buffer,
     dense: IntegerBuffer,
     transform: IntegerBuffer,
@@ -93,8 +105,8 @@ def pari_hnfspec_complete(
     diagnostic_stage_switch(1)
     if rows < 0 or columns < 0 or k0 < 0 or k0 > rows or log_rows < 1:
         raise ValueError("invalid connected hnfspec dimensions")
-    size = rows * columns
-    log_size = 7 * log_rows * columns
+    size: int64 = rows * columns
+    log_size: int64 = 7 * log_rows * columns
     if len(original) < size or len(perm) < rows:
         raise ValueError("short connected hnfspec input")
     if (
@@ -144,6 +156,11 @@ def pari_hnfspec_complete(
     ):
         raise ValueError("short connected final workspace")
     pari_validate_log_entries(logs, log_rows * columns)
+    i: int64 = 0
+    j: int64 = 0
+    range_start: int64 = 0
+    range_stop: int64 = 0
+    range_step: int64 = -1
     for i in range(rows):
         if perm[i] < 1 or perm[i] > rows:
             raise ValueError("invalid connected permutation")
@@ -153,7 +170,7 @@ def pari_hnfspec_complete(
     for i in range(9):
         state[i] = -1
     diagnostic_stage_switch(2)
-    cleanup_status = pari_hnfspec_cleanup(
+    cleanup_status: int64 = _pari_hnfspec_cleanup_bounded_transform(
         original,
         rows,
         columns,
@@ -174,21 +191,23 @@ def pari_hnfspec_complete(
     if cleanup_status != 0 and cleanup_status != 1:
         raise ValueError("incomplete cleanup checkpoint")
     diagnostic_stage_switch(3)
-    status = pari_hnfspec_cup_rank_prefix(
-        extra,
-        cleanup_state,
-        rank_matrix,
-        occupied,
-        pivots,
-        best,
-        profile,
-        rank_state,
-        cup_arena,
-        cup_frames,
-        cup_solve_state,
-        cup_state,
+    status: int64 = checked_int64(
+        pari_hnfspec_cup_rank_prefix(
+            extra,
+            cleanup_state,
+            rank_matrix,
+            occupied,
+            pivots,
+            best,
+            profile,
+            rank_state,
+            cup_arena,
+            cup_frames,
+            cup_solve_state,
+            cup_state,
+        )
     )
-    retained = sparse_state[0] - 1
+    retained: int64 = sparse_state[0] - 1
     state[7] = retained
     if status != 0:
         state[6] = status
@@ -212,60 +231,115 @@ def pari_hnfspec_complete(
         b,
         assembly_state,
     )
+    diagnostic_stage_switch(7)
     # Literal source co includes eliminated columns: T is retained x retained.
     # At retained==0, lg(C)==1: RgM_ZM_mul returns cgetg(lg(T),t_MAT).
     if sparse_state[4] != 0 and retained != 0:
-        pari_log_matrix_transform(
-            logs, transform, log_rows, retained, retained, False, transformed_logs
-        )
+        metadata_offset: int64 = retained * retained
+        bounded_logs: bool = len(mat) >= (metadata_offset + 5 * log_rows * retained)
+        if bounded_logs:
+            bounded_logs = _pari_pack_log_metadata_zero_exact(
+                logs, log_rows * retained, mat, metadata_offset
+            )
+        if bounded_logs:
+            for j in range(retained):
+                for i in range(rows, retained):
+                    coefficient = transform[j * retained + i]
+                    if (
+                        coefficient < -9223372036854775808
+                        or coefficient > 9223372036854775807
+                    ):
+                        bounded_logs = False
+                        break
+                if not bounded_logs:
+                    break
+        if bounded_logs:
+            range_start = retained - 1
+            range_stop = -1
+            for j in range(range_start, range_stop, range_step):
+                range_start = rows - 1
+                for i in range(range_start, range_stop, range_step):
+                    mat[j * retained + i] = mat[j * rows + i]
+                for i in range(rows, retained):
+                    mat[j * retained + i] = checked_int64(transform[j * retained + i])
+            _pari_log_matrix_transform_bounded_word_zero_exact(
+                logs,
+                mat,
+                log_rows,
+                retained,
+                retained,
+                False,
+                metadata_offset,
+                transformed_logs,
+            )
+        else:
+            _pari_log_matrix_transform_word_coefficients_nongeneric(
+                logs,
+                mat,
+                transform,
+                rows,
+                log_rows,
+                retained,
+                retained,
+                transformed_logs,
+            )
     else:
-        for i in range(7 * log_rows * retained):
+        range_stop = 7 * log_rows * retained
+        for i in range(range_stop):
             transformed_logs[i] = logs[i]
-    col = assembly_state[2]
+    diagnostic_stage_switch(8)
+    col: int64 = assembly_state[2]
     if col == 0:
         # hnffinal returns BEFORE touching dep/B/C or invoking HNFLLL.
-        for i in range(assembly_state[3] * assembly_state[4]):
+        range_stop = assembly_state[3] * assembly_state[4]
+        for i in range(range_stop):
             result_b[i] = b[i]
-        for i in range(7 * log_rows * retained):
+        range_stop = 7 * log_rows * retained
+        for i in range(range_stop):
             result_c[i] = transformed_logs[i]
-        for i in range(7):
+        range_stop = 7
+        for i in range(range_stop):
             final_state[i] = 0
         final_state[2] = assembly_state[4]
     else:
         diagnostic_stage_switch(5)
-        status = pari_hnffinal_nonempty(
-            matbnew,
-            assembly_state[0],
-            col,
-            perm,
-            dep,
-            assembly_state[1],
-            b,
-            retained,
-            transformed_logs,
-            log_rows,
-            full_h,
-            hnf_transform,
-            lam,
-            d,
-            hnf_state,
-            full_dep,
-            work_b,
-            work_c,
-            diagonal,
-            perm_work,
-            result_h,
-            result_dep,
-            result_b,
-            result_c,
-            final_state,
+        status = checked_int64(
+            pari_hnffinal_nonempty(
+                matbnew,
+                assembly_state[0],
+                col,
+                perm,
+                dep,
+                assembly_state[1],
+                b,
+                retained,
+                transformed_logs,
+                log_rows,
+                full_h,
+                hnf_transform,
+                mat,
+                lam,
+                d,
+                hnf_state,
+                full_dep,
+                work_b,
+                work_c,
+                diagonal,
+                perm_work,
+                result_h,
+                result_dep,
+                result_b,
+                result_c,
+                final_state,
+            )
         )
         if status != 0:
             state[6] = status
             state[8] = 2
             return status
     diagnostic_stage_switch(6)
-    for i in range(7):
+    range_stop = 7
+    for i in range(range_stop):
         state[i] = final_state[i]
     state[8] = 0
     if retained < columns:

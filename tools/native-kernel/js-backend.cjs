@@ -162,6 +162,10 @@ function emitStatement(operation, indent) {
     return `${indent}${operation.target} = ${operation.left} ` +
       `${operator} ${operation.right};`;
   }
+  if (operation.kind === "integer.mul_int64") {
+    return `${indent}${operation.target} = ${operation.integer} * ` +
+      `${operation.scalar};`;
+  }
   if (
     operation.kind === "real.copy" ||
     operation.kind === "complex.copy" ||
@@ -430,11 +434,120 @@ function emitExactStatement(operation, indent, resourceStack = null) {
     return `${indent}int64BufferSet(${operation.buffer}, ` +
       `${operation.index}, ${operation.value});`;
   }
+  if (operation.kind === "int64.buffer.addmul_range") {
+    const offset = `${operation.target}_offset`;
+    const product = `${operation.target}_product`;
+    const destination = `${operation.destination} + ${offset}`;
+    const source = `${operation.source} + ${offset}`;
+    return `${indent}for (let ${offset} = 0n; ${offset} < ${operation.length}; ` +
+      `${offset} += 1n) {\n` +
+      `${indent}  const ${product} = checkedInt64(${operation.multiplier} * ` +
+      `int64BufferGet(${operation.buffer}, ${source}));\n` +
+      `${indent}  int64BufferSet(${operation.buffer}, ${destination}, ` +
+      `checkedInt64(int64BufferGet(${operation.buffer}, ${destination}) + ` +
+      `${product}));\n` +
+      `${indent}}\n${indent}${operation.target} = 0n;`;
+  }
   if (operation.kind === "integer.buffer.copy") {
     return `${indent}${operation.target} = ${operation.source};`;
   }
   if (operation.kind === "integer.buffer.length") {
     return `${indent}${operation.target} = BigInt(${operation.buffer}.length);`;
+  }
+  if (operation.kind === "integer.buffer.slot_copy") {
+    return `${indent}integerBufferSet(${operation.buffer}, ${operation.index}, ` +
+      `integerBufferGet(${operation.sourceBuffer}, ${operation.sourceIndex}));`;
+  }
+  if (operation.kind === "integer.buffer.addmul") {
+    return `${indent}integerBufferSet(${operation.buffer}, ` +
+      `${operation.destination}, integerBufferGet(${operation.buffer}, ` +
+      `${operation.destination}) + ${operation.multiplier} * ` +
+      `integerBufferGet(${operation.buffer}, ${operation.source}));\n` +
+      `${indent}${operation.target} = 0n;`;
+  }
+  if (operation.kind === "integer.buffer.addmul_from") {
+    return `${indent}integerBufferSet(${operation.buffer}, ` +
+      `${operation.destination}, integerBufferGet(${operation.buffer}, ` +
+      `${operation.destination}) + ${operation.multiplier} * ` +
+      `integerBufferGet(${operation.sourceBuffer}, ${operation.source}));\n` +
+      `${indent}${operation.target} = 0n;`;
+  }
+  if (operation.kind === "integer.buffer.addmul_range") {
+    const offset = `${operation.target}_offset`;
+    return `${indent}for (let ${offset} = ${operation.length} - 1n; ` +
+      `${offset} >= 0n; ${offset} -= 1n) {\n` +
+      `${indent}  integerBufferSet(${operation.buffer}, ` +
+      `${operation.destination} + ${offset}, integerBufferGet(` +
+      `${operation.buffer}, ${operation.destination} + ${offset}) + ` +
+      `${operation.multiplier} * integerBufferGet(${operation.buffer}, ` +
+      `${operation.source} + ${offset}));\n` +
+      `${indent}}\n${indent}${operation.target} = 0n;`;
+  }
+  if (operation.kind === "integer.buffer.addmul_range_from") {
+    const offset = `${operation.target}_offset`;
+    return `${indent}for (let ${offset} = 0n; ${offset} < ${operation.length}; ` +
+      `${offset} += 1n) {\n` +
+      `${indent}  integerBufferSet(${operation.buffer}, ` +
+      `${operation.destination} + ${offset}, integerBufferGet(` +
+      `${operation.buffer}, ${operation.destination} + ${offset}) + ` +
+      `${operation.multiplier} * integerBufferGet(${operation.sourceBuffer}, ` +
+      `${operation.source} + ${offset}));\n` +
+      `${indent}}\n${indent}${operation.target} = 0n;`;
+  }
+  if (operation.kind === "integer.buffer.mod_addmul_range_from") {
+    const offset = `${operation.target}_offset`;
+    const product = `${operation.target}_product`;
+    const total = `${operation.target}_total`;
+    return `${indent}if (${operation.modulus} <= 0n) ` +
+      `throw new ValueError("modulus must be positive");\n` +
+      `${indent}for (let ${offset} = 0n; ${offset} < ${operation.length}; ` +
+      `${offset} += 1n) {\n` +
+      `${indent}  const ${product} = checkedInt64(${operation.multiplier} * ` +
+      `checkedInt64(integerBufferGet(${operation.sourceBuffer}, ` +
+      `${operation.source} + ${offset})));\n` +
+      `${indent}  const ${total} = checkedInt64(checkedInt64(` +
+      `integerBufferGet(${operation.buffer}, ${operation.destination} + ` +
+      `${offset})) + ${product});\n` +
+      `${indent}  integerBufferSet(${operation.buffer}, ` +
+      `${operation.destination} + ${offset}, ((${total} % ${operation.modulus}) + ` +
+      `${operation.modulus}) % ${operation.modulus});\n` +
+      `${indent}}\n${indent}${operation.target} = 0n;`;
+  }
+  if (operation.kind === "integer.buffer.swap_range") {
+    const offset = `${operation.target}_offset`;
+    const temporary = `${operation.target}_temporary`;
+    return `${indent}for (let ${offset} = 0n; ${offset} < ${operation.length}; ` +
+      `${offset} += 1n) {\n` +
+      `${indent}  const ${temporary} = integerBufferGet(${operation.buffer}, ` +
+      `${operation.left} + ${offset});\n` +
+      `${indent}  integerBufferSet(${operation.buffer}, ${operation.left} + ` +
+      `${offset}, integerBufferGet(${operation.buffer}, ${operation.right} + ` +
+      `${offset}));\n` +
+      `${indent}  integerBufferSet(${operation.buffer}, ${operation.right} + ` +
+      `${offset}, ${temporary});\n` +
+      `${indent}}\n${indent}${operation.target} = 0n;`;
+  }
+  if (operation.kind === "integer.buffer.negate_range") {
+    const offset = `${operation.target}_offset`;
+    return `${indent}for (let ${offset} = 0n; ${offset} < ${operation.length}; ` +
+      `${offset} += 1n) {\n` +
+      `${indent}  integerBufferSet(${operation.buffer}, ${operation.start} + ` +
+      `${offset}, -integerBufferGet(${operation.buffer}, ${operation.start} + ` +
+      `${offset}));\n` +
+      `${indent}}\n${indent}${operation.target} = 0n;`;
+  }
+  if (operation.kind === "integer.buffer.get_int64") {
+    return `${indent}${operation.target} = checkedInt64(` +
+      `integerBufferGet(${operation.buffer}, ${operation.index}));`;
+  }
+  if (operation.kind === "integer.buffer.sign") {
+    const value = `${operation.target}_value`;
+    return `${indent}{\n` +
+      `${indent}  const ${value} = integerBufferGet(${operation.buffer}, ` +
+      `${operation.index});\n` +
+      `${indent}  ${operation.target} = ${value} < 0n ? -1n : ` +
+      `(${value} > 0n ? 1n : 0n);\n` +
+      `${indent}}`;
   }
   if (operation.kind === "integer.buffer.get") {
     return `${indent}${operation.target} = integerBufferGet(` +
@@ -724,6 +837,10 @@ ${indent}}`;
         `${operation.right});`;
     }
     throw new Error(`unsupported exact integer operation ${operation.operation}`);
+  }
+  if (operation.kind === "integer.mul_int64") {
+    return `${indent}${operation.target} = ${operation.integer} * ` +
+      `${operation.scalar};`;
   }
   if (operation.kind === "uint64.binary") {
     return `${indent}${operation.target} = uint64Binary(` +
@@ -3525,7 +3642,8 @@ function nativeExactCall(name, args, backend = "tagged", declaredErrors = null) 
     if (message.includes("too large to convert")) {
       nativeRaise("OverflowError", message);
     }
-    if (message.includes("outside signed 64-bit")) {
+    if (message.includes("outside signed 64-bit") ||
+        message.includes("int64 arithmetic overflow")) {
       nativeRaise("OverflowError", message);
     }
     if (message.includes("outside exact binary64 range")) {

@@ -322,6 +322,7 @@ def _replay_terminal_b(
         z(rows * columns),
         z(columns * columns),
         z(columns * columns),
+        z(columns * columns),
         z(columns + 1),
         z(11),
         z(dep_rows * columns),

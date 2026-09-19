@@ -49,6 +49,7 @@ def pari_prepared_admission_front(
         degree,
         real_count,
         ideal_norm,
+        0,
     )
     if proceed == 0:
         return 0, norm, error, previous_count, 1

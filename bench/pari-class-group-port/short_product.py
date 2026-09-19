@@ -13,8 +13,16 @@ rounding in readable Python. Squares have a separate upstream algorithm and
 must not be routed here merely because their values agree.
 """
 
-from sagejs.native import IntegerBuffer, checked_uint64, native, uint64
+from sagejs.native import (
+    IntegerBuffer,
+    checked_int64,
+    checked_uint64,
+    diagnostic_stage_switch,
+    native,
+    uint64,
+)
 from math import gcd
+from .short_product_bounded import pari_bounded_real_matrix_norm_fused
 
 
 @native
@@ -695,6 +703,31 @@ def pari_prepared_matrix_norm(
         raise ValueError("unsupported prepared matrix signature")
     if (degree - real_count) % 2 != 0:
         raise ValueError("invalid prepared matrix signature")
+    if real_count == degree and degree <= 5:
+        bounded = 1
+        for i in range(degree * degree):
+            metadata_precision = matrix_p[i]
+            metadata_exponent = matrix_e[i]
+            if metadata_precision != -1 and (
+                metadata_precision < 64
+                or metadata_precision > 154112
+                or metadata_precision % 64 != 0
+            ):
+                bounded = 0
+            if (
+                metadata_exponent < -9223372036854775808
+                or metadata_exponent > 9223372036854775807
+            ):
+                bounded = 0
+        if bounded != 0:
+            bounded_m, bounded_p, bounded_e = pari_bounded_real_matrix_norm_fused(
+                matrix_m,
+                matrix_p,
+                matrix_e,
+                coefficients,
+                checked_int64(degree),
+            )
+            return bounded_m, int(bounded_p), int(bounded_e)
     for i in range(degree):
         m, p, e = pari_prepared_embedding_row(
             matrix_m, matrix_p, matrix_e, coefficients, i * degree, degree
@@ -723,6 +756,7 @@ def pari_prepared_factorgen_numerical(
     degree: int,
     real_count: int,
     ideal_norm: int,
+    bounded_real: int,
 ) -> tuple[int, int, int]:
     """Translate `buch2.c:factorgen` through its `e > -32` rejection.
 
@@ -733,20 +767,37 @@ def pari_prepared_factorgen_numerical(
     """
     if ideal_norm < 0:
         raise ValueError("ideal norm must be positive or absent")
-    m, p, e = pari_prepared_matrix_norm(
-        matrix_m,
-        matrix_p,
-        matrix_e,
-        coefficients,
-        values_m,
-        values_p,
-        values_e,
-        degree,
-        real_count,
-    )
+    diagnostic_stage_switch(1)
+    if bounded_real != 0:
+        if real_count != degree or degree < 1 or degree > 5:
+            raise ValueError("invalid trusted bounded real matrix signature")
+        m, bounded_p, bounded_e = pari_bounded_real_matrix_norm_fused(
+            matrix_m,
+            matrix_p,
+            matrix_e,
+            coefficients,
+            checked_int64(degree),
+        )
+        p = int(bounded_p)
+        e = int(bounded_e)
+    else:
+        m, p, e = pari_prepared_matrix_norm(
+            matrix_m,
+            matrix_p,
+            matrix_e,
+            coefficients,
+            values_m,
+            values_p,
+            values_e,
+            degree,
+            real_count,
+        )
+    diagnostic_stage_switch(2)
     if ideal_norm != 0:
         m, p, e = pari_real_integer_division(ideal_norm, m, p, e)
+    diagnostic_stage_switch(3)
     norm, error = pari_round_real(m, p - e - 1, e)
+    diagnostic_stage_switch(0)
     if error > -32:
         return norm, error, 0
     return norm, error, 1

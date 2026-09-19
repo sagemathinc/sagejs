@@ -6,7 +6,14 @@ Reuse certified initial rank and hnffinal; rational verification, CUP and
 unported exact multiplication dispatch remain frontiers, not rank answers.
 """
 
-from sagejs.native import Int64Buffer, IntegerBuffer, diagnostic_stage_switch, native
+from sagejs.native import (
+    Int64Buffer,
+    IntegerBuffer,
+    checked_int64,
+    diagnostic_stage_switch,
+    int64,
+    native,
+)
 
 from .hnfspec_rank_prefix import pari_rectangular_initial_pivots
 from .hnffinal import pari_hnffinal_nonempty
@@ -95,29 +102,35 @@ def pari_hnfadd(
         or new_columns < 0
     ):
         raise ValueError("invalid hnfadd dimensions")
-    lig = rows - b_columns
-    dep_rows = lig - h_rows
-    col = total_columns - b_columns
-    zero_prefix = col - h_rows
-    width = new_columns + h_rows
-    c_width = width + b_columns
+    rows64: int64 = checked_int64(rows)
+    h_rows64: int64 = checked_int64(h_rows)
+    b_columns64: int64 = checked_int64(b_columns)
+    total_columns64: int64 = checked_int64(total_columns)
+    log_rows64: int64 = checked_int64(log_rows)
+    new_columns64: int64 = checked_int64(new_columns)
+    lig: int64 = rows64 - b_columns64
+    dep_rows: int64 = lig - h_rows64
+    col: int64 = total_columns64 - b_columns64
+    zero_prefix: int64 = col - h_rows64
+    width: int64 = new_columns64 + h_rows64
+    c_width: int64 = width + b_columns64
     if dep_rows < 0:
         raise ValueError("invalid hnfadd dependent rows")
     if (
-        len(h) < h_rows * h_rows
-        or len(dep) < dep_rows * h_rows
-        or len(b) < lig * b_columns
-        or len(perm) < rows
-        or len(new_relations) < rows * new_columns
+        len(h) < h_rows64 * h_rows64
+        or len(dep) < dep_rows * h_rows64
+        or len(b) < lig * b_columns64
+        or len(perm) < rows64
+        or len(new_relations) < rows64 * new_columns64
     ):
         raise ValueError("short hnfadd input")
-    pari_validate_log_entries(logs, log_rows * total_columns)
-    pari_validate_log_entries(new_logs, log_rows * new_columns)
+    pari_validate_log_entries(logs, log_rows64 * total_columns64)
+    pari_validate_log_entries(new_logs, log_rows64 * new_columns64)
     if (
-        len(top) < lig * new_columns
-        or len(exact_product) < lig * new_columns
-        or len(log_product) < 7 * log_rows * new_columns
-        or len(adjusted_logs) < 7 * log_rows * new_columns
+        len(top) < lig * new_columns64
+        or len(exact_product) < lig * new_columns64
+        or len(log_product) < 7 * log_rows64 * new_columns64
+        or len(adjusted_logs) < 7 * log_rows64 * new_columns64
         or len(joined) < lig * width
         or len(joined_logs) < 7 * log_rows * c_width
         or len(rank_matrix) < lig * width
@@ -126,7 +139,7 @@ def pari_hnfadd(
         or len(best) < lig
         or len(profile) < lig
         or len(rank_state) < 10
-        or len(perm_work) < rows
+        or len(perm_work) < rows64
         or len(matb) < lig * width
         or len(new_dep) < lig * width
         or len(permuted_b) < lig * b_columns
@@ -140,43 +153,49 @@ def pari_hnfadd(
         or len(hnf_state) < 11
         or len(full_dep) < lig * width
         or len(work_b) < lig * b_columns
-        or len(work_c) < 7 * log_rows * c_width
+        or len(work_c) < 7 * log_rows64 * c_width
         or len(diagonal) < lig
-        or len(final_c) < 7 * log_rows * c_width
+        or len(final_c) < 7 * log_rows64 * c_width
         or len(result_h) < lig * lig
         or len(result_dep) < lig * lig
         or len(result_b) < lig * (b_columns + lig)
-        or len(result_c) < 7 * log_rows * (total_columns + new_columns)
+        or len(result_c) < 7 * log_rows64 * (total_columns64 + new_columns64)
         or len(final_state) < 7
         or len(state) < 9
     ):
         raise ValueError("short hnfadd final workspace")
-    for i in range(rows):
+    i: int64 = 0
+    j: int64 = 0
+    k: int64 = 0
+    at: int64 = 0
+    range_stop: int64 = 0
+    for i in range(rows64):
         if perm[i] < 1 or perm[i] > rows:
             raise ValueError("invalid hnfadd permutation")
         for j in range(i):
             if perm[i] == perm[j]:
                 raise ValueError("invalid hnfadd permutation")
-    for i in range(9):
+    range_stop = 9
+    for i in range(range_stop):
         state[i] = -1
-    state[7] = total_columns + new_columns
+    state[7] = total_columns64 + new_columns64
     diagnostic_stage_switch(2)
     # zm_to_ZM(rowslicepermute(extramat,perm,1,lig)).
-    for j in range(new_columns):
+    for j in range(new_columns64):
         for i in range(lig):
-            top[j * lig + i] = new_relations[j * rows + perm[i] - 1]
-    if b_columns != 0:
+            top[j * lig + i] = new_relations[j * rows64 + perm[i] - 1]
+    if b_columns64 != 0:
         # RgMrow_zc_mul_i: first NONZERO coefficient initializes s; only later
         # +/-1 terms use direct gadd/gsub, without multiplying by +/-1.
-        for j in range(new_columns):
-            for i in range(log_rows):
+        for j in range(new_columns64):
+            for i in range(log_rows64):
                 present = 0
                 ak, ar, arp, are, ai, aip, aie = 1, 0, -1, 0, 0, -1, 0
-                for k in range(b_columns):
-                    coefficient = new_relations[j * rows + perm[lig + k] - 1]
+                for k in range(b_columns64):
+                    coefficient = new_relations[j * rows64 + perm[lig + k] - 1]
                     if coefficient == 0:
                         continue
-                    at = ((col + k) * log_rows + i) * 7
+                    at = ((col + k) * log_rows64 + i) * 7
                     if present == 0 or (coefficient != 1 and coefficient != -1):
                         bk, br, brp, bre, bi, bip, bie = pari_log_entry_product(
                             coefficient,
@@ -219,7 +238,7 @@ def pari_hnfadd(
                             bip,
                             bie,
                         )
-                at = (j * log_rows + i) * 7
+                at = (j * log_rows64 + i) * 7
                 log_product[at] = ak
                 log_product[at + 1] = ar
                 log_product[at + 2] = arp
@@ -227,7 +246,8 @@ def pari_hnfadd(
                 log_product[at + 4] = ai
                 log_product[at + 5] = aip
                 log_product[at + 6] = aie
-        for i in range(new_columns * log_rows):
+        range_stop = new_columns64 * log_rows64
+        for i in range(range_stop):
             at = i * 7
             ak, ar, arp, are, ai, aip, aie = pari_log_entry_sum(
                 new_logs[at],
@@ -253,33 +273,38 @@ def pari_hnfadd(
             adjusted_logs[at + 5] = aip
             adjusted_logs[at + 6] = aie
         # ZM_zc_mul_i instead initializes with coefficient 1 EVEN IF ZERO.
-        for j in range(new_columns):
+        for j in range(new_columns64):
             for i in range(lig):
-                value = b[i] * new_relations[j * rows + perm[lig] - 1]
-                for k in range(1, b_columns):
-                    coefficient = new_relations[j * rows + perm[lig + k] - 1]
+                value = b[i] * new_relations[j * rows64 + perm[lig] - 1]
+                for k in range(1, b_columns64):
+                    coefficient = new_relations[j * rows64 + perm[lig + k] - 1]
                     if coefficient != 0:
                         value += b[k * lig + i] * coefficient
                 exact_product[j * lig + i] = value
-        for i in range(lig * new_columns):
+        range_stop = lig * new_columns64
+        for i in range(range_stop):
             top[i] -= exact_product[i]
     else:
-        for i in range(7 * log_rows * new_columns):
+        range_stop = 7 * log_rows64 * new_columns64
+        for i in range(range_stop):
             adjusted_logs[i] = new_logs[i]
     # New relations precede old nonzero H columns; old zero-unit columns do
     # not enter rank or HNF, and are prepended to C only at final publication.
-    for i in range(lig * new_columns):
+    range_stop = lig * new_columns64
+    for i in range(range_stop):
         joined[i] = top[i]
-    for j in range(h_rows):
+    for j in range(h_rows64):
         for i in range(dep_rows):
-            joined[(new_columns + j) * lig + i] = dep[j * dep_rows + i]
-        for i in range(h_rows):
-            joined[(new_columns + j) * lig + dep_rows + i] = h[j * h_rows + i]
-    for i in range(7 * log_rows * new_columns):
+            joined[(new_columns64 + j) * lig + i] = dep[j * dep_rows + i]
+        for i in range(h_rows64):
+            joined[(new_columns64 + j) * lig + dep_rows + i] = h[j * h_rows64 + i]
+    range_stop = 7 * log_rows64 * new_columns64
+    for i in range(range_stop):
         joined_logs[i] = adjusted_logs[i]
-    for i in range(7 * log_rows * (h_rows + b_columns)):
-        joined_logs[7 * log_rows * new_columns + i] = logs[
-            7 * log_rows * zero_prefix + i
+    range_stop = 7 * log_rows64 * (h_rows64 + b_columns64)
+    for i in range(range_stop):
+        joined_logs[7 * log_rows64 * new_columns64 + i] = logs[
+            7 * log_rows64 * zero_prefix + i
         ]
     diagnostic_stage_switch(3)
     status = pari_rectangular_initial_pivots(
@@ -291,9 +316,9 @@ def pari_hnfadd(
         state[6] = status
         state[8] = 1
         return status
-    redundant = rank_state[2]
-    first = 0
-    second = redundant
+    redundant: int64 = checked_int64(rank_state[2])
+    first: int64 = 0
+    second: int64 = redundant
     for i in range(lig):
         if pivots[i] != 0:
             profile[second] = i + 1
@@ -303,19 +328,21 @@ def pari_hnfadd(
             first += 1
     rank_state[7] = redundant
     rank_state[8] = lig
-    genuine = lig - redundant
+    genuine: int64 = lig - redundant
     for i in range(lig):
-        perm_work[i] = perm[profile[i] - 1]
+        perm_work[i] = perm[checked_int64(profile[i]) - 1]
     for i in range(lig):
         perm[i] = perm_work[i]
     for j in range(width):
         for i in range(redundant):
-            new_dep[j * redundant + i] = joined[j * lig + profile[i] - 1]
+            new_dep[j * redundant + i] = joined[j * lig + checked_int64(profile[i]) - 1]
         for i in range(genuine):
-            matb[j * genuine + i] = joined[j * lig + profile[redundant + i] - 1]
-    for j in range(b_columns):
+            matb[j * genuine + i] = joined[
+                j * lig + checked_int64(profile[redundant + i]) - 1
+            ]
+    for j in range(b_columns64):
         for i in range(lig):
-            permuted_b[j * lig + i] = b[j * lig + profile[i] - 1]
+            permuted_b[j * lig + i] = b[j * lig + checked_int64(profile[i]) - 1]
     diagnostic_stage_switch(4)
     status = pari_hnffinal_nonempty(
         matb,
@@ -327,9 +354,10 @@ def pari_hnfadd(
         permuted_b,
         c_width,
         joined_logs,
-        log_rows,
+        log_rows64,
         full_h,
         transform,
+        perm_work,
         lam,
         d,
         hnf_state,
@@ -349,14 +377,17 @@ def pari_hnfadd(
         state[8] = 2
         return status
     diagnostic_stage_switch(5)
-    for i in range(7 * log_rows * zero_prefix):
+    range_stop = 7 * log_rows64 * zero_prefix
+    for i in range(range_stop):
         result_c[i] = logs[i]
-    for i in range(7 * log_rows * c_width):
-        result_c[7 * log_rows * zero_prefix + i] = final_c[i]
-    for i in range(7):
+    range_stop = 7 * log_rows64 * c_width
+    for i in range(range_stop):
+        result_c[7 * log_rows64 * zero_prefix + i] = final_c[i]
+    range_stop = 7
+    for i in range(range_stop):
         state[i] = final_state[i]
     state[1] += zero_prefix
     state[4] += zero_prefix
-    state[7] = total_columns + new_columns
+    state[7] = total_columns64 + new_columns64
     state[8] = 0
     return 0

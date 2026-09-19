@@ -6,7 +6,13 @@ No upstream reduced basis, QR or relation answer is supplied. Automorphism
 images, unresolved dependencies and the outer class/unit driver remain open.
 """
 
-from sagejs.native import Float64Buffer, Int64Buffer, IntegerBuffer, native
+from sagejs.native import (
+    Float64Buffer,
+    Int64Buffer,
+    IntegerBuffer,
+    diagnostic_stage_switch,
+    native,
+)
 
 from .ideal_ranked_preparation import pari_ideal_ranked_preparation
 from .ideal_collector import pari_collect_ideal_relations
@@ -158,6 +164,7 @@ def pari_collect_unreduced_ideal(
         return int(progress[3])
     if preparation_state[0] < 0:
         return int(preparation_state[0]) - 10
+    diagnostic_stage_switch(1)
     if preparation_state[0] == 0:
         status = pari_ideal_ranked_preparation(
             admission_ideal,
@@ -231,7 +238,8 @@ def pari_collect_unreduced_ideal(
             return -10 - status
         state[4] = preparation_flags[1]
         preparation_state[0] = 1
-    return pari_collect_ideal_relations(
+    diagnostic_stage_switch(2)
+    status = pari_collect_ideal_relations(
         matrix,
         ideal,
         n,
@@ -316,3 +324,5 @@ def pari_collect_unreduced_ideal(
         generators,
         progress,
     )
+    diagnostic_stage_switch(0)
+    return status

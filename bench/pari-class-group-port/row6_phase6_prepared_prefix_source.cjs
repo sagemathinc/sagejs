@@ -19,7 +19,8 @@ const BORROWED_INITIAL = new Set([
 function signature(filename, name) {
   const source = fs.readFileSync(path.join(__dirname, filename), "utf8");
   const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const match = source.match(new RegExp(`def ${escaped}\\(([\\s\\S]*?)\\n\\) -> int:`));
+  const match = source.match(
+    new RegExp(`def ${escaped}\\(([\\s\\S]*?)\\n\\) -> (?:int|int64):`));
   assert(match, `missing ${name}`);
   return match[1].trim().split("\n").map(line => {
     const fields = line.trim().replace(/,$/, "").split(": ");

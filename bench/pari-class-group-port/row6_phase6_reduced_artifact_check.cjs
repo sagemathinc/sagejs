@@ -68,6 +68,15 @@ async function main() {
       relation: resident.gate.prefix.initial.relation_state.toArray().map(String),
       hnf: Array.from(resident.gate.hnf.state).map(String),
       assembly: Array.from(resident.gate.hnf.assembly_state).map(String),
+      terminal: Array.from(resident.owned.resident_state).map(String),
+      replay: {
+        h: digestOwner(resident.gate.append2.result_h, 4),
+        c: digestOwner(resident.gate.append2.result_c, 21 * 1137),
+        rawToUnitKernel: digestOwner(
+          resident.gate.ancestry.raw_to_all, 7 * 1137),
+        rawToPresentation: digestOwner(
+          resident.gate.ancestry.raw_to_all, 2 * 1137, 7 * 1137),
+      },
     };
     process.stderr.write(`post-call failure state=${JSON.stringify(failureState)}\n`);
     throw error;
@@ -76,11 +85,19 @@ async function main() {
   const diagnosticStageTrace = invoke.diagnosticStageTrace?.() || null;
   if (diagnosticStageTrace !== null) {
     assert.equal(diagnosticStageTrace.failed, false);
-    assert.equal(diagnosticStageTrace.clockFailed, false);
+    if (process.env.SAGEJS_ALLOW_DIAGNOSTIC_CLOCK_OVERFLOW !== "1")
+      assert.equal(diagnosticStageTrace.clockFailed, false);
     assert.equal(diagnosticStageTrace.rootNanoseconds,
       Object.values(diagnosticStageTrace.totalsNanoseconds)
         .reduce((total, value) => total + value, 0n));
   }
+  const publishedDiagnosticStageTrace =
+    diagnosticStageTrace !== null &&
+    process.env.SAGEJS_DIAGNOSTIC_SUMMARY_ONLY === "1"
+      ? Object.freeze({ ...diagnosticStageTrace,
+        visitCount: diagnosticStageTrace.visits.length,
+        finalVisits: diagnosticStageTrace.visits.slice(-5), visits: undefined })
+      : diagnosticStageTrace;
   const replay = Object.freeze({
     relations: digestOwner(resident.gate.prefix.initial.relation_records, 1130 * 1137),
     logs: digestOwner(resident.gate.collector.log_embeddings, 21 * 1137),
@@ -111,10 +128,11 @@ async function main() {
     addonSha256: expectedAddonSha256,
     elapsedNs: elapsedNs.toString(),
     elapsedMilliseconds: Number(elapsedNs) / 1e6,
-    diagnosticStageTrace,
+    diagnosticStageTrace: publishedDiagnosticStageTrace,
     exactReplaySha256: replay,
     exactGateProjection: result.gateProjection,
     exactTerminalProjection: result.terminalProjection,
+    hnfAlgorithmState: Array.from(resident.gate.hnf.hnf_state).map(String),
     completeClassAndUnits: true,
     nativeCalls: 1,
   }, (_, value) => typeof value === "bigint" ? value.toString() : value, 2)}\n`);

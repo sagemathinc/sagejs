@@ -121,6 +121,7 @@ function mayPromote(operation) {
     "integer.pow_uint",
     "integer.divmod",
     "integer.binary",
+    "integer.mul_int64",
     "native.call",
     "ffi.call",
   ].includes(operation.kind);
@@ -457,14 +458,47 @@ function emitWordOperation(operation, context, indent) {
   if (operation.kind === "integer.buffer.length") {
     return `${indent}${target} = (uint64_t) ${value(operation.buffer)}.length;`;
   }
+  if (operation.kind === "integer.buffer.slot_copy") {
+    const buffer = value(operation.buffer);
+    const sourceBuffer = value(operation.sourceBuffer);
+    const index = value(operation.index);
+    const sourceIndex = value(operation.sourceIndex);
+    const indexCheck = operation.indexType === "uint64"
+      ? `${index} >= (uint64_t) ${buffer}.length`
+      : `!sagejs_integer_buffer_index(&${buffer}, ${index}, ` +
+        `&sagejs_buffer_position)`;
+    const sourceCheck = operation.sourceIndexType === "uint64"
+      ? `${sourceIndex} >= (uint64_t) ${sourceBuffer}.length`
+      : `!sagejs_integer_buffer_index(&${sourceBuffer}, ${sourceIndex}, ` +
+        `&sagejs_source_position)`;
+    return [
+      `${indent}{`,
+      `${indent}    size_t sagejs_buffer_position = ` +
+        `${operation.indexType === "uint64" ? `(size_t) ${index}` : "0"};`,
+      `${indent}    size_t sagejs_source_position = ` +
+        `${operation.sourceIndexType === "uint64" ? `(size_t) ${sourceIndex}` : "0"};`,
+      `${indent}    if (${indexCheck} || ${sourceCheck})`,
+      `${indent}    {`,
+      `${indent}        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
+        `"IntegerBuffer index out of range");`,
+      `${indent}        ${context.failure}`, `${indent}    }`,
+      `${indent}    if (!sagejs_integer_buffer_copy_slot(status, &${buffer}, ` +
+        `sagejs_buffer_position, &${sourceBuffer}, sagejs_source_position))`,
+      `${indent}        ${context.failure}`, `${indent}}`,
+    ].join("\n");
+  }
   if (operation.kind === "integer.buffer.get") {
     const buffer = value(operation.buffer);
     const index = value(operation.index);
+    const indexCheck = operation.indexType === "uint64"
+      ? `${index} >= (uint64_t) ${buffer}.length`
+      : `!sagejs_integer_buffer_index(&${buffer}, ${index}, ` +
+        `&sagejs_buffer_position)`;
     return [
       `${indent}{`,
-      `${indent}    size_t sagejs_buffer_position;`,
-      `${indent}    if (!sagejs_integer_buffer_index(` +
-        `&${buffer}, ${index}, &sagejs_buffer_position))`,
+      `${indent}    size_t sagejs_buffer_position = ` +
+        `${operation.indexType === "uint64" ? `(size_t) ${index}` : "0"};`,
+      `${indent}    if (${indexCheck})`,
       `${indent}    {`,
       `${indent}        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
         `"IntegerBuffer index out of range");`,
@@ -479,11 +513,15 @@ function emitWordOperation(operation, context, indent) {
   if (operation.kind === "integer.buffer.set") {
     const buffer = value(operation.buffer);
     const index = value(operation.index);
+    const indexCheck = operation.indexType === "uint64"
+      ? `${index} >= (uint64_t) ${buffer}.length`
+      : `!sagejs_integer_buffer_index(&${buffer}, ${index}, ` +
+        `&sagejs_buffer_position)`;
     return [
       `${indent}{`,
-      `${indent}    size_t sagejs_buffer_position;`,
-      `${indent}    if (!sagejs_integer_buffer_index(` +
-        `&${buffer}, ${index}, &sagejs_buffer_position))`,
+      `${indent}    size_t sagejs_buffer_position = ` +
+        `${operation.indexType === "uint64" ? `(size_t) ${index}` : "0"};`,
+      `${indent}    if (${indexCheck})`,
       `${indent}    {`,
       `${indent}        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
         `"IntegerBuffer index out of range");`,
@@ -686,6 +724,13 @@ ${indent}}`;
     }
     throw new Error(`unsupported word operation ${operation.operation}`);
   }
+  if (operation.kind === "integer.mul_int64") {
+    return [
+      `${indent}if (!sagejs_word_mul_int64(` +
+        `${value(operation.integer)}, ${value(operation.scalar)}, &${target}))`,
+      promote(),
+    ].join("\n");
+  }
   if (operation.kind === "integer.compare" || operation.kind === "bool.compare") {
     const operator = {
       eq: "==", ne: "!=", lt: "<", le: "<=", gt: ">", ge: ">=",
@@ -711,6 +756,83 @@ ${indent}}`;
   }
   if (operation.kind === "bool.not") {
     return `${indent}${target} = !${value(operation.source)};`;
+  }
+  if (operation.kind === "integer.buffer.mod_addmul_range_from") {
+    const buffer = value(operation.buffer);
+    const sourceBuffer = value(operation.sourceBuffer);
+    const destination = value(operation.destination);
+    const source = value(operation.source);
+    const length = value(operation.length);
+    const multiplier = value(operation.multiplier);
+    const modulus = value(operation.modulus);
+    return [
+      `${indent}{`,
+      `${indent}    const int64_t sagejs_range_length = ${length};`,
+      `${indent}    const int64_t sagejs_modulus = ${modulus};`,
+      `${indent}    if (sagejs_modulus <= INT64_C(0))`,
+      `${indent}    {`,
+      `${indent}        sagejs_native_status_set(status, SAGEJS_NATIVE_ERROR, ` +
+        `"modulus must be positive");`,
+      `${indent}        ${context.failure}`,
+      `${indent}    }`,
+      `${indent}    if (sagejs_range_length > INT64_C(0))`,
+      `${indent}    {`,
+      `${indent}        if (${destination} < INT64_C(0) || ` +
+        `${source} < INT64_C(0) || ` +
+        `(uint64_t) ${destination} > (uint64_t) ${buffer}.length || ` +
+        `(uint64_t) ${source} > (uint64_t) ${sourceBuffer}.length || ` +
+        `(uint64_t) sagejs_range_length > ` +
+        `(uint64_t) ${buffer}.length - (uint64_t) ${destination} || ` +
+        `(uint64_t) sagejs_range_length > ` +
+        `(uint64_t) ${sourceBuffer}.length - (uint64_t) ${source})`,
+      `${indent}        {`,
+      `${indent}            sagejs_native_status_set(status, ` +
+        `SAGEJS_NATIVE_RANGE_ERROR, "IntegerBuffer range out of range");`,
+      `${indent}            ${context.failure}`,
+      `${indent}        }`,
+      `${indent}        const size_t sagejs_range_destination_position = ` +
+        `(size_t) ${destination};`,
+      `${indent}        const size_t sagejs_range_source_position = ` +
+        `(size_t) ${source};`,
+      `${indent}        const size_t sagejs_range_count = ` +
+        `(size_t) sagejs_range_length;`,
+      `${indent}        for (size_t sagejs_range_offset = 0; ` +
+        `sagejs_range_offset < sagejs_range_count; sagejs_range_offset += 1)`,
+      `${indent}        {`,
+      `${indent}            int64_t sagejs_destination_value = 0;`,
+      `${indent}            int64_t sagejs_source_value = 0;`,
+      `${indent}            int64_t sagejs_product = 0;`,
+      `${indent}            int64_t sagejs_sum = 0;`,
+      `${indent}            if (!sagejs_integer_buffer_get_int64(&${buffer}, ` +
+        `sagejs_range_destination_position + sagejs_range_offset, ` +
+        `&sagejs_destination_value) ||`,
+      `${indent}                !sagejs_integer_buffer_get_int64(&${sourceBuffer}, ` +
+        `sagejs_range_source_position + sagejs_range_offset, ` +
+        `&sagejs_source_value))`,
+      `${indent}            {`,
+      `${indent}                sagejs_native_status_set(status, ` +
+        `SAGEJS_NATIVE_RANGE_ERROR, "integer is outside signed 64-bit");`,
+      `${indent}                ${context.failure}`,
+      `${indent}            }`,
+      `${indent}            if (!sagejs_word_mul_int64(${multiplier}, ` +
+        `sagejs_source_value, &sagejs_product) ||`,
+      `${indent}                !sagejs_word_add_int64(sagejs_destination_value, ` +
+        `sagejs_product, &sagejs_sum))`,
+      `${indent}            {`,
+      `${indent}                sagejs_native_status_set(status, ` +
+        `SAGEJS_NATIVE_RANGE_ERROR, "int64 arithmetic overflow");`,
+      `${indent}                ${context.failure}`,
+      `${indent}            }`,
+      `${indent}            sagejs_sum %= sagejs_modulus;`,
+      `${indent}            if (sagejs_sum < INT64_C(0))`,
+      `${indent}                sagejs_sum += sagejs_modulus;`,
+      `${indent}            sagejs_integer_buffer_set_int64(&${buffer}, ` +
+        `sagejs_range_destination_position + sagejs_range_offset, sagejs_sum);`,
+      `${indent}        }`,
+      `${indent}    }`,
+      `${indent}    ${target} = INT64_C(0);`,
+      `${indent}}`,
+    ].join("\n");
   }
   if (["integer.truth", "uint64.truth", "int64.truth"].includes(operation.kind)) {
     return `${indent}${target} = ${value(operation.source)} != 0;`;

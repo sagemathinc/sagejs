@@ -9,7 +9,13 @@ catalog, analytic inverse-`hR` computation, post-HNF acceptance, regulator
 reconstruction, and Smith output execute in one generated native call graph.
 """
 
-from sagejs.native import Float64Buffer, Int64Buffer, IntegerBuffer, native
+from sagejs.native import (
+    Float64Buffer,
+    Int64Buffer,
+    IntegerBuffer,
+    diagnostic_stage_switch,
+    native,
+)
 
 from .row14_post806_terminal import (
     pari_row14_analytic_inverse_hr,
@@ -20,7 +26,7 @@ from .row6_phase6_resident_unit_private import (
     pari_row6_phase6_resident_unit_private,
 )
 from .row6_phase6_resident_class_private import (
-    pari_row6_phase6_resident_class_private,
+    _pari_row6_phase6_resident_class_trusted,
 )
 
 
@@ -172,6 +178,7 @@ def pari_row6_phase6_resident_terminal_root(
     resident_state: Int64Buffer,
 ) -> int:
     """Execute the connected row-6 post-1,137 native source cut."""
+    diagnostic_stage_switch(1)
     if len(resident_state) < 14:
         raise ValueError("short row-6 resident terminal state")
     for i in range(14):
@@ -207,6 +214,7 @@ def pari_row6_phase6_resident_terminal_root(
     if status != 0:
         resident_state[0] = status
         return status
+    diagnostic_stage_switch(2)
 
     status = pari_row14_analytic_inverse_hr(
         discriminant,
@@ -239,6 +247,7 @@ def pari_row6_phase6_resident_terminal_root(
     if status != 0:
         resident_state[0] = status
         return status
+    diagnostic_stage_switch(3)
 
     status = pari_row14_post806_terminal(
         factor_count,
@@ -310,6 +319,7 @@ def pari_row6_phase6_resident_terminal_root(
     if status != 0:
         resident_state[0] = status
         return status
+    diagnostic_stage_switch(4)
 
     status = pari_row6_phase6_resident_unit_private(
         unit_columns,
@@ -342,8 +352,9 @@ def pari_row6_phase6_resident_terminal_root(
     if status != 0:
         resident_state[0] = status
         return status
+    diagnostic_stage_switch(5)
 
-    status = pari_row6_phase6_resident_class_private(
+    status = _pari_row6_phase6_resident_class_trusted(
         class_rows,
         class_columns,
         class_degree,
@@ -371,6 +382,7 @@ def pari_row6_phase6_resident_terminal_root(
     resident_state[12] = class_state[3]
     resident_state[13] = class_state[5]
     resident_state[0] = status
+    diagnostic_stage_switch(6)
     return status
 
 

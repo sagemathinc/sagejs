@@ -6,7 +6,7 @@ Prepared tau is row-major; scalar tau uses the inert flag. No prime
 decomposition is supplied by this module. Scratch owners must be disjoint.
 """
 
-from sagejs.native import IntegerBuffer, native
+from sagejs.native import IntegerBuffer, checked_int64, int64, native
 from math import gcd
 
 
@@ -29,21 +29,21 @@ def pari_prepared_divide_prime_batch(
     temporary: IntegerBuffer,
     indices: IntegerBuffer,
     exponents: IntegerBuffer,
-    degree: int,
-    prime: int,
-    prime_count: int,
-    index_base: int,
-    norm_valuation: int,
-    mode: int,
-    count: int,
-    repeats: int,
-) -> int:
+    degree: int64,
+    prime: int64,
+    prime_count: int64,
+    index_base: int64,
+    norm_valuation: int64,
+    mode: int64,
+    count: int64,
+    repeats: int64,
+) -> int64:
     """Diagnostic fresh logical admission calls within one native boundary.
 
     Each call starts with the same count and read-only inputs; all observed
     scratch is overwritten by the callee. This is not relation collection.
     """
-    checksum = 0
+    checksum: int64 = 0
     for repetition in range(repeats):
         accepted, final_count = pari_prepared_divide_prime(
             coordinates,
@@ -94,14 +94,14 @@ def pari_prepared_divide_prime(
     temporary: IntegerBuffer,
     indices: IntegerBuffer,
     exponents: IntegerBuffer,
-    degree: int,
-    prime: int,
-    prime_count: int,
-    index_base: int,
-    norm_valuation: int,
-    mode: int,
-    count: int,
-) -> tuple[int, int]:
+    degree: int64,
+    prime: int64,
+    prime_count: int64,
+    index_base: int64,
+    norm_valuation: int64,
+    mode: int64,
+    count: int64,
+) -> tuple[int64, int64]:
     """One prepared prime group, stored from offset zero."""
     return pari_prepared_divide_prime_at(
         coordinates,
@@ -151,15 +151,15 @@ def pari_prepared_divide_prime_at(
     temporary: IntegerBuffer,
     indices: IntegerBuffer,
     exponents: IntegerBuffer,
-    degree: int,
-    prime: int,
-    prime_count: int,
-    index_base: int,
-    norm_valuation: int,
-    mode: int,
-    count: int,
-    group_start: int,
-) -> tuple[int, int]:
+    degree: int64,
+    prime: int64,
+    prime_count: int64,
+    index_base: int64,
+    norm_valuation: int64,
+    mode: int64,
+    count: int64,
+    group_start: int64,
+) -> tuple[int64, int64]:
     """Translate buch2.c divide_p_elt/id/quo from one prepared LP group.
 
     mode=0 is element, 1 integral-HNF ideal, 2 element/ideal quotient. The
@@ -170,12 +170,12 @@ def pari_prepared_divide_prime_at(
     """
     if mode < 0 or mode > 2 or count < 0 or prime_count < 0 or group_start < 0:
         raise ValueError("invalid prepared divide_p input")
-    remaining = norm_valuation
+    remaining: int64 = norm_valuation
     for j in range(prime_count):
-        position = group_start + j
+        position: int64 = group_start + j
         for i in range(degree * degree):
             tau[i] = group_tau[position * degree * degree + i]
-        value = 0
+        value: int64 = 0
         if mode == 1:
             value = pari_prepared_hnf_valuation(
                 ideal,
@@ -186,9 +186,9 @@ def pari_prepared_divide_prime_at(
                 temporary,
                 degree,
                 prime,
-                group_e[position],
-                group_f[position],
-                group_inert[position],
+                checked_int64(group_e[position]),
+                checked_int64(group_f[position]),
+                checked_int64(group_inert[position]),
             )
         else:
             value = pari_prepared_ideal_valuation(
@@ -200,8 +200,8 @@ def pari_prepared_divide_prime_at(
                 stack,
                 degree,
                 prime,
-                group_e[position],
-                group_inert[position],
+                checked_int64(group_e[position]),
+                checked_int64(group_inert[position]),
             )
             if value != 0 and mode == 2:
                 value -= pari_prepared_hnf_valuation(
@@ -213,26 +213,26 @@ def pari_prepared_divide_prime_at(
                     temporary,
                     degree,
                     prime,
-                    group_e[position],
-                    group_f[position],
-                    group_inert[position],
+                    checked_int64(group_e[position]),
+                    checked_int64(group_f[position]),
+                    checked_int64(group_inert[position]),
                 )
         if value != 0:
             indices[count] = index_base + j + 1
             exponents[count] = value
             count += 1
-            remaining -= value * group_f[position]
+            remaining -= value * checked_int64(group_f[position])
             if remaining == 0:
-                return 1, count
-    return 0, count
+                return checked_int64(1), count
+    return checked_int64(0), count
 
 
 @native
-def pari_scalar_pval_control(x: int, prime: int) -> int:
+def pari_scalar_pval_control(x: int, prime: int64) -> int64:
     """Exact scalar valuation leaf; repeated division, not PARI's tuned kernel."""
     if x == 0 or prime < 2:
         raise ValueError("scalar valuation needs nonzero x and prime >= 2")
-    value = 0
+    value: int64 = 0
     while x % prime == 0:
         x //= prime
         value += 1
@@ -247,12 +247,12 @@ def pari_prepared_hnf_valuation(
     columns: IntegerBuffer,
     values: IntegerBuffer,
     temporary: IntegerBuffer,
-    degree: int,
-    prime: int,
-    ramification: int,
-    residue_degree: int,
-    inert: int,
-) -> int:
+    degree: int64,
+    prime: int64,
+    ramification: int64,
+    residue_degree: int64,
+    inert: int64,
+) -> int64:
     """Integral-HNF idealval and idealHNF_val, using prepared prime data.
 
     Row-major matrices and disjoint workspaces. The input must be a nonzero
@@ -269,18 +269,18 @@ def pari_prepared_hnf_valuation(
         raise ValueError("zero ideal valuation is not finite")
     for i in range(degree * degree):
         primitive[i] = ideal[i] // content
-    vc = pari_scalar_pval_control(content, prime)
+    vc: int64 = pari_scalar_pval_control(content, prime)
     if inert != 0:
         return vc
-    zval = pari_scalar_pval_control(primitive[0], prime)
+    zval: int64 = pari_scalar_pval_control(primitive[0], prime)
     if zval == 0:
         return vc * ramification
-    nval = zval
+    nval: int64 = zval
     for i in range(1, degree):
         nval += pari_scalar_pval_control(primitive[i * degree + i], prime)
     if nval < residue_degree:
         return vc * ramification
-    maximum = zval * ramification
+    maximum: int64 = zval * ramification
     if nval // residue_degree < maximum:
         maximum = nval // residue_degree
     for j in range(1, degree):
@@ -301,7 +301,7 @@ def pari_prepared_hnf_valuation(
     pk = 1
     for i in range((maximum + ramification - 1) // ramification):
         pk *= prime
-    value = 1
+    value: int64 = 1
     while value < maximum:
         if ramification == 1 or (maximum - value) % ramification == 0:
             pk //= prime
@@ -330,10 +330,10 @@ def pari_prepared_hnf_valuation(
 
 @native
 def pari_vector_divide(
-    x: IntegerBuffer, y: IntegerBuffer, degree: int, divisor: int
-) -> int:
+    x: IntegerBuffer, y: IntegerBuffer, degree: int64, divisor: int
+) -> int64:
     """Return smallest nonzero quotient lgefint, or zero on failure."""
-    minimum = 9223372036854775807
+    minimum: int64 = 9223372036854775807
     for i in range(degree):
         a = x[i]
         if a % divisor != 0:
@@ -342,14 +342,18 @@ def pari_vector_divide(
         if y[i] != 0:
             size = 2 + (abs(y[i]).bit_length() + 63) // 64
             if size < minimum:
-                minimum = size
+                minimum = checked_int64(size)
     return minimum
 
 
 @native
 def pari_vector_strip_dc(
-    x: IntegerBuffer, y: IntegerBuffer, stack: IntegerBuffer, degree: int, divisor: int
-) -> int:
+    x: IntegerBuffer,
+    y: IntegerBuffer,
+    stack: IntegerBuffer,
+    degree: int64,
+    divisor: int,
+) -> int64:
     """Explicit stack for gen_pvalrem_DC; reduced vector is copied to x.
 
     Input is nonzero. Preserve recursive division/squaring/unwind order.
@@ -357,10 +361,10 @@ def pari_vector_strip_dc(
     """
     current = x
     spare = y
-    depth = 0
+    depth: int64 = 0
     q = divisor
-    value = 0
-    descending = 1
+    value: int64 = 0
+    descending: int64 = 1
     while descending != 0:
         size = pari_vector_divide(current, spare, degree, q)
         if size == 0:
@@ -400,8 +404,12 @@ def pari_vector_strip_dc(
 
 @native
 def pari_vector_strip(
-    x: IntegerBuffer, y: IntegerBuffer, stack: IntegerBuffer, degree: int, prime: int
-) -> int:
+    x: IntegerBuffer,
+    y: IntegerBuffer,
+    stack: IntegerBuffer,
+    degree: int64,
+    prime: int64,
+) -> int64:
     """Word-prime gen_lvalrem; modifies x to its prime-to-part.
 
     The p=2 scalar vali leaf currently uses exact repeated halving rather than
@@ -409,11 +417,11 @@ def pari_vector_strip(
     difference; it cannot support a language-only performance claim.
     """
     if prime == 2:
-        minimum = 9223372036854775807
+        minimum: int64 = 9223372036854775807
         for i in range(degree):
             a = abs(x[i])
             if a != 0:
-                count = 0
+                count: int64 = 0
                 while a % 2 == 0:
                     a //= 2
                     count += 1
@@ -424,7 +432,7 @@ def pari_vector_strip(
         for i in range(degree):
             x[i] = x[i] >> minimum
         return minimum
-    value = 0
+    value: int64 = 0
     while value < 16:
         if pari_vector_divide(x, y, degree, prime) == 0:
             return value
@@ -447,11 +455,11 @@ def pari_prepared_ideal_valuation(
     y: IntegerBuffer,
     spare: IntegerBuffer,
     stack: IntegerBuffer,
-    degree: int,
-    prime: int,
-    ramification: int,
-    inert: int,
-) -> int:
+    degree: int64,
+    prime: int64,
+    ramification: int64,
+    inert: int64,
+) -> int64:
     """ZC_nfval's no-remainder path from prepared pr_get_tau data.
 
     Noninert ramification zero is the provisional descriptor used by
@@ -460,12 +468,11 @@ def pari_prepared_ideal_valuation(
     if (
         degree <= 0
         or prime < 2
-        or prime.bit_length() > 64
         or ramification < 0
         or (inert != 0 and ramification == 0)
     ):
         raise ValueError("invalid prepared prime-ideal valuation input")
-    nonzero = 0
+    nonzero: int64 = 0
     for i in range(degree):
         x[i] = coordinates[i]
         if x[i] != 0:
@@ -476,7 +483,7 @@ def pari_prepared_ideal_valuation(
         if prime == 2:
             return pari_vector_strip(x, y, stack, degree, prime)
         # gen_lval does not take gen_lvalrem's divide-and-conquer branch.
-        value = 0
+        value: int64 = 0
         while True:
             for i in range(degree):
                 a = abs(x[i])
@@ -484,7 +491,7 @@ def pari_prepared_ideal_valuation(
                 if a % prime != 0:
                     return value
             value += 1
-    value = 0
+    value: int64 = 0
     while True:
         for i in range(degree):
             total = tau[i * degree] * x[0]

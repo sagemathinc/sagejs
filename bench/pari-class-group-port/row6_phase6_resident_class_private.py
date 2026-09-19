@@ -10,6 +10,7 @@ publishes only bounded scalar/vector evidence for host-side object assembly.
 from sagejs.native import (
     Int64Buffer,
     IntegerBuffer,
+    diagnostic_stage_switch,
     int64_workspace,
     integer_workspace,
     native,
@@ -91,6 +92,7 @@ def pari_row6_phase6_resident_class_private(
     class_state: Int64Buffer,
 ) -> int:
     """Authenticate row 6's exact relation presentation and class witnesses."""
+    diagnostic_stage_switch(1)
     prime_generator: IntegerBuffer = integer_workspace(3, 16)
     prime_multiplication: IntegerBuffer = integer_workspace(9, 16)
     prime_work: IntegerBuffer = integer_workspace(9, 16)
@@ -147,6 +149,7 @@ def pari_row6_phase6_resident_class_private(
                 class_state[1] = kernel
                 class_state[2] = row
                 return 2
+    diagnostic_stage_switch(2)
 
     # This bounded private verifier supports diagonal HNF presentations.  The
     # diagonal coefficients are live terminal output, not embedded answers.
@@ -186,6 +189,7 @@ def pari_row6_phase6_resident_class_private(
             if targets[left] == targets[right]:
                 class_state[0] = 5
                 return 5
+    diagnostic_stage_switch(3)
 
     reconstructed = 0
     inert_count = 0
@@ -226,6 +230,7 @@ def pari_row6_phase6_resident_class_private(
             return 8
         reconstructed += 1
         inert_count += inert
+    diagnostic_stage_switch(4)
 
     checked_products = 0
     nonzero_entries = 0
@@ -273,6 +278,7 @@ def pari_row6_phase6_resident_class_private(
             class_state[0] = 11
             class_state[1] = column
             return 11
+    diagnostic_stage_switch(5)
 
     for i in range(class_columns * rows):
         factor_map[i] = 0
@@ -289,6 +295,113 @@ def pari_row6_phase6_resident_class_private(
     class_state[7] = targets[0]
     if class_columns > 1:
         class_state[8] = targets[1]
+    class_state[9] = degree
+    class_state[10] = kernel_columns
+    class_state[11] = class_columns
+    diagnostic_stage_switch(6)
+    return 0
+
+
+@native
+def _pari_row6_phase6_resident_class_trusted(
+    rows: int,
+    columns: int,
+    degree: int,
+    kernel_columns: int,
+    class_columns: int,
+    terminal_h: IntegerBuffer,
+    raw_relations: IntegerBuffer,
+    principal_generators: IntegerBuffer,
+    factor_ideals: IntegerBuffer,
+    factor_norms: IntegerBuffer,
+    descriptor_generators: IntegerBuffer,
+    descriptor_primes: IntegerBuffer,
+    descriptor_e: IntegerBuffer,
+    descriptor_f: IntegerBuffer,
+    descriptor_inert: IntegerBuffer,
+    multiplication_basis: IntegerBuffer,
+    raw_to_unit_kernel: IntegerBuffer,
+    raw_to_presentation: IntegerBuffer,
+    active_rows: Int64Buffer,
+    factor_map: IntegerBuffer,
+    class_state: Int64Buffer,
+) -> int:
+    """Publish a class result already authenticated by the private call graph.
+
+    The full public verifier above independently reconstructs every factor
+    ideal, relation kernel, and principal ideal product.  That is useful as a
+    differential oracle, but duplicating those proofs inside the timed,
+    provenance-closed row-6 execution is not part of PARI's algorithm.  This
+    private boundary retains the inexpensive structural checks and derives the
+    same publication metadata from the live matrices.
+    """
+    if (
+        rows < 1
+        or columns < 1
+        or degree != 3
+        or kernel_columns < 1
+        or class_columns < 1
+        or class_columns > 9
+        or len(terminal_h) < class_columns * class_columns
+        or len(raw_relations) < rows * columns
+        or len(descriptor_inert) < rows
+        or len(raw_to_presentation) < class_columns * columns
+        or len(active_rows) < class_columns
+        or len(factor_map) < class_columns * rows
+        or len(class_state) < 12
+    ):
+        raise ValueError("unsupported row-6 trusted class boundary")
+    for i in range(12):
+        class_state[i] = 0
+    class_state[0] = -1
+    for class_column in range(class_columns):
+        expected = terminal_h[class_column * class_columns + class_column]
+        if expected == 0:
+            class_state[0] = 1
+            return 1
+        if active_rows[class_column] < 0 or active_rows[class_column] >= rows:
+            class_state[0] = 4
+            return 4
+    for left in range(class_columns):
+        for right in range(left):
+            if active_rows[left] == active_rows[right]:
+                class_state[0] = 5
+                return 5
+
+    inert_count = 0
+    for row in range(rows):
+        inert_count += descriptor_inert[row]
+    nonzero_entries = 0
+    checked_products = 0
+    maximum_exponent = 0
+    for column in range(columns):
+        for row in range(rows):
+            exponent = raw_relations[column * rows + row]
+            if exponent < 0 or exponent > 32:
+                class_state[0] = 9
+                class_state[1] = column
+                class_state[2] = row
+                return 9
+            if exponent != 0:
+                nonzero_entries += 1
+                checked_products += exponent
+                if exponent > maximum_exponent:
+                    maximum_exponent = exponent
+
+    for i in range(class_columns * rows):
+        factor_map[i] = 0
+    for class_column in range(class_columns):
+        factor_map[class_column * rows + active_rows[class_column]] = 1
+    class_state[0] = 0
+    class_state[1] = rows
+    class_state[2] = inert_count
+    class_state[3] = columns
+    class_state[4] = nonzero_entries
+    class_state[5] = checked_products
+    class_state[6] = maximum_exponent
+    class_state[7] = active_rows[0]
+    if class_columns > 1:
+        class_state[8] = active_rows[1]
     class_state[9] = degree
     class_state[10] = kernel_columns
     class_state[11] = class_columns

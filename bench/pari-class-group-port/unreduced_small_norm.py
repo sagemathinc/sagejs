@@ -10,7 +10,13 @@ driver remain explicit dependencies. The optional outer mode connects one
 scheduling iteration (trim, gating, LIE, pair suppression and finish).
 """
 
-from sagejs.native import Float64Buffer, Int64Buffer, IntegerBuffer, native
+from sagejs.native import (
+    Float64Buffer,
+    Int64Buffer,
+    IntegerBuffer,
+    diagnostic_stage_switch,
+    native,
+)
 from .unreduced_ideal_collector import pari_collect_unreduced_ideal
 from .ideal_schedule import pari_next_small_norm_ideal
 from .prime_ideal_hnf import pari_prime_ideal_hnf
@@ -304,6 +310,7 @@ def pari_collect_unreduced_ideals(
             raise ValueError("insufficient prime generator storage")
     if len(preparation_state) < 1:
         raise ValueError("insufficient resident preparation state")
+    diagnostic_stage_switch(1)
     if construct_primes >= 2:
         if len(schedule) < 4 or len(power_metadata) < 4:
             raise ValueError("insufficient distinguished power state")
@@ -368,7 +375,9 @@ def pari_collect_unreduced_ideals(
             power_metadata[3] = pari_nonnegative_integer_power(prime_norm, e0)
             if construct_primes == 3:
                 power_metadata[4] = e0
+    diagnostic_stage_switch(2)
     while True:
+        diagnostic_stage_switch(3)
         if outer_mode == 1:
             selected = pari_next_small_norm_ideal(
                 outer_live,
@@ -414,6 +423,7 @@ def pari_collect_unreduced_ideals(
             packet += 1
         if packet == packets:
             raise ValueError("scheduled ideal has no original packet")
+        diagnostic_stage_switch(4)
         if construct_primes == 0:
             for i in range(square):
                 admission_ideal[i] = packet_ideals[packet * square + i]
@@ -461,6 +471,7 @@ def pari_collect_unreduced_ideals(
             if construct_primes >= 2:
                 ideal_norm *= power_metadata[3]
         preparation_state[0] = 0
+        diagnostic_stage_switch(5)
         status = pari_collect_unreduced_ideal(
             matrix,
             ideal,
@@ -591,6 +602,7 @@ def pari_collect_unreduced_ideals(
             preparation_temporary,
             preparation_state,
         )
+        diagnostic_stage_switch(2)
         if status <= -11:
             schedule[2] = 1
             schedule[3] = status

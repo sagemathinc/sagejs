@@ -19,7 +19,17 @@ const authority = createFunctionGraphProofAuthority({
 
 const SAFE_OPERATIONS = new Set([
   "integer.buffer.get",
+  "integer.buffer.get_int64",
+  "integer.buffer.sign",
   "integer.buffer.set",
+  "integer.buffer.slot_copy",
+  "integer.buffer.addmul",
+  "integer.buffer.addmul_from",
+  "integer.buffer.addmul_range",
+  "integer.buffer.addmul_range_from",
+  "integer.buffer.mod_addmul_range_from",
+  "integer.buffer.swap_range",
+  "integer.buffer.negate_range",
   "integer.buffer.length",
   "integer.buffer.copy",
   "integer.buffer.view",
@@ -102,7 +112,15 @@ function privateIntegerBufferClassification(functions, root, requested) {
           reject(found, `operation:${operation.kind}`);
           return;
         }
-        if (operation.kind === "integer.buffer.set") {
+        if (operation.kind === "integer.buffer.set" ||
+            operation.kind === "integer.buffer.slot_copy" ||
+            operation.kind === "integer.buffer.addmul" ||
+            operation.kind === "integer.buffer.addmul_from" ||
+            operation.kind === "integer.buffer.addmul_range" ||
+            operation.kind === "integer.buffer.addmul_range_from" ||
+            operation.kind === "integer.buffer.mod_addmul_range_from" ||
+            operation.kind === "integer.buffer.swap_range" ||
+            operation.kind === "integer.buffer.negate_range") {
           for (const name of labels(fn, operation.buffer)) {
             writes.get(name).add(operation);
           }

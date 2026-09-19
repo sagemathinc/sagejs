@@ -78,7 +78,7 @@ function createNativeImportResolver({
       "\\$&",
     );
     const nativeDefinition = new RegExp(
-      `(?:^|\\n)[ \\t]*@native[ \\t]*(?:\\r?\\n)` +
+      `(?:^|\\n)[ \\t]*@native(?:_inline)?[ \\t]*(?:\\r?\\n)` +
         `[ \\t]*def[ \\t]+${escapedName}[ \\t]*\\(`,
     );
     if (!nativeDefinition.test(importedSource)) return null;

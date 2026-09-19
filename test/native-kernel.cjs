@@ -1437,7 +1437,7 @@ compileKernel({
   });
   const nativeTateKernel = await compileKernel({
     sourcePath: nativeTatePath,
-    functions: ["tate_large_prime"],
+    functions: ["tate_large_prime", "tate_cubic_root_count"],
     cacheRoot: join(temporary, "native-tate-cache"),
   });
   const nativeP1Kernel = await compileKernel({

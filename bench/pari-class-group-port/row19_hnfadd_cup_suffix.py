@@ -113,6 +113,7 @@ def pari_row19_hnfadd_cup_suffix(
         log_rows,
         full_h,
         transform,
+        perm_work,
         lam,
         d,
         hnf_state,

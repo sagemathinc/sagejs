@@ -23,7 +23,8 @@ const WORKSPACE_LIMIT_BYTES = ROW6_PREPARED_LAYOUT.storagePlan.nativeWorkspaceBy
 function signature(file, name) {
   const source = fs.readFileSync(path.join(__dirname, file), "utf8");
   const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const match = source.match(new RegExp(`def ${escaped}\\(([\\s\\S]*?)\\n\\) -> int:`));
+  const match = source.match(
+    new RegExp(`def ${escaped}\\(([\\s\\S]*?)\\n\\) -> (?:int|int64):`));
   assert(match, `missing ${name}`);
   return match[1].trim().split("\n").map(line =>
     line.trim().replace(/,$/, "").split(": "));
@@ -183,7 +184,7 @@ function generate() {
   const lines = [
     '\"\"\"Connected row-6 prepared prefix through the first genuine HNF.\"\"\"',
     "",
-    "from sagejs.native import Float64Buffer, Int64Buffer, IntegerBuffer, NativeWorkspaceArena, diagnostic_stage_switch, integer_buffer_view, native, uint64",
+    "from sagejs.native import Float64Buffer, Int64Buffer, IntegerBuffer, NativeWorkspaceArena, checked_int64, diagnostic_stage_switch, integer_buffer_view, native, uint64",
     `from .row6_prepared_factor_base_root import ${FACTOR}`,
     `from .row6_prepared_initial_relations import ${INITIAL}`,
     `from .collected_log_embeddings import ${COLLECTOR}`,
@@ -340,6 +341,8 @@ function generate() {
     else if (name === "k0") expression = "int(factor_root_state[7])";
     else if (name === "log_rows")
       expression = "factor_real_places + factor_complex_pairs";
+    if (OMITTED_LOGICAL_INPUTS.has(name))
+      expression = `checked_int64(${expression})`;
     lines.push(`        ${expression},`);
   }
   lines.push(
@@ -492,6 +495,9 @@ function generate() {
     "            if gate_append2_state[0] + gate_append2_state[2] < factor_count:",
     "                return 119",
     "            break",
+    "    initial_retained = checked_int64(int(gate_initial_hnf_sparse_state[0]) - 1)",
+    "    for word_index in range(initial_retained * initial_retained):",
+    "        gate_initial_hnf_mat[word_index] = checked_int64(gate_initial_hnf_transform[word_index])",
     "    diagnostic_stage_switch(4)",
     `    status = ${ANCESTRY}(`,
     "        initial_relation_records,",
@@ -502,7 +508,7 @@ function generate() {
     "        factor_real_places + factor_complex_pairs,",
     "        gate_initial_hnf_state,",
     "        gate_initial_hnf_assembly_state,",
-    "        gate_initial_hnf_transform,",
+    "        gate_initial_hnf_mat,",
     "        gate_initial_hnf_b,",
     "        gate_initial_hnf_hnf_transform,",
     "        gate_initial_hnf_full_h,",

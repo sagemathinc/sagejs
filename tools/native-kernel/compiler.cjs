@@ -916,10 +916,10 @@ function normalizeDiagnosticStageClock(value, ir) {
   }
   const maximumVisits = value.maximumVisits ?? 64;
   if (!Number.isInteger(maximumVisits) || maximumVisits < value.stages.length ||
-      maximumVisits > 4096) {
+      maximumVisits > 1048576) {
     throw new TypeError(
       "diagnosticStageClock.maximumVisits must be an integer from the stage " +
-        "count through 4096",
+        "count through 1048576",
     );
   }
   const fn = ir.functions.find((candidate) => candidate.name === value.function);

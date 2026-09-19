@@ -484,19 +484,23 @@ function lowerRange(node, iterationNames) {
   return { start: Number(start), count: stopName };
 }
 
-function nativeDecorator(fn) {
+function nativeDecoratorName(fn) {
   const decorators = array(fn.decorators);
   const marked = decorators.filter(
     (decorator) =>
       nodeType(decorator.expression) === "AST_SymbolRef" &&
-      decorator.expression.name === "native",
+      ["native", "native_inline"].includes(decorator.expression.name),
   );
-  if (marked.length === 0) return false;
+  if (marked.length === 0) return undefined;
   expect(
     decorators.length === 1,
-    "@native cannot currently be combined with other decorators",
+    "@native and @native_inline cannot currently be combined with other decorators",
   );
-  return true;
+  return marked[0].expression.name;
+}
+
+function nativeDecorator(fn) {
+  return nativeDecoratorName(fn) !== undefined;
 }
 
 function hoistSyntheticConstants(operations) {
@@ -1279,7 +1283,9 @@ async function lowerSource(source, filename, options = {}) {
     // lexical `@native` decorator.  Keep the two facts distinct.  Artifact
     // discovery uses this per-definition provenance to distinguish intentional
     // private native entry points from ordinary undecorated helpers.
-    result.lexicallyNative = nativeDecorator(definition);
+    const decorator = nativeDecoratorName(definition);
+    result.lexicallyNative = decorator !== undefined;
+    result.forceInline = decorator === "native_inline";
     // Dependency closure is not an implicit request for additional host APIs.
     // Only requested roots are host entries.  A lexical `@native` marker on a
     // same-file dependency means that function can be compiled as a root in

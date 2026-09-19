@@ -25,6 +25,54 @@ def int64_buffer_augmented_exact(
 ) -> int:
     values[index] += increment
     return values[index]
+
+@native
+def int64_times_exact(scalar: int64, value: int) -> int:
+    return scalar * value
+`;
+const integerBufferIndexSource = String.raw`
+from sagejs.native import IntegerBuffer, integer_buffer_mod_addmul_range_from
+
+@native
+def integer_buffer_int64_index(
+    values: IntegerBuffer, index: int64, replacement: int
+) -> int:
+    previous = values[index]
+    values[index] = replacement
+    return previous
+
+@native
+def integer_buffer_int64_expression_index(
+    values: IntegerBuffer, row: int64, columns: int64, column: int64
+) -> int:
+    return values[row * columns + column]
+
+@native
+def integer_buffer_slot_copy(
+    values: IntegerBuffer, source: int64, destination: int64
+) -> int:
+    values[destination] = values[source]
+    return values[destination]
+
+@native
+def integer_buffer_modular_range_update(
+    destination: IntegerBuffer,
+    destination_start: int64,
+    source: IntegerBuffer,
+    source_start: int64,
+    length: int64,
+    multiplier: int64,
+    modulus: int64,
+) -> int64:
+    return integer_buffer_mod_addmul_range_from(
+        destination,
+        destination_start,
+        source,
+        source_start,
+        length,
+        multiplier,
+        modulus,
+    )
 `;
 
 function operations(body) {
@@ -62,13 +110,13 @@ function run(command, args, options = {}) {
     env: { ...process.env, ...options.env },
   });
   if (result.error) throw result.error;
-  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
   return result.stdout;
 }
 
 test("int64 lowers to checked signed-word IR and isolated C", async () => {
   const ir = await lowerSource(
-    `${witnessSource}\n${exactAugmentedSource}`,
+    `${witnessSource}\n${exactAugmentedSource}\n${integerBufferIndexSource}`,
     witnessPath,
   );
   analyzeExactModule(ir.functions);
@@ -115,6 +163,31 @@ test("int64 lowers to checked signed-word IR and isolated C", async () => {
   ).body);
   assert.ok(exactBuffer.some((op) => op.kind === "int64.buffer.get" &&
     op.valueType === "Integer"));
+  const integerBuffer = operations(ir.functions.find(
+    (fn) => fn.name === "integer_buffer_int64_index",
+  ).body);
+  assert.ok(integerBuffer.some((op) => op.kind === "integer.buffer.get" &&
+    op.indexType === "int64"));
+  assert.ok(integerBuffer.some((op) => op.kind === "integer.buffer.set" &&
+    op.indexType === "int64"));
+  const integerBufferExpression = operations(ir.functions.find(
+    (fn) => fn.name === "integer_buffer_int64_expression_index",
+  ).body);
+  assert.ok(integerBufferExpression.some((op) =>
+    op.kind === "integer.buffer.get" && op.indexType === "int64"));
+  assert.equal(integerBufferExpression.some((op) =>
+    op.kind === "integer.from_int64"), false);
+  const slotCopy = operations(ir.functions.find(
+    (fn) => fn.name === "integer_buffer_slot_copy",
+  ).body);
+  assert.ok(slotCopy.some((op) => op.kind === "integer.buffer.slot_copy"));
+  assert.equal(slotCopy.filter((op) => op.kind === "integer.buffer.get").length, 1);
+  const modularRange = operations(ir.functions.find(
+    (fn) => fn.name === "integer_buffer_modular_range_update",
+  ).body);
+  assert.ok(modularRange.some((op) =>
+    op.kind === "integer.buffer.mod_addmul_range_from"
+  ));
   const augmentedExact = operations(ir.functions.find(
     (fn) => fn.name === "int64_buffer_augmented_exact",
   ).body);
@@ -129,6 +202,11 @@ test("int64 lowers to checked signed-word IR and isolated C", async () => {
   assert.ok(augmentedExact.some((op) =>
     op.kind === "integer.from_int64" && op.source === augmentedLoad.target
   ));
+  const mixedProduct = operations(ir.functions.find(
+    (fn) => fn.name === "int64_times_exact",
+  ).body);
+  assert.ok(mixedProduct.some((op) => op.kind === "integer.mul_int64"));
+  assert.equal(mixedProduct.some((op) => op.kind === "integer.from_int64"), false);
   const checkedLiteral = operations(ir.functions.find(
     (fn) => fn.name === "checked_int64_literal",
   ).body);
@@ -169,6 +247,28 @@ test("int64 lowers to checked signed-word IR and isolated C", async () => {
     taggedExactUpdate,
     /sagejs_tagged_set_small\(sagejs_local_tagged_sagejs_native_tmp_\d+,/,
   );
+  const integerBufferIndex = emittedFunction(
+    core.source,
+    "static int native_integer_buffer_int64_index(",
+  );
+  assert.match(integerBufferIndex, /sagejs_integer_buffer_index/);
+  assert.doesNotMatch(integerBufferIndex, /sagejs_integer_buffer_index_mpz/);
+  const integerBufferSlotCopy = emittedFunction(
+    core.source,
+    "static int native_integer_buffer_slot_copy(",
+  );
+  assert.match(integerBufferSlotCopy, /sagejs_integer_buffer_copy_slot/);
+  const integerBufferModularRange = emittedFunction(
+    core.source,
+    "static int native_integer_buffer_modular_range_update(",
+  );
+  assert.match(integerBufferModularRange, /sagejs_word_mul_int64/);
+  assert.match(integerBufferModularRange, /sagejs_integer_buffer_set_int64/);
+  const mixedProductFunction = emittedFunction(
+    core.source,
+    "static int native_int64_times_exact(",
+  );
+  assert.match(mixedProductFunction, /sagejs_mpz_mul_int64/);
   assert.doesNotMatch(core.source, /\b(?:napi_|PyObject|Py_|JSValue|v8::)/);
   for (const fn of ir.functions) {
     assert.equal(classifyWasmFunction(fn, ir).supported, true, fn.name);
@@ -180,7 +280,12 @@ test("int64 agrees in native, dynamic, and CPython execution", async () => {
   const sourcePath = join(temporary, "int64_scalar.py");
   const cacheRoot = join(temporary, "cache");
   const checks = String.raw`
-from sagejs.native import int64_buffer, is_compiled
+from sagejs.native import (
+    int64_buffer,
+    integer_buffer_values,
+    is_compiled,
+    kernel_integer_buffer,
+)
 
 assert int64_arithmetic(-7, 3) == (-5, -3, 2)
 assert int64_arithmetic(7, -3) == (11, -3, -2)
@@ -194,9 +299,39 @@ assert values[-2] == 16
 assert int64_buffer_augmented_exact(values, -2, 7) == 23
 assert values[-2] == 23
 assert int64_buffer_exact(values, 0) == (1 << 80) - 7
+assert int64_times_exact(-7, 1 << 100) == -(7 << 100)
 assert checked_int64_literal() == -1
 assert checked_int64_length(values) == 3
 assert checked_uint64_int64(7) == 7
+exact_values = kernel_integer_buffer(
+    integer_buffer_slot_copy, [1 << 100, -7, (1 << 127) - 1]
+)
+assert integer_buffer_slot_copy(exact_values, 0, 1) == 1 << 100
+assert integer_buffer_slot_copy(exact_values, -1, 0) == (1 << 127) - 1
+assert [int(value) for value in integer_buffer_values(exact_values)] == [
+    (1 << 127) - 1,
+    1 << 100,
+    (1 << 127) - 1,
+]
+modular_destination = kernel_integer_buffer(
+    integer_buffer_modular_range_update, [1, 2, 3, 4]
+)
+modular_source = kernel_integer_buffer(
+    integer_buffer_modular_range_update, [5, 6, 7, 8]
+)
+assert integer_buffer_modular_range_update(
+    modular_destination, 1, modular_source, 0, 3, -3, 11
+) == 0
+assert [int(value) for value in integer_buffer_values(modular_destination)] == [
+    1, 9, 7, 5
+]
+overlap = kernel_integer_buffer(
+    integer_buffer_modular_range_update, [1, 2, 3, 4, 5, 6, 7, 8]
+)
+assert integer_buffer_modular_range_update(overlap, 4, overlap, 0, 3, 2, 11) == 0
+assert [int(value) for value in integer_buffer_values(overlap)] == [
+    1, 2, 3, 4, 7, 10, 2, 8
+]
 try:
     checked_uint64_int64(-1)
     raise AssertionError("negative uint64 conversion succeeded")
@@ -228,7 +363,7 @@ print("INT64_SCALAR_OK")
 `;
   writeFileSync(
     sourcePath,
-    `${witnessSource}\n${exactAugmentedSource}\n${checks}`,
+    `${witnessSource}\n${exactAugmentedSource}\n${integerBufferIndexSource}\n${checks}`,
   );
   try {
     await compileKernel({ sourcePath, cacheRoot });

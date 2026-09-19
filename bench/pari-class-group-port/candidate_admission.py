@@ -4,7 +4,13 @@ Copyright (C) The PARI group. GPL-2.0-or-later, without warranty.
 Prepared ideals, embeddings and prime decompositions remain external inputs.
 """
 
-from sagejs.native import Float64Buffer, Int64Buffer, IntegerBuffer, native
+from sagejs.native import (
+    Float64Buffer,
+    Int64Buffer,
+    IntegerBuffer,
+    diagnostic_stage_switch,
+    native,
+)
 
 from .candidate_search import pari_next_factor_candidate
 from .ideal_admission import pari_prepared_factorgen
@@ -76,6 +82,7 @@ def pari_next_smooth_candidate(
     admission_indices: IntegerBuffer,
     admission_exponents: IntegerBuffer,
     diagnostic: IntegerBuffer,
+    bounded_real: int,
 ) -> int:
     """Yield 1 for a smooth candidate, 0 at exhaustion, 2 for missing factoring.
 
@@ -93,6 +100,7 @@ def pari_next_smooth_candidate(
     if counters[3] != 0:
         return 2
     while True:
+        diagnostic_stage_switch(1)
         available = pari_next_factor_candidate(
             matrix,
             ideal,
@@ -125,7 +133,9 @@ def pari_next_smooth_candidate(
             counters,
         )
         if available != 1:
+            diagnostic_stage_switch(0)
             return available
+        diagnostic_stage_switch(2)
         status, norm, error, count, residual = pari_prepared_factorgen(
             admission_matrix_m,
             admission_matrix_p,
@@ -164,7 +174,9 @@ def pari_next_smooth_candidate(
             admission_indices,
             admission_exponents,
             int(counters[2]),
+            bounded_real,
         )
+        diagnostic_stage_switch(0)
         counters[2] = count
         diagnostic[0] = norm
         diagnostic[1] = error

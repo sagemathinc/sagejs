@@ -204,7 +204,19 @@ function emitFmpzOperation(operation, context, indent) {
     return `${indent}${target} = (uint64_t) ` +
       `${fmpzValue(operation.buffer, context)}.length;`;
   }
-  if (["integer.buffer.get", "integer.buffer.set"].includes(operation.kind)) {
+  if (operation.kind === "integer.buffer.mod_addmul_range_from") {
+    const value = (name) => fmpzValue(name, context);
+    return [
+      `${indent}if (!sagejs_integer_buffer_mod_addmul_range_from(status, ` +
+        `&${value(operation.buffer)}, ${value(operation.destination)}, ` +
+        `&${value(operation.sourceBuffer)}, ${value(operation.source)}, ` +
+        `${value(operation.length)}, ${value(operation.multiplier)}, ` +
+        `${value(operation.modulus)}))`,
+      `${indent}    goto fail;`,
+      `${indent}${target} = INT64_C(0);`,
+    ].join("\n");
+  }
+  if (["integer.buffer.get", "integer.buffer.set", "integer.buffer.slot_copy"].includes(operation.kind)) {
     const buffer = fmpzValue(operation.buffer, context);
     const index = fmpzValue(operation.index, context);
     let indexCheck;
@@ -213,14 +225,46 @@ function emitFmpzOperation(operation, context, indent) {
         `${index}, &sagejs_buffer_position)`;
     } else if (operation.indexType === "uint64") {
       indexCheck = `${index} >= (uint64_t) ${buffer}.length`;
+    } else if (operation.indexType === "int64") {
+      indexCheck = `!sagejs_integer_buffer_index(&${buffer}, ` +
+        `${index}, &sagejs_buffer_position)`;
     } else {
       throw new Error(
-        `${context.fn.name}: fmpz IntegerBuffer requires Integer or uint64 indices`,
+        `${context.fn.name}: fmpz IntegerBuffer requires integer indices`,
       );
+    }
+    if (operation.kind === "integer.buffer.slot_copy") {
+      const sourceBuffer = fmpzValue(operation.sourceBuffer, context);
+      const sourceIndex = fmpzValue(operation.sourceIndex, context);
+      const sourceCheck = operation.sourceIndexType === "Integer"
+        ? `!sagejs_fmpz_integer_buffer_index(&${sourceBuffer}, ` +
+          `${sourceIndex}, &sagejs_source_position)`
+        : operation.sourceIndexType === "uint64"
+        ? `${sourceIndex} >= (uint64_t) ${sourceBuffer}.length`
+        : `!sagejs_integer_buffer_index(&${sourceBuffer}, ` +
+          `${sourceIndex}, &sagejs_source_position)`;
+      return [
+        `${indent}{`,
+        `${indent}    size_t sagejs_buffer_position` +
+          (operation.indexType === "uint64" ? ` = (size_t) ${index};` : ";"),
+        `${indent}    size_t sagejs_source_position` +
+          (operation.sourceIndexType === "uint64"
+            ? ` = (size_t) ${sourceIndex};` : ";"),
+        `${indent}    if (${indexCheck} || ${sourceCheck})`,
+        `${indent}    {`,
+        statusFailure("range", "IntegerBuffer index out of range", `${indent}        `),
+        `${indent}        goto fail;`, `${indent}    }`,
+        `${indent}    if (!sagejs_integer_buffer_copy_slot(status, &${buffer}, ` +
+          `sagejs_buffer_position, &${sourceBuffer}, sagejs_source_position))`,
+        `${indent}        goto fail;`, `${indent}}`,
+      ].join("\n");
     }
     const action = operation.kind === "integer.buffer.get"
       ? `sagejs_integer_buffer_get_fmpz(&${buffer}, ` +
         `sagejs_buffer_position, ${target});`
+      : operation.valueType === "int64"
+      ? `sagejs_integer_buffer_set_int64(&${buffer}, ` +
+        `sagejs_buffer_position, ${fmpzValue(operation.value, context)});`
       : `if (!sagejs_integer_buffer_set_fmpz(status, &${buffer}, ` +
         `sagejs_buffer_position, ${fmpzValue(operation.value, context)}))\n` +
         `${indent}        goto fail;`;
@@ -572,6 +616,11 @@ function emitFmpzOperation(operation, context, indent) {
       `${indent}}`,
       `${indent}fmpz_${division}(${target}, ${left}, ${right});`,
     ].join("\n");
+  }
+  if (operation.kind === "integer.mul_int64") {
+    return `${indent}fmpz_mul_si(${target}, ` +
+      `${fmpzValue(operation.integer, context)}, ` +
+      `(slong) ${fmpzValue(operation.scalar, context)});`;
   }
   if (operation.kind === "uint64.binary") {
     const left = fmpzValue(operation.left, context);

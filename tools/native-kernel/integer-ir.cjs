@@ -642,7 +642,7 @@ function lowerLiveVectorIndex(node, context, operations) {
   const value = literal !== undefined && literal >= 0n &&
       literal <= 18446744073709551615n
     ? emitUint64Constant(context, node, operations, literal)
-    : lowerExpression(node, context, operations);
+    : lowerUInt64BufferIndex(node, context, operations);
   expect(
     context,
     node,
@@ -1890,6 +1890,381 @@ function lowerCall(node, context, operations) {
     return { name: target, type: "Integer" };
   }
 
+  if (name === "integer_buffer_addmul") {
+    expect(
+      context,
+      node,
+      args.length === 4 && array(node.args?.kwarg_items).length === 0 &&
+        !node.args?.starargs,
+      "integer_buffer_addmul() requires buffer, destination, source, and multiplier",
+    );
+    const buffer = lowerExpression(args[0], context, operations);
+    expect(
+      context,
+      args[0],
+      isIntegerBufferType(buffer.type),
+      "integer_buffer_addmul() requires an IntegerBuffer",
+    );
+    const destination = lowerExpression(args[1], context, operations);
+    const source = lowerExpression(args[2], context, operations);
+    expect(
+      context,
+      args[1],
+      ["Integer", "int64", "uint64"].includes(destination.type),
+      "integer_buffer_addmul() destination requires an integer index",
+    );
+    expect(
+      context,
+      args[2],
+      ["Integer", "int64", "uint64"].includes(source.type),
+      "integer_buffer_addmul() source requires an integer index",
+    );
+    const multiplier = coerceInteger(
+      lowerExpression(args[3], context, operations),
+      context,
+      args[3],
+      operations,
+    );
+    const target = temporary(context, node, "int64");
+    operations.push({
+      kind: "integer.buffer.addmul",
+      target,
+      buffer: buffer.name,
+      bufferType: buffer.type,
+      destination: destination.name,
+      destinationType: destination.type,
+      source: source.name,
+      sourceType: source.type,
+      multiplier: multiplier.name,
+    });
+    return { name: target, type: "int64" };
+  }
+
+  if (name === "int64_buffer_addmul_range") {
+    expect(
+      context,
+      node,
+      args.length === 5 && array(node.args?.kwarg_items).length === 0 &&
+        !node.args?.starargs,
+      "int64_buffer_addmul_range() requires a buffer, two starts, a length, and a multiplier",
+    );
+    const buffer = lowerExpression(args[0], context, operations);
+    const destination = lowerExpression(args[1], context, operations);
+    const source = lowerExpression(args[2], context, operations);
+    const length = lowerExpression(args[3], context, operations);
+    const multiplier = lowerExpression(args[4], context, operations);
+    expect(context, args[0], buffer.type === "Int64Buffer",
+      "int64_buffer_addmul_range() requires an Int64Buffer");
+    for (const [argument, value, label] of [
+      [args[1], destination, "destination"],
+      [args[2], source, "source"],
+      [args[3], length, "length"],
+      [args[4], multiplier, "multiplier"],
+    ]) {
+      expect(context, argument, value.type === "int64",
+        `int64_buffer_addmul_range() ${label} requires int64`);
+    }
+    const target = temporary(context, node, "int64");
+    operations.push({
+      kind: "int64.buffer.addmul_range",
+      target,
+      buffer: buffer.name,
+      destination: destination.name,
+      source: source.name,
+      length: length.name,
+      multiplier: multiplier.name,
+    });
+    return { name: target, type: "int64" };
+  }
+
+  if (name === "integer_buffer_addmul_from") {
+    expect(
+      context,
+      node,
+      args.length === 5 && array(node.args?.kwarg_items).length === 0 &&
+        !node.args?.starargs,
+      "integer_buffer_addmul_from() requires two buffers, two indices, and a multiplier",
+    );
+    const buffer = lowerExpression(args[0], context, operations);
+    const destination = lowerExpression(args[1], context, operations);
+    const sourceBuffer = lowerExpression(args[2], context, operations);
+    const source = lowerExpression(args[3], context, operations);
+    expect(context, args[0], isIntegerBufferType(buffer.type),
+      "integer_buffer_addmul_from() requires an IntegerBuffer destination");
+    expect(context, args[2], isIntegerBufferType(sourceBuffer.type),
+      "integer_buffer_addmul_from() requires an IntegerBuffer source");
+    expect(context, args[1], ["Integer", "int64", "uint64"].includes(destination.type),
+      "integer_buffer_addmul_from() destination requires an integer index");
+    expect(context, args[3], ["Integer", "int64", "uint64"].includes(source.type),
+      "integer_buffer_addmul_from() source requires an integer index");
+    const multiplier = coerceInteger(
+      lowerExpression(args[4], context, operations), context, args[4], operations,
+    );
+    const target = temporary(context, node, "int64");
+    operations.push({
+      kind: "integer.buffer.addmul_from",
+      target,
+      buffer: buffer.name,
+      bufferType: buffer.type,
+      destination: destination.name,
+      destinationType: destination.type,
+      sourceBuffer: sourceBuffer.name,
+      sourceBufferType: sourceBuffer.type,
+      source: source.name,
+      sourceType: source.type,
+      multiplier: multiplier.name,
+    });
+    return { name: target, type: "int64" };
+  }
+
+  if (name === "integer_buffer_addmul_range") {
+    expect(
+      context,
+      node,
+      args.length === 5 && array(node.args?.kwarg_items).length === 0 &&
+        !node.args?.starargs,
+      "integer_buffer_addmul_range() requires a buffer, two starts, a length, and a multiplier",
+    );
+    const buffer = lowerExpression(args[0], context, operations);
+    const destination = lowerExpression(args[1], context, operations);
+    const source = lowerExpression(args[2], context, operations);
+    const length = lowerExpression(args[3], context, operations);
+    expect(context, args[0], isIntegerBufferType(buffer.type),
+      "integer_buffer_addmul_range() requires an IntegerBuffer");
+    for (const [argument, value, label] of [
+      [args[1], destination, "destination"],
+      [args[2], source, "source"],
+      [args[3], length, "length"],
+    ]) {
+      expect(context, argument, value.type === "int64",
+        `integer_buffer_addmul_range() ${label} requires int64`);
+    }
+    const multiplier = coerceInteger(
+      lowerExpression(args[4], context, operations), context, args[4], operations,
+    );
+    const target = temporary(context, node, "int64");
+    operations.push({
+      kind: "integer.buffer.addmul_range",
+      target,
+      buffer: buffer.name,
+      bufferType: buffer.type,
+      destination: destination.name,
+      source: source.name,
+      length: length.name,
+      multiplier: multiplier.name,
+    });
+    return { name: target, type: "int64" };
+  }
+
+  if (name === "integer_buffer_addmul_range_from") {
+    expect(
+      context,
+      node,
+      args.length === 6 && array(node.args?.kwarg_items).length === 0 &&
+        !node.args?.starargs,
+      "integer_buffer_addmul_range_from() requires two buffers, two starts, a length, and a multiplier",
+    );
+    const buffer = lowerExpression(args[0], context, operations);
+    const destination = lowerExpression(args[1], context, operations);
+    const sourceBuffer = lowerExpression(args[2], context, operations);
+    const source = lowerExpression(args[3], context, operations);
+    const length = lowerExpression(args[4], context, operations);
+    expect(context, args[0], isIntegerBufferType(buffer.type),
+      "integer_buffer_addmul_range_from() requires an IntegerBuffer destination");
+    expect(context, args[2], isIntegerBufferType(sourceBuffer.type),
+      "integer_buffer_addmul_range_from() requires an IntegerBuffer source");
+    for (const [argument, value, label] of [
+      [args[1], destination, "destination"],
+      [args[3], source, "source"],
+      [args[4], length, "length"],
+    ]) {
+      expect(context, argument, value.type === "int64",
+        `integer_buffer_addmul_range_from() ${label} requires int64`);
+    }
+    const multiplier = coerceInteger(
+      lowerExpression(args[5], context, operations), context, args[5], operations,
+    );
+    const target = temporary(context, node, "int64");
+    operations.push({
+      kind: "integer.buffer.addmul_range_from",
+      target,
+      buffer: buffer.name,
+      bufferType: buffer.type,
+      destination: destination.name,
+      sourceBuffer: sourceBuffer.name,
+      sourceBufferType: sourceBuffer.type,
+      source: source.name,
+      length: length.name,
+      multiplier: multiplier.name,
+    });
+    return { name: target, type: "int64" };
+  }
+
+  if (name === "integer_buffer_mod_addmul_range_from") {
+    expect(
+      context,
+      node,
+      args.length === 7 && array(node.args?.kwarg_items).length === 0 &&
+        !node.args?.starargs,
+      "integer_buffer_mod_addmul_range_from() requires two buffers, two starts, a length, a multiplier, and a modulus",
+    );
+    const buffer = lowerExpression(args[0], context, operations);
+    const destination = lowerExpression(args[1], context, operations);
+    const sourceBuffer = lowerExpression(args[2], context, operations);
+    const source = lowerExpression(args[3], context, operations);
+    const length = lowerExpression(args[4], context, operations);
+    const multiplier = lowerExpression(args[5], context, operations);
+    const modulus = lowerExpression(args[6], context, operations);
+    expect(context, args[0], isIntegerBufferType(buffer.type),
+      "integer_buffer_mod_addmul_range_from() requires an IntegerBuffer destination");
+    expect(context, args[2], isIntegerBufferType(sourceBuffer.type),
+      "integer_buffer_mod_addmul_range_from() requires an IntegerBuffer source");
+    for (const [argument, value, label] of [
+      [args[1], destination, "destination"],
+      [args[3], source, "source"],
+      [args[4], length, "length"],
+      [args[5], multiplier, "multiplier"],
+      [args[6], modulus, "modulus"],
+    ]) {
+      expect(context, argument, value.type === "int64",
+        `integer_buffer_mod_addmul_range_from() ${label} requires int64`);
+    }
+    const target = temporary(context, node, "int64");
+    operations.push({
+      kind: "integer.buffer.mod_addmul_range_from",
+      target,
+      buffer: buffer.name,
+      bufferType: buffer.type,
+      destination: destination.name,
+      sourceBuffer: sourceBuffer.name,
+      sourceBufferType: sourceBuffer.type,
+      source: source.name,
+      length: length.name,
+      multiplier: multiplier.name,
+      modulus: modulus.name,
+    });
+    return { name: target, type: "int64" };
+  }
+
+  if (name === "integer_buffer_swap_range") {
+    expect(
+      context,
+      node,
+      args.length === 4 && array(node.args?.kwarg_items).length === 0 &&
+        !node.args?.starargs,
+      "integer_buffer_swap_range() requires a buffer, two starts, and a length",
+    );
+    const buffer = lowerExpression(args[0], context, operations);
+    const left = lowerExpression(args[1], context, operations);
+    const right = lowerExpression(args[2], context, operations);
+    const length = lowerExpression(args[3], context, operations);
+    expect(context, args[0], isIntegerBufferType(buffer.type),
+      "integer_buffer_swap_range() requires an IntegerBuffer");
+    for (const [argument, value, label] of [
+      [args[1], left, "left"],
+      [args[2], right, "right"],
+      [args[3], length, "length"],
+    ]) {
+      expect(context, argument, value.type === "int64",
+        `integer_buffer_swap_range() ${label} requires int64`);
+    }
+    const target = temporary(context, node, "int64");
+    operations.push({
+      kind: "integer.buffer.swap_range",
+      target,
+      buffer: buffer.name,
+      bufferType: buffer.type,
+      left: left.name,
+      right: right.name,
+      length: length.name,
+    });
+    return { name: target, type: "int64" };
+  }
+
+  if (name === "integer_buffer_negate_range") {
+    expect(
+      context,
+      node,
+      args.length === 3 && array(node.args?.kwarg_items).length === 0 &&
+        !node.args?.starargs,
+      "integer_buffer_negate_range() requires a buffer, start, and length",
+    );
+    const buffer = lowerExpression(args[0], context, operations);
+    const start = lowerExpression(args[1], context, operations);
+    const length = lowerExpression(args[2], context, operations);
+    expect(context, args[0], isIntegerBufferType(buffer.type),
+      "integer_buffer_negate_range() requires an IntegerBuffer");
+    for (const [argument, value, label] of [
+      [args[1], start, "start"],
+      [args[2], length, "length"],
+    ]) {
+      expect(context, argument, value.type === "int64",
+        `integer_buffer_negate_range() ${label} requires int64`);
+    }
+    const target = temporary(context, node, "int64");
+    operations.push({
+      kind: "integer.buffer.negate_range",
+      target,
+      buffer: buffer.name,
+      bufferType: buffer.type,
+      start: start.name,
+      length: length.name,
+    });
+    return { name: target, type: "int64" };
+  }
+
+  if (name === "integer_buffer_get_int64") {
+    expect(
+      context,
+      node,
+      args.length === 2 && array(node.args?.kwarg_items).length === 0 &&
+        !node.args?.starargs,
+      "integer_buffer_get_int64() requires buffer and index",
+    );
+    const buffer = lowerExpression(args[0], context, operations);
+    const index = lowerExpression(args[1], context, operations);
+    expect(context, args[0], isIntegerBufferType(buffer.type),
+      "integer_buffer_get_int64() requires an IntegerBuffer");
+    expect(context, args[1], ["Integer", "int64", "uint64"].includes(index.type),
+      "integer_buffer_get_int64() requires an integer index");
+    const target = temporary(context, node, "int64");
+    operations.push({
+      kind: "integer.buffer.get_int64",
+      target,
+      buffer: buffer.name,
+      bufferType: buffer.type,
+      index: index.name,
+      indexType: index.type,
+    });
+    return { name: target, type: "int64" };
+  }
+
+  if (name === "integer_buffer_sign") {
+    expect(
+      context,
+      node,
+      args.length === 2 && array(node.args?.kwarg_items).length === 0 &&
+        !node.args?.starargs,
+      "integer_buffer_sign() requires buffer and index",
+    );
+    const buffer = lowerExpression(args[0], context, operations);
+    const index = lowerExpression(args[1], context, operations);
+    expect(context, args[0], isIntegerBufferType(buffer.type),
+      "integer_buffer_sign() requires an IntegerBuffer");
+    expect(context, args[1], ["Integer", "int64", "uint64"].includes(index.type),
+      "integer_buffer_sign() requires an integer index");
+    const target = temporary(context, node, "int64");
+    operations.push({
+      kind: "integer.buffer.sign",
+      target,
+      buffer: buffer.name,
+      bufferType: buffer.type,
+      index: index.name,
+      indexType: index.type,
+    });
+    return { name: target, type: "int64" };
+  }
+
   if (name === "float") {
     expect(context, node, args.length === 1, "float() requires one argument");
     const value = lowerExpression(args[0], context, operations);
@@ -2396,11 +2771,14 @@ function lowerExpression(node, context, operations, expectedType = undefined) {
         ? lowerUInt64BufferIndex(node.property, context, operations)
         : INT64_BUFFER_TYPES.has(buffer.type)
         ? lowerInt64BufferIndex(node.property, context, operations)
+        : isIntegerBufferType(buffer.type)
+        ? lowerInt64BufferIndex(node.property, context, operations)
         : buffer.type === "Float64Buffer"
         ? lowerFloat64BufferIndex(node.property, context, operations)
         : lowerExpression(node.property, context, operations);
       const index = buffer.type === "UInt64Buffer" ||
           INT64_BUFFER_TYPES.has(buffer.type) ||
+          isIntegerBufferType(buffer.type) ||
           buffer.type === "Float64Buffer"
         ? loweredIndex
         : coerceInteger(
@@ -2410,7 +2788,8 @@ function lowerExpression(node, context, operations, expectedType = undefined) {
         context,
         node.property,
         !["UInt64Buffer", "Float64Buffer"].includes(buffer.type) &&
-            !INT64_BUFFER_TYPES.has(buffer.type) ||
+            !INT64_BUFFER_TYPES.has(buffer.type) &&
+            !isIntegerBufferType(buffer.type) ||
           index.type === "uint64" || index.type === "int64" ||
             index.type === "Integer",
         `${buffer.type} indexing requires an exact integer index`,
@@ -2582,6 +2961,20 @@ function lowerExpression(node, context, operations, expectedType = undefined) {
         right: right.name,
       });
       return { name: target, type: "int64" };
+    }
+    if (arithmetic === "mul" &&
+        ((left.type === "Integer" && right.type === "int64") ||
+          (left.type === "int64" && right.type === "Integer"))) {
+      const integer = left.type === "Integer" ? left : right;
+      const scalar = left.type === "int64" ? left : right;
+      const target = temporary(context, node, "Integer");
+      operations.push({
+        kind: "integer.mul_int64",
+        target,
+        integer: integer.name,
+        scalar: scalar.name,
+      });
+      return { name: target, type: "Integer" };
     }
     left = coerceInteger(
       left,
@@ -3084,9 +3477,12 @@ function lowerBufferAssignment(item, right, operator, context) {
     ? lowerUInt64BufferIndex(item.property, context, operations)
     : INT64_BUFFER_TYPES.has(buffer.type)
     ? lowerInt64BufferIndex(item.property, context, operations)
+    : isIntegerBufferType(buffer.type)
+    ? lowerInt64BufferIndex(item.property, context, operations)
     : lowerExpression(item.property, context, operations);
   const index = buffer.type === "UInt64Buffer" ||
-      INT64_BUFFER_TYPES.has(buffer.type)
+      INT64_BUFFER_TYPES.has(buffer.type) ||
+      isIntegerBufferType(buffer.type)
     ? loweredIndex
     : coerceInteger(
         loweredIndex, context, item.property, operations,
@@ -3094,7 +3490,8 @@ function lowerBufferAssignment(item, right, operator, context) {
   expect(
     context,
     item.property,
-    buffer.type !== "UInt64Buffer" && !INT64_BUFFER_TYPES.has(buffer.type) ||
+    buffer.type !== "UInt64Buffer" && !INT64_BUFFER_TYPES.has(buffer.type) &&
+        !isIntegerBufferType(buffer.type) ||
       index.type === "uint64" || index.type === "int64" ||
         index.type === "Integer",
     `${buffer.type} assignment requires an integer index`,
@@ -3106,6 +3503,15 @@ function lowerBufferAssignment(item, right, operator, context) {
     : lowerExpression(right, context, operations);
   if (buffer.type !== "UInt64Buffer" && value.type !== "int64") {
     value = coerceInteger(value, context, right, operations);
+  }
+  let exactSlotCopy;
+  if (operator === "=" && isIntegerBufferType(buffer.type) &&
+      value.type === "Integer") {
+    const load = operations.at(-1);
+    if (load?.kind === "integer.buffer.get" && load.target === value.name) {
+      operations.pop();
+      exactSlotCopy = load;
+    }
   }
   expect(
     context,
@@ -3163,6 +3569,20 @@ function lowerBufferAssignment(item, right, operator, context) {
       right: value.name,
     });
     value = { name: target, type: valueType };
+  }
+  if (exactSlotCopy !== undefined) {
+    operations.push({
+      kind: "integer.buffer.slot_copy",
+      buffer: buffer.name,
+      bufferType: buffer.type,
+      index: index.name,
+      indexType: index.type,
+      sourceBuffer: exactSlotCopy.buffer,
+      sourceBufferType: exactSlotCopy.bufferType,
+      sourceIndex: exactSlotCopy.index,
+      sourceIndexType: exactSlotCopy.indexType,
+    });
+    return operations;
   }
   operations.push({
     kind: isIntegerBufferType(buffer.type)
@@ -4131,6 +4551,16 @@ function lowerStatements(statements, context) {
             statement,
             (last?.kind === "diagnostic.stage.switch" &&
               last.stage === value.name) ||
+            (["integer.buffer.addmul", "integer.buffer.addmul_from",
+              "integer.buffer.addmul_range",
+              "integer.buffer.addmul_range_from",
+              "integer.buffer.mod_addmul_range_from",
+              "integer.buffer.swap_range",
+              "integer.buffer.negate_range",
+              "int64.buffer.addmul_range"].includes(
+              last?.kind,
+            ) &&
+              last.target === value.name) ||
             ((last?.kind === "ffi.call" ||
               (last?.kind === "native.call" &&
                 ["Integer", "Float64", "uint64", "int64", "bool"].includes(value.type))) &&

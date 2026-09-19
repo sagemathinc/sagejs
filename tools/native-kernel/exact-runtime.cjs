@@ -934,6 +934,21 @@ static int sagejs_word_mul_int64(int64_t left, int64_t right, int64_t *result)
 #endif
 }
 
+static void sagejs_mpz_mul_int64(
+    mpz_t target, const mpz_t integer, int64_t scalar)
+{
+#if LONG_MAX >= INT64_MAX
+    mpz_mul_si(target, integer, (long) scalar);
+#else
+    /* GMP's signed-long entry point is only 32 bits on LLP64 hosts. */
+    mpz_t exact_scalar;
+    mpz_init(exact_scalar);
+    set_mpz_int64(exact_scalar, scalar);
+    mpz_mul(target, integer, exact_scalar);
+    mpz_clear(exact_scalar);
+#endif
+}
+
 /* Restoring base-four square root: entirely integer, including the seed.
    Each iteration removes the next root bit; no overflowing square is formed. */
 static uint64_t sagejs_word_isqrt_uint64(uint64_t value)
@@ -1188,6 +1203,23 @@ static void sagejs_tagged_mul(
     sagejs_tagged_make_big(right);
     sagejs_tagged_make_big(target);
     mpz_mul(target->big, left->big, right->big);
+}
+
+static void sagejs_tagged_mul_int64(
+    sagejs_tagged_int *target,
+    sagejs_tagged_int *integer,
+    int64_t scalar)
+{
+    int64_t result;
+    if (!integer->is_big &&
+        sagejs_word_mul_int64(integer->small, scalar, &result))
+    {
+        sagejs_tagged_set_small(target, result);
+        return;
+    }
+    sagejs_tagged_make_big(integer);
+    sagejs_tagged_make_big(target);
+    sagejs_mpz_mul_int64(target->big, integer->big, scalar);
 }
 
 static void sagejs_tagged_neg(

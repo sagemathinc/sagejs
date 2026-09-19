@@ -14,6 +14,7 @@ from sagejs.native import (
     NativeExactArena,
     NativeIntegerVector,
     checked_uint64,
+    diagnostic_stage_switch,
     native,
     uint64,
 )
@@ -51,14 +52,18 @@ def resident_hnflll_exact_quotient(value: int, divisor: int) -> int:
 def resident_hnflll_normalize(
     a: NativeIntegerVector,
     u: NativeIntegerVector,
-    rows: int,
-    columns: int,
-    j: int,
+    rows: uint64,
+    columns: uint64,
+    j: uint64,
     lam: NativeIntegerVector,
     state: Int64Buffer,
-) -> int:
+) -> uint64:
     """Translate `findi_normalize` and `Minus` on resident vectors."""
-    row = 0
+    row: uint64 = 0
+    i: uint64 = 0
+    k: uint64 = 0
+    range_start: uint64 = 1
+    range_stop: uint64 = 0
     for i in range(rows):
         if a[(j - 1) * rows + i] != 0:
             row = i + 1
@@ -71,10 +76,12 @@ def resident_hnflll_normalize(
         for i in range(columns):
             index = (j - 1) * columns + i
             u[index] = -u[index]
-        for k in range(1, j):
+        for k in range(range_start, j):
             index = (j - 1) * columns + k - 1
             lam[index] = -lam[index]
-        for k in range(j + 1, columns + 1):
+        range_start = j + 1
+        range_stop = columns + 1
+        for k in range(range_start, range_stop):
             index = (k - 1) * columns + j - 1
             lam[index] = -lam[index]
     return row
@@ -84,14 +91,14 @@ def resident_hnflll_normalize(
 def resident_hnflll_reduce(
     a: NativeIntegerVector,
     u: NativeIntegerVector,
-    rows: int,
-    columns: int,
-    k: int,
-    j: int,
+    rows: uint64,
+    columns: uint64,
+    k: uint64,
+    j: uint64,
     lam: NativeIntegerVector,
     d: NativeIntegerVector,
     state: Int64Buffer,
-) -> tuple[int, int]:
+) -> tuple[uint64, uint64]:
     """Translate `reduce2`, using resident addmul/submul mutations."""
     state[2] += 1
     row0 = resident_hnflll_normalize(a, u, rows, columns, j, lam, state)
@@ -110,16 +117,21 @@ def resident_hnflll_reduce(
         state[6] += 1
         quotient = -quotient
         if row0 != 0:
-            for i in range(rows - 1, -1, -1):
+            i: uint64 = rows
+            while i > 0:
+                i -= 1
                 source = (j - 1) * rows + i
                 if a[source] != 0:
                     a.addmul((k - 1) * rows + i, quotient, a[source])
-        for i in range(columns - 1, -1, -1):
+        i = columns
+        while i > 0:
+            i -= 1
             source = (j - 1) * columns + i
             if u[source] != 0:
                 u.addmul((k - 1) * columns + i, quotient, u[source])
         lam.addmul((k - 1) * columns + j - 1, quotient, d[j])
-        for i in range(j - 1):
+        range_stop: uint64 = j - 1
+        for i in range(range_stop):
             source = (j - 1) * columns + i
             if lam[source] != 0:
                 destination = (k - 1) * columns + i
@@ -136,20 +148,24 @@ def resident_hnflll_reduce(
 def resident_hnflll_swap(
     a: NativeIntegerVector,
     u: NativeIntegerVector,
-    rows: int,
-    columns: int,
-    k: int,
+    rows: uint64,
+    columns: uint64,
+    k: uint64,
     lam: NativeIntegerVector,
     d: NativeIntegerVector,
-) -> int:
+) -> uint64:
     """Translate `hnfswap`; full column swaps reuse resident entries."""
     for i in range(rows):
         a.swap((k - 1) * rows + i, (k - 2) * rows + i)
     for i in range(columns):
         u.swap((k - 1) * columns + i, (k - 2) * columns + i)
-    for j in range(k - 2, 0, -1):
+    j: uint64 = k - 2
+    while j > 0:
         lam.swap((k - 2) * columns + j - 1, (k - 1) * columns + j - 1)
-    for i in range(k + 1, columns + 1):
+        j -= 1
+    range_start: uint64 = k + 1
+    range_stop: uint64 = columns + 1
+    for i in range(range_start, range_stop):
         left_index = (i - 1) * columns + k - 2
         right_index = (i - 1) * columns + k - 1
         left = lam[left_index]
@@ -209,14 +225,16 @@ def pari_hnflll_resident_experiment(
             d[i] = 1
         for state_index in range(11):
             state[state_index] = 0
-        k = 2
-        kmax = 2
+        k: uint64 = 2
+        kmax: uint64 = 2
+        diagnostic_stage_switch(3)
         while k < columns + 1:
             state[0] += 1
+            previous: uint64 = k - 1
             row0, row1 = resident_hnflll_reduce(
-                a, u, rows, columns, k, k - 1, lam, d, state
+                a, u, rows, columns, k, previous, lam, d, state
             )
-            swap = 0
+            swap: uint64 = 0
             if row0 != 0:
                 if row1 == 0 or row0 <= row1:
                     swap = 1
@@ -231,10 +249,12 @@ def pari_hnflll_resident_experiment(
                 if k > 2:
                     k -= 1
             else:
-                for reduce_index in range(k - 2, 0, -1):
+                reduce_index: uint64 = k - 2
+                while reduce_index > 0:
                     row0, row1 = resident_hnflll_reduce(
                         a, u, rows, columns, k, reduce_index, lam, d, state
                     )
+                    reduce_index -= 1
                 k += 1
                 if k > kmax:
                     kmax = k
@@ -250,6 +270,7 @@ def pari_hnflll_resident_experiment(
                 reverse_index += 1
         state[9] = k
         state[10] = kmax
+        diagnostic_stage_switch(4)
         for i in range(matrix_size):
             output_h[i] = a[i]
         for i in range(square_size):

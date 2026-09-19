@@ -6,7 +6,7 @@ Keep first-dependence selection and the provisional e=0 valuation used by
 PARI to discover ramification. This is not a complete prime decomposition.
 """
 
-from sagejs.native import IntegerBuffer, native
+from sagejs.native import IntegerBuffer, checked_int64, int64, native
 from .integral_frobenius import pari_integral_basis_multiply
 from .small_prime_matrix_kernel import pari_small_prime_matrix_dependence
 from .valuation import pari_prepared_ideal_valuation
@@ -86,10 +86,19 @@ def pari_prepared_prime_descriptor_suffix(
         pari_integral_basis_multiply(table, t, n, j + 1, column)
         for i in range(n):
             tau_work[i * n + j] = column[i]
-    e = 1
+    e: int64 = 1
     if ramified != 0:
         e += pari_prepared_ideal_valuation(
-            t, tau_work, x, y, spare, stack, n, prime, 0, 0
+            t,
+            tau_work,
+            x,
+            y,
+            spare,
+            stack,
+            checked_int64(n),
+            checked_int64(prime),
+            checked_int64(0),
+            checked_int64(0),
         )
     for i in range(n):
         anti_output[i] = t[i]

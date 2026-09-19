@@ -4,7 +4,13 @@ Copyright (C) The PARI group. GPL-2.0-or-later, without warranty.
 This is a prepared-ideal segment, not the full small_norm/rnd_rel engine.
 """
 
-from sagejs.native import Float64Buffer, Int64Buffer, IntegerBuffer, native
+from sagejs.native import (
+    Float64Buffer,
+    Int64Buffer,
+    IntegerBuffer,
+    diagnostic_stage_switch,
+    native,
+)
 
 from .candidate_admission import pari_next_smooth_candidate
 from .relation_insertion import pari_insert_smooth_relation
@@ -108,9 +114,34 @@ def pari_collect_ideal_relations(
     """
     if nrelid < 0 or len(progress) < 4 or len(relation_state) < 6:
         raise ValueError("invalid prepared ideal collector state")
+    bounded_real = 0
+    matrix_size = n * n
+    if (
+        admission_real_count == n
+        and n >= 1
+        and n <= 5
+        and len(admission_matrix_p) >= matrix_size
+        and len(admission_matrix_e) >= matrix_size
+    ):
+        bounded_real = 1
+        for matrix_index in range(matrix_size):
+            metadata_precision = admission_matrix_p[matrix_index]
+            metadata_exponent = admission_matrix_e[matrix_index]
+            if metadata_precision != -1 and (
+                metadata_precision < 64
+                or metadata_precision > 154112
+                or metadata_precision % 64 != 0
+            ):
+                bounded_real = 0
+            if (
+                metadata_exponent < -9223372036854775808
+                or metadata_exponent > 9223372036854775807
+            ):
+                bounded_real = 0
     if progress[2] != 0:
         return int(progress[3])
     while True:
+        diagnostic_stage_switch(1)
         result = pari_next_smooth_candidate(
             matrix,
             ideal,
@@ -176,6 +207,7 @@ def pari_collect_ideal_relations(
             admission_indices,
             admission_exponents,
             diagnostic,
+            bounded_real,
         )
         if result != 1:
             progress[2] = 1
@@ -185,6 +217,7 @@ def pari_collect_ideal_relations(
             progress[2] = 1
             progress[3] = 1
             return 1
+        diagnostic_stage_switch(2)
         status, appended, nz, count = pari_insert_smooth_relation(
             jid,
             jid0,
@@ -210,6 +243,7 @@ def pari_collect_ideal_relations(
             track_fact,
         )
         counters[2] = count
+        diagnostic_stage_switch(0)
         if status > 0:
             if relation_state[0] >= relation_state[5]:
                 progress[2] = 1

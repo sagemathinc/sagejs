@@ -1,5 +1,12 @@
 # Executed row-6 GMP-only artifact and PARI 2.17.4 stage comparison
 
+> **Performance update:** the subsequent gap-closure campaign reduced the
+> exact end-to-end Sage.js median from 62.904 seconds to 13.148 seconds, or
+> 3.383x the frozen pristine PARI control. See
+> `agents/pari-class-group-row6-gap-closure-2026-09-19.md`. The stage clock
+> below remains the exact attribution for the original qualified artifact and
+> is retained as the campaign baseline.
+
 ## Result
 
 The reviewed phase-lifetime plan is enabled, and the final pruned GMP-only

@@ -15,15 +15,15 @@ is prototype boundary overhead, not upstream mathematical work. Scalar/index
 arithmetic stays exact, not a claim of unboxed machine-word performance.
 """
 
-from sagejs.native import Int64Buffer, IntegerBuffer, native
+from sagejs.native import Int64Buffer, IntegerBuffer, checked_int64, int64, native
 
 from .hnflll import pari_hnflll
 
 
 @native
 def pari_hnfspec_assemble_blocks(
-    rows: int,
-    k0: int,
+    rows: int64,
+    k0: int64,
     perm: Int64Buffer,
     sparse_state: Int64Buffer,
     cleanup_state: Int64Buffer,
@@ -37,7 +37,7 @@ def pari_hnfspec_assemble_blocks(
     dep: IntegerBuffer,
     b: IntegerBuffer,
     state: Int64Buffer,
-) -> int:
+) -> int64:
     """Return rank frontier -1/-2 unchanged, or 0 for this exact stage only.
 
     Negative frontiers leave ALL owners untouched, even output state. A
@@ -51,7 +51,7 @@ def pari_hnfspec_assemble_blocks(
     """
     if len(rank_state) < 10:
         raise ValueError("short assembly rank state")
-    status = rank_state[9]
+    status: int64 = checked_int64(rank_state[9])
     if status == -1 or status == -2:
         return status
     if status != 0:
@@ -60,13 +60,13 @@ def pari_hnfspec_assemble_blocks(
         raise ValueError("short assembly state")
     if rows < 0 or k0 < 0 or k0 > rows:
         raise ValueError("invalid assembly dimensions")
-    retained = sparse_state[0] - 1
-    lig = sparse_state[1]
-    col = sparse_state[2]
-    lk0 = sparse_state[3]
-    nlze = cleanup_state[1]
-    lnz = cleanup_state[2]
-    nr = rank_state[7]
+    retained: int64 = sparse_state[0] - 1
+    lig: int64 = sparse_state[1]
+    col: int64 = sparse_state[2]
+    lk0: int64 = sparse_state[3]
+    nlze: int64 = cleanup_state[1]
+    lnz: int64 = cleanup_state[2]
+    nr: int64 = checked_int64(rank_state[7])
     if retained < 0 or col < 0 or col > retained or lig < k0 or lig > rows:
         raise ValueError("invalid assembly live dimensions")
     if lk0 < k0 or lk0 > lig or nlze != lk0 - k0 or lnz != lig - nlze + 1:
@@ -79,9 +79,10 @@ def pari_hnfspec_assemble_blocks(
         or retained - col != rows - lig
     ):
         raise ValueError("inconsistent assembly cleanup state")
-    profile_count = lnz - 1
-    genuine = lnz - 1 - nr
-    dependent = nlze + nr
+    live_rows: int64 = lnz - 1
+    profile_count: int64 = live_rows
+    genuine: int64 = live_rows - nr
+    dependent: int64 = nlze + nr
     if col == 0:
         if nr != lnz:
             raise ValueError("invalid empty assembly rank state")
@@ -94,7 +95,7 @@ def pari_hnfspec_assemble_blocks(
         raise ValueError("short or inconsistent assembly rank profile")
     if len(perm) < rows or len(perm_work) < rows:
         raise ValueError("short assembly permutation workspace")
-    stride = rows - k0
+    stride: int64 = rows - k0
     if len(bottom) < stride * retained or len(updated_dense) < k0 * retained:
         raise ValueError("short assembly cleanup matrix")
     if len(extra) < (lnz - 1) * col:
@@ -103,6 +104,10 @@ def pari_hnfspec_assemble_blocks(
         raise ValueError("short assembly block workspace")
     if len(b) < lig * (retained - col):
         raise ValueError("short assembly result workspace")
+    i: int64 = 0
+    j: int64 = 0
+    k: int64 = 0
+    profile_value: int64 = 0
     for i in range(rows):
         if perm[i] < 1 or perm[i] > rows:
             raise ValueError("invalid assembly row permutation")
@@ -110,12 +115,13 @@ def pari_hnfspec_assemble_blocks(
             if perm[i] == perm[j]:
                 raise ValueError("invalid assembly row permutation")
     for i in range(profile_count):
-        if profile[i] < 1 or profile[i] > profile_count:
+        profile_value = checked_int64(profile[i])
+        if profile_value < 1 or profile_value > profile_count:
             raise ValueError("invalid assembly rank permutation")
         if col == 0 and profile[i] != i + 1:
             raise ValueError("invalid empty assembly rank permutation")
         for j in range(i):
-            if profile[i] == profile[j]:
+            if profile_value == checked_int64(profile[j]):
                 raise ValueError("invalid assembly rank permutation")
     # hnfspec_i: move the nlze zero rows above the dense rows.
     if nlze != 0:
@@ -126,22 +132,26 @@ def pari_hnfspec_assemble_blocks(
         for i in range(lk0):
             perm[i] = perm_work[i]
     # Stable row selection according to actual certified permpro.
-    for i in range(lnz - 1):
-        perm_work[i] = perm[nlze + profile[i] - 1]
-    for i in range(lnz - 1):
+    for i in range(live_rows):
+        perm_work[i] = perm[nlze + checked_int64(profile[i]) - 1]
+    for i in range(live_rows):
         perm[nlze + i] = perm_work[i]
     for j in range(col):
         for i in range(nlze):
             dep[j * dependent + i] = 0
         for i in range(nr):
-            dep[j * dependent + nlze + i] = extra[j * (lnz - 1) + profile[i] - 1]
-        for i in range(nr, lnz - 1):
-            matbnew[j * genuine + i - nr] = extra[j * (lnz - 1) + profile[i] - 1]
+            dep[j * dependent + nlze + i] = extra[
+                j * live_rows + checked_int64(profile[i]) - 1
+            ]
+        for i in range(nr, live_rows):
+            matbnew[j * genuine + i - nr] = extra[
+                j * live_rows + checked_int64(profile[i]) - 1
+            ]
     for j in range(col, retained):
         for i in range(nlze):
             b[(j - col) * lig + i] = bottom[j * stride + i]
-        for k in range(lnz - 1):
-            i = profile[k]
+        for k in range(live_rows):
+            i = checked_int64(profile[k])
             if i <= k0:
                 b[(j - col) * lig + nlze + k] = updated_dense[j * k0 + i - 1]
             else:
@@ -159,8 +169,8 @@ def pari_hnfspec_assemble_blocks(
 
 @native
 def pari_hnfspec_assembly(
-    rows: int,
-    k0: int,
+    rows: int64,
+    k0: int64,
     perm: Int64Buffer,
     sparse_state: Int64Buffer,
     cleanup_state: Int64Buffer,
@@ -179,7 +189,7 @@ def pari_hnfspec_assembly(
     d: IntegerBuffer,
     hnf_state: Int64Buffer,
     state: Int64Buffer,
-) -> int:
+) -> int64:
     """Diagnostic block assembly followed by independent HNFLLL H/U.
 
     Preserve the original diagnostic ABI and atomic malformed-workspace
@@ -192,8 +202,8 @@ def pari_hnfspec_assembly(
         return rank_state[9]
     if len(sparse_state) < 13 or len(cleanup_state) < 10:
         raise ValueError("short assembly state")
-    col = sparse_state[2]
-    genuine = cleanup_state[2] - 1 - rank_state[7]
+    col: int64 = sparse_state[2]
+    genuine: int64 = cleanup_state[2] - 1 - checked_int64(rank_state[7])
     if col != 0 and (
         len(h) < genuine * col
         or len(u) < col * col

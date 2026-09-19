@@ -113,6 +113,27 @@ def checked_float64(value: int) -> float:
     return float(exact)
 
 
+def int64_buffer_addmul_range(
+    buffer: Int64Buffer,
+    destination_start: int64,
+    source_start: int64,
+    length: int64,
+    multiplier: int64,
+) -> int:
+    """Add a scaled signed-word range with checked `int64` arithmetic.
+
+    Both dynamic Python and native compilation process increasing offsets and
+    reject the first multiplication or addition outside the signed 64-bit
+    domain. Native compilation validates both complete ranges once.
+    """
+    for offset in range(length):
+        destination = destination_start + offset
+        source = source_start + offset
+        product = checked_int64(multiplier * buffer[source])
+        buffer[destination] = checked_int64(buffer[destination] + product)
+    return 0
+
+
 def diagnostic_stage_switch(stage: int) -> int:
     """Mark a benchmark-only native timing stage and return `stage`.
 
@@ -124,6 +145,172 @@ def diagnostic_stage_switch(stage: int) -> int:
     call signature.
     """
     return int(stage)
+
+
+def integer_buffer_addmul(
+    buffer: IntegerBuffer,
+    destination: int,
+    source: int,
+    multiplier: int,
+) -> int:
+    """Add `multiplier * buffer[source]` to `buffer[destination]`.
+
+    Dynamic Python uses ordinary exact list arithmetic. Native compilation may
+    mutate a capacity-checked packed integer slot directly, avoiding a pair of
+    temporary imports and an export at this explicit low-level boundary.
+    """
+    buffer[destination] += int(multiplier) * buffer[source]
+    return 0
+
+
+def integer_buffer_addmul_from(
+    destination_buffer: IntegerBuffer,
+    destination: int,
+    source_buffer: IntegerBuffer,
+    source: int,
+    multiplier: int,
+) -> int:
+    """Add a scaled exact source slot to a destination buffer slot.
+
+    Dynamic Python uses ordinary exact list arithmetic. Native compilation may
+    operate on the two capacity-checked packed slots directly.
+    """
+    destination_buffer[destination] += int(multiplier) * source_buffer[source]
+    return 0
+
+
+def integer_buffer_addmul_range(
+    buffer: IntegerBuffer,
+    destination_start: int64,
+    source_start: int64,
+    length: int64,
+    multiplier: int,
+) -> int:
+    """Add one scaled exact buffer range to another range.
+
+    Dynamic Python applies the updates in decreasing offset order. Native
+    compilation checks both complete ranges once, then mutates their packed
+    slots directly. Overlapping ranges retain that same sequential meaning.
+    """
+    for offset in range(length - 1, -1, -1):
+        destination = destination_start + offset
+        source = source_start + offset
+        buffer[destination] += int(multiplier) * buffer[source]
+    return 0
+
+
+def integer_buffer_addmul_range_from(
+    destination_buffer: IntegerBuffer,
+    destination_start: int64,
+    source_buffer: IntegerBuffer,
+    source_start: int64,
+    length: int64,
+    multiplier: int,
+) -> int:
+    """Add a scaled exact source range to a destination range.
+
+    Dynamic Python applies increasing-offset updates. Native compilation
+    checks both complete ranges once and then works directly on packed slots.
+    """
+    for offset in range(length):
+        destination = destination_start + offset
+        source = source_start + offset
+        destination_buffer[destination] += int(multiplier) * source_buffer[source]
+    return 0
+
+
+def integer_buffer_mod_addmul_range_from(
+    destination_buffer: IntegerBuffer,
+    destination_start: int64,
+    source_buffer: IntegerBuffer,
+    source_start: int64,
+    length: int64,
+    multiplier: int64,
+    modulus: int64,
+) -> int:
+    """Add a scaled source range modulo a positive signed-word modulus.
+
+    Every source and destination slot, product, and sum must fit `int64`.
+    Dynamic Python checks the same bounded contract as native compilation.
+    Updates proceed in increasing-offset order, so overlapping ranges retain
+    ordinary sequential Python semantics.
+    """
+    if modulus <= 0:
+        raise ValueError("modulus must be positive")
+    for offset in range(length):
+        destination = destination_start + offset
+        source = source_start + offset
+        product = checked_int64(
+            multiplier * integer_buffer_get_int64(source_buffer, source)
+        )
+        total = checked_int64(
+            integer_buffer_get_int64(destination_buffer, destination) + product
+        )
+        destination_buffer[destination] = total % modulus
+    return 0
+
+
+def integer_buffer_swap_range(
+    buffer: IntegerBuffer,
+    left_start: int64,
+    right_start: int64,
+    length: int64,
+) -> int:
+    """Swap two exact buffer ranges in increasing offset order.
+
+    Dynamic Python performs ordinary element swaps. Native compilation checks
+    both complete ranges once, then exchanges packed slots without importing
+    them into temporary arbitrary-precision values. Overlapping ranges retain
+    the same sequential meaning.
+    """
+    for offset in range(length):
+        left = left_start + offset
+        right = right_start + offset
+        temporary = buffer[left]
+        buffer[left] = buffer[right]
+        buffer[right] = temporary
+    return 0
+
+
+def integer_buffer_negate_range(
+    buffer: IntegerBuffer,
+    start: int64,
+    length: int64,
+) -> int:
+    """Negate a complete exact buffer range in place.
+
+    Native packed sign-magnitude storage can perform this operation by
+    changing signed-size metadata alone. The ordinary Python fallback retains
+    the same increasing-offset mutation order.
+    """
+    for offset in range(length):
+        position = start + offset
+        buffer[position] = -buffer[position]
+    return 0
+
+
+def integer_buffer_get_int64(buffer: IntegerBuffer, index: int) -> int64:
+    """Return one exact buffer slot after a checked signed-word conversion.
+
+    Native compilation reads the packed signed size and first limb directly;
+    values outside the signed 64-bit domain raise `OverflowError`.
+    """
+    return checked_int64(buffer[index])
+
+
+def integer_buffer_sign(buffer: IntegerBuffer, index: int) -> int64:
+    """Return `-1`, `0`, or `1` from one exact buffer slot.
+
+    Native packed storage answers this from signed-size metadata without
+    importing the arbitrary-precision magnitude. Dynamic Python uses ordinary
+    integer comparisons.
+    """
+    value = buffer[index]
+    if value < 0:
+        return -1
+    if value > 0:
+        return 1
+    return 0
 
 
 class _NativeExactBudget:
@@ -1887,6 +2074,16 @@ def native(function: Any) -> Any:
     return replacement
 
 
+def native_inline(function: Any) -> Any:
+    """Mark a small private native helper for required C-level inlining.
+
+    This has exactly the same dynamic semantics as `native`. The compiler only
+    honors the stronger code-generation hint when the function is a private
+    member of a compiled call graph; a public entry retains its ordinary ABI.
+    """
+    return native(function)
+
+
 def is_native(function: Any) -> bool:
     """Return whether `function` carries the :func:`native` marker."""
     return bool(getattr(function, "__sagejs_native__", False))
@@ -1971,6 +2168,7 @@ __all__ = [
     "kernel_uint64_zeros",
     "float64_workspace",
     "native",
+    "native_inline",
     "prime_add",
     "prime_buffer",
     "prime_columns",
