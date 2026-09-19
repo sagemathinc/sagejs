@@ -69,10 +69,11 @@ Every remaining owner family has a separate fail-closed budget:
 
 This is 319,967,296 bytes below 4 GiB.  That margin belongs to the addon and
 runtime; the table is an explicit-owner bound, not an RSS promise.  The host
-remains explicitly fail-closed with
-`SAGEJS_ROW6_MAX_STORAGE_PLAN_REQUIRED` while the new generated graph awaits a
-fresh compile review, so this source-cleanup step cannot execute the
-mathematical root.
+originally remained explicitly fail-closed with
+`SAGEJS_ROW6_MAX_STORAGE_PLAN_REQUIRED` while the new generated graph awaited a
+fresh compile review.  The final review and execution result is recorded below;
+the historical compile progression explains how the review reached that
+decision.
 
 As a non-authoritative differential accounting check, substituting the
 already observed live row-6 dimensions (1,130 factor rows, 1,133 initial
@@ -83,16 +84,22 @@ columns, initial B-width 1,124, target 1,137) gives:
 | prepared prefix | 600,236,372 |
 | external Gate owners | 161,395,072 |
 | initial-HNF arena owners | 1,846,386,376 |
-| ancestry arena owners | 7,047,568 |
+| ancestry arena owners | 40,782,308 |
 | both append worksets after reuse | 20,701,296 |
 | terminal external owners | 2,656,700 |
-| **projected explicit peak** | **2,638,423,384 (2.4572 GiB)** |
+| **projected explicit peak** | **2,672,158,124 (2.4886 GiB)** |
 
-The arena reaches 1,853,433,944 bytes after initial-HNF plus ancestry storage
-and 1,874,135,240 bytes after append storage.  Reusing same-name append scratch
+The arena reaches 1,887,168,684 bytes after initial-HNF plus ancestry storage
+and 1,907,869,980 bytes after append storage.  Reusing same-name append scratch
 between the two sequential checkpoints saves 10,568,184 bytes.  These observed
 dimensions are an oracle for accounting only: they do not select any storage
 length or capacity in the host.
+
+The ancestry figure uses the live initial reverse-HNF shape `151 * 979`, as
+reported by `hnfspec` assembly state.  It is intentionally distinct from the
+later at-most-16-row class/HNF shape.  The generated root guards both live
+dimensions by `factor_count`, allocates the larger of that initial product and
+the later `16 * factor_count` requirement, and keeps the buffer arena-local.
 
 The frozen source-only arena graph has generated Gate SHA-256
 `82a4731e562b32533e189746c702c8188ac1e2502124af30e551444c6707f021`
@@ -178,7 +185,8 @@ workspace dispatch, and a nonzero-offset `Int64Record` call.  The adjacent
 exact-buffer and mixed exact/Float64 suites pass five tests with one expected
 WASI-toolchain skip.  This is still compile and compiler-regression evidence
 only: no row-6 owner was constructed and no row-6 mathematical function was
-executed.  `STORAGE_PLAN_REVIEWED` and `timingEligible` therefore remain false.
+executed.  At that checkpoint, `STORAGE_PLAN_REVIEWED` and `timingEligible`
+therefore remained false.
 Immediately before arena integration, a compile-only check of the corrected
 live-stride Gate root completed successfully.  This is retained as historical
 compiler evidence, not as a build of the current arena graph.  Evidence was
@@ -246,5 +254,32 @@ verifies the one-argument API, manifest immutability, source freshness,
 non-answer append ceilings, absence of obsolete ABI inputs, and a full scan of
 the computation sources for the retired row-6 trajectory dimensions.
 
-This remains correctness-only evidence.  `timingEligible` stays false, and no
-performance ratio is authorized by this boundary change.
+## Final phase-lifetime review and row-6 execution
+
+The final review found one material error in the provisional storage audit:
+reverse ancestry begins with the live initial `hnfspec` reverse-HNF shape
+`151 * 979`, not the later class/HNF ceiling `16 * factor_count`.  The root now
+allocates the maximum of those requirements after checking both live dimensions
+against `factor_count`.  The focused test pins the corrected 40,782,308-byte
+ancestry allocation, 1,907,869,980-byte arena total, and 2,672,158,124-byte
+projected explicit peak.  Capacity-only relation storage is also no longer used
+as a live factor-base length: `unreduced_small_norm` derives `kc` from the live
+`outer_minidx` view, and the caller passes live views for all policy-capacity
+owners.
+
+With those corrections, `STORAGE_PLAN_REVIEWED` is true.  The final pruned,
+GMP-only artifact executed the whole prepared-field root in one native call and
+returned class number 4, invariant factors `[2, 2]`, rank-two unit state, and
+the expected regulator.  All six retained relation, logarithm, HNF, class,
+unit-kernel, and presentation replay hashes matched their frozen values.  The
+non-diagnostic artifact's core C is 28,016,043 bytes and its addon is 2,910,912
+bytes; its measured kernel time was 62,904,424,963 ns, peak RSS 489,696 KiB,
+and peak virtual size 4,045,496 KiB.  The separately authenticated diagnostic
+twin differs only by the stage clock and accounts for every one of its
+62,879,388,485 root nanoseconds.
+
+The exact stage receipt and matched PARI 2.17.4 comparison are in
+[`../../agents/pari-class-group-row6-executed-stage-comparison-2026-09-19.md`](../../agents/pari-class-group-row6-executed-stage-comparison-2026-09-19.md).
+The result is timing-eligible for this fixed prepared-field experiment.  It is
+still an upstream-assumed internal correspondence result, not a public certified
+`ClassUnitComputation`.

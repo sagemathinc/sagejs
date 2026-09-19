@@ -35,6 +35,18 @@ const VARIANTS = Object.freeze({
       "-DSAGEJS_STAGE_MT_NBTHREADS=1",
     ]),
   }),
+  row6: Object.freeze({
+    authorityDriver: path.join(HERE, "row14_pari_prepared_timing_adapter.c"),
+    compileDefinitions: Object.freeze([
+      '-DSAGEJS_STAGE_AUTHORITY_ADAPTER="../row14_pari_prepared_timing_adapter.c"',
+      '-DSAGEJS_STAGE_POLYNOMIAL="x^3-2000000000010*x+2000000000018"',
+      "-DSAGEJS_STAGE_STACK_BYTES=1200000000",
+      "-DSAGEJS_STAGE_MT_NBTHREADS=1",
+      '-DSAGEJS_AUTHORITY_FIELD_ID="generated-sha256-55ba15494f03f38bf8f687ff4d2813e81184d71c84dbed9e1adc6af7ba62f0eb"',
+      '-DSAGEJS_AUTHORITY_SAMPLE_SCHEMA="sagejs.pari-class-group/row6-pari-prepared-sample-v1"',
+      '-DSAGEJS_AUTHORITY_POLYNOMIAL_ASCENDING_JSON="[\\\"2000000000018\\\",\\\"-2000000000010\\\",\\\"0\\\",\\\"1\\\"]"',
+    ]),
+  }),
 });
 
 function fileSha256(filename) {

@@ -48,8 +48,8 @@ test("layout is immutable and uses policy ceilings", () => {
     10 * layout.dimensions.maxRelationColumns + 50);
   assert(layout.appendCeilings.maxNewColumnsPerCheckpoint > 3);
   assert.equal(whole.ROW6_PREPARED_LAYOUT, layout);
-  assert.equal(gate.STORAGE_PLAN_REVIEWED, false,
-    "unsafe maximum allocation must remain fail-closed pending reuse review");
+  assert.equal(gate.STORAGE_PLAN_REVIEWED, true,
+    "reviewed phase-lifetime plan must be enabled for the end-to-end row-6 run");
   const storage = layout.storagePlan;
   assert.equal(storage.explicitOwnerBytes,
     storage.preparedPrefixBytes + storage.gateExternalBytes +
@@ -60,13 +60,14 @@ test("layout is immutable and uses policy ceilings", () => {
 test("arena plan bounds peak explicit ownership below four GiB", () => {
   const arena = source.workspaceAccounting({ factorCount: 1130,
     initialColumns: 1133, initialK0: 4, initialBColumns: 1124,
+    initialReverseLig: 151, initialReverseTail: 979,
     places: 3, relationTarget: 1137 });
   assert.deepEqual(arena, {
-    ancestry: 7047568,
+    ancestry: 40782308,
     append: 20701296,
     hnf: 1846386376,
     limit: 3000000000,
-    total: 1874135240,
+    total: 1907869980,
   });
   assert(arena.total < arena.limit);
   const prepared = { data: {
@@ -103,6 +104,10 @@ test("large exact workspaces are arena-local and cannot escape", () => {
   "HNF ownership must use the live post-collector column count");
   assert(generated.includes(
     "gate_append1_result_b = gate_workspace.integer_buffer("));
+  assert(generated.includes(
+    "ancestry_trailing_length = initial_reverse_lig * initial_reverse_tail"));
+  assert(generated.indexOf("initial_reverse_tail =") <
+    generated.indexOf("gate_ancestry_trailing_work = gate_workspace.integer_buffer("));
   assert.equal((generated.match(
     /gate_append_top = gate_workspace\.integer_buffer\(\s*uint64\(/g) || []).length, 1,
   "append scratch must be allocated once and reused by both checkpoints");
@@ -157,6 +162,13 @@ test("native root derives logical state from live prefix", () => {
   assert(generated.includes("int(factor_root_state[7]),"));
   assert(!generated.includes("        gate_scalar_prefix_count,\n    )"));
   assert.equal(generated, source.generate());
+});
+
+test("outer collection uses the live factor-base view, not owner capacity", () => {
+  const collector = sourceText("unreduced_small_norm.py");
+  assert(collector.includes("kc = len(outer_minidx)"));
+  assert(collector.includes("if kc < 1 or len(relation) < kc:"));
+  assert(!collector.includes("pari_start_connected_outer(\n            len(relation),"));
 });
 
 test("terminal signs use the typed Int64Buffer view", () => {

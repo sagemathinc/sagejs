@@ -138,7 +138,6 @@ function allocateOwned(fn, terminalNames) {
 async function prepare(preparedEnvelope) {
   assert.equal(arguments.length, 1,
     "factor/relation owners are forbidden at the prepared-only boundary");
-  const gate = await gateHost.prepare(preparedEnvelope);
   const names = source.signature("row6_phase6_whole_prepared_root.generated.py", EXPORT);
   const loaded = loadAuthenticatedWholeKernel(names), fn = loaded.fn;
   assert.equal(fn?.nativeAvailable, true);
@@ -146,6 +145,13 @@ async function prepare(preparedEnvelope) {
   const built = Object.freeze({ cacheKey: THIN_EXPECTED.cacheKey,
     coreSourcePath: path.join(outputPath, "kernel_core.c"),
     modulePath: path.join(outputPath, "index.cjs"), outputPath });
+  return prepareWithKernel(preparedEnvelope, built, fn);
+}
+
+function prepareWithKernel(preparedEnvelope, built, fn) {
+  const gate = gateHost.prepareWithKernel(preparedEnvelope, built, fn);
+  const names = source.signature("row6_phase6_whole_prepared_root.generated.py", EXPORT);
+  assert.equal(fn?.nativeAvailable, true);
   const gateNames = source.signature(
     "row6_phase6_gate_prefix_root.generated.py", source.GATE);
   const terminalNames = source.signature(
@@ -205,4 +211,5 @@ function createProcessCoordinatorAdapter(preparedEnvelope) {
 
 module.exports = { EXPORT, LENGTHS,
   ROW6_PREPARED_LAYOUT: gateHost.ROW6_PREPARED_LAYOUT, SOURCE,
-  createProcessCoordinatorAdapter, prepare, run, terminalStorageAccounting };
+  createProcessCoordinatorAdapter, prepare, prepareWithKernel, run,
+  terminalStorageAccounting };

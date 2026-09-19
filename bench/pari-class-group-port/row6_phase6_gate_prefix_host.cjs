@@ -34,7 +34,12 @@ const THIN_EXPECTED = Object.freeze({
   addonHash: "f5c022102f525ee72b2b58379a79829e45baa4ac875048c7c94d7d8ddb7ea636",
   signatureHash: "e219a4998e8690157b38cf276856534091b938a160e61dc686948d32b813d33e",
 });
-const STORAGE_PLAN_REVIEWED = false;
+// Reviewed against row6_phase6_gate_prefix_root.generated.py on 2026-09-19.
+// The large exact owners have one lexical NativeWorkspaceArena lifetime;
+// append scratch is shared by the two sequential checkpoints, while the two
+// retained checkpoint transformations coexist because ancestry consumes both.
+// The focused boundary test pins the resulting byte ledger and escape checks.
+const STORAGE_PLAN_REVIEWED = true;
 const ROW6_CAPACITY_LEDGER = Object.freeze({
   "hnf.transform": Object.freeze({ highWater: 1, capacity: 16 }),
   "hnf.hnf_transform": Object.freeze({ highWater: 1, capacity: 16 }),
@@ -378,6 +383,18 @@ function gateExternalStorageAccounting(preparedEnvelope) {
 async function prepare(preparedEnvelope) {
   assert.equal(arguments.length, 1,
     "factor/relation owners are forbidden at the prepared-only boundary");
+  const aggregateNames = signature(
+    "row6_phase6_gate_prefix_root.generated.py", EXPORT);
+  const fn = loadThinCachedKernel({ sourcePath: SOURCE, cacheRoot: CACHE_ROOT,
+    entry: EXPORT, signature: aggregateNames, expected: THIN_EXPECTED });
+  const outputPath = path.join(CACHE_ROOT, THIN_EXPECTED.cacheKey);
+  const built = Object.freeze({ cacheKey: THIN_EXPECTED.cacheKey,
+    coreSourcePath: path.join(outputPath, "kernel_core.c"),
+    modulePath: path.join(outputPath, "index.cjs"), outputPath });
+  return prepareWithKernel(preparedEnvelope, built, fn);
+}
+
+function prepareWithKernel(preparedEnvelope, built, fn) {
   validatePreparedOnlyBoundary(preparedEnvelope);
   const layout = assertLayout();
   if (!STORAGE_PLAN_REVIEWED) {
@@ -392,12 +409,6 @@ async function prepare(preparedEnvelope) {
   const externalBudget = createStorageBudget(
     layout.storagePlan.gateExternalBytes,
     "SAGEJS_ROW6_GATE_EXTERNAL_STORAGE_LIMIT");
-  const fn = loadThinCachedKernel({ sourcePath: SOURCE, cacheRoot: CACHE_ROOT,
-    entry: EXPORT, signature: aggregateNames, expected: THIN_EXPECTED });
-  const outputPath = path.join(CACHE_ROOT, THIN_EXPECTED.cacheKey);
-  const built = Object.freeze({ cacheKey: THIN_EXPECTED.cacheKey,
-    coreSourcePath: path.join(outputPath, "kernel_core.c"),
-    modulePath: path.join(outputPath, "index.cjs"), outputPath });
   assert.equal(fn?.nativeAvailable, true);
   const prefix = prefixHost.prepareWithKernel(preparedEnvelope.data, built, fn);
   const lengths = layoutLengths();
@@ -554,5 +565,5 @@ function createProcessCoordinatorAdapter(preparedEnvelope) {
 module.exports = { EXPORT, ROW6_CAPACITY_LEDGER, ROW6_PREPARED_LAYOUT, SOURCE,
   STORAGE_PLAN_REVIEWED, appendLayoutLengths, createProcessCoordinatorAdapter, prepare,
   assertAuthenticatedEnvelope, gateExternalStorageAccounting, layoutLengths,
-  preparedCollectorInput, run,
+  prepareWithKernel, preparedCollectorInput, run,
   validatePreparedOnlyBoundary, validatePreparedEnvelopeShape };

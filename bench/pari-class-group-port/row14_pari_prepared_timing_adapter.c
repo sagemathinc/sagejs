@@ -15,8 +15,20 @@
 #include <sys/resource.h>
 #include <time.h>
 
-static const char *FIELD_ID =
-  "generated-sha256-e1d4643ab62bde9546d63340545e5302c2cef517222d569e634fb5e2093f6413";
+#ifndef SAGEJS_AUTHORITY_FIELD_ID
+#define SAGEJS_AUTHORITY_FIELD_ID \
+  "generated-sha256-e1d4643ab62bde9546d63340545e5302c2cef517222d569e634fb5e2093f6413"
+#endif
+#ifndef SAGEJS_AUTHORITY_SAMPLE_SCHEMA
+#define SAGEJS_AUTHORITY_SAMPLE_SCHEMA \
+  "sagejs.pari-class-group/row14-pari-prepared-sample-v1"
+#endif
+#ifndef SAGEJS_AUTHORITY_POLYNOMIAL_ASCENDING_JSON
+#define SAGEJS_AUTHORITY_POLYNOMIAL_ASCENDING_JSON \
+  "[\"-200000002\",\"-200000002\",\"0\",\"0\",\"1\"]"
+#endif
+
+static const char *FIELD_ID = SAGEJS_AUTHORITY_FIELD_ID;
 
 static uint64_t
 nanoseconds(struct timespec value)
@@ -168,13 +180,12 @@ emit_run(GEN nf, const char *seed)
   factor_base_size = lg(gel(bnf, 5)) - 1;
   log_columns = lg(logs) - 1;
   log_rows = log_columns ? lg(gel(logs, 1)) - 1 : 0;
-  printf("{\"schema\":\"sagejs.pari-class-group/row14-pari-prepared-sample-v1\","
+  printf("{\"schema\":\"%s\","
          "\"kernelNanoseconds\":\"%" PRIu64 "\","
          "\"cpuNanoseconds\":\"%" PRIu64 "\",\"result\":{",
-         elapsed, cpu_elapsed);
-  printf("\"field\":{\"id\":\"%s\",\"polynomialAscending\":["
-         "\"-200000002\",\"-200000002\",\"0\",\"0\",\"1\"]},",
-         FIELD_ID);
+         SAGEJS_AUTHORITY_SAMPLE_SCHEMA, elapsed, cpu_elapsed);
+  printf("\"field\":{\"id\":\"%s\",\"polynomialAscending\":%s},",
+         FIELD_ID, SAGEJS_AUTHORITY_POLYNOMIAL_ASCENDING_JSON);
   fputs("\"classGroup\":{\"classNumber\":", stdout);
   emit_integer(bnf_get_no(bnf));
   fputs(",\"invariantFactorsSourceOrder\":", stdout);

@@ -133,6 +133,7 @@ function generate() {
     "    for i in range(9):",
     "        terminal_index_ideals[i] = factor_selected_tau[9 * index_row + i]",
     "    terminal_index_ranks[0] = 2",
+    "    diagnostic_stage_switch(5)",
     `    status = ${TERMINAL}(`,
   );
   for (const [name] of terminal)
@@ -141,6 +142,7 @@ function generate() {
     "    )",
     "    if status != 0:",
     "        return 200 + status",
+    "    diagnostic_stage_switch(6)",
     "    return 0",
     "",
     "",

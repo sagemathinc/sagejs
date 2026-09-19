@@ -227,6 +227,8 @@ function prepareInvocation(resident) {
 
 function projection(invocation) {
   const input = invocation.input;
+  const classRank = Number(input.smith_state[1]);
+  const factorCount = Number(input.class_state[1]);
   const result = Object.freeze({
     schema: "sagejs.pari-class-group/row6-phase6-resident-terminal-projection-v1",
     residentState: Object.freeze(Array.from(input.resident_state, Number)),
@@ -252,8 +254,10 @@ function projection(invocation) {
     unitFactorState: Object.freeze(Array.from(input.unit_factor_state, Number)),
     unitC6State: Object.freeze(Array.from(input.unit_c6_state, Number)),
     unitState: Object.freeze(Array.from(input.unit_state, Number)),
-    classActiveRows: Object.freeze(Array.from(input.class_active_rows, Number)),
-    classFactorMap: Object.freeze(values(input.class_factor_map).map(String)),
+    classActiveRows: Object.freeze(
+      Array.from(input.class_active_rows, Number).slice(0, classRank)),
+    classFactorMap: Object.freeze(
+      values(input.class_factor_map).slice(0, classRank * factorCount).map(String)),
     classState: Object.freeze(Array.from(input.class_state, Number)),
   });
   assert.deepEqual(result.residentState,
@@ -285,7 +289,7 @@ function projection(invocation) {
   assert.equal(result.classFactorMap[1092], "1");
   assert.equal(result.classFactorMap[1130 + 1094], "1");
   assert.deepEqual(result.classState,
-    [0, 1130, 0, 1137, 7116, 7819, 5, 1092, 1094, 3, 4, 2]);
+    [0, 1130, 0, 1137, 7116, 7819, 5, 1092, 1094, 3, 7, 2]);
   return result;
 }
 

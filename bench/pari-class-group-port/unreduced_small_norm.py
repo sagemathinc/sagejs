@@ -220,8 +220,15 @@ def pari_collect_unreduced_ideals(
     if outer_mode == 1:
         if len(schedule) < 4 or schedule[1] != 0 or schedule[2] != 0:
             raise ValueError("connected outer collector schedule is not fresh")
+        # `relation` is a policy-capacity owner at the prepared-only boundary;
+        # the live PARI KC is the authenticated factor-base/minidx view length.
+        # Using the owner capacity here accidentally promoted a 1,130-row live
+        # problem to the 2,048-row policy ceiling.
+        kc = len(outer_minidx)
+        if kc < 1 or len(relation) < kc:
+            raise ValueError("invalid live connected outer factor count")
         outcome = pari_start_connected_outer(
-            len(relation),
+            kc,
             outer_ru,
             outer_state,
             search_ideals,

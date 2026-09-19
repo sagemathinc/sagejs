@@ -12,6 +12,10 @@ const { lowerSource } = require("../ir.cjs");
 const { removeLoadedNativeCache } = require("../../../test/helpers/native-cache-cleanup.cjs");
 
 const sourcePath = resolve(__dirname, "diagnostic_stage_clock_witness.py");
+const markerFilterSourcePath = resolve(
+  __dirname,
+  "diagnostic_stage_clock_marker_filter_witness.py",
+);
 const stages = Object.freeze([
   "unattributed-remainder",
   "relation-retry",
@@ -100,6 +104,47 @@ test("diagnostic native stage clock is explicit, repeated, and transactional", a
     const recovered = fn.diagnosticStageTrace();
     assert.equal(recovered.failed, false);
     assert.equal(recovered.clockFailed, false);
+  } finally {
+    removeLoadedNativeCache(directory);
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("diagnostic stage markers can be limited to selected reachable functions", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-stage-marker-filter-"));
+  const filtered = Object.freeze({
+    function: "diagnostic_stage_clock_marker_filter_witness",
+    markerFunctions: Object.freeze([
+      "diagnostic_stage_clock_marker_filter_witness",
+    ]),
+    stages: Object.freeze(["initial", "root", "helper"]),
+    maximumVisits: 4,
+  });
+  try {
+    const built = await compileKernel({
+      sourcePath: markerFilterSourcePath,
+      cacheRoot: join(directory, "cache"),
+      diagnosticStageClock: filtered,
+    });
+    const fn = require(built.modulePath)
+      .diagnostic_stage_clock_marker_filter_witness;
+    assert.equal(fn.gmp(41n), 42n);
+    const trace = fn.diagnosticStageTrace();
+    assert.deepEqual(trace.visits.map(visit => visit.stage), ["initial", "root"]);
+    assert.equal(trace.totalsNanoseconds.helper, 0n);
+    assert.equal(conserved(trace), trace.rootNanoseconds);
+
+    await assert.rejects(
+      () => compileKernel({
+        sourcePath: markerFilterSourcePath,
+        cacheRoot: join(directory, "invalid-cache"),
+        diagnosticStageClock: {
+          ...filtered,
+          markerFunctions: ["not_reachable"],
+        },
+      }),
+      /marker function not_reachable is not reachable/,
+    );
   } finally {
     removeLoadedNativeCache(directory);
     rmSync(directory, { recursive: true, force: true });

@@ -2476,8 +2476,11 @@ function emitExactInternalFunction(fn, functions, options = {}) {
     cleanup.unshift(privateBuffers.emission.beforePublish);
   }
   context.functions = functions;
-  context.diagnosticStageClock = options.diagnosticStageClock !== null &&
-    options.diagnosticStageClock !== undefined;
+  const diagnostic = options.diagnosticStageClock;
+  context.diagnosticStageClock = diagnostic !== null &&
+    diagnostic !== undefined &&
+    (diagnostic.markerFunctions === undefined ||
+      diagnostic.markerFunctions.includes(fn.name));
   return `${internalSignature(fn)}
 {
 ${declarations.join("\n")}

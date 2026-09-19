@@ -5,6 +5,7 @@ from sagejs.native import (
     Int64Buffer,
     IntegerBuffer,
     NativeWorkspaceArena,
+    diagnostic_stage_switch,
     integer_buffer_view,
     native,
     uint64,
@@ -316,6 +317,7 @@ def pari_row6_phase6_gate_prefix_root(
     gate_final_c: IntegerBuffer,
 ) -> int:
     """Run the authenticated prefix, relation pass, logs and first HNF."""
+    diagnostic_stage_switch(0)
     count = pari_row6_prepared_factor_base_root(
         factor_polynomial,
         factor_discriminant,
@@ -467,9 +469,6 @@ def pari_row6_phase6_gate_prefix_root(
             uint64(relation_target), 64
         )
         gate_ancestry_work = gate_workspace.integer_buffer(uint64(relation_target), 64)
-        gate_ancestry_trailing_work = gate_workspace.integer_buffer(
-            uint64(16 * factor_count), 32
-        )
         for i in range(19):
             gate_outer_state[i] = 0
         gate_outer_state[0] = relation_target - initial_count
@@ -493,6 +492,7 @@ def pari_row6_phase6_gate_prefix_root(
                 3 * descriptor + 2
             ]
             gate_outer_perm[i] = factor_permutation[i]
+        diagnostic_stage_switch(1)
         status = pari_collect_and_log_relations(
             gate_matrix,
             gate_ideal,
@@ -565,14 +565,16 @@ def pari_row6_phase6_gate_prefix_root(
             gate_extra_count,
             integer_buffer_view(factor_relation_primes, 0, factor_count),
             integer_buffer_view(factor_ramification, 0, factor_count),
-            initial_relation,
+            integer_buffer_view(initial_relation, 0, factor_count),
             initial_relation_state,
-            initial_relation_basis,
-            initial_relation_records,
-            initial_relation_hashes,
-            initial_relation_metadata,
-            initial_relation_scratch,
-            initial_relation_generators,
+            integer_buffer_view(initial_relation_basis, 0, factor_count * factor_count),
+            integer_buffer_view(
+                initial_relation_records, 0, relation_capacity * factor_count
+            ),
+            integer_buffer_view(initial_relation_hashes, 0, relation_capacity),
+            integer_buffer_view(initial_relation_metadata, 0, relation_capacity * 3),
+            integer_buffer_view(initial_relation_scratch, 0, factor_count),
+            integer_buffer_view(initial_relation_generators, 0, relation_capacity * 3),
             gate_progress,
             gate_preparation_rounded_embedding,
             gate_preparation_embedding,
@@ -622,7 +624,7 @@ def pari_row6_phase6_gate_prefix_root(
             gate_preparation_state,
             integer_buffer_view(factor_permutation, 0, factor_count),
             factor_count,
-            gate_packet_ids,
+            integer_buffer_view(gate_packet_ids, 0, factor_count),
             integer_buffer_view(factor_packet_ideals, 0, factor_count * 9),
             integer_buffer_view(factor_packet_norms, 0, factor_count),
             gate_schedule,
@@ -752,6 +754,7 @@ def pari_row6_phase6_gate_prefix_root(
             gate_initial_hnf_original[i] = int(initial_relation_records[i])
         for i in range(factor_count):
             gate_initial_hnf_perm[i] = int(factor_permutation[i])
+        diagnostic_stage_switch(2)
         status = pari_hnfspec_complete(
             gate_initial_hnf_original,
             factor_count,
@@ -808,12 +811,21 @@ def pari_row6_phase6_gate_prefix_root(
         initial_reverse_lig = int(gate_initial_hnf_assembly_state[0]) + int(
             gate_initial_hnf_assembly_state[1]
         )
+        initial_reverse_tail = int(gate_initial_hnf_assembly_state[4])
         if append_lig_ceiling < 1 or append_lig_ceiling > 16:
             return 49
-        if initial_reverse_lig < 1 or initial_reverse_lig > 16:
+        if initial_reverse_lig < 1 or initial_reverse_lig > factor_count:
+            return 50
+        if initial_reverse_tail < 0 or initial_reverse_tail > factor_count:
             return 50
         if int(gate_initial_hnf_state[0]) < 1 or int(gate_initial_hnf_state[0]) > 16:
             return 51
+        ancestry_trailing_length = initial_reverse_lig * initial_reverse_tail
+        if ancestry_trailing_length < 16 * factor_count:
+            ancestry_trailing_length = 16 * factor_count
+        gate_ancestry_trailing_work = gate_workspace.integer_buffer(
+            uint64(ancestry_trailing_length), 32
+        )
         append_width_ceiling = 24
         gate_append_top = gate_workspace.integer_buffer(
             uint64(append_lig_ceiling * 8), 16
@@ -922,6 +934,7 @@ def pari_row6_phase6_gate_prefix_root(
         initial_relation_state[4] = initial_columns
         squash = 0
         checkpoint = 0
+        diagnostic_stage_switch(3)
         for pass_index in range(13):
             if checkpoint == 0:
                 current_h_rows = int(gate_initial_hnf_state[0])
@@ -1024,14 +1037,22 @@ def pari_row6_phase6_gate_prefix_root(
                 gate_extra_count,
                 integer_buffer_view(factor_relation_primes, 0, factor_count),
                 integer_buffer_view(factor_ramification, 0, factor_count),
-                initial_relation,
+                integer_buffer_view(initial_relation, 0, factor_count),
                 initial_relation_state,
-                initial_relation_basis,
-                initial_relation_records,
-                initial_relation_hashes,
-                initial_relation_metadata,
-                initial_relation_scratch,
-                initial_relation_generators,
+                integer_buffer_view(
+                    initial_relation_basis, 0, factor_count * factor_count
+                ),
+                integer_buffer_view(
+                    initial_relation_records, 0, relation_capacity * factor_count
+                ),
+                integer_buffer_view(initial_relation_hashes, 0, relation_capacity),
+                integer_buffer_view(
+                    initial_relation_metadata, 0, relation_capacity * 3
+                ),
+                integer_buffer_view(initial_relation_scratch, 0, factor_count),
+                integer_buffer_view(
+                    initial_relation_generators, 0, relation_capacity * 3
+                ),
                 gate_progress,
                 gate_preparation_rounded_embedding,
                 gate_preparation_embedding,
@@ -1081,7 +1102,7 @@ def pari_row6_phase6_gate_prefix_root(
                 gate_preparation_state,
                 integer_buffer_view(factor_permutation, 0, factor_count),
                 int(gate_next_control[0]),
-                gate_packet_ids,
+                integer_buffer_view(gate_packet_ids, 0, factor_count),
                 integer_buffer_view(factor_packet_ideals, 0, factor_count * 9),
                 integer_buffer_view(factor_packet_norms, 0, factor_count),
                 gate_schedule,
@@ -1271,6 +1292,7 @@ def pari_row6_phase6_gate_prefix_root(
                 if gate_append2_state[0] + gate_append2_state[2] < factor_count:
                     return 119
                 break
+        diagnostic_stage_switch(4)
         status = pari_row6_phase6_gate_ancestry_private(
             initial_relation_records,
             gate_log_embeddings,

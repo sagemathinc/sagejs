@@ -86,7 +86,7 @@ async function main() {
   assert.deepEqual(result.terminalProjection.unitState,
     [0, 0, 0, 2, 0, 7, 2, 192]);
   assert.deepEqual(result.terminalProjection.classState,
-    [0, 1130, 0, 1137, 7116, 7819, 5, 1092, 1094, 3, 4, 2]);
+    [0, 1130, 0, 1137, 7116, 7819, 5, 1092, 1094, 3, 7, 2]);
   assert.throws(() => host.run(resident), /fresh (?:publication|state) owner/);
 
   const changed = structuredClone(payload.prepared);

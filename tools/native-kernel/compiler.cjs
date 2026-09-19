@@ -892,7 +892,9 @@ function normalizeDiagnosticStageClock(value, ir) {
   if (typeof value !== "object" || Array.isArray(value)) {
     throw new TypeError("diagnosticStageClock must be an object");
   }
-  const allowed = new Set(["function", "stages", "maximumVisits"]);
+  const allowed = new Set([
+    "function", "markerFunctions", "stages", "maximumVisits",
+  ]);
   for (const key of Object.keys(value)) {
     if (!allowed.has(key)) {
       throw new TypeError(`unknown diagnosticStageClock option ${key}`);
@@ -937,9 +939,29 @@ function normalizeDiagnosticStageClock(value, ir) {
       pending.push(callee);
     }
   }
+  let markerFunctions = null;
+  if (value.markerFunctions !== undefined) {
+    if (!Array.isArray(value.markerFunctions) || value.markerFunctions.length < 1 ||
+        value.markerFunctions.some(name => typeof name !== "string" ||
+          !/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) ||
+        new Set(value.markerFunctions).size !== value.markerFunctions.length) {
+      throw new TypeError(
+        "diagnosticStageClock.markerFunctions must contain unique function names",
+      );
+    }
+    for (const name of value.markerFunctions) {
+      if (!reachable.has(name)) {
+        throw new TypeError(
+          `diagnosticStageClock marker function ${name} is not reachable`,
+        );
+      }
+    }
+    markerFunctions = new Set(value.markerFunctions);
+  }
   let markerCount = 0;
   for (const candidate of ir.functions) {
     if (!reachable.has(candidate.name)) continue;
+    if (markerFunctions !== null && !markerFunctions.has(candidate.name)) continue;
     const constants = new Map();
     const markers = [];
     const walk = (node) => {
@@ -972,6 +994,9 @@ function normalizeDiagnosticStageClock(value, ir) {
   }
   return Object.freeze({
     function: value.function,
+    ...(markerFunctions === null ? {} : {
+      markerFunctions: Object.freeze([...value.markerFunctions]),
+    }),
     stages: Object.freeze([...value.stages]),
     maximumVisits,
   });
