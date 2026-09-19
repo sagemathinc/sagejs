@@ -383,6 +383,7 @@ function backendFingerprint() {
       readFileSync(join(__dirname, "fmpz-backend.cjs")),
       readFileSync(join(__dirname, "core-abi.cjs")),
       readFileSync(join(__dirname, "exact-runtime.cjs")),
+      readFileSync(join(__dirname, "gmp-checkpoint-allocator.cjs")),
       readFileSync(join(__dirname, "fmpz-runtime.cjs")),
       readFileSync(join(__dirname, "c-backend.cjs")),
       readFileSync(join(__dirname, "js-backend.cjs")),
