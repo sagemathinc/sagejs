@@ -21,8 +21,8 @@ from sagejs.native import (
 from .integer_real_product import pari_integer_real_product
 from .integer_real_sum import pari_integer_real_sum
 from .short_product import pari_signed_real_sum
-from .short_product_bounded import (
-    pari_bounded_signed_real_sum,
+from .bounded_real_sum_core import (
+    _pari_bounded_signed_real_sum_trusted,
     pari_bounded_word_integer_real_product,
 )
 
@@ -181,12 +181,14 @@ def _pari_log_entry_sum_bounded_zero_exact(
     if arp == -1:
         ar, arp, are = br, brp, bre
     elif brp != -1:
-        ar, arp, are = pari_bounded_signed_real_sum(ar, arp, are, br, brp, bre)
+        ar, arp, are = _pari_bounded_signed_real_sum_trusted(ar, arp, are, br, brp, bre)
     if ak == 2 and bk == 2:
         if aip == -1:
             ai, aip, aie = bi, bip, bie
         elif bip != -1:
-            ai, aip, aie = pari_bounded_signed_real_sum(ai, aip, aie, bi, bip, bie)
+            ai, aip, aie = _pari_bounded_signed_real_sum_trusted(
+                ai, aip, aie, bi, bip, bie
+            )
         if aip == -1:
             return (
                 checked_int64(1),

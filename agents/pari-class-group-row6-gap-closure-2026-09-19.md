@@ -9,13 +9,13 @@ x^3 - 2000000000010*x + 2000000000018
 ```
 
 the final GMP-only Sage.js artifact computes the complete class-and-unit result
-in a median **13,147.617800 ms** over five fresh-process executions. The frozen
+in a median **13,046.130473 ms** over five fresh-process executions. The frozen
 pristine PARI 2.17.4 control is **3,886.499614 ms**, so the remaining complete
-prepared-field gap is **3.3829x**.
+prepared-field gap is **3.3568x**.
 
 The campaign began from the qualified Sage.js artifact at **62,904.424963 ms**,
-or **16.185x** PARI. The retained implementation is therefore **4.7845x** faster
-than that artifact and removes **79.10%** of its wall time. It does not yet
+or **16.185x** PARI. The retained implementation is therefore **4.8217x** faster
+than that artifact and removes **79.26%** of its wall time. It does not yet
 claim parity with PARI.
 
 All five final executions reproduced the class number `4`, invariant factors
@@ -37,29 +37,29 @@ compiler validation changes. The five fresh-process times, in ascending order,
 were:
 
 ```text
-13,140.832791 ms
-13,144.852351 ms
-13,147.617800 ms
-13,172.495726 ms
-13,189.241693 ms
+12,990.641916 ms
+13,033.042756 ms
+13,046.130473 ms
+13,055.012792 ms
+13,115.294507 ms
 ```
 
 The matched ratios are:
 
 | reference | time | Sage.js/reference |
 | --- | ---: | ---: |
-| pristine PARI 2.17.4 | 3,886.499614 ms | 3.3829x |
-| instrumented PARI 2.17.4 | 3,900.733214 ms | 3.3706x |
-| original Sage.js artifact | 62,904.424963 ms | 0.2090x (4.7845x speedup) |
+| pristine PARI 2.17.4 | 3,886.499614 ms | 3.3568x |
+| instrumented PARI 2.17.4 | 3,900.733214 ms | 3.3440x |
+| original Sage.js artifact | 62,904.424963 ms | 0.2074x (4.8217x speedup) |
 
 The final non-diagnostic artifact is content-addressed by cache key
-`33755208adec3bcc745b03af59ece98753a447f29bf31b3014bedb82f3d621c7`:
+`658f694a38ad3c7caf8c8652ec953a05431733d82aca6b7ea32fca9896464074`:
 
 | artifact | bytes | SHA-256 |
 | --- | ---: | --- |
-| generated core C | 28,997,845 | `057f8171b9b99ce01a942d9989073179e107fdbefd0637a729af65fce12a0946` |
-| manifest | 86,968,258 | `3abf2db6c8e02e9803be4ae3b3cdd6cb61fecd78a3d2ab6e1173068544a70afd` |
-| native addon | 2,902,824 | `576822ab02d561dc4a9e0e4b95a77097d2f42bd1fb00a4455433bf57fce53d66` |
+| generated core C | 28,962,264 | `6a14ce1f9954e1aebf3d0c526703321375171af9d9654324a127f8190374e8ac` |
+| manifest | 86,774,166 | `131ab9171b37b61f25776520428b9ebd74c48826b8adba0f88a5a134866e5c86` |
+| native addon | 2,923,336 | `f21c042bb99bab9f3181e69f60afefc2be72aeb6fe1d95a6d6420b8cd773fba8` |
 
 The generated whole-root source SHA-256 is
 `0439de6bd39a198323753c25790211b17f102473f6bde07cb737a075d6d2355c`.
@@ -83,12 +83,16 @@ machine facts that its C implementation relies on:
 - checked public real arithmetic delegates to private trusted helpers only
   after shape, precision, ownership, and normalization facts are established.
 
-The final two retained micro-optimizations split checked bounded-real products
-and sums from their private trusted cores. The trusted product saved repeated
+The retained micro-optimizations split checked bounded-real products and sums
+from their private trusted cores. The trusted product saved repeated
 normalization checks in matrix norms. The trusted signed sum removed repeated
 large-integer `bit_length()` validation from internally produced normalized
 values, and forcing only that private helper inline avoided its generated
-status/output ABI.
+status/output ABI. A follow-up isolated these scalar cores from the
+buffer-heavy short-product module, allowing the log-matrix transform to call
+the already-proved signed-sum core without expanding an unrelated
+representation graph. That change removed another **101.487327 ms** from the
+five-run median (**0.77%**) while reducing generated core C by 35,581 bytes.
 
 This supports the central language experiment: readable, CPython-parseable
 Python can express the relevant number-theoretic kernel without an inherent
@@ -120,7 +124,15 @@ timing result. Deeper probes found:
 - candidate admission dominated enumeration; numerical norm construction was
   the largest measured subregion of prepared `factorgen`.
 
-The next credible route from 3.38x to parity is therefore targeted rather than
+A fresh follow-up profile localized candidate work further: enumeration took
+about 0.893 s and admission 2.481 s. Within admission, numerical norm work took
+about 1.668 s and factor/division work 0.794 s. The numerical component split
+into about 1.189 s for the cubic matrix norm, 0.306 s for ideal division, and
+0.138 s for final rounding. Within the norm, embedding rows accounted for
+about 0.975 s and real products about 0.258 s. Diagnostic stage-clock overhead
+and boundaries mean these are attribution measurements, not qualified timing.
+
+The next credible route from 3.36x to parity is therefore targeted rather than
 architectural: reduce Euclidean/HNF packed-buffer traffic, specialize the
 bounded numerical norm/admission cone without growing code, and then reduce
 the remaining reverse-ancestry transformation traffic. The campaign gives a
@@ -139,7 +151,12 @@ medians regressed or failed to beat the retained artifact:
 - forced inlining of the entire bounded numerical cone, the fused norm, the
   short product, or the embedding row;
 - carrying more `int64` controls through the factorgen ABI;
-- hoisting signed-coordinate width validation from embedding products.
+- hoisting signed-coordinate width validation from embedding products;
+- caching HNF pivot rows in otherwise unused `lam` diagonal cells;
+- selectively forcing only HNF normalization inline;
+- selectively forcing the isolated word-real product inline;
+- bypassing the checked word-real product at the log-transform boundary;
+- direct packed range updates for the sparse HNF `A` row and `lam` scalar.
 
 This is important negative evidence: broad inlining and larger fused regions
 increase code size and instruction-cache pressure. The winning compiler policy
@@ -161,4 +178,3 @@ is selective proof propagation plus narrowly chosen private inlining.
 file `test/pari-class-group-generic-pari-prepared-adapter.cjs` lacks its
 required co-located `sagejs-test-tier` declaration. This is a pre-existing
 repository metadata blocker, not a failure in the row-6 changes.
-
