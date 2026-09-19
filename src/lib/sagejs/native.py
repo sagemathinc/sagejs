@@ -61,6 +61,11 @@ UInt64Buffer = list[int]
 IntegerBuffer = list[int]
 Int64Buffer = list[int]
 Float64Buffer = list[float]
+# Borrowed, read-only field-element arrays for legacy field kernels. Values
+# remain ordinary lists in dynamic execution; the native boundary checks every
+# element's field and precision before constructing a temporary pointer view.
+RealNumberBuffer = list[Any]
+ComplexNumberBuffer = list[Any]
 # Legacy annotation-only witness for an opaque dense matrix over ``GF(p)``.
 # Production kernels instead use UInt64Buffer plus PrimeFieldModulus so their
 # public ABI is independent of a host matrix object.
@@ -82,6 +87,23 @@ def checked_uint64(value: int) -> uint64:
     if exact < 0 or exact >= (1 << 64):
         raise OverflowError("integer is outside unsigned 64-bit")
     return exact
+
+
+def checked_float64(value: int) -> float:
+    """Return an exactly represented binary64 integer.
+
+    This is the explicit bridge from exact arithmetic into an approximate
+    scheduling sidecar.  The dynamic fallback and compiled program both raise
+    `OverflowError` unless `abs(value) <= 2^53`, the consecutive-integer range
+    in which IEEE-754 binary64 represents every integer exactly.
+
+    The result is suitable for heuristics and scheduling.  It must not replace
+    exact state used to authenticate a mathematical result.
+    """
+    exact = int(value)
+    if abs(exact) > (1 << 53):
+        raise OverflowError("integer is outside exact binary64 range")
+    return float(exact)
 
 
 class _NativeExactBudget:
@@ -1349,6 +1371,44 @@ def int64_record(
     return Int64Record(buffer, start, length)
 
 
+class _IntegerBufferView:
+    """A non-resizing borrowed exact span retaining its backing owner."""
+
+    def __init__(self, buffer: Any, start: int, length: int) -> None:
+        if start < 0 or length < 0 or start > len(buffer) - length:
+            raise IndexError("IntegerBuffer view is outside its buffer")
+        self._buffer = buffer
+        self._start = start
+        self._length = length
+
+    def __len__(self) -> int:
+        return self._length
+
+    def __getitem__(self, index: int) -> int:
+        if index < 0:
+            index += self._length
+        if index < 0 or index >= self._length:
+            raise IndexError("IntegerBuffer index out of range")
+        return self._buffer[self._start + index]
+
+    def __setitem__(self, index: int, value: int) -> None:
+        if index < 0:
+            index += self._length
+        if index < 0 or index >= self._length:
+            raise IndexError("IntegerBuffer index out of range")
+        self._buffer[self._start + index] = int(value)
+
+
+def integer_buffer_view(buffer: IntegerBuffer, start: int, length: int) -> Any:
+    """Borrow a bounded, mutable exact span without copying or resizing.
+
+    Nonnegative bounds must fit the owner. Nested views alias storage and may
+    pass to `IntegerBuffer` helpers, but cannot escape native kernel results.
+    Do not resize the owner while borrowed.
+    """
+    return _IntegerBufferView(buffer, start, length)
+
+
 def integer_buffer(source: Any) -> IntegerBuffer:
     """Copy an iterable into an arbitrary-precision exact buffer fallback."""
     return [int(value) for value in source]
@@ -1708,12 +1768,14 @@ __all__ = [
     "RationalBuffer",
     "UInt64Buffer",
     "uint64",
+    "checked_float64",
     "checked_uint64",
     "float64_buffer",
     "float64_record",
     "float64_zeros",
     "int64_buffer",
     "int64_record",
+    "integer_buffer_view",
     "int64_zeros",
     "integer_buffer",
     "integer_buffer_values",

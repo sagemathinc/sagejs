@@ -61,7 +61,7 @@ static void *thread_witness(void *argument)
     sagejs_native_gmp_checkpoint checkpoint = {0};
     mpz_t value;
     const unsigned long seed = (unsigned long) (uintptr_t) argument;
-    assert(sagejs_native_gmp_checkpoint_begin(&checkpoint, 1U << 20));
+    assert(sagejs_native_gmp_checkpoint_begin(&checkpoint, 1U << 20, 1));
     mpz_init2(value, 8192);
     assert(sagejs_native_gmp_pointer_is_checkpoint_owned(mpz_limbs_read(value)));
     mpz_set_ui(value, seed + 1);
@@ -73,6 +73,122 @@ static void *thread_witness(void *argument)
     assert(checkpoint.high_water > 0);
     assert(sagejs_native_gmp_checkpoint_end(&checkpoint));
     return NULL;
+}
+
+static void reuse_witness(void)
+{
+    sagejs_native_gmp_checkpoint owner = {0}, child = {0};
+    size_t alignment = SAGEJS_NATIVE_ALIGNOF(max_align_t);
+    assert(sagejs_native_gmp_checkpoint_begin(&owner, 1U << 20, 0));
+    /* All payload sizes around every physical class, including zero and the
+       non-binned boundary. Reuse never touches a live neighbor. */
+    for (size_t size = 0; size <= 520; ++size)
+    {
+        unsigned char *p = sagejs_native_gmp_malloc(size);
+        unsigned char *neighbor = sagejs_native_gmp_malloc(19);
+        sagejs_native_gmp_arena_header *h = ((sagejs_native_gmp_arena_header *) p) - 1;
+        const size_t span = h->value.span;
+        const size_t used = owner.used, high = owner.high_water;
+        const uint64_t allocations = owner.allocation_calls;
+        const uint64_t requested = owner.requested_bytes;
+        assert((uintptr_t) p % alignment == 0);
+        memset(neighbor, 0x5a, 19);
+        sagejs_native_gmp_free(p, size);
+        unsigned char *q = sagejs_native_gmp_malloc(size);
+        if (span <= SAGEJS_NATIVE_GMP_SMALL_SPAN_LIMIT)
+        {
+            assert(q == p && owner.used == used && owner.high_water == high);
+        }
+        else
+            assert(q != p && owner.used > used);
+        assert(owner.allocation_calls == allocations + 1);
+        assert(owner.requested_bytes == requested + size);
+        for (size_t j = 0; j < 19; ++j) assert(neighbor[j] == 0x5a);
+        sagejs_native_gmp_free(q, size);
+        sagejs_native_gmp_free(neighbor, 19);
+    }
+    /* Shrink/regrow a non-last block without moving or rewinding the bump. */
+    unsigned char *p = sagejs_native_gmp_malloc(100);
+    unsigned char *blocker = sagejs_native_gmp_malloc(7);
+    memset(p, 0x36, 100);
+    const size_t used = owner.used;
+    assert(sagejs_native_gmp_realloc(p, 100, 1) == p && owner.used == used);
+    unsigned char *temporary_neighbor = sagejs_native_gmp_malloc(19);
+    sagejs_native_gmp_free(temporary_neighbor, 19);
+    const size_t after_neighbor = owner.used;
+    assert(sagejs_native_gmp_realloc(p, 1, 100) == p && owner.used == after_neighbor);
+    assert(p[0] == 0x36);
+    /* Parent ownership is retained even when another checkpoint is active. */
+    assert(sagejs_native_gmp_checkpoint_begin(&child, 4096, 0));
+    unsigned char *local = sagejs_native_gmp_malloc(100);
+    const uint64_t frees = owner.free_calls;
+    unsigned char *grown = sagejs_native_gmp_realloc(p, 100, 200);
+    assert(grown != p && sagejs_native_gmp_owner(grown) == &owner);
+    assert(grown[0] == 0x36 && owner.free_calls == frees);
+    unsigned char *reused = sagejs_native_gmp_checkpoint_allocate(&owner, 100);
+    assert(reused == p);
+    sagejs_native_gmp_free(reused, 100);
+    assert(owner.free_calls == frees + 1);
+    assert(sagejs_native_gmp_checkpoint_allocate(&owner, 100) == p);
+    sagejs_native_gmp_free(local, 100);
+    assert(sagejs_native_gmp_malloc(100) == local);
+    assert(sagejs_native_gmp_checkpoint_end(&child));
+    assert(grown[0] == 0x36);
+    sagejs_native_gmp_free(p, 100);
+    sagejs_native_gmp_free(grown, 200);
+    sagejs_native_gmp_free(blocker, 7);
+    assert(sagejs_native_gmp_checkpoint_allocate(&owner, SIZE_MAX) == NULL);
+    assert(sagejs_native_gmp_checkpoint_allocate(&owner,
+        SIZE_MAX - sizeof(sagejs_native_gmp_arena_header) + 1) == NULL);
+    assert(sagejs_native_gmp_checkpoint_end(&owner));
+    for (size_t i = 0; i < SAGEJS_NATIVE_GMP_SMALL_BIN_COUNT; ++i)
+        assert(owner.small_bins[i] == NULL);
+
+    /* Moving fallback copies before making the old arena span reusable. */
+    assert(sagejs_native_gmp_checkpoint_begin(&owner, 256, 0));
+    p = sagejs_native_gmp_malloc(16);
+    memset(p, 0x73, 16);
+    blocker = sagejs_native_gmp_malloc(16);
+    const uint64_t fallback_frees = owner.free_calls;
+    grown = sagejs_native_gmp_realloc(p, 16, 4096);
+    assert(!sagejs_native_gmp_pointer_is_checkpoint_owned(grown));
+    for (size_t i = 0; i < 16; ++i) assert(grown[i] == 0x73);
+    assert(owner.upstream_allocations == 1 && owner.free_calls == fallback_frees);
+    assert(sagejs_native_gmp_malloc(16) == p);
+    assert(owner.upstream_allocations == 1); /* exhaustion remains sticky */
+    sagejs_native_gmp_free(grown, 4096);
+    sagejs_native_gmp_free(p, 16);
+    sagejs_native_gmp_free(blocker, 16);
+    assert(sagejs_native_gmp_checkpoint_end(&owner));
+
+    /* Repeated tiny lifetime cycles have bounded physical high water. */
+    assert(sagejs_native_gmp_checkpoint_begin(&owner, 128, 0));
+    p = sagejs_native_gmp_malloc(0);
+    const size_t one_span = owner.used;
+    assert(sagejs_native_gmp_realloc(p, 0, 0) == p);
+    sagejs_native_gmp_free(p, 0);
+    for (size_t i = 0; i < 10000; ++i)
+    {
+        assert(sagejs_native_gmp_malloc(0) == p);
+        sagejs_native_gmp_free(p, 0);
+    }
+    assert(owner.used == one_span && owner.high_water == one_span);
+    assert(owner.upstream_allocations == 0 && owner.soft_limit_exhaustions == 0);
+    assert(sagejs_native_gmp_checkpoint_end(&owner));
+
+    assert(sagejs_native_gmp_checkpoint_begin(&owner, 1, 1));
+    p = sagejs_native_gmp_malloc(16);
+    assert(owner.soft_limit_exhaustions == 1);
+    sagejs_native_gmp_free(p, 16);
+    assert(sagejs_native_gmp_malloc(16) == p);
+    assert(owner.soft_limit_exhaustions == 2);
+    assert(sagejs_native_gmp_realloc(p, 16, 0) == p);
+    assert(owner.soft_limit_exhaustions == 2);
+    sagejs_native_gmp_free(p, 0);
+    assert(sagejs_native_gmp_checkpoint_end(&owner));
+    sagejs_native_gmp_checkpoint_stats stats = {0};
+    assert(sagejs_native_gmp_last_checkpoint_stats(&stats));
+    assert(stats.soft_limit_exhaustions == 2);
 }
 
 int main(void)
@@ -94,7 +210,7 @@ int main(void)
     assert(!sagejs_native_gmp_pointer_is_checkpoint_owned(
         mpz_limbs_read(persistent)));
 
-    assert(sagejs_native_gmp_checkpoint_begin(&outer, 1U << 20));
+    assert(sagejs_native_gmp_checkpoint_begin(&outer, 1U << 20, 1));
     mpz_init2(left, 65536);
     mpz_init2(right, 65536);
     assert(sagejs_native_gmp_pointer_is_checkpoint_owned(mpz_limbs_read(left)));
@@ -121,7 +237,7 @@ int main(void)
     assert(!sagejs_native_gmp_pointer_is_checkpoint_owned(mpz_limbs_read(output)));
     assert(sagejs_native_gmp_checkpoint_resume());
 
-    assert(sagejs_native_gmp_checkpoint_begin(&nested, 1U << 16));
+    assert(sagejs_native_gmp_checkpoint_begin(&nested, 1U << 16, 1));
     mpz_init2(nested_value, 4096);
     assert(sagejs_native_gmp_pointer_is_checkpoint_owned(
         mpz_limbs_read(nested_value)));
@@ -153,7 +269,7 @@ int main(void)
     assert(completed.upstream_allocations == 0);
     assert(mpz_sgn(output) != 0);
 
-    assert(sagejs_native_gmp_checkpoint_begin(&tiny, 64));
+    assert(sagejs_native_gmp_checkpoint_begin(&tiny, 64, 1));
     mpz_init2(spill, 4096);
     assert(tiny.soft_limit_exhaustions == 1);
     assert(tiny.upstream_allocations == 0);
@@ -168,21 +284,44 @@ int main(void)
     if (sizeof(size_t) >= 8)
     {
         const size_t large_reservation = (size_t) 64U << 30;
-        assert(sagejs_native_gmp_checkpoint_begin(
-            &virtual_only, large_reservation));
-        assert(virtual_only.reservation_size == large_reservation);
-#if !defined(__wasi__)
-        assert(virtual_only.activated == 0);
-#endif
-        assert(sagejs_native_gmp_checkpoint_end(&virtual_only));
+        /* Test envelope saturation without requiring 64 GiB of address space.
+           The earlier live checkpoint exercises real virtual reservation. */
+        assert(sagejs_native_gmp_reservation_size(
+            large_reservation, large_reservation) == large_reservation);
     }
 
     assert(sagejs_native_gmp_set_retry_shift(3));
-    assert(sagejs_native_gmp_checkpoint_begin(&virtual_only, 1024));
+    assert(sagejs_native_gmp_checkpoint_begin(&virtual_only, 1024, 1));
     assert(virtual_only.capacity == 8192);
     assert(virtual_only.retry_shift == 3);
     assert(sagejs_native_gmp_checkpoint_end(&virtual_only));
+    assert(sagejs_native_gmp_checkpoint_begin(&virtual_only, 1024, 0));
+    assert(virtual_only.capacity == 8192);
+    assert(virtual_only.reservation_size == 8192);
+    assert(virtual_only.retry_shift == 3);
+    assert(sagejs_native_gmp_checkpoint_end(&virtual_only));
     assert(sagejs_native_gmp_set_retry_shift(0));
+
+    /* Nonretryable scopes reserve declared capacity, not a 256x envelope. */
+    assert(sagejs_native_gmp_checkpoint_begin(
+        &virtual_only, (size_t) 128U << 20, 0));
+    assert(virtual_only.capacity == (size_t) 128U << 20);
+    assert(virtual_only.reservation_size == virtual_only.capacity);
+    assert(sagejs_native_gmp_checkpoint_end(&virtual_only));
+    assert(!sagejs_native_gmp_checkpoint_begin(&virtual_only, 1024, -1));
+    assert(!sagejs_native_gmp_checkpoint_begin(&virtual_only, 1024, 2));
+    assert(!virtual_only.open && virtual_only.storage == NULL);
+
+    /* Exact capacity still uses the established safe upstream fallback.
+       Callers must reject the failed region; external writes are not undone. */
+    assert(sagejs_native_gmp_checkpoint_begin(&tiny, 64, 0));
+    mpz_init2(spill, 4096);
+    assert(tiny.upstream_allocations == 1);
+    assert(!sagejs_native_gmp_pointer_is_checkpoint_owned(mpz_limbs_read(spill)));
+    mpz_clear(spill);
+    assert(sagejs_native_gmp_checkpoint_end(&tiny));
+    assert(sagejs_native_gmp_last_checkpoint_stats(&completed));
+    assert(completed.reservation_size == 64 && completed.upstream_allocations == 1);
 
     assert(pthread_create(&first_thread, NULL, thread_witness,
         (void *) (uintptr_t) 11) == 0);
@@ -190,6 +329,7 @@ int main(void)
         (void *) (uintptr_t) 29) == 0);
     assert(pthread_join(first_thread, NULL) == 0);
     assert(pthread_join(second_thread, NULL) == 0);
+    reuse_witness();
 
     mpz_clear(output);
     mpz_clear(persistent);

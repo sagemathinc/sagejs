@@ -366,6 +366,7 @@ function backendFingerprint() {
     [
       readFileSync(__filename),
       readFileSync(join(__dirname, "ir.cjs")),
+      readFileSync(join(__dirname, "native-imports.cjs")),
       readFileSync(join(__dirname, "integer-ir.cjs")),
       readFileSync(join(__dirname, "integer-constants.cjs")),
       readFileSync(join(__dirname, "workspace-bundles.cjs")),
@@ -383,6 +384,7 @@ function backendFingerprint() {
       readFileSync(join(__dirname, "fmpz-backend.cjs")),
       readFileSync(join(__dirname, "core-abi.cjs")),
       readFileSync(join(__dirname, "exact-runtime.cjs")),
+      readFileSync(join(__dirname, "gmp-checkpoint-allocator.cjs")),
       readFileSync(join(__dirname, "fmpz-runtime.cjs")),
       readFileSync(join(__dirname, "c-backend.cjs")),
       readFileSync(join(__dirname, "js-backend.cjs")),

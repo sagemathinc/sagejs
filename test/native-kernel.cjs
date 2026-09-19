@@ -702,14 +702,13 @@ assert.equal(
   ).analysis.backend.kind,
   "gmp",
 );
-await assert.rejects(
-  () =>
-    lowerSource(
+assert.equal(
+  (await lowerSource(
       "def f(field: ComplexField, n: uint64) -> ComplexNumber:\n" +
         "    return field(\"1\", \"0\")\n",
-      "invalid.sage",
-    ),
-  /native function must return a ComplexNumber local/,
+      "return-expression.sage",
+    )).functions[0].body.at(-1).kind,
+  "return",
 );
 await assert.rejects(
   () =>
@@ -2546,7 +2545,7 @@ const { WASI } = require("node:wasi");
   });
   assert.match(
     readFileSync(integerAlgorithms.modulePath, "utf8"),
-    /sagejs_native_backend !== "bigint"/,
+    /const ([$\w]+) = backend_\w+\([^;]*\);\s*if \(\1 !== "bigint"\)/,
   );
   const integerAlgorithmsModule = require(integerAlgorithms.modulePath);
   const integerAlgorithmsAddon = require(integerAlgorithms.addonPath);

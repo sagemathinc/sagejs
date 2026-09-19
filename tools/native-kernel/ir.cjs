@@ -27,7 +27,7 @@ const {
 const { loadRegistry: loadFfiRegistry } = require("../ffi/declarations.cjs");
 const { isBundleClass, prepareWorkspaceBundles } = require("./workspace-bundles.cjs");
 
-const IR_VERSION = 39;
+const IR_VERSION = 44;
 const MAX_SMALL_POWER = 64n;
 const MAX_SAFE_START = BigInt(Number.MAX_SAFE_INTEGER);
 const PARENT_ELEMENT_TYPES = new Map([
@@ -36,6 +36,9 @@ const PARENT_ELEMENT_TYPES = new Map([
 ]);
 const SUPPORTED_ARGUMENT_TYPES = new Set([
   ...PARENT_ELEMENT_TYPES.keys(),
+  ...PARENT_ELEMENT_TYPES.values(),
+  "RealNumberBuffer",
+  "ComplexNumberBuffer",
   "Integer",
   "uint64",
 ]);
@@ -274,6 +277,18 @@ function lowerOperand(node, context, operations) {
 
 function lowerExpression(node, target, context, operations) {
   ensureLocal(context, target);
+  if (nodeType(node) === "AST_ItemAccess" &&
+      nodeType(node.expression) === "AST_SymbolRef" &&
+      context.bufferNames?.has(node.expression.name)) {
+    const literal = integerLiteral(node.property);
+    const index = literal !== undefined ? literal.toString() : node.property.name;
+    expect((literal !== undefined && literal >= 0n && literal <= 18446744073709551615n) ||
+      (nodeType(node.property) === "AST_SymbolRef" && context.scalarTypes.get(index) === "uint64"),
+    "field buffer indexing requires a nonnegative constant or uint64 index");
+    operations.push({kind: elementKind(context, "buffer.get"), target,
+      buffer: node.expression.name, index, constantIndex: literal !== undefined});
+    return;
+  }
 
   if (context.elementType === "Integer") {
     const value = integerLiteral(node);
@@ -394,7 +409,7 @@ function lowerAssignment(statement, context, description) {
   return operations;
 }
 
-function lowerRange(node, iterationName) {
+function lowerRange(node, iterationNames) {
   expect(
     nodeType(node) === "AST_Call" &&
       nodeType(node.expression) === "AST_SymbolRef" &&
@@ -405,9 +420,9 @@ function lowerRange(node, iterationName) {
   if (
     args.length === 1 &&
     nodeType(args[0]) === "AST_SymbolRef" &&
-    args[0].name === iterationName
+    iterationNames.includes(args[0].name)
   ) {
-    return { start: 0, count: iterationName };
+    return { start: 0, count: args[0].name };
   }
 
   const start = args.length === 2 ? integerLiteral(args[0]) : undefined;
@@ -427,12 +442,12 @@ function lowerRange(node, iterationName) {
     start !== undefined &&
       start >= 0n &&
       start <= MAX_SAFE_START &&
-      stopName === iterationName &&
+      iterationNames.includes(stopName) &&
       stopOffset === start,
-    `native two-argument loop must use range(k, ${iterationName} + k) ` +
+    `native two-argument loop must use range(k, ${iterationNames.join(" or ")} + k) ` +
       "with a nonnegative safe integer k",
   );
-  return { start: Number(start), count: iterationName };
+  return { start: Number(start), count: stopName };
 }
 
 function nativeDecorator(fn) {
@@ -518,11 +533,8 @@ function lowerLegacyFunction(fn, decorated = false) {
     elementType = "Integer";
   } else {
     expect(
-      parentParams.length === 1 &&
-        integerParams.length === 0 &&
-        iterationParams.length === 1 &&
-        params.length === 2,
-      "a real or complex native kernel requires one supported field and one uint64 argument",
+      parentParams.length === 1 && integerParams.length === 0,
+      "a real or complex native kernel requires one supported field",
     );
     parent = parentParams[0];
     elementType = PARENT_ELEMENT_TYPES.get(parent.type);
@@ -530,11 +542,17 @@ function lowerLegacyFunction(fn, decorated = false) {
       returnType === elementType,
       `${fn.name.name} with ${parent.type} must return ${elementType}`,
     );
+    expect(params.every((param) => param === parent ||
+      param.type === "uint64" || param.type === elementType ||
+      param.type === elementType + "Buffer"),
+    "prepared field inputs must match the result field type");
   }
-  const iterationName = iterationParams[0].name;
   const context = {
     elementType,
-    localTypes: new Map(),
+    bufferNames: new Set(params.filter((param) => param.type === elementType + "Buffer")
+      .map((param) => param.name)),
+    localTypes: new Map(params.filter((param) => param.type === elementType)
+      .map((param) => [param.name, param.type])),
     nextTemporary: 0,
     paramNames: new Set(params.map((param) => param.name)),
     parentName: parent?.name,
@@ -572,7 +590,7 @@ function lowerLegacyFunction(fn, decorated = false) {
           !context.scalarTypes.has(index),
         `native loop index ${index} conflicts with a value`,
       );
-      const range = lowerRange(statement.object, iterationName);
+      const range = lowerRange(statement.object, iterationParams.map((param) => param.name));
       context.scalarTypes.set(index, "uint64");
       context.scalarCoercions = new Map();
       const loopBody = [];
@@ -595,12 +613,14 @@ function lowerLegacyFunction(fn, decorated = false) {
 
     if (nodeType(statement) === "AST_Return") {
       expect(returned === undefined, "native function has multiple returns");
-      expect(
-        nodeType(statement.value) === "AST_SymbolRef" &&
-          context.localTypes.get(statement.value.name) === elementType,
-        `native function must return a ${elementType} local`,
-      );
-      returned = statement.value.name;
+      if (nodeType(statement.value) === "AST_SymbolRef" &&
+          context.localTypes.get(statement.value.name) === elementType &&
+          !context.paramNames.has(statement.value.name)) {
+        returned = statement.value.name;
+      } else {
+        returned = temporary(context);
+        lowerExpression(statement.value, returned, context, body);
+      }
       body.push({ kind: "return", value: returned });
       continue;
     }
@@ -615,7 +635,8 @@ function lowerLegacyFunction(fn, decorated = false) {
     body[body.length - 1]?.kind === "return",
     "native return must be the final statement",
   );
-  const locals = Array.from(context.localTypes, ([name, type]) => ({
+  const locals = Array.from(context.localTypes).filter(([name]) =>
+    !context.paramNames.has(name)).map(([name, type]) => ({
     name,
     type,
     storage: name === returned ? "return" : "local",
@@ -701,7 +722,7 @@ function supportedModulePreamble(statement) {
     const moduleName = item.module?.name;
     const names = array(item.argnames).map((arg) => arg.name);
     return (
-      moduleName === "math" && names.every((name) => name === "sqrt")
+      !item.level && moduleName === "math" && names.every((name) => ["sqrt", "isqrt", "gcd", "log", "log2", "atan", "exp", "pow", "ldexp", "frexp", "copysign"].includes(name))
     ) || (
       moduleName === "typing" && names.every((name) => name === "Tuple")
     ) || (
@@ -784,7 +805,7 @@ function ffiImports(topLevel, filename) {
   for (const statement of topLevel) {
     if (nodeType(statement) !== "AST_Imports") continue;
     for (const item of array(statement.imports)) {
-      const moduleName = item.key;
+      const moduleName = item.level ? null : item.key;
       if (typeof moduleName !== "string" ||
           !moduleName.startsWith("sagejs.ffi.")) continue;
       const library = registry.byModule.get(moduleName);
@@ -938,9 +959,10 @@ async function lowerSource(source, filename, options = {}) {
     for (const statement of topLevel) {
       if (nodeType(statement) !== "AST_Imports") continue;
       for (const item of array(statement.imports)) {
-        const moduleName = item.key;
+        const moduleName = typeof item.key === "string"
+          ? ".".repeat(item.level || 0) + item.key : item.key;
         if (typeof moduleName !== "string" ||
-            !moduleName.startsWith("sagejs.") ||
+            (!moduleName.startsWith("sagejs.") && !moduleName.startsWith(".")) ||
             moduleName === "sagejs.native" ||
             moduleName.startsWith("sagejs.ffi.") || item.star) continue;
         for (const imported of array(item.argnames)) {
@@ -973,6 +995,24 @@ async function lowerSource(source, filename, options = {}) {
     }
   }
   const integerConstants = moduleIntegerConstants(topLevel, filename);
+  const mathFunctions = new Map();
+  const importCounts = new Map();
+  for (const statement of topLevel) {
+    if (nodeType(statement) !== "AST_Imports") continue;
+    for (const item of array(statement.imports)) {
+      for (const imported of array(item.argnames)) {
+        const local = imported.alias?.name || imported.name;
+        importCounts.set(local, (importCounts.get(local) || 0) + 1);
+      }
+      if (item.level || item.module?.name !== "math") continue;
+      for (const imported of array(item.argnames)) {
+        if (["sqrt", "isqrt", "gcd", "log", "log2", "atan", "exp", "pow", "ldexp", "frexp", "copysign"].includes(imported.name)) mathFunctions.set(imported.alias?.name || imported.name, imported.name);
+      }
+    }
+  }
+  for (const name of mathFunctions.keys()) {
+    expect(importCounts.get(name) === 1, `${filename}: ambiguous math.${mathFunctions.get(name)} import binding ${name}`);
+  }
   const records = nativeRecordSchemas(topLevel, filename);
   const foreignImports = ffiImports(topLevel, filename);
   const foreignFunctions = foreignImports.functions;
@@ -1098,17 +1138,30 @@ async function lowerSource(source, filename, options = {}) {
     );
   }
   function lowerDefinition(fn) {
+    const signature = signatures.get(fn.name.name);
+    // These binary64 operations and typed helper calls may carry exact integer
+    // locals even when the public signature contains only floats. The pure
+    // buffer lowering does not admit native calls; use the mixed typed body.
+    let integerExponentMath = false;
+    // Inspect the original parser AST, before workspace expansion introduces
+    // synthetic structural nodes which deliberately have no parser walker.
+    if (signature !== undefined && isFloat64Signature(signature)) fn.walk({_visit(node, descend) {
+      if (nodeType(node) === "AST_Call" && nodeType(node.expression) === "AST_SymbolRef" &&
+          (["ldexp", "frexp", "copysign"].includes(mathFunctions.get(node.expression.name)) ||
+            signatures.has(node.expression.name))) integerExponentMath = true;
+      if (descend !== undefined) descend();
+    }});
     const expanded = workspaces.lower(fn);
     fn = expanded.fn;
-    const signature = signatures.get(fn.name.name);
     const result = signature === undefined
       ? lowerLegacyFunction(fn, decoratedMode)
-      : isFloat64Signature(signature)
+      : isFloat64Signature(signature) && !integerExponentMath
         ? lowerFloat64Function(
             fn,
             signature,
             filename,
             decoratedMode,
+            { mathFunctions, signatures, integerConstants, foreignFunctions },
           )
         : isPrimeFieldSignature(signature)
         ? isPrimeFieldIntrinsicFunction(fn)
@@ -1137,6 +1190,7 @@ async function lowerSource(source, filename, options = {}) {
             decoratedMode,
             integerConstants,
             foreignImports.canonicalResources,
+            mathFunctions,
           );
     if (expanded.metadata.length) {
       result.workspaceBundles = expanded.metadata;
@@ -1190,14 +1244,32 @@ async function lowerSource(source, filename, options = {}) {
   const importedLibraries = [];
   const nativeSourceDependencies = [];
   const combinedNames = new Set(lowered.map((fn) => fn.name));
+  const importedDefinitions = new Map();
   for (const name of requiredNativeImports) {
     const imported = importedNativeFunctions.get(name);
     for (const fn of imported.ir.functions || []) {
+      const previous = importedDefinitions.get(fn.name);
+      const origins = [
+        {path: imported.sourcePath, sha256: imported.sourceHash},
+        ...(imported.ir.nativeSourceDependencies || []),
+      ].filter(origin => origin.path === fn.provenance?.file);
+      const origin = origins.length && origins.every(item => item.sha256 === origins[0].sha256)
+        ? origins[0] : undefined;
+      // Resolve the defining source, not the immediate import edge: a diamond
+      // may reach one pinned helper through different intermediate modules.
+      if (previous && origin && previous.path === origin.path &&
+          previous.hash === origin.sha256 &&
+          previous.definition === JSON.stringify(fn)) continue;
       expect(
         !combinedNames.has(fn.name),
         `${filename}: imported native function conflicts with ${fn.name}`,
       );
       combinedNames.add(fn.name);
+      importedDefinitions.set(fn.name, {
+        path: origin?.path,
+        hash: origin?.sha256,
+        definition: JSON.stringify(fn),
+      });
       importedLowered.push(fn.kernelKind !== "integer" || fn.lexicallyNative ? fn : {
         ...fn,
         hostCallable: false,

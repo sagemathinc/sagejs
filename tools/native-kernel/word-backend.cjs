@@ -104,6 +104,8 @@ function mayPromote(operation) {
     "integer.from_uint64",
     "integer.neg",
     "integer.abs",
+    "integer.shift",
+    "integer.gcd",
     "integer.pow_uint",
     "integer.divmod",
     "integer.binary",
@@ -290,7 +292,8 @@ function emitWordOperation(operation, context, indent) {
   if (operation.kind === "int64.buffer.length") {
     return `${indent}${target} = (uint64_t) ${value(operation.buffer)}.length;`;
   }
-  if (operation.kind === "int64.record.view") {
+  if (operation.kind === "int64.record.view" || operation.kind === "integer.buffer.view") {
+    const exactView = operation.kind === "integer.buffer.view";
     const buffer = value(operation.buffer);
     const start = value(operation.start);
     const length = value(operation.length);
@@ -301,10 +304,18 @@ function emitWordOperation(operation, context, indent) {
         `(uint64_t) ${buffer}.length - (uint64_t) ${start})`,
       `${indent}{`,
       `${indent}    sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
-        `"Int64Record is outside its buffer");`,
+        `${JSON.stringify(exactView ? "IntegerBuffer view is outside its buffer" : "Int64Record is outside its buffer")});`,
       `${indent}    ${context.failure}`,
       `${indent}}`,
+      ...(exactView ? [
+        `${indent}${target} = ${buffer};`,
+        `${indent}if ((size_t) ${start} != 0) {`,
+        `${indent}    ${target}.sizes += (size_t) ${start};`,
+        `${indent}    ${target}.limbs += (size_t) ${start} * ${buffer}.word_capacity;`,
+        `${indent}}`,
+      ] : [
       `${indent}${target}.data = ${buffer}.data + (size_t) ${start};`,
+      ]),
       `${indent}${target}.length = (size_t) ${length};`,
     ].join("\n");
   }
@@ -417,6 +428,37 @@ function emitWordOperation(operation, context, indent) {
       `${indent}${target} = ${expression};`,
     ].join("\n");
   }
+  if (operation.kind === "integer.bit_length") {
+    const source = value(operation.source);
+    return `${indent}{
+${indent}    uint64_t magnitude = ${source} < 0 ? UINT64_C(0) - (uint64_t)${source} : (uint64_t)${source};
+${indent}    int64_t bits = 0;
+${indent}    while (magnitude) { bits++; magnitude >>= 1; }
+${indent}    ${target} = bits;
+${indent}}`;
+  }
+  if (operation.kind === "integer.shift") return promote();
+  if (operation.kind === "integer.isqrt") {
+    const source = value(operation.source);
+    return [
+      `${indent}if (${source} < 0) {`,
+      `${indent}    sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, "isqrt() argument must be nonnegative");`,
+      `${indent}    ${context.failure}`,
+      `${indent}}`,
+      `${indent}${target} = (int64_t)sagejs_word_isqrt_uint64((uint64_t)${source});`,
+    ].join("\n");
+  }
+  if (operation.kind === "integer.gcd") {
+    const left=value(operation.left),right=value(operation.right);
+    return `${indent}{
+${indent}    uint64_t a = ${left} < 0 ? UINT64_C(0) - (uint64_t)${left} : (uint64_t)${left};
+${indent}    uint64_t b = ${right} < 0 ? UINT64_C(0) - (uint64_t)${right} : (uint64_t)${right};
+${indent}    while (b) { uint64_t r = a % b; a = b; b = r; }
+${indent}    if (a > INT64_MAX)
+${promote()}
+${indent}    ${target} = (int64_t)a;
+${indent}}`;
+  }
   if (operation.kind === "integer.pow_uint") {
     return [
       `${indent}if (!sagejs_word_pow_int64(${value(operation.base)}, ` +
@@ -478,6 +520,7 @@ function emitWordOperation(operation, context, indent) {
   if (operation.kind === "integer.binary") {
     const left = value(operation.left);
     const right = value(operation.right);
+    if (operation.operation === "and") return `${indent}${target} = ${left} & ${right};`;
     const checked = { add: "add", sub: "sub", mul: "mul" }[
       operation.operation
     ];
@@ -601,6 +644,15 @@ function emitWordStatements(statements, context, indent) {
       continue;
     }
     if (statement.kind === "loop.break" || statement.kind === "loop.continue") {
+      if (statement.range) {
+        const {kind} = statement.range;
+        const iterator = context.value(statement.range.iterator);
+        const step = context.value(statement.range.step);
+        const stop = context.value(statement.range.stop);
+        if (kind === "loop.range") {
+          lines.push(`${indent}if (${step} >= ${stop} - ${iterator}) break;`, `${indent}${iterator} += ${step};`);
+        } else lines.push(`${indent}if (!sagejs_word_add_int64(${iterator}, ${step}, &${iterator})) break;`);
+      }
       lines.push(`${indent}${statement.kind.slice(5)};`);
       continue;
     }
@@ -678,7 +730,7 @@ function emitWordStatements(statements, context, indent) {
     }
     if (statement.kind === "raise") {
       lines.push(
-        `${indent}sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ${cString(statement.message)});`,
+        `${indent}sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ${cString(statement.exception === "ValueError" ? `ValueError: ${statement.message}` : statement.message)});`,
         `${indent}${context.failure}`,
       );
       continue;
