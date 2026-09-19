@@ -746,10 +746,9 @@ def pari_unified_complete_h1_root(
     # Mathematical workspaces are checked against dimensions authenticated
     # from that prefix below; observed successful-field sizes never become an
     # admission oracle here.
-    if (
-        len(final_state) < 16
-        or precision_resource_cap < precision
-        or precision_resource_cap % 64 != 0
+    if len(final_state) < 16 or (
+        precision_resource_cap != -1
+        and (precision_resource_cap < precision or precision_resource_cap % 64 != 0)
     ):
         raise ValueError("short unified complete h1 owner")
     # Never accept caller-mutable status cells as authority for a previous
@@ -1331,6 +1330,18 @@ def pari_unified_complete_h1_root(
         final_state[0] = 2
         final_state[5] = 2
         return 2
+
+    # Diagnostic-only boundary for timing the authenticated class-group
+    # prefix independently of the still-experimental unit precision retry.
+    # Ordinary complete calls always supply a positive reviewed resource cap.
+    if precision_resource_cap == -1:
+        final_state[0] = 101
+        final_state[5] = 101
+        final_state[6] = relation_count
+        final_state[7] = class_rows
+        final_state[8] = class_columns
+        final_state[9] = class_published_state[9]
+        return 101
 
     # The resident preparation stores rows [1, x, b_2] at each of the three
     # real embeddings.  Snapshot the x row into private exact-real owners;

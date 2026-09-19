@@ -75,7 +75,10 @@ def pari_cleanarch_totally_real_cubic(
             m = source[at + 1]
             rp = source[at + 2]
             e = source[at + 3]
-            if rp < 0:
+            # Exact zero is the additive identity accepted by the common log
+            # representation and can arise before a retry combination becomes
+            # nontrivial.  Nonzero real logarithms must still be packed.
+            if rp < 0 and m != 0:
                 raise ValueError("class logarithm real part must be packed")
             if m != 0:
                 if rp < 64 or rp > 4352 or rp % 64 != 0:

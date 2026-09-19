@@ -31,7 +31,11 @@ def int64_times_exact(scalar: int64, value: int) -> int:
     return scalar * value
 `;
 const integerBufferIndexSource = String.raw`
-from sagejs.native import IntegerBuffer, integer_buffer_mod_addmul_range_from
+from sagejs.native import (
+    IntegerBuffer,
+    integer_buffer_get_int64,
+    integer_buffer_mod_addmul_range_from,
+)
 
 @native
 def integer_buffer_int64_index(
@@ -53,6 +57,10 @@ def integer_buffer_slot_copy(
 ) -> int:
     values[destination] = values[source]
     return values[destination]
+
+@native
+def integer_buffer_checked_word(values: IntegerBuffer, index: int64) -> int64:
+    return integer_buffer_get_int64(values, index)
 
 @native
 def integer_buffer_modular_range_update(
@@ -181,6 +189,12 @@ test("int64 lowers to checked signed-word IR and isolated C", async () => {
     (fn) => fn.name === "integer_buffer_slot_copy",
   ).body);
   assert.ok(slotCopy.some((op) => op.kind === "integer.buffer.slot_copy"));
+  const checkedWord = operations(ir.functions.find(
+    (fn) => fn.name === "integer_buffer_checked_word",
+  ).body);
+  assert.ok(checkedWord.some((op) =>
+    op.kind === "integer.buffer.get_int64" && op.indexType === "int64"
+  ));
   assert.equal(slotCopy.filter((op) => op.kind === "integer.buffer.get").length, 1);
   const modularRange = operations(ir.functions.find(
     (fn) => fn.name === "integer_buffer_modular_range_update",
@@ -313,6 +327,14 @@ assert [int(value) for value in integer_buffer_values(exact_values)] == [
     1 << 100,
     (1 << 127) - 1,
 ]
+word_values = kernel_integer_buffer(integer_buffer_checked_word, [-7, 11])
+assert integer_buffer_checked_word(word_values, -1) == 11
+word_overflow = kernel_integer_buffer(integer_buffer_checked_word, [1 << 80])
+try:
+    integer_buffer_checked_word(word_overflow, 0)
+    raise AssertionError("out-of-range IntegerBuffer word conversion succeeded")
+except OverflowError:
+    pass
 modular_destination = kernel_integer_buffer(
     integer_buffer_modular_range_update, [1, 2, 3, 4]
 )

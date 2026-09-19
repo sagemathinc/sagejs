@@ -127,6 +127,18 @@ const values = (x) => Array.isArray(x) ? x : x.toArray ? x.toArray() : Array.fro
     assert.deepEqual(values(held), Array(input.length).fill(777n));
     assert.equal(values(lowState)[0], 1n);
     assert.equal(values(lowState)[2], 0n);
+    const exactZeroColumn = Array.from(
+      { length: 3 },
+      () => [1n, 0n, -1n, 0n, 0n, -1n, 0n],
+    ).flat();
+    const exactZeroState = S(6);
+    assert.equal(clean[backend](
+      I(exactZeroColumn.length, exactZeroColumn), 1n,
+      BigInt(fixture.precision), I(3), I(512), I(512), I(512), I(512),
+      I(1024), I(exactZeroColumn.length), I(exactZeroColumn.length),
+      exactZeroState,
+    ), 0n);
+    assert.deepEqual(values(exactZeroState).slice(0, 3), [0n, 1n, 1n]);
   }
   console.log(JSON.stringify({ cases: 1, entries: 3 * fixture.columns, backends: ["cpython", "javascript", "gmp", "tagged"], transactionalRetry: true, cacheKey: built.cacheKey }));
 })().catch((error) => { console.error(error); process.exitCode = 1; });

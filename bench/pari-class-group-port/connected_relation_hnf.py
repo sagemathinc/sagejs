@@ -9,6 +9,7 @@ from sagejs.native import (
     Float64Buffer,
     Int64Buffer,
     IntegerBuffer,
+    checked_int64,
     diagnostic_stage_switch,
     native,
 )
@@ -500,14 +501,21 @@ def pari_connected_relation_hnf(
     diagnostic_stage_switch(2)
     for i in range(rows * columns):
         hnf_original[i] = int(relation_records[i])
+    # The connected collector keeps its public scalar inputs exact, while the
+    # private HNF implementation uses machine-word dimensions.  Authenticate
+    # that boundary once after collection has fixed the live matrix shape.
+    hnf_rows: int64 = checked_int64(rows)
+    hnf_columns: int64 = chain_state[3]
+    hnf_k0_word: int64 = checked_int64(hnf_k0)
+    hnf_log_rows: int64 = checked_int64((n + admission_real_count) // 2)
     status = pari_hnfspec_complete(
         hnf_original,
-        rows,
-        columns,
+        hnf_rows,
+        hnf_columns,
         hnf_perm,
-        hnf_k0,
+        hnf_k0_word,
         log_embeddings,
-        (n + admission_real_count) // 2,
+        hnf_log_rows,
         hnf_mat,
         hnf_dense,
         hnf_transform,

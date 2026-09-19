@@ -1087,6 +1087,45 @@ function emitTaggedOperation(operation, context, indent) {
       `${indent}}`,
     ].join("\n");
   }
+  if (operation.kind === "integer.buffer.get_int64") {
+    const buffer = taggedValue(operation.buffer, context);
+    const index = taggedValue(operation.index, context);
+    const indexSetup = operation.indexType === "Integer"
+      ? [
+        `${indent}    int64_t sagejs_buffer_index;`,
+        `${indent}    if (!sagejs_tagged_to_int64(${index}, ` +
+          `&sagejs_buffer_index) ||`,
+        `${indent}        !sagejs_integer_buffer_index(&${buffer}, ` +
+          `sagejs_buffer_index, &sagejs_buffer_position))`,
+      ]
+      : operation.indexType === "int64"
+      ? [
+        `${indent}    if (!sagejs_integer_buffer_index(&${buffer}, ` +
+          `${index}, &sagejs_buffer_position))`,
+      ]
+      : [
+        `${indent}    sagejs_buffer_position = (size_t) ${index};`,
+        `${indent}    if (${index} >= (uint64_t) ${buffer}.length)`,
+      ];
+    return [
+      `${indent}{`,
+      `${indent}    size_t sagejs_buffer_position;`,
+      ...indexSetup,
+      `${indent}    {`,
+      `${indent}        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
+        `"IntegerBuffer index out of range");`,
+      `${indent}        goto fail;`,
+      `${indent}    }`,
+      `${indent}    if (!sagejs_integer_buffer_get_int64(` +
+        `&${buffer}, sagejs_buffer_position, &${target}))`,
+      `${indent}    {`,
+      `${indent}        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
+        `"integer is outside signed 64-bit");`,
+      `${indent}        goto fail;`,
+      `${indent}    }`,
+      `${indent}}`,
+    ].join("\n");
+  }
   if (operation.kind === "integer.buffer.set") {
     const buffer = taggedValue(operation.buffer, context);
     const index = taggedValue(operation.index, context);

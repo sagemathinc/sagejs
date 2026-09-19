@@ -510,6 +510,33 @@ function emitWordOperation(operation, context, indent) {
       `${indent}}`,
     ].join("\n");
   }
+  if (operation.kind === "integer.buffer.get_int64") {
+    const buffer = value(operation.buffer);
+    const index = value(operation.index);
+    const indexCheck = operation.indexType === "uint64"
+      ? `${index} >= (uint64_t) ${buffer}.length`
+      : `!sagejs_integer_buffer_index(&${buffer}, ${index}, ` +
+        `&sagejs_buffer_position)`;
+    return [
+      `${indent}{`,
+      `${indent}    size_t sagejs_buffer_position = ` +
+        `${operation.indexType === "uint64" ? `(size_t) ${index}` : "0"};`,
+      `${indent}    if (${indexCheck})`,
+      `${indent}    {`,
+      `${indent}        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
+        `"IntegerBuffer index out of range");`,
+      `${indent}        ${context.failure}`,
+      `${indent}    }`,
+      `${indent}    if (!sagejs_integer_buffer_get_int64(` +
+        `&${buffer}, sagejs_buffer_position, &${target}))`,
+      `${indent}    {`,
+      `${indent}        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
+        `"integer is outside signed 64-bit");`,
+      `${indent}        ${context.failure}`,
+      `${indent}    }`,
+      `${indent}}`,
+    ].join("\n");
+  }
   if (operation.kind === "integer.buffer.set") {
     const buffer = value(operation.buffer);
     const index = value(operation.index);

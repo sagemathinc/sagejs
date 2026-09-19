@@ -245,7 +245,11 @@ const sageBuildPromises = new Map();
 async function sageBuild({ diagnosticStageClock = false } = {}) {
   const key = diagnosticStageClock ? "diagnostic-stage-clock-v1" : "ordinary";
   if (!sageBuildPromises.has(key)) {
-    const options = { sourcePath: ROOT_SOURCE };
+    // This prepared-field experiment invokes only the exact GMP entry point.
+    // Do not materialize a second tagged representation of the large private
+    // graph: it is unreachable here and obscures the deployment cost we are
+    // actually measuring.
+    const options = { sourcePath: ROOT_SOURCE, integerBackends: ["gmp"] };
     if (diagnosticStageClock) options.diagnosticStageClock = DIAGNOSTIC_STAGE_CLOCK;
     sageBuildPromises.set(key, compileKernel(options).then(built => {
       const fn = require(built.modulePath).pari_unified_complete_h1_root;
@@ -281,7 +285,9 @@ async function preparePreparedH1({
   const built = await sageBuild({ diagnosticStageClock });
   validatePreparedInput(preparedInput, built.specification);
   const replayInput = makeInputs(preparedInput, built.specification, built.fn);
-  const replayStatus = built.fn.gmp(...rootArguments(replayInput, built.specification));
+  const replayStatus = built.fn.gmp(
+    ...rootArguments(replayInput, built.specification),
+  );
   const replayDiagnosticStageTrace = built.diagnosticStageClock
     ? built.fn.diagnosticStageTrace() : null;
   validateSageResult(replayStatus, replayInput);
@@ -290,6 +296,30 @@ async function preparePreparedH1({
     replayAuthority: sageAuthority(replayInput),
     replayAuthoritySha256: digest(sageAuthority(replayInput)),
     replayDiagnosticStageTrace,
+  };
+}
+
+async function probeSagePreparedH1({
+  preparedInput,
+  diagnosticStageClock = false,
+  stopAfterClass = false,
+}) {
+  const built = await sageBuild({ diagnosticStageClock });
+  validatePreparedInput(preparedInput, built.specification);
+  const input = makeInputs(preparedInput, built.specification, built.fn);
+  if (stopAfterClass) input.precision_resource_cap = -1n;
+  const started = process.hrtime.bigint();
+  const status = built.fn.gmp(...rootArguments(input, built.specification));
+  const elapsedNanoseconds = process.hrtime.bigint() - started;
+  return {
+    status: String(status),
+    elapsedNanoseconds: String(elapsedNanoseconds),
+    diagnosticStageTrace: built.diagnosticStageClock
+      ? built.fn.diagnosticStageTrace() : null,
+    hnfState: asStrings(input.hnf_state, 12),
+    bridgeState: asStrings(input.bridge_state, 16),
+    precisionState: asStrings(input.precision_authority_state, 16),
+    finalState: asStrings(input.final_state, 16),
   };
 }
 
@@ -364,6 +394,7 @@ module.exports = {
   digest,
   matchedResult,
   matchedRecords,
+  probeSagePreparedH1,
   preparePreparedH1,
   runPreparedH1,
   rootSpecification,
