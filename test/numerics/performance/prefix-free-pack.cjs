@@ -1,4 +1,4 @@
-// sagejs-test-tier: native
+// sagejs-test-tier: specialized
 "use strict";
 const assert = require("node:assert/strict"), fs = require("node:fs"), os = require("node:os"), path = require("node:path");
 const {spawnSync} = require("node:child_process");

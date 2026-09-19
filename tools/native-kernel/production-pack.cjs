@@ -139,6 +139,15 @@ function assertPackSymbolIdentities(items) {
   }
 }
 
+function isPrefixFreePack(items) {
+  return items.length > 0 && items.every((item) =>
+    Array.isArray(item.ir?.functions) && item.ir.functions.length > 0 &&
+    item.ir.functions.every((fn) => fn?.kernelKind === "float64") &&
+    (item.ir.foreignLibraries === undefined ||
+      (Array.isArray(item.ir.foreignLibraries) && item.ir.foreignLibraries.length === 0))
+  );
+}
+
 function aggregatorSource(items, packKey) {
   const sorted = [...items].sort((left, right) =>
     left.logicalSource.localeCompare(right.logicalSource)
@@ -146,12 +155,7 @@ function aggregatorSource(items, packKey) {
   // Match the standalone compiler's narrow dependency exemption. Unknown,
   // empty, mixed, or foreign-library IR retains the shared exact allocator;
   // an all-binary64 isolated pack must not acquire GMP just by aggregation.
-  const prefixFree = sorted.length > 0 && sorted.every((item) =>
-    Array.isArray(item.ir?.functions) && item.ir.functions.length > 0 &&
-    item.ir.functions.every((fn) => fn.kernelKind === "float64") &&
-    (item.ir.foreignLibraries === undefined ||
-      (Array.isArray(item.ir.foreignLibraries) && item.ir.foreignLibraries.length === 0))
-  );
+  const prefixFree = isPrefixFreePack(sorted);
   const allocator = prefixFree ? "" :
     `#define SAGEJS_NATIVE_GMP_ALLOCATOR_API\n${GMP_CHECKPOINT_ALLOCATOR_C_SOURCE}`;
   const declarations = sorted.map((item) =>
@@ -396,6 +400,7 @@ module.exports = {
   aggregatorSource,
   assertPackSymbolIdentities,
   buildProductionPack,
+  isPrefixFreePack,
   packBinding,
   packIdentity,
 };

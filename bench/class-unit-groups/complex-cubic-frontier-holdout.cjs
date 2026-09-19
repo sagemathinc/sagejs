@@ -7,6 +7,7 @@ const os = require("node:os");
 const path = require("node:path");
 
 const { inspectBuildReceipt } = require("../../scripts/build-receipt.cjs");
+const { closurePaths, validateCatalogClosure } = require("./native-pack-runtime-closure.cjs");
 const frozen = require("../optimization-engine/complex-cubic-frontier-corpus.cjs");
 const {
   ADAPTER_SCHEMA,
@@ -149,20 +150,21 @@ function validateSourceIdentity(source, label) {
 function validateCandidateSourceIdentity(source) {
   validateSourceIdentity(source, "candidate source");
   const closure = source.candidate_runtime_closure;
+  const expectedPaths = closurePaths(closure);
+  validateCatalogClosure(closure);
   if (!closure ||
-      closure.schema !== "sagejs.benchmark/complex-cubic-candidate-runtime-closure-v3" ||
       !/^[0-9a-f]{64}$/.test(closure.sha256 || "") ||
       !Number.isSafeInteger(closure.file_count) || closure.file_count < 1 ||
       typeof closure.total_bytes !== "string" || !/^[1-9][0-9]*$/.test(closure.total_bytes) ||
       !/^[0-9a-f]{64}$/.test(closure.native_cache_key || "") ||
       !closure.production_native_pack ||
       closure.production_native_pack.path !==
-        "dist/native-kernels/pack/sagejs_native_kernel_pack.node" ||
+        expectedPaths.pack ||
       !/^[0-9a-f]{64}$/.test(closure.production_native_pack.pack_key || "") ||
       !/^[0-9a-f]{64}$/.test(closure.production_native_pack.sha256 || "") ||
       !/^[1-9][0-9]*$/.test(closure.production_native_pack.bytes || "") ||
       closure.standalone_native_addon?.path !==
-        `dist/native-kernels/${closure.native_cache_key}/build/Release/sagejs_native_kernel.node` ||
+        expectedPaths.standalone ||
       closure.standalone_native_addon?.required_absent !== true ||
       closure.flint_runtime?.resolved_loader !== "packages/flint/index.cjs" ||
       closure.flint_runtime?.package_resolution?.strategy !==

@@ -704,6 +704,45 @@ test("freeze uses the stable-slowdown selector and binds all predecessors", () =
   assert.equal(artifact.freeze_sha256, canonicalDigest((({ freeze_sha256, ...rest }) => rest)(artifact)));
 });
 
+test("current catalog closure passes freeze and blocks tampering before holdout disclosure", () => {
+  const fixture = structuredClone(completeFixture());
+  // Synthetic metadata only: both historical and new receipt formats go
+  // through the same full freeze/qualification/disclosure gates.
+  const closure = fixture.candidateSource.candidate_runtime_closure;
+  closure.schema = "sagejs.benchmark/complex-cubic-candidate-runtime-closure-v4";
+  const base = `dist/native-kernels/packs/${closure.production_native_pack.pack_key}`;
+  closure.production_native_pack.path = `${base}/pack/sagejs_native_kernel_pack.node`;
+  closure.standalone_native_addon.path = `${base}/${closure.native_cache_key}/build/Release/sagejs_native_kernel.node`;
+  closure.native_pack_catalog = {
+    schema: "sagejs.native-cache/v5",
+    path: "dist/native-kernels/index.json",
+    sha256: "3".repeat(64), kernel_count: 2,
+    packs: [structuredClone(closure.production_native_pack), {
+      path: `dist/native-kernels/packs/${"2".repeat(64)}/pack/sagejs_native_kernel_pack.node`,
+      pack_key: "2".repeat(64), sha256: "1".repeat(64), bytes: "123",
+    }],
+  };
+  fixture.qualification.source = structuredClone(fixture.candidateSource);
+  fixture.qualificationBytes = Buffer.from(`${canonicalJson(fixture.qualification)}\n`);
+  // structuredClone turns the two other byte buffers into Uint8Arrays.
+  fixture.censusBytes = Buffer.from(fixture.censusBytes);
+  fixture.timingBytes = Buffer.from(fixture.timingBytes);
+  const artifact = makeFreezeArtifact({...fixture, frozenAt: "2026-09-01T03:00:00.000Z"});
+  let reads = 0;
+  const load = candidateSource => validateFreezeThenLoadHoldout({
+    artifact, inputs: fixture, candidateSource,
+    candidateTools: fixture.candidateTools, candidateHost: fixture.candidateHost,
+    assetDirectory: "/synthetic-current-closure",
+    loadAsset() { reads++; return holdoutRecords(fixture.manifest); },
+  });
+  const changed = structuredClone(fixture.candidateSource);
+  changed.candidate_runtime_closure.native_pack_catalog.packs[1].sha256 = "0".repeat(64);
+  assert.throws(() => load(changed));
+  assert.equal(reads, 0);
+  assert.equal(load(fixture.candidateSource).records.length, HOLDOUT_COUNT);
+  assert.equal(reads, 1);
+});
+
 test("freeze rejects a weakened proof contract and any stale predecessor bytes", () => {
   const fixture = completeFixture();
   const weakened = structuredClone(fixture.census);
@@ -1229,6 +1268,26 @@ test("candidate runtime closure requires and binds the production native pack", 
   assert.notEqual(candidateRuntimeClosure(directory).sha256, present.sha256);
   fs.unlinkSync(pack);
   assert.throws(() => candidateRuntimeClosure(directory), /ENOENT/);
+  // The preceding v4-catalog/v3-closure assertions remain historical-format
+  // coverage. Now replace only this invocation-owned synthetic cache.
+  fs.rmSync(cacheRoot,{recursive:true,force:true});
+  const {nativePackCatalog}=require("./helpers/native-pack-catalog.cjs");
+  const current=nativePackCatalog(directory);
+  const complete=candidateRuntimeClosure(directory);
+  assert.equal(complete.schema,"sagejs.benchmark/complex-cubic-candidate-runtime-closure-v4");
+  assert.equal(complete.native_pack_catalog.packs.length,2);
+  assert.equal(complete.production_native_pack.pack_key,current.rows[0].pack);
+  assert.match(complete.production_native_pack.path,/\/packs\/[a-f0-9]{64}\/pack\//);
+  // A non-selected pack is still in the authenticated runtime closure.
+  fs.appendFileSync(current.rows[1].addon," changed");
+  assert.throws(()=>candidateRuntimeClosure(directory),/inconsistent production native pack/);
+  current.authenticate();
+  assert.notEqual(candidateRuntimeClosure(directory).sha256,complete.sha256);
+  const extraStandalone=path.join(current.directory,"packs",current.rows[1].pack,
+    current.rows[1].cache,"build/Release/sagejs_native_kernel.node");
+  fs.mkdirSync(path.dirname(extraStandalone),{recursive:true});
+  fs.writeFileSync(extraStandalone,"unbound fallback in non-selected pack");
+  assert.throws(()=>candidateRuntimeClosure(directory),/standalone native-addon fallback/);
 });
 
 test("output reservation is exclusive, publishable, and retained after failure", (t) => {
