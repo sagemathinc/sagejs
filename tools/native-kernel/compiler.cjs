@@ -995,6 +995,7 @@ function residentRequestKey(options, sourcePath, cacheRoot) {
     sourcePath,
     functions: options.functions,
     profileSymbols: options.profileSymbols === true,
+    integerBackends: [...(options.integerBackends || ["tagged", "gmp"])].sort(),
     automaticSelections: options.automaticSelections ?? {},
     diagnosticStageClock: options.diagnosticStageClock ?? null,
   });
@@ -1022,6 +1023,7 @@ function residentCompilerAuthority(ir, options, cacheRoot) {
     primeFieldTuning: usesSpecializedPrimeField ? primeFieldTuning() : null,
     sourceBoundsChecked: usesSourcePrimeField ? sourceBoundsCheck() : null,
     profileSymbols: options.profileSymbols === true,
+    integerBackends: [...(options.integerBackends || ["tagged", "gmp"])].sort(),
     mpfr: "4.2.2",
     mpc: mpcVersion,
   });
@@ -1084,6 +1086,18 @@ async function compileKernelFromSource(
     throw new TypeError("profileSymbols must be a boolean when provided");
   }
   const profileSymbols = options.profileSymbols === true;
+  const integerBackends = options.integerBackends === undefined
+    ? ["tagged", "gmp"]
+    : options.integerBackends;
+  if (!Array.isArray(integerBackends) || integerBackends.length === 0 ||
+      integerBackends.some((backend) =>
+        backend !== "tagged" && backend !== "gmp"
+      ) || new Set(integerBackends).size !== integerBackends.length) {
+    throw new TypeError(
+      "integerBackends must be a nonempty unique array containing tagged and/or gmp",
+    );
+  }
+  const normalizedIntegerBackends = [...integerBackends].sort();
   const resolveNativeImport = createNativeImportResolver({
     root,
     lowerSource,
@@ -1129,6 +1143,7 @@ async function compileKernelFromSource(
     primeFieldTuning: tuning,
     sourceBoundsChecked,
     profileSymbols,
+    integerBackends: normalizedIntegerBackends,
     automaticSelections,
     diagnosticStageClock,
     mpfr: "4.2.2",
@@ -1193,6 +1208,7 @@ async function compileKernelFromSource(
       foreignInputs,
       automaticSelections,
       diagnosticStageClock,
+      integerBackends: normalizedIntegerBackends,
       exceptionShields: exceptionShims === null ? [] :
         exceptionShims.functions.map((fn) => fn.call_plan.symbol),
     };
@@ -1214,6 +1230,7 @@ async function compileKernelFromSource(
   const artifacts = generateArtifacts(ir, {
     moduleIdentity,
     diagnosticStageClock,
+    integerBackends: normalizedIntegerBackends,
   });
   const cSource = artifacts.adapterSource;
   const { generatedCSourceMap } = require("./provenance.cjs");
@@ -1245,6 +1262,7 @@ async function compileKernelFromSource(
       profileSymbols,
       automaticSelections,
       diagnosticStageClock,
+      integerBackends: normalizedIntegerBackends,
       sourceHash,
       sourcePath,
       nativeAbi: compatibility.nativeAbi,
@@ -1267,6 +1285,7 @@ async function compileKernelFromSource(
         sourceBoundsChecked,
         automaticSelections,
         diagnosticStageClock,
+        integerBackends: normalizedIntegerBackends,
         sourcePath,
         cSourceMap,
         coreSourceMap,
@@ -1338,6 +1357,7 @@ async function compileKernelFromSource(
     foreignInputs,
     automaticSelections,
     diagnosticStageClock,
+    integerBackends: normalizedIntegerBackends,
     exceptionShields: exceptionShims === null ? [] :
       exceptionShims.functions.map((fn) => fn.call_plan.symbol),
   };

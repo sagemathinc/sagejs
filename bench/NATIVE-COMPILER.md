@@ -90,6 +90,33 @@ const result = await compile({
 const algorithms = require(result.modulePath);
 ```
 
+`functions` defines the artifact's public roots. The compiler retains their
+transitive native call closure, but imported functions and unselected
+same-source dependencies are private implementation details: they remain
+direct compiled calls and do not become JavaScript, Node-API, header, or ELF
+exports. Omitting `functions` continues to select every decorated root in the
+source file.
+
+An artifact can also deliberately retain only the exact-integer
+representations it needs:
+
+```js
+const result = await compile({
+  sourcePath: "algorithms.sage",
+  functions: ["class_group"],
+  integerBackends: ["gmp"],
+});
+```
+
+The default remains `["tagged", "gmp"]`. A GMP-only artifact omits the
+tagged, speculative machine-word, and `fmpz` function graphs rather than
+generating unreachable alternatives and asking the C linker to discard them.
+The generated JavaScript fallback remains available, and its automatic native
+selection is constrained to representations actually present in the addon.
+The selected roots and representation set are part of the authenticated cache
+identity and manifest. The programmatic `emitC` and `emitCore` APIs accept the
+same option so inspection shows the artifact that would actually be compiled.
+
 The command prints the content-addressed generated-module path. A subsequent
 identical build reports `cached`. The cache identity includes source,
 typed IR, all backend source, the shared native header, native ABI, Node module

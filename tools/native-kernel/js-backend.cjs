@@ -1301,14 +1301,14 @@ function exactNativeExpression(fn, backend) {
 function backendDecision(fn) {
   const policy = fn.analysis.backend;
   if (["tagged", "fmpz", "gmp", "bigint"].includes(policy.kind)) {
-    return `  return ${jsString(policy.kind)};`;
+    return `  return availableExactBackend(${jsString(policy.kind)});`;
   }
   if (policy.kind === "iterations") {
     const value = `$sagejs$argument${policy.parameter}`;
     const minimum = BigInt(policy.minimumIterations);
     return `  return (typeof ${value} === "bigint" ` +
       `? ${value} >= ${minimum}n : ${value} >= ${minimum}) ` +
-      `? "tagged" : "bigint";`;
+      `? availableExactBackend("tagged") : "bigint";`;
   }
   if (policy.kind === "operand-bits") {
     const threshold = 1n << BigInt(policy.minimumBits - 1);
@@ -1318,15 +1318,17 @@ function backendDecision(fn) {
     });
     return conditions.length === 0
       ? "  return \"bigint\";"
-      : `  return (${conditions.join(" || ")}) ? "tagged" : "bigint";`;
+      : `  return (${conditions.join(" || ")}) ` +
+        `? availableExactBackend("tagged") : "bigint";`;
   }
   if (policy.kind === "integer-buffer-values") {
     const conditions = policy.parameters.map((name) =>
       `integerBufferFitsSignedInt64($sagejs$argument${name})`
     );
     return conditions.length === 0
-      ? '  return "tagged";'
-      : `  return (${conditions.join(" && ")}) ? "tagged" : "gmp";`;
+      ? '  return availableExactBackend("tagged");'
+      : `  return availableExactBackend((${conditions.join(" && ")}) ` +
+        `? "tagged" : "gmp");`;
   }
   throw new Error(`unsupported exact backend policy ${policy.kind}`);
 }
@@ -1357,7 +1359,11 @@ function automaticSelectionCode(fn, receipt) {
   };
 }
 
-function emitExactPublicFunction(fn, automaticSelection, diagnosticStageClock) {
+function emitExactPublicFunction(
+  fn,
+  automaticSelection,
+  diagnosticStageClock,
+) {
   const params = fn.params.map((param) => param.name).join(", ");
   const declaredParams = exactParameters(fn);
   const normalized = fn.params.map((param) =>
@@ -1446,11 +1452,21 @@ function backend_${fn.name}(${args}) {
   if (integerBackendOverride === "gmp" && nativeAddon === null) {
     throw new Error("GMP backend was requested but is not available");
   }
+  if ((integerBackendOverride === "tagged" || integerBackendOverride === "fmpz") &&
+      !compiledIntegerBackends.includes("tagged")) {
+    throw new Error("tagged native backend was not compiled into this artifact");
+  }
+  if (integerBackendOverride === "gmp" &&
+      !compiledIntegerBackends.includes("gmp")) {
+    throw new Error("GMP backend was not compiled into this artifact");
+  }
   if (nativeAddon === null) return "bigint";
-${diagnosticStageClock?.function === fn.name ? '  return "gmp";' : ""}
+${diagnosticStageClock?.function === fn.name
+    ? '  return availableExactBackend("gmp");' : ""}
 ${exactUsesFloat64(fn)
     ? '  if (integerBackendOverride === "tagged" && requestedNativeMode === "native" &&\n' +
-      '      process.env.SAGEJS_NATIVE_INTEGER_BACKEND === undefined) return "gmp";'
+      '      process.env.SAGEJS_NATIVE_INTEGER_BACKEND === undefined) ' +
+      'return availableExactBackend("gmp");'
     : ""}
   if (integerBackendOverride !== "auto") return integerBackendOverride;
 ${selection.decision}
@@ -1478,6 +1494,9 @@ ${normalized.join("\n")}
   if (nativeAddon === null) {
     throw new Error("tagged native backend is not available");
   }
+  if (!compiledIntegerBackends.includes("tagged")) {
+    throw new Error("tagged native backend was not compiled into this artifact");
+  }
   return ${exactReturn(fn, exactNativeExpression(fn, '"tagged"'))};
 };
 ${fn.name}.gmp = function (${declaredParams}) {
@@ -1486,6 +1505,9 @@ ${normalized.join("\n")}
   if (nativeAddon === null) {
     throw new Error("GMP backend is not available");
   }
+  if (!compiledIntegerBackends.includes("gmp")) {
+    throw new Error("GMP backend was not compiled into this artifact");
+  }
   return ${exactReturn(fn, exactNativeExpression(fn, '"gmp"'))};
 };
 ${fn.analysis.backend.kind === "fmpz" ? `${fn.name}.fmpz = function (${declaredParams}) {
@@ -1493,6 +1515,9 @@ ${fn.analysis.backend.kind === "fmpz" ? `${fn.name}.fmpz = function (${declaredP
 ${normalized.join("\n")}
   if (nativeAddon === null) {
     throw new Error("fmpz native backend is not available");
+  }
+  if (!compiledIntegerBackends.includes("tagged")) {
+    throw new Error("fmpz native backend was not compiled into this artifact");
   }
   return ${exactReturn(fn, exactNativeExpression(fn, '"fmpz"'))};
 };` : ""}
@@ -1748,6 +1773,9 @@ ${fn.name}.nativeAvailable = nativeAddon !== null;`;
 
 function generateJavaScript(ir, options = {}) {
   ir = {...ir, functions: ir.functions.map(escapeJavaScriptBindings)};
+  const integerBackends = [...(
+    options.integerBackends || ["tagged", "gmp"]
+  )].sort();
   const publicFunctions = ir.functions.filter(
     (fn) => fn.hostCallable !== false,
   );
@@ -1866,7 +1894,7 @@ function generateJavaScript(ir, options = {}) {
     throw new Error(`unsupported binary64 JavaScript operation ${operation.kind}`);
   }
 
-  function emitFloat64PublicFunction(fn) {
+  function emitFloat64Fallback(fn) {
     const uint64BigInt = hasUint64Bitwise(fn.body);
     const params = fn.params.map((param) => param.name).join(", ");
     const locals = fn.locals.map((local) => local.name);
@@ -1876,11 +1904,17 @@ function generateJavaScript(ir, options = {}) {
       .map((param) => `  ${param.name} = float64BufferView(${param.name}, ` +
         `${jsString(param.name)});`)
       .join("\n");
-    const fallback = `function javascript_${fn.name}(${params}) {\n` +
+    return `function javascript_${fn.name}(${params}) {\n` +
       (bufferNormalization ? bufferNormalization + "\n" : "") +
       declaration + fn.body.map((operation) =>
         emitFloat64Statement(operation, "  ", uint64BigInt)
       ).join("\n") + "\n}";
+  }
+
+  function emitFloat64PublicFunction(fn) {
+    const uint64BigInt = hasUint64Bitwise(fn.body);
+    const params = fn.params.map((param) => param.name).join(", ");
+    const fallback = emitFloat64Fallback(fn);
     const validation = fn.params.map((param) => param.type === "uint64"
       ? uint64Validation(param.name)
       : param.type === "Float64"
@@ -1979,9 +2013,20 @@ if (!nativeAddonDisabled) {
   }
 }
 
+const compiledIntegerBackends = Object.freeze(${JSON.stringify(integerBackends)});
+function availableExactBackend(backend) {
+  if (backend === "fmpz") backend = "tagged";
+  if (compiledIntegerBackends.includes(backend)) return backend;
+  if (compiledIntegerBackends.includes("gmp")) return "gmp";
+  if (compiledIntegerBackends.includes("tagged")) return "tagged";
+  return "bigint";
+}
+
 const integerBackendOverride =
   process.env.SAGEJS_NATIVE_INTEGER_BACKEND ||
-  (requestedNativeMode === "native" ? "tagged" : "auto");
+  (requestedNativeMode === "native"
+    ? availableExactBackend("tagged")
+    : "auto");
 if (!["auto", "bigint", "tagged", "gmp", "fmpz"].includes(integerBackendOverride)) {
   throw new RangeError(
     "SAGEJS_NATIVE_INTEGER_BACKEND must be auto, bigint, tagged, gmp, or fmpz");
@@ -3636,7 +3681,9 @@ function primeFieldNativeCall(name, args) {
 
 ${ir.functions.map((fn) =>
     fn.hostCallable === false
-      ? emitExactFallback(fn)
+      ? fn.kernelKind === "float64"
+        ? emitFloat64Fallback(fn)
+        : emitExactFallback(fn)
       : fn.kernelKind === "integer"
       ? emitExactPublicFunction(
         {...fn, nativeDeclaredErrors: declaredFfiErrors(fn, ir.functions)},

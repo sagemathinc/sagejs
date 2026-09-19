@@ -66,6 +66,8 @@ def entry(values: IntegerBuffer, amount: int) -> int:
   const ir=await lowerSource(body,source,{resolveNativeImport:resolver});
   assert.deepEqual(ir.callGraph.entry,["update"]);
   assert.equal(ir.functions.filter(fn=>fn.name==="update").length,1);
+  assert.equal(ir.functions.find(fn=>fn.name==="entry").hostCallable,true);
+  assert.equal(ir.functions.find(fn=>fn.name==="update").hostCallable,false);
   assert.equal(ir.nativeSourceDependencies.length,1);
   const entry=ir.functions.find(fn=>fn.name==="entry"),operations=[];
   const visit=value=>{if(value===null||typeof value!=="object")return;if(value.kind)operations.push(value.kind);for(const child of Object.values(value))if(Array.isArray(child))child.forEach(visit);else visit(child);};
@@ -76,6 +78,10 @@ def entry(values: IntegerBuffer, amount: int) -> int:
   const py=spawnSync("python3",["-c",`import sys;sys.path[:0]=[${JSON.stringify(dir)},${JSON.stringify(join(__dirname,"../../../src/lib"))}];from example.entry import entry;values=[1];assert entry(values,2)==6 and values==[6]`],{encoding:"utf8",timeout:30000});
   assert.equal(py.status,0,py.stderr);
   const built=await compileKernel({sourcePath:source}),mod=require(built.modulePath);
+  assert.equal(mod.update,undefined);
+  const addon=require(built.addonPath);
+  assert.equal(Object.hasOwn(addon,"update"),false);
+  assert.equal(Object.hasOwn(addon,"update$gmp"),false);
   for(const backend of ["javascript","gmp","tagged"]){const values=[1n];assert.equal(mod.entry[backend](values,2n),6n);assert.deepEqual(values,[6n]);}
 });
 test("portable root provenance may differ from imported dependency display paths",async()=>{
@@ -91,6 +97,33 @@ test("portable root provenance may differ from imported dependency display paths
   assert.deepEqual(ir.nativeSourceDependencies.map(d=>d.path).sort(),["src/lib/example/helper.py","src/lib/example/leaf.py"]);
   assert(!JSON.stringify(ir).includes(dir));
   await assert.rejects(()=>resolver({moduleName:".helper",importedName:"shifted",importer:"unregistered/entry.py"}),/unknown relative import source/);
+});
+test("GMP-only artifacts omit tagged, word, and imported host surfaces",async()=>{
+  const dir=mkdtempSync(join(tmpdir(),"sagejs-gmp-only-import-")),pkg=join(dir,"example");
+  mkdirSync(pkg);writeFileSync(join(pkg,"__init__.py"),"");
+  const helper=join(pkg,"helper.py"),source=join(pkg,"entry.py");
+  writeFileSync(helper,"from sagejs.native import native\n@native\ndef square(x:int)->int:\n    return x*x\n");
+  writeFileSync(source,"from sagejs.native import native\nfrom .helper import square\n@native\ndef shifted(x:int)->int:\n    return square(x)+1\n@native\ndef entry(x:int)->int:\n    return shifted(x)+1\n");
+  const built=await compileKernel({sourcePath:source,cacheRoot:join(dir,"cache"),functions:["entry"],integerBackends:["gmp"]});
+  assert.deepEqual(built.integerBackends,["gmp"]);
+  const mod=require(built.modulePath),addon=require(built.addonPath),properties=Object.getOwnPropertyNames(addon);
+  assert.deepEqual(properties,["entry$gmp"]);
+  assert.equal(mod.entry(1n<<80n),(1n<<160n)+2n);
+  assert.equal(mod.entry.gmp(9n),83n);
+  assert.throws(()=>mod.entry.tagged(9n),/not compiled into this artifact/);
+  assert.equal(mod.square,undefined);
+  assert.equal(mod.shifted,undefined);
+  const core=readFileSync(built.coreSourcePath,"utf8");
+  assert.doesNotMatch(core,/\btagged_(?:entry|shifted|square)\b/);
+  assert.doesNotMatch(core,/\bword_(?:entry|shifted|square)\b/);
+  assert.match(core,/\bnative_entry\b/);
+  assert.match(core,/\bnative_square\b/);
+  assert.match(core,/\bnative_shifted\b/);
+  const tagged=await compileKernel({sourcePath:source,cacheRoot:join(dir,"tagged-cache"),functions:["entry"],integerBackends:["tagged"]});
+  assert.deepEqual(Object.getOwnPropertyNames(require(tagged.addonPath)),["entry"]);
+  const taggedModule=require(tagged.modulePath);
+  assert.equal(taggedModule.entry.tagged(1n<<80n),(1n<<160n)+2n);
+  assert.throws(()=>taggedModule.entry.gmp(9n),/not compiled into this artifact/);
 });
 test("multiple entries from one source share a helper but distinct sources still conflict",async()=>{
   const dir=mkdtempSync(join(tmpdir(),"sagejs-shared-import-")),pkg=join(dir,"example");

@@ -248,7 +248,7 @@ async function auditKernels(options) {
 
 async function emitKernelC(options) {
   const result = await analyzeKernel(options);
-  const source = generateC(result.ir);
+  const source = generateC(result.ir, options);
   return {
     ...result,
     cSource: source,
@@ -258,7 +258,7 @@ async function emitKernelC(options) {
 
 async function emitHostCore(options) {
   const result = await analyzeKernel(options);
-  const core = generateHostCore(result.ir);
+  const core = generateHostCore(result.ir, options);
   return {
     ...result,
     coreSource: core.source,

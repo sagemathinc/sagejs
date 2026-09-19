@@ -88,6 +88,18 @@ const RESOURCE_FINALIZATION_CAPABILITY = Object.freeze({
   self_finalizing: true,
 });
 
+function selectedIntegerBackends(options = {}) {
+  const values = options.integerBackends || ["tagged", "gmp"];
+  if (!Array.isArray(values) || values.length === 0 ||
+      values.some((value) => value !== "tagged" && value !== "gmp") ||
+      new Set(values).size !== values.length) {
+    throw new TypeError(
+      "integerBackends must be a nonempty unique array containing tagged and/or gmp",
+    );
+  }
+  return new Set(values);
+}
+
 function statusFailure(kind, message, indent) {
   const code = {
     error: "SAGEJS_NATIVE_ERROR",
@@ -3180,6 +3192,18 @@ ${cleanup.join("\n")}
 function emitExactWrappers(fn, options = {}) {
   const diagnosticStageClock =
     options.diagnosticStageClock?.function === fn.name;
+  const integerBackends = selectedIntegerBackends(options);
+  const emitTagged = integerBackends.has("tagged");
+  const emitGmp = integerBackends.has("gmp");
+  if (!emitTagged) {
+    return emitGmp
+      ? emitExactWrapper(fn, {
+        wrapper: `compiled_${fn.name}_gmp`,
+        call: `sagejs_kernel_${fn.name}`,
+        diagnosticStageClock,
+      })
+      : "";
+  }
   const ownsDirectExactStorage =
     fn.params.some((param) => isLiveExactOwnerType(param.type)) ||
     fn.locals.some((local) => isLiveExactOwnerType(local.type)) ||
@@ -3197,12 +3221,12 @@ function emitExactWrappers(fn, options = {}) {
         diagnosticStageClock,
       }),
       ...taggedWrapper,
-      emitExactWrapper(fn, { diagnosticStageClock }),
+      ...(emitGmp ? [emitExactWrapper(fn, { diagnosticStageClock })] : []),
     ].join("\n\n");
   }
   return [
     emitTaggedWrapper(fn),
-    emitExactWrapper(fn, { diagnosticStageClock }),
+    ...(emitGmp ? [emitExactWrapper(fn, { diagnosticStageClock })] : []),
   ].join("\n\n");
 }
 
@@ -3638,7 +3662,8 @@ function float64Parameter(param) {
 }
 
 function float64CoreSignature(fn, prototype = false) {
-  return `int sagejs_kernel_${fn.name}(` + [
+  const linkage = hostCallable(fn) ? "" : "static ";
+  return `${linkage}int sagejs_kernel_${fn.name}(` + [
     "sagejs_native_status *status",
     "double *sagejs_native_output",
     ...fn.params.map(float64Parameter),
@@ -4741,8 +4766,8 @@ function publicCoreSignature(fn, prototype = false) {
   return `int sagejs_kernel_${fn.name}(${parameters})${prototype ? ";" : ""}`;
 }
 
-function publicCoreFunction(fn) {
-  if (fn.analysis?.backend?.kind === "fmpz") {
+function publicCoreFunction(fn, options = {}) {
+  if (fn.analysis?.backend?.kind === "fmpz" && options.tagged !== false) {
     const declarations = ["    int sagejs_core_ok;"];
     const initialization = [];
     const cleanup = [];
@@ -5285,6 +5310,8 @@ function generateHostCore(ir, options = {}) {
   );
   validateResidentExactScratch(functions);
   const exact = functions.filter((fn) => fn.kernelKind === "integer");
+  const integerBackends = selectedIntegerBackends(options);
+  const emitTagged = integerBackends.has("tagged");
   const exactEntries = exact.filter(hostCallable);
   // Prime-source callers use the checked scalar core ABI, even when their
   // integer dependency is not a public entry. Keep those adapters internal;
@@ -5306,7 +5333,9 @@ function generateHostCore(ir, options = {}) {
     fn.kernelKind === "prime-field-matrix"
   );
   const functionMap = new Map(functions.map((fn) => [fn.name, fn]));
-  const fmpz = generateFmpzFunctions(exact);
+  const fmpz = emitTagged
+    ? generateFmpzFunctions(exact)
+    : { selected: [], prototypes: "", functions: "" };
   // Scalar dependency-only functions still need internal tagged/word bodies.
   // Host export selection is distinct from representation eligibility: live
   // owned and fmpz-only aggregate borrows continue to use their direct core.
@@ -5320,19 +5349,25 @@ function generateHostCore(ir, options = {}) {
   const checkedRegionEntries = new Map(
     checkedRegions.map((region) => [region.entry, region]),
   );
-  const tagged = generateTaggedFunctions(
-    [...bridgeFunctions, ...checkedVariants], {
-    functions: [...ir.functions, ...checkedVariants],
-    emitMixedOperation: emitExactOperation,
-    checkedRegionEntries,
-  });
-  const wordFunctions = bridgeFunctions.filter((fn) =>
-    !usesMixedFloat64(fn) &&
-    ![fn.returnType, ...fn.params.map((param) => param.type)].some((type) =>
-      resourceForFunctionType(fn, type) !== undefined
+  const tagged = emitTagged
+    ? generateTaggedFunctions(
+      [...bridgeFunctions, ...checkedVariants], {
+        functions: [...ir.functions, ...checkedVariants],
+        emitMixedOperation: emitExactOperation,
+        checkedRegionEntries,
+      })
+    : { prototypes: "", functions: "" };
+  const wordFunctions = emitTagged
+    ? bridgeFunctions.filter((fn) =>
+      !usesMixedFloat64(fn) &&
+      ![fn.returnType, ...fn.params.map((param) => param.type)].some((type) =>
+        resourceForFunctionType(fn, type) !== undefined
+      )
     )
-  );
-  const word = generateWordFunctions(wordFunctions);
+    : [];
+  const word = emitTagged
+    ? generateWordFunctions(wordFunctions)
+    : { prototypes: "", functions: "" };
   const wordFunctionMap = new Map(wordFunctions.map((fn) => [fn.name, fn]));
   const wordMayPromote = wordPromotionCapabilities(wordFunctions);
   const usesInt64Buffers = exact.some((fn) =>
@@ -5365,6 +5400,7 @@ function generateHostCore(ir, options = {}) {
         usesWorkspaceArena,
       )
       : "",
+    floats.map((fn) => float64CoreSignature(fn, true)).join("\n"),
     exact.map((fn) => internalSignature(fn, true)).join("\n"),
     fmpz.prototypes,
     word.prototypes,
@@ -5376,9 +5412,10 @@ function generateHostCore(ir, options = {}) {
       ...options,
       privateIntegerBuffers: privateBuffers,
     })),
-    ...exactEntries.map(publicCoreFunction),
+    ...exactEntries.map((fn) => publicCoreFunction(fn, { tagged: emitTagged })),
     ...privateCoreAdapters.map((fn) =>
-      publicCoreFunction(fn).replace(/^int sagejs_kernel_/m, "static int sagejs_kernel_")
+      publicCoreFunction(fn, { tagged: emitTagged })
+        .replace(/^int sagejs_kernel_/m, "static int sagejs_kernel_")
     ),
     ...floats.map(emitFloat64CoreFunction),
     ...fields.map(emitFieldCoreFunction),
@@ -5512,6 +5549,9 @@ function generateNodeAdapter(ir, options = {}) {
     (ir.foreignLibraries || []).length === 0;
   const exact = exactFunctions(ir);
   const exactEntries = exact.filter(hostCallable);
+  const integerBackends = selectedIntegerBackends(options);
+  const emitTagged = integerBackends.has("tagged");
+  const emitGmp = integerBackends.has("gmp");
   const usesExactArena = exact.some((fn) =>
     fn.analysis?.liveExactWorkspace?.scopes?.some((scope) =>
       scope.storage === "shared-budget-lexical-exact-arena"
@@ -5615,7 +5655,10 @@ static int get_precision(
     )
   );
   const wrappers = [
-    ...exactEntries.map((fn) => emitExactWrappers(fn, options)),
+    ...exactEntries.map((fn) => emitExactWrappers(fn, {
+      ...options,
+      integerBackends: [...integerBackends],
+    })),
     ...floats.map(emitFloat64NodeAdapter),
     ...fields.map(emitFieldNodeAdapter),
     ...primeSources.map(emitPrimeSourceNodeAdapter),
@@ -5628,13 +5671,15 @@ static int get_precision(
       "NULL, NULL, NULL, napi_default, NULL}";
     return fn.kernelKind === "integer"
       ? [
-        ordinary,
-        ...(fn.analysis?.backend?.kind === "fmpz" ? [
+        ...(emitTagged ? [ordinary] : []),
+        ...(emitTagged && fn.analysis?.backend?.kind === "fmpz" ? [
           `        {${cString(`${fn.name}$tagged`)}, NULL, ` +
             `compiled_${fn.name}_tagged, NULL, NULL, NULL, napi_default, NULL}`,
         ] : []),
-        `        {${cString(`${fn.name}$gmp`)}, NULL, ` +
-          `compiled_${fn.name}_gmp, NULL, NULL, NULL, napi_default, NULL}`,
+        ...(emitGmp ? [
+          `        {${cString(`${fn.name}$gmp`)}, NULL, ` +
+            `compiled_${fn.name}_gmp, NULL, NULL, NULL, napi_default, NULL}`,
+        ] : []),
       ]
       : [ordinary];
     }),
@@ -5774,8 +5819,8 @@ NAPI_MODULE(NODE_GYP_MODULE_NAME, initialize)
 `;
 }
 
-function generateC(ir) {
-  return generateNodeAdapter(ir);
+function generateC(ir, options = {}) {
+  return generateNodeAdapter(ir, options);
 }
 
 function generateArtifacts(ir, options = {}) {

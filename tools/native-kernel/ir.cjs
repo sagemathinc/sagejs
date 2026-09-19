@@ -1281,11 +1281,11 @@ async function lowerSource(source, filename, options = {}) {
     // private native entry points from ordinary undecorated helpers.
     result.lexicallyNative = nativeDecorator(definition);
     // Dependency closure is not an implicit request for additional host APIs.
-    // Explicit roots and lexical native entries keep their existing safety
-    // restrictions; an ordinary source helper stays private regardless of
-    // whether its parameters happen to be scalars or resident aggregates.
-    if (result.kernelKind === "integer" &&
-        !initiallySelected.has(result.name) && !result.lexicallyNative) {
+    // Only requested roots are host entries.  A lexical `@native` marker on a
+    // same-file dependency means that function can be compiled as a root in
+    // its own artifact; it does not make every transitive composed artifact
+    // export it as an additional API.
+    if (!initiallySelected.has(result.name)) {
       result.hostCallable = false;
     }
     lowered.push(result);
@@ -1314,8 +1314,12 @@ async function lowerSource(source, filename, options = {}) {
   for (const name of requiredNativeImports) {
     const imported = importedNativeFunctions.get(name);
     for (const fn of imported.ir.functions || []) {
+      const privateImportedFunction = {
+        ...fn,
+        hostCallable: false,
+      };
       const previous = importedDefinitions.get(fn.name);
-      const definition = canonicalDefinition(fn);
+      const definition = canonicalDefinition(privateImportedFunction);
       const origins = [
         {path: imported.sourcePath, sha256: imported.sourceHash},
         ...(imported.ir.nativeSourceDependencies || []),
@@ -1337,10 +1341,13 @@ async function lowerSource(source, filename, options = {}) {
         hash: origin?.sha256,
         definition,
       });
-      importedLowered.push(fn.kernelKind !== "integer" || fn.lexicallyNative ? fn : {
-        ...fn,
-        hostCallable: false,
-      });
+      // An imported definition is an implementation dependency of this
+      // artifact, never an additional host entry.  Its lexical `@native`
+      // marker remains useful when its own source file is compiled, but that
+      // marker must not leak through an import edge and multiply the composed
+      // addon's public ABI.  The importing root can still call every retained
+      // representation directly inside the isolated core.
+      importedLowered.push(privateImportedFunction);
     }
     importedRecords.push(...(imported.ir.records || []));
     importedLibraries.push(...(imported.ir.foreignLibraries || []));
