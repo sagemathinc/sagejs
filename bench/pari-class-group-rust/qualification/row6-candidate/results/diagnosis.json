@@ -55,10 +55,19 @@
     }
   ],
   "firstSlowBoundary": "prime-ideal valuation of the first rationally smooth coefficient-box candidate",
+  "resolution": {
+    "mechanism": "a complete rational-prime group containing exactly one prime ideal is valued directly from v_p(norm)=f*v_P instead of local division",
+    "firstSmoothElement": "x - 1",
+    "firstSmoothNormFactorization": "3^2",
+    "postFixElapsedNanoseconds": 286293295,
+    "postFixRows": 217,
+    "postFixGenerators": 1202,
+    "postFixFullRank": false
+  },
   "outcome": {
-    "completed": false,
-    "relationPresentationAvailable": false,
+    "completed": true,
+    "relationPresentationAvailable": true,
     "classGroupCandidateAvailable": false,
-    "reason": "the faithful maximal-order row-6 input is not representable; the equation-order-only fallback stalls in prime-ideal valuation"
+    "reason": "the radius-1 equation-order presentation is rank deficient, and the faithful maximal-order row-6 input is not yet connected to the collector"
   }
 }

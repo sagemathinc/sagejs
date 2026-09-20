@@ -137,11 +137,17 @@ impl Default for PrimeValuationWorkspace {
     }
 }
 
-fn rational_group(base: &FactorBase, prime: i64) -> Option<(usize, usize)> {
+fn rational_group(base: &FactorBase, prime: i64) -> Option<(usize, usize, usize)> {
     base.rational_primes
         .binary_search(&prime)
         .ok()
-        .map(|group| (base.rational_offsets[group], base.rational_counts[group]))
+        .map(|group| {
+            (
+                group,
+                base.rational_offsets[group],
+                base.rational_counts[group],
+            )
+        })
 }
 
 /// Refine a rational norm factorization to a dense factor-base relation.
@@ -202,9 +208,34 @@ pub fn refine_quotient_factorization(
             });
         }
         previous = factor.prime;
-        let (start, count) = rational_group(base, factor.prime).ok_or(
+        let (group, start, count) = rational_group(base, factor.prime).ok_or(
             PrimeValuationError::PrimeMissingFromFactorBase(factor.prime),
         )?;
+
+        // When there is exactly one prime ideal above `p`, the norm identity
+        // determines its valuation without any local divisions:
+        //
+        //     v_p(N(alpha / divisor)) = f(P/p) * v_P(alpha / divisor).
+        //
+        // Besides avoiding needless work, this is important at index primes:
+        // a power-basis-derived `tau` may not describe division in the maximal
+        // order, whereas the complete one-prime group and rational quotient
+        // norm still determine the exact exponent.  The rational factors are
+        // already those of the quotient, so no second divisor subtraction is
+        // made in this branch.
+        if count == 1 && base.complete_groups[group] {
+            let residue_degree = base.ideals[start].residue_degree;
+            if residue_degree == 0 || factor.exponent % residue_degree != 0 {
+                return Err(PrimeValuationError::IncompletePrimeIdealFactorization {
+                    prime: factor.prime,
+                    norm_valuation: factor.exponent,
+                    accounted_valuation: 0,
+                });
+            }
+            relation[start] = i64::try_from(factor.exponent / residue_degree)
+                .map_err(|_| PrimeValuationError::ValuationOverflow)?;
+            continue;
+        }
 
         let mut accounted = 0_i64;
         for index in start..start + count {

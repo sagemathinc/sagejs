@@ -108,6 +108,54 @@ impl ValidatedPreparedCubic {
     pub fn into_data(self) -> PreparedCubicData {
         self.data
     }
+
+    /// Multiply two integral-coordinate elements in the validated basis.
+    ///
+    /// This is deliberately driven by the replayed multiplication table, so
+    /// rational power-basis denominators never enter the hot arithmetic.
+    pub fn multiply_coordinates(
+        &self,
+        left: &[Integer; DEGREE],
+        right: &[Integer; DEGREE],
+    ) -> [Integer; DEGREE] {
+        let mut product: [Integer; DEGREE] = std::array::from_fn(|_| Integer::new());
+        for (left_index, left_coefficient) in left.iter().enumerate() {
+            if left_coefficient == &0 {
+                continue;
+            }
+            for (right_index, right_coefficient) in right.iter().enumerate() {
+                if right_coefficient == &0 {
+                    continue;
+                }
+                let scalar = left_coefficient.clone() * right_coefficient;
+                let offset = 9 * left_index + 3 * right_index;
+                for (coordinate, value) in product.iter_mut().enumerate() {
+                    *value += scalar.clone() * &self.data.multiplication_table[offset + coordinate];
+                }
+            }
+        }
+        product
+    }
+
+    /// Exact field norm of an element expressed in the validated integral
+    /// basis.  The determinant is arbitrary precision and therefore also
+    /// serves as the promotion path for bounded collectors.
+    pub fn norm(&self, coordinates: &[Integer; DEGREE]) -> Integer {
+        let mut multiplication: [Integer; 9] = std::array::from_fn(|_| Integer::new());
+        for column in 0..DEGREE {
+            for (basis_index, coefficient) in coordinates.iter().enumerate() {
+                if coefficient == &0 {
+                    continue;
+                }
+                let offset = 9 * basis_index + 3 * column;
+                for row in 0..DEGREE {
+                    multiplication[3 * row + column] +=
+                        coefficient.clone() * &self.data.multiplication_table[offset + row];
+                }
+            }
+        }
+        determinant_3x3(&multiplication)
+    }
 }
 
 impl TryFrom<PreparedCubicData> for ValidatedPreparedCubic {
@@ -440,6 +488,10 @@ mod tests {
         values.map(Integer::from)
     }
 
+    fn wide_integers<const N: usize>(values: [i128; N]) -> [Integer; N] {
+        values.map(Integer::from)
+    }
+
     fn index_three_fixture() -> PreparedCubicData {
         PreparedCubicData {
             polynomial_ascending: integers([20_018, -20_010, 0, 1]),
@@ -461,11 +513,75 @@ mod tests {
         }
     }
 
+    fn row_six_fixture() -> PreparedCubicData {
+        PreparedCubicData {
+            polynomial_ascending: wide_integers([2_000_000_000_018, -2_000_000_000_010, 0, 1]),
+            irreducibility_prime: 7,
+            integral_basis_numerators: wide_integers([3, 0, 0, 0, 3, 0, -1_333_333_333_340, 1, 1]),
+            basis_denominator: Integer::from(3),
+            multiplication_table: wide_integers([
+                1,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                1,
+                0,
+                1,
+                0,
+                1_333_333_333_340,
+                -1,
+                3,
+                -222_222_222_226,
+                222_222_222_223,
+                1,
+                0,
+                0,
+                1,
+                -222_222_222_226,
+                222_222_222_223,
+                1,
+                98_765_432_099_456_790_123_456,
+                -1,
+                -222_222_222_223,
+            ]),
+            discriminant: Integer::from(3_555_555_555_596_888_888_888_939_555_555_555_028_i128),
+            signature: (3, 0),
+            embedding_precision: EmbeddingPrecisionState::Pending { target_bits: 192 },
+            index_primes: vec![Integer::from(3)],
+        }
+    }
+
     #[test]
     fn validates_index_three_rational_basis() {
         let field = ValidatedPreparedCubic::validate(index_three_fixture()).unwrap();
         assert_eq!(field.equation_order_index(), &3);
         assert_eq!(field.data().basis_denominator, 3);
+    }
+
+    #[test]
+    fn exact_integral_basis_arithmetic_handles_row_six() {
+        let field = ValidatedPreparedCubic::validate(row_six_fixture()).unwrap();
+        assert_eq!(field.equation_order_index(), &3);
+
+        let one = wide_integers([1, 0, 0]);
+        let x = wide_integers([0, 1, 0]);
+        let omega = wide_integers([0, 0, 1]);
+        assert_eq!(
+            field.multiply_coordinates(&x, &x),
+            wide_integers([1_333_333_333_340, -1, 3,])
+        );
+        assert_eq!(field.norm(&one), 1);
+        assert_eq!(field.norm(&x), -2_000_000_000_018_i64);
+
+        let alpha = wide_integers([7, -11, 13]);
+        let beta = wide_integers([-5, 3, 2]);
+        let product = field.multiply_coordinates(&alpha, &beta);
+        assert_eq!(field.norm(&product), field.norm(&alpha) * field.norm(&beta));
+        assert_ne!(field.norm(&omega), 0);
     }
 
     #[test]

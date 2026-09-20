@@ -50,13 +50,23 @@ Bounded prefix probes then excluded the other setup stages:
   canonical points, found one rationally smooth norm and rejected 11, all in
   0.035480 ms.
 
-Thus the first slow/failing boundary is the first smooth candidate's
-prime-ideal valuation (`refine_element_factorization`), before a new relation
-can be reported. This is not evidence that the faithful row-6 algorithm is
-slow: the probe is forced into the nonmaximal equation order by the current
-basis representation, precisely where ideal valuation at the index prime is
-not a valid substitute for maximal-order arithmetic.
+The first slow/failing boundary was the first smooth candidate's prime-ideal
+valuation (`refine_element_factorization`). That candidate is `x - 1`, whose
+norm is `3^2`, and the factor base has exactly one prime ideal above 3. In a
+complete one-prime group the exact norm identity determines the local
+valuation without repeated division. Adding that general shortcut eliminated
+the hang: the same radius-1 command now finishes in 286.293295 ms, including a
+134.080102 ms standalone factor-base construction and 146.891242 ms for the
+collector's independently repeated factor base plus enumeration.
+
+The completed diagnostic has 217 rows for 1,202 generators (216 seeded rows
+plus the new `x - 1` relation), so it is visibly rank deficient and is not a
+class-group candidate. This is also not evidence that the faithful row-6
+algorithm is slow: the probe remains forced into the nonmaximal equation order
+by the current boundary. The separately validated prepared-field API can now
+perform exact arithmetic in the denominator-three maximal-order basis; carrying
+that representation through prime ideals and the collector is the next step.
 
 `results/diagnosis.json` records the exact checkpoint and prefix measurements.
-There is no candidate class group, relation presentation, HNF, or Smith timing
-from this lane.
+There is no full-rank relation presentation, candidate class group, HNF, or
+Smith timing from this lane.

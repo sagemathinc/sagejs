@@ -16,6 +16,44 @@ fn h1_factor_base() -> factor_base::FactorBase {
     prepared_cubic_factor_base([20_034, -20_018, 0, 1], [1, 0, 0, 0, 1, 0, -13_345, 2, 1])
 }
 
+#[test]
+fn a_complete_single_prime_group_uses_the_norm_identity() {
+    let base = factor_base::FactorBase {
+        relation_bound: 3,
+        checking_bound: 3,
+        ideals: vec![factor_base::PrimeIdeal {
+            prime: 3,
+            ramification: 3,
+            residue_degree: 1,
+            generator: [0; 3],
+            // Deliberately unusable: this test proves the unique-prime path
+            // needs no local division matrix.
+            tau: [0; 9],
+            hnf: [0; 9],
+            norm: 3,
+        }],
+        rational_primes: vec![3],
+        rational_offsets: vec![0],
+        rational_counts: vec![1],
+        complete_groups: vec![true],
+    };
+    let mut relation = vec![0_i64];
+    let mut workspace = PrimeValuationWorkspace::new();
+    refine_quotient_factorization(
+        &base,
+        [-1, 1, 0],
+        &[RationalPrimePower {
+            prime: 3,
+            exponent: 2,
+        }],
+        Some((1, 1)),
+        &mut relation,
+        &mut workspace,
+    )
+    .unwrap();
+    assert_eq!(relation, [2]);
+}
+
 fn factor_over_base(mut value: u64, base: &factor_base::FactorBase) -> Vec<RationalPrimePower> {
     let mut answer = Vec::new();
     for prime in &base.rational_primes {

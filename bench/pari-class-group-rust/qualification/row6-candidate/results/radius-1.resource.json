@@ -2,12 +2,12 @@
   "schema": "sagejs.rust-class-group/row6-resource-observation-v1",
   "radius": 1,
   "timeoutSeconds": 10.0,
-  "timedOut": true,
-  "returnCode": -15,
-  "elapsedNanoseconds": 10014035887,
-  "kernelMaximumResidentSetKiB": 19824,
-  "sampledMaximumResidentSetKiB": 19984,
-  "sampledMaximumVirtualSizeKiB": 133832,
-  "memorySampleCount": 983,
-  "stderr": "stage=factor-base-complete elapsed_ns=133034173 ideals=1202\n"
+  "timedOut": false,
+  "returnCode": 0,
+  "elapsedNanoseconds": 286293295,
+  "kernelMaximumResidentSetKiB": 20364,
+  "sampledMaximumResidentSetKiB": 12920,
+  "sampledMaximumVirtualSizeKiB": 132312,
+  "memorySampleCount": 28,
+  "stderr": "stage=factor-base-complete elapsed_ns=134080102 ideals=1202\n"
 }
