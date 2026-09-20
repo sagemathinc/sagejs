@@ -75,7 +75,7 @@ impl PrimeValuationWorkspace {
         element: &[Integer; 3],
         ideal: &PrimeIdeal,
     ) -> Result<usize, PrimeValuationError> {
-        if element.iter().all(Integer::is_zero) {
+        if element.iter().all(|value| value == &0) {
             return Err(PrimeValuationError::ZeroElement);
         }
         self.current.clone_from(element);
