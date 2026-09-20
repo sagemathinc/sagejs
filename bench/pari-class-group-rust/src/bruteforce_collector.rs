@@ -9,13 +9,18 @@
 //! prepared factor base.  No LLL, real embedding, or oracle relation is used.
 
 use crate::factor_base::{FactorBase, prepared_cubic_factor_base};
+use crate::prepared::ValidatedPreparedCubic;
+use crate::prepared_factor_base::{
+    PreparedFactorBase, PreparedFactorBaseError, prepared_maximal_cubic_factor_base,
+};
+use crate::prepared_ideal::PreparedIdealWorkspace;
 use crate::prime_valuation::{
     PrimeValuationWorkspace, RationalPrimePower, refine_element_factorization,
 };
 use crate::relation_cache::{CacheError, RelationCache};
 use crate::smooth_admission::{
-    AdmissionError, CubicNormForm, FactorOutcome, cumulative_prime_products, factor_norm,
-    primes_through,
+    AdmissionError, CubicNormForm, FactorOutcome, cumulative_prime_products, factor_integer_norm,
+    factor_norm, primes_through,
 };
 use rug::Integer;
 
@@ -39,6 +44,7 @@ pub struct BruteForceStatistics {
 pub enum BruteForceError {
     Admission(AdmissionError),
     Cache(CacheError),
+    PreparedFactorBase(PreparedFactorBaseError),
 }
 
 impl From<AdmissionError> for BruteForceError {
@@ -53,12 +59,25 @@ impl From<CacheError> for BruteForceError {
     }
 }
 
+impl From<PreparedFactorBaseError> for BruteForceError {
+    fn from(value: PreparedFactorBaseError) -> Self {
+        Self::PreparedFactorBase(value)
+    }
+}
+
 pub struct BruteForceResult {
     pub factor_base: FactorBase,
     pub cache: RelationCache,
     /// Algebraic-integer coordinates aligned with the retained relation rows.
     /// Initial rational-prime relations use `[p, 0, 0]`.
     pub elements: Vec<[i64; 3]>,
+    pub statistics: BruteForceStatistics,
+}
+
+pub struct PreparedBruteForceResult {
+    pub factor_base: PreparedFactorBase,
+    pub cache: RelationCache,
+    pub elements: Vec<[Integer; 3]>,
     pub statistics: BruteForceStatistics,
 }
 
@@ -252,6 +271,124 @@ pub fn collect_primitive_box_with_supplementary(
         }
     }
     Ok(BruteForceResult {
+        factor_base: base,
+        cache,
+        elements,
+        statistics,
+    })
+}
+
+/// The coefficient-box diagnostic over a validated maximal-order basis.
+///
+/// Unlike the legacy entry point, factor-base ideals and valuations are
+/// computed in the rational integral basis, including index primes.
+pub fn collect_validated_primitive_box_with_supplementary(
+    field: &ValidatedPreparedCubic,
+    maximum_radius: i64,
+    supplementary_relations: usize,
+) -> Result<PreparedBruteForceResult, BruteForceError> {
+    let base = prepared_maximal_cubic_factor_base(field)?;
+    let primes = primes_through(PRIME_LIMIT);
+    let products = cumulative_prime_products(&primes, FACTOR_LIMIT)?;
+    let factor_product =
+        base.catalog
+            .rational_primes
+            .iter()
+            .fold(Integer::from(1), |mut product, prime| {
+                product *= *prime;
+                product
+            });
+    let mut cache = initialize_cache(&base.catalog, supplementary_relations)?;
+    let mut elements = cache
+        .metadata()
+        .chunks_exact(3)
+        .map(|metadata| [Integer::from(metadata[0]), Integer::new(), Integer::new()])
+        .collect::<Vec<_>>();
+    let mut ideal_workspace = PreparedIdealWorkspace::new();
+    let mut relation = vec![0_i64; base.catalog.ideals.len()];
+    let mut statistics = BruteForceStatistics::default();
+    let target = base.catalog.ideals.len() + supplementary_relations;
+
+    for radius in 1..=maximum_radius {
+        statistics.maximum_radius = radius;
+        for z in -radius..=radius {
+            for y in -radius..=radius {
+                for x in -radius..=radius {
+                    let bounded = [x, y, z];
+                    if !on_shell(bounded, radius) || (y == 0 && z == 0) {
+                        continue;
+                    }
+                    statistics.visited += 1;
+                    if !primitive(bounded) || !canonical_up_to_sign(bounded) {
+                        continue;
+                    }
+                    statistics.primitive_nonscalar += 1;
+                    let coordinates = bounded.map(Integer::from);
+                    let norm = field.norm(&coordinates);
+                    let FactorOutcome::Factored(factors) = factor_integer_norm(
+                        &norm,
+                        &factor_product,
+                        &primes,
+                        &products,
+                        FACTOR_LIMIT,
+                        PRIME_LIMIT as u64,
+                    )?
+                    else {
+                        continue;
+                    };
+                    if factors.is_empty() {
+                        continue;
+                    }
+                    statistics.smooth_norms += 1;
+                    let rational = factors
+                        .iter()
+                        .map(|factor| (factor.prime as i64, factor.exponent as usize))
+                        .collect::<Vec<_>>();
+                    if base
+                        .refine_element_factorization(
+                            field,
+                            &coordinates,
+                            &rational,
+                            &mut relation,
+                            &mut ideal_workspace,
+                        )
+                        .is_err()
+                    {
+                        continue;
+                    }
+                    statistics.factor_base_smooth += 1;
+                    let outcome = cache.add_relation(
+                        &relation,
+                        first_nonzero(&relation),
+                        statistics.primitive_nonscalar as i64,
+                        0,
+                        0,
+                        false,
+                    )?;
+                    if outcome.rank_marker == -1 {
+                        statistics.duplicate += 1;
+                    }
+                    if outcome.appended {
+                        statistics.appended += 1;
+                        elements.push(coordinates);
+                    }
+                    if outcome.rank_marker > 0 && cache.missing() < base.catalog.ideals.len() {
+                        statistics.independent =
+                            (base.catalog.ideals.len() - cache.missing()) as u64;
+                    }
+                    if cache.len() >= target && cache.missing() == 0 {
+                        return Ok(PreparedBruteForceResult {
+                            factor_base: base,
+                            cache,
+                            elements,
+                            statistics,
+                        });
+                    }
+                }
+            }
+        }
+    }
+    Ok(PreparedBruteForceResult {
         factor_base: base,
         cache,
         elements,

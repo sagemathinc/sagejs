@@ -14,8 +14,8 @@ group.
 | W0 exact-integer route | Passed on the development route | One Rust/GMP source pipeline gives an identical 3,300-byte result in native Rust, Node Wasm, Chromium, Firefox, WebKit, and an independent CPython oracle. See `wasm-arithmetic/receipt.json`. |
 | W0 high-precision route | Passed on the development route | Direct Rust FFI to GMP/MPFR/MPC produces byte-identical directed enclosures in native Rust and all three actual browsers, with an independent high-precision oracle. See `wasm-enclosure/receipt.json`. |
 | W0 release arithmetic choice | Passed for qualification; product host pending | The repaired repository toolchain (`37d8d819…66452c`) reproducibly rebuilds the exact-integer, high-precision enclosure, and first class-candidate artifacts. Their only extra imports are a documented empty-environment WASI shim; replacing or promoting that shim belongs to the product route. |
-| R1 prepared cubics | In progress | Neutral arbitrary-precision cubic preparation now validates rational bases, index primes, multiplication tables, discriminants, signatures, irreducibility evidence, and precision state. The fast PARI-style relation route is still authenticated only for H1. |
-| R2 relation/HNF loop | In progress | Exact relation witnesses are independently replayed; fixed-width Smith retries from an untouched checkpoint with GMP, and arbitrary-precision HNF/SNF returns exact transformation witnesses. A bounded row-6 radius-1 diagnostic now finishes in 286 ms after an exact unique-prime valuation shortcut, but its equation-order presentation has only 217 rows for 1,202 generators and is not a class-group candidate. |
+| R1 prepared cubics | In progress | Neutral arbitrary-precision cubic preparation validates rational bases, index primes, multiplication tables, discriminants, signatures, irreducibility evidence, and precision state. Exact GMP ideal lattices now carry row 6's denominator-three maximal order through a derived 1,130-ideal factor base and local valuations. The fast PARI-style relation route remains authenticated only for H1. |
+| R2 relation/HNF loop | In progress | Exact relation witnesses are independently replayed; fixed-width Smith retries from an untouched checkpoint with GMP, and arbitrary-precision HNF/SNF returns exact transformation witnesses. The genuine row-6 maximal-order radius-1 diagnostic finishes in 237 ms, but coefficient-box radius 64 still supplies only ten searched relations and leaves 918 of 1,130 pivots missing. Faithful small-norm collection and continuation remain open. |
 | R3 completion and maps | In progress | Verified Smith transforms now produce exact maps for the supplied relation presentation and reconstruct relation-combination witnesses. Units, principal elements, regulator/completion proof, saturation, generator ideals, and proof that the presentation is the full class group remain unimplemented. |
 | R4 public polynomial input | Open | No Rust maximal-order/general preparation path or public Sage.js adapter exists. |
 | R5 product qualification | Open | Packaging, lifecycle, cancellation, all platforms, the full corpus, and matched public PARI timings remain future gates. |
@@ -42,8 +42,9 @@ results.
   candidate in all three browsers; it is not a completed public class group.
 - `pari-control/`: authenticated PARI 2.17.4 control with distinct algorithm,
   prepared-field, and public-call timing boundaries.
-- `row6-candidate/`: bounded, answer-free diagnostic of the current provisional
-  equation-order collector on the required row-6 polynomial.
+- `row6-candidate/`: bounded, answer-free maximal-order diagnostic on the
+  required row-6 polynomial, retaining the earlier equation-order receipts as
+  historical evidence.
 - `browser/`: fail-closed class-group reactor ABI and actual-browser runner for
   the first real class-group Wasm artifact.
 

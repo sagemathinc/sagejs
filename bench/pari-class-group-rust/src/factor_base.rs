@@ -165,6 +165,20 @@ fn factor_cubic(polynomial: [i64; 4], prime: i64) -> Vec<Factor> {
     factors
 }
 
+pub(crate) fn prepared_cubic_factor_pattern(
+    polynomial: [i64; 4],
+    prime: i64,
+) -> Vec<(Vec<i64>, usize)> {
+    factor_cubic(polynomial, prime)
+        .into_iter()
+        .map(|factor| (factor.coefficients, factor.exponent))
+        .collect()
+}
+
+pub(crate) fn rational_primes_through(limit: usize) -> Vec<i64> {
+    primes_through(limit)
+}
+
 fn trim_polynomial(polynomial: &mut Vec<i64>) {
     while polynomial.len() > 1 && polynomial.last() == Some(&0) {
         polynomial.pop();
@@ -753,9 +767,10 @@ fn nth_ideal_bound(catalog: &[PrimePattern], count: usize) -> Option<usize> {
 }
 
 /// Construct the exact PARI-policy factor base from a prepared monogenic cubic.
-pub fn prepared_cubic_factor_base(polynomial: [i64; 4], basis: [i64; 9]) -> FactorBase {
-    assert_eq!(polynomial[3], 1);
-    let signed_discriminant = discriminant_cubic(polynomial);
+fn prepared_cubic_bounds(
+    polynomial: [i64; 4],
+    signed_discriminant: i128,
+) -> (usize, usize, Vec<PrimePattern>) {
     let discriminant = signed_discriminant.unsigned_abs();
     let log_d = (discriminant as f64).ln();
     let maximum_grh_bound = (4.0 * log_d * log_d) as usize;
@@ -786,6 +801,26 @@ pub fn prepared_cubic_factor_base(polynomial: [i64; 4], basis: [i64; 9]) -> Fact
     // floor raises the relation bound, so the construction and checking
     // catalogs have the same final limit.
     let checking_bound = relation_bound;
+    (relation_bound, checking_bound, catalog)
+}
+
+/// Compute the PARI-policy bounds from a supplied maximal-order
+/// discriminant.  This is the bridge used by rational prepared bases whose
+/// denominator prevents the legacy unimodular factor-base constructor.
+pub(crate) fn prepared_cubic_bounds_for_discriminant(
+    polynomial: [i64; 4],
+    signed_discriminant: i128,
+) -> (usize, usize) {
+    let (relation, checking, _) = prepared_cubic_bounds(polynomial, signed_discriminant);
+    (relation, checking)
+}
+
+/// Construct the exact PARI-policy factor base from a prepared monogenic cubic.
+pub fn prepared_cubic_factor_base(polynomial: [i64; 4], basis: [i64; 9]) -> FactorBase {
+    assert_eq!(polynomial[3], 1);
+    let signed_discriminant = discriminant_cubic(polynomial);
+    let (relation_bound, checking_bound, catalog) =
+        prepared_cubic_bounds(polynomial, signed_discriminant);
     let inverse = inverse_unimodular3(&basis);
     let table = multiplication_table(polynomial, &basis, &inverse);
     let logarithm = (relation_bound as f64 + 0.5).ln();

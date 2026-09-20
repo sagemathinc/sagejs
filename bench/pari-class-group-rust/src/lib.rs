@@ -25,6 +25,8 @@ mod hnf;
 mod ideal_arithmetic;
 mod numerical_preparation;
 mod prepared;
+mod prepared_factor_base;
+mod prepared_ideal;
 mod prime_valuation;
 mod relation_cache;
 mod smith;
@@ -40,7 +42,10 @@ pub use api::{
     compute_prepared_cubic_class_group_candidate,
     compute_upstream_assumed_h1_class_group_candidate,
 };
-pub use bruteforce_collector::BruteForceStatistics;
+pub use bruteforce_collector::{
+    BruteForceStatistics, PreparedBruteForceResult,
+    collect_validated_primitive_box_with_supplementary,
+};
 pub use class_group::{CollectorCounters, CollectorTimings};
 pub use class_maps::{
     ClassCoordinates, ClassMapError, PresentationClassMap, PresentationZeroState,
@@ -60,5 +65,11 @@ pub use hnf::{
 pub use prepared::{
     EmbeddingPrecisionState, PreparedCubicData, PreparedCubicValidationError,
     ValidatedPreparedCubic,
+};
+pub use prepared_factor_base::{
+    PreparedFactorBase, PreparedFactorBaseError, prepared_maximal_cubic_factor_base,
+};
+pub use prepared_ideal::{
+    CubicIdeal, DegreeOnePrimeCharacter, PreparedIdealError, PreparedIdealWorkspace,
 };
 pub use smith::{SmithError, WordSmithWorkspace, transpose_relation_records};

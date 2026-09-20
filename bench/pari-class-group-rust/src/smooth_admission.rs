@@ -704,7 +704,27 @@ pub fn factor_norm(
     factor_limit: u64,
     prime_limit: u64,
 ) -> Result<FactorOutcome, AdmissionError> {
-    let absolute = Integer::from(norm).abs();
+    factor_integer_norm(
+        &Integer::from(norm),
+        factor_product,
+        primes,
+        products,
+        factor_limit,
+        prime_limit,
+    )
+}
+
+/// Arbitrary-precision counterpart used by rational prepared bases whose
+/// small coordinates can already have norms outside `i128`.
+pub fn factor_integer_norm(
+    norm: &Integer,
+    factor_product: &Integer,
+    primes: &[u64],
+    products: &[Integer],
+    factor_limit: u64,
+    prime_limit: u64,
+) -> Result<FactorOutcome, AdmissionError> {
+    let absolute = norm.clone().abs();
     if absolute == 1 {
         return Ok(FactorOutcome::Factored(Vec::new()));
     }
@@ -728,5 +748,22 @@ pub fn factor_norm(
         Ok(FactorOutcome::Factored(factors))
     } else {
         Ok(FactorOutcome::Unresolved(Integer::from(residual)))
+    }
+}
+
+#[cfg(test)]
+mod arbitrary_precision_norm_tests {
+    use super::*;
+
+    #[test]
+    fn factors_a_smooth_norm_wider_than_i128() {
+        let norm = Integer::from(1) << 160;
+        assert_eq!(
+            factor_integer_norm(&norm, &Integer::from(2), &[2], &[], 2, 2),
+            Ok(FactorOutcome::Factored(vec![RationalFactor {
+                prime: 2,
+                exponent: 160,
+            }]))
+        );
     }
 }

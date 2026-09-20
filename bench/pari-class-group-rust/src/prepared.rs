@@ -156,6 +156,28 @@ impl ValidatedPreparedCubic {
         }
         determinant_3x3(&multiplication)
     }
+
+    /// Express an equation-order power-basis element in the validated
+    /// integral basis.  Validation has already proved that the equation order
+    /// is contained in this order, so each Cramer quotient is exact.
+    pub fn power_basis_coordinates(&self, coefficients: &[Integer; DEGREE]) -> [Integer; DEGREE] {
+        let basis_rows: [[Integer; DEGREE]; DEGREE] = std::array::from_fn(|row| {
+            std::array::from_fn(|column| {
+                self.data.integral_basis_numerators[DEGREE * row + column].clone()
+            })
+        });
+        let determinant = determinant_rows(&basis_rows);
+        let target: [Integer; DEGREE] = std::array::from_fn(|coordinate| {
+            coefficients[coordinate].clone() * &self.data.basis_denominator
+        });
+        std::array::from_fn(|row| {
+            let mut numerator = basis_rows.clone();
+            numerator[row] = target.clone();
+            let numerator = determinant_rows(&numerator);
+            debug_assert_eq!(numerator.clone() % &determinant, 0);
+            numerator / &determinant
+        })
+    }
 }
 
 impl TryFrom<PreparedCubicData> for ValidatedPreparedCubic {
@@ -316,6 +338,12 @@ fn determinant_3x3(m: &[Integer; 9]) -> Integer {
     let minor1 = m[3].clone() * &m[8] - m[5].clone() * &m[6];
     let minor2 = m[3].clone() * &m[7] - m[4].clone() * &m[6];
     m[0].clone() * minor0 - m[1].clone() * minor1 + m[2].clone() * minor2
+}
+
+fn determinant_rows(matrix: &[[Integer; DEGREE]; DEGREE]) -> Integer {
+    let flat: [Integer; 9] =
+        std::array::from_fn(|index| matrix[index / DEGREE][index % DEGREE].clone());
+    determinant_3x3(&flat)
 }
 
 fn validate_basis_and_discriminant(

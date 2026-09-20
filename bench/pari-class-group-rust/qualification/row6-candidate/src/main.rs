@@ -9,8 +9,9 @@
 
 use rug::Integer;
 use sagejs_pari_class_group_rust_experiment::{
-    BruteForceOptions, PreparedCubic, collect_prepared_cubic_presentation_candidate,
-    prepared_cubic_factor_base,
+    EmbeddingPrecisionState, PreparedCubicData, ValidatedPreparedCubic,
+    collect_validated_primitive_box_with_supplementary, prepared_cubic_factor_base,
+    prepared_maximal_cubic_factor_base,
 };
 use std::env;
 use std::time::Instant;
@@ -23,35 +24,90 @@ mod smooth_admission;
 const POLYNOMIAL: [i64; 4] = [2_000_000_000_018, -2_000_000_000_010, 0, 1];
 const EQUATION_ORDER_BASIS: [i64; 9] = [1, 0, 0, 0, 1, 0, 0, 0, 1];
 
+fn maximal_order() -> ValidatedPreparedCubic {
+    ValidatedPreparedCubic::validate(PreparedCubicData {
+        polynomial_ascending: POLYNOMIAL.map(Integer::from),
+        irreducibility_prime: 7,
+        integral_basis_numerators: [
+            3.into(),
+            0.into(),
+            0.into(),
+            0.into(),
+            3.into(),
+            0.into(),
+            (-1_333_333_333_340_i64).into(),
+            1.into(),
+            1.into(),
+        ],
+        basis_denominator: 3.into(),
+        multiplication_table: [
+            1.into(),
+            0.into(),
+            0.into(),
+            0.into(),
+            1.into(),
+            0.into(),
+            0.into(),
+            0.into(),
+            1.into(),
+            0.into(),
+            1.into(),
+            0.into(),
+            1_333_333_333_340_u64.into(),
+            (-1).into(),
+            3.into(),
+            (-222_222_222_226_i64).into(),
+            222_222_222_223_u64.into(),
+            1.into(),
+            0.into(),
+            0.into(),
+            1.into(),
+            (-222_222_222_226_i64).into(),
+            222_222_222_223_u64.into(),
+            1.into(),
+            98_765_432_099_456_790_123_456_u128.into(),
+            (-1).into(),
+            (-222_222_222_223_i64).into(),
+        ],
+        discriminant: 3_555_555_555_596_888_888_888_939_555_555_555_028_u128.into(),
+        signature: (3, 0),
+        embedding_precision: EmbeddingPrecisionState::Pending { target_bits: 192 },
+        index_primes: vec![3.into()],
+    })
+    .expect("row-6 maximal-order fixture must validate")
+}
+
 fn init_prefix(limit: usize) {
+    let field = maximal_order();
     let factor_started = Instant::now();
-    let factor_base = prepared_cubic_factor_base(POLYNOMIAL, EQUATION_ORDER_BASIS);
+    let factor_base =
+        prepared_maximal_cubic_factor_base(&field).expect("maximal-order factor base failed");
     let factor_ns = factor_started.elapsed().as_nanos();
-    let size = factor_base.ideals.len();
+    let size = factor_base.catalog.ideals.len();
     let additional = 7;
     let mut cache =
         relation_cache::RelationCache::new(size, 10 * (size + additional) + 50, additional);
     let mut relation = vec![0_i64; size];
     let started = Instant::now();
     let mut complete_seen = 0_usize;
-    for group in 0..factor_base.rational_primes.len() {
-        if !factor_base.complete_groups[group] {
+    for group in 0..factor_base.catalog.rational_primes.len() {
+        if !factor_base.catalog.complete_groups[group] {
             continue;
         }
         if complete_seen == limit {
             break;
         }
-        let start = factor_base.rational_offsets[group];
-        let count = factor_base.rational_counts[group];
+        let start = factor_base.catalog.rational_offsets[group];
+        let count = factor_base.catalog.rational_counts[group];
         relation.fill(0);
         for index in start..start + count {
-            relation[index] = factor_base.ideals[index].ramification as i64;
+            relation[index] = factor_base.catalog.ideals[index].ramification as i64;
         }
         cache
             .add_relation(
                 &relation,
                 start + 1,
-                factor_base.rational_primes[group],
+                factor_base.catalog.rational_primes[group],
                 0,
                 0,
                 false,
@@ -65,7 +121,7 @@ fn init_prefix(limit: usize) {
             "schema": "sagejs.rust-class-group/row6-initial-cache-prefix-v1",
             "qualificationStatus": "diagnostic-candidate-only",
             "usesOracleAsInput": false,
-            "equationOrderOnly": true,
+            "equationOrderOnly": false,
             "factorBaseSize": size,
             "completeGroupLimit": limit,
             "completeGroupsProcessed": complete_seen,
@@ -80,13 +136,13 @@ fn init_prefix(limit: usize) {
 }
 
 fn setup_stages() {
+    let field = maximal_order();
     let factor_started = Instant::now();
-    let factor_base = prepared_cubic_factor_base(POLYNOMIAL, EQUATION_ORDER_BASIS);
+    let factor_base =
+        prepared_maximal_cubic_factor_base(&field).expect("maximal-order factor base failed");
     let factor_ns = factor_started.elapsed().as_nanos();
     let norm_started = Instant::now();
-    let norm =
-        smooth_admission::CubicNormForm::from_prepared_basis(POLYNOMIAL, EQUATION_ORDER_BASIS)
-            .expect("norm form failed");
+    let norm_at_one = field.norm(&[1.into(), 1.into(), 1.into()]);
     let norm_ns = norm_started.elapsed().as_nanos();
     let prime_started = Instant::now();
     let primes = smooth_admission::primes_through(65_537);
@@ -98,6 +154,7 @@ fn setup_stages() {
     let factor_product_started = Instant::now();
     let factor_product =
         factor_base
+            .catalog
             .rational_primes
             .iter()
             .fold(Integer::from(1), |mut product, prime| {
@@ -111,11 +168,11 @@ fn setup_stages() {
             "schema": "sagejs.rust-class-group/row6-collector-setup-stages-v1",
             "qualificationStatus": "diagnostic-candidate-only",
             "usesOracleAsInput": false,
-            "factorBaseSize": factor_base.ideals.len(),
+            "factorBaseSize": factor_base.catalog.ideals.len(),
             "primeCount": primes.len(),
             "primeProductBlocks": products.len(),
             "factorBasePrimeProductBits": factor_product.significant_bits(),
-            "normAtOneOneOne": norm.norm([1, 1, 1]).expect("norm failed").to_string(),
+            "normAtOneOneOne": norm_at_one.to_string(),
             "timingsNanoseconds": {
                 "factorBase": factor_ns,
                 "normForm": norm_ns,
@@ -266,56 +323,50 @@ fn main() {
         .unwrap_or(7);
     assert!(radius > 0);
 
+    let field = maximal_order();
     let factor_started = Instant::now();
-    let factor_base = prepared_cubic_factor_base(POLYNOMIAL, EQUATION_ORDER_BASIS);
+    let factor_base =
+        prepared_maximal_cubic_factor_base(&field).expect("maximal-order factor base failed");
     let factor_ns = factor_started.elapsed().as_nanos();
     eprintln!(
         "stage=factor-base-complete elapsed_ns={factor_ns} ideals={}",
-        factor_base.ideals.len()
+        factor_base.catalog.ideals.len()
     );
 
     let collection_started = Instant::now();
-    let answer = collect_prepared_cubic_presentation_candidate(
-        PreparedCubic {
-            polynomial_ascending: POLYNOMIAL,
-            integral_basis_row_major: EQUATION_ORDER_BASIS,
-        },
-        BruteForceOptions {
-            maximum_radius: radius,
-            supplementary_relations: supplementary,
-        },
-    )
-    .expect("coefficient-box diagnostic failed");
+    let answer = collect_validated_primitive_box_with_supplementary(&field, radius, supplementary)
+        .expect("maximal-order coefficient-box diagnostic failed");
     let collection_ns = collection_started.elapsed().as_nanos();
 
     println!(
         "{}",
         serde_json::json!({
-            "schema": "sagejs.rust-class-group/row6-coefficient-box-candidate-diagnostic-v1",
+            "schema": "sagejs.rust-class-group/row6-maximal-order-candidate-diagnostic-v1",
             "qualificationStatus": "diagnostic-candidate-only",
-            "mathematicalBoundary": "equation-order-only-not-maximal-order",
+            "mathematicalBoundary": "validated-maximal-order-prepared-field",
             "linksPari": false,
             "usesOracleAsInput": false,
             "polynomialAscending": POLYNOMIAL.map(|value| value.to_string()),
             "basis": {
-                "rowMajor": EQUATION_ORDER_BASIS,
-                "determinant": 1,
-                "knownLimitation": "the genuine maximal-order basis has denominator 3 and is not representable by the current unimodular-i64 PreparedCubic boundary"
+                "numeratorRows": field.data().integral_basis_numerators.iter().map(ToString::to_string).collect::<Vec<_>>(),
+                "denominator": field.data().basis_denominator.to_string(),
+                "equationOrderIndex": field.equation_order_index().to_string(),
             },
             "controls": {
                 "maximumRadius": radius,
                 "supplementaryRelations": supplementary,
             },
             "factorBase": {
-                "relationBound": factor_base.relation_bound,
-                "checkingBound": factor_base.checking_bound,
-                "idealCount": factor_base.ideals.len(),
-                "rationalPrimeCount": factor_base.rational_primes.len(),
+                "relationBound": factor_base.catalog.relation_bound,
+                "checkingBound": factor_base.catalog.checking_bound,
+                "idealCount": factor_base.catalog.ideals.len(),
+                "rationalPrimeCount": factor_base.catalog.rational_primes.len(),
             },
             "relations": {
-                "rows": answer.presentation.relation_count(),
-                "generatorCount": answer.presentation.generator_count,
-                "fullRankObserved": answer.statistics.independent as usize == answer.presentation.generator_count,
+                "rows": answer.cache.len(),
+                "generatorCount": answer.factor_base.catalog.ideals.len(),
+                "missingRank": answer.cache.missing(),
+                "fullRankObserved": answer.cache.missing() == 0,
             },
             "statistics": {
                 "visited": answer.statistics.visited,
