@@ -332,10 +332,17 @@ pub fn prepared_maximal_cubic_factor_base(
             .index_primes
             .iter()
             .any(|index_prime| index_prime == &prime);
-        let mut descriptors = if is_index_prime {
-            index_prime_descriptors(field, prime, &mut normal_forms)?
+        let (mut descriptors, full_count) = if is_index_prime {
+            let descriptors = index_prime_descriptors(field, prime, &mut normal_forms)?;
+            let full_count = descriptors.len();
+            (descriptors, full_count)
         } else {
-            ordinary_prime_descriptors(field, polynomial, prime, limit, &mut normal_forms)?
+            let pattern = prepared_cubic_factor_pattern(polynomial, prime);
+            let full_count = pattern.len();
+            (
+                ordinary_prime_descriptors(field, prime, limit, &pattern, &mut normal_forms)?,
+                full_count,
+            )
         };
         if descriptors.is_empty() {
             continue;
@@ -346,11 +353,6 @@ pub fn prepared_maximal_cubic_factor_base(
                 .cmp(&right.0.residue_degree)
                 .then_with(|| left.0.generator.cmp(&right.0.generator))
         });
-        let full_count = if is_index_prime {
-            descriptors.len()
-        } else {
-            prepared_cubic_factor_pattern(polynomial, prime).len()
-        };
         rational_primes.push(prime);
         rational_offsets.push(ideals.len());
         rational_counts.push(descriptors.len());
@@ -376,13 +378,13 @@ pub fn prepared_maximal_cubic_factor_base(
 
 fn ordinary_prime_descriptors(
     field: &ValidatedPreparedCubic,
-    polynomial: [i64; 4],
     prime: i64,
     degree_limit: usize,
+    pattern: &[(Vec<i64>, usize)],
     workspace: &mut PreparedIdealWorkspace,
 ) -> Result<Vec<(PrimeIdeal, CubicIdeal)>, PreparedFactorBaseError> {
     let mut answer = Vec::new();
-    for (factor, exponent) in prepared_cubic_factor_pattern(polynomial, prime) {
+    for (factor, exponent) in pattern {
         let degree = factor.len() - 1;
         if degree == 3 || degree > degree_limit {
             continue;
@@ -394,7 +396,7 @@ fn ordinary_prime_descriptors(
         let expected = Integer::from(prime).pow(degree as u32);
         check_norm(prime, &expected, &exact)?;
         answer.push((
-            descriptor(prime, exponent, degree, &generator, &exact)?,
+            descriptor(prime, *exponent, degree, &generator, &exact)?,
             exact,
         ));
     }

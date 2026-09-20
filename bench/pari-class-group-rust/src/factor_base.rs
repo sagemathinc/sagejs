@@ -112,12 +112,34 @@ fn mod_i64(value: i128, prime: i64) -> i64 {
     value.rem_euclid(i128::from(prime)) as i64
 }
 
-fn evaluate_mod(polynomial: &[i64], value: i64, prime: i64) -> i64 {
-    polynomial.iter().rev().fold(0_i64, |answer, coefficient| {
+/// Reduce `left * right + addend` when all three operands are residues.
+///
+/// Wasm engines differ dramatically in their lowering of i128 remainder.  A
+/// cubic root scan performs this operation millions of times even though its
+/// inputs are already in `[0, prime)`.  The fast branch is valid precisely
+/// when `(prime - 1)^2 + (prime - 1)` fits in i64; the division-form guard
+/// proves that fact without overflowing.  Larger moduli retain the original
+/// i128 implementation.
+#[inline]
+fn residue_mul_add(left: i64, right: i64, addend: i64, prime: i64) -> i64 {
+    debug_assert!(prime >= 2);
+    debug_assert!((0..prime).contains(&left));
+    debug_assert!((0..prime).contains(&right));
+    debug_assert!((0..prime).contains(&addend));
+    let maximum = prime - 1;
+    if maximum <= (i64::MAX - maximum) / maximum {
+        (left * right + addend).rem_euclid(prime)
+    } else {
         mod_i64(
-            i128::from(answer) * i128::from(value) + i128::from(*coefficient),
+            i128::from(left) * i128::from(right) + i128::from(addend),
             prime,
         )
+    }
+}
+
+fn evaluate_mod(polynomial: &[i64], value: i64, prime: i64) -> i64 {
+    polynomial.iter().rev().fold(0_i64, |answer, coefficient| {
+        residue_mul_add(answer, value, *coefficient, prime)
     })
 }
 
@@ -127,10 +149,7 @@ fn divide_linear(polynomial: &[i64], root: i64, prime: i64) -> Vec<i64> {
     let mut quotient = vec![0_i64; degree];
     quotient[degree - 1] = polynomial[degree];
     for index in (1..degree).rev() {
-        quotient[index - 1] = mod_i64(
-            i128::from(polynomial[index]) + i128::from(root) * i128::from(quotient[index]),
-            prime,
-        );
+        quotient[index - 1] = residue_mul_add(root, quotient[index], polynomial[index], prime);
     }
     debug_assert_eq!(evaluate_mod(polynomial, root, prime), 0);
     quotient
@@ -1077,6 +1096,34 @@ mod tests {
             generators,
             values(&checkpoint["oracleOnly"]["initialRelationCache"]["generators"])
         );
+    }
+
+    #[test]
+    fn bounded_residue_multiply_add_matches_i128_and_falls_back_at_boundary() {
+        for prime in [2, 3, 9_196, 3_037_000_499, 3_037_000_500] {
+            let maximum = prime - 1;
+            assert_eq!(
+                residue_mul_add(maximum, maximum, maximum, prime),
+                mod_i64(
+                    i128::from(maximum) * i128::from(maximum) + i128::from(maximum),
+                    prime,
+                )
+            );
+        }
+        for (prime, uses_fast_path) in [(3_037_000_500, true), (3_037_000_501, false)] {
+            let maximum = prime - 1;
+            assert_eq!(maximum <= (i64::MAX - maximum) / maximum, uses_fast_path);
+            // Modulo p this is (-2)*(-3)+(-4) = 2.  Unlike the maximum-only
+            // boundary check above, it detects a wrong arithmetic result.
+            assert_eq!(residue_mul_add(prime - 2, prime - 3, prime - 4, prime), 2);
+            assert_eq!(
+                residue_mul_add(prime - 2, prime - 3, prime - 4, prime),
+                mod_i64(
+                    i128::from(prime - 2) * i128::from(prime - 3) + i128::from(prime - 4),
+                    prime,
+                )
+            );
+        }
     }
 
     #[test]
