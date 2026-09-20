@@ -5,7 +5,7 @@
 mod collector_schedule;
 
 use collector_schedule::{
-    copy_original_packet, next_small_norm_ideal, original_packet_index, ScheduleError,
+    ScheduleError, copy_original_packet, next_small_norm_ideal, original_packet_index,
 };
 
 fn h1_search_order() -> Vec<i64> {

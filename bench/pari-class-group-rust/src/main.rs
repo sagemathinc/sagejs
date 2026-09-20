@@ -1,6 +1,7 @@
 // Copyright (C) The PARI group and Sage.js contributors.
 // GPL-2.0-or-later, without warranty.
 
+mod enumeration;
 mod factor_base;
 mod relation_cache;
 
