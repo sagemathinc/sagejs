@@ -18,6 +18,17 @@ from typing import Any
 import sagejs as sage
 
 _SCHEMA = "sagejs.rust-class-group.neutral-input/v1"
+_RESULT_SCHEMA = "sagejs.rust-class-group/prepared-cubic-class-unit-v1"
+_RESULT_QUALIFICATION_STATUS = "grh-conditional-class-unit-index-one"
+_RESULT_BOUNDARY = "replay-validated-prepared-cubic-to-complete-class-and-unit-result"
+_PUBLIC_RESULT_EVIDENCE_GAPS = (
+    "no Sage.js RelationPresentation replay accepted by the public class-map adapter",
+    "no arbitrary-ideal discrete-log and principality callback with exact quotient witnesses",
+    "no Sage.js class-group proof record replaying the conditional factor-base theorem",
+    "compact unit factors have not been reconstructed as live exact Sage.js unit objects",
+    "no RootsOfUnityResult and rigorous RegulatorEnclosure bound to those live units",
+    "no UnitSaturationIndexCertificate or ClassUnitSaturationRecord accepted by Sage.js",
+)
 _SMALL_PRIMES = (
     2,
     3,
@@ -676,7 +687,7 @@ def verify_rust_class_generator_orders(
     relation-lattice completeness, unit saturation, or arbitrary ideal maps.
     """
     authoritative = prepare_cubic_for_rust(field)
-    if prepared_input.get("inputId") != authoritative["inputId"]:
+    if not _prepared_input_matches_authoritative(prepared_input, authoritative):
         raise ValueError("the Rust input does not match this certified Sage.js field")
     if result.get("inputId") != prepared_input["inputId"]:
         raise ValueError("the Rust result does not identify the prepared input")
@@ -697,15 +708,18 @@ def verify_rust_class_generator_orders(
     class_map = result["classMap"]
     selected_indices = class_map["selectedGeneratorIndicesZeroBased"]
     selected_ideals = class_map["selectedGeneratorPrimeIdeals"]
-    relations = class_map["generatorOrderRelations"]
+    # Early trivial-group bundles predate the explicit empty generator-order
+    # catalogs.  Their absence is equivalent to an empty catalog only after
+    # the independently parsed invariant list below is also empty.
+    relations = class_map.get("generatorOrderRelations", [])
     factor_base_catalog: dict[int, dict[str, Any]] = {}
-    for descriptor in class_map["generatorOrderFactorBaseCatalog"]:
+    for descriptor in class_map.get("generatorOrderFactorBaseCatalog", []):
         index = int(str(descriptor["factorBaseIndexZeroBased"]))
         if index in factor_base_catalog:
             raise ValueError("the generator-order factor-base catalog repeats an index")
         factor_base_catalog[index] = descriptor
     exported_power_hnfs: dict[tuple[int, int], list[Any]] = {}
-    for descriptor in class_map["generatorOrderPrimePowerHnfs"]:
+    for descriptor in class_map.get("generatorOrderPrimePowerHnfs", []):
         key = (
             int(str(descriptor["factorBaseIndexZeroBased"])),
             int(str(descriptor["exponent"])),
@@ -974,4 +988,324 @@ def verify_rust_class_generator_orders(
     }
 
 
-__all__ = ["prepare_cubic_for_rust", "verify_rust_class_generator_orders"]
+def _required_mapping(container: Any, key: str, owner: str) -> dict[str, Any]:
+    if not isinstance(container, dict):
+        raise TypeError(owner + " must be a dictionary")
+    value = container.get(key)
+    if not isinstance(value, dict):
+        raise TypeError(owner + "." + key + " must be a dictionary")
+    return value
+
+
+def _required_sequence(container: Any, key: str, owner: str) -> list[Any]:
+    if not isinstance(container, dict):
+        raise TypeError(owner + " must be a dictionary")
+    value = container.get(key)
+    if not isinstance(value, list):
+        raise TypeError(owner + "." + key + " must be a list")
+    return value
+
+
+def _prepared_input_matches_authoritative(
+    prepared_input: dict[str, Any], authoritative: dict[str, Any]
+) -> bool:
+    supplied_preparation = _required_mapping(
+        prepared_input, "preparation", "prepared input"
+    )
+    canonical_preparation = _required_mapping(
+        authoritative, "preparation", "canonical prepared input"
+    )
+    # Early retained bundles used a different canonical JSON hashing pass and
+    # a corpus label for `fieldId`.  Neither is mathematical authority: compare
+    # every field and preparation value directly, excluding only the derived
+    # source digest.  The Rust result is separately bound to the retained input
+    # ID, so it cannot exchange evidence between retained bundles.
+    supplied_preparation_body = {
+        key: value
+        for key, value in supplied_preparation.items()
+        if key != "sourceSha256"
+    }
+    canonical_preparation_body = {
+        key: value
+        for key, value in canonical_preparation.items()
+        if key != "sourceSha256"
+    }
+    return bool(
+        prepared_input.get("schema") == authoritative["schema"]
+        and prepared_input.get("field") == authoritative["field"]
+        and supplied_preparation_body == canonical_preparation_body
+        and prepared_input.get("containsOracleAnswers") is False
+    )
+
+
+def _nonnegative_json_integer(value: Any, name: str) -> int:
+    if isinstance(value, bool):
+        raise TypeError(name + " must be an integer")
+    try:
+        answer = int(str(value))
+    except (TypeError, ValueError) as error:
+        raise TypeError(name + " must be an integer") from error
+    if str(answer) != str(value) or answer < 0:
+        raise ValueError(name + " must be a canonical nonnegative integer")
+    return answer
+
+
+def _sha256_identifier(value: Any, name: str) -> str:
+    if not isinstance(value, str) or not value.startswith("sha256:"):
+        raise ValueError(name + " must be a sha256 identifier")
+    digest = value[7:]
+    if len(digest) != 64 or any(
+        character not in "0123456789abcdef" for character in digest
+    ):
+        raise ValueError(name + " must contain a lowercase SHA-256 digest")
+    return value
+
+
+def _rust_result_digest(result: dict[str, Any]) -> str:
+    try:
+        canonical = json.dumps(
+            result, sort_keys=True, separators=(",", ":"), allow_nan=False
+        )
+    except (TypeError, ValueError) as error:
+        raise TypeError("the Rust result must be canonical JSON data") from error
+    return "sha256:" + hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def _validate_rust_candidate_shape(
+    prepared_input: dict[str, Any], result: dict[str, Any]
+) -> tuple[tuple[int, ...], dict[str, Any]]:
+    """Validate lossless candidate data without accepting completion labels."""
+    if not isinstance(prepared_input, dict) or not isinstance(result, dict):
+        raise TypeError("prepared input and Rust result must be dictionaries")
+    if prepared_input.get("schema") != _SCHEMA:
+        raise ValueError("the prepared input has the wrong schema")
+    if result.get("schema") != _RESULT_SCHEMA:
+        raise ValueError("the Rust class/unit result has the wrong schema")
+    prepared_input_id = _sha256_identifier(
+        prepared_input.get("inputId"), "prepared input ID"
+    )
+    if result.get("inputId") != prepared_input_id:
+        raise ValueError("the Rust result does not identify the prepared input")
+    if result.get("usesOracleAsInput") is not False:
+        raise ValueError("a Rust public candidate must not use an oracle as input")
+    if result.get("usesClassGroupAnswersAsInput") is not False:
+        raise ValueError(
+            "a Rust public candidate must not use class-group answers as input"
+        )
+    for key in ("complete", "publicComplete", "public_complete"):
+        if key in result:
+            raise ValueError(
+                "a producer cannot supply public completion state through " + key
+            )
+    if result.get("qualificationStatus") != _RESULT_QUALIFICATION_STATUS:
+        raise ValueError("the Rust result has an unknown qualification status")
+    if result.get("mathematicalBoundary") != _RESULT_BOUNDARY:
+        raise ValueError("the Rust result has an unknown mathematical boundary")
+
+    field_data = _required_mapping(prepared_input, "field", "prepared input")
+    polynomial = _required_sequence(
+        field_data, "coefficientsAscending", "prepared input.field"
+    )
+    result_polynomial = _required_sequence(result, "polynomialAscending", "result")
+    if tuple(str(value) for value in result_polynomial) != tuple(
+        str(value) for value in polynomial
+    ):
+        raise ArithmeticError("the Rust result changed the defining polynomial")
+
+    analytic = _required_mapping(result, "analyticCompletion", "result")
+    raw_invariants = _required_sequence(
+        analytic, "candidateInvariantFactors", "result.analyticCompletion"
+    )
+    invariants = tuple(
+        _nonnegative_json_integer(value, "candidate invariant")
+        for value in raw_invariants
+    )
+    previous = 1
+    for invariant in invariants:
+        if invariant <= 1 or invariant % previous != 0:
+            raise ValueError(
+                "candidate invariants must exceed one and divide successively"
+            )
+        previous = invariant
+    candidate_class_number = _nonnegative_json_integer(
+        analytic.get("candidateClassNumber"), "candidate class number"
+    )
+    expected_class_number = 1
+    for invariant in invariants:
+        expected_class_number *= invariant
+    if candidate_class_number != expected_class_number:
+        raise ArithmeticError("candidate invariant factors have the wrong product")
+
+    relations = _required_mapping(result, "relations", "result")
+    relation_rows = _nonnegative_json_integer(relations.get("rows"), "relation rows")
+    relation_columns = _nonnegative_json_integer(
+        relations.get("columns"), "relation columns"
+    )
+    class_map = _required_mapping(result, "classMap", "result")
+    coordinates = _required_sequence(
+        class_map, "generatorMajorCoordinates", "result.classMap"
+    )
+    if len(coordinates) != relation_columns:
+        raise ValueError("the class-map coordinate matrix has the wrong row count")
+    for row in coordinates:
+        if not isinstance(row, list) or len(row) != len(invariants):
+            raise ValueError("a class-map coordinate row has the wrong width")
+        for coordinate, invariant in zip(row, invariants, strict=True):
+            normalized = _nonnegative_json_integer(coordinate, "class coordinate")
+            if normalized >= invariant:
+                raise ValueError("a class-map coordinate is not normalized")
+    selected_indices = _required_sequence(
+        class_map, "selectedGeneratorIndicesZeroBased", "result.classMap"
+    )
+    selected_ideals = _required_sequence(
+        class_map, "selectedGeneratorPrimeIdeals", "result.classMap"
+    )
+    if len(selected_indices) != len(invariants) or len(selected_ideals) != len(
+        invariants
+    ):
+        raise ValueError("the candidate does not have one ideal per invariant factor")
+    seen_selected_indices: set[int] = set()
+    for coordinate, (raw_index, _ideal) in enumerate(
+        zip(selected_indices, selected_ideals, strict=True)
+    ):
+        index = _nonnegative_json_integer(raw_index, "selected generator index")
+        if index >= relation_columns:
+            raise ValueError("a selected class generator is outside the factor base")
+        if index in seen_selected_indices:
+            raise ValueError("the selected class-generator indices are not distinct")
+        seen_selected_indices.add(index)
+        expected_row = [
+            1 if position == coordinate else 0 for position in range(len(invariants))
+        ]
+        actual_row = [
+            _nonnegative_json_integer(value, "selected generator coordinate")
+            for value in coordinates[index]
+        ]
+        if actual_row != expected_row:
+            raise ArithmeticError(
+                "a selected ideal is not the normalized standard invariant generator"
+            )
+
+    return invariants, {
+        "artifactSha256": _rust_result_digest(result),
+        "candidateClassNumber": candidate_class_number,
+        "candidateInvariantFactors": list(invariants),
+        "relationRows": relation_rows,
+        "relationColumns": relation_columns,
+    }
+
+
+def adapt_rust_prepared_cubic_class_unit_result(
+    field: Any,
+    prepared_input: dict[str, Any],
+    result: dict[str, Any],
+) -> Any:
+    """Return the narrow honest public record for a prepared-cubic bundle.
+
+    The Rust bundle is treated as an untrusted candidate.  This adapter binds it
+    to a freshly prepared representation of `field`, independently replays all
+    available class-generator order witnesses, and checks the lossless finite
+    presentation metadata.  The current bundle still lacks evidence required
+    by the existing complete public class and unit types, so the result is an
+    ordinary incomplete `ClassUnitComputation`; no parallel result hierarchy or
+    weaker `IdealClassGroup` is introduced.
+    """
+    authoritative = prepare_cubic_for_rust(field)
+    if not _prepared_input_matches_authoritative(prepared_input, authoritative):
+        raise ValueError("the prepared Rust input is not the canonical field export")
+    invariants, diagnostics = _validate_rust_candidate_shape(prepared_input, result)
+    generator_verification = verify_rust_class_generator_orders(
+        field, prepared_input, result
+    )
+    if (
+        generator_verification.get("schema")
+        != "sagejs.rust-class-group/generator-order-verification-v1"
+        or generator_verification.get("inputId") != prepared_input["inputId"]
+        or generator_verification.get("authority")
+        != "independent-sagejs-ideal-arithmetic"
+        or generator_verification.get("verifiedGeneratorCount") != len(invariants)
+    ):
+        raise ArithmeticError("the independent class-generator replay is incomplete")
+    verified_generators = generator_verification.get("generators")
+    if not isinstance(verified_generators, list) or len(verified_generators) != len(
+        invariants
+    ):
+        raise ArithmeticError("the independent class-generator receipt is malformed")
+    seen_coordinates: set[int] = set()
+    for generator in verified_generators:
+        if not isinstance(generator, dict):
+            raise TypeError("an independently verified generator must be a dictionary")
+        coordinate = _nonnegative_json_integer(
+            generator.get("generatorCoordinateZeroBased"),
+            "verified generator coordinate",
+        )
+        if coordinate >= len(invariants) or coordinate in seen_coordinates:
+            raise ArithmeticError(
+                "the independent generator coordinates are incomplete"
+            )
+        seen_coordinates.add(coordinate)
+        if (
+            _nonnegative_json_integer(
+                generator.get("order"), "verified generator order"
+            )
+            != (invariants[coordinate])
+        ):
+            raise ArithmeticError("an independent generator order changed")
+        if (
+            generator.get("hnfReplayed") is not True
+            or generator.get("principalIdealEquality") is not True
+        ):
+            raise ArithmeticError("an independent generator relation did not replay")
+
+    groups = __import__(
+        "sagejs.number_fields.class_unit_groups", fromlist=["class_unit_groups"]
+    )
+    gaps = list(_PUBLIC_RESULT_EVIDENCE_GAPS)
+    diagnostics.update(
+        {
+            "schema": "sagejs.rust-class-group/public-adapter-diagnostics-v1",
+            "inputId": authoritative["inputId"],
+            "producerInputId": prepared_input["inputId"],
+            "candidateOnly": True,
+            "producerQualificationStatus": result["qualificationStatus"],
+            "generatorOrderVerification": generator_verification,
+            "remainingEvidenceGaps": gaps,
+        }
+    )
+    stages = (
+        groups.ClassUnitStage(
+            "rust-prepared-cubic-candidate",
+            "complete",
+            {
+                "inputId": authoritative["inputId"],
+                "producerInputId": prepared_input["inputId"],
+                "artifactSha256": diagnostics["artifactSha256"],
+                "verifiedGeneratorCount": len(invariants),
+            },
+        ),
+        groups.ClassUnitStage(
+            "public-class-unit-certification",
+            "incomplete",
+            {"missingEvidence": gaps},
+        ),
+    )
+    return groups.ClassUnitComputation(
+        field,
+        proof_status=groups.INCOMPLETE_RESOURCE_LIMIT,
+        complete=False,
+        reason=(
+            "the Rust prepared-cubic candidate replayed, but the standard Sage.js "
+            "class-map and unit-saturation completion evidence is absent"
+        ),
+        algorithm="rust-prepared-cubic-experimental",
+        stages=stages,
+        tentative_invariants=invariants,
+        diagnostics=diagnostics,
+    )
+
+
+__all__ = [
+    "adapt_rust_prepared_cubic_class_unit_result",
+    "prepare_cubic_for_rust",
+    "verify_rust_class_generator_orders",
+]
