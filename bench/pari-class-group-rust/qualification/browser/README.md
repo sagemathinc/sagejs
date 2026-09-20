@@ -23,7 +23,13 @@ but cannot stand in for the portable baseline required by the plan.
 ## Candidate ABI
 
 The first candidate must be a Wasm32 reactor with no imports, or only imports
-from `wasi_snapshot_preview1`. It must export:
+from `wasi_snapshot_preview1`. The qualification loader explicitly allowlists
+the imports implemented by Sage.js's bounded host. It additionally supplies
+`environ_get` and `environ_sizes_get` as a deterministic empty-environment
+shim when a Rust `wasm32-wasip1` standard-library reactor requests them. Every
+such import remains visible in the receipt. This qualification-only shim is
+not evidence that the unmodified production WASI host can load the artifact.
+The candidate must export:
 
 | Export | Type | Meaning |
 | --- | --- | --- |
@@ -73,7 +79,8 @@ node bench/pari-class-group-rust/qualification/browser/run-browser.mjs \
 Paths may be absolute or relative to the repository, but the candidate and
 vector must be inside the repository root so the hardened test server can serve
 them. The runner records the artifact SHA-256 and byte size, browser versions,
-actual artifact request count, compile/instantiate/call timings, memory pages,
+actual artifact request count, compile/instantiate timings, 15 repeated exact
+call samples and their median, memory pages,
 isolation capabilities, raw request/result, and all failures. It never emits
 `pass` unless every requested engine executes the exact candidate and returns
 the expected result.

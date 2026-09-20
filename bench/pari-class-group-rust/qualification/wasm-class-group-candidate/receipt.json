@@ -1,0 +1,104 @@
+{
+  "schema": "sagejs.rust-class-group.wasm-candidate-receipt/v1",
+  "status": "presentation-candidate-passed-three-browser-smoke",
+  "claim": {
+    "status": "candidate",
+    "publicComplete": false,
+    "proofAuthority": "none",
+    "reason": "full-rank relation presentation plus surplus rows; no completion, maps, or unit certificate"
+  },
+  "neutralInput": {
+    "polynomialAscending": ["-34", "-30", "-8", "1"],
+    "containsRelations": false,
+    "containsClassNumber": false,
+    "containsInvariantFactors": false
+  },
+  "runtimeStages": [
+    "factor-base construction",
+    "exact coefficient-box relation search",
+    "prime-ideal valuation refinement",
+    "finite-field relation rank filtering",
+    "checked i128 Smith reduction"
+  ],
+  "presentation": {
+    "factorBaseGenerators": 8,
+    "relationRows": 28,
+    "supplementaryRows": 20,
+    "maximumRadiusReached": 5,
+    "visitedShellPoints": 1074,
+    "primitiveNonscalarPoints": 339,
+    "smoothNorms": 26,
+    "appendedSearchRelations": 25
+  },
+  "candidateResult": {
+    "classNumber": "6",
+    "invariantFactors": ["6"]
+  },
+  "artifact": {
+    "target": "wasm32-wasip1",
+    "profile": "release",
+    "bytes": 146358,
+    "sha256": "cfcf1b21993906dedec2eb8b0547d3d6e49cefa8edab4b09f3834b2d3c73026b",
+    "incrementalBuildSeconds": 2.02,
+    "linksPari": false,
+    "usesOracleInput": false,
+    "imports": [
+      "wasi_snapshot_preview1.environ_get",
+      "wasi_snapshot_preview1.environ_sizes_get",
+      "wasi_snapshot_preview1.fd_write",
+      "wasi_snapshot_preview1.proc_exit"
+    ]
+  },
+  "preparedToolchain": {
+    "schema": "sagejs.wasm-prepared-toolchain/v2",
+    "lockDigest": "37d8d819fd533570e0b707d3101ab2944f6488c4b4452b2b0a1a9ea04366452c",
+    "platform": "linux-x64",
+    "wasiSdkVersion": "33.0",
+    "wasiSdkSourceSha256": "0ba8b5bfaeb2adf3f29bab5841d76cf5318ab8e1642ea195f88baba1abd47bce",
+    "wasmLdVersion": "LLD 22.1.0 (https://github.com/llvm/llvm-project 4434dabb69916856b824f68a64b029c67175e532)",
+    "wasmLdSha256": "5c965a9e8525c7206aa583f9691f1a7a5e46bd4d793bf65f809b7124c670df26",
+    "cleanBuildSeconds": 2.021,
+    "byteIdenticalToPriorSelfContainedLink": true
+  },
+  "browserRun": {
+    "observedAt": "2026-09-20T06:43:44.761Z",
+    "samplesPerEngine": 15,
+    "engines": [
+      {
+        "engine": "chromium",
+        "version": "151.0.7922.34",
+        "compileMilliseconds": 1,
+        "instantiateMilliseconds": 0.19999998807907104,
+        "callMedianMilliseconds": 1.4000000059604645,
+        "callSamplesMilliseconds": [7, 1.7000000178813934, 1.4000000059604645, 1.2000000178813934, 1.600000023841858, 1.5, 1.7000000178813934, 1.4000000059604645, 1.5999999940395355, 1.699999988079071, 1.199999988079071, 1.0999999940395355, 1.0999999940395355, 1.0999999940395355, 1.0999999940395355],
+        "memoryPagesBefore": 17,
+        "memoryPagesAfter": 18
+      },
+      {
+        "engine": "firefox",
+        "version": "153.0",
+        "compileMilliseconds": 22,
+        "instantiateMilliseconds": 0,
+        "callMedianMilliseconds": 6,
+        "callSamplesMilliseconds": [7, 7, 7, 6, 6, 7, 7, 7, 6, 7, 6, 7, 8, 7, 7],
+        "memoryPagesBefore": 17,
+        "memoryPagesAfter": 18
+      },
+      {
+        "engine": "webkit",
+        "version": "26.5",
+        "compileMilliseconds": 12,
+        "instantiateMilliseconds": 0,
+        "callMedianMilliseconds": 2,
+        "callSamplesMilliseconds": [7, 2, 2, 1, 2, 1, 1, 1, 2, 2, 2, 1, 2, 1, 2],
+        "memoryPagesBefore": 17,
+        "memoryPagesAfter": 18
+      }
+    ]
+  },
+  "qualificationShim": {
+    "kind": "deterministic-empty-wasi-environment",
+    "imports": ["environ_get", "environ_sizes_get"],
+    "productRoutePassed": false
+  }
+}

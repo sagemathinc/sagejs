@@ -11,9 +11,12 @@
   "claims": [
     ".agents/lanes.json",
     ".agents/tasks/pari-class-group-e2e-integration.json",
+    "agents/rust-class-group-core-qualification-plan.md",
     "agents/rust-class-group-public-contract-map.md",
     "architecture/decisions/0006-rust-math-core.md",
-    "bench/pari-class-group-rust/"
+    "bench/pari-class-group-rust/",
+    "packages/wasm-toolchain/recipes/libraries.cjs",
+    "packages/wasm-toolchain/test/toolchain.test.cjs"
   ],
   "dependencies": [],
   "references": [
@@ -48,14 +51,16 @@
   ],
   "runs": [],
   "handoff": {
-    "summary": "",
+    "summary": "R0/W0 foundations now include strict contracts, pinned PARI controls, a frozen answer-free candidate generator, reproducible GMP/MPFR/MPC Wasm routes in three browsers, checked GMP Smith retry, arbitrary-precision HNF/SNF transforms, validated cubic preparation, presentation class maps, and a bounded row-6 diagnostic. These are qualification components, not a complete class-group backend.",
     "risks": [
       "The current faithful fast path is authenticated only for H1 and does not yet provide a general prepared-field computation or public completion certificate.",
-      "The browser arithmetic backend and actual Chromium, Firefox, and WebKit performance remain unqualified."
+      "The first Wasm class candidate is fast in Chromium, Firefox, and WebKit but remains a relation-presentation candidate, not a completed class group.",
+      "The current row-6 diagnostic uses the equation order because the public experimental boundary cannot yet carry its denominator-three maximal-order basis."
     ],
     "next_steps": [
-      "Complete R0 contracts and the W0 native/browser arithmetic gate.",
-      "Generalize numerical preparation and relation collection to unseen prepared cubic fields before extending degrees."
+      "Finish the balanced private 60-open plus 60-held-out corpus without committing held-out answers.",
+      "Profile and replace the row-6 initial-cache bottleneck, then carry neutral maximal-order data into the fast relation loop.",
+      "Implement relation principal elements, units, regulator/completion authority, saturation, generator ideals, and the public Sage.js adapter."
     ]
   }
 }

@@ -11,7 +11,9 @@ use crate::class_group::{
     ClassGroupError, CollectorCounters, CollectorTimings, collect_h1_class_group,
 };
 use crate::factor_base::FactorBase;
+use crate::gmp_smith::{GmpSmithError, exact_candidate_invariants_from_i128};
 use crate::smith::{SmithError, WordSmithWorkspace, transpose_relation_records};
+use rug::Integer;
 
 /// What a result establishes without adding any unimplemented certification step.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -66,8 +68,16 @@ impl RelationPresentation {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ClassGroupCandidateInvariants {
-    pub invariant_factors: Vec<i128>,
-    pub class_number: i128,
+    pub invariant_factors: Vec<Integer>,
+    pub class_number: Integer,
+    pub arithmetic: SmithArithmeticPath,
+}
+
+/// Arithmetic implementation that produced the exact Smith invariants.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SmithArithmeticPath {
+    FixedI128,
+    GmpRetry,
 }
 
 /// Candidate invariants and their underlying coefficient-box presentation.
@@ -100,8 +110,8 @@ pub enum SolveError {
     Collection(BruteForceError),
     FaithfulH1(ClassGroupError),
     Smith(SmithError),
+    GmpSmith(GmpSmithError),
     RankDeficient { rank: usize, expected: usize },
-    ClassNumberOverflow,
 }
 
 impl From<BruteForceError> for SolveError {
@@ -116,6 +126,58 @@ impl From<SmithError> for SolveError {
     }
 }
 
+impl From<GmpSmithError> for SolveError {
+    fn from(value: GmpSmithError) -> Self {
+        Self::GmpSmith(value)
+    }
+}
+
+fn candidate_invariants_from_row_major_checkpoint(
+    matrix: &[i128],
+    rows: usize,
+    columns: usize,
+) -> Result<ClassGroupCandidateInvariants, SolveError> {
+    let mut smith = WordSmithWorkspace::new(rows, columns);
+    let word_result = smith
+        .reset_from(matrix)
+        .and_then(|()| smith.smith_diagonal());
+    let diagonal = match word_result {
+        Ok(diagonal) => diagonal,
+        Err(SmithError::ArithmeticOverflow) => {
+            // The fixed-width workspace may have been modified before the
+            // overflow.  Restart GMP exclusively from the untouched `matrix`
+            // checkpoint owned by this function.
+            let exact = exact_candidate_invariants_from_i128(matrix, rows, columns, rows)?;
+            return Ok(ClassGroupCandidateInvariants {
+                invariant_factors: exact.invariant_factors,
+                class_number: exact.class_number,
+                arithmetic: SmithArithmeticPath::GmpRetry,
+            });
+        }
+        Err(error) => return Err(SolveError::Smith(error)),
+    };
+    let rank = diagonal.iter().filter(|value| **value != 0).count();
+    if rank != rows {
+        return Err(SolveError::RankDeficient {
+            rank,
+            expected: rows,
+        });
+    }
+    let invariant_factors = diagonal
+        .into_iter()
+        .filter(|value| *value > 1)
+        .map(Integer::from)
+        .collect::<Vec<_>>();
+    let class_number = invariant_factors
+        .iter()
+        .fold(Integer::from(1), |product, value| product * value);
+    Ok(ClassGroupCandidateInvariants {
+        invariant_factors,
+        class_number,
+        arithmetic: SmithArithmeticPath::FixedI128,
+    })
+}
+
 /// Reduce a full-rank relation presentation to candidate invariants.
 pub fn class_group_candidate_invariants(
     presentation: &RelationPresentation,
@@ -126,28 +188,7 @@ pub fn class_group_candidate_invariants(
         presentation.generator_count,
         columns,
     );
-    let mut smith = WordSmithWorkspace::new(presentation.generator_count, columns);
-    smith.reset_from(&matrix)?;
-    let diagonal = smith.smith_diagonal()?;
-    let rank = diagonal.iter().filter(|value| **value != 0).count();
-    if rank != presentation.generator_count {
-        return Err(SolveError::RankDeficient {
-            rank,
-            expected: presentation.generator_count,
-        });
-    }
-    let invariant_factors = diagonal
-        .into_iter()
-        .filter(|value| *value > 1)
-        .collect::<Vec<_>>();
-    let class_number = invariant_factors
-        .iter()
-        .try_fold(1_i128, |product, value| product.checked_mul(*value))
-        .ok_or(SolveError::ClassNumberOverflow)?;
-    Ok(ClassGroupCandidateInvariants {
-        invariant_factors,
-        class_number,
-    })
+    candidate_invariants_from_row_major_checkpoint(&matrix, presentation.generator_count, columns)
 }
 
 fn validate(field: PreparedCubic, options: BruteForceOptions) -> Result<(), SolveError> {
@@ -321,6 +362,7 @@ mod tests {
         assert_eq!(answer.status, QualificationStatus::PresentationCandidate);
         assert_eq!(answer.invariants.invariant_factors, [2]);
         assert_eq!(answer.invariants.class_number, 2);
+        assert_eq!(answer.invariants.arithmetic, SmithArithmeticPath::FixedI128);
         assert_eq!(answer.presentation.generator_count, 7);
         assert_eq!(answer.presentation.relation_count(), 27);
     }
@@ -332,8 +374,18 @@ mod tests {
         assert_eq!(answer.status, QualificationStatus::UpstreamAssumedCandidate);
         assert_eq!(answer.invariants.class_number, 1);
         assert!(answer.invariants.invariant_factors.is_empty());
+        assert_eq!(answer.invariants.arithmetic, SmithArithmeticPath::FixedI128);
         assert_eq!(answer.presentation.generator_count, 66);
         assert_eq!(answer.presentation.relation_count(), 73);
+    }
+
+    #[test]
+    fn fixed_width_overflow_restarts_exactly_from_the_original_checkpoint() {
+        let answer = candidate_invariants_from_row_major_checkpoint(&[i128::MIN], 1, 1).unwrap();
+        let expected: Integer = Integer::from(1) << 127;
+        assert_eq!(answer.invariant_factors, [expected.clone()]);
+        assert_eq!(answer.class_number, expected);
+        assert_eq!(answer.arithmetic, SmithArithmeticPath::GmpRetry);
     }
 
     #[test]

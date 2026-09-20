@@ -16,11 +16,15 @@
 mod api;
 mod bruteforce_collector;
 mod class_group;
+mod class_maps;
 mod collector_schedule;
 mod enumeration;
 mod factor_base;
+mod gmp_smith;
+mod hnf;
 mod ideal_arithmetic;
 mod numerical_preparation;
+mod prepared;
 mod prime_valuation;
 mod relation_cache;
 mod smith;
@@ -29,16 +33,32 @@ mod smooth_admission;
 pub use api::{
     BruteForceOptions, ClassGroupCandidateInvariants, PreparedCubic,
     PreparedCubicClassGroupCandidate, PreparedCubicPresentationCandidate, QualificationStatus,
-    RelationPresentation, SolveError, UpstreamAssumedH1, UpstreamAssumedH1ClassGroupCandidate,
-    UpstreamAssumedH1PresentationCandidate, class_group_candidate_invariants,
-    collect_prepared_cubic_presentation_candidate,
+    RelationPresentation, SmithArithmeticPath, SolveError, UpstreamAssumedH1,
+    UpstreamAssumedH1ClassGroupCandidate, UpstreamAssumedH1PresentationCandidate,
+    class_group_candidate_invariants, collect_prepared_cubic_presentation_candidate,
     collect_upstream_assumed_h1_presentation_candidate,
     compute_prepared_cubic_class_group_candidate,
     compute_upstream_assumed_h1_class_group_candidate,
 };
 pub use bruteforce_collector::BruteForceStatistics;
 pub use class_group::{CollectorCounters, CollectorTimings};
+pub use class_maps::{
+    ClassCoordinates, ClassMapError, PresentationClassMap, PresentationZeroState,
+    PrincipalElementWitnessState, RelationCombinationWitness, RelationCoverage,
+};
 #[doc(hidden)]
 pub use factor_base::prepared_cubic_factor_base;
 pub use factor_base::{FactorBase, PrimeIdeal};
+pub use gmp_smith::{
+    ExactSmithCandidateInvariants, GmpSmithError, GmpSmithWorkspace,
+    exact_candidate_invariants_from_i128,
+};
+pub use hnf::{
+    BigIntMatrix, ExactArithmeticError, ExactNormalFormWorkspace, HnfDecomposition,
+    NormalFormError, NormalFormLimits, SmithDecomposition, UpdateStrategy,
+};
+pub use prepared::{
+    EmbeddingPrecisionState, PreparedCubicData, PreparedCubicValidationError,
+    ValidatedPreparedCubic,
+};
 pub use smith::{SmithError, WordSmithWorkspace, transpose_relation_records};

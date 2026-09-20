@@ -1,6 +1,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const { execFileSync } = require("node:child_process");
 const {
   mkdtempSync,
   mkdirSync,
@@ -36,6 +37,7 @@ const {
 } = require("../recipes/smalljac.cjs");
 const {
   compilerEnvironment,
+  normalizeFlintFmpzObjects,
   normalizeGeneratedMacro,
   subprocessEnvironment,
 } = require("../recipes/libraries.cjs");
@@ -155,6 +157,43 @@ test("generated compiler metadata is canonical and fails closed", () => {
     assert.throws(
       () => normalizeGeneratedMacro(filename, "MISSING", "value"),
       /exactly once/,
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("the FLINT recipe deduplicates its generated fmpz object", () => {
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-wasm-flint-fmpz-test-"));
+  const filename = join(directory, "Makefile");
+  const rewrite = [
+    "ifeq ($(IS_OUT_OF_TREE),1)",
+    "fmpz_OBJS := $(subst $(SRC_DIR)/fmpz/fmpz.c,$(BUILD_DIR)/fmpz/fmpz.o,$(fmpz_OBJS))",
+    "endif",
+  ].join("\n");
+  try {
+    writeFileSync(filename, [
+      "fmpz_OBJS := build/fmpz/fmpz.o build/fmpz/add.o build/fmpz/fmpz.o",
+      rewrite,
+      "print:",
+      "\t@printf '%s\\n' $(fmpz_OBJS)",
+      "",
+    ].join("\n"));
+    normalizeFlintFmpzObjects(filename);
+    const normalized = readFileSync(filename, "utf8");
+    assert.match(normalized, /fmpz_OBJS := \$\(sort \$\(fmpz_OBJS\)\)/);
+    assert.equal(normalized.split("$(sort $(fmpz_OBJS))").length - 1, 1);
+    assert.equal(
+      execFileSync("make", ["--no-print-directory", "-s", "-f", filename, "print"], {
+        encoding: "utf8",
+      }),
+      "build/fmpz/add.o\nbuild/fmpz/fmpz.o\n",
+    );
+
+    writeFileSync(filename, "unexpected upstream Makefile\n");
+    assert.throws(
+      () => normalizeFlintFmpzObjects(filename),
+      /fmpz object rewrite exactly once/,
     );
   } finally {
     rmSync(directory, { recursive: true, force: true });

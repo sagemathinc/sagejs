@@ -13,6 +13,7 @@ import {
 } from "../../../../packages/flint-wasm/test/browser-wasm-support.mjs";
 
 const routeDirectory = path.dirname(fileURLToPath(import.meta.url));
+const CALL_SAMPLES = 15;
 export const repositoryRoot = path.resolve(routeDirectory, "../../../..");
 const browserTypes = { chromium, firefox, webkit };
 
@@ -191,15 +192,31 @@ async function runEngine({ engine, artifactUrl, vector, server }) {
     observation.user_agent = diagnostics.user_agent;
     observation.cross_origin_isolated = diagnostics.cross_origin_isolated;
     observation.shared_array_buffer = diagnostics.shared_array_buffer;
-    const result = await page.evaluate(
-      (request) => window.__sagejsClassGroupQualification.run(request),
-      vector.request,
-    );
+    const samples = [];
+    for (let sample = 0; sample < CALL_SAMPLES; sample += 1) {
+      samples.push(await page.evaluate(
+        (request) => window.__sagejsClassGroupQualification.run(request),
+        vector.request,
+      ));
+    }
+    const result = samples.at(-1);
+    const callSamples = samples.map((item) => item.timings_ms.call);
+    const sortedCalls = [...callSamples].sort((left, right) => left - right);
     observation.route = result.route;
     observation.imports = result.imports;
     observation.exports = result.exports;
-    observation.timings_ms = { page_load: pageLoad, ...result.timings_ms };
-    observation.memory_pages = result.memory_pages;
+    observation.timings_ms = {
+      page_load: pageLoad,
+      fetch: result.timings_ms.fetch,
+      compile: result.timings_ms.compile,
+      instantiate: result.timings_ms.instantiate,
+      call: sortedCalls[Math.floor(sortedCalls.length / 2)],
+      call_samples: callSamples,
+    };
+    observation.memory_pages = {
+      before_call: samples[0].memory_pages.before_call,
+      after_call: result.memory_pages.after_call,
+    };
     observation.result = result.result;
     observation.artifact_request_count = server.requests.slice(requestStart)
       .filter((request) => request.pathname === artifactUrl).length;
@@ -219,6 +236,13 @@ async function runEngine({ engine, artifactUrl, vector, server }) {
       "candidate was not fetched through the browser server",
     );
     assert.deepEqual(result.result, vector.expected, "candidate returned the wrong class-group result");
+    for (const sample of samples) {
+      assert.deepEqual(
+        sample.result,
+        vector.expected,
+        "repeated candidate call returned a different result",
+      );
+    }
     assert.deepEqual(pageErrors, [], "browser page reported errors");
     await page.evaluate(() => window.__sagejsClassGroupQualification.close());
     observation.status = "pass";

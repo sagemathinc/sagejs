@@ -6,6 +6,8 @@ import test from "node:test";
 
 import Ajv2020 from "ajv/dist/2020.js";
 
+import { qualificationEmptyEnvironmentImports } from "./browser-loader.mjs";
+
 import {
   collectReceipt,
   parseArguments,
@@ -42,6 +44,26 @@ test("the runner rejects ambiguous or incomplete CLI input", () => {
   assert.throws(() => parseArguments([
     "--engines", "unknown", "--artifact", "x", "--vector", "y", "--output", "z",
   ]));
+});
+
+test("the qualification-only Rust environment shim is empty and bounds checked", () => {
+  const memory = new WebAssembly.Memory({ initial: 1 });
+  const imports = qualificationEmptyEnvironmentImports([
+    { module: "wasi_snapshot_preview1", name: "environ_get" },
+    { module: "wasi_snapshot_preview1", name: "environ_sizes_get" },
+  ], () => memory);
+  const view = new DataView(memory.buffer);
+  view.setUint32(16, 123, true);
+  view.setUint32(24, 456, true);
+  assert.equal(imports.environ_get(), 0);
+  assert.equal(imports.environ_sizes_get(16, 24), 0);
+  assert.equal(view.getUint32(16, true), 0);
+  assert.equal(view.getUint32(24, true), 0);
+  assert.equal(imports.environ_sizes_get(memory.buffer.byteLength - 2, 24), 21);
+  assert.deepEqual(
+    qualificationEmptyEnvironmentImports([], () => memory),
+    {},
+  );
 });
 
 test("a missing candidate fails closed and records why without launching a browser", async () => {

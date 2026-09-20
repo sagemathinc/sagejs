@@ -37,6 +37,31 @@ function inspectModule(module) {
   };
 }
 
+export function qualificationEmptyEnvironmentImports(imports, memoryProvider) {
+  const importedNames = new Set(
+    imports
+      .filter((item) => item.module === "wasi_snapshot_preview1")
+      .map((item) => item.name),
+  );
+  const answer = {};
+  if (importedNames.has("environ_get")) answer.environ_get = () => 0;
+  if (importedNames.has("environ_sizes_get")) {
+    answer.environ_sizes_get = (countPointer, bytesPointer) => {
+      const memory = memoryProvider();
+      if (!(memory instanceof WebAssembly.Memory)) return 21; // EFAULT
+      const view = new DataView(memory.buffer);
+      if (countPointer < 0 || bytesPointer < 0 ||
+          countPointer + 4 > view.byteLength || bytesPointer + 4 > view.byteLength) {
+        return 21;
+      }
+      view.setUint32(countPointer, 0, true);
+      view.setUint32(bytesPointer, 0, true);
+      return 0;
+    };
+  }
+  return answer;
+}
+
 async function instantiateCandidate(module, imports) {
   const namespaces = new Set(imports.map((item) => item.module));
   for (const namespace of namespaces) {
@@ -45,16 +70,38 @@ async function instantiateCandidate(module, imports) {
     }
   }
   let wasi = null;
+  let instance = null;
   const importObject = {};
   if (namespaces.has("wasi_snapshot_preview1")) {
     const { createWasiHost } = await import(
       "/packages/flint-wasm/src/wasi-runtime.mjs"
     );
     wasi = createWasiHost();
-    importObject.wasi_snapshot_preview1 = wasi.imports;
+    importObject.wasi_snapshot_preview1 = { ...wasi.imports };
+    const importedNames = new Set(
+      imports
+        .filter((item) => item.module === "wasi_snapshot_preview1")
+        .map((item) => item.name),
+    );
+    const qualificationOnly = new Set(["environ_get", "environ_sizes_get"]);
+    for (const name of importedNames) {
+      if (typeof importObject.wasi_snapshot_preview1[name] !== "function" &&
+          !qualificationOnly.has(name)) {
+        wasi.dispose();
+        throw new TypeError(`unsupported WASI import ${JSON.stringify(name)}`);
+      }
+    }
+    // Rust's wasm32-wasip1 std reactor requests the process environment even
+    // though this candidate never reads it. Qualification supplies a
+    // deterministic empty environment; this is not a claim that the
+    // unmodified production WASI host supports the import.
+    Object.assign(
+      importObject.wasi_snapshot_preview1,
+      qualificationEmptyEnvironmentImports(imports, () => instance?.exports?.memory),
+    );
   }
   const started = performance.now();
-  const instance = await WebAssembly.instantiate(module, importObject);
+  instance = await WebAssembly.instantiate(module, importObject);
   const instantiateMs = elapsed(started);
   if (typeof instance.exports._start === "function") {
     wasi?.dispose();

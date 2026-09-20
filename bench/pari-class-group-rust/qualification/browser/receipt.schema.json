@@ -78,9 +78,14 @@
               "fetch": { "type": "number", "minimum": 0 },
               "compile": { "type": "number", "minimum": 0 },
               "instantiate": { "type": "number", "minimum": 0 },
-              "call": { "type": "number", "minimum": 0 }
+              "call": { "type": "number", "minimum": 0 },
+              "call_samples": {
+                "type": "array",
+                "minItems": 15,
+                "items": { "type": "number", "minimum": 0 }
+              }
             },
-            "required": ["page_load", "fetch", "compile", "instantiate", "call"]
+            "required": ["page_load", "fetch", "compile", "instantiate", "call", "call_samples"]
           },
           "memory_pages": {
             "type": ["object", "null"],

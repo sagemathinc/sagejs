@@ -18,6 +18,7 @@ REPOSITORY = HERE.parents[3]
 SPEC_PATH = HERE / "qualification-corpus-spec-v1.json"
 LAYOUT_PATH = HERE / "qualification-layout-v1.json"
 INITIAL_PATH = HERE / "initial-open-development-v1.json"
+NEUTRAL_POOL_PATH = HERE / "neutral-candidate-inputs-v1.json"
 DECIMAL = re.compile(r"(?:0|-[1-9][0-9]*|[1-9][0-9]*)\Z")
 
 
@@ -250,6 +251,46 @@ def validate_initial(panel: dict[str, Any], spec: dict[str, Any]) -> None:
     )
 
 
+def validate_neutral_pool(pool: dict[str, Any]) -> None:
+    require(
+        pool.get("schema") == "sagejs.rust-class-group/neutral-candidate-input-pool-v1",
+        "unexpected neutral candidate pool schema",
+    )
+    require(
+        pool.get("answerVisibility") == "none",
+        "neutral candidate pool must declare no answer visibility",
+    )
+    cases = pool.get("cases")
+    require(
+        isinstance(cases, list) and len(cases) == 360,
+        "neutral candidate pool must contain 360 inputs",
+    )
+    ids: set[str] = set()
+    digests: set[str] = set()
+    degree_counts: Counter = Counter()
+    allowed = {"id", "polynomialAscending", "polynomialSha256", "degree"}
+    for case in cases:
+        label = f"neutral case {case.get('id', '<missing>')}"
+        require(set(case) == allowed, f"{label}: answer-bearing or unknown fields")
+        require(
+            isinstance(case.get("id"), str) and case["id"] not in ids,
+            f"{label}: duplicate or invalid ID",
+        )
+        ids.add(case["id"])
+        validate_polynomial(case, label)
+        require(2 <= case["degree"] <= 6, f"{label}: degree outside admitted range")
+        require(
+            case["polynomialSha256"] not in digests,
+            f"{label}: duplicate polynomial",
+        )
+        digests.add(case["polynomialSha256"])
+        degree_counts[case["degree"]] += 1
+    require(
+        degree_counts == Counter({degree: 72 for degree in range(2, 7)}),
+        f"neutral candidate degree imbalance: {degree_counts}",
+    )
+
+
 def validate_candidate(
     candidate: dict[str, Any], spec: dict[str, Any], label: str
 ) -> None:
@@ -435,7 +476,11 @@ def command_validate(_: argparse.Namespace) -> None:
     validate_spec(spec)
     validate_layout(load(LAYOUT_PATH), spec)
     validate_initial(load(INITIAL_PATH), spec)
-    print("validated corpus spec, 120-slot layout, and 9-case initial open panel")
+    validate_neutral_pool(load(NEUTRAL_POOL_PATH))
+    print(
+        "validated corpus spec, 120-slot layout, 9-case initial open panel, "
+        "and 360 neutral candidate inputs"
+    )
 
 
 def command_emit_layout(arguments: argparse.Namespace) -> None:

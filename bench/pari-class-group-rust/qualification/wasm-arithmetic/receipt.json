@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.rust-class-group.wasm-arithmetic-probe-receipt/v1",
-  "status": "first-executable-probe-passed-w0-still-open",
-  "sourceCommit": "805937e97c341019ee57d0aab6e4f9d6c1670b55",
+  "status": "patched-toolchain-exact-integer-probe-passed-w0-still-open",
+  "sourceCommit": "2a21c8ed575b5f0700a8816c628568e4ea1316a6",
   "host": {
     "vm": "opt",
     "kernel": "Linux 7.0.0-1011-gcp x86_64",
@@ -44,9 +44,9 @@
   "native": {
     "command": "cargo clean && cargo build --release && target/release/sagejs-rust-wasm-arithmetic-probe",
     "cleanBuildSeconds": {
-      "wall": 3.16,
-      "user": 2.88,
-      "system": 0.31
+      "wall": 3.07,
+      "user": 2.82,
+      "system": 0.29
     },
     "singleProcessRunSecondsBelowShellResolution": {
       "wall": 0.0,
@@ -92,29 +92,23 @@
     ]
   },
   "pinnedWasmToolchain": {
-    "preparedReceiptDigest": "bfd7e48e622a912f95ef24f64e93c85f3838459b8f75e47590f658b1feb84c74",
+    "preparedReceiptDigest": "37d8d819fd533570e0b707d3101ab2944f6488c4b4452b2b0a1a9ea04366452c",
     "wasiSdk": "33.0",
     "wasiClang": "22.1.0-wasi-sdk",
     "gmp": "6.2.1",
     "gmpArchiveSha256": "66eb596677c3acd0e87f3118b69316dcba31695d569b5fe1020a9ff1ee0d12a4",
-    "currentRepositoryLockDigest": "241aebde980ebece5038c787b7efd947d3beed73ea5459b3976848121be5d973",
-    "currentRepositoryToolchainPrepared": false,
-    "currentPreparationAttempt": {
-      "command": "node packages/wasm-toolchain/scripts/toolchain.cjs prepare --json",
-      "sourcesDownloadedAndVerified": true,
-      "gmpBuilt": true,
-      "result": "failed",
-      "stage": "FLINT merged-object link",
-      "error": "wasm-ld reported duplicate _fmpz_* symbols from build/fmpz/fmpz.o while constructing build/fmpz_merged.o"
-    },
-    "qualification": "the cached prepared receipt was inspected and all named files were present; the current lock cannot qualify until its reproducible FLINT preparation failure is fixed"
+    "preparedReceiptSchema": "sagejs.wasm-prepared-toolchain/v2",
+    "preparedPlatform": "linux-x64",
+    "preparedCanonicalBuilder": "linux-x64",
+    "qualificationCommand": "SAGEJS_GMP_PREFIX=$WASM_ROOT/prefixes/gmp SAGEJS_WASI_SYSROOT=$WASM_ROOT/sdk/share/wasi-sysroot cargo build --target wasm32-wasip1 --release --lib",
+    "qualification": "the patched recipe digest is fully prepared; the exact integer probe rebuilt successfully and reproduced the prior 189230-byte Wasm artifact byte-for-byte"
   },
   "nodeSagejsHost": {
     "command": "node run-wasm.mjs",
     "runtime": "Sage.js createWasiHost plus zero-environment shims",
-    "compileMsSingleObservation": 0.86056,
-    "instantiateMsSingleObservation": 0.14808,
-    "computeMsSingleObservation": 3.10084,
+    "compileMsSingleObservation": 0.8441090000000031,
+    "instantiateMsSingleObservation": 0.14782900000000154,
+    "computeMsSingleObservation": 3.0760199999999998,
     "resultSha256": "973f49930a209bd05f97d723416d155e8ac432bb120998e19248877b33f22eb2",
     "result": "passed"
   },
@@ -126,20 +120,20 @@
       {
         "engine": "chromium",
         "version": "151.0.7922.34",
-        "compileMs": 8.800000011920929,
+        "compileMs": 6.5999999940395355,
         "instantiateMs": {
-          "samples": [0.4000000059604645, 0.19999998807907104, 0, 0.09999999403953552, 0.09999999403953552, 0.09999999403953552, 0.09999999403953552, 0.09999999403953552, 0.09999999403953552, 0, 0, 0, 0, 0.09999999403953552, 0],
+          "samples": [0.20000001788139343, 0.19999998807907104, 0.20000001788139343, 0, 0, 0.10000002384185791, 0.09999999403953552, 0.09999999403953552, 0, 0.09999999403953552, 0.09999999403953552, 0, 0, 0.10000002384185791, 0.10000002384185791],
           "median": 0.09999999403953552,
           "min": 0,
-          "max": 0.4000000059604645,
+          "max": 0.20000001788139343,
           "mad": 0.09999999403953552
         },
         "computeMs": {
-          "samples": [7.700000017881393, 0.4000000059604645, 0.5, 0.5, 0.5, 0.4000000059604645, 0.5, 0.4000000059604645, 0.5, 0.4000000059604645, 0.3999999761581421, 0.5, 0.4000000059604645, 0.4000000059604645, 0.5],
-          "median": 0.5,
-          "min": 0.3999999761581421,
-          "max": 7.700000017881393,
-          "mad": 0.09999999403953552
+          "samples": [2.9000000059604645, 0.5, 0.3999999761581421, 0.5, 0.29999998211860657, 0.29999998211860657, 0.4000000059604645, 0.4000000059604645, 0.30000001192092896, 0.4000000059604645, 0.30000001192092896, 0.4000000059604645, 0.3999999761581421, 0.3999999761581421, 0.29999998211860657],
+          "median": 0.3999999761581421,
+          "min": 0.29999998211860657,
+          "max": 2.9000000059604645,
+          "mad": 0.09999996423721313
         },
         "memoryPagesBefore": [17],
         "memoryPagesAfter": [17]
@@ -147,19 +141,19 @@
       {
         "engine": "firefox",
         "version": "153.0",
-        "compileMs": 28,
+        "compileMs": 11,
         "instantiateMs": {
-          "samples": [1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0],
+          "samples": [1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0],
           "median": 0,
           "min": 0,
           "max": 1,
           "mad": 0
         },
         "computeMs": {
-          "samples": [2, 2, 2, 2, 2, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2],
+          "samples": [3, 1, 1, 2, 2, 1, 2, 2, 2, 3, 1, 2, 2, 2, 2],
           "median": 2,
           "min": 1,
-          "max": 2,
+          "max": 3,
           "mad": 0
         },
         "memoryPagesBefore": [17],
@@ -168,20 +162,20 @@
       {
         "engine": "webkit",
         "version": "26.5",
-        "compileMs": 16,
+        "compileMs": 6,
         "instantiateMs": {
-          "samples": [1, 0, 0, 2, 1, 0, 2, 1, 1, 8, 1, 0, 1, 1, 0],
-          "median": 1,
+          "samples": [0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0],
+          "median": 0,
           "min": 0,
-          "max": 8,
-          "mad": 1
+          "max": 1,
+          "mad": 0
         },
         "computeMs": {
-          "samples": [6, 3, 2, 1, 1, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0],
+          "samples": [4, 2, 1, 1, 1, 0, 1, 1, 1, 2, 1, 0, 1, 0, 1],
           "median": 1,
           "min": 0,
-          "max": 6,
-          "mad": 1
+          "max": 4,
+          "mad": 0
         },
         "memoryPagesBefore": [17],
         "memoryPagesAfter": [17]
@@ -208,6 +202,7 @@
     "passed": false,
     "established": [
       "Rust can link Sage.js's pinned GMP Wasm archive without gmp-mpfr-sys",
+      "the patched toolchain recipe digest 37d8d819fd533570e0b707d3101ab2944f6488c4b4452b2b0a1a9ea04366452c is prepared and the probe rebuild reproduces the prior native and Wasm artifacts byte-for-byte",
       "the same nontrivial exact Rust source graph returns byte-identical native, Node-Wasm, Chromium-Wasm, Firefox-Wasm and WebKit-Wasm results",
       "all three actual browser engines completed 15 fresh-instance samples through Sage.js's bounded first-party WASI host with two explicit environment shims",
       "all browser samples retained 17 linear-memory pages before and after computation",
@@ -215,7 +210,6 @@
       "the initial stripped full-probe Wasm artifact is 189230 bytes"
     ],
     "remaining": [
-      "fix the duplicate-symbol FLINT preparation failure and rebuild against the current repository toolchain digest",
       "apply the no_std/core result to the full allocating and serializing pipeline so it uses the unmodified production WASI host",
       "measure peak bytes inside the 17-page linear-memory allocation, not only page growth",
       "extend the probe to high-precision real/complex and enclosure arithmetic"

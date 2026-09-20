@@ -1,0 +1,10 @@
+{
+  "schema": "sagejs.rust-class-group/oracle-build-identity-v1",
+  "pariVersion": "2.17.4",
+  "gpPathAtQualification": "/home/user/upstream/pari-2.17.4/Olinux-x86_64/gp-dyn",
+  "gpSha256": "915f8085d7eace9f9778edcbc657083a234cdea657dfcc677a26003fde4232c4",
+  "libpariPathAtQualification": "/home/user/upstream/pari-2.17.4/Olinux-x86_64/libpari-gmp-tls.so.2.17.4",
+  "libpariSha256": "fdc8f2d7ff050c8e8c6cb8994b0f9dc971267ac763eaf5cd927454937d37357f",
+  "banner": "GP/PARI CALCULATOR Version 2.17.4 (released); amd64 running linux (x86-64/GMP-6.3.0 kernel) 64-bit version; compiled Sep 16 2026 with gcc 15.2.0; pthread threading engine",
+  "capturedUtcDate": "2026-09-20"
+}

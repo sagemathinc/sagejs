@@ -4,12 +4,12 @@
   "request": {
     "schema": "sagejs.class-group-request/v1",
     "polynomial": ["-34", "-30", "-8", "1"],
-    "proof": "upstream-assumed-correspondence"
+    "proof": "candidate"
   },
   "expected": {
     "schema": "sagejs.class-group-result/v1",
     "classNumber": "6",
     "invariantFactors": ["6"],
-    "status": "upstream-assumed-correspondence"
+    "status": "candidate"
   }
 }

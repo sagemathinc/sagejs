@@ -11,14 +11,14 @@ The Rust/GMP boundary is deliberately small. GMP owns all limb storage; only a
 borrowed byte view of the final Rust-owned JSON result crosses the Wasm ABI.
 The Wasm artifact contains no Rust crate dependency beyond `std`.
 
-The opt VM had an authenticated prepared Sage.js toolchain at digest
-`bfd7e48e622a912f95ef24f64e93c85f3838459b8f75e47590f658b1feb84c74`.
-The repository's current lock has a different digest and was not prepared, so
-this probe names the inspected cached root explicitly:
+The opt VM has an authenticated prepared Sage.js toolchain for the patched
+recipe digest
+`37d8d819fd533570e0b707d3101ab2944f6488c4b4452b2b0a1a9ea04366452c`.
+This rerun names that qualified content-addressed root explicitly:
 
 ```sh
 PROBE=bench/pari-class-group-rust/qualification/wasm-arithmetic
-WASM_ROOT=/home/user/sagejs/.git/sagejs-wasm-toolchains/v2/bfd7e48e622a912f95ef24f64e93c85f3838459b8f75e47590f658b1feb84c74
+WASM_ROOT=/home/user/sagejs/.git/sagejs-wasm-toolchains/v2/37d8d819fd533570e0b707d3101ab2944f6488c4b4452b2b0a1a9ea04366452c
 
 cd "$PROBE"
 cargo build --release
@@ -52,7 +52,9 @@ derived independently with Python big integers. See
 observations.
 
 This probe establishes a viable Rust + pinned GMP + `wasm32-wasip1` route on
-Linux and all three required browser engines. It does not pass W0 yet: the
-current prepared toolchain build fails while merging FLINT objects, the full
-pipeline still uses two environment shims, and high-precision real/complex and
-enclosure arithmetic remain outstanding.
+Linux and all three required browser engines. The patched toolchain recipe is
+now prepared and qualified: it reproduces the earlier native and Wasm artifacts
+byte-for-byte and passes a fresh 15-instance sample set in Chromium, Firefox and
+WebKit. W0 remains open because the full pipeline still uses two environment
+shims, and high-precision real/complex and enclosure arithmetic remain
+outstanding.
