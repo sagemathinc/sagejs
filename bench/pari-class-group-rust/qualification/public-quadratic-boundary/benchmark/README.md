@@ -11,13 +11,18 @@ content, rather than attributing those bytes to the current Git commit.
 
 The Rust clock covers public coefficient validation, maximal-order
 preparation, reduced-form enumeration, group construction, certificate
-construction, and the engine's independent certificate verifier. The matched
-PARI public-call clock covers consecutive `nfinit0` and `bnfinit0` calls at 192
-bits. PARI flag zero computes the same exact class-group projection and also
-does the rank-zero unit/regulator work. Both clocks exclude process startup and
-JSON projection. A new process reconstructs the result on every sample; there
-is no cached-result reuse. PARI and the frozen answers are absent from the Rust
-executable.
+construction, and a private one-shot authentication of the published result
+against the exact in-process group-structure witness. This authentication is
+producer-bound and cannot be invoked on external data. The separately exposed
+detached verifier re-enumerates the forms and independently replays every
+generator translation; correctness campaigns and counterfeit tests exercise
+that path, but its deliberate duplicate work is reported separately from the
+public fresh-field call. The matched PARI public-call clock covers consecutive
+`nfinit0` and `bnfinit0` calls at 192 bits. PARI flag zero computes the same
+exact class-group projection and also does the rank-zero unit/regulator work.
+Both clocks exclude process startup and JSON projection. A new process
+reconstructs the result on every sample; there is no cached-result reuse. PARI
+and the frozen answers are absent from the Rust executable.
 
 The runner also builds the retained Rust executable twice with `--locked`,
 incremental compilation disabled, a fixed `SOURCE_DATE_EPOCH`, and independent

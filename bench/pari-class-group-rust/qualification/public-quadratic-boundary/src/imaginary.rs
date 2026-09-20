@@ -19,7 +19,7 @@ use sagejs_pari_class_group_rust_experiment::{
 };
 use serde::Serialize;
 use std::{
-    collections::{BTreeMap, BTreeSet, VecDeque},
+    collections::{BTreeSet, VecDeque},
     fmt,
 };
 
@@ -296,8 +296,8 @@ pub fn compute_imaginary_class_group(
         .collect::<Result<Vec<_>, ImaginaryClassGroupError>>()?;
     let generators = structure
         .generator_indices
-        .into_iter()
-        .map(|(index, order)| ClassGenerator {
+        .iter()
+        .map(|&(index, order)| ClassGenerator {
             form: forms[index],
             coordinates: structure.coordinates[index].clone(),
             exact_order: order,
@@ -310,13 +310,13 @@ pub fn compute_imaginary_class_group(
         polynomial_ascending: input.polynomial_ascending,
         discriminant,
         class_number: forms.len(),
-        invariant_factors: structure.invariants,
+        invariant_factors: structure.invariants.clone(),
         generators,
         complete_class_map,
         certificate: ReducedFormCompletenessCertificate {
             discriminant,
             fundamental_squarefree_core: squarefree_core,
-            squarefree_core_prime_factors: prime_factors,
+            squarefree_core_prime_factors: prime_factors.clone(),
             reduction_bound_a,
             reduced_forms: forms,
             theorem: CERTIFICATE_THEOREM,
@@ -324,8 +324,102 @@ pub fn compute_imaginary_class_group(
         proof_status: "unconditional-complete",
         runtime_uses_pari_or_fixture_answers: false,
     };
-    verify_imaginary_class_group(input, &answer)?;
+    authenticate_constructed_imaginary_class_group(
+        input,
+        &answer,
+        &structure,
+        discriminant,
+        squarefree_core,
+        &prime_factors,
+        reduction_bound_a,
+    )?;
     Ok(answer)
+}
+
+/// Authenticate the freshly constructed result against its private exact
+/// construction witness without replaying the group law a second time.
+///
+/// `compute_group_structure` has already traversed the entire group, proved
+/// the generator orders, assigned every mixed-radix coordinate exactly once,
+/// and returned to the principal form. This helper is deliberately private
+/// and receives that private producer-owned witness directly. Serialized or
+/// otherwise untrusted results must use [`verify_imaginary_class_group`],
+/// which independently re-enumerates the forms and replays generator
+/// translations.
+fn authenticate_constructed_imaginary_class_group(
+    input: PublicImaginaryQuadraticInput,
+    result: &CompleteImaginaryClassGroup,
+    structure: &GroupStructure,
+    discriminant: i64,
+    squarefree_core: i64,
+    prime_factors: &[u64],
+    reduction_bound_a: i64,
+) -> Result<(), ImaginaryClassGroupError> {
+    let forms = &result.certificate.reduced_forms;
+    let invariants = &structure.invariants;
+    let invariant_product = invariants
+        .iter()
+        .try_fold(1_u64, |product, value| product.checked_mul(*value));
+    if result.schema != RESULT_SCHEMA
+        || result.field_id != input.id
+        || result.polynomial_ascending != input.polynomial_ascending
+        || result.discriminant != discriminant
+        || result.class_number != forms.len()
+        || result.invariant_factors != *invariants
+        || result.certificate.discriminant != discriminant
+        || result.certificate.fundamental_squarefree_core != squarefree_core
+        || result.certificate.squarefree_core_prime_factors != prime_factors
+        || result.certificate.reduction_bound_a != reduction_bound_a
+        || result.certificate.theorem != CERTIFICATE_THEOREM
+        || invariant_product != Some(forms.len() as u64)
+        || invariants.iter().any(|value| *value <= 1)
+        || invariants.windows(2).any(|pair| pair[1] % pair[0] != 0)
+        || result.complete_class_map.len() != forms.len()
+        || structure.coordinates.len() != forms.len()
+        || structure.generator_indices.len() != invariants.len()
+        || result.generators.len() != structure.generator_indices.len()
+        || result.proof_status != "unconditional-complete"
+        || result.runtime_uses_pari_or_fixture_answers
+    {
+        return Err(ImaginaryClassGroupError::InvalidCertificate);
+    }
+    let linear = input.polynomial_ascending[1];
+    for (index, entry) in result.complete_class_map.iter().enumerate() {
+        let form = forms[index];
+        if entry.form != form
+            || entry.inverse_form
+                != form
+                    .inverse_reduced()
+                    .map_err(|_| ImaginaryClassGroupError::InvalidCertificate)?
+            || entry.coordinates != structure.coordinates[index]
+            || entry.representative_ideal != ideal_representative(linear, form)
+            || !representative_ideal_is_closed(
+                input.polynomial_ascending,
+                form,
+                &entry.representative_ideal,
+            )
+        {
+            return Err(ImaginaryClassGroupError::InvalidCertificate);
+        }
+    }
+    for (position, (actual, &(index, order))) in result
+        .generators
+        .iter()
+        .zip(&structure.generator_indices)
+        .enumerate()
+    {
+        let mut unit_coordinate = vec![0_u64; invariants.len()];
+        unit_coordinate[position] = 1;
+        if actual.form != forms[index]
+            || actual.coordinates != unit_coordinate
+            || actual.coordinates != structure.coordinates[index]
+            || actual.exact_order != order
+            || actual.representative_ideal != ideal_representative(linear, forms[index])
+        {
+            return Err(ImaginaryClassGroupError::InvalidCertificate);
+        }
+    }
+    Ok(())
 }
 
 /// Replay every exact claim using only the public coefficients and certificate.
@@ -806,21 +900,15 @@ fn compute_group_structure(
         return Err(ImaginaryClassGroupError::GroupLawFailure);
     }
 
-    let form_indices = forms
-        .iter()
-        .copied()
-        .enumerate()
-        .map(|(index, form)| (form, index))
-        .collect::<BTreeMap<_, _>>();
     let mut coordinates = vec![Vec::new(); forms.len()];
     let mut assigned = vec![false; forms.len()];
     if invariants.len() == 1 {
         let generator = generators[0];
         let mut form = principal;
         for ordinal in 0..forms.len() {
-            let index = *form_indices
-                .get(&form)
-                .ok_or(ImaginaryClassGroupError::GroupLawFailure)?;
+            let index = forms
+                .binary_search(&form)
+                .map_err(|_| ImaginaryClassGroupError::GroupLawFailure)?;
             if assigned[index] {
                 return Err(ImaginaryClassGroupError::GroupLawFailure);
             }
@@ -861,9 +949,9 @@ fn compute_group_structure(
                     )?;
                 }
             }
-            let index = *form_indices
-                .get(&form)
-                .ok_or(ImaginaryClassGroupError::GroupLawFailure)?;
+            let index = forms
+                .binary_search(&form)
+                .map_err(|_| ImaginaryClassGroupError::GroupLawFailure)?;
             if assigned[index] {
                 return Err(ImaginaryClassGroupError::GroupLawFailure);
             }
@@ -879,9 +967,9 @@ fn compute_group_structure(
         .zip(&invariants)
         .map(|(generator, order)| {
             Ok((
-                *form_indices
-                    .get(generator)
-                    .ok_or(ImaginaryClassGroupError::GroupLawFailure)?,
+                forms
+                    .binary_search(generator)
+                    .map_err(|_| ImaginaryClassGroupError::GroupLawFailure)?,
                 *order as u64,
             ))
         })
@@ -1254,6 +1342,55 @@ mod tests {
                 verify_imaginary_class_group(input, &result),
                 Err(ImaginaryClassGroupError::InvalidCertificate),
                 "counterfeit field was accepted: {label}"
+            );
+        }
+    }
+
+    #[test]
+    fn producer_authentication_rejects_counterfeit_metadata() {
+        type Counterfeit = fn(&mut CompleteImaginaryClassGroup);
+        let input = SMALL_IMAGINARY_CASES[4];
+        let pristine = compute_imaginary_class_group(input).unwrap();
+        let structure =
+            compute_group_structure(&pristine.certificate.reduced_forms, pristine.discriminant)
+                .unwrap();
+        let discriminant = pristine.discriminant;
+        let squarefree_core = pristine.certificate.fundamental_squarefree_core;
+        let prime_factors = pristine.certificate.squarefree_core_prime_factors.clone();
+        let reduction_bound_a = pristine.certificate.reduction_bound_a;
+        let counterfeits: Vec<(&str, Counterfeit)> = vec![
+            ("result discriminant", |result| result.discriminant -= 4),
+            ("certificate discriminant", |result| {
+                result.certificate.discriminant -= 4
+            }),
+            ("fundamental core", |result| {
+                result.certificate.fundamental_squarefree_core += 1
+            }),
+            ("fundamental factors", |result| {
+                result.certificate.squarefree_core_prime_factors.pop();
+            }),
+            ("reduction bound", |result| {
+                result.certificate.reduction_bound_a += 1
+            }),
+            ("theorem", |result| {
+                result.certificate.theorem = "counterfeit theorem"
+            }),
+        ];
+        for (label, counterfeit) in counterfeits {
+            let mut result = pristine.clone();
+            counterfeit(&mut result);
+            assert_eq!(
+                authenticate_constructed_imaginary_class_group(
+                    input,
+                    &result,
+                    &structure,
+                    discriminant,
+                    squarefree_core,
+                    &prime_factors,
+                    reduction_bound_a,
+                ),
+                Err(ImaginaryClassGroupError::InvalidCertificate),
+                "counterfeit producer metadata was accepted: {label}"
             );
         }
     }

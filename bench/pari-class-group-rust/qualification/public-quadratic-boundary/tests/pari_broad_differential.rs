@@ -1,7 +1,10 @@
 // Copyright (C) Sage.js contributors.
 // GPL-2.0-or-later, without warranty.
 
-use sagejs_public_quadratic_boundary_qualification::compute_imaginary_class_group_from_coefficients;
+use sagejs_public_quadratic_boundary_qualification::{
+    PublicImaginaryQuadraticInput, compute_imaginary_class_group_from_coefficients,
+    verify_imaginary_class_group,
+};
 use std::collections::BTreeSet;
 use std::path::PathBuf;
 use std::process::Command;
@@ -42,6 +45,14 @@ fn polynomial(discriminant: i64) -> [i64; 3] {
 fn compare_with_pari(control: &PathBuf, discriminant: i64, ordinal: usize) {
     let coefficients = polynomial(discriminant);
     let rust = compute_imaginary_class_group_from_coefficients(coefficients).unwrap();
+    verify_imaginary_class_group(
+        PublicImaginaryQuadraticInput {
+            id: "public-coefficient-input",
+            polynomial_ascending: coefficients,
+        },
+        &rust,
+    )
+    .unwrap();
     let [constant, linear, _] = coefficients;
     let expression = format!("x^2+({linear})*x+({constant})");
     let field_id = format!("broad-imaginary-{ordinal}");
