@@ -57,10 +57,51 @@ pub struct FlintIncrementalHnf {
 pub struct FlintSmallSurplusClassOrder {
     pub class_order: Integer,
     pub two_rank: usize,
+    pub generator_count: usize,
+    /// Generator-major coordinates in the dual mod-2 character basis.
+    /// When the class order is `2^two_rank`, this is an exact class map.
+    pub generator_coordinates: Vec<u8>,
     pub determinant_bits: usize,
     pub determinant_ns: u64,
     pub solve_ns: u64,
     pub kernel_ns: u64,
+}
+
+impl FlintSmallSurplusClassOrder {
+    pub fn coordinates(&self, generator: usize) -> Option<&[u8]> {
+        if generator >= self.generator_count() {
+            return None;
+        }
+        Some(
+            &self.generator_coordinates
+                [generator * self.two_rank..(generator + 1) * self.two_rank],
+        )
+    }
+
+    pub fn generator_count(&self) -> usize {
+        self.generator_count
+    }
+
+    pub fn annihilates(&self, relations: &[i64], rows: usize) -> bool {
+        let generators = self.generator_count();
+        if rows.checked_mul(generators) != Some(relations.len()) {
+            return false;
+        }
+        relations.chunks_exact(generators).all(|relation| {
+            (0..self.two_rank).all(|coordinate| {
+                relation
+                    .iter()
+                    .enumerate()
+                    .fold(0_u8, |parity, (generator, value)| {
+                        parity
+                            ^ (value.rem_euclid(2) as u8
+                                & self.generator_coordinates
+                                    [generator * self.two_rank + coordinate])
+                    })
+                    == 0
+            })
+        })
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -176,6 +217,8 @@ unsafe extern "C" {
         surplus_entries: *const c_longlong,
         class_order: *mut c_void,
         two_rank: *mut usize,
+        class_coordinates: *mut u8,
+        class_coordinate_capacity: usize,
         determinant_bits: *mut usize,
         determinant_ns: *mut u64,
         solve_ns: *mut u64,
@@ -294,6 +337,7 @@ pub fn flint_small_surplus_class_order(
     let surplus_rows = surplus_entries.len() / size;
     let mut class_order = Integer::new();
     let mut two_rank = 0_usize;
+    let mut generator_coordinates = vec![0_u8; square_entries.len()];
     let mut determinant_bits = 0_usize;
     let mut determinant_ns = 0_u64;
     let mut solve_ns = 0_u64;
@@ -306,6 +350,8 @@ pub fn flint_small_surplus_class_order(
             surplus_entries.as_ptr().cast(),
             class_order.as_raw_mut().cast(),
             &mut two_rank,
+            generator_coordinates.as_mut_ptr(),
+            generator_coordinates.len(),
             &mut determinant_bits,
             &mut determinant_ns,
             &mut solve_ns,
@@ -313,14 +359,19 @@ pub fn flint_small_surplus_class_order(
         )
     };
     match status {
-        0 => Ok(FlintSmallSurplusClassOrder {
-            class_order,
-            two_rank,
-            determinant_bits,
-            determinant_ns,
-            solve_ns,
-            kernel_ns,
-        }),
+        0 => {
+            generator_coordinates.truncate(size * two_rank);
+            Ok(FlintSmallSurplusClassOrder {
+                class_order,
+                two_rank,
+                generator_count: size,
+                generator_coordinates,
+                determinant_bits,
+                determinant_ns,
+                solve_ns,
+                kernel_ns,
+            })
+        }
         -1 => Err(FlintNormalFormError::InvalidDimensions),
         -3 => Err(FlintNormalFormError::RankDeficient),
         code => Err(FlintNormalFormError::ForeignFailure(code)),
@@ -975,7 +1026,19 @@ mod tests {
         let answer = flint_small_surplus_class_order(&[2, 0, 0, 6], &[0, 4], 2).unwrap();
         assert_eq!(answer.class_order, 4);
         assert_eq!(answer.two_rank, 2);
+        assert_eq!(answer.generator_coordinates, [1, 0, 0, 1]);
+        assert!(answer.annihilates(&[2, 0, 0, 6, 0, 4], 3));
         assert_eq!(answer.determinant_bits, 4);
+    }
+
+    #[test]
+    fn small_surplus_map_retains_the_trivial_group_generator_count() {
+        let answer = flint_small_surplus_class_order(&[1, 0, 0, 1], &[1, 1], 2).unwrap();
+        assert_eq!(answer.class_order, 1);
+        assert_eq!(answer.two_rank, 0);
+        assert_eq!(answer.generator_count(), 2);
+        assert_eq!(answer.coordinates(0), Some([].as_slice()));
+        assert!(answer.annihilates(&[1, 0, 0, 1, 1, 1], 3));
     }
 
     #[test]
@@ -999,6 +1062,7 @@ mod tests {
                     .filter(|entry| **entry != 0 && entry.rem_euclid(2) == 0)
                     .count()
             );
+            assert!(answer.annihilates(&complete, complete.len() / size));
         }
     }
 

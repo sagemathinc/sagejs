@@ -304,15 +304,18 @@ int sagejs_rust_flint_incremental_hnf_i64(
 int sagejs_rust_flint_small_surplus_class_order_i64(
     size_t size, size_t surplus_rows, const int64_t *square_entries,
     const int64_t *surplus_entries, mpz_ptr class_order,
-    size_t *two_rank, size_t *determinant_bits, uint64_t *determinant_ns,
-    uint64_t *solve_ns, uint64_t *kernel_ns)
+    size_t *two_rank, uint8_t *class_coordinates,
+    size_t class_coordinate_capacity, size_t *determinant_bits,
+    uint64_t *determinant_ns, uint64_t *solve_ns, uint64_t *kernel_ns)
 {
     if (size == 0 || surplus_rows == 0 || square_entries == NULL ||
         surplus_entries == NULL || class_order == NULL || two_rank == NULL ||
+        class_coordinates == NULL ||
         determinant_bits == NULL || determinant_ns == NULL ||
         solve_ns == NULL || kernel_ns == NULL || size > LONG_MAX ||
         surplus_rows > LONG_MAX || surplus_rows > SIZE_MAX - size ||
-        size > SIZE_MAX / size || surplus_rows > SIZE_MAX / size)
+        size > SIZE_MAX / size || surplus_rows > SIZE_MAX / size ||
+        class_coordinate_capacity < size * size)
         return -1;
     int status = 0;
     fmpz_mat_t square, square_transpose, surplus_transpose, coordinates;
@@ -447,8 +450,9 @@ int sagejs_rust_flint_small_surplus_class_order_i64(
     finished = sagejs_rust_monotonic_ns();
     *kernel_ns = finished >= started ? finished - started : 0;
 
-    nmod_mat_t modulo_two;
+    nmod_mat_t modulo_two, modulo_two_kernel;
     nmod_mat_init(modulo_two, (slong) (size + surplus_rows), (slong) size, 2);
+    nmod_mat_init(modulo_two_kernel, (slong) size, (slong) size, 2);
     for (size_t row = 0; row < size; row++)
         for (size_t column = 0; column < size; column++)
             nmod_mat_set_entry(modulo_two, (slong) row, (slong) column,
@@ -458,11 +462,20 @@ int sagejs_rust_flint_small_surplus_class_order_i64(
             nmod_mat_set_entry(modulo_two, (slong) (size + row),
                 (slong) column,
                 (ulong) ((uint64_t) surplus_entries[row * size + column] & 1));
-    slong rank_two = nmod_mat_rank(modulo_two);
-    if (rank_two < 0 || (size_t) rank_two > size)
+    slong nullity_two = nmod_mat_nullspace(modulo_two_kernel, modulo_two);
+    if (nullity_two < 0 || (size_t) nullity_two > size)
         status = -9;
     else
-        *two_rank = size - (size_t) rank_two;
+    {
+        *two_rank = (size_t) nullity_two;
+        for (size_t generator = 0; generator < size; generator++)
+            for (size_t coordinate = 0;
+                 coordinate < (size_t) nullity_two; coordinate++)
+                class_coordinates[generator * (size_t) nullity_two + coordinate] =
+                    (uint8_t) nmod_mat_get_entry(modulo_two_kernel,
+                        (slong) generator, (slong) coordinate);
+    }
+    nmod_mat_clear(modulo_two_kernel);
     nmod_mat_clear(modulo_two);
 
     fmpz_mat_clear(saturated);

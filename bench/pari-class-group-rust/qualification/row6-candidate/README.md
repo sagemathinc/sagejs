@@ -393,6 +393,14 @@ proves the final index is four. Exact rank modulo two is two, distinguishing
 `C2 x C2` from `C4`. Differential tests compare this algorithm with direct
 Smith form on independent small presentations.
 
+The same pass takes the right nullspace of the complete relation matrix modulo
+two. Because the exact class order is four and the exact 2-rank is two, this
+dual character map is an isomorphism onto `C2 x C2`, rather than merely a
+modular diagnostic. It assigns coordinates to all 1,130 factor-base ideals,
+annihilates all 1,137 relations, and selects independent concrete generator
+ideals above 11 and 19. Thus the fast completion path now retains a usable
+ideal-to-class map without constructing the large Smith transform.
+
 This is not a qualified performance result: the current Rust incremental HNF
 is still used by the separately retained map/witness path, and the command
 emits a large diagnostic receipt. The prepared-field class-and-unit
@@ -407,20 +415,23 @@ its HNF driver.
 
 | closest region | Rust diagnostic | PARI 2.17.4 instrumented | ratio |
 | --- | ---: | ---: | ---: |
-| relation side | 7.669527 s | 1.100174 s | 6.9712x |
-| determinant, surplus solve and exact class-order kernel / matrix side | 7.807095 s | 2.791358 s | 2.7969x |
-| explicit unit kernel, units, regulator and analytic completion / terminal residual | 3.143168 s | 0.009196 s | not algorithmically matched |
-| complete external diagnostic / instrumented control | 18.064180 s | 3.900729 s | 4.6310x |
+| relation side | 7.787758 s | 1.100174 s | 7.0787x |
+| determinant, surplus solve and exact class-order/map kernel / matrix side | 8.025166 s | 2.791358 s | 2.8750x |
+| explicit unit kernel, units, regulator and analytic completion / terminal residual | 3.304250 s | 0.009196 s | not algorithmically matched |
+| complete external diagnostic / instrumented control | 18.492325 s | 3.900729 s | 4.7407x |
 
 Against the pristine PARI total of `3.886499614` seconds, the single Rust
-diagnostic is `4.6479x`. This is not yet competitive. It does, however, answer
+diagnostic is `4.7581x`. The preceding run without a material algorithm change
+was 18.064180 seconds, so the observed range is currently 18.06--18.49 seconds;
+this is not yet a qualification median. It is not yet competitive. It does,
+however, answer
 the higher-risk mathematical question: the Rust path can reach a certified
 answer without PARI at runtime, and the remaining row-6 latency is now
 localized to relation collection and the square determinant/surplus solve,
 rather than unit or analytic completion.
 
 The sparse receipt is `results/maximal-unit-lattice.json` (SHA-256
-`f2c0c8a9f72bcdf9883070f2cdadc24a960f72f18d0ef511209b6988fa0c2755`).
+`42b32df88500b092dc340da0c37eeb119215d341b1e18cf5eb59eb3900bfae1e`).
 Public generator/result construction, a production honesty-extension policy,
 unconditional certification, and the public polynomial-to-result route remain
 required; this prepared-field diagnostic does not authorize production

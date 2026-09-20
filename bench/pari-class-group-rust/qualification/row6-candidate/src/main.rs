@@ -726,6 +726,25 @@ fn small_norm_unit_kernel(maximum_ideals: usize, maximum_candidates: usize) {
         .expect("exact small-surplus class-order computation failed");
     assert_eq!(class_order.class_order, 4);
     assert_eq!(class_order.two_rank, 2);
+    assert!(
+        class_order.annihilates(&answer.relations, rows),
+        "mod-2 class map does not annihilate the relation lattice"
+    );
+    let first_class_generator = (0..columns)
+        .find(|&generator| class_order.coordinates(generator) != Some(&[0, 0]))
+        .expect("class map has no nonzero generator");
+    let first_coordinates = class_order
+        .coordinates(first_class_generator)
+        .expect("missing first class-generator coordinates")
+        .to_vec();
+    let second_class_generator = (first_class_generator + 1..columns)
+        .chain(0..first_class_generator)
+        .find(|&generator| {
+            let coordinates = class_order.coordinates(generator).unwrap();
+            coordinates != [0, 0] && coordinates != first_coordinates
+        })
+        .expect("class map has no independent second generator");
+    let class_generator_indices = [first_class_generator, second_class_generator];
     let invariant_factors = [2_i64, 2_i64];
     let presentation_ns = presentation_started.elapsed().as_nanos();
     let kernel_started = Instant::now();
@@ -1025,6 +1044,27 @@ fn small_norm_unit_kernel(maximum_ideals: usize, maximum_candidates: usize) {
             "qualificationStatus": "grh-conditional-class-unit-index-one",
             "usesOracleAsInput": false,
             "relations": { "rows": rows, "columns": columns },
+            "classMap": {
+                "group": "C2 x C2",
+                "construction": "right-nullspace-of-the-complete-relation-matrix-modulo-two",
+                "isExactBecauseCertifiedOrderEqualsFour": true,
+                "allRelationsMapToZero": true,
+                "generatorMajorCoordinates": class_order.generator_coordinates
+                    .chunks_exact(class_order.two_rank)
+                    .collect::<Vec<_>>(),
+                "selectedGeneratorIndicesZeroBased": class_generator_indices,
+                "selectedGeneratorPrimeIdeals": class_generator_indices.map(|index| {
+                    let ideal = &answer.factor_base.catalog.ideals[index];
+                    serde_json::json!({
+                        "prime": ideal.prime,
+                        "ramification": ideal.ramification,
+                        "residueDegree": ideal.residue_degree,
+                        "norm": ideal.norm,
+                        "generator": ideal.generator,
+                        "hnf": ideal.hnf,
+                    })
+                }),
+            },
             "kernel": {
                 "rank": kernel.rank,
                 "isSaturated": true,
