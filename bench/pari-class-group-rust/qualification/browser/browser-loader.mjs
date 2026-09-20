@@ -139,11 +139,67 @@ export async function loadClassGroupCandidate(artifactUrl) {
   const alloc = requireFunction(exports, "sagejs_class_group_alloc");
   const dealloc = requireFunction(exports, "sagejs_class_group_dealloc");
   const runJson = requireFunction(exports, "sagejs_class_group_run_json");
+  const contextAbiVersion = exports.sagejs_class_group_context_abi_version;
+  const hasContextAbi = typeof contextAbiVersion === "function";
+  const contextCreate = hasContextAbi
+    ? requireFunction(exports, "sagejs_class_group_context_create_json") : null;
+  const contextStep = hasContextAbi
+    ? requireFunction(exports, "sagejs_class_group_context_step") : null;
+  const contextCancel = hasContextAbi
+    ? requireFunction(exports, "sagejs_class_group_context_cancel") : null;
+  const contextResult = hasContextAbi
+    ? requireFunction(exports, "sagejs_class_group_context_result_json") : null;
+  const contextReset = hasContextAbi
+    ? requireFunction(exports, "sagejs_class_group_context_reset_json") : null;
+  const contextClose = hasContextAbi
+    ? requireFunction(exports, "sagejs_class_group_context_close") : null;
   if (abiVersion() !== ABI_VERSION) {
     wasi?.dispose();
     throw new TypeError(`unsupported class-group ABI version ${abiVersion()}`);
   }
+  if (hasContextAbi && contextAbiVersion() !== 1) {
+    wasi?.dispose();
+    throw new TypeError(`unsupported class-group context ABI version ${contextAbiVersion()}`);
+  }
   let closed = false;
+  const activeContexts = new Set();
+  const contextFinalizer = typeof FinalizationRegistry === "function"
+    ? new FinalizationRegistry((handle) => {
+      if (!closed && activeContexts.delete(handle)) contextClose(handle);
+    })
+    : null;
+
+  function withRequestInput(request, callback) {
+    if (closed) throw new Error("class-group candidate is closed");
+    const input = textEncoder.encode(JSON.stringify(request));
+    if (input.byteLength === 0 || input.byteLength > MAX_TRANSFER_BYTES) {
+      throw new RangeError("class-group request exceeds the transfer limit");
+    }
+    const inputPointer = alloc(input.byteLength) >>> 0;
+    if (inputPointer === 0) throw new Error("class-group input allocation failed");
+    try {
+      checkedSlice(exports.memory, inputPointer, input.byteLength, "input").set(input);
+      return callback(inputPointer, input.byteLength);
+    } finally {
+      dealloc(inputPointer, input.byteLength);
+    }
+  }
+
+  function decodeOutput(packedValue) {
+    const packed = BigInt.asUintN(64, packedValue);
+    const outputPointer = Number(packed & 0xffff_ffffn);
+    const outputLength = Number(packed >> 32n);
+    if (outputPointer === 0 || outputLength === 0) {
+      throw new Error("class-group candidate returned an empty result");
+    }
+    try {
+      const copy = checkedSlice(exports.memory, outputPointer, outputLength, "output").slice();
+      return JSON.parse(textDecoder.decode(copy));
+    } finally {
+      dealloc(outputPointer, outputLength);
+    }
+  }
+
   return {
     route: "rust-class-group-wasm-artifact",
     description,
@@ -184,8 +240,72 @@ export async function loadClassGroupCandidate(artifactUrl) {
         dealloc(inputPointer, input.byteLength);
       }
     },
+    createContext(request) {
+      if (!hasContextAbi) {
+        throw new Error("class-group candidate has no resumable context ABI");
+      }
+      let handle = withRequestInput(request, (pointer, length) =>
+        contextCreate(pointer, length)
+      );
+      if (handle === 0n) throw new Error("class-group context creation failed");
+      activeContexts.add(handle);
+      const context = {
+        get handle() {
+          return handle;
+        },
+        step(pointBudget) {
+          if (closed) throw new Error("class-group candidate is closed");
+          return contextStep(handle, pointBudget);
+        },
+        cancel() {
+          if (closed) throw new Error("class-group candidate is closed");
+          return contextCancel(handle);
+        },
+        result() {
+          if (closed) throw new Error("class-group candidate is closed");
+          return decodeOutput(contextResult(handle));
+        },
+        reset(nextRequest) {
+          const next = withRequestInput(nextRequest, (pointer, length) =>
+            contextReset(handle, pointer, length)
+          );
+          if (next === 0n) throw new Error("class-group context reset failed");
+          contextFinalizer?.unregister(context);
+          activeContexts.delete(handle);
+          handle = next;
+          activeContexts.add(handle);
+          contextFinalizer?.register(context, handle, context);
+          return handle;
+        },
+        close() {
+          if (closed) return 0;
+          const status = contextClose(handle);
+          if (status === 1) {
+            activeContexts.delete(handle);
+            contextFinalizer?.unregister(context);
+          }
+          return status;
+        },
+      };
+      contextFinalizer?.register(context, handle, context);
+      return context;
+    },
+    testing: hasContextAbi ? {
+      rawContext: {
+        step: (handle, pointBudget) => contextStep(handle, pointBudget),
+        cancel: (handle) => contextCancel(handle),
+        result: (handle) => decodeOutput(contextResult(handle)),
+        reset: (handle, request) => withRequestInput(
+          request,
+          (pointer, length) => contextReset(handle, pointer, length),
+        ),
+        close: (handle) => contextClose(handle),
+      },
+    } : null,
     close() {
       if (closed) return;
+      for (const handle of activeContexts) contextClose(handle);
+      activeContexts.clear();
       closed = true;
       wasi?.dispose();
     },

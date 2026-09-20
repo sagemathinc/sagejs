@@ -76,9 +76,20 @@ export async function instantiateLifecycleCandidate(artifactPath) {
   const alloc = requireFunction(exports, "sagejs_class_group_alloc");
   const dealloc = requireFunction(exports, "sagejs_class_group_dealloc");
   const runJson = requireFunction(exports, "sagejs_class_group_run_json");
+  const contextAbiVersion = requireFunction(exports, "sagejs_class_group_context_abi_version");
+  const contextCreate = requireFunction(exports, "sagejs_class_group_context_create_json");
+  const contextStep = requireFunction(exports, "sagejs_class_group_context_step");
+  const contextCancel = requireFunction(exports, "sagejs_class_group_context_cancel");
+  const contextResult = requireFunction(exports, "sagejs_class_group_context_result_json");
+  const contextReset = requireFunction(exports, "sagejs_class_group_context_reset_json");
+  const contextClose = requireFunction(exports, "sagejs_class_group_context_close");
   if (abiVersion() !== ABI_VERSION) {
     wasi.dispose();
     throw new TypeError(`unsupported ABI version ${abiVersion()}`);
+  }
+  if (contextAbiVersion() !== 1) {
+    wasi.dispose();
+    throw new TypeError(`unsupported context ABI version ${contextAbiVersion()}`);
   }
 
   let closed = false;
@@ -119,11 +130,79 @@ export async function instantiateLifecycleCandidate(artifactPath) {
     }
   }
 
+  function withInput(request, callback) {
+    assertLive();
+    const input = encoder.encode(JSON.stringify(request));
+    const pointer = alloc(input.byteLength) >>> 0;
+    if (pointer === 0) throw new Error("context input allocation failed");
+    try {
+      checkedRange(exports.memory, pointer, input.byteLength, "context input").set(input);
+      return callback(pointer, input.byteLength);
+    } finally {
+      dealloc(pointer, input.byteLength);
+    }
+  }
+
+  const rawContext = Object.freeze({
+    create(request) {
+      return withInput(request, (pointer, length) => contextCreate(pointer, length));
+    },
+    step(handle, pointBudget) {
+      assertLive();
+      return contextStep(BigInt(handle), pointBudget);
+    },
+    cancel(handle) {
+      assertLive();
+      return contextCancel(BigInt(handle));
+    },
+    result(handle) {
+      assertLive();
+      return JSON.parse(decoder.decode(copyOutput(contextResult(BigInt(handle)))));
+    },
+    reset(handle, request) {
+      return withInput(request, (pointer, length) =>
+        contextReset(BigInt(handle), pointer, length)
+      );
+    },
+    close(handle) {
+      assertLive();
+      return contextClose(BigInt(handle));
+    },
+  });
+
   return Object.freeze({
     run(request) {
       return JSON.parse(runBytes(encoder.encode(JSON.stringify(request))));
     },
     runBytes,
+    createContext(request) {
+      let handle = rawContext.create(request);
+      if (handle === 0n) throw new Error("context creation failed");
+      return {
+        get handle() {
+          return handle;
+        },
+        step(pointBudget) {
+          return rawContext.step(handle, pointBudget);
+        },
+        cancel() {
+          return rawContext.cancel(handle);
+        },
+        result() {
+          return rawContext.result(handle);
+        },
+        reset(nextRequest) {
+          const previous = handle;
+          const next = rawContext.reset(handle, nextRequest);
+          if (next === 0n) throw new Error("context reset failed");
+          handle = next;
+          return { previous, next };
+        },
+        close() {
+          return rawContext.close(handle);
+        },
+      };
+    },
     runNullInput() {
       assertLive();
       return JSON.parse(decoder.decode(copyOutput(runJson(0, 0))));
@@ -146,6 +225,7 @@ export async function instantiateLifecycleCandidate(artifactPath) {
       closeCount: () => closeCount,
       isClosed: () => closed,
       imports,
+      rawContext,
     }),
   });
 }
@@ -153,6 +233,6 @@ export async function instantiateLifecycleCandidate(artifactPath) {
 export const lifecycleAbiPolicy = Object.freeze({
   version: ABI_VERSION,
   maximumTransferBytes: MAX_TRANSFER_BYTES,
-  guestHandleRegistry: false,
-  cooperativeCancellation: false,
+  guestHandleRegistry: true,
+  cooperativeCancellation: true,
 });

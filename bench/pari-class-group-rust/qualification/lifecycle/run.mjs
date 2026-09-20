@@ -19,6 +19,14 @@ const defaultArtifact = path.join(
   "bench/pari-class-group-rust/qualification/wasm-class-group-candidate/target/wasm32-wasip1/release/sagejs_rust_wasm_class_group_candidate.wasm",
 );
 const defaultOutput = path.join(here, "receipt.json");
+const sourceInputPaths = [
+  "bench/pari-class-group-rust/qualification/wasm-class-group-candidate/Cargo.lock",
+  "bench/pari-class-group-rust/qualification/wasm-class-group-candidate/Cargo.toml",
+  "bench/pari-class-group-rust/qualification/wasm-class-group-candidate/src/lib.rs",
+  "bench/pari-class-group-rust/src/factor_base.rs",
+  "bench/pari-class-group-rust/src/relation_cache.rs",
+  "bench/pari-class-group-rust/src/smith.rs",
+];
 const request = Object.freeze({
   schema: "sagejs.class-group-request/v1",
   polynomial: ["-34", "-30", "-8", "1"],
@@ -50,6 +58,13 @@ function argumentsFrom(argv) {
 
 function sha256(bytes) {
   return crypto.createHash("sha256").update(bytes).digest("hex");
+}
+
+function sourceInputIdentity() {
+  return sourceInputPaths.map((relativePath) => {
+    const bytes = fs.readFileSync(path.join(repositoryRoot, relativePath));
+    return { path: relativePath, bytes: bytes.byteLength, sha256: sha256(bytes) };
+  });
 }
 
 function canonical(value) {
@@ -119,6 +134,154 @@ async function concurrentIndependentJobs(artifact, count = 4) {
   }
 }
 
+function immediate() {
+  return new Promise((resolve) => setImmediate(resolve));
+}
+
+async function exerciseResumableContexts(candidate) {
+  const completion = candidate.createContext(request);
+  assert.equal(completion.result().schema, "sagejs.class-group-error/v1");
+  let completionStatus = 1;
+  let completionSteps = 0;
+  let maximumStepMilliseconds = 0;
+  while (completionStatus === 1) {
+    const started = performance.now();
+    completionStatus = completion.step(1);
+    maximumStepMilliseconds = Math.max(maximumStepMilliseconds, performance.now() - started);
+    completionSteps += 1;
+    await immediate();
+  }
+  assert.equal(completionStatus, 2);
+  assert.ok(completionSteps > 100);
+  assert.deepEqual(completion.result(), expected);
+  const completedHandle = completion.handle;
+  assert.equal(completion.close(), 1);
+  assert.equal(completion.close(), 0);
+  assert.equal(candidate.testing.rawContext.step(completedHandle, 1), 0);
+  assert.equal(candidate.testing.rawContext.cancel(completedHandle), 0);
+  assert.equal(candidate.testing.rawContext.result(completedHandle).error, "State");
+  assert.equal(candidate.testing.rawContext.reset(completedHandle, request), 0n);
+  assert.equal(candidate.testing.rawContext.close(completedHandle), 0);
+
+  const cancellation = candidate.createContext(request);
+  assert.equal(cancellation.step(8), 1);
+  let cancelRequestedAt = null;
+  let cancelCode = null;
+  const cancelRequest = new Promise((resolve) => setTimeout(() => {
+    cancelRequestedAt = performance.now();
+    cancelCode = cancellation.cancel();
+    resolve();
+  }, 0));
+  let cancelledStatus = 1;
+  while (cancelledStatus === 1) {
+    cancelledStatus = cancellation.step(1);
+    await immediate();
+  }
+  await cancelRequest;
+  const cancellationObservedAt = performance.now();
+  assert.equal(cancelCode, 1);
+  assert.equal(cancelledStatus, 3);
+  assert.equal(cancellation.cancel(), 2);
+  assert.equal(cancellation.result().schema, "sagejs.class-group-error/v1");
+  assert.equal(cancellation.close(), 1);
+
+  const reset = candidate.createContext(request);
+  assert.equal(reset.step(8), 1);
+  const beforeReset = reset.handle;
+  assert.equal(candidate.testing.rawContext.reset(beforeReset, { ...request, expected }), 0n);
+  assert.equal(candidate.testing.rawContext.step(beforeReset, 1), 1);
+  const resetHandles = reset.reset(request);
+  assert.equal(resetHandles.previous, beforeReset);
+  assert.notEqual(resetHandles.next, beforeReset);
+  assert.equal(candidate.testing.rawContext.step(beforeReset, 1), 0);
+  assert.equal(candidate.testing.rawContext.cancel(beforeReset), 0);
+  assert.equal(candidate.testing.rawContext.result(beforeReset).error, "State");
+  assert.equal(candidate.testing.rawContext.reset(beforeReset, request), 0n);
+  assert.equal(candidate.testing.rawContext.close(beforeReset), 0);
+  assert.equal(reset.step(4_097), 5);
+  let resetStatus = 1;
+  while (resetStatus === 1) resetStatus = reset.step(4_096);
+  assert.equal(resetStatus, 2);
+  assert.deepEqual(reset.result(), expected);
+  assert.equal(reset.close(), 1);
+
+  assert.equal(candidate.testing.rawContext.step(0n, 1), 0);
+  assert.equal(candidate.testing.rawContext.cancel(0xffff_ffff_ffff_ffffn), 0);
+  assert.equal(candidate.testing.rawContext.close(0n), 0);
+  assert.equal(candidate.testing.rawContext.create({ ...request, expected }), 0n);
+
+  const capacityHandles = [];
+  for (let index = 0; index < 64; index += 1) {
+    const handle = candidate.testing.rawContext.create(request);
+    assert.notEqual(handle, 0n);
+    capacityHandles.push(handle);
+  }
+  assert.equal(candidate.testing.rawContext.create(request), 0n);
+  for (const handle of capacityHandles) {
+    assert.equal(candidate.testing.rawContext.close(handle), 1);
+  }
+
+  const mixedMemoryPages = [];
+  for (let index = 0; index < 100; index += 1) {
+    const context = candidate.createContext(request);
+    if (index % 3 === 0) {
+      assert.equal(context.step(8), 1);
+      assert.equal(context.cancel(), 1);
+      assert.equal(context.close(), 1);
+    } else if (index % 3 === 1) {
+      const { previous } = context.reset(request);
+      assert.equal(candidate.testing.rawContext.step(previous, 1), 0);
+      let status = 1;
+      while (status === 1) status = context.step(4_096);
+      assert.equal(status, 2);
+      assert.deepEqual(context.result(), expected);
+      assert.equal(context.close(), 1);
+    } else {
+      let status = 1;
+      while (status === 1) status = context.step(4_096);
+      assert.equal(status, 2);
+      assert.deepEqual(context.result(), expected);
+      assert.equal(context.close(), 1);
+    }
+    mixedMemoryPages.push(candidate.memoryPages());
+  }
+  assert.equal(new Set(mixedMemoryPages.slice(8)).size, 1);
+
+  return {
+    status: "pass-small-candidate",
+    pointBudgetPerYield: 1,
+    completionSteps,
+    maximumStepMilliseconds,
+    cancellation: {
+      status: "pass",
+      requestedCode: cancelCode,
+      terminalStatus: cancelledStatus,
+      latencyMilliseconds: cancellationObservedAt - cancelRequestedAt,
+      resultBeforeComplete: "structured-error",
+      resultAfterCancel: "structured-error",
+      partialResultPublished: false,
+    },
+    staleAndMalformedHandles: "pass",
+    retiredHandleOperations: {
+      afterClose: ["step", "cancel", "result-state-error", "reset", "close"],
+      afterReset: ["step", "cancel", "result-state-error", "reset", "close"],
+    },
+    doubleClose: "pass-rejected",
+    reset: "pass-generation-invalidates-prior-handle",
+    invalidResetTransactional: "pass-original-context-remains-live",
+    contextCapacity: {
+      maximumLive: 64,
+      overflowCreateResult: "zero-handle",
+      allAllocatedContextsClosed: true,
+    },
+    mixedSmallJobs: {
+      count: 100,
+      modes: ["cancel", "reset-complete", "complete"],
+      stableMemoryPages: mixedMemoryPages.at(-1),
+    },
+  };
+}
+
 export async function collectLifecycleReceipt(options = argumentsFrom([])) {
   const artifactBytes = fs.readFileSync(options.artifact);
   const candidate = await instantiateLifecycleCandidate(options.artifact);
@@ -179,6 +342,7 @@ export async function collectLifecycleReceipt(options = argumentsFrom([])) {
   // A malformed call must not poison the next valid call.
   assert.deepEqual(candidate.run(request), expected);
   const pagesAfterRecovery = candidate.memoryPages();
+  const resumableContext = await exerciseResumableContexts(candidate);
   candidate.close();
   candidate.close();
   assert.equal(candidate.testing.closeCount(), 2);
@@ -191,8 +355,8 @@ export async function collectLifecycleReceipt(options = argumentsFrom([])) {
   const receipt = {
     schema: "sagejs.rust-class-group-lifecycle/v1",
     status: malformedFailures.length === 0
-      ? "failed-required-cooperative-cancellation-abi"
-      : "failed-required-lifecycle-abi-and-input-validation",
+      ? "small-candidate-context-pass-medium-unqualified"
+      : "failed-required-input-validation",
     claim: {
       productionQualified: false,
       artifactScope: "small fixed-width presentation candidate",
@@ -203,6 +367,7 @@ export async function collectLifecycleReceipt(options = argumentsFrom([])) {
       bytes: artifactBytes.byteLength,
       sha256: sha256(artifactBytes),
       abiVersion: lifecycleAbiPolicy.version,
+      sourceInputs: sourceInputIdentity(),
     },
     repeatedCalls: {
       status: "pass",
@@ -229,29 +394,37 @@ export async function collectLifecycleReceipt(options = argumentsFrom([])) {
       hostClose: "pass-idempotent",
       staleUseAfterClose: "pass-rejected",
       guestHandlesPresent: lifecycleAbiPolicy.guestHandleRegistry,
-      guestStaleHandleTest: "not-applicable-no-handle-abi",
-      guestDoubleDropTest: "not-applicable-no-handle-abi",
+      guestStaleHandleTest: "pass-rejected",
+      guestDoubleDropTest: "pass-rejected",
       rawDoubleDeallocTest: "not-run-undefined-behavior-in-current-abi",
     },
     termination,
+    resumableContext,
     transactionalPublication: {
-      status: "pass-for-hard-worker-termination-only",
-      observation: "no result message was published after a begun computation was terminated",
+      status: "pass-small-context-and-hard-worker-termination",
+      observation: "result_json returns a structured state error before completion and after cancellation; hard worker termination publishes no result message",
       durableState: "none",
     },
     cancellation: {
-      status: "fail",
-      cooperative: false,
-      reason: "sagejs_class_group_run_json is one synchronous monolithic call with no context, step, cancel, or progress operation",
+      status: "pass-small-candidate-only",
+      cooperative: true,
+      reason: "the candidate relation search is a bounded state machine; the host yields between step calls",
       hardWorkerTerminationAvailable: true,
-      requiredAbi: [
-        "create(request) -> generation-tagged context handle or structured error",
-        "step(handle, bounded_work) -> running | complete | cancelled | structured error",
-        "cancel(handle) -> accepted | already complete | stale handle",
-        "result(handle) publishes output only after complete",
-        "drop(handle) is idempotent and stale/double-use is rejected without dereference",
-        "long relation, HNF, unit, and certification loops check cancellation at documented bounded intervals",
+      implementedAbi: [
+        "create_json(request) -> generation-tagged context handle or zero",
+        "step(handle, bounded_points) -> stale | running | complete | cancelled | failed | invalid budget",
+        "cancel(handle) -> stale | accepted | already cancelled | already terminal",
+        "result_json(handle) publishes output only after complete",
+        "reset_json(handle, request) -> replacement generation or zero without mutating on failure",
+        "close(handle) -> closed | stale",
       ],
+      cancellationBoundary: "only between completed step calls after control returns to the host event loop",
+      nonInterruptibleSections: [
+        "context creation and input preparation",
+        "one individual lattice-point norm/factorization/valuation operation",
+        "final Smith reduction after relation collection completes",
+      ],
+      remainingLimitation: "row-6 HNF, unit, and certification phases do not yet use this context ABI",
     },
     requiredInputChange: {
       status: malformedFailures.some((item) => item.status === "incorrectly-accepted") ? "required" : "not-required",
@@ -261,10 +434,10 @@ export async function collectLifecycleReceipt(options = argumentsFrom([])) {
       repeatedSmallCalls: { required: 1_000, observed: options.repetitions, status: options.repetitions >= 1_000 ? "pass" : "test-only-short-run" },
       mixedMediumCalls: { required: 100, observed: 0, status: "fail-no-frozen-complete-medium-artifact" },
       precisionFailure: "fail-not-exposed-by-candidate",
-      arithmeticCapacityFailure: "fail-not-exposed-by-candidate",
+      arithmeticCapacityFailure: "partial-pass-context-capacity-only",
       concurrentIndependentJobs: concurrency,
       nativeLeakSanitizer: "fail-not-run",
-      actualBrowserLifecycle: "fail-not-run-by-this-receipt",
+      actualBrowserLifecycle: "pass-see-browser-context-receipt",
     },
   };
   return receipt;

@@ -1,6 +1,6 @@
 {
   "schema": "sagejs.rust-class-group-lifecycle/v1",
-  "status": "failed-required-cooperative-cancellation-abi",
+  "status": "small-candidate-context-pass-medium-unqualified",
   "claim": {
     "productionQualified": false,
     "artifactScope": "small fixed-width presentation candidate",
@@ -8,9 +8,41 @@
   },
   "artifact": {
     "path": "bench/pari-class-group-rust/qualification/wasm-class-group-candidate/target/wasm32-wasip1/release/sagejs_rust_wasm_class_group_candidate.wasm",
-    "bytes": 218491,
-    "sha256": "9f27b7283160a944e016b5701429fddd923b6aab069e9c01881c871b4776bab8",
-    "abiVersion": 1
+    "bytes": 224173,
+    "sha256": "beb91b4270aae5d2d570889ffa680309c08b2139aca04d414808fe26bff2de52",
+    "abiVersion": 1,
+    "sourceInputs": [
+      {
+        "path": "bench/pari-class-group-rust/qualification/wasm-class-group-candidate/Cargo.lock",
+        "bytes": 2695,
+        "sha256": "d29e0e7b1fabea3ac7445f1b0333c708cb91ba468583a7171988939d63019943"
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/wasm-class-group-candidate/Cargo.toml",
+        "bytes": 325,
+        "sha256": "8bfeab5a386fb19e36de2069e8019159d5535327017c21e68aa483cc5fea12a0"
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/wasm-class-group-candidate/src/lib.rs",
+        "bytes": 27804,
+        "sha256": "b58a29f11e14ec43446f3e0e2731c30d3801752d5be8dec86886fe4b185c45e4"
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/factor_base.rs",
+        "bytes": 39597,
+        "sha256": "14cf55f72d90c58410edca44a8f17d8907ed93680deb1fd4dbff8b5704e9cf34"
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/relation_cache.rs",
+        "bytes": 14270,
+        "sha256": "4ceda4440a747c151389dc00a1deee06c32cb18845a3e5738345cad8410ecc3e"
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/smith.rs",
+        "bytes": 10463,
+        "sha256": "d367b6bcc7d372bfe886dcb746ab327b4eaafb1cb7ccda26935404d2e7842192"
+      }
+    ]
   },
   "repeatedCalls": {
     "status": "pass",
@@ -160,9 +192,9 @@
   "lifecycle": {
     "hostClose": "pass-idempotent",
     "staleUseAfterClose": "pass-rejected",
-    "guestHandlesPresent": false,
-    "guestStaleHandleTest": "not-applicable-no-handle-abi",
-    "guestDoubleDropTest": "not-applicable-no-handle-abi",
+    "guestHandlesPresent": true,
+    "guestStaleHandleTest": "pass-rejected",
+    "guestDoubleDropTest": "pass-rejected",
     "rawDoubleDeallocTest": "not-run-undefined-behavior-in-current-abi"
   },
   "termination": {
@@ -173,24 +205,80 @@
     "resultPublished": false,
     "scope": "host termination only; not cooperative in-reactor cancellation"
   },
+  "resumableContext": {
+    "status": "pass-small-candidate",
+    "pointBudgetPerYield": 1,
+    "completionSteps": 2066,
+    "maximumStepMilliseconds": 0.12677999999982603,
+    "cancellation": {
+      "status": "pass",
+      "requestedCode": 1,
+      "terminalStatus": 3,
+      "latencyMilliseconds": 0.03336899999999332,
+      "resultBeforeComplete": "structured-error",
+      "resultAfterCancel": "structured-error",
+      "partialResultPublished": false
+    },
+    "staleAndMalformedHandles": "pass",
+    "retiredHandleOperations": {
+      "afterClose": [
+        "step",
+        "cancel",
+        "result-state-error",
+        "reset",
+        "close"
+      ],
+      "afterReset": [
+        "step",
+        "cancel",
+        "result-state-error",
+        "reset",
+        "close"
+      ]
+    },
+    "doubleClose": "pass-rejected",
+    "reset": "pass-generation-invalidates-prior-handle",
+    "invalidResetTransactional": "pass-original-context-remains-live",
+    "contextCapacity": {
+      "maximumLive": 64,
+      "overflowCreateResult": "zero-handle",
+      "allAllocatedContextsClosed": true
+    },
+    "mixedSmallJobs": {
+      "count": 100,
+      "modes": [
+        "cancel",
+        "reset-complete",
+        "complete"
+      ],
+      "stableMemoryPages": 50
+    }
+  },
   "transactionalPublication": {
-    "status": "pass-for-hard-worker-termination-only",
-    "observation": "no result message was published after a begun computation was terminated",
+    "status": "pass-small-context-and-hard-worker-termination",
+    "observation": "result_json returns a structured state error before completion and after cancellation; hard worker termination publishes no result message",
     "durableState": "none"
   },
   "cancellation": {
-    "status": "fail",
-    "cooperative": false,
-    "reason": "sagejs_class_group_run_json is one synchronous monolithic call with no context, step, cancel, or progress operation",
+    "status": "pass-small-candidate-only",
+    "cooperative": true,
+    "reason": "the candidate relation search is a bounded state machine; the host yields between step calls",
     "hardWorkerTerminationAvailable": true,
-    "requiredAbi": [
-      "create(request) -> generation-tagged context handle or structured error",
-      "step(handle, bounded_work) -> running | complete | cancelled | structured error",
-      "cancel(handle) -> accepted | already complete | stale handle",
-      "result(handle) publishes output only after complete",
-      "drop(handle) is idempotent and stale/double-use is rejected without dereference",
-      "long relation, HNF, unit, and certification loops check cancellation at documented bounded intervals"
-    ]
+    "implementedAbi": [
+      "create_json(request) -> generation-tagged context handle or zero",
+      "step(handle, bounded_points) -> stale | running | complete | cancelled | failed | invalid budget",
+      "cancel(handle) -> stale | accepted | already cancelled | already terminal",
+      "result_json(handle) publishes output only after complete",
+      "reset_json(handle, request) -> replacement generation or zero without mutating on failure",
+      "close(handle) -> closed | stale"
+    ],
+    "cancellationBoundary": "only between completed step calls after control returns to the host event loop",
+    "nonInterruptibleSections": [
+      "context creation and input preparation",
+      "one individual lattice-point norm/factorization/valuation operation",
+      "final Smith reduction after relation collection completes"
+    ],
+    "remainingLimitation": "row-6 HNF, unit, and certification phases do not yet use this context ABI"
   },
   "requiredInputChange": {
     "status": "not-required",
@@ -208,13 +296,13 @@
       "status": "fail-no-frozen-complete-medium-artifact"
     },
     "precisionFailure": "fail-not-exposed-by-candidate",
-    "arithmeticCapacityFailure": "fail-not-exposed-by-candidate",
+    "arithmeticCapacityFailure": "partial-pass-context-capacity-only",
     "concurrentIndependentJobs": {
       "status": "pass-small-artifact-only",
       "jobs": 4,
       "identicalResults": true
     },
     "nativeLeakSanitizer": "fail-not-run",
-    "actualBrowserLifecycle": "fail-not-run-by-this-receipt"
+    "actualBrowserLifecycle": "pass-see-browser-context-receipt"
   }
 }

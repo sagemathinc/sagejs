@@ -18,27 +18,41 @@ use relation_cache::RelationCache;
 use serde::Deserialize;
 use smith::{WordSmithWorkspace, transpose_relation_records};
 use std::alloc::{Layout, alloc, dealloc};
+use std::cell::RefCell;
 
 const MAXIMUM_RADIUS: i64 = 32;
 const SUPPLEMENTARY_RELATIONS: usize = 20;
 const MAX_INPUT_BYTES: usize = 1 << 20;
+const MAX_STEP_POINTS: u32 = 4_096;
+const MAX_CONTEXTS: usize = 64;
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 enum Error {
     Input,
     UnsupportedOrder,
     Arithmetic,
     Collection,
     Smith,
+    State,
 }
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 struct Statistics {
     visited: u64,
     primitive_nonscalar: u64,
     smooth_norms: u64,
     accepted: u64,
     radius: i64,
+}
+
+type CandidateResult = (Vec<i128>, i128, usize, usize, Statistics);
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum ComputationStatus {
+    Running,
+    Complete,
+    Cancelled,
+    Failed,
 }
 
 fn gcd(mut a: i64, mut b: i64) -> i64 {
@@ -240,89 +254,187 @@ fn initialize_cache(base: &FactorBase) -> Result<RelationCache, Error> {
     Ok(cache)
 }
 
-fn candidate(polynomial: [i64; 4]) -> Result<(Vec<i128>, i128, usize, usize, Statistics), Error> {
-    if polynomial[3] != 1 {
-        return Err(Error::Input);
+struct CandidateContext {
+    polynomial: [i64; 4],
+    base: FactorBase,
+    cache: RelationCache,
+    relation: Vec<i64>,
+    target: usize,
+    statistics: Statistics,
+    radius: i64,
+    x: i64,
+    y: i64,
+    z: i64,
+    status: ComputationStatus,
+    result: Option<CandidateResult>,
+    failure: Option<Error>,
+}
+
+impl CandidateContext {
+    fn new(polynomial: [i64; 4]) -> Result<Self, Error> {
+        if polynomial[3] != 1 {
+            return Err(Error::Input);
+        }
+        // The present trial supports equation orders.  For the qualification
+        // vector the equation order is maximal; the independently supplied
+        // prepared basis differs only by a unimodular change of basis.
+        let basis = [1, 0, 0, 0, 1, 0, 0, 0, 1];
+        let base = prepared_cubic_factor_base(polynomial, basis);
+        if base.ideals.is_empty() {
+            return Err(Error::UnsupportedOrder);
+        }
+        let cache = initialize_cache(&base)?;
+        let target = base.ideals.len() + SUPPLEMENTARY_RELATIONS;
+        Ok(Self {
+            polynomial,
+            relation: vec![0_i64; base.ideals.len()],
+            target,
+            base,
+            cache,
+            statistics: Statistics::default(),
+            radius: 1,
+            x: -1,
+            y: -1,
+            z: -1,
+            status: ComputationStatus::Running,
+            result: None,
+            failure: None,
+        })
     }
-    // The present trial supports equation orders.  For the qualification
-    // vector the equation order is maximal; the independently supplied
-    // prepared basis differs only by a unimodular change of basis.
-    let basis = [1, 0, 0, 0, 1, 0, 0, 0, 1];
-    let base = prepared_cubic_factor_base(polynomial, basis);
-    if base.ideals.is_empty() {
-        return Err(Error::UnsupportedOrder);
+
+    fn advance(&mut self) {
+        self.x += 1;
+        if self.x <= self.radius {
+            return;
+        }
+        self.x = -self.radius;
+        self.y += 1;
+        if self.y <= self.radius {
+            return;
+        }
+        self.y = -self.radius;
+        self.z += 1;
+        if self.z <= self.radius {
+            return;
+        }
+        self.radius += 1;
+        self.x = -self.radius;
+        self.y = -self.radius;
+        self.z = -self.radius;
     }
-    let mut cache = initialize_cache(&base)?;
-    let mut relation = vec![0_i64; base.ideals.len()];
-    let target = base.ideals.len() + SUPPLEMENTARY_RELATIONS;
-    let mut statistics = Statistics::default();
-    'search: for radius in 1..=MAXIMUM_RADIUS {
-        statistics.radius = radius;
-        for z in -radius..=radius {
-            for y in -radius..=radius {
-                for x in -radius..=radius {
-                    let element = [x, y, z];
-                    if !on_shell(element, radius) || (y == 0 && z == 0) {
-                        continue;
-                    }
-                    statistics.visited += 1;
-                    if !primitive(element) || !canonical_up_to_sign(element) {
-                        continue;
-                    }
-                    statistics.primitive_nonscalar += 1;
-                    let Some(factors) = rational_factorization(norm(polynomial, element)?, &base)
-                    else {
-                        continue;
-                    };
-                    statistics.smooth_norms += 1;
-                    if !refine(&base, element, &factors, &mut relation)? {
-                        continue;
-                    }
-                    let outcome = cache
-                        .add_relation(
-                            &relation,
-                            first_nonzero(&relation),
-                            statistics.primitive_nonscalar as i64,
-                            0,
-                            0,
-                            false,
-                        )
-                        .map_err(|_| Error::Collection)?;
-                    if outcome.appended {
-                        statistics.accepted += 1;
-                    }
-                    if cache.missing() == 0 && cache.len() >= target {
-                        break 'search;
-                    }
+
+    fn fail(&mut self, error: Error) -> ComputationStatus {
+        self.failure = Some(error);
+        self.status = ComputationStatus::Failed;
+        self.status
+    }
+
+    fn finish(&mut self) -> Result<(), Error> {
+        if self.cache.missing() != 0 || self.cache.len() < self.target {
+            return Err(Error::Collection);
+        }
+        let columns = self.cache.len();
+        let matrix =
+            transpose_relation_records(self.cache.records(), self.base.ideals.len(), columns);
+        let mut workspace = WordSmithWorkspace::new(self.base.ideals.len(), columns);
+        workspace.reset_from(&matrix).map_err(|_| Error::Smith)?;
+        let diagonal = workspace.smith_diagonal().map_err(|_| Error::Smith)?;
+        if diagonal.iter().filter(|value| **value != 0).count() != self.base.ideals.len() {
+            return Err(Error::Smith);
+        }
+        let invariants = diagonal
+            .into_iter()
+            .filter(|value| *value > 1)
+            .collect::<Vec<_>>();
+        let class_number = invariants.iter().try_fold(1_i128, |product, value| {
+            product.checked_mul(*value).ok_or(Error::Arithmetic)
+        })?;
+        self.result = Some((
+            invariants,
+            class_number,
+            self.base.ideals.len(),
+            columns,
+            self.statistics.clone(),
+        ));
+        self.status = ComputationStatus::Complete;
+        Ok(())
+    }
+
+    fn step(&mut self, point_budget: u32) -> ComputationStatus {
+        if self.status != ComputationStatus::Running {
+            return self.status;
+        }
+        for _ in 0..point_budget {
+            if self.radius > MAXIMUM_RADIUS {
+                return self.fail(Error::Collection);
+            }
+            self.statistics.radius = self.radius;
+            let element = [self.x, self.y, self.z];
+            let radius = self.radius;
+            self.advance();
+            if !on_shell(element, radius) || (element[1] == 0 && element[2] == 0) {
+                continue;
+            }
+            self.statistics.visited += 1;
+            if !primitive(element) || !canonical_up_to_sign(element) {
+                continue;
+            }
+            self.statistics.primitive_nonscalar += 1;
+            let factors = match norm(self.polynomial, element) {
+                Ok(value) => rational_factorization(value, &self.base),
+                Err(error) => return self.fail(error),
+            };
+            let Some(factors) = factors else {
+                continue;
+            };
+            self.statistics.smooth_norms += 1;
+            match refine(&self.base, element, &factors, &mut self.relation) {
+                Ok(true) => {}
+                Ok(false) => continue,
+                Err(error) => return self.fail(error),
+            }
+            let outcome = match self.cache.add_relation(
+                &self.relation,
+                first_nonzero(&self.relation),
+                self.statistics.primitive_nonscalar as i64,
+                0,
+                0,
+                false,
+            ) {
+                Ok(outcome) => outcome,
+                Err(_) => return self.fail(Error::Collection),
+            };
+            if outcome.appended {
+                self.statistics.accepted += 1;
+            }
+            if self.cache.missing() == 0 && self.cache.len() >= self.target {
+                if let Err(error) = self.finish() {
+                    return self.fail(error);
                 }
+                return self.status;
             }
         }
+        self.status
     }
-    if cache.missing() != 0 || cache.len() < target {
-        return Err(Error::Collection);
+
+    fn cancel(&mut self) -> ComputationStatus {
+        if self.status == ComputationStatus::Running {
+            self.status = ComputationStatus::Cancelled;
+        }
+        self.status
     }
-    let columns = cache.len();
-    let matrix = transpose_relation_records(cache.records(), base.ideals.len(), columns);
-    let mut workspace = WordSmithWorkspace::new(base.ideals.len(), columns);
-    workspace.reset_from(&matrix).map_err(|_| Error::Smith)?;
-    let diagonal = workspace.smith_diagonal().map_err(|_| Error::Smith)?;
-    if diagonal.iter().filter(|value| **value != 0).count() != base.ideals.len() {
-        return Err(Error::Smith);
+}
+
+fn candidate(polynomial: [i64; 4]) -> Result<CandidateResult, Error> {
+    let mut context = CandidateContext::new(polynomial)?;
+    while context.status == ComputationStatus::Running {
+        context.step(MAX_STEP_POINTS);
     }
-    let invariants = diagonal
-        .into_iter()
-        .filter(|value| *value > 1)
-        .collect::<Vec<_>>();
-    let class_number = invariants.iter().try_fold(1_i128, |product, value| {
-        product.checked_mul(*value).ok_or(Error::Arithmetic)
-    })?;
-    Ok((
-        invariants,
-        class_number,
-        base.ideals.len(),
-        columns,
-        statistics,
-    ))
+    match context.status {
+        ComputationStatus::Complete => context.result.take().ok_or(Error::State),
+        ComputationStatus::Failed => Err(context.failure.unwrap_or(Error::State)),
+        ComputationStatus::Running | ComputationStatus::Cancelled => Err(Error::State),
+    }
 }
 
 #[derive(Deserialize)]
@@ -345,17 +457,21 @@ fn parse_polynomial(input: &str) -> Result<[i64; 4], Error> {
     Ok(answer)
 }
 
-fn json_result(input: &str) -> Result<String, Error> {
-    let polynomial = parse_polynomial(input)?;
-    let (invariants, class_number, _, _, _) = candidate(polynomial)?;
+fn format_result(result: &CandidateResult) -> String {
+    let (invariants, class_number, _, _, _) = result;
     let factors = invariants
         .iter()
         .map(|value| format!("\"{value}\""))
         .collect::<Vec<_>>()
         .join(",");
-    Ok(format!(
+    format!(
         "{{\"schema\":\"sagejs.class-group-result/v1\",\"classNumber\":\"{class_number}\",\"invariantFactors\":[{factors}],\"status\":\"candidate\"}}"
-    ))
+    )
+}
+
+fn json_result(input: &str) -> Result<String, Error> {
+    let polynomial = parse_polynomial(input)?;
+    candidate(polynomial).map(|result| format_result(&result))
 }
 
 fn error_json(error: Error) -> String {
@@ -369,8 +485,116 @@ fn into_output(value: String) -> u64 {
     ((length as u64) << 32) | pointer as u64
 }
 
+struct ContextSlot {
+    generation: u32,
+    context: Option<CandidateContext>,
+}
+
+#[derive(Default)]
+struct ContextRegistry {
+    slots: Vec<ContextSlot>,
+}
+
+impl ContextRegistry {
+    fn handle(index: usize, generation: u32) -> u64 {
+        (u64::from(generation) << 32) | u64::try_from(index + 1).unwrap_or(0)
+    }
+
+    fn decode(handle: u64) -> Option<(usize, u32)> {
+        let low = u32::try_from(handle & 0xffff_ffff).ok()?;
+        let generation = u32::try_from(handle >> 32).ok()?;
+        if low == 0 || generation == 0 {
+            return None;
+        }
+        Some((usize::try_from(low - 1).ok()?, generation))
+    }
+
+    fn insert(&mut self, context: CandidateContext) -> u64 {
+        if let Some((index, slot)) = self
+            .slots
+            .iter_mut()
+            .enumerate()
+            .find(|(_, slot)| slot.context.is_none() && slot.generation < u32::MAX)
+        {
+            slot.generation += 1;
+            slot.context = Some(context);
+            return Self::handle(index, slot.generation);
+        }
+        if self.slots.len() >= MAX_CONTEXTS {
+            return 0;
+        }
+        let index = self.slots.len();
+        self.slots.push(ContextSlot {
+            generation: 1,
+            context: Some(context),
+        });
+        Self::handle(index, 1)
+    }
+
+    fn get_mut(&mut self, handle: u64) -> Option<&mut CandidateContext> {
+        let (index, generation) = Self::decode(handle)?;
+        let slot = self.slots.get_mut(index)?;
+        (slot.generation == generation)
+            .then_some(())
+            .and_then(|()| slot.context.as_mut())
+    }
+
+    fn close(&mut self, handle: u64) -> bool {
+        let Some((index, generation)) = Self::decode(handle) else {
+            return false;
+        };
+        let Some(slot) = self.slots.get_mut(index) else {
+            return false;
+        };
+        if slot.generation != generation || slot.context.is_none() {
+            return false;
+        }
+        slot.context = None;
+        true
+    }
+
+    fn reset(&mut self, handle: u64, context: CandidateContext) -> Option<u64> {
+        let (index, generation) = Self::decode(handle)?;
+        let slot = self.slots.get_mut(index)?;
+        if slot.generation != generation || slot.context.is_none() {
+            return None;
+        }
+        slot.generation = slot.generation.checked_add(1)?;
+        slot.context = Some(context);
+        Some(Self::handle(index, slot.generation))
+    }
+}
+
+thread_local! {
+    static CONTEXTS: RefCell<ContextRegistry> = RefCell::new(ContextRegistry::default());
+}
+
+fn context_from_json(pointer: *const u8, length: usize) -> Result<CandidateContext, Error> {
+    if pointer.is_null() || length == 0 || length > MAX_INPUT_BYTES {
+        return Err(Error::Input);
+    }
+    // SAFETY: the host must validate and initialize this guest-memory range.
+    let bytes = unsafe { std::slice::from_raw_parts(pointer, length) };
+    let input = std::str::from_utf8(bytes).map_err(|_| Error::Input)?;
+    CandidateContext::new(parse_polynomial(input)?)
+}
+
+fn status_code(status: ComputationStatus) -> i32 {
+    match status {
+        ComputationStatus::Running => 1,
+        ComputationStatus::Complete => 2,
+        ComputationStatus::Cancelled => 3,
+        ComputationStatus::Failed => 4,
+    }
+}
+
 #[unsafe(no_mangle)]
 pub extern "C" fn sagejs_class_group_abi_version() -> i32 {
+    1
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn sagejs_class_group_context_abi_version() -> i32 {
     1
 }
 
@@ -409,6 +633,80 @@ pub extern "C" fn sagejs_class_group_run_json(pointer: *const u8, length: usize)
         .and_then(json_result)
         .unwrap_or_else(error_json);
     into_output(output)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn sagejs_class_group_context_create_json(pointer: *const u8, length: usize) -> u64 {
+    let Ok(context) = context_from_json(pointer, length) else {
+        return 0;
+    };
+    CONTEXTS.with(|registry| registry.borrow_mut().insert(context))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn sagejs_class_group_context_step(handle: u64, point_budget: u32) -> i32 {
+    if point_budget == 0 || point_budget > MAX_STEP_POINTS {
+        return 5;
+    }
+    CONTEXTS.with(|registry| {
+        registry
+            .borrow_mut()
+            .get_mut(handle)
+            .map_or(0, |context| status_code(context.step(point_budget)))
+    })
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn sagejs_class_group_context_cancel(handle: u64) -> i32 {
+    CONTEXTS.with(|registry| {
+        let mut registry = registry.borrow_mut();
+        let Some(context) = registry.get_mut(handle) else {
+            return 0;
+        };
+        match context.status {
+            ComputationStatus::Running => {
+                context.cancel();
+                1
+            }
+            ComputationStatus::Cancelled => 2,
+            ComputationStatus::Complete | ComputationStatus::Failed => 3,
+        }
+    })
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn sagejs_class_group_context_result_json(handle: u64) -> u64 {
+    let output = CONTEXTS.with(|registry| {
+        let mut registry = registry.borrow_mut();
+        let Some(context) = registry.get_mut(handle) else {
+            return error_json(Error::State);
+        };
+        if context.status != ComputationStatus::Complete {
+            return error_json(Error::State);
+        }
+        context
+            .result
+            .as_ref()
+            .map_or_else(|| error_json(Error::State), format_result)
+    });
+    into_output(output)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn sagejs_class_group_context_reset_json(
+    handle: u64,
+    pointer: *const u8,
+    length: usize,
+) -> u64 {
+    let Ok(context) = context_from_json(pointer, length) else {
+        return 0;
+    };
+    CONTEXTS.with(|registry| registry.borrow_mut().reset(handle, context).unwrap_or(0))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn sagejs_class_group_context_close(handle: u64) -> i32 {
+    CONTEXTS.with(|registry| i32::from(registry.borrow_mut().close(handle)))
 }
 
 #[cfg(test)]
@@ -460,5 +758,80 @@ mod tests {
     fn accepts_reordered_closed_request_fields() {
         let request = r#"{"proof":"candidate","polynomial":["-34","-30","-8","1"],"schema":"sagejs.class-group-request/v1"}"#;
         assert_eq!(parse_polynomial(request).unwrap(), [-34, -30, -8, 1]);
+    }
+
+    #[test]
+    fn bounded_steps_reproduce_the_synchronous_result() {
+        let expected = candidate([-34, -30, -8, 1]).unwrap();
+        let mut context = CandidateContext::new([-34, -30, -8, 1]).unwrap();
+        let mut steps = 0;
+        while context.status == ComputationStatus::Running {
+            assert_eq!(context.step(1), context.status);
+            steps += 1;
+            assert!(steps < 10_000);
+        }
+        assert!(
+            steps > 100,
+            "test must exercise genuinely resumable collection"
+        );
+        let actual = context.result.take().unwrap();
+        assert_eq!(actual.0, expected.0);
+        assert_eq!(actual.1, expected.1);
+        assert_eq!(actual.2, expected.2);
+        assert_eq!(actual.3, expected.3);
+        assert_eq!(actual.4.visited, expected.4.visited);
+        assert_eq!(actual.4.accepted, expected.4.accepted);
+    }
+
+    #[test]
+    fn registry_rejects_stale_and_double_close_handles() {
+        let mut registry = ContextRegistry::default();
+        let first = registry.insert(CandidateContext::new([-34, -30, -8, 1]).unwrap());
+        assert_ne!(first, 0);
+        assert!(registry.get_mut(first).is_some());
+        assert!(registry.close(first));
+        assert!(!registry.close(first));
+        assert!(registry.get_mut(first).is_none());
+
+        let second = registry.insert(CandidateContext::new([-34, -30, -8, 1]).unwrap());
+        assert_ne!(second, first);
+        assert!(registry.get_mut(first).is_none());
+        assert!(registry.get_mut(second).is_some());
+
+        let reset = registry
+            .reset(second, CandidateContext::new([-34, -30, -8, 1]).unwrap())
+            .unwrap();
+        assert_ne!(reset, second);
+        assert!(registry.get_mut(second).is_none());
+        assert!(registry.get_mut(reset).is_some());
+    }
+
+    #[test]
+    fn cancellation_is_terminal_and_never_publishes_a_result() {
+        let mut context = CandidateContext::new([-34, -30, -8, 1]).unwrap();
+        assert_eq!(context.step(8), ComputationStatus::Running);
+        assert_eq!(context.cancel(), ComputationStatus::Cancelled);
+        assert_eq!(context.step(8), ComputationStatus::Cancelled);
+        assert_eq!(context.cancel(), ComputationStatus::Cancelled);
+        assert!(context.result.is_none());
+    }
+
+    #[test]
+    fn registry_has_a_hard_live_context_capacity() {
+        let mut registry = ContextRegistry::default();
+        let mut handles = Vec::new();
+        for _ in 0..MAX_CONTEXTS {
+            let handle = registry.insert(CandidateContext::new([-34, -30, -8, 1]).unwrap());
+            assert_ne!(handle, 0);
+            handles.push(handle);
+        }
+        assert_eq!(
+            registry.insert(CandidateContext::new([-34, -30, -8, 1]).unwrap()),
+            0,
+        );
+        assert!(registry.close(handles[0]));
+        let replacement = registry.insert(CandidateContext::new([-34, -30, -8, 1]).unwrap());
+        assert_ne!(replacement, 0);
+        assert_ne!(replacement, handles[0]);
     }
 }

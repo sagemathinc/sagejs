@@ -3,16 +3,17 @@
   "$id": "https://sagejs.org/schemas/rust-class-group-lifecycle-v1.json",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema", "status", "claim", "artifact", "repeatedCalls", "malformedInput", "lifecycle", "termination", "transactionalPublication", "cancellation", "requiredInputChange", "campaignCoverage"],
+  "required": ["schema", "status", "claim", "artifact", "repeatedCalls", "malformedInput", "lifecycle", "termination", "resumableContext", "transactionalPublication", "cancellation", "requiredInputChange", "campaignCoverage"],
   "properties": {
     "schema": { "const": "sagejs.rust-class-group-lifecycle/v1" },
-    "status": { "enum": ["failed-required-cooperative-cancellation-abi", "failed-required-lifecycle-abi-and-input-validation"] },
+    "status": { "enum": ["small-candidate-context-pass-medium-unqualified", "failed-required-input-validation"] },
     "claim": { "$ref": "#/$defs/claim" },
     "artifact": { "$ref": "#/$defs/artifact" },
     "repeatedCalls": { "$ref": "#/$defs/repeatedCalls" },
     "malformedInput": { "$ref": "#/$defs/malformedInput" },
     "lifecycle": { "$ref": "#/$defs/lifecycle" },
     "termination": { "$ref": "#/$defs/termination" },
+    "resumableContext": { "$ref": "#/$defs/resumableContext" },
     "transactionalPublication": { "$ref": "#/$defs/transactionalPublication" },
     "cancellation": { "$ref": "#/$defs/cancellation" },
     "requiredInputChange": { "$ref": "#/$defs/requiredInputChange" },
@@ -30,12 +31,25 @@
     },
     "artifact": {
       "type": "object", "additionalProperties": false,
-      "required": ["path", "bytes", "sha256", "abiVersion"],
+      "required": ["path", "bytes", "sha256", "abiVersion", "sourceInputs"],
       "properties": {
         "path": { "type": "string", "minLength": 1 },
         "bytes": { "type": "integer", "minimum": 1 },
         "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
-        "abiVersion": { "const": 1 }
+        "abiVersion": { "const": 1 },
+        "sourceInputs": {
+          "type": "array", "minItems": 6, "maxItems": 6,
+          "items": { "$ref": "#/$defs/fileIdentity" }
+        }
+      }
+    },
+    "fileIdentity": {
+      "type": "object", "additionalProperties": false,
+      "required": ["path", "bytes", "sha256"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "bytes": { "type": "integer", "minimum": 1 },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
       }
     },
     "repeatedCalls": {
@@ -93,9 +107,9 @@
       "properties": {
         "hostClose": { "const": "pass-idempotent" },
         "staleUseAfterClose": { "const": "pass-rejected" },
-        "guestHandlesPresent": { "const": false },
-        "guestStaleHandleTest": { "const": "not-applicable-no-handle-abi" },
-        "guestDoubleDropTest": { "const": "not-applicable-no-handle-abi" },
+        "guestHandlesPresent": { "const": true },
+        "guestStaleHandleTest": { "const": "pass-rejected" },
+        "guestDoubleDropTest": { "const": "pass-rejected" },
         "rawDoubleDeallocTest": { "const": "not-run-undefined-behavior-in-current-abi" }
       }
     },
@@ -115,21 +129,81 @@
       "type": "object", "additionalProperties": false,
       "required": ["status", "observation", "durableState"],
       "properties": {
-        "status": { "const": "pass-for-hard-worker-termination-only" },
+        "status": { "const": "pass-small-context-and-hard-worker-termination" },
         "observation": { "type": "string", "minLength": 1 },
         "durableState": { "const": "none" }
       }
     },
     "cancellation": {
       "type": "object", "additionalProperties": false,
-      "required": ["status", "cooperative", "reason", "hardWorkerTerminationAvailable", "requiredAbi"],
+      "required": ["status", "cooperative", "reason", "hardWorkerTerminationAvailable", "implementedAbi", "cancellationBoundary", "nonInterruptibleSections", "remainingLimitation"],
       "properties": {
-        "status": { "const": "fail" },
-        "cooperative": { "const": false },
+        "status": { "const": "pass-small-candidate-only" },
+        "cooperative": { "const": true },
         "reason": { "type": "string", "minLength": 1 },
         "hardWorkerTerminationAvailable": { "const": true },
-        "requiredAbi": { "type": "array", "minItems": 6, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } }
+        "implementedAbi": { "type": "array", "minItems": 6, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+        "cancellationBoundary": { "type": "string", "minLength": 1 },
+        "nonInterruptibleSections": { "type": "array", "minItems": 3, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+        "remainingLimitation": { "type": "string", "minLength": 1 }
       }
+    },
+    "resumableContext": {
+      "type": "object", "additionalProperties": false,
+      "required": ["status", "pointBudgetPerYield", "completionSteps", "maximumStepMilliseconds", "cancellation", "staleAndMalformedHandles", "retiredHandleOperations", "doubleClose", "reset", "invalidResetTransactional", "contextCapacity", "mixedSmallJobs"],
+      "properties": {
+        "status": { "const": "pass-small-candidate" },
+        "pointBudgetPerYield": { "const": 1 },
+        "completionSteps": { "type": "integer", "minimum": 101 },
+        "maximumStepMilliseconds": { "type": "number", "minimum": 0 },
+        "cancellation": {
+          "type": "object", "additionalProperties": false,
+          "required": ["status", "requestedCode", "terminalStatus", "latencyMilliseconds", "resultBeforeComplete", "resultAfterCancel", "partialResultPublished"],
+          "properties": {
+            "status": { "const": "pass" },
+            "requestedCode": { "const": 1 },
+            "terminalStatus": { "const": 3 },
+            "latencyMilliseconds": { "type": "number", "minimum": 0, "maximum": 100 },
+            "resultBeforeComplete": { "const": "structured-error" },
+            "resultAfterCancel": { "const": "structured-error" },
+            "partialResultPublished": { "const": false }
+          }
+        },
+        "staleAndMalformedHandles": { "const": "pass" },
+        "retiredHandleOperations": {
+          "type": "object", "additionalProperties": false,
+          "required": ["afterClose", "afterReset"],
+          "properties": {
+            "afterClose": { "$ref": "#/$defs/retiredOperations" },
+            "afterReset": { "$ref": "#/$defs/retiredOperations" }
+          }
+        },
+        "doubleClose": { "const": "pass-rejected" },
+        "reset": { "const": "pass-generation-invalidates-prior-handle" },
+        "invalidResetTransactional": { "const": "pass-original-context-remains-live" },
+        "contextCapacity": {
+          "type": "object", "additionalProperties": false,
+          "required": ["maximumLive", "overflowCreateResult", "allAllocatedContextsClosed"],
+          "properties": {
+            "maximumLive": { "const": 64 },
+            "overflowCreateResult": { "const": "zero-handle" },
+            "allAllocatedContextsClosed": { "const": true }
+          }
+        },
+        "mixedSmallJobs": {
+          "type": "object", "additionalProperties": false,
+          "required": ["count", "modes", "stableMemoryPages"],
+          "properties": {
+            "count": { "const": 100 },
+            "modes": { "type": "array", "minItems": 3, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+            "stableMemoryPages": { "type": "integer", "minimum": 1 }
+          }
+        }
+      }
+    },
+    "retiredOperations": {
+      "type": "array", "minItems": 5, "maxItems": 5, "uniqueItems": true,
+      "items": { "enum": ["step", "cancel", "result-state-error", "reset", "close"] }
     },
     "requiredInputChange": {
       "type": "object", "additionalProperties": false,

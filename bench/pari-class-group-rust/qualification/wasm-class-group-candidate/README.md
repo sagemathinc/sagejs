@@ -23,6 +23,19 @@ artifact. The run reaches radius 5, derives 8 factor-base generators, and
 retains 28 relation rows after visiting 1,074 shell points (339 primitive
 nonscalar points, 26 smooth norms, and 25 appended search relations).
 
+The reactor also exports context ABI version 1. `context_create_json` allocates
+a generation-tagged relation-search context; `context_step` examines at most the
+requested number of lattice points (capped at 4,096); `context_cancel` is
+terminal; `context_result_json` publishes only a completed result;
+`context_reset_json` transactionally replaces a live context with a new
+generation; and `context_close` rejects stale or repeated use. The browser host
+yields to its event loop between steps, closes every retained context when the
+candidate closes, and registers a `FinalizationRegistry` fallback for abandoned
+individual context objects. The original `run_json` export remains a synchronous
+wrapper over the same bounded state machine.
+The registry admits at most 64 simultaneous contexts and returns a zero handle
+for the 65th rather than growing without a declared bound.
+
 ## Scope and limitations
 
 - The result status is `candidate`: full rank plus surplus relations is not a
@@ -41,6 +54,12 @@ nonscalar points, 26 smooth norms, and 25 appended search relations).
 - This trial computes presentation invariants only. It does not construct
   generator ideals, discrete-log/principality maps, units, a regulator, or a
   saturation/completion certificate.
+- Cancellation is cooperative only between `step` calls. Context creation and
+  input preparation, one point's norm/factorization/valuation operation, and
+  final Smith reduction are individually synchronous and noninterruptible.
+- Browser evidence proves `FinalizationRegistry` availability and binds the
+  loader source that performs registration; it does not observe nondeterministic
+  finalizer execution. Explicit close remains authoritative.
 
 ## Reproduce
 
@@ -68,8 +87,11 @@ The recorded artifact was linked with the prepared Sage.js toolchain whose
 content-addressed lock digest is
 `37d8d819fd533570e0b707d3101ab2944f6488c4b4452b2b0a1a9ea04366452c`.
 Its WASI SDK is 33.0 and its `wasm-ld` reports LLVM 22.1.0. A clean link with
-that prepared `wasm-ld` produced the recorded 218,491-byte artifact with SHA-256
-`9f27b7283160a944e016b5701429fddd923b6aab069e9c01881c871b4776bab8`.
-The size increase from the earlier 146,358-byte artifact is the cost of replacing
-its substring parser with `serde`/`serde_json` closed-shape deserialization; it
-is disclosed rather than hidden as benchmark noise.
+that prepared `wasm-ld` produced the recorded 224,173-byte artifact with SHA-256
+`beb91b4270aae5d2d570889ffa680309c08b2139aca04d414808fe26bff2de52`.
+The size increase from the earlier 146,358-byte artifact includes replacing its
+substring parser with `serde`/`serde_json` closed-shape deserialization and the
+generation-tagged resumable context ABI. The closed-parser-only artifact was
+218,491 bytes, so the context machinery plus its hard 64-context capacity added
+another 5,682 bytes. Both costs
+are disclosed rather than hidden as benchmark noise.
