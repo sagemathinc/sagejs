@@ -31,6 +31,7 @@ mod smooth_admission;
 const POLYNOMIAL: [i64; 4] = [2_000_000_000_018, -2_000_000_000_010, 0, 1];
 const EQUATION_ORDER_BASIS: [i64; 9] = [1, 0, 0, 0, 1, 0, 0, 0, 1];
 const MAXIMAL_ORDER_BASIS_NUMERATORS: [i64; 9] = [3, 0, 0, 0, 3, 0, -1_333_333_333_340, 1, 1];
+const MAX_EAGER_GENERATOR_WITNESS_RELATIONS: usize = 512;
 
 fn maximal_order() -> ValidatedPreparedCubic {
     ValidatedPreparedCubic::validate(PreparedCubicData {
@@ -934,6 +935,107 @@ fn small_norm_unit_kernel_for_field(
             })
         })
         .collect::<Vec<_>>();
+    assert_eq!(class_generator_indices.len(), invariant_factors.len());
+    let generator_witness_started = Instant::now();
+    let mut generator_order_relations = Vec::with_capacity(invariant_factors.len());
+    let generator_order_witness_status = if invariant_factors.is_empty() {
+        "trivial-group"
+    } else if rows > MAX_EAGER_GENERATOR_WITNESS_RELATIONS {
+        "deferred-dense-hnf-witness"
+    } else {
+        "complete"
+    };
+    if generator_order_witness_status == "complete" {
+        let mut targets = vec![0_i64; invariant_factors.len() * columns];
+        for (generator, (&position, &order)) in class_generator_indices
+            .iter()
+            .zip(&invariant_factors)
+            .enumerate()
+        {
+            targets[generator * columns + position] = order;
+        }
+        let staged = flint_staged_relation_witnesses(&square, &remaining, columns, &targets)
+            .expect("class-generator order-relation witnesses failed");
+        assert_eq!(staged.target_count, invariant_factors.len());
+        assert_eq!(staged.relation_count, rows);
+        for (generator, (&position, &order)) in class_generator_indices
+            .iter()
+            .zip(&invariant_factors)
+            .enumerate()
+        {
+            let staged_coefficients =
+                &staged.coefficients[generator * rows..(generator + 1) * rows];
+            let mut coefficients = vec![Integer::from(0); rows];
+            for (source_position, &relation) in source_rows.iter().enumerate() {
+                coefficients[relation].assign(&staged_coefficients[source_position]);
+            }
+            for (remaining_position, &relation) in remaining_rows.iter().enumerate() {
+                coefficients[relation].assign(&staged_coefficients[columns + remaining_position]);
+            }
+            for column in 0..columns {
+                let replayed = coefficients.iter().enumerate().fold(
+                    Integer::from(0),
+                    |sum, (relation, coefficient)| {
+                        sum + coefficient * answer.relations[relation * columns + column]
+                    },
+                );
+                assert_eq!(
+                    replayed,
+                    if column == position {
+                        Integer::from(order)
+                    } else {
+                        Integer::from(0)
+                    }
+                );
+            }
+            let factors = coefficients
+                .iter()
+                .enumerate()
+                .filter(|(_, coefficient)| *coefficient != &0)
+                .map(|(relation, coefficient)| {
+                    let prime_ideal_factors = (0..columns)
+                        .filter_map(|column| {
+                            let exponent = answer.relations[relation * columns + column];
+                            if exponent == 0 {
+                                return None;
+                            }
+                            let ideal = &answer.factor_base.catalog.ideals[column];
+                            Some(serde_json::json!({
+                                "factorBaseIndexZeroBased": column,
+                                "exponent": exponent,
+                                "prime": ideal.prime,
+                                "ramification": ideal.ramification,
+                                "residueDegree": ideal.residue_degree,
+                                "norm": ideal.norm,
+                                "generator": ideal.generator,
+                                "hnf": ideal.hnf,
+                            }))
+                        })
+                        .collect::<Vec<_>>();
+                    serde_json::json!({
+                        "relationIndexZeroBased": relation,
+                        "exponent": coefficient.to_string(),
+                        "integralBasisCoordinates": answer.generators
+                            [relation * 3..relation * 3 + 3]
+                            .iter()
+                            .map(ToString::to_string)
+                            .collect::<Vec<_>>(),
+                        "primeIdealFactors": prime_ideal_factors,
+                    })
+                })
+                .collect::<Vec<_>>();
+            generator_order_relations.push(serde_json::json!({
+                "generatorCoordinateZeroBased": generator,
+                "factorBaseIndexZeroBased": position,
+                "order": order,
+                "allRelationCoordinatesReplayExactly": true,
+                "construction": "flint-staged-hnf-back-substitution",
+                "nonzeroCoefficientCount": factors.len(),
+                "factors": factors,
+            }));
+        }
+    }
+    let generator_witness_ns = generator_witness_started.elapsed().as_nanos();
     let class_group_label = if invariant_factors.is_empty() {
         "trivial".to_owned()
     } else {
@@ -1364,6 +1466,9 @@ fn small_norm_unit_kernel_for_field(
                         "hnf": ideal.hnf,
                     })
                 }).collect::<Vec<_>>(),
+                "generatorOrderWitnessStatus": generator_order_witness_status,
+                "maximumEagerGeneratorWitnessRelations": MAX_EAGER_GENERATOR_WITNESS_RELATIONS,
+                "generatorOrderRelations": generator_order_relations,
             },
             "kernel": {
                 "rank": kernel.rank,
@@ -1460,6 +1565,7 @@ fn small_norm_unit_kernel_for_field(
                 "presentationSquareDeterminant": class_order.determinant_ns,
                 "presentationSurplusCoordinateSolve": class_order.solve_ns,
                 "presentationSurplusKernel": class_order.kernel_ns,
+                "generatorOrderRelations": generator_witness_ns,
                 "kernelReorderAndMetadata": kernel_external_ns,
                 "logarithmicEmbedding": logarithms_ns,
                 "unitLatticeReconstructionAndReplay": reconstruction_ns,

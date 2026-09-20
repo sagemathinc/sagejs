@@ -51,6 +51,19 @@ function prepareSource(coefficients) {
   ].join("\n");
 }
 
+function verificationSource(coefficients, inputPath, resultPath) {
+  return [
+    "import json",
+    "R.<x> = QQ[]",
+    `K.<a> = NumberField(R([${coefficients.join(", ")}]))`,
+    "from sagejs.number_fields.rust_class_group_preparation import verify_rust_class_generator_orders",
+    `prepared = json.load(open(${JSON.stringify(inputPath)}))`,
+    `result = json.load(open(${JSON.stringify(resultPath)}))`,
+    "print(json.dumps(verify_rust_class_generator_orders(K, prepared, result), sort_keys=True))",
+    "",
+  ].join("\n");
+}
+
 const panel = JSON.parse(readFileSync(panelPath, "utf8"));
 const corrections = JSON.parse(readFileSync(correctionsPath, "utf8"));
 const signatureCorrections = new Map(
@@ -74,6 +87,7 @@ const receipt = {
 try {
   for (const entry of cases) {
     const inputPath = path.join(scratch, `${entry.id}-input.json`);
+    const resultPath = path.join(scratch, `${entry.id}-result.json`);
     const inputText = run(sagejs, [], {
       input: prepareSource(entry.polynomialAscending),
     });
@@ -86,14 +100,31 @@ try {
     assert.equal(Object.hasOwn(input, "expected"), false);
     writeFileSync(inputPath, inputText);
 
-    const result = JSON.parse(
-      run(rust, [
+    const resultText = run(rust, [
         "small-norm-unit-kernel-prepared",
         inputPath,
         "2000",
         "5000000",
-      ]),
+      ]);
+    writeFileSync(resultPath, resultText);
+    const result = JSON.parse(resultText);
+    const witnessFactorCount = result.classMap.generatorOrderRelations.reduce(
+      (total, relation) => total + relation.factors.length,
+      0,
     );
+    const generatorVerification =
+      result.classMap.generatorOrderWitnessStatus !==
+      "deferred-dense-hnf-witness"
+        ? JSON.parse(
+            run(sagejs, [], {
+              input: verificationSource(
+                entry.polynomialAscending,
+                inputPath,
+                resultPath,
+              ),
+            }),
+          )
+        : null;
     assert.equal(result.inputId, input.inputId);
     assert.equal(result.usesClassGroupAnswersAsInput, false);
     assert.equal(result.usesOracleAsInput, false);
@@ -109,6 +140,25 @@ try {
       result.analyticCompletion.classUnitIndexEnclosure.uniquePositiveInteger,
       1,
     );
+    if (generatorVerification !== null) {
+      assert.equal(
+        generatorVerification.authority,
+        "independent-sagejs-ideal-arithmetic",
+      );
+      assert.equal(
+        generatorVerification.verifiedGeneratorCount,
+        entry.expected.invariantFactors.length,
+      );
+      assert.ok(
+        generatorVerification.generators.every(
+          (generator) =>
+            generator.hnfReplayed && generator.principalIdealEquality,
+        ),
+      );
+    } else {
+      assert.equal(entry.id, "row6-continuation-cubic");
+      assert.equal(result.classMap.generatorOrderRelations.length, 0);
+    }
 
     const computedSignature = [
       input.preparation.signature.realPlaces,
@@ -135,6 +185,15 @@ try {
       invariantFactors:
         result.analyticCompletion.candidateInvariantFactors.map(String),
       classGroup: result.classMap.group,
+      generatorOrderWitnessFactorCount: witnessFactorCount,
+      generatorOrderWitnessStatus:
+        result.classMap.generatorOrderWitnessStatus,
+      independentGeneratorOrderVerification:
+        generatorVerification === null
+          ? "deferred-dense-certificate"
+          : "passed",
+      independentlyVerifiedGeneratorOrders:
+        generatorVerification?.verifiedGeneratorCount ?? null,
       classUnitIndex: 1,
       totalExternalNanoseconds: result.timingsNanoseconds.totalExternal,
     });

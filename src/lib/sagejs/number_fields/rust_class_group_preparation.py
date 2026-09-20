@@ -390,4 +390,217 @@ def prepare_cubic_for_rust(
     }
 
 
-__all__ = ["prepare_cubic_for_rust"]
+def _input_integer(value: Any) -> Any:
+    """Parse a canonical JSON integer without passing a string to `ZZ`."""
+    return sage.ZZ(int(str(value)))
+
+
+def _prepared_basis_elements(field: Any, prepared_input: dict[str, Any]) -> list[Any]:
+    preparation = prepared_input["preparation"]
+    numerator = [
+        _input_integer(value) for value in preparation["basisNumeratorsRowMajor"]
+    ]
+    denominator = _input_integer(preparation["basisDenominator"])
+    if len(numerator) != 9 or denominator <= 0:
+        raise ValueError("the prepared cubic basis must be a 3 by 3 rational matrix")
+    scale = sage.ZZ(field._integral_equation_scale_cache)
+    integral_generator = scale * field.gen()
+    basis = []
+    for row in range(3):
+        element = field(0)
+        for column in range(3):
+            element += (
+                numerator[3 * row + column] * integral_generator**column / denominator
+            )
+        basis.append(element)
+    return basis
+
+
+def _element_from_prepared_coordinates(
+    field: Any, basis: list[Any], coordinates: Any
+) -> Any:
+    if len(coordinates) != 3:
+        raise ValueError("an integral-basis coordinate row must have length three")
+    answer = field(0)
+    for index in range(3):
+        answer += _input_integer(coordinates[index]) * basis[index]
+    return answer
+
+
+def _ideal_from_prepared_descriptor(
+    field: Any,
+    order: Any,
+    basis: list[Any],
+    descriptor: dict[str, Any],
+) -> Any:
+    prime = _input_integer(descriptor["prime"])
+    generator = _element_from_prepared_coordinates(
+        field, basis, descriptor["generator"]
+    )
+    prime_ideal = order.ideal(prime, generator)
+    hnf = descriptor["hnf"]
+    if len(hnf) != 9:
+        raise ValueError("a prime ideal HNF must have nine entries")
+    hnf_generators = []
+    for row in range(3):
+        hnf_generators.append(
+            _element_from_prepared_coordinates(
+                field,
+                basis,
+                hnf[3 * row : 3 * row + 3],
+            )
+        )
+    if order.ideal(hnf_generators) != prime_ideal:
+        raise ArithmeticError("a prime ideal HNF does not replay")
+    if prime_ideal.norm() != _input_integer(descriptor["norm"]):
+        raise ArithmeticError("a prime ideal norm does not replay")
+    return prime_ideal
+
+
+def _prime_descriptor_identity(descriptor: dict[str, Any]) -> tuple[Any, ...]:
+    return (
+        str(descriptor["prime"]),
+        str(descriptor["norm"]),
+        tuple(str(value) for value in descriptor["generator"]),
+        tuple(str(value) for value in descriptor["hnf"]),
+    )
+
+
+def verify_rust_class_generator_orders(
+    field: Any,
+    prepared_input: dict[str, Any],
+    result: dict[str, Any],
+) -> dict[str, Any]:
+    """Independently replay Rust class-generator order witnesses in Sage.js.
+
+    This verifier deliberately does not trust Rust's relation-coordinate replay.
+    It reconstructs each selected prime ideal twice—from `(p, alpha)` and from
+    the exported HNF—and then checks the exported factored principal element
+    generates the claimed ideal power using Sage.js ideal arithmetic.
+
+    The result remains only a generator-order certificate.  It does not prove
+    relation-lattice completeness, unit saturation, or arbitrary ideal maps.
+    """
+    authoritative = prepare_cubic_for_rust(field)
+    if prepared_input.get("inputId") != authoritative["inputId"]:
+        raise ValueError("the Rust input does not match this certified Sage.js field")
+    if result.get("inputId") != prepared_input["inputId"]:
+        raise ValueError("the Rust result does not identify the prepared input")
+
+    order = field.maximal_order()
+    basis = _prepared_basis_elements(field, prepared_input)
+    class_map = result["classMap"]
+    selected_indices = class_map["selectedGeneratorIndicesZeroBased"]
+    selected_ideals = class_map["selectedGeneratorPrimeIdeals"]
+    relations = class_map["generatorOrderRelations"]
+    invariants = [
+        _input_integer(value)
+        for value in result["analyticCompletion"]["candidateInvariantFactors"]
+    ]
+    if not (
+        len(selected_indices)
+        == len(selected_ideals)
+        == len(relations)
+        == len(invariants)
+    ):
+        raise ValueError("the Rust class-generator evidence has inconsistent lengths")
+
+    verified = []
+    seen_coordinates: set[int] = set()
+    factor_ideal_cache: dict[int, Any] = {}
+    factor_identity_cache: dict[int, tuple[Any, ...]] = {}
+    for relation in relations:
+        coordinate = int(str(relation["generatorCoordinateZeroBased"]))
+        if coordinate < 0 or coordinate >= len(invariants):
+            raise ValueError("a class-generator coordinate is out of range")
+        if coordinate in seen_coordinates:
+            raise ValueError("a class-generator coordinate is duplicated")
+        seen_coordinates.add(coordinate)
+        factor_base_index = int(str(relation["factorBaseIndexZeroBased"]))
+        if factor_base_index != int(str(selected_indices[coordinate])):
+            raise ArithmeticError("the class generator and order relation disagree")
+        claimed_order = _input_integer(relation["order"])
+        if claimed_order != invariants[coordinate] or claimed_order <= 1:
+            raise ArithmeticError("the class-generator order is not normalized")
+
+        selected = selected_ideals[coordinate]
+        prime = _input_integer(selected["prime"])
+        prime_ideal = _ideal_from_prepared_descriptor(
+            field, order, basis, selected
+        )
+        factor_ideal_cache[factor_base_index] = prime_ideal
+        factor_identity_cache[factor_base_index] = _prime_descriptor_identity(selected)
+
+        coordinate_contributions: dict[int, Any] = {}
+        factors = relation["factors"]
+        for factor in factors:
+            element = _element_from_prepared_coordinates(
+                field,
+                basis,
+                factor["integralBasisCoordinates"],
+            )
+            if element.is_zero():
+                raise ArithmeticError("a class-generator witness factor is zero")
+            outer_exponent = _input_integer(factor["exponent"])
+            relation_ideal = order.ideal(1)
+            relation_indices: set[int] = set()
+            for factor_descriptor in factor["primeIdealFactors"]:
+                index = int(
+                    str(factor_descriptor["factorBaseIndexZeroBased"])
+                )
+                if index in relation_indices:
+                    raise ValueError("a relation repeats a factor-base coordinate")
+                relation_indices.add(index)
+                inner_exponent = _input_integer(factor_descriptor["exponent"])
+                if inner_exponent <= 0:
+                    raise ValueError("an integral principal relation is not positive")
+                identity = _prime_descriptor_identity(factor_descriptor)
+                if index in factor_ideal_cache:
+                    if factor_identity_cache[index] != identity:
+                        raise ArithmeticError("a factor-base descriptor changed identity")
+                    factor_ideal = factor_ideal_cache[index]
+                else:
+                    factor_ideal = _ideal_from_prepared_descriptor(
+                        field, order, basis, factor_descriptor
+                    )
+                    factor_ideal_cache[index] = factor_ideal
+                    factor_identity_cache[index] = identity
+                relation_ideal *= factor_ideal**inner_exponent
+                contribution = outer_exponent * inner_exponent
+                if index not in coordinate_contributions:
+                    coordinate_contributions[index] = contribution
+                else:
+                    coordinate_contributions[index] += contribution
+            if order.ideal(element) != relation_ideal:
+                raise ArithmeticError("an exported principal relation is false")
+        nonzero_contributions = {
+            index: exponent
+            for index, exponent in coordinate_contributions.items()
+            if exponent != 0
+        }
+        if nonzero_contributions != {factor_base_index: claimed_order}:
+            raise ArithmeticError("a class-generator principal relation is false")
+        verified.append(
+            {
+                "generatorCoordinateZeroBased": coordinate,
+                "factorBaseIndexZeroBased": factor_base_index,
+                "order": int(str(claimed_order)),
+                "prime": int(str(prime)),
+                "norm": int(str(prime_ideal.norm())),
+                "factorCount": len(factors),
+                "hnfReplayed": True,
+                "principalIdealEquality": True,
+            }
+        )
+    if len(seen_coordinates) != len(invariants):
+        raise ArithmeticError("not every invariant factor has an order witness")
+    return {
+        "schema": "sagejs.rust-class-group/generator-order-verification-v1",
+        "inputId": prepared_input["inputId"],
+        "authority": "independent-sagejs-ideal-arithmetic",
+        "verifiedGeneratorCount": len(verified),
+        "generators": verified,
+    }
+
+
+__all__ = ["prepare_cubic_for_rust", "verify_rust_class_generator_orders"]
