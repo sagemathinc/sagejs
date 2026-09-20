@@ -21,9 +21,17 @@ Files:
   neutral input pool and qualifies it with the pinned PARI 2.17.4 executable.
   It refuses to write answer-bearing output anywhere in this repository.
 - `neutral-candidate-inputs-v1.json` freezes 360 answer-free candidate inputs,
-  72 for each degree 2 through 6. Reducible candidates are expected to be
-  rejected during private qualification; oversampling leaves room for that
-  rejection and for deterministic quota selection.
+  72 for each degree 2 through 6.
+- `neutral-eligibility-v1.json` binds those inputs to an exact independent
+  SymPy-over-QQ irreducibility screen. All 360 currently pass. This is why the
+  provisional runtime inputs may truthfully set `field.irreducible` to true;
+  the construction recipe alone is not treated as proof.
+- `balanced-neutral-panel-v1.json` assigns 60 open and 60 held-out runtime
+  inputs, exactly 12 per degree in each partition. It contains no answers and
+  is explicitly provisional for the signature, timing, and feature quotas;
+  it does not replace the frozen unselected qualification layout.
+  Its first qualification request is conditional-GRH; an unconditional result
+  is a later, separately evidenced claim rather than an input-side assertion.
 - `pari-2.17.4-oracle-identity.json` records the exact executable and library
   hashes used by the qualification generator.
 - `pari-buchall-debug-trace-v1.json` freezes source-backed debug counters for
@@ -98,6 +106,35 @@ its answer must agree with all fourteen non-debug repetitions. The trace
 contract pins the emitting `buch2.c` hash and fails closed if the two independent
 precision-event strings disagree.
 
+### Staged qualification
+
+Running 15 public calls on all 360 candidates is intentionally unnecessary:
+one admitted degree-six call can take tens of seconds. The resumable staged
+route keeps every answer-bearing artifact outside the repository:
+
+```bash
+python3 generate_candidate_pool.py screen \
+  --output /secure/private-screen-v1.json --resume
+python3 generate_candidate_pool.py shortlist \
+  --screen-pool /secure/private-screen-v1.json \
+  --per-degree 30 \
+  --output /secure/private-shortlist-v1.json
+python3 generate_candidate_pool.py qualify \
+  --ids-from /secure/private-shortlist-v1.json \
+  --output /secure/private-candidate-pool-v1.json --resume
+```
+
+Screening performs one real PARI call, the independent mathematical checks,
+and the source-backed trace collection. The shortlist preserves every legal
+signature first, then reduces provisional timing and trait deficits, then uses
+the frozen seeded hash tie-break. It contains the nine mandatory open IDs and
+30 candidates per degree, leaving six spares per degree beyond the final two
+12-case partitions. `qualify` upgrades only those IDs to 15 samples. Final
+selection still uses the full validator and fails if stable 15-sample timing
+strata or any other quota changes invalidate the shortlist; additional screened
+spares are then upgraded deterministically. A one-sample stratum is never
+published as a qualification result.
+
 Selection is deterministic:
 
 1. Reject malformed, reducible, duplicate, or oracle-incomplete candidates.
@@ -133,5 +170,6 @@ Validate the committed R0 artifacts with:
 ```bash
 python3 corpus_tool.py validate
 python3 corpus_tool.py emit-layout --check
+python3 corpus_tool.py emit-neutral-panel --check
 sha256sum -c FROZEN-SHA256SUMS
 ```

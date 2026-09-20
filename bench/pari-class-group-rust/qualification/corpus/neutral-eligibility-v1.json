@@ -1,0 +1,1810 @@
+{
+  "schema": "sagejs.rust-class-group/neutral-eligibility-evidence-v1",
+  "candidatePool": "neutral-candidate-inputs-v1.json",
+  "candidatePoolSha256": "1e56f830d4fdf2d52e8d0b4e2772d71421f1b2da596320b3c81f63da5c5dc47e",
+  "engine": "sympy-1.14.0",
+  "method": "exact-Poly.is_irreducible-over-QQ",
+  "answerVisibility": "none",
+  "cases": [
+    {
+      "id": "generated-d2-0001-8054deb5b4f2",
+      "polynomialSha256": "8054deb5b4f2048b49f282a67dfe8645dafc014cee36905f33a828604ca38e54",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0002-54e5313d6e7d",
+      "polynomialSha256": "54e5313d6e7d1a3a46c57aa06fc3166f23189df13a8e13d9be597d8710b3fb8d",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0003-e578b7ea6b57",
+      "polynomialSha256": "e578b7ea6b575fc53a414afb880c148aa4e5436f789f673774d0ece6744a2ce1",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0004-1110a1bdb9ee",
+      "polynomialSha256": "1110a1bdb9eeb8c16298615edde11a5cbd75d767b6ca18b2b444be86fa300f82",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0005-fe596d734bc9",
+      "polynomialSha256": "fe596d734bc9114f10432b51bcceadbea9fd6d01ccb96298b4b29df1545aac0e",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0006-b0d110cb44bf",
+      "polynomialSha256": "b0d110cb44bfe0f3cbf89fa5ee5ded8cdfd9f8b0a2673e5a12c740d434be7e8e",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0007-5fe8739af99d",
+      "polynomialSha256": "5fe8739af99d7038b00ecc7989bc19d3d56cf7fc5b9cace6ddc37b5113c1b85f",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0008-6419e332407c",
+      "polynomialSha256": "6419e332407ca537de48b38c9b61fe4ba486b2731c4e27559124b0aee7a356d0",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0009-98cce5309ca4",
+      "polynomialSha256": "98cce5309ca493fe38566ef65c77d0c893b4f5b3fff684625a4f13238d4595c0",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0010-d60809a99f42",
+      "polynomialSha256": "d60809a99f42bc31c8f49dd8c0071377274d9cf0517a2b3271d433bdeacc6731",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0011-4b38eab8e7eb",
+      "polynomialSha256": "4b38eab8e7eb4c733ac8a03ef198cc41359939fc4ecc41175118df4cd2363133",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0012-2a6ea97e553b",
+      "polynomialSha256": "2a6ea97e553b2775b56ecd6543c50b826d5f46e42352de42fdae36a92e7f8590",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0013-762017c7227a",
+      "polynomialSha256": "762017c7227a3ef3855f775944369478a3cbcba5b079da0a4fa08ce610f8f05f",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0014-c7a6a508cc54",
+      "polynomialSha256": "c7a6a508cc542a6c0ff7f9f1b39feef5799864e2df939b63fefb122bca9cfef9",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0015-ed8dd298349f",
+      "polynomialSha256": "ed8dd298349f5bf502e8d955596c55631455403528e1544287fc8a780f210110",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0016-5b099fba555d",
+      "polynomialSha256": "5b099fba555d657f8620647397ef2724e1f8f74445b2ba256c19564a674931f3",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0017-171f9f1c7c81",
+      "polynomialSha256": "171f9f1c7c81f8a6a76a2540b05fcdb4a28ebb3d66c5a5a4825140311f58d002",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0018-95a3274c6c3d",
+      "polynomialSha256": "95a3274c6c3dbaed42ecd9dc805b7373c32a732fca448543339b5e16818b2995",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0019-3093339aa404",
+      "polynomialSha256": "3093339aa404c296c1b593ccf179880c1b776bc71e968518508a71102a6f19e7",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0020-cb55ac7ae3f9",
+      "polynomialSha256": "cb55ac7ae3f97c296faa577ecb83ef8e54cc72639f14a5cbe75c147a36111441",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0021-2036e3d98d6f",
+      "polynomialSha256": "2036e3d98d6f7ca10ac43c881b3a19eb8d6807fde959e42455fa71b80189aad6",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0022-bbe7e4fca949",
+      "polynomialSha256": "bbe7e4fca9497eb25c05ce462445277d7ad049e976a8bfe0e70aa4c8e558844b",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0023-ad0af79afc3f",
+      "polynomialSha256": "ad0af79afc3fb278bc55436ca4e85934e4696d7479cc3706c80955348259b95b",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0024-f287237c66a6",
+      "polynomialSha256": "f287237c66a60c9ed9496cf191a65383d28c3f0c427d6b69dd1bb0ae77a2f87c",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0025-e0695f221f24",
+      "polynomialSha256": "e0695f221f246a1c2b221239815b02d0e810e47ab11167fde040197423528ab8",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0026-365949cde2fe",
+      "polynomialSha256": "365949cde2fe3bec44efa679bd5ee111ed9523cd5542c6d5c6417b368795e104",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0027-e37c936ddb38",
+      "polynomialSha256": "e37c936ddb3815cccc57abc82a730c162498fdd4e47e547c917937d2c3b1a2e5",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0028-080f18330ac3",
+      "polynomialSha256": "080f18330ac3c2028b9fc1d9a9908b1d0ffe92accec18dccdf5b05605017f4c6",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0029-c74add1938fb",
+      "polynomialSha256": "c74add1938fbcd6114882e362c08988074a492d11b5b2470b6851ac0189b4131",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0030-20742b1dd01e",
+      "polynomialSha256": "20742b1dd01ee058bec78837f7c1ac5583b2406dff5ca84860e34586fb565352",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0031-14442b4e5648",
+      "polynomialSha256": "14442b4e56481da7e18374fe80048bd484da87c59f98abf49d28aca964762016",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0032-170e58c47ee7",
+      "polynomialSha256": "170e58c47ee79b11a0a0c41c805318b8693b6eb9c5b6632bf03750969013ff5a",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0033-8db98dfb36a7",
+      "polynomialSha256": "8db98dfb36a791e48ffc1a9a0a733b89d7ff1715aa5516c7e84a931fa755f327",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0034-300ea41ead97",
+      "polynomialSha256": "300ea41ead97910b3237e4708b1ece075c74fb263cd15af8855bb1f700299875",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0035-e4136f081814",
+      "polynomialSha256": "e4136f0818141467d8db01732755ab026dc2e83da6ec248ce2c4acf5de6f93ae",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0036-72aed0af860d",
+      "polynomialSha256": "72aed0af860dd590a75f5a6208c66fc8260158da5dfb6a5b7b5612a3b28dbd06",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0037-71c5881c1dbd",
+      "polynomialSha256": "71c5881c1dbdcc57a71a54574021efadaa23b6c486e0953c9c6e119f5368cd98",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0038-eef8be027edb",
+      "polynomialSha256": "eef8be027edb533223cace1613cabcdd8d555cdb0864131c4ecfa4ec7a982d61",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0039-33fad8d7935e",
+      "polynomialSha256": "33fad8d7935e8d7e3c25f6db71407f96c3898f6b7705997c9e059d527441ab5c",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0040-2054b28b71cc",
+      "polynomialSha256": "2054b28b71cc93b749ef9d989a0b77a0c38ffbea54f533db96700c644ebb3912",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0041-5742e0d38dcc",
+      "polynomialSha256": "5742e0d38dccf2c42660cad881542133a04a62bcbbafe74a85dc31c8197c0430",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0042-3dc102a4d8fd",
+      "polynomialSha256": "3dc102a4d8fde484905a95e3bdbb3803a18cdcd125d394af523dac01f28a343b",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0043-494469a43698",
+      "polynomialSha256": "494469a43698229d5c5ea0ba41fa601bf3d24718ad074aa038d08d63da3cad2b",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0044-369df26dbc7e",
+      "polynomialSha256": "369df26dbc7e83b64d3f86db1973f64fe3f4683d9d490e02327798528319c272",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0045-a17a2c853de9",
+      "polynomialSha256": "a17a2c853de9a6d2d126b6bbda9d8f4f261b2e4f64bdc229bacbcced34b2808a",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0046-919487886e8d",
+      "polynomialSha256": "919487886e8d1d39953df1c41fdd1cd5a0868a6f265bf805fb54c0187ba660c6",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0047-19beae1ec62f",
+      "polynomialSha256": "19beae1ec62facb3abf45d778693977830c71a624c5bffdd632e35d99e8f6484",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0048-97911e243357",
+      "polynomialSha256": "97911e24335768bec294f1f97e11a96b050afd27f066e6bae74535eaef95df0c",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0049-8fc54c320d45",
+      "polynomialSha256": "8fc54c320d45c8cb8f1313496125eb10eb012fb102f3043aaac3776971e6a728",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0050-ce60f7c75868",
+      "polynomialSha256": "ce60f7c75868586bf4df98a5cbdbcea0cef5655909c5ed2f5e0958d63d29cd44",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0051-e9e8bec9e195",
+      "polynomialSha256": "e9e8bec9e1953c18d28a757085cfebe43d64d66a0863c4f7c8f94cf27ce18482",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0052-2a95355167c0",
+      "polynomialSha256": "2a95355167c0b42fc2523119b7dda81163aee6672836b80e195f792afc2ed5d8",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0053-dd56878ed9a8",
+      "polynomialSha256": "dd56878ed9a811d876d2896387e6290fc719f26015bb3ecce643956f602f6d19",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0054-2fd4f6d803b9",
+      "polynomialSha256": "2fd4f6d803b95ef03ac613e9c37a122a9dd5ae0ce64342f2692c02d1c5b1d468",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0055-54228527a4f5",
+      "polynomialSha256": "54228527a4f53aa8125e5e93c2ecc2a0bc00c255d91149e4cd694491a471cb54",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0056-ca3d24d58a38",
+      "polynomialSha256": "ca3d24d58a38f9b866a6be4ff1ad9c0bd54615cf543f67b208c2d0415b8b5712",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0057-fcbfba8bf8cd",
+      "polynomialSha256": "fcbfba8bf8cdb199c5192df13f06f1628b3ec82829976d99399f4dc3a82fb0dc",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0058-5229c1255df7",
+      "polynomialSha256": "5229c1255df7b6adcef1e2c1b8d73f93fa7928a13338a539c4eb043602377df9",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0059-e9fddeea35ab",
+      "polynomialSha256": "e9fddeea35abd7148896f01b8f5b5ac8faf944baa91ed459f1c8444c788ded8d",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0060-d1262400e14f",
+      "polynomialSha256": "d1262400e14fc6f99a47b7d0a8accd7049d4c289390962dab28d7d0c6761d1a6",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0061-2df12a84ee73",
+      "polynomialSha256": "2df12a84ee73f91d17cfb7045ab2b030fd4535f114b1105955f5a70b6b171348",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0062-d564595d5143",
+      "polynomialSha256": "d564595d5143fdb1822d9d10f59169046e018462a11ce148d095f7431824de3d",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0063-e637fc717faa",
+      "polynomialSha256": "e637fc717faa60cca50d777fc2141653ade0035cc9e0a470e992f3a1b8455d88",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0064-3ed337b3c833",
+      "polynomialSha256": "3ed337b3c83311f5fc7aa72312aa6f73cc1847419d6a9bc084f95f617de46670",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0065-1461b825bd25",
+      "polynomialSha256": "1461b825bd259b620db5f388da3dd984d273cbaf065c4af68341c8152bcbc749",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0066-eeb2eed79130",
+      "polynomialSha256": "eeb2eed791305f87cbce3574381c57831d853735be0a43d36c91550faafe22c9",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0067-7b3f5b5bc2f6",
+      "polynomialSha256": "7b3f5b5bc2f6c5e797170608211524e9578f5d018d448e27ba05816d27505a93",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0068-546113da193e",
+      "polynomialSha256": "546113da193ea2216e34d5c6ede5cdeeec8c5b76f6e433650aedf040855380ee",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0069-dc7468b3d8b4",
+      "polynomialSha256": "dc7468b3d8b419d65f34baa8b373df5f0d083ba4cd19f6042e4585da0328a172",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0070-ab8302ecdc97",
+      "polynomialSha256": "ab8302ecdc978282115e9e12637ff619ae0225d61025e243eab3ae8a9217cdbc",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0071-ce2239cd6108",
+      "polynomialSha256": "ce2239cd61081df88596c60109496216be053b172b880829da0b7d90c2976f8b",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d2-0072-4c178cad5eff",
+      "polynomialSha256": "4c178cad5eff918aed81e45d8911decdd6b46fdaa98cddba0fd5e0564fa0f45c",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0001-62f59e88af44",
+      "polynomialSha256": "62f59e88af449e69920ca97c85dcef1c010df5c311a721694c4ed06e3081589e",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0002-7db82abb5115",
+      "polynomialSha256": "7db82abb51150a5a390f84c034ba6923a26671f7a553126d1de6aeeb31e1e00b",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0003-c9f5a42b58c2",
+      "polynomialSha256": "c9f5a42b58c2cf3447a6a1846e9849b687ee87476e3daf8b5dee2f715ca437d7",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0004-4e2d3e91c87b",
+      "polynomialSha256": "4e2d3e91c87beaf280a048784ff6583902a1d56def73981327c0e219521c0d0f",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0005-63cba5f62b6b",
+      "polynomialSha256": "63cba5f62b6b96e1089f9c09a3168663e2eac16526657dd71d0ef9ef59c71697",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0006-d81624e879a6",
+      "polynomialSha256": "d81624e879a6ded5b2ddc661994e61572eb0c2b349488eabdffdc77f4171145e",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0007-70f406b37f3f",
+      "polynomialSha256": "70f406b37f3fa00bcf43143b6e738914d1d6651f8a9f9403fef3cbd79027f28d",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0008-b209c15188b7",
+      "polynomialSha256": "b209c15188b751c93e18d151922ca00dd2b18e87e5928e2491858912e4267b3d",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0009-bdf9e0243d34",
+      "polynomialSha256": "bdf9e0243d34aec854505d8eb4e6b3eaf49855413eab66a83347f86c340a9d3e",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0010-a6ee1623294b",
+      "polynomialSha256": "a6ee1623294b6638d90c4130363e62b6511ae9ff269683db50e129294d3d30c2",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0011-ce1c2cd4f7d6",
+      "polynomialSha256": "ce1c2cd4f7d62eadeafe45bcd25088dbca0d0f378db9e270383e7f7aa0756aca",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0012-d6fd4141859d",
+      "polynomialSha256": "d6fd4141859da89f892cb74ede4dd77efa5f7966cf42fee40d637133034f965f",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0013-1581e15bb214",
+      "polynomialSha256": "1581e15bb2140b405a39bb5a25540a756a441173904183b727a1379e595f1889",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0014-f04cf1c71d97",
+      "polynomialSha256": "f04cf1c71d97020b977b93f95240844c17f1056b3b2d823d66616fd5400b92cb",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0015-8a2ac6c14b3a",
+      "polynomialSha256": "8a2ac6c14b3a0c96f3ed23f9a64edb24c20c954a2368c3e3ae48e38934e8fa5a",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0016-9eec8d96a3f4",
+      "polynomialSha256": "9eec8d96a3f44dab141c631ae2d9f8004e05d8017ad925ad98cabef1e341e2d6",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0017-acafe79505bd",
+      "polynomialSha256": "acafe79505bddc69c67e6f40f246fdb9f17562879d073c7f2e520a4641d4d18a",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0018-d56f2c5a4146",
+      "polynomialSha256": "d56f2c5a4146bd45e7b3ee404e249750fde5ce321e05fd45c81630a97d247fd8",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0019-d998ace3f59a",
+      "polynomialSha256": "d998ace3f59a59e65e8116bdddfd2bea6487603ebf68174833df0b52108b76bc",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0020-16d771bab607",
+      "polynomialSha256": "16d771bab607365dc4ad4c3ed4d42bb31eba3c96a49e4e727b4ca0a2d883ad8f",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0021-4c2755ed7999",
+      "polynomialSha256": "4c2755ed799949fb91ed27a0db3b101b82db84c4f29702d3429846345e6ea5b3",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0022-a037ad04653f",
+      "polynomialSha256": "a037ad04653f5c8dc11223446ee9dfed1afd8edee25fbf39958e309eba8d28eb",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0023-853d80c99b79",
+      "polynomialSha256": "853d80c99b7935c1820f00c496be623a3fb60d133b9df6beb338ed9cab98762e",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0024-5ec686536776",
+      "polynomialSha256": "5ec68653677691877ee5951f27a4039b1aee1138f6002b1fe5893e59a3abd7df",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0025-47e03cf1c818",
+      "polynomialSha256": "47e03cf1c818f129a6a7c300b010b2570cce1af9c8eab1ff78192dd4d602af7e",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0026-c42a5e234637",
+      "polynomialSha256": "c42a5e234637ea93f611929fd2b18c78b5e0fbf6fd9857a5894d2a5ff6566223",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0027-3a12b23b68b9",
+      "polynomialSha256": "3a12b23b68b958b9b5c8fd87b05e6aaab4144e2397f1bd53bae49e3fa435dee8",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0028-5653225ef214",
+      "polynomialSha256": "5653225ef214c2fab08d7ab953ccda3426db0ae11bcf3a19917fd46fb5142b17",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0029-1699feaaf9e8",
+      "polynomialSha256": "1699feaaf9e85d69664fbc4e0f3d8a44a33ec6cda3997250cdd1763f8085d5c7",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0030-0f55374c61c9",
+      "polynomialSha256": "0f55374c61c9192222c23f19cd836fac9204c90c0ba39ed834d308cb4657944f",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0031-8f9231b5bb19",
+      "polynomialSha256": "8f9231b5bb199f1080b0c33d538fb23cfdb8dcdba95165c2048e30f66967fb0c",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0032-4876f29dc6d1",
+      "polynomialSha256": "4876f29dc6d1f7ed33e9e3e4eb767ff191b2e6f0b6028d708baf7277187adb2b",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0033-4e8670cebfcd",
+      "polynomialSha256": "4e8670cebfcd29949f594341455cc12e3beff258bb63f00cfe0f6e4a198f1277",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0034-53bc32dff114",
+      "polynomialSha256": "53bc32dff1149443b4e3b598b57f66ee780ba1e8153be1c223600f48a38005d2",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0035-084f10db1050",
+      "polynomialSha256": "084f10db1050b315eb4089e1551a41f944350c5d41d8bb659f16ea83893b5d60",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0036-4c26fd13bd48",
+      "polynomialSha256": "4c26fd13bd48058a73d96556e42beab8c814511e93fcfabe761c593dd36ff6b2",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0037-f181ce4cd592",
+      "polynomialSha256": "f181ce4cd592b6004887fc5f128a20bf31e1a6f3d44f5a6fd9880e9915fcbfe9",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0038-6ad26de71266",
+      "polynomialSha256": "6ad26de71266b0a038b4546658b6cb41002522bd059def7f9c0c38a602a1547b",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0039-8fc8501a2b1f",
+      "polynomialSha256": "8fc8501a2b1fb46d6718b902ede6468f1e72261af6323c52ae62816fb99fcf83",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0040-a86548f94eac",
+      "polynomialSha256": "a86548f94eac29bc3e44beeebc558e53139b5d04259e664127d8b48aaf42b297",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0041-9570b8c82fb9",
+      "polynomialSha256": "9570b8c82fb913801eb5b5cc014c399951355052c6a334e51604eb6cbc601cdc",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0042-88681c231b60",
+      "polynomialSha256": "88681c231b60cc7b04320a2004b05ca4bf6e47368db458e9067ba49e80ace7b9",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0043-b84b222b3a89",
+      "polynomialSha256": "b84b222b3a89cad83733108510943dd227ee7f953236abd9d642c461b461ddfa",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0044-13fbe624e8b7",
+      "polynomialSha256": "13fbe624e8b7c84435920fc273efd081b2fbe110fdee076c00fb7afc22e9b8ff",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0045-184cc857ebcc",
+      "polynomialSha256": "184cc857ebccc8c3c974c4566084ef037cbf3ab42831cad1045336cef9ae3078",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0046-1c4c6ef182fb",
+      "polynomialSha256": "1c4c6ef182fbbbdd819bd3e52f6d8dd0f53dcafe2c7c227c862ad2e30267a23e",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0047-88a96208c2c5",
+      "polynomialSha256": "88a96208c2c53ef703c7bf163623daea5b88d9c333cb5ca41fcae0ae748138d6",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0048-9966943bcf4e",
+      "polynomialSha256": "9966943bcf4e149563e1adbf6a48d0524125f8fd13f0c4ab8c574becc77ef878",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0049-a1eb949e9e84",
+      "polynomialSha256": "a1eb949e9e849c8724fd957aa370fc214e1c0a3cba9dcfd6fa6f0f1a7d8bf61a",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0050-847db3dd7f97",
+      "polynomialSha256": "847db3dd7f97b857805d540d4b8160cd7753d53bd572b2ebd534ef66ebbee88e",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0051-29df70736b49",
+      "polynomialSha256": "29df70736b496c838bd1e6af6c2cb19c902c12061d96d1c70cd5bf126200bafa",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0052-ae520d61aff0",
+      "polynomialSha256": "ae520d61aff0c6a3d82482a764b3f9594c0d7be44dedf3ee6834259ed9d3e7fb",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0053-d73e4a24370c",
+      "polynomialSha256": "d73e4a24370cdd16f59c1383188ddde1890ffc8227f3d58c7a6c9b74e739774c",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0054-503097eb6703",
+      "polynomialSha256": "503097eb6703829b97f9ef463d0a9439484c5a1c408755a162effee629933569",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0055-315781f8d2b1",
+      "polynomialSha256": "315781f8d2b1f58058d722a15ce6d5a9f515fca862320b44b95d4cde47e86c12",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0056-76a2b6d82e4c",
+      "polynomialSha256": "76a2b6d82e4c4d85d782ce4d1dd29f745fce56794e3195e77cc84b95cb5202e6",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0057-99088c259a04",
+      "polynomialSha256": "99088c259a04bb9fd69cffdcaf646b56057ca9660571a1a74bbbaaa1103acbd6",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0058-9e396552ed78",
+      "polynomialSha256": "9e396552ed78637a1db3ac2720e393eef23fac5dacdfb0d04e959789b7e9a816",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0059-ff6b6706c29a",
+      "polynomialSha256": "ff6b6706c29a19b859803bd40d33129d867674bb8710000db15563adfac15954",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0060-34d35ac2cb30",
+      "polynomialSha256": "34d35ac2cb30c9a948a937bfc52893bffd4bdc32397d64b11ab625bf703e2bb4",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0061-77b25e189b25",
+      "polynomialSha256": "77b25e189b257a06f32a379c67c496ff311d4df2444b959e09aaf443ca1ada27",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0062-fc8a3403cece",
+      "polynomialSha256": "fc8a3403cece582632cf773f7d2b4be44fa9a09ce4f6d8f5b458b83b86103f88",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0063-d650cf183a03",
+      "polynomialSha256": "d650cf183a039b1a4e472ef368f476541eccd0eb3b96ab364dd68d0ed1642bb1",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0064-9e74aadbc897",
+      "polynomialSha256": "9e74aadbc8977500b14f4b09da56e160b5a090f2b379b7884cc4e280ee038e3a",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0065-334927bc260e",
+      "polynomialSha256": "334927bc260e06389d5785d4b91d2066a7218f17097768cb09616a9accff15d1",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0066-2eb9c10a02d7",
+      "polynomialSha256": "2eb9c10a02d7c602e6daeb7d0575feed0b2ecfcd525604585cfcdd0930563cf7",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0067-752f852b41bb",
+      "polynomialSha256": "752f852b41bbbe9e48cdaa1ab8015274c1b3e7f9c79480e0ae5b8aa9b12e6cfe",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0068-912ac72fc77a",
+      "polynomialSha256": "912ac72fc77abc254db229dd0faeef5917a4f3e44183217720ea0b8ee6cf6678",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0069-e8440a737aa1",
+      "polynomialSha256": "e8440a737aa12db3f00b1f63ffd4c46c33ce70c2e36771616c5c6faa80e5e133",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0070-45b682a3b66d",
+      "polynomialSha256": "45b682a3b66d4fd5b8592264b7f8597e0cbd3d1b7dcadfa0a00d0d54fbb1a9b5",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0071-caa9864a786d",
+      "polynomialSha256": "caa9864a786de5b9d21e1441a8d67096960fe833fdb2a2c2b739429e8caf59ad",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d3-0072-8dbede6368d9",
+      "polynomialSha256": "8dbede6368d9152a2de8f00181ea7e43b003a2422fceb5ac63c743ec4c30dad6",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0001-1033841f8384",
+      "polynomialSha256": "1033841f838439eedd9904103fd44be1fed097b9af0f4697aa8508f0c013446b",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0002-f8cafc6457a8",
+      "polynomialSha256": "f8cafc6457a87868f5f0697aa8b0a09067fa1340daaa02a52bff43a337d85d8e",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0003-80eea2c7b04e",
+      "polynomialSha256": "80eea2c7b04ea60262b0a767854a7a572cff75d8189608cc7aabe1fa6b7eacfa",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0004-a78f1ece5bc7",
+      "polynomialSha256": "a78f1ece5bc789a229dfc4fcd9be14dfd8e6f1c676582a4f87571ec55ede2d4e",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0005-80ec7845d15e",
+      "polynomialSha256": "80ec7845d15ed8bc9b62dd50b67e207301e9e53835ec98a3db067f3b24d14209",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0006-d519d7298bdd",
+      "polynomialSha256": "d519d7298bdd24b3884d8353bfb9f042f86e358c4c9f3c6b567ed767719c17d2",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0007-00d99829f6fe",
+      "polynomialSha256": "00d99829f6fec8375060d80526849f7713634fd0199694f8409385ab6da5291d",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0008-68fb75cb192c",
+      "polynomialSha256": "68fb75cb192cea0dd62050a71fc14ba8095f9517d07a90cb4310abb73f55c2e7",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0009-2f1d22b23ab5",
+      "polynomialSha256": "2f1d22b23ab5ee505992d20b3c5e74ca1be72e7ec812f1be1be03f44241a02d2",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0010-3a3ca441155a",
+      "polynomialSha256": "3a3ca441155a70efe7726a6761dbedb4d7efcfae35bde071e8931dd88211a1b7",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0011-6570ffba60e5",
+      "polynomialSha256": "6570ffba60e583d743106b57f2b2793a01b9d026598af1a332ad2df975dca10d",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0012-6fd0856e184a",
+      "polynomialSha256": "6fd0856e184a364163c9b935de01e50c3282d75776a97f15b7dc4bd47b957d74",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0013-5b407eb17eb3",
+      "polynomialSha256": "5b407eb17eb346b31c421131e1fe5c6230948fc6ff1f1f404cec0e3d1b117c8b",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0014-6745ebcc03d8",
+      "polynomialSha256": "6745ebcc03d85b8f9899a7135d14c37085b7967fb9e505b635f739ecfb4e91af",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0015-709954621c15",
+      "polynomialSha256": "709954621c15c4c10a64a2b0d963c1ce088cdf1ac449ba8440535e877cf6c2b6",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0016-344878458dad",
+      "polynomialSha256": "344878458dad35a36274a70a05e152bd9d966aa1f76b35e03a46d57eedc27285",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0017-88cacf94221e",
+      "polynomialSha256": "88cacf94221e9f470ec08fc8fc0708c0e34c6b607d9eb67c79d795b659b20114",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0018-ff90c6ad9129",
+      "polynomialSha256": "ff90c6ad9129f2c506777673a7eb96e46e35c59a751726b34136db0effa9bc34",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0019-161d03fe3d79",
+      "polynomialSha256": "161d03fe3d79736efa51b2d174d9c2849f558981f7219d7db81d2551cbd1b580",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0020-64b5b0e97215",
+      "polynomialSha256": "64b5b0e97215f92d2bc6c901901f76632eb9877e431aaabeb82d75b553f9a8eb",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0021-39cf13d782ad",
+      "polynomialSha256": "39cf13d782ad1009af50a3aaf57e0fae337b4741f07893249d2589c1016a3388",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0022-cf3697671414",
+      "polynomialSha256": "cf369767141430615b31cbab59bebcbd793aaa75fa2c43b381b9a76530563358",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0023-e3ae9cc143d3",
+      "polynomialSha256": "e3ae9cc143d3184277ac6f119e7b6b6b64f0aee88de15ee6934c1a3cab6d26e6",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0024-1ce2ec48583d",
+      "polynomialSha256": "1ce2ec48583d8288b40c4fc9ffe48eb11a4ab6acda6021c7a847aa5fd9257717",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0025-80a92c57f863",
+      "polynomialSha256": "80a92c57f863921eff654c60b05914c37facec14a16fcd6d2ba18069d8cceb24",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0026-0e156a65acec",
+      "polynomialSha256": "0e156a65acec9d927a91d47b0414d1e1bb9c00675f2fda33bb93346cee68e403",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0027-5684d38b738a",
+      "polynomialSha256": "5684d38b738abcb10c74737db598bbe3829fe7beaedb4843299e9adc853e9187",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0028-30d757dd920d",
+      "polynomialSha256": "30d757dd920d14c81e6efc85e6919deefe8d12feefbcdc26b078ad5908e62280",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0029-33c743d1e7c5",
+      "polynomialSha256": "33c743d1e7c50e818726519d2943644bd6c3e105156fd711d042d3c71df18674",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0030-697fd6941cf9",
+      "polynomialSha256": "697fd6941cf9852e2d4a0412c59c33ce829f6378a86357fd4bb701daf131759a",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0031-27ef22c80cb9",
+      "polynomialSha256": "27ef22c80cb97bd2176d8ba7bbf5f460384b61a5f57e04e7ef447d83799fd0b4",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0032-e96803d42993",
+      "polynomialSha256": "e96803d42993e5c90cf515360842216c68dec12a8756c05f37a07f6e18e8766f",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0033-20c2a53a997e",
+      "polynomialSha256": "20c2a53a997e322f41358eb1570533b4bcd328f854d3217fcaca9270ac31ca85",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0034-e5c0a04c454c",
+      "polynomialSha256": "e5c0a04c454ccce45a8fbe686b3aa30f6631aa9d53ca67a47884894c1aaaed66",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0035-1ae75f808c9c",
+      "polynomialSha256": "1ae75f808c9ccd49a9e55125647f78fd33198af0660a535e92b8aab1af5d7e7a",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0036-9c26fa71dfd8",
+      "polynomialSha256": "9c26fa71dfd82d759be056be7e975c9286fb1f6cb2c9b3d092136d2b6bb36d56",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0037-44c72bc6e1e5",
+      "polynomialSha256": "44c72bc6e1e51815e0e82b760ea780b4ae0e249af0d41f5c376f135a4ea3f36b",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0038-492a92164660",
+      "polynomialSha256": "492a92164660e0b88c54b0363adaeb63eec0f12bd962751fac7a3aafc336972a",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0039-c242f4e94bbf",
+      "polynomialSha256": "c242f4e94bbf19e864fa76d49d180415f7cbe77f2c0317ed67d02b8164d247e0",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0040-3ed40886b431",
+      "polynomialSha256": "3ed40886b43169548b267b94e6f8b2f9e455191cb67dabeb4051f8de761e5453",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0041-879ef1a3e535",
+      "polynomialSha256": "879ef1a3e535a52426c786ece2f5900b429918343a1be8d381ce33ea1f8816b1",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0042-7d01502114bd",
+      "polynomialSha256": "7d01502114bd3da4ab34bd471f0495c4c06bd1896acda206ea83cedc5bb7e8fb",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0043-0ce0c5d81cbf",
+      "polynomialSha256": "0ce0c5d81cbf593d9f5c5bb2159aabaec10dfe3177546ad984e52f39a4e1e7a8",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0044-b80f48f066b4",
+      "polynomialSha256": "b80f48f066b411b98a7ae29ca0e0e4c1ae67df24469280bcbba95d267f2dc6b2",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0045-d4931f565ba8",
+      "polynomialSha256": "d4931f565ba8f7ab786036b8b653a6cfcb9e92f900dea8c1b636d919858aff7c",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0046-868d04bb534f",
+      "polynomialSha256": "868d04bb534f91bf0e18a5a585ed75387c313e7669aa44bf7b73560ab984d309",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0047-ac621e6a11d8",
+      "polynomialSha256": "ac621e6a11d8cef45075f5fbaa4ac748abb129dc834299a943fcb9586cf9de0b",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0048-c8391910d1da",
+      "polynomialSha256": "c8391910d1da77348e40a57b17b38224799470786bb01e8a23852dd3e54c4f63",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0049-181a5b061569",
+      "polynomialSha256": "181a5b061569858f8efb9953464f823d725d02b9e627bda992f206f0c3cec974",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0050-8306b2b3c725",
+      "polynomialSha256": "8306b2b3c72596374f6ea2137c0a27a65e2330e486cf9afce691f3077d825b49",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0051-3861a7da094b",
+      "polynomialSha256": "3861a7da094bbab5e4076cd2fe79f4ccf7658d837e248fb6699b6a1d6c6b9799",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0052-9e82b173de4f",
+      "polynomialSha256": "9e82b173de4f70662e6ed95a43bf217c045959e8db40806e0a9feb2d33c8d35b",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0053-892a83e64199",
+      "polynomialSha256": "892a83e64199884bd226a6dacbc692df5f913bbabaf83b1e2746f6ddff9fae31",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0054-f2eb043c5f2a",
+      "polynomialSha256": "f2eb043c5f2a176a227e12c4bae12ee03c890091b633c8caf2d4280a7d2efcb7",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0055-7e8d82d108ca",
+      "polynomialSha256": "7e8d82d108cac8bf2617a1bfc31d6bbfefd86d7cb48eeeddb9576ccd8c49b07a",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0056-40f903591b5d",
+      "polynomialSha256": "40f903591b5df3877b0ba9987e9eb0a6a365bb43fe9e1bf7846502899a611eae",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0057-066e3aae6e5c",
+      "polynomialSha256": "066e3aae6e5c9560d939912054d4f35f3e54856bf367b1319053de65ee4f514d",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0058-3ae9653f81a4",
+      "polynomialSha256": "3ae9653f81a4e2449ab05b22db427ff52d412895dcc9a023b11da666c81eee49",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0059-1e15eff0f11c",
+      "polynomialSha256": "1e15eff0f11c5290b55201a883ba50464150c2b9aba30cadab9ffc1330f3208c",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0060-2420cfd06db9",
+      "polynomialSha256": "2420cfd06db903692f5c1f065b9ae79266947e64e48ad0288fe0507be316f8d4",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0061-f278cb120050",
+      "polynomialSha256": "f278cb12005097581037454fe291615b16337bcc1d7088bf191f8450f496fb18",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0062-03be89485038",
+      "polynomialSha256": "03be89485038f3a7863156391d3ea7699170e3bda21b055014f5f320310d4e7a",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0063-64ebee3e7f56",
+      "polynomialSha256": "64ebee3e7f56b0e1c278e75c6835d605de41a265630fc687b747d391dd2a451a",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0064-1395ed767f2a",
+      "polynomialSha256": "1395ed767f2aba4f3b98177c895d87f82bb1a89a9b62b126679f8b37b733a060",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0065-6a7095499ee5",
+      "polynomialSha256": "6a7095499ee57a73d3f1424f781cf081444a441d9881ebeadf2612916347642a",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0066-61253c82953d",
+      "polynomialSha256": "61253c82953dfe57e3f2937c18e23bb6820e3968fa4a6254f66eb73e32c5800a",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0067-8c504af0629f",
+      "polynomialSha256": "8c504af0629f8224623de43e7bab7ca9088e27267eca6d2be910a40626530837",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0068-69c696cf6ebc",
+      "polynomialSha256": "69c696cf6ebc85c69f1599bf31b378deaa7dc75a828a47d10631d204c73d022a",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0069-4216f422b371",
+      "polynomialSha256": "4216f422b37141fc6cb04d7665d6e0dd4c0f62cf12059bcd4122a552af908e0b",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0070-6a6ce6e4ac75",
+      "polynomialSha256": "6a6ce6e4ac75c70778f981cb6c26480bb7a9b84b5195d1c764f442d3a661ca04",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0071-0e3d4d88c822",
+      "polynomialSha256": "0e3d4d88c822bd8d41d2d232bcdcb66eb6871674a1a21616dc854e25d1bb41a4",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d4-0072-fc1cd30d8277",
+      "polynomialSha256": "fc1cd30d82778ebf9a4e728b0a57c565dcfe8fec8b7563622fc74910c6417f0a",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0001-08911105f241",
+      "polynomialSha256": "08911105f2418b8270b11468fddc89901381329ceda41b3a4e12f6295b3ec058",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0002-1c19dba466c1",
+      "polynomialSha256": "1c19dba466c1eb8bf990dc814e80f3e371fbe879f7b8d0d80dd41994ba643773",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0003-5c0936a44c6d",
+      "polynomialSha256": "5c0936a44c6d589bfea1c18386202065fc0a04429bd639329bbe5ef0f5289140",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0004-75df13e2c4fc",
+      "polynomialSha256": "75df13e2c4fcba49d5d54b036867625c5f00f47820b585945cfee2ca1db212fa",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0005-454713574904",
+      "polynomialSha256": "454713574904ba6681a190412213ef8caa0fe6f72737558e0e7e50a5dd7a1c0d",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0006-9485e169ee5e",
+      "polynomialSha256": "9485e169ee5e4da4fd5b2efd3b7d7b8301e0c99bf6d4f4e7b74bd51d48639327",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0007-9bef8dbc35d6",
+      "polynomialSha256": "9bef8dbc35d631bb57997b0e21c9b7aa90d38810b9cdb34140d75b0028690e40",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0008-8abbb30c8a40",
+      "polynomialSha256": "8abbb30c8a40c86ac03341c4585ba564b863060d4562437b1f3ea8f660892eb9",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0009-71c161de1114",
+      "polynomialSha256": "71c161de11144f41d6d0d90c6ba31c55357df2dfc1f2bf7305eebaf8d801f675",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0010-f4c3329e4bfd",
+      "polynomialSha256": "f4c3329e4bfd5a39318866f64d8a76d29651f8f4d9c393cedab713867d5c587f",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0011-65d111c7e28d",
+      "polynomialSha256": "65d111c7e28dc969bea4f93dca7bd7f8ef2239ca6e2b3797811ffd1bbe919895",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0012-e673f39cdbf7",
+      "polynomialSha256": "e673f39cdbf76b43e2984a24af88f8ff56cf0f02b0dd3cb9a437ae2c04def199",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0013-e56e92bb3dbc",
+      "polynomialSha256": "e56e92bb3dbcd04d44b96430e848c5df63158f958926ec6c2a78827251180ca5",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0014-1d6c159d8d64",
+      "polynomialSha256": "1d6c159d8d6417ac55cc242c22ab920eadb4b64607c0abdcf9a4d982ad171cea",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0015-b42fbf7030ee",
+      "polynomialSha256": "b42fbf7030ee8aec9c18189b823058f815ee5e69a10cdac63502e70b49fcec1a",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0016-2af2595443a1",
+      "polynomialSha256": "2af2595443a1faad10d8b7c0d256be0515f09bc7a02c72cec00c335b4da3d3ea",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0017-9e405cdaac64",
+      "polynomialSha256": "9e405cdaac64e5ee67118df41e000bb8399303cd8cd03d79d695889f2ad3e090",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0018-73d729690f4d",
+      "polynomialSha256": "73d729690f4df2901c92e042195a257adb38b4a261133c8576169a27cac0e8c0",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0019-6d8b63e0d03c",
+      "polynomialSha256": "6d8b63e0d03ca15029934e26b7d8fb18f4d7bd1790aeb2c314475c98070a4e5d",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0020-0a931bba6724",
+      "polynomialSha256": "0a931bba6724101270bbcd17a6572acaf9e36e1fac3b492eca32f8086b3d26a7",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0021-d8770cd93286",
+      "polynomialSha256": "d8770cd9328622bc7b86a112cf6cb61f64423a81d6610596d1dd6358e5d32bef",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0022-8698668b3804",
+      "polynomialSha256": "8698668b38042867d1ab4a34c527f1a21e7638e2e1a3dff0f52841991c2d7d09",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0023-50f8f965ac65",
+      "polynomialSha256": "50f8f965ac6550573c5b1f4770de086fc640ffc84e86be02739bd4a8bd9ff19f",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0024-a174ad7ed6f1",
+      "polynomialSha256": "a174ad7ed6f1d3e57313b0c7aeeb1d80f3b7398fa34b676c6c8f9214fe7f1d24",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0025-f42bb32090e3",
+      "polynomialSha256": "f42bb32090e36cf036853575fe209817c27c12c146a19b4a2348b10642638e5f",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0026-c4e4b52da1f1",
+      "polynomialSha256": "c4e4b52da1f1d1e5fffbf4807fc0c59480a4109b52b230a3f45b6e9928a8d1e7",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0027-82b45b32f1f1",
+      "polynomialSha256": "82b45b32f1f1acc37ac0c82a54956610a87ba76b472c0e710b34dd256c9b9f1f",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0028-ad522f026cb5",
+      "polynomialSha256": "ad522f026cb5194757a6485a7addf4d23073e626d10e6f283b10b11a153104e6",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0029-a8f81cc5249a",
+      "polynomialSha256": "a8f81cc5249abf8724a92c33257371e64bd3b5a273a878161ef2ba896db839b1",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0030-dddbe0b49ce9",
+      "polynomialSha256": "dddbe0b49ce9c86cfaa23684c95becc963f360e8d213a5f755612822503dd5ac",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0031-41f0e791dab3",
+      "polynomialSha256": "41f0e791dab32c7fa42cbee2a70d2eeaa858fec95800bf367ebf7295333edc8d",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0032-cf2929d0c4aa",
+      "polynomialSha256": "cf2929d0c4aa74790392b62f70235a129a007418a0d3ff4e0dc01ee8974bf079",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0033-ddb3cc4c385b",
+      "polynomialSha256": "ddb3cc4c385bbe167c20fc2d4712d38aa7ceeb7f1e84e06e48661d6ffb75266e",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0034-4d2cbc5663de",
+      "polynomialSha256": "4d2cbc5663de17c01cd36851e19b0588d2c6c31c43362a51b1529d478b069ed6",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0035-9423ae50db01",
+      "polynomialSha256": "9423ae50db01d5aa1caa9977d317a9239a9b094e6c96c4021992cbf1d0ce00f2",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0036-cbb5f8a5f072",
+      "polynomialSha256": "cbb5f8a5f07287df90145d91d32e3b170810c7524b6cafd93c8ed6dc796f15f8",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0037-93484980b7d3",
+      "polynomialSha256": "93484980b7d35c7439996e4662f2f689d7411a24d8c04105149fec33079f6232",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0038-0d8c81dfa62f",
+      "polynomialSha256": "0d8c81dfa62f21e6b125cbd1ca1cdc63a5abc8c91d032e1db0b082d47c4ccf0a",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0039-74afcfc829f1",
+      "polynomialSha256": "74afcfc829f14179535e1de379863cffcd2d82534b26a50d1f899f40dfbe23ae",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0040-e31de1644828",
+      "polynomialSha256": "e31de164482881f79090971e1ebe444c74669d7d3748f0d8fa4ffacc404b0600",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0041-ef64284bf991",
+      "polynomialSha256": "ef64284bf991950137045955a72200969f74af0e2648943c873b45859ddd7280",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0042-19f44a2c0f8a",
+      "polynomialSha256": "19f44a2c0f8a1beddb4fafb3dafff691537379c4f5483c44d2ded6534fc52ccb",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0043-db4162db327d",
+      "polynomialSha256": "db4162db327d67ff6753e49c0622182d943ef4097faeaf06f2ec55e78d1a6c80",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0044-fc551c47ed8a",
+      "polynomialSha256": "fc551c47ed8abd14401c5940af578df3e18a3b0304bffc2048ba09b98af4be33",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0045-b5ee42724af7",
+      "polynomialSha256": "b5ee42724af7ecc939608ed4a6b12627260dad0b099039f380171b6681ce6902",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0046-6fe7695e2406",
+      "polynomialSha256": "6fe7695e2406a97027a596e35067443f1c37fbc59ec31b6b5509e61fc2ba64d3",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0047-496ee9423879",
+      "polynomialSha256": "496ee9423879aca1f38c6bee453f1b57255f0253bb1f8a91e2a5482cc9e1865b",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0048-0b4e0f04d9d3",
+      "polynomialSha256": "0b4e0f04d9d32ba7865b5c810ace015e7989933f4237051b42993919dfa368d1",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0049-77649835abaf",
+      "polynomialSha256": "77649835abaf065ac69fa1aefb0594b69f499e1c3614abcb579bf6219b3b7603",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0050-449004c723a0",
+      "polynomialSha256": "449004c723a068f62f4ce9d5ecf5afb1d6c876ee80d1f52420fc6ce2af2a6d32",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0051-9e8efb504c49",
+      "polynomialSha256": "9e8efb504c4943d079d313019f6f495f1eb5874964d03bc3c7cf69a1d5fe4616",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0052-4cba3a9c03a8",
+      "polynomialSha256": "4cba3a9c03a8b2c76fecf98d67cce40ab8c0cc5b778a1a06bbcb1b5729c28440",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0053-ac53d27e0a86",
+      "polynomialSha256": "ac53d27e0a86da757f8770e33770cd3970d57d383f5614039f430732de917fbc",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0054-ce4476596d59",
+      "polynomialSha256": "ce4476596d5914595782f3d3c3818686b0a120f7df05074e7af410c746980950",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0055-a04f43022de5",
+      "polynomialSha256": "a04f43022de5cca69439c57a9f048a5b5da8f054d73bc08cf3f87abd016ec264",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0056-98024dd13e50",
+      "polynomialSha256": "98024dd13e5085a0ec864cad1b3cbfabe1b1f7fe95d3cc295972c87a24e50e69",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0057-696a8ddd5971",
+      "polynomialSha256": "696a8ddd5971133054c53d754a41a42fab813cf7fd3bffa0cafbed896988bd8c",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0058-8b3b54b8c013",
+      "polynomialSha256": "8b3b54b8c013bb0c1118fef2c5e952c88d047d57f18379499bfc10c528f15a50",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0059-ef845d338cfd",
+      "polynomialSha256": "ef845d338cfd0676ee222b2fe3858e22b3fe6878eb408da7830f43116cb0e4f2",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0060-a9ac0462f427",
+      "polynomialSha256": "a9ac0462f4277c31862fc1088a6dafe5ea091d01ff6a7daf9e0315b5f527bb90",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0061-58dc70a76c1c",
+      "polynomialSha256": "58dc70a76c1cde53742db2b41c29d2fcaa4f7b0c0347e5b91ff0d86d2826c85d",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0062-b5107d1fb0ed",
+      "polynomialSha256": "b5107d1fb0ed4a8193ade47d4c66b2d78b12da64ca45f60350ca50a6eff7f310",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0063-d74959db99b8",
+      "polynomialSha256": "d74959db99b865a73e068544de7a90576c5789dbd0bc27d6e11ae3f870bf37ea",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0064-099a2d953f0e",
+      "polynomialSha256": "099a2d953f0e1fe592b842315c55cea4cf91e70c5cea1000bc9a28679cd2b373",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0065-677db163a4c7",
+      "polynomialSha256": "677db163a4c70dd88c3dc4d91c7fb0223c93dfca27a2f537335a0db4867b888c",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0066-1d8334feb20d",
+      "polynomialSha256": "1d8334feb20d900f81f7b43751a7df9e7351039b036897fd7c1d7e9b99d6efd6",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0067-ed66a9034fa7",
+      "polynomialSha256": "ed66a9034fa73a8485efc954afd24d7d9639c24bcc8b81dd0303a9132d7032f8",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0068-bc520f0cabfb",
+      "polynomialSha256": "bc520f0cabfb546106252e6ed5c2c319f06c9aea6dd47ab7e364a9f8b2e230dc",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0069-82ed57e83c6c",
+      "polynomialSha256": "82ed57e83c6cef9c0baf8b013cdd05cc5d1c9f85d5ac358a0ef40341e50158ee",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0070-1a42bf0be0f0",
+      "polynomialSha256": "1a42bf0be0f038e41b907e3ba4b4a0d430b705a172ddd0b9947acb0fc61727d2",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0071-911ea222ecf0",
+      "polynomialSha256": "911ea222ecf00a51492bd328cf4d523699834a095ac5165ce1eaf0a6b83f9090",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d5-0072-5c10412bf5ad",
+      "polynomialSha256": "5c10412bf5adda6c9c90649d0b7813099d42a50ef3d28516a33fc34216532ac3",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0001-d94d5cebb2ed",
+      "polynomialSha256": "d94d5cebb2eda8411d7cc3c85f100f2e9e46e2d7f759a99900d38a7f455fc7b2",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0002-a4377af76ff6",
+      "polynomialSha256": "a4377af76ff6f063d3b99bd0d3a4097eb3a02bc8da86a6e0368fb5ee0a111bad",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0003-b830172ff489",
+      "polynomialSha256": "b830172ff48997c872b3c8ce9cc4099bb37c2e0fa3053514ad67e412cb23bbfc",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0004-8b79af2052e5",
+      "polynomialSha256": "8b79af2052e5a76bb39ff6ce57f380ffb37ed0f0d2c16ec294761d7d1bb4071a",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0005-5358e3ca066e",
+      "polynomialSha256": "5358e3ca066e7791a5d7eee9c9e77998264ae4e722c0941c37482d468607abef",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0006-969e15c15553",
+      "polynomialSha256": "969e15c1555371681b920351101dcee629cc5b4bd38e5c69817dc42a05ab543b",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0007-119e4e6cf865",
+      "polynomialSha256": "119e4e6cf8652544982364e15a056d6ec4d78b64463c1a89377539474c123fe3",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0008-93eb6cecdc5a",
+      "polynomialSha256": "93eb6cecdc5a319f9e81a5afc72c05f73d32c5016c497bbee61c288534d5a19b",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0009-23444e7b5262",
+      "polynomialSha256": "23444e7b5262052bab146ef0b1400eb84564984b9bdd0df77b051e815e79bd60",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0010-64d441a57711",
+      "polynomialSha256": "64d441a577115cf808f73c05468bc9b3aacfbf9b5dd48955828156cda3d80e74",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0011-4cbda397a6bf",
+      "polynomialSha256": "4cbda397a6bfe9b00d9ae2589a5bc1a3a4e7289e30dc9b1dbef846a5f6db4ebd",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0012-688b14f44d3b",
+      "polynomialSha256": "688b14f44d3b642a823d6e0bdf5abb4bf2986121d6ce8e3e3184f4ffc23772c3",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0013-aad6a218fe6e",
+      "polynomialSha256": "aad6a218fe6e6a992b824e4dfa603b2c4bdfe20d1deeca724b049a36db613c69",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0014-7064ba12061e",
+      "polynomialSha256": "7064ba12061e67687d9ea030b93f6d15fa68d917c3bc943dca37cef42b9299e0",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0015-3f74914cbec6",
+      "polynomialSha256": "3f74914cbec665bf13cb9d03fbbeeb2df56c8cdf2ce21ca4d3faef3b543d5659",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0016-8209107d844f",
+      "polynomialSha256": "8209107d844f444757eeff9320830db5ba84df18baaca47eb19b52cfbe4d65e2",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0017-63f28d4599ff",
+      "polynomialSha256": "63f28d4599ff71a5622a2edb35779a76b1646ae01eff5c6a5c11d16b4ae5ab64",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0018-d32e33aafa10",
+      "polynomialSha256": "d32e33aafa1013659c0ff06bdba224be7359371b28800aab41963985442b42c7",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0019-ffe610a56927",
+      "polynomialSha256": "ffe610a569279f7754ed0a0a10799fe9b9c3063c3370957f58f4c585f0ce57c6",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0020-162e6b010350",
+      "polynomialSha256": "162e6b0103500cfbed8ae4e311f96133bd7cded06484b98cf5088c3f9c1714f6",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0021-6b13794a4d4f",
+      "polynomialSha256": "6b13794a4d4fdf8599783a2b9294bed8078bd7143a282cd68825f987997f217e",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0022-975d8f88716c",
+      "polynomialSha256": "975d8f88716c598869a9d4554f9c9eb25291ddd2a25f17e5164334e98374b66b",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0023-c90e665393b0",
+      "polynomialSha256": "c90e665393b05c46802722ede5d063ee53f7705097a945f32962b3e3783a0ccc",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0024-083975c31a97",
+      "polynomialSha256": "083975c31a97cf4d5626d5c9bebee0fb47cb8ae1488c4bc504e2d877040d3e51",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0025-40a1ea9267a2",
+      "polynomialSha256": "40a1ea9267a2d1f895d5fb6826b37ecc82dd1aea83cffe56188644ae988c38a8",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0026-95eb0ac8031e",
+      "polynomialSha256": "95eb0ac8031e7e9b364d535fca3dd4832493ca44e8e6f6d9a9148b470ba12b78",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0027-1bdf9e614bab",
+      "polynomialSha256": "1bdf9e614babeca26d6e6a66dbc23f7a1ea0af9ee2d1eda6179753fb46db5b2b",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0028-0ad4ab1b9126",
+      "polynomialSha256": "0ad4ab1b912682bf25f1351a807bf9ed3c90d1ceafd764d647d9e08d10bf819c",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0029-39921421bb64",
+      "polynomialSha256": "39921421bb64cef0264f9799acbbde4bdd7fe096d4af8d6aaa89221091f8e605",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0030-fe726131253f",
+      "polynomialSha256": "fe726131253f345c4793ce3e4d6dbf0ee407f94e9ba4ce56027d30a13ae6ad4d",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0031-731a9ebf02fe",
+      "polynomialSha256": "731a9ebf02fe8c55b57da67aa25eb1db483a65624bfe2269805f1302568c7348",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0032-339af225c052",
+      "polynomialSha256": "339af225c0524361a80f9032242ff03f3672ac08729f9fffaec1690b3673724b",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0033-1734d35a1a3d",
+      "polynomialSha256": "1734d35a1a3d1a562d878cec5be54a6aa4dce68ae5c470aab9a2c298d5a4b64f",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0034-72f6324182d5",
+      "polynomialSha256": "72f6324182d54ee8c6f92c6c7a1ffee25bb5193101cc4a6cb2d58701da985c85",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0035-d7cb6cc79e35",
+      "polynomialSha256": "d7cb6cc79e35f9c1c504a3b4b79d0968912d4d132f10fbda077e02eacf2abc3c",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0036-a00e2bd5b1ca",
+      "polynomialSha256": "a00e2bd5b1ca97b8253f5b942e3e282477b3e10efa51a6386988e8fdd0676ded",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0037-2cddb88af0da",
+      "polynomialSha256": "2cddb88af0dae04e055394846391d4b69b570655af6eacff00015b004821016c",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0038-e0160b3db26f",
+      "polynomialSha256": "e0160b3db26f6c86722bc8d535dabd37c497d3cc3442ff83747182778dfb69a3",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0039-82d3c5a7ffec",
+      "polynomialSha256": "82d3c5a7ffec4f269d0660f0fbdf311735837f4396622d7e6acfb25ffc44e6e6",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0040-faf9a4160309",
+      "polynomialSha256": "faf9a4160309d12a97f82d646af90b7cd6b5c7c2fe7e40a3552ddb97032fc3a6",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0041-dec012d41d14",
+      "polynomialSha256": "dec012d41d145a8eba7c1824a49e6b36ec8bf8a7132be871b252422d6ba78e68",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0042-a987e6944bc9",
+      "polynomialSha256": "a987e6944bc9ceeb1ee994a8b1499ba4382d958e740591d123d3a2db3e9395e1",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0043-388e4370f084",
+      "polynomialSha256": "388e4370f084e14abb5a411844c8ce0a33bf2d1c33868e3219eb1417103dae57",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0044-d3b5aa01dd3b",
+      "polynomialSha256": "d3b5aa01dd3b227326ad98dc5c582803a989bccaba2d83864544c1bd7ea06d30",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0045-9e8fe44e3b8f",
+      "polynomialSha256": "9e8fe44e3b8f9f1fbb7912f6c5126f9199daa584d7906ecf17a82564371d5192",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0046-53ea503d1514",
+      "polynomialSha256": "53ea503d1514e8026d5dd388a242b6d1ed583981fbde31f0eb8c2ce1f70669aa",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0047-25807646c3ba",
+      "polynomialSha256": "25807646c3ba770afb4e297bc9b168e2fcf22b85f3cec2c27a8cff00ba78c493",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0048-19948a7f004a",
+      "polynomialSha256": "19948a7f004a97468369f9ec0daf1677da55702a7f909fb035366ffc8406dc81",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0049-f1bd8f74dfb3",
+      "polynomialSha256": "f1bd8f74dfb34dab5057aecd338e66f8bfeff52287995aaf7af01bfdd6cc9fef",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0050-c6c280de43d7",
+      "polynomialSha256": "c6c280de43d7ad7b402701543dd1d9f4a2f601c9ea56ef05b28e26d58e9a0bab",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0051-0a7d420bea73",
+      "polynomialSha256": "0a7d420bea73037baaf23bd524e7d8d49cabcc8f603cab4ecb13f4f278a3287e",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0052-520498102fe8",
+      "polynomialSha256": "520498102fe8456547f884c8b31523db9ae5f5314d837abf95ecb820477f0012",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0053-e70464194f0e",
+      "polynomialSha256": "e70464194f0e4bb0f49a0cad9c3d5d565013967d67e54441cdf6e1b91f9d7182",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0054-b57ba56bd4d1",
+      "polynomialSha256": "b57ba56bd4d1a89845e7851a7a4e6fc3e2477cd158cacf642a037d9eebc66f22",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0055-b30e78ba7928",
+      "polynomialSha256": "b30e78ba79284a49c4b2512721c4dba7052ebecef8e6d571a0f387a74a651b62",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0056-6f9dc750f814",
+      "polynomialSha256": "6f9dc750f814a764cf848e35718e77db1e5a0e425fe8bcb4825a2046a69f32bd",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0057-cfa6659b6f0d",
+      "polynomialSha256": "cfa6659b6f0d51f32b79084131a1f9957f66afa0c917d1742c6218ec18d7e373",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0058-5681eda903a9",
+      "polynomialSha256": "5681eda903a98eae7adcf7bfb19aa8135ac937ec9c0de725c2e9c9819bd2e142",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0059-4ca5d37f011e",
+      "polynomialSha256": "4ca5d37f011e64c4f98db94988a9d8109d2defe23b402a542ee582bb356e87c7",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0060-20e7d5fcef7e",
+      "polynomialSha256": "20e7d5fcef7e00f48308e15b1f18745f071e345a8e546b10a476dd6ea90e1675",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0061-1085d98788fd",
+      "polynomialSha256": "1085d98788fd90e70989b2c7885f91c8706e81678a023c1fc1ebf453a3a6c348",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0062-334b0b9d1ec3",
+      "polynomialSha256": "334b0b9d1ec38d1c71890d251f5bb64b0249df54feea0bb644f820b109c217d9",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0063-37909ff418fc",
+      "polynomialSha256": "37909ff418fc23945df1f4b1dc304db70c657abc19e656b14a4c04a1fdbc65e7",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0064-c0f875e7b709",
+      "polynomialSha256": "c0f875e7b709fa411a30d38bfc3ce094f1cde382d74cb47e612ca6732fd3f342",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0065-f77857d9d33f",
+      "polynomialSha256": "f77857d9d33f569a585b665daa63471eadadb95cd8b767f91d35aff48463e53f",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0066-6f0016e4c954",
+      "polynomialSha256": "6f0016e4c9542ec826f02e5e317b2d23761f62765824783f53a11826c4130a24",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0067-f530fd7429cb",
+      "polynomialSha256": "f530fd7429cb7dbb2c5740e5c436fcd639b7859fdbbc175b79473e9b884e478a",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0068-78837131cce0",
+      "polynomialSha256": "78837131cce0aab15a19859eefcd44767500182b52bf5e0775ae511b3c4be93c",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0069-0a3bac8de115",
+      "polynomialSha256": "0a3bac8de1155fb32c7eed91d123fd80cd7204f77b6ae98ba21a606a6b9bcffb",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0070-8d5caea50efb",
+      "polynomialSha256": "8d5caea50efb653400ba1b0168a35cc4029cdacfff0de147c1304380213dbcac",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0071-0e59c85fe4ef",
+      "polynomialSha256": "0e59c85fe4ef38bb18f71f3bb4f054cf204cbf816691258db89c399d36aacfc9",
+      "irreducible": true
+    },
+    {
+      "id": "generated-d6-0072-7d71ce934f76",
+      "polynomialSha256": "7d71ce934f766c1710f442d0f3884d3e7ee4b5a1897ad9bf9585e54d4584cba5",
+      "irreducible": true
+    }
+  ]
+}

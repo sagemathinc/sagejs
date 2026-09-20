@@ -55,6 +55,10 @@ def polynomial_digest(coefficients: list[str]) -> str:
     return hashlib.sha256(compact(coefficients)).hexdigest()
 
 
+def seeded_key(seed: str, candidate_id: str) -> str:
+    return hashlib.sha256((seed + "\0" + candidate_id).encode()).hexdigest()
+
+
 def is_within(path: Path, parent: Path) -> bool:
     try:
         path.resolve().relative_to(parent.resolve())
@@ -310,6 +314,20 @@ def deterministic_inputs(per_degree: int) -> list[dict[str, Any]]:
     return cases
 
 
+def qualification_inputs(per_degree: int) -> list[dict[str, Any]]:
+    """Include the mandatory open fields in answer-free form."""
+
+    initial = json.loads((HERE / "initial-open-development-v1.json").read_text())
+    mandatory = [
+        {
+            key: case[key]
+            for key in ("id", "polynomialAscending", "polynomialSha256", "degree")
+        }
+        for case in initial["cases"]
+    ]
+    return mandatory + deterministic_inputs(per_degree)
+
+
 def traits(case: dict[str, Any], oracle: dict[str, Any]) -> list[str]:
     h = int(oracle["classNumber"])
     answer = ["trivial-class-group" if h == 1 else "nontrivial-class-group"]
@@ -354,20 +372,79 @@ def command_neutral(arguments: argparse.Namespace) -> None:
         sys.stdout.write(rendered)
 
 
+def command_eligibility(arguments: argparse.Namespace) -> None:
+    pool_path = Path(arguments.input)
+    pool = json.loads(pool_path.read_text(encoding="utf-8"))
+    if pool.get("schema") != "sagejs.rust-class-group/neutral-candidate-input-pool-v1":
+        raise GenerationError("unexpected neutral input pool schema")
+    x = sympy.Symbol("x")
+    cases = []
+    for case in pool["cases"]:
+        coefficients = list(map(int, case["polynomialAscending"]))
+        polynomial = sympy.Poly.from_list(list(reversed(coefficients)), gens=x)
+        cases.append(
+            {
+                "id": case["id"],
+                "polynomialSha256": case["polynomialSha256"],
+                "irreducible": bool(polynomial.is_irreducible),
+            }
+        )
+    value = {
+        "schema": "sagejs.rust-class-group/neutral-eligibility-evidence-v1",
+        "candidatePool": pool_path.name,
+        "candidatePoolSha256": digest(pool_path),
+        "engine": f"sympy-{sympy.__version__}",
+        "method": "exact-Poly.is_irreducible-over-QQ",
+        "answerVisibility": "none",
+        "cases": cases,
+    }
+    target = Path(arguments.output)
+    target.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
+    print(
+        f"wrote {target} sha256={digest(target)} "
+        f"irreducible={sum(case['irreducible'] for case in cases)}/{len(cases)}"
+    )
+
+
 def command_qualify(arguments: argparse.Namespace) -> None:
     gp = Path(arguments.gp)
     identity = gp_identity(gp)
     output = Path(arguments.output).resolve()
     require_private(output)
-    inputs = deterministic_inputs(arguments.per_degree)
+    inputs = qualification_inputs(arguments.per_degree)
+    if arguments.ids_from:
+        shortlist = json.loads(Path(arguments.ids_from).read_text(encoding="utf-8"))
+        if (
+            shortlist.get("schema")
+            != "sagejs.rust-class-group/private-candidate-shortlist-v1"
+        ):
+            raise GenerationError("--ids-from has an unexpected shortlist schema")
+        if shortlist.get("complete") is not True:
+            raise GenerationError(
+                "--ids-from shortlist is only a partial smoke artifact"
+            )
+        selected_ids = set(shortlist.get("caseIds", []))
+        mandatory_ids = {
+            case["id"]
+            for case in json.loads(
+                (HERE / "initial-open-development-v1.json").read_text()
+            )["cases"]
+        }
+        if not mandatory_ids <= selected_ids:
+            raise GenerationError("shortlist omits mandatory open fields")
+        inputs = [case for case in inputs if case["id"] in selected_ids]
+        if len(inputs) != len(selected_ids):
+            raise GenerationError("shortlist contains IDs outside this generated pool")
+    checkpoint_schema = (
+        "sagejs.rust-class-group/private-candidate-screen-v1"
+        if arguments.screen
+        else "sagejs.rust-class-group/private-candidate-pool-v1"
+    )
     candidates: list[dict[str, Any]] = []
     failures: list[dict[str, str]] = []
     if arguments.resume and output.exists():
         checkpoint = json.loads(output.read_text(encoding="utf-8"))
-        if (
-            checkpoint.get("schema")
-            != "sagejs.rust-class-group/private-candidate-pool-v1"
-        ):
+        if checkpoint.get("schema") != checkpoint_schema:
             raise GenerationError("resume checkpoint has an unexpected schema")
         if checkpoint.get("generatorSeed") != SEED:
             raise GenerationError("resume checkpoint has a different generator seed")
@@ -422,15 +499,96 @@ def command_qualify(arguments: argparse.Namespace) -> None:
             flush=True,
         )
         checkpoint = {
-            "schema": "sagejs.rust-class-group/private-candidate-pool-v1",
+            "schema": checkpoint_schema,
             "generatorSeed": SEED,
             "oracleBuild": identity,
+            "sampleStatus": "screening-one-sample"
+            if arguments.screen
+            else "full-15-sample",
             "candidates": candidates,
             "failures": failures,
         }
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(json.dumps(checkpoint, indent=2) + "\n", encoding="utf-8")
     print(f"wrote {output} sha256={digest(output)}")
+
+
+def command_shortlist(arguments: argparse.Namespace) -> None:
+    source_path = Path(arguments.screen_pool).resolve()
+    source = json.loads(source_path.read_text(encoding="utf-8"))
+    if source.get("schema") != "sagejs.rust-class-group/private-candidate-screen-v1":
+        raise GenerationError("unexpected screening-pool schema")
+    spec = json.loads((HERE / "qualification-corpus-spec-v1.json").read_text())
+    candidates = source.get("candidates", [])
+    mandatory_ids = set(spec["selection"]["mandatoryOpenIds"])
+    available_ids = {case["id"] for case in candidates}
+    if not mandatory_ids <= available_ids:
+        raise GenerationError("screening pool omits mandatory open fields")
+    chosen = [case for case in candidates if case["id"] in mandatory_ids]
+    remaining = [case for case in candidates if case["id"] not in mandatory_ids]
+
+    def shortlist_score(case: dict[str, Any]) -> int:
+        signatures = {
+            (selected["degree"], *selected["signature"]) for selected in chosen
+        }
+        timing = {
+            stratum: sum(selected["timingStratum"] == stratum for selected in chosen)
+            for stratum in spec["panel"]["timingStrata"]
+        }
+        trait_counts = {
+            trait: sum(trait in selected["traits"] for selected in chosen)
+            for trait in spec["panel"]["traitMinimumPerPartition"]
+        }
+        signature = (case["degree"], *case["signature"])
+        answer = 1_000_000 if signature not in signatures else 0
+        timing_target = max(1, (5 * arguments.per_degree) // 4)
+        if timing[case["timingStratum"]] < timing_target:
+            answer += 10_000
+        for trait in case["traits"]:
+            target = 2 * spec["panel"]["traitMinimumPerPartition"].get(trait, 0) + 2
+            if trait_counts.get(trait, 0) < target:
+                answer += 100
+        return answer
+
+    for degree in spec["selection"]["degreeOrder"]:
+        needed = arguments.per_degree - sum(case["degree"] == degree for case in chosen)
+        if needed < 0:
+            raise GenerationError(
+                f"--per-degree is too small for mandatory degree {degree}"
+            )
+        for _ in range(needed):
+            eligible = [case for case in remaining if case["degree"] == degree]
+            if not eligible:
+                if arguments.partial:
+                    break
+                raise GenerationError(
+                    f"screen lacks degree-{degree} shortlist candidates"
+                )
+            eligible.sort(
+                key=lambda case: (
+                    -shortlist_score(case),
+                    seeded_key(spec["selection"]["openSeed"], case["id"]),
+                )
+            )
+            winner = eligible[0]
+            chosen.append(winner)
+            remaining.remove(winner)
+    output = Path(arguments.output).resolve()
+    require_private(output)
+    value = {
+        "schema": "sagejs.rust-class-group/private-candidate-shortlist-v1",
+        "generatorSeed": SEED,
+        "screenPoolSha256": digest(source_path),
+        "perDegree": arguments.per_degree,
+        "complete": all(
+            sum(case["degree"] == degree for case in chosen) == arguments.per_degree
+            for degree in spec["selection"]["degreeOrder"]
+        ),
+        "algorithm": "signature-timing-trait-deficit-then-open-seeded-hash-v1",
+        "caseIds": [case["id"] for case in sorted(chosen, key=lambda case: case["id"])],
+    }
+    output.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
+    print(f"wrote {output} sha256={digest(output)} cases={len(chosen)}")
 
 
 def parser() -> argparse.ArgumentParser:
@@ -443,6 +601,16 @@ def parser() -> argparse.ArgumentParser:
     neutral.add_argument("--per-degree", type=int, default=72)
     neutral.add_argument("--output")
     neutral.set_defaults(run=command_neutral)
+    eligibility = commands.add_parser(
+        "eligibility", help="independently certify neutral inputs as irreducible"
+    )
+    eligibility.add_argument(
+        "--input", default=str(HERE / "neutral-candidate-inputs-v1.json")
+    )
+    eligibility.add_argument(
+        "--output", default=str(HERE / "neutral-eligibility-v1.json")
+    )
+    eligibility.set_defaults(run=command_eligibility)
     qualify = commands.add_parser("qualify")
     qualify.add_argument("--gp", default=str(DEFAULT_GP))
     qualify.add_argument("--per-degree", type=int, default=72)
@@ -455,9 +623,33 @@ def parser() -> argparse.ArgumentParser:
     )
     qualify.add_argument("--output", required=True)
     qualify.add_argument(
+        "--ids-from", help="upgrade only IDs in a private screening shortlist"
+    )
+    qualify.add_argument(
         "--resume", action="store_true", help="resume a matching private checkpoint"
     )
-    qualify.set_defaults(run=command_qualify)
+    qualify.set_defaults(run=command_qualify, screen=False)
+    screen = commands.add_parser(
+        "screen", help="collect one PARI sample and exact trace evidence per candidate"
+    )
+    screen.add_argument("--gp", default=str(DEFAULT_GP))
+    screen.add_argument("--per-degree", type=int, default=72)
+    screen.add_argument("--candidate-timeout-seconds", type=int, default=45)
+    screen.add_argument("--output", required=True)
+    screen.add_argument("--resume", action="store_true")
+    screen.set_defaults(run=command_qualify, repeats=1, ids_from=None, screen=True)
+    shortlist = commands.add_parser(
+        "shortlist", help="choose a deterministic upgrade set from a private screen"
+    )
+    shortlist.add_argument("--screen-pool", required=True)
+    shortlist.add_argument("--per-degree", type=int, default=30)
+    shortlist.add_argument(
+        "--partial",
+        action="store_true",
+        help="write a non-upgradeable smoke shortlist when the screen is incomplete",
+    )
+    shortlist.add_argument("--output", required=True)
+    shortlist.set_defaults(run=command_shortlist)
     return result
 
 
@@ -466,7 +658,10 @@ def main() -> int:
         arguments = parser().parse_args()
         if getattr(arguments, "per_degree", 1) < 1:
             raise GenerationError("--per-degree must be positive")
-        if getattr(arguments, "repeats", 15) < 15:
+        if (
+            not getattr(arguments, "screen", False)
+            and getattr(arguments, "repeats", 15) < 15
+        ):
             raise GenerationError("--repeats must be at least 15")
         if getattr(arguments, "candidate_timeout_seconds", 1) < 1:
             raise GenerationError("--candidate-timeout-seconds must be positive")

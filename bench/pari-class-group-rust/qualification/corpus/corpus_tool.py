@@ -19,6 +19,8 @@ SPEC_PATH = HERE / "qualification-corpus-spec-v1.json"
 LAYOUT_PATH = HERE / "qualification-layout-v1.json"
 INITIAL_PATH = HERE / "initial-open-development-v1.json"
 NEUTRAL_POOL_PATH = HERE / "neutral-candidate-inputs-v1.json"
+NEUTRAL_ELIGIBILITY_PATH = HERE / "neutral-eligibility-v1.json"
+NEUTRAL_PANEL_PATH = HERE / "balanced-neutral-panel-v1.json"
 DECIMAL = re.compile(r"(?:0|-[1-9][0-9]*|[1-9][0-9]*)\Z")
 
 
@@ -291,6 +293,227 @@ def validate_neutral_pool(pool: dict[str, Any]) -> None:
     )
 
 
+def validate_neutral_eligibility(
+    evidence: dict[str, Any], pool: dict[str, Any]
+) -> None:
+    require(
+        evidence.get("schema")
+        == "sagejs.rust-class-group/neutral-eligibility-evidence-v1",
+        "unexpected neutral eligibility schema",
+    )
+    require(evidence.get("answerVisibility") == "none", "eligibility leaks answers")
+    require(
+        evidence.get("candidatePoolSha256")
+        == hashlib.sha256(NEUTRAL_POOL_PATH.read_bytes()).hexdigest(),
+        "eligibility evidence is for a different candidate pool",
+    )
+    expected = {(case["id"], case["polynomialSha256"]) for case in pool["cases"]}
+    actual = {
+        (case["id"], case["polynomialSha256"])
+        for case in evidence.get("cases", [])
+        if case.get("irreducible") is True
+    }
+    require(actual == expected, "not every neutral candidate is certified irreducible")
+
+
+def neutral_runtime_input(case: dict[str, Any], partition: str) -> dict[str, Any]:
+    seed = hashlib.sha256(
+        f"sagejs-rust-class-group-runtime-v1\0{partition}\0{case['id']}".encode()
+    ).hexdigest()
+    input_digest = hashlib.sha256(
+        compact(
+            [
+                "sagejs.rust-class-group.neutral-input/v1",
+                partition,
+                case["id"],
+                case["polynomialSha256"],
+                seed,
+            ]
+        )
+    ).hexdigest()
+    return {
+        "schema": "sagejs.rust-class-group.neutral-input/v1",
+        "inputId": f"sha256:{input_digest}",
+        "fieldId": case["id"],
+        "field": {
+            "variable": "x",
+            "coefficientsAscending": case["polynomialAscending"],
+            "degree": case["degree"],
+            "monic": True,
+            "irreducible": True,
+        },
+        "preparation": {"kind": "public-polynomial"},
+        "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+                "wallMilliseconds": "600000",
+                "memoryBytes": "4294967296",
+                "relationCandidates": "100000000",
+                "precisionBits": 4096,
+                "continuationPasses": 100,
+            },
+        },
+        "randomness": {"algorithm": "chacha20-v1", "seed": seed},
+        "containsOracleAnswers": False,
+    }
+
+
+def make_balanced_neutral_panel(
+    spec: dict[str, Any],
+    pool: dict[str, Any],
+    initial: dict[str, Any],
+    eligibility: dict[str, Any],
+) -> dict[str, Any]:
+    eligible = {
+        case["id"]: case["polynomialSha256"]
+        for case in eligibility["cases"]
+        if case["irreducible"] is True
+    }
+    candidates = [
+        case
+        for case in pool["cases"]
+        if eligible.get(case["id"]) == case["polynomialSha256"]
+    ]
+    mandatory = {
+        case["id"]: {
+            key: case[key]
+            for key in ("id", "polynomialAscending", "polynomialSha256", "degree")
+        }
+        for case in initial["cases"]
+    }
+    used_ids = set(mandatory)
+    used_digests = {case["polynomialSha256"] for case in mandatory.values()}
+    open_cases = list(mandatory.values())
+    heldout_cases: list[dict[str, Any]] = []
+    quota = spec["panel"]["degreeQuotaPerPartition"]
+    for degree in spec["selection"]["degreeOrder"]:
+        degree_candidates = [
+            case
+            for case in candidates
+            if case["degree"] == degree
+            and case["id"] not in used_ids
+            and case["polynomialSha256"] not in used_digests
+        ]
+        degree_candidates.sort(
+            key=lambda case: seeded_key(spec["selection"]["openSeed"], case["id"])
+        )
+        needed = quota[str(degree)] - sum(
+            case["degree"] == degree for case in open_cases
+        )
+        require(needed >= 0, f"too many mandatory degree-{degree} inputs")
+        chosen_open = degree_candidates[:needed]
+        require(len(chosen_open) == needed, f"not enough open degree-{degree} inputs")
+        open_cases.extend(chosen_open)
+        used_ids.update(case["id"] for case in chosen_open)
+        used_digests.update(case["polynomialSha256"] for case in chosen_open)
+
+        remaining = [
+            case
+            for case in candidates
+            if case["degree"] == degree
+            and case["id"] not in used_ids
+            and case["polynomialSha256"] not in used_digests
+        ]
+        remaining.sort(
+            key=lambda case: seeded_key(spec["selection"]["heldOutSeed"], case["id"])
+        )
+        chosen_heldout = remaining[: quota[str(degree)]]
+        require(
+            len(chosen_heldout) == quota[str(degree)],
+            f"not enough held-out degree-{degree} inputs",
+        )
+        heldout_cases.extend(chosen_heldout)
+        used_ids.update(case["id"] for case in chosen_heldout)
+        used_digests.update(case["polynomialSha256"] for case in chosen_heldout)
+
+    return {
+        "schema": "sagejs.rust-class-group/balanced-neutral-panel-v1",
+        "status": "degree-balanced-awaiting-private-oracle-selection",
+        "spec": SPEC_PATH.name,
+        "candidatePool": NEUTRAL_POOL_PATH.name,
+        "eligibilityEvidence": NEUTRAL_ELIGIBILITY_PATH.name,
+        "answerVisibility": "none",
+        "qualificationClaims": {
+            "degreeQuotasSatisfied": True,
+            "signatureQuotasSatisfied": False,
+            "timingQuotasSatisfied": False,
+            "traitQuotasSatisfied": False,
+        },
+        "partitions": {
+            "open": {
+                "cases": [
+                    neutral_runtime_input(case, "open")
+                    for case in sorted(open_cases, key=lambda case: case["id"])
+                ]
+            },
+            "heldOut": {
+                "cases": [
+                    neutral_runtime_input(case, "heldOut")
+                    for case in sorted(heldout_cases, key=lambda case: case["id"])
+                ]
+            },
+        },
+    }
+
+
+def validate_balanced_neutral_panel(
+    panel: dict[str, Any],
+    spec: dict[str, Any],
+    pool: dict[str, Any],
+    initial: dict[str, Any],
+    eligibility: dict[str, Any],
+) -> None:
+    require(
+        panel == make_balanced_neutral_panel(spec, pool, initial, eligibility),
+        "balanced neutral panel is not canonical; run emit-neutral-panel",
+    )
+    forbidden = {
+        "expected",
+        "classNumber",
+        "invariantFactors",
+        "pariPublicNanoseconds",
+        "integralBasis",
+        "relations",
+        "retrySchedule",
+        "oracleTrace",
+    }
+    serialized = canonical_output(panel)
+    for key in forbidden:
+        require(f'"{key}"' not in serialized, f"neutral panel leaks {key}")
+    all_ids: set[str] = set()
+    all_polynomials: set[str] = set()
+    quota = Counter(
+        {
+            int(key): value
+            for key, value in spec["panel"]["degreeQuotaPerPartition"].items()
+        }
+    )
+    for partition in ("open", "heldOut"):
+        cases = panel["partitions"][partition]["cases"]
+        require(len(cases) == 60, f"{partition}: expected 60 neutral inputs")
+        require(
+            Counter(case["field"]["degree"] for case in cases) == quota,
+            f"{partition}: degree quota mismatch",
+        )
+        for case in cases:
+            require(case["containsOracleAnswers"] is False, "answer flag must be false")
+            require(case["fieldId"] not in all_ids, "duplicate field ID across panel")
+            all_ids.add(case["fieldId"])
+            field_digest = polynomial_digest(case["field"]["coefficientsAscending"])
+            require(
+                field_digest not in all_polynomials, "duplicate polynomial across panel"
+            )
+            all_polynomials.add(field_digest)
+    require(
+        set(spec["selection"]["mandatoryOpenIds"])
+        <= {case["fieldId"] for case in panel["partitions"]["open"]["cases"]},
+        "open partition omits mandatory development inputs",
+    )
+
+
 def validate_candidate(
     candidate: dict[str, Any], spec: dict[str, Any], label: str
 ) -> None:
@@ -473,13 +696,20 @@ def is_within(path: Path, parent: Path) -> bool:
 
 def command_validate(_: argparse.Namespace) -> None:
     spec = load(SPEC_PATH)
+    pool = load(NEUTRAL_POOL_PATH)
+    eligibility = load(NEUTRAL_ELIGIBILITY_PATH)
+    initial = load(INITIAL_PATH)
     validate_spec(spec)
     validate_layout(load(LAYOUT_PATH), spec)
-    validate_initial(load(INITIAL_PATH), spec)
-    validate_neutral_pool(load(NEUTRAL_POOL_PATH))
+    validate_initial(initial, spec)
+    validate_neutral_pool(pool)
+    validate_neutral_eligibility(eligibility, pool)
+    validate_balanced_neutral_panel(
+        load(NEUTRAL_PANEL_PATH), spec, pool, initial, eligibility
+    )
     print(
         "validated corpus spec, 120-slot layout, 9-case initial open panel, "
-        "and 360 neutral candidate inputs"
+        "360 neutral candidate inputs, and balanced 60+60 neutral panel"
     )
 
 
@@ -494,6 +724,33 @@ def command_emit_layout(arguments: argparse.Namespace) -> None:
             f"{target}: generated layout differs",
         )
         print(f"layout is canonical: {target}")
+    else:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(rendered, encoding="utf-8")
+        print(f"wrote {target}")
+
+
+def command_emit_neutral_panel(arguments: argparse.Namespace) -> None:
+    spec = load(SPEC_PATH)
+    pool = load(NEUTRAL_POOL_PATH)
+    eligibility = load(NEUTRAL_ELIGIBILITY_PATH)
+    initial = load(INITIAL_PATH)
+    validate_spec(spec)
+    validate_initial(initial, spec)
+    validate_neutral_pool(pool)
+    validate_neutral_eligibility(eligibility, pool)
+    rendered = canonical_output(
+        make_balanced_neutral_panel(spec, pool, initial, eligibility)
+    )
+    target = (
+        Path(arguments.output).resolve() if arguments.output else NEUTRAL_PANEL_PATH
+    )
+    if arguments.check:
+        require(
+            target.exists() and target.read_text(encoding="utf-8") == rendered,
+            f"{target}: generated neutral panel differs",
+        )
+        print(f"balanced neutral panel is canonical: {target}")
     else:
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(rendered, encoding="utf-8")
@@ -619,6 +876,12 @@ def parser() -> argparse.ArgumentParser:
     emit.add_argument("--output")
     emit.add_argument("--check", action="store_true")
     emit.set_defaults(run=command_emit_layout)
+    emit_neutral = commands.add_parser(
+        "emit-neutral-panel", help="generate the balanced 60+60 neutral input panel"
+    )
+    emit_neutral.add_argument("--output")
+    emit_neutral.add_argument("--check", action="store_true")
+    emit_neutral.set_defaults(run=command_emit_neutral_panel)
     template = commands.add_parser(
         "candidate-template", help="print a private-pool example"
     )
