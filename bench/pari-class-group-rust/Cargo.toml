@@ -5,7 +5,7 @@ edition = "2024"
 publish = false
 
 [dependencies]
-rug = { version = "1.30", default-features = false, features = ["integer"] }
+rug = { version = "1.30", default-features = false, features = ["float", "integer"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 sha2 = "0.10"
@@ -14,4 +14,3 @@ sha2 = "0.10"
 codegen-units = 1
 lto = "thin"
 panic = "abort"
-

@@ -1,9 +1,14 @@
 // Copyright (C) The PARI group and Sage.js contributors.
 // GPL-2.0-or-later, without warranty.
 
+mod collector_schedule;
 mod enumeration;
 mod factor_base;
+mod ideal_arithmetic;
+mod numerical_preparation;
+mod prime_valuation;
 mod relation_cache;
+mod smooth_admission;
 
 use rug::Integer;
 use serde::Deserialize;
