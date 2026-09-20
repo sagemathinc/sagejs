@@ -1,6 +1,8 @@
 // Copyright (C) The PARI group and Sage.js contributors.
 // GPL-2.0-or-later, without warranty.
 
+mod bruteforce_collector;
+mod class_group;
 mod collector_schedule;
 mod enumeration;
 mod factor_base;
@@ -531,6 +533,155 @@ fn run_factor_base_experiment(checkpoint_path: &str) {
     );
 }
 
+fn transpose_relation_records(records: &[i64], rows: usize, columns: usize) -> Vec<i128> {
+    assert_eq!(records.len(), rows * columns);
+    let mut presentation = vec![0_i128; rows * columns];
+    for column in 0..columns {
+        for row in 0..rows {
+            presentation[row * columns + column] = i128::from(records[column * rows + row]);
+        }
+    }
+    presentation
+}
+
+fn run_class_group_experiment(checkpoint_path: &str) {
+    let checkpoint: serde_json::Value =
+        serde_json::from_slice(&fs::read(checkpoint_path).expect("cannot read phase checkpoint"))
+            .expect("invalid phase checkpoint JSON");
+    assert_eq!(
+        checkpoint["schema"].as_str().unwrap(),
+        "sagejs.pari-class-group/h1-rust-phase-checkpoints-v1"
+    );
+    let owners = &checkpoint["rustTimedInput"]["owners"];
+    let mut polynomial = [0_i64; 4];
+    let mut basis = [0_i64; 9];
+    for (target, value) in polynomial
+        .iter_mut()
+        .zip(owners["prep_polynomial"]["value"].as_array().unwrap())
+    {
+        *target = value.as_str().unwrap().parse().unwrap();
+    }
+    for (target, value) in basis
+        .iter_mut()
+        .zip(owners["prep_zk"]["value"].as_array().unwrap())
+    {
+        *target = value.as_str().unwrap().parse().unwrap();
+    }
+
+    let warm = class_group::collect_h1_class_group(polynomial, basis)
+        .expect("Rust H1 relation collector failed");
+    let rows = warm.factor_base.ideals.len();
+    let columns = warm.relations.len() / rows;
+    assert_eq!((rows, columns), (66, 73));
+    let presentation = transpose_relation_records(&warm.relations, rows, columns);
+    let mut smith = WordSmithWorkspace::new(rows, columns);
+    smith.reset_from(&presentation);
+    let diagonal = smith.smith_diagonal();
+    assert_eq!(diagonal.len(), rows);
+    assert!(diagonal.iter().all(|value| *value == 1));
+
+    let relation_text = warm
+        .relations
+        .iter()
+        .map(i64::to_string)
+        .collect::<Vec<_>>()
+        .join(",");
+    let relation_sha256 = format!("{:x}", Sha256::digest(relation_text.as_bytes()));
+    let oracle_relations =
+        json_i64_values(&checkpoint["oracleOnly"]["collectedRelations"]["records"]);
+    let presentation_matches_pari = warm.relations == oracle_relations;
+
+    let mut total_samples = Vec::with_capacity(15);
+    let mut collector_samples = Vec::with_capacity(15);
+    let mut smith_samples = Vec::with_capacity(15);
+    let mut factor_base_samples = Vec::with_capacity(15);
+    let mut initial_cache_samples = Vec::with_capacity(15);
+    let mut catalog_setup_samples = Vec::with_capacity(15);
+    let mut numerical_samples = Vec::with_capacity(15);
+    let mut enumeration_samples = Vec::with_capacity(15);
+    let mut factorization_samples = Vec::with_capacity(15);
+    let mut valuation_cache_samples = Vec::with_capacity(15);
+    for _ in 0..15 {
+        let total_started = Instant::now();
+        let answer = black_box(
+            class_group::collect_h1_class_group(polynomial, basis)
+                .expect("repeated Rust H1 relation collector failed"),
+        );
+        let collector_elapsed = total_started.elapsed().as_nanos();
+        let presentation = transpose_relation_records(&answer.relations, rows, columns);
+        let smith_started = Instant::now();
+        smith.reset_from(&presentation);
+        let repeated_diagonal = black_box(smith.smith_diagonal());
+        let smith_elapsed = smith_started.elapsed().as_nanos();
+        assert!(repeated_diagonal.iter().all(|value| *value == 1));
+        assert_eq!(answer.relations, warm.relations);
+        collector_samples.push(collector_elapsed);
+        smith_samples.push(smith_elapsed);
+        total_samples.push(total_started.elapsed().as_nanos());
+        factor_base_samples.push(answer.timings.factor_base_ns);
+        initial_cache_samples.push(answer.timings.initial_cache_ns);
+        catalog_setup_samples.push(answer.timings.catalog_setup_ns);
+        numerical_samples.push(answer.timings.numerical_preparation_ns);
+        enumeration_samples.push(answer.timings.enumeration_and_norm_ns);
+        factorization_samples.push(answer.timings.rational_factorization_ns);
+        valuation_cache_samples.push(answer.timings.prime_valuation_and_cache_ns);
+    }
+    let (total_samples, total_median) = percentile_samples(total_samples);
+    let (collector_samples, collector_median) = percentile_samples(collector_samples);
+    let (smith_samples, smith_median) = percentile_samples(smith_samples);
+    let (_, factor_base_median) = percentile_samples(factor_base_samples);
+    let (_, initial_cache_median) = percentile_samples(initial_cache_samples);
+    let (_, catalog_setup_median) = percentile_samples(catalog_setup_samples);
+    let (_, numerical_median) = percentile_samples(numerical_samples);
+    let (_, enumeration_median) = percentile_samples(enumeration_samples);
+    let (_, factorization_median) = percentile_samples(factorization_samples);
+    let (_, valuation_cache_median) = percentile_samples(valuation_cache_samples);
+
+    println!(
+        "{}",
+        serde_json::json!({
+            "schema": "sagejs.pari-class-group/h1-rust-end-to-end-result-v1",
+            "boundary": "prepared polynomial, integral basis, and authenticated H1 embedding through factor base, relation collection, and Smith class group",
+            "linksPari": false,
+            "usesOracleAsInput": false,
+            "fieldId": checkpoint["fieldId"],
+            "relationRows": rows,
+            "relationColumns": columns,
+            "classNumber": "1",
+            "invariantFactors": [],
+            "presentationMatchesPariExactly": presentation_matches_pari,
+            "presentationSha256": relation_sha256,
+            "subfactorCount": warm.subfactor_count,
+            "counters": {
+                "visitedIdeals": warm.counters.visited_ideals,
+                "cursorTrials": warm.counters.cursor_trials,
+                "primitiveNonscalarCandidates": warm.counters.primitive_nonscalar_candidates,
+                "smoothCandidates": warm.counters.smooth_candidates,
+                "appendedRelations": warm.counters.appended_relations,
+                "positiveCacheStatuses": warm.counters.positive_cache_statuses,
+            },
+            "samplesNanoseconds": {
+                "total": total_samples,
+                "collector": collector_samples,
+                "smith": smith_samples,
+            },
+            "medianNanoseconds": {
+                "total": total_median,
+                "collector": collector_median,
+                "smith": smith_median,
+                "factorBase": factor_base_median,
+                "initialCache": initial_cache_median,
+                "catalogSetup": catalog_setup_median,
+                "numericalPreparation": numerical_median,
+                "enumerationAndNorm": enumeration_median,
+                "rationalFactorization": factorization_median,
+                "primeValuationAndCache": valuation_cache_median,
+            },
+            "timingExcludes": ["JSON parsing", "oracle comparison", "result serialization"],
+        })
+    );
+}
+
 fn main() {
     let arguments = env::args().skip(1).collect::<Vec<_>>();
     if arguments
@@ -541,6 +692,16 @@ fn main() {
             .get(1)
             .expect("usage: h1-rust factor-base PHASE-CHECKPOINT.json");
         run_factor_base_experiment(checkpoint_path);
+        return;
+    }
+    if arguments
+        .first()
+        .is_some_and(|argument| argument == "class-group")
+    {
+        let checkpoint_path = arguments
+            .get(1)
+            .expect("usage: h1-rust class-group PHASE-CHECKPOINT.json");
+        run_class_group_experiment(checkpoint_path);
         return;
     }
     let checkpoint_path = arguments.first().expect("usage: h1-rust CHECKPOINT.json");

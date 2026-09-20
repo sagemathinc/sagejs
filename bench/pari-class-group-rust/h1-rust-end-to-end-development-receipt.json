@@ -1,0 +1,102 @@
+{
+  "schema": "sagejs.pari-class-group/h1-rust-end-to-end-development-receipt-v1",
+  "status": "qualified-development-result",
+  "field": "x^3 - 20018*x + 20034",
+  "boundary": "prepared polynomial and integral basis through factor-base construction, relation collection, relation-matrix transpose, and Smith class-group invariants",
+  "boundaryExcludes": [
+    "input preparation before the polynomial and integral basis",
+    "JSON parsing",
+    "oracle comparison",
+    "result serialization",
+    "unit reconstruction",
+    "regulator computation",
+    "final BNF object construction"
+  ],
+  "correctness": {
+    "classNumber": "1",
+    "invariantFactors": [],
+    "relationRows": 66,
+    "relationColumns": 73,
+    "smithRank": 66,
+    "presentationSha256": "b8709919c0927ad90071617cd1c7f518694de78f094fc0c58b4a91268a63f393",
+    "presentationMatchesPariExactly": false,
+    "presentationDifferenceExplanation": "Exact rational LLL followed by a conventional 320-bit Gram--Schmidt calculation selects a slightly different valid candidate order from PARI. The terminal collector semantics and Smith result agree.",
+    "linksPari": false,
+    "usesOracleAsComputationInput": false,
+    "counters": {
+      "visitedIdeals": 16,
+      "cursorTrials": 2022,
+      "primitiveNonscalarCandidates": 1042,
+      "smoothCandidates": 96,
+      "appendedRelations": 61,
+      "positiveCacheStatuses": 61
+    }
+  },
+  "rustTiming": {
+    "sampleCount": 15,
+    "medianNanoseconds": {
+      "total": 9992888,
+      "collector": 8737978,
+      "smith": 1255309,
+      "factorBase": 2990319,
+      "initialCache": 20680,
+      "catalogSetup": 3288759,
+      "numericalPreparation": 1372000,
+      "enumerationAndNorm": 233470,
+      "rationalFactorization": 232424,
+      "primeValuationAndCache": 420379
+    },
+    "samplesNanoseconds": {
+      "total": [9882628, 9903098, 9906698, 9922927, 9952078, 9970288, 9977708, 9992888, 10068088, 10077587, 10419007, 10868457, 10976947, 12599027, 38398662],
+      "collector": [8604718, 8627098, 8664768, 8679058, 8680288, 8709278, 8730308, 8737978, 8757778, 8759798, 8813298, 9068958, 9605698, 9715587, 11348208],
+      "smith": [1234100, 1234220, 1235860, 1238490, 1244029, 1249160, 1252030, 1255309, 1266440, 1270230, 1272490, 1277700, 1309399, 1654290, 29319184]
+    }
+  },
+  "build": {
+    "profile": "release",
+    "profileSettings": {
+      "codegenUnits": 1,
+      "lto": "thin",
+      "panic": "abort"
+    },
+    "cleanBuildSeconds": {
+      "real": 10.20,
+      "user": 25.91,
+      "system": 3.47
+    },
+    "executableBytes": {
+      "unstripped": 1433832,
+      "stripped": 1245472,
+      "elfText": 1216742,
+      "elfData": 25304,
+      "elfBss": 2028
+    },
+    "unstrippedExecutableSha256": "8cce163f703d83391041c4cdcc8ee6134638bd321812004541f5fd8aee73976a",
+    "dynamicLibraries": ["libc", "libm", "libgcc_s"],
+    "note": "GMP and MPFR are statically included through rug."
+  },
+  "environment": {
+    "os": "Linux 7.0.0-1011-gcp x86_64",
+    "cpu": "AMD EPYC 7B13",
+    "onlineCpus": 16,
+    "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+    "cargo": "cargo 1.98.1 (797e8a9bc 2026-08-05)"
+  },
+  "comparison": {
+    "pariObservedMedianNanoseconds": 10698508,
+    "pariObservedSamplesNanoseconds": [14319856, 11406357, 10698508, 11225917, 10581927, 10697457, 10671148],
+    "pariBoundaryWarning": "This PARI observation returns the H1 class number, but it is not instrumented at precisely the same internal start and stop instructions as the Rust boundary. It establishes the performance regime, not a certified speed ratio.",
+    "matchedFullPreparedFlagZeroPariMedianNanoseconds": 15028583,
+    "matchedFullPreparedFlagZeroCompiledPythonMedianNanoseconds": 2426413887,
+    "matchedFullBoundaryWarning": "The matched flag-zero experiment continues through compact p192 PRECI publication and includes downstream work outside this Rust experiment. It must not be used as a direct Rust/PARI ratio."
+  },
+  "validation": {
+    "cargoReleaseTestsIncludingIgnoredOracles": "passed",
+    "architectureCheck": "passed",
+    "wasm32Wasip1Check": {
+      "status": "blocked-by-current-dependency",
+      "reason": "gmp-mpfr-sys 1.7.1 rejects cross compilation from x86_64-unknown-linux-gnu to wasm32-wasip1 without its experimental force-cross feature",
+      "interpretation": "The Rust algorithm is not yet a portable Wasm artifact. A pure-Rust bigint/float implementation or an explicitly supported GMP/MPFR Wasm build is required."
+    }
+  }
+}
