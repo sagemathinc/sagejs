@@ -1,0 +1,679 @@
+{
+  "schema": "sagejs.rust-class-group-browser-route/v1",
+  "status": "pass",
+  "observed_at": "2026-09-20T19:26:49.271Z",
+  "repository_revision": "c4d07156194765506d137792732ba5109cd8c87e",
+  "artifact": {
+    "path": "bench/pari-class-group-rust/qualification/wasm-prepared-relation-prefix/build/prepared-relation-prefix.wasm",
+    "sha256": "385e830caeb981ef1035b8c93b37c9ee76244dd1bedafd73bb0dea4e30309c43",
+    "bytes": 698053
+  },
+  "vector": {
+    "path": "bench/pari-class-group-rust/qualification/wasm-prepared-multifield/vectors/h1-real-cubic.relation-prefix.vector.json",
+    "sha256": "37d035e0df5b644bf49a0d94771852a91280ae77c108871a16beaa33846fafb0",
+    "id": "h1-real-cubic-relation-prefix",
+    "request": {
+      "schema": "sagejs.rust-class-group/prepared-relation-prefix-request-v1",
+      "maximumVisitedIdeals": 1,
+      "maximumCandidates": 64,
+      "preparedField": {
+        "schema": "sagejs.rust-class-group.neutral-input/v1",
+        "inputId": "sha256:2d0fa668fad6c929a71eabdee7ebfb7acc1938307a41d4c1b49847cc99c7964d",
+        "fieldId": "h1-real-cubic",
+        "field": {
+          "variable": "x",
+          "coefficientsAscending": [
+            "20034",
+            "-20018",
+            "0",
+            "1"
+          ],
+          "degree": 3,
+          "monic": true,
+          "irreducible": true
+        },
+        "preparation": {
+          "kind": "neutral-prepared-field",
+          "authority": "independent-oracle",
+          "maximalOrderCertified": true,
+          "basisNumeratorsRowMajor": [
+            "1",
+            "0",
+            "0",
+            "0",
+            "1",
+            "0",
+            "-13345",
+            "2",
+            "1"
+          ],
+          "basisDenominator": "1",
+          "discriminant": "32075641032116",
+          "signature": {
+            "realPlaces": 3,
+            "complexPairs": 0
+          },
+          "multiplicationTable": [
+            [
+              [
+                {
+                  "numerator": "1",
+                  "denominator": "1"
+                },
+                {
+                  "numerator": "0",
+                  "denominator": "1"
+                },
+                {
+                  "numerator": "0",
+                  "denominator": "1"
+                }
+              ],
+              [
+                {
+                  "numerator": "0",
+                  "denominator": "1"
+                },
+                {
+                  "numerator": "1",
+                  "denominator": "1"
+                },
+                {
+                  "numerator": "0",
+                  "denominator": "1"
+                }
+              ],
+              [
+                {
+                  "numerator": "0",
+                  "denominator": "1"
+                },
+                {
+                  "numerator": "0",
+                  "denominator": "1"
+                },
+                {
+                  "numerator": "1",
+                  "denominator": "1"
+                }
+              ]
+            ],
+            [
+              [
+                {
+                  "numerator": "0",
+                  "denominator": "1"
+                },
+                {
+                  "numerator": "1",
+                  "denominator": "1"
+                },
+                {
+                  "numerator": "0",
+                  "denominator": "1"
+                }
+              ],
+              [
+                {
+                  "numerator": "13345",
+                  "denominator": "1"
+                },
+                {
+                  "numerator": "-2",
+                  "denominator": "1"
+                },
+                {
+                  "numerator": "1",
+                  "denominator": "1"
+                }
+              ],
+              [
+                {
+                  "numerator": "6656",
+                  "denominator": "1"
+                },
+                {
+                  "numerator": "6669",
+                  "denominator": "1"
+                },
+                {
+                  "numerator": "2",
+                  "denominator": "1"
+                }
+              ]
+            ],
+            [
+              [
+                {
+                  "numerator": "0",
+                  "denominator": "1"
+                },
+                {
+                  "numerator": "0",
+                  "denominator": "1"
+                },
+                {
+                  "numerator": "1",
+                  "denominator": "1"
+                }
+              ],
+              [
+                {
+                  "numerator": "6656",
+                  "denominator": "1"
+                },
+                {
+                  "numerator": "6669",
+                  "denominator": "1"
+                },
+                {
+                  "numerator": "2",
+                  "denominator": "1"
+                }
+              ],
+              [
+                {
+                  "numerator": "89024429",
+                  "denominator": "1"
+                },
+                {
+                  "numerator": "19994",
+                  "denominator": "1"
+                },
+                {
+                  "numerator": "-6668",
+                  "denominator": "1"
+                }
+              ]
+            ]
+          ],
+          "irreducibilityPrime": 5,
+          "indexPrimes": [],
+          "sourceSha256": "915f8085d7eace9f9778edcbc657083a234cdea657dfcc677a26003fde4232c4"
+        },
+        "request": {
+          "proof": "conditional-grh",
+          "output": "class-and-unit-group",
+          "mapPolicy": "construct-eagerly",
+          "unitPolicy": "compact-complete",
+          "limits": {
+            "wallMilliseconds": "60000",
+            "memoryBytes": "1073741824",
+            "relationCandidates": "1000000",
+            "precisionBits": 192,
+            "continuationPasses": 8
+          }
+        },
+        "randomness": {
+          "algorithm": "none",
+          "seed": null
+        },
+        "containsOracleAnswers": false
+      }
+    },
+    "expected": {
+      "completeRankAndSurplus": false,
+      "counters": {
+        "appendedRelations": 4,
+        "cursorTrials": 97,
+        "positiveCacheStatuses": 4,
+        "primitiveNonscalarCandidates": 57,
+        "randomIdeals": 0,
+        "randomSearchIdeals": 0,
+        "smoothCandidates": 4,
+        "visitedIdeals": 1
+      },
+      "factorBaseIdeals": 66,
+      "fieldId": "h1-real-cubic",
+      "inputId": "sha256:2d0fa668fad6c929a71eabdee7ebfb7acc1938307a41d4c1b49847cc99c7964d",
+      "limits": {
+        "maximumCandidates": 64,
+        "maximumVisitedIdeals": 1
+      },
+      "missingRank": 50,
+      "prefixSha256": "2e5106eac99f59078876bd629c66a02cf35e11e10127d3cd2e285b5c41a6bb55",
+      "relationBound": 333,
+      "residentRelationRows": 16,
+      "schema": "sagejs.rust-class-group/prepared-relation-prefix-v1",
+      "stage": "prepared-cubic-relation-prefix",
+      "status": "bounded-stage",
+      "storage": {
+        "denseRecordsBytes": 40128,
+        "fullDenseRecordsBytes": 411840,
+        "fullRelationCacheCapacity": 780,
+        "relationCacheCapacity": 76
+      }
+    }
+  },
+  "requested_engines": [
+    "chromium",
+    "firefox",
+    "webkit"
+  ],
+  "engines": [
+    {
+      "engine": "chromium",
+      "status": "pass",
+      "browser_version": "151.0.7922.34",
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36",
+      "cross_origin_isolated": false,
+      "shared_array_buffer": false,
+      "route": "rust-class-group-wasm-artifact",
+      "artifact_request_count": 1,
+      "imports": [
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "environ_get",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "environ_sizes_get",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "clock_time_get",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_close",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_prestat_get",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_prestat_dir_name",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_seek",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_write",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "proc_exit",
+          "kind": "function"
+        }
+      ],
+      "exports": [
+        {
+          "name": "memory",
+          "kind": "memory"
+        },
+        {
+          "name": "sagejs_class_group_abi_version",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_class_group_alloc",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_class_group_dealloc",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_class_group_run_json",
+          "kind": "function"
+        }
+      ],
+      "timings_ms": {
+        "page_load": 60.25670600000001,
+        "fetch": 7.799999982118607,
+        "compile": 2.5,
+        "instantiate": 0.20000001788139343,
+        "call": 36.900000005960464,
+        "call_samples": [
+          62.30000001192093,
+          38.400000005960464,
+          37.19999998807907,
+          37.69999998807907,
+          36.900000005960464,
+          36.69999998807907,
+          37.400000005960464,
+          36.79999998211861,
+          36.69999998807907,
+          36.900000005960464,
+          37,
+          36.39999997615814,
+          36.599999994039536,
+          36.400000005960464,
+          36.400000005960464
+        ]
+      },
+      "memory_pages": {
+        "before_call": 18,
+        "after_call": 22
+      },
+      "result": {
+        "schema": "sagejs.rust-class-group/prepared-relation-prefix-v1",
+        "status": "bounded-stage",
+        "stage": "prepared-cubic-relation-prefix",
+        "inputId": "sha256:2d0fa668fad6c929a71eabdee7ebfb7acc1938307a41d4c1b49847cc99c7964d",
+        "fieldId": "h1-real-cubic",
+        "limits": {
+          "maximumVisitedIdeals": 1,
+          "maximumCandidates": 64
+        },
+        "relationBound": 333,
+        "factorBaseIdeals": 66,
+        "residentRelationRows": 16,
+        "missingRank": 50,
+        "completeRankAndSurplus": false,
+        "counters": {
+          "visitedIdeals": 1,
+          "cursorTrials": 97,
+          "primitiveNonscalarCandidates": 57,
+          "smoothCandidates": 4,
+          "appendedRelations": 4,
+          "positiveCacheStatuses": 4,
+          "randomIdeals": 0,
+          "randomSearchIdeals": 0
+        },
+        "storage": {
+          "relationCacheCapacity": 76,
+          "fullRelationCacheCapacity": 780,
+          "denseRecordsBytes": 40128,
+          "fullDenseRecordsBytes": 411840
+        },
+        "prefixSha256": "2e5106eac99f59078876bd629c66a02cf35e11e10127d3cd2e285b5c41a6bb55"
+      },
+      "failure": null
+    },
+    {
+      "engine": "firefox",
+      "status": "pass",
+      "browser_version": "153.0",
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:153.0) Gecko/20100101 Firefox/153.0",
+      "cross_origin_isolated": false,
+      "shared_array_buffer": false,
+      "route": "rust-class-group-wasm-artifact",
+      "artifact_request_count": 1,
+      "imports": [
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "environ_get",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "environ_sizes_get",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "clock_time_get",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_close",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_prestat_get",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_prestat_dir_name",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_seek",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_write",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "proc_exit",
+          "kind": "function"
+        }
+      ],
+      "exports": [
+        {
+          "name": "memory",
+          "kind": "memory"
+        },
+        {
+          "name": "sagejs_class_group_abi_version",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_class_group_alloc",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_class_group_dealloc",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_class_group_run_json",
+          "kind": "function"
+        }
+      ],
+      "timings_ms": {
+        "page_load": 411.6256120000003,
+        "fetch": 34,
+        "compile": 16,
+        "instantiate": 1,
+        "call": 264,
+        "call_samples": [
+          266,
+          265,
+          265,
+          264,
+          264,
+          264,
+          264,
+          265,
+          264,
+          263,
+          263,
+          263,
+          267,
+          266,
+          263
+        ]
+      },
+      "memory_pages": {
+        "before_call": 18,
+        "after_call": 22
+      },
+      "result": {
+        "schema": "sagejs.rust-class-group/prepared-relation-prefix-v1",
+        "status": "bounded-stage",
+        "stage": "prepared-cubic-relation-prefix",
+        "inputId": "sha256:2d0fa668fad6c929a71eabdee7ebfb7acc1938307a41d4c1b49847cc99c7964d",
+        "fieldId": "h1-real-cubic",
+        "limits": {
+          "maximumVisitedIdeals": 1,
+          "maximumCandidates": 64
+        },
+        "relationBound": 333,
+        "factorBaseIdeals": 66,
+        "residentRelationRows": 16,
+        "missingRank": 50,
+        "completeRankAndSurplus": false,
+        "counters": {
+          "visitedIdeals": 1,
+          "cursorTrials": 97,
+          "primitiveNonscalarCandidates": 57,
+          "smoothCandidates": 4,
+          "appendedRelations": 4,
+          "positiveCacheStatuses": 4,
+          "randomIdeals": 0,
+          "randomSearchIdeals": 0
+        },
+        "storage": {
+          "relationCacheCapacity": 76,
+          "fullRelationCacheCapacity": 780,
+          "denseRecordsBytes": 40128,
+          "fullDenseRecordsBytes": 411840
+        },
+        "prefixSha256": "2e5106eac99f59078876bd629c66a02cf35e11e10127d3cd2e285b5c41a6bb55"
+      },
+      "failure": null
+    },
+    {
+      "engine": "webkit",
+      "status": "pass",
+      "browser_version": "26.5",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Safari/605.1.15",
+      "cross_origin_isolated": false,
+      "shared_array_buffer": false,
+      "route": "rust-class-group-wasm-artifact",
+      "artifact_request_count": 1,
+      "imports": [
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "environ_get",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "environ_sizes_get",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "clock_time_get",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_close",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_prestat_get",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_prestat_dir_name",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_seek",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_write",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "proc_exit",
+          "kind": "function"
+        }
+      ],
+      "exports": [
+        {
+          "name": "memory",
+          "kind": "memory"
+        },
+        {
+          "name": "sagejs_class_group_abi_version",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_class_group_alloc",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_class_group_dealloc",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_class_group_run_json",
+          "kind": "function"
+        }
+      ],
+      "timings_ms": {
+        "page_load": 49.03871900000013,
+        "fetch": 10,
+        "compile": 10,
+        "instantiate": 1,
+        "call": 36,
+        "call_samples": [
+          69,
+          40,
+          38,
+          37,
+          37,
+          36,
+          36,
+          36,
+          35,
+          37,
+          36,
+          36,
+          35,
+          36,
+          36
+        ]
+      },
+      "memory_pages": {
+        "before_call": 18,
+        "after_call": 22
+      },
+      "result": {
+        "schema": "sagejs.rust-class-group/prepared-relation-prefix-v1",
+        "status": "bounded-stage",
+        "stage": "prepared-cubic-relation-prefix",
+        "inputId": "sha256:2d0fa668fad6c929a71eabdee7ebfb7acc1938307a41d4c1b49847cc99c7964d",
+        "fieldId": "h1-real-cubic",
+        "limits": {
+          "maximumVisitedIdeals": 1,
+          "maximumCandidates": 64
+        },
+        "relationBound": 333,
+        "factorBaseIdeals": 66,
+        "residentRelationRows": 16,
+        "missingRank": 50,
+        "completeRankAndSurplus": false,
+        "counters": {
+          "visitedIdeals": 1,
+          "cursorTrials": 97,
+          "primitiveNonscalarCandidates": 57,
+          "smoothCandidates": 4,
+          "appendedRelations": 4,
+          "positiveCacheStatuses": 4,
+          "randomIdeals": 0,
+          "randomSearchIdeals": 0
+        },
+        "storage": {
+          "relationCacheCapacity": 76,
+          "fullRelationCacheCapacity": 780,
+          "denseRecordsBytes": 40128,
+          "fullDenseRecordsBytes": 411840
+        },
+        "prefixSha256": "2e5106eac99f59078876bd629c66a02cf35e11e10127d3cd2e285b5c41a6bb55"
+      },
+      "failure": null
+    }
+  ],
+  "failures": []
+}
