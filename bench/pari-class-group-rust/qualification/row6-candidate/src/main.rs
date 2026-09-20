@@ -1012,6 +1012,39 @@ fn small_norm_unit_kernel_for_field(
             })
         })
         .collect::<Vec<_>>();
+    let relation_lattice_records = (0..rows)
+        .map(|relation| {
+            let prime_ideal_factors = (0..columns)
+                .filter_map(|column| {
+                    let exponent = answer.relations[relation * columns + column];
+                    if exponent == 0 {
+                        return None;
+                    }
+                    assert!(
+                        exponent > 0,
+                        "an integral principal relation has a negative valuation"
+                    );
+                    Some(serde_json::json!({
+                        "factorBaseIndexZeroBased": column,
+                        "exponent": exponent,
+                    }))
+                })
+                .collect::<Vec<_>>();
+            assert!(
+                !prime_ideal_factors.is_empty(),
+                "an emitted principal relation has empty support"
+            );
+            serde_json::json!({
+                "relationIndexZeroBased": relation,
+                "integralBasisCoordinates": answer.generators
+                    [relation * 3..relation * 3 + 3]
+                    .iter()
+                    .map(Integer::to_string)
+                    .collect::<Vec<_>>(),
+                "primeIdealFactors": prime_ideal_factors,
+            })
+        })
+        .collect::<Vec<_>>();
     let mut generator_order_prime_power_hnfs = factor_power_hnfs
         .iter()
         .map(|(&(index, exponent), hnf)| {
@@ -1523,7 +1556,7 @@ fn small_norm_unit_kernel_for_field(
     println!(
         "{}",
         serde_json::json!({
-            "schema": "sagejs.rust-class-group/prepared-cubic-class-unit-v1",
+            "schema": "sagejs.rust-class-group/prepared-cubic-class-unit-v2",
             "inputId": input_id,
             "polynomialAscending": field.data().polynomial_ascending.iter().map(ToString::to_string).collect::<Vec<_>>(),
             "qualificationStatus": "grh-conditional-class-unit-index-one",
@@ -1531,6 +1564,11 @@ fn small_norm_unit_kernel_for_field(
             "usesClassGroupAnswersAsInput": false,
             "mathematicalBoundary": "replay-validated-prepared-cubic-to-complete-class-and-unit-result",
             "relations": { "rows": rows, "columns": columns },
+            "relationLatticeEvidence": {
+                "schema": "sagejs.rust-class-group/prepared-cubic-relation-lattice-v1",
+                "factorBaseCatalog": &generator_order_factor_base_catalog,
+                "relationRecords": &relation_lattice_records,
+            },
             "relationCollectionProfile": {
                 "counters": {
                     "visitedIdeals": answer.counters.visited_ideals,

@@ -420,7 +420,7 @@
             "upperMantissa": { "$ref": "#/$defs/integerString" },
             "binaryExponent": { "type": "integer" },
             "precisionBits": { "$ref": "#/$defs/positiveInteger" },
-            "containsIndependentMpfrReplay": { "const": true },
+            "containsIndependentMpfrReplay": { "type": "boolean" },
             "authority": { "const": "directed-arb-evaluation-from-exact-compact-units" }
           }
         },
