@@ -118,6 +118,24 @@ expectRejected("oracle answer injection", neutralInputId, {
   classNumber: "1",
 });
 
+const row6PreparedInput = JSON.parse(
+  fs.readFileSync(
+    path.join(
+      directory,
+      "../row6-candidate/inputs/row6-neutral-prepared-field.json",
+    ),
+    "utf8",
+  ),
+);
+expectAccepted("row-6 neutral prepared input", neutralInputId, row6PreparedInput);
+const nonIntegralTable = clone(row6PreparedInput);
+nonIntegralTable.preparation.multiplicationTable[0][0][0].denominator = "2";
+expectAccepted(
+  "schema permits exact rational structure constants",
+  neutralInputId,
+  nonIntegralTable,
+);
+
 const evidenceBinding = {
   kind: "exact-replay",
   sha256: SHA256,

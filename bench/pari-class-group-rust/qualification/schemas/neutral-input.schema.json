@@ -27,7 +27,7 @@
           "required": [
             "kind", "authority", "maximalOrderCertified", "basisNumeratorsRowMajor",
             "basisDenominator", "discriminant", "signature", "multiplicationTable",
-            "sourceSha256"
+            "irreducibilityPrime", "indexPrimes", "sourceSha256"
           ],
           "properties": {
             "kind": { "const": "neutral-prepared-field" },
@@ -61,6 +61,11 @@
                   "items": { "$ref": "common.schema.json#/$defs/rational" }
                 }
               }
+            },
+            "irreducibilityPrime": { "type": "integer", "minimum": 2, "maximum": 1000003 },
+            "indexPrimes": {
+              "type": "array",
+              "items": { "$ref": "common.schema.json#/$defs/positiveDecimal" }
             },
             "sourceSha256": { "$ref": "common.schema.json#/$defs/sha256" }
           }

@@ -78,8 +78,7 @@ impl FlintSmallSurplusClassOrder {
             return None;
         }
         Some(
-            &self.generator_coordinates
-                [generator * self.two_rank..(generator + 1) * self.two_rank],
+            &self.generator_coordinates[generator * self.two_rank..(generator + 1) * self.two_rank],
         )
     }
 
@@ -92,10 +91,7 @@ impl FlintSmallSurplusClassOrder {
             return None;
         }
         let relation_count = self.generator_count + self.dependency_rank;
-        Some(
-            &self.dependency_coefficients
-                [index * relation_count..(index + 1) * relation_count],
-        )
+        Some(&self.dependency_coefficients[index * relation_count..(index + 1) * relation_count])
     }
 
     pub fn dependencies_annihilate(&self, relations: &[i64]) -> bool {
@@ -1137,9 +1133,7 @@ mod tests {
                     .wrapping_add(1_442_695_040_888_963_407);
                 ((state >> 32) % 9) as i64 - 4
             };
-            let square = (0..size * size)
-                .map(|_| next_entry())
-                .collect::<Vec<_>>();
+            let square = (0..size * size).map(|_| next_entry()).collect::<Vec<_>>();
             let surplus = (0..surplus_rows * size)
                 .map(|_| next_entry())
                 .collect::<Vec<_>>();

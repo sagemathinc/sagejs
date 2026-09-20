@@ -467,6 +467,33 @@ unconditional certification, and the public polynomial-to-result route remain
 required; this prepared-field diagnostic does not authorize production
 dispatch.
 
+## 2026-09-20 neutral prepared-field ingress
+
+The complete engine now also accepts the qualification suite's answer-free
+`neutral-prepared-field` JSON contract. JSON parsing alone confers no trust:
+the Rust ingress replays the cubic irreducibility witness, rational integral
+basis, equation-order index and its complete prime support, discriminant,
+signature, and all 27 multiplication-table structure constants before it can
+construct a `ValidatedPreparedCubic`. Nonintegral structure constants and
+tampered discriminants have focused rejection tests. The contract carries no
+class number, relations, units, regulator, or class map.
+
+Running the entire row-6 computation from
+`inputs/row6-neutral-prepared-field.json` again returns the exact conditional
+`C2 x C2` class group, complete map, fundamental compact units, rigorous
+regulator enclosure, and analytic class/unit index one. Its first measured
+total was 7.583400901 seconds. After deleting timing fields and the transport
+input identifier, the complete output has SHA-256
+`ba0900d4856e54b08a18ce2707f66092dfe1db3edd99ff302cda81d1eb27dd5d`;
+the legacy compiled-fixture route has the identical digest.
+
+This closes the compiled-in-row-6 dependency for the prepared-field engine.
+It does not close public completeness: the checked-in preparation is still
+marked as coming from an independent preparation authority. The next boundary
+is a Sage.js-certified polynomial-to-prepared-field adapter, followed by the
+same replay validation and a multi-field differential corpus. The compact
+evidence is `results/neutral-prepared-input-replay.json`.
+
 ## 2026-09-20 multiplier continuation control
 
 PARI 2.17.4 interleaves deterministic `P_0^e P_j` small-norm passes with

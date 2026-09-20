@@ -31,6 +31,7 @@ mod pari_random;
 mod prepared;
 mod prepared_factor_base;
 mod prepared_ideal;
+mod prepared_input;
 mod prime_valuation;
 mod relation_cache;
 mod smith;
@@ -96,6 +97,9 @@ pub use prepared_factor_base::{
 };
 pub use prepared_ideal::{
     CubicIdeal, DegreeOnePrimeCharacter, PreparedIdealError, PreparedIdealWorkspace,
+};
+pub use prepared_input::{
+    NeutralPreparedCubicInput, PreparedCubicInputError, parse_neutral_prepared_cubic_json,
 };
 pub use smith::{SmithError, WordSmithWorkspace, transpose_relation_records};
 pub use unit_lattice::{

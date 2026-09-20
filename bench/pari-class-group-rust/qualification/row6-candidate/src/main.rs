@@ -17,11 +17,12 @@ use sagejs_pari_class_group_rust_experiment::{
     flint_incremental_hnf, flint_small_surplus_class_order,
     flint_smith_candidate, flint_smith_class_map, flint_staged_relation_witnesses,
     modular_independent_relation_rows,
+    parse_neutral_prepared_cubic_json,
     prepared_cubic_factor_base, prepared_cubic_splitting_records,
     prepared_maximal_cubic_factor_base,
     reconstruct_rank_two_unit_lattice,
 };
-use std::env;
+use std::{env, fs};
 use std::time::Instant;
 
 #[path = "../../../src/relation_cache.rs"]
@@ -692,7 +693,20 @@ fn small_norm_order_witnesses(maximum_ideals: usize, maximum_candidates: usize) 
 }
 
 fn small_norm_unit_kernel(maximum_ideals: usize, maximum_candidates: usize) {
-    let field = maximal_order();
+    small_norm_unit_kernel_for_field(
+        maximal_order(),
+        "compiled-row6-fixture",
+        maximum_ideals,
+        maximum_candidates,
+    );
+}
+
+fn small_norm_unit_kernel_for_field(
+    field: ValidatedPreparedCubic,
+    input_id: &str,
+    maximum_ideals: usize,
+    maximum_candidates: usize,
+) {
     let total_started = Instant::now();
     let answer = collect_prepared_cubic_relations(
         &field,
@@ -948,10 +962,25 @@ fn small_norm_unit_kernel(maximum_ideals: usize, maximum_candidates: usize) {
     cross *= &fundamental_logs[1][0];
     replayed_regulator -= cross;
     replayed_regulator.abs_mut();
+    let polynomial = std::array::from_fn(|index| {
+        field.data().polynomial_ascending[index]
+            .to_i64()
+            .expect("compact regulator currently requires i64 polynomial coefficients")
+    });
+    let basis_numerators = std::array::from_fn(|index| {
+        field.data().integral_basis_numerators[index]
+            .to_i64()
+            .expect("compact regulator currently requires i64 basis numerators")
+    });
+    let basis_denominator = field
+        .data()
+        .basis_denominator
+        .to_u64()
+        .expect("compact regulator currently requires a u64 basis denominator");
     let rigorous_regulator = flint_compact_cubic_regulator(
-        POLYNOMIAL,
-        MAXIMAL_ORDER_BASIS_NUMERATORS,
-        3,
+        polynomial,
+        basis_numerators,
+        basis_denominator,
         &answer.generators,
         &fundamental_exponents,
         LOG_PRECISION,
@@ -1072,6 +1101,8 @@ fn small_norm_unit_kernel(maximum_ideals: usize, maximum_candidates: usize) {
         "{}",
         serde_json::json!({
             "schema": "sagejs.rust-class-group/row6-saturated-relation-kernel-v1",
+            "inputId": input_id,
+            "polynomialAscending": field.data().polynomial_ascending.iter().map(ToString::to_string).collect::<Vec<_>>(),
             "qualificationStatus": "grh-conditional-class-unit-index-one",
             "usesOracleAsInput": false,
             "relations": { "rows": rows, "columns": columns },
@@ -1447,6 +1478,36 @@ fn main() {
             arguments
                 .get(2)
                 .expect("usage: row6-candidate small-norm-order-witnesses IDEALS CANDIDATES")
+                .parse()
+                .expect("candidates must be an integer"),
+        );
+        return;
+    }
+    if arguments
+        .first()
+        .is_some_and(|value| value == "small-norm-unit-kernel-prepared")
+    {
+        let path = arguments.get(1).expect(
+            "usage: row6-candidate small-norm-unit-kernel-prepared INPUT IDEALS CANDIDATES",
+        );
+        let source = fs::read_to_string(path).expect("failed to read neutral prepared-field input");
+        let prepared = parse_neutral_prepared_cubic_json(&source)
+            .expect("neutral prepared-field input failed exact replay validation");
+        small_norm_unit_kernel_for_field(
+            prepared.field,
+            &prepared.input_id,
+            arguments
+                .get(2)
+                .expect(
+                    "usage: row6-candidate small-norm-unit-kernel-prepared INPUT IDEALS CANDIDATES",
+                )
+                .parse()
+                .expect("ideals must be an integer"),
+            arguments
+                .get(3)
+                .expect(
+                    "usage: row6-candidate small-norm-unit-kernel-prepared INPUT IDEALS CANDIDATES",
+                )
                 .parse()
                 .expect("candidates must be an integer"),
         );

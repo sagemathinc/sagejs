@@ -125,8 +125,7 @@ impl PreparedFactorBase {
                     field,
                     &self.exact_ideals[index],
                     element,
-                    u32::try_from(cap)
-                        .map_err(|_| PreparedFactorBaseError::ValuationOutsideI64)?,
+                    u32::try_from(cap).map_err(|_| PreparedFactorBaseError::ValuationOutsideI64)?,
                 )? as usize;
                 let quotient = full.checked_sub(known).ok_or(
                     PreparedFactorBaseError::NormValuationMismatch {
