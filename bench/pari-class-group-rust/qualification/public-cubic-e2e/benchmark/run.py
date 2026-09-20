@@ -74,7 +74,6 @@ def source_closure() -> dict[str, Any]:
         ROOT_CRATE / "Cargo.toml",
         ROOT_CRATE / "Cargo.lock",
         ROOT_CRATE / "build.rs",
-        HERE / ".gitignore",
         HERE / "README.md",
         HERE / "panel.json",
         HERE / "run.py",
