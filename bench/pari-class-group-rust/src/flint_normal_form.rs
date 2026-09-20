@@ -69,10 +69,20 @@ pub struct FlintSmallSurplusClassOrder {
     /// constructed while computing the small-surplus quotient.
     pub dependency_coefficients: Vec<Integer>,
     pub dependency_rank: usize,
+    pub ordering: FlintSmallSurplusOrdering,
+    pub ordering_ns: u64,
+    pub ordering_initial_nonzeros: usize,
+    pub ordering_symbolic_fill: usize,
     pub determinant_bits: usize,
     pub determinant_ns: u64,
     pub solve_ns: u64,
     pub kernel_ns: u64,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum FlintSmallSurplusOrdering {
+    Natural,
+    StaticMinimumDegree,
 }
 
 #[derive(Debug)]
@@ -283,12 +293,16 @@ unsafe extern "C" {
         surplus_entries: *const c_longlong,
         class_order: *mut c_void,
         square_determinant: *mut c_void,
+        static_ordering: c_int,
         two_rank: *mut usize,
         class_coordinates: *mut u8,
         class_coordinate_capacity: usize,
         dependency_entries: *const *mut c_void,
         dependency_capacity: usize,
         determinant_bits: *mut usize,
+        ordering_ns: *mut u64,
+        ordering_initial_nonzeros: *mut usize,
+        ordering_symbolic_fill: *mut usize,
         determinant_ns: *mut u64,
         solve_ns: *mut u64,
         kernel_ns: *mut u64,
@@ -414,8 +428,14 @@ pub fn flint_small_surplus_class_order(
     surplus_entries: &[i64],
     size: usize,
 ) -> Result<FlintSmallSurplusClassOrder, FlintNormalFormError> {
-    flint_small_surplus_class_order_impl(square_entries, surplus_entries, size, false)
-        .map(|(answer, _workspace)| answer)
+    flint_small_surplus_class_order_impl(
+        square_entries,
+        surplus_entries,
+        size,
+        false,
+        FlintSmallSurplusOrdering::Natural,
+    )
+    .map(|(answer, _workspace)| answer)
 }
 
 /// Compute the exact class order and retain its fraction-free square
@@ -425,11 +445,68 @@ pub fn flint_small_surplus_class_order_with_workspace(
     surplus_entries: &[i64],
     size: usize,
 ) -> Result<(FlintSmallSurplusClassOrder, FlintSmallSurplusWorkspace), FlintNormalFormError> {
-    let (answer, workspace) =
-        flint_small_surplus_class_order_impl(square_entries, surplus_entries, size, true)?;
+    match flint_small_surplus_class_order_impl(
+        square_entries,
+        surplus_entries,
+        size,
+        true,
+        FlintSmallSurplusOrdering::StaticMinimumDegree,
+    ) {
+        Ok((answer, workspace)) => Ok((
+            answer,
+            workspace.expect("the retained ordered workspace was not returned"),
+        )),
+        Err(FlintNormalFormError::ForeignFailure(-10)) => {
+            flint_small_surplus_class_order_with_workspace_natural_order(
+                square_entries,
+                surplus_entries,
+                size,
+            )
+        }
+        Err(error) => Err(error),
+    }
+}
+
+/// Qualification-only natural-order control for differential replay.  The
+/// ordinary retained-workspace API first attempts the deterministic static
+/// ordering and falls back here atomically if its structural planner cannot
+/// produce a complete order.
+pub fn flint_small_surplus_class_order_with_workspace_natural_order(
+    square_entries: &[i64],
+    surplus_entries: &[i64],
+    size: usize,
+) -> Result<(FlintSmallSurplusClassOrder, FlintSmallSurplusWorkspace), FlintNormalFormError> {
+    let (answer, workspace) = flint_small_surplus_class_order_impl(
+        square_entries,
+        surplus_entries,
+        size,
+        true,
+        FlintSmallSurplusOrdering::Natural,
+    )?;
     Ok((
         answer,
         workspace.expect("the retained workspace was not returned"),
+    ))
+}
+
+/// Force static minimum-degree/Markowitz ordering for qualification and
+/// differential replay.  Unlike the ordinary retained-workspace entrypoint,
+/// this reports a structural-planning failure instead of falling back.
+pub fn flint_small_surplus_class_order_with_workspace_static_minimum_degree(
+    square_entries: &[i64],
+    surplus_entries: &[i64],
+    size: usize,
+) -> Result<(FlintSmallSurplusClassOrder, FlintSmallSurplusWorkspace), FlintNormalFormError> {
+    let (answer, workspace) = flint_small_surplus_class_order_impl(
+        square_entries,
+        surplus_entries,
+        size,
+        true,
+        FlintSmallSurplusOrdering::StaticMinimumDegree,
+    )?;
+    Ok((
+        answer,
+        workspace.expect("the retained ordered workspace was not returned"),
     ))
 }
 
@@ -438,6 +515,7 @@ fn flint_small_surplus_class_order_impl(
     surplus_entries: &[i64],
     size: usize,
     retain_workspace: bool,
+    ordering: FlintSmallSurplusOrdering,
 ) -> Result<
     (
         FlintSmallSurplusClassOrder,
@@ -466,6 +544,9 @@ fn flint_small_surplus_class_order_impl(
         .map(|value| value.as_raw_mut().cast::<c_void>())
         .collect::<Vec<_>>();
     let mut determinant_bits = 0_usize;
+    let mut ordering_ns = 0_u64;
+    let mut ordering_initial_nonzeros = 0_usize;
+    let mut ordering_symbolic_fill = 0_usize;
     let mut determinant_ns = 0_u64;
     let mut solve_ns = 0_u64;
     let mut kernel_ns = 0_u64;
@@ -478,12 +559,16 @@ fn flint_small_surplus_class_order_impl(
             surplus_entries.as_ptr().cast(),
             class_order.as_raw_mut().cast(),
             square_determinant.as_raw_mut().cast(),
+            i32::from(ordering == FlintSmallSurplusOrdering::StaticMinimumDegree),
             &mut two_rank,
             generator_coordinates.as_mut_ptr(),
             generator_coordinates.len(),
             dependency_pointers.as_ptr(),
             dependency_pointers.len(),
             &mut determinant_bits,
+            &mut ordering_ns,
+            &mut ordering_initial_nonzeros,
+            &mut ordering_symbolic_fill,
             &mut determinant_ns,
             &mut solve_ns,
             &mut kernel_ns,
@@ -512,6 +597,10 @@ fn flint_small_surplus_class_order_impl(
                     generator_coordinates,
                     dependency_coefficients,
                     dependency_rank: surplus_rows,
+                    ordering,
+                    ordering_ns,
+                    ordering_initial_nonzeros,
+                    ordering_symbolic_fill,
                     determinant_bits,
                     determinant_ns,
                     solve_ns,
@@ -1450,6 +1539,138 @@ mod tests {
         assert_eq!(class_order.class_order, 6);
         assert_eq!(reused.coefficients, standalone.coefficients);
         assert_eq!(reused.nonzero_counts, standalone.nonzero_counts);
+    }
+
+    #[test]
+    fn static_minimum_degree_workspace_preserves_exact_witnesses() {
+        let square = [2, 0, 0, 6];
+        let surplus = [0, 4];
+        let targets = [2, 6];
+        let (ordered, workspace) =
+            flint_small_surplus_class_order_with_workspace_static_minimum_degree(
+                &square, &surplus, 2,
+            )
+            .unwrap();
+        let natural = flint_small_surplus_class_order(&square, &surplus, 2).unwrap();
+        let witnesses = workspace.relation_witnesses(&targets).unwrap();
+        assert_eq!(ordered.class_order, natural.class_order);
+        assert_eq!(ordered.square_determinant, natural.square_determinant);
+        assert_eq!(
+            ordered.dependency_coefficients,
+            natural.dependency_coefficients
+        );
+        assert_eq!(
+            ordered.ordering,
+            FlintSmallSurplusOrdering::StaticMinimumDegree
+        );
+        assert_eq!(ordered.ordering_initial_nonzeros, 2);
+        let relations = [2, 0, 0, 6, 0, 4];
+        for column in 0..2 {
+            let mut replay = Integer::from(0);
+            for row in 0..3 {
+                replay += &witnesses.coefficients[row] * relations[row * 2 + column];
+            }
+            assert_eq!(replay, targets[column]);
+        }
+    }
+
+    #[test]
+    fn nonidentity_ordering_preserves_negative_determinant_and_witnesses() {
+        // The transpose is the same permutation matrix.  Its static planner
+        // chooses columns [1, 0, 2], while det(A) = -1 before normalization.
+        let square = [0, 1, 0, 1, 0, 0, 0, 0, 1];
+        let surplus = [1, 1, 1];
+        let targets = [3, -2, 5, -7, 11, 13];
+        let (ordered, ordered_workspace) =
+            flint_small_surplus_class_order_with_workspace_static_minimum_degree(
+                &square, &surplus, 3,
+            )
+            .unwrap();
+        let (natural, natural_workspace) =
+            flint_small_surplus_class_order_with_workspace_natural_order(&square, &surplus, 3)
+                .unwrap();
+        assert_eq!(
+            ordered.ordering,
+            FlintSmallSurplusOrdering::StaticMinimumDegree
+        );
+        assert_eq!(ordered.square_determinant, 1);
+        assert_eq!(ordered.class_order, natural.class_order);
+        assert_eq!(ordered.square_determinant, natural.square_determinant);
+        assert_eq!(ordered.two_rank, natural.two_rank);
+        assert_eq!(ordered.generator_coordinates, natural.generator_coordinates);
+        assert_eq!(
+            ordered.dependency_coefficients,
+            natural.dependency_coefficients
+        );
+        let ordered_witnesses = ordered_workspace.relation_witnesses(&targets).unwrap();
+        let natural_witnesses = natural_workspace.relation_witnesses(&targets).unwrap();
+        assert_eq!(
+            ordered_witnesses.coefficients,
+            natural_witnesses.coefficients
+        );
+        assert_eq!(
+            ordered_witnesses.nonzero_counts,
+            natural_witnesses.nonzero_counts
+        );
+    }
+
+    #[test]
+    fn retained_workspace_falls_back_atomically_when_static_planning_fails() {
+        // Its transpose has a perfect matching, but the deterministic greedy
+        // planner selects an edge that leaves no complete structural order.
+        let square = [
+            0, 1, 0, 0, 1, 0, //
+            0, 1, 1, 1, 0, 0, //
+            0, 1, 1, 0, 1, 1, //
+            1, 0, 0, 1, 0, 0, //
+            1, 0, 0, 0, 0, 1, //
+            0, 0, 0, 0, 0, 1,
+        ];
+        let surplus = [0; 6];
+        assert_eq!(
+            flint_small_surplus_class_order_with_workspace_static_minimum_degree(
+                &square, &surplus, 6,
+            )
+            .unwrap_err(),
+            FlintNormalFormError::ForeignFailure(-10),
+        );
+        let (automatic, automatic_workspace) =
+            flint_small_surplus_class_order_with_workspace(&square, &surplus, 6).unwrap();
+        let (natural, natural_workspace) =
+            flint_small_surplus_class_order_with_workspace_natural_order(&square, &surplus, 6)
+                .unwrap();
+        assert_eq!(automatic.ordering, FlintSmallSurplusOrdering::Natural);
+        assert_eq!(automatic.class_order, natural.class_order);
+        assert_eq!(automatic.square_determinant, natural.square_determinant);
+        assert_eq!(automatic.two_rank, natural.two_rank);
+        assert_eq!(
+            automatic.generator_coordinates,
+            natural.generator_coordinates
+        );
+        assert_eq!(
+            automatic.dependency_coefficients,
+            natural.dependency_coefficients
+        );
+        let automatic_witnesses = automatic_workspace
+            .relation_witnesses(&square[..6])
+            .unwrap();
+        let natural_witnesses = natural_workspace.relation_witnesses(&square[..6]).unwrap();
+        assert_eq!(
+            automatic_witnesses.coefficients,
+            natural_witnesses.coefficients
+        );
+        assert_eq!(
+            automatic_witnesses.relation_count,
+            natural_witnesses.relation_count
+        );
+        assert_eq!(
+            automatic_witnesses.target_count,
+            natural_witnesses.target_count
+        );
+        assert_eq!(
+            automatic_witnesses.nonzero_counts,
+            natural_witnesses.nonzero_counts
+        );
     }
 
     #[test]

@@ -20,6 +20,50 @@ surplus rows enlarge `row(A)` by index `K`. The certificate therefore avoids
 enumerating 1130-row minors of `R`; it does not infer saturation from replay or
 rank alone.
 
+## Static minimum-degree ordering
+
+The explicit forced-ordering diagnostic command
+
+```sh
+cargo run --release \
+  -- small-norm-unit-kernel-prepared-static-ordering \
+  inputs/row6-neutral-prepared-field.json 2000 600000
+```
+
+applies a deterministic static minimum-degree/Markowitz row-and-column
+ordering to the retained square presentation before the existing exact FLINT
+FFLU.  If `row_order[new] = old` and `column_order[new] = old`, the bridge
+factors `S' = P S Q^T`, solves `S' X' = P B`, and restores `X = Q^T X'`.
+Thus determinant magnitude, dependency witnesses, standard-generator lifts,
+and the compact class map retain their original coordinate conventions.
+
+On row 6, five quiet alternating baseline/ordered pairs gave a median
+3.397315184-second baseline determinant and a median 5.522569-millisecond
+planner plus 0.634013322-second ordered determinant.  The combined ordered
+median was 0.639535891 seconds, an 81.18% reduction.  Peak sampled RSS did not
+increase (115,228 KiB baseline versus 113,144 KiB ordered).  All ten runs
+emitted the same compact-certificate digest, including exact `D`, `K`, replay,
+and quotient evidence.  The fixed input has 7,090 initial nonzeros and the
+planner predicts 104,707 symbolic nonzeros after fill.  The structured receipt
+is `results/static-minimum-degree-ordering-experiment.json`.
+
+The ordinary retained-workspace route now selects this ordering
+deterministically.  If structural planning cannot produce a complete order,
+it discards that attempt and recomputes using natural ordering before
+publishing any result or workspace.  The command
+`small-norm-unit-kernel-prepared-natural-ordering` remains an explicit
+differential control.  Small presentations that do not enter the retained
+workspace continue on their existing eager path.
+
+The promotion replay examined every checked-in neutral prepared cubic.  The
+complex cubic of discriminant `-23`, H1, and row 1 remain on the eager path;
+row 6 is the only input that enters the retained workspace.  Three fresh
+alternating default/natural pairs gave median end-to-end times of 5.238 and
+8.087 seconds respectively, with byte-identical compact certificates in all
+six runs.  The exact replay, ordering provenance, memory samples, and source
+hashes are recorded in
+`results/static-minimum-degree-ordering-promotion.json`.
+
 This is an answer-free, candidate-only timing probe for
 `x^3 - 2000000000010*x + 2000000000018`. It exercises the existing Rust
 coefficient-box collector with bounded two-minute checkpoints and records

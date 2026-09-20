@@ -393,12 +393,222 @@ int sagejs_rust_flint_incremental_hnf_i64(
     return status;
 }
 
+/* Qualification-only static sparsity ordering.  row_order[new] and
+ * column_order[new] name old indices, so the factored matrix is
+ * S' = P S Q^T.  The planner greedily removes a minimum-degree active row and
+ * then its minimum-Markowitz active neighbour.  Symbolic fill is measured for
+ * that fixed order; numerical pivoting remains FLINT's responsibility. */
+static int sagejs_rust_static_minimum_degree_order(
+    const fmpz_mat_t matrix, size_t size, size_t *row_order,
+    size_t *column_order, size_t *initial_nonzeros, size_t *symbolic_fill)
+{
+    if (size == 0 || size > SIZE_MAX - 63 ||
+        size > SIZE_MAX / sizeof(size_t) - 1)
+        return 0;
+    size_t nonzeros = 0;
+    for (size_t row = 0; row < size; row++)
+        for (size_t column = 0; column < size; column++)
+            nonzeros += !fmpz_is_zero(fmpz_mat_entry(matrix,
+                (slong) row, (slong) column));
+    if (nonzeros == 0 || nonzeros > SIZE_MAX / sizeof(size_t))
+        return 0;
+    size_t *row_offsets = flint_calloc(size + 1, sizeof(size_t));
+    size_t *column_offsets = flint_calloc(size + 1, sizeof(size_t));
+    size_t *row_columns = flint_malloc(nonzeros * sizeof(size_t));
+    size_t *column_rows = flint_malloc(nonzeros * sizeof(size_t));
+    size_t *row_degree = flint_calloc(size, sizeof(size_t));
+    size_t *column_degree = flint_calloc(size, sizeof(size_t));
+    uint8_t *active_rows = flint_malloc(size);
+    uint8_t *active_columns = flint_malloc(size);
+    size_t *inverse_columns = flint_malloc(size * sizeof(size_t));
+    int status = row_offsets != NULL && column_offsets != NULL &&
+        row_columns != NULL && column_rows != NULL && row_degree != NULL &&
+        column_degree != NULL && active_rows != NULL &&
+        active_columns != NULL && inverse_columns != NULL;
+    if (!status)
+        goto cleanup;
+
+    for (size_t row = 0; row < size; row++)
+        for (size_t column = 0; column < size; column++)
+            if (!fmpz_is_zero(fmpz_mat_entry(matrix,
+                    (slong) row, (slong) column)))
+            {
+                row_offsets[row + 1]++;
+                column_offsets[column + 1]++;
+            }
+    for (size_t index = 0; index < size; index++)
+    {
+        row_offsets[index + 1] += row_offsets[index];
+        column_offsets[index + 1] += column_offsets[index];
+        row_degree[index] = row_offsets[index + 1] - row_offsets[index];
+        column_degree[index] =
+            column_offsets[index + 1] - column_offsets[index];
+        active_rows[index] = 1;
+        active_columns[index] = 1;
+    }
+    size_t *row_cursor = flint_malloc(size * sizeof(size_t));
+    size_t *column_cursor = flint_malloc(size * sizeof(size_t));
+    if (row_cursor == NULL || column_cursor == NULL)
+    {
+        flint_free(column_cursor);
+        flint_free(row_cursor);
+        status = 0;
+        goto cleanup;
+    }
+    memcpy(row_cursor, row_offsets, size * sizeof(size_t));
+    memcpy(column_cursor, column_offsets, size * sizeof(size_t));
+    for (size_t row = 0; row < size; row++)
+        for (size_t column = 0; column < size; column++)
+            if (!fmpz_is_zero(fmpz_mat_entry(matrix,
+                    (slong) row, (slong) column)))
+            {
+                row_columns[row_cursor[row]++] = column;
+                column_rows[column_cursor[column]++] = row;
+            }
+    flint_free(column_cursor);
+    flint_free(row_cursor);
+
+    for (size_t step = 0; step < size; step++)
+    {
+        size_t selected_row = size;
+        for (size_t row = 0; row < size; row++)
+            if (active_rows[row] && row_degree[row] != 0 &&
+                (selected_row == size || row_degree[row] < row_degree[selected_row]))
+                selected_row = row;
+        if (selected_row == size)
+        {
+            status = 0;
+            goto cleanup;
+        }
+        size_t selected_column = size;
+        size_t selected_score = SIZE_MAX;
+        for (size_t offset = row_offsets[selected_row];
+             offset < row_offsets[selected_row + 1]; offset++)
+        {
+            const size_t column = row_columns[offset];
+            if (!active_columns[column])
+                continue;
+            const size_t left = row_degree[selected_row] - 1;
+            const size_t right = column_degree[column] - 1;
+            const size_t score = left != 0 && right > SIZE_MAX / left
+                ? SIZE_MAX : left * right;
+            if (selected_column == size || score < selected_score ||
+                (score == selected_score &&
+                    (column_degree[column] < column_degree[selected_column] ||
+                     (column_degree[column] == column_degree[selected_column] &&
+                         column < selected_column))))
+            {
+                selected_column = column;
+                selected_score = score;
+            }
+        }
+        if (selected_column == size)
+        {
+            status = 0;
+            goto cleanup;
+        }
+        row_order[step] = selected_row;
+        column_order[step] = selected_column;
+        active_rows[selected_row] = 0;
+        active_columns[selected_column] = 0;
+        for (size_t offset = row_offsets[selected_row];
+             offset < row_offsets[selected_row + 1]; offset++)
+        {
+            const size_t column = row_columns[offset];
+            if (active_columns[column] && column_degree[column] != 0)
+                column_degree[column]--;
+        }
+        for (size_t offset = column_offsets[selected_column];
+             offset < column_offsets[selected_column + 1]; offset++)
+        {
+            const size_t row = column_rows[offset];
+            if (active_rows[row] && row_degree[row] != 0)
+                row_degree[row]--;
+        }
+    }
+
+    const size_t words = (size + 63) / 64;
+    if (words == 0 || size > SIZE_MAX / words ||
+        size * words > SIZE_MAX / sizeof(uint64_t))
+    {
+        status = 0;
+        goto cleanup;
+    }
+    uint64_t *pattern = flint_calloc(size * words, sizeof(uint64_t));
+    if (pattern == NULL)
+    {
+        status = 0;
+        goto cleanup;
+    }
+    for (size_t column = 0; column < size; column++)
+        inverse_columns[column_order[column]] = column;
+    for (size_t row = 0; row < size; row++)
+    {
+        const size_t old_row = row_order[row];
+        for (size_t offset = row_offsets[old_row];
+             offset < row_offsets[old_row + 1]; offset++)
+        {
+            const size_t column = inverse_columns[row_columns[offset]];
+            pattern[row * words + column / 64] |=
+                UINT64_C(1) << (column % 64);
+        }
+    }
+    size_t fill = 0;
+    for (size_t pivot = 0; pivot < size; pivot++)
+    {
+        if ((pattern[pivot * words + pivot / 64] &
+                (UINT64_C(1) << (pivot % 64))) == 0)
+        {
+            status = 0;
+            break;
+        }
+        for (size_t row = pivot + 1; row < size; row++)
+        {
+            if ((pattern[row * words + pivot / 64] &
+                    (UINT64_C(1) << (pivot % 64))) == 0)
+                continue;
+            for (size_t word = pivot / 64; word < words; word++)
+            {
+                uint64_t pivot_bits = pattern[pivot * words + word];
+                if (word == pivot / 64)
+                {
+                    const size_t retained_from = (pivot % 64) + 1;
+                    pivot_bits = retained_from == 64 ? 0
+                        : pivot_bits & ~((UINT64_C(1) << retained_from) - 1);
+                }
+                const uint64_t before = pattern[row * words + word];
+                const uint64_t added = pivot_bits & ~before;
+                fill += (size_t) __builtin_popcountll(added);
+                pattern[row * words + word] = before | pivot_bits;
+            }
+        }
+    }
+    flint_free(pattern);
+    *initial_nonzeros = nonzeros;
+    *symbolic_fill = fill;
+
+cleanup:
+    flint_free(inverse_columns);
+    flint_free(active_columns);
+    flint_free(active_rows);
+    flint_free(column_degree);
+    flint_free(row_degree);
+    flint_free(column_rows);
+    flint_free(row_columns);
+    flint_free(column_offsets);
+    flint_free(row_offsets);
+    return status;
+}
+
 typedef struct
 {
     size_t size;
     fmpz_mat_t fflu;
     fmpz_t determinant;
     slong *permutation;
+    size_t *row_order;
+    size_t *column_order;
+    int static_ordering;
     int determinant_sign;
 } sagejs_rust_small_surplus_workspace;
 
@@ -410,6 +620,8 @@ void sagejs_rust_flint_small_surplus_workspace_free(void *opaque)
     fmpz_mat_clear(workspace->fflu);
     fmpz_clear(workspace->determinant);
     flint_free(workspace->permutation);
+    flint_free(workspace->column_order);
+    flint_free(workspace->row_order);
     flint_free(workspace);
     flint_cleanup();
 }
@@ -418,18 +630,24 @@ int sagejs_rust_flint_small_surplus_class_order_i64(
     size_t size, size_t surplus_rows, const int64_t *square_entries,
     const int64_t *surplus_entries, mpz_ptr class_order,
     mpz_ptr square_determinant,
+    int static_ordering,
     size_t *two_rank, uint8_t *class_coordinates,
     size_t class_coordinate_capacity, mpz_ptr const *dependency_entries,
     size_t dependency_capacity, size_t *determinant_bits,
-    uint64_t *determinant_ns, uint64_t *solve_ns, uint64_t *kernel_ns,
+    uint64_t *ordering_ns, size_t *ordering_initial_nonzeros,
+    size_t *ordering_symbolic_fill, uint64_t *determinant_ns,
+    uint64_t *solve_ns, uint64_t *kernel_ns,
     void **workspace_output)
 {
     if (size == 0 || surplus_rows == 0 || square_entries == NULL ||
         surplus_entries == NULL || class_order == NULL ||
-        square_determinant == NULL || two_rank == NULL ||
+        square_determinant == NULL || (static_ordering != 0 && static_ordering != 1) ||
+        two_rank == NULL ||
         class_coordinates == NULL ||
         dependency_entries == NULL ||
-        determinant_bits == NULL || determinant_ns == NULL ||
+        determinant_bits == NULL || ordering_ns == NULL ||
+        ordering_initial_nonzeros == NULL || ordering_symbolic_fill == NULL ||
+        determinant_ns == NULL ||
         solve_ns == NULL || kernel_ns == NULL || size > LONG_MAX ||
         surplus_rows > LONG_MAX || surplus_rows > SIZE_MAX - size ||
         size > SIZE_MAX / size || surplus_rows > SIZE_MAX / size ||
@@ -447,6 +665,12 @@ int sagejs_rust_flint_small_surplus_class_order_i64(
     fmpz_mat_init(square_transpose, (slong) size, (slong) size);
     fmpz_mat_init(surplus_transpose, (slong) size, (slong) surplus_rows);
     fmpz_mat_init(coordinates, (slong) size, (slong) surplus_rows);
+    fmpz_mat_transpose(square_transpose, square);
+    for (size_t row = 0; row < surplus_rows; row++)
+        for (size_t column = 0; column < size; column++)
+            fmpz_set_si(fmpz_mat_entry(surplus_transpose,
+                    (slong) column, (slong) row),
+                (slong) surplus_entries[row * size + column]);
     sagejs_rust_small_surplus_workspace *workspace =
         flint_malloc(sizeof(sagejs_rust_small_surplus_workspace));
     if (workspace == NULL)
@@ -458,6 +682,9 @@ int sagejs_rust_flint_small_surplus_class_order_i64(
         return -2;
     }
     workspace->size = size;
+    workspace->row_order = NULL;
+    workspace->column_order = NULL;
+    workspace->static_ordering = static_ordering;
     fmpz_mat_init(workspace->fflu, (slong) size, (slong) size);
     fmpz_init(workspace->determinant);
     workspace->permutation = flint_malloc(size * sizeof(slong));
@@ -470,13 +697,46 @@ int sagejs_rust_flint_small_surplus_class_order_i64(
         fmpz_mat_clear(square);
         return -2;
     }
-    fmpz_mat_transpose(square_transpose, square);
-    for (size_t row = 0; row < surplus_rows; row++)
-        for (size_t column = 0; column < size; column++)
-            fmpz_set_si(fmpz_mat_entry(surplus_transpose,
-                    (slong) column, (slong) row),
-                (slong) surplus_entries[row * size + column]);
-
+    *ordering_ns = 0;
+    *ordering_initial_nonzeros = 0;
+    *ordering_symbolic_fill = 0;
+    fmpz_mat_t factor_input, ordered_right, ordered_coordinates;
+    if (static_ordering)
+    {
+        workspace->row_order = flint_malloc(size * sizeof(size_t));
+        workspace->column_order = flint_malloc(size * sizeof(size_t));
+        if (workspace->row_order == NULL || workspace->column_order == NULL)
+            status = -10;
+        uint64_t planning_started = sagejs_rust_monotonic_ns();
+        if (status == 0 && !sagejs_rust_static_minimum_degree_order(
+                square_transpose, size, workspace->row_order,
+                workspace->column_order, ordering_initial_nonzeros,
+                ordering_symbolic_fill))
+            status = -10;
+        uint64_t planning_finished = sagejs_rust_monotonic_ns();
+        *ordering_ns = planning_finished >= planning_started
+            ? planning_finished - planning_started : 0;
+        fmpz_mat_init(factor_input, (slong) size, (slong) size);
+        fmpz_mat_init(ordered_right, (slong) size, (slong) surplus_rows);
+        fmpz_mat_init(ordered_coordinates, (slong) size,
+            (slong) surplus_rows);
+        if (status == 0)
+            for (size_t row = 0; row < size; row++)
+            {
+                for (size_t column = 0; column < size; column++)
+                    fmpz_set(fmpz_mat_entry(factor_input,
+                            (slong) row, (slong) column),
+                        fmpz_mat_entry(square_transpose,
+                            (slong) workspace->row_order[row],
+                            (slong) workspace->column_order[column]));
+                for (size_t column = 0; column < surplus_rows; column++)
+                    fmpz_set(fmpz_mat_entry(ordered_right,
+                            (slong) row, (slong) column),
+                        fmpz_mat_entry(surplus_transpose,
+                            (slong) workspace->row_order[row],
+                            (slong) column));
+            }
+    }
     fmpz_t denominator, kernel_index, quotient, remainder;
     fmpz_init(denominator);
     fmpz_init(kernel_index);
@@ -485,24 +745,35 @@ int sagejs_rust_flint_small_surplus_class_order_i64(
     uint64_t started = sagejs_rust_monotonic_ns();
     for (size_t index = 0; index < size; index++)
         workspace->permutation[index] = (slong) index;
-    slong rank = fmpz_mat_fflu(
+    slong rank = status == 0 ? fmpz_mat_fflu(
         workspace->fflu, workspace->determinant, workspace->permutation,
-        square_transpose, 1);
+        static_ordering ? factor_input : square_transpose, 1) : 0;
     workspace->determinant_sign = fmpz_sgn(workspace->determinant);
     uint64_t finished = sagejs_rust_monotonic_ns();
     *determinant_ns = finished >= started ? finished - started : 0;
     fmpz_abs(workspace->determinant, workspace->determinant);
     fmpz_get_mpz(square_determinant, workspace->determinant);
     *determinant_bits = (size_t) fmpz_bits(workspace->determinant);
-    if (rank != (slong) size || fmpz_is_zero(workspace->determinant))
+    if (status == 0 &&
+        (rank != (slong) size || fmpz_is_zero(workspace->determinant)))
         status = -3;
 
     started = sagejs_rust_monotonic_ns();
     if (status == 0 &&
-        (!fmpz_mat_solve_fflu_precomp(coordinates, workspace->permutation,
-             workspace->fflu, surplus_transpose) ||
+        (!fmpz_mat_solve_fflu_precomp(
+             static_ordering ? ordered_coordinates : coordinates,
+             workspace->permutation, workspace->fflu,
+             static_ordering ? ordered_right : surplus_transpose) ||
          fmpz_is_zero(workspace->determinant)))
         status = -4;
+    if (status == 0 && static_ordering)
+        for (size_t row = 0; row < size; row++)
+            for (size_t column = 0; column < surplus_rows; column++)
+                fmpz_set(fmpz_mat_entry(coordinates,
+                        (slong) workspace->column_order[row],
+                        (slong) column),
+                    fmpz_mat_entry(ordered_coordinates,
+                        (slong) row, (slong) column));
     if (status == 0 && workspace->determinant_sign < 0)
         fmpz_mat_neg(coordinates, coordinates);
     fmpz_set(denominator, workspace->determinant);
@@ -664,16 +935,25 @@ int sagejs_rust_flint_small_surplus_class_order_i64(
     finished = sagejs_rust_monotonic_ns();
     *kernel_ns = finished >= started ? finished - started : 0;
 
-    int64_t *complete_entries = flint_malloc(
-        (size + surplus_rows) * size * sizeof(int64_t));
-    memcpy(complete_entries, square_entries, size * size * sizeof(int64_t));
-    memcpy(complete_entries + size * size, surplus_entries,
-        surplus_rows * size * sizeof(int64_t));
-    if (!sagejs_rust_gf2_right_nullspace_i64(size + surplus_rows, size,
-            complete_entries, class_coordinates, class_coordinate_capacity,
-            two_rank))
-        status = -9;
-    flint_free(complete_entries);
+    if (status == 0)
+    {
+        int64_t *complete_entries = flint_malloc(
+            (size + surplus_rows) * size * sizeof(int64_t));
+        if (complete_entries == NULL)
+            status = -2;
+        else
+        {
+            memcpy(complete_entries, square_entries,
+                size * size * sizeof(int64_t));
+            memcpy(complete_entries + size * size, surplus_entries,
+                surplus_rows * size * sizeof(int64_t));
+            if (!sagejs_rust_gf2_right_nullspace_i64(
+                    size + surplus_rows, size, complete_entries,
+                    class_coordinates, class_coordinate_capacity, two_rank))
+                status = -9;
+            flint_free(complete_entries);
+        }
+    }
 
     fmpz_clear(multiplier);
     fmpz_clear(sum);
@@ -697,6 +977,12 @@ int sagejs_rust_flint_small_surplus_class_order_i64(
     fmpz_mat_clear(surplus_transpose);
     fmpz_mat_clear(square_transpose);
     fmpz_mat_clear(square);
+    if (static_ordering)
+    {
+        fmpz_mat_clear(ordered_coordinates);
+        fmpz_mat_clear(ordered_right);
+        fmpz_mat_clear(factor_input);
+    }
     if (workspace_output != NULL && status == 0)
         *workspace_output = workspace;
     else
@@ -730,6 +1016,7 @@ int sagejs_rust_flint_small_surplus_relation_witnesses_i64(
     const size_t right_columns = surplus_rows + target_count;
     const size_t relation_count = size + surplus_rows;
     fmpz_mat_t square, square_transpose, right, solutions, fflu;
+    fmpz_mat_t ordered_right, ordered_solutions;
     if (owns_factorization)
     {
         if (!sagejs_rust_flint_set_i64_matrix(
@@ -741,6 +1028,11 @@ int sagejs_rust_flint_small_surplus_relation_witnesses_i64(
     }
     fmpz_mat_init(right, (slong) size, (slong) right_columns);
     fmpz_mat_init(solutions, (slong) size, (slong) right_columns);
+    if (!owns_factorization && workspace->static_ordering)
+    {
+        fmpz_mat_init(ordered_right, (slong) size, (slong) right_columns);
+        fmpz_mat_init(ordered_solutions, (slong) size, (slong) right_columns);
+    }
     for (size_t row = 0; row < surplus_rows; row++)
         for (size_t column = 0; column < size; column++)
             fmpz_set_si(fmpz_mat_entry(right, (slong) column, (slong) row),
@@ -791,9 +1083,27 @@ int sagejs_rust_flint_small_surplus_relation_witnesses_i64(
     else
     {
         fmpz_set(determinant, workspace->determinant);
-        if (!fmpz_mat_solve_fflu_precomp(solutions,
-                workspace->permutation, workspace->fflu, right))
+        if (workspace->static_ordering)
+            for (size_t row = 0; row < size; row++)
+                for (size_t column = 0; column < right_columns; column++)
+                    fmpz_set(fmpz_mat_entry(ordered_right,
+                            (slong) row, (slong) column),
+                        fmpz_mat_entry(right,
+                            (slong) workspace->row_order[row],
+                            (slong) column));
+        if (!fmpz_mat_solve_fflu_precomp(
+                workspace->static_ordering ? ordered_solutions : solutions,
+                workspace->permutation, workspace->fflu,
+                workspace->static_ordering ? ordered_right : right))
             status = -4;
+        if (status == 0 && workspace->static_ordering)
+            for (size_t row = 0; row < size; row++)
+                for (size_t column = 0; column < right_columns; column++)
+                    fmpz_set(fmpz_mat_entry(solutions,
+                            (slong) workspace->column_order[row],
+                            (slong) column),
+                        fmpz_mat_entry(ordered_solutions,
+                            (slong) row, (slong) column));
         if (status == 0 && workspace->determinant_sign < 0)
             fmpz_mat_neg(solutions, solutions);
     }
@@ -1021,6 +1331,11 @@ int sagejs_rust_flint_small_surplus_relation_witnesses_i64(
         fmpz_mat_clear(fflu);
     fmpz_mat_clear(solutions);
     fmpz_mat_clear(right);
+    if (!owns_factorization && workspace->static_ordering)
+    {
+        fmpz_mat_clear(ordered_solutions);
+        fmpz_mat_clear(ordered_right);
+    }
     if (owns_factorization)
     {
         fmpz_mat_clear(square_transpose);

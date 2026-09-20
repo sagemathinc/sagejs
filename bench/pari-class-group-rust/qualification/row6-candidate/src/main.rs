@@ -15,8 +15,10 @@ use sagejs_pari_class_group_rust_experiment::{
     collect_validated_primitive_box_with_supplementary, flint_bdf_factor_base_margin,
     flint_bf_index_enclosure, flint_compact_cubic_regulator, flint_hnf_basis, flint_hnf_profile,
     flint_incremental_hnf, flint_small_surplus_class_order,
-    flint_small_surplus_class_order_with_workspace, flint_smith_candidate, flint_smith_class_map,
-    flint_staged_relation_witnesses, modular_independent_relation_rows,
+    flint_small_surplus_class_order_with_workspace,
+    flint_small_surplus_class_order_with_workspace_natural_order,
+    flint_small_surplus_class_order_with_workspace_static_minimum_degree, flint_smith_candidate,
+    flint_smith_class_map, flint_staged_relation_witnesses, modular_independent_relation_rows,
     parse_neutral_prepared_cubic_json, prepared_cubic_factor_base,
     prepared_cubic_splitting_records_range, prepared_maximal_cubic_factor_base,
     reconstruct_rank_one_unit_lattice, reconstruct_rank_two_unit_lattice,
@@ -699,6 +701,7 @@ fn small_norm_unit_kernel(maximum_ideals: usize, maximum_candidates: usize) {
         "compiled-row6-fixture",
         maximum_ideals,
         maximum_candidates,
+        None,
     );
 }
 
@@ -841,6 +844,7 @@ fn small_norm_unit_kernel_for_field(
     input_id: &str,
     maximum_ideals: usize,
     maximum_candidates: usize,
+    ordering_diagnostic: Option<bool>,
 ) {
     let total_started = Instant::now();
     let answer = collect_prepared_cubic_relations(
@@ -878,9 +882,16 @@ fn small_norm_unit_kernel_for_field(
         }
     }
     let (class_order, class_order_workspace) = if rows > MAX_EAGER_GENERATOR_WITNESS_RELATIONS {
-        let (answer, workspace) =
-            flint_small_surplus_class_order_with_workspace(&square, &remaining, columns)
-                .expect("exact reusable small-surplus class-order computation failed");
+        let (answer, workspace) = match ordering_diagnostic {
+            Some(true) => flint_small_surplus_class_order_with_workspace_static_minimum_degree(
+                &square, &remaining, columns,
+            ),
+            Some(false) => flint_small_surplus_class_order_with_workspace_natural_order(
+                &square, &remaining, columns,
+            ),
+            None => flint_small_surplus_class_order_with_workspace(&square, &remaining, columns),
+        }
+        .expect("exact reusable small-surplus class-order computation failed");
         (answer, Some(workspace))
     } else {
         (
@@ -890,6 +901,16 @@ fn small_norm_unit_kernel_for_field(
         )
     };
     let expected_elementary_two_order = Integer::from(1) << class_order.two_rank;
+    if class_order_workspace.is_some() {
+        eprintln!(
+            "presentation-ordering ordering={:?} planner_ns={} initial_nonzeros={} symbolic_fill={} determinant_ns={}",
+            class_order.ordering,
+            class_order.ordering_ns,
+            class_order.ordering_initial_nonzeros,
+            class_order.ordering_symbolic_fill,
+            class_order.determinant_ns,
+        );
+    }
     let elementary_two_map_is_exact = class_order.class_order == expected_elementary_two_order;
     let (invariant_factors, class_coordinates, class_map_construction) =
         if elementary_two_map_is_exact {
@@ -1961,10 +1982,16 @@ fn main() {
         );
         return;
     }
-    if arguments
-        .first()
-        .is_some_and(|value| value == "small-norm-unit-kernel-prepared")
-    {
+    if arguments.first().is_some_and(|value| {
+        value == "small-norm-unit-kernel-prepared"
+            || value == "small-norm-unit-kernel-prepared-natural-ordering"
+            || value == "small-norm-unit-kernel-prepared-static-ordering"
+    }) {
+        let ordering_diagnostic = arguments.first().and_then(|value| match value.as_str() {
+            "small-norm-unit-kernel-prepared-natural-ordering" => Some(false),
+            "small-norm-unit-kernel-prepared-static-ordering" => Some(true),
+            _ => None,
+        });
         let path = arguments.get(1).expect(
             "usage: row6-candidate small-norm-unit-kernel-prepared INPUT IDEALS CANDIDATES",
         );
@@ -1988,6 +2015,7 @@ fn main() {
                 )
                 .parse()
                 .expect("candidates must be an integer"),
+            ordering_diagnostic,
         );
         return;
     }
