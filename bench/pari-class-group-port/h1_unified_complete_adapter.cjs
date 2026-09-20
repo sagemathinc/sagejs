@@ -303,6 +303,7 @@ async function probeSagePreparedH1({
   preparedInput,
   diagnosticStageClock = false,
   stopAfterClass = false,
+  snapshotNames = [],
 }) {
   const built = await sageBuild({ diagnosticStageClock });
   validatePreparedInput(preparedInput, built.specification);
@@ -320,6 +321,12 @@ async function probeSagePreparedH1({
     bridgeState: asStrings(input.bridge_state, 16),
     precisionState: asStrings(input.precision_authority_state, 16),
     finalState: asStrings(input.final_state, 16),
+    snapshots: Object.fromEntries(snapshotNames.map(name => {
+      assert(Object.hasOwn(input, name), `unknown H1 snapshot owner: ${name}`);
+      assert(Array.isArray(input[name]) || input[name]?.toArray,
+        `H1 snapshot owner is not a buffer: ${name}`);
+      return [name, asStrings(input[name])];
+    })),
   };
 }
 
