@@ -1,9 +1,10 @@
 # Public cubic sealed-result benchmark
 
 This directory contains the frozen first performance campaign for the genuine
-coefficient-only cubic route. The panel contains `x^3-x-1` and the first open
-class-number-two field `x^3-8*x^2-30*x-29`. It was closed before timing and
-requires 15 alternating pairs per field.
+coefficient-only cubic route. The panel contains `x^3-x-1`, the first open
+class-number-two field `x^3-8*x^2-30*x-29`, and the index-three row-6
+continuation field `x^3-2000000000010*x+2000000000018`. It was closed before
+timing and requires 15 alternating pairs per field.
 
 The Rust boundary starts with four public coefficient strings and ends when
 the v2 sealed conditional class-group result has been constructed and checked.
