@@ -338,10 +338,10 @@ kernel, 0.24 seconds for 4,096-bit logarithms, and 0.024 seconds for lattice
 reconstruction plus flattened replay. The full sparse receipt is
 `results/maximal-unit-lattice.json`.
 
-This is a major R3 candidate milestone, but its status remains deliberately
-non-certified. The current rational-reconstruction denominator ceiling is a
-generous bound derived from the observed exact kernel coefficient size; it is
-not yet a theorem-derived bound. A subsequent direct Arb pass now reevaluates
+This was initially an R3 candidate milestone. The rational-reconstruction
+denominator ceiling is a generous diagnostic bound derived from the observed
+exact kernel coefficient size, not a theorem-derived bound. A direct Arb pass
+reevaluates
 the two flattened compact units from the exact polynomial, integral basis,
 relation generators and exponents. It emits a 4,096-bit outward dyadic
 regulator enclosure whose decimal value begins
@@ -350,14 +350,74 @@ that the heavily cancelled MPFR diagnostic, while agreeing for about 47
 significant decimal digits, is not inside the much narrower Arb enclosure.
 The Arb pass adds about 0.18 seconds and is the regulator authority.
 
-The computation has still not performed the Belabas--Friedman zeta-residue
-enclosure, analytic class-number-formula index proof, or honesty extension.
-Consequently neither the recovered regulator nor the finite presentation is
-yet published as complete.
+The follow-up now supplies the missing analytic authorities. It enumerates every
+rational prime below the exact cutoff `23994`, authenticates each maximal-order
+splitting type (including the index prime `3`), and aggregates 6,291 raw terms
+to 1,656 exact Belabas--Friedman prime-power terms. A 512-bit Arb computation
+proves the explicit tail strictly below `1/4`. Combining the resulting zeta
+residue enclosure with the exact class candidate, exact compact units, and
+rigorous regulator gives the class-unit index interval
 
-This remains a candidate computation. Analytic completion, rigorous interval
-enclosures, honesty checks beyond the collected presentation, and the public
-polynomial-to-result route remain required.
+```text
+[838409711, 1382165893] * 2^-30
+```
+
+or approximately `[0.78083, 1.28725]`. The product of the candidate class
+index and candidate unit index is a positive integer, so this interval proves
+that product is one. Both indices are therefore individually one. Conditional
+on the GRH hypothesis in the Belabas--Friedman bound, row 6's prepared-field
+class group is exactly `C2 x C2`, and the two retained compact units form a
+fundamental system. This conclusion no longer depends on the heuristic
+rational-reconstruction denominator ceiling: reconstruction proposes exact
+compact units; exact replay, direct Arb evaluation, and the analytic
+index-one proof certify them.
+
+The same exact splitting stream independently proves the factor-base
+generation premise. At exclusive bound `9197`, an outward-Arb evaluation of
+the strict Belabas--Diaz y Diaz--Friedman inequality has margin
+`0.003663352078084927024143978104206706... > 0`. Hence, under its stated GRH
+hypothesis for unramified class-group characters, the retained prime ideals of
+norm at most `9196` generate the full class group. This closes the mathematical
+honesty gap for this prepared field; it is not merely the earlier PARI
+floating-point bound replay.
+
+The final combined diagnostic took 56.18 seconds: 7.73 seconds for relation
+collection, 45.81 seconds for incremental HNF and Smith, 1.51 seconds for the
+saturated kernel, 0.24 seconds for logarithmic embeddings, 0.82 seconds for
+unit reconstruction/replay, and 0.62 seconds for both analytic certificates.
+This is not a qualified performance result: the current Rust incremental HNF
+is substantially slower than the earlier optimized Python-to-C artifact, and
+the command still emits a large diagnostic receipt. The mathematical result
+is the important new evidence; HNF is now the sharply dominant Rust
+performance problem.
+
+For orientation, the closest available PARI 2.17.4 instrumented boundaries
+from the frozen row-6 campaign compare as follows. These are deliberately
+called *closest* rather than identical: the Rust terminal row explicitly
+constructs a saturated left kernel and a separately replayable rigorous
+analytic certificate, while PARI's timers place some corresponding work inside
+its HNF driver.
+
+| closest region | Rust diagnostic | PARI 2.17.4 instrumented | ratio |
+| --- | ---: | ---: | ---: |
+| relation side | 7.730068 s | 1.100174 s | 7.0262x |
+| presentation HNF and Smith / matrix side | 45.813069 s | 2.791358 s | 16.4125x |
+| explicit kernel, units, regulator and analytic completion / terminal residual | 3.184720 s | 0.009196 s | not algorithmically matched |
+| complete external diagnostic / instrumented control | 56.176176 s | 3.900729 s | 14.4015x |
+
+Against the pristine PARI total of `3.886499614` seconds, the single Rust
+diagnostic is `14.4542x`. This is not yet competitive. It does, however, answer
+the higher-risk mathematical question: the Rust path can reach a certified
+answer without PARI at runtime, and the remaining row-6 latency is now
+overwhelmingly localized to presentation HNF rather than unit or analytic
+completion.
+
+The sparse receipt is `results/maximal-unit-lattice.json` (SHA-256
+`b453e918573871ec9a9ee3c4654dfe7bc22417eea8375f2e192930b54b2a6802`).
+Public generator/result construction, a production honesty-extension policy,
+unconditional certification, and the public polynomial-to-result route remain
+required; this prepared-field diagnostic does not authorize production
+dispatch.
 
 ## 2026-09-20 multiplier continuation control
 

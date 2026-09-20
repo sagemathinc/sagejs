@@ -13,6 +13,7 @@
 //! The second boundary cannot be constructed for an arbitrary field.  Its
 //! numerical preparation is authenticated only for the fixed H1 fixture.
 
+mod analytic_completion;
 mod api;
 mod bruteforce_collector;
 mod class_group;
@@ -36,6 +37,10 @@ mod smith;
 mod smooth_admission;
 mod unit_lattice;
 
+pub use analytic_completion::{
+    BdfFactorBasePlan, BelabasFriedmanPlan, BelabasFriedmanPlanError,
+    build_cubic_bdf_factor_base_plan, build_cubic_belabas_friedman_plan,
+};
 pub use api::{
     BruteForceOptions, ClassGroupCandidateInvariants, PreparedCubic,
     PreparedCubicClassGroupCandidate, PreparedCubicPresentationCandidate, QualificationStatus,
@@ -64,8 +69,9 @@ pub use factor_base::prepared_cubic_factor_base;
 pub use factor_base::{FactorBase, PrimeIdeal};
 #[cfg(feature = "flint-normal-form")]
 pub use flint_normal_form::{
-    FlintDyadicInterval, FlintHnfProfile, FlintIncrementalHnf, FlintLeftKernel,
-    FlintNormalFormError, FlintRelationWitnesses, FlintSmithCandidate, FlintSmithClassMap,
+    FlintBfIndexEnclosure, FlintDyadicInterval, FlintHnfProfile, FlintIncrementalHnf,
+    FlintLeftKernel, FlintNormalFormError, FlintRelationWitnesses, FlintSmithCandidate,
+    FlintSmithClassMap, flint_bdf_factor_base_margin, flint_bf_index_enclosure,
     flint_compact_cubic_regulator, flint_hnf_basis, flint_hnf_profile, flint_incremental_hnf,
     flint_left_kernel, flint_lll_column_transform, flint_relation_witnesses, flint_smith_candidate,
     flint_smith_class_map, flint_staged_relation_witnesses,
@@ -84,7 +90,8 @@ pub use prepared::{
     ValidatedPreparedCubic,
 };
 pub use prepared_factor_base::{
-    PreparedFactorBase, PreparedFactorBaseError, prepared_maximal_cubic_factor_base,
+    CubicSplittingRecord, PreparedFactorBase, PreparedFactorBaseError,
+    prepared_cubic_splitting_records, prepared_maximal_cubic_factor_base,
 };
 pub use prepared_ideal::{
     CubicIdeal, DegreeOnePrimeCharacter, PreparedIdealError, PreparedIdealWorkspace,

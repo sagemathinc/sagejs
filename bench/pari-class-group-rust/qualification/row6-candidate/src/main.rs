@@ -12,10 +12,13 @@ use sagejs_pari_class_group_rust_experiment::{
     EmbeddingPrecisionState, PreparedCollectorLimits, PreparedCubicData,
     PreparedRealCubicEmbedding, ValidatedPreparedCubic, collect_prepared_cubic_relations,
     collect_validated_primitive_box_with_supplementary, flint_hnf_basis, flint_hnf_profile,
-    flint_compact_cubic_regulator, flint_incremental_hnf, flint_left_kernel,
+    build_cubic_bdf_factor_base_plan, build_cubic_belabas_friedman_plan,
+    flint_bdf_factor_base_margin, flint_bf_index_enclosure, flint_compact_cubic_regulator,
+    flint_incremental_hnf, flint_left_kernel,
     flint_smith_candidate, flint_smith_class_map, flint_staged_relation_witnesses,
     modular_independent_relation_rows,
-    prepared_cubic_factor_base, prepared_maximal_cubic_factor_base,
+    prepared_cubic_factor_base, prepared_cubic_splitting_records,
+    prepared_maximal_cubic_factor_base,
     reconstruct_rank_two_unit_lattice,
 };
 use std::env;
@@ -702,6 +705,30 @@ fn small_norm_unit_kernel(maximum_ideals: usize, maximum_candidates: usize) {
     assert!(answer.complete_rank_and_surplus, "relation lattice is incomplete");
     let columns = answer.factor_base.catalog.ideals.len();
     let rows = answer.relations.len() / columns;
+    let presentation_started = Instant::now();
+    let (square, source_rows) = modular_independent_relation_rows(
+        &answer.relations,
+        &answer.first_nonzero_hints,
+        columns,
+    )
+    .expect("modularly independent row selection failed");
+    let mut selected = vec![false; rows];
+    for source_row in source_rows {
+        selected[source_row] = true;
+    }
+    let mut remaining = Vec::with_capacity((rows - columns) * columns);
+    for (row, relation) in answer.relations.chunks_exact(columns).enumerate() {
+        if !selected[row] {
+            remaining.extend_from_slice(relation);
+        }
+    }
+    let incremental = flint_incremental_hnf(&square, &remaining, columns)
+        .expect("incremental exact relation HNF failed");
+    let smith = flint_smith_candidate(&incremental.basis, columns, columns)
+        .expect("exact Smith candidate failed");
+    assert_eq!(smith.class_number, 4);
+    assert_eq!(smith.invariant_factors, [2, 2]);
+    let presentation_ns = presentation_started.elapsed().as_nanos();
     let kernel_started = Instant::now();
     let kernel = flint_left_kernel(&answer.relations, rows, columns)
         .expect("exact saturated left-kernel construction failed");
@@ -881,22 +908,78 @@ fn small_norm_unit_kernel(maximum_ideals: usize, maximum_candidates: usize) {
         LOG_PRECISION,
     )
     .expect("Arb compact-unit regulator enclosure failed");
-    let dyadic_endpoint = |mantissa: &Integer| {
-        if rigorous_regulator.binary_exponent >= 0 {
-            Rational::from(mantissa << rigorous_regulator.binary_exponent as u32)
+    let dyadic_endpoint = |mantissa: &Integer, binary_exponent: i64| {
+        if binary_exponent >= 0 {
+            Rational::from(mantissa << binary_exponent as u32)
         } else {
             Rational::from((
                 mantissa.clone(),
-                Integer::from(1) << (-rigorous_regulator.binary_exponent) as u32,
+                Integer::from(1) << (-binary_exponent) as u32,
             ))
         }
     };
     let replayed_exact_binary = replayed_regulator
         .to_rational()
         .expect("the replayed regulator must be finite");
-    let mpfr_replay_contained = dyadic_endpoint(&rigorous_regulator.lower)
-        <= replayed_exact_binary
-        && replayed_exact_binary <= dyadic_endpoint(&rigorous_regulator.upper);
+    let mpfr_replay_contained = dyadic_endpoint(
+        &rigorous_regulator.lower,
+        rigorous_regulator.binary_exponent,
+    ) <= replayed_exact_binary
+        && replayed_exact_binary
+            <= dyadic_endpoint(
+                &rigorous_regulator.upper,
+                rigorous_regulator.binary_exponent,
+            );
+    const BF_THRESHOLD: u64 = 23_994;
+    const BF_PRECISION: u32 = 512;
+    let analytic_started = Instant::now();
+    let splitting = prepared_cubic_splitting_records(&field, BF_THRESHOLD as usize)
+        .expect("exact maximal-order splitting stream failed");
+    let bdf_bound = u64::try_from(answer.factor_base.catalog.relation_bound)
+        .expect("factor-base bound is outside u64")
+        + 1;
+    let bdf_plan = build_cubic_bdf_factor_base_plan(bdf_bound, &splitting)
+        .expect("BDF factor-base plan failed");
+    let bdf_margin = flint_bdf_factor_base_margin(
+        &bdf_plan.terms,
+        bdf_bound,
+        &field.data().discriminant,
+        3,
+        3,
+        BF_PRECISION,
+    )
+    .expect("rigorous BDF factor-base enclosure failed");
+    let bdf_margin_lower = dyadic_endpoint(&bdf_margin.lower, bdf_margin.binary_exponent);
+    assert!(
+        bdf_margin_lower > 0,
+        "BDF inequality did not certify the retained factor base"
+    );
+    let bf_plan = build_cubic_belabas_friedman_plan(BF_THRESHOLD, &splitting)
+        .expect("Belabas--Friedman prime-power plan failed");
+    let bf = flint_bf_index_enclosure(
+        &bf_plan.terms,
+        BF_THRESHOLD,
+        &field.data().discriminant,
+        smith.class_number as u64,
+        2,
+        (3, 0),
+        &rigorous_regulator,
+        BF_PRECISION,
+    )
+    .expect("rigorous Belabas--Friedman index enclosure failed");
+    let tail_upper = dyadic_endpoint(&bf.tail_bound.upper, bf.tail_bound.binary_exponent);
+    assert!(tail_upper < Rational::from((1, 4)));
+    let index_lower = dyadic_endpoint(&bf.index.lower, bf.index.binary_exponent);
+    let index_upper = dyadic_endpoint(&bf.index.upper, bf.index.binary_exponent);
+    let unique_positive_integer_one = index_lower > 0
+        && index_lower <= 1
+        && index_upper >= 1
+        && index_upper < 2;
+    assert!(
+        unique_positive_integer_one,
+        "analytic enclosure did not isolate the positive integral index one"
+    );
+    let analytic_ns = analytic_started.elapsed().as_nanos();
     let reconstruction_ns = reconstruction_started.elapsed().as_nanos();
     let mut compact_units = Vec::with_capacity(kernel.rank);
     for dependency in 0..kernel.rank {
@@ -937,7 +1020,7 @@ fn small_norm_unit_kernel(maximum_ideals: usize, maximum_candidates: usize) {
         "{}",
         serde_json::json!({
             "schema": "sagejs.rust-class-group/row6-saturated-relation-kernel-v1",
-            "qualificationStatus": "compact-unit-candidates-not-regulator-certified",
+            "qualificationStatus": "grh-conditional-class-unit-index-one",
             "usesOracleAsInput": false,
             "relations": { "rows": rows, "columns": columns },
             "kernel": {
@@ -955,7 +1038,7 @@ fn small_norm_unit_kernel(maximum_ideals: usize, maximum_candidates: usize) {
                 "compactUnits": compact_units,
             },
             "reconstructedUnitLattice": {
-                "certificationStatus": "heuristic-denominator-bound-not-analytic-completion",
+                "certificationStatus": "exact-compact-units-and-grh-conditional-analytic-index-one",
                 "rationalReconstructionStableAtBits": [2048, LOG_PRECISION],
                 "maximumDenominator": reconstruction_bound.to_string(),
                 "coordinateBasisDependencyIndices": lattice.coordinate_basis_indices,
@@ -980,12 +1063,60 @@ fn small_norm_unit_kernel(maximum_ideals: usize, maximum_candidates: usize) {
                 },
                 "fundamentalCompactUnits": fundamental_units,
             },
+            "analyticCompletion": {
+                "hypothesis": "GRH-for-the-Dedekind-zeta-residue-bound",
+                "formula": "Belabas--Friedman-Theorem-1",
+                "threshold": BF_THRESHOLD,
+                "precisionBits": BF_PRECISION,
+                "rationalPrimeCount": splitting.len(),
+                "rawPrimePowerTerms": bf_plan.raw_terms,
+                "aggregatedPrimePowerTerms": bf_plan.terms.len(),
+                "rootsOfUnity": 2,
+                "rootsOfUnityJustification": "a totally real cubic field has only plus-or-minus-one",
+                "factorBaseGeneration": {
+                    "hypothesis": "GRH-for-all-unramified-Hecke-L-functions-of-class-group-characters",
+                    "theorem": "Belabas--Diaz-y-Diaz--Friedman-strict-inequality",
+                    "boundExclusive": bdf_bound,
+                    "retainedNormBoundInclusive": answer.factor_base.catalog.relation_bound,
+                    "rawPrimeIdealPowerTerms": bdf_plan.raw_terms,
+                    "aggregatedPrimeIdealPowerTerms": bdf_plan.terms.len(),
+                    "strictMarginEnclosure": {
+                        "lowerMantissa": bdf_margin.lower.to_string(),
+                        "upperMantissa": bdf_margin.upper.to_string(),
+                        "binaryExponent": bdf_margin.binary_exponent,
+                        "lowerStrictlyPositive": true,
+                    },
+                    "conclusion": "retained-factor-base-generates-the-full-class-group",
+                },
+                "candidateClassNumber": smith.class_number,
+                "candidateInvariantFactors": smith.invariant_factors,
+                "zetaLogResidueEnclosure": {
+                    "lowerMantissa": bf.zeta_log_residue.lower.to_string(),
+                    "upperMantissa": bf.zeta_log_residue.upper.to_string(),
+                    "binaryExponent": bf.zeta_log_residue.binary_exponent,
+                },
+                "tailBoundEnclosure": {
+                    "lowerMantissa": bf.tail_bound.lower.to_string(),
+                    "upperMantissa": bf.tail_bound.upper.to_string(),
+                    "binaryExponent": bf.tail_bound.binary_exponent,
+                    "upperStrictlyBelowOneQuarter": true,
+                },
+                "classUnitIndexEnclosure": {
+                    "lowerMantissa": bf.index.lower.to_string(),
+                    "upperMantissa": bf.index.upper.to_string(),
+                    "binaryExponent": bf.index.binary_exponent,
+                    "uniquePositiveInteger": 1,
+                },
+                "conclusion": "candidate-class-index-times-candidate-unit-index-equals-one",
+            },
             "timingsNanoseconds": {
                 "collection": answer.timings.total_ns,
+                "presentationHnfAndSmith": presentation_ns,
                 "kernelInternal": kernel.kernel_ns,
                 "kernelExternal": kernel_external_ns,
                 "logarithmicEmbedding": logarithms_ns,
                 "unitLatticeReconstructionAndReplay": reconstruction_ns,
+                "analyticCompletion": analytic_ns,
                 "totalExternal": total_started.elapsed().as_nanos(),
             },
         })

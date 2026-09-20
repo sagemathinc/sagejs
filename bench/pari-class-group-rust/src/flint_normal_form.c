@@ -1201,3 +1201,384 @@ int sagejs_rust_flint_compact_cubic_regulator(
     flint_cleanup();
     return status;
 }
+
+static int sagejs_rust_export_arb_interval(
+    const arb_t value, mpz_ptr lower, mpz_ptr upper, int64_t *exponent)
+{
+    fmpz_t lower_value, upper_value, scale;
+    fmpz_init(lower_value);
+    fmpz_init(upper_value);
+    fmpz_init(scale);
+    arb_get_interval_fmpz_2exp(lower_value, upper_value, scale, value);
+    int status = fmpz_fits_si(scale) ? 0 : -1;
+    if (status == 0)
+    {
+        fmpz_get_mpz(lower, lower_value);
+        fmpz_get_mpz(upper, upper_value);
+        *exponent = (int64_t) fmpz_get_si(scale);
+    }
+    fmpz_clear(scale);
+    fmpz_clear(upper_value);
+    fmpz_clear(lower_value);
+    return status;
+}
+
+int sagejs_rust_flint_bdf_factor_base_margin(
+    size_t term_count, const int64_t *terms, uint64_t bound,
+    mpz_srcptr discriminant, uint64_t degree, uint64_t real_places,
+    slong precision, mpz_ptr lower, mpz_ptr upper, int64_t *exponent)
+{
+    if ((term_count != 0 && terms == NULL) || bound < 2 ||
+        bound > ULONG_MAX || discriminant == NULL || degree < 2 ||
+        real_places > degree || real_places > ULONG_MAX / 4 ||
+        precision < 64 || lower == NULL ||
+        upper == NULL || exponent == NULL)
+        return -1;
+
+    int status = 0;
+    fmpz_t discriminant_value;
+    fmpz_init(discriminant_value);
+    fmpz_set_mpz(discriminant_value, discriminant);
+    fmpz_abs(discriminant_value, discriminant_value);
+
+    arb_t log_bound, total, log_norm, root, taper, summand, temporary;
+    arb_t pi, catalan, gamma, archimedean, right, left, margin;
+    arb_init(log_bound);
+    arb_init(total);
+    arb_init(log_norm);
+    arb_init(root);
+    arb_init(taper);
+    arb_init(summand);
+    arb_init(temporary);
+    arb_init(pi);
+    arb_init(catalan);
+    arb_init(gamma);
+    arb_init(archimedean);
+    arb_init(right);
+    arb_init(left);
+    arb_init(margin);
+
+    arb_log_ui(log_bound, (ulong) bound, precision);
+    arb_zero(total);
+    for (size_t index = 0; index < term_count && status == 0; index++)
+    {
+        int64_t multiplicity = terms[3 * index + 0];
+        int64_t norm_signed = terms[3 * index + 1];
+        int64_t exponent_signed = terms[3 * index + 2];
+        if (multiplicity < 1 || norm_signed < 2 || exponent_signed < 1)
+        {
+            status = -2;
+            break;
+        }
+        if ((uint64_t) norm_signed > ULONG_MAX)
+        {
+            status = -2;
+            break;
+        }
+        ulong norm = (ulong) norm_signed;
+        ulong power = 1;
+        for (int64_t count = 0; count < exponent_signed; count++)
+        {
+            if (power > ULONG_MAX / norm)
+            {
+                status = -2;
+                break;
+            }
+            power *= norm;
+        }
+        if (status != 0 || power >= bound)
+        {
+            status = -2;
+            break;
+        }
+        arb_log_ui(log_norm, norm, precision);
+        arb_sqrt_ui(root, power, precision);
+        arb_div(summand, log_norm, root, precision);
+        arb_mul_si(temporary, log_norm, (slong) exponent_signed, precision);
+        arb_div(temporary, temporary, log_bound, precision);
+        arb_one(taper);
+        arb_sub(taper, taper, temporary, precision);
+        arb_mul(summand, summand, taper, precision);
+        arb_addmul_si(total, summand, (slong) multiplicity, precision);
+    }
+
+    if (status == 0)
+    {
+        arb_const_pi(pi, precision);
+        arb_const_catalan(catalan, precision);
+        arb_const_euler(gamma, precision);
+
+        arb_mul(archimedean, pi, pi, precision);
+        arb_mul_ui(archimedean, archimedean, (ulong) degree, precision);
+        arb_mul_2exp_si(archimedean, archimedean, -1);
+        arb_mul_ui(temporary, catalan, (ulong) (4 * real_places), precision);
+        arb_add(archimedean, archimedean, temporary, precision);
+        arb_div(archimedean, archimedean, log_bound, precision);
+        arb_mul_2exp_si(right, total, 1);
+        arb_sub(right, right, archimedean, precision);
+
+        arb_log_fmpz(left, discriminant_value, precision);
+        arb_log_ui(temporary, 8, precision);
+        arb_add(temporary, temporary, gamma, precision);
+        arb_log(pi, pi, precision);
+        arb_add(temporary, temporary, pi, precision);
+        arb_mul_ui(temporary, temporary, (ulong) degree, precision);
+        arb_sub(left, left, temporary, precision);
+        arb_const_pi(pi, precision);
+        arb_mul_ui(temporary, pi, (ulong) real_places, precision);
+        arb_mul_2exp_si(temporary, temporary, -1);
+        arb_sub(left, left, temporary, precision);
+
+        arb_sub(margin, right, left, precision);
+        if (!arb_is_finite(margin))
+            status = -3;
+    }
+    if (status == 0 &&
+        sagejs_rust_export_arb_interval(margin, lower, upper, exponent) != 0)
+        status = -4;
+
+    arb_clear(margin);
+    arb_clear(left);
+    arb_clear(right);
+    arb_clear(archimedean);
+    arb_clear(gamma);
+    arb_clear(catalan);
+    arb_clear(pi);
+    arb_clear(temporary);
+    arb_clear(summand);
+    arb_clear(taper);
+    arb_clear(root);
+    arb_clear(log_norm);
+    arb_clear(total);
+    arb_clear(log_bound);
+    fmpz_clear(discriminant_value);
+    flint_cleanup();
+    return status;
+}
+
+int sagejs_rust_flint_bf_index_enclosure(
+    size_t term_count, const int64_t *terms, uint64_t threshold,
+    mpz_srcptr discriminant, uint64_t class_number, uint64_t roots_of_unity,
+    uint64_t real_places, uint64_t complex_places,
+    mpz_srcptr regulator_lower, mpz_srcptr regulator_upper,
+    int64_t regulator_exponent, slong precision,
+    mpz_ptr zeta_lower, mpz_ptr zeta_upper, int64_t *zeta_exponent,
+    mpz_ptr tail_lower, mpz_ptr tail_upper, int64_t *tail_exponent,
+    mpz_ptr index_lower, mpz_ptr index_upper, int64_t *index_exponent)
+{
+    if ((term_count != 0 && terms == NULL) || threshold < 72 ||
+        threshold > ULONG_MAX / 3 ||
+        threshold % 9 != 0 || discriminant == NULL || class_number == 0 ||
+        roots_of_unity == 0 || regulator_lower == NULL ||
+        regulator_upper == NULL || precision < 64 || zeta_lower == NULL ||
+        complex_places > (ULONG_MAX - real_places) / 2 ||
+        real_places + 2 * complex_places <= 1 ||
+        zeta_upper == NULL || zeta_exponent == NULL || tail_lower == NULL ||
+        tail_upper == NULL || tail_exponent == NULL || index_lower == NULL ||
+        index_upper == NULL || index_exponent == NULL)
+        return -1;
+
+    int status = 0;
+    fmpz_t discriminant_value, lower_value, upper_value, scale;
+    fmpz_init(discriminant_value);
+    fmpz_init(lower_value);
+    fmpz_init(upper_value);
+    fmpz_init(scale);
+    fmpz_set_mpz(discriminant_value, discriminant);
+    fmpz_abs(discriminant_value, discriminant_value);
+    fmpz_set_mpz(lower_value, regulator_lower);
+    fmpz_set_mpz(upper_value, regulator_upper);
+    fmpz_set_si(scale, (slong) regulator_exponent);
+
+    arf_t lower_arf, upper_arf;
+    arf_init(lower_arf);
+    arf_init(upper_arf);
+    arf_set_fmpz_2exp(lower_arf, lower_value, scale);
+    arf_set_fmpz_2exp(upper_arf, upper_value, scale);
+    arb_t regulator;
+    arb_init(regulator);
+    arb_set_interval_arf(regulator, lower_arf, upper_arf, precision);
+    if (!arb_is_positive(regulator))
+        status = -2;
+
+    arb_t sqrt_threshold, sqrt_ninth, log_threshold, log_ninth;
+    arb_t scale_full, scale_ninth, total, summand, logarithm, root, power;
+    arb_t multiplier, finite, tail, zeta, temporary, denominator;
+    arb_init(sqrt_threshold);
+    arb_init(sqrt_ninth);
+    arb_init(log_threshold);
+    arb_init(log_ninth);
+    arb_init(scale_full);
+    arb_init(scale_ninth);
+    arb_init(total);
+    arb_init(summand);
+    arb_init(logarithm);
+    arb_init(root);
+    arb_init(power);
+    arb_init(multiplier);
+    arb_init(finite);
+    arb_init(tail);
+    arb_init(zeta);
+    arb_init(temporary);
+    arb_init(denominator);
+    const ulong threshold_word = (ulong) threshold;
+    const ulong ninth = threshold_word / 9;
+    if (status == 0)
+    {
+        arb_sqrt_ui(sqrt_threshold, threshold_word, precision);
+        arb_sqrt_ui(sqrt_ninth, ninth, precision);
+        arb_log_ui(log_threshold, threshold_word, precision);
+        arb_log_ui(log_ninth, ninth, precision);
+        arb_mul(scale_full, sqrt_threshold, log_threshold, precision);
+        arb_mul(scale_ninth, sqrt_ninth, log_ninth, precision);
+        arb_zero(total);
+        for (size_t index = 0; index < term_count && status == 0; index++)
+        {
+            int64_t multiplicity = terms[4 * index + 0];
+            int64_t scale_index = terms[4 * index + 1];
+            int64_t norm_signed = terms[4 * index + 2];
+            int64_t exponent_signed = terms[4 * index + 3];
+            if (multiplicity == 0 || (scale_index != 0 && scale_index != 1) ||
+                norm_signed < 2 || exponent_signed < 1)
+            {
+                status = -3;
+                break;
+            }
+            if ((uint64_t) norm_signed > ULONG_MAX)
+            {
+                status = -3;
+                break;
+            }
+            ulong norm = (ulong) norm_signed;
+            ulong exponent = (ulong) exponent_signed;
+            ulong norm_power = 1;
+            for (ulong count = 0; count < exponent; count++)
+            {
+                if (norm_power > ULONG_MAX / norm)
+                {
+                    status = -3;
+                    break;
+                }
+                norm_power *= norm;
+            }
+            if (status != 0 || exponent > ULONG_MAX / norm_power)
+            {
+                status = -3;
+                break;
+            }
+            arb_set(summand, scale_index == 0 ? scale_full : scale_ninth);
+            arb_div_ui(summand, summand, exponent * norm_power, precision);
+            arb_log_ui(logarithm, norm, precision);
+            arb_set_ui(power, 1);
+            for (ulong count = 0; count < exponent / 2; count++)
+                arb_mul_ui(power, power, norm, precision);
+            if (exponent % 2 != 0)
+            {
+                arb_sqrt_ui(root, norm, precision);
+                arb_mul(power, power, root, precision);
+            }
+            arb_div(temporary, logarithm, power, precision);
+            arb_sub(summand, summand, temporary, precision);
+            arb_addmul_si(total, summand, (slong) multiplicity, precision);
+        }
+        arb_mul_ui(denominator, sqrt_threshold, 2, precision);
+        arb_log_ui(temporary, 3 * threshold_word, precision);
+        arb_mul(denominator, denominator, temporary, precision);
+        arb_set_ui(multiplier, 3);
+        arb_div(multiplier, multiplier, denominator, precision);
+        arb_mul(finite, multiplier, total, precision);
+
+        arb_log_fmpz(logarithm, discriminant_value, precision);
+        arb_sqrt(root, logarithm, precision);
+        arb_set_str(tail, "2.324", precision);
+        arb_mul(tail, tail, logarithm, precision);
+        arb_mul(denominator, sqrt_threshold, temporary, precision);
+        arb_div(tail, tail, denominator, precision);
+        arb_set_str(summand, "3.88", precision);
+        arb_div(summand, summand, log_ninth, precision);
+        arb_add_ui(summand, summand, 1, precision);
+        arb_set_ui(power, 2);
+        arb_div(power, power, root, precision);
+        arb_add_ui(power, power, 1, precision);
+        arb_mul(power, power, power, precision);
+        arb_mul(summand, summand, power, precision);
+        arb_set_str(power, "4.26", precision);
+        arb_mul_ui(power, power,
+            (ulong) (real_places + 2 * complex_places - 1), precision);
+        arb_mul(denominator, sqrt_threshold, logarithm, precision);
+        arb_div(power, power, denominator, precision);
+        arb_add(summand, summand, power, precision);
+        arb_mul(tail, tail, summand, precision);
+
+        arb_set(zeta, finite);
+        arb_add_error(zeta, tail);
+    }
+
+    arb_t algebraic, index_ball, pi;
+    arb_init(algebraic);
+    arb_init(index_ball);
+    arb_init(pi);
+    if (status == 0)
+    {
+        arb_log_ui(algebraic, 2, precision);
+        arb_mul_ui(algebraic, algebraic,
+            (ulong) (real_places + complex_places), precision);
+        if (complex_places != 0)
+        {
+            arb_const_pi(pi, precision);
+            arb_log(pi, pi, precision);
+            arb_addmul_ui(algebraic, pi, (ulong) complex_places, precision);
+        }
+        arb_log_ui(temporary, roots_of_unity, precision);
+        arb_sub(algebraic, algebraic, temporary, precision);
+        arb_log_fmpz(temporary, discriminant_value, precision);
+        arb_mul_2exp_si(temporary, temporary, -1);
+        arb_sub(algebraic, algebraic, temporary, precision);
+        arb_log_ui(temporary, class_number, precision);
+        arb_add(algebraic, algebraic, temporary, precision);
+        arb_log(temporary, regulator, precision);
+        arb_add(algebraic, algebraic, temporary, precision);
+        arb_sub(algebraic, algebraic, zeta, precision);
+        arb_exp(index_ball, algebraic, precision);
+        if (!arb_is_finite(index_ball) || !arb_is_positive(index_ball))
+            status = -4;
+    }
+    if (status == 0 &&
+        (sagejs_rust_export_arb_interval(zeta, zeta_lower, zeta_upper,
+             zeta_exponent) != 0 ||
+         sagejs_rust_export_arb_interval(tail, tail_lower, tail_upper,
+             tail_exponent) != 0 ||
+         sagejs_rust_export_arb_interval(index_ball, index_lower, index_upper,
+             index_exponent) != 0))
+        status = -5;
+
+    arb_clear(pi);
+    arb_clear(index_ball);
+    arb_clear(algebraic);
+    arb_clear(denominator);
+    arb_clear(temporary);
+    arb_clear(zeta);
+    arb_clear(tail);
+    arb_clear(finite);
+    arb_clear(multiplier);
+    arb_clear(power);
+    arb_clear(root);
+    arb_clear(logarithm);
+    arb_clear(summand);
+    arb_clear(total);
+    arb_clear(scale_ninth);
+    arb_clear(scale_full);
+    arb_clear(log_ninth);
+    arb_clear(log_threshold);
+    arb_clear(sqrt_ninth);
+    arb_clear(sqrt_threshold);
+    arb_clear(regulator);
+    arf_clear(upper_arf);
+    arf_clear(lower_arf);
+    fmpz_clear(scale);
+    fmpz_clear(upper_value);
+    fmpz_clear(lower_value);
+    fmpz_clear(discriminant_value);
+    flint_cleanup();
+    return status;
+}

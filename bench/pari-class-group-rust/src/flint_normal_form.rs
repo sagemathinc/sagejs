@@ -87,6 +87,13 @@ pub struct FlintDyadicInterval {
     pub binary_exponent: i64,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FlintBfIndexEnclosure {
+    pub zeta_log_residue: FlintDyadicInterval,
+    pub tail_bound: FlintDyadicInterval,
+    pub index: FlintDyadicInterval,
+}
+
 impl FlintSmithClassMap {
     pub fn coordinates(&self, generator: usize) -> Option<&[i64]> {
         let width = self.invariant_factors.len();
@@ -213,6 +220,164 @@ unsafe extern "C" {
         upper: *mut c_void,
         binary_exponent: *mut c_longlong,
     ) -> c_int;
+    fn sagejs_rust_flint_bf_index_enclosure(
+        term_count: usize,
+        terms: *const c_longlong,
+        threshold: u64,
+        discriminant: *const c_void,
+        class_number: u64,
+        roots_of_unity: u64,
+        real_places: u64,
+        complex_places: u64,
+        regulator_lower: *const c_void,
+        regulator_upper: *const c_void,
+        regulator_exponent: c_longlong,
+        precision: c_long,
+        zeta_lower: *mut c_void,
+        zeta_upper: *mut c_void,
+        zeta_exponent: *mut c_longlong,
+        tail_lower: *mut c_void,
+        tail_upper: *mut c_void,
+        tail_exponent: *mut c_longlong,
+        index_lower: *mut c_void,
+        index_upper: *mut c_void,
+        index_exponent: *mut c_longlong,
+    ) -> c_int;
+    fn sagejs_rust_flint_bdf_factor_base_margin(
+        term_count: usize,
+        terms: *const c_longlong,
+        bound: u64,
+        discriminant: *const c_void,
+        degree: u64,
+        real_places: u64,
+        precision: c_long,
+        lower: *mut c_void,
+        upper: *mut c_void,
+        exponent: *mut c_longlong,
+    ) -> c_int;
+}
+
+pub fn flint_bdf_factor_base_margin(
+    terms: &[[i64; 3]],
+    bound: u64,
+    discriminant: &Integer,
+    degree: u64,
+    real_places: u64,
+    precision: u32,
+) -> Result<FlintDyadicInterval, FlintNormalFormError> {
+    if bound < 2 || discriminant == &0 || degree < 2 || real_places > degree || precision < 64 {
+        return Err(FlintNormalFormError::InvalidDimensions);
+    }
+    let flattened = terms.iter().flatten().copied().collect::<Vec<_>>();
+    let mut lower = Integer::new();
+    let mut upper = Integer::new();
+    let mut binary_exponent = 0_i64;
+    let status = unsafe {
+        sagejs_rust_flint_bdf_factor_base_margin(
+            terms.len(),
+            flattened.as_ptr().cast(),
+            bound,
+            discriminant.as_raw().cast(),
+            degree,
+            real_places,
+            precision.into(),
+            lower.as_raw_mut().cast(),
+            upper.as_raw_mut().cast(),
+            &mut binary_exponent,
+        )
+    };
+    match status {
+        0 => Ok(FlintDyadicInterval {
+            lower,
+            upper,
+            binary_exponent,
+        }),
+        -1 => Err(FlintNormalFormError::InvalidDimensions),
+        code => Err(FlintNormalFormError::ForeignFailure(code)),
+    }
+}
+
+pub fn flint_bf_index_enclosure(
+    terms: &[[i64; 4]],
+    threshold: u64,
+    discriminant: &Integer,
+    class_number: u64,
+    roots_of_unity: u64,
+    signature: (u64, u64),
+    regulator: &FlintDyadicInterval,
+    precision: u32,
+) -> Result<FlintBfIndexEnclosure, FlintNormalFormError> {
+    if threshold < 72
+        || !threshold.is_multiple_of(9)
+        || discriminant == &0
+        || class_number == 0
+        || roots_of_unity == 0
+        || signature
+            .1
+            .checked_mul(2)
+            .and_then(|twice_complex| signature.0.checked_add(twice_complex))
+            .is_none_or(|degree| degree <= 1)
+        || regulator.lower > regulator.upper
+        || precision < 64
+    {
+        return Err(FlintNormalFormError::InvalidDimensions);
+    }
+    let flattened = terms.iter().flatten().copied().collect::<Vec<_>>();
+    let mut zeta_lower = Integer::new();
+    let mut zeta_upper = Integer::new();
+    let mut zeta_exponent = 0_i64;
+    let mut tail_lower = Integer::new();
+    let mut tail_upper = Integer::new();
+    let mut tail_exponent = 0_i64;
+    let mut index_lower = Integer::new();
+    let mut index_upper = Integer::new();
+    let mut index_exponent = 0_i64;
+    let status = unsafe {
+        sagejs_rust_flint_bf_index_enclosure(
+            terms.len(),
+            flattened.as_ptr().cast(),
+            threshold,
+            discriminant.as_raw().cast(),
+            class_number,
+            roots_of_unity,
+            signature.0,
+            signature.1,
+            regulator.lower.as_raw().cast(),
+            regulator.upper.as_raw().cast(),
+            regulator.binary_exponent,
+            precision.into(),
+            zeta_lower.as_raw_mut().cast(),
+            zeta_upper.as_raw_mut().cast(),
+            &mut zeta_exponent,
+            tail_lower.as_raw_mut().cast(),
+            tail_upper.as_raw_mut().cast(),
+            &mut tail_exponent,
+            index_lower.as_raw_mut().cast(),
+            index_upper.as_raw_mut().cast(),
+            &mut index_exponent,
+        )
+    };
+    match status {
+        0 => Ok(FlintBfIndexEnclosure {
+            zeta_log_residue: FlintDyadicInterval {
+                lower: zeta_lower,
+                upper: zeta_upper,
+                binary_exponent: zeta_exponent,
+            },
+            tail_bound: FlintDyadicInterval {
+                lower: tail_lower,
+                upper: tail_upper,
+                binary_exponent: tail_exponent,
+            },
+            index: FlintDyadicInterval {
+                lower: index_lower,
+                upper: index_upper,
+                binary_exponent: index_exponent,
+            },
+        }),
+        -1 => Err(FlintNormalFormError::InvalidDimensions),
+        code => Err(FlintNormalFormError::ForeignFailure(code)),
+    }
 }
 
 pub fn flint_compact_cubic_regulator(
@@ -839,5 +1004,31 @@ mod tests {
         assert!(interval.lower > 0);
         assert!(interval.upper >= interval.lower);
         assert!(interval.binary_exponent < 0);
+    }
+
+    #[test]
+    fn arb_belabas_friedman_bridge_returns_outward_intervals() {
+        let regulator = FlintDyadicInterval {
+            lower: 1.into(),
+            upper: 1.into(),
+            binary_exponent: 0,
+        };
+        let answer =
+            flint_bf_index_enclosure(&[], 72, &Integer::from(49), 1, 2, (3, 0), &regulator, 256)
+                .unwrap();
+        assert!(answer.zeta_log_residue.lower <= answer.zeta_log_residue.upper);
+        assert!(answer.tail_bound.lower > 0);
+        assert!(answer.tail_bound.lower <= answer.tail_bound.upper);
+        assert!(answer.index.lower > 0);
+        assert!(answer.index.lower <= answer.index.upper);
+    }
+
+    #[test]
+    fn arb_bdf_bridge_returns_an_outward_margin() {
+        let margin =
+            flint_bdf_factor_base_margin(&[[1, 2, 1], [1, 3, 1]], 5, &Integer::from(49), 3, 3, 256)
+                .unwrap();
+        assert!(margin.lower <= margin.upper);
+        assert!(margin.binary_exponent < 0);
     }
 }

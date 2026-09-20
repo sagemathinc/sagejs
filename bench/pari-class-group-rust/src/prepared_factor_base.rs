@@ -210,6 +210,59 @@ impl PreparedFactorBase {
 
 const INDEX_CHARACTER_SEARCH_LIMIT: u32 = 257;
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CubicSplittingRecord {
+    pub prime: i64,
+    /// `(ramification index, residue degree)` for every prime above `prime`.
+    pub factors: Vec<(usize, usize)>,
+}
+
+/// Return exact maximal-order splitting types for all rational primes below
+/// `bound`. Ordinary primes use Dedekind factorization; explicitly recorded
+/// index primes use the validated maximal-order residue characters instead.
+pub fn prepared_cubic_splitting_records(
+    field: &ValidatedPreparedCubic,
+    bound: usize,
+) -> Result<Vec<CubicSplittingRecord>, PreparedFactorBaseError> {
+    let polynomial: [i64; 4] = field
+        .data()
+        .polynomial_ascending
+        .iter()
+        .map(|value| {
+            value
+                .to_i64()
+                .ok_or(PreparedFactorBaseError::CoefficientOutsideI64)
+        })
+        .collect::<Result<Vec<_>, _>>()?
+        .try_into()
+        .expect("cubic has four coefficients");
+    let mut workspace = PreparedIdealWorkspace::new();
+    let mut answer = Vec::new();
+    if bound <= 2 {
+        return Ok(answer);
+    }
+    for prime in rational_primes_through(bound - 1) {
+        let factors = if field
+            .data()
+            .index_primes
+            .iter()
+            .any(|index_prime| index_prime == &prime)
+        {
+            index_prime_descriptors(field, prime, &mut workspace)?
+                .into_iter()
+                .map(|(descriptor, _ideal)| (descriptor.ramification, descriptor.residue_degree))
+                .collect()
+        } else {
+            prepared_cubic_factor_pattern(polynomial, prime)
+                .into_iter()
+                .map(|(factor, ramification)| (ramification, factor.len() - 1))
+                .collect()
+        };
+        answer.push(CubicSplittingRecord { prime, factors });
+    }
+    Ok(answer)
+}
+
 pub fn prepared_maximal_cubic_factor_base(
     field: &ValidatedPreparedCubic,
 ) -> Result<PreparedFactorBase, PreparedFactorBaseError> {
@@ -510,6 +563,28 @@ mod tests {
         )
         .unwrap();
         assert_eq!(relation[index], 2);
+
+        let splitting = prepared_cubic_splitting_records(&row6_field(), 100).unwrap();
+        assert_eq!(splitting.first().unwrap().prime, 2);
+        assert_eq!(splitting.last().unwrap().prime, 97);
+        assert_eq!(
+            splitting
+                .iter()
+                .find(|record| record.prime == 3)
+                .unwrap()
+                .factors,
+            [(3, 1)]
+        );
+        for record in splitting {
+            assert_eq!(
+                record
+                    .factors
+                    .iter()
+                    .map(|(ramification, degree)| ramification * degree)
+                    .sum::<usize>(),
+                3
+            );
+        }
 
         let mut divisor = vec![0; base.catalog.ideals.len()];
         divisor[index] = 1;
