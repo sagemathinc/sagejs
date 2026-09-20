@@ -236,6 +236,21 @@ pub fn prepared_cubic_splitting_records(
     field: &ValidatedPreparedCubic,
     bound: usize,
 ) -> Result<Vec<CubicSplittingRecord>, PreparedFactorBaseError> {
+    prepared_cubic_splitting_records_range(field, 2, bound)
+}
+
+/// Return exact maximal-order splitting types for rational primes in
+/// `lower_bound..bound`.
+///
+/// This is the incremental counterpart of
+/// [`prepared_cubic_splitting_records`]. It lets completion searches retain a
+/// proved prefix while increasing their analytic cutoff instead of repeatedly
+/// factoring the same rational primes.
+pub fn prepared_cubic_splitting_records_range(
+    field: &ValidatedPreparedCubic,
+    lower_bound: usize,
+    bound: usize,
+) -> Result<Vec<CubicSplittingRecord>, PreparedFactorBaseError> {
     let polynomial: [i64; 4] = field
         .data()
         .polynomial_ascending
@@ -250,10 +265,14 @@ pub fn prepared_cubic_splitting_records(
         .expect("cubic has four coefficients");
     let mut workspace = PreparedIdealWorkspace::new();
     let mut answer = Vec::new();
-    if bound <= 2 {
+    let lower_bound = lower_bound.max(2);
+    if bound <= lower_bound {
         return Ok(answer);
     }
     for prime in rational_primes_through(bound - 1) {
+        if prime < i64::try_from(lower_bound).unwrap_or(i64::MAX) {
+            continue;
+        }
         let factors = if field
             .data()
             .index_primes
@@ -597,6 +616,13 @@ mod tests {
                 3
             );
         }
+
+        let mut incremental = prepared_cubic_splitting_records_range(&row6_field(), 2, 41).unwrap();
+        incremental.extend(prepared_cubic_splitting_records_range(&row6_field(), 41, 100).unwrap());
+        assert_eq!(
+            incremental,
+            prepared_cubic_splitting_records(&row6_field(), 100).unwrap()
+        );
 
         let mut divisor = vec![0; base.catalog.ideals.len()];
         divisor[index] = 1;

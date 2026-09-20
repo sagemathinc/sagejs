@@ -18,7 +18,7 @@ use sagejs_pari_class_group_rust_experiment::{
     flint_small_surplus_class_order_with_workspace, flint_smith_candidate, flint_smith_class_map,
     flint_staged_relation_witnesses, modular_independent_relation_rows,
     parse_neutral_prepared_cubic_json, prepared_cubic_factor_base,
-    prepared_cubic_splitting_records, prepared_maximal_cubic_factor_base,
+    prepared_cubic_splitting_records_range, prepared_maximal_cubic_factor_base,
     reconstruct_rank_one_unit_lattice, reconstruct_rank_two_unit_lattice,
 };
 use std::collections::HashMap;
@@ -1174,8 +1174,13 @@ fn small_norm_unit_kernel_for_field(
     // multiplying source logarithms of roughly 320 bits before severe
     // cancellation.  Keep a wide guard margin so the independently flattened
     // compact-unit replay remains meaningful.
-    const LOG_PRECISION: u32 = 4096;
-    let embedding = PreparedCubicEmbedding::from_validated(&field, LOG_PRECISION)
+    let log_precision = if kernel.maximum_coefficient_bits <= 256 {
+        1_024
+    } else {
+        4_096
+    };
+    let replay_precision = log_precision / 2;
+    let embedding = PreparedCubicEmbedding::from_validated(&field, log_precision)
         .expect("high-precision real embeddings failed");
     let mut relation_logs = Vec::with_capacity(rows);
     for coordinates in answer.generators.chunks_exact(3) {
@@ -1191,9 +1196,9 @@ fn small_norm_unit_kernel_for_field(
         );
     }
     let mut unit_logs = Vec::with_capacity(kernel.rank);
-    let mut maximum_product_formula_residual = Float::with_val(LOG_PRECISION, 0);
+    let mut maximum_product_formula_residual = Float::with_val(log_precision, 0);
     for dependency in 0..kernel.rank {
-        let mut logs: [Float; 3] = std::array::from_fn(|_| Float::with_val(LOG_PRECISION, 0));
+        let mut logs: [Float; 3] = std::array::from_fn(|_| Float::with_val(log_precision, 0));
         for relation in 0..rows {
             let coefficient = &kernel.coefficients[dependency * rows + relation];
             if coefficient == &0 {
@@ -1250,7 +1255,7 @@ fn small_norm_unit_kernel_for_field(
         reconstruct_cubic_unit_lattice(&unit_logs, &reconstruction_bound, field.data().signature);
     let reduced_precision_logs = unit_logs
         .iter()
-        .map(|row| std::array::from_fn(|index| Float::with_val(2048, &row[index])))
+        .map(|row| std::array::from_fn(|index| Float::with_val(replay_precision, &row[index])))
         .collect::<Vec<_>>();
     let reduced_precision_lattice = reconstruct_cubic_unit_lattice(
         &reduced_precision_logs,
@@ -1293,7 +1298,7 @@ fn small_norm_unit_kernel_for_field(
             assert_eq!(replayed, 0);
         }
         fundamental_exponents.extend(coefficients.iter().cloned());
-        let mut logs: [Float; 3] = std::array::from_fn(|_| Float::with_val(LOG_PRECISION, 0));
+        let mut logs: [Float; 3] = std::array::from_fn(|_| Float::with_val(log_precision, 0));
         let mut factors = Vec::new();
         for relation in 0..rows {
             if coefficients[relation] == 0 {
@@ -1360,7 +1365,7 @@ fn small_norm_unit_kernel_for_field(
         field.data().signature,
         &answer.generators,
         &fundamental_exponents,
-        LOG_PRECISION,
+        log_precision,
     )
     .expect("Arb compact-unit regulator enclosure failed");
     let dyadic_endpoint = |mantissa: &Integer, binary_exponent: i64| {
@@ -1385,7 +1390,7 @@ fn small_norm_unit_kernel_for_field(
                 &rigorous_regulator.upper,
                 rigorous_regulator.binary_exponent,
             );
-    const BF_PRECISION: u32 = 512;
+    const BF_PRECISION: u32 = 256;
     let analytic_started = Instant::now();
     // Small fields must not pay row-6's fixed 23,994-prime analytic bill.
     // Start from a discriminant-size policy, then increase monotonically until
@@ -1399,41 +1404,55 @@ fn small_norm_unit_kernel_for_field(
         17..=64 => 1_152,
         _ => 23_994,
     };
-    let (bf_threshold, splitting, bf_plan, bf) = threshold_candidates
+    let mut splitting = Vec::new();
+    let mut splitting_bound = 2_usize;
+    let mut accepted_completion = None;
+    for threshold in threshold_candidates
         .into_iter()
         .filter(|threshold| *threshold >= initial_threshold)
-        .find_map(|threshold| {
-            let splitting = prepared_cubic_splitting_records(&field, threshold as usize).ok()?;
-            let plan = build_cubic_belabas_friedman_plan(threshold, &splitting).ok()?;
-            let enclosure = flint_bf_index_enclosure(
-                &plan.terms,
-                threshold,
-                &field.data().discriminant,
-                class_order.class_order.to_u64()?,
-                2,
-                (
-                    u64::from(field.data().signature.0),
-                    u64::from(field.data().signature.1),
-                ),
-                &rigorous_regulator,
-                BF_PRECISION,
-            )
-            .ok()?;
-            let tail_upper = dyadic_endpoint(
-                &enclosure.tail_bound.upper,
-                enclosure.tail_bound.binary_exponent,
-            );
-            let index_lower =
-                dyadic_endpoint(&enclosure.index.lower, enclosure.index.binary_exponent);
-            let index_upper =
-                dyadic_endpoint(&enclosure.index.upper, enclosure.index.binary_exponent);
-            (tail_upper < Rational::from((1, 4))
-                && index_lower > 0
-                && index_lower <= 1
-                && index_upper >= 1
-                && index_upper < 2)
-                .then_some((threshold, splitting, plan, enclosure))
-        })
+    {
+        let threshold_usize = threshold as usize;
+        splitting.extend(
+            prepared_cubic_splitting_records_range(&field, splitting_bound, threshold_usize)
+                .expect("incremental cubic splitting failed"),
+        );
+        splitting_bound = threshold_usize;
+        let plan = build_cubic_belabas_friedman_plan(threshold, &splitting)
+            .expect("Belabas-Friedman plan failed");
+        let enclosure = flint_bf_index_enclosure(
+            &plan.terms,
+            threshold,
+            &field.data().discriminant,
+            class_order
+                .class_order
+                .to_u64()
+                .expect("class order is outside u64"),
+            2,
+            (
+                u64::from(field.data().signature.0),
+                u64::from(field.data().signature.1),
+            ),
+            &rigorous_regulator,
+            BF_PRECISION,
+        )
+        .expect("Belabas-Friedman enclosure failed");
+        let tail_upper = dyadic_endpoint(
+            &enclosure.tail_bound.upper,
+            enclosure.tail_bound.binary_exponent,
+        );
+        let index_lower = dyadic_endpoint(&enclosure.index.lower, enclosure.index.binary_exponent);
+        let index_upper = dyadic_endpoint(&enclosure.index.upper, enclosure.index.binary_exponent);
+        if tail_upper < Rational::from((1, 4))
+            && index_lower > 0
+            && index_lower <= 1
+            && index_upper >= 1
+            && index_upper < 2
+        {
+            accepted_completion = Some((threshold, plan, enclosure));
+            break;
+        }
+    }
+    let (bf_threshold, bf_plan, bf) = accepted_completion
         .expect("analytic enclosure did not isolate index one at the maximum threshold");
     let bdf_bound = u64::try_from(answer.factor_base.catalog.relation_bound)
         .expect("factor-base bound is outside u64")
@@ -1569,7 +1588,7 @@ fn small_norm_unit_kernel_for_field(
                 "construction": "reused-small-surplus-saturated-congruence-kernel",
                 "maximumCoefficientBits": kernel.maximum_coefficient_bits,
                 "unitEncoding": "product-of-collected-integral-basis-elements-to-signed-powers-v1",
-                "logPrecisionBits": LOG_PRECISION,
+                "logPrecisionBits": log_precision,
                 "maximumProductFormulaResidualApproximation": maximum_product_formula_residual
                     .to_string(),
                 "smallestNonzeroTwoByTwoMinorApproximation": smallest_nonzero_determinant
@@ -1579,7 +1598,7 @@ fn small_norm_unit_kernel_for_field(
             },
             "reconstructedUnitLattice": {
                 "certificationStatus": "exact-compact-units-and-grh-conditional-analytic-index-one",
-                "rationalReconstructionStableAtBits": [2048, LOG_PRECISION],
+                "rationalReconstructionStableAtBits": [replay_precision, log_precision],
                 "maximumDenominator": reconstruction_bound.to_string(),
                 "coordinateBasisDependencyIndices": lattice.coordinate_basis_indices,
                 "rationalCoordinates": lattice.rational_coordinates.iter().map(|coordinate| {
@@ -1597,7 +1616,7 @@ fn small_norm_unit_kernel_for_field(
                     "lowerMantissa": rigorous_regulator.lower.to_string(),
                     "upperMantissa": rigorous_regulator.upper.to_string(),
                     "binaryExponent": rigorous_regulator.binary_exponent,
-                    "precisionBits": LOG_PRECISION,
+                    "precisionBits": log_precision,
                     "containsIndependentMpfrReplay": mpfr_replay_contained,
                     "authority": "directed-arb-evaluation-from-exact-compact-units",
                 },

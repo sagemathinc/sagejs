@@ -95,7 +95,8 @@ pub use prepared::{
 };
 pub use prepared_factor_base::{
     CubicSplittingRecord, PreparedFactorBase, PreparedFactorBaseError,
-    prepared_cubic_splitting_records, prepared_maximal_cubic_factor_base,
+    prepared_cubic_splitting_records, prepared_cubic_splitting_records_range,
+    prepared_maximal_cubic_factor_base,
 };
 pub use prepared_ideal::{
     CubicIdeal, DegreeOnePrimeCharacter, PreparedIdealError, PreparedIdealWorkspace,
