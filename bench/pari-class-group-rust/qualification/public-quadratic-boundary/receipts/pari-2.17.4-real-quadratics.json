@@ -1,0 +1,41 @@
+{
+  "schema": "sagejs.rust-class-group/public-quadratic-pari-differential-v1",
+  "pariVersion": "2.17.4",
+  "oracleBoundary": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+  "productRuntimeUsesPariOrFixtureData": false,
+  "interpretation": "Preparation agrees exactly; PARI class-group answers are test-only evidence and are not returned by the unsupported Rust product path.",
+  "cases": [
+    {
+      "fieldId": "real-d5",
+      "polynomialAscending": ["-1", "-1", "1"],
+      "discriminant": "5",
+      "signature": ["2", "0"],
+      "classNumber": "1",
+      "invariantFactors": []
+    },
+    {
+      "fieldId": "real-d13",
+      "polynomialAscending": ["-3", "-1", "1"],
+      "discriminant": "13",
+      "signature": ["2", "0"],
+      "classNumber": "1",
+      "invariantFactors": []
+    },
+    {
+      "fieldId": "real-d229-class-number-3",
+      "polynomialAscending": ["-57", "-1", "1"],
+      "discriminant": "229",
+      "signature": ["2", "0"],
+      "classNumber": "3",
+      "invariantFactors": ["3"]
+    },
+    {
+      "fieldId": "real-d401-class-number-5",
+      "polynomialAscending": ["-100", "-1", "1"],
+      "discriminant": "401",
+      "signature": ["2", "0"],
+      "classNumber": "5",
+      "invariantFactors": ["5"]
+    }
+  ]
+}
