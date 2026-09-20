@@ -678,18 +678,6 @@ def _print_legacy_class(self, output):
                 self.name.print(output)
                 output.print(")) return " + instance_name)
                 output.end_statement()
-            if not self.lightweight:
-                output.indent()
-                output.spaced(
-                    "if",
-                    "(" + instance_name + ".ρσ_object_id",
-                    "===",
-                    "undefined)",
-                    "Object.defineProperty(" + instance_name + ",",
-                    '"ρσ_object_id",',
-                    '{"value":++ρσ_object_counter})',
-                )
-                output.end_statement()
             if live_keyword_constructor:
                 output.indent()
                 output.print("var ρσ_initializer = ")
@@ -707,14 +695,22 @@ def _print_legacy_class(self, output):
             output.indent()
             output.print("var ρσ_init_result = ")
             if output.options.python_attributes:
-                output.print("ρσ_skip_init_for_custom_new(")
+
+                def print_initializer():
+                    if live_keyword_constructor:
+                        output.print("ρσ_initializer")
+                    else:
+                        self.name.print(output)
+                        output.print(".prototype.__init__")
+
+                if not self.init:
+                    output.print("arguments.length === 0 && ")
+                    print_initializer()
+                    output.print(" === ρσ_object_init || ")
+                output.print("ρσ_skip_init(")
                 self.name.print(output)
                 output.comma()
-                if live_keyword_constructor:
-                    output.print("ρσ_initializer")
-                else:
-                    self.name.print(output)
-                    output.print(".prototype.__init__")
+                print_initializer()
                 output.print(") ? undefined : ")
             if live_keyword_constructor:
                 output.print(
@@ -1324,7 +1320,7 @@ def _print_legacy_class(self, output):
                     "return", '"<"', "+", class_module, "+", '"."', "+", class_name, ""
                 ),
             )
-            output.spaced("+", '" #"', "+", "this.ρσ_object_id", "+", '">"')
+            output.spaced("+", '" #"', "+", "ρσ_id(this)", "+", '">"')
             output.end_statement()
 
         define_default_method("__repr__", f_repr)

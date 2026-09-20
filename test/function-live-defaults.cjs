@@ -24,6 +24,7 @@ test("positional default resolution is shared behind the omitted-argument guard"
     const javascript = output.get();
     assert.match(javascript, /if \(typeof (\S+) === "undefined"\) \1 = ρσ_positional_default\([^;]+\);/);
     assert.equal((javascript.match(/ρσ_positional_default\(/g) ?? []).length, 1);
+    assert.match(javascript, /__handles_kwarg_interpolation__ = 2;/);
     assert.doesNotMatch(javascript, /__defaults__\.length/);
   } finally {
     frontend.close();

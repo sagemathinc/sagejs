@@ -303,6 +303,276 @@ critical work is package cold compilation, combined exception-state qualificatio
 and the remaining general call/construction cliffs; do not reset priorities to
 collecting more suite names now that the adopted failures are repaired.
 
+**2026-09-17 method-call checkpoint:** after the argument-binding and
+construction series reached main, the source-current prototype-indexed prepared
+method cache reduces immediate keyword-method time by 15.7%, positional
+construction plus a method by 7.4%, keyword construction plus a method by 6.5%,
+and empty construction by 10.7% in controlled alternating-process measurements.
+Mutation, deletion, explicit instance assignment, custom lookup, saved methods,
+and traitlets workflows retain their authoritative paths. The candidate passes
+all 224 portable files and the unchanged 902,439/903,000 core budget. Remaining
+common call/construction gaps are still roughly 26–28x CPython, so M5 remains
+open. Exact artifacts and polymorphic/mutation measurements are recorded in
+`agents/python-method-call-prototype-cache.md`.
+
+**2026-09-17 keyword-binder checkpoint:** the stacked shared-bootstrap binder
+candidate removes generic Python operations from literal keyword packet
+interpolation while preserving the existing call protocol. Controlled exact-
+artifact measurements improve keyword functions by 33.6%, keyword methods by
+30.7%, and keyword construction by 15.3%; positional and empty construction
+remain flat. All 224 portable files, strict checks, standalone construction,
+and the pinned traitlets notification/failure workflow pass. Counted core source
+falls to 901,616/903,000 bytes. Keyword calls still take roughly 18–23x CPython,
+so this is not M5 closure. The local startup host exceeded the unchanged budget
+for both baseline and candidate and is not a qualification receipt. Exact
+artifacts, measurements, and the corrected standalone boundary are recorded in
+`agents/python-keyword-binder-native.md`.
+
+**2026-09-17 attribute-store checkpoint:** the construction follow-up caches a
+prototype/name proof only after the complete Python assignment protocol has
+successfully selected ordinary instance storage. Epoch invalidation, explicit
+instance hooks, exposed/replaced namespaces, descriptor installation/deletion,
+class reassignment, native fallbacks, and evaluation order retain authoritative
+paths. Against the keyword-binder artifact, positional construction plus a
+method improves by 30.1% and keyword construction by 21.4%; unrelated call rows
+remain flat. The remaining construction gaps are still 18.8–19.6x CPython.
+All 225 portable files, strict checks, traitlets, decorator, and attrs workflows
+pass at 902,699/903,000 core bytes. Exact artifacts and qualification are in
+`agents/python-attribute-store-cache.md`. Keep this branch behind its binder
+dependency until PR #301 and the binder slice reach `origin/main`; do not let a
+stacked PR merge into a feature branch.
+
+**2026-09-17 attribute-read checkpoint:** a further stacked candidate reuses
+the ordinary-store proof for direct own-field reads only when full resolution
+also proves default `__getattribute__`. Class mutation/deletion, descriptors,
+custom lookup, namespace exposure/replacement, own-field deletion, native
+receivers, and evaluation order retain full paths. Against the store candidate,
+positional construction plus a method improves another 31.2% and keyword
+construction 21.8%; the residual gaps are 13.8x and 15.2x CPython. All 225
+portable files, strict checks, traitlets, attrs, decorator, docs, and merge
+invariants pass at 902,665/903,000 core bytes. The common standalone shrinks by
+71,972 bytes. Exact artifacts and the checked access decomposition are recorded
+in `agents/python-attribute-read-cache.md`. Keep this branch behind the same
+integration queue; ordinary reads/stores and call binding remain M5 cliffs.
+
+**2026-09-17 ordinary-store update checkpoint:** a guarded follow-up replaces
+repeated `Object.defineProperty` calls only after the mutation-safe store proof
+has selected ordinary instance storage. Tracked writable data properties and
+verified new own fields use native assignment; `__proto__`, accessors, frozen
+or non-extensible objects, stale epochs, namespaces, hooks, descriptors, and
+native receivers
+retain authoritative paths. Regression tests preserve the original frozen-field
+`TypeError` and replace configurable own accessors without invoking setters. On
+idle `bench-1`, two warmed stores improve 54.1% and fall from 18.5x to 8.49x
+CPython. Positional construction plus a method improves 9.6% and keyword
+construction 5.7%; remaining gaps are 9.48x and 12.08x. All 225 portable files,
+the 508-case differential baseline, strict checks, and traitlets pass at
+902,923/903,000 core bytes. Exact evidence is in
+`agents/python-attribute-store-assignment.md`. Do not describe the broader M5
+cliff as closed.
+
+**2026-09-17 lazy-identity checkpoint:** a fresh-main candidate removes the
+redundant `Object.defineProperty` that eagerly allocated `ρσ_object_id` on every
+ordinary construction. Stable identity already belongs to the runtime `id()`
+map and is now acquired only by `id`, identity hashing, or synthetic repr.
+Subscription fallback uses the inherited immutable class marker, preserving
+Python errors even if foreign code spoofs the writable host `constructor`.
+Controlled exact-artifact measurements improve empty construction by 56.6%,
+no-op initialization by 38.5%, positional construction plus a method by 7.2%,
+and keyword construction plus a method by 8.5%; call-only rows remain flat.
+Empty construction is 2.05x CPython, while initialized construction remains
+12.7-14.1x and the call cliffs remain open. All 225 portable files, the full
+differential baseline, traitlets/attrs/decorator workflows, strict checks,
+documentation, merge, architecture, and the unchanged 902,888/903,000 core
+budget pass. Exact artifacts and qualification are in
+`agents/python-lazy-instance-identity.md`.
+
+**2026-09-17 exact-addition checkpoint:** a fresh-main candidate classifies
+primitive exact integer operands once in the shared bootstrap and promotes to
+`BigInt` before a safe-number sum loses precision. Floats, unsafe foreign
+numbers, objects, Python/Sage dispatch, and the public runtime surface remain
+unchanged. Controlled exact-artifact measurements improve positional calls by
+73.7%, keyword functions by 33.2%, keyword methods by 25.1%, positional
+construction plus a method by 15.6%, and keyword construction plus a method by
+7.3%. Positional calls are now 2.24x CPython in this workload, but keyword and
+initialized-construction paths remain 11–19x and therefore remain M5 cliffs.
+All 225 portable files, the 508-case differential baseline, strict checks,
+traitlets, full build, and the unchanged 902,922/903,000 core budget pass.
+Exact artifacts and measurements are recorded in
+`agents/python-exact-integer-add.md`.
+
+**2026-09-17 default-construction checkpoint:** a follow-up omits the live
+`object.__init__` call only when a class without a declared initializer is
+called with an empty argument vector and its resolved initializer is still the
+captured original. Declared initializers retain the original emitted dispatch;
+mutation, inheritance, custom allocation, nonempty calls, and assigned
+initializers retain the general path. Controlled exact-artifact measurements
+improve empty construction another 60.4%, from 15.949 ms to 6.318 ms per
+100,000 checked constructions; the same CPython run is 7.819 ms. Call-only and
+initialized-construction rows remain within 1.6% and their large 3.3-25.1x
+CPython gaps remain open. The candidate is 162 standalone bytes larger while
+shorter internal names reduce counted core source to 902,846/903,000 bytes.
+Focused mutation/lowering tests, the full differential baseline, strict checks,
+traitlets, attrs, decorator, documentation, merge, and architecture gates pass.
+The campaign separately exposed the pre-existing acceptance of unexpected
+positional arguments by an empty class; repair that semantic defect without
+mixing it into the empty-call speed path. Exact evidence is in
+`agents/python-default-construction.md`.
+
+**2026-09-17 exact-division checkpoint:** a fresh-main candidate classifies
+primitive exact integer operands once in the shared bootstrap and implements
+Python's floor quotient and divisor-signed remainder without repeated
+Python-level type discovery. Zero divisors, floats, unsafe foreign numbers,
+objects, reflected methods, and augmented assignment retain the established
+semantic paths. Controlled exact-artifact measurements improve one million
+floor divisions by 77.31% to 1.33x CPython and one million modulo operations by
+65.94% to 1.90x CPython. Neighboring operator rows remain within 1.8%, the
+standalone shrinks by 518 bytes, and core source shrinks to 902,497/903,000.
+All 225 portable files, the 508-case differential baseline, 404 strict modules,
+traitlets and pyparsing workflows, documentation, and merge invariants pass.
+Exact artifacts and qualification are in
+`agents/python-exact-integer-divmod.md`.
+
+**2026-09-17 exact-shift checkpoint:** a fresh-main candidate classifies
+primitive exact integer operands once in the shared bootstrap while retaining
+negative-count errors, float/object dispatch, reflected methods, augmented
+assignment, wide signed values, and huge-count behavior. Controlled
+exact-artifact measurements improve one million left shifts by 80.50% to 1.85x
+CPython and right shifts by 26.08% to 1.69x CPython. The standalone grows by
+only 15 bytes and neighboring rows remain within 4.5%; core source remains
+inside the unchanged budget at 902,918/903,000 bytes. Exact artifacts and
+qualification are in `agents/python-exact-integer-shifts.md`.
+
+**2026-09-17 exact-in-place-addition checkpoint:** a narrow follow-up reuses
+the shared primitive classifier before generic `+=` dispatch while retaining
+object `__iadd__` precedence, `__add__` fallback, and the existing float/string
+paths. Against the exact PR #309 artifact, positional calls improve another
+9.5% to 1.90x CPython; keyword functions improve 4.2% and keyword methods 2.9%.
+The remaining 13–18x keyword gaps stay open. All 225 portable files, strict
+checks, traitlets, focused dispatch checks, a full build, and the unchanged
+902,918/903,000 core budget pass. Evidence is in
+`agents/python-exact-integer-iadd.md`. PR #309 is now merged, and the qualified
+commits are replayed on the resulting `origin/main` for integration.
+
+**2026-09-17 exact subtraction/multiplication checkpoint:** a queued follow-up
+adds a compact primitive boundary for `-`, `*`, `-=`, and `*=`. A first unified
+add/subtract/multiply helper was rejected after it reproducibly slowed `+` by
+5.15% and `+=` by 4.22%; the corrected design leaves the qualified addition
+helper unchanged. In a controlled one-million-operation comparison,
+subtraction improves 85.67%, multiplication 81.07%, `-=` 83.90%, and `*=`
+89.35%. Their remaining gaps are 0.81-1.54x CPython, while addition controls
+remain flat within 1.19%. The candidate standalone shrinks by 358 bytes. All
+225 portable files, the 508-case differential baseline, strict checks,
+traitlets/pyparsing workflows, docs, merge invariants, and the unchanged
+902,700/903,000 core budget pass. Evidence is in
+`agents/python-exact-integer-binary.md`; PR #311 remains the prerequisite. Do
+not confuse these closed arithmetic micro-cliffs with the open keyword,
+construction, or cold-compiler cliffs.
+
+**2026-09-17 keyword-constructor dispatch checkpoint:** static keyword
+construction previously prepared one receiver, then the generic binder invoked
+the registered generated-class adapter without it and caused a second allocation.
+The guarded shared-bootstrap path now applies only an authenticated registered
+constructor directly to the prepared receiver; unregistered, replaced, custom,
+and explicit-apply paths retain their existing semantics. Controlled
+source-current alternating-process measurements improve keyword construction
+plus a method by 5.98%, from 409.000 ms to 384.550 ms per 100,000 operations,
+while the other six call/construction rows remain flat. The residual gap is
+12.92x CPython, and keyword methods remain 19.92x, so M5 is still open. A preceding prepared-context
+binder experiment was rejected after producing only -0.7% to +1.3% variation.
+The exact artifacts, semantic boundary, and qualification are recorded in
+`agents/python-keyword-constructor-dispatch.md`. Core source is
+902,456/903,000 bytes without a budget change. Keep this work behind the
+attribute-store and exact-div/mod integration queue.
+
+**2026-09-17 exact-power checkpoint:** a further queued follow-up uses a
+separate compact primitive boundary for nonnegative integer power while leaving
+negative Python floats, negative Sage rationals, floats, and object dispatch on
+their authoritative paths. One million `3 ** 7` operations improve 98.95%,
+from 4,549.589 ms to 47.164 ms (2.32x CPython rather than 224x); positive `**=`
+improves 99.00% and measures 0.74x CPython. It also repairs a pre-existing
+Python augmented-power error: `2 **= -1` now produces float `0.5`, while Sage
+retains rational `1/2`. All six existing arithmetic controls remain within
+-1.74% to +0.23%. A full build, 72 focused tests, all 225 portable files, the
+508-case differential baseline, strict checks, traitlets/pyparsing, docs, merge
+invariants, and the unchanged 902,984/903,000 core budget pass. Evidence is in
+`agents/python-exact-integer-power.md`; PR #314 and exact shifts are now in
+`origin/main`, and the candidate has been replayed and remeasured against it.
+
+**2026-09-18 constructor custom-new checkpoint:** profiling showed every
+generated class construction paying compiled-Python traversal to decide whether
+a synthetic initializer ends at `object.__init__`. The internal bounded chain
+walk and epoch-current custom-allocator cache now use a raw implementation in
+the shared bootstrap boundary while `builtins.py` remains strict Python.
+Against the exact PR #316 source, controlled
+exact-artifact measurements improve no-op-initializer construction by 11.72%
+and field-bearing positional/keyword construction by 3.41%; call-only and empty
+class controls remain flat. No-op construction is now 5.68x CPython, while
+field-bearing construction remains 10.51–12.04x and keyword calls roughly
+12.8x. All semantic, differential, package, strict, and merge gates pass at
+902,448/903,000 core bytes. Exact evidence is in
+`agents/python-constructor-new-guard-native.md`. Keep this candidate behind PR
+#316, now merged, and keep M5 open.
+
+**2026-09-17 single-pass keyword-binding checkpoint:** the authenticated
+generated-function path validated keyword packet keys, then scanned every
+positional parameter again to copy and delete recognized values. It now
+consumes each recognized named property during the validation pass while
+retaining keyword-only and `**kwargs` entries for the generated prologue.
+Controlled exact-artifact measurements improve keyword functions by 4.9% and
+immediate keyword methods by 2.8%; unrelated rows remain within run dispersion.
+The artifact and core source both shrink 282 bytes to 902,332/903,000. Residual
+keyword-function, keyword-method, and keyword-construction gaps remain 8.6x,
+13.8x, and 11.6x CPython, so M5 remains open. Differential, direct-boundary,
+default, mutation, traitlets, attrs/decorator, strict, docs, and merge gates
+pass. The unchanged local startup gate remains above budget and is not called a
+receipt. Exact evidence is in `agents/python-keyword-single-pass-binding.md`;
+keep this candidate behind its prerequisites.
+
+**2026-09-17 receiverless keyword-classification follow-up:** the binder still
+called the authoritative class-instance-method classifier for ordinary
+receiverless functions even though that classifier's first condition rejects a
+null or undefined receiver. Moving the identical guard to the shared raw
+boundary improves keyword functions another 3.9%, from 86.702 ms to 83.293 ms
+per 100,000 calls and from 8.5x to 8.2x CPython; every other matrix row remains
+flat. A throwing-classifier boundary test proves receiverless calls bypass it,
+while non-null class/metaclass and instance paths are unchanged. Full
+differential, focused, traitlets, attrs/decorator, strict, docs, and merge gates
+pass at 902,348/903,000 core bytes. Evidence is folded into
+`agents/python-keyword-single-pass-binding.md`; M5 remains open.
+
+**2026-09-17 generated default-tail ownership checkpoint:** generated function
+prologues already read source-defaulted positional parameters from keyword
+packets, but the shared binder first copied/deleted the same values into sparse
+positional arrays. The existing internal handler slot now encodes a one-based
+count of the trailing parameters owned by that prologue; counts survive
+bound/unbound and constructor adapters, while handwritten boolean handlers
+retain the complete path. Controlled exact-artifact measurements improve
+keyword functions by 48.3%, immediate keyword methods by 31.7%, and keyword
+construction plus a method by 10.6%; positional rows remain flat and the
+artifact shrinks 3,335 bytes. Residual gaps are still 4.2x, 9.3x, and 10.6x
+CPython, so M5 remains open. The audit also fixes positional-only defaults being
+incorrectly consumed from `**kwargs`; `f(a=2)` for
+`def f(a=1, /, **kw)` now agrees with CPython as `(1, {"a": 2})`. Full
+differential, 49 focused/traitlets checks, attrs/decorator, strict, docs, merge,
+and source budgets pass at 902,583/903,000 core bytes. Compiler tests not
+requiring the absent optional FLINT addon pass. Exact evidence is in
+`agents/python-default-tail-keyword-prologue.md`; keep the candidate behind its
+prerequisites.
+
+**2026-09-18 source-current keyword-prologue replay:** the single-pass binder,
+receiverless classification guard, and default-tail ownership changes have been
+replayed as one coherent unit on the qualified constructor stack. Ten-process
+exact-artifact measurements improve a defaulted keyword function by 4.49%, an
+immediate defaulted method by 7.84%, and keyword construction by 3.58%; controls
+remain within about 3%. A positional required argument plus one supplied
+default improves 27.70%, while four supplied defaults improve 9.23%, confirming
+that the benefit follows the redundant tail work. The artifact shrinks 4,054
+bytes and current integrated core source is 902,417/903,000. Keyword paths still measure roughly
+10.2x--14.5x CPython, so M5 remains open. Current evidence is in
+`agents/python-default-tail-keyword-prologue.md`; this branch is now the direct
+follow-up to merged PR #317.
+
 Continue next with integration-aware qualification, the receiver-lookup campaign,
 and true handled-exception ownership. Generator/coroutine suspension makes a
 single global active-exception pointer unsafe: preserve owned handlers while

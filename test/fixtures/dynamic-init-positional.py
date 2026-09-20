@@ -21,8 +21,27 @@ for cls in (Empty, EmptyCallable):
         raise AssertionError("object initializer accepted unexpected keyword")
 
 
+class RestoredObjectInit:
+    pass
+
+
+RestoredObjectInit.__init__ = object.__init__
+assert isinstance(RestoredObjectInit(), RestoredObjectInit)
+
+
 def assigned(self, value=3):
     self.value = value
+
+
+class MutatedDefault:
+    pass
+
+
+assert isinstance(MutatedDefault(), MutatedDefault)
+MutatedDefault.__init__ = assigned
+assert MutatedDefault(5).value == 5
+MutatedDefault.__init__ = object.__init__
+assert isinstance(MutatedDefault(), MutatedDefault)
 
 
 class Ordinary:

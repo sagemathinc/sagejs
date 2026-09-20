@@ -859,21 +859,21 @@ test("observable chained assignments use Python hooks from left to right", async
       "first", "second", "marker",
     ]);
     assert.match(javascript, /function\(ρσ_chain_assign_temp\)/);
-    assert.equal((javascript.match(/ρσ_setattr/g) ?? []).length, 2);
+    assert.equal((javascript.match(/ρσ_attr/g) ?? []).length, 4);
     assert.match(
       javascript,
-      /ρσ_getattr_internal\(first, "child", ρσ_getattr_missing\)/,
+      /ρσ_attr\(first, "child"\)/,
     );
     assert.match(
       javascript,
-      /ρσ_getattr_internal\(second, "child", ρσ_getattr_missing\)/,
+      /ρσ_attr\(second, "child"\)/,
     );
     assert.ok(
       javascript.indexOf(
-        'ρσ_getattr_internal(first, "child", ρσ_getattr_missing)',
+        'ρσ_attr(first, "child")',
       ) <
         javascript.indexOf(
-          'ρσ_getattr_internal(second, "child", ρσ_getattr_missing)',
+          'ρσ_attr(second, "child")',
         ),
     );
 
@@ -951,6 +951,21 @@ test("Python augmented division selects true division instead of Sage rationals"
     const javascript = output.get();
     assert.match(javascript, /ρσ_operator_idiv_python_exact/);
     assert.doesNotMatch(javascript, /ρσ_operator_idiv_exact/);
+  } finally {
+    frontend.close();
+  }
+});
+
+test("Python augmented power keeps negative integer results floating", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse("value **= -1\n", parserOptions);
+    const output = new compiler.OutputStream(outputOptions);
+    ast.print(output);
+    const javascript = output.get();
+    assert.match(javascript, /ρσ_operator_ipow_python_exact/);
+    assert.doesNotMatch(javascript, /ρσ_operator_ipow_exact/);
   } finally {
     frontend.close();
   }
@@ -1238,7 +1253,7 @@ test("Python bindings shadow JavaScript native namespace names", async () => {
     const javascript = output.get();
     assert.match(
       javascript,
-      /ρσ_getattr_internal\(ρσ_getattr_internal\(\$ρσ\$py\$Number, "Integer", ρσ_getattr_missing\), "Long", ρσ_getattr_missing\)/,
+      /ρσ_attr\(ρσ_attr\(\$ρσ\$py\$Number, "Integer"\), "Long"\)/,
     );
     assert.doesNotMatch(javascript, /Number\.Integer\.Long/);
   } finally {

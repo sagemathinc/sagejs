@@ -52,6 +52,67 @@ def literal_keywords(__proto__, ordinary):
 assert literal_keywords(__proto__=3, ordinary=5) == (3, 5)
 
 
+def binding_probe(required, optional=2, *, keyword=3, **extras):
+    return required, optional, keyword, extras
+
+
+# Positional keywords use the general binder; keyword-only arguments and
+# **kwargs can use the validated packet directly.
+assert binding_probe(required=1) == (1, 2, 3, {})
+assert binding_probe(1, optional=4) == (1, 4, 3, {})
+assert binding_probe(1, keyword=5) == (1, 2, 5, {})
+assert binding_probe(1, optional=4, keyword=5, extra=6) == (
+    1,
+    4,
+    5,
+    {"extra": 6},
+)
+
+
+def closed_binding(required, optional=2, *, keyword=3):
+    return required, optional, keyword
+
+
+for invalid, expected in (
+    (lambda: closed_binding(1, 2, optional=5), "multiple values"),
+    (lambda: closed_binding(1, bad=4), "unexpected keyword"),
+    (lambda: closed_binding(1, 2, bad=4, optional=5), "unexpected keyword"),
+    (lambda: closed_binding(1, 2, optional=5, bad=4), "multiple values"),
+    (lambda: closed_binding(optional=4), "required"),
+):
+    try:
+        invalid()
+    except TypeError as error:
+        assert expected in str(error)
+    else:
+        raise AssertionError("invalid function keyword binding was accepted")
+
+
+def positional_packet(value, /, **extras):
+    return value, extras
+
+
+assert positional_packet(1, value=2) == (1, {"value": 2})
+
+
+# The generated prologue reads only definition-time defaulted names from
+# keyword packets. Expanding live defaults must not drop explicit keywords.
+def expanded_defaults(required, optional=2, *, keyword=3, **extras):
+    return required, optional, keyword, extras
+
+
+expanded_defaults.__defaults__ = (10, 20)
+assert expanded_defaults(required=5) == (5, 20, 3, {})
+assert expanded_defaults(required=5, optional=6, keyword=7, extra=8) == (
+    5,
+    6,
+    7,
+    {"extra": 8},
+)
+expanded_defaults.__defaults__ = (30,)
+assert expanded_defaults(required=9) == (9, 30, 3, {})
+
+
 class NotCallable:
     target = 3
 

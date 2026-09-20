@@ -289,11 +289,14 @@ if _builtins_deleted_builtin is runtime.undefined:
         runtime.global_object, "ρσ_deleted_builtin", _builtins_deleted_builtin
     )
 _BUILTINS_DELETED_BUILTIN = _builtins_deleted_builtin
-# Reserved compiler alias for fixed-arity lookup.
+# Reserved compiler aliases for fixed-arity lookup and default initialization.
 ρσ_getattr_missing = _BUILTINS_MISSING
 _builtins_float_prototype = runtime.undefined
-_builtins_object_init = runtime.undefined
+ρσ_object_init = runtime.undefined
 _builtins_descriptor_cache = runtime.reflect.construct(
+    runtime.reflect.get(runtime.global_object, "WeakMap"), []
+)
+_builtins_store_cache = runtime.reflect.construct(
     runtime.reflect.get(runtime.global_object, "WeakMap"), []
 )
 _builtins_property_cache = runtime.reflect.construct(
@@ -303,7 +306,8 @@ _builtins_class_namespace_cache = runtime.reflect.construct(
     runtime.reflect.get(runtime.global_object, "WeakMap"), []
 )
 _builtins_data_descriptor_names = runtime.reflect.construct(runtime.set_class, [])
-_builtins_descriptor_epoch = 0
+_builtins_descriptor_epoch = runtime.object.create(None)
+_builtins_descriptor_epoch.value = 0
 _builtins_initializer_cache = runtime.reflect.construct(
     runtime.reflect.get(runtime.global_object, "WeakMap"), []
 )
@@ -800,7 +804,7 @@ def _builtins_class_attribute_resolution(
     if owner_cache is not runtime.undefined:
         cached = owner_cache.get(name)
         if cached is not runtime.undefined and runtime.strict_equal(
-            cached[0], _builtins_descriptor_epoch
+            cached[0], _builtins_descriptor_epoch.value
         ):
             return (
                 runtime.undefined
@@ -838,7 +842,7 @@ def _builtins_class_attribute_resolution(
         if _builtins_member_is_function(class_value, "__get__"):
             class_kind = _BUILTINS_DESCRIPTOR_NONDATA
         cache_entry = runtime.reflect.construct(runtime.array, [])
-        cache_entry.push(_builtins_descriptor_epoch)
+        cache_entry.push(_builtins_descriptor_epoch.value)
         cache_entry.push(class_descriptor)
         cache_entry.push(class_kind)
         cache_entry.push(class_value)
@@ -909,7 +913,7 @@ def _builtins_class_attribute_resolution(
                 # attributes as well as immutable primitives.
                 descriptor_kind = _BUILTINS_DESCRIPTOR_DIRECT
             cache_entry = runtime.reflect.construct(runtime.array, [])
-            cache_entry.push(_builtins_descriptor_epoch)
+            cache_entry.push(_builtins_descriptor_epoch.value)
             cache_entry.push(descriptor)
             cache_entry.push(descriptor_kind)
             cache_entry.push(descriptor_target)
@@ -917,7 +921,7 @@ def _builtins_class_attribute_resolution(
             return cache_entry
         prototype = runtime.object.getPrototypeOf(prototype)
     cache_entry = runtime.reflect.construct(runtime.array, [])
-    cache_entry.push(_builtins_descriptor_epoch)
+    cache_entry.push(_builtins_descriptor_epoch.value)
     cache_entry.push(_BUILTINS_DESCRIPTOR_MISSING)
     owner_cache.set(name, cache_entry)
     return runtime.undefined
@@ -939,7 +943,6 @@ def ρσ_call_set_names(
     values: list[Any],
 ) -> None:
     """Register descriptors and call `__set_name__` from a namespace."""
-    global _builtins_descriptor_epoch
     # Class construction first writes its namespace to the native prototype
     # and constructor, then calls this finalizer.  Earlier class-body/default
     # evaluation may already have cached an inherited attribute under the new
@@ -947,7 +950,7 @@ def ρσ_call_set_names(
     # can reuse that provisional lookup (notably for ``staticmethod`` aliases
     # that replace an inherited instance method).
     if _builtins_get_member(names, "length"):
-        _builtins_descriptor_epoch += 1
+        _builtins_descriptor_epoch.value += 1
     index = 0
     while index < _builtins_get_member(names, "length"):
         value = values[index]
@@ -1416,6 +1419,13 @@ def _builtins_operator_add_slow(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_add_exact(left: Any, right: Any) -> Any:
+    result = runtime.reflect.apply(
+        ρσ_exact_integer_add,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        runtime.undefined,
+        [left, right, _BUILTINS_MISSING],
+    )
+    if result is not _BUILTINS_MISSING:
+        return result
     result = runtime.fast_closed_binary(left, right, "add", _BUILTINS_MISSING)
     if result is not _BUILTINS_MISSING:
         return result
@@ -1423,9 +1433,6 @@ def ρσ_operator_add_exact(left: Any, right: Any) -> Any:
 
 
 def _builtins_operator_add_exact_slow(left: Any, right: Any) -> Any:
-    # Primitive values cannot override Python's arithmetic methods. Handle
-    # them before the general parent/coercion and special-method machinery;
-    # overflowing safe integers still promote to BigInt below.
     left_type = ρσ_python_jstype(left)
     right_type = ρσ_python_jstype(right)
     # Python booleans use integer arithmetic here.
@@ -1452,18 +1459,7 @@ def _builtins_operator_add_exact_slow(left: Any, right: Any) -> Any:
             and result >= runtime.number.MIN_SAFE_INTEGER
         ):
             return result
-        if runtime.number.isSafeInteger(left) and runtime.number.isSafeInteger(right):
-            return runtime.native_add(runtime.bigint(left), runtime.bigint(right))
         return result
-    if (
-        (
-            runtime.strict_equal(left_type, "bigint")
-            or runtime.strict_equal(right_type, "bigint")
-        )
-        and _builtins_exact_integer_primitive(left)
-        and _builtins_exact_integer_primitive(right)
-    ):
-        return runtime.native_add(runtime.bigint(left), runtime.bigint(right))
     if runtime.is_math_element(left) or runtime.is_math_element(right):
         return runtime.coercion_model.binOp("add", left, right)
     if _builtins_special_is_function(left, "__add__"):
@@ -1490,10 +1486,6 @@ def _builtins_operator_add_exact_slow(left: Any, right: Any) -> Any:
     if runtime.strict_equal(left_type, "bigint") or runtime.strict_equal(
         right_type, "bigint"
     ):
-        if _builtins_exact_integer_primitive(
-            left
-        ) and _builtins_exact_integer_primitive(right):
-            return runtime.native_add(runtime.bigint(left), runtime.bigint(right))
         if runtime.strict_equal(left_type, "number") or runtime.strict_equal(
             right_type, "number"
         ):
@@ -1518,8 +1510,6 @@ def _builtins_operator_add_exact_slow(left: Any, right: Any) -> Any:
         and result >= runtime.number.MIN_SAFE_INTEGER
     ):
         return result
-    if runtime.number.isSafeInteger(left) and runtime.number.isSafeInteger(right):
-        return runtime.native_add(runtime.bigint(left), runtime.bigint(right))
     return result
 
 
@@ -1724,6 +1714,13 @@ def _builtins_operator_sub_slow(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_sub_exact(left: Any, right: Any) -> Any:
+    result = runtime.reflect.apply(
+        ρσ_exact_integer_submul,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        runtime.undefined,
+        [left, right, False, _BUILTINS_MISSING],
+    )
+    if result is not _BUILTINS_MISSING:
+        return result
     result = runtime.fast_closed_binary(left, right, "sub", _BUILTINS_MISSING)
     if result is not _BUILTINS_MISSING:
         return result
@@ -1749,18 +1746,7 @@ def _builtins_operator_sub_exact_slow(left: Any, right: Any) -> Any:
             and result >= runtime.number.MIN_SAFE_INTEGER
         ):
             return result
-        if runtime.number.isSafeInteger(left) and runtime.number.isSafeInteger(right):
-            return runtime.native_sub(runtime.bigint(left), runtime.bigint(right))
         return result
-    if (
-        (
-            runtime.strict_equal(left_type, "bigint")
-            or runtime.strict_equal(right_type, "bigint")
-        )
-        and _builtins_exact_integer_primitive(left)
-        and _builtins_exact_integer_primitive(right)
-    ):
-        return runtime.native_sub(runtime.bigint(left), runtime.bigint(right))
     if runtime.is_math_element(left) or runtime.is_math_element(right):
         return runtime.coercion_model.binOp("sub", left, right)
     if _builtins_special_is_function(left, "__sub__"):
@@ -1778,10 +1764,6 @@ def _builtins_operator_sub_exact_slow(left: Any, right: Any) -> Any:
     if runtime.strict_equal(left_type, "bigint") or runtime.strict_equal(
         right_type, "bigint"
     ):
-        if _builtins_exact_integer_primitive(
-            left
-        ) and _builtins_exact_integer_primitive(right):
-            return runtime.native_sub(runtime.bigint(left), runtime.bigint(right))
         if runtime.strict_equal(left_type, "number") or runtime.strict_equal(
             right_type, "number"
         ):
@@ -1806,8 +1788,6 @@ def _builtins_operator_sub_exact_slow(left: Any, right: Any) -> Any:
         and result >= runtime.number.MIN_SAFE_INTEGER
     ):
         return result
-    if runtime.number.isSafeInteger(left) and runtime.number.isSafeInteger(right):
-        return runtime.native_sub(runtime.bigint(left), runtime.bigint(right))
     return result
 
 
@@ -1885,6 +1865,13 @@ def _builtins_operator_mul_slow(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_mul_exact(left: Any, right: Any) -> Any:
+    result = runtime.reflect.apply(
+        ρσ_exact_integer_submul,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        runtime.undefined,
+        [left, right, True, _BUILTINS_MISSING],
+    )
+    if result is not _BUILTINS_MISSING:
+        return result
     result = runtime.fast_closed_binary(left, right, "mul", _BUILTINS_MISSING)
     if result is not _BUILTINS_MISSING:
         return result
@@ -1916,18 +1903,7 @@ def _builtins_operator_mul_exact_slow(left: Any, right: Any) -> Any:
             and result >= runtime.number.MIN_SAFE_INTEGER
         ):
             return result
-        if runtime.number.isSafeInteger(left) and runtime.number.isSafeInteger(right):
-            return runtime.native_mul(runtime.bigint(left), runtime.bigint(right))
         return result
-    if (
-        (
-            runtime.strict_equal(left_type, "bigint")
-            or runtime.strict_equal(right_type, "bigint")
-        )
-        and _builtins_exact_integer_primitive(left)
-        and _builtins_exact_integer_primitive(right)
-    ):
-        return runtime.native_mul(runtime.bigint(left), runtime.bigint(right))
     if runtime.is_math_element(left) or runtime.is_math_element(right):
         return runtime.coercion_model.binOp("mul", left, right)
     if runtime.strict_equal(left_type, "string") and _builtins_exact_integer_primitive(
@@ -1949,10 +1925,6 @@ def _builtins_operator_mul_exact_slow(left: Any, right: Any) -> Any:
     if runtime.strict_equal(left_type, "bigint") or runtime.strict_equal(
         right_type, "bigint"
     ):
-        if _builtins_exact_integer_primitive(
-            left
-        ) and _builtins_exact_integer_primitive(right):
-            return runtime.native_mul(runtime.bigint(left), runtime.bigint(right))
         if runtime.strict_equal(left_type, "number") or runtime.strict_equal(
             right_type, "number"
         ):
@@ -1977,8 +1949,6 @@ def _builtins_operator_mul_exact_slow(left: Any, right: Any) -> Any:
         and result >= runtime.number.MIN_SAFE_INTEGER
     ):
         return result
-    if runtime.number.isSafeInteger(left) and runtime.number.isSafeInteger(right):
-        return runtime.native_mul(runtime.bigint(left), runtime.bigint(right))
     return result
 
 
@@ -2062,6 +2032,13 @@ def ρσ_operator_pow(left: Any, right: Any) -> Any:
 
 def ρσ_operator_pow_python_exact(left: Any, right: Any) -> Any:
     """Use exact Python integers without giving them Sage rational powers."""
+    result = runtime.reflect.apply(
+        ρσ_int_pow,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        runtime.undefined,
+        [left, right, _BUILTINS_MISSING],
+    )
+    if result is not _BUILTINS_MISSING:
+        return result
     if (
         _builtins_exact_integer_primitive(left)
         and _builtins_exact_integer_primitive(right)
@@ -2072,6 +2049,13 @@ def ρσ_operator_pow_python_exact(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_pow_exact(left: Any, right: Any) -> Any:
+    result = runtime.reflect.apply(
+        ρσ_int_pow,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        runtime.undefined,
+        [left, right, _BUILTINS_MISSING],
+    )
+    if result is not _BUILTINS_MISSING:
+        return result
     if isinstance(right, runtime.rational_class):
         if right._denominator != 1:
             if getattr(
@@ -2093,17 +2077,10 @@ def ρσ_operator_pow_exact(left: Any, right: Any) -> Any:
     ):
         denominator = runtime.native_pow(runtime.bigint(left), -runtime.bigint(right))
         return runtime.rational_class(1, denominator)
-    if runtime.strict_equal(left_type, right_type) and (
-        runtime.strict_equal(left_type, "number")
-        or runtime.strict_equal(left_type, "bigint")
+    if runtime.strict_equal(left_type, "number") and runtime.strict_equal(
+        right_type, "number"
     ):
-        if runtime.strict_equal(left_type, "bigint") and right < 0:
-            raise ValueError(
-                "negative powers of exact integers are not implemented yet"
-            )
         result = runtime.native_pow(left, right)
-        if not runtime.strict_equal(left_type, "number"):
-            return result
         if (
             runtime.number.isNaN(result)
             and left < 0
@@ -2111,33 +2088,7 @@ def ρσ_operator_pow_exact(left: Any, right: Any) -> Any:
             and runtime.number.isFinite(runtime.number(right))
         ):
             return complex(left) ** right
-        if _builtins_is_python_float(left) or _builtins_is_python_float(right):
-            return ρσ_float_result(result)
-        if (
-            result <= runtime.number.MAX_SAFE_INTEGER
-            and result >= runtime.number.MIN_SAFE_INTEGER
-        ):
-            return result
-        if (
-            runtime.number.isSafeInteger(left)
-            and runtime.number.isSafeInteger(right)
-            and right >= 0
-        ):
-            return runtime.native_pow(runtime.bigint(left), runtime.bigint(right))
-        return result
-    if (
-        (
-            runtime.strict_equal(left_type, "bigint")
-            or runtime.strict_equal(right_type, "bigint")
-        )
-        and _builtins_exact_integer_primitive(left)
-        and _builtins_exact_integer_primitive(right)
-    ):
-        if right < 0:
-            raise ValueError(
-                "negative powers of exact integers are not implemented yet"
-            )
-        return runtime.native_pow(runtime.bigint(left), runtime.bigint(right))
+        return ρσ_float_result(result)
     if _builtins_member_is_function(left, "__pow__"):
         result = _builtins_call_member(left, "__pow__", [right])
         if result is not NotImplemented:
@@ -2256,10 +2207,16 @@ def ρσ_operator_ipow(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_iadd_exact(left: Any, right: Any) -> Any:
+    result = runtime.reflect.apply(
+        ρσ_exact_integer_add,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        runtime.undefined,
+        [left, right, _BUILTINS_MISSING],
+    )
+    if result is not _BUILTINS_MISSING:
+        return result
     left_type = runtime.jstype(left)
     if runtime.strict_equal(left_type, runtime.jstype(right)) and (
         runtime.strict_equal(left_type, "number")
-        or runtime.strict_equal(left_type, "bigint")
         or runtime.strict_equal(left_type, "string")
     ):
         return ρσ_operator_add_exact(left, right)
@@ -2267,15 +2224,47 @@ def ρσ_operator_iadd_exact(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_isub_exact(left: Any, right: Any) -> Any:
+    result = runtime.reflect.apply(
+        ρσ_exact_integer_submul,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        runtime.undefined,
+        [left, right, False, _BUILTINS_MISSING],
+    )
+    if result is not _BUILTINS_MISSING:
+        return result
     return _builtins_inplace(left, right, "__isub__", ρσ_operator_sub_exact)
 
 
 def ρσ_operator_imul_exact(left: Any, right: Any) -> Any:
+    result = runtime.reflect.apply(
+        ρσ_exact_integer_submul,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        runtime.undefined,
+        [left, right, True, _BUILTINS_MISSING],
+    )
+    if result is not _BUILTINS_MISSING:
+        return result
     return _builtins_inplace(left, right, "__imul__", ρσ_operator_mul_exact)
 
 
 def ρσ_operator_ipow_exact(left: Any, right: Any) -> Any:
+    result = runtime.reflect.apply(
+        ρσ_int_pow,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        runtime.undefined,
+        [left, right, _BUILTINS_MISSING],
+    )
+    if result is not _BUILTINS_MISSING:
+        return result
     return _builtins_inplace(left, right, "__ipow__", ρσ_operator_pow_exact)
+
+
+def ρσ_operator_ipow_python_exact(left: Any, right: Any) -> Any:
+    result = runtime.reflect.apply(
+        ρσ_int_pow,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        runtime.undefined,
+        [left, right, _BUILTINS_MISSING],
+    )
+    if result is not _BUILTINS_MISSING:
+        return result
+    return _builtins_inplace(left, right, "__ipow__", ρσ_operator_pow_python_exact)
 
 
 def ρσ_operator_idiv_exact(left: Any, right: Any) -> Any:
@@ -2366,22 +2355,17 @@ def _builtins_operator_truediv_exact_slow(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_mod(left: Any, right: Any) -> Any:
-    left_type = ρσ_python_jstype(left)
-    right_type = ρσ_python_jstype(right)
-    if (
-        runtime.strict_equal(left_type, "number")
-        and runtime.strict_equal(right_type, "number")
-        and runtime.number.isSafeInteger(left)
-        and runtime.number.isSafeInteger(right)
+    result = runtime.reflect.apply(
+        ρσ_exact_integer_divmod,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        runtime.undefined,
+        [left, right, 1, _BUILTINS_MISSING],
+    )
+    if result is not _BUILTINS_MISSING:
+        return result
+    if _builtins_exact_integer_primitive(left) and _builtins_exact_integer_primitive(
+        right
     ):
-        if runtime.strict_equal(right, 0):
-            raise runtime.zero_division_error("integer modulo by zero")
-        remainder = runtime.native_mod(left, right)
-        if runtime.strict_equal(remainder, 0):
-            return 0
-        if remainder < 0 and right > 0 or remainder > 0 and right < 0:
-            remainder = runtime.native_add(remainder, right)
-        return remainder
+        raise runtime.zero_division_error("integer modulo by zero")
     if _builtins_member_is_function(left, "__mod__"):
         result = _builtins_call_member(left, "__mod__", [right])
         if result is not NotImplemented:
@@ -2392,17 +2376,8 @@ def ρσ_operator_mod(left: Any, right: Any) -> Any:
             return result
     if runtime.equals(right, 0):
         raise runtime.zero_division_error("integer modulo by zero")
-    if _builtins_exact_integer_primitive(left) and _builtins_exact_integer_primitive(
-        right
-    ):
-        left_bigint = runtime.bigint(left)
-        right_bigint = runtime.bigint(right)
-        remainder = runtime.native_mod(left_bigint, right_bigint)
-        if not runtime.strict_equal(remainder, runtime.bigint(0)) and (
-            remainder < 0 and right_bigint > 0 or remainder > 0 and right_bigint < 0
-        ):
-            remainder = runtime.native_add(remainder, right_bigint)
-        return runtime.normalize_integer(remainder)
+    left_type = ρσ_python_jstype(left)
+    right_type = ρσ_python_jstype(right)
     if runtime.strict_equal(left_type, "bigint") or runtime.strict_equal(
         right_type, "bigint"
     ):
@@ -2645,28 +2620,17 @@ def ρσ_operator_bitxor(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_lshift(left: Any, right: Any) -> Any:
-    left_type = runtime.jstype(left)
-    right_type = runtime.jstype(right)
-    if (
-        runtime.strict_equal(left_type, "number")
-        and runtime.strict_equal(right_type, "number")
-        and runtime.number.isSafeInteger(left)
-        and runtime.number.isSafeInteger(right)
-        and right >= 0
-        and right <= 53
-    ):
-        result = left * runtime.math.pow(2, right)
-        if runtime.number.isSafeInteger(result):
-            return result
+    result = runtime.reflect.apply(
+        ρσ_exact_shift,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        runtime.undefined,
+        [left, right, 0, _BUILTINS_MISSING],
+    )
+    if result is not _BUILTINS_MISSING:
+        return result
     if _builtins_exact_integer_primitive(left) and _builtins_exact_integer_primitive(
         right
     ):
-        right_bigint = runtime.bigint(right)
-        if right_bigint < 0:
-            raise ValueError("negative shift count")
-        return runtime.normalize_integer(
-            runtime.native_lshift(runtime.bigint(left), right_bigint)
-        )
+        raise ValueError("negative shift count")
     if _builtins_member_is_function(left, "__lshift__"):
         return _builtins_call_member(left, "__lshift__", [right])
     if _builtins_member_is_function(right, "__rlshift__"):
@@ -2675,27 +2639,17 @@ def ρσ_operator_lshift(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_rshift(left: Any, right: Any) -> Any:
-    left_type = runtime.jstype(left)
-    right_type = runtime.jstype(right)
-    if (
-        runtime.strict_equal(left_type, "number")
-        and runtime.strict_equal(right_type, "number")
-        and runtime.number.isSafeInteger(left)
-        and runtime.number.isSafeInteger(right)
-        and right >= 0
-    ):
-        if right > 53:
-            return -1 if left < 0 else 0
-        return runtime.math.floor(runtime.native_div(left, runtime.math.pow(2, right)))
+    result = runtime.reflect.apply(
+        ρσ_exact_shift,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        runtime.undefined,
+        [left, right, 1, _BUILTINS_MISSING],
+    )
+    if result is not _BUILTINS_MISSING:
+        return result
     if _builtins_exact_integer_primitive(left) and _builtins_exact_integer_primitive(
         right
     ):
-        right_bigint = runtime.bigint(right)
-        if right_bigint < 0:
-            raise ValueError("negative shift count")
-        return runtime.normalize_integer(
-            runtime.native_rshift(runtime.bigint(left), right_bigint)
-        )
+        raise ValueError("negative shift count")
     if _builtins_member_is_function(left, "__rshift__"):
         return _builtins_call_member(left, "__rshift__", [right])
     if _builtins_member_is_function(right, "__rrshift__"):
@@ -2704,31 +2658,17 @@ def ρσ_operator_rshift(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_floordiv(left: Any, right: Any) -> Any:
+    result = runtime.reflect.apply(
+        ρσ_exact_integer_divmod,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        runtime.undefined,
+        [left, right, 0, _BUILTINS_MISSING],
+    )
+    if result is not _BUILTINS_MISSING:
+        return result
     if _builtins_exact_integer_primitive(left) and _builtins_exact_integer_primitive(
         right
     ):
-        if (
-            runtime.strict_equal(right, 0)
-            or runtime.strict_equal(right, runtime.bigint(0))
-            or right is False
-        ):
-            raise runtime.zero_division_error("integer division or modulo by zero")
-        if runtime.strict_equal(
-            ρσ_python_jstype(left), "bigint"
-        ) or runtime.strict_equal(ρσ_python_jstype(right), "bigint"):
-            left_bigint = runtime.bigint(left)
-            right_bigint = runtime.bigint(right)
-            quotient = runtime.native_div(left_bigint, right_bigint)
-            remainder = runtime.native_mod(left_bigint, right_bigint)
-            if not runtime.strict_equal(remainder, runtime.bigint(0)) and (
-                left_bigint < 0
-                and right_bigint > 0
-                or left_bigint > 0
-                and right_bigint < 0
-            ):
-                quotient = runtime.native_sub(quotient, runtime.bigint(1))
-            return runtime.normalize_integer(quotient)
-        return runtime.math.floor(runtime.native_div(left, right))
+        raise runtime.zero_division_error("integer division or modulo by zero")
     if _builtins_member_is_function(left, "__floordiv__"):
         return _builtins_call_member(left, "__floordiv__", [right])
     if _builtins_member_is_function(right, "__rfloordiv__"):
@@ -3549,7 +3489,6 @@ def _builtins_layout_anchor(owner: Any) -> Any:
 
 def ρσ_install_instance_dict(owner: Any, explicit_dict: _Bool = False) -> None:
     """Finalize heap namespace ownership after the class body and MRO exist."""
-    global _builtins_descriptor_epoch
     if not _builtins_heap_class_keys.has(owner):
         return
     inherited = False
@@ -3585,7 +3524,7 @@ def ρσ_install_instance_dict(owner: Any, explicit_dict: _Bool = False) -> None
             anchor = candidate_anchor
     introduces = not _builtins_instance_dict_owners.has(selected)
     _builtins_instance_dict_owners.set(owner, explicit_dict or introduces)
-    _builtins_descriptor_epoch += 1
+    _builtins_descriptor_epoch.value += 1
     if introduces and not explicit_dict:
         runtime.reflect.set(
             prototype, "__dict__", _BuiltinsInstanceDictDescriptor(owner)
@@ -3745,9 +3684,13 @@ def _builtins_prototype_member(
     while current is not None and current is not runtime.undefined:
         descriptor = runtime.object.getOwnPropertyDescriptor(current, name)
         if descriptor is not runtime.undefined:
-            # Do not invoke a property getter while merely inspecting docs.
-            # Ordinary Python methods are stored as descriptor values.
-            return runtime.reflect.get(descriptor, "value")
+            member = runtime.reflect.get(descriptor, "value")
+            if member is runtime.undefined:
+                return _builtins_get_member(
+                    runtime.reflect.get(descriptor, "get"),
+                    "__sagejs_unbound_method__",
+                )
+            return member
         current = runtime.object.getPrototypeOf(current)
     return runtime.undefined
 
@@ -5033,30 +4976,6 @@ def _builtins_public_getattr(
         raise
 
 
-def ρσ_prepare_method_call(value: Any, name: _Str) -> Any:
-    """Capture lookup before arguments without materializing ordinary methods."""
-    owner = _builtins_attribute_owner(value)
-    owner_cache = _builtins_descriptor_cache.get(owner)
-    cached = (
-        runtime.undefined if owner_cache is runtime.undefined else owner_cache.get(name)
-    )
-    if (
-        cached is not runtime.undefined
-        and cached[0] == _builtins_descriptor_epoch
-        and cached[4] is True
-    ):
-        namespace = _builtins_instance_namespaces.get(value)
-        if (
-            namespace is runtime.undefined or not namespace.jsmap.has(name)
-        ) and not runtime.reflect.get(runtime.object, "hasOwn")(value, name):
-            return runtime.array.of(cached[3], value, cached[5])
-    context = runtime.array.of(runtime.undefined, runtime.undefined, False)
-    member = _builtins_public_getattr(value, name, _BUILTINS_MISSING, context)
-    if context[0] is runtime.undefined:
-        context[0] = member
-    return context
-
-
 def ρσ_invoke_prepared_method(context: Any, call_args: Any) -> Any:
     """Invoke a captured call after all positional arguments are evaluated."""
     target = context[0]
@@ -5578,7 +5497,6 @@ def ρσ_getattr(
 
 
 def ρσ_setattr(value: Any, name: _Str, member: Any) -> None:
-    global _builtins_descriptor_epoch
     if not runtime.strict_equal(runtime.jstype(name), "string"):
         raise TypeError("attribute name must be string")
     if runtime.strict_equal(name, "__annotations__"):
@@ -5658,7 +5576,7 @@ def ρσ_setattr(value: Any, name: _Str, member: Any) -> None:
         if _builtins_member_is_function(descriptor, "__set__"):
             return _builtins_call_member(descriptor, "__set__", [value, member])
     if _builtins_is_python_class(value):
-        _builtins_descriptor_epoch += 1
+        _builtins_descriptor_epoch.value += 1
         prototype_member = member
         if (
             runtime.strict_equal(runtime.jstype(member), "function")
@@ -5667,14 +5585,9 @@ def ρσ_setattr(value: Any, name: _Str, member: Any) -> None:
             and _builtins_get_member(member, "__classmethod__") is not True
             and _builtins_get_member(member, "__sagejs_native_method__") is not True
         ):
-            # Python function objects always implement the non-data descriptor
-            # protocol when they are installed on a class, including functions
-            # assigned after class creation with `setattr`. Compiler-emitted
-            # instance calls to an existing source method use JavaScript
-            # receiver syntax. When such a method is replaced, its prototype
-            # needs the same explicit-self adapter used by `dataclasses` while
-            # class lookup continues to expose the original function. New and
-            # inherited methods continue through normal descriptor lookup.
+            # Class-installed Python functions are non-data descriptors.
+            # Replacements of receiver-style methods need the explicit-self
+            # adapter while class lookup continues to expose the function.
             runtime.reflect.set(member, "__python_descriptor__", True)
             if (
                 _builtins_get_member(member, "__func__") is not runtime.undefined
@@ -5718,6 +5631,18 @@ def ρσ_setattr(value: Any, name: _Str, member: Any) -> None:
         if _builtins_member_is_function(member, "__set_name__"):
             _builtins_call_member(member, "__set_name__", [value, name])
     if _builtins_store_instance_attribute(value, name, member):
+        getattribute = _builtins_class_attribute_resolution(
+            _builtins_attribute_owner(value), "__getattribute__"
+        )
+        if getattribute is runtime.undefined or (
+            getattribute[3] is _builtins_object_getattribute
+        ):
+            prototype = runtime.object.getPrototypeOf(value)
+            store_cache = _builtins_store_cache.get(prototype)
+            if store_cache is runtime.undefined:
+                store_cache = runtime.reflect.construct(runtime.map_class, [])
+                _builtins_store_cache.set(prototype, store_cache)
+            store_cache.set(name, _builtins_descriptor_epoch.value)
         return
     if not runtime.reflect.set(value, name, member):
         own_descriptor = runtime.object.getOwnPropertyDescriptor(value, name)
@@ -6260,7 +6185,6 @@ def _builtins_native_property_deleter(value: Any, name: _Str) -> Any:
 
 
 def ρσ_delattr(value: Any, name: _Str) -> None:
-    global _builtins_descriptor_epoch
     if not runtime.strict_equal(runtime.jstype(name), "string"):
         raise TypeError("attribute name must be string")
     if name == "__dict__" and _builtins_is_python_class(value):
@@ -6315,7 +6239,7 @@ def ρσ_delattr(value: Any, name: _Str) -> None:
         if prototype_has_own:
             runtime.reflect.deleteProperty(prototype, name)
             runtime.reflect.deleteProperty(prototype, "ρσ_property_deleter_" + name)
-        _builtins_descriptor_epoch += 1
+        _builtins_descriptor_epoch.value += 1
         return
     if not runtime.strict_equal(
         runtime.jstype(value), "function"
@@ -6607,34 +6531,13 @@ def ρσ_pow(
     return runtime.normalize_integer(answer)
 
 
-def _builtins_synthetic_init_ends_at_object(initializer: Any) -> _Bool:
-    """Return whether an initializer forwards only to `object.__init__`."""
-    if initializer is _builtins_object_init:
-        return True
-    if _builtins_get_member(initializer, "__sagejs_synthetic_init__") is not True:
-        underlying = _builtins_get_member(initializer, "__func__")
-        if underlying is _builtins_object_init:
-            return True
-        if _builtins_get_member(underlying, "__sagejs_synthetic_init__") is not True:
-            return False
-        initializer = underlying
-    remaining = 100
-    while (
-        remaining > 0
-        and _builtins_get_member(initializer, "__sagejs_synthetic_init__") is True
-    ):
-        initializer = _builtins_get_member(
-            initializer,
-            "__sagejs_synthetic_init_target__",
-        )
-        remaining -= 1
-    return initializer is _builtins_object_init
-
-
 def ρσ_live_initializer(cls: Any) -> Any:
     """Resolve and cache the current non-forwarding initializer."""
     cached = _builtins_initializer_cache.get(cls)
-    if cached is not runtime.undefined and cached[0] == _builtins_descriptor_epoch:
+    if (
+        cached is not runtime.undefined
+        and cached[0] == _builtins_descriptor_epoch.value
+    ):
         return cached[1]
     original = _builtins_get_member(runtime.reflect.get(cls, "prototype"), "__init__")
     initializer = original
@@ -6659,37 +6562,17 @@ def ρσ_live_initializer(cls: Any) -> Any:
                     initializer = candidate
                     break
     record = runtime.reflect.construct(runtime.array, [])
-    record.push(_builtins_descriptor_epoch)
+    record.push(_builtins_descriptor_epoch.value)
     record.push(initializer)
     _builtins_initializer_cache.set(cls, record)
     return initializer
 
 
-def ρσ_skip_init_for_custom_new(cls: Any, initializer: Any) -> _Bool:
-    """Implement CPython's custom-new/object-init exception."""
-    if not _builtins_synthetic_init_ends_at_object(initializer):
-        return False
-    cached = _builtins_initializer_cache.get(cls)
-    cacheable = (
-        cached is not runtime.undefined
-        and cached[0] == _builtins_descriptor_epoch
-        and cached[1] is initializer
-    )
-    if cacheable and cached.length > 2:
-        return cached[2]
-    allocator = ρσ_getattr(cls, "__new__", None)
-    answer = (
-        runtime.strict_equal(runtime.jstype(allocator), "function")
-        and allocator is not _builtins_object_new
-    )
-    if cacheable:
-        cached[2] = answer
-    return answer
-
-
 def ρσ_apply_custom_new_signature(cls: Any, initializer: Any) -> None:
     """Publish the user-call signature of a class with only custom allocation."""
-    if not ρσ_skip_init_for_custom_new(cls, initializer):
+    if not ρσ_skip_init(  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+        cls, initializer
+    ):
         return
     allocator = ρσ_getattr(cls, "__new__", None)
     argument_names = _builtins_get_member(allocator, "__argnames__")
@@ -6728,12 +6611,6 @@ def ρσ_apply_custom_new_signature(cls: Any, initializer: Any) -> None:
 
 def _builtins_type_call(cls: Any, *args: Any, **keywords: Any) -> Any:
     """Implement `type.__call__` after a custom metaclass delegates."""
-    interpolate = runtime.reflect.get(runtime.global_object, "ρσ_interpolate_kwargs")
-    if not runtime.strict_equal(runtime.jstype(interpolate), "function"):
-        internal = __import__(
-            "sagejs._baselib.internal", fromlist=["ρσ_interpolate_kwargs"]
-        )
-        interpolate = internal.ρσ_interpolate_kwargs
     call_args = list(args)
     runtime.reflect.apply(runtime.array.prototype.push, call_args, [keywords])
     allocator = ρσ_getattr(cls, "__new__", None)
@@ -6745,7 +6622,7 @@ def _builtins_type_call(cls: Any, *args: Any, **keywords: Any) -> Any:
         allocator_args = [cls]
         allocator_args.extend(call_args)
         instance = runtime.reflect.apply(
-            interpolate,
+            ρσ_interpolate_kwargs,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
             runtime.undefined,
             [runtime.undefined, allocator, allocator_args],
         )
@@ -6759,13 +6636,15 @@ def _builtins_type_call(cls: Any, *args: Any, **keywords: Any) -> Any:
         "__init__",
     )
     if runtime.strict_equal(runtime.jstype(initializer), "function") and not (
-        ρσ_skip_init_for_custom_new(cls, initializer_contract)
+        ρσ_skip_init(  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+            cls, initializer_contract
+        )
     ):
         # ``initializer`` is already descriptor-bound.  Calling it through
         # the compiler's generic callable fallback would resolve ``__call__``
         # a second time and lose the keyword packet.
         runtime.reflect.apply(
-            interpolate,
+            ρσ_interpolate_kwargs,  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
             runtime.undefined,
             [runtime.undefined, initializer, call_args],
         )
@@ -7261,10 +7140,9 @@ def ρσ_divmod(left: Any, right: Any) -> Any:
         _builtins_get_member(right_class, "prototype"),
         "__rdivmod__",
     )
-    right_reflected = (
-        runtime.undefined
-        if right_reflected_descriptor is runtime.undefined
-        else runtime.reflect.get(right_reflected_descriptor, "value")
+    right_reflected = _builtins_prototype_member(
+        _builtins_get_member(right_class, "prototype"),
+        "__rdivmod__",
     )
     left_reflected = _builtins_prototype_member(
         _builtins_get_member(left_class, "prototype"),
@@ -9509,7 +9387,7 @@ def _builtins_object_delattr(self: Any, name: _Str) -> None:
 
 runtime.reflect.set(_builtins_object_new, "__staticmethod__", True)
 _sage_object_prototype = runtime.reflect.get(SageObject, "prototype")
-_builtins_object_init = runtime.reflect.get(_sage_object_prototype, "__init__")
+ρσ_object_init = runtime.reflect.get(_sage_object_prototype, "__init__")
 for _object_owner in (SageObject, _sage_object_prototype):
     for _object_name, _object_method in [
         ("__new__", _builtins_object_new),

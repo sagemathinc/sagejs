@@ -18,6 +18,27 @@ def rejected(action):
     assert failed
 
 
+# Ordinary instances allocate identity lazily.  This must continue to work
+# after the host object becomes nonextensible, and subscription must still
+# reject the instance as a Python object rather than treating it as a native
+# JavaScript container.
+identity = Record()
+assert runtime.reflect.get(identity, "ρσ_object_id") is runtime.undefined
+first_id = id(identity)
+assert id(identity) == first_id
+assert runtime.reflect.get(identity, "ρσ_object_id") is runtime.undefined
+runtime.object.freeze(identity)
+assert id(identity) == first_id
+assert repr(identity) == repr(identity)
+rejected(lambda: identity[0])
+
+# The inherited class marker, rather than the writable host ``constructor``
+# alias, authenticates Python instances for low-level operator dispatch.
+constructor_spoof = Record()
+runtime.reflect.set(constructor_spoof, "constructor", runtime.object)
+rejected(lambda: constructor_spoof[0])
+
+
 # Repeated failures must not publish dictionary authority or forget own fields.
 frozen = Record()
 frozen.value = 1

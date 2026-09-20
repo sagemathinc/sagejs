@@ -8,21 +8,351 @@ const { runInNewContext } = require("node:vm");
 const test = require("node:test");
 const root = join(__dirname, "..");
 const source = readFileSync(join(root, "src/baselib/bootstrap_shared.py"), "utf8");
-const names = ["ρσ_copy_method_metadata", "ρσ_native_method_adapter", "ρσ_unbound_method_adapter",
-  "ρσ_check_interrupt", "ρσ_normalize_exception"];
+const sharedNames = ["ρσ_copy_method_metadata", "ρσ_native_method_adapter", "ρσ_unbound_method_adapter",
+  "ρσ_exact_integer_add", "ρσ_exact_integer_divmod", "ρσ_exact_shift",
+  "ρσ_exact_integer_submul", "ρσ_int_pow",
+  "ρσ_check_interrupt", "ρσ_normalize_exception", "ρσ_prepare_method_call",
+  "ρσ_attr", "ρσ_interpolate_kwargs", "ρσ_interpolate_kwargs_constructor",
+  "ρσ_synthetic_init_ends_at_object", "ρσ_skip_init"];
+const names = sharedNames;
 
 // Exercise the native ABI bodies directly; full self-hosted/module
 // linkage remains a separate build qualification, not implied by this test.
-function context() {
-  const declarations = [...source.matchAll(/^def (\S+)\(([^)]*)\):[^]*?return r"""%js ([^]*?)"""/gm)]
-    .map((match) => `function ${match[1]}(${match[2]}) {return ${match[3]};}`);
+function context(overrides = {}) {
+  const declarations = sharedNames.map(name => {
+      const match = source.match(new RegExp(
+        `^def ${name}\\(([^)]*)\\)(?:\\s*->[^:]+)?:[^]*?return r"""%js ([^]*?)"""`, "m"));
+      assert.ok(match, `missing raw helper ${name}`);
+      const parameters = match[1].replace(/:\s*[^,]+/g, "");
+      return `function ${name}(${parameters}) {return ${match[2]};}`;
+    });
   class KeyboardInterrupt extends Error {}
-  const globals = { KeyboardInterrupt, ρσ_exception_value: (value) => value };
+  const globals = { KeyboardInterrupt, ρσ_exception_value: (value) => value, ...overrides };
   return runInNewContext(`${declarations.join("\n")}; ({${names.join(",")}, globalThis})`, globals);
 }
 
-test("shared bootstrap has four adapters and one shared metadata copier", () => {
-  assert.deepEqual([...source.matchAll(/^def (\S+)\(/gm)].map((match) => match[1]), names);
+test("prepared method calls use and invalidate the shared prototype cache", () => {
+  const prototype = {};
+  const receiver = Object.create(prototype);
+  const target = function target() {};
+  const epoch = { value: 7 };
+  const descriptorCache = new WeakMap([
+    [prototype, new Map([["method", [7, undefined, undefined, target, true, false]]])],
+  ]);
+  const namespaces = new WeakMap();
+  let fallbacks = 0;
+  const api = context({
+    _builtins_descriptor_cache: descriptorCache,
+    _builtins_descriptor_epoch: epoch,
+    _builtins_instance_namespaces: namespaces,
+    _builtins_attribute_owner: () => { throw new Error("warm prototype cache missed"); },
+    _builtins_public_getattr: (_value, _name, _missing, result) => {
+      fallbacks += 1;
+      result[0] = "fallback";
+      return "fallback";
+    },
+    _BUILTINS_MISSING: {},
+  });
+
+  assert.deepEqual(Array.from(api.ρσ_prepare_method_call(receiver, "method")),
+    [target, receiver, false]);
+  assert.equal(fallbacks, 0);
+
+  epoch.value += 1;
+  assert.deepEqual(Array.from(api.ρσ_prepare_method_call(receiver, "method")),
+    ["fallback", undefined, false]);
+  assert.equal(fallbacks, 1);
+
+  epoch.value -= 1;
+  Object.defineProperty(receiver, "method", { value: "assigned", configurable: true });
+  assert.deepEqual(Array.from(api.ρσ_prepare_method_call(receiver, "method")),
+    ["fallback", undefined, false]);
+  assert.equal(fallbacks, 2);
+});
+
+test("shared attribute stores use only epoch-current unexposed cache entries", () => {
+  const prototype = {};
+  const receiver = Object.create(prototype);
+  const epoch = { value: 5 };
+  const cache = new WeakMap();
+  const fields = new WeakMap();
+  const namespaces = new WeakMap();
+  let fallbacks = 0;
+  let readFallbacks = 0;
+  const api = context({
+    _builtins_store_cache: cache,
+    _builtins_descriptor_epoch: epoch,
+    _builtins_instance_fields: fields,
+    _builtins_instance_namespaces: namespaces,
+    ρσ_setattr: (value, name, member) => {
+      fallbacks += 1;
+      value[name] = member;
+      cache.set(prototype, new Map([[name, epoch.value]]));
+      return null;
+    },
+    ρσ_getattr_internal: (value, name) => {
+      readFallbacks += 1;
+      return value[name];
+    },
+    ρσ_getattr_missing: Symbol("missing"),
+  });
+
+  assert.equal(api.ρσ_attr(receiver, "field", 11), null);
+  assert.equal(fallbacks, 1);
+  assert.equal(api.ρσ_attr(receiver, "field", 13), null);
+  assert.equal(fallbacks, 1);
+  assert.equal(receiver.field, 13);
+  assert.equal(fields.get(receiver).has("field"), true);
+  assert.equal(api.ρσ_attr(receiver, "field"), 13);
+  assert.equal(readFallbacks, 0);
+
+  Object.defineProperty(receiver, "__setattr__", { value: () => null, configurable: true });
+  api.ρσ_attr(receiver, "field", 15);
+  assert.equal(fallbacks, 2);
+  delete receiver.__setattr__;
+
+  epoch.value += 1;
+  assert.equal(api.ρσ_attr(receiver, "field"), 15);
+  assert.equal(readFallbacks, 1);
+  api.ρσ_attr(receiver, "field", 17);
+  assert.equal(fallbacks, 3);
+
+  namespaces.set(receiver, { exposed: true });
+  api.ρσ_attr(receiver, "field", 19);
+  assert.equal(fallbacks, 4);
+});
+
+test("shared ordinary stores preserve exceptional host layouts", () => {
+  const prototype = {};
+  const cache = new WeakMap([[prototype, new Map([["__proto__", 1], ["field", 1]])]]);
+  const fields = new WeakMap();
+  const api = context({
+    _builtins_store_cache: cache,
+    _builtins_descriptor_epoch: { value: 1 },
+    _builtins_instance_fields: fields,
+    _builtins_instance_namespaces: new WeakMap(),
+    ρσ_setattr: () => { throw new Error("unexpected fallback"); },
+    ρσ_getattr_internal: () => { throw new Error("unexpected read"); },
+    ρσ_getattr_missing: Symbol("missing"),
+  });
+
+  const receiver = Object.create(prototype);
+  api.ρσ_attr(receiver, "field", 1);
+  const first = Object.getOwnPropertyDescriptor(receiver, "field");
+  assert.deepEqual(first, { value: 1, writable: true, enumerable: true, configurable: true });
+  api.ρσ_attr(receiver, "field", 2);
+  assert.equal(receiver.field, 2);
+
+  Object.defineProperty(receiver, "field", {
+    value: 2, writable: false, enumerable: true, configurable: false,
+  });
+  let writeError;
+  try { api.ρσ_attr(receiver, "field", 3); } catch (error) { writeError = error; }
+  assert.equal(writeError?.name, "TypeError");
+  assert.match(writeError?.message ?? "", /Cannot redefine property: field/);
+  assert.equal(receiver.field, 2);
+
+  const nonconfigurable = Object.create(prototype);
+  api.ρσ_attr(nonconfigurable, "field", 1);
+  Object.defineProperty(nonconfigurable, "field", { configurable: false });
+  assert.throws(
+    () => api.ρσ_attr(nonconfigurable, "field", 2),
+    /Cannot redefine property: field/,
+  );
+  assert.equal(nonconfigurable.field, 1);
+
+  const nonenumerable = Object.create(prototype);
+  api.ρσ_attr(nonenumerable, "field", 1);
+  Object.defineProperty(nonenumerable, "field", { enumerable: false });
+  api.ρσ_attr(nonenumerable, "field", 2);
+  assert.deepEqual(Object.getOwnPropertyDescriptor(nonenumerable, "field"), {
+    value: 2, writable: true, enumerable: true, configurable: true,
+  });
+
+  const replacementPrototype = { changed: true };
+  api.ρσ_attr(receiver, "__proto__", replacementPrototype);
+  assert.equal(Object.getPrototypeOf(receiver), prototype);
+  assert.equal(receiver.__proto__, replacementPrototype);
+
+  const accessor = Object.create(prototype);
+  let setterCalls = 0;
+  Object.defineProperty(accessor, "field", {
+    get: () => 7, set: () => { setterCalls += 1; }, configurable: true,
+  });
+  api.ρσ_attr(accessor, "field", 3);
+  assert.equal(setterCalls, 0);
+  assert.deepEqual(Object.getOwnPropertyDescriptor(accessor, "field"), {
+    value: 3, writable: true, enumerable: true, configurable: true,
+  });
+
+  const sealed = Object.preventExtensions(Object.create(prototype));
+  assert.throws(
+    () => api.ρσ_attr(sealed, "field", 4),
+    /object is not extensible/,
+  );
+});
+
+test("shared keyword binding consumes literal packets without Python operators", () => {
+  const receiver = {};
+  function target(left, middle, right, keywords) {
+    return [this, left, middle, right, keywords];
+  }
+  target.__argnames__ = ["left", "middle", "right"];
+  target.__handles_kwarg_interpolation__ = true;
+  const api = context({
+    _internal_class_instance_function: () => false,
+    _internal_get_member: (value, name) => value[name],
+    _internal_type_is: (value, expected) => value === expected,
+    _internal_has_own: (value, name) => Object.hasOwn(value, name),
+    _internal_keyword_constructor_prototypes: new WeakSet(),
+    ρσ_native_jstype: (value) => typeof value,
+    ρσ_exception_value: (value) => value,
+  });
+  const packet = { left: 3, right: 5 };
+  const result = api.ρσ_interpolate_kwargs([target, receiver, false], undefined, [packet]);
+  assert.deepEqual(Array.from(result).slice(0, 4), [receiver, 3, undefined, 5]);
+  assert.deepEqual(Object.keys(result[4]), []);
+
+  const receiverlessApi = context({
+    _internal_class_instance_function: () => { throw new Error("classified receiver"); },
+    _internal_get_member: (value, name) => value[name],
+    _internal_type_is: (value, expected) => value === expected,
+    _internal_has_own: (value, name) => Object.hasOwn(value, name),
+    _internal_keyword_constructor_prototypes: new WeakSet(),
+    ρσ_native_jstype: (value) => typeof value,
+    ρσ_exception_value: value => value,
+  });
+  const receiverlessPacket = { left: 4, right: 6 };
+  const receiverless = receiverlessApi.ρσ_interpolate_kwargs(
+    undefined, target, [receiverlessPacket]);
+  assert.deepEqual(Array.from(receiverless).slice(1, 4), [4, undefined, 6]);
+  assert.deepEqual(Object.keys(receiverless[4]), []);
+  function defaultTailTarget(required, keywordPacket) {
+    return [required, keywordPacket.optional, keywordPacket];
+  }
+  defaultTailTarget.__argnames__ = ["required", "optional"];
+  defaultTailTarget.__handles_kwarg_interpolation__ = 2;
+  const defaultTailPacket = { required: 8, optional: 9 };
+  const defaultTail = receiverlessApi.ρσ_interpolate_kwargs(
+    undefined, defaultTailTarget, [defaultTailPacket]);
+  assert.deepEqual(Array.from(defaultTail).slice(0, 2), [8, 9]);
+  assert.deepEqual(defaultTail[2], { optional: 9 });
+  assert.throws(
+    () => api.ρσ_interpolate_kwargs(undefined, target, [1, { left: 2 }]),
+    /multiple values for argument 'left'/,
+  );
+  assert.throws(
+    () => api.ρσ_interpolate_kwargs(undefined, target, [{ unknown: 2 }]),
+    /unexpected keyword argument 'unknown'/,
+  );
+
+  function targetWithResidual(left, keywords) {
+    return [left, keywords];
+  }
+  targetWithResidual.__argnames__ = ["left"];
+  targetWithResidual.__kwonly__ = ["option"];
+  targetWithResidual.__varkw__ = true;
+  targetWithResidual.__handles_kwarg_interpolation__ = true;
+  const residualPacket = { left: 13, option: 17, extra: 19 };
+  const residual = api.ρσ_interpolate_kwargs(
+    undefined, targetWithResidual, [residualPacket]);
+  assert.equal(residual[0], 13);
+  assert.deepEqual(residual[1], { option: 17, extra: 19 });
+});
+
+test("branded keyword constructors reuse prepared allocation", () => {
+  const prototype = {};
+  const packet = { value: 17 };
+  const calls = [];
+  function target(keywords) {
+    calls.push([this, keywords]);
+    this.value = keywords.value;
+  }
+  target.prototype = prototype;
+  target.__bases__ = [];
+  const api = context({
+    _internal_keyword_constructor_prototypes: new WeakSet([prototype]),
+    _internal_class_instance_function: () => false,
+    _internal_get_member: (value, name) => value[name],
+    _internal_type_is: (left, right) => left === right,
+    ρσ_native_jstype: (value) => typeof value,
+    _internal_has_own: Object.hasOwn,
+  });
+  const discarded = Object.create(prototype);
+  const result = api.ρσ_interpolate_kwargs_constructor(
+    discarded, false, target, [packet],
+  );
+  assert.equal(result.value, 17);
+  assert.equal(result, discarded);
+  assert.deepEqual(calls, [[discarded, packet]]);
+
+  function replacement(value) {
+    calls.push([this, value]);
+    this.value = value;
+  }
+  replacement.prototype = prototype;
+  replacement.__argnames__ = ["value"];
+  const rebound = Object.create(prototype);
+  const reboundResult = api.ρσ_interpolate_kwargs_constructor(
+    rebound, false, replacement, [{ value: 23 }],
+  );
+  assert.equal(reboundResult, rebound);
+  assert.equal(rebound.value, 23);
+  assert.deepEqual(calls[1], [rebound, 23]);
+
+  const receiver = {};
+  assert.equal(
+    api.ρσ_interpolate_kwargs_constructor(receiver, true, () => 3, []),
+    receiver,
+  );
+});
+
+test("custom-new guard preserves synthetic chains and epoch caching", () => {
+  const objectInit = {};
+  const objectNew = function objectNew() {};
+  const customNew = function customNew() {};
+  const epoch = { value: 7 };
+  const cache = new WeakMap();
+  const allocations = new Map();
+  let lookups = 0;
+  const api = context({
+    ρσ_object_init: objectInit,
+    _builtins_object_new: objectNew,
+    _builtins_descriptor_epoch: epoch,
+    _builtins_initializer_cache: cache,
+    _builtins_get_member: (value, name) => value?.[name],
+    ρσ_getattr: (value, name, fallback) => {
+      ++lookups;
+      return name === "__new__" ? allocations.get(value) : fallback;
+    },
+    ρσ_native_jstype: value => typeof value,
+  });
+
+  assert.equal(api.ρσ_synthetic_init_ends_at_object(objectInit), true);
+  assert.equal(api.ρσ_synthetic_init_ends_at_object({}), false);
+  assert.equal(api.ρσ_synthetic_init_ends_at_object({ __func__: objectInit }), true);
+  const synthetic = { __sagejs_synthetic_init__: true,
+    __sagejs_synthetic_init_target__: objectInit };
+  assert.equal(api.ρσ_synthetic_init_ends_at_object(synthetic), true);
+  const cycle = { __sagejs_synthetic_init__: true };
+  cycle.__sagejs_synthetic_init_target__ = cycle;
+  assert.equal(api.ρσ_synthetic_init_ends_at_object(cycle), false);
+
+  const cls = {};
+  allocations.set(cls, customNew);
+  cache.set(cls, [epoch.value, synthetic]);
+  assert.equal(api.ρσ_skip_init(cls, synthetic), true);
+  assert.equal(lookups, 1);
+  assert.equal(api.ρσ_skip_init(cls, synthetic), true);
+  assert.equal(lookups, 1, "epoch-current answer is reused");
+  epoch.value += 1;
+  allocations.set(cls, objectNew);
+  assert.equal(api.ρσ_skip_init(cls, synthetic), false);
+  assert.equal(lookups, 2, "stale answer is not reused");
+});
+
+test("shared bootstrap owns its low-level adapters and metadata copier", () => {
+  assert.deepEqual([...source.matchAll(/^def (\S+)\(/gm)].map((match) => match[1]), sharedNames);
   for (const filename of ["compiler_bootstrap.py", "sagejs_bootstrap.py"]) {
     const previous = readFileSync(join(root, "src/baselib", filename), "utf8");
     for (const name of names) assert.ok(!previous.includes(`def ${name}(`));
@@ -30,6 +360,73 @@ test("shared bootstrap has four adapters and one shared metadata copier", () => 
   const graph = JSON.parse(readFileSync(join(root, "architecture/package-graph.json"), "utf8"));
   assert.ok(graph.packages.find(entry => entry.id === "core-runtime").files
     .includes("src/baselib/bootstrap_shared.py"));
+});
+
+test("shared exact integer arithmetic preserves primitive Python integers", () => {
+  const {
+    ρσ_exact_integer_add: add,
+    ρσ_exact_integer_submul: submul,
+    ρσ_int_pow: power,
+  } = context();
+  const missing = {};
+  const subtract = (left, right) => submul(left, right, false, missing);
+  const multiply = (left, right) => submul(left, right, true, missing);
+  assert.equal(add(1, 2, missing), 3);
+  assert.equal(add(true, true, missing), 2);
+  assert.equal(add(Number.MAX_SAFE_INTEGER, true, missing), 9007199254740992n);
+  assert.equal(add(Number.MAX_SAFE_INTEGER, false, missing), Number.MAX_SAFE_INTEGER);
+  assert.equal(add(4n, true, missing), 5n);
+  assert.equal(Object.is(add(-0, false, missing), 0), true);
+  assert.equal(subtract(-Number.MAX_SAFE_INTEGER, true), -9007199254740992n);
+  assert.equal(subtract(4n, true), 3n);
+  assert.equal(multiply(3037000500, 3037000500), 9223372037000250000n);
+  assert.equal(multiply(4n, true), 4n);
+  assert.equal(power(3, 7, missing), 2187);
+  assert.equal(power(2, 53, missing), 9007199254740992n);
+  assert.equal(power(-2n, 3, missing), -8n);
+  assert.equal(power(2, -1, missing), missing);
+  assert.equal(add(1.5, 2, missing), missing);
+  assert.equal(add(Number.MAX_SAFE_INTEGER + 1, 1, missing), missing);
+  assert.equal(add({}, 1, missing), missing);
+});
+
+test("shared exact integer division and modulo preserve Python signs", () => {
+  const { ρσ_exact_integer_divmod: divmod } = context();
+  const missing = {};
+  const floor = (left, right) => divmod(left, right, 0, missing);
+  const mod = (left, right) => divmod(left, right, 1, missing);
+  assert.deepEqual([floor(7, 3), floor(-7, 3), floor(7, -3), floor(-7, -3)], [2, -3, -3, 2]);
+  assert.deepEqual([mod(7, 3), mod(-7, 3), mod(7, -3), mod(-7, -3)], [1, 2, -2, -1]);
+  assert.equal(floor(2n ** 60n, 3), 384307168202282325n);
+  assert.equal(mod(-(2n ** 60n), 7), 6);
+  assert.equal(floor(true, true), 1);
+  assert.equal(mod(true, 2), 1);
+  assert.equal(floor(1, 0), missing);
+  assert.equal(mod(1n, 0n), missing);
+  assert.equal(floor(1, false), missing);
+  assert.equal(mod(1, false), missing);
+  assert.equal(floor(1n, false), missing);
+  assert.equal(mod(1n, false), missing);
+  assert.equal(floor(1.5, 1), missing);
+});
+
+test("shared exact integer shifts preserve primitive Python integers", () => {
+  const { ρσ_exact_shift: shift } = context();
+  const missing = {};
+  const left = (value, count) => shift(value, count, 0, missing);
+  const right = (value, count) => shift(value, count, 1, missing);
+  assert.deepEqual([left(7, 3), left(-7, 3), right(7, 2), right(-7, 2)], [56, -56, 1, -2]);
+  assert.equal(left(2n ** 52n, 2), 2n ** 54n);
+  assert.equal(right(-(2n ** 60n), 4), -(2n ** 56n));
+  assert.equal(left(true, true), 2);
+  assert.equal(right(true, true), 0);
+  assert.equal(right(7, 100), 0);
+  assert.equal(right(-7, 100), -1);
+  assert.equal(left(0n, 100000000000000000000n), 0);
+  assert.equal(left(1, -1), missing);
+  assert.equal(right(1n, -1n), missing);
+  assert.equal(left(1.5, 1), missing);
+  assert.equal(right({}, 1), missing);
 });
 
 test("shared receiver adapters preserve binding, metadata getters, and cache identity", () => {

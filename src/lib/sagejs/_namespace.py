@@ -60,9 +60,9 @@ def _change_instance_class(value: Any, owner: Any) -> None:
 
 
 def _refresh_class_namespace(value: Any) -> Any:
-    if value._epoch != _core._builtins_descriptor_epoch:
+    if value._epoch != _core._builtins_descriptor_epoch.value:
         value._mapping = _callable_namespace_snapshot(value._owner)
-        value._epoch = _core._builtins_descriptor_epoch
+        value._epoch = _core._builtins_descriptor_epoch.value
     return value._mapping
 
 

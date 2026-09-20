@@ -120,12 +120,10 @@ def print_getattr(self, output, skip_expression):  # AST_Dot
         # attributes.  It must retain JavaScript's optional-access result
         # instead of raising Python's AttributeError.
     ):
-        output.print("ρσ_getattr_internal(")
+        output.print("ρσ_attr(")
         self.expression.print(output)
         output.comma()
         output.print(JSON.stringify(self.property))
-        output.comma()
-        output.print("ρσ_getattr_missing")
         output.print(")")
         return
     expr = self.expression
@@ -811,7 +809,7 @@ def print_assignment(self, output):
         and not left.property.startswith("ρσ_")
         and "." not in left.property
     ):
-        output.print("ρσ_setattr(")
+        output.print("ρσ_attr(")
         left.expression.print(output)
         output.comma()
         output.print(JSON.stringify(left.property))
@@ -913,7 +911,11 @@ def print_assign(self, output):
         "+=": "ρσ_operator_iadd",
         "-=": "ρσ_operator_isub",
         "*=": "ρσ_operator_imul",
-        "**=": "ρσ_operator_ipow",
+        "**=": (
+            "ρσ_operator_ipow"
+            if output.options.rational_division or not output.options.exact_integers
+            else "ρσ_operator_ipow_python"
+        ),
         "/=": (
             "ρσ_operator_idiv"
             if output.options.rational_division

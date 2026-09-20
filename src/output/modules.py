@@ -856,11 +856,6 @@ def prologue(module, output):
         ),
         output.end_statement(),
     )
-    (
-        output.indent(),
-        output.spaced("var", "ρσ_object_counter", "=", "0"),
-        output.end_statement(),
-    )
     # Needed for Chrome < 51 and Edge as of August 2016
     (
         output.indent(),

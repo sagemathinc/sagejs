@@ -301,11 +301,18 @@ def function_preamble(node, output, offset, javascript_name):
         if a.has_defaults:
             for dname in Object.keys(a.defaults):
                 is_keyword_only = False
+                is_positional_only = False
+                default_argument = None
+                for index, candidate in enumerate(a):
+                    if candidate.name is dname:
+                        default_argument = candidate
+                        is_positional_only = index < (a.posonly or 0)
+                        break
                 for keyword_argument in a.kwonly:
                     if keyword_argument.name is dname:
                         is_keyword_only = True
                         break
-                if is_keyword_only:
+                if is_keyword_only or is_positional_only:
                     continue
                 output.indent()
                 output.spaced(
@@ -315,11 +322,6 @@ def function_preamble(node, output, offset, javascript_name):
                 )
 
                 def f():
-                    default_argument = None
-                    for candidate in a:
-                        if candidate.name is dname:
-                            default_argument = candidate
-                            break
                     output.indent()
                     output.spaced(
                         (
@@ -659,9 +661,18 @@ def function_annotation(self, output, strip_first, name):
 
     # Create __handles_kwarg_interpolation__
     if not self.argnames.is_simple_func:
+        positional_default_count = 0
+        for argument in self.argnames:
+            if Object.prototype.hasOwnProperty.call(
+                self.argnames.defaults, argument.name
+            ):
+                positional_default_count += 1
 
         def handle():
-            output.print("true")
+            # Encode how many trailing positional keyword assignments the
+            # generated prologue owns. One-based encoding keeps zero truthy and
+            # survives adapters which add or remove an explicit receiver.
+            output.print(str(positional_default_count + 1))
 
         props.__handles_kwarg_interpolation__ = handle
 
