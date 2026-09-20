@@ -2,6 +2,7 @@
 name = "sagejs-pari-class-group-rust-experiment"
 version = "0.1.0"
 edition = "2024"
+license = "GPL-2.0-or-later"
 publish = false
 
 [features]
