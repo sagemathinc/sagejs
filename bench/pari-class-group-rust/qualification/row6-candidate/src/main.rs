@@ -1564,6 +1564,11 @@ fn small_norm_unit_kernel_for_field(
             "usesClassGroupAnswersAsInput": false,
             "mathematicalBoundary": "replay-validated-prepared-cubic-to-complete-class-and-unit-result",
             "relations": { "rows": rows, "columns": columns },
+            "presentationIndexEvidence": {
+                "squareRowIndicesZeroBased": &source_rows,
+                "surplusRowIndicesZeroBased": &remaining_rows,
+                "squareDeterminant": class_order.square_determinant.to_string(),
+            },
             "relationLatticeEvidence": {
                 "schema": "sagejs.rust-class-group/prepared-cubic-relation-lattice-v1",
                 "factorBaseCatalog": &generator_order_factor_base_catalog,

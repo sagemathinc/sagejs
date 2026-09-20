@@ -417,6 +417,7 @@ void sagejs_rust_flint_small_surplus_workspace_free(void *opaque)
 int sagejs_rust_flint_small_surplus_class_order_i64(
     size_t size, size_t surplus_rows, const int64_t *square_entries,
     const int64_t *surplus_entries, mpz_ptr class_order,
+    mpz_ptr square_determinant,
     size_t *two_rank, uint8_t *class_coordinates,
     size_t class_coordinate_capacity, mpz_ptr const *dependency_entries,
     size_t dependency_capacity, size_t *determinant_bits,
@@ -424,7 +425,8 @@ int sagejs_rust_flint_small_surplus_class_order_i64(
     void **workspace_output)
 {
     if (size == 0 || surplus_rows == 0 || square_entries == NULL ||
-        surplus_entries == NULL || class_order == NULL || two_rank == NULL ||
+        surplus_entries == NULL || class_order == NULL ||
+        square_determinant == NULL || two_rank == NULL ||
         class_coordinates == NULL ||
         dependency_entries == NULL ||
         determinant_bits == NULL || determinant_ns == NULL ||
@@ -490,6 +492,7 @@ int sagejs_rust_flint_small_surplus_class_order_i64(
     uint64_t finished = sagejs_rust_monotonic_ns();
     *determinant_ns = finished >= started ? finished - started : 0;
     fmpz_abs(workspace->determinant, workspace->determinant);
+    fmpz_get_mpz(square_determinant, workspace->determinant);
     *determinant_bits = (size_t) fmpz_bits(workspace->determinant);
     if (rank != (slong) size || fmpz_is_zero(workspace->determinant))
         status = -3;

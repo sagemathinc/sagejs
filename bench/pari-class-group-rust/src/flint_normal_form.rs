@@ -57,6 +57,8 @@ pub struct FlintIncrementalHnf {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FlintSmallSurplusClassOrder {
     pub class_order: Integer,
+    /// Exact absolute determinant of the selected square relation block.
+    pub square_determinant: Integer,
     pub two_rank: usize,
     pub generator_count: usize,
     /// Generator-major coordinates in the dual mod-2 character basis.
@@ -280,6 +282,7 @@ unsafe extern "C" {
         square_entries: *const c_longlong,
         surplus_entries: *const c_longlong,
         class_order: *mut c_void,
+        square_determinant: *mut c_void,
         two_rank: *mut usize,
         class_coordinates: *mut u8,
         class_coordinate_capacity: usize,
@@ -451,6 +454,7 @@ fn flint_small_surplus_class_order_impl(
     }
     let surplus_rows = surplus_entries.len() / size;
     let mut class_order = Integer::new();
+    let mut square_determinant = Integer::new();
     let mut two_rank = 0_usize;
     let mut generator_coordinates = vec![0_u8; square_entries.len()];
     let dependency_capacity = surplus_rows
@@ -473,6 +477,7 @@ fn flint_small_surplus_class_order_impl(
             square_entries.as_ptr().cast(),
             surplus_entries.as_ptr().cast(),
             class_order.as_raw_mut().cast(),
+            square_determinant.as_raw_mut().cast(),
             &mut two_rank,
             generator_coordinates.as_mut_ptr(),
             generator_coordinates.len(),
@@ -501,6 +506,7 @@ fn flint_small_surplus_class_order_impl(
             Ok((
                 FlintSmallSurplusClassOrder {
                     class_order,
+                    square_determinant,
                     two_rank,
                     generator_count: size,
                     generator_coordinates,
@@ -1267,6 +1273,7 @@ mod tests {
         assert!(answer.annihilates(&[2, 0, 0, 6, 0, 4], 3));
         assert!(answer.dependencies_annihilate(&[2, 0, 0, 6, 0, 4]));
         assert_eq!(answer.dependency_rank, 1);
+        assert_eq!(answer.square_determinant, 12);
         assert_eq!(answer.determinant_bits, 4);
     }
 

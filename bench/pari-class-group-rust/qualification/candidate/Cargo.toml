@@ -1,0 +1,10 @@
+[package]
+name = "sagejs-rust-class-group-compact-certificate"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+rug = { version = "1", default-features = false, features = ["integer"] }
+serde_json = "1"
+

@@ -132,6 +132,17 @@ function syntheticPrime(index) {
 // focused Rust/schema command documented in README.md.
 const candidateV2 = clone(currentTrivialShape);
 candidateV2.schema = "sagejs.rust-class-group/prepared-cubic-class-unit-v2";
+candidateV2.presentationIndexEvidence = {
+  squareRowIndicesZeroBased: Array.from(
+    { length: candidateV2.relations.columns },
+    (_unused, index) => index,
+  ),
+  surplusRowIndicesZeroBased: Array.from(
+    { length: candidateV2.relations.rows - candidateV2.relations.columns },
+    (_unused, index) => candidateV2.relations.columns + index,
+  ),
+  squareDeterminant: "1",
+};
 candidateV2.relationLatticeEvidence = {
   schema: "sagejs.rust-class-group/prepared-cubic-relation-lattice-v1",
   factorBaseCatalog: Array.from(

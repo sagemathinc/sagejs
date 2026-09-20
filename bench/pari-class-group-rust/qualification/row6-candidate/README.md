@@ -1,5 +1,25 @@
 # Row-6 Rust candidate diagnostic
 
+## Compact presentation-index invariant
+
+For the final small-surplus presentation, let `R = [A; B]`, with `A` the
+selected square relation block and `B` the surplus rows. The exact
+small-surplus kernel has rows `C = (-Z | Y)` satisfying `C R = 0`.
+Qualification exports `D = |det(A)|`, not only its bit length. A downstream
+verifier proves that `C` is the full integral left kernel by checking its rank
+and a gcd-one certificate made from exact maximal minors of the small-row
+matrix `C`. It then computes `K = |det(Y)|` and checks
+
+```text
+K > 0,       D % K == 0,       D / K == claimed class-group order.
+```
+
+This is equivalent to the full presentation index: the left kernel is
+primitive, projection to the surplus coordinates has image `row(Y)`, and the
+surplus rows enlarge `row(A)` by index `K`. The certificate therefore avoids
+enumerating 1130-row minors of `R`; it does not infer saturation from replay or
+rank alone.
+
 This is an answer-free, candidate-only timing probe for
 `x^3 - 2000000000010*x + 2000000000018`. It exercises the existing Rust
 coefficient-box collector with bounded two-minute checkpoints and records
