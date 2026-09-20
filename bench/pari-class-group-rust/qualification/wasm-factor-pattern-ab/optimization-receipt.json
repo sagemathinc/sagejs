@@ -1,0 +1,994 @@
+{
+  "schema": "sagejs.rust-class-group/factor-pattern-optimization-evidence-v2",
+  "status": "pass",
+  "observedAt": "2026-09-20T19:10:31.832Z",
+  "repositoryRevision": "c4d07156194765506d137792732ba5109cd8c87e",
+  "workload": {
+    "polynomialAscending": [
+      2000000000018,
+      -2000000000010,
+      0,
+      1
+    ],
+    "bound": 9196,
+    "rationalPrimeCount": 1139,
+    "factorCount": 2066,
+    "factorPatternDigestSha256": "e0b4936ea49e92649808af36cafb8d4820a54cca0d57260d293ce7d696271bbb",
+    "factorBaseDescriptorSha256": "dc63c73dbc419b05a4a1b907cdd8a60f70247f74a0d477880eb25d19c4356306",
+    "relationPrefixSha256": "7e4c9242d3fa92c7bc7f8fbb3e9c68cc77f66cbc5838657cf38e610c66ba22b3"
+  },
+  "sourceClosure": {
+    "factorPattern": [
+      {
+        "path": "bench/pari-class-group-rust/qualification/wasm-factor-pattern-ab/Cargo.toml",
+        "sha256": "84dca680161977f1e1a353fdc6d46a98cba5df59b25fc49a0b2c6f8e33936249",
+        "bytes": 335
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/wasm-factor-pattern-ab/Cargo.lock",
+        "sha256": "bbbf6605e92b4a08bb97850832fbe6fea7928c5f91f65e2060df70a1ac9997a3",
+        "bytes": 4911
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/wasm-factor-pattern-ab/build-wasm.sh",
+        "sha256": "d1d9d165f7f85d023597cab4d80dc482babe3fe5b5b3899edac59febda979ca3",
+        "bytes": 574
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/wasm-factor-pattern-ab/src/lib.rs",
+        "sha256": "fe0380cf7e6fb231394767bb4f8240eb823da294dce7dbbd898c33b757d96f53",
+        "bytes": 13771
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/wasm-factor-pattern-ab/src/main.rs",
+        "sha256": "534061b8db52aa5317044dc2bb1ee803364afca3bf55514b61e7f759e5f16004",
+        "bytes": 1519
+      }
+    ],
+    "preparedFactorBase": [
+      {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-factor-base/Cargo.toml",
+        "sha256": "fa589e9d19d9fc9f1068022c15cfc6dc9cb196147f23a45565a698f3ea878f55",
+        "bytes": 529
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-factor-base/Cargo.lock",
+        "sha256": "365a9d70ce5f7f6dd1d51024d7387fe110baafa47bcce5ce6a7cf9689a705d31",
+        "bytes": 7420
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-factor-base/build.rs",
+        "sha256": "2da46a56f4e0bccd34064e2c065f5da1d439dc6ee109470895cfa2165b293f78",
+        "bytes": 711
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-factor-base/build-wasm.sh",
+        "sha256": "5bd01ce6f8721297a8cc85b317b7bc3e6331b2c34d619732f8643656fa319b8d",
+        "bytes": 1003
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-factor-base/gmp-mpfr-cross-cc.sh",
+        "sha256": "dfcf457999c34e730171eed29c7eca55a0daa2e437e3da5188b57cd95d2d3db2",
+        "bytes": 1445
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-factor-base/prepare-vector.mjs",
+        "sha256": "a6fbba140ff9516d1281ff4f00e7a8095cea524e36cf10f1a7d622e50ce1508a",
+        "bytes": 1137
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-factor-base/src/lib.rs",
+        "sha256": "86e273900ba46baf2538651f40473a1069731e14f60d42ad59cc71df74b199e5",
+        "bytes": 7919
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-factor-base/src/bin/native-benchmark.rs",
+        "sha256": "5210402aab39c2a6be1c25e4dd30c9fc76b75fef546d1f3856a2de31631c4b07",
+        "bytes": 1391
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/row6-candidate/inputs/row6-neutral-prepared-field.json",
+        "sha256": "24551723d43685e5592d9b3f866bf73e3f0bbde69ee5afec1eb2dc2f760314b5",
+        "bytes": 2772
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/factor_base.rs",
+        "sha256": "14cf55f72d90c58410edca44a8f17d8907ed93680deb1fd4dbff8b5704e9cf34",
+        "bytes": 39597
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/hnf.rs",
+        "sha256": "d35bf3f4d154e3425f95a365f09b5147eaaf7353ae2ab1f67bb5321b470a87e6",
+        "bytes": 28189
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/prepared.rs",
+        "sha256": "80b7ce8f953b2df50fb88ac4d1d068f1ac8148e1b335aa01f0d322e6c8feada5",
+        "bytes": 44766
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/prepared_factor_base.rs",
+        "sha256": "53f24f03d1292190dc3a7705af336db9f1367a9c493b35232e1b9056ff507995",
+        "bytes": 23053
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/prepared_ideal.rs",
+        "sha256": "261059e71fef692939ed1f09ad44b4fdae376b8c123c47604b2743036453d5b0",
+        "bytes": 16283
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/prepared_input.rs",
+        "sha256": "c6e37480711aac91ddcaf796dff18729e427ced6a41d9cbed43b3a6abce11c6c",
+        "bytes": 12198
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/relation_cache.rs",
+        "sha256": "4ceda4440a747c151389dc00a1deee06c32cb18845a3e5738345cad8410ecc3e",
+        "bytes": 14270
+      }
+    ],
+    "relationPrefix": [
+      {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-relation-prefix/Cargo.toml",
+        "sha256": "f4a46a98edcac4034ea1c7f4a34b10e996d659dfd8b4969633256b2fd64ccb4b",
+        "bytes": 585
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-relation-prefix/Cargo.lock",
+        "sha256": "1ed81533a3cbbd7dd7d92bc3b468c46a93ec97ad0cd3115b3431ddb4ae274f3f",
+        "bytes": 7424
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-relation-prefix/build.rs",
+        "sha256": "45eacf4d09631ccab3e774055fa13da9e29364b0d5a9135245b062928e2430f0",
+        "bytes": 1005
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-relation-prefix/build-wasm.sh",
+        "sha256": "521e3287a7b7f3b6e2720ee9d232f7e00c8b72b5d130a95119cf2e2511edef01",
+        "bytes": 1519
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-relation-prefix/gmp-mpfr-cross-cc.sh",
+        "sha256": "d65703df3021a30032dbb420f72806a43d6c2e84192ee9f88e08f10fcc4aa1c5",
+        "bytes": 1375
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-relation-prefix/prepare-vector.mjs",
+        "sha256": "66a8cec79306e9270265cf49236a87d0af098b4d5ff3328a8e1c359da8706b54",
+        "bytes": 1731
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-relation-prefix/src/lib.rs",
+        "sha256": "92ce5e3db3292191ea55f23c2df14f249ea3ba996d83b11f7cb5a6b22fcdc561",
+        "bytes": 11974
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-relation-prefix/src/bin/native-benchmark.rs",
+        "sha256": "8e38031c10ae5690e1ab0badad84303d4ad300c5901a4f9971eed96a9914a639",
+        "bytes": 1779
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/row6-candidate/inputs/row6-neutral-prepared-field.json",
+        "sha256": "24551723d43685e5592d9b3f866bf73e3f0bbde69ee5afec1eb2dc2f760314b5",
+        "bytes": 2772
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/class_group.rs",
+        "sha256": "0d556a8ef214a496f5387efa959d8dd4983166d1ccd8ad8d5848d5c4354760b7",
+        "bytes": 33827
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/collector_schedule.rs",
+        "sha256": "f5f4d65a68465fc29d5dd216763abb45ce8465ea8485334786e5cd3e7b45c783",
+        "bytes": 6526
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/enumeration.rs",
+        "sha256": "0ea9216253e830e099fd0c9d2cbdb162b141309346729900e431896d65568b38",
+        "bytes": 6295
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/factor_base.rs",
+        "sha256": "14cf55f72d90c58410edca44a8f17d8907ed93680deb1fd4dbff8b5704e9cf34",
+        "bytes": 39597
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/hnf.rs",
+        "sha256": "d35bf3f4d154e3425f95a365f09b5147eaaf7353ae2ab1f67bb5321b470a87e6",
+        "bytes": 28189
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/prepared.rs",
+        "sha256": "80b7ce8f953b2df50fb88ac4d1d068f1ac8148e1b335aa01f0d322e6c8feada5",
+        "bytes": 44766
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/prepared_factor_base.rs",
+        "sha256": "53f24f03d1292190dc3a7705af336db9f1367a9c493b35232e1b9056ff507995",
+        "bytes": 23053
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/prepared_ideal.rs",
+        "sha256": "261059e71fef692939ed1f09ad44b4fdae376b8c123c47604b2743036453d5b0",
+        "bytes": 16283
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/prepared_input.rs",
+        "sha256": "c6e37480711aac91ddcaf796dff18729e427ced6a41d9cbed43b3a6abce11c6c",
+        "bytes": 12198
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/relation_cache.rs",
+        "sha256": "4ceda4440a747c151389dc00a1deee06c32cb18845a3e5738345cad8410ecc3e",
+        "bytes": 14270
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/ideal_arithmetic.rs",
+        "sha256": "4e18797b8b645b761c58b82d73af0a7c30eef0ddd4659f57624f9c3d5b4a9a52",
+        "bytes": 17888
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/numerical_preparation.rs",
+        "sha256": "c8c18b3c8896795cdfd35db6c1eec75fa2af3f827ff64a47a4a21337c2d728bb",
+        "bytes": 31852
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/pari_random.rs",
+        "sha256": "7bed82f9c8d1cd27b753e0f39e5cf37ef49ae90e9c236ff9f9a397382d83e269",
+        "bytes": 2696
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/prime_valuation.rs",
+        "sha256": "5b533a94a1eed76a1fa09b97d6e43071678babc88910133c32f561423d770a9e",
+        "bytes": 11014
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/smooth_admission.rs",
+        "sha256": "4936644436d471b91e11f8690f9abbbf03d4450b81a6f6483b9f237c6b982573",
+        "bytes": 24142
+      }
+    ],
+    "browserHarness": [
+      {
+        "path": "bench/pari-class-group-rust/qualification/browser/run-browser.mjs",
+        "sha256": "0d342e0f424c1a8137c23df5fdc35d982f6f8054de119d3a3e74c231885c18d4",
+        "bytes": 11725
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/browser/class-group-route.html",
+        "sha256": "d1e4df53d4fc1ba49488cb609ddc6e0f0556d5a330dce01420b4925ce313d250",
+        "bytes": 349
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/browser/class-group-route.mjs",
+        "sha256": "f8e7f4ef8463b4a81839d1461e6ac46d75a3afd96b9e0f2829831c73f43b0cb2",
+        "bytes": 1536
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/browser/browser-loader.mjs",
+        "sha256": "2f5ac520f660cbe6673aa0060f673ee45a231cd2e1d2f13b8225bf561c55c76c",
+        "bytes": 7640
+      },
+      {
+        "path": "packages/flint-wasm/test/browser-wasm-support.mjs",
+        "sha256": "4a586dfa5868480b9aabb4bc25cd03d332f1fb1c9f0487531d7a4d3288ca6ee9",
+        "bytes": 23866
+      },
+      {
+        "path": "packages/flint-wasm/src/wasi-runtime.mjs",
+        "sha256": "4387a28ca75c7356406a7ed15673ab81a48072a8ca6a3ae47724d9734c684b1e",
+        "bytes": 11048
+      },
+      {
+        "path": "packages/flint-wasm/src/wasi-constants.mjs",
+        "sha256": "51859f734bba03868366fc289af89ee6df78c481f50f74273c77fff5db06a566",
+        "bytes": 2912
+      },
+      {
+        "path": "packages/flint-wasm/src/wasi-filesystem.mjs",
+        "sha256": "f84477236a45972d28ecf1cf3dd6ce16250b4de2cc5a5c87027033d8b4deeaf5",
+        "bytes": 17144
+      },
+      {
+        "path": "package.json",
+        "sha256": "a7ed2937ee915befa47da644b48e57438dd4b2feac203cce9ab9edc3ddc179ff",
+        "bytes": 36456
+      },
+      {
+        "path": "pnpm-lock.yaml",
+        "sha256": "5b31e446dfb3653e4f081641407b7e457e4c31c8bdf225cc131745a1c6313c83",
+        "bytes": 52670
+      },
+      {
+        "path": "packages/flint-wasm/package.json",
+        "sha256": "277619f40fdfc8d5cbf83435af3d1561d8b809cdc9f493c4cc2f4c11fbe66d44",
+        "bytes": 4639
+      }
+    ]
+  },
+  "buildClosure": {
+    "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: x86_64-unknown-linux-gnu\nrelease: 1.98.1\nLLVM version: 22.1.8",
+    "cargo": "cargo 1.98.1 (797e8a9bc 2026-08-05)",
+    "toolchainDigest": "37d8d819fd533570e0b707d3101ab2944f6488c4b4452b2b0a1a9ea04366452c",
+    "toolchainReceipt": {
+      "path": "prepared-toolchain/receipt.json",
+      "sha256": "e0d16b87271b855dd0b045860c841014b3a5d69fa7e96e45752e299823533978",
+      "bytes": 105042
+    },
+    "toolchain": {
+      "clang": "clang version 22.1.0-wasi-sdk (https://github.com/llvm/llvm-project 4434dabb69916856b824f68a64b029c67175e532)\nTarget: wasm32-unknown-wasip1\nThread model: posix\nInstalledDir: /scratch/sagejs-project-cache/20260918/main-git/sagejs-wasm-toolchains/v2/37d8d819fd533570e0b707d3101ab2944f6488c4b4452b2b0a1a9ea04366452c/sdk/bin\nConfiguration file: /scratch/sagejs-project-cache/20260918/main-git/sagejs-wasm-toolchains/v2/37d8d819fd533570e0b707d3101ab2944f6488c4b4452b2b0a1a9ea04366452c/sdk/bin/clang.cfg",
+      "wasmLd": "LLD 22.1.0 (https://github.com/llvm/llvm-project 4434dabb69916856b824f68a64b029c67175e532)",
+      "gmp": {
+        "version": "6.2.1",
+        "source": "gmp-wasm",
+        "sourceSha256": "eae9326beb4158c386e39a356818031bd28f3124cf915f8c5b1dc4c7a36b4d7c",
+        "archiveSha256": "66eb596677c3acd0e87f3118b69316dcba31695d569b5fe1020a9ff1ee0d12a4",
+        "headersSha256": "9212dc80c842042bcbfb513f74f05452bc0bb7d8ad59395593f7786289012d7a",
+        "artifact": {
+          "path": "prepared-toolchain/prefixes/gmp/lib/libgmp.a",
+          "sha256": "66eb596677c3acd0e87f3118b69316dcba31695d569b5fe1020a9ff1ee0d12a4",
+          "bytes": 695702
+        }
+      },
+      "mpfr": {
+        "version": "4.2.2",
+        "source": "mpfr",
+        "sourceSha256": "b67ba0383ef7e8a8563734e2e889ef5ec3c3b898a01d00fa0a6869ad81c6ce01",
+        "archiveSha256": "7a072da2bff34576648422e0c83ad7cf82c8ea99f0898902cf1653de3654998a",
+        "headersSha256": "44afcda7329a32f49e948ca0c9ae998748ecebb0186f5ce752e2389914a5a767",
+        "artifact": {
+          "path": "prepared-toolchain/prefixes/mpfr/lib/libmpfr.a",
+          "sha256": "7a072da2bff34576648422e0c83ad7cf82c8ea99f0898902cf1653de3654998a",
+          "bytes": 645718
+        }
+      }
+    },
+    "artifacts": {
+      "factorPattern": {
+        "path": "bench/pari-class-group-rust/qualification/wasm-factor-pattern-ab/build/factor-pattern-ab.wasm",
+        "sha256": "2cfd85ce31695ff9822a9ffebe3f319fa37a7a04d421405d827ed55715923def",
+        "bytes": 156964
+      },
+      "preparedFactorBase": {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-factor-base/build/prepared-factor-base.wasm",
+        "sha256": "1bc6515472a34c559664840afa6f459432b58b8ea14025e5a82bc2188baecdec",
+        "bytes": 484386
+      },
+      "relationPrefix": {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-relation-prefix/build/prepared-relation-prefix.wasm",
+        "sha256": "385e830caeb981ef1035b8c93b37c9ee76244dd1bedafd73bb0dea4e30309c43",
+        "bytes": 698053
+      }
+    },
+    "vectors": {
+      "factorPatternBaseline": {
+        "path": "bench/pari-class-group-rust/qualification/wasm-factor-pattern-ab/baseline.vector.json",
+        "sha256": "5c628ed789676e10359daf115751ea5411391f012d7758c2c89810904acaf138",
+        "id": "row6-factor-pattern-baseline-i128",
+        "request": {
+          "schema": "sagejs.rust-class-group/factor-pattern-ab-request-v1",
+          "mode": "baseline",
+          "polynomialAscending": [
+            2000000000018,
+            -2000000000010,
+            0,
+            1
+          ],
+          "bound": 9196
+        },
+        "expected": {
+          "schema": "sagejs.rust-class-group/factor-pattern-ab-result-v1",
+          "status": "pass",
+          "mode": "baseline",
+          "bound": 9196,
+          "rationalPrimeCount": 1139,
+          "factorCount": 2066,
+          "digestSha256": "e0b4936ea49e92649808af36cafb8d4820a54cca0d57260d293ce7d696271bbb"
+        }
+      },
+      "factorPatternBoundedI64": {
+        "path": "bench/pari-class-group-rust/qualification/wasm-factor-pattern-ab/bounded-i64.vector.json",
+        "sha256": "d0e9184f538c8389875d88d597a9131ef53606940ce10b4c4372c8a95db3065a",
+        "id": "row6-factor-pattern-bounded-i64",
+        "request": {
+          "schema": "sagejs.rust-class-group/factor-pattern-ab-request-v1",
+          "mode": "bounded-i64",
+          "polynomialAscending": [
+            2000000000018,
+            -2000000000010,
+            0,
+            1
+          ],
+          "bound": 9196
+        },
+        "expected": {
+          "schema": "sagejs.rust-class-group/factor-pattern-ab-result-v1",
+          "status": "pass",
+          "mode": "bounded-i64",
+          "bound": 9196,
+          "rationalPrimeCount": 1139,
+          "factorCount": 2066,
+          "digestSha256": "e0b4936ea49e92649808af36cafb8d4820a54cca0d57260d293ce7d696271bbb"
+        }
+      },
+      "preparedFactorBase": {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-factor-base/build/row6.vector.json",
+        "sha256": "3f5cd5862046096d868d975698d55179cc7ef6a8f489ee6f7bb5e2ac31a64304",
+        "id": "row6-prepared-maximal-factor-base",
+        "request": {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:42ecf93a56de4cc7763d33c8b422e7804582278674c1a6fef41a4799a9930bd5",
+          "fieldId": "row6-x3-minus-2000000000010x-plus-2000000000018",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "2000000000018",
+              "-2000000000010",
+              "0",
+              "1"
+            ],
+            "degree": 3,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "neutral-prepared-field",
+            "authority": "independent-oracle",
+            "maximalOrderCertified": true,
+            "basisNumeratorsRowMajor": [
+              "3",
+              "0",
+              "0",
+              "0",
+              "3",
+              "0",
+              "-1333333333340",
+              "1",
+              "1"
+            ],
+            "basisDenominator": "3",
+            "discriminant": "3555555555596888888888939555555555028",
+            "signature": {
+              "realPlaces": 3,
+              "complexPairs": 0
+            },
+            "multiplicationTable": [
+              [
+                [
+                  {
+                    "numerator": "1",
+                    "denominator": "1"
+                  },
+                  {
+                    "numerator": "0",
+                    "denominator": "1"
+                  },
+                  {
+                    "numerator": "0",
+                    "denominator": "1"
+                  }
+                ],
+                [
+                  {
+                    "numerator": "0",
+                    "denominator": "1"
+                  },
+                  {
+                    "numerator": "1",
+                    "denominator": "1"
+                  },
+                  {
+                    "numerator": "0",
+                    "denominator": "1"
+                  }
+                ],
+                [
+                  {
+                    "numerator": "0",
+                    "denominator": "1"
+                  },
+                  {
+                    "numerator": "0",
+                    "denominator": "1"
+                  },
+                  {
+                    "numerator": "1",
+                    "denominator": "1"
+                  }
+                ]
+              ],
+              [
+                [
+                  {
+                    "numerator": "0",
+                    "denominator": "1"
+                  },
+                  {
+                    "numerator": "1",
+                    "denominator": "1"
+                  },
+                  {
+                    "numerator": "0",
+                    "denominator": "1"
+                  }
+                ],
+                [
+                  {
+                    "numerator": "1333333333340",
+                    "denominator": "1"
+                  },
+                  {
+                    "numerator": "-1",
+                    "denominator": "1"
+                  },
+                  {
+                    "numerator": "3",
+                    "denominator": "1"
+                  }
+                ],
+                [
+                  {
+                    "numerator": "-222222222226",
+                    "denominator": "1"
+                  },
+                  {
+                    "numerator": "222222222223",
+                    "denominator": "1"
+                  },
+                  {
+                    "numerator": "1",
+                    "denominator": "1"
+                  }
+                ]
+              ],
+              [
+                [
+                  {
+                    "numerator": "0",
+                    "denominator": "1"
+                  },
+                  {
+                    "numerator": "0",
+                    "denominator": "1"
+                  },
+                  {
+                    "numerator": "1",
+                    "denominator": "1"
+                  }
+                ],
+                [
+                  {
+                    "numerator": "-222222222226",
+                    "denominator": "1"
+                  },
+                  {
+                    "numerator": "222222222223",
+                    "denominator": "1"
+                  },
+                  {
+                    "numerator": "1",
+                    "denominator": "1"
+                  }
+                ],
+                [
+                  {
+                    "numerator": "98765432099456790123456",
+                    "denominator": "1"
+                  },
+                  {
+                    "numerator": "-1",
+                    "denominator": "1"
+                  },
+                  {
+                    "numerator": "-222222222223",
+                    "denominator": "1"
+                  }
+                ]
+              ]
+            ],
+            "irreducibilityPrime": 7,
+            "indexPrimes": [
+              "3"
+            ],
+            "sourceSha256": "91180d1100796b514de61d0e1736521e6e55daadbda851a9f24defc8d3bb70df"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "60000",
+              "memoryBytes": "1073741824",
+              "relationCandidates": "1000000",
+              "precisionBits": 192,
+              "continuationPasses": 8
+            }
+          },
+          "randomness": {
+            "algorithm": "none",
+            "seed": null
+          },
+          "containsOracleAnswers": false
+        },
+        "expected": {
+          "schema": "sagejs.rust-class-group/prepared-factor-base-v1",
+          "status": "bounded-stage",
+          "stage": "prepared-maximal-cubic-factor-base",
+          "inputId": "sha256:42ecf93a56de4cc7763d33c8b422e7804582278674c1a6fef41a4799a9930bd5",
+          "fieldId": "row6-x3-minus-2000000000010x-plus-2000000000018",
+          "equationOrderIndex": "3",
+          "relationBound": 9196,
+          "checkingBound": 9196,
+          "rationalPrimeCount": 740,
+          "idealCount": 1130,
+          "completeGroupCount": 203,
+          "descriptorSha256": "dc63c73dbc419b05a4a1b907cdd8a60f70247f74a0d477880eb25d19c4356306"
+        }
+      },
+      "relationPrefix": {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-relation-prefix/build/row6.vector.json",
+        "sha256": "5864e4e83d8074ffbc49a2f132b2d71b2c2267b82984685238272ceb63bc27fe",
+        "id": "row6-prepared-relation-prefix",
+        "request": {
+          "schema": "sagejs.rust-class-group/prepared-relation-prefix-request-v1",
+          "maximumVisitedIdeals": 1,
+          "maximumCandidates": 64,
+          "preparedField": {
+            "schema": "sagejs.rust-class-group.neutral-input/v1",
+            "inputId": "sha256:42ecf93a56de4cc7763d33c8b422e7804582278674c1a6fef41a4799a9930bd5",
+            "fieldId": "row6-x3-minus-2000000000010x-plus-2000000000018",
+            "field": {
+              "variable": "x",
+              "coefficientsAscending": [
+                "2000000000018",
+                "-2000000000010",
+                "0",
+                "1"
+              ],
+              "degree": 3,
+              "monic": true,
+              "irreducible": true
+            },
+            "preparation": {
+              "kind": "neutral-prepared-field",
+              "authority": "independent-oracle",
+              "maximalOrderCertified": true,
+              "basisNumeratorsRowMajor": [
+                "3",
+                "0",
+                "0",
+                "0",
+                "3",
+                "0",
+                "-1333333333340",
+                "1",
+                "1"
+              ],
+              "basisDenominator": "3",
+              "discriminant": "3555555555596888888888939555555555028",
+              "signature": {
+                "realPlaces": 3,
+                "complexPairs": 0
+              },
+              "multiplicationTable": [
+                [
+                  [
+                    {
+                      "numerator": "1",
+                      "denominator": "1"
+                    },
+                    {
+                      "numerator": "0",
+                      "denominator": "1"
+                    },
+                    {
+                      "numerator": "0",
+                      "denominator": "1"
+                    }
+                  ],
+                  [
+                    {
+                      "numerator": "0",
+                      "denominator": "1"
+                    },
+                    {
+                      "numerator": "1",
+                      "denominator": "1"
+                    },
+                    {
+                      "numerator": "0",
+                      "denominator": "1"
+                    }
+                  ],
+                  [
+                    {
+                      "numerator": "0",
+                      "denominator": "1"
+                    },
+                    {
+                      "numerator": "0",
+                      "denominator": "1"
+                    },
+                    {
+                      "numerator": "1",
+                      "denominator": "1"
+                    }
+                  ]
+                ],
+                [
+                  [
+                    {
+                      "numerator": "0",
+                      "denominator": "1"
+                    },
+                    {
+                      "numerator": "1",
+                      "denominator": "1"
+                    },
+                    {
+                      "numerator": "0",
+                      "denominator": "1"
+                    }
+                  ],
+                  [
+                    {
+                      "numerator": "1333333333340",
+                      "denominator": "1"
+                    },
+                    {
+                      "numerator": "-1",
+                      "denominator": "1"
+                    },
+                    {
+                      "numerator": "3",
+                      "denominator": "1"
+                    }
+                  ],
+                  [
+                    {
+                      "numerator": "-222222222226",
+                      "denominator": "1"
+                    },
+                    {
+                      "numerator": "222222222223",
+                      "denominator": "1"
+                    },
+                    {
+                      "numerator": "1",
+                      "denominator": "1"
+                    }
+                  ]
+                ],
+                [
+                  [
+                    {
+                      "numerator": "0",
+                      "denominator": "1"
+                    },
+                    {
+                      "numerator": "0",
+                      "denominator": "1"
+                    },
+                    {
+                      "numerator": "1",
+                      "denominator": "1"
+                    }
+                  ],
+                  [
+                    {
+                      "numerator": "-222222222226",
+                      "denominator": "1"
+                    },
+                    {
+                      "numerator": "222222222223",
+                      "denominator": "1"
+                    },
+                    {
+                      "numerator": "1",
+                      "denominator": "1"
+                    }
+                  ],
+                  [
+                    {
+                      "numerator": "98765432099456790123456",
+                      "denominator": "1"
+                    },
+                    {
+                      "numerator": "-1",
+                      "denominator": "1"
+                    },
+                    {
+                      "numerator": "-222222222223",
+                      "denominator": "1"
+                    }
+                  ]
+                ]
+              ],
+              "irreducibilityPrime": 7,
+              "indexPrimes": [
+                "3"
+              ],
+              "sourceSha256": "91180d1100796b514de61d0e1736521e6e55daadbda851a9f24defc8d3bb70df"
+            },
+            "request": {
+              "proof": "conditional-grh",
+              "output": "class-and-unit-group",
+              "mapPolicy": "construct-eagerly",
+              "unitPolicy": "compact-complete",
+              "limits": {
+                "wallMilliseconds": "60000",
+                "memoryBytes": "1073741824",
+                "relationCandidates": "1000000",
+                "precisionBits": 192,
+                "continuationPasses": 8
+              }
+            },
+            "randomness": {
+              "algorithm": "none",
+              "seed": null
+            },
+            "containsOracleAnswers": false
+          }
+        },
+        "expected": {
+          "schema": "sagejs.rust-class-group/prepared-relation-prefix-v1",
+          "status": "bounded-stage",
+          "stage": "prepared-cubic-relation-prefix",
+          "inputId": "sha256:42ecf93a56de4cc7763d33c8b422e7804582278674c1a6fef41a4799a9930bd5",
+          "fieldId": "row6-x3-minus-2000000000010x-plus-2000000000018",
+          "limits": {
+            "maximumVisitedIdeals": 1,
+            "maximumCandidates": 64
+          },
+          "relationBound": 9196,
+          "factorBaseIdeals": 1130,
+          "residentRelationRows": 204,
+          "missingRank": 926,
+          "completeRankAndSurplus": false,
+          "counters": {
+            "visitedIdeals": 1,
+            "cursorTrials": 66,
+            "primitiveNonscalarCandidates": 64,
+            "smoothCandidates": 1,
+            "appendedRelations": 1,
+            "positiveCacheStatuses": 1,
+            "randomIdeals": 0,
+            "randomSearchIdeals": 0
+          },
+          "storage": {
+            "relationCacheCapacity": 267,
+            "fullRelationCacheCapacity": 11420,
+            "denseRecordsBytes": 2413680,
+            "fullDenseRecordsBytes": 103236800
+          },
+          "prefixSha256": "7e4c9242d3fa92c7bc7f8fbb3e9c68cc77f66cbc5838657cf38e610c66ba22b3"
+        }
+      }
+    }
+  },
+  "evidence": {
+    "abNative": {
+      "path": "bench/pari-class-group-rust/qualification/wasm-factor-pattern-ab/native-receipt.json",
+      "sha256": "23d94daa883ed30f70a8f398bf3b34e04d176d798cdb55ba9c8d4822d9da771e",
+      "bytes": 3921
+    },
+    "abBaselineBrowser": {
+      "path": "bench/pari-class-group-rust/qualification/wasm-factor-pattern-ab/baseline.browser-receipt.json",
+      "sha256": "be4567312bdc7ef54b654d92e377f6fa1ef1cc5e9524e6cc07151f56c0b25325",
+      "bytes": 8478
+    },
+    "abBoundedBrowser": {
+      "path": "bench/pari-class-group-rust/qualification/wasm-factor-pattern-ab/bounded-i64.browser-receipt.json",
+      "sha256": "a460c1a90b2ae40346c0a932b1264a31e118d6d5c366efcf60705635b22d5019",
+      "bytes": 8457
+    },
+    "factorNative": {
+      "path": "bench/pari-class-group-rust/qualification/wasm-prepared-factor-base/optimized-native-receipt.json",
+      "sha256": "69344f1589dc6939efac57079329ca22414d805963f509fdc5cdd420439e8600",
+      "bytes": 5892
+    },
+    "factorBrowser": {
+      "path": "bench/pari-class-group-rust/qualification/wasm-prepared-factor-base/optimized-receipt.json",
+      "sha256": "01bd05af195b9cf7a141e1430a2c4602492aa14cd52fd96041820399deecc84b",
+      "bytes": 15922
+    },
+    "relationNative": {
+      "path": "bench/pari-class-group-rust/qualification/wasm-prepared-relation-prefix/factor-pattern-optimized-native-receipt.json",
+      "sha256": "3f62dadeccfb8924d3259ec970bd41e69e938f7256b51e511716fed398bb42e8",
+      "bytes": 8128
+    },
+    "relationBrowser": {
+      "path": "bench/pari-class-group-rust/qualification/wasm-prepared-relation-prefix/factor-pattern-optimized-receipt.json",
+      "sha256": "8ebaf44871dabaaf040db21ebef8160582d3b89ee60d3d7b100e72199ad172fb",
+      "bytes": 19192
+    }
+  },
+  "historicalEvidence": {
+    "preparedFactorBase": {
+      "receiptCommit": "b6a55b85ca4c1195f456bacf530421c9831af189",
+      "measuredRevision": "47f9a62c913710fc017276bb3a3ac25d9d5ad806",
+      "revisionProvenance": "native and browser receipts were committed together; the browser receipt embeds the measured source revision while the historical native schema predates embedded revision metadata",
+      "native": {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-factor-base/native-receipt.json",
+        "sha256": "6a9c9c9706d58367b427bf7e9ab55004c55027e02299101597b52edcecdf1b4d",
+        "bytes": 1139
+      },
+      "browser": {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-factor-base/receipt.json",
+        "sha256": "75cb509dee2d59f2013dbc252f3a5dffa8d709ad829903f16c0321a3cdf8c4e8",
+        "bytes": 15900
+      }
+    },
+    "relationPrefix": {
+      "receiptCommit": "9273f3e2f695dac692c9b1d6e73bf9c9597aa602",
+      "measuredRevision": "fe8fb0403c26b2950ba503a3f30cbc6facfd9003",
+      "revisionProvenance": "native and browser receipts were committed together; the browser receipt embeds the measured source revision while the historical native schema predates embedded revision metadata",
+      "native": {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-relation-prefix/native-receipt.json",
+        "sha256": "b06615602be6a24ea4e6460101ff8c8b001a51a69714690113607c64dc04a164",
+        "bytes": 1686
+      },
+      "browser": {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-relation-prefix/receipt.json",
+        "sha256": "46b721384569e5ba4ffd11c563eca2a800cc75d5245e0d7f1f5d9acbfb2539d7",
+        "bytes": 19228
+      }
+    }
+  },
+  "comparisons": {
+    "factorPattern": {
+      "native": {
+        "baseline": 91.598812,
+        "bounded-i64": 33.424909
+      },
+      "browserBaseline": {
+        "chromium": 298.09999999403954,
+        "firefox": 1677,
+        "webkit": 194
+      },
+      "browserBoundedI64": {
+        "chromium": 38.099999994039536,
+        "firefox": 150,
+        "webkit": 38
+      }
+    },
+    "preparedFactorBase": {
+      "before": {
+        "native": 216.698408,
+        "browser": {
+          "chromium": 530.7999999821186,
+          "firefox": 3401,
+          "webkit": 419
+        }
+      },
+      "after": {
+        "native": 111.618745,
+        "browser": {
+          "chromium": 160.30000001192093,
+          "firefox": 950,
+          "webkit": 163
+        }
+      }
+    },
+    "relationPrefix": {
+      "before": {
+        "native": 223.851449,
+        "browser": {
+          "chromium": 526.4000000059605,
+          "firefox": 3724,
+          "webkit": 462
+        }
+      },
+      "after": {
+        "native": 121.14934199999999,
+        "browser": {
+          "chromium": 201.19999998807907,
+          "firefox": 1297,
+          "webkit": 206
+        }
+      }
+    }
+  }
+}

@@ -78,3 +78,28 @@ CC=gcc cargo run --locked --release --bin native-benchmark -- \
 
 The explicit `cargo clean` prevents target-specific GMP limb metadata from a
 previous Wasm build being reused for the native build.
+
+## Bounded-residue optimization
+
+Revision `c4d07156194765506d137792732ba5109cd8c87e` replaces millions of
+provably bounded i128 remainder operations in the cubic root scan with guarded
+i64 multiply-adds, retaining the original i128 fallback outside the proved
+range. It also reuses each prime's factor pattern instead of recomputing it for
+`full_count`.
+
+The cleanly rebuilt artifact is 484,386 bytes with SHA-256
+`1bc6515472a34c559664840afa6f459432b58b8ea14025e5a82bc2188baecdec`.
+All 45 browser calls and all 15 native calls preserve descriptor digest
+`dc63c73dbc419b05a4a1b907cdd8a60f70247f74a0d477880eb25d19c4356306`
+and the 17-to-33-page memory profile.
+
+| Runtime | Before | After | Speedup |
+| --- | ---: | ---: | ---: |
+| Native Linux | 216.70 ms | 111.62 ms | 1.94x |
+| Chromium | 530.8 ms | 160.3 ms | 3.31x |
+| Firefox | 3,401 ms | 950 ms | 3.58x |
+| WebKit | 419 ms | 163 ms | 2.57x |
+
+See `optimized-receipt.json`, `optimized-native-receipt.json`, and
+`../wasm-factor-pattern-ab/optimization-receipt.json`. The aggregate verifier
+checks all raw samples and the full source/build/toolchain closure.

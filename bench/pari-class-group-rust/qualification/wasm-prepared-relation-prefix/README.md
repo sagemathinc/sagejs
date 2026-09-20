@@ -116,3 +116,22 @@ environment shim plus WASI clock, file-descriptor, and process-exit functions:
 environment shim is not yet the unmodified production Sage.js host. These
 receipts establish only this deterministic bounded relation-collection stage;
 they do not establish W0, R5, a complete presentation, units, or a class group.
+
+## Transfer from bounded factor-pattern arithmetic
+
+The committed bounded-residue optimization preserves prefix digest
+`7e4c9242d3fa92c7bc7f8fbb3e9c68cc77f66cbc5838657cf38e610c66ba22b3`,
+cache capacity, counters, and the 18-to-258-page memory profile. The cleanly
+rebuilt 698,053-byte artifact has SHA-256
+`385e830caeb981ef1035b8c93b37c9ee76244dd1bedafd73bb0dea4e30309c43`.
+
+| Runtime | Before | After | Speedup |
+| --- | ---: | ---: | ---: |
+| Native Linux | 223.85 ms | 121.15 ms | 1.85x |
+| Chromium | 526.4 ms | 201.2 ms | 2.62x |
+| Firefox | 3,724 ms | 1,297 ms | 2.87x |
+| WebKit | 462 ms | 206 ms | 2.24x |
+
+See `factor-pattern-optimized-receipt.json`,
+`factor-pattern-optimized-native-receipt.json`, and the complete attributable
+closure in `../wasm-factor-pattern-ab/optimization-receipt.json`.
