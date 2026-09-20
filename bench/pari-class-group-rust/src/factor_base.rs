@@ -691,30 +691,30 @@ fn grh_check(
     c_d + (c_n + 2.0 * sb) / log_c - 2.0 * sa < -1e-8
 }
 
-fn grh_bound(catalog: &[PrimePattern], log_d: f64) -> usize {
+fn grh_bound(catalog: &[PrimePattern], log_d: f64, real_places: usize) -> usize {
     let initial = 1_usize;
     let maximum = (4.0 * log_d * log_d) as usize;
     let mut high = initial;
     let mut low = initial;
-    while !grh_check(high, catalog, 3, 3, log_d) {
+    while !grh_check(high, catalog, 3, real_places, log_d) {
         low = high;
         high *= 2;
     }
     while high - low > 1 {
         let test = (low + high) / 2;
-        if grh_check(test, catalog, 3, 3, log_d) {
+        if grh_check(test, catalog, 3, real_places, log_d) {
             high = test;
         } else {
             low = test;
         }
     }
-    if high == initial + 1 && grh_check(initial, catalog, 3, 3, log_d) {
+    if high == initial + 1 && grh_check(initial, catalog, 3, real_places, log_d) {
         high = initial;
     }
     high.min(maximum)
 }
 
-fn nth_ideal_bound(catalog: &[PrimePattern], count: usize) -> usize {
+fn nth_ideal_bound(catalog: &[PrimePattern], count: usize) -> Option<usize> {
     let mut norms = vec![i64::MAX; count + 1];
     for pattern in catalog {
         let p = pattern.prime;
@@ -746,37 +746,56 @@ fn nth_ideal_bound(catalog: &[PrimePattern], count: usize) -> usize {
             }
         }
         if p > norms[count] {
-            return norms[count] as usize;
+            return Some(norms[count] as usize);
         }
     }
-    panic!("prime catalog exhausted while deriving nth ideal bound")
+    None
 }
 
 /// Construct the exact PARI-policy factor base from a prepared monogenic cubic.
 pub fn prepared_cubic_factor_base(polynomial: [i64; 4], basis: [i64; 9]) -> FactorBase {
     assert_eq!(polynomial[3], 1);
     let signed_discriminant = discriminant_cubic(polynomial);
-    let primes = primes_through(10_007);
-    let mut catalog = Vec::with_capacity(primes.len());
-    for prime in primes {
-        let mut factors = factor_pattern_cubic(polynomial, prime, signed_discriminant);
-        factors.sort_by_key(|factor| factor.coefficients.len());
-        catalog.push(PrimePattern { prime, factors });
-    }
     let discriminant = signed_discriminant.unsigned_abs();
     let log_d = (discriminant as f64).ln();
-    let checking_bound = grh_bound(&catalog, log_d);
-    let relation_bound = checking_bound.max(nth_ideal_bound(&catalog, 3));
+    let maximum_grh_bound = (4.0 * log_d * log_d) as usize;
+    // `grh_bound` doubles its trial bound, so cover the first power of two
+    // above the analytic maximum.  Extend only if the same catalog has not yet
+    // exhibited three non-inert prime ideals.  This avoids constructing
+    // thousands of irrelevant prime patterns for millisecond-scale fields.
+    let mut catalog_limit = 64_usize.max(maximum_grh_bound.saturating_mul(2));
+    let (catalog, nth_bound) = loop {
+        let primes = primes_through(catalog_limit);
+        let mut catalog = Vec::with_capacity(primes.len());
+        for prime in primes {
+            let mut factors = factor_pattern_cubic(polynomial, prime, signed_discriminant);
+            factors.sort_by_key(|factor| factor.coefficients.len());
+            catalog.push(PrimePattern { prime, factors });
+        }
+        if let Some(bound) = nth_ideal_bound(&catalog, 3) {
+            break (catalog, bound);
+        }
+        catalog_limit = catalog_limit
+            .checked_mul(2)
+            .expect("prime catalog limit overflowed");
+    };
+    let real_places = if signed_discriminant > 0 { 3 } else { 1 };
+    let grh_bound = grh_bound(&catalog, log_d, real_places);
+    let relation_bound = grh_bound.max(nth_bound);
+    // PARI's default cbach=0 path promotes LIMC2 to LIMC when the nth-ideal
+    // floor raises the relation bound, so the construction and checking
+    // catalogs have the same final limit.
+    let checking_bound = relation_bound;
     let inverse = inverse_unimodular3(&basis);
     let table = multiplication_table(polynomial, &basis, &inverse);
-    let logarithm = (checking_bound as f64 + 0.5).ln();
+    let logarithm = (relation_bound as f64 + 0.5).ln();
     let mut ideals = Vec::new();
     let mut rational_primes = Vec::new();
     let mut rational_offsets = Vec::new();
     let mut rational_counts = Vec::new();
     let mut complete_groups = Vec::new();
     for pattern in &catalog {
-        if pattern.prime as usize > checking_bound {
+        if pattern.prime as usize > relation_bound {
             break;
         }
         let limit = (logarithm / (pattern.prime as f64).ln()) as usize;
@@ -1022,6 +1041,19 @@ mod tests {
         assert_eq!(
             generators,
             values(&checkpoint["oracleOnly"]["initialRelationCache"]["generators"])
+        );
+    }
+
+    #[test]
+    fn nth_ideal_floor_promotes_both_default_bounds() {
+        let complex = prepared_cubic_factor_base([-1, -1, 0, 1], [1, 0, 0, -1, 0, 1, 0, 1, 0]);
+        assert_eq!((complex.relation_bound, complex.checking_bound), (11, 11));
+
+        let totally_real =
+            prepared_cubic_factor_base([1, -2, -1, 1], [1, 0, 0, 0, 1, 0, -1, -1, 1]);
+        assert_eq!(
+            (totally_real.relation_bound, totally_real.checking_bound),
+            (13, 13)
         );
     }
 }

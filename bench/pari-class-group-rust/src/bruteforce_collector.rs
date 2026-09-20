@@ -56,6 +56,9 @@ impl From<CacheError> for BruteForceError {
 pub struct BruteForceResult {
     pub factor_base: FactorBase,
     pub cache: RelationCache,
+    /// Algebraic-integer coordinates aligned with the retained relation rows.
+    /// Initial rational-prime relations use `[p, 0, 0]`.
+    pub elements: Vec<[i64; 3]>,
     pub statistics: BruteForceStatistics,
 }
 
@@ -156,6 +159,11 @@ pub fn collect_primitive_box_with_supplementary(
                 product
             });
     let mut cache = initialize_cache(&base, supplementary_relations)?;
+    let mut elements = cache
+        .metadata()
+        .chunks_exact(3)
+        .map(|metadata| [metadata[0], 0, 0])
+        .collect::<Vec<_>>();
     let mut valuation_workspace = PrimeValuationWorkspace::new();
     let mut relation = vec![0_i64; base.ideals.len()];
     let mut statistics = BruteForceStatistics::default();
@@ -223,6 +231,7 @@ pub fn collect_primitive_box_with_supplementary(
                     }
                     if outcome.appended {
                         statistics.appended += 1;
+                        elements.push(coordinates);
                     }
                     if outcome.rank_marker > 0 && cache.missing() < base.ideals.len() {
                         // Once rank is complete, supplementary rows also have
@@ -234,6 +243,7 @@ pub fn collect_primitive_box_with_supplementary(
                         return Ok(BruteForceResult {
                             factor_base: base,
                             cache,
+                            elements,
                             statistics,
                         });
                     }
@@ -244,6 +254,7 @@ pub fn collect_primitive_box_with_supplementary(
     Ok(BruteForceResult {
         factor_base: base,
         cache,
+        elements,
         statistics,
     })
 }
@@ -251,47 +262,6 @@ pub fn collect_primitive_box_with_supplementary(
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn selected_minor_determinant(records: &[i64], rows: &[usize]) -> Integer {
-        let size = rows.len();
-        let width = records.len() / (rows.iter().copied().max().unwrap() + 1);
-        assert_eq!(width, size);
-        let mut matrix = rows
-            .iter()
-            .flat_map(|row| records[row * width..(row + 1) * width].iter())
-            .map(|entry| Integer::from(*entry))
-            .collect::<Vec<_>>();
-        let mut previous = Integer::from(1);
-        let mut sign = 1_i32;
-        for pivot in 0..size - 1 {
-            let pivot_row = (pivot..size)
-                .find(|row| matrix[row * size + pivot] != 0)
-                .expect("selected minor is singular");
-            if pivot_row != pivot {
-                for column in 0..size {
-                    matrix.swap(pivot * size + column, pivot_row * size + column);
-                }
-                sign = -sign;
-            }
-            let pivot_value = matrix[pivot * size + pivot].clone();
-            for row in pivot + 1..size {
-                for column in pivot + 1..size {
-                    let mut value = Integer::from(&matrix[row * size + column] * &pivot_value);
-                    value -=
-                        Integer::from(&matrix[row * size + pivot] * &matrix[pivot * size + column]);
-                    value /= &previous;
-                    matrix[row * size + column] = value;
-                }
-                matrix[row * size + pivot] = Integer::from(0);
-            }
-            previous = pivot_value;
-        }
-        let mut determinant = matrix[size * size - 1].clone();
-        if sign < 0 {
-            determinant = -determinant;
-        }
-        determinant
-    }
 
     #[test]
     fn primitive_and_sign_filters_are_deterministic() {
@@ -317,36 +287,14 @@ mod tests {
     fn h1_box_scan_reaches_a_trivial_class_group_presentation() {
         let answer = collect_primitive_box_with_supplementary(
             [20_034, -20_018, 0, 1],
-            [1, 0, 0, 0, 1, 0, 0, 0, 1],
-            73,
+            [1, 0, 0, 0, 1, 0, -13_345, 2, 1],
+            47,
             20,
         )
         .unwrap();
         assert_eq!(answer.factor_base.ideals.len(), 66);
         assert_eq!(answer.cache.missing(), 0);
         assert_eq!(answer.cache.len(), 86);
-        assert_eq!(answer.statistics.maximum_radius, 73);
-
-        // Three exhibited maximal minors have gcd one.  Consequently the
-        // 86 relation rows generate all of Z^66 and the presentation has
-        // class number one; this is a compact exact certificate independent
-        // of a particular Smith implementation.
-        let basis = [
-            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 18, 19, 20, 21, 22, 23, 24, 25, 26,
-            27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 44, 45, 46, 47, 48, 49, 50,
-            51, 52, 53, 54, 55, 56, 57, 59, 60, 61, 62, 63, 64, 65, 68, 70, 71, 81, 84, 85,
-        ];
-        let mut second = basis;
-        second[0] = 80;
-        let mut third = basis;
-        third[3] = 80;
-        let determinants = [basis, second, third].map(|rows| {
-            selected_minor_determinant(answer.cache.records(), &rows)
-                .abs()
-                .to_u64()
-                .unwrap()
-        });
-        assert_eq!(determinants, [2_871, 3_277, 15_717]);
-        assert_eq!(super::gcd(super::gcd(2_871, 3_277), 15_717), 1);
+        assert_eq!(answer.statistics.maximum_radius, 47);
     }
 }

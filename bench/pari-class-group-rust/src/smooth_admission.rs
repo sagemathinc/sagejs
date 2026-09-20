@@ -150,7 +150,8 @@ impl CubicNormForm {
         let d_numerator = checked_sub(d_plus_f, minus_d_plus_f)?;
         let f_numerator = checked_add(d_plus_f, minus_d_plus_f)?;
         let g_plus_h = checked_sub(checked_sub(n011, n010)?, n001)?;
-        let minus_g_plus_h = checked_sub(checked_add(n01n1, n010)?, n001)?;
+        // N(0, 1, -1) = N(e2) - N(e3) - g + h.
+        let minus_g_plus_h = checked_add(checked_sub(n01n1, n010)?, n001)?;
         let g_numerator = checked_sub(g_plus_h, minus_g_plus_h)?;
         let h_numerator = checked_add(g_plus_h, minus_g_plus_h)?;
         if [
@@ -215,6 +216,23 @@ impl CubicNormForm {
             return Err(AdmissionError::NonintegralNormQuotient);
         }
         Ok(norm / ideal_norm)
+    }
+}
+
+#[cfg(test)]
+mod generic_cubic_tests {
+    use super::*;
+
+    #[test]
+    fn mixed_yz_polarization_matches_a_nontrivial_class_number_two_field() {
+        let form =
+            CubicNormForm::from_prepared_basis([-29, -30, -8, 1], [1, 0, 0, -3, 1, 0, -17, -9, 1])
+                .unwrap();
+        assert_eq!(
+            form.coefficients(),
+            &[164, 304, -1, 1, -51, 48, 145, 548, -65]
+        );
+        assert_eq!(form.norm([-11, -7, 9]).unwrap(), -141_126);
     }
 }
 

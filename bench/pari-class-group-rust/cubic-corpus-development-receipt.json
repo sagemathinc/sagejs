@@ -1,0 +1,152 @@
+{
+  "schema": "sagejs.pari-class-group/rust-cubic-corpus-development-receipt-v1",
+  "status": "qualified-development-result",
+  "scope": "monic cubic fields whose maximal-order integral basis is a unimodular integer transform of the power basis",
+  "rustBoundary": "prepared polynomial and integral basis through factor-base construction, coefficient-box relation collection, and Smith class-group invariants",
+  "pariBoundary": "prepared nf through complete PARI 2.17.4 bnfinit0(nf,0), including class group, units, and regulator",
+  "comparisonWarning": "PARI performs strictly more terminal work. The ratios establish the observed performance regime and are not matched-work speed ratios.",
+  "usesOracleAsComputationInput": false,
+  "corpus": [
+    {
+      "fieldId": "x^3-x-1",
+      "polynomialAscending": [-1, -1, 0, 1],
+      "discriminant": "-23",
+      "classNumber": "1",
+      "invariantFactors": [],
+      "factorBaseSize": 3,
+      "relationRows": 23,
+      "maximumRadiusUsed": 9,
+      "rustSamplesNanoseconds": [4122449, 4130109, 4137249, 4158369, 4159729, 4166840, 4231499],
+      "rustMedianNanoseconds": 4158369,
+      "pariSamplesNanoseconds": [504179, 507370, 509400, 510530, 511660, 514989, 515840, 519320, 529330, 530500, 534320, 534950, 544220, 564850, 892590],
+      "pariMedianNanoseconds": 519320,
+      "observedRatio": 8.0073345914
+    },
+    {
+      "fieldId": "x^3-x^2-2*x+1",
+      "polynomialAscending": [1, -2, -1, 1],
+      "discriminant": "49",
+      "classNumber": "1",
+      "invariantFactors": [],
+      "factorBaseSize": 4,
+      "relationRows": 24,
+      "maximumRadiusUsed": 7,
+      "rustSamplesNanoseconds": [3901879, 3907069, 3907300, 3910589, 3921909, 3937189, 3962449],
+      "rustMedianNanoseconds": 3910589,
+      "pariSamplesNanoseconds": [747060, 751380, 752120, 753510, 757000, 757750, 758039, 758200, 758630, 761470, 768290, 772949, 774919, 820160, 1228779],
+      "pariMedianNanoseconds": 758200,
+      "observedRatio": 5.1577275125
+    },
+    {
+      "fieldId": "x^3-8*x^2-30*x-29",
+      "polynomialAscending": [-29, -30, -8, 1],
+      "discriminant": "-41779",
+      "classNumber": "2",
+      "invariantFactors": ["2"],
+      "factorBaseSize": 7,
+      "relationRows": 27,
+      "maximumRadiusUsed": 5,
+      "rustSamplesNanoseconds": [3743369, 3743440, 3746439, 3746909, 3779440, 3812090, 3812859],
+      "rustMedianNanoseconds": 3746909,
+      "pariSamplesNanoseconds": [757900, 760871, 766900, 775430, 776880, 777820, 778499, 779530, 781940, 787140, 791929, 797750, 800550, 833959, 1110779],
+      "pariMedianNanoseconds": 779530,
+      "observedRatio": 4.8066257873
+    },
+    {
+      "fieldId": "x^3-8*x^2-30*x-26",
+      "polynomialAscending": [-26, -30, -8, 1],
+      "discriminant": "-18220",
+      "classNumber": "3",
+      "invariantFactors": ["3"],
+      "factorBaseSize": 10,
+      "relationRows": 30,
+      "maximumRadiusUsed": 3,
+      "rustSamplesNanoseconds": [3596569, 3606630, 3607490, 3618209, 3626019, 3627979, 3642269],
+      "rustMedianNanoseconds": 3618209,
+      "pariSamplesNanoseconds": [922760, 927870, 929020, 935240, 936070, 936960, 937529, 937710, 938860, 941939, 946739, 946920, 955550, 982690, 1294510],
+      "pariMedianNanoseconds": 937710,
+      "observedRatio": 3.8585586162
+    },
+    {
+      "fieldId": "x^3-8*x^2-30*x-37",
+      "polynomialAscending": [-37, -30, -8, 1],
+      "discriminant": "-106979",
+      "classNumber": "4",
+      "invariantFactors": ["2", "2"],
+      "factorBaseSize": 10,
+      "relationRows": 30,
+      "maximumRadiusUsed": 5,
+      "rustSamplesNanoseconds": [3807619, 3820559, 3823650, 3828499, 3831319, 3834319, 3868669],
+      "rustMedianNanoseconds": 3828499,
+      "pariSamplesNanoseconds": [1006050, 1007350, 1009600, 1014390, 1019659, 1022380, 1025830, 1027350, 1029210, 1029830, 1032769, 1051819, 1071340, 1087689, 1472580],
+      "pariMedianNanoseconds": 1027350,
+      "observedRatio": 3.7265771159
+    },
+    {
+      "fieldId": "x^3-8*x^2-30*x-34",
+      "polynomialAscending": [-34, -30, -8, 1],
+      "discriminant": "-82124",
+      "classNumber": "6",
+      "invariantFactors": ["6"],
+      "factorBaseSize": 8,
+      "relationRows": 28,
+      "maximumRadiusUsed": 6,
+      "rustSamplesNanoseconds": [3818010, 3820789, 3822399, 3825149, 3835259, 3847449, 3890069],
+      "rustMedianNanoseconds": 3825149,
+      "pariSamplesNanoseconds": [905800, 918179, 918680, 922029, 922240, 922980, 925220, 927639, 929910, 930790, 936890, 940680, 944640, 975059, 1290100],
+      "pariMedianNanoseconds": 927639,
+      "observedRatio": 4.1235318912
+    }
+  ],
+  "h1AlgorithmContrast": {
+    "fieldId": "x^3-20018*x+20034",
+    "classNumber": "1",
+    "invariantFactors": [],
+    "factorBaseSize": 66,
+    "relationRows": 86,
+    "genericCoefficientBox": {
+      "maximumRadiusUsed": 47,
+      "samplesNanoseconds": [119660855, 119683106, 119691986, 119720606, 119743105, 119870785, 120846985],
+      "medianNanoseconds": 119720606
+    },
+    "faithfulPariStyleRustCollectorAndSmith": {
+      "medianNanoseconds": 9307418
+    },
+    "genericOverFaithfulRatio": 12.8629235305,
+    "interpretation": "The language and exact-arithmetic backend are held fixed. The remaining 12.9x difference is due to relation-collection algorithm and representation choices."
+  },
+  "independentRelationValidation": {
+    "relationsChecked": 162,
+    "fieldsChecked": 6,
+    "method": "Every retained element was factored independently with cypari2 idealfactor and compared with the Rust valuation row.",
+    "result": "all rows agree",
+    "cypariLinkedPariVersion": "2.17.1",
+    "warning": "This is an independent relation oracle only. The class-group and timing control uses the pinned PARI 2.17.4 build below."
+  },
+  "sameFieldCompiledPythonContext": {
+    "fieldId": "x^3-20018*x+20034",
+    "rustFaithfulCollectorAndSmithMedianNanoseconds": 9307418,
+    "compiledPythonAuthenticatedClassPrefixMedianNanoseconds": 1634500000,
+    "pariCompletePreparedMedianNanoseconds": 10698508,
+    "warning": "The compiled-Python class prefix contains log-HNF, owner bridge, and class-witness work absent from the Rust boundary. The PARI sample additionally includes units. These numbers are context, not a matched ratio."
+  },
+  "build": {
+    "cleanReleaseBuildSeconds": {"real": 10.979, "user": 26.847, "system": 3.638},
+    "executableBytes": {"unstripped": 1476416, "stripped": 1283552, "elfText": 1254002, "elfData": 26080, "elfBss": 4900},
+    "executableSha256": "5080832f0cc5e9a4f848809bf610cb99fe6cf6a6b7e0c4312484cb0bed5222c4",
+    "releaseProfile": {"codegenUnits": 1, "lto": "thin", "panic": "abort"}
+  },
+  "pariControl": {
+    "version": "2.17.4",
+    "archiveSha256": "02651d99c391007d384b3fadbc20abc6916b77036f9e496c99e9ce8688ca4b53",
+    "librarySha256": "d7e2832ed0e33f2b7857a8f503e653b7690acc35635bae04a4f24f6cdde4cbe2",
+    "adapter": "../pari-class-group-port/generic_phase6_pari_prepared_adapter.c",
+    "sampleCountPerField": 15,
+    "threads": 1,
+    "precisionBits": 192
+  },
+  "wasm": {
+    "status": "blocked-by-current-dependency",
+    "reason": "gmp-mpfr-sys 1.7.1 rejects direct x86_64-unknown-linux-gnu to wasm32-wasip1 cross compilation"
+  }
+}

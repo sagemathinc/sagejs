@@ -1,0 +1,9 @@
+{
+  "schema": "sagejs.pari-class-group/rust-cubic-brute-force-input-v1",
+  "fieldId": "x^3-8*x^2-30*x-26",
+  "polynomialAscending": [-26, -30, -8, 1],
+  "integralBasisRowMajor": [1, 0, 0, -17, -9, 1, 15, 10, -1],
+  "maximumRadius": 100,
+  "supplementaryRelations": 20,
+  "samples": 7
+}

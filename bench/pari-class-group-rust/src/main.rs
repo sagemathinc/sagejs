@@ -41,6 +41,25 @@ struct Checkpoint {
     owners: BTreeMap<String, Vec<String>>,
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CubicBruteForceInput {
+    schema: String,
+    field_id: String,
+    polynomial_ascending: [i64; 4],
+    integral_basis_row_major: [i64; 9],
+    maximum_radius: i64,
+    supplementary_relations: usize,
+    #[serde(default = "default_brute_force_samples")]
+    samples: usize,
+    #[serde(default)]
+    include_witnesses: bool,
+}
+
+fn default_brute_force_samples() -> usize {
+    7
+}
+
 struct SmithWorkspace {
     rows: usize,
     columns: usize,
@@ -682,6 +701,133 @@ fn run_class_group_experiment(checkpoint_path: &str) {
     );
 }
 
+fn run_brute_force_experiment(input_path: &str) {
+    let input: CubicBruteForceInput =
+        serde_json::from_slice(&fs::read(input_path).expect("cannot read cubic input"))
+            .expect("invalid cubic input JSON");
+    assert_eq!(
+        input.schema, "sagejs.pari-class-group/rust-cubic-brute-force-input-v1",
+        "unsupported cubic input schema"
+    );
+    assert!(input.maximum_radius > 0);
+    assert!(input.samples > 0);
+
+    let solve = || {
+        let started = Instant::now();
+        let answer = bruteforce_collector::collect_primitive_box_with_supplementary(
+            input.polynomial_ascending,
+            input.integral_basis_row_major,
+            input.maximum_radius,
+            input.supplementary_relations,
+        )
+        .expect("Rust cubic coefficient-box collector failed");
+        let collection_ns = started.elapsed().as_nanos();
+        assert_eq!(
+            answer.cache.missing(),
+            0,
+            "relation lattice is rank deficient"
+        );
+        let relation_rows = answer.cache.len();
+        let factor_base_size = answer.factor_base.ideals.len();
+        let presentation =
+            transpose_relation_records(answer.cache.records(), factor_base_size, relation_rows);
+        let smith_started = Instant::now();
+        let mut smith = WordSmithWorkspace::new(factor_base_size, relation_rows);
+        smith.reset_from(&presentation);
+        let diagonal = smith.smith_diagonal();
+        let smith_ns = smith_started.elapsed().as_nanos();
+        assert!(diagonal.iter().all(|value| *value != 0));
+        let invariant_factors = diagonal
+            .iter()
+            .copied()
+            .filter(|value| *value > 1)
+            .collect::<Vec<_>>();
+        let class_number = invariant_factors
+            .iter()
+            .try_fold(1_i128, |product, value| product.checked_mul(*value))
+            .expect("class number overflowed i128");
+        (
+            answer,
+            invariant_factors,
+            class_number,
+            collection_ns,
+            smith_ns,
+            started.elapsed().as_nanos(),
+        )
+    };
+
+    let (warm, warm_invariants, warm_class_number, _, _, _) = solve();
+    let warm_records = warm.cache.records().to_vec();
+    let mut collection_samples = Vec::with_capacity(input.samples);
+    let mut smith_samples = Vec::with_capacity(input.samples);
+    let mut total_samples = Vec::with_capacity(input.samples);
+    for _ in 0..input.samples {
+        let (answer, invariants, class_number, collection_ns, smith_ns, total_ns) =
+            black_box(solve());
+        assert_eq!(answer.cache.records(), warm_records);
+        assert_eq!(invariants, warm_invariants);
+        assert_eq!(class_number, warm_class_number);
+        collection_samples.push(collection_ns);
+        smith_samples.push(smith_ns);
+        total_samples.push(total_ns);
+    }
+    let (collection_samples, collection_median) = percentile_samples(collection_samples);
+    let (smith_samples, smith_median) = percentile_samples(smith_samples);
+    let (total_samples, total_median) = percentile_samples(total_samples);
+
+    println!(
+        "{}",
+        serde_json::json!({
+            "schema": "sagejs.pari-class-group/rust-cubic-brute-force-result-v1",
+            "fieldId": input.field_id,
+            "boundary": "prepared monic cubic polynomial and integral basis through factor base, coefficient-box relation collection, and Smith class-group invariants",
+            "linksPari": false,
+            "usesOracleAsInput": false,
+            "polynomialAscending": input.polynomial_ascending,
+            "integralBasisRowMajor": input.integral_basis_row_major,
+            "factorBaseSize": warm.factor_base.ideals.len(),
+            "relationRows": warm.cache.len(),
+            "maximumRadiusRequested": input.maximum_radius,
+            "maximumRadiusUsed": warm.statistics.maximum_radius,
+            "supplementaryRelations": input.supplementary_relations,
+            "classNumber": warm_class_number.to_string(),
+            "invariantFactors": warm_invariants.iter().map(i128::to_string).collect::<Vec<_>>(),
+            "statistics": {
+                "visited": warm.statistics.visited,
+                "primitiveNonscalar": warm.statistics.primitive_nonscalar,
+                "smoothNorms": warm.statistics.smooth_norms,
+                "factorBaseSmooth": warm.statistics.factor_base_smooth,
+                "appended": warm.statistics.appended,
+                "duplicate": warm.statistics.duplicate,
+            },
+            "witnesses": input.include_witnesses.then(|| serde_json::json!({
+                "elements": warm.elements,
+                "relations": warm.cache.records(),
+                "primeIdeals": warm.factor_base.ideals.iter().map(|ideal| serde_json::json!({
+                    "prime": ideal.prime,
+                    "ramification": ideal.ramification,
+                    "residueDegree": ideal.residue_degree,
+                    "generator": ideal.generator,
+                    "tau": ideal.tau,
+                    "hnf": ideal.hnf,
+                    "norm": ideal.norm,
+                })).collect::<Vec<_>>(),
+            })),
+            "samplesNanoseconds": {
+                "total": total_samples,
+                "collection": collection_samples,
+                "smith": smith_samples,
+            },
+            "medianNanoseconds": {
+                "total": total_median,
+                "collection": collection_median,
+                "smith": smith_median,
+            },
+            "timingExcludes": ["JSON parsing", "result serialization", "external PARI validation"],
+        })
+    );
+}
+
 fn main() {
     let arguments = env::args().skip(1).collect::<Vec<_>>();
     if arguments
@@ -702,6 +848,16 @@ fn main() {
             .get(1)
             .expect("usage: h1-rust class-group PHASE-CHECKPOINT.json");
         run_class_group_experiment(checkpoint_path);
+        return;
+    }
+    if arguments
+        .first()
+        .is_some_and(|argument| argument == "brute-force-cubic")
+    {
+        let input_path = arguments
+            .get(1)
+            .expect("usage: h1-rust brute-force-cubic INPUT.json");
+        run_brute_force_experiment(input_path);
         return;
     }
     let checkpoint_path = arguments.first().expect("usage: h1-rust CHECKPOINT.json");
@@ -806,7 +962,9 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::{SmithWorkspace, WordSmithWorkspace};
+    use super::{
+        SmithWorkspace, WordSmithWorkspace, bruteforce_collector, transpose_relation_records,
+    };
     use rug::Integer;
 
     fn smith_word(rows: usize, columns: usize, values: &[i128]) -> Vec<i128> {
@@ -821,6 +979,66 @@ mod tests {
         assert_eq!(smith_word(2, 2, &[2, 0, 0, 3]), vec![1, 6]);
         assert_eq!(smith_word(3, 2, &[1, 2, 3, 4, 5, 6]), vec![1, 2]);
         assert_eq!(smith_word(2, 2, &[0, 0, 0, 0]), vec![0, 0]);
+    }
+
+    #[test]
+    fn coefficient_box_corpus_recovers_nontrivial_cubic_class_groups() {
+        let cases = [
+            (
+                [-1, -1, 0, 1],
+                [1, 0, 0, -1, 0, 1, 0, 1, 0],
+                9,
+                Vec::<i128>::new(),
+            ),
+            ([1, -2, -1, 1], [1, 0, 0, 0, 1, 0, -1, -1, 1], 7, vec![]),
+            (
+                [-29, -30, -8, 1],
+                [1, 0, 0, -3, 1, 0, -17, -9, 1],
+                5,
+                vec![2],
+            ),
+            (
+                [-26, -30, -8, 1],
+                [1, 0, 0, -17, -9, 1, 15, 10, -1],
+                3,
+                vec![3],
+            ),
+            (
+                [-37, -30, -8, 1],
+                [1, 0, 0, -3, 1, 0, -17, -9, 1],
+                5,
+                vec![2, 2],
+            ),
+            (
+                [-34, -30, -8, 1],
+                [1, 0, 0, -3, 1, 0, -17, -9, 1],
+                6,
+                vec![6],
+            ),
+            (
+                [20_034, -20_018, 0, 1],
+                [1, 0, 0, 0, 1, 0, -13_345, 2, 1],
+                47,
+                vec![],
+            ),
+        ];
+        for (polynomial, basis, radius, expected) in cases {
+            let answer = bruteforce_collector::collect_primitive_box_with_supplementary(
+                polynomial, basis, radius, 20,
+            )
+            .unwrap();
+            assert_eq!(answer.cache.missing(), 0);
+            let size = answer.factor_base.ideals.len();
+            let relation_rows = answer.cache.len();
+            let presentation =
+                transpose_relation_records(answer.cache.records(), size, relation_rows);
+            let diagonal = smith_word(size, relation_rows, &presentation);
+            let invariants = diagonal
+                .into_iter()
+                .filter(|value| *value > 1)
+                .collect::<Vec<_>>();
+            assert_eq!(invariants, expected);
+        }
     }
 
     #[test]
