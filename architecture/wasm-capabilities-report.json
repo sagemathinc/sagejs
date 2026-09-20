@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "8395edb804df508a081d68be7684d6cb5ba37d7f9705069aeab71e1eed5cf89a",
+  "source_sha256": "59cf1bec6cb892cd17b2cade91906fb5f46ea1484bb5953e31e4a844208f3c4d",
   "counts": {
     "total": 1106,
     "by_kind": {
@@ -20,9 +20,9 @@
       "shared-core": 50
     },
     "by_status": {
-      "available": 625,
+      "available": 626,
       "desktop-only": 47,
-      "fallback": 434
+      "fallback": 433
     }
   },
   "workflow_aliases": {
@@ -6651,13 +6651,13 @@
       "id": "kernel:complex-cubic-class-group-production",
       "family": "complex-cubic-class-group",
       "disposition": "compiled-source",
-      "status": "fallback",
+      "status": "available",
       "fallback": "ordinary-sagejs-exact-fallback",
       "wasm_module": "kernel-flint",
       "public_consumers": [
         "number-field-cubic-class-number"
       ],
-      "explanation": "This family uses compiled WebAssembly for 0 of 1 functions and the same-source fallback for 1 functions."
+      "explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:dense-binary-m4ri-optional",

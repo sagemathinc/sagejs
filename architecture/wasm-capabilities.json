@@ -11548,18 +11548,16 @@
         "production-kernel-differential",
         "complex-cubic-native-class-group-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The production pack compiles 0 of 1 functions. The remaining 1 functions use their tested same-source dynamic fallback (fmpz-integer-buffer-requires-64-bit-flint-limbs).",
-      "public_explanation": "This family uses compiled WebAssembly for 0 of 1 functions and the same-source fallback for 1 functions.",
+      "review_note": "The receipt-authenticated production pack compiles all 1 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact.",
       "compiled_coverage": {
-        "compiled_functions": 0,
-        "fallback_functions": 1,
+        "compiled_functions": 1,
+        "fallback_functions": 0,
         "total_functions": 1,
         "production_pack": true,
-        "fallback_reasons": [
-          "fmpz-integer-buffer-requires-64-bit-flint-limbs"
-        ]
+        "fallback_reasons": []
       }
     },
     {
@@ -14349,8 +14347,12 @@
       "disposition": "portable-fallback",
       "fallback": "ordinary-sagejs-public-operation",
       "wasm_module": "host-runtime",
-      "public_consumers": ["src/baselib/finite_fields.py"],
-      "tests": ["finite-extension-coordinate-differential"],
+      "public_consumers": [
+        "src/baselib/finite_fields.py"
+      ],
+      "tests": [
+        "finite-extension-coordinate-differential"
+      ],
       "status": "fallback",
       "reviewed": true,
       "review_note": "Native legacy handles export canonical coordinates with fq_default_get_fmpz_poly and reduction modulo p. Wasm public elements use the declared fq_element_coordinate_bytes generated-resource operation instead; the N-API callback is never loaded in a browser.",
