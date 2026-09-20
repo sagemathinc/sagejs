@@ -1,3 +1,4 @@
+// sagejs-test-tier: specialized
 "use strict";
 
 const test = require("node:test");
