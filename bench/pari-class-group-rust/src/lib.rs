@@ -90,7 +90,8 @@ pub use hnf::{
 pub use numerical_preparation::{NumericalPreparationError, PreparedCubicEmbedding};
 pub use prepared::{
     EmbeddingPrecisionState, PreparedCubicData, PreparedCubicValidationError,
-    ValidatedPreparedCubic,
+    PreparedNumberFieldData, PreparedNumberFieldValidationError, ValidatedPreparedCubic,
+    ValidatedPreparedNumberField,
 };
 pub use prepared_factor_base::{
     CubicSplittingRecord, PreparedFactorBase, PreparedFactorBaseError,
