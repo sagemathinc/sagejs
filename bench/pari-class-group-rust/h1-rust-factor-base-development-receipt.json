@@ -1,0 +1,58 @@
+{
+  "schema": "sagejs.pari-class-group/h1-rust-factor-base-development-receipt-v1",
+  "fieldId": "pari-2.17.4:x^3-20018*x+20034",
+  "boundary": "prepared polynomial and integral basis to exact factor base and packets",
+  "linksPari": false,
+  "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "checkpoint": {
+    "schema": "sagejs.pari-class-group/h1-rust-phase-checkpoints-v1",
+    "fileSha256": "c796a9e2e4a9ecb7b374fb90bc84ee6e1ed47b039e585b1398807696ef699604",
+    "authoritySha256": "158b13c941a5e1ebbd5094287edd607ebc3afff982545250b9abded0ed81c48f",
+    "timedInputSha256": "65d6197fc67a38f7c8928ec460a6cde2247d45f929b433f189b8b92efb659a99"
+  },
+  "result": {
+    "relationBound": 333,
+    "checkingBound": 333,
+    "primeGroups": 48,
+    "primeIdeals": 66,
+    "subfactorCount": 4,
+    "allFactorBaseOwnersMatchExactly": true,
+    "initialRelationCount": 12,
+    "initialRelationOwnersMatchExactly": true
+  },
+  "benchmark": {
+    "mode": "release",
+    "samplesNanoseconds": [
+      2955799,
+      2958759,
+      2961770,
+      2962959,
+      2964679,
+      2964979,
+      2965279,
+      2966789,
+      2971370,
+      2973569,
+      2974999,
+      2996699,
+      3003000,
+      3006510,
+      3036999
+    ],
+    "medianNanoseconds": 2966789,
+    "timingIncludes": [
+      "prime generation",
+      "1230 cubic splitting patterns",
+      "GRH bound search",
+      "prime descriptor and tau construction",
+      "66 ideal HNF constructions"
+    ],
+    "timingExcludes": [
+      "JSON parsing",
+      "oracle verification",
+      "subfactor ordering",
+      "initial relation cache",
+      "small-norm relation collection"
+    ]
+  }
+}

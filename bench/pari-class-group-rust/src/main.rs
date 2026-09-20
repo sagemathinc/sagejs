@@ -1,6 +1,9 @@
 // Copyright (C) The PARI group and Sage.js contributors.
 // GPL-2.0-or-later, without warranty.
 
+mod factor_base;
+mod relation_cache;
+
 use rug::Integer;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
@@ -423,8 +426,118 @@ fn percentile_samples(mut samples: Vec<u128>) -> (Vec<u128>, u128) {
     (samples, median)
 }
 
+fn json_i64_values(value: &serde_json::Value) -> Vec<i64> {
+    value["values"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|value| value.as_str().unwrap().parse().unwrap())
+        .collect()
+}
+
+fn run_factor_base_experiment(checkpoint_path: &str) {
+    let checkpoint: serde_json::Value =
+        serde_json::from_slice(&fs::read(checkpoint_path).expect("cannot read phase checkpoint"))
+            .expect("invalid phase checkpoint JSON");
+    assert_eq!(
+        checkpoint["schema"].as_str().unwrap(),
+        "sagejs.pari-class-group/h1-rust-phase-checkpoints-v1"
+    );
+    let owners = &checkpoint["rustTimedInput"]["owners"];
+    let polynomial_values = owners["prep_polynomial"]["value"].as_array().unwrap();
+    let basis_values = owners["prep_zk"]["value"].as_array().unwrap();
+    let mut polynomial = [0_i64; 4];
+    let mut basis = [0_i64; 9];
+    for (target, value) in polynomial.iter_mut().zip(polynomial_values) {
+        *target = value.as_str().unwrap().parse().unwrap();
+    }
+    for (target, value) in basis.iter_mut().zip(basis_values) {
+        *target = value.as_str().unwrap().parse().unwrap();
+    }
+
+    let warm = factor_base::prepared_cubic_factor_base(polynomial, basis);
+    let oracle = &checkpoint["oracleOnly"]["factorBase"];
+    assert_eq!(warm.relation_bound, 333);
+    assert_eq!(warm.checking_bound, 333);
+    assert_eq!(warm.ideals.len(), 66);
+    assert_eq!(warm.rational_primes.len(), 48);
+    assert_eq!(
+        warm.rational_primes,
+        json_i64_values(&oracle["activePrimeGroups"]["primes"])
+    );
+    assert_eq!(
+        warm.ideals
+            .iter()
+            .map(|ideal| ideal.prime)
+            .collect::<Vec<_>>(),
+        json_i64_values(&oracle["activeIdeals"]["primes"])
+    );
+    assert_eq!(
+        warm.ideals
+            .iter()
+            .flat_map(|ideal| ideal.tau)
+            .collect::<Vec<_>>(),
+        json_i64_values(&oracle["activeIdeals"]["tau"])
+    );
+    assert_eq!(
+        warm.ideals
+            .iter()
+            .flat_map(|ideal| ideal.hnf)
+            .collect::<Vec<_>>(),
+        json_i64_values(&oracle["activeIdeals"]["packetIdeals"])
+    );
+    let (subfactor_count, permutation) = warm.subfactor_permutation(3);
+    assert_eq!(subfactor_count, 4);
+    assert_eq!(
+        permutation,
+        json_i64_values(&oracle["activeIdeals"]["searchPermutation"])
+            .into_iter()
+            .map(|value| value as usize)
+            .collect::<Vec<_>>()
+    );
+
+    let mut samples = Vec::with_capacity(15);
+    for _ in 0..15 {
+        let started = Instant::now();
+        let result = black_box(factor_base::prepared_cubic_factor_base(polynomial, basis));
+        samples.push(started.elapsed().as_nanos());
+        assert_eq!(result.ideals.len(), warm.ideals.len());
+    }
+    let (samples, median) = percentile_samples(samples);
+    println!(
+        "{}",
+        serde_json::json!({
+            "schema": "sagejs.pari-class-group/h1-rust-factor-base-result-v1",
+            "boundary": "prepared polynomial and integral basis to exact factor base and packets",
+            "fullPreparedPrefix": false,
+            "linksPari": false,
+            "verifiedAgainstOracle": true,
+            "relationBound": warm.relation_bound,
+            "checkingBound": warm.checking_bound,
+            "primeGroups": warm.rational_primes.len(),
+            "primeIdeals": warm.ideals.len(),
+            "subfactorCount": subfactor_count,
+            "samplesNanoseconds": samples,
+            "medianNanoseconds": median,
+            "timingIncludes": ["prime generation", "cubic factorization", "GRH bound", "descriptor construction", "tau construction", "ideal HNF construction"],
+            "timingExcludes": ["JSON parsing", "oracle verification", "subfactor ordering", "initial relation cache", "small-norm relation collection"],
+        })
+    );
+}
+
 fn main() {
-    let checkpoint_path = env::args().nth(1).expect("usage: h1-rust CHECKPOINT.json");
+    let arguments = env::args().skip(1).collect::<Vec<_>>();
+    if arguments
+        .first()
+        .is_some_and(|argument| argument == "factor-base")
+    {
+        let checkpoint_path = arguments
+            .get(1)
+            .expect("usage: h1-rust factor-base PHASE-CHECKPOINT.json");
+        run_factor_base_experiment(checkpoint_path);
+        return;
+    }
+    let checkpoint_path = arguments.first().expect("usage: h1-rust CHECKPOINT.json");
     let checkpoint_bytes = fs::read(&checkpoint_path).expect("cannot read checkpoint");
     let checkpoint: Checkpoint =
         serde_json::from_slice(&checkpoint_bytes).expect("invalid checkpoint JSON");
