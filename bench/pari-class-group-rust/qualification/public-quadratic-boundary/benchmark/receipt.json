@@ -1,0 +1,3129 @@
+{
+  "aggregate": {
+    "geometricMeanRustOverPariMedianRatio": 1.383714178272419,
+    "nativeTarget": "on PARI>=5ms fields: geometric mean ratio <=1.5, p90 ratio <=2, and each ratio <=3",
+    "nativeTargetPass": false,
+    "p90RustOverPariMedianRatioNearestRank": 34.067166861609564,
+    "pari5To100msCoveragePass": false,
+    "pari5To100msFieldCount": 0,
+    "tinyFieldCount": 7,
+    "tinyFieldTarget": "rust median <= max(2*PARI median, PARI median + 2ms)",
+    "tinyFieldTargetPass": false
+  },
+  "evidenceStatus": "promotion-candidate-clean-frozen-source",
+  "fields": [
+    {
+      "fieldId": "tiny-trivial-d3",
+      "nativeIndividualRatioAtMost3Pass": null,
+      "observedPariBand": "under-5ms",
+      "pariKernelNanoseconds": [
+        1018720,
+        977630,
+        1193180,
+        889830,
+        898039,
+        919460,
+        967189,
+        853579,
+        958260,
+        1012310,
+        946790,
+        940090,
+        993340,
+        868870,
+        841930
+      ],
+      "pariMedianNanoseconds": 946790,
+      "rustKernelNanoseconds": [
+        61410,
+        60880,
+        44890,
+        62980,
+        44110,
+        50050,
+        43230,
+        45660,
+        46100,
+        58910,
+        51120,
+        46920,
+        52390,
+        53100,
+        44900
+      ],
+      "rustMedianNanoseconds": 50050,
+      "rustOverPariMedianRatio": 0.05286283125085816,
+      "tinyFieldTargetPass": true,
+      "traits": [
+        "pari-under-5ms",
+        "trivial"
+      ]
+    },
+    {
+      "fieldId": "tiny-cyclic-d47",
+      "nativeIndividualRatioAtMost3Pass": null,
+      "observedPariBand": "under-5ms",
+      "pariKernelNanoseconds": [
+        960740,
+        1049750,
+        866910,
+        884050,
+        1031390,
+        1035030,
+        1041680,
+        1032500,
+        988970,
+        1043760,
+        1036540,
+        1037469,
+        1050590,
+        1012020,
+        900970
+      ],
+      "pariMedianNanoseconds": 1032500,
+      "rustKernelNanoseconds": [
+        61169,
+        65670,
+        65050,
+        62020,
+        61780,
+        66840,
+        70120,
+        66510,
+        62469,
+        67610,
+        63040,
+        62690,
+        62520,
+        66100,
+        68940
+      ],
+      "rustMedianNanoseconds": 65050,
+      "rustOverPariMedianRatio": 0.06300242130750605,
+      "tinyFieldTargetPass": true,
+      "traits": [
+        "pari-under-5ms",
+        "cyclic"
+      ]
+    },
+    {
+      "fieldId": "tiny-noncyclic-d231",
+      "nativeIndividualRatioAtMost3Pass": null,
+      "observedPariBand": "under-5ms",
+      "pariKernelNanoseconds": [
+        1078260,
+        1123040,
+        1053800,
+        1079510,
+        1122360,
+        1067070,
+        1406100,
+        1148650,
+        1116840,
+        1071540,
+        1095739,
+        1391830,
+        1200649,
+        1105740,
+        1070959
+      ],
+      "pariMedianNanoseconds": 1105740,
+      "rustKernelNanoseconds": [
+        282489,
+        257160,
+        235800,
+        228420,
+        231480,
+        236000,
+        227600,
+        242800,
+        235570,
+        250589,
+        242520,
+        295270,
+        232840,
+        234970,
+        266480
+      ],
+      "rustMedianNanoseconds": 236000,
+      "rustOverPariMedianRatio": 0.21343172897787907,
+      "tinyFieldTargetPass": true,
+      "traits": [
+        "pari-under-5ms",
+        "noncyclic"
+      ]
+    },
+    {
+      "fieldId": "rank4-d15015",
+      "nativeIndividualRatioAtMost3Pass": null,
+      "observedPariBand": "under-5ms",
+      "pariKernelNanoseconds": [
+        1667440,
+        1683640,
+        1523440,
+        1895669,
+        1892110,
+        2092439,
+        1852329,
+        1711379,
+        1729640,
+        2043180,
+        1840789,
+        1641729,
+        1707269,
+        1761050,
+        1635950
+      ],
+      "pariMedianNanoseconds": 1729640,
+      "rustKernelNanoseconds": [
+        3042769,
+        3043389,
+        3082090,
+        3038729,
+        3092039,
+        3080609,
+        3053969,
+        3092589,
+        3052800,
+        3031420,
+        3051409,
+        3059159,
+        3073879,
+        3047110,
+        3068399
+      ],
+      "rustMedianNanoseconds": 3053969,
+      "rustOverPariMedianRatio": 1.7656674221225226,
+      "tinyFieldTargetPass": true,
+      "traits": [
+        "rank4",
+        "noncyclic"
+      ]
+    },
+    {
+      "fieldId": "pari-medium-candidate-d9013587",
+      "nativeIndividualRatioAtMost3Pass": null,
+      "observedPariBand": "under-5ms",
+      "pariKernelNanoseconds": [
+        3510859,
+        4097770,
+        3273819,
+        3842129,
+        4270669,
+        4038420,
+        3972019,
+        4084979,
+        3915559,
+        4833059,
+        3814930,
+        3758489,
+        3254859,
+        3826809,
+        5599328
+      ],
+      "pariMedianNanoseconds": 3915559,
+      "rustKernelNanoseconds": [
+        41395651,
+        41358921,
+        41437691,
+        41347091,
+        41467751,
+        41392091,
+        41543570,
+        41319621,
+        41374550,
+        41401511,
+        41427661,
+        41428431,
+        41433340,
+        41460541,
+        41663001
+      ],
+      "rustMedianNanoseconds": 41427661,
+      "rustOverPariMedianRatio": 10.58026733858435,
+      "tinyFieldTargetPass": false,
+      "traits": [
+        "predeclared-pari-5-to-100ms-candidate",
+        "noncyclic"
+      ]
+    },
+    {
+      "fieldId": "near-limit-h1715-d9999991",
+      "nativeIndividualRatioAtMost3Pass": null,
+      "observedPariBand": "under-5ms",
+      "pariKernelNanoseconds": [
+        2440890,
+        2056000,
+        2146709,
+        2986979,
+        1877719,
+        2065549,
+        2226339,
+        2421769,
+        2157220,
+        2696699,
+        2309559,
+        1815229,
+        2603339,
+        2105470,
+        2164939
+      ],
+      "pariMedianNanoseconds": 2164939,
+      "rustKernelNanoseconds": [
+        46382580,
+        46460370,
+        46387239,
+        46719900,
+        46473710,
+        46507280,
+        46368450,
+        46554089,
+        46550320,
+        46479580,
+        46409699,
+        46466300,
+        46484050,
+        47074820,
+        46564069
+      ],
+      "rustMedianNanoseconds": 46479580,
+      "rustOverPariMedianRatio": 21.469233082317793,
+      "tinyFieldTargetPass": false,
+      "traits": [
+        "near-discriminant-limit",
+        "cyclic",
+        "class-number-1715"
+      ]
+    },
+    {
+      "fieldId": "near-limit-h4378-d8173415",
+      "nativeIndividualRatioAtMost3Pass": null,
+      "observedPariBand": "under-5ms",
+      "pariKernelNanoseconds": [
+        2115720,
+        1896699,
+        2283399,
+        2103180,
+        2071809,
+        1874249,
+        2125779,
+        1878989,
+        2560990,
+        2611700,
+        1947260,
+        2168570,
+        1701579,
+        1618919,
+        2160629
+      ],
+      "pariMedianNanoseconds": 2103180,
+      "rustKernelNanoseconds": [
+        71483484,
+        71680814,
+        71680874,
+        72182484,
+        71658574,
+        71502564,
+        71633834,
+        71649384,
+        71335544,
+        71623775,
+        71284795,
+        71545384,
+        72099244,
+        71722454,
+        72026064
+      ],
+      "rustMedianNanoseconds": 71649384,
+      "rustOverPariMedianRatio": 34.067166861609564,
+      "tinyFieldTargetPass": false,
+      "traits": [
+        "near-discriminant-limit",
+        "cyclic",
+        "class-number-over-4000",
+        "deterministic-h4352-replacement"
+      ]
+    }
+  ],
+  "identity": {
+    "cargoVersionVerbose": "cargo 1.98.1 (797e8a9bc 2026-08-05)\nrelease: 1.98.1\ncommit-hash: 797e8a9bca276c1c9f9f738d2a20f484fa4eea9d\ncommit-date: 2026-08-05\nhost: x86_64-unknown-linux-gnu\nlibgit2: 1.9.4 (sys:0.21.0 vendored)\nlibcurl: 8.21.0-DEV (sys:0.4.90+curl-8.21.0 vendored ssl:OpenSSL/3.6.3)\nssl: OpenSSL 3.6.3 9 Jun 2026\nos: Ubuntu 26.4.0 (resolute) [64-bit]",
+    "executionContextAfter": {
+      "acpiPlatformProfile": null,
+      "amdPstateStatus": null,
+      "capturedAtUnixNanoseconds": 1789933589135870513,
+      "cpuModel": "AMD EPYC 7B13",
+      "energyPerformancePreferences": [],
+      "intelPstateStatus": null,
+      "loadAverage1m5m15m": [
+        3.220703125,
+        3.87744140625,
+        3.705078125
+      ],
+      "logicalCpuCount": 16,
+      "processAffinityLogicalCpus": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "quietIsolation": "not externally isolated; observed load is recorded",
+      "scalingDrivers": [],
+      "scalingGovernors": [],
+      "threadEnvironment": {
+        "MKL_NUM_THREADS": null,
+        "NUMEXPR_NUM_THREADS": null,
+        "OMP_NUM_THREADS": null,
+        "OPENBLAS_NUM_THREADS": null,
+        "RAYON_NUM_THREADS": null,
+        "VECLIB_MAXIMUM_THREADS": null
+      }
+    },
+    "executionContextBefore": {
+      "acpiPlatformProfile": null,
+      "amdPstateStatus": null,
+      "capturedAtUnixNanoseconds": 1789933579447476533,
+      "cpuModel": "AMD EPYC 7B13",
+      "energyPerformancePreferences": [],
+      "intelPstateStatus": null,
+      "loadAverage1m5m15m": [
+        3.35595703125,
+        3.9248046875,
+        3.71826171875
+      ],
+      "logicalCpuCount": 16,
+      "processAffinityLogicalCpus": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "quietIsolation": "not externally isolated; observed load is recorded",
+      "scalingDrivers": [],
+      "scalingGovernors": [],
+      "threadEnvironment": {
+        "MKL_NUM_THREADS": null,
+        "NUMEXPR_NUM_THREADS": null,
+        "OMP_NUM_THREADS": null,
+        "OPENBLAS_NUM_THREADS": null,
+        "RAYON_NUM_THREADS": null,
+        "VECLIB_MAXIMUM_THREADS": null
+      }
+    },
+    "gitCommit": "4c2871350fc6ccb432adf0793f7079ca0c8a5309",
+    "gitCommitBinding": "informational-only when evidenceStatus is pre-promotion; sourceClosure is authoritative",
+    "gitDirty": false,
+    "gitStatusPorcelainSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "host": {
+      "machine": "x86_64",
+      "node": "project-b6351099-3c72-458c-aa7e-4b7f4a47c0e7",
+      "platform": "Linux-7.0.0-1011-gcp-x86_64-with-glibc2.43",
+      "processor": ""
+    },
+    "independentCleanTargetBinaryHashesMatch": true,
+    "pariBuildIdentity": {
+      "authenticatedPin": {
+        "archiveSha256": "02651d99c391007d384b3fadbc20abc6916b77036f9e496c99e9ce8688ca4b53",
+        "files": {
+          "Olinux-x86_64/config.log": "c9ffafa5f81b614569b006c7dcaf06e12c663ec04487e25e9fa360a88eb6c106",
+          "Olinux-x86_64/gp-dyn": "915f8085d7eace9f9778edcbc657083a234cdea657dfcc677a26003fde4232c4",
+          "Olinux-x86_64/libpari-gmp-tls.so.9": "fdc8f2d7ff050c8e8c6cb8994b0f9dc971267ac763eaf5cd927454937d37357f",
+          "Olinux-x86_64/paricfg.h": "4a493914198a0acc21edf413ff430b84e7243ce792426968cf6ec17ba1a6d2c2",
+          "config/version": "08a85a6d8dd5b8599092195cdfcf0f45647a66f8be310ec59717a30e1340e8f1",
+          "src/basemath/buch2.c": "904ced8034732c7fcfe1da393e23950aac0862b085150fdc24ce1e31beb7d1ac"
+        },
+        "root": "/home/user/upstream/pari-2.17.4",
+        "schema": "sagejs.rust-class-group/pari-control-pinned-identity-v1",
+        "version": "2.17.4"
+      },
+      "compilerArguments": [
+        "cc",
+        "-O3",
+        "-DNDEBUG",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-fno-strict-aliasing",
+        "-I/home/user/upstream/pari-2.17.4/src/headers",
+        "-I/home/user/upstream/pari-2.17.4/Olinux-x86_64",
+        "/home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/qualification/pari-control/pari_control.c",
+        "-L/home/user/upstream/pari-2.17.4/Olinux-x86_64",
+        "-Wl,-rpath,/home/user/upstream/pari-2.17.4/Olinux-x86_64",
+        "-lpari",
+        "-lm",
+        "-o",
+        "/home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/qualification/pari-control/build/pari-control"
+      ],
+      "compilerVersion": "cc (Ubuntu 15.2.0-16ubuntu1) 15.2.0\nCopyright (C) 2025 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+      "executableSha256": "e2593aef376107799aeebaf8ce45d01b287a84b5065c2bed61e2d449fd5cad9b",
+      "schema": "sagejs.rust-class-group/pari-control-build-identity-v1",
+      "sourceSha256": "a7a205bb0d0d53a18cf18db3c1d5d369f2ce564cf5cf4a8be766fc544993c91e"
+    },
+    "pariControlBinarySha256": "e2593aef376107799aeebaf8ce45d01b287a84b5065c2bed61e2d449fd5cad9b",
+    "python": "3.14.4 (main, Apr  8 2026, 04:02:31) [GCC 15.2.0]",
+    "releaseBuildEnvironment": {
+      "CARGO_BUILD_TARGET": null,
+      "CARGO_ENCODED_RUSTFLAGS": null,
+      "CARGO_INCREMENTAL": "0",
+      "RUSTC_WRAPPER": null,
+      "RUSTFLAGS": null,
+      "SOURCE_DATE_EPOCH": "1"
+    },
+    "releaseBuilds": [
+      {
+        "binarySha256": "f1ece535f6f33c8cdf425ba92067ff5cf97425da3f81d6b457ad69aa6f6ca033",
+        "cargoTargetDir": "target/benchmark-repro-a",
+        "command": "cargo build --locked --release --bin benchmark_public",
+        "stderr": "   Compiling version_check v0.9.5\n   Compiling proc-macro2 v1.0.107\n   Compiling typenum v1.20.1\n   Compiling quote v1.0.47\n   Compiling unicode-ident v1.0.26\n   Compiling gmp-mpfr-sys v1.7.1\n   Compiling libc v0.2.189\n   Compiling serde_core v1.0.229\n   Compiling libm v0.2.16\n   Compiling zmij v1.0.23\n   Compiling serde_json v1.0.151\n   Compiling serde v1.0.229\n   Compiling rug v1.30.0\n   Compiling sagejs-pari-class-group-rust-experiment v0.1.0 (/tmp/sagejs-quadratic-promotion.Wklb2l/bench/pari-class-group-rust)\n   Compiling cpufeatures v0.2.17\n   Compiling az v1.3.0\n   Compiling itoa v1.0.18\n   Compiling memchr v2.8.3\n   Compiling cfg-if v1.0.5\n   Compiling generic-array v0.14.7\n   Compiling syn v3.0.6\n   Compiling block-buffer v0.10.4\n   Compiling crypto-common v0.1.7\n   Compiling digest v0.10.7\n   Compiling sha2 v0.10.9\n   Compiling serde_derive v1.0.229\nwarning: constant `DEFAULT_SUPPLEMENTARY_RELATIONS` is never used\n  --> /tmp/sagejs-quadratic-promotion.Wklb2l/bench/pari-class-group-rust/src/bruteforce_collector.rs:27:7\n   |\n27 | const DEFAULT_SUPPLEMENTARY_RELATIONS: usize = 7;\n   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n   |\n   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default\n\nwarning: function `collect_primitive_box` is never used\n   --> /tmp/sagejs-quadratic-promotion.Wklb2l/bench/pari-class-group-rust/src/bruteforce_collector.rs:148:8\n    |\n148 | pub fn collect_primitive_box(\n    |        ^^^^^^^^^^^^^^^^^^^^^\n\nwarning: function `original_packet_index` is never used\n   --> /tmp/sagejs-quadratic-promotion.Wklb2l/bench/pari-class-group-rust/src/collector_schedule.rs:144:8\n    |\n144 | pub fn original_packet_index(packet_ids: &[i64], selected: i64) -> Result<usize, ScheduleError> {\n    |        ^^^^^^^^^^^^^^^^^^^^^\n\nwarning: function `copy_original_packet` is never used\n   --> /tmp/sagejs-quadratic-promotion.Wklb2l/bench/pari-class-group-rust/src/collector_schedule.rs:156:8\n    |\n156 | pub fn copy_original_packet<T: Clone>(\n    |        ^^^^^^^^^^^^^^^^^^^^\n\nwarning: associated items `from_row_major`, `from_column_major`, `to_row_major`, `to_column_major`, `pow`, and `determinant` are never used\n   --> /tmp/sagejs-quadratic-promotion.Wklb2l/bench/pari-class-group-rust/src/ideal_arithmetic.rs:42:12\n    |\n 21 | impl Matrix3 {\n    | ------------ associated items in this implementation\n...\n 42 |     pub fn from_row_major(entries: [Integer; CELLS]) -> Self {\n    |            ^^^^^^^^^^^^^^\n...\n 47 |     pub fn from_column_major(entries: [Integer; CELLS]) -> Self {\n    |            ^^^^^^^^^^^^^^^^^\n...\n 57 |     pub fn to_row_major(&self) -> [Integer; CELLS] {\n    |            ^^^^^^^^^^^^\n...\n 62 |     pub fn to_column_major(&self) -> [Integer; CELLS] {\n    |            ^^^^^^^^^^^^^^^\n...\n106 |     pub fn pow(&self, mut exponent: u32) -> Self {\n    |            ^^^\n...\n121 |     pub fn determinant(&self) -> Integer {\n    |            ^^^^^^^^^^^\n\nwarning: method `at_most_half_in_absolute_value` is never used\n   --> /tmp/sagejs-quadratic-promotion.Wklb2l/bench/pari-class-group-rust/src/ideal_arithmetic.rs:285:8\n    |\n191 | impl Fraction {\n    | ------------- method in this implementation\n...\n285 |     fn at_most_half_in_absolute_value(&self) -> bool {\n    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nwarning: function `verify_lll_reduction` is never used\n   --> /tmp/sagejs-quadratic-promotion.Wklb2l/bench/pari-class-group-rust/src/ideal_arithmetic.rs:422:8\n    |\n422 | pub fn verify_lll_reduction(\n    |        ^^^^^^^^^^^^^^^^^^^^\n\nwarning: fields `transform`, `bound_root_degree`, `lll_swaps`, and `lll_size_reductions` are never read\n   --> /tmp/sagejs-quadratic-promotion.Wklb2l/bench/pari-class-group-rust/src/numerical_preparation.rs:457:9\n    |\n455 | pub struct H1NumericalPreparation {\n    |            ---------------------- fields in this struct\n456 |     /// Exact unimodular basis change selected from `G0 * original_ideal`.\n457 |     pub transform: Matrix3,\n    |         ^^^^^^^^^\n...\n465 |     pub bound_root_degree: usize,\n    |         ^^^^^^^^^^^^^^^^^\n466 |     pub skip_first: bool,\n467 |     pub lll_swaps: usize,\n    |         ^^^^^^^^^\n468 |     pub lll_size_reductions: usize,\n    |         ^^^^^^^^^^^^^^^^^^^\n    |\n    = note: `H1NumericalPreparation` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis\n\nwarning: function `sparse_relation` is never used\n   --> /tmp/sagejs-quadratic-promotion.Wklb2l/bench/pari-class-group-rust/src/prime_valuation.rs:291:8\n    |\n291 | pub fn sparse_relation(relation: &[i64]) -> Vec<(usize, i64)> {\n    |        ^^^^^^^^^^^^^^^\n\nwarning: method `coefficients` is never used\n   --> /tmp/sagejs-quadratic-promotion.Wklb2l/bench/pari-class-group-rust/src/smooth_admission.rs:185:12\n    |\n120 | impl CubicNormForm {\n    | ------------------ method in this implementation\n...\n185 |     pub fn coefficients(&self) -> &[i128; 9] {\n    |            ^^^^^^^^^^^^\n\n   Compiling sagejs-public-quadratic-boundary-qualification v0.1.0 (/tmp/sagejs-quadratic-promotion.Wklb2l/bench/pari-class-group-rust/qualification/public-quadratic-boundary)\nwarning: `sagejs-pari-class-group-rust-experiment` (lib) generated 10 warnings\n    Finished `release` profile [optimized] target(s) in 8.37s\n"
+      },
+      {
+        "binarySha256": "f1ece535f6f33c8cdf425ba92067ff5cf97425da3f81d6b457ad69aa6f6ca033",
+        "cargoTargetDir": "target/benchmark-repro-b",
+        "command": "cargo build --locked --release --bin benchmark_public",
+        "stderr": "   Compiling version_check v0.9.5\n   Compiling proc-macro2 v1.0.107\n   Compiling unicode-ident v1.0.26\n   Compiling typenum v1.20.1\n   Compiling quote v1.0.47\n   Compiling gmp-mpfr-sys v1.7.1\n   Compiling serde_core v1.0.229\n   Compiling libc v0.2.189\n   Compiling zmij v1.0.23\n   Compiling libm v0.2.16\n   Compiling serde_json v1.0.151\n   Compiling serde v1.0.229\n   Compiling rug v1.30.0\n   Compiling memchr v2.8.3\n   Compiling sagejs-pari-class-group-rust-experiment v0.1.0 (/tmp/sagejs-quadratic-promotion.Wklb2l/bench/pari-class-group-rust)\n   Compiling itoa v1.0.18\n   Compiling cfg-if v1.0.5\n   Compiling cpufeatures v0.2.17\n   Compiling az v1.3.0\n   Compiling generic-array v0.14.7\n   Compiling syn v3.0.6\n   Compiling block-buffer v0.10.4\n   Compiling crypto-common v0.1.7\n   Compiling digest v0.10.7\n   Compiling sha2 v0.10.9\n   Compiling serde_derive v1.0.229\nwarning: constant `DEFAULT_SUPPLEMENTARY_RELATIONS` is never used\n  --> /tmp/sagejs-quadratic-promotion.Wklb2l/bench/pari-class-group-rust/src/bruteforce_collector.rs:27:7\n   |\n27 | const DEFAULT_SUPPLEMENTARY_RELATIONS: usize = 7;\n   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n   |\n   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default\n\nwarning: function `collect_primitive_box` is never used\n   --> /tmp/sagejs-quadratic-promotion.Wklb2l/bench/pari-class-group-rust/src/bruteforce_collector.rs:148:8\n    |\n148 | pub fn collect_primitive_box(\n    |        ^^^^^^^^^^^^^^^^^^^^^\n\nwarning: function `original_packet_index` is never used\n   --> /tmp/sagejs-quadratic-promotion.Wklb2l/bench/pari-class-group-rust/src/collector_schedule.rs:144:8\n    |\n144 | pub fn original_packet_index(packet_ids: &[i64], selected: i64) -> Result<usize, ScheduleError> {\n    |        ^^^^^^^^^^^^^^^^^^^^^\n\nwarning: function `copy_original_packet` is never used\n   --> /tmp/sagejs-quadratic-promotion.Wklb2l/bench/pari-class-group-rust/src/collector_schedule.rs:156:8\n    |\n156 | pub fn copy_original_packet<T: Clone>(\n    |        ^^^^^^^^^^^^^^^^^^^^\n\nwarning: associated items `from_row_major`, `from_column_major`, `to_row_major`, `to_column_major`, `pow`, and `determinant` are never used\n   --> /tmp/sagejs-quadratic-promotion.Wklb2l/bench/pari-class-group-rust/src/ideal_arithmetic.rs:42:12\n    |\n 21 | impl Matrix3 {\n    | ------------ associated items in this implementation\n...\n 42 |     pub fn from_row_major(entries: [Integer; CELLS]) -> Self {\n    |            ^^^^^^^^^^^^^^\n...\n 47 |     pub fn from_column_major(entries: [Integer; CELLS]) -> Self {\n    |            ^^^^^^^^^^^^^^^^^\n...\n 57 |     pub fn to_row_major(&self) -> [Integer; CELLS] {\n    |            ^^^^^^^^^^^^\n...\n 62 |     pub fn to_column_major(&self) -> [Integer; CELLS] {\n    |            ^^^^^^^^^^^^^^^\n...\n106 |     pub fn pow(&self, mut exponent: u32) -> Self {\n    |            ^^^\n...\n121 |     pub fn determinant(&self) -> Integer {\n    |            ^^^^^^^^^^^\n\nwarning: method `at_most_half_in_absolute_value` is never used\n   --> /tmp/sagejs-quadratic-promotion.Wklb2l/bench/pari-class-group-rust/src/ideal_arithmetic.rs:285:8\n    |\n191 | impl Fraction {\n    | ------------- method in this implementation\n...\n285 |     fn at_most_half_in_absolute_value(&self) -> bool {\n    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nwarning: function `verify_lll_reduction` is never used\n   --> /tmp/sagejs-quadratic-promotion.Wklb2l/bench/pari-class-group-rust/src/ideal_arithmetic.rs:422:8\n    |\n422 | pub fn verify_lll_reduction(\n    |        ^^^^^^^^^^^^^^^^^^^^\n\nwarning: fields `transform`, `bound_root_degree`, `lll_swaps`, and `lll_size_reductions` are never read\n   --> /tmp/sagejs-quadratic-promotion.Wklb2l/bench/pari-class-group-rust/src/numerical_preparation.rs:457:9\n    |\n455 | pub struct H1NumericalPreparation {\n    |            ---------------------- fields in this struct\n456 |     /// Exact unimodular basis change selected from `G0 * original_ideal`.\n457 |     pub transform: Matrix3,\n    |         ^^^^^^^^^\n...\n465 |     pub bound_root_degree: usize,\n    |         ^^^^^^^^^^^^^^^^^\n466 |     pub skip_first: bool,\n467 |     pub lll_swaps: usize,\n    |         ^^^^^^^^^\n468 |     pub lll_size_reductions: usize,\n    |         ^^^^^^^^^^^^^^^^^^^\n    |\n    = note: `H1NumericalPreparation` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis\n\nwarning: function `sparse_relation` is never used\n   --> /tmp/sagejs-quadratic-promotion.Wklb2l/bench/pari-class-group-rust/src/prime_valuation.rs:291:8\n    |\n291 | pub fn sparse_relation(relation: &[i64]) -> Vec<(usize, i64)> {\n    |        ^^^^^^^^^^^^^^^\n\nwarning: method `coefficients` is never used\n   --> /tmp/sagejs-quadratic-promotion.Wklb2l/bench/pari-class-group-rust/src/smooth_admission.rs:185:12\n    |\n120 | impl CubicNormForm {\n    | ------------------ method in this implementation\n...\n185 |     pub fn coefficients(&self) -> &[i128; 9] {\n    |            ^^^^^^^^^^^^\n\n   Compiling sagejs-public-quadratic-boundary-qualification v0.1.0 (/tmp/sagejs-quadratic-promotion.Wklb2l/bench/pari-class-group-rust/qualification/public-quadratic-boundary)\nwarning: `sagejs-pari-class-group-rust-experiment` (lib) generated 10 warnings\n    Finished `release` profile [optimized] target(s) in 8.20s\n"
+      }
+    ],
+    "retainedRustBinary": "target/benchmark-repro-a/release/benchmark_public",
+    "retainedRustBinarySha256": "f1ece535f6f33c8cdf425ba92067ff5cf97425da3f81d6b457ad69aa6f6ca033",
+    "rustcVersionVerbose": "rustc 1.98.1 (48a229cea 2026-09-01)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: x86_64-unknown-linux-gnu\nrelease: 1.98.1\nLLVM version: 22.1.8",
+    "sourceClosure": {
+      "algorithm": "sha256-canonical-json-file-list-v1",
+      "containsDirtyReachableSources": false,
+      "files": [
+        {
+          "bytes": 6216,
+          "path": "bench/pari-class-group-rust/Cargo.lock",
+          "sha256": "139ba4b68ac92e06b6c9b7d5c4fbc9526a9948b90eb313e3ae0d12c913ac252f"
+        },
+        {
+          "bytes": 438,
+          "path": "bench/pari-class-group-rust/Cargo.toml",
+          "sha256": "e607bf9540ab65775a120f58745711bd4e43e31f27144056c4522c45d946930c"
+        },
+        {
+          "bytes": 1887,
+          "path": "bench/pari-class-group-rust/build.rs",
+          "sha256": "c9ae28e42eaeadc550fbca72b338288dc84310c7035df534f2770f4d9b962bb1"
+        },
+        {
+          "bytes": 6399,
+          "path": "bench/pari-class-group-rust/qualification/public-quadratic-boundary/Cargo.lock",
+          "sha256": "4402c1178ac26d79ee93ed4c1f4576f478030d113b9c8020120ae3f021265df0"
+        },
+        {
+          "bytes": 370,
+          "path": "bench/pari-class-group-rust/qualification/public-quadratic-boundary/Cargo.toml",
+          "sha256": "0366ed6e43452771b270e1747b249895b5d4be7e493356488b9f5f410c428629"
+        },
+        {
+          "bytes": 4218,
+          "path": "bench/pari-class-group-rust/qualification/public-quadratic-boundary/benchmark/panel.json",
+          "sha256": "747eba888673235f830ca3ff65f5a37756d95f450dbe7bac1258bc5d5902f633"
+        },
+        {
+          "bytes": 17201,
+          "path": "bench/pari-class-group-rust/qualification/public-quadratic-boundary/benchmark/run.py",
+          "sha256": "f3308a1459d6e20c707b386353bddde4e4ce2ec995b99d9cfe760b3117b72b87"
+        },
+        {
+          "bytes": 2922,
+          "path": "bench/pari-class-group-rust/qualification/public-quadratic-boundary/src/bin/benchmark_public.rs",
+          "sha256": "c475ef4bfe220135954c848e693e620c02d328429ae8e69c62ca63dfda0cba6d"
+        },
+        {
+          "bytes": 45737,
+          "path": "bench/pari-class-group-rust/qualification/public-quadratic-boundary/src/imaginary.rs",
+          "sha256": "29a4405ad95e5c52c984589ac71359bab3c64819050549c16a8c317a6c88dfda"
+        },
+        {
+          "bytes": 11116,
+          "path": "bench/pari-class-group-rust/qualification/public-quadratic-boundary/src/lib.rs",
+          "sha256": "76a6af27784aeae7667cee67685333531dc152cd45252288e50d19aa71f31b93"
+        },
+        {
+          "bytes": 1905,
+          "path": "bench/pari-class-group-rust/qualification/public-quadratic-boundary/src/main.rs",
+          "sha256": "ded7662c343d49249f6dc893889183f4797498457c504c2138cc096220ec1492"
+        },
+        {
+          "bytes": 8717,
+          "path": "bench/pari-class-group-rust/src/analytic_completion.rs",
+          "sha256": "2c1200233a57532cc4471a7f253859e9c60a4b7e4f3b1484e467b81b4e81a231"
+        },
+        {
+          "bytes": 14772,
+          "path": "bench/pari-class-group-rust/src/api.rs",
+          "sha256": "1e1ba008b83c3d415eecb6ab9332ab4d695efbb771234924aeb9520630259807"
+        },
+        {
+          "bytes": 15581,
+          "path": "bench/pari-class-group-rust/src/bruteforce_collector.rs",
+          "sha256": "7a1dc481f518fa98ca46125550bb4a0252c3bda38617aa8cfe815d7c6081ffb7"
+        },
+        {
+          "bytes": 33827,
+          "path": "bench/pari-class-group-rust/src/class_group.rs",
+          "sha256": "0d556a8ef214a496f5387efa959d8dd4983166d1ccd8ad8d5848d5c4354760b7"
+        },
+        {
+          "bytes": 13362,
+          "path": "bench/pari-class-group-rust/src/class_maps.rs",
+          "sha256": "084670a79572c37c4d4a6d51aa96ef725f4c48418c2f76c4185b9f0ecf12bf40"
+        },
+        {
+          "bytes": 6526,
+          "path": "bench/pari-class-group-rust/src/collector_schedule.rs",
+          "sha256": "f5f4d65a68465fc29d5dd216763abb45ce8465ea8485334786e5cd3e7b45c783"
+        },
+        {
+          "bytes": 6295,
+          "path": "bench/pari-class-group-rust/src/enumeration.rs",
+          "sha256": "0ea9216253e830e099fd0c9d2cbdb162b141309346729900e431896d65568b38"
+        },
+        {
+          "bytes": 39597,
+          "path": "bench/pari-class-group-rust/src/factor_base.rs",
+          "sha256": "14cf55f72d90c58410edca44a8f17d8907ed93680deb1fd4dbff8b5704e9cf34"
+        },
+        {
+          "bytes": 103363,
+          "path": "bench/pari-class-group-rust/src/flint_normal_form.c",
+          "sha256": "1fcdb424145d3f0d0909bd387289fdef769686d45d65eb5da9a5067b937685d3"
+        },
+        {
+          "bytes": 64462,
+          "path": "bench/pari-class-group-rust/src/flint_normal_form.rs",
+          "sha256": "e689e85e3af90ce011492272a7a13fe71941be69f59f7003b25512b83d2da1a7"
+        },
+        {
+          "bytes": 12967,
+          "path": "bench/pari-class-group-rust/src/gmp_smith.rs",
+          "sha256": "36e11e8eb20de9df5b5ecb0a2f9d5ca8ffda9239224c9331f45ec0ba032f0802"
+        },
+        {
+          "bytes": 28189,
+          "path": "bench/pari-class-group-rust/src/hnf.rs",
+          "sha256": "d35bf3f4d154e3425f95a365f09b5147eaaf7353ae2ab1f67bb5321b470a87e6"
+        },
+        {
+          "bytes": 17888,
+          "path": "bench/pari-class-group-rust/src/ideal_arithmetic.rs",
+          "sha256": "4e18797b8b645b761c58b82d73af0a7c30eef0ddd4659f57624f9c3d5b4a9a52"
+        },
+        {
+          "bytes": 5014,
+          "path": "bench/pari-class-group-rust/src/lib.rs",
+          "sha256": "152a18d7f203c671791ec622a0add0712e855bdc5e27e740698ba5596b2c0b67"
+        },
+        {
+          "bytes": 35044,
+          "path": "bench/pari-class-group-rust/src/main.rs",
+          "sha256": "746f5a6a967c5369556158ae0242501f4bd61c9a0bfa02e522401c51502bcf4d"
+        },
+        {
+          "bytes": 31852,
+          "path": "bench/pari-class-group-rust/src/numerical_preparation.rs",
+          "sha256": "c8c18b3c8896795cdfd35db6c1eec75fa2af3f827ff64a47a4a21337c2d728bb"
+        },
+        {
+          "bytes": 2696,
+          "path": "bench/pari-class-group-rust/src/pari_random.rs",
+          "sha256": "7bed82f9c8d1cd27b753e0f39e5cf37ef49ae90e9c236ff9f9a397382d83e269"
+        },
+        {
+          "bytes": 16452,
+          "path": "bench/pari-class-group-rust/src/polynomial_preparation.rs",
+          "sha256": "52ad7f01436501d65bb9915ba0986c733fd28fdccbfeb618a596330639b21dbd"
+        },
+        {
+          "bytes": 44766,
+          "path": "bench/pari-class-group-rust/src/prepared.rs",
+          "sha256": "80b7ce8f953b2df50fb88ac4d1d068f1ac8148e1b335aa01f0d322e6c8feada5"
+        },
+        {
+          "bytes": 23053,
+          "path": "bench/pari-class-group-rust/src/prepared_factor_base.rs",
+          "sha256": "53f24f03d1292190dc3a7705af336db9f1367a9c493b35232e1b9056ff507995"
+        },
+        {
+          "bytes": 16283,
+          "path": "bench/pari-class-group-rust/src/prepared_ideal.rs",
+          "sha256": "261059e71fef692939ed1f09ad44b4fdae376b8c123c47604b2743036453d5b0"
+        },
+        {
+          "bytes": 12198,
+          "path": "bench/pari-class-group-rust/src/prepared_input.rs",
+          "sha256": "c6e37480711aac91ddcaf796dff18729e427ced6a41d9cbed43b3a6abce11c6c"
+        },
+        {
+          "bytes": 11014,
+          "path": "bench/pari-class-group-rust/src/prime_valuation.rs",
+          "sha256": "5b533a94a1eed76a1fa09b97d6e43071678babc88910133c32f561423d770a9e"
+        },
+        {
+          "bytes": 14270,
+          "path": "bench/pari-class-group-rust/src/relation_cache.rs",
+          "sha256": "4ceda4440a747c151389dc00a1deee06c32cb18845a3e5738345cad8410ecc3e"
+        },
+        {
+          "bytes": 10463,
+          "path": "bench/pari-class-group-rust/src/smith.rs",
+          "sha256": "d367b6bcc7d372bfe886dcb746ab327b4eaafb1cb7ccda26935404d2e7842192"
+        },
+        {
+          "bytes": 24142,
+          "path": "bench/pari-class-group-rust/src/smooth_admission.rs",
+          "sha256": "4936644436d471b91e11f8690f9abbbf03d4450b81a6f6483b9f237c6b982573"
+        },
+        {
+          "bytes": 14210,
+          "path": "bench/pari-class-group-rust/src/unit_lattice.rs",
+          "sha256": "47c958f225d7a7ccda5f2b62d6ca062ad2bd8a092f05627c05e97ac447f8fb56"
+        }
+      ],
+      "reachableSourceStatusPorcelain": "",
+      "rootSha256": "631f0941114686e630cc830c875ac00daf86fbb2a00b0855c1d712bf35ff202c"
+    }
+  },
+  "method": {
+    "alternation": "Rust,PARI on odd one-based pairs; PARI,Rust on even pairs",
+    "correctness": "Every sample is checked for its exact arm-specific boundaryLabel and against the frozen discriminant, class number, and normalized invariant factors before its time is retained.",
+    "freshComputation": "Every sample launches a fresh process and reconstructs from public coefficients; neither executable has a result cache.",
+    "pairsPerField": 15,
+    "timing": "Reported kernel clocks exclude process startup and JSON projection. Rust includes coefficient validation, maximal-order preparation, enumeration, group construction, certificate construction, and internal verification. PARI includes nfinit0 plus bnfinit0 flag zero.",
+    "warmups": 0
+  },
+  "panel": {
+    "boundary": {
+      "comparison": "Both arms start from the same public monic polynomial. Rust returns and verifies a complete imaginary class-group certificate; PARI flag zero additionally computes the rank-zero unit/regulator data. Projection and process startup are excluded.",
+      "pari": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "rust": "public-coefficients-to-verified-complete-class-group-v1"
+    },
+    "fields": [
+      {
+        "expected": {
+          "classNumber": 1,
+          "discriminant": -3,
+          "invariantFactors": []
+        },
+        "id": "tiny-trivial-d3",
+        "pariPolynomial": "x^2-x+1",
+        "polynomialAscending": [
+          1,
+          -1,
+          1
+        ],
+        "traits": [
+          "pari-under-5ms",
+          "trivial"
+        ]
+      },
+      {
+        "expected": {
+          "classNumber": 5,
+          "discriminant": -47,
+          "invariantFactors": [
+            5
+          ]
+        },
+        "id": "tiny-cyclic-d47",
+        "pariPolynomial": "x^2-x+12",
+        "polynomialAscending": [
+          12,
+          -1,
+          1
+        ],
+        "traits": [
+          "pari-under-5ms",
+          "cyclic"
+        ]
+      },
+      {
+        "expected": {
+          "classNumber": 12,
+          "discriminant": -231,
+          "invariantFactors": [
+            2,
+            6
+          ]
+        },
+        "id": "tiny-noncyclic-d231",
+        "pariPolynomial": "x^2-x+58",
+        "polynomialAscending": [
+          58,
+          -1,
+          1
+        ],
+        "traits": [
+          "pari-under-5ms",
+          "noncyclic"
+        ]
+      },
+      {
+        "expected": {
+          "classNumber": 96,
+          "discriminant": -15015,
+          "invariantFactors": [
+            2,
+            2,
+            2,
+            12
+          ]
+        },
+        "id": "rank4-d15015",
+        "pariPolynomial": "x^2-x+3754",
+        "polynomialAscending": [
+          3754,
+          -1,
+          1
+        ],
+        "traits": [
+          "rank4",
+          "noncyclic"
+        ]
+      },
+      {
+        "expected": {
+          "classNumber": 336,
+          "discriminant": -9013587,
+          "invariantFactors": [
+            2,
+            2,
+            84
+          ]
+        },
+        "id": "pari-medium-candidate-d9013587",
+        "pariPolynomial": "x^2-x+2253397",
+        "polynomialAscending": [
+          2253397,
+          -1,
+          1
+        ],
+        "traits": [
+          "predeclared-pari-5-to-100ms-candidate",
+          "noncyclic"
+        ]
+      },
+      {
+        "expected": {
+          "classNumber": 1715,
+          "discriminant": -9999991,
+          "invariantFactors": [
+            1715
+          ]
+        },
+        "id": "near-limit-h1715-d9999991",
+        "pariPolynomial": "x^2-x+2499998",
+        "polynomialAscending": [
+          2499998,
+          -1,
+          1
+        ],
+        "traits": [
+          "near-discriminant-limit",
+          "cyclic",
+          "class-number-1715"
+        ]
+      },
+      {
+        "expected": {
+          "classNumber": 4378,
+          "discriminant": -8173415,
+          "invariantFactors": [
+            4378
+          ]
+        },
+        "id": "near-limit-h4378-d8173415",
+        "pariPolynomial": "x^2-x+2043354",
+        "polynomialAscending": [
+          2043354,
+          -1,
+          1
+        ],
+        "traits": [
+          "near-discriminant-limit",
+          "cyclic",
+          "class-number-over-4000",
+          "deterministic-h4352-replacement"
+        ]
+      }
+    ],
+    "frozenBeforeTiming": true,
+    "prospectiveMediumBandSelection": {
+      "caveat": "This deterministic discovery timing was used only to nominate a prospective band member. The independently alternating 15-sample campaign median determines its actual band and was below 5 ms.",
+      "discoveryMeasurementNanoseconds": 5234199,
+      "drawRule": "Python Random(20260922); draw uniformly in [8000000,10000000], redraw until d mod 4 is 0 or 3, retain fundamental D=-d, make one PARI public-call measurement, and retain the maximum measured candidate",
+      "maximumOuterDraws": 1000,
+      "seed": 20260922,
+      "selectedDiscriminant": -9013587,
+      "selectedOuterDrawOneBased": 869,
+      "selectionStatus": "frozen-before-benchmark"
+    },
+    "replacementForUnavailableH4352": {
+      "drawRule": "PARI setrand(20260920); d=8000000+random(2000001); increment d until d mod 4 is 0 or 3; D=-d; discard nonfundamental D; select first qfbclassno(D)>=4000",
+      "maximumDraws": 50000,
+      "reason": "No retained h=4352 input existed; this is the first deterministic comparable class-number-above-4000 selection. PARI was used only to freeze the external test panel, never by the Rust runtime.",
+      "seed": 20260920,
+      "selectedClassNumber": 4378,
+      "selectedDiscriminant": -8173415,
+      "selectedDrawOneBased": 12,
+      "selectionStatus": "frozen-before-benchmark"
+    },
+    "samplesPerArmPerField": 15,
+    "schema": "sagejs.public-quadratic/benchmark-panel-v1",
+    "tinyBatchThroughput": {
+      "computationsPerSample": 100,
+      "fieldIds": [
+        "tiny-trivial-d3",
+        "tiny-cyclic-d47",
+        "tiny-noncyclic-d231",
+        "rank4-d15015"
+      ],
+      "samplesPerField": 15,
+      "selection": "Frozen structural tiny panel: trivial, cyclic, noncyclic, and rank-four fields; no timing-based exclusions."
+    }
+  },
+  "panelSha256": "747eba888673235f830ca3ff65f5a37756d95f450dbe7bac1258bc5d5902f633",
+  "promotion": {
+    "step1": "Integration owner commits/freezes engine, benchmark adapter, runner, panel, manifests, and lockfiles without this pre-promotion receipt.",
+    "step2": "From a clean checkout of that frozen commit, rerun benchmark/run.py; require promotionEligible=true, matching clean source-closure status, reproducible binary hashes, and all exact checks before separately committing the generated receipt."
+  },
+  "promotionEligible": true,
+  "qualificationOnly": true,
+  "samples": [
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1407020,
+      "fieldId": "tiny-trivial-d3",
+      "kernelNanoseconds": 61410,
+      "pairOneBased": 1,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 22646194,
+      "fieldId": "tiny-trivial-d3",
+      "kernelNanoseconds": 1018720,
+      "pairOneBased": 1,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 21773006,
+      "fieldId": "tiny-trivial-d3",
+      "kernelNanoseconds": 977630,
+      "pairOneBased": 2,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1441880,
+      "fieldId": "tiny-trivial-d3",
+      "kernelNanoseconds": 60880,
+      "pairOneBased": 2,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1329880,
+      "fieldId": "tiny-trivial-d3",
+      "kernelNanoseconds": 44890,
+      "pairOneBased": 3,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 22080875,
+      "fieldId": "tiny-trivial-d3",
+      "kernelNanoseconds": 1193180,
+      "pairOneBased": 3,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 21036196,
+      "fieldId": "tiny-trivial-d3",
+      "kernelNanoseconds": 889830,
+      "pairOneBased": 4,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1460829,
+      "fieldId": "tiny-trivial-d3",
+      "kernelNanoseconds": 62980,
+      "pairOneBased": 4,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1245050,
+      "fieldId": "tiny-trivial-d3",
+      "kernelNanoseconds": 44110,
+      "pairOneBased": 5,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 21396875,
+      "fieldId": "tiny-trivial-d3",
+      "kernelNanoseconds": 898039,
+      "pairOneBased": 5,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 21309536,
+      "fieldId": "tiny-trivial-d3",
+      "kernelNanoseconds": 919460,
+      "pairOneBased": 6,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1338349,
+      "fieldId": "tiny-trivial-d3",
+      "kernelNanoseconds": 50050,
+      "pairOneBased": 6,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1242980,
+      "fieldId": "tiny-trivial-d3",
+      "kernelNanoseconds": 43230,
+      "pairOneBased": 7,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 21972565,
+      "fieldId": "tiny-trivial-d3",
+      "kernelNanoseconds": 967189,
+      "pairOneBased": 7,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 22516985,
+      "fieldId": "tiny-trivial-d3",
+      "kernelNanoseconds": 853579,
+      "pairOneBased": 8,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1305590,
+      "fieldId": "tiny-trivial-d3",
+      "kernelNanoseconds": 45660,
+      "pairOneBased": 8,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1309260,
+      "fieldId": "tiny-trivial-d3",
+      "kernelNanoseconds": 46100,
+      "pairOneBased": 9,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 21775125,
+      "fieldId": "tiny-trivial-d3",
+      "kernelNanoseconds": 958260,
+      "pairOneBased": 9,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 21863785,
+      "fieldId": "tiny-trivial-d3",
+      "kernelNanoseconds": 1012310,
+      "pairOneBased": 10,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1428040,
+      "fieldId": "tiny-trivial-d3",
+      "kernelNanoseconds": 58910,
+      "pairOneBased": 10,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1394339,
+      "fieldId": "tiny-trivial-d3",
+      "kernelNanoseconds": 51120,
+      "pairOneBased": 11,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 21237636,
+      "fieldId": "tiny-trivial-d3",
+      "kernelNanoseconds": 946790,
+      "pairOneBased": 11,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 21534905,
+      "fieldId": "tiny-trivial-d3",
+      "kernelNanoseconds": 940090,
+      "pairOneBased": 12,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1379350,
+      "fieldId": "tiny-trivial-d3",
+      "kernelNanoseconds": 46920,
+      "pairOneBased": 12,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1333810,
+      "fieldId": "tiny-trivial-d3",
+      "kernelNanoseconds": 52390,
+      "pairOneBased": 13,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 21305216,
+      "fieldId": "tiny-trivial-d3",
+      "kernelNanoseconds": 993340,
+      "pairOneBased": 13,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 21389685,
+      "fieldId": "tiny-trivial-d3",
+      "kernelNanoseconds": 868870,
+      "pairOneBased": 14,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1282900,
+      "fieldId": "tiny-trivial-d3",
+      "kernelNanoseconds": 53100,
+      "pairOneBased": 14,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1309640,
+      "fieldId": "tiny-trivial-d3",
+      "kernelNanoseconds": 44900,
+      "pairOneBased": 15,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 20880006,
+      "fieldId": "tiny-trivial-d3",
+      "kernelNanoseconds": 841930,
+      "pairOneBased": 15,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1300279,
+      "fieldId": "tiny-cyclic-d47",
+      "kernelNanoseconds": 61169,
+      "pairOneBased": 1,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 21083386,
+      "fieldId": "tiny-cyclic-d47",
+      "kernelNanoseconds": 960740,
+      "pairOneBased": 1,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 21712495,
+      "fieldId": "tiny-cyclic-d47",
+      "kernelNanoseconds": 1049750,
+      "pairOneBased": 2,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1260320,
+      "fieldId": "tiny-cyclic-d47",
+      "kernelNanoseconds": 65670,
+      "pairOneBased": 2,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1294989,
+      "fieldId": "tiny-cyclic-d47",
+      "kernelNanoseconds": 65050,
+      "pairOneBased": 3,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 21066986,
+      "fieldId": "tiny-cyclic-d47",
+      "kernelNanoseconds": 866910,
+      "pairOneBased": 3,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 21096275,
+      "fieldId": "tiny-cyclic-d47",
+      "kernelNanoseconds": 884050,
+      "pairOneBased": 4,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1268070,
+      "fieldId": "tiny-cyclic-d47",
+      "kernelNanoseconds": 62020,
+      "pairOneBased": 4,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1277530,
+      "fieldId": "tiny-cyclic-d47",
+      "kernelNanoseconds": 61780,
+      "pairOneBased": 5,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 21213736,
+      "fieldId": "tiny-cyclic-d47",
+      "kernelNanoseconds": 1031390,
+      "pairOneBased": 5,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 21799865,
+      "fieldId": "tiny-cyclic-d47",
+      "kernelNanoseconds": 1035030,
+      "pairOneBased": 6,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1342840,
+      "fieldId": "tiny-cyclic-d47",
+      "kernelNanoseconds": 66840,
+      "pairOneBased": 6,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1274160,
+      "fieldId": "tiny-cyclic-d47",
+      "kernelNanoseconds": 70120,
+      "pairOneBased": 7,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 21297716,
+      "fieldId": "tiny-cyclic-d47",
+      "kernelNanoseconds": 1041680,
+      "pairOneBased": 7,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 21447545,
+      "fieldId": "tiny-cyclic-d47",
+      "kernelNanoseconds": 1032500,
+      "pairOneBased": 8,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1280810,
+      "fieldId": "tiny-cyclic-d47",
+      "kernelNanoseconds": 66510,
+      "pairOneBased": 8,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1254799,
+      "fieldId": "tiny-cyclic-d47",
+      "kernelNanoseconds": 62469,
+      "pairOneBased": 9,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 21085266,
+      "fieldId": "tiny-cyclic-d47",
+      "kernelNanoseconds": 988970,
+      "pairOneBased": 9,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 21622015,
+      "fieldId": "tiny-cyclic-d47",
+      "kernelNanoseconds": 1043760,
+      "pairOneBased": 10,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1382720,
+      "fieldId": "tiny-cyclic-d47",
+      "kernelNanoseconds": 67610,
+      "pairOneBased": 10,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1283189,
+      "fieldId": "tiny-cyclic-d47",
+      "kernelNanoseconds": 63040,
+      "pairOneBased": 11,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 21004576,
+      "fieldId": "tiny-cyclic-d47",
+      "kernelNanoseconds": 1036540,
+      "pairOneBased": 11,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 21540895,
+      "fieldId": "tiny-cyclic-d47",
+      "kernelNanoseconds": 1037469,
+      "pairOneBased": 12,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1316890,
+      "fieldId": "tiny-cyclic-d47",
+      "kernelNanoseconds": 62690,
+      "pairOneBased": 12,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1255139,
+      "fieldId": "tiny-cyclic-d47",
+      "kernelNanoseconds": 62520,
+      "pairOneBased": 13,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 21367406,
+      "fieldId": "tiny-cyclic-d47",
+      "kernelNanoseconds": 1050590,
+      "pairOneBased": 13,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 21265955,
+      "fieldId": "tiny-cyclic-d47",
+      "kernelNanoseconds": 1012020,
+      "pairOneBased": 14,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1300130,
+      "fieldId": "tiny-cyclic-d47",
+      "kernelNanoseconds": 66100,
+      "pairOneBased": 14,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1316619,
+      "fieldId": "tiny-cyclic-d47",
+      "kernelNanoseconds": 68940,
+      "pairOneBased": 15,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 21173325,
+      "fieldId": "tiny-cyclic-d47",
+      "kernelNanoseconds": 900970,
+      "pairOneBased": 15,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1642859,
+      "fieldId": "tiny-noncyclic-d231",
+      "kernelNanoseconds": 282489,
+      "pairOneBased": 1,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 21175706,
+      "fieldId": "tiny-noncyclic-d231",
+      "kernelNanoseconds": 1078260,
+      "pairOneBased": 1,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 21494165,
+      "fieldId": "tiny-noncyclic-d231",
+      "kernelNanoseconds": 1123040,
+      "pairOneBased": 2,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1517080,
+      "fieldId": "tiny-noncyclic-d231",
+      "kernelNanoseconds": 257160,
+      "pairOneBased": 2,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1480909,
+      "fieldId": "tiny-noncyclic-d231",
+      "kernelNanoseconds": 235800,
+      "pairOneBased": 3,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 20998106,
+      "fieldId": "tiny-noncyclic-d231",
+      "kernelNanoseconds": 1053800,
+      "pairOneBased": 3,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 21193575,
+      "fieldId": "tiny-noncyclic-d231",
+      "kernelNanoseconds": 1079510,
+      "pairOneBased": 4,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1516740,
+      "fieldId": "tiny-noncyclic-d231",
+      "kernelNanoseconds": 228420,
+      "pairOneBased": 4,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1356559,
+      "fieldId": "tiny-noncyclic-d231",
+      "kernelNanoseconds": 231480,
+      "pairOneBased": 5,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 21226216,
+      "fieldId": "tiny-noncyclic-d231",
+      "kernelNanoseconds": 1122360,
+      "pairOneBased": 5,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 21285135,
+      "fieldId": "tiny-noncyclic-d231",
+      "kernelNanoseconds": 1067070,
+      "pairOneBased": 6,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1332280,
+      "fieldId": "tiny-noncyclic-d231",
+      "kernelNanoseconds": 236000,
+      "pairOneBased": 6,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1300109,
+      "fieldId": "tiny-noncyclic-d231",
+      "kernelNanoseconds": 227600,
+      "pairOneBased": 7,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 22283805,
+      "fieldId": "tiny-noncyclic-d231",
+      "kernelNanoseconds": 1406100,
+      "pairOneBased": 7,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 21297596,
+      "fieldId": "tiny-noncyclic-d231",
+      "kernelNanoseconds": 1148650,
+      "pairOneBased": 8,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1577739,
+      "fieldId": "tiny-noncyclic-d231",
+      "kernelNanoseconds": 242800,
+      "pairOneBased": 8,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1341570,
+      "fieldId": "tiny-noncyclic-d231",
+      "kernelNanoseconds": 235570,
+      "pairOneBased": 9,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 21455245,
+      "fieldId": "tiny-noncyclic-d231",
+      "kernelNanoseconds": 1116840,
+      "pairOneBased": 9,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 21122096,
+      "fieldId": "tiny-noncyclic-d231",
+      "kernelNanoseconds": 1071540,
+      "pairOneBased": 10,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1310100,
+      "fieldId": "tiny-noncyclic-d231",
+      "kernelNanoseconds": 250589,
+      "pairOneBased": 10,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1551629,
+      "fieldId": "tiny-noncyclic-d231",
+      "kernelNanoseconds": 242520,
+      "pairOneBased": 11,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 21201855,
+      "fieldId": "tiny-noncyclic-d231",
+      "kernelNanoseconds": 1095739,
+      "pairOneBased": 11,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 22312905,
+      "fieldId": "tiny-noncyclic-d231",
+      "kernelNanoseconds": 1391830,
+      "pairOneBased": 12,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1647070,
+      "fieldId": "tiny-noncyclic-d231",
+      "kernelNanoseconds": 295270,
+      "pairOneBased": 12,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1441870,
+      "fieldId": "tiny-noncyclic-d231",
+      "kernelNanoseconds": 232840,
+      "pairOneBased": 13,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 21702305,
+      "fieldId": "tiny-noncyclic-d231",
+      "kernelNanoseconds": 1200649,
+      "pairOneBased": 13,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 21176075,
+      "fieldId": "tiny-noncyclic-d231",
+      "kernelNanoseconds": 1105740,
+      "pairOneBased": 14,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1421630,
+      "fieldId": "tiny-noncyclic-d231",
+      "kernelNanoseconds": 234970,
+      "pairOneBased": 14,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 1400930,
+      "fieldId": "tiny-noncyclic-d231",
+      "kernelNanoseconds": 266480,
+      "pairOneBased": 15,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 21054135,
+      "fieldId": "tiny-noncyclic-d231",
+      "kernelNanoseconds": 1070959,
+      "pairOneBased": 15,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 4209409,
+      "fieldId": "rank4-d15015",
+      "kernelNanoseconds": 3042769,
+      "pairOneBased": 1,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 21428615,
+      "fieldId": "rank4-d15015",
+      "kernelNanoseconds": 1667440,
+      "pairOneBased": 1,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 22459695,
+      "fieldId": "rank4-d15015",
+      "kernelNanoseconds": 1683640,
+      "pairOneBased": 2,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 4259200,
+      "fieldId": "rank4-d15015",
+      "kernelNanoseconds": 3043389,
+      "pairOneBased": 2,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 4383230,
+      "fieldId": "rank4-d15015",
+      "kernelNanoseconds": 3082090,
+      "pairOneBased": 3,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 21587635,
+      "fieldId": "rank4-d15015",
+      "kernelNanoseconds": 1523440,
+      "pairOneBased": 3,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 22233265,
+      "fieldId": "rank4-d15015",
+      "kernelNanoseconds": 1895669,
+      "pairOneBased": 4,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 4291369,
+      "fieldId": "rank4-d15015",
+      "kernelNanoseconds": 3038729,
+      "pairOneBased": 4,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 4353989,
+      "fieldId": "rank4-d15015",
+      "kernelNanoseconds": 3092039,
+      "pairOneBased": 5,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 22334955,
+      "fieldId": "rank4-d15015",
+      "kernelNanoseconds": 1892110,
+      "pairOneBased": 5,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 22384645,
+      "fieldId": "rank4-d15015",
+      "kernelNanoseconds": 2092439,
+      "pairOneBased": 6,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 4274599,
+      "fieldId": "rank4-d15015",
+      "kernelNanoseconds": 3080609,
+      "pairOneBased": 6,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 4278829,
+      "fieldId": "rank4-d15015",
+      "kernelNanoseconds": 3053969,
+      "pairOneBased": 7,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 22089165,
+      "fieldId": "rank4-d15015",
+      "kernelNanoseconds": 1852329,
+      "pairOneBased": 7,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 22025845,
+      "fieldId": "rank4-d15015",
+      "kernelNanoseconds": 1711379,
+      "pairOneBased": 8,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 4337179,
+      "fieldId": "rank4-d15015",
+      "kernelNanoseconds": 3092589,
+      "pairOneBased": 8,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 4274288,
+      "fieldId": "rank4-d15015",
+      "kernelNanoseconds": 3052800,
+      "pairOneBased": 9,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 22033855,
+      "fieldId": "rank4-d15015",
+      "kernelNanoseconds": 1729640,
+      "pairOneBased": 9,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 22450766,
+      "fieldId": "rank4-d15015",
+      "kernelNanoseconds": 2043180,
+      "pairOneBased": 10,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 4248189,
+      "fieldId": "rank4-d15015",
+      "kernelNanoseconds": 3031420,
+      "pairOneBased": 10,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 4394169,
+      "fieldId": "rank4-d15015",
+      "kernelNanoseconds": 3051409,
+      "pairOneBased": 11,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 22036885,
+      "fieldId": "rank4-d15015",
+      "kernelNanoseconds": 1840789,
+      "pairOneBased": 11,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 22039555,
+      "fieldId": "rank4-d15015",
+      "kernelNanoseconds": 1641729,
+      "pairOneBased": 12,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 4462239,
+      "fieldId": "rank4-d15015",
+      "kernelNanoseconds": 3059159,
+      "pairOneBased": 12,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 4386849,
+      "fieldId": "rank4-d15015",
+      "kernelNanoseconds": 3073879,
+      "pairOneBased": 13,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 21839085,
+      "fieldId": "rank4-d15015",
+      "kernelNanoseconds": 1707269,
+      "pairOneBased": 13,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 21857525,
+      "fieldId": "rank4-d15015",
+      "kernelNanoseconds": 1761050,
+      "pairOneBased": 14,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 4315069,
+      "fieldId": "rank4-d15015",
+      "kernelNanoseconds": 3047110,
+      "pairOneBased": 14,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 4487348,
+      "fieldId": "rank4-d15015",
+      "kernelNanoseconds": 3068399,
+      "pairOneBased": 15,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 21959646,
+      "fieldId": "rank4-d15015",
+      "kernelNanoseconds": 1635950,
+      "pairOneBased": 15,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 42730230,
+      "fieldId": "pari-medium-candidate-d9013587",
+      "kernelNanoseconds": 41395651,
+      "pairOneBased": 1,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 23748045,
+      "fieldId": "pari-medium-candidate-d9013587",
+      "kernelNanoseconds": 3510859,
+      "pairOneBased": 1,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 24539874,
+      "fieldId": "pari-medium-candidate-d9013587",
+      "kernelNanoseconds": 4097770,
+      "pairOneBased": 2,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 42663431,
+      "fieldId": "pari-medium-candidate-d9013587",
+      "kernelNanoseconds": 41358921,
+      "pairOneBased": 2,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 42806090,
+      "fieldId": "pari-medium-candidate-d9013587",
+      "kernelNanoseconds": 41437691,
+      "pairOneBased": 3,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 23922455,
+      "fieldId": "pari-medium-candidate-d9013587",
+      "kernelNanoseconds": 3273819,
+      "pairOneBased": 3,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 23959495,
+      "fieldId": "pari-medium-candidate-d9013587",
+      "kernelNanoseconds": 3842129,
+      "pairOneBased": 4,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 42714850,
+      "fieldId": "pari-medium-candidate-d9013587",
+      "kernelNanoseconds": 41347091,
+      "pairOneBased": 4,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 42825960,
+      "fieldId": "pari-medium-candidate-d9013587",
+      "kernelNanoseconds": 41467751,
+      "pairOneBased": 5,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 24758944,
+      "fieldId": "pari-medium-candidate-d9013587",
+      "kernelNanoseconds": 4270669,
+      "pairOneBased": 5,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 24568514,
+      "fieldId": "pari-medium-candidate-d9013587",
+      "kernelNanoseconds": 4038420,
+      "pairOneBased": 6,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 42756171,
+      "fieldId": "pari-medium-candidate-d9013587",
+      "kernelNanoseconds": 41392091,
+      "pairOneBased": 6,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 42976640,
+      "fieldId": "pari-medium-candidate-d9013587",
+      "kernelNanoseconds": 41543570,
+      "pairOneBased": 7,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 24603575,
+      "fieldId": "pari-medium-candidate-d9013587",
+      "kernelNanoseconds": 3972019,
+      "pairOneBased": 7,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 24637774,
+      "fieldId": "pari-medium-candidate-d9013587",
+      "kernelNanoseconds": 4084979,
+      "pairOneBased": 8,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 42675371,
+      "fieldId": "pari-medium-candidate-d9013587",
+      "kernelNanoseconds": 41319621,
+      "pairOneBased": 8,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 42780601,
+      "fieldId": "pari-medium-candidate-d9013587",
+      "kernelNanoseconds": 41374550,
+      "pairOneBased": 9,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 24138324,
+      "fieldId": "pari-medium-candidate-d9013587",
+      "kernelNanoseconds": 3915559,
+      "pairOneBased": 9,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 25286945,
+      "fieldId": "pari-medium-candidate-d9013587",
+      "kernelNanoseconds": 4833059,
+      "pairOneBased": 10,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 42636090,
+      "fieldId": "pari-medium-candidate-d9013587",
+      "kernelNanoseconds": 41401511,
+      "pairOneBased": 10,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 42838121,
+      "fieldId": "pari-medium-candidate-d9013587",
+      "kernelNanoseconds": 41427661,
+      "pairOneBased": 11,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 23841004,
+      "fieldId": "pari-medium-candidate-d9013587",
+      "kernelNanoseconds": 3814930,
+      "pairOneBased": 11,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 24276725,
+      "fieldId": "pari-medium-candidate-d9013587",
+      "kernelNanoseconds": 3758489,
+      "pairOneBased": 12,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 42739281,
+      "fieldId": "pari-medium-candidate-d9013587",
+      "kernelNanoseconds": 41428431,
+      "pairOneBased": 12,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 42706720,
+      "fieldId": "pari-medium-candidate-d9013587",
+      "kernelNanoseconds": 41433340,
+      "pairOneBased": 13,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 23461665,
+      "fieldId": "pari-medium-candidate-d9013587",
+      "kernelNanoseconds": 3254859,
+      "pairOneBased": 13,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 24188445,
+      "fieldId": "pari-medium-candidate-d9013587",
+      "kernelNanoseconds": 3826809,
+      "pairOneBased": 14,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 42748240,
+      "fieldId": "pari-medium-candidate-d9013587",
+      "kernelNanoseconds": 41460541,
+      "pairOneBased": 14,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 43004541,
+      "fieldId": "pari-medium-candidate-d9013587",
+      "kernelNanoseconds": 41663001,
+      "pairOneBased": 15,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 25934644,
+      "fieldId": "pari-medium-candidate-d9013587",
+      "kernelNanoseconds": 5599328,
+      "pairOneBased": 15,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 47882459,
+      "fieldId": "near-limit-h1715-d9999991",
+      "kernelNanoseconds": 46382580,
+      "pairOneBased": 1,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 22590605,
+      "fieldId": "near-limit-h1715-d9999991",
+      "kernelNanoseconds": 2440890,
+      "pairOneBased": 1,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 22812484,
+      "fieldId": "near-limit-h1715-d9999991",
+      "kernelNanoseconds": 2056000,
+      "pairOneBased": 2,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 47790630,
+      "fieldId": "near-limit-h1715-d9999991",
+      "kernelNanoseconds": 46460370,
+      "pairOneBased": 2,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 47801739,
+      "fieldId": "near-limit-h1715-d9999991",
+      "kernelNanoseconds": 46387239,
+      "pairOneBased": 3,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 22692945,
+      "fieldId": "near-limit-h1715-d9999991",
+      "kernelNanoseconds": 2146709,
+      "pairOneBased": 3,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 23007035,
+      "fieldId": "near-limit-h1715-d9999991",
+      "kernelNanoseconds": 2986979,
+      "pairOneBased": 4,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 48047290,
+      "fieldId": "near-limit-h1715-d9999991",
+      "kernelNanoseconds": 46719900,
+      "pairOneBased": 4,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 47956330,
+      "fieldId": "near-limit-h1715-d9999991",
+      "kernelNanoseconds": 46473710,
+      "pairOneBased": 5,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 22292585,
+      "fieldId": "near-limit-h1715-d9999991",
+      "kernelNanoseconds": 1877719,
+      "pairOneBased": 5,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 22195965,
+      "fieldId": "near-limit-h1715-d9999991",
+      "kernelNanoseconds": 2065549,
+      "pairOneBased": 6,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 47752049,
+      "fieldId": "near-limit-h1715-d9999991",
+      "kernelNanoseconds": 46507280,
+      "pairOneBased": 6,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 47689500,
+      "fieldId": "near-limit-h1715-d9999991",
+      "kernelNanoseconds": 46368450,
+      "pairOneBased": 7,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 22554415,
+      "fieldId": "near-limit-h1715-d9999991",
+      "kernelNanoseconds": 2226339,
+      "pairOneBased": 7,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 23641395,
+      "fieldId": "near-limit-h1715-d9999991",
+      "kernelNanoseconds": 2421769,
+      "pairOneBased": 8,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 48290939,
+      "fieldId": "near-limit-h1715-d9999991",
+      "kernelNanoseconds": 46554089,
+      "pairOneBased": 8,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 48021969,
+      "fieldId": "near-limit-h1715-d9999991",
+      "kernelNanoseconds": 46550320,
+      "pairOneBased": 9,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 22825804,
+      "fieldId": "near-limit-h1715-d9999991",
+      "kernelNanoseconds": 2157220,
+      "pairOneBased": 9,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 23653414,
+      "fieldId": "near-limit-h1715-d9999991",
+      "kernelNanoseconds": 2696699,
+      "pairOneBased": 10,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 48016640,
+      "fieldId": "near-limit-h1715-d9999991",
+      "kernelNanoseconds": 46479580,
+      "pairOneBased": 10,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 47946839,
+      "fieldId": "near-limit-h1715-d9999991",
+      "kernelNanoseconds": 46409699,
+      "pairOneBased": 11,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 23074125,
+      "fieldId": "near-limit-h1715-d9999991",
+      "kernelNanoseconds": 2309559,
+      "pairOneBased": 11,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 22672985,
+      "fieldId": "near-limit-h1715-d9999991",
+      "kernelNanoseconds": 1815229,
+      "pairOneBased": 12,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 47955599,
+      "fieldId": "near-limit-h1715-d9999991",
+      "kernelNanoseconds": 46466300,
+      "pairOneBased": 12,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 47788900,
+      "fieldId": "near-limit-h1715-d9999991",
+      "kernelNanoseconds": 46484050,
+      "pairOneBased": 13,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 23137415,
+      "fieldId": "near-limit-h1715-d9999991",
+      "kernelNanoseconds": 2603339,
+      "pairOneBased": 13,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 23068645,
+      "fieldId": "near-limit-h1715-d9999991",
+      "kernelNanoseconds": 2105470,
+      "pairOneBased": 14,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 48414379,
+      "fieldId": "near-limit-h1715-d9999991",
+      "kernelNanoseconds": 47074820,
+      "pairOneBased": 14,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 47991989,
+      "fieldId": "near-limit-h1715-d9999991",
+      "kernelNanoseconds": 46564069,
+      "pairOneBased": 15,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 22727825,
+      "fieldId": "near-limit-h1715-d9999991",
+      "kernelNanoseconds": 2164939,
+      "pairOneBased": 15,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 72986294,
+      "fieldId": "near-limit-h4378-d8173415",
+      "kernelNanoseconds": 71483484,
+      "pairOneBased": 1,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 22645435,
+      "fieldId": "near-limit-h4378-d8173415",
+      "kernelNanoseconds": 2115720,
+      "pairOneBased": 1,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 22963045,
+      "fieldId": "near-limit-h4378-d8173415",
+      "kernelNanoseconds": 1896699,
+      "pairOneBased": 2,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 73256864,
+      "fieldId": "near-limit-h4378-d8173415",
+      "kernelNanoseconds": 71680814,
+      "pairOneBased": 2,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 73217114,
+      "fieldId": "near-limit-h4378-d8173415",
+      "kernelNanoseconds": 71680874,
+      "pairOneBased": 3,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 22788535,
+      "fieldId": "near-limit-h4378-d8173415",
+      "kernelNanoseconds": 2283399,
+      "pairOneBased": 3,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 22756325,
+      "fieldId": "near-limit-h4378-d8173415",
+      "kernelNanoseconds": 2103180,
+      "pairOneBased": 4,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 73775043,
+      "fieldId": "near-limit-h4378-d8173415",
+      "kernelNanoseconds": 72182484,
+      "pairOneBased": 4,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 73194314,
+      "fieldId": "near-limit-h4378-d8173415",
+      "kernelNanoseconds": 71658574,
+      "pairOneBased": 5,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 22351855,
+      "fieldId": "near-limit-h4378-d8173415",
+      "kernelNanoseconds": 2071809,
+      "pairOneBased": 5,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 22311615,
+      "fieldId": "near-limit-h4378-d8173415",
+      "kernelNanoseconds": 1874249,
+      "pairOneBased": 6,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 72981404,
+      "fieldId": "near-limit-h4378-d8173415",
+      "kernelNanoseconds": 71502564,
+      "pairOneBased": 6,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 73262824,
+      "fieldId": "near-limit-h4378-d8173415",
+      "kernelNanoseconds": 71633834,
+      "pairOneBased": 7,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 22617555,
+      "fieldId": "near-limit-h4378-d8173415",
+      "kernelNanoseconds": 2125779,
+      "pairOneBased": 7,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 22128495,
+      "fieldId": "near-limit-h4378-d8173415",
+      "kernelNanoseconds": 1878989,
+      "pairOneBased": 8,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 73107724,
+      "fieldId": "near-limit-h4378-d8173415",
+      "kernelNanoseconds": 71649384,
+      "pairOneBased": 8,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 72856514,
+      "fieldId": "near-limit-h4378-d8173415",
+      "kernelNanoseconds": 71335544,
+      "pairOneBased": 9,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 23356375,
+      "fieldId": "near-limit-h4378-d8173415",
+      "kernelNanoseconds": 2560990,
+      "pairOneBased": 9,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 22972175,
+      "fieldId": "near-limit-h4378-d8173415",
+      "kernelNanoseconds": 2611700,
+      "pairOneBased": 10,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 73092653,
+      "fieldId": "near-limit-h4378-d8173415",
+      "kernelNanoseconds": 71623775,
+      "pairOneBased": 10,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 72953724,
+      "fieldId": "near-limit-h4378-d8173415",
+      "kernelNanoseconds": 71284795,
+      "pairOneBased": 11,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 22473504,
+      "fieldId": "near-limit-h4378-d8173415",
+      "kernelNanoseconds": 1947260,
+      "pairOneBased": 11,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 22606206,
+      "fieldId": "near-limit-h4378-d8173415",
+      "kernelNanoseconds": 2168570,
+      "pairOneBased": 12,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 73019674,
+      "fieldId": "near-limit-h4378-d8173415",
+      "kernelNanoseconds": 71545384,
+      "pairOneBased": 12,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 73605794,
+      "fieldId": "near-limit-h4378-d8173415",
+      "kernelNanoseconds": 72099244,
+      "pairOneBased": 13,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 22336685,
+      "fieldId": "near-limit-h4378-d8173415",
+      "kernelNanoseconds": 1701579,
+      "pairOneBased": 13,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 21768185,
+      "fieldId": "near-limit-h4378-d8173415",
+      "kernelNanoseconds": 1618919,
+      "pairOneBased": 14,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 73152834,
+      "fieldId": "near-limit-h4378-d8173415",
+      "kernelNanoseconds": 71722454,
+      "pairOneBased": 14,
+      "positionInPairOneBased": 2
+    },
+    {
+      "arm": "rust",
+      "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 73525324,
+      "fieldId": "near-limit-h4378-d8173415",
+      "kernelNanoseconds": 72026064,
+      "pairOneBased": 15,
+      "positionInPairOneBased": 1
+    },
+    {
+      "arm": "pari",
+      "boundaryLabelAsserted": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 22711615,
+      "fieldId": "near-limit-h4378-d8173415",
+      "kernelNanoseconds": 2160629,
+      "pairOneBased": 15,
+      "positionInPairOneBased": 2
+    }
+  ],
+  "schema": "sagejs.public-quadratic/native-pari-benchmark-receipt-v1",
+  "tinyBatchThroughput": {
+    "comparisonStatus": "rust-only-throughput; not a Rust/PARI ratio",
+    "fields": [
+      {
+        "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+        "computationsPerSample": 100,
+        "everyComputationReconstructedAndVerified": true,
+        "fieldId": "tiny-trivial-d3",
+        "kernelNanoseconds": [
+          1055719,
+          1073130,
+          1056379,
+          1062690,
+          1088760,
+          1051190,
+          1042929,
+          1069130,
+          1049839,
+          1066110,
+          1064679,
+          1060030,
+          1060029,
+          1061840,
+          1066750
+        ],
+        "medianBatchNanoseconds": 1061840,
+        "medianComputationsPerSecond": 94176.14706547126,
+        "medianNanosecondsPerComputation": 10618.4
+      },
+      {
+        "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+        "computationsPerSample": 100,
+        "everyComputationReconstructedAndVerified": true,
+        "fieldId": "tiny-cyclic-d47",
+        "kernelNanoseconds": [
+          2204800,
+          2216210,
+          2202049,
+          2210360,
+          2193810,
+          2286260,
+          2213189,
+          2229770,
+          2202120,
+          2229859,
+          2183459,
+          2204460,
+          2276850,
+          2224660,
+          2245969
+        ],
+        "medianBatchNanoseconds": 2213189,
+        "medianComputationsPerSecond": 45183.66935675173,
+        "medianNanosecondsPerComputation": 22131.89
+      },
+      {
+        "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+        "computationsPerSample": 100,
+        "everyComputationReconstructedAndVerified": true,
+        "fieldId": "tiny-noncyclic-d231",
+        "kernelNanoseconds": [
+          17528076,
+          17450226,
+          17417946,
+          17390106,
+          17423105,
+          17288367,
+          17595186,
+          17346536,
+          17399036,
+          17363816,
+          17418286,
+          17347996,
+          17385617,
+          17366476,
+          17388927
+        ],
+        "medianBatchNanoseconds": 17390106,
+        "medianComputationsPerSecond": 5750.3962310523,
+        "medianNanosecondsPerComputation": 173901.06
+      },
+      {
+        "boundaryLabelAsserted": "public-coefficients-to-verified-complete-class-group-v1",
+        "computationsPerSample": 100,
+        "everyComputationReconstructedAndVerified": true,
+        "fieldId": "rank4-d15015",
+        "kernelNanoseconds": [
+          291287576,
+          291353076,
+          291851675,
+          293566635,
+          290569566,
+          291805986,
+          290540005,
+          290271396,
+          290551986,
+          291062246,
+          290726016,
+          290742935,
+          292646245,
+          290438456,
+          291083286
+        ],
+        "medianBatchNanoseconds": 291062246,
+        "medianComputationsPerSecond": 343.56912095016264,
+        "medianNanosecondsPerComputation": 2910622.46
+      }
+    ],
+    "method": "Each sample is one fresh process; inside it every coefficient-only computation independently reconstructs and verifies the complete result without a result cache."
+  }
+}
