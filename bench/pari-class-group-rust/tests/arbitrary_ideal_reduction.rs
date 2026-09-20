@@ -455,6 +455,21 @@ fn row6_index_prime_ideal_reduces_with_exact_replay() {
     )
     .unwrap();
 
+    let mut counterfeit_field_binding = mapped.clone();
+    counterfeit_field_binding.field_sha256[0] ^= 1;
+    assert_eq!(
+        replay_upstream_assumed_arbitrary_cubic_ideal_class_map(
+            order,
+            &mapped_input,
+            &base,
+            &mapped_reduction,
+            &authority,
+            &counterfeit_field_binding,
+            limits,
+            &mut workspace,
+        ),
+        Err(ArbitraryIdealReductionError::ClassMapCertificateMismatch)
+    );
     let mut counterfeit_catalog_binding = mapped.clone();
     counterfeit_catalog_binding.factor_base_sha256[0] ^= 1;
     assert_eq!(

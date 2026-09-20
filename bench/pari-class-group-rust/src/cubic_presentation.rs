@@ -17,10 +17,13 @@
 use rug::Integer;
 
 use crate::arbitrary_ideal_reduction::{
-    ArbitraryIdealReductionError, AuthenticatedPresentationClassMap, MaximalCubicOrder,
-    PrincipalRelationWitness, authenticate_presentation_class_map,
+    ARBITRARY_IDEAL_MAXIMUM_VALUATION, ArbitraryIdealReductionError,
+    AuthenticatedPresentationClassMap, MaximalCubicOrder, PrincipalRelationWitness,
+    authenticate_presentation_class_map,
 };
-use crate::class_group::PreparedCubicRelationPresentation;
+use crate::class_group::{
+    PREPARED_CUBIC_SUPPLEMENTARY_RELATIONS, PreparedCubicRelationPresentation,
+};
 use crate::class_maps::{ClassMapError, PresentationClassMap, RelationCoverage};
 use crate::hnf::{BigIntMatrix, ExactNormalFormWorkspace, NormalFormError, NormalFormLimits};
 use crate::polynomial_preparation::PreparedPublicCubic;
@@ -32,6 +35,14 @@ const DEGREE: usize = 3;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct CubicPresentationCandidateLimits {
     pub normal_form: NormalFormLimits,
+    /// Largest relation exponent admitted before Smith reduction or ideal replay.
+    pub maximum_relation_exponent: u32,
+    /// Conservative dense multiply-add budget for transform verification and
+    /// candidate coordinate replay after the bounded Smith reduction.
+    pub maximum_verification_multiply_adds: u64,
+    /// Maximum total nonzero prime-ideal factors replayed across principal
+    /// relation witnesses.
+    pub maximum_principal_factor_terms: usize,
 }
 
 impl Default for CubicPresentationCandidateLimits {
@@ -41,6 +52,9 @@ impl Default for CubicPresentationCandidateLimits {
                 max_entries: 10_000_000,
                 max_operations: 50_000_000,
             },
+            maximum_relation_exponent: ARBITRARY_IDEAL_MAXIMUM_VALUATION,
+            maximum_verification_multiply_adds: 100_000_000,
+            maximum_principal_factor_terms: 10_000_000,
         }
     }
 }
@@ -76,6 +90,7 @@ pub struct CubicCandidateGeneratorOrderEvidence {
 /// completion must wrap this object in a stronger type rather than relabel it.
 #[derive(Clone, Debug)]
 pub struct AuthenticatedCubicPresentationCandidate {
+    prepared: PreparedPublicCubic,
     collected: PreparedCubicRelationPresentation,
     principal_relations: Vec<PrincipalRelationWitness>,
     class_map: AuthenticatedPresentationClassMap,
@@ -84,6 +99,15 @@ pub struct AuthenticatedCubicPresentationCandidate {
 }
 
 impl AuthenticatedCubicPresentationCandidate {
+    pub(crate) fn prepared(&self) -> &PreparedPublicCubic {
+        &self.prepared
+    }
+
+    /// Return the retained collector transcript.
+    ///
+    /// The factor base, relation vectors, and principal generators have been
+    /// authenticated. Search hints, counters, timings, capacities, and other
+    /// collector telemetry are diagnostic only and convey no authority.
     pub fn collected(&self) -> &PreparedCubicRelationPresentation {
         &self.collected
     }
@@ -120,6 +144,19 @@ pub enum CubicPresentationCandidateError {
         relation_count: usize,
         factor_base_size: usize,
     },
+    InsufficientRelationSurplus {
+        required: usize,
+        actual: usize,
+    },
+    InvalidLimits,
+    VerificationBudgetExceeded {
+        required: u64,
+        limit: u64,
+    },
+    PrincipalFactorTermBudgetExceeded {
+        required: usize,
+        limit: usize,
+    },
     InvalidShape,
     NegativeRelationExponent {
         relation: usize,
@@ -130,6 +167,12 @@ pub enum CubicPresentationCandidateError {
         relation: usize,
         factor: usize,
         exponent: i64,
+    },
+    RelationExponentLimit {
+        relation: usize,
+        factor: usize,
+        exponent: u32,
+        limit: u32,
     },
     GeneratorOrderWitnessMismatch {
         smith_position: usize,
@@ -165,9 +208,14 @@ impl From<ArbitraryIdealReductionError> for CubicPresentationCandidateError {
 /// order before the sealed map is returned.
 pub fn authenticate_cubic_presentation_candidate(
     prepared: &PreparedPublicCubic,
-    collected: PreparedCubicRelationPresentation,
+    mut collected: PreparedCubicRelationPresentation,
     limits: CubicPresentationCandidateLimits,
 ) -> Result<AuthenticatedCubicPresentationCandidate, CubicPresentationCandidateError> {
+    if limits.maximum_relation_exponent == 0
+        || limits.maximum_relation_exponent > ARBITRARY_IDEAL_MAXIMUM_VALUATION
+    {
+        return Err(CubicPresentationCandidateError::InvalidLimits);
+    }
     let factor_base_size = collected.factor_base.exact_ideals.len();
     if factor_base_size == 0
         || collected.relations.len() % factor_base_size != 0
@@ -197,12 +245,35 @@ pub fn authenticate_cubic_presentation_candidate(
     {
         return Err(CubicPresentationCandidateError::InvalidShape);
     }
-    if !collected.complete_rank_and_surplus || collected.missing_rank != 0 {
-        return Err(CubicPresentationCandidateError::IncompleteRelations {
-            missing_rank: collected.missing_rank,
-            relation_count,
-            factor_base_size,
-        });
+    let required_relations = factor_base_size
+        .checked_add(PREPARED_CUBIC_SUPPLEMENTARY_RELATIONS)
+        .ok_or(NormalFormError::DimensionOverflow {
+            rows: factor_base_size,
+            columns: PREPARED_CUBIC_SUPPLEMENTARY_RELATIONS,
+        })?;
+    if relation_count < required_relations {
+        return Err(
+            CubicPresentationCandidateError::InsufficientRelationSurplus {
+                required: required_relations,
+                actual: relation_count,
+            },
+        );
+    }
+
+    let verification_multiply_adds =
+        smith_verification_multiply_adds(factor_base_size, relation_count).ok_or(
+            CubicPresentationCandidateError::VerificationBudgetExceeded {
+                required: u64::MAX,
+                limit: limits.maximum_verification_multiply_adds,
+            },
+        )?;
+    if verification_multiply_adds > limits.maximum_verification_multiply_adds {
+        return Err(
+            CubicPresentationCandidateError::VerificationBudgetExceeded {
+                required: verification_multiply_adds,
+                limit: limits.maximum_verification_multiply_adds,
+            },
+        );
     }
 
     let relation_entries =
@@ -221,6 +292,7 @@ pub fn authenticate_cubic_presentation_candidate(
     }
     let mut relation_values = vec![Integer::new(); relation_entries];
     let mut principal_relations = Vec::with_capacity(relation_count);
+    let mut principal_factor_terms = 0_usize;
     for relation in 0..relation_count {
         let mut exponents = Vec::with_capacity(factor_base_size);
         for factor in 0..factor_base_size {
@@ -239,6 +311,30 @@ pub fn authenticate_cubic_presentation_candidate(
                     exponent,
                 }
             })?;
+            if exponent > limits.maximum_relation_exponent {
+                return Err(CubicPresentationCandidateError::RelationExponentLimit {
+                    relation,
+                    factor,
+                    exponent,
+                    limit: limits.maximum_relation_exponent,
+                });
+            }
+            if exponent != 0 {
+                principal_factor_terms = principal_factor_terms.checked_add(1).ok_or(
+                    CubicPresentationCandidateError::PrincipalFactorTermBudgetExceeded {
+                        required: usize::MAX,
+                        limit: limits.maximum_principal_factor_terms,
+                    },
+                )?;
+                if principal_factor_terms > limits.maximum_principal_factor_terms {
+                    return Err(
+                        CubicPresentationCandidateError::PrincipalFactorTermBudgetExceeded {
+                            required: principal_factor_terms,
+                            limit: limits.maximum_principal_factor_terms,
+                        },
+                    );
+                }
+            }
             relation_values[factor * relation_count + relation] = Integer::from(exponent);
             exponents.push(exponent);
         }
@@ -260,6 +356,10 @@ pub fn authenticate_cubic_presentation_candidate(
             factor_base_size,
         });
     }
+    // The producer's public booleans are telemetry, never authority. Publish
+    // only the values independently established above in the sealed object.
+    collected.complete_rank_and_surplus = true;
+    collected.missing_rank = 0;
 
     let mut generator_orders = Vec::new();
     for smith_position in 0..factor_base_size {
@@ -312,10 +412,33 @@ pub fn authenticate_cubic_presentation_candidate(
     )?;
 
     Ok(AuthenticatedCubicPresentationCandidate {
+        prepared: prepared.clone(),
         collected,
         principal_relations,
         class_map,
         generator_orders,
         class_number_candidate,
     })
+}
+
+fn smith_verification_multiply_adds(generators: usize, relations: usize) -> Option<u64> {
+    let g = u64::try_from(generators).ok()?;
+    let r = u64::try_from(relations).ok()?;
+    let cube = |value: u64| {
+        value
+            .checked_mul(value)
+            .and_then(|square| square.checked_mul(value))
+    };
+    let g3 = cube(g)?;
+    let r3 = cube(r)?;
+    let g2r = g.checked_mul(g)?.checked_mul(r)?;
+    let gr2 = g.checked_mul(r)?.checked_mul(r)?;
+    // Smith verification runs once in the reducer and once when constructing
+    // the class map. Each pass checks L*A*R, both inverse pairs, and the
+    // candidate map subsequently replays generator-order and relation images.
+    g2r.checked_add(gr2)
+        .and_then(|value| value.checked_add(g3.checked_mul(2)?))
+        .and_then(|value| value.checked_add(r3.checked_mul(2)?))
+        .and_then(|value| value.checked_mul(2))
+        .and_then(|value| value.checked_add(g2r.checked_mul(2)?))
 }

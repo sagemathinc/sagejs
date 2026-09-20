@@ -3,9 +3,9 @@
 
 use rug::Integer;
 use sagejs_pari_class_group_rust_experiment::{
-    CubicPresentationCandidateLimits, PreparedCollectorLimits, PublicCubicPreparationLimits,
-    RelationCoverage, authenticate_cubic_presentation_candidate, collect_prepared_cubic_relations,
-    prepare_monic_cubic,
+    CubicPresentationCandidateError, CubicPresentationCandidateLimits, PreparedCollectorLimits,
+    PublicCubicPreparationLimits, RelationCoverage, authenticate_cubic_presentation_candidate,
+    collect_prepared_cubic_relations, prepare_monic_cubic,
 };
 
 fn public_cubic(
@@ -150,4 +150,90 @@ fn rejects_counterfeit_principal_elements_and_relation_exponents() {
         )
         .is_err()
     );
+}
+
+#[test]
+fn recomputes_surplus_instead_of_trusting_collector_flags() {
+    let prepared = public_small_cubic();
+    let mut collected = collect_prepared_cubic_relations(
+        prepared.field(),
+        PreparedCollectorLimits {
+            maximum_visited_ideals: 10_000,
+            maximum_candidates: 10_000,
+        },
+    )
+    .unwrap();
+    let factor_base_size = collected.factor_base.exact_ideals.len();
+    // The collector contract requires seven supplementary relations. Keep six
+    // and counterfeit its diagnostic booleans.
+    let keep = factor_base_size + 6;
+    collected.relations.truncate(keep * factor_base_size);
+    collected.generators.truncate(keep * 3);
+    collected.first_nonzero_hints.truncate(keep);
+    collected.metadata.truncate(keep * 3);
+    collected.complete_rank_and_surplus = true;
+    collected.missing_rank = 0;
+
+    assert!(matches!(
+        authenticate_cubic_presentation_candidate(
+            &prepared,
+            collected,
+            CubicPresentationCandidateLimits::default(),
+        ),
+        Err(CubicPresentationCandidateError::InsufficientRelationSurplus {
+            required,
+            actual,
+        }) if required == factor_base_size + 7 && actual == keep
+    ));
+}
+
+#[test]
+fn enforces_exponent_and_post_smith_replay_budgets() {
+    let prepared = public_small_cubic();
+    let collect = || {
+        collect_prepared_cubic_relations(
+            prepared.field(),
+            PreparedCollectorLimits {
+                maximum_visited_ideals: 10_000,
+                maximum_candidates: 10_000,
+            },
+        )
+        .unwrap()
+    };
+
+    let mut excessive_exponent = collect();
+    excessive_exponent.relations[0] = 257;
+    let mut limits = CubicPresentationCandidateLimits::default();
+    limits.normal_form.max_operations = 0;
+    assert!(matches!(
+        authenticate_cubic_presentation_candidate(&prepared, excessive_exponent, limits),
+        Err(CubicPresentationCandidateError::RelationExponentLimit {
+            relation: 0,
+            factor: 0,
+            exponent: 257,
+            limit: 256,
+        })
+    ));
+
+    let mut limits = CubicPresentationCandidateLimits::default();
+    limits.maximum_verification_multiply_adds = 0;
+    assert!(matches!(
+        authenticate_cubic_presentation_candidate(&prepared, collect(), limits),
+        Err(CubicPresentationCandidateError::VerificationBudgetExceeded {
+            required,
+            limit: 0,
+        }) if required > 0
+    ));
+
+    let mut limits = CubicPresentationCandidateLimits::default();
+    limits.maximum_principal_factor_terms = 0;
+    assert!(matches!(
+        authenticate_cubic_presentation_candidate(&prepared, collect(), limits),
+        Err(
+            CubicPresentationCandidateError::PrincipalFactorTermBudgetExceeded {
+                required: 1,
+                limit: 0,
+            }
+        )
+    ));
 }

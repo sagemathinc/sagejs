@@ -12,7 +12,11 @@ public polynomial coefficients
   -> exact transform-bearing Smith candidate map
   -> exact replay of every principal relation element
   -> exact candidate generator-order relation witnesses
-  -> fail closed
+  -> exact dependency lattice and compact unit reconstruction
+  -> directed regulator enclosure
+  -> Belabas--Friedman class/unit index-one enclosure
+  -> Belabas--Diaz y Diaz--Friedman factor-base generation inequality
+  -> sealed GRH-conditional complete result
 ```
 
 The stdin request is closed: it accepts only four polynomial coefficients, a
@@ -34,16 +38,16 @@ This exhaustive HNF route is a bounded qualification implementation. A
 proof-carrying Round-2 implementation remains the intended scalable production
 route for larger discriminant valuations and overorder primes.
 
-The process exits with status 2 after printing an `incomplete` receipt even
-when every available stage succeeds. This is deliberate. The public library
-now retains and authenticates every collected principal relation, the exact
-Smith map, and candidate generator/order witnesses, but it does not yet attach
-the unit lattice and analytic or unconditional completion needed to turn that
-supplied-relation quotient into a proof-authorized class group. Nor does the
-unified route yet expose arbitrary-ideal mapping with assembled principal
-quotient witnesses. The more complete class-and-unit assembly in
-`row6-candidate/src/main.rs` remains executable-local qualification code, not
-a callable public library API.
+The process exits successfully only after the typed library completion phase
+has isolated class/unit index one and certified factor-base generation under
+the two hypotheses named in the receipt. Unconditional mode, exhausted
+resources, and equation-order index primes fail closed. Index primes remain
+disabled because the current splitting-record path does not yet distinguish
+all maximal-order splitting types there. The sealed result retains its
+authenticated presentation map for subsequent arbitrary-ideal operations.
+The receipt's stage clocks end when the sealed mathematical result is
+constructed; JSON projection and serialization are excluded, matching the
+PARI public-call control's exclusion of result getters.
 
 Run the regression tests with:
 
@@ -58,7 +62,7 @@ Run the executable with:
 cargo run --release --manifest-path \
   bench/pari-class-group-rust/qualification/public-cubic-e2e/Cargo.toml <<'EOF'
 {
-  "schema": "sagejs.rust-class-group/public-cubic-e2e-request-v1",
+  "schema": "sagejs.rust-class-group/public-cubic-e2e-request-v2",
   "polynomialAscending": ["-1", "-1", "0", "1"],
   "proofMode": "conditional-grh",
   "resources": {
@@ -68,7 +72,19 @@ cargo run --release --manifest-path \
     "maximumVisitedIdeals": 10000,
     "maximumCandidates": 10000,
     "maximumNormalFormEntries": 10000000,
-    "maximumNormalFormOperations": 50000000
+    "maximumNormalFormOperations": 50000000,
+    "maximumRelationExponent": 256,
+    "maximumVerificationMultiplyAdds": 100000000,
+    "maximumPrincipalFactorTerms": 10000000,
+    "logarithmPrecisionBits": 1024,
+    "replayPrecisionBits": 512,
+    "analyticPrecisionBits": 256,
+    "maximumRelations": 10000,
+    "maximumDependencies": 1000,
+    "maximumKernelCoefficientBits": 4080,
+    "maximumUnitExponentBits": 8192,
+    "maximumReconstructionDenominatorBits": 4096,
+    "maximumAnalyticThreshold": 23994
   }
 }
 EOF

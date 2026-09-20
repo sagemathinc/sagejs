@@ -124,7 +124,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/arbitrary_ideal_reduction.rs",
-      "sha256": "1d821cb838b3d848cc91abd19326160db58ea9f81edd14623bb5d6e81208ef2a",
+      "sha256": "0b3709d1cef8e9938c7c3d7fe39ec267bad03ea5170cf1ee202b24af10410833",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
@@ -144,7 +144,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/class_group.rs",
-      "sha256": "0d556a8ef214a496f5387efa959d8dd4983166d1ccd8ad8d5848d5c4354760b7",
+      "sha256": "d26ed8d012b5ca46131ae9700e004d02b91a7f1675ad65e5d0bf9236b2356d79",
       "classification": "behavioral_reimplementation",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "partial",
@@ -190,8 +190,18 @@
       "notes": "Classification follows its translated control-flow purpose; mapping remains deliberately fail-closed."
     },
     {
+      "path": "bench/pari-class-group-rust/src/cubic_completion.rs",
+      "sha256": "c16b15b42ea00cff56360c7c7c49ba341ad88055c3abf5fcb116ccf118313d2a",
+      "classification": "original",
+      "declared_license_expression": "GPL-2.0-or-later",
+      "mapping_status": "not_applicable",
+      "mappings": [],
+      "missing_mapping_explanation": null,
+      "notes": "Original typed GRH-conditional cubic completion boundary combining exact unit-lattice replay with directed FLINT/Arb analytic evidence."
+    },
+    {
       "path": "bench/pari-class-group-rust/src/cubic_presentation.rs",
-      "sha256": "bdcf006a0e63b433b8076c51fcc779a2872443feba2e89221c6fda97cdda3ac0",
+      "sha256": "9f9881a9cdbafda7d15d5c59ae67eb4d402f9f2c65dbfb820363cb2f94af0c30",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
@@ -329,7 +339,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/lib.rs",
-      "sha256": "bad26f800e94e346dbc5ab34e0aaed55c23410ec6588624e0b0ffc23b6279a90",
+      "sha256": "fe94257226288e7c167865f90168c0e00315acb71f15ea4b5ec017fddb73782c",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",

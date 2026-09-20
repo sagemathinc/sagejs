@@ -39,7 +39,7 @@
     ]
   },
   "summary": {
-    "sourceFiles": 75,
+    "sourceFiles": 77,
     "unsafeItems": 91,
     "unsafeItemsMissingRationale": 82,
     "ffiBoundaries": 106,
@@ -58,7 +58,7 @@
         "sourceFilesMissingProvenanceHeader": 1
       },
       "product-candidate": {
-        "sourceFiles": 29,
+        "sourceFiles": 30,
         "unsafeItems": 16,
         "unsafeItemsMissingRationale": 16,
         "ffiBoundaries": 31,
@@ -66,7 +66,7 @@
         "sourceFilesMissingProvenanceHeader": 0
       },
       "product-candidate-test": {
-        "sourceFiles": 11,
+        "sourceFiles": 12,
         "unsafeItems": 0,
         "unsafeItemsMissingRationale": 0,
         "ffiBoundaries": 0,
@@ -3053,8 +3053,8 @@
     {
       "file": "qualification/public-cubic-e2e/src/lib.rs",
       "scope": "qualification-only",
-      "sha256": "39e83127e0d6c872cad428a8f42284cd1386396c8307845aef0e0bc4718c463b",
-      "bytes": 11873,
+      "sha256": "91b08f7f130b6d1017b343f4447656290021122d1e3f898f0f3e3650861a711d",
+      "bytes": 18394,
       "copyrightNotices": [
         "Copyright (C) Sage.js contributors."
       ],
@@ -3065,8 +3065,8 @@
     {
       "file": "qualification/public-cubic-e2e/src/main.rs",
       "scope": "qualification-only",
-      "sha256": "4f1c43e0e091a603a94bc235df27a2e9162bb90a0ce39290df14548b81946ec6",
-      "bytes": 1313,
+      "sha256": "62a94e92a6ce81c805bf4eb597d324f5210c2fc228d1e38087385656cb3c3ee0",
+      "bytes": 1255,
       "copyrightNotices": [
         "Copyright (C) Sage.js contributors."
       ],
@@ -3077,8 +3077,8 @@
     {
       "file": "qualification/public-cubic-e2e/tests/cli.rs",
       "scope": "qualification-only",
-      "sha256": "6c5e70e5a41bd75bbbdf629bb1552e0784473ed405639f70205723c67c5047f5",
-      "bytes": 2169,
+      "sha256": "414eab5b4aa30d03e7f2ab21630961cdebcce430b4183723168c1e7315dee0fc",
+      "bytes": 2841,
       "copyrightNotices": [
         "Copyright (C) Sage.js contributors."
       ],
@@ -3369,8 +3369,8 @@
     {
       "file": "src/arbitrary_ideal_reduction.rs",
       "scope": "product-candidate",
-      "sha256": "1d821cb838b3d848cc91abd19326160db58ea9f81edd14623bb5d6e81208ef2a",
-      "bytes": 44295,
+      "sha256": "0b3709d1cef8e9938c7c3d7fe39ec267bad03ea5170cf1ee202b24af10410833",
+      "bytes": 44715,
       "copyrightNotices": [
         "Copyright (C) Sage.js contributors."
       ],
@@ -3393,8 +3393,8 @@
     {
       "file": "src/class_group.rs",
       "scope": "product-candidate",
-      "sha256": "0d556a8ef214a496f5387efa959d8dd4983166d1ccd8ad8d5848d5c4354760b7",
-      "bytes": 33827,
+      "sha256": "d26ed8d012b5ca46131ae9700e004d02b91a7f1675ad65e5d0bf9236b2356d79",
+      "bytes": 33932,
       "copyrightNotices": [
         "Copyright (C) The PARI group and Sage.js contributors."
       ],
@@ -3427,10 +3427,22 @@
       "headerComplete": true
     },
     {
+      "file": "src/cubic_completion.rs",
+      "scope": "product-candidate",
+      "sha256": "c16b15b42ea00cff56360c7c7c49ba341ad88055c3abf5fcb116ccf118313d2a",
+      "bytes": 27052,
+      "copyrightNotices": [
+        "Copyright (C) Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": true
+    },
+    {
       "file": "src/cubic_presentation.rs",
       "scope": "product-candidate",
-      "sha256": "bdcf006a0e63b433b8076c51fcc779a2872443feba2e89221c6fda97cdda3ac0",
-      "bytes": 11893,
+      "sha256": "9f9881a9cdbafda7d15d5c59ae67eb4d402f9f2c65dbfb820363cb2f94af0c30",
+      "bytes": 16979,
       "copyrightNotices": [
         "Copyright (C) Sage.js contributors."
       ],
@@ -3525,8 +3537,8 @@
     {
       "file": "src/lib.rs",
       "scope": "product-candidate",
-      "sha256": "bad26f800e94e346dbc5ab34e0aaed55c23410ec6588624e0b0ffc23b6279a90",
-      "bytes": 6307,
+      "sha256": "fe94257226288e7c167865f90168c0e00315acb71f15ea4b5ec017fddb73782c",
+      "bytes": 6690,
       "copyrightNotices": [
         "Copyright (C) The PARI group and Sage.js contributors."
       ],
@@ -3693,8 +3705,8 @@
     {
       "file": "tests/arbitrary_ideal_reduction.rs",
       "scope": "product-candidate-test",
-      "sha256": "faf8e589945298ee87126ae905dfc8f2aec326d105344348a186f7666e67a1a5",
-      "bytes": 31195,
+      "sha256": "cdcc3f8a4c754af8aab2c64d1352944ddbfd05a6f53612220ed19dcf374150dd",
+      "bytes": 31681,
       "copyrightNotices": [],
       "licenseExpression": null,
       "originClassification": "sagejs-original-or-unspecified",
@@ -3749,10 +3761,22 @@
       "headerComplete": true
     },
     {
+      "file": "tests/cubic_conditional_completion.rs",
+      "scope": "product-candidate-test",
+      "sha256": "4caa40ee5643192dfc1aea9ea0413c492434c60975b3156bcb750a7d6209c709",
+      "bytes": 5632,
+      "copyrightNotices": [
+        "Copyright (C) Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": true
+    },
+    {
       "file": "tests/cubic_presentation_candidate.rs",
       "scope": "product-candidate-test",
-      "sha256": "f2914ad73eb39a90898604abeecd4a1c495126c9751e10186f60588a96fc9ee2",
-      "bytes": 4525,
+      "sha256": "017dc4f9f910747f04f0015f558a17e37655ea3514af271cbac66b75e2691a77",
+      "bytes": 7444,
       "copyrightNotices": [
         "Copyright (C) Sage.js contributors."
       ],
@@ -3920,7 +3944,7 @@
     {
       "file": "qualification/public-cubic-e2e/Cargo.toml",
       "scope": "qualification-build-support",
-      "sha256": "5cdd121968648293b6a1f451f1f961561049ac45735d60611a1e8c2074fc4816",
+      "sha256": "6877cc418e533ff800ede4179e7016deecf2603e532c38e3e67d188027143395",
       "kind": "cargo-manifest",
       "packageName": "sagejs-public-cubic-class-group-e2e-qualification",
       "packageVersion": "0.1.0",
@@ -4134,5 +4158,5 @@
     "miriCoverageEstablished": false,
     "productionQualified": false
   },
-  "inventorySha256": "514fd98782dea1b64f9f9b38eb98ab33e6077742ed4a0155504a82b0286e84b3"
+  "inventorySha256": "2c633f08dec0536a68767718e3ac43c5ecab85ad3d64daca448204c26e33704c"
 }

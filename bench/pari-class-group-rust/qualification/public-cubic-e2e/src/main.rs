@@ -26,10 +26,9 @@ fn main() {
     };
     match qualify(request) {
         Ok(receipt) => {
+            let public_complete = receipt.public_complete;
             println!("{}", serde_json::to_string(&receipt).unwrap());
-            // A candidate is useful evidence, but this executable must never
-            // make it indistinguishable from a completed public result.
-            std::process::exit(2);
+            std::process::exit(if public_complete { 0 } else { 2 });
         }
         Err(error) => {
             println!(

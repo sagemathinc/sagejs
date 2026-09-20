@@ -34,7 +34,8 @@ use std::time::Instant;
 
 const DEGREE: usize = 3;
 const RELATION_TARGET: usize = 73;
-const SUPPLEMENTARY_RELATIONS: usize = 7;
+pub(crate) const PREPARED_CUBIC_SUPPLEMENTARY_RELATIONS: usize = 7;
+const SUPPLEMENTARY_RELATIONS: usize = PREPARED_CUBIC_SUPPLEMENTARY_RELATIONS;
 const RELATIONS_PER_IDEAL: usize = 4;
 const FACTOR_LIMIT: u64 = 1_048_576;
 const PRIME_LIMIT: usize = 65_537;

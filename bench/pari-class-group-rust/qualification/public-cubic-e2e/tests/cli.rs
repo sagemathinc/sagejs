@@ -6,7 +6,7 @@ use std::io::Write;
 use std::process::{Command, Stdio};
 
 const VALID_REQUEST: &str = r#"{
-  "schema": "sagejs.rust-class-group/public-cubic-e2e-request-v1",
+  "schema": "sagejs.rust-class-group/public-cubic-e2e-request-v2",
   "polynomialAscending": ["-1", "-1", "0", "1"],
   "proofMode": "conditional-grh",
   "resources": {
@@ -16,7 +16,19 @@ const VALID_REQUEST: &str = r#"{
     "maximumVisitedIdeals": 10000,
     "maximumCandidates": 10000,
     "maximumNormalFormEntries": 10000000,
-    "maximumNormalFormOperations": 50000000
+    "maximumNormalFormOperations": 50000000,
+    "maximumRelationExponent": 256,
+    "maximumVerificationMultiplyAdds": 100000000,
+    "maximumPrincipalFactorTerms": 10000000,
+    "logarithmPrecisionBits": 1024,
+    "replayPrecisionBits": 512,
+    "analyticPrecisionBits": 256,
+    "maximumRelations": 10000,
+    "maximumDependencies": 1000,
+    "maximumKernelCoefficientBits": 4080,
+    "maximumUnitExponentBits": 8192,
+    "maximumReconstructionDenominatorBits": 4096,
+    "maximumAnalyticThreshold": 23994
   }
 }"#;
 
@@ -38,22 +50,30 @@ fn run(source: &str) -> std::process::Output {
 }
 
 #[test]
-fn executable_emits_evidence_but_never_success_for_a_candidate() {
+fn executable_emits_a_conditionally_complete_result() {
     let output = run(VALID_REQUEST);
-    assert_eq!(output.status.code(), Some(2));
+    assert_eq!(output.status.code(), Some(0));
     let receipt: Value = serde_json::from_slice(&output.stdout).unwrap();
-    assert_eq!(receipt["outcome"], "incomplete");
-    assert_eq!(receipt["publicComplete"], false);
+    assert_eq!(receipt["outcome"], "complete-conditional-grh");
+    assert_eq!(receipt["publicComplete"], true);
     assert_eq!(receipt["preparation"]["certificateVerified"], true);
     assert_eq!(
         receipt["candidate"]["authority"],
         "authenticated-supplied-principal-relations-candidate-only"
     );
-    assert!(receipt["candidate"]["authenticatedPrincipalRelations"].as_u64().unwrap() > 0);
-    assert_eq!(
-        receipt["firstUnavailableBoundary"],
-        "candidate-presentation-to-proof-authorized-complete-class-group"
+    assert!(
+        receipt["candidate"]["authenticatedPrincipalRelations"]
+            .as_u64()
+            .unwrap()
+            > 0
     );
+    assert_eq!(receipt["completion"]["classNumber"], "1");
+    assert_eq!(receipt["completion"]["sealedEvidenceVerified"], true);
+    assert_eq!(
+        receipt["completion"]["arbitraryIdealClassMapRetained"],
+        true
+    );
+    assert!(receipt.get("firstUnavailableBoundary").is_none());
 }
 
 #[test]

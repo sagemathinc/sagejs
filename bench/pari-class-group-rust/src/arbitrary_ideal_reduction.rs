@@ -118,6 +118,7 @@ pub struct SignedClassHandoff {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ArbitraryIdealClassMapCertificate {
     pub maximal_order_evidence: MaximalOrderEvidenceStatus,
+    pub field_sha256: [u8; 32],
     pub factor_base_sha256: [u8; 32],
     pub presentation_sha256: [u8; 32],
     /// Binds the exact principal elements replayed when the presentation
@@ -140,6 +141,7 @@ pub struct PrincipalRelationWitness {
 pub struct AuthenticatedPresentationClassMap {
     presentation: PresentationClassMap,
     maximal_order_evidence: MaximalOrderEvidenceStatus,
+    field_sha256: [u8; 32],
     factor_base_sha256: [u8; 32],
     principal_witnesses_sha256: [u8; 32],
 }
@@ -151,6 +153,10 @@ impl AuthenticatedPresentationClassMap {
 
     pub fn principal_witnesses_sha256(&self) -> &[u8; 32] {
         &self.principal_witnesses_sha256
+    }
+
+    pub fn field_sha256(&self) -> &[u8; 32] {
+        &self.field_sha256
     }
 }
 
@@ -560,6 +566,7 @@ fn authenticate_presentation_with_context(
     Ok(AuthenticatedPresentationClassMap {
         presentation,
         maximal_order_evidence: evidence,
+        field_sha256: canonical_field_sha256(field),
         factor_base_sha256: factor_base_binding_sha256(factor_base),
         principal_witnesses_sha256: witness_hasher.finalize().into(),
     })
@@ -682,6 +689,7 @@ fn map_with_context(
         workspace,
     )?;
     if authority.maximal_order_evidence != evidence
+        || authority.field_sha256 != canonical_field_sha256(field)
         || authority.factor_base_sha256 != factor_base_binding_sha256(factor_base)
     {
         return Err(ArbitraryIdealReductionError::ClassMapCertificateMismatch);
@@ -704,6 +712,7 @@ fn map_with_context(
     let presentation_zero_state = presentation.presentation_zero_state(&exponents)?;
     Ok(ArbitraryIdealClassMapCertificate {
         maximal_order_evidence: evidence,
+        field_sha256: canonical_field_sha256(field),
         factor_base_sha256: factor_base_binding_sha256(factor_base),
         presentation_sha256: presentation.binding_sha256(),
         principal_witnesses_sha256: authority.principal_witnesses_sha256,
@@ -1169,7 +1178,7 @@ fn factor_base_binding_sha256(factor_base: &PreparedFactorBase) -> [u8; 32] {
     hasher.finalize().into()
 }
 
-fn canonical_field_digest(field: &ValidatedPreparedCubic) -> String {
+fn canonical_field_sha256(field: &ValidatedPreparedCubic) -> [u8; 32] {
     fn bytes(hasher: &mut Sha256, value: &[u8]) {
         hasher.update((value.len() as u64).to_le_bytes());
         hasher.update(value);
@@ -1214,8 +1223,11 @@ fn canonical_field_digest(field: &ValidatedPreparedCubic) -> String {
     for value in &data.index_primes {
         integer(&mut hasher, value);
     }
-    hasher
-        .finalize()
+    hasher.finalize().into()
+}
+
+fn canonical_field_digest(field: &ValidatedPreparedCubic) -> String {
+    canonical_field_sha256(field)
         .iter()
         .map(|byte| format!("{byte:02x}"))
         .collect()
