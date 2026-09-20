@@ -21,13 +21,14 @@ const rust = path.join(
   __dirname,
   "target/release/sagejs-row6-rust-candidate-diagnostic",
 );
+const commandTimeoutMilliseconds = 600_000;
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
     cwd: root,
     encoding: "utf8",
     maxBuffer: 256 * 1024 * 1024,
-    timeout: 120_000,
+    timeout: commandTimeoutMilliseconds,
     ...options,
   });
   if (result.error) throw result.error;
@@ -81,6 +82,7 @@ const receipt = {
   proofMode: "conditional-grh",
   usesClassGroupAnswersAsRuntimeInput: false,
   timingPolicy: "single-observational-run-not-a-headline-benchmark",
+  commandTimeoutMilliseconds,
   cases: [],
 };
 

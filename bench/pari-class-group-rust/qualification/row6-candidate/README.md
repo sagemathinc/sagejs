@@ -269,37 +269,58 @@ relation lattice or the final four-element quotient. This rejected control is
 retained in the bridge as a focused small-matrix oracle, not as the row-6
 route.
 
-The accepted provenance route uses the phase lifetime explicitly. It first
-reduces the selected square basis without a transform, then computes a
-transform only while adjoining the seven surplus rows. For each desired order
-target it solves back through the original selected square matrix exactly.
-This exports only two arbitrary-precision coefficient vectors rather than the
-full dense transform. The C bridge verifies them before returning; Rust then
-independently replays each signed combination against all 1,130 relation
-coordinates.
+The first accepted provenance route used the phase lifetime explicitly. It
+reduced the selected square basis without a transform, computed a transform
+only while adjoining the seven surplus rows, and solved each target back
+through the original square matrix. That proved the certificate existed, but
+the transform-oriented implementation still took about 35 seconds.
+
+The current route is substantially narrower. For a target `t`, selected square
+matrix `A`, and seven surplus rows `B`, it solves
+
+```text
+x A + y B = t
+```
+
+by one fraction-free solve against `A^T`, followed by affine congruences modulo
+`det(A)` in only eight variables: the seven coordinates of `y` plus one fixed
+target coordinate. The bridge obtains a final-coordinate-one solution by an
+exact Bezout reduction, reconstructs `x`, and replays the complete witness
+against every source column before returning it. No 1,137-square provenance
+transform is built.
 
 The resulting targets are twice factor-base generators 8 and 6 (zero-based),
 whose compact Smith coordinates are respectively `(1, 0)` and `(0, 1)`.
-Their relation witnesses have 872 and 871 nonzero coefficients, with a maximum
-coefficient size of 616 bits. Every referenced relation retains the exact
+The current affine witnesses have 876 and 878 nonzero coefficients, with
+maximum coefficient sizes of 594 and 304 bits. Every referenced relation retains the exact
 integral-basis element whose principal ideal produced it, so each witness also
 encodes a compact principal element as the product of those elements to the
 signed relation coefficients.
 
-The captured standalone diagnostic takes 82.055 seconds because it first runs
-the class-map route and then redundantly recomputes the initial modular HNF
-inside the 36.502-second witness pass. Within that witness pass, the repeated
-initial HNF costs 27.828 seconds; the seven-row saturation transform and
-the two exact target solves together cost about 3.5 seconds, with the remaining
-time in conversion and verification. The production design must fuse these
-passes, so the receipt is proof that witnesses are practical, not a new
-headline end-to-end latency. The complete sparse coefficient and compact
-principal-element receipt is `results/maximal-order-witnesses.json`.
+On the current Linux qualification host the complete answer-free row-6 run is
+about 11.4 seconds. A representative run spent 2.75 seconds in relation
+collection, 3.80 seconds in the two new generator witnesses, and 7.58 seconds
+in the complete presentation region. The authenticated PARI 2.17.4
+prepared-field control is 4.057 seconds,
+so the former roughly 16-fold gap has fallen to about 2.8-fold while retaining the
+previously omitted generator-order evidence. About 3.4 seconds remain
+artificial duplication: the class-order and affine-witness calls currently
+repeat the same square determinant solve. Sharing that phase-lifetime state is
+the next direct optimization.
 
-These witnesses establish the orders inside the collected presentation. They
-do not prove that the presentation equals the full ideal class group. Unit
-reconstruction, regulator/completion evidence and honesty/saturation remain
-the decisive R3 work.
+The independent Sage.js result boundary also passes. It reconstructs the two
+selected prime ideals, validates 879 distinct source relations, validates the
+exported prime-power lattices, handles the single residue-degree-two prime via
+an independent Sage.js factorization, and proves both principal relations. The
+certificate verifier itself took 12.07 seconds after construction of the field
+object. The executable nine-cubic receipt records successful independent
+verification for every case in
+`results/sagejs-open-cubic-public-boundary-replay.json`.
+
+Together with the later unit-lattice and analytic-completion stages, these
+witnesses establish the selected generator orders in the conditionally
+complete class group. They do not yet provide arbitrary ideal discrete logs or
+principal generators through the public Sage.js API.
 
 ## 2026-09-20 saturated relation kernel and unit lattice
 

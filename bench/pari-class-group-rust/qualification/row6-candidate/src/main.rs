@@ -10,16 +10,18 @@
 use rug::{Assign, Complete, Float, Integer, Rational};
 use sagejs_pari_class_group_rust_experiment::{
     EmbeddingPrecisionState, PreparedCollectorLimits, PreparedCubicData, PreparedCubicEmbedding,
-    ValidatedPreparedCubic, build_cubic_bdf_factor_base_plan, build_cubic_belabas_friedman_plan,
-    collect_prepared_cubic_relations, collect_validated_primitive_box_with_supplementary,
-    flint_bdf_factor_base_margin, flint_bf_index_enclosure, flint_compact_cubic_regulator,
-    flint_hnf_basis, flint_hnf_profile, flint_incremental_hnf, flint_small_surplus_class_order,
+    PreparedIdealWorkspace, ValidatedPreparedCubic, build_cubic_bdf_factor_base_plan,
+    build_cubic_belabas_friedman_plan, collect_prepared_cubic_relations,
+    collect_validated_primitive_box_with_supplementary, flint_bdf_factor_base_margin,
+    flint_bf_index_enclosure, flint_compact_cubic_regulator, flint_hnf_basis, flint_hnf_profile,
+    flint_incremental_hnf, flint_small_surplus_class_order, flint_small_surplus_relation_witnesses,
     flint_smith_candidate, flint_smith_class_map, flint_staged_relation_witnesses,
     modular_independent_relation_rows, parse_neutral_prepared_cubic_json,
     prepared_cubic_factor_base, prepared_cubic_splitting_records,
     prepared_maximal_cubic_factor_base, reconstruct_rank_one_unit_lattice,
     reconstruct_rank_two_unit_lattice,
 };
+use std::collections::HashMap;
 use std::time::Instant;
 use std::{env, fs};
 
@@ -941,11 +943,82 @@ fn small_norm_unit_kernel_for_field(
     let generator_order_witness_status = if invariant_factors.is_empty() {
         "trivial-group"
     } else if rows > MAX_EAGER_GENERATOR_WITNESS_RELATIONS {
-        "deferred-dense-hnf-witness"
+        "complete-small-surplus-affine-congruence"
     } else {
         "complete"
     };
-    if generator_order_witness_status == "complete" {
+    let mut factor_power_hnfs: HashMap<(usize, u8), Vec<String>> = HashMap::new();
+    if !invariant_factors.is_empty() {
+        let mut ideal_workspace = PreparedIdealWorkspace::new();
+        for relation in answer.relations.chunks_exact(columns) {
+            for (column, &exponent) in relation.iter().enumerate() {
+                if exponent <= 1 {
+                    continue;
+                }
+                let exponent =
+                    u8::try_from(exponent).expect("a collected prime-ideal valuation exceeds u8");
+                if factor_power_hnfs.contains_key(&(column, exponent)) {
+                    continue;
+                }
+                let descriptor = &answer.factor_base.catalog.ideals[column];
+                let generator = descriptor.generator.map(Integer::from);
+                let prime = ideal_workspace
+                    .prime_from_generator(
+                        &field,
+                        u32::try_from(descriptor.prime).expect("a factor-base prime exceeds u32"),
+                        &generator,
+                    )
+                    .expect("a factor-base prime ideal did not reconstruct");
+                let power = ideal_workspace
+                    .pow(&field, &prime, exponent)
+                    .expect("a factor-base prime power failed");
+                factor_power_hnfs.insert(
+                    (column, exponent),
+                    power
+                        .basis_rows()
+                        .iter()
+                        .flatten()
+                        .map(ToString::to_string)
+                        .collect(),
+                );
+            }
+        }
+    }
+    let generator_order_factor_base_catalog = answer
+        .factor_base
+        .catalog
+        .ideals
+        .iter()
+        .enumerate()
+        .map(|(index, ideal)| {
+            serde_json::json!({
+                "factorBaseIndexZeroBased": index,
+                "prime": ideal.prime,
+                "ramification": ideal.ramification,
+                "residueDegree": ideal.residue_degree,
+                "norm": ideal.norm,
+                "generator": ideal.generator,
+                "hnf": ideal.hnf,
+            })
+        })
+        .collect::<Vec<_>>();
+    let mut generator_order_prime_power_hnfs = factor_power_hnfs
+        .iter()
+        .map(|(&(index, exponent), hnf)| {
+            serde_json::json!({
+                "factorBaseIndexZeroBased": index,
+                "exponent": exponent,
+                "hnf": hnf,
+            })
+        })
+        .collect::<Vec<_>>();
+    generator_order_prime_power_hnfs.sort_by_key(|entry| {
+        (
+            entry["factorBaseIndexZeroBased"].as_u64().unwrap(),
+            entry["exponent"].as_u64().unwrap(),
+        )
+    });
+    if !invariant_factors.is_empty() {
         let mut targets = vec![0_i64; invariant_factors.len() * columns];
         for (generator, (&position, &order)) in class_generator_indices
             .iter()
@@ -954,8 +1027,19 @@ fn small_norm_unit_kernel_for_field(
         {
             targets[generator * columns + position] = order;
         }
-        let staged = flint_staged_relation_witnesses(&square, &remaining, columns, &targets)
-            .expect("class-generator order-relation witnesses failed");
+        let (staged, construction) = if rows > MAX_EAGER_GENERATOR_WITNESS_RELATIONS {
+            (
+                flint_small_surplus_relation_witnesses(&square, &remaining, columns, &targets)
+                    .expect("small-surplus class-generator witnesses failed"),
+                "small-surplus-affine-congruence",
+            )
+        } else {
+            (
+                flint_staged_relation_witnesses(&square, &remaining, columns, &targets)
+                    .expect("class-generator order-relation witnesses failed"),
+                "flint-staged-hnf-back-substitution",
+            )
+        };
         assert_eq!(staged.target_count, invariant_factors.len());
         assert_eq!(staged.relation_count, rows);
         for (generator, (&position, &order)) in class_generator_indices
@@ -999,16 +1083,9 @@ fn small_norm_unit_kernel_for_field(
                             if exponent == 0 {
                                 return None;
                             }
-                            let ideal = &answer.factor_base.catalog.ideals[column];
                             Some(serde_json::json!({
                                 "factorBaseIndexZeroBased": column,
                                 "exponent": exponent,
-                                "prime": ideal.prime,
-                                "ramification": ideal.ramification,
-                                "residueDegree": ideal.residue_degree,
-                                "norm": ideal.norm,
-                                "generator": ideal.generator,
-                                "hnf": ideal.hnf,
                             }))
                         })
                         .collect::<Vec<_>>();
@@ -1029,7 +1106,7 @@ fn small_norm_unit_kernel_for_field(
                 "factorBaseIndexZeroBased": position,
                 "order": order,
                 "allRelationCoordinatesReplayExactly": true,
-                "construction": "flint-staged-hnf-back-substitution",
+                "construction": construction,
                 "nonzeroCoefficientCount": factors.len(),
                 "factors": factors,
             }));
@@ -1468,6 +1545,8 @@ fn small_norm_unit_kernel_for_field(
                 }).collect::<Vec<_>>(),
                 "generatorOrderWitnessStatus": generator_order_witness_status,
                 "maximumEagerGeneratorWitnessRelations": MAX_EAGER_GENERATOR_WITNESS_RELATIONS,
+                "generatorOrderFactorBaseCatalog": generator_order_factor_base_catalog,
+                "generatorOrderPrimePowerHnfs": generator_order_prime_power_hnfs,
                 "generatorOrderRelations": generator_order_relations,
             },
             "kernel": {

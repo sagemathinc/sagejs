@@ -255,6 +255,19 @@ unsafe extern "C" {
         solve_ns: *mut u64,
         kernel_ns: *mut u64,
     ) -> c_int;
+    fn sagejs_rust_flint_small_surplus_relation_witnesses_i64(
+        size: usize,
+        surplus_rows: usize,
+        square_entries: *const c_longlong,
+        surplus_entries: *const c_longlong,
+        target_count: usize,
+        targets: *const c_longlong,
+        witnesses: *const *mut c_void,
+        maximum_coefficient_bits: *mut usize,
+        nonzero_counts: *mut usize,
+        solve_ns: *mut u64,
+        affine_kernel_ns: *mut u64,
+    ) -> c_int;
     fn sagejs_rust_flint_lll_columns_mpz(
         entries: *const *const c_void,
         transform: *mut c_longlong,
@@ -417,6 +430,79 @@ pub fn flint_small_surplus_class_order(
                 kernel_ns,
             })
         }
+        -1 => Err(FlintNormalFormError::InvalidDimensions),
+        -3 => Err(FlintNormalFormError::RankDeficient),
+        code => Err(FlintNormalFormError::ForeignFailure(code)),
+    }
+}
+
+/// Express targets in a full-rank relation lattice with only a few surplus
+/// rows, without constructing a square transform of all relation rows.
+///
+/// If `A` is the selected square relation matrix and `B` contains the
+/// surplus rows, this solves `x A + y B = target`.  The expensive linear
+/// algebra stays `size` square, while integrality of `(x, y)` is reduced to
+/// affine congruences in `surplus_rows + 1` dimensions.  For row 6 this is an
+/// eight-dimensional problem instead of a 1,137-dimensional HNF transform.
+pub fn flint_small_surplus_relation_witnesses(
+    square_relations: &[i64],
+    surplus_relations: &[i64],
+    size: usize,
+    targets: &[i64],
+) -> Result<FlintRelationWitnesses, FlintNormalFormError> {
+    if size == 0
+        || square_relations.len() != size.checked_mul(size).unwrap_or(0)
+        || surplus_relations.is_empty()
+        || !surplus_relations.len().is_multiple_of(size)
+        || targets.is_empty()
+        || !targets.len().is_multiple_of(size)
+    {
+        return Err(FlintNormalFormError::DimensionMismatch);
+    }
+    let surplus_rows = surplus_relations.len() / size;
+    let relation_count = size
+        .checked_add(surplus_rows)
+        .ok_or(FlintNormalFormError::InvalidDimensions)?;
+    let target_count = targets.len() / size;
+    let coefficient_count = target_count
+        .checked_mul(relation_count)
+        .ok_or(FlintNormalFormError::InvalidDimensions)?;
+    let mut coefficients = vec![Integer::from(0); coefficient_count];
+    let pointers = coefficients
+        .iter_mut()
+        .map(|value| value.as_raw_mut().cast::<c_void>())
+        .collect::<Vec<_>>();
+    let mut maximum_coefficient_bits = 0_usize;
+    let mut nonzero_counts = vec![0_usize; target_count];
+    let mut solve_ns = 0_u64;
+    let mut affine_kernel_ns = 0_u64;
+    let status = unsafe {
+        sagejs_rust_flint_small_surplus_relation_witnesses_i64(
+            size,
+            surplus_rows,
+            square_relations.as_ptr().cast(),
+            surplus_relations.as_ptr().cast(),
+            target_count,
+            targets.as_ptr().cast(),
+            pointers.as_ptr(),
+            &mut maximum_coefficient_bits,
+            nonzero_counts.as_mut_ptr(),
+            &mut solve_ns,
+            &mut affine_kernel_ns,
+        )
+    };
+    match status {
+        0 => Ok(FlintRelationWitnesses {
+            coefficients,
+            relation_count,
+            target_count,
+            maximum_coefficient_bits,
+            nonzero_counts,
+            initial_hnf_ns: 0,
+            hnf_ns: affine_kernel_ns,
+            solve_ns,
+            square_solve_ns: 0,
+        }),
         -1 => Err(FlintNormalFormError::InvalidDimensions),
         -3 => Err(FlintNormalFormError::RankDeficient),
         code => Err(FlintNormalFormError::ForeignFailure(code)),
@@ -1219,6 +1305,67 @@ mod tests {
                 }
                 assert_eq!(actual, targets[target * 2 + column]);
             }
+        }
+    }
+
+    #[test]
+    fn small_surplus_affine_witnesses_replay_without_a_full_transform() {
+        let square = [2, 0, 0, 6];
+        let surplus = [0, 3];
+        let targets = [2, 0, 0, 3];
+        let answer =
+            flint_small_surplus_relation_witnesses(&square, &surplus, 2, &targets).unwrap();
+        let relations = [2, 0, 0, 6, 0, 3];
+        assert_eq!(answer.relation_count, 3);
+        assert_eq!(answer.target_count, 2);
+        for target in 0..2 {
+            for column in 0..2 {
+                let actual = (0..3).fold(Integer::from(0), |sum, relation| {
+                    sum + &answer.coefficients[target * 3 + relation]
+                        * relations[relation * 2 + column]
+                });
+                assert_eq!(actual, targets[target * 2 + column]);
+            }
+        }
+    }
+
+    #[test]
+    fn small_surplus_affine_witnesses_replay_constructed_random_targets() {
+        let mut state = 0x5a17_3c9d_8e20_41b7_u64;
+        let mut accepted = 0_usize;
+        while accepted < 100 {
+            let size = 2 + (state as usize % 3);
+            let surplus_rows = 1 + ((state >> 7) as usize % 3);
+            let mut next = || {
+                state = state
+                    .wrapping_mul(6_364_136_223_846_793_005)
+                    .wrapping_add(1_442_695_040_888_963_407);
+                ((state >> 32) % 11) as i64 - 5
+            };
+            let square = (0..size * size).map(|_| next()).collect::<Vec<_>>();
+            let surplus = (0..surplus_rows * size).map(|_| next()).collect::<Vec<_>>();
+            if flint_small_surplus_class_order(&square, &surplus, size).is_err() {
+                continue;
+            }
+            let source_coefficients = (0..size + surplus_rows).map(|_| next()).collect::<Vec<_>>();
+            let mut relations = square.clone();
+            relations.extend_from_slice(&surplus);
+            let target = (0..size)
+                .map(|column| {
+                    (0..size + surplus_rows).fold(0_i64, |sum, relation| {
+                        sum + source_coefficients[relation] * relations[relation * size + column]
+                    })
+                })
+                .collect::<Vec<_>>();
+            let answer =
+                flint_small_surplus_relation_witnesses(&square, &surplus, size, &target).unwrap();
+            for column in 0..size {
+                let actual = (0..size + surplus_rows).fold(Integer::from(0), |sum, relation| {
+                    sum + &answer.coefficients[relation] * relations[relation * size + column]
+                });
+                assert_eq!(actual, target[column]);
+            }
+            accepted += 1;
         }
     }
 

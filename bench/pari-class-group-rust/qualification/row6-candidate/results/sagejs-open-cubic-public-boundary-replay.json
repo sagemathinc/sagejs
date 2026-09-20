@@ -5,6 +5,7 @@
   "proofMode": "conditional-grh",
   "usesClassGroupAnswersAsRuntimeInput": false,
   "timingPolicy": "single-observational-run-not-a-headline-benchmark",
+  "commandTimeoutMilliseconds": 600000,
   "cases": [
     {
       "id": "small-x3-x-1",
@@ -32,7 +33,7 @@
       "independentGeneratorOrderVerification": "passed",
       "independentlyVerifiedGeneratorOrders": 0,
       "classUnitIndex": 1,
-      "totalExternalNanoseconds": 46544586
+      "totalExternalNanoseconds": 26182632
     },
     {
       "id": "small-discriminant-49",
@@ -60,7 +61,7 @@
       "independentGeneratorOrderVerification": "passed",
       "independentlyVerifiedGeneratorOrders": 0,
       "classUnitIndex": 1,
-      "totalExternalNanoseconds": 115577921
+      "totalExternalNanoseconds": 53455893
     },
     {
       "id": "small-class-number-2",
@@ -90,7 +91,7 @@
       "independentGeneratorOrderVerification": "passed",
       "independentlyVerifiedGeneratorOrders": 1,
       "classUnitIndex": 1,
-      "totalExternalNanoseconds": 65547875
+      "totalExternalNanoseconds": 68107668
     },
     {
       "id": "small-class-number-3",
@@ -120,7 +121,7 @@
       "independentGeneratorOrderVerification": "passed",
       "independentlyVerifiedGeneratorOrders": 1,
       "classUnitIndex": 1,
-      "totalExternalNanoseconds": 74951404
+      "totalExternalNanoseconds": 38269128
     },
     {
       "id": "small-class-number-4",
@@ -151,7 +152,7 @@
       "independentGeneratorOrderVerification": "passed",
       "independentlyVerifiedGeneratorOrders": 2,
       "classUnitIndex": 1,
-      "totalExternalNanoseconds": 67103025
+      "totalExternalNanoseconds": 67883458
     },
     {
       "id": "small-class-number-6",
@@ -181,7 +182,7 @@
       "independentGeneratorOrderVerification": "passed",
       "independentlyVerifiedGeneratorOrders": 1,
       "classUnitIndex": 1,
-      "totalExternalNanoseconds": 98308532
+      "totalExternalNanoseconds": 62618360
     },
     {
       "id": "h1-real-cubic",
@@ -209,7 +210,7 @@
       "independentGeneratorOrderVerification": "passed",
       "independentlyVerifiedGeneratorOrders": 0,
       "classUnitIndex": 1,
-      "totalExternalNanoseconds": 217896082
+      "totalExternalNanoseconds": 217047441
     },
     {
       "id": "row1-index-3-cubic",
@@ -241,7 +242,7 @@
       "independentGeneratorOrderVerification": "passed",
       "independentlyVerifiedGeneratorOrders": 1,
       "classUnitIndex": 1,
-      "totalExternalNanoseconds": 232105421
+      "totalExternalNanoseconds": 248327701
     },
     {
       "id": "row6-continuation-cubic",
@@ -269,12 +270,12 @@
         "2"
       ],
       "classGroup": "C2 x C2",
-      "generatorOrderWitnessFactorCount": 0,
-      "generatorOrderWitnessStatus": "deferred-dense-hnf-witness",
-      "independentGeneratorOrderVerification": "deferred-dense-certificate",
-      "independentlyVerifiedGeneratorOrders": null,
+      "generatorOrderWitnessFactorCount": 1754,
+      "generatorOrderWitnessStatus": "complete-small-surplus-affine-congruence",
+      "independentGeneratorOrderVerification": "passed",
+      "independentlyVerifiedGeneratorOrders": 2,
       "classUnitIndex": 1,
-      "totalExternalNanoseconds": 7866097540
+      "totalExternalNanoseconds": 11424357800
     }
   ]
 }

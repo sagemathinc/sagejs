@@ -466,6 +466,197 @@ def _prime_descriptor_identity(descriptor: dict[str, Any]) -> tuple[Any, ...]:
     )
 
 
+def _determinant_three_by_three(entries: list[Any]) -> Any:
+    if len(entries) != 9:
+        raise ValueError("a cubic ideal lattice must have nine entries")
+    return (
+        entries[0] * (entries[4] * entries[8] - entries[5] * entries[7])
+        - entries[1] * (entries[3] * entries[8] - entries[5] * entries[6])
+        + entries[2] * (entries[3] * entries[7] - entries[4] * entries[6])
+    )
+
+
+def _coordinates_in_row_lattice(coordinates: list[Any], row_basis: list[Any]) -> bool:
+    """Test membership in a full-rank cubic row lattice by Cramer's rule."""
+    if len(coordinates) != 3 or len(row_basis) != 9:
+        raise ValueError("a cubic lattice membership check has invalid dimensions")
+    determinant = _determinant_three_by_three(row_basis)
+    if determinant == 0:
+        raise ArithmeticError("an ideal HNF is singular")
+    for row in range(3):
+        replaced = list(row_basis)
+        replaced[3 * row : 3 * row + 3] = coordinates
+        if _determinant_three_by_three(replaced) % determinant != 0:
+            return False
+    return True
+
+
+def _norm_from_multiplication_table(
+    coordinates: list[Any], multiplication_table: list[list[list[Any]]]
+) -> Any:
+    """Compute an integral-basis element norm as a 3 by 3 determinant."""
+    multiplication_matrix = [
+        sum(
+            coordinates[left] * multiplication_table[left][right][output]
+            for left in range(3)
+        )
+        for right in range(3)
+        for output in range(3)
+    ]
+    return _determinant_three_by_three(multiplication_matrix)
+
+
+def _multiply_prepared_coordinates(
+    left: list[Any],
+    right: list[Any],
+    multiplication_table: list[list[list[Any]]],
+) -> list[Any]:
+    return [
+        sum(
+            left[i] * right[j] * multiplication_table[i][j][output]
+            for i in range(3)
+            for j in range(3)
+        )
+        for output in range(3)
+    ]
+
+
+def _is_prime_integer(value: Any) -> bool:
+    candidate = int(str(value))
+    if candidate < 2:
+        return False
+    small_primes = (2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37)
+    for prime in small_primes:
+        if candidate % prime == 0:
+            return candidate == prime
+    if candidate >= 1 << 64:
+        raise OverflowError("the exact factor-base primality check is limited to u64")
+    odd_part = candidate - 1
+    two_valuation = 0
+    while odd_part % 2 == 0:
+        odd_part //= 2
+        two_valuation += 1
+    # This base set is deterministic for every unsigned 64-bit integer.
+    for base in (2, 325, 9375, 28178, 450775, 9780504, 1795265022):
+        reduced_base = base % candidate
+        if reduced_base == 0:
+            continue
+        residue = pow(reduced_base, odd_part, candidate)
+        if residue in (1, candidate - 1):
+            continue
+        for _ in range(two_valuation - 1):
+            residue = residue * residue % candidate
+            if residue == candidate - 1:
+                break
+        else:
+            return False
+    return True
+
+
+def _validate_prime_hnf_lattice(
+    descriptor: dict[str, Any],
+    multiplication_table: list[list[list[Any]]],
+    validated_rational_primes: set[int] | None = None,
+) -> tuple[list[Any], list[int] | None]:
+    prime = _input_integer(descriptor["prime"])
+    norm = _input_integer(descriptor["norm"])
+    residue_degree = int(str(descriptor.get("residueDegree", 1)))
+    hnf = [_input_integer(value) for value in descriptor["hnf"]]
+    prime_integer = int(str(prime))
+    if (
+        validated_rational_primes is None
+        or prime_integer not in validated_rational_primes
+    ):
+        if not _is_prime_integer(prime):
+            raise ArithmeticError("a factor-base descriptor is not degree-one prime")
+        if validated_rational_primes is not None:
+            validated_rational_primes.add(prime_integer)
+    if residue_degree < 1 or norm != prime**residue_degree:
+        raise ArithmeticError("a factor-base descriptor has the wrong residue degree")
+    if abs(_determinant_three_by_three(hnf)) != norm:
+        raise ArithmeticError("a prime ideal HNF has the wrong index")
+    if residue_degree != 1:
+        # Higher residue-degree primes use the independently factored Sage.js
+        # ideal path below.  The linear character is specific to index-p
+        # lattices and must not be fabricated for index-p^f lattices.
+        return hnf, None
+    modulus = int(str(prime))
+    rows_modulo_prime = [
+        [int(str(hnf[3 * row + column])) % modulus for column in range(3)]
+        for row in range(3)
+    ]
+    character: list[int] | None = None
+    for first in range(3):
+        for second in range(first + 1, 3):
+            left = rows_modulo_prime[first]
+            right = rows_modulo_prime[second]
+            candidate = [
+                (left[1] * right[2] - left[2] * right[1]) % modulus,
+                (left[2] * right[0] - left[0] * right[2]) % modulus,
+                (left[0] * right[1] - left[1] * right[0]) % modulus,
+            ]
+            if any(candidate):
+                character = candidate
+                break
+        if character is not None:
+            break
+    if character is None or any(
+        sum(row[column] * character[column] for column in range(3)) % modulus != 0
+        for row in rows_modulo_prime
+    ):
+        raise ArithmeticError("a prime ideal HNF has the wrong residue kernel")
+    for row in range(3):
+        generator = rows_modulo_prime[row]
+        # Multiplication by 1 is tautological. Multiplication by the two
+        # remaining integral-basis generators proves closure under the order.
+        for basis_index in range(1, 3):
+            product = [
+                sum(
+                    generator[left]
+                    * (
+                        int(str(multiplication_table[left][basis_index][output]))
+                        % modulus
+                    )
+                    for left in range(3)
+                )
+                % modulus
+                for output in range(3)
+            ]
+            if sum(product[i] * character[i] for i in range(3)) % modulus != 0:
+                raise ArithmeticError("a prime ideal HNF is not an ideal")
+    exported_generator = [_input_integer(value) for value in descriptor["generator"]]
+    if (
+        sum(int(str(exported_generator[i])) * character[i] for i in range(3)) % modulus
+        != 0
+    ):
+        raise ArithmeticError("a prime ideal generator is not in its HNF")
+    return hnf, character
+
+
+def _validate_prime_power_hnf_lattice(
+    prime_hnf: list[Any],
+    power_hnf: list[Any],
+    prime_norm: Any,
+    exponent: int,
+    multiplication_table: list[list[list[Any]]],
+) -> None:
+    if (
+        exponent <= 1
+        or abs(_determinant_three_by_three(power_hnf)) != prime_norm**exponent
+    ):
+        raise ArithmeticError("a prime-power HNF has the wrong index")
+    products = [[sage.ZZ(1), sage.ZZ(0), sage.ZZ(0)]]
+    prime_generators = [prime_hnf[3 * row : 3 * row + 3] for row in range(3)]
+    for _ in range(exponent):
+        products = [
+            _multiply_prepared_coordinates(product, generator, multiplication_table)
+            for product in products
+            for generator in prime_generators
+        ]
+    if not all(_coordinates_in_row_lattice(product, power_hnf) for product in products):
+        raise ArithmeticError("a claimed prime-power HNF does not contain the power")
+
+
 def verify_rust_class_generator_orders(
     field: Any,
     prepared_input: dict[str, Any],
@@ -475,8 +666,11 @@ def verify_rust_class_generator_orders(
 
     This verifier deliberately does not trust Rust's relation-coordinate replay.
     It reconstructs each selected prime ideal twice—from `(p, alpha)` and from
-    the exported HNF—and then checks the exported factored principal element
-    generates the claimed ideal power using Sage.js ideal arithmetic.
+    the exported HNF.  For each integral source relation it checks membership
+    in every claimed prime-ideal power and equality of absolute norms.  Since
+    distinct prime ideals are coprime, containment plus equal norm proves the
+    principal-ideal equality without repeatedly canonicalizing large ideal
+    products.
 
     The result remains only a generator-order certificate.  It does not prove
     relation-lattice completeness, unit saturation, or arbitrary ideal maps.
@@ -489,10 +683,42 @@ def verify_rust_class_generator_orders(
 
     order = field.maximal_order()
     basis = _prepared_basis_elements(field, prepared_input)
+    multiplication_table = [
+        [
+            [
+                _input_integer(entry["numerator"])
+                // _input_integer(entry["denominator"])
+                for entry in product
+            ]
+            for product in left
+        ]
+        for left in prepared_input["preparation"]["multiplicationTable"]
+    ]
     class_map = result["classMap"]
     selected_indices = class_map["selectedGeneratorIndicesZeroBased"]
     selected_ideals = class_map["selectedGeneratorPrimeIdeals"]
     relations = class_map["generatorOrderRelations"]
+    factor_base_catalog: dict[int, dict[str, Any]] = {}
+    for descriptor in class_map["generatorOrderFactorBaseCatalog"]:
+        index = int(str(descriptor["factorBaseIndexZeroBased"]))
+        if index in factor_base_catalog:
+            raise ValueError("the generator-order factor-base catalog repeats an index")
+        factor_base_catalog[index] = descriptor
+    exported_power_hnfs: dict[tuple[int, int], list[Any]] = {}
+    for descriptor in class_map["generatorOrderPrimePowerHnfs"]:
+        key = (
+            int(str(descriptor["factorBaseIndexZeroBased"])),
+            int(str(descriptor["exponent"])),
+        )
+        if key in exported_power_hnfs:
+            raise ValueError("the generator-order prime-power catalog repeats a key")
+        if key[1] <= 1:
+            raise ValueError(
+                "the generator-order prime-power catalog has exponent <= 1"
+            )
+        exported_power_hnfs[key] = [
+            _input_integer(value) for value in descriptor["hnf"]
+        ]
     invariants = [
         _input_integer(value)
         for value in result["analyticCompletion"]["candidateInvariantFactors"]
@@ -508,7 +734,14 @@ def verify_rust_class_generator_orders(
     verified = []
     seen_coordinates: set[int] = set()
     factor_ideal_cache: dict[int, Any] = {}
+    factor_hnf_cache: dict[int, list[Any]] = {}
+    factor_character_cache: dict[int, list[int] | None] = {}
     factor_identity_cache: dict[int, tuple[Any, ...]] = {}
+    validated_rational_primes: set[int] = set()
+    factored_rational_primes: dict[int, list[Any]] = {}
+    validated_factor_power_hnfs: dict[tuple[int, int], list[Any]] = {}
+    fallback_factor_powers: dict[tuple[int, int], Any] = {}
+    source_relation_cache: dict[int, tuple[Any, ...]] = {}
     for relation in relations:
         coordinate = int(str(relation["generatorCoordinateZeroBased"]))
         if coordinate < 0 or coordinate >= len(invariants):
@@ -525,54 +758,192 @@ def verify_rust_class_generator_orders(
 
         selected = selected_ideals[coordinate]
         prime = _input_integer(selected["prime"])
-        prime_ideal = _ideal_from_prepared_descriptor(
-            field, order, basis, selected
-        )
+        prime_ideal = _ideal_from_prepared_descriptor(field, order, basis, selected)
         factor_ideal_cache[factor_base_index] = prime_ideal
+        selected_hnf, selected_character = _validate_prime_hnf_lattice(
+            selected, multiplication_table, validated_rational_primes
+        )
+        if factor_base_index not in factor_base_catalog:
+            raise ValueError(
+                "the selected generator is absent from the factor-base catalog"
+            )
+        if _prime_descriptor_identity(factor_base_catalog[factor_base_index]) != (
+            _prime_descriptor_identity(selected)
+        ):
+            raise ArithmeticError("the selected generator changed catalog identity")
+        factor_hnf_cache[factor_base_index] = selected_hnf
+        factor_character_cache[factor_base_index] = selected_character
         factor_identity_cache[factor_base_index] = _prime_descriptor_identity(selected)
 
         coordinate_contributions: dict[int, Any] = {}
         factors = relation["factors"]
         for factor in factors:
-            element = _element_from_prepared_coordinates(
-                field,
-                basis,
-                factor["integralBasisCoordinates"],
+            source_relation_index = int(str(factor["relationIndexZeroBased"]))
+            source_relation_identity = (
+                tuple(str(value) for value in factor["integralBasisCoordinates"]),
+                tuple(
+                    (
+                        int(str(descriptor["factorBaseIndexZeroBased"])),
+                        str(descriptor["exponent"]),
+                    )
+                    for descriptor in factor["primeIdealFactors"]
+                ),
             )
-            if element.is_zero():
+            verify_source_relation = source_relation_index not in source_relation_cache
+            if not verify_source_relation:
+                if (
+                    source_relation_cache[source_relation_index]
+                    != source_relation_identity
+                ):
+                    raise ArithmeticError("a source relation changed identity")
+            element_coordinates = [
+                _input_integer(value) for value in factor["integralBasisCoordinates"]
+            ]
+            if all(coordinate == 0 for coordinate in element_coordinates):
                 raise ArithmeticError("a class-generator witness factor is zero")
             outer_exponent = _input_integer(factor["exponent"])
-            relation_ideal = order.ideal(1)
+            relation_norm = _input_integer(1)
             relation_indices: set[int] = set()
-            for factor_descriptor in factor["primeIdealFactors"]:
-                index = int(
-                    str(factor_descriptor["factorBaseIndexZeroBased"])
-                )
+            for factor_reference in factor["primeIdealFactors"]:
+                index = int(str(factor_reference["factorBaseIndexZeroBased"]))
                 if index in relation_indices:
                     raise ValueError("a relation repeats a factor-base coordinate")
                 relation_indices.add(index)
-                inner_exponent = _input_integer(factor_descriptor["exponent"])
+                inner_exponent = _input_integer(factor_reference["exponent"])
                 if inner_exponent <= 0:
                     raise ValueError("an integral principal relation is not positive")
-                identity = _prime_descriptor_identity(factor_descriptor)
-                if index in factor_ideal_cache:
-                    if factor_identity_cache[index] != identity:
-                        raise ArithmeticError("a factor-base descriptor changed identity")
-                    factor_ideal = factor_ideal_cache[index]
-                else:
-                    factor_ideal = _ideal_from_prepared_descriptor(
-                        field, order, basis, factor_descriptor
+                if index not in factor_base_catalog:
+                    raise ValueError(
+                        "a relation references an unknown factor-base index"
                     )
-                    factor_ideal_cache[index] = factor_ideal
+                factor_descriptor = factor_base_catalog[index]
+                identity = _prime_descriptor_identity(factor_descriptor)
+                if index in factor_identity_cache:
+                    if factor_identity_cache[index] != identity:
+                        raise ArithmeticError(
+                            "a factor-base descriptor changed identity"
+                        )
+                else:
+                    factor_hnf, factor_character = _validate_prime_hnf_lattice(
+                        factor_descriptor,
+                        multiplication_table,
+                        validated_rational_primes,
+                    )
+                    factor_hnf_cache[index] = factor_hnf
+                    factor_character_cache[index] = factor_character
                     factor_identity_cache[index] = identity
-                relation_ideal *= factor_ideal**inner_exponent
+                    if factor_character is None:
+                        factor_ideal = _ideal_from_prepared_descriptor(
+                            field, order, basis, factor_descriptor
+                        )
+                        factor_ideal_cache[index] = factor_ideal
+                        rational_prime = int(str(factor_descriptor["prime"]))
+                        if rational_prime not in factored_rational_primes:
+                            factored_rational_primes[rational_prime] = list(
+                                order.ideal(rational_prime).factor()
+                            )
+                        ramification = int(
+                            str(factor_descriptor.get("ramification", 1))
+                        )
+                        if not any(
+                            candidate == factor_ideal
+                            and int(str(candidate_ramification)) == ramification
+                            for candidate, candidate_ramification in factored_rational_primes[
+                                rational_prime
+                            ]
+                        ):
+                            raise ArithmeticError(
+                                "a higher-degree factor-base descriptor is not prime"
+                            )
+                if verify_source_relation:
+                    if inner_exponent == 1:
+                        character = factor_character_cache[index]
+                        if character is None:
+                            in_factor_power = (
+                                _element_from_prepared_coordinates(
+                                    field,
+                                    basis,
+                                    factor["integralBasisCoordinates"],
+                                )
+                                in factor_ideal_cache[index]
+                            )
+                        else:
+                            modulus = int(str(factor_descriptor["prime"]))
+                            in_factor_power = (
+                                sum(
+                                    int(str(element_coordinates[i])) * character[i]
+                                    for i in range(3)
+                                )
+                                % modulus
+                                == 0
+                            )
+                    else:
+                        power_key = (index, int(str(inner_exponent)))
+                        if power_key not in exported_power_hnfs:
+                            if index not in factor_ideal_cache:
+                                factor_ideal_cache[index] = (
+                                    _ideal_from_prepared_descriptor(
+                                        field,
+                                        order,
+                                        basis,
+                                        factor_descriptor,
+                                    )
+                                )
+                            if power_key not in fallback_factor_powers:
+                                fallback_factor_powers[power_key] = (
+                                    factor_ideal_cache[index] ** inner_exponent
+                                )
+                            in_factor_power = (
+                                _element_from_prepared_coordinates(
+                                    field,
+                                    basis,
+                                    factor["integralBasisCoordinates"],
+                                )
+                                in fallback_factor_powers[power_key]
+                            )
+                        else:
+                            power_hnf = exported_power_hnfs[power_key]
+                            if power_key in validated_factor_power_hnfs:
+                                if validated_factor_power_hnfs[power_key] != power_hnf:
+                                    raise ArithmeticError(
+                                        "a prime-power HNF changed identity"
+                                    )
+                            else:
+                                _validate_prime_power_hnf_lattice(
+                                    factor_hnf_cache[index],
+                                    power_hnf,
+                                    _input_integer(factor_descriptor["norm"]),
+                                    int(str(inner_exponent)),
+                                    multiplication_table,
+                                )
+                                validated_factor_power_hnfs[power_key] = power_hnf
+                            in_factor_power = _coordinates_in_row_lattice(
+                                element_coordinates,
+                                validated_factor_power_hnfs[power_key],
+                            )
+                    if not in_factor_power:
+                        raise ArithmeticError(
+                            "a principal relation element is not in a claimed ideal power"
+                        )
+                    relation_norm *= (
+                        _input_integer(factor_descriptor["norm"]) ** inner_exponent
+                    )
                 contribution = outer_exponent * inner_exponent
                 if index not in coordinate_contributions:
                     coordinate_contributions[index] = contribution
                 else:
                     coordinate_contributions[index] += contribution
-            if order.ideal(element) != relation_ideal:
-                raise ArithmeticError("an exported principal relation is false")
+            if verify_source_relation:
+                if (
+                    abs(
+                        _norm_from_multiplication_table(
+                            element_coordinates, multiplication_table
+                        )
+                    )
+                    != relation_norm
+                ):
+                    raise ArithmeticError("an exported principal relation is false")
+                source_relation_cache[source_relation_index] = source_relation_identity
         nonzero_contributions = {
             index: exponent
             for index, exponent in coordinate_contributions.items()
