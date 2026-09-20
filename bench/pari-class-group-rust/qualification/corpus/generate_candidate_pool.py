@@ -26,6 +26,8 @@ HERE = Path(__file__).resolve().parent
 REPOSITORY = HERE.parents[3]
 DEFAULT_GP = Path("/home/user/upstream/pari-2.17.4/gp")
 SEED = "sagejs-rust-class-group-candidate-pool-v1-2026-09-20"
+ADMISSIBLE_V2_SEED = "sagejs-rust-class-group-candidate-pool-v2-2026-09-20"
+HYBRID_V3_SEED = "sagejs-rust-class-group-candidate-pool-v3-2026-09-20"
 MARKER = "SAGEJS_CORPUS_V1|"
 VERSION = "2.17.4"
 EXPECTED_GP_SHA256 = "915f8085d7eace9f9778edcbc657083a234cdea657dfcc677a26003fde4232c4"
@@ -57,6 +59,16 @@ def polynomial_digest(coefficients: list[str]) -> str:
 
 def seeded_key(seed: str, candidate_id: str) -> str:
     return hashlib.sha256((seed + "\0" + candidate_id).encode()).hexdigest()
+
+
+def profile_seed(profile: str) -> str:
+    if profile == "wide-v1":
+        return SEED
+    if profile == "admissible-v2":
+        return ADMISSIBLE_V2_SEED
+    if profile == "hybrid-v3":
+        return HYBRID_V3_SEED
+    raise GenerationError(f"unknown generation profile: {profile}")
 
 
 def is_within(path: Path, parent: Path) -> bool:
@@ -257,13 +269,20 @@ def timing_stratum(samples: list[int]) -> str:
     raise GenerationError("median PARI time exceeds 30 seconds")
 
 
-def deterministic_inputs(per_degree: int) -> list[dict[str, Any]]:
+def deterministic_inputs(
+    per_degree: int, profile: str = "wide-v1"
+) -> list[dict[str, Any]]:
     """Return an answer-free oversampled input pool.
 
     Coefficient magnitudes deliberately span the four expected timing bands.
     Qualification still derives the actual band from measurements; the scale
     is never treated as an answer or timing oracle.
     """
+
+    if profile == "hybrid-v3":
+        left = deterministic_inputs((per_degree + 1) // 2, "admissible-v2")
+        right = deterministic_inputs(per_degree // 2, "wide-v1")
+        return sorted(left + right, key=lambda case: (case["degree"], case["id"]))
 
     def multiply(left: list[int], right: list[int]) -> list[int]:
         product = [0] * (len(left) + len(right) - 1)
@@ -276,12 +295,23 @@ def deterministic_inputs(per_degree: int) -> list[dict[str, Any]]:
     # Start from a polynomial with the requested real/complex root pattern,
     # then perturb its constant term. Qualification proves both irreducibility
     # and the surviving signature; construction is never accepted as proof.
-    root_scales = [7, 15, 31, 63, 127, 255, 511, 1023, 2047]
+    if profile == "wide-v1":
+        root_scales = [7, 15, 31, 63, 127, 255, 511, 1023, 2047]
+        seed = profile_seed(profile)
+        id_prefix = "generated"
+    elif profile == "admissible-v2":
+        # Repeated small scales retain every signature while avoiding a tail
+        # of fields whose public PARI call exceeds the frozen 30-second bound.
+        root_scales = [3, 5, 7]
+        seed = profile_seed(profile)
+        id_prefix = "admissible-v2"
+    else:
+        raise GenerationError(f"unknown generation profile: {profile}")
     for degree in range(2, 7):
         # Degree-local streams make every per-degree prefix stable. A smoke
         # run with --per-degree 1 therefore qualifies exactly the first case
         # of the frozen --per-degree 72 pool.
-        rng = random.Random(f"{SEED}\0degree={degree}")
+        rng = random.Random(f"{seed}\0degree={degree}")
         signatures = [(degree - 2 * r2, r2) for r2 in range(degree // 2 + 1)]
         for ordinal in range(per_degree):
             r1, r2 = signatures[ordinal % len(signatures)]
@@ -305,7 +335,7 @@ def deterministic_inputs(per_degree: int) -> list[dict[str, Any]]:
             case_digest = polynomial_digest(encoded)
             cases.append(
                 {
-                    "id": f"generated-d{degree}-{ordinal + 1:04d}-{case_digest[:12]}",
+                    "id": f"{id_prefix}-d{degree}-{ordinal + 1:04d}-{case_digest[:12]}",
                     "polynomialAscending": encoded,
                     "polynomialSha256": case_digest,
                     "degree": degree,
@@ -314,7 +344,9 @@ def deterministic_inputs(per_degree: int) -> list[dict[str, Any]]:
     return cases
 
 
-def qualification_inputs(per_degree: int) -> list[dict[str, Any]]:
+def qualification_inputs(
+    per_degree: int, profile: str = "wide-v1"
+) -> list[dict[str, Any]]:
     """Include the mandatory open fields in answer-free form."""
 
     initial = json.loads((HERE / "initial-open-development-v1.json").read_text())
@@ -325,7 +357,7 @@ def qualification_inputs(per_degree: int) -> list[dict[str, Any]]:
         }
         for case in initial["cases"]
     ]
-    return mandatory + deterministic_inputs(per_degree)
+    return mandatory + deterministic_inputs(per_degree, profile)
 
 
 def traits(case: dict[str, Any], oracle: dict[str, Any]) -> list[str]:
@@ -359,9 +391,9 @@ def command_verify(arguments: argparse.Namespace) -> None:
 def command_neutral(arguments: argparse.Namespace) -> None:
     value = {
         "schema": "sagejs.rust-class-group/neutral-candidate-input-pool-v1",
-        "seed": SEED,
+        "seed": profile_seed(arguments.profile),
         "answerVisibility": "none",
-        "cases": deterministic_inputs(arguments.per_degree),
+        "cases": deterministic_inputs(arguments.per_degree, arguments.profile),
     }
     rendered = json.dumps(value, indent=2) + "\n"
     if arguments.output:
@@ -411,7 +443,7 @@ def command_qualify(arguments: argparse.Namespace) -> None:
     identity = gp_identity(gp)
     output = Path(arguments.output).resolve()
     require_private(output)
-    inputs = qualification_inputs(arguments.per_degree)
+    inputs = qualification_inputs(arguments.per_degree, arguments.profile)
     if arguments.ids_from:
         shortlist = json.loads(Path(arguments.ids_from).read_text(encoding="utf-8"))
         if (
@@ -423,6 +455,8 @@ def command_qualify(arguments: argparse.Namespace) -> None:
             raise GenerationError(
                 "--ids-from shortlist is only a partial smoke artifact"
             )
+        if shortlist.get("generatorSeed") != profile_seed(arguments.profile):
+            raise GenerationError("--ids-from shortlist uses a different profile seed")
         selected_ids = set(shortlist.get("caseIds", []))
         mandatory_ids = {
             case["id"]
@@ -446,7 +480,7 @@ def command_qualify(arguments: argparse.Namespace) -> None:
         checkpoint = json.loads(output.read_text(encoding="utf-8"))
         if checkpoint.get("schema") != checkpoint_schema:
             raise GenerationError("resume checkpoint has an unexpected schema")
-        if checkpoint.get("generatorSeed") != SEED:
+        if checkpoint.get("generatorSeed") != profile_seed(arguments.profile):
             raise GenerationError("resume checkpoint has a different generator seed")
         if checkpoint.get("oracleBuild", {}).get("gpSha256") != identity["gpSha256"]:
             raise GenerationError("resume checkpoint used a different GP binary")
@@ -500,7 +534,7 @@ def command_qualify(arguments: argparse.Namespace) -> None:
         )
         checkpoint = {
             "schema": checkpoint_schema,
-            "generatorSeed": SEED,
+            "generatorSeed": profile_seed(arguments.profile),
             "oracleBuild": identity,
             "sampleStatus": "screening-one-sample"
             if arguments.screen
@@ -577,7 +611,7 @@ def command_shortlist(arguments: argparse.Namespace) -> None:
     require_private(output)
     value = {
         "schema": "sagejs.rust-class-group/private-candidate-shortlist-v1",
-        "generatorSeed": SEED,
+        "generatorSeed": source.get("generatorSeed"),
         "screenPoolSha256": digest(source_path),
         "perDegree": arguments.per_degree,
         "complete": all(
@@ -591,6 +625,99 @@ def command_shortlist(arguments: argparse.Namespace) -> None:
     print(f"wrote {output} sha256={digest(output)} cases={len(chosen)}")
 
 
+def command_merge_screens(arguments: argparse.Namespace) -> None:
+    sources = [Path(path).resolve() for path in arguments.screen_pool]
+    pools = [json.loads(path.read_text(encoding="utf-8")) for path in sources]
+    if any(
+        pool.get("schema") != "sagejs.rust-class-group/private-candidate-screen-v1"
+        for pool in pools
+    ):
+        raise GenerationError("unexpected screening-pool schema")
+    oracle_hashes = {pool.get("oracleBuild", {}).get("gpSha256") for pool in pools}
+    if len(oracle_hashes) != 1:
+        raise GenerationError("screening pools use different GP binaries")
+    candidates: list[dict[str, Any]] = []
+    failures: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for pool in pools:
+        for case in pool.get("candidates", []):
+            if case["id"] in seen:
+                continue
+            seen.add(case["id"])
+            candidates.append(case)
+        failures.extend(pool.get("failures", []))
+    output = Path(arguments.output).resolve()
+    require_private(output)
+    value = {
+        "schema": "sagejs.rust-class-group/private-candidate-screen-v1",
+        "generatorSeed": HYBRID_V3_SEED,
+        "oracleBuild": pools[0]["oracleBuild"],
+        "sampleStatus": "screening-one-sample",
+        "mergedScreenSha256": [digest(path) for path in sources],
+        "candidates": sorted(candidates, key=lambda case: case["id"]),
+        "failures": failures,
+    }
+    output.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
+    print(f"wrote {output} sha256={digest(output)} cases={len(candidates)}")
+
+
+def command_extend_shortlist(arguments: argparse.Namespace) -> None:
+    base_path = Path(arguments.base_shortlist).resolve()
+    screen_path = Path(arguments.screen_pool).resolve()
+    base = json.loads(base_path.read_text(encoding="utf-8"))
+    screen = json.loads(screen_path.read_text(encoding="utf-8"))
+    if (
+        base.get("schema") != "sagejs.rust-class-group/private-candidate-shortlist-v1"
+        or base.get("complete") is not True
+    ):
+        raise GenerationError("base shortlist is not complete")
+    if screen.get("schema") != "sagejs.rust-class-group/private-candidate-screen-v1":
+        raise GenerationError("unexpected screening-pool schema")
+    if base.get("generatorSeed") != screen.get("generatorSeed"):
+        raise GenerationError("base shortlist and screen use different seeds")
+    chosen_ids = set(base.get("caseIds", []))
+    eligible = [
+        case
+        for case in screen.get("candidates", [])
+        if case["id"] not in chosen_ids
+        and case["degree"] == arguments.degree
+        and case["timingStratum"] == arguments.timing_stratum
+    ]
+    eligible.sort(
+        key=lambda case: (
+            sorted(case["expected"]["pariPublicNanoseconds"])[
+                len(case["expected"]["pariPublicNanoseconds"]) // 2
+            ],
+            seeded_key(base["generatorSeed"], case["id"]),
+        )
+    )
+    if len(eligible) < arguments.count:
+        raise GenerationError(
+            f"only {len(eligible)} eligible supplemental candidates; "
+            f"requested {arguments.count}"
+        )
+    additions = eligible[: arguments.count]
+    output = Path(arguments.output).resolve()
+    require_private(output)
+    value = {
+        **base,
+        "baseShortlistSha256": digest(base_path),
+        "supplementalScreenSha256": digest(screen_path),
+        "supplement": {
+            "degree": arguments.degree,
+            "timingStratum": arguments.timing_stratum,
+            "count": arguments.count,
+            "order": "screen-median-then-generator-seeded-hash-v1",
+        },
+        "caseIds": sorted(chosen_ids | {case["id"] for case in additions}),
+    }
+    output.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
+    print(
+        f"wrote {output} sha256={digest(output)} "
+        f"cases={len(value['caseIds'])} added={len(additions)}"
+    )
+
+
 def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(description=__doc__)
     commands = result.add_subparsers(dest="command", required=True)
@@ -599,6 +726,11 @@ def parser() -> argparse.ArgumentParser:
     verify.set_defaults(run=command_verify)
     neutral = commands.add_parser("neutral-inputs")
     neutral.add_argument("--per-degree", type=int, default=72)
+    neutral.add_argument(
+        "--profile",
+        choices=["wide-v1", "admissible-v2", "hybrid-v3"],
+        default="wide-v1",
+    )
     neutral.add_argument("--output")
     neutral.set_defaults(run=command_neutral)
     eligibility = commands.add_parser(
@@ -614,6 +746,11 @@ def parser() -> argparse.ArgumentParser:
     qualify = commands.add_parser("qualify")
     qualify.add_argument("--gp", default=str(DEFAULT_GP))
     qualify.add_argument("--per-degree", type=int, default=72)
+    qualify.add_argument(
+        "--profile",
+        choices=["wide-v1", "admissible-v2", "hybrid-v3"],
+        default="wide-v1",
+    )
     qualify.add_argument("--repeats", type=int, default=15)
     qualify.add_argument(
         "--candidate-timeout-seconds",
@@ -634,6 +771,11 @@ def parser() -> argparse.ArgumentParser:
     )
     screen.add_argument("--gp", default=str(DEFAULT_GP))
     screen.add_argument("--per-degree", type=int, default=72)
+    screen.add_argument(
+        "--profile",
+        choices=["wide-v1", "admissible-v2", "hybrid-v3"],
+        default="wide-v1",
+    )
     screen.add_argument("--candidate-timeout-seconds", type=int, default=45)
     screen.add_argument("--output", required=True)
     screen.add_argument("--resume", action="store_true")
@@ -650,6 +792,23 @@ def parser() -> argparse.ArgumentParser:
     )
     shortlist.add_argument("--output", required=True)
     shortlist.set_defaults(run=command_shortlist)
+    merge = commands.add_parser(
+        "merge-screens", help="merge compatible private screens for hybrid selection"
+    )
+    merge.add_argument("--screen-pool", action="append", required=True)
+    merge.add_argument("--output", required=True)
+    merge.set_defaults(run=command_merge_screens)
+    extend = commands.add_parser(
+        "extend-shortlist",
+        help="add deterministic screened timing-stratum spares to a shortlist",
+    )
+    extend.add_argument("--base-shortlist", required=True)
+    extend.add_argument("--screen-pool", required=True)
+    extend.add_argument("--degree", type=int, required=True)
+    extend.add_argument("--timing-stratum", required=True)
+    extend.add_argument("--count", type=int, required=True)
+    extend.add_argument("--output", required=True)
+    extend.set_defaults(run=command_extend_shortlist)
     return result
 
 

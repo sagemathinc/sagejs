@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/rust-class-group-qualification/qualified-neutral-panel-v1.json",
+  "title": "Qualified answer-free Rust class-group input panel",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "status",
+    "spec",
+    "answerVisibility",
+    "qualificationClaims",
+    "partitions"
+  ],
+  "properties": {
+    "schema": { "const": "sagejs.rust-class-group/qualified-neutral-panel-v1" },
+    "status": { "const": "r0-fully-qualified-input-panel" },
+    "spec": { "const": "qualification-corpus-spec-v1.json" },
+    "answerVisibility": { "const": "none" },
+    "qualificationClaims": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "degreeQuotasSatisfied",
+        "signatureQuotasSatisfied",
+        "timingQuotasSatisfied",
+        "traitQuotasSatisfied",
+        "minimumPariSamplesPerCase"
+      ],
+      "properties": {
+        "degreeQuotasSatisfied": { "const": true },
+        "signatureQuotasSatisfied": { "const": true },
+        "timingQuotasSatisfied": { "const": true },
+        "traitQuotasSatisfied": { "const": true },
+        "minimumPariSamplesPerCase": { "type": "integer", "minimum": 15 }
+      }
+    },
+    "partitions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["open", "heldOut"],
+      "properties": {
+        "open": { "$ref": "#/$defs/partition" },
+        "heldOut": { "$ref": "#/$defs/partition" }
+      }
+    }
+  },
+  "$defs": {
+    "partition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cases"],
+      "properties": {
+        "cases": {
+          "type": "array",
+          "minItems": 60,
+          "maxItems": 60,
+          "items": { "$ref": "#/$defs/runtimeInput" }
+        }
+      }
+    },
+    "runtimeInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "inputId",
+        "fieldId",
+        "field",
+        "preparation",
+        "request",
+        "randomness",
+        "containsOracleAnswers"
+      ],
+      "properties": {
+        "schema": { "const": "sagejs.rust-class-group.neutral-input/v1" },
+        "inputId": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "fieldId": { "type": "string", "minLength": 1 },
+        "field": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "variable",
+            "coefficientsAscending",
+            "degree",
+            "monic",
+            "irreducible"
+          ],
+          "properties": {
+            "variable": { "const": "x" },
+            "coefficientsAscending": {
+              "type": "array",
+              "minItems": 3,
+              "maxItems": 7,
+              "items": {
+                "type": "string",
+                "pattern": "^(0|-[1-9][0-9]*|[1-9][0-9]*)$"
+              }
+            },
+            "degree": { "type": "integer", "minimum": 2, "maximum": 6 },
+            "monic": { "const": true },
+            "irreducible": { "const": true }
+          }
+        },
+        "preparation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": { "kind": { "const": "public-polynomial" } }
+        },
+        "request": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["proof", "output", "mapPolicy", "unitPolicy", "limits"],
+          "properties": {
+            "proof": { "const": "conditional-grh" },
+            "output": { "const": "class-and-unit-group" },
+            "mapPolicy": { "const": "construct-eagerly" },
+            "unitPolicy": { "const": "compact-complete" },
+            "limits": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "wallMilliseconds",
+                "memoryBytes",
+                "relationCandidates",
+                "precisionBits",
+                "continuationPasses"
+              ],
+              "properties": {
+                "wallMilliseconds": { "const": "600000" },
+                "memoryBytes": { "const": "4294967296" },
+                "relationCandidates": { "const": "100000000" },
+                "precisionBits": { "const": 4096 },
+                "continuationPasses": { "const": 100 }
+              }
+            }
+          }
+        },
+        "randomness": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["algorithm", "seed"],
+          "properties": {
+            "algorithm": { "const": "chacha20-v1" },
+            "seed": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+          }
+        },
+        "containsOracleAnswers": { "const": false }
+      }
+    }
+  }
+}

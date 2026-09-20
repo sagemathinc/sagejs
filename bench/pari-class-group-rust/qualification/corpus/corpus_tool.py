@@ -20,8 +20,31 @@ LAYOUT_PATH = HERE / "qualification-layout-v1.json"
 INITIAL_PATH = HERE / "initial-open-development-v1.json"
 NEUTRAL_POOL_PATH = HERE / "neutral-candidate-inputs-v1.json"
 NEUTRAL_ELIGIBILITY_PATH = HERE / "neutral-eligibility-v1.json"
+NEUTRAL_POOL_V2_PATH = HERE / "neutral-candidate-inputs-v2.json"
+NEUTRAL_ELIGIBILITY_V2_PATH = HERE / "neutral-eligibility-v2.json"
 NEUTRAL_PANEL_PATH = HERE / "balanced-neutral-panel-v1.json"
+QUALIFIED_PANEL_PATH = HERE / "qualified-neutral-panel-v1.json"
+QUALIFICATION_RECEIPT_PATH = HERE / "qualification-selection-receipt-v1.json"
+ORACLE_IDENTITY_PATH = HERE / "pari-2.17.4-oracle-identity.json"
+TRACE_CONTRACT_PATH = HERE / "pari-buchall-debug-trace-v1.json"
 DECIMAL = re.compile(r"(?:0|-[1-9][0-9]*|[1-9][0-9]*)\Z")
+SHA256 = re.compile(r"[0-9a-f]{64}\Z")
+
+
+def neutral_request() -> dict[str, Any]:
+    return {
+        "proof": "conditional-grh",
+        "output": "class-and-unit-group",
+        "mapPolicy": "construct-eagerly",
+        "unitPolicy": "compact-complete",
+        "limits": {
+            "wallMilliseconds": "600000",
+            "memoryBytes": "4294967296",
+            "relationCandidates": "100000000",
+            "precisionBits": 4096,
+            "continuationPasses": 100,
+        },
+    }
 
 
 class CorpusError(ValueError):
@@ -48,6 +71,11 @@ def canonical_output(value: Any) -> str:
 def require(condition: bool, message: str) -> None:
     if not condition:
         raise CorpusError(message)
+
+
+def require_exact_keys(value: Any, keys: set[str], label: str) -> None:
+    require(isinstance(value, dict), f"{label}: expected an object")
+    require(set(value) == keys, f"{label}: expected exactly {sorted(keys)}")
 
 
 def legal_signatures(degree: int) -> list[tuple[int, int]]:
@@ -294,7 +322,11 @@ def validate_neutral_pool(pool: dict[str, Any]) -> None:
 
 
 def validate_neutral_eligibility(
-    evidence: dict[str, Any], pool: dict[str, Any]
+    evidence: dict[str, Any],
+    pool: dict[str, Any],
+    pool_path: Path = NEUTRAL_POOL_PATH,
+    *,
+    require_all_irreducible: bool = True,
 ) -> None:
     require(
         evidence.get("schema")
@@ -304,16 +336,24 @@ def validate_neutral_eligibility(
     require(evidence.get("answerVisibility") == "none", "eligibility leaks answers")
     require(
         evidence.get("candidatePoolSha256")
-        == hashlib.sha256(NEUTRAL_POOL_PATH.read_bytes()).hexdigest(),
+        == hashlib.sha256(pool_path.read_bytes()).hexdigest(),
         "eligibility evidence is for a different candidate pool",
     )
     expected = {(case["id"], case["polynomialSha256"]) for case in pool["cases"]}
-    actual = {
-        (case["id"], case["polynomialSha256"])
-        for case in evidence.get("cases", [])
-        if case.get("irreducible") is True
-    }
-    require(actual == expected, "not every neutral candidate is certified irreducible")
+    evidence_cases = evidence.get("cases", [])
+    actual = {(case["id"], case["polynomialSha256"]) for case in evidence_cases}
+    require(
+        actual == expected, "eligibility evidence does not cover the candidate pool"
+    )
+    require(
+        all(isinstance(case.get("irreducible"), bool) for case in evidence_cases),
+        "eligibility evidence lacks an exact irreducibility result",
+    )
+    if require_all_irreducible:
+        require(
+            all(case["irreducible"] for case in evidence_cases),
+            "not every neutral candidate is certified irreducible",
+        )
 
 
 def neutral_runtime_input(case: dict[str, Any], partition: str) -> dict[str, Any]:
@@ -343,19 +383,7 @@ def neutral_runtime_input(case: dict[str, Any], partition: str) -> dict[str, Any
             "irreducible": True,
         },
         "preparation": {"kind": "public-polynomial"},
-        "request": {
-            "proof": "conditional-grh",
-            "output": "class-and-unit-group",
-            "mapPolicy": "construct-eagerly",
-            "unitPolicy": "compact-complete",
-            "limits": {
-                "wallMilliseconds": "600000",
-                "memoryBytes": "4294967296",
-                "relationCandidates": "100000000",
-                "precisionBits": 4096,
-                "continuationPasses": 100,
-            },
-        },
+        "request": neutral_request(),
         "randomness": {"algorithm": "chacha20-v1", "seed": seed},
         "containsOracleAnswers": False,
     }
@@ -512,6 +540,348 @@ def validate_balanced_neutral_panel(
         <= {case["fieldId"] for case in panel["partitions"]["open"]["cases"]},
         "open partition omits mandatory development inputs",
     )
+
+
+def validate_neutral_runtime_input(
+    case: dict[str, Any], partition: str, label: str
+) -> str:
+    require_exact_keys(
+        case,
+        {
+            "schema",
+            "inputId",
+            "fieldId",
+            "field",
+            "preparation",
+            "request",
+            "randomness",
+            "containsOracleAnswers",
+        },
+        label,
+    )
+    require(
+        case["schema"] == "sagejs.rust-class-group.neutral-input/v1",
+        f"{label}: invalid runtime-input schema",
+    )
+    field_id = case["fieldId"]
+    require(isinstance(field_id, str) and field_id, f"{label}: invalid fieldId")
+    field = case["field"]
+    require_exact_keys(
+        field,
+        {
+            "variable",
+            "coefficientsAscending",
+            "degree",
+            "monic",
+            "irreducible",
+        },
+        f"{label}.field",
+    )
+    coefficients = field["coefficientsAscending"]
+    degree = field["degree"]
+    require(field["variable"] == "x", f"{label}: variable must be x")
+    require(
+        isinstance(degree, int) and not isinstance(degree, bool) and 2 <= degree <= 6,
+        f"{label}: degree outside admitted range",
+    )
+    require(
+        isinstance(coefficients, list)
+        and len(coefficients) == degree + 1
+        and all(
+            isinstance(value, str) and DECIMAL.fullmatch(value)
+            for value in coefficients
+        ),
+        f"{label}: invalid coefficient shape or encoding",
+    )
+    require(coefficients[-1] == "1", f"{label}: polynomial must be monic")
+    require(field["monic"] is True, f"{label}: monic claim must be true")
+    require(field["irreducible"] is True, f"{label}: irreducibility claim must be true")
+    polynomial_sha = polynomial_digest(coefficients)
+    seed = hashlib.sha256(
+        f"sagejs-rust-class-group-runtime-v1\0{partition}\0{field_id}".encode()
+    ).hexdigest()
+    input_sha = hashlib.sha256(
+        compact(
+            [
+                "sagejs.rust-class-group.neutral-input/v1",
+                partition,
+                field_id,
+                polynomial_sha,
+                seed,
+            ]
+        )
+    ).hexdigest()
+    require(case["inputId"] == f"sha256:{input_sha}", f"{label}: inputId mismatch")
+    require(
+        case["preparation"] == {"kind": "public-polynomial"},
+        f"{label}: invalid preparation contract",
+    )
+    require(case["request"] == neutral_request(), f"{label}: invalid request contract")
+    require(
+        case["randomness"] == {"algorithm": "chacha20-v1", "seed": seed},
+        f"{label}: invalid deterministic randomness contract",
+    )
+    require(
+        case["containsOracleAnswers"] is False,
+        f"{label}: containsOracleAnswers must be false",
+    )
+    return polynomial_sha
+
+
+def validate_qualified_neutral_panel(
+    panel: dict[str, Any], receipt: dict[str, Any], spec: dict[str, Any]
+) -> None:
+    require_exact_keys(
+        panel,
+        {
+            "schema",
+            "status",
+            "spec",
+            "answerVisibility",
+            "qualificationClaims",
+            "partitions",
+        },
+        "qualified panel",
+    )
+    require(
+        panel.get("schema") == "sagejs.rust-class-group/qualified-neutral-panel-v1",
+        "unexpected qualified neutral panel schema",
+    )
+    require(
+        panel.get("status") == "r0-fully-qualified-input-panel",
+        "qualified neutral panel is not final",
+    )
+    require(panel.get("answerVisibility") == "none", "qualified panel leaks answers")
+    require(
+        panel.get("spec") == SPEC_PATH.name, "qualified panel refers to another spec"
+    )
+    require(
+        panel.get("qualificationClaims")
+        == {
+            "degreeQuotasSatisfied": True,
+            "signatureQuotasSatisfied": True,
+            "timingQuotasSatisfied": True,
+            "traitQuotasSatisfied": True,
+            "minimumPariSamplesPerCase": 15,
+        },
+        "qualified panel claims are incomplete",
+    )
+    forbidden = {
+        "expected",
+        "classNumber",
+        "invariantFactors",
+        "pariPublicNanoseconds",
+        "signature",
+        "timingStratum",
+        "traits",
+        "constructionEvidence",
+        "oracleTrace",
+    }
+    serialized = canonical_output(panel)
+    for key in forbidden:
+        require(f'"{key}"' not in serialized, f"qualified panel leaks {key}")
+    all_ids: set[str] = set()
+    all_polynomials: set[str] = set()
+    quota = Counter(
+        {
+            int(key): value
+            for key, value in spec["panel"]["degreeQuotaPerPartition"].items()
+        }
+    )
+    require_exact_keys(panel["partitions"], {"open", "heldOut"}, "panel partitions")
+    for partition in ("open", "heldOut"):
+        require_exact_keys(
+            panel["partitions"][partition], {"cases"}, f"{partition} partition"
+        )
+        cases = panel["partitions"][partition]["cases"]
+        require(isinstance(cases, list), f"{partition}: cases must be an array")
+        require(len(cases) == 60, f"{partition}: expected 60 qualified inputs")
+        require(
+            Counter(case["field"]["degree"] for case in cases) == quota,
+            f"{partition}: qualified degree quota mismatch",
+        )
+        for index, case in enumerate(cases):
+            label = f"{partition} case {index}"
+            digest = validate_neutral_runtime_input(case, partition, label)
+            require(case["fieldId"] not in all_ids, "duplicate field ID across panel")
+            all_ids.add(case["fieldId"])
+            require(digest not in all_polynomials, "duplicate polynomial across panel")
+            all_polynomials.add(digest)
+    require(
+        set(spec["selection"]["mandatoryOpenIds"])
+        <= {case["fieldId"] for case in panel["partitions"]["open"]["cases"]},
+        "qualified open partition omits mandatory development inputs",
+    )
+    require_exact_keys(
+        receipt,
+        {
+            "schema",
+            "status",
+            "spec",
+            "specSha256",
+            "selectionAlgorithm",
+            "selectionSeeds",
+            "sourcePoolSha256",
+            "oracleIdentity",
+            "oracleIdentitySha256",
+            "traceContract",
+            "traceContractSha256",
+            "qualifiedNeutralPanel",
+            "qualifiedNeutralPanelSha256",
+            "privateEvidenceSha256",
+            "answerVisibility",
+            "partitions",
+        },
+        "qualification receipt",
+    )
+    require(
+        receipt.get("schema")
+        == "sagejs.rust-class-group/qualification-selection-receipt-v1",
+        "unexpected qualification receipt schema",
+    )
+    require(receipt.get("status") == "passed", "qualification receipt did not pass")
+    require(receipt.get("spec") == SPEC_PATH.name, "receipt refers to another spec")
+    require(
+        receipt.get("specSha256") == hashlib.sha256(SPEC_PATH.read_bytes()).hexdigest(),
+        "qualification receipt refers to another spec",
+    )
+    require(
+        receipt.get("oracleIdentity") == ORACLE_IDENTITY_PATH.name
+        and receipt.get("oracleIdentitySha256")
+        == hashlib.sha256(ORACLE_IDENTITY_PATH.read_bytes()).hexdigest(),
+        "qualification receipt refers to another oracle build",
+    )
+    require(
+        receipt.get("traceContract") == TRACE_CONTRACT_PATH.name
+        and receipt.get("traceContractSha256")
+        == hashlib.sha256(TRACE_CONTRACT_PATH.read_bytes()).hexdigest(),
+        "qualification receipt refers to another trace contract",
+    )
+    require(
+        receipt.get("selectionAlgorithm") == spec["selection"]["algorithm"],
+        "qualification receipt uses another selection algorithm",
+    )
+    require(
+        receipt.get("selectionSeeds")
+        == {
+            "open": spec["selection"]["openSeed"],
+            "heldOut": spec["selection"]["heldOutSeed"],
+        },
+        "qualification receipt uses other selection seeds",
+    )
+    for key in (
+        "sourcePoolSha256",
+        "privateEvidenceSha256",
+        "specSha256",
+        "oracleIdentitySha256",
+        "traceContractSha256",
+        "qualifiedNeutralPanelSha256",
+    ):
+        require(
+            isinstance(receipt.get(key), str) and SHA256.fullmatch(receipt[key]),
+            f"qualification receipt has invalid {key}",
+        )
+    require(
+        receipt.get("qualifiedNeutralPanel") == QUALIFIED_PANEL_PATH.name
+        and receipt.get("qualifiedNeutralPanelSha256")
+        == hashlib.sha256(canonical_output(panel).encode()).hexdigest(),
+        "qualification receipt does not bind the passed panel",
+    )
+    require(
+        receipt.get("answerVisibility") == "aggregate-counts-only",
+        "qualification receipt answer visibility is invalid",
+    )
+    require_exact_keys(receipt["partitions"], {"open", "heldOut"}, "receipt partitions")
+    for partition in ("open", "heldOut"):
+        summary = receipt["partitions"][partition]
+        require_exact_keys(
+            summary,
+            {
+                "caseCount",
+                "degreeCounts",
+                "timingStratumCounts",
+                "legalSignaturesCovered",
+                "traitCounts",
+                "minimumTimingSamplesPerCase",
+                "quotaValidation",
+            },
+            f"{partition} receipt summary",
+        )
+        require(summary.get("caseCount") == 60, f"{partition}: invalid receipt count")
+        require(
+            summary.get("degreeCounts") == spec["panel"]["degreeQuotaPerPartition"],
+            f"{partition}: receipt degree quotas are invalid",
+        )
+        timing_counts = summary.get("timingStratumCounts", {})
+        bounds = spec["panel"]["timingQuotaBoundsPerPartition"]
+        require(
+            isinstance(timing_counts, dict)
+            and set(timing_counts) == set(spec["panel"]["timingStrata"])
+            and all(
+                isinstance(count, int) and not isinstance(count, bool)
+                for count in timing_counts.values()
+            )
+            and sum(timing_counts.values()) == 60
+            and all(
+                bounds["minimumEach"] <= count <= bounds["maximumEach"]
+                for count in timing_counts.values()
+            ),
+            f"{partition}: receipt timing quotas are invalid",
+        )
+        expected_signatures = {
+            (degree, *signature)
+            for degree in spec["selection"]["degreeOrder"]
+            for signature in legal_signatures(degree)
+        }
+        signature_entries = summary.get("legalSignaturesCovered", [])
+        require(
+            isinstance(signature_entries, list)
+            and all(
+                isinstance(entry, dict)
+                and set(entry) == {"degree", "signature"}
+                and isinstance(entry["degree"], int)
+                and not isinstance(entry["degree"], bool)
+                and isinstance(entry["signature"], list)
+                and len(entry["signature"]) == 2
+                and all(
+                    isinstance(value, int) and not isinstance(value, bool)
+                    for value in entry["signature"]
+                )
+                for entry in signature_entries
+            ),
+            f"{partition}: malformed receipt signature coverage",
+        )
+        actual_signatures = {
+            (entry["degree"], *entry["signature"]) for entry in signature_entries
+        }
+        require(
+            actual_signatures == expected_signatures,
+            f"{partition}: receipt signature coverage is invalid",
+        )
+        trait_counts = summary.get("traitCounts", {})
+        require(
+            isinstance(trait_counts, dict)
+            and set(trait_counts) == set(spec["panel"]["traitMinimumPerPartition"])
+            and all(
+                isinstance(count, int) and not isinstance(count, bool)
+                for count in trait_counts.values()
+            )
+            and all(
+                trait_counts[trait] >= minimum
+                for trait, minimum in spec["panel"]["traitMinimumPerPartition"].items()
+            ),
+            f"{partition}: receipt trait quotas are invalid",
+        )
+        require(
+            summary.get("quotaValidation") == "passed",
+            f"{partition}: quota receipt did not pass",
+        )
+        require(
+            isinstance(summary.get("minimumTimingSamplesPerCase"), int)
+            and not isinstance(summary["minimumTimingSamplesPerCase"], bool)
+            and summary["minimumTimingSamplesPerCase"] >= 15,
+            f"{partition}: insufficient timing samples in receipt",
+        )
 
 
 def validate_candidate(
@@ -686,6 +1056,131 @@ def public_case(case: dict[str, Any], *, reveal_answer: bool) -> dict[str, Any]:
     return answer
 
 
+def qualification_summary(
+    cases: list[dict[str, Any]], spec: dict[str, Any]
+) -> dict[str, Any]:
+    """Return aggregate, answer-free evidence that a partition meets its quotas."""
+
+    validate_complete_partition(cases, spec, "qualification summary")
+    timing, traits, signatures = deficits(cases, spec)
+    return {
+        "caseCount": len(cases),
+        "degreeCounts": {
+            str(degree): sum(case["degree"] == degree for case in cases)
+            for degree in spec["selection"]["degreeOrder"]
+        },
+        "timingStratumCounts": {
+            stratum: timing[stratum] for stratum in spec["panel"]["timingStrata"]
+        },
+        "legalSignaturesCovered": [
+            {"degree": degree, "signature": [r1, r2]}
+            for degree, r1, r2 in sorted(signatures)
+        ],
+        "traitCounts": {
+            trait: traits[trait] for trait in spec["panel"]["traitMinimumPerPartition"]
+        },
+        "minimumTimingSamplesPerCase": min(
+            len(case["expected"]["pariPublicNanoseconds"]) for case in cases
+        ),
+        "quotaValidation": "passed",
+    }
+
+
+def qualified_neutral_panel(
+    open_cases: list[dict[str, Any]], heldout_cases: list[dict[str, Any]]
+) -> dict[str, Any]:
+    """Build the runtime panel without per-field oracle or selection metadata."""
+
+    return {
+        "schema": "sagejs.rust-class-group/qualified-neutral-panel-v1",
+        "status": "r0-fully-qualified-input-panel",
+        "spec": SPEC_PATH.name,
+        "answerVisibility": "none",
+        "qualificationClaims": {
+            "degreeQuotasSatisfied": True,
+            "signatureQuotasSatisfied": True,
+            "timingQuotasSatisfied": True,
+            "traitQuotasSatisfied": True,
+            "minimumPariSamplesPerCase": 15,
+        },
+        "partitions": {
+            "open": {
+                "cases": [
+                    neutral_runtime_input(case, "open")
+                    for case in sorted(open_cases, key=lambda case: case["id"])
+                ]
+            },
+            "heldOut": {
+                "cases": [
+                    neutral_runtime_input(case, "heldOut")
+                    for case in sorted(heldout_cases, key=lambda case: case["id"])
+                ]
+            },
+        },
+    }
+
+
+def private_qualification_evidence(
+    pool: dict[str, Any],
+    open_cases: list[dict[str, Any]],
+    heldout_cases: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Keep all answer-bearing evidence together, outside the repository."""
+
+    return {
+        "schema": "sagejs.rust-class-group/private-qualified-panel-evidence-v1",
+        "spec": SPEC_PATH.name,
+        "generatorSeed": pool.get("generatorSeed"),
+        "oracleBuild": pool.get("oracleBuild"),
+        "partitions": {
+            "open": {"cases": open_cases},
+            "heldOut": {"cases": heldout_cases},
+        },
+    }
+
+
+def qualification_receipt(
+    pool_path: Path,
+    private_path: Path,
+    panel_path: Path,
+    open_cases: list[dict[str, Any]],
+    heldout_cases: list[dict[str, Any]],
+    spec: dict[str, Any],
+) -> dict[str, Any]:
+    """Bind public inputs to private evidence without publishing field answers."""
+
+    return {
+        "schema": "sagejs.rust-class-group/qualification-selection-receipt-v1",
+        "status": "passed",
+        "spec": SPEC_PATH.name,
+        "specSha256": hashlib.sha256(SPEC_PATH.read_bytes()).hexdigest(),
+        "selectionAlgorithm": spec["selection"]["algorithm"],
+        "selectionSeeds": {
+            "open": spec["selection"]["openSeed"],
+            "heldOut": spec["selection"]["heldOutSeed"],
+        },
+        "sourcePoolSha256": hashlib.sha256(pool_path.read_bytes()).hexdigest(),
+        "oracleIdentity": ORACLE_IDENTITY_PATH.name,
+        "oracleIdentitySha256": hashlib.sha256(
+            ORACLE_IDENTITY_PATH.read_bytes()
+        ).hexdigest(),
+        "traceContract": TRACE_CONTRACT_PATH.name,
+        "traceContractSha256": hashlib.sha256(
+            TRACE_CONTRACT_PATH.read_bytes()
+        ).hexdigest(),
+        "qualifiedNeutralPanel": panel_path.name,
+        "qualifiedNeutralPanelSha256": hashlib.sha256(
+            panel_path.read_bytes()
+        ).hexdigest(),
+        "privateEvidenceSha256": hashlib.sha256(private_path.read_bytes()).hexdigest(),
+        "answerVisibility": "aggregate-counts-only",
+        "partitions": {
+            "open": qualification_summary(open_cases, spec),
+            "heldOut": qualification_summary(heldout_cases, spec),
+        },
+    }
+
+
 def is_within(path: Path, parent: Path) -> bool:
     try:
         path.resolve().relative_to(parent.resolve())
@@ -704,12 +1199,40 @@ def command_validate(_: argparse.Namespace) -> None:
     validate_initial(initial, spec)
     validate_neutral_pool(pool)
     validate_neutral_eligibility(eligibility, pool)
+    v2_pool_exists = NEUTRAL_POOL_V2_PATH.exists()
+    v2_eligibility_exists = NEUTRAL_ELIGIBILITY_V2_PATH.exists()
+    require(
+        v2_pool_exists == v2_eligibility_exists,
+        "v2 neutral pool and eligibility evidence must be committed together",
+    )
+    if v2_pool_exists:
+        v2_pool = load(NEUTRAL_POOL_V2_PATH)
+        validate_neutral_pool(v2_pool)
+        validate_neutral_eligibility(
+            load(NEUTRAL_ELIGIBILITY_V2_PATH),
+            v2_pool,
+            NEUTRAL_POOL_V2_PATH,
+            require_all_irreducible=False,
+        )
     validate_balanced_neutral_panel(
         load(NEUTRAL_PANEL_PATH), spec, pool, initial, eligibility
     )
+    qualified_exists = QUALIFIED_PANEL_PATH.exists()
+    receipt_exists = QUALIFICATION_RECEIPT_PATH.exists()
+    require(
+        qualified_exists == receipt_exists,
+        "qualified panel and its receipt must be committed together",
+    )
+    if qualified_exists:
+        validate_qualified_neutral_panel(
+            load(QUALIFIED_PANEL_PATH), load(QUALIFICATION_RECEIPT_PATH), spec
+        )
+    suffix = ", v2 screened inputs" if v2_pool_exists else ""
+    if qualified_exists:
+        suffix += ", and the qualified answer-free 60+60 panel"
     print(
         "validated corpus spec, 120-slot layout, 9-case initial open panel, "
-        "360 neutral candidate inputs, and balanced 60+60 neutral panel"
+        f"360 neutral candidate inputs, balanced 60+60 neutral panel{suffix}"
     )
 
 
@@ -803,7 +1326,8 @@ def command_candidate_template(_: argparse.Namespace) -> None:
 def command_select(arguments: argparse.Namespace) -> None:
     spec = load(SPEC_PATH)
     validate_spec(spec)
-    pool = load(Path(arguments.candidate_pool))
+    pool_path = Path(arguments.candidate_pool).resolve()
+    pool = load(pool_path)
     require(
         pool.get("schema") == "sagejs.rust-class-group/private-candidate-pool-v1",
         "unexpected candidate pool schema",
@@ -838,6 +1362,31 @@ def command_select(arguments: argparse.Namespace) -> None:
         not is_within(private_path, REPOSITORY),
         "private held-out answers must be written outside the repository",
     )
+    extended_outputs = any(
+        (
+            arguments.neutral_output,
+            arguments.private_all_evidence,
+            arguments.receipt_output,
+        )
+    )
+    if extended_outputs:
+        require(
+            arguments.neutral_output
+            and arguments.private_all_evidence
+            and arguments.receipt_output,
+            "neutral output, private all-evidence, and receipt must be requested together",
+        )
+        neutral_path = Path(arguments.neutral_output).resolve()
+        private_all_path = Path(arguments.private_all_evidence).resolve()
+        receipt_path = Path(arguments.receipt_output).resolve()
+        require(
+            not is_within(private_all_path, REPOSITORY),
+            "private all-partition evidence must be written outside the repository",
+        )
+        require(
+            neutral_path != receipt_path,
+            "neutral panel and qualification receipt need distinct paths",
+        )
     outputs = {
         Path(arguments.open_output): {
             "schema": "sagejs.rust-class-group/open-qualification-panel-v1",
@@ -863,6 +1412,38 @@ def command_select(arguments: argparse.Namespace) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(canonical_output(value), encoding="utf-8")
         print(f"wrote {path} sha256={hashlib.sha256(path.read_bytes()).hexdigest()}")
+
+    if extended_outputs:
+        neutral_path.parent.mkdir(parents=True, exist_ok=True)
+        private_all_path.parent.mkdir(parents=True, exist_ok=True)
+        receipt_path.parent.mkdir(parents=True, exist_ok=True)
+        neutral_path.write_text(
+            canonical_output(qualified_neutral_panel(open_cases, heldout_cases)),
+            encoding="utf-8",
+        )
+        private_all_path.write_text(
+            canonical_output(
+                private_qualification_evidence(pool, open_cases, heldout_cases)
+            ),
+            encoding="utf-8",
+        )
+        receipt_path.write_text(
+            canonical_output(
+                qualification_receipt(
+                    pool_path,
+                    private_all_path,
+                    neutral_path,
+                    open_cases,
+                    heldout_cases,
+                    spec,
+                )
+            ),
+            encoding="utf-8",
+        )
+        for path in (neutral_path, private_all_path, receipt_path):
+            print(
+                f"wrote {path} sha256={hashlib.sha256(path.read_bytes()).hexdigest()}"
+            )
 
 
 def parser() -> argparse.ArgumentParser:
@@ -893,6 +1474,18 @@ def parser() -> argparse.ArgumentParser:
     select.add_argument("--open-output", required=True)
     select.add_argument("--heldout-output", required=True)
     select.add_argument("--private-heldout-answers", required=True)
+    select.add_argument(
+        "--neutral-output",
+        help="write a fully qualified answer-free runtime panel",
+    )
+    select.add_argument(
+        "--private-all-evidence",
+        help="write complete answer-bearing evidence outside the repository",
+    )
+    select.add_argument(
+        "--receipt-output",
+        help="write an answer-free qualification receipt binding both outputs",
+    )
     select.set_defaults(run=command_select)
     return result
 

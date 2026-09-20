@@ -22,26 +22,47 @@ Files:
   It refuses to write answer-bearing output anywhere in this repository.
 - `neutral-candidate-inputs-v1.json` freezes 360 answer-free candidate inputs,
   72 for each degree 2 through 6.
+- `neutral-candidate-inputs-v2.json` freezes a second 360-input pool at
+  admissible scales. It fills signature and timing deficits without relying on
+  pathological, over-30-second high-degree cases.
 - `neutral-eligibility-v1.json` binds those inputs to an exact independent
   SymPy-over-QQ irreducibility screen. All 360 currently pass. This is why the
   provisional runtime inputs may truthfully set `field.irreducible` to true;
   the construction recipe alone is not treated as proof.
+- `neutral-eligibility-v2.json` is the corresponding exact screen for the v2
+  pool. Reducible candidates remain visible and are excluded rather than
+  silently regenerated.
 - `balanced-neutral-panel-v1.json` assigns 60 open and 60 held-out runtime
   inputs, exactly 12 per degree in each partition. It contains no answers and
   is explicitly provisional for the signature, timing, and feature quotas;
   it does not replace the frozen unselected qualification layout.
   Its first qualification request is conditional-GRH; an unconditional result
   is a later, separately evidenced claim rather than an input-side assertion.
+- `qualified-neutral-panel-v1.json` is the canonical 60 + 60
+  runtime panel selected from fully qualified evidence. It contains neither
+  answers nor per-field signature, timing, trait, or oracle metadata.
+- `qualification-selection-receipt-v1.json` binds that runtime
+  panel to the qualified private-pool and private-evidence hashes. It publishes
+  aggregate quota counts only; the field-to-answer mapping stays outside the
+  repository.
+- `qualified-neutral-panel-v1.schema.json` and
+  `qualification-selection-receipt-v1.schema.json` are closed JSON schemas for
+  the two committed qualification outputs.
+- `corpus_adversarial_tests.py` exercises structural and schema validation
+  against identity, shape, request, resource, randomness, answer-injection,
+  retry-schedule, receipt-binding, and unknown-key mutations.
 - `pari-2.17.4-oracle-identity.json` records the exact executable and library
   hashes used by the qualification generator.
 - `pari-buchall-debug-trace-v1.json` freezes source-backed debug counters for
   relation-search continuation and actual precision restarts.
 - `FROZEN-SHA256SUMS` freezes the R0 artifacts before implementation tuning.
 
-The initial panel is intentionally incomplete. It contains the existing small
-class-number 1, 2, 3, 4, and 6 examples, H1, the row-1 equation-index-3 cubic,
+The initial development panel remains intentionally incomplete. It contains
+the existing small class-number 1, 2, 3, 4, and 6 examples, H1, the row-1 equation-index-3 cubic,
 and row 6. Degrees 2, 4, 5, and 6 are represented by unfilled slots until the
-full candidate pool is generated independently.
+full candidate pool is generated independently. The qualified neutral panel is
+the separate, complete runtime corpus and does not rewrite this historical
+development input.
 
 This incompleteness is intentional and machine-visible: no timing stratum or
 execution-path trait is guessed merely to fill a quota. `precision-restart`
@@ -135,6 +156,18 @@ strata or any other quota changes invalidate the shortlist; additional screened
 spares are then upgraded deterministically. A one-sample stratum is never
 published as a qualification result.
 
+The frozen v1 greedy selector was not changed to accommodate the observed
+panel. Its first 150-case fully sampled pool left the held-out 5–100 ms stratum
+one case short. The reproducible `extend-shortlist` command upgraded all 51
+remaining screened degree-three 5–100 ms spares; the resulting 201-case private
+pool satisfies the frozen selector without changing its weights, degree order,
+or seeded tie-break.
+
+The completed campaign may merge deterministically screened candidates from
+multiple answer-free profiles before shortlisting. The frozen selector still
+sees one validated private pool: profile mixing cannot change the selection
+seeds, quota checks, 15-sample requirement, or mandatory development inputs.
+
 Selection is deterministic:
 
 1. Reject malformed, reducible, duplicate, or oracle-incomplete candidates.
@@ -144,9 +177,9 @@ Selection is deterministic:
    timing-stratum, and feature deficits most; break ties with the pinned
    SHA-256 seed order.
 5. Validate all quotas. A deficient pool fails instead of changing a quota.
-6. Write public open inputs with answers, public held-out inputs without
-   answers or oracle metadata, and private held-out answers to a path outside
-   the repository.
+6. Write the legacy open evidence and held-out inputs to staging paths, write
+   all per-field answer-bearing evidence outside the repository, and write one
+   answer-free neutral runtime panel plus its aggregate receipt.
 
 Example (the input pool and private output paths are illustrative):
 
@@ -155,15 +188,19 @@ python3 corpus_tool.py select \
   --candidate-pool /secure/class-group-candidates-v1.json \
   --open-output /tmp/open-qualification-v1.json \
   --heldout-output /tmp/heldout-inputs-v1.json \
-  --private-heldout-answers /secure/heldout-answers-v1.json
+  --private-heldout-answers /secure/heldout-answers-v1.json \
+  --neutral-output qualified-neutral-panel-v1.json \
+  --private-all-evidence /secure/qualified-panel-evidence-v1.json \
+  --receipt-output qualification-selection-receipt-v1.json
 ```
 
-The script refuses a private-answer destination under the repository root. A
-human custodian then freezes hashes of all three outputs. Development agents
-receive the open file. The held-out runner receives the input file and compares
-results inside a restricted test process; it reports case IDs and pass/fail
-diagnostics, not expected mathematical answers. A fix motivated by a held-out
-failure requires a newly selected confirmation set under a new seed/version.
+The script refuses either private-answer destination under the repository root.
+The committed runtime panel is answer-free for both partitions. A human
+custodian retains the private evidence whose digest appears in the receipt.
+The held-out runner compares results inside a restricted test process; it
+reports case IDs and pass/fail diagnostics, not expected mathematical answers.
+A fix motivated by a held-out failure requires a newly selected confirmation
+set under a new seed/version.
 
 Validate the committed R0 artifacts with:
 
@@ -171,5 +208,6 @@ Validate the committed R0 artifacts with:
 python3 corpus_tool.py validate
 python3 corpus_tool.py emit-layout --check
 python3 corpus_tool.py emit-neutral-panel --check
+python3 corpus_adversarial_tests.py
 sha256sum -c FROZEN-SHA256SUMS
 ```
