@@ -59,7 +59,7 @@
   ],
   "runs": [],
   "handoff": {
-    "summary": "R0/W0 foundations and R1--R3 cubic work now include strict contracts, pinned PARI controls, reproducible GMP/MPFR/MPC Wasm routes, validated arbitrary-precision prepared inputs, complete GRH-conditional relation/class-map/unit/regulator evidence for H1, row 1, row 6, and one complex cubic, plus a certified answer-free Sage.js polynomial-to-prepared-field adapter. These remain qualification components rather than a production class-group backend.",
+    "summary": "R0/W0 foundations and R1--R3 cubic work now include strict contracts, pinned PARI controls, reproducible GMP/MPFR/MPC Wasm routes, validated arbitrary-precision prepared inputs, complete GRH-conditional relation/class-map/unit/regulator evidence for all nine initial open cubics, plus a certified answer-free Sage.js polynomial-to-prepared-field adapter. These remain qualification components rather than a production class-group backend.",
     "risks": [
       "The complete Rust prepared-field engine has not yet been integrated behind the Sage.js public result types or lifecycle API.",
       "The complete class-and-unit path has not yet run in the actual browser route; the existing browser candidate stops at a relation presentation.",

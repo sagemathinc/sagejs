@@ -11,6 +11,10 @@ Files:
   held-out slots. Unfilled slots are explicit and carry no polynomial or answer.
 - `initial-open-development-v1.json` records the nine existing public cubic
   cases used to begin R1/R2 development.
+- `initial-open-development-v1-corrections.json` is an explicit correction
+  overlay for four signatures that were incorrectly labeled totally real in
+  the frozen source. The source stays byte-for-byte frozen; qualification
+  consumers must apply the overlay.
 - `corpus_tool.py` validates these files, regenerates the layout, and selects a
   complete panel from a private oracle candidate pool.
 - `generate_candidate_pool.py` deterministically constructs an oversampled
