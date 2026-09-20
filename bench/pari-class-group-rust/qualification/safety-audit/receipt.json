@@ -3369,8 +3369,8 @@
     {
       "file": "src/arbitrary_ideal_reduction.rs",
       "scope": "product-candidate",
-      "sha256": "0b3709d1cef8e9938c7c3d7fe39ec267bad03ea5170cf1ee202b24af10410833",
-      "bytes": 44715,
+      "sha256": "cbdff6d681a99565ca51849e9b678fbbb0773cd231110d3f01156dbe36aa017d",
+      "bytes": 45578,
       "copyrightNotices": [
         "Copyright (C) Sage.js contributors."
       ],
@@ -4158,5 +4158,5 @@
     "miriCoverageEstablished": false,
     "productionQualified": false
   },
-  "inventorySha256": "9673d53eef3380f95b53608a01ebe7109b281f5595b18d98c3e2e93b0c2354d5"
+  "inventorySha256": "e1285cc7dc472f82623e08fba9bd1e904f049948f0339dcc3aa6be8e56cf8037"
 }

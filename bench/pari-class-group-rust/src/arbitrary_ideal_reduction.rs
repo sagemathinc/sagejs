@@ -16,6 +16,7 @@
 
 use rug::Integer;
 use sha2::{Digest, Sha256};
+use std::collections::BTreeMap;
 
 use crate::class_maps::{
     ClassCoordinates, ClassMapError, PresentationClassMap, PresentationZeroState,
@@ -532,6 +533,12 @@ fn authenticate_presentation_with_context(
     let mut witness_hasher = Sha256::new();
     witness_hasher.update(b"sagejs.principal-relation-witnesses/v1\0");
     witness_hasher.update((witnesses.len() as u64).to_le_bytes());
+    // Relation collections overwhelmingly reuse small powers of the same
+    // factor-base ideals.  The ideal power depends only on the authenticated
+    // field, factor-base position, and bounded exponent, so retain each exact
+    // canonical result while replaying the transcript.  Every relation still
+    // performs the complete ideal-product and principal-ideal equality check.
+    let mut power_cache = BTreeMap::<(usize, u32), CubicIdeal>::new();
     for (index, witness) in witnesses.iter().enumerate() {
         let relation = presentation.relation_vector(index)?;
         if witness.exponents.len() != relation.len()
@@ -545,11 +552,22 @@ fn authenticate_presentation_with_context(
             return Err(ArbitraryIdealReductionError::PrincipalRelationWitnessMismatch { index });
         }
         let mut product = CubicIdeal::unit();
-        for (prime, exponent) in factor_base.exact_ideals.iter().zip(&witness.exponents) {
+        for (factor, (prime, exponent)) in factor_base
+            .exact_ideals
+            .iter()
+            .zip(&witness.exponents)
+            .enumerate()
+        {
             witness_hasher.update(exponent.to_le_bytes());
             if *exponent != 0 {
-                let power = ideal_pow(field, prime, *exponent, workspace)?;
-                product = workspace.multiply(field, &product, &power)?;
+                let key = (factor, *exponent);
+                if !power_cache.contains_key(&key) {
+                    power_cache.insert(key, ideal_pow(field, prime, *exponent, workspace)?);
+                }
+                let power = power_cache
+                    .get(&key)
+                    .expect("just inserted or previously cached exact ideal power");
+                product = workspace.multiply(field, &product, power)?;
             }
         }
         for coordinate in &witness.principal_element {

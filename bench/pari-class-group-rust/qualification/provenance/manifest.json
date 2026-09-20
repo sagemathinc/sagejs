@@ -124,7 +124,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/arbitrary_ideal_reduction.rs",
-      "sha256": "0b3709d1cef8e9938c7c3d7fe39ec267bad03ea5170cf1ee202b24af10410833",
+      "sha256": "cbdff6d681a99565ca51849e9b678fbbb0773cd231110d3f01156dbe36aa017d",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
