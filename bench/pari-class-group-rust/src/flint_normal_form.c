@@ -1381,12 +1381,15 @@ static int sagejs_rust_cubic_callback(
 
 int sagejs_rust_flint_compact_cubic_regulator(
     const int64_t *polynomial, const int64_t *basis_numerators,
-    uint64_t basis_denominator, size_t relations,
+    uint64_t basis_denominator, uint64_t real_places, uint64_t unit_rank,
+    size_t relations,
     mpz_srcptr const *generator_coordinates, mpz_srcptr const *unit_exponents,
     slong precision, mpz_ptr lower, mpz_ptr upper, int64_t *binary_exponent)
 {
     if (polynomial == NULL || basis_numerators == NULL ||
         basis_denominator == 0 || relations == 0 ||
+        !((real_places == 3 && unit_rank == 2) ||
+          (real_places == 1 && unit_rank == 1)) ||
         generator_coordinates == NULL || unit_exponents == NULL ||
         precision < 64 || lower == NULL || upper == NULL ||
         binary_exponent == NULL || sizeof(slong) < sizeof(int64_t))
@@ -1413,17 +1416,18 @@ int sagejs_rust_flint_compact_cubic_regulator(
     slong selected_roots[3];
     slong selected_count = 0;
     /* flags distinguish certified roots from unresolved subintervals. */
-    for (slong index = 0; index < root_count && selected_count < 3; index++)
+    for (slong index = 0;
+         index < root_count && selected_count < (slong) real_places; index++)
         if (flags[index] != 0)
             selected_roots[selected_count++] = index;
-    if (selected_count != 3)
+    if (selected_count != (slong) real_places)
         status = -2;
 
     arb_t roots[3];
     for (size_t root = 0; root < 3; root++)
         arb_init(roots[root]);
     if (status == 0)
-        for (size_t root = 0; root < 3; root++)
+        for (size_t root = 0; root < real_places; root++)
         {
             arf_interval_t refined;
             arf_interval_init(refined);
@@ -1474,7 +1478,7 @@ int sagejs_rust_flint_compact_cubic_regulator(
                     fmpz_addmul_si(coefficients[power], coordinates[coordinate],
                         (slong) basis_numerators[3 * coordinate + power]);
             }
-            for (size_t root = 0; root < 3 && status == 0; root++)
+            for (size_t root = 0; root < real_places && status == 0; root++)
             {
                 arb_set_fmpz(value, coefficients[2]);
                 arb_mul(value, value, roots[root], precision);
@@ -1489,7 +1493,7 @@ int sagejs_rust_flint_compact_cubic_regulator(
                     break;
                 }
                 arb_log(logarithm, value, precision);
-                for (size_t unit = 0; unit < 2; unit++)
+                for (size_t unit = 0; unit < unit_rank; unit++)
                 {
                     mpz_srcptr input = unit_exponents[unit * relations + relation];
                     if (input == NULL)
@@ -1513,9 +1517,14 @@ int sagejs_rust_flint_compact_cubic_regulator(
     fmpz_init(interval_exponent);
     if (status == 0)
     {
-        arb_mul(determinant, unit_logs[0][0], unit_logs[1][1], precision);
-        arb_mul(cross, unit_logs[0][1], unit_logs[1][0], precision);
-        arb_sub(determinant, determinant, cross, precision);
+        if (unit_rank == 1)
+            arb_set(determinant, unit_logs[0][0]);
+        else
+        {
+            arb_mul(determinant, unit_logs[0][0], unit_logs[1][1], precision);
+            arb_mul(cross, unit_logs[0][1], unit_logs[1][0], precision);
+            arb_sub(determinant, determinant, cross, precision);
+        }
         arb_abs(determinant, determinant);
         if (!arb_is_finite(determinant) || arb_contains_zero(determinant))
             status = -5;

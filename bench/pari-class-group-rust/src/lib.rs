@@ -86,7 +86,7 @@ pub use hnf::{
     BigIntMatrix, ExactArithmeticError, ExactNormalFormWorkspace, HnfDecomposition,
     NormalFormError, NormalFormLimits, SmithDecomposition, UpdateStrategy,
 };
-pub use numerical_preparation::{NumericalPreparationError, PreparedRealCubicEmbedding};
+pub use numerical_preparation::{NumericalPreparationError, PreparedCubicEmbedding};
 pub use prepared::{
     EmbeddingPrecisionState, PreparedCubicData, PreparedCubicValidationError,
     ValidatedPreparedCubic,
@@ -103,5 +103,6 @@ pub use prepared_input::{
 };
 pub use smith::{SmithError, WordSmithWorkspace, transpose_relation_records};
 pub use unit_lattice::{
-    ReconstructedUnitLattice, UnitLatticeError, reconstruct_rank_two_unit_lattice,
+    ReconstructedRankOneUnitLattice, ReconstructedUnitLattice, UnitLatticeError,
+    reconstruct_rank_one_unit_lattice, reconstruct_rank_two_unit_lattice,
 };

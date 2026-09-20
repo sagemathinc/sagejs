@@ -13,7 +13,7 @@ use crate::collector_schedule::{ScheduleError, next_small_norm_ideal};
 use crate::enumeration::{EnumerationError, EnumerationWorkspace};
 use crate::factor_base::{FactorBase, prepared_cubic_factor_base};
 use crate::numerical_preparation::{
-    NumericalPreparationError, PreparedRealCubicEmbedding, prepare_cubic_ideal, prepare_h1_ideal,
+    NumericalPreparationError, PreparedCubicEmbedding, prepare_cubic_ideal, prepare_h1_ideal,
 };
 use crate::pari_random::PariRandom;
 use crate::prepared::ValidatedPreparedCubic;
@@ -488,7 +488,7 @@ fn collect_prepared_ideal_relations(
     factor_base: &PreparedFactorBase,
     ideal: &CubicIdeal,
     divisor_relation: &[i64],
-    embedding: &PreparedRealCubicEmbedding,
+    embedding: &PreparedCubicEmbedding,
     factor_product: &Integer,
     factor_primes: &[u64],
     prime_products: &[Integer],
@@ -661,7 +661,7 @@ pub fn collect_prepared_cubic_relations(
     timings.initial_cache_ns = started.elapsed().as_nanos();
 
     let started = Instant::now();
-    let embedding = PreparedRealCubicEmbedding::from_validated(field, 320)?;
+    let embedding = PreparedCubicEmbedding::from_validated(field, 320)?;
     let factor_primes = primes_through(PRIME_LIMIT);
     let prime_products = cumulative_prime_products(&factor_primes, FACTOR_LIMIT)?;
     let factor_product = factor_base
@@ -689,7 +689,13 @@ pub fn collect_prepared_cubic_relations(
     let mut ideal_workspace = PreparedIdealWorkspace::new();
     let mut counters = CollectorCounters::default();
 
-    while (cache.missing() != 0 || cache.remaining_supplementary() != 0)
+    // PARI's `relsup` is consumed only by dependent relations found before
+    // full modular rank.  Once rank is full, `add_rel_i` assigns every new
+    // row a positive marker and deliberately leaves `relsup` unchanged.  The
+    // actual completion condition is therefore the requested resident row
+    // count, not `relsup == 0`.  This distinction matters for tiny factor
+    // bases that reach rank before encountering any dependent row.
+    while (cache.missing() != 0 || cache.len() < target)
         && counters.visited_ideals < limits.maximum_visited_ideals
         && counters.primitive_nonscalar_candidates < limits.maximum_candidates
     {
@@ -750,7 +756,7 @@ pub fn collect_prepared_cubic_relations(
     // reveal missing class directions and is intentionally not used here.
     let mut random = PariRandom::from_seed(1).expect("the fixed qualification seed is positive");
     let maximum_random_ideals = 16 * subfactor_count;
-    while (cache.missing() != 0 || cache.remaining_supplementary() != 0)
+    while (cache.missing() != 0 || cache.len() < target)
         && counters.random_ideals < maximum_random_ideals
         && counters.visited_ideals < limits.maximum_visited_ideals
         && counters.primitive_nonscalar_candidates < limits.maximum_candidates
@@ -788,7 +794,7 @@ pub fn collect_prepared_cubic_relations(
                 .into_iter()
                 .flat_map(|_| search_permutation.iter().map(|one_based| one_based - 1)),
         ) {
-            if (cache.missing() == 0 && cache.remaining_supplementary() == 0)
+            if (cache.missing() == 0 && cache.len() >= target)
                 || counters.visited_ideals >= limits.maximum_visited_ideals
                 || counters.primitive_nonscalar_candidates >= limits.maximum_candidates
             {
@@ -845,7 +851,7 @@ pub fn collect_prepared_cubic_relations(
         search_permutation,
         counters,
         timings,
-        complete_rank_and_surplus: cache.missing() == 0 && cache.remaining_supplementary() == 0,
+        complete_rank_and_surplus: cache.missing() == 0 && cache.len() >= target,
         missing_rank: cache.missing(),
     })
 }

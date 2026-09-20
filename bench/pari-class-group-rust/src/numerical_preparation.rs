@@ -134,43 +134,54 @@ pub enum NumericalPreparationError {
     InvalidRealRootIsolation,
 }
 
-/// Reusable archimedean data for a validated totally real cubic.
+/// Reusable three-dimensional Minkowski data for a validated cubic.
+///
+/// For signature `(3, 0)` the rows are the three real embeddings.  For
+/// signature `(1, 1)` they are the real embedding followed by
+/// `sqrt(2) * Re(sigma)` and `sqrt(2) * Im(sigma)`.  The latter convention
+/// makes the ordinary Euclidean scalar product equal to the trace-form
+/// scalar product used by ideal-lattice reduction.
 #[derive(Clone, Debug)]
-pub struct PreparedRealCubicEmbedding {
+pub struct PreparedCubicEmbedding {
     matrix: [[Float; DEGREE]; DEGREE],
     rounded: Matrix3,
     precision: u32,
+    signature: (u8, u8),
 }
 
-impl PreparedRealCubicEmbedding {
+impl PreparedCubicEmbedding {
     pub fn from_validated(
         field: &ValidatedPreparedCubic,
         precision: u32,
     ) -> Result<Self, NumericalPreparationError> {
-        if field.data().signature != (3, 0) {
-            return Err(NumericalPreparationError::UnsupportedSignature);
-        }
         let polynomial = &field.data().polynomial_ascending;
         let coefficients = from_fn(|index| polynomial[index].to_f64());
-        let starts = isolate_three_real_roots(coefficients)?;
-        let roots: [Float; DEGREE] =
-            std::array::from_fn(|index| refine_real_root(polynomial, starts[index], precision));
         let denominator = Float::with_val(precision, &field.data().basis_denominator);
-        let matrix: [[Float; DEGREE]; DEGREE] = from_fn(|embedding_index| {
-            from_fn(|basis_index| {
-                let offset = DEGREE * basis_index;
-                let mut value = Float::with_val(
-                    precision,
-                    &field.data().integral_basis_numerators[offset + 2],
-                );
-                value *= &roots[embedding_index];
-                value += &field.data().integral_basis_numerators[offset + 1];
-                value *= &roots[embedding_index];
-                value += &field.data().integral_basis_numerators[offset];
-                value /= &denominator;
-                value
-            })
-        });
+        let matrix = match field.data().signature {
+            (3, 0) => {
+                let starts = isolate_three_real_roots(coefficients)?;
+                let roots: [Float; DEGREE] = std::array::from_fn(|index| {
+                    refine_real_root(polynomial, starts[index], precision)
+                });
+                from_fn(|embedding_index| {
+                    from_fn(|basis_index| {
+                        evaluate_real_basis_element(
+                            field,
+                            basis_index,
+                            &roots[embedding_index],
+                            &denominator,
+                            precision,
+                        )
+                    })
+                })
+            }
+            (1, 1) => {
+                let start = isolate_unique_real_root(coefficients)?;
+                let real_root = refine_real_root(polynomial, start, precision);
+                complex_cubic_minkowski_matrix(field, &real_root, &denominator, precision)?
+            }
+            _ => return Err(NumericalPreparationError::UnsupportedSignature),
+        };
         let rounded = Matrix3::from_rows(from_fn(|row| {
             from_fn(|column| {
                 let mut value = matrix[row][column].clone();
@@ -185,33 +196,177 @@ impl PreparedRealCubicEmbedding {
             matrix,
             rounded,
             precision,
+            signature: field.data().signature,
         })
     }
 
-    /// Return `log(abs(sigma_i(element)))` for all three real embeddings.
+    /// Return the Dirichlet logarithmic embedding of an element.
     ///
-    /// This is the additive representation used for compact products of
-    /// relation generators. The caller chooses enough precision for the
-    /// integer exponents it will subsequently apply.
+    /// Totally real fields return the three ordinary logarithms.  Signature
+    /// `(1, 1)` returns `[log|sigma_real|, 2 log|sigma_complex|, 0]`, so the
+    /// first two entries obey the product formula and span the rank-one unit
+    /// space.  The caller chooses enough precision for subsequent exponents.
     pub fn logarithmic_embedding(
         &self,
         element: &[Integer; DEGREE],
     ) -> Result<[Float; DEGREE], NumericalPreparationError> {
         let mut answer: [Float; DEGREE] = from_fn(|_| Float::with_val(self.precision, 0));
-        for (embedding, output) in answer.iter_mut().enumerate() {
-            for (basis, coefficient) in element.iter().enumerate() {
-                let mut term = self.matrix[embedding][basis].clone();
-                term *= coefficient;
-                *output += term;
+        match self.signature {
+            (3, 0) => {
+                for (embedding, output) in answer.iter_mut().enumerate() {
+                    for (basis, coefficient) in element.iter().enumerate() {
+                        let mut term = self.matrix[embedding][basis].clone();
+                        term *= coefficient;
+                        *output += term;
+                    }
+                    if output == &0 {
+                        return Err(NumericalPreparationError::SingularEmbedding);
+                    }
+                    output.abs_mut();
+                    output.ln_mut();
+                }
             }
-            if output == &0 {
-                return Err(NumericalPreparationError::SingularEmbedding);
+            (1, 1) => {
+                let mut real = Float::with_val(self.precision, 0);
+                let mut complex_real_scaled = Float::with_val(self.precision, 0);
+                let mut complex_imag_scaled = Float::with_val(self.precision, 0);
+                for (basis, coefficient) in element.iter().enumerate() {
+                    real += Float::with_val(self.precision, &self.matrix[0][basis] * coefficient);
+                    complex_real_scaled +=
+                        Float::with_val(self.precision, &self.matrix[1][basis] * coefficient);
+                    complex_imag_scaled +=
+                        Float::with_val(self.precision, &self.matrix[2][basis] * coefficient);
+                }
+                if real == 0 || (complex_real_scaled == 0 && complex_imag_scaled == 0) {
+                    return Err(NumericalPreparationError::SingularEmbedding);
+                }
+                real.abs_mut();
+                real.ln_mut();
+                let mut complex_norm_scaled = complex_real_scaled;
+                complex_norm_scaled.square_mut();
+                let mut imaginary_square = complex_imag_scaled;
+                imaginary_square.square_mut();
+                complex_norm_scaled += imaginary_square;
+                // The matrix contains sqrt(2) times each complex coordinate,
+                // hence this is `2 * |sigma(element)|^2`.  Its logarithm is
+                // `log(2) + 2 log|sigma(element)|`.
+                complex_norm_scaled.ln_mut();
+                complex_norm_scaled -= Float::with_val(self.precision, 2).ln();
+                answer[0] = real;
+                answer[1] = complex_norm_scaled;
             }
-            output.abs_mut();
-            output.ln_mut();
+            _ => return Err(NumericalPreparationError::UnsupportedSignature),
         }
         Ok(answer)
     }
+}
+
+fn evaluate_real_basis_element(
+    field: &ValidatedPreparedCubic,
+    basis_index: usize,
+    root: &Float,
+    denominator: &Float,
+    precision: u32,
+) -> Float {
+    let offset = DEGREE * basis_index;
+    let mut value = Float::with_val(
+        precision,
+        &field.data().integral_basis_numerators[offset + 2],
+    );
+    value *= root;
+    value += &field.data().integral_basis_numerators[offset + 1];
+    value *= root;
+    value += &field.data().integral_basis_numerators[offset];
+    value /= denominator;
+    value
+}
+
+fn isolate_unique_real_root(coefficients: [f64; 4]) -> Result<f64, NumericalPreparationError> {
+    let [constant, linear, quadratic, leading] = coefficients;
+    if leading != 1.0 || coefficients.iter().any(|value| !value.is_finite()) {
+        return Err(NumericalPreparationError::InvalidRealRootIsolation);
+    }
+    let bound = 2.0 + constant.abs().max(linear.abs()).max(quadratic.abs());
+    let evaluate = |x: f64| ((x + quadratic) * x + linear) * x + constant;
+    let mut left = -bound;
+    let mut right = bound;
+    let mut left_value = evaluate(left);
+    let right_value = evaluate(right);
+    if left_value.is_sign_positive() == right_value.is_sign_positive() {
+        return Err(NumericalPreparationError::InvalidRealRootIsolation);
+    }
+    for _ in 0..120 {
+        let middle = (left + right) * 0.5;
+        let value = evaluate(middle);
+        if value.is_sign_positive() == left_value.is_sign_positive() {
+            left = middle;
+            left_value = value;
+        } else {
+            right = middle;
+        }
+    }
+    Ok((left + right) * 0.5)
+}
+
+fn complex_cubic_minkowski_matrix(
+    field: &ValidatedPreparedCubic,
+    real_root: &Float,
+    denominator: &Float,
+    precision: u32,
+) -> Result<[[Float; DEGREE]; DEGREE], NumericalPreparationError> {
+    let polynomial = &field.data().polynomial_ascending;
+    let mut complex_real = Float::with_val(precision, &polynomial[2]);
+    complex_real *= -1;
+    complex_real -= real_root;
+    complex_real /= 2;
+    let mut complex_norm = Float::with_val(precision, &polynomial[0]);
+    complex_norm *= -1;
+    complex_norm /= real_root;
+    let mut imaginary_square = complex_real.clone();
+    imaginary_square.square_mut();
+    imaginary_square = complex_norm - imaginary_square;
+    if imaginary_square <= 0 {
+        return Err(NumericalPreparationError::InvalidRealRootIsolation);
+    }
+    imaginary_square.sqrt_mut();
+    let complex_imaginary = imaginary_square;
+    let sqrt_two = Float::with_val(precision, 2).sqrt();
+    let mut matrix: [[Float; DEGREE]; DEGREE] =
+        from_fn(|_| from_fn(|_| Float::with_val(precision, 0)));
+    for basis_index in 0..DEGREE {
+        matrix[0][basis_index] =
+            evaluate_real_basis_element(field, basis_index, real_root, denominator, precision);
+        let offset = DEGREE * basis_index;
+        let c0 = Float::with_val(precision, &field.data().integral_basis_numerators[offset]);
+        let c1 = Float::with_val(
+            precision,
+            &field.data().integral_basis_numerators[offset + 1],
+        );
+        let c2 = Float::with_val(
+            precision,
+            &field.data().integral_basis_numerators[offset + 2],
+        );
+        let mut real_square_minus_imaginary_square = complex_real.clone();
+        real_square_minus_imaginary_square.square_mut();
+        let mut imag_square = complex_imaginary.clone();
+        imag_square.square_mut();
+        real_square_minus_imaginary_square -= imag_square;
+        let mut real_value = c2.clone();
+        real_value *= real_square_minus_imaginary_square;
+        real_value += Float::with_val(precision, &c1 * &complex_real);
+        real_value += c0;
+        real_value /= denominator;
+        real_value *= &sqrt_two;
+        let mut imaginary_value = Float::with_val(precision, &c2 * &complex_real);
+        imaginary_value *= 2;
+        imaginary_value += c1;
+        imaginary_value *= &complex_imaginary;
+        imaginary_value /= denominator;
+        imaginary_value *= &sqrt_two;
+        matrix[1][basis_index] = real_value;
+        matrix[2][basis_index] = imaginary_value;
+    }
+    Ok(matrix)
 }
 
 fn isolate_three_real_roots(
@@ -449,7 +604,7 @@ pub fn prepare_h1_ideal(
 
 /// Prepare an exact maximal-order ideal for the cubic Fincke--Pohst cursor.
 pub fn prepare_cubic_ideal(
-    embedding: &PreparedRealCubicEmbedding,
+    embedding: &PreparedCubicEmbedding,
     original_ideal: &CubicIdeal,
 ) -> Result<H1NumericalPreparation, NumericalPreparationError> {
     // CubicIdeal stores lattice generators as rows; the numerical lattice
@@ -533,9 +688,65 @@ mod tests {
     use crate::enumeration::EnumerationWorkspace;
     use crate::factor_base::prepared_cubic_factor_base;
     use crate::ideal_arithmetic::{Matrix3, verify_lll_reduction};
+    use crate::prepared::{EmbeddingPrecisionState, PreparedCubicData};
 
     fn h1_factor_base() -> crate::factor_base::FactorBase {
         prepared_cubic_factor_base([20_034, -20_018, 0, 1], [1, 0, 0, 0, 1, 0, -13_345, 2, 1])
+    }
+
+    fn complex_cubic() -> ValidatedPreparedCubic {
+        // x^3 - x + 1 has squarefree discriminant -23, so its equation order
+        // is maximal.  Modulo 2 it is irreducible.
+        ValidatedPreparedCubic::validate(PreparedCubicData {
+            polynomial_ascending: [1.into(), (-1).into(), 0.into(), 1.into()],
+            irreducibility_prime: 2,
+            integral_basis_numerators: [
+                1.into(),
+                0.into(),
+                0.into(),
+                0.into(),
+                1.into(),
+                0.into(),
+                0.into(),
+                0.into(),
+                1.into(),
+            ],
+            basis_denominator: 1.into(),
+            multiplication_table: [
+                1.into(),
+                0.into(),
+                0.into(),
+                0.into(),
+                1.into(),
+                0.into(),
+                0.into(),
+                0.into(),
+                1.into(),
+                0.into(),
+                1.into(),
+                0.into(),
+                0.into(),
+                0.into(),
+                1.into(),
+                (-1).into(),
+                1.into(),
+                0.into(),
+                0.into(),
+                0.into(),
+                1.into(),
+                (-1).into(),
+                1.into(),
+                0.into(),
+                0.into(),
+                (-1).into(),
+                1.into(),
+            ],
+            discriminant: (-23).into(),
+            signature: (1, 1),
+            embedding_precision: EmbeddingPrecisionState::Pending { target_bits: 320 },
+            index_primes: vec![],
+        })
+        .unwrap()
     }
 
     #[test]
@@ -617,5 +828,27 @@ mod tests {
         assert_eq!(prepared.q[11], 0.498_801_079_028_874);
         let pari_bound = 165_473.081_288_336_11_f64;
         assert!((prepared.bound - pari_bound).abs() <= f64::EPSILON * pari_bound);
+    }
+
+    #[test]
+    fn complex_cubic_minkowski_embedding_obeys_the_product_formula() {
+        let field = complex_cubic();
+        let embedding = PreparedCubicEmbedding::from_validated(&field, 320).unwrap();
+        let logs = embedding
+            .logarithmic_embedding(&[0.into(), 1.into(), 0.into()])
+            .unwrap();
+        let mut residual = logs[0].clone();
+        residual += &logs[1];
+        residual.abs_mut();
+        assert!(residual < Float::with_val(320, 1) >> 250);
+        assert_eq!(logs[2], 0);
+
+        let prepared = prepare_cubic_ideal(&embedding, &CubicIdeal::unit()).unwrap();
+        assert!(prepared.bound.is_finite() && prepared.bound > 0.0);
+        assert!(
+            prepared.v[1..]
+                .iter()
+                .all(|value| value.is_finite() && *value > 0.0)
+        );
     }
 }

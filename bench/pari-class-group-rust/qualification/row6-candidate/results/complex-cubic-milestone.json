@@ -1,0 +1,41 @@
+{
+  "schema": "sagejs.rust-class-group/complex-cubic-milestone-v1",
+  "field": ["1", "-1", "0", "1"],
+  "signature": [1, 1],
+  "discriminant": "-23",
+  "rust": {
+    "qualificationStatus": "grh-conditional-class-unit-index-one",
+    "classGroup": "trivial",
+    "classNumber": "1",
+    "relations": {"columns": 3, "rows": 15},
+    "regulatorApproximation": "2.81199574322961846512050764067878299792023225744066462675730334318038453062120891322987707475494054792525318733522005228938946707976538228737401749328973325575304846346070768840264308402959741143409485373908703753510103686843033171438324841454213810209210026892306499001036235347744376223584887061210e-1",
+    "selectedUnitLatticeIndex": "10",
+    "belabasFriedmanThreshold": 1152,
+    "timingsNanoseconds": {
+      "collection": 13726026,
+      "presentationClassOrder": 108150,
+      "kernelReorderAndMetadata": 6740,
+      "logarithmicEmbedding": 5087188,
+      "unitLatticeReconstructionAndReplay": 31335181,
+      "analyticCompletion": 5767208,
+      "totalExternal": 50501525
+    }
+  },
+  "pari2174": {
+    "classNumber": "1",
+    "invariantFactors": [],
+    "regulator": "0.28119957432296184651205076406787829979",
+    "warmWallMilliseconds": [3, 2, 3, 3]
+  },
+  "comparison": {
+    "exactClassDataAgree": true,
+    "regulatorAgrees": true,
+    "rustTotalToPariWarmMedianRatio": 16.833841666666668
+  },
+  "regressions": {
+    "h1": {"group": "trivial", "rows": 73, "columns": 66, "threshold": 9216, "totalNanoseconds": 227033782},
+    "row1": {"group": "C3", "rows": 58, "columns": 51, "threshold": 9216, "totalNanoseconds": 278004226},
+    "row6": {"group": "C2 x C2", "rows": 1137, "columns": 1130, "threshold": 23994, "totalNanoseconds": 7628521787}
+  },
+  "knownBoundary": "prepared field; not yet public polynomial-to-result"
+}

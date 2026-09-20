@@ -308,6 +308,8 @@ unsafe extern "C" {
         polynomial: *const c_longlong,
         basis_numerators: *const c_longlong,
         basis_denominator: u64,
+        real_places: u64,
+        unit_rank: u64,
         relations: usize,
         generator_coordinates: *const *const c_void,
         unit_exponents: *const *const c_void,
@@ -548,19 +550,22 @@ pub fn flint_compact_cubic_regulator(
     polynomial: [i64; 4],
     basis_numerators: [i64; 9],
     basis_denominator: u64,
+    signature: (u8, u8),
     generator_coordinates: &[Integer],
     unit_exponents: &[Integer],
     precision: u32,
 ) -> Result<FlintDyadicInterval, FlintNormalFormError> {
+    let unit_rank = u64::from(signature.0) + u64::from(signature.1) - 1;
     if basis_denominator == 0
         || generator_coordinates.is_empty()
         || !generator_coordinates.len().is_multiple_of(3)
         || precision < 64
+        || !matches!((signature, unit_rank), ((3, 0), 2) | ((1, 1), 1))
     {
         return Err(FlintNormalFormError::InvalidDimensions);
     }
     let relations = generator_coordinates.len() / 3;
-    if unit_exponents.len() != 2 * relations {
+    if unit_exponents.len() != unit_rank as usize * relations {
         return Err(FlintNormalFormError::DimensionMismatch);
     }
     let coordinate_pointers = generator_coordinates
@@ -582,6 +587,8 @@ pub fn flint_compact_cubic_regulator(
             polynomial.as_ptr().cast(),
             basis_numerators.as_ptr().cast(),
             basis_denominator,
+            u64::from(signature.0),
+            unit_rank,
             relations,
             coordinate_pointers.as_ptr(),
             exponent_pointers.as_ptr(),
@@ -1250,6 +1257,7 @@ mod tests {
             [1, -3, 0, 1],
             [1, 0, 0, 0, 1, 0, 0, 0, 1],
             1,
+            (3, 0),
             &generators,
             &exponents,
             256,
@@ -1258,6 +1266,26 @@ mod tests {
         assert!(interval.lower > 0);
         assert!(interval.upper >= interval.lower);
         assert!(interval.binary_exponent < 0);
+    }
+
+    #[test]
+    fn arb_regulator_encloses_one_exact_complex_cubic_unit() {
+        // x is a unit of norm -1 in x^3-x+1.  Its unique real embedding
+        // supplies the rank-one regulator.
+        let generators = [0.into(), 1.into(), 0.into()];
+        let exponents = [1.into()];
+        let interval = flint_compact_cubic_regulator(
+            [1, -1, 0, 1],
+            [1, 0, 0, 0, 1, 0, 0, 0, 1],
+            1,
+            (1, 1),
+            &generators,
+            &exponents,
+            256,
+        )
+        .unwrap();
+        assert!(interval.lower > 0);
+        assert!(interval.upper >= interval.lower);
     }
 
     #[test]

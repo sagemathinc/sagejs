@@ -9,15 +9,15 @@
 
 use rug::{Assign, Complete, Float, Integer, Rational};
 use sagejs_pari_class_group_rust_experiment::{
-    EmbeddingPrecisionState, PreparedCollectorLimits, PreparedCubicData,
-    PreparedRealCubicEmbedding, ValidatedPreparedCubic, build_cubic_bdf_factor_base_plan,
-    build_cubic_belabas_friedman_plan, collect_prepared_cubic_relations,
-    collect_validated_primitive_box_with_supplementary, flint_bdf_factor_base_margin,
-    flint_bf_index_enclosure, flint_compact_cubic_regulator, flint_hnf_basis, flint_hnf_profile,
-    flint_incremental_hnf, flint_small_surplus_class_order, flint_smith_candidate,
-    flint_smith_class_map, flint_staged_relation_witnesses, modular_independent_relation_rows,
-    parse_neutral_prepared_cubic_json, prepared_cubic_factor_base,
-    prepared_cubic_splitting_records, prepared_maximal_cubic_factor_base,
+    EmbeddingPrecisionState, PreparedCollectorLimits, PreparedCubicData, PreparedCubicEmbedding,
+    ValidatedPreparedCubic, build_cubic_bdf_factor_base_plan, build_cubic_belabas_friedman_plan,
+    collect_prepared_cubic_relations, collect_validated_primitive_box_with_supplementary,
+    flint_bdf_factor_base_margin, flint_bf_index_enclosure, flint_compact_cubic_regulator,
+    flint_hnf_basis, flint_hnf_profile, flint_incremental_hnf, flint_small_surplus_class_order,
+    flint_smith_candidate, flint_smith_class_map, flint_staged_relation_witnesses,
+    modular_independent_relation_rows, parse_neutral_prepared_cubic_json,
+    prepared_cubic_factor_base, prepared_cubic_splitting_records,
+    prepared_maximal_cubic_factor_base, reconstruct_rank_one_unit_lattice,
     reconstruct_rank_two_unit_lattice,
 };
 use std::time::Instant;
@@ -344,7 +344,11 @@ fn small_norm_smith(maximum_ideals: usize, maximum_candidates: usize) {
     .expect("maximal-order relation collection failed");
     assert!(
         answer.complete_rank_and_surplus,
-        "relation lattice is incomplete"
+        "relation lattice is incomplete: missing_rank={}, relations={}, factor_base={}, counters={:?}",
+        answer.missing_rank,
+        answer.relations.len() / answer.factor_base.catalog.ideals.len(),
+        answer.factor_base.catalog.ideals.len(),
+        answer.counters,
     );
     let rows = answer.relations.len() / answer.factor_base.catalog.ideals.len();
     let columns = answer.factor_base.catalog.ideals.len();
@@ -756,6 +760,79 @@ fn rational_coordinate_systems_are_unimodularly_equivalent(
     })
 }
 
+struct ReconstructedCubicUnitData {
+    coordinate_basis_indices: Vec<usize>,
+    rational_coordinates: Vec<Vec<Rational>>,
+    common_denominator: Integer,
+    selected_basis_index: Integer,
+    generator_combinations: Vec<Vec<Integer>>,
+    regulator_approximation: Float,
+}
+
+fn reconstruct_cubic_unit_lattice(
+    logarithms: &[[Float; 3]],
+    maximum_denominator: &Integer,
+    signature: (u8, u8),
+) -> ReconstructedCubicUnitData {
+    match signature {
+        (3, 0) => {
+            let lattice = reconstruct_rank_two_unit_lattice(logarithms, maximum_denominator)
+                .expect("rank-two unit-lattice reconstruction failed");
+            ReconstructedCubicUnitData {
+                coordinate_basis_indices: lattice.coordinate_basis_indices.to_vec(),
+                rational_coordinates: lattice
+                    .rational_coordinates
+                    .into_iter()
+                    .map(|coordinate| coordinate.to_vec())
+                    .collect(),
+                common_denominator: lattice.common_denominator,
+                selected_basis_index: lattice.selected_basis_index,
+                generator_combinations: lattice.generator_combinations.to_vec(),
+                regulator_approximation: lattice.regulator_approximation,
+            }
+        }
+        (1, 1) => {
+            let lattice = reconstruct_rank_one_unit_lattice(logarithms, maximum_denominator)
+                .expect("rank-one unit-lattice reconstruction failed");
+            ReconstructedCubicUnitData {
+                coordinate_basis_indices: vec![lattice.coordinate_basis_index],
+                rational_coordinates: lattice
+                    .rational_coordinates
+                    .into_iter()
+                    .map(|coordinate| vec![coordinate])
+                    .collect(),
+                common_denominator: lattice.common_denominator,
+                selected_basis_index: lattice.selected_basis_index,
+                generator_combinations: vec![lattice.generator_combination],
+                regulator_approximation: lattice.regulator_approximation,
+            }
+        }
+        _ => panic!("unsupported cubic signature {:?}", signature),
+    }
+}
+
+fn reconstructed_coordinate_systems_are_equivalent(
+    left: &[Vec<Rational>],
+    right: &[Vec<Rational>],
+    unit_rank: usize,
+) -> bool {
+    match unit_rank {
+        1 => left == right,
+        2 => {
+            let left = left
+                .iter()
+                .map(|coordinate| [coordinate[0].clone(), coordinate[1].clone()])
+                .collect::<Vec<_>>();
+            let right = right
+                .iter()
+                .map(|coordinate| [coordinate[0].clone(), coordinate[1].clone()])
+                .collect::<Vec<_>>();
+            rational_coordinate_systems_are_unimodularly_equivalent(&left, &right)
+        }
+        _ => false,
+    }
+}
+
 fn small_norm_unit_kernel_for_field(
     field: ValidatedPreparedCubic,
     input_id: &str,
@@ -773,7 +850,11 @@ fn small_norm_unit_kernel_for_field(
     .expect("maximal-order relation collection failed");
     assert!(
         answer.complete_rank_and_surplus,
-        "relation lattice is incomplete"
+        "relation lattice is incomplete: missing_rank={}, relations={}, factor_base={}, counters={:?}",
+        answer.missing_rank,
+        answer.relations.len() / answer.factor_base.catalog.ideals.len(),
+        answer.factor_base.catalog.ideals.len(),
+        answer.counters,
     );
     let columns = answer.factor_base.catalog.ideals.len();
     let rows = answer.relations.len() / columns;
@@ -902,7 +983,7 @@ fn small_norm_unit_kernel_for_field(
     // cancellation.  Keep a wide guard margin so the independently flattened
     // compact-unit replay remains meaningful.
     const LOG_PRECISION: u32 = 4096;
-    let embedding = PreparedRealCubicEmbedding::from_validated(&field, LOG_PRECISION)
+    let embedding = PreparedCubicEmbedding::from_validated(&field, LOG_PRECISION)
         .expect("high-precision real embeddings failed");
     let mut relation_logs = Vec::with_capacity(rows);
     for coordinates in answer.generators.chunks_exact(3) {
@@ -971,18 +1052,23 @@ fn small_norm_unit_kernel_for_field(
     // Use a deliberately generous bound derived only from the exact kernel
     // coefficient size, then record it prominently in the receipt.
     let reconstruction_bound = Integer::from(1) << (kernel.maximum_coefficient_bits + 16);
-    let lattice = reconstruct_rank_two_unit_lattice(&unit_logs, &reconstruction_bound)
-        .expect("rank-two unit-lattice reconstruction failed");
+    let unit_rank =
+        usize::from(field.data().signature.0) + usize::from(field.data().signature.1) - 1;
+    let lattice =
+        reconstruct_cubic_unit_lattice(&unit_logs, &reconstruction_bound, field.data().signature);
     let reduced_precision_logs = unit_logs
         .iter()
         .map(|row| std::array::from_fn(|index| Float::with_val(2048, &row[index])))
         .collect::<Vec<_>>();
-    let reduced_precision_lattice =
-        reconstruct_rank_two_unit_lattice(&reduced_precision_logs, &reconstruction_bound)
-            .expect("reduced-precision unit-lattice reconstruction failed");
-    assert!(rational_coordinate_systems_are_unimodularly_equivalent(
+    let reduced_precision_lattice = reconstruct_cubic_unit_lattice(
+        &reduced_precision_logs,
+        &reconstruction_bound,
+        field.data().signature,
+    );
+    assert!(reconstructed_coordinate_systems_are_equivalent(
         &lattice.rational_coordinates,
         &reduced_precision_lattice.rational_coordinates,
+        unit_rank,
     ));
     assert_eq!(
         lattice.common_denominator,
@@ -992,10 +1078,10 @@ fn small_norm_unit_kernel_for_field(
         lattice.selected_basis_index,
         reduced_precision_lattice.selected_basis_index
     );
-    let mut fundamental_units = Vec::with_capacity(2);
-    let mut fundamental_logs = Vec::with_capacity(2);
-    let mut fundamental_exponents = Vec::with_capacity(2 * rows);
-    for basis in 0..2 {
+    let mut fundamental_units = Vec::with_capacity(unit_rank);
+    let mut fundamental_logs = Vec::with_capacity(unit_rank);
+    let mut fundamental_exponents = Vec::with_capacity(unit_rank * rows);
+    for basis in 0..unit_rank {
         let mut coefficients = vec![Integer::from(0); rows];
         for dependency in 0..kernel.rank {
             let multiplier = &lattice.generator_combinations[basis][dependency];
@@ -1053,10 +1139,12 @@ fn small_norm_unit_kernel_for_field(
         fundamental_logs.push(logs);
     }
     let mut replayed_regulator = fundamental_logs[0][0].clone();
-    replayed_regulator *= &fundamental_logs[1][1];
-    let mut cross = fundamental_logs[0][1].clone();
-    cross *= &fundamental_logs[1][0];
-    replayed_regulator -= cross;
+    if unit_rank == 2 {
+        replayed_regulator *= &fundamental_logs[1][1];
+        let mut cross = fundamental_logs[0][1].clone();
+        cross *= &fundamental_logs[1][0];
+        replayed_regulator -= cross;
+    }
     replayed_regulator.abs_mut();
     let polynomial = std::array::from_fn(|index| {
         field.data().polynomial_ascending[index]
@@ -1077,6 +1165,7 @@ fn small_norm_unit_kernel_for_field(
         polynomial,
         basis_numerators,
         basis_denominator,
+        field.data().signature,
         &answer.generators,
         &fundamental_exponents,
         LOG_PRECISION,
@@ -1104,11 +1193,56 @@ fn small_norm_unit_kernel_for_field(
                 &rigorous_regulator.upper,
                 rigorous_regulator.binary_exponent,
             );
-    const BF_THRESHOLD: u64 = 23_994;
     const BF_PRECISION: u32 = 512;
     let analytic_started = Instant::now();
-    let splitting = prepared_cubic_splitting_records(&field, BF_THRESHOLD as usize)
-        .expect("exact maximal-order splitting stream failed");
+    // Small fields must not pay row-6's fixed 23,994-prime analytic bill.
+    // Start from a discriminant-size policy, then increase monotonically until
+    // the *rigorous* tail and index intervals themselves accept the result.
+    // Thus this heuristic changes work only; it cannot weaken completion.
+    let threshold_candidates = [
+        72_u64, 144, 288, 576, 1_152, 2_304, 4_608, 9_216, 18_432, 23_994,
+    ];
+    let initial_threshold = match field.data().discriminant.significant_bits() {
+        0..=16 => 72,
+        17..=64 => 1_152,
+        _ => 23_994,
+    };
+    let (bf_threshold, splitting, bf_plan, bf) = threshold_candidates
+        .into_iter()
+        .filter(|threshold| *threshold >= initial_threshold)
+        .find_map(|threshold| {
+            let splitting = prepared_cubic_splitting_records(&field, threshold as usize).ok()?;
+            let plan = build_cubic_belabas_friedman_plan(threshold, &splitting).ok()?;
+            let enclosure = flint_bf_index_enclosure(
+                &plan.terms,
+                threshold,
+                &field.data().discriminant,
+                class_order.class_order.to_u64()?,
+                2,
+                (
+                    u64::from(field.data().signature.0),
+                    u64::from(field.data().signature.1),
+                ),
+                &rigorous_regulator,
+                BF_PRECISION,
+            )
+            .ok()?;
+            let tail_upper = dyadic_endpoint(
+                &enclosure.tail_bound.upper,
+                enclosure.tail_bound.binary_exponent,
+            );
+            let index_lower =
+                dyadic_endpoint(&enclosure.index.lower, enclosure.index.binary_exponent);
+            let index_upper =
+                dyadic_endpoint(&enclosure.index.upper, enclosure.index.binary_exponent);
+            (tail_upper < Rational::from((1, 4))
+                && index_lower > 0
+                && index_lower <= 1
+                && index_upper >= 1
+                && index_upper < 2)
+                .then_some((threshold, splitting, plan, enclosure))
+        })
+        .expect("analytic enclosure did not isolate index one at the maximum threshold");
     let bdf_bound = u64::try_from(answer.factor_base.catalog.relation_bound)
         .expect("factor-base bound is outside u64")
         + 1;
@@ -1119,7 +1253,7 @@ fn small_norm_unit_kernel_for_field(
         bdf_bound,
         &field.data().discriminant,
         3,
-        3,
+        u64::from(field.data().signature.0),
         BF_PRECISION,
     )
     .expect("rigorous BDF factor-base enclosure failed");
@@ -1128,22 +1262,6 @@ fn small_norm_unit_kernel_for_field(
         bdf_margin_lower > 0,
         "BDF inequality did not certify the retained factor base"
     );
-    let bf_plan = build_cubic_belabas_friedman_plan(BF_THRESHOLD, &splitting)
-        .expect("Belabas--Friedman prime-power plan failed");
-    let bf = flint_bf_index_enclosure(
-        &bf_plan.terms,
-        BF_THRESHOLD,
-        &field.data().discriminant,
-        class_order
-            .class_order
-            .to_u64()
-            .expect("class order is outside u64"),
-        2,
-        (3, 0),
-        &rigorous_regulator,
-        BF_PRECISION,
-    )
-    .expect("rigorous Belabas--Friedman index enclosure failed");
     let tail_upper = dyadic_endpoint(&bf.tail_bound.upper, bf.tail_bound.binary_exponent);
     assert!(tail_upper < Rational::from((1, 4)));
     let index_lower = dyadic_endpoint(&bf.index.lower, bf.index.binary_exponent);
@@ -1291,13 +1409,14 @@ fn small_norm_unit_kernel_for_field(
             "analyticCompletion": {
                 "hypothesis": "GRH-for-the-Dedekind-zeta-residue-bound",
                 "formula": "Belabas--Friedman-Theorem-1",
-                "threshold": BF_THRESHOLD,
+                "threshold": bf_threshold,
+                "thresholdSelection": "discriminant-size-start-then-rigorous-monotone-escalation",
                 "precisionBits": BF_PRECISION,
                 "rationalPrimeCount": splitting.len(),
                 "rawPrimePowerTerms": bf_plan.raw_terms,
                 "aggregatedPrimePowerTerms": bf_plan.terms.len(),
                 "rootsOfUnity": 2,
-                "rootsOfUnityJustification": "a totally real cubic field has only plus-or-minus-one",
+                "rootsOfUnityJustification": "every cubic number field has only plus-or-minus-one",
                 "factorBaseGeneration": {
                     "hypothesis": "GRH-for-all-unramified-Hecke-L-functions-of-class-group-characters",
                     "theorem": "Belabas--Diaz-y-Diaz--Friedman-strict-inequality",

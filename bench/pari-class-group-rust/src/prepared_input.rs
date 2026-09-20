@@ -311,6 +311,9 @@ mod tests {
         include_str!("../qualification/row6-candidate/inputs/h1-neutral-prepared-field.json");
     const ROW1: &str =
         include_str!("../qualification/row6-candidate/inputs/row1-neutral-prepared-field.json");
+    const COMPLEX_MINUS_23: &str = include_str!(
+        "../qualification/row6-candidate/inputs/complex-cubic-minus-23-neutral-prepared-field.json"
+    );
 
     #[test]
     fn accepts_and_replays_row6() {
@@ -329,6 +332,14 @@ mod tests {
         assert_eq!(h1.field.equation_order_index(), &1);
         assert_eq!(row1.field.equation_order_index(), &3);
         assert_ne!(h1.field.data().discriminant, row1.field.data().discriminant);
+    }
+
+    #[test]
+    fn accepts_a_certified_complex_cubic_preparation() {
+        let parsed = parse_neutral_prepared_cubic_json(COMPLEX_MINUS_23).unwrap();
+        assert_eq!(parsed.field.data().signature, (1, 1));
+        assert_eq!(parsed.field.data().discriminant, -23);
+        assert_eq!(parsed.field.equation_order_index(), &1);
     }
 
     #[test]
