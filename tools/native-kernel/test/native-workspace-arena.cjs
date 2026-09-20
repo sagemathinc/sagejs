@@ -188,6 +188,44 @@ test("NativeWorkspaceArena lowers to checked packed storage with lexical cleanup
   assert.doesNotMatch(emitted, /\b(?:napi_|PyObject|Py_|JSValue|v8::)/u);
 });
 
+test("private exact-workspace callees bridge tagged calls and close word calls", async () => {
+  const helperName = [
+    "", "dyadic", "kummer", "height", "recurrence", "point",
+  ].join("_");
+  const scalarEntry = [
+    "dyadic", "kummer", "height", "recurrence",
+  ].join("_");
+  const batchEntry = `${scalarEntry}_batch`;
+  const sourcePath = join(
+    repositoryRoot,
+    "src", "lib", "sagejs", "hyperelliptic_curves",
+    "genus2_kummer_height_kernel.py",
+  );
+  const ir = await lowerSource(readFileSync(sourcePath, "utf8"), sourcePath, {
+    functions: [scalarEntry, batchEntry],
+  });
+  const helper = ir.functions.find((fn) => fn.name === helperName);
+  assert.equal(helper.hostCallable, false);
+  assert.equal(helper.analysis.backend.requiresExactWorkspace, true);
+
+  const core = generateHostCore(ir);
+  assert.doesNotMatch(
+    core.source,
+    new RegExp(`word_${helperName}\\(`),
+  );
+  assert.match(
+    core.source,
+    new RegExp(
+      `static int tagged_${helperName}\\([^;]+\\);` +
+      `[\\s\\S]+static int tagged_${helperName}\\(`,
+    ),
+  );
+  assert.doesNotMatch(
+    core.header,
+    new RegExp(helperName),
+  );
+});
+
 test("NativeWorkspaceArena executes success, early return, and budget failure", {
   timeout: 180_000,
 }, async () => {

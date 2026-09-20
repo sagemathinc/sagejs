@@ -866,8 +866,9 @@ ${indent}}`;
   }
   if (operation.kind === "native.call") {
     const callee = context.functions?.get(operation.function);
+    if (callee === undefined) return promote();
     const calleeMayPromote = context.mayPromote?.get(operation.function) ?? true;
-    if (callee !== undefined && !callee.analysis.effects.replaySafe &&
+    if (!callee.analysis.effects.replaySafe &&
         calleeMayPromote) {
       return promote();
     }

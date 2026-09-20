@@ -1476,6 +1476,13 @@ function automaticSelectionCode(fn, receipt) {
   };
 }
 
+function emitUnavailablePrimeSourceFallback(fn) {
+  const params = fn.params.map((param) => param.name).join(", ");
+  return `function javascript_${fn.name}(${params}) {
+  throw new Error("source-transparent native artifact is unavailable");
+}`;
+}
+
 function emitExactPublicFunction(
   fn,
   automaticSelection,
@@ -3801,6 +3808,8 @@ ${ir.functions.map((fn) =>
     fn.hostCallable === false
       ? fn.kernelKind === "float64"
         ? emitFloat64Fallback(fn)
+        : fn.kernelKind === "prime-field-source"
+          ? emitUnavailablePrimeSourceFallback(fn)
         : emitExactFallback(fn)
       : fn.kernelKind === "integer"
       ? emitExactPublicFunction(

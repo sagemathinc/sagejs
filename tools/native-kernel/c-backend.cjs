@@ -6023,6 +6023,7 @@ function generateHostCore(ir, options = {}) {
   const primeSources = functions.filter((fn) =>
     fn.kernelKind === "prime-field-source"
   );
+  const privatePrimeSources = primeSources.filter((fn) => !hostCallable(fn));
   const primeFields = functions.filter((fn) =>
     fn.kernelKind === "prime-field-matrix"
   );
@@ -6033,19 +6034,39 @@ function generateHostCore(ir, options = {}) {
   // Scalar dependency-only functions still need internal tagged/word bodies.
   // Host export selection is distinct from representation eligibility: live
   // owned and fmpz-only aggregate borrows continue to use their direct core.
-  const bridgeFunctions = exact.filter((fn) =>
+  const taggedBridgeCandidates = exact.filter((fn) =>
     !fn.params.some((param) => isLiveExactOwnerType(param.type)) &&
     !fn.locals.some((local) => local.type === "NativeWorkspaceArena") &&
-    fn.analysis?.backend?.requiresExactWorkspace !== true &&
     fn.analysis?.fmpzExact?.hostBoundary !== "none-internal-borrowed-aggregate-only"
   );
+  const bridgeFunctions = taggedBridgeCandidates.filter((fn) =>
+    fn.analysis?.backend?.requiresExactWorkspace !== true
+  );
+  const taggedBridgeFunctions = [...bridgeFunctions];
+  const taggedBridgeNames = new Set(
+    taggedBridgeFunctions.map((fn) => fn.name),
+  );
+  const taggedBridgeCandidatesByName = new Map(
+    taggedBridgeCandidates.map((fn) => [fn.name, fn]),
+  );
+  for (let index = 0; index < taggedBridgeFunctions.length; index += 1) {
+    const caller = taggedBridgeFunctions[index];
+    for (const calleeName of ir.callGraph?.[caller.name] || []) {
+      if (taggedBridgeNames.has(calleeName)) continue;
+      const callee = taggedBridgeCandidatesByName.get(calleeName);
+      if (callee === undefined ||
+          callee.analysis?.backend?.requiresExactWorkspace !== true) continue;
+      taggedBridgeNames.add(calleeName);
+      taggedBridgeFunctions.push(callee);
+    }
+  }
   const checkedVariants = checkedRegions.flatMap((region) => region.variants);
   const checkedRegionEntries = new Map(
     checkedRegions.map((region) => [region.entry, region]),
   );
   const tagged = emitTagged
     ? generateTaggedFunctions(
-      [...bridgeFunctions, ...checkedVariants], {
+      [...taggedBridgeFunctions, ...checkedVariants], {
         functions: [...ir.functions, ...checkedVariants],
         emitMixedOperation: emitExactOperation,
         checkedRegionEntries,
@@ -6115,10 +6136,18 @@ function generateHostCore(ir, options = {}) {
     ...floats.map(emitFloat64CoreFunction),
     ...fields.map(emitFieldCoreFunction),
     primeSources.length > 0 ? generatePrimeSourceSupport() : "",
-    ...primeSources.map((fn) => emitPrimeSourceCoreFunction(fn, {
-      wordFunctions: wordFunctionMap,
-      wordMayPromote,
-    })),
+    privatePrimeSources.map((fn) =>
+      `static ${primeSourceCoreSignature(fn, true)}`
+    ).join("\n"),
+    ...primeSources.map((fn) => {
+      const source = emitPrimeSourceCoreFunction(fn, {
+        wordFunctions: wordFunctionMap,
+        wordMayPromote,
+      });
+      return hostCallable(fn)
+        ? source
+        : source.replace(/^int sagejs_kernel_/m, "static int sagejs_kernel_");
+    }),
     primeFields.length > 0 ? generatePrimeFieldSupport() : "",
     ...primeFields.map(emitPrimeFieldCoreFunction),
   ].filter(Boolean);
