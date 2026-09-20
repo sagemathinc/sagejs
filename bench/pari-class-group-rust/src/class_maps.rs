@@ -31,6 +31,7 @@
 //! harmless unit ambiguity.  No such field elements are manufactured here.
 
 use rug::Integer;
+use sha2::{Digest, Sha256};
 
 use crate::hnf::{BigIntMatrix, NormalFormError, SmithDecomposition};
 
@@ -50,6 +51,7 @@ pub enum ClassMapError {
         expected: usize,
         actual: usize,
     },
+    CoordinatePresentationMismatch,
     RelationIndexOutOfBounds {
         index: usize,
         relations: usize,
@@ -58,6 +60,7 @@ pub enum ClassMapError {
         index: usize,
     },
     RelationCombinationWitnessMismatch,
+    RelationCombinationUnavailable,
 }
 
 impl From<NormalFormError> for ClassMapError {
@@ -73,6 +76,7 @@ impl From<NormalFormError> for ClassMapError {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ClassCoordinates {
     values: Vec<Integer>,
+    presentation_sha256: [u8; 32],
 }
 
 impl ClassCoordinates {
@@ -82,6 +86,10 @@ impl ClassCoordinates {
 
     pub fn is_zero(&self) -> bool {
         self.values.iter().all(|value| value == &0)
+    }
+
+    pub fn presentation_sha256(&self) -> &[u8; 32] {
+        &self.presentation_sha256
     }
 }
 
@@ -140,12 +148,16 @@ pub enum RelationCoverage {
 /// Exact quotient maps derived from a checked Smith decomposition.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PresentationClassMap {
-    relations: BigIntMatrix,
+    relations: Option<BigIntMatrix>,
+    generator_count: usize,
+    relation_count: usize,
     diagonal: Vec<Integer>,
     nontrivial_positions: Vec<usize>,
     invariant_factors: Vec<Integer>,
-    left_transform: BigIntMatrix,
-    right_transform: BigIntMatrix,
+    left_transform: Option<BigIntMatrix>,
+    right_transform: Option<BigIntMatrix>,
+    compact_generator_to_smith: Option<Vec<usize>>,
+    generator_coordinates: Option<Vec<Integer>>,
 }
 
 impl PresentationClassMap {
@@ -177,27 +189,212 @@ impl PresentationClassMap {
         }
 
         let answer = Self {
-            relations,
+            generator_count: relations.rows(),
+            relation_count: relations.columns(),
+            relations: Some(relations),
             diagonal,
             nontrivial_positions,
             invariant_factors,
-            left_transform: smith.left_transform,
-            right_transform: smith.right_transform,
+            left_transform: Some(smith.left_transform),
+            right_transform: Some(smith.right_transform),
+            compact_generator_to_smith: None,
+            generator_coordinates: None,
+        };
+        answer.verify_all_relations_map_to_zero()?;
+        Ok(answer)
+    }
+
+    /// Construct the exact Smith map of a diagonal relation presentation
+    /// without materializing quadratic-size identity transforms.
+    ///
+    /// Entry `i` is the positive diagonal coefficient of relation column `i`
+    /// on generator `i`. The constructor computes and verifies the canonical
+    /// Smith ordering; as with [`Self::from_verified_smith`], the caller must
+    /// already have authenticated that these are principal relations.
+    pub fn from_verified_diagonal_relations(
+        diagonal_by_generator: Vec<Integer>,
+    ) -> Result<Self, ClassMapError> {
+        let generators = diagonal_by_generator.len();
+        if generators == 0 || diagonal_by_generator.iter().any(|value| value <= &0) {
+            return Err(ClassMapError::NotFullRowRank {
+                rank: diagonal_by_generator
+                    .iter()
+                    .filter(|value| value != &&0)
+                    .count(),
+                generators,
+            });
+        }
+        let mut generator_order = (0..generators).collect::<Vec<_>>();
+        generator_order.sort_by(|left, right| {
+            diagonal_by_generator[*left]
+                .cmp(&diagonal_by_generator[*right])
+                .then(left.cmp(right))
+        });
+        let diagonal = generator_order
+            .iter()
+            .map(|index| diagonal_by_generator[*index].clone())
+            .collect::<Vec<_>>();
+        if diagonal
+            .windows(2)
+            .any(|pair| Integer::from(&pair[1] % &pair[0]) != 0)
+        {
+            return Err(ClassMapError::NormalForm(NormalFormError::NonCanonical(
+                "diagonal invariant factors do not divide",
+            )));
+        }
+        let mut generator_to_smith = vec![0; generators];
+        for (smith_position, generator) in generator_order.into_iter().enumerate() {
+            generator_to_smith[generator] = smith_position;
+        }
+        let mut nontrivial_positions = Vec::new();
+        let mut invariant_factors = Vec::new();
+        for (position, value) in diagonal.iter().enumerate() {
+            if value > &1 {
+                nontrivial_positions.push(position);
+                invariant_factors.push(value.clone());
+            }
+        }
+        Ok(Self {
+            relations: None,
+            generator_count: generators,
+            relation_count: generators,
+            diagonal,
+            nontrivial_positions,
+            invariant_factors,
+            left_transform: None,
+            right_transform: None,
+            compact_generator_to_smith: Some(generator_to_smith),
+            generator_coordinates: None,
+        })
+    }
+
+    /// Construct a compact coordinate map and verify every supplied relation
+    /// maps to zero. A separate authority must authenticate principal ideals.
+    pub fn from_verified_generator_coordinates(
+        invariant_factors: Vec<Integer>,
+        generator_coordinates: Vec<Integer>,
+        relations: BigIntMatrix,
+    ) -> Result<Self, ClassMapError> {
+        let generators = relations.rows();
+        let expected = generators.saturating_mul(invariant_factors.len());
+        if invariant_factors.is_empty()
+            || invariant_factors.iter().any(|value| value <= &1)
+            || invariant_factors
+                .windows(2)
+                .any(|pair| Integer::from(&pair[1] % &pair[0]) != 0)
+            || generators.checked_mul(invariant_factors.len()) != Some(generator_coordinates.len())
+        {
+            return Err(ClassMapError::CoordinateDimension {
+                expected,
+                actual: generator_coordinates.len(),
+            });
+        }
+        let answer = Self {
+            relation_count: relations.columns(),
+            relations: Some(relations),
+            generator_count: generators,
+            diagonal: invariant_factors.clone(),
+            nontrivial_positions: (0..invariant_factors.len()).collect(),
+            invariant_factors,
+            left_transform: None,
+            right_transform: None,
+            compact_generator_to_smith: None,
+            generator_coordinates: Some(generator_coordinates),
         };
         answer.verify_all_relations_map_to_zero()?;
         Ok(answer)
     }
 
     pub fn generator_count(&self) -> usize {
-        self.relations.rows()
+        self.generator_count
     }
 
     pub fn relation_count(&self) -> usize {
-        self.relations.columns()
+        self.relation_count
     }
 
     pub fn relation_coverage(&self) -> RelationCoverage {
         RelationCoverage::SuppliedRelationsOnly
+    }
+
+    pub(crate) fn uses_external_generator_coordinates(&self) -> bool {
+        self.generator_coordinates.is_some()
+    }
+
+    /// Domain-separated digest of the complete verified map representation.
+    ///
+    /// This binds generator order, relation columns, Smith transforms, and
+    /// canonical invariant-factor coordinates. It is suitable for replay
+    /// certificates, but is not a substitute for verifying the supplied
+    /// principal relations before constructing this capability.
+    pub fn binding_sha256(&self) -> [u8; 32] {
+        fn integer(hasher: &mut Sha256, value: &Integer) {
+            let bytes = value.to_string();
+            hasher.update((bytes.len() as u64).to_le_bytes());
+            hasher.update(bytes.as_bytes());
+        }
+        fn matrix(hasher: &mut Sha256, value: &BigIntMatrix) {
+            hasher.update((value.rows() as u64).to_le_bytes());
+            hasher.update((value.columns() as u64).to_le_bytes());
+            for row in 0..value.rows() {
+                for column in 0..value.columns() {
+                    integer(
+                        hasher,
+                        value.get(row, column).expect("indices are in bounds"),
+                    );
+                }
+            }
+        }
+
+        let mut hasher = Sha256::new();
+        hasher.update(b"sagejs.presentation-class-map/v1\0");
+        match (
+            &self.relations,
+            &self.compact_generator_to_smith,
+            &self.generator_coordinates,
+        ) {
+            (Some(relations), None, None) => {
+                hasher.update([0]);
+                matrix(&mut hasher, relations);
+            }
+            (None, Some(generator_to_smith), None) => {
+                hasher.update([1]);
+                hasher.update((generator_to_smith.len() as u64).to_le_bytes());
+                for (generator, &smith_position) in generator_to_smith.iter().enumerate() {
+                    hasher.update((generator as u64).to_le_bytes());
+                    hasher.update((smith_position as u64).to_le_bytes());
+                    integer(&mut hasher, &self.diagonal[smith_position]);
+                }
+            }
+            (Some(relations), None, Some(generator_coordinates)) => {
+                hasher.update([2]);
+                matrix(&mut hasher, relations);
+                hasher.update((generator_coordinates.len() as u64).to_le_bytes());
+                for value in generator_coordinates {
+                    integer(&mut hasher, value);
+                }
+            }
+            _ => unreachable!("presentation storage variants remain paired"),
+        }
+        hasher.update((self.diagonal.len() as u64).to_le_bytes());
+        for value in &self.diagonal {
+            integer(&mut hasher, value);
+        }
+        hasher.update((self.nontrivial_positions.len() as u64).to_le_bytes());
+        for &position in &self.nontrivial_positions {
+            hasher.update((position as u64).to_le_bytes());
+        }
+        hasher.update((self.invariant_factors.len() as u64).to_le_bytes());
+        for value in &self.invariant_factors {
+            integer(&mut hasher, value);
+        }
+        if let Some(left_transform) = &self.left_transform {
+            matrix(&mut hasher, left_transform);
+        }
+        if let Some(right_transform) = &self.right_transform {
+            matrix(&mut hasher, right_transform);
+        }
+        hasher.finalize().into()
     }
 
     /// Canonical nontrivial factors; factors equal to one are omitted.
@@ -208,21 +405,42 @@ impl PresentationClassMap {
     pub fn zero(&self) -> ClassCoordinates {
         ClassCoordinates {
             values: vec![Integer::new(); self.invariant_factors.len()],
+            presentation_sha256: self.binding_sha256(),
         }
     }
 
     /// Map a factor-base ideal exponent vector to presentation coordinates.
     pub fn coordinates(&self, exponents: &[Integer]) -> Result<ClassCoordinates, ClassMapError> {
         self.check_exponent_dimension(exponents)?;
-        let transformed = multiply_matrix_vector(&self.left_transform, exponents)?;
         Ok(ClassCoordinates {
-            values: self
-                .nontrivial_positions
-                .iter()
-                .zip(&self.invariant_factors)
-                .map(|(&position, modulus)| canonical_residue(&transformed[position], modulus))
-                .collect(),
+            values: self.coordinate_values(exponents)?,
+            presentation_sha256: self.binding_sha256(),
         })
+    }
+
+    fn coordinate_values(&self, exponents: &[Integer]) -> Result<Vec<Integer>, ClassMapError> {
+        if let Some(generator_coordinates) = &self.generator_coordinates {
+            let width = self.invariant_factors.len();
+            let mut values = vec![Integer::new(); width];
+            for (generator, exponent) in exponents.iter().enumerate() {
+                for coordinate in 0..width {
+                    values[coordinate] += Integer::from(
+                        exponent * &generator_coordinates[generator * width + coordinate],
+                    );
+                }
+            }
+            for (value, modulus) in values.iter_mut().zip(&self.invariant_factors) {
+                *value = canonical_residue(value, modulus);
+            }
+            return Ok(values);
+        }
+        let transformed = self.transform_to_smith(exponents)?;
+        Ok(self
+            .nontrivial_positions
+            .iter()
+            .zip(&self.invariant_factors)
+            .map(|(&position, modulus)| canonical_residue(&transformed[position], modulus))
+            .collect())
     }
 
     /// Coordinate images of the original factor-base generators.
@@ -253,6 +471,7 @@ impl PresentationClassMap {
                     canonical_residue(&Integer::from(left + right), modulus)
                 })
                 .collect(),
+            presentation_sha256: self.binding_sha256(),
         })
     }
 
@@ -268,6 +487,7 @@ impl PresentationClassMap {
                 .zip(&self.invariant_factors)
                 .map(|(value, modulus)| canonical_residue(&Integer::from(-value), modulus))
                 .collect(),
+            presentation_sha256: self.binding_sha256(),
         })
     }
 
@@ -278,13 +498,37 @@ impl PresentationClassMap {
                 relations: self.relation_count(),
             });
         }
-        let relation = (0..self.generator_count())
-            .map(|row| self.relations.get(row, index).cloned())
-            .collect::<Result<Vec<_>, _>>()?;
-        if !self.coordinates(&relation)?.is_zero() {
+        let relation = self.relation_vector(index)?;
+        if self
+            .coordinate_values(&relation)?
+            .iter()
+            .any(|value| value != &0)
+        {
             return Err(ClassMapError::RelationDoesNotMapToZero { index });
         }
         Ok(())
+    }
+
+    pub(crate) fn relation_vector(&self, index: usize) -> Result<Vec<Integer>, ClassMapError> {
+        if index >= self.relation_count() {
+            return Err(ClassMapError::RelationIndexOutOfBounds {
+                index,
+                relations: self.relation_count(),
+            });
+        }
+        Ok(if let Some(relations) = &self.relations {
+            (0..self.generator_count())
+                .map(|row| relations.get(row, index).cloned())
+                .collect::<Result<Vec<_>, _>>()?
+        } else {
+            let generator_to_smith = self
+                .compact_generator_to_smith
+                .as_ref()
+                .expect("compact presentation has a permutation");
+            let mut relation = vec![Integer::new(); self.generator_count()];
+            relation[index] = self.diagonal[generator_to_smith[index]].clone();
+            relation
+        })
     }
 
     pub fn verify_all_relations_map_to_zero(&self) -> Result<(), ClassMapError> {
@@ -305,8 +549,19 @@ impl PresentationClassMap {
         if !coordinates.is_zero() {
             return Ok(PresentationZeroState::NonzeroInCurrentPresentation { coordinates });
         }
+        if self.generator_coordinates.is_some() {
+            if exponents.iter().all(|value| value == &0) {
+                return Ok(PresentationZeroState::ZeroByVerifiedRelations {
+                    relation_combination: RelationCombinationWitness {
+                        coefficients: vec![Integer::new(); self.relation_count()],
+                    },
+                    principal_element: PrincipalElementWitnessState::Identity,
+                });
+            }
+            return Err(ClassMapError::RelationCombinationUnavailable);
+        }
 
-        let transformed = multiply_matrix_vector(&self.left_transform, exponents)?;
+        let transformed = self.transform_to_smith(exponents)?;
         let mut diagonal_coordinates = vec![Integer::new(); self.relation_count()];
         for index in 0..self.generator_count() {
             // Coordinates being zero modulo every nontrivial factor, together
@@ -314,8 +569,33 @@ impl PresentationClassMap {
             diagonal_coordinates[index] =
                 Integer::from(&transformed[index] / &self.diagonal[index]);
         }
-        let coefficients = multiply_matrix_vector(&self.right_transform, &diagonal_coordinates)?;
-        if multiply_matrix_vector(&self.relations, &coefficients)? != exponents {
+        let coefficients = if let Some(right_transform) = &self.right_transform {
+            multiply_matrix_vector(right_transform, &diagonal_coordinates)?
+        } else {
+            let generator_to_smith = self
+                .compact_generator_to_smith
+                .as_ref()
+                .expect("compact presentation has a permutation");
+            (0..self.generator_count())
+                .map(|generator| diagonal_coordinates[generator_to_smith[generator]].clone())
+                .collect()
+        };
+        let reconstructed = if let Some(relations) = &self.relations {
+            multiply_matrix_vector(relations, &coefficients)?
+        } else {
+            let generator_to_smith = self
+                .compact_generator_to_smith
+                .as_ref()
+                .expect("compact presentation has a permutation");
+            coefficients
+                .iter()
+                .enumerate()
+                .map(|(generator, coefficient)| {
+                    Integer::from(coefficient * &self.diagonal[generator_to_smith[generator]])
+                })
+                .collect()
+        };
+        if reconstructed != exponents {
             return Err(ClassMapError::RelationCombinationWitnessMismatch);
         }
         let relation_combination = RelationCombinationWitness { coefficients };
@@ -341,6 +621,21 @@ impl PresentationClassMap {
         Ok(())
     }
 
+    fn transform_to_smith(&self, exponents: &[Integer]) -> Result<Vec<Integer>, ClassMapError> {
+        if let Some(left_transform) = &self.left_transform {
+            return multiply_matrix_vector(left_transform, exponents);
+        }
+        let generator_to_smith = self
+            .compact_generator_to_smith
+            .as_ref()
+            .expect("compact presentation has a permutation");
+        let mut transformed = vec![Integer::new(); self.generator_count()];
+        for (generator, value) in exponents.iter().enumerate() {
+            transformed[generator_to_smith[generator]] = value.clone();
+        }
+        Ok(transformed)
+    }
+
     fn check_coordinate_dimension(
         &self,
         coordinates: &ClassCoordinates,
@@ -350,6 +645,9 @@ impl PresentationClassMap {
                 expected: self.invariant_factors.len(),
                 actual: coordinates.values.len(),
             });
+        }
+        if coordinates.presentation_sha256 != self.binding_sha256() {
+            return Err(ClassMapError::CoordinatePresentationMismatch);
         }
         Ok(())
     }

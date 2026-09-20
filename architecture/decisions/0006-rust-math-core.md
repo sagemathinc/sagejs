@@ -1,6 +1,6 @@
 # ADR 0006: Qualification path for a Rust mathematical core
 
-- Status: proposed for the class-group qualification campaign
+- Status: accepted for experimental qualification; not approved for production
 - Date: 2026-09-20
 
 ## Context
@@ -26,6 +26,14 @@ This decision defines the architectural contract for that trial. It does not
 declare the experimental implementation production-ready, select it
 automatically, or weaken any existing correctness, proof, platform, or WebAssembly
 requirement.
+
+The fail-closed executable form of this decision is
+[`architecture/rust-math-core-policy.json`](../rust-math-core-policy.json).
+That policy and the Rust entries in
+[`architecture/native-code.json`](../native-code.json) deliberately label the
+current sources `experimental-qualification`. Changing that label or enabling
+automatic dispatch requires the exact promotion receipt described below; an
+architecture-document edit by itself is insufficient.
 
 ## Decision
 

@@ -1,0 +1,134 @@
+{
+  "schema_version": 1,
+  "decision": "architecture/decisions/0006-rust-math-core.md",
+  "qualification_plan": "agents/rust-class-group-core-qualification-plan.md",
+  "backend_id": "handwritten-rust-math-core",
+  "status": "experimental-qualification",
+  "source_model": "separate-handwritten-implementation",
+  "candidate_root": "bench/pari-class-group-rust",
+  "automatic_dispatch": "prohibited-until-exact-promotion-receipt",
+  "public_contract": {
+    "semantic_owner": "ordinary-python",
+    "dynamic_fallback": "required-when-correct-for-request",
+    "unsupported_behavior": "explicit-capability-or-resource-status",
+    "silent_proof_or_backend_change": "prohibited"
+  },
+  "provenance": {
+    "manifest": "bench/pari-class-group-rust/qualification/provenance/manifest.json",
+    "per_source_classification": true,
+    "source_correspondence_required": true,
+    "dependency_source_identity_required": true,
+    "license_metadata_required": true,
+    "distribution_notice_review_required": true,
+    "pari_source_identity": "PARI-2.17.4"
+  },
+  "safety_audit_receipt": "bench/pari-class-group-rust/qualification/safety-audit/receipt.json",
+  "implementation": {
+    "host_independent_core": true,
+    "required_adapters": [
+      "native",
+      "wasm"
+    ],
+    "host_callbacks_after_marshalling": "prohibited",
+    "scalar_host_crossings_in_hot_path": "prohibited",
+    "public_abi": "versioned-host-neutral-c-or-equivalent-wasm",
+    "transactional_complete_result": true
+  },
+  "required_diagnostics": [
+    "backend",
+    "capabilities",
+    "artifact-identity",
+    "proof-mode",
+    "completion-status",
+    "fallback-reason",
+    "resource-limits",
+    "fresh-or-cached"
+  ],
+  "inspectability": {
+    "reachable-source-graph": true,
+    "source-provenance": true,
+    "unsafe-inventory": true,
+    "native-and-wasm-dependency-closure": true,
+    "stage-telemetry": true,
+    "reproducible-build-receipt": true,
+    "artifact-hashes-and-sizes": true
+  },
+  "validation": {
+    "dynamic-reference-oracle": true,
+    "native-differential": true,
+    "wasm-differential": true,
+    "mathematical-certificate-replay": true,
+    "representative-benchmarks": true,
+    "held-out-corpus": true,
+    "failures-and-timeouts-retained": true
+  },
+  "platforms": {
+    "development": "linux-x64",
+    "promotion_required": [
+      "linux-x64",
+      "linux-arm64",
+      "macos-arm64",
+      "windows-x64",
+      "browser-wasm"
+    ],
+    "windows": {
+      "native_is_first_class": true,
+      "unsupported_dependency_requires_capability_flag": true,
+      "correct_fallback_must_be_tested": true,
+      "wsl_msys2_mingw_user_path": "prohibited"
+    }
+  },
+  "promotion": {
+    "receipt_required": true,
+    "receipt_binds_exact_artifact": true,
+    "receipt_binds_admitted_workload": true,
+    "safety_review_required": "reviewed",
+    "provenance_mapping_required": "complete",
+    "safety_receipt_promotion_gate_required": true,
+    "distribution_receipt_schema": "sagejs.rust-math-core/promotion-receipt-v1",
+    "required_gates": [
+      "R0",
+      "W0",
+      "R1",
+      "R2",
+      "R3",
+      "R4",
+      "R5",
+      "independent-review"
+    ],
+    "partial_result_may_claim_production": false
+  },
+  "rust_source_policy": {
+    "qualification_status": "experimental-qualification",
+    "experimental_pending_safety_allowed": true,
+    "roles": [
+      "mathematical-core",
+      "foreign-library-bridge",
+      "host-adapter",
+      "qualification-harness",
+      "generated-binding"
+    ],
+    "provenance_classes": [
+      "original-sagejs",
+      "behavioral-reimplementation",
+      "source-translation",
+      "qualification-harness",
+      "generated-upstream"
+    ],
+    "distribution_statuses": [
+      "qualification-only",
+      "review-required-before-distribution",
+      "reviewed-for-distribution"
+    ],
+    "safety_review_states": [
+      "not-applicable",
+      "pending-documentation",
+      "reviewed"
+    ],
+    "provenance_mapping_states": [
+      "not-applicable",
+      "pending",
+      "complete"
+    ]
+  }
+}

@@ -17,7 +17,10 @@ unconditionally complete class group for this fail-closed domain:
 The engine completely enumerates primitive reduced positive-definite binary
 quadratic forms through the exact reduction bound `a <= sqrt(|D|/3)`. The
 classical reduced-form theorem proves that this is one representative per
-proper ideal class. Exact Gauss composition multiplies the forms' rank-two
+proper ideal class. Enumeration factors the exact identity
+`a*c = (b^2-D)/4` for each parity-admissible bounded `b`, avoiding a quadratic
+scan without changing the canonical reduced-form predicate. Exact Gauss
+composition multiplies the forms' rank-two
 integer ideal lattices, normalizes their lattice index with extended gcds and
 2-by-2 minors, and reduces the resulting form canonically. The engine computes
 orders, primary components, independent generators, normalized invariant
@@ -35,6 +38,11 @@ given the associative class-group law supplied by exact ideal-lattice
 multiplication, these checks authenticate that the published coordinates are
 a homomorphism and that the published generators span every class. It rejects
 modified composition maps and certificates.
+
+The exhaustive authenticated differential campaign is available as the
+ignored `pari_broad_differential` test. It covers every 3,043 negative
+fundamental discriminant through absolute discriminant 10,000 and a frozen
+314-case deterministic/random sample through 9,999,991.
 
 The current map domain is the complete set of canonical reduced-form
 representatives. Reduction of an arbitrary caller-supplied ideal into that map

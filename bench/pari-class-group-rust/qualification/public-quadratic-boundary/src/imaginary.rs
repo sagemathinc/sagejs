@@ -350,14 +350,18 @@ pub fn verify_imaginary_class_group(
     if forms.len() > MAXIMUM_REDUCED_FORMS {
         return Err(ImaginaryClassGroupError::InvalidCertificate);
     }
-    let structure = compute_group_structure(&forms, discriminant)
-        .map_err(|_| ImaginaryClassGroupError::InvalidCertificate)?;
+    let invariants = &result.invariant_factors;
+    let invariant_product = invariants
+        .iter()
+        .try_fold(1_u64, |product, value| product.checked_mul(*value));
+    let structure_shape_valid = invariant_product == Some(forms.len() as u64)
+        && invariants.iter().all(|value| *value > 1)
+        && invariants.windows(2).all(|pair| pair[1] % pair[0] == 0);
     if result.schema != RESULT_SCHEMA
         || result.field_id != input.id
         || result.polynomial_ascending != input.polynomial_ascending
         || result.discriminant != discriminant
         || result.class_number != forms.len()
-        || result.invariant_factors != structure.invariants
         || result.certificate.discriminant != discriminant
         || result.certificate.fundamental_squarefree_core != core
         || result.certificate.squarefree_core_prime_factors != factors
@@ -365,19 +369,26 @@ pub fn verify_imaginary_class_group(
         || result.certificate.reduced_forms != forms
         || result.certificate.theorem != CERTIFICATE_THEOREM
         || result.complete_class_map.len() != forms.len()
-        || result.generators.len() != structure.generator_indices.len()
+        || result.generators.len() != invariants.len()
+        || !structure_shape_valid
         || result.proof_status != "unconditional-complete"
         || result.runtime_uses_pari_or_fixture_answers
     {
         return Err(ImaginaryClassGroupError::InvalidCertificate);
     }
+    let mut seen_coordinates = vec![false; forms.len()];
     for (index, entry) in result.complete_class_map.iter().enumerate() {
         let expected_inverse = forms[index]
             .inverse_reduced()
             .map_err(|_| ImaginaryClassGroupError::InvalidCertificate)?;
         if entry.form != forms[index]
             || entry.inverse_form != expected_inverse
-            || entry.coordinates != structure.coordinates[index]
+            || entry.coordinates.len() != invariants.len()
+            || entry
+                .coordinates
+                .iter()
+                .zip(invariants)
+                .any(|(coordinate, modulus)| coordinate >= modulus)
             || entry.representative_ideal != ideal_representative(linear, forms[index])
             || !entry.form.is_primitive_reduced(discriminant)
             || !representative_ideal_is_closed(
@@ -388,40 +399,79 @@ pub fn verify_imaginary_class_group(
         {
             return Err(ImaginaryClassGroupError::InvalidCertificate);
         }
+        let mut coordinate_ordinal = 0_usize;
+        let mut stride = 1_usize;
+        for (coordinate, modulus) in entry.coordinates.iter().zip(invariants) {
+            coordinate_ordinal = coordinate_ordinal
+                .checked_add(stride * *coordinate as usize)
+                .ok_or(ImaginaryClassGroupError::InvalidCertificate)?;
+            stride = stride
+                .checked_mul(*modulus as usize)
+                .ok_or(ImaginaryClassGroupError::InvalidCertificate)?;
+        }
+        if seen_coordinates[coordinate_ordinal] {
+            return Err(ImaginaryClassGroupError::InvalidCertificate);
+        }
+        seen_coordinates[coordinate_ordinal] = true;
         let inverse_index = forms
             .binary_search(&entry.inverse_form)
             .map_err(|_| ImaginaryClassGroupError::InvalidCertificate)?;
         if !coordinates_are_inverse(
             &entry.coordinates,
-            &structure.coordinates[inverse_index],
-            &structure.invariants,
+            &result.complete_class_map[inverse_index].coordinates,
+            invariants,
         ) {
             return Err(ImaginaryClassGroupError::InvalidCertificate);
         }
     }
-    for (generator_position, (actual, (index, order))) in result
-        .generators
+    if seen_coordinates.iter().any(|seen| !seen) {
+        return Err(ImaginaryClassGroupError::InvalidCertificate);
+    }
+    let principal_index = forms
+        .binary_search(&principal_form(discriminant))
+        .map_err(|_| ImaginaryClassGroupError::InvalidCertificate)?;
+    if result.complete_class_map[principal_index]
+        .coordinates
         .iter()
-        .zip(structure.generator_indices.iter().copied())
-        .enumerate()
+        .any(|value| *value != 0)
     {
-        if actual.form != forms[index]
-            || actual.coordinates != structure.coordinates[index]
+        return Err(ImaginaryClassGroupError::InvalidCertificate);
+    }
+    for (generator_position, actual) in result.generators.iter().enumerate() {
+        let index = forms
+            .binary_search(&actual.form)
+            .map_err(|_| ImaginaryClassGroupError::InvalidCertificate)?;
+        let order = invariants[generator_position];
+        let mut unit_coordinate = vec![0_u64; invariants.len()];
+        unit_coordinate[generator_position] = 1;
+        if actual.coordinates != unit_coordinate
+            || result.complete_class_map[index].coordinates != unit_coordinate
             || actual.exact_order != order
             || actual.representative_ideal != ideal_representative(linear, forms[index])
+            || form_power(actual.form, order as usize, discriminant)
+                .map_err(|_| ImaginaryClassGroupError::InvalidCertificate)?
+                != principal_form(discriminant)
         {
             return Err(ImaginaryClassGroupError::InvalidCertificate);
         }
+        for (prime, _) in factor_usize(order as usize) {
+            if form_power(actual.form, order as usize / prime, discriminant)
+                .map_err(|_| ImaginaryClassGroupError::InvalidCertificate)?
+                == principal_form(discriminant)
+            {
+                return Err(ImaginaryClassGroupError::InvalidCertificate);
+            }
+        }
         for (form_index, form) in forms.iter().copied().enumerate() {
-            let product = compose_forms(form, actual.form, discriminant)
+            let product = compose_reduced_forms_unchecked(form, actual.form, discriminant)
                 .map_err(|_| ImaginaryClassGroupError::InvalidCertificate)?;
             let product_index = forms
                 .binary_search(&product)
                 .map_err(|_| ImaginaryClassGroupError::InvalidCertificate)?;
-            let mut expected = structure.coordinates[form_index].clone();
+            let mut expected = result.complete_class_map[form_index].coordinates.clone();
             expected[generator_position] =
-                (expected[generator_position] + 1) % structure.invariants[generator_position];
-            if structure.coordinates[product_index] != expected {
+                (expected[generator_position] + 1) % invariants[generator_position];
+            if result.complete_class_map[product_index].coordinates != expected {
                 return Err(ImaginaryClassGroupError::InvalidCertificate);
             }
         }
@@ -482,6 +532,17 @@ fn compose_forms(
     if !left.is_primitive_reduced(discriminant) || !right.is_primitive_reduced(discriminant) {
         return Err(ImaginaryClassGroupError::GroupLawFailure);
     }
+    compose_reduced_forms_unchecked(left, right, discriminant)
+}
+
+/// Internal hot path for forms already obtained from the complete reduced-form
+/// enumeration or from a successful composition. `reduce_form` still checks
+/// the output exactly; only the redundant input checks are elided.
+fn compose_reduced_forms_unchecked(
+    left: BinaryQuadraticForm,
+    right: BinaryQuadraticForm,
+    discriminant: i64,
+) -> Result<BinaryQuadraticForm, ImaginaryClassGroupError> {
     let target = i128::from(discriminant);
     let parity = target.rem_euclid(2);
     let theta_norm = (parity * parity - target) / 4;
@@ -560,11 +621,11 @@ fn form_power(
     let mut answer = principal_form(discriminant);
     while exponent != 0 {
         if exponent & 1 != 0 {
-            answer = compose_forms(answer, form, discriminant)?;
+            answer = compose_reduced_forms_unchecked(answer, form, discriminant)?;
         }
         exponent >>= 1;
         if exponent != 0 {
-            form = compose_forms(form, form, discriminant)?;
+            form = compose_reduced_forms_unchecked(form, form, discriminant)?;
         }
     }
     Ok(answer)
@@ -594,7 +655,7 @@ fn generated_subgroup(
     let mut queue = VecDeque::from([principal]);
     while let Some(current) = queue.pop_front() {
         for generator in generators {
-            let candidate = compose_forms(current, *generator, discriminant)?;
+            let candidate = compose_reduced_forms_unchecked(current, *generator, discriminant)?;
             if seen.insert(candidate) {
                 queue.push_back(candidate);
             }
@@ -684,12 +745,27 @@ fn compute_group_structure(
         return Err(ImaginaryClassGroupError::GroupLawFailure);
     }
     let principal = principal_form(discriminant);
+    // An even-order cyclic group has exactly two self-inverse elements. Form
+    // inversion is just canonical coefficient negation, so this exact rank
+    // test avoids attempting a full-order composition for every form in the
+    // common noncyclic (positive 2-rank) case.
+    let cyclic_possible = forms.len() % 2 != 0
+        || forms
+            .iter()
+            .filter(|form| form.inverse_reduced() == Ok(**form))
+            .take(3)
+            .count()
+            == 2;
     let (invariants, generators) = if forms.len() == 1 {
         (Vec::new(), Vec::new())
-    } else if let Some(generator) = forms
-        .iter()
-        .copied()
-        .find(|form| form_order(*form, forms.len(), discriminant) == Ok(forms.len()))
+    } else if let Some(generator) = cyclic_possible
+        .then(|| {
+            forms
+                .iter()
+                .copied()
+                .find(|form| form_order(*form, forms.len(), discriminant) == Ok(forms.len()))
+        })
+        .flatten()
     {
         (vec![forms.len()], vec![generator])
     } else {
@@ -712,7 +788,7 @@ fn compute_group_structure(
                 if position >= offset {
                     let local = position - offset;
                     invariant *= component_factors[component][local];
-                    generator = compose_forms(
+                    generator = compose_reduced_forms_unchecked(
                         generator,
                         component_generators[component][local],
                         discriminant,
@@ -725,7 +801,6 @@ fn compute_group_structure(
         (invariants, generators)
     };
     if invariants.iter().product::<usize>() != forms.len()
-        || generated_subgroup(&generators, discriminant)?.len() != forms.len()
         || invariants.windows(2).any(|pair| pair[1] % pair[0] != 0)
     {
         return Err(ImaginaryClassGroupError::GroupLawFailure);
@@ -739,28 +814,62 @@ fn compute_group_structure(
         .collect::<BTreeMap<_, _>>();
     let mut coordinates = vec![Vec::new(); forms.len()];
     let mut assigned = vec![false; forms.len()];
-    for ordinal in 0..forms.len() {
-        let mut remaining = ordinal;
-        let mut coordinate = Vec::with_capacity(invariants.len());
+    if invariants.len() == 1 {
+        let generator = generators[0];
         let mut form = principal;
-        for (invariant, generator) in invariants.iter().copied().zip(&generators) {
-            let value = remaining % invariant;
-            remaining /= invariant;
-            coordinate.push(value as u64);
-            form = compose_forms(
-                form,
-                form_power(*generator, value, discriminant)?,
-                discriminant,
-            )?;
+        for ordinal in 0..forms.len() {
+            let index = *form_indices
+                .get(&form)
+                .ok_or(ImaginaryClassGroupError::GroupLawFailure)?;
+            if assigned[index] {
+                return Err(ImaginaryClassGroupError::GroupLawFailure);
+            }
+            assigned[index] = true;
+            coordinates[index] = vec![ordinal as u64];
+            form = compose_reduced_forms_unchecked(form, generator, discriminant)?;
         }
-        let index = *form_indices
-            .get(&form)
-            .ok_or(ImaginaryClassGroupError::GroupLawFailure)?;
-        if assigned[index] {
+        if form != principal {
             return Err(ImaginaryClassGroupError::GroupLawFailure);
         }
-        assigned[index] = true;
-        coordinates[index] = coordinate;
+    } else {
+        let mut generator_powers = Vec::with_capacity(generators.len());
+        for (invariant, generator) in invariants.iter().copied().zip(&generators) {
+            let mut powers = Vec::with_capacity(invariant);
+            let mut form = principal;
+            for _ in 0..invariant {
+                powers.push(form);
+                form = compose_reduced_forms_unchecked(form, *generator, discriminant)?;
+            }
+            if form != principal {
+                return Err(ImaginaryClassGroupError::GroupLawFailure);
+            }
+            generator_powers.push(powers);
+        }
+        for ordinal in 0..forms.len() {
+            let mut remaining = ordinal;
+            let mut coordinate = Vec::with_capacity(invariants.len());
+            let mut form = principal;
+            for (position, invariant) in invariants.iter().copied().enumerate() {
+                let value = remaining % invariant;
+                remaining /= invariant;
+                coordinate.push(value as u64);
+                if value != 0 {
+                    form = compose_reduced_forms_unchecked(
+                        form,
+                        generator_powers[position][value],
+                        discriminant,
+                    )?;
+                }
+            }
+            let index = *form_indices
+                .get(&form)
+                .ok_or(ImaginaryClassGroupError::GroupLawFailure)?;
+            if assigned[index] {
+                return Err(ImaginaryClassGroupError::GroupLawFailure);
+            }
+            assigned[index] = true;
+            coordinates[index] = coordinate;
+        }
     }
     if assigned.iter().any(|value| !value) {
         return Err(ImaginaryClassGroupError::GroupLawFailure);
@@ -834,16 +943,30 @@ fn enumerate_reduced_forms(discriminant: i64) -> (i64, Vec<BinaryQuadraticForm>)
     while (bound + 1) * (bound + 1) * 3 <= absolute {
         bound += 1;
     }
+    let maximum_n = (bound * bound + absolute) / 4 + 1;
+    let mut primes = Vec::new();
+    for candidate in 2..=integer_square_root(maximum_n) {
+        if primes.iter().all(|prime| candidate % prime != 0) {
+            primes.push(candidate);
+        }
+    }
     let mut forms = Vec::new();
-    for a in 1..=i64::try_from(bound).unwrap() {
-        for b in -a..=a {
-            let numerator = i128::from(b) * i128::from(b) - i128::from(discriminant);
-            let denominator = 4 * i128::from(a);
-            if numerator % denominator != 0 {
+    let signed_bound = i64::try_from(bound).unwrap();
+    for b in -signed_bound..=signed_bound {
+        let numerator = i128::from(b) * i128::from(b) - i128::from(discriminant);
+        if numerator % 4 != 0 {
+            continue;
+        }
+        let n = u64::try_from(numerator / 4).unwrap();
+        for a in positive_divisors(n, &primes) {
+            if a > bound || a < b.unsigned_abs() || a > n / a {
                 continue;
             }
-            let c = i64::try_from(numerator / denominator).unwrap();
-            let form = BinaryQuadraticForm { a, b, c };
+            let form = BinaryQuadraticForm {
+                a: i64::try_from(a).unwrap(),
+                b,
+                c: i64::try_from(n / a).unwrap(),
+            };
             if form.is_primitive_reduced(discriminant) {
                 forms.push(form);
             }
@@ -851,6 +974,42 @@ fn enumerate_reduced_forms(discriminant: i64) -> (i64, Vec<BinaryQuadraticForm>)
     }
     forms.sort_unstable();
     (i64::try_from(bound).unwrap(), forms)
+}
+
+fn integer_square_root(value: u64) -> u64 {
+    let mut root = 0;
+    while (root + 1) <= value / (root + 1) {
+        root += 1;
+    }
+    root
+}
+
+fn positive_divisors(mut value: u64, primes: &[u64]) -> Vec<u64> {
+    let mut divisors = vec![1];
+    for prime in primes {
+        if *prime > value / *prime {
+            break;
+        }
+        if value % prime != 0 {
+            continue;
+        }
+        let existing = divisors.len();
+        let mut power = 1;
+        while value % prime == 0 {
+            value /= prime;
+            power *= prime;
+            for index in 0..existing {
+                divisors.push(divisors[index] * power);
+            }
+        }
+    }
+    if value > 1 {
+        let existing = divisors.len();
+        for index in 0..existing {
+            divisors.push(divisors[index] * value);
+        }
+    }
+    divisors
 }
 
 fn principal_form(discriminant: i64) -> BinaryQuadraticForm {

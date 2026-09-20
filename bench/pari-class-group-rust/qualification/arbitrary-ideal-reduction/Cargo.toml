@@ -1,0 +1,9 @@
+[package]
+name = "sagejs-arbitrary-ideal-reduction-qualification"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+rug = { version = "1.30", default-features = false, features = ["integer"] }
+sagejs-pari-class-group-rust-experiment = { path = "../.." }

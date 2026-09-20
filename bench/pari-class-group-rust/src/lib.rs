@@ -15,6 +15,7 @@
 
 mod analytic_completion;
 mod api;
+mod arbitrary_ideal_reduction;
 mod bruteforce_collector;
 mod class_group;
 mod class_maps;
@@ -52,6 +53,19 @@ pub use api::{
     collect_upstream_assumed_h1_presentation_candidate,
     compute_prepared_cubic_class_group_candidate,
     compute_upstream_assumed_h1_class_group_candidate,
+};
+pub use arbitrary_ideal_reduction::{
+    ARBITRARY_IDEAL_MAXIMUM_VALUATION, ArbitraryIdealClassMapCertificate,
+    ArbitraryIdealReductionCertificate, ArbitraryIdealReductionError,
+    ArbitraryIdealReductionLimits, ArbitraryIdealReductionStatistics,
+    AuthenticatedPresentationClassMap, MaximalCubicOrder, MaximalOrderEvidenceStatus,
+    PrincipalRelationWitness, SignedClassHandoff, UpstreamAssumedRow6QualificationOrder,
+    authenticate_presentation_class_map, authenticate_upstream_assumed_row6_presentation_class_map,
+    map_arbitrary_cubic_ideal_class, map_upstream_assumed_arbitrary_cubic_ideal_class,
+    reduce_arbitrary_cubic_ideal, reduce_upstream_assumed_arbitrary_cubic_ideal,
+    replay_arbitrary_cubic_ideal_class_map, replay_arbitrary_ideal_reduction,
+    replay_upstream_assumed_arbitrary_cubic_ideal_class_map,
+    replay_upstream_assumed_arbitrary_ideal_reduction,
 };
 pub use bruteforce_collector::{
     BruteForceStatistics, PreparedBruteForceResult,
@@ -93,8 +107,10 @@ pub use hnf::{
 };
 pub use numerical_preparation::{NumericalPreparationError, PreparedCubicEmbedding};
 pub use polynomial_preparation::{
+    CubicLocalMaximalityCertificate, CubicMaximalOrderCertificate, PreparedPublicCubic,
     PublicCubicPreparationError, PublicCubicPreparationLimits, RustPreparedMaximalCubic,
-    SquarefreeDiscriminantCertificate, prepare_squarefree_discriminant_monic_cubic,
+    SquarefreeDiscriminantCertificate, prepare_monic_cubic,
+    prepare_squarefree_discriminant_monic_cubic,
 };
 pub use prepared::{
     EmbeddingPrecisionState, PreparedCubicData, PreparedCubicValidationError,

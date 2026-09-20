@@ -22,7 +22,23 @@ const SCHEMA: &str = "sagejs.rust-class-group.neutral-input/v1";
 pub struct NeutralPreparedCubicInput {
     pub input_id: String,
     pub field_id: String,
-    pub field: ValidatedPreparedCubic,
+    pub(crate) source_sha256: String,
+    pub(crate) maximal_order_seal: NeutralMaximalOrderSeal,
+}
+
+impl NeutralPreparedCubicInput {
+    pub fn field(&self) -> &ValidatedPreparedCubic {
+        &self.maximal_order_seal.field
+    }
+
+    pub fn into_field(self) -> ValidatedPreparedCubic {
+        self.maximal_order_seal.field
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct NeutralMaximalOrderSeal {
+    pub(crate) field: ValidatedPreparedCubic,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -217,6 +233,9 @@ pub fn parse_neutral_prepared_cubic_json(
             "independent-oracle" | "sagejs-certified-preparation"
         )
         || source_sha256.len() != 64
+        || !source_sha256
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
     {
         return Err(PreparedCubicInputError::InvalidShape(
             "preparation metadata",
@@ -297,7 +316,8 @@ pub fn parse_neutral_prepared_cubic_json(
     Ok(NeutralPreparedCubicInput {
         input_id: document.input_id,
         field_id: document.field_id,
-        field,
+        source_sha256,
+        maximal_order_seal: NeutralMaximalOrderSeal { field },
     })
 }
 
@@ -322,24 +342,27 @@ mod tests {
             parsed.field_id,
             "row6-x3-minus-2000000000010x-plus-2000000000018"
         );
-        assert_eq!(parsed.field.equation_order_index(), &3);
+        assert_eq!(parsed.field().equation_order_index(), &3);
     }
 
     #[test]
     fn accepts_distinct_trivial_and_cyclic_preparations() {
         let h1 = parse_neutral_prepared_cubic_json(H1).unwrap();
         let row1 = parse_neutral_prepared_cubic_json(ROW1).unwrap();
-        assert_eq!(h1.field.equation_order_index(), &1);
-        assert_eq!(row1.field.equation_order_index(), &3);
-        assert_ne!(h1.field.data().discriminant, row1.field.data().discriminant);
+        assert_eq!(h1.field().equation_order_index(), &1);
+        assert_eq!(row1.field().equation_order_index(), &3);
+        assert_ne!(
+            h1.field().data().discriminant,
+            row1.field().data().discriminant
+        );
     }
 
     #[test]
     fn accepts_a_certified_complex_cubic_preparation() {
         let parsed = parse_neutral_prepared_cubic_json(COMPLEX_MINUS_23).unwrap();
-        assert_eq!(parsed.field.data().signature, (1, 1));
-        assert_eq!(parsed.field.data().discriminant, -23);
-        assert_eq!(parsed.field.equation_order_index(), &1);
+        assert_eq!(parsed.field().data().signature, (1, 1));
+        assert_eq!(parsed.field().data().discriminant, -23);
+        assert_eq!(parsed.field().equation_order_index(), &1);
     }
 
     #[test]
@@ -367,5 +390,18 @@ mod tests {
                 PreparedCubicValidationError::DiscriminantMismatch { .. }
             ))
         ));
+    }
+
+    #[test]
+    fn rejects_noncanonical_source_sha256() {
+        let lowercase = "91180d1100796b514de61d0e1736521e6e55daadbda851a9f24defc8d3bb70df";
+        let uppercase = lowercase.to_ascii_uppercase();
+        let source = ROW6.replacen(lowercase, &uppercase, 1);
+        assert_eq!(
+            parse_neutral_prepared_cubic_json(&source),
+            Err(PreparedCubicInputError::InvalidShape(
+                "preparation metadata"
+            ))
+        );
     }
 }

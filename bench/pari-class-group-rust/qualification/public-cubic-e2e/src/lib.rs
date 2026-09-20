@@ -10,8 +10,7 @@
 use rug::Integer;
 use sagejs_pari_class_group_rust_experiment::{
     PreparedCollectorLimits, PublicCubicPreparationLimits, RelationPresentation,
-    class_group_candidate_invariants, collect_prepared_cubic_relations,
-    prepare_squarefree_discriminant_monic_cubic,
+    class_group_candidate_invariants, collect_prepared_cubic_relations, prepare_monic_cubic,
 };
 use serde::{Deserialize, Serialize};
 
@@ -55,7 +54,7 @@ pub struct PreparationEvidence {
     pub discriminant: String,
     pub signature: [u8; 2],
     pub equation_order_index: String,
-    pub squarefree_prime_factors: Vec<String>,
+    pub discriminant_prime_factors: Vec<String>,
     pub certificate_verified: bool,
 }
 
@@ -113,6 +112,12 @@ pub fn qualify(request: Request) -> Result<Receipt, QualificationError> {
     }
     let mut coefficients: [Integer; 4] = std::array::from_fn(|_| Integer::new());
     for (index, source) in request.polynomial_ascending.iter().enumerate() {
+        if source.len() > 128 {
+            return Err(QualificationError::InvalidCoefficient {
+                index,
+                value: "<coefficient text exceeds 128 bytes>".to_owned(),
+            });
+        }
         coefficients[index] =
             source
                 .parse::<Integer>()
@@ -122,20 +127,21 @@ pub fn qualify(request: Request) -> Result<Receipt, QualificationError> {
                 })?;
     }
 
-    let prepared = prepare_squarefree_discriminant_monic_cubic(
-        coefficients,
-        PublicCubicPreparationLimits {
-            maximum_trial_divisor: request.resources.maximum_trial_divisor,
-            maximum_irreducibility_prime: request.resources.maximum_irreducibility_prime,
-            embedding_precision_bits: request.resources.embedding_precision_bits,
-        },
-    )
-    .map_err(|error| QualificationError::Preparation(error.to_string()))?;
+    let preparation_limits = PublicCubicPreparationLimits {
+        maximum_trial_divisor: request.resources.maximum_trial_divisor,
+        maximum_irreducibility_prime: request.resources.maximum_irreducibility_prime,
+        embedding_precision_bits: request.resources.embedding_precision_bits,
+        ..PublicCubicPreparationLimits::default()
+    };
+    let prepared = prepare_monic_cubic(coefficients, preparation_limits)
+        .map_err(|error| QualificationError::Preparation(error.to_string()))?;
 
-    let certificate_verified = prepared.maximal_order_certificate().verify();
+    let certificate_verified = prepared
+        .maximal_order_certificate()
+        .verify(prepared.field(), preparation_limits);
     if !certificate_verified {
         return Err(QualificationError::Preparation(
-            "squarefree maximal-order certificate replay failed".to_owned(),
+            "maximal-order discriminant factorization replay failed".to_owned(),
         ));
     }
     let preparation = PreparationEvidence {
@@ -145,11 +151,11 @@ pub fn qualify(request: Request) -> Result<Receipt, QualificationError> {
             prepared.field().data().signature.1,
         ],
         equation_order_index: prepared.field().equation_order_index().to_string(),
-        squarefree_prime_factors: prepared
+        discriminant_prime_factors: prepared
             .maximal_order_certificate()
-            .prime_factors()
+            .factorization()
             .iter()
-            .map(Integer::to_string)
+            .map(|(prime, _)| prime.to_string())
             .collect(),
         certificate_verified,
     };
@@ -266,12 +272,12 @@ mod tests {
     }
 
     #[test]
-    fn inadmissible_nonmaximal_power_basis_fails_before_collection() {
+    fn repeated_discriminant_is_accepted_only_after_complete_local_exhaustion() {
         let mut input = request(10_000);
         input.polynomial_ascending = ["1".into(), "-1".into(), "-2".into(), "1".into()];
-        let error = qualify(input).unwrap_err();
-        assert!(
-            matches!(error, QualificationError::Preparation(message) if message.contains("NonSquarefreeDiscriminant"))
-        );
+        let receipt = qualify(input).unwrap();
+        assert_eq!(receipt.preparation.discriminant, "49");
+        assert_eq!(receipt.preparation.equation_order_index, "1");
+        assert!(receipt.preparation.certificate_verified);
     }
 }

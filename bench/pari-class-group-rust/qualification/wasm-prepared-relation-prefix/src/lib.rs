@@ -141,7 +141,7 @@ fn run(source: &str) -> Result<ResultDocument, String> {
     let input =
         parse_neutral_prepared_cubic_json(&prepared_source).map_err(|error| error.to_string())?;
     let presentation = collect_prepared_cubic_relations(
-        &input.field,
+        input.field(),
         PreparedCollectorLimits {
             maximum_visited_ideals: MAXIMUM_VISITED_IDEALS,
             maximum_candidates: MAXIMUM_CANDIDATES,

@@ -37,6 +37,45 @@ fn identity_smith(diagonal: &[Integer]) -> (BigIntMatrix, SmithDecomposition) {
     (relations, smith)
 }
 
+fn permuted_diagonal_smith(
+    diagonal_by_generator: &[Integer],
+) -> (BigIntMatrix, SmithDecomposition) {
+    let size = diagonal_by_generator.len();
+    let mut order = (0..size).collect::<Vec<_>>();
+    order.sort_by(|left, right| {
+        diagonal_by_generator[*left]
+            .cmp(&diagonal_by_generator[*right])
+            .then(left.cmp(right))
+    });
+    let mut relation_values = vec![Integer::new(); size * size];
+    let mut diagonal_values = vec![Integer::new(); size * size];
+    let mut left_values = vec![Integer::new(); size * size];
+    let mut left_inverse_values = vec![Integer::new(); size * size];
+    let mut right_values = vec![Integer::new(); size * size];
+    let mut right_inverse_values = vec![Integer::new(); size * size];
+    for generator in 0..size {
+        relation_values[generator * size + generator] = diagonal_by_generator[generator].clone();
+    }
+    for (smith, &generator) in order.iter().enumerate() {
+        diagonal_values[smith * size + smith] = diagonal_by_generator[generator].clone();
+        left_values[smith * size + generator] = 1.into();
+        left_inverse_values[generator * size + smith] = 1.into();
+        right_values[generator * size + smith] = 1.into();
+        right_inverse_values[smith * size + generator] = 1.into();
+    }
+    let relations = BigIntMatrix::try_new(size, size, relation_values).unwrap();
+    let smith = SmithDecomposition {
+        diagonal: BigIntMatrix::try_new(size, size, diagonal_values).unwrap(),
+        left_transform: BigIntMatrix::try_new(size, size, left_values).unwrap(),
+        left_inverse: BigIntMatrix::try_new(size, size, left_inverse_values).unwrap(),
+        right_transform: BigIntMatrix::try_new(size, size, right_values).unwrap(),
+        right_inverse: BigIntMatrix::try_new(size, size, right_inverse_values).unwrap(),
+        rank: size,
+        operations: 0,
+    };
+    (relations, smith)
+}
+
 #[test]
 fn noncyclic_two_by_two_maps_generators_and_relations() {
     // L is deliberately nontrivial, so these generator maps exercise the
@@ -212,4 +251,127 @@ fn coefficients_larger_than_machine_words_remain_exact() {
             .values(),
         &[7]
     );
+}
+
+#[test]
+fn compact_diagonal_map_matches_dense_verified_smith_and_binds_order() {
+    let (relations, smith) = identity_smith(&[1.into(), 1.into(), 3.into()]);
+    let dense = PresentationClassMap::from_verified_smith(relations, smith).unwrap();
+    let compact =
+        PresentationClassMap::from_verified_diagonal_relations(vec![1.into(), 3.into(), 1.into()])
+            .unwrap();
+    let dense_exponents = [Integer::from(4), Integer::from(-5), Integer::from(7)];
+    let compact_exponents = [Integer::from(4), Integer::from(7), Integer::from(-5)];
+    assert_eq!(
+        dense.coordinates(&dense_exponents).unwrap().values(),
+        compact.coordinates(&compact_exponents).unwrap().values()
+    );
+    assert_eq!(
+        compact.coordinates(&compact_exponents).unwrap().values(),
+        &[1]
+    );
+    assert_ne!(dense.binding_sha256(), compact.binding_sha256());
+    assert!(matches!(
+        compact
+            .presentation_zero_state(&[0.into(), 6.into(), 0.into()])
+            .unwrap(),
+        PresentationZeroState::ZeroByVerifiedRelations {
+            relation_combination,
+            ..
+        } if relation_combination.coefficients() == [0, 2, 0]
+    ));
+}
+
+#[test]
+fn coordinates_are_bound_to_the_exact_presentation() {
+    let (relations, smith) = identity_smith(&[Integer::from(6)]);
+    let six = PresentationClassMap::from_verified_smith(relations, smith).unwrap();
+    let (relations, smith) = identity_smith(&[Integer::from(5)]);
+    let five = PresentationClassMap::from_verified_smith(relations, smith).unwrap();
+    let from_six = six.coordinates(&[Integer::from(1)]).unwrap();
+    let from_five = five.coordinates(&[Integer::from(1)]).unwrap();
+    assert_eq!(
+        six.add(&from_six, &from_five),
+        Err(ClassMapError::CoordinatePresentationMismatch)
+    );
+    assert_eq!(
+        six.negate(&from_five),
+        Err(ClassMapError::CoordinatePresentationMismatch)
+    );
+}
+
+#[test]
+fn compact_and_dense_maps_agree_under_random_permutations_and_large_signs() {
+    let mut random = 0x4d59_5df4_d0f3_3173_u64;
+    for size in 1..=8 {
+        for _ in 0..24 {
+            let mut diagonal = (0..size)
+                .map(|index| Integer::from(1_u32 << index.min(7)))
+                .collect::<Vec<_>>();
+            for index in (1..size).rev() {
+                random = random
+                    .wrapping_mul(6_364_136_223_846_793_005)
+                    .wrapping_add(1_442_695_040_888_963_407);
+                diagonal.swap(index, (random as usize) % (index + 1));
+            }
+            let (relations, smith) = permuted_diagonal_smith(&diagonal);
+            let dense = PresentationClassMap::from_verified_smith(relations, smith).unwrap();
+            let compact =
+                PresentationClassMap::from_verified_diagonal_relations(diagonal.clone()).unwrap();
+
+            for generator in 0..size {
+                let mut basis = vec![Integer::new(); size];
+                basis[generator] = 1.into();
+                assert_eq!(
+                    dense.coordinates(&basis).unwrap().values(),
+                    compact.coordinates(&basis).unwrap().values()
+                );
+            }
+
+            let mut exponents = Vec::with_capacity(size);
+            for generator in 0..size {
+                random = random
+                    .wrapping_mul(6_364_136_223_846_793_005)
+                    .wrapping_add(1_442_695_040_888_963_407);
+                let magnitude = Integer::from(random) << (80 + generator);
+                exponents.push(if generator % 2 == 0 {
+                    magnitude
+                } else {
+                    -magnitude
+                });
+            }
+            assert_eq!(
+                dense.coordinates(&exponents).unwrap().values(),
+                compact.coordinates(&exponents).unwrap().values()
+            );
+
+            let relation_multiple = diagonal
+                .iter()
+                .enumerate()
+                .map(|(index, value)| Integer::from(value * Integer::from(index as i64 - 3)))
+                .collect::<Vec<_>>();
+            for map in [&dense, &compact] {
+                assert!(matches!(
+                    map.presentation_zero_state(&relation_multiple).unwrap(),
+                    PresentationZeroState::ZeroByVerifiedRelations { .. }
+                ));
+                assert!(matches!(
+                    map.presentation_zero_state(&vec![Integer::new(); size])
+                        .unwrap(),
+                    PresentationZeroState::ZeroByVerifiedRelations {
+                        principal_element: PrincipalElementWitnessState::Identity,
+                        ..
+                    }
+                ));
+            }
+        }
+    }
+}
+
+#[test]
+fn compact_diagonal_map_rejects_non_smith_divisibility() {
+    assert!(matches!(
+        PresentationClassMap::from_verified_diagonal_relations(vec![2.into(), 3.into()]),
+        Err(ClassMapError::NormalForm(_))
+    ));
 }

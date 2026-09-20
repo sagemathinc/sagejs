@@ -21,6 +21,12 @@ New mathematical algorithms MUST be considered in this order:
 4. **Handwritten native primitives.**  New C/C++ is reserved for host adapters,
    compact representation primitives, foreign-library bindings, or a measured
    compiler limitation recorded as an architecture exception.
+5. **Receipt-gated handwritten Rust backends.** A host-independent Rust
+   mathematical core is a distinct implementation, never a source-transparent
+   lowering of a Python body. It is permitted only by a scoped architecture
+   decision and remains experimental until the exact native, WebAssembly,
+   correctness, proof, provenance, platform, packaging, and fallback gates in
+   that decision have passed.
 
 This order is a decision procedure, not a claim that C is undesirable.  A
 well-tested FLINT call is generally preferable to recreating FLINT in Python.
@@ -145,6 +151,21 @@ An exception for handwritten mathematical native code records:
 - a decision record when the exception establishes a lasting precedent.
 
 Exceptions are allowed and visible.  Quietly bypassing the policy is not.
+
+The first handwritten Rust mathematical-backend trial is governed by
+[`architecture/decisions/0006-rust-math-core.md`](architecture/decisions/0006-rust-math-core.md)
+and the machine-readable
+[`architecture/rust-math-core-policy.json`](architecture/rust-math-core-policy.json).
+Rust source is included in the reject-unclassified native inventory. The trial
+is an **experimental qualification route**, not an automatically selected
+production backend. It must retain a correct public dynamic fallback (or an
+explicit unsupported/resource outcome), preserve source and license
+provenance, share one host-independent core between thin native and Wasm
+adapters, expose backend/capability/artifact/proof/status diagnostics, and
+remain inspectable and differentially testable. Native Windows x64 support or
+a tested capability-gated correct fallback is a promotion requirement, not a
+post-release task. Only a receipt for the exact qualified artifact and workload
+may authorize automatic dispatch.
 
 ## Declared foreign libraries
 

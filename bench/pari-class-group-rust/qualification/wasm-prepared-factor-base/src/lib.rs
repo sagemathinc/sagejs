@@ -70,7 +70,7 @@ fn hash_integer(hasher: &mut Sha256, value: &Integer) {
 fn run(source: &str) -> Result<ResultDocument, String> {
     let input = parse_neutral_prepared_cubic_json(source).map_err(|error| error.to_string())?;
     let base =
-        prepared_maximal_cubic_factor_base(&input.field).map_err(|error| format!("{error:?}"))?;
+        prepared_maximal_cubic_factor_base(input.field()).map_err(|error| format!("{error:?}"))?;
     if base.catalog.ideals.len() != base.exact_ideals.len() {
         return Err("descriptor/exact-ideal length mismatch".into());
     }
@@ -99,13 +99,14 @@ fn run(source: &str) -> Result<ResultDocument, String> {
         hash.update((base.catalog.rational_counts[group] as u64).to_le_bytes());
         hash.update([u8::from(base.catalog.complete_groups[group])]);
     }
+    let equation_order_index = input.field().equation_order_index().to_string();
     Ok(ResultDocument {
         schema: "sagejs.rust-class-group/prepared-factor-base-v1",
         status: "bounded-stage",
         stage: "prepared-maximal-cubic-factor-base",
         input_id: input.input_id,
         field_id: input.field_id,
-        equation_order_index: input.field.equation_order_index().to_string(),
+        equation_order_index,
         relation_bound: base.catalog.relation_bound,
         checking_bound: base.catalog.checking_bound,
         rational_prime_count: base.catalog.rational_primes.len(),

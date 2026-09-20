@@ -1998,8 +1998,9 @@ fn main() {
         let source = fs::read_to_string(path).expect("failed to read neutral prepared-field input");
         let prepared = parse_neutral_prepared_cubic_json(&source)
             .expect("neutral prepared-field input failed exact replay validation");
+        let field = prepared.field().clone();
         small_norm_unit_kernel_for_field(
-            prepared.field,
+            field,
             &prepared.input_id,
             arguments
                 .get(2)
