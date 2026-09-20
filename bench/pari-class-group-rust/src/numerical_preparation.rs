@@ -147,6 +147,7 @@ pub struct PreparedCubicEmbedding {
     rounded: Matrix3,
     precision: u32,
     signature: (u8, u8),
+    complex_log_two: Option<Float>,
 }
 
 impl PreparedCubicEmbedding {
@@ -192,11 +193,19 @@ impl PreparedCubicEmbedding {
                     .0
             })
         }));
+        let complex_log_two = if field.data().signature == (1, 1) {
+            let mut value = Float::with_val(precision, 2);
+            value.ln_mut();
+            Some(value)
+        } else {
+            None
+        };
         Ok(Self {
             matrix,
             rounded,
             precision,
             signature: field.data().signature,
+            complex_log_two,
         })
     }
 
@@ -251,7 +260,10 @@ impl PreparedCubicEmbedding {
                 // hence this is `2 * |sigma(element)|^2`.  Its logarithm is
                 // `log(2) + 2 log|sigma(element)|`.
                 complex_norm_scaled.ln_mut();
-                complex_norm_scaled -= Float::with_val(self.precision, 2).ln();
+                complex_norm_scaled -= self
+                    .complex_log_two
+                    .as_ref()
+                    .expect("complex embeddings cache log(2)");
                 answer[0] = real;
                 answer[1] = complex_norm_scaled;
             }

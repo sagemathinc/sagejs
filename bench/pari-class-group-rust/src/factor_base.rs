@@ -194,6 +194,23 @@ pub(crate) fn prepared_cubic_factor_pattern(
         .collect()
 }
 
+/// Return the exact cubic factor degrees and ramification pattern when the
+/// caller has already proved whether the reduction is ramified. For a
+/// squarefree cubic the coefficient vectors are degree-only placeholders, not
+/// irreducible factors suitable for constructing prime ideals. This uses
+/// Frobenius and a constant-size polynomial gcd instead of scanning every
+/// residue for roots.
+pub(crate) fn prepared_cubic_factor_pattern_with_ramification(
+    polynomial: [i64; 4],
+    prime: i64,
+    ramified: bool,
+) -> Vec<(Vec<i64>, usize)> {
+    factor_pattern_cubic_with_ramification(polynomial, prime, ramified)
+        .into_iter()
+        .map(|factor| (factor.coefficients, factor.exponent))
+        .collect()
+}
+
 pub(crate) fn rational_primes_through(limit: usize) -> Vec<i64> {
     primes_through(limit)
 }
@@ -284,7 +301,19 @@ fn polynomial_gcd_degree(mut first: Vec<i64>, mut second: Vec<i64>, prime: i64) 
 }
 
 fn factor_pattern_cubic(polynomial: [i64; 4], prime: i64, discriminant: i128) -> Vec<Factor> {
-    if discriminant.rem_euclid(i128::from(prime)) == 0 {
+    factor_pattern_cubic_with_ramification(
+        polynomial,
+        prime,
+        discriminant.rem_euclid(i128::from(prime)) == 0,
+    )
+}
+
+fn factor_pattern_cubic_with_ramification(
+    polynomial: [i64; 4],
+    prime: i64,
+    ramified: bool,
+) -> Vec<Factor> {
+    if ramified {
         return factor_cubic(polynomial, prime);
     }
     let mut frobenius = x_power_mod_cubic(prime, polynomial, prime);
@@ -318,7 +347,11 @@ fn factor_pattern_cubic(polynomial: [i64; 4], prime: i64, discriminant: i128) ->
                 exponent: 1,
             })
             .collect(),
-        degree => panic!("impossible squarefree cubic Frobenius gcd degree {degree}"),
+        // A squarefree cubic can only have gcd degree 0, 1, or 3 here. Keep
+        // the public boundary total if an arithmetic implementation defect
+        // ever violates that invariant: exhaustive factorization is slower,
+        // but still exact and cannot turn the defect into a false certificate.
+        _ => factor_cubic(polynomial, prime),
     }
 }
 
@@ -789,8 +822,16 @@ fn nth_ideal_bound(catalog: &[PrimePattern], count: usize) -> Option<usize> {
 fn prepared_cubic_bounds(
     polynomial: [i64; 4],
     signed_discriminant: i128,
+    index_prime_patterns: &[(i64, Vec<(usize, usize)>)],
 ) -> (usize, usize, Vec<PrimePattern>) {
     let discriminant = signed_discriminant.unsigned_abs();
+    // The analytic size bound belongs to the maximal-order discriminant, but
+    // this catalog still factors the supplied equation polynomial. At an
+    // equation-order index prime those discriminants differ by a square, so
+    // squarefreeness must be decided from the equation discriminant. Callers
+    // constructing a maximal-order base supply authenticated patterns for
+    // every such index prime; monogenic callers need no overrides.
+    let equation_discriminant = discriminant_cubic(polynomial);
     let log_d = (discriminant as f64).ln();
     let maximum_grh_bound = (4.0 * log_d * log_d) as usize;
     // `grh_bound` doubles its trial bound, so cover the first power of two
@@ -802,7 +843,20 @@ fn prepared_cubic_bounds(
         let primes = primes_through(catalog_limit);
         let mut catalog = Vec::with_capacity(primes.len());
         for prime in primes {
-            let mut factors = factor_pattern_cubic(polynomial, prime, signed_discriminant);
+            let mut factors = match index_prime_patterns
+                .binary_search_by_key(&prime, |(index_prime, _)| *index_prime)
+            {
+                Ok(index) => index_prime_patterns[index]
+                    .1
+                    .iter()
+                    .map(|&(ramification, residue_degree)| Factor {
+                        // Only the degree is consumed by the analytic bound.
+                        coefficients: vec![0; residue_degree + 1],
+                        exponent: ramification,
+                    })
+                    .collect(),
+                Err(_) => factor_pattern_cubic(polynomial, prime, equation_discriminant),
+            };
             factors.sort_by_key(|factor| factor.coefficients.len());
             catalog.push(PrimePattern { prime, factors });
         }
@@ -823,14 +877,31 @@ fn prepared_cubic_bounds(
     (relation_bound, checking_bound, catalog)
 }
 
-/// Compute the PARI-policy bounds from a supplied maximal-order
-/// discriminant.  This is the bridge used by rational prepared bases whose
-/// denominator prevents the legacy unimodular factor-base constructor.
+/// Compute PARI-policy bounds without maximal-order index-prime overrides.
+/// This is valid for the monogenic constructor and retained as a focused
+/// regression boundary for equation-discriminant ramification.
 pub(crate) fn prepared_cubic_bounds_for_discriminant(
     polynomial: [i64; 4],
     signed_discriminant: i128,
 ) -> (usize, usize) {
-    let (relation, checking, _) = prepared_cubic_bounds(polynomial, signed_discriminant);
+    prepared_cubic_bounds_for_discriminant_and_index_patterns(polynomial, signed_discriminant, &[])
+}
+
+/// Compute PARI-policy bounds with authenticated maximal-order splitting at
+/// equation-order index primes. Each pattern entry is `(ramification,
+/// residue_degree)` and the prime keys must be strictly increasing.
+pub(crate) fn prepared_cubic_bounds_for_discriminant_and_index_patterns(
+    polynomial: [i64; 4],
+    signed_discriminant: i128,
+    index_prime_patterns: &[(i64, Vec<(usize, usize)>)],
+) -> (usize, usize) {
+    debug_assert!(
+        index_prime_patterns
+            .windows(2)
+            .all(|pair| pair[0].0 < pair[1].0)
+    );
+    let (relation, checking, _) =
+        prepared_cubic_bounds(polynomial, signed_discriminant, index_prime_patterns);
     (relation, checking)
 }
 
@@ -839,7 +910,7 @@ pub fn prepared_cubic_factor_base(polynomial: [i64; 4], basis: [i64; 9]) -> Fact
     assert_eq!(polynomial[3], 1);
     let signed_discriminant = discriminant_cubic(polynomial);
     let (relation_bound, checking_bound, catalog) =
-        prepared_cubic_bounds(polynomial, signed_discriminant);
+        prepared_cubic_bounds(polynomial, signed_discriminant, &[]);
     let inverse = inverse_unimodular3(&basis);
     let table = multiplication_table(polynomial, &basis, &inverse);
     let logarithm = (relation_bound as f64 + 0.5).ln();
@@ -948,6 +1019,52 @@ mod tests {
             .publish_initial_generators(3, &mut generators)
             .unwrap();
         (cache, generators)
+    }
+
+    #[test]
+    fn frobenius_splitting_patterns_match_exhaustive_cubic_factorization() {
+        for polynomial in [
+            [-1, -1, 0, 1],
+            [-29, -30, -8, 1],
+            [1, -2, -1, 1],
+            [20_018, -20_010, 0, 1],
+        ] {
+            let discriminant = discriminant_cubic(polynomial);
+            for prime in primes_through(4_607) {
+                let ramified = discriminant.rem_euclid(i128::from(prime)) == 0;
+                let summarize = |factors: Vec<(Vec<i64>, usize)>| {
+                    let mut summary = factors
+                        .into_iter()
+                        .map(|(factor, exponent)| (factor.len() - 1, exponent))
+                        .collect::<Vec<_>>();
+                    summary.sort_unstable();
+                    summary
+                };
+                assert_eq!(
+                    summarize(prepared_cubic_factor_pattern_with_ramification(
+                        polynomial, prime, ramified,
+                    )),
+                    summarize(prepared_cubic_factor_pattern(polynomial, prime)),
+                    "polynomial {polynomial:?}, prime {prime}",
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn bound_catalog_uses_equation_discriminant_for_index_prime_ramification() {
+        for (polynomial, index_squared) in [
+            ([224, -205, -4, 1], 4_i128),
+            ([-162_320, 162_564, -251, 1], 16_i128),
+        ] {
+            let equation_discriminant = discriminant_cubic(polynomial);
+            assert_eq!(equation_discriminant % index_squared, 0);
+            let maximal_order_discriminant = equation_discriminant / index_squared;
+            let (relation_bound, checking_bound) =
+                prepared_cubic_bounds_for_discriminant(polynomial, maximal_order_discriminant);
+            assert!(relation_bound >= 2);
+            assert_eq!(checking_bound, relation_bound);
+        }
     }
 
     #[test]

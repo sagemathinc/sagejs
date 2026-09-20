@@ -53,6 +53,8 @@ results.
   PARI differential evidence, and clean native performance campaign.
 - `public-cubic-e2e/`: the coefficient-only sealed cubic completion boundary,
   its open-panel regressions, and an alternating exact PARI benchmark harness.
+- `public-cubic-open-corpus/`: the Rust-only runner and receipt for all 12
+  frozen open degree-three inputs; private oracle comparison remains separate.
 - `lifecycle/`: resumable small-candidate context, cancellation, repeated-call,
   stale-handle, and actual-browser memory evidence.
 - `pari-control/`: authenticated PARI 2.17.4 control with distinct algorithm,

@@ -1744,19 +1744,21 @@ mod tests {
             0.into(),
         ];
         let exponents = [1.into(), 0.into(), 0.into(), 1.into()];
-        let interval = flint_compact_cubic_regulator(
-            [1, -3, 0, 1],
-            [1, 0, 0, 0, 1, 0, 0, 0, 1],
-            1,
-            (3, 0),
-            &generators,
-            &exponents,
-            256,
-        )
-        .unwrap();
-        assert!(interval.lower > 0);
-        assert!(interval.upper >= interval.lower);
-        assert!(interval.binary_exponent < 0);
+        for precision in [256, 4_096] {
+            let interval = flint_compact_cubic_regulator(
+                [1, -3, 0, 1],
+                [1, 0, 0, 0, 1, 0, 0, 0, 1],
+                1,
+                (3, 0),
+                &generators,
+                &exponents,
+                precision,
+            )
+            .unwrap();
+            assert!(interval.lower > 0);
+            assert!(interval.upper >= interval.lower);
+            assert!(interval.binary_exponent < 0);
+        }
     }
 
     #[test]
@@ -1765,18 +1767,20 @@ mod tests {
         // supplies the rank-one regulator.
         let generators = [0.into(), 1.into(), 0.into()];
         let exponents = [1.into()];
-        let interval = flint_compact_cubic_regulator(
-            [1, -1, 0, 1],
-            [1, 0, 0, 0, 1, 0, 0, 0, 1],
-            1,
-            (1, 1),
-            &generators,
-            &exponents,
-            256,
-        )
-        .unwrap();
-        assert!(interval.lower > 0);
-        assert!(interval.upper >= interval.lower);
+        for precision in [256, 4_096] {
+            let interval = flint_compact_cubic_regulator(
+                [1, -1, 0, 1],
+                [1, 0, 0, 0, 1, 0, 0, 0, 1],
+                1,
+                (1, 1),
+                &generators,
+                &exponents,
+                precision,
+            )
+            .unwrap();
+            assert!(interval.lower > 0);
+            assert!(interval.upper >= interval.lower);
+        }
     }
 
     #[test]

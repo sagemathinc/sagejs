@@ -12,7 +12,8 @@
 use rug::{Integer, ops::Pow};
 
 use crate::factor_base::{
-    FactorBase, PrimeIdeal, prepared_cubic_bounds_for_discriminant, prepared_cubic_factor_pattern,
+    FactorBase, PrimeIdeal, prepared_cubic_bounds_for_discriminant_and_index_patterns,
+    prepared_cubic_factor_pattern, prepared_cubic_factor_pattern_with_ramification,
     rational_primes_through,
 };
 use crate::prepared::ValidatedPreparedCubic;
@@ -286,10 +287,16 @@ pub fn prepared_cubic_splitting_records_range(
                 .map(|(descriptor, _ideal)| (descriptor.ramification, descriptor.residue_degree))
                 .collect()
         } else {
-            prepared_cubic_factor_pattern(polynomial, prime)
-                .into_iter()
-                .map(|(factor, ramification)| (ramification, factor.len() - 1))
-                .collect()
+            let prime_u32 =
+                u32::try_from(prime).map_err(|_| PreparedFactorBaseError::IndexPrimeOutsideU32)?;
+            prepared_cubic_factor_pattern_with_ramification(
+                polynomial,
+                prime,
+                field.data().discriminant.is_divisible_u(prime_u32),
+            )
+            .into_iter()
+            .map(|(factor, ramification)| (ramification, factor.len() - 1))
+            .collect()
         };
         answer.push(CubicSplittingRecord { prime, factors });
     }
@@ -316,10 +323,37 @@ pub fn prepared_maximal_cubic_factor_base(
         .discriminant
         .to_i128()
         .ok_or(PreparedFactorBaseError::DiscriminantOutsideI128)?;
-    let (relation_bound, checking_bound) =
-        prepared_cubic_bounds_for_discriminant(polynomial, signed_discriminant);
-    let logarithm = (relation_bound as f64 + 0.5).ln();
     let mut normal_forms = PreparedIdealWorkspace::new();
+    let mut index_prime_descriptors_cache = Vec::new();
+    for index_prime in &field.data().index_primes {
+        let prime = index_prime
+            .to_i64()
+            .ok_or(PreparedFactorBaseError::IndexPrimeOutsideU32)?;
+        index_prime_descriptors_cache.push((
+            prime,
+            index_prime_descriptors(field, prime, &mut normal_forms)?,
+        ));
+    }
+    index_prime_descriptors_cache.sort_by_key(|(prime, _)| *prime);
+    let index_prime_patterns = index_prime_descriptors_cache
+        .iter()
+        .map(|(prime, descriptors)| {
+            (
+                *prime,
+                descriptors
+                    .iter()
+                    .map(|(descriptor, _)| (descriptor.ramification, descriptor.residue_degree))
+                    .collect(),
+            )
+        })
+        .collect::<Vec<_>>();
+    let (relation_bound, checking_bound) =
+        prepared_cubic_bounds_for_discriminant_and_index_patterns(
+            polynomial,
+            signed_discriminant,
+            &index_prime_patterns,
+        );
+    let logarithm = (relation_bound as f64 + 0.5).ln();
     let mut ideals = Vec::new();
     let mut exact_ideals = Vec::new();
     let mut rational_primes = Vec::new();
@@ -335,13 +369,20 @@ pub fn prepared_maximal_cubic_factor_base(
             .iter()
             .any(|index_prime| index_prime == &prime);
         let (mut descriptors, full_count) = if is_index_prime {
-            let mut descriptors = index_prime_descriptors(field, prime, &mut normal_forms)?;
+            let position = index_prime_descriptors_cache
+                .binary_search_by_key(&prime, |(index_prime, _)| *index_prime)
+                .expect("every validated index prime was cached");
+            let mut descriptors = index_prime_descriptors_cache.remove(position).1;
             let full_count = descriptors.len();
             descriptors.retain(|(descriptor, _)| {
                 descriptor.residue_degree != 3 && descriptor.residue_degree <= limit
             });
             (descriptors, full_count)
         } else {
+            // Ideal generators require the actual irreducible factor
+            // coefficients. The Frobenius fast path used by analytic catalogs
+            // deliberately returns degree-only placeholders and is therefore
+            // not valid at this representation boundary.
             let pattern = prepared_cubic_factor_pattern(polynomial, prime);
             let full_count = pattern.len();
             (

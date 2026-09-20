@@ -2066,6 +2066,69 @@ static int sagejs_rust_cubic_callback(
     return 0;
 }
 
+/*
+ * Refine a certified isolated cubic root efficiently without weakening the
+ * enclosure contract.  Two short bisection phases establish a narrow start
+ * interval inside a larger convergence region, after which Arb's interval
+ * Newton method converges quadratically.  If it does not certify nearly the
+ * requested relative accuracy, retain the previous full-bisection algorithm
+ * as an exact fallback.
+ */
+static int sagejs_rust_refine_cubic_root(
+    arb_t root, const int64_t *polynomial, const arf_interval_t isolated,
+    slong precision)
+{
+    int status = ARB_CALC_SUCCESS;
+    arf_interval_t convergence_interval, start_interval, fallback;
+    arf_interval_init(convergence_interval);
+    arf_interval_init(start_interval);
+    arf_interval_init(fallback);
+    arb_t convergence_region, start;
+    arb_init(convergence_region);
+    arb_init(start);
+    arf_t convergence_factor;
+    arf_init(convergence_factor);
+
+    status = arb_calc_refine_root_bisect(
+        convergence_interval, sagejs_rust_cubic_callback,
+        (void *) polynomial, isolated, 32, 128);
+    if (status == ARB_CALC_SUCCESS)
+        status = arb_calc_refine_root_bisect(
+            start_interval, sagejs_rust_cubic_callback,
+            (void *) polynomial, convergence_interval, 32, 128);
+    if (status == ARB_CALC_SUCCESS)
+    {
+        arf_interval_get_arb(convergence_region, convergence_interval, precision);
+        arf_interval_get_arb(start, start_interval, precision);
+        arb_calc_newton_conv_factor(
+            convergence_factor, sagejs_rust_cubic_callback,
+            (void *) polynomial, convergence_region, 128);
+        status = arb_calc_refine_root_newton(
+            root, sagejs_rust_cubic_callback, (void *) polynomial,
+            start, convergence_region, convergence_factor, 32, precision);
+        if (status == ARB_CALC_SUCCESS &&
+            arb_rel_accuracy_bits(root) < precision - 16)
+            status = ARB_CALC_NO_CONVERGENCE;
+    }
+
+    if (status != ARB_CALC_SUCCESS)
+    {
+        status = arb_calc_refine_root_bisect(
+            fallback, sagejs_rust_cubic_callback, (void *) polynomial,
+            isolated, precision + 32, precision + 64);
+        if (status == ARB_CALC_SUCCESS)
+            arf_interval_get_arb(root, fallback, precision);
+    }
+
+    arf_clear(convergence_factor);
+    arb_clear(start);
+    arb_clear(convergence_region);
+    arf_interval_clear(fallback);
+    arf_interval_clear(start_interval);
+    arf_interval_clear(convergence_interval);
+    return status;
+}
+
 int sagejs_rust_flint_compact_cubic_regulator(
     const int64_t *polynomial, const int64_t *basis_numerators,
     uint64_t basis_denominator, uint64_t real_places, uint64_t unit_rank,
@@ -2116,16 +2179,10 @@ int sagejs_rust_flint_compact_cubic_regulator(
     if (status == 0)
         for (size_t root = 0; root < real_places; root++)
         {
-            arf_interval_t refined;
-            arf_interval_init(refined);
-            int refined_status = arb_calc_refine_root_bisect(
-                refined, sagejs_rust_cubic_callback, (void *) polynomial,
-                isolated + selected_roots[root], precision + 32, precision + 64);
+            int refined_status = sagejs_rust_refine_cubic_root(
+                roots[root], polynomial, isolated + selected_roots[root], precision);
             if (refined_status != ARB_CALC_SUCCESS)
                 status = -3;
-            else
-                arf_interval_get_arb(roots[root], refined, precision);
-            arf_interval_clear(refined);
         }
 
     arb_t unit_logs[2][3];
