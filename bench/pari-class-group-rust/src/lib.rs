@@ -46,7 +46,10 @@ pub use bruteforce_collector::{
     BruteForceStatistics, PreparedBruteForceResult,
     collect_validated_primitive_box_with_supplementary,
 };
-pub use class_group::{CollectorCounters, CollectorTimings};
+pub use class_group::{
+    CollectorCounters, CollectorTimings, PreparedCollectorLimits,
+    PreparedCubicRelationPresentation, collect_prepared_cubic_relations,
+};
 pub use class_maps::{
     ClassCoordinates, ClassMapError, PresentationClassMap, PresentationZeroState,
     PrincipalElementWitnessState, RelationCombinationWitness, RelationCoverage,

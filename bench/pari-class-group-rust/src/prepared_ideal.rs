@@ -11,10 +11,8 @@
 
 use rug::Integer;
 
-use crate::{
-    BigIntMatrix, ExactNormalFormWorkspace, NormalFormError, NormalFormLimits,
-    ValidatedPreparedCubic,
-};
+use crate::hnf::{BigIntMatrix, ExactNormalFormWorkspace, NormalFormError, NormalFormLimits};
+use crate::prepared::ValidatedPreparedCubic;
 
 const DEGREE: usize = 3;
 
@@ -309,7 +307,7 @@ fn determinant(matrix: &[[Integer; DEGREE]; DEGREE]) -> Integer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{EmbeddingPrecisionState, PreparedCubicData};
+    use crate::prepared::{EmbeddingPrecisionState, PreparedCubicData};
 
     fn row6_field() -> ValidatedPreparedCubic {
         let a = Integer::from(1_333_333_333_340_u64);

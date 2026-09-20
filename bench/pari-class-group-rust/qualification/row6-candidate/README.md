@@ -96,3 +96,20 @@ reject coefficient-box enumeration as the route to row-6 completion. The next
 algorithmic milestone is to drive these exact maximal-order ideals through the
 faithful small-norm/LLL relation schedule, continuation HNF, and completion
 logic.
+
+## 2026-09-20 generalized small-norm pass
+
+The same maximal-order owners now drive a generalized totally-real cubic
+embedding, exact LLL basis change, Fincke--Pohst cursor, arbitrary-precision
+norm admission, and exact prime-ideal valuations. A 128-ideal prefix retains
+372 searched relations and reaches 575 total rows in 1.153751821 seconds.
+
+The complete deterministic first schedule visits all 1,130 ideals, examines
+525,269 primitive nonscalar candidates, finds 3,687 smooth candidates, and
+retains 930 searched relations. Together with 203 rational seeds this gives
+1,133 rows in 8.803 seconds. The cache has modular rank 1,126, four short of
+the 1,130 generators. Replaying the schedule with a deeper cursor produces
+more smooth elements but no new rank. Thus the exact blocker has moved to
+PARI's continuation/random-relation and sparse-HNF loop; it is no longer
+factor-base construction, rational-basis arithmetic, embeddings, LLL,
+enumeration, norm factorization, or local valuations.

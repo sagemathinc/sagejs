@@ -12,14 +12,21 @@
 use crate::collector_schedule::{ScheduleError, next_small_norm_ideal};
 use crate::enumeration::{EnumerationError, EnumerationWorkspace};
 use crate::factor_base::{FactorBase, prepared_cubic_factor_base};
-use crate::numerical_preparation::{NumericalPreparationError, prepare_h1_ideal};
+use crate::numerical_preparation::{
+    NumericalPreparationError, PreparedRealCubicEmbedding, prepare_cubic_ideal, prepare_h1_ideal,
+};
+use crate::prepared::ValidatedPreparedCubic;
+use crate::prepared_factor_base::{
+    PreparedFactorBase, PreparedFactorBaseError, prepared_maximal_cubic_factor_base,
+};
+use crate::prepared_ideal::PreparedIdealWorkspace;
 use crate::prime_valuation::{
     PrimeValuationError, PrimeValuationWorkspace, RationalPrimePower, refine_quotient_factorization,
 };
 use crate::relation_cache::{CacheError, RelationCache};
 use crate::smooth_admission::{
-    AdmissionError, CubicNormForm, FactorOutcome, cumulative_prime_products, factor_norm,
-    primes_through,
+    AdmissionError, CubicNormForm, FactorOutcome, cumulative_prime_products, factor_integer_norm,
+    factor_norm, primes_through,
 };
 use rug::Integer;
 use std::time::Instant;
@@ -69,6 +76,36 @@ pub struct H1ClassGroupPresentation {
     pub timings: CollectorTimings,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct PreparedCollectorLimits {
+    pub maximum_visited_ideals: usize,
+    pub maximum_candidates: usize,
+}
+
+impl Default for PreparedCollectorLimits {
+    fn default() -> Self {
+        Self {
+            maximum_visited_ideals: usize::MAX,
+            maximum_candidates: usize::MAX,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct PreparedCubicRelationPresentation {
+    pub factor_base: PreparedFactorBase,
+    pub relations: Vec<i64>,
+    pub generators: Vec<Integer>,
+    pub first_nonzero_hints: Vec<usize>,
+    pub metadata: Vec<i64>,
+    pub subfactor_count: usize,
+    pub search_permutation: Vec<usize>,
+    pub counters: CollectorCounters,
+    pub timings: CollectorTimings,
+    pub complete_rank_and_surplus: bool,
+    pub missing_rank: usize,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ClassGroupError {
     UnsupportedPreparedField,
@@ -81,6 +118,7 @@ pub enum ClassGroupError {
     CandidateOverflow,
     UnresolvedFactor(Integer),
     CollectorExhausted { relations: usize },
+    PreparedFactorBase(PreparedFactorBaseError),
 }
 
 impl From<ScheduleError> for ClassGroupError {
@@ -113,6 +151,11 @@ impl From<CacheError> for ClassGroupError {
         Self::Cache(error)
     }
 }
+impl From<PreparedFactorBaseError> for ClassGroupError {
+    fn from(error: PreparedFactorBaseError) -> Self {
+        Self::PreparedFactorBase(error)
+    }
+}
 
 fn gcd_i64(mut left: i64, mut right: i64) -> i64 {
     left = left.abs();
@@ -143,6 +186,28 @@ fn candidate_element(
         return Ok(None);
     }
     Ok(Some(element))
+}
+
+fn exact_candidate_element(
+    coordinates: &[i64],
+    ideal: &crate::ideal_arithmetic::Matrix3,
+) -> Option<[Integer; DEGREE]> {
+    let content = coordinates[1..=DEGREE].iter().copied().fold(0, gcd_i64);
+    if content != 1 {
+        return None;
+    }
+    let element: [Integer; DEGREE] = std::array::from_fn(|row| {
+        let mut value = Integer::new();
+        for column in 0..DEGREE {
+            value += &ideal[(row, column)] * coordinates[column + 1];
+        }
+        value
+    });
+    if element[1] == 0 && element[2] == 0 {
+        None
+    } else {
+        Some(element)
+    }
 }
 
 fn first_nonzero(relation: &[i64]) -> usize {
@@ -355,5 +420,218 @@ pub fn collect_h1_class_group(
         search_permutation,
         counters,
         timings,
+    })
+}
+
+/// Run the first PARI-style small-norm pass over a validated maximal-order
+/// cubic.  Resource limits return an honest partial presentation instead of
+/// publishing a class-group candidate.
+pub fn collect_prepared_cubic_relations(
+    field: &ValidatedPreparedCubic,
+    limits: PreparedCollectorLimits,
+) -> Result<PreparedCubicRelationPresentation, ClassGroupError> {
+    let total_started = Instant::now();
+    let mut timings = CollectorTimings::default();
+
+    let started = Instant::now();
+    let factor_base = prepared_maximal_cubic_factor_base(field)?;
+    let (subfactor_count, search_permutation) = factor_base.catalog.subfactor_permutation(3);
+    timings.factor_base_ns = started.elapsed().as_nanos();
+    let size = factor_base.catalog.ideals.len();
+    let target = size + SUPPLEMENTARY_RELATIONS;
+    let capacity = 10 * target + 50;
+
+    let started = Instant::now();
+    let mut cache = RelationCache::new(size, capacity, SUPPLEMENTARY_RELATIONS);
+    let ramification: Vec<i64> = factor_base
+        .catalog
+        .ideals
+        .iter()
+        .map(|ideal| ideal.ramification as i64)
+        .collect();
+    let mut relation = vec![0_i64; size];
+    cache.initialize_complete_prime_groups(
+        SUPPLEMENTARY_RELATIONS,
+        &factor_base.catalog.rational_primes,
+        &factor_base.catalog.rational_offsets,
+        &factor_base.catalog.rational_counts,
+        &factor_base.catalog.complete_groups,
+        &ramification,
+        &mut relation,
+    )?;
+    let mut generators = vec![Integer::new(); capacity * DEGREE];
+    for (row, metadata) in cache.metadata().chunks_exact(3).enumerate() {
+        generators[row * DEGREE] = Integer::from(metadata[0]);
+    }
+    timings.initial_cache_ns = started.elapsed().as_nanos();
+
+    let started = Instant::now();
+    let embedding = PreparedRealCubicEmbedding::from_validated(field, 320)?;
+    let factor_primes = primes_through(PRIME_LIMIT);
+    let prime_products = cumulative_prime_products(&factor_primes, FACTOR_LIMIT)?;
+    let factor_product = factor_base
+        .catalog
+        .rational_primes
+        .iter()
+        .fold(Integer::from(1), |product, prime| product * prime);
+    timings.catalog_setup_ns = started.elapsed().as_nanos();
+
+    let scheduled: Vec<i64> = search_permutation
+        .iter()
+        .map(|value| *value as i64)
+        .collect();
+    let residue_degrees: Vec<i64> = factor_base
+        .catalog
+        .ideals
+        .iter()
+        .map(|ideal| ideal.residue_degree as i64)
+        .collect();
+    let mut schedule = [0_i64; 4];
+    let mut schedule_cursor = [0_i64; 5];
+    let mut schedule_counters = [0_i64; 4];
+    let mut schedule_progress = [0_i64; 4];
+    let mut enumeration = EnumerationWorkspace::new(DEGREE);
+    let mut ideal_workspace = PreparedIdealWorkspace::new();
+    let mut counters = CollectorCounters::default();
+    let mut pass = 0_usize;
+    let mut pass_start_missing = cache.missing();
+
+    while cache.len() < target
+        && counters.visited_ideals < limits.maximum_visited_ideals
+        && counters.primitive_nonscalar_candidates < limits.maximum_candidates
+    {
+        if schedule[1] != 0 {
+            schedule_progress[2] = 1;
+            schedule_progress[3] = 0;
+        }
+        let packet_id = next_small_norm_ideal(
+            &scheduled,
+            scheduled.len(),
+            &ramification,
+            &residue_degrees,
+            DEGREE as i64,
+            0,
+            0,
+            &mut schedule,
+            &mut schedule_cursor,
+            &mut schedule_counters,
+            &mut schedule_progress,
+        )?;
+        let Some(packet_id) = packet_id else {
+            if cache.missing() == 0 || pass >= 3 || cache.missing() >= pass_start_missing {
+                break;
+            }
+            pass += 1;
+            pass_start_missing = cache.missing();
+            schedule = [0; 4];
+            schedule_cursor = [0; 5];
+            schedule_counters = [0; 4];
+            schedule_progress = [0; 4];
+            continue;
+        };
+        let packet_index = usize::try_from(packet_id - 1)
+            .map_err(|_| ClassGroupError::UnsupportedPreparedField)?;
+        counters.visited_ideals += 1;
+
+        let started = Instant::now();
+        let prepared = prepare_cubic_ideal(&embedding, &factor_base.exact_ideals[packet_index])?;
+        timings.numerical_preparation_ns += started.elapsed().as_nanos();
+        enumeration.reset(&prepared.q, &prepared.v)?;
+        let trials_before = enumeration.trials();
+        let mut factor_attempts = 0_usize;
+        let mut positive_for_ideal = 0_usize;
+
+        while positive_for_ideal
+            < if cache.missing() == 0 {
+                RELATIONS_PER_IDEAL + SUPPLEMENTARY_RELATIONS
+            } else {
+                RELATIONS_PER_IDEAL
+            }
+            && cache.len() < target
+            && counters.primitive_nonscalar_candidates < limits.maximum_candidates
+        {
+            let started = Instant::now();
+            let element = loop {
+                if !enumeration.next(prepared.bound, prepared.skip_first)? {
+                    break None;
+                }
+                if let Some(element) =
+                    exact_candidate_element(enumeration.coordinates(), &prepared.ideal)
+                {
+                    factor_attempts += 1;
+                    counters.primitive_nonscalar_candidates += 1;
+                    if factor_attempts > 500 * (pass + 1) {
+                        break None;
+                    }
+                    break Some(element);
+                }
+            };
+            timings.enumeration_and_norm_ns += started.elapsed().as_nanos();
+            let Some(element) = element else { break };
+
+            let norm = field.norm(&element);
+            let started = Instant::now();
+            let factors = match factor_integer_norm(
+                &norm,
+                &factor_product,
+                &factor_primes,
+                &prime_products,
+                FACTOR_LIMIT,
+                PRIME_LIMIT as u64,
+            )? {
+                FactorOutcome::Nonsmooth => {
+                    timings.rational_factorization_ns += started.elapsed().as_nanos();
+                    continue;
+                }
+                FactorOutcome::Unresolved(value) => {
+                    return Err(ClassGroupError::UnresolvedFactor(value));
+                }
+                FactorOutcome::Factored(factors) => factors,
+            };
+            timings.rational_factorization_ns += started.elapsed().as_nanos();
+            counters.smooth_candidates += 1;
+            let rational = factors
+                .iter()
+                .map(|factor| (factor.prime as i64, factor.exponent as usize))
+                .collect::<Vec<_>>();
+
+            let started = Instant::now();
+            factor_base.refine_element_factorization(
+                field,
+                &element,
+                &rational,
+                &mut relation,
+                &mut ideal_workspace,
+            )?;
+            let hint = first_nonzero(&relation);
+            let row = cache.len();
+            let outcome = cache.add_relation(&relation, hint, (row + 1) as i64, 0, 0, false)?;
+            if outcome.appended {
+                generators[row * DEGREE..(row + 1) * DEGREE].clone_from_slice(&element);
+                counters.appended_relations += 1;
+            }
+            if outcome.rank_marker > 0 {
+                positive_for_ideal += 1;
+                counters.positive_cache_statuses += 1;
+            }
+            timings.prime_valuation_and_cache_ns += started.elapsed().as_nanos();
+        }
+        counters.cursor_trials += enumeration.trials() - trials_before;
+    }
+
+    timings.total_ns = total_started.elapsed().as_nanos();
+    generators.truncate(cache.len() * DEGREE);
+    Ok(PreparedCubicRelationPresentation {
+        relations: cache.records().to_vec(),
+        generators,
+        first_nonzero_hints: cache.first_nonzero_hints().to_vec(),
+        metadata: cache.metadata().to_vec(),
+        factor_base,
+        subfactor_count,
+        search_permutation,
+        counters,
+        timings,
+        complete_rank_and_surplus: cache.len() >= target && cache.missing() == 0,
+        missing_rank: cache.missing(),
     })
 }

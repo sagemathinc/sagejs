@@ -12,10 +12,18 @@ mod collector_schedule;
 mod enumeration;
 #[path = "../src/factor_base.rs"]
 mod factor_base;
+#[path = "../src/hnf.rs"]
+mod hnf;
 #[path = "../src/ideal_arithmetic.rs"]
 mod ideal_arithmetic;
 #[path = "../src/numerical_preparation.rs"]
 mod numerical_preparation;
+#[path = "../src/prepared.rs"]
+mod prepared;
+#[path = "../src/prepared_factor_base.rs"]
+mod prepared_factor_base;
+#[path = "../src/prepared_ideal.rs"]
+mod prepared_ideal;
 #[path = "../src/prime_valuation.rs"]
 mod prime_valuation;
 #[path = "../src/relation_cache.rs"]

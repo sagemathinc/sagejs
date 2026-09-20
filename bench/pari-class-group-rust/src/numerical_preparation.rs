@@ -17,7 +17,9 @@
 //! therefore precede any claim of an identical PARI cursor trace.
 
 use crate::ideal_arithmetic::{LllError, Matrix3, lll_reduce_columns};
-use rug::{Assign, Float, Integer};
+use crate::prepared::ValidatedPreparedCubic;
+use crate::prepared_ideal::CubicIdeal;
+use rug::{Assign, Float, Integer, float::Round};
 use std::array::from_fn;
 
 const DEGREE: usize = 3;
@@ -125,6 +127,138 @@ pub enum NumericalPreparationError {
     Lll(LllError),
     SingularEmbedding,
     NonFiniteOutput,
+    UnsupportedSignature,
+    InvalidRealRootIsolation,
+}
+
+/// Reusable archimedean data for a validated totally real cubic.
+#[derive(Clone, Debug)]
+pub struct PreparedRealCubicEmbedding {
+    matrix: [[Float; DEGREE]; DEGREE],
+    rounded: Matrix3,
+    precision: u32,
+}
+
+impl PreparedRealCubicEmbedding {
+    pub fn from_validated(
+        field: &ValidatedPreparedCubic,
+        precision: u32,
+    ) -> Result<Self, NumericalPreparationError> {
+        if field.data().signature != (3, 0) {
+            return Err(NumericalPreparationError::UnsupportedSignature);
+        }
+        let polynomial = &field.data().polynomial_ascending;
+        let coefficients = from_fn(|index| polynomial[index].to_f64());
+        let starts = isolate_three_real_roots(coefficients)?;
+        let roots: [Float; DEGREE] =
+            std::array::from_fn(|index| refine_real_root(polynomial, starts[index], precision));
+        let denominator = Float::with_val(precision, &field.data().basis_denominator);
+        let matrix: [[Float; DEGREE]; DEGREE] = from_fn(|embedding_index| {
+            from_fn(|basis_index| {
+                let offset = DEGREE * basis_index;
+                let mut value = Float::with_val(
+                    precision,
+                    &field.data().integral_basis_numerators[offset + 2],
+                );
+                value *= &roots[embedding_index];
+                value += &field.data().integral_basis_numerators[offset + 1];
+                value *= &roots[embedding_index];
+                value += &field.data().integral_basis_numerators[offset];
+                value /= &denominator;
+                value
+            })
+        });
+        let rounded = Matrix3::from_rows(from_fn(|row| {
+            from_fn(|column| {
+                let mut value = matrix[row][column].clone();
+                value *= 16;
+                value
+                    .to_integer_round(Round::Nearest)
+                    .expect("finite validated embedding")
+                    .0
+            })
+        }));
+        Ok(Self {
+            matrix,
+            rounded,
+            precision,
+        })
+    }
+}
+
+fn isolate_three_real_roots(
+    coefficients: [f64; 4],
+) -> Result<[f64; DEGREE], NumericalPreparationError> {
+    let [constant, linear, quadratic, leading] = coefficients;
+    if leading != 1.0 || coefficients.iter().any(|value| !value.is_finite()) {
+        return Err(NumericalPreparationError::InvalidRealRootIsolation);
+    }
+    let derivative_discriminant = 4.0 * quadratic * quadratic - 12.0 * linear;
+    if derivative_discriminant <= 0.0 {
+        return Err(NumericalPreparationError::InvalidRealRootIsolation);
+    }
+    let root = derivative_discriminant.sqrt();
+    let critical = [
+        (-2.0 * quadratic - root) / 6.0,
+        (-2.0 * quadratic + root) / 6.0,
+    ];
+    let bound = 2.0 + constant.abs().max(linear.abs()).max(quadratic.abs());
+    let evaluate = |x: f64| ((x + quadratic) * x + linear) * x + constant;
+    let intervals = [
+        (-bound, critical[0]),
+        (critical[0], critical[1]),
+        (critical[1], bound),
+    ];
+    let mut roots = [0.0; DEGREE];
+    for (index, (mut left, mut right)) in intervals.into_iter().enumerate() {
+        let mut left_value = evaluate(left);
+        let right_value = evaluate(right);
+        if left_value == 0.0 {
+            roots[index] = left;
+            continue;
+        }
+        if right_value == 0.0 {
+            roots[index] = right;
+            continue;
+        }
+        if left_value.is_sign_positive() == right_value.is_sign_positive() {
+            return Err(NumericalPreparationError::InvalidRealRootIsolation);
+        }
+        for _ in 0..100 {
+            let middle = (left + right) * 0.5;
+            let value = evaluate(middle);
+            if value.is_sign_positive() == left_value.is_sign_positive() {
+                left = middle;
+                left_value = value;
+            } else {
+                right = middle;
+            }
+        }
+        roots[index] = (left + right) * 0.5;
+    }
+    Ok(roots)
+}
+
+fn refine_real_root(polynomial: &[Integer; 4], start: f64, precision: u32) -> Float {
+    let mut root = Float::with_val(precision, start);
+    for _ in 0..24 {
+        let mut value = Float::with_val(precision, &polynomial[3]);
+        value *= &root;
+        value += &polynomial[2];
+        value *= &root;
+        value += &polynomial[1];
+        value *= &root;
+        value += &polynomial[0];
+
+        let mut derivative = Float::with_val(precision, 3);
+        derivative *= &root;
+        derivative += Float::with_val(precision, &polynomial[2]) * 2;
+        derivative *= &root;
+        derivative += &polynomial[1];
+        value /= derivative;
+        root -= value;
+    }
+    root
 }
 
 impl From<LllError> for NumericalPreparationError {
@@ -274,19 +408,46 @@ pub fn prepare_h1_ideal(
 ) -> Result<H1NumericalPreparation, NumericalPreparationError> {
     let original_ideal = matrix3_from_row_major(original_ideal);
     let rounded_embedding = matrix3_from_row_major(H1_ROUNDED_EMBEDDING);
+    let embedding = embedding_matrix(H1_WORKING_PRECISION);
+    prepare_with_embedding(
+        original_ideal,
+        &rounded_embedding,
+        &embedding,
+        H1_WORKING_PRECISION,
+    )
+}
+
+/// Prepare an exact maximal-order ideal for the cubic Fincke--Pohst cursor.
+pub fn prepare_cubic_ideal(
+    embedding: &PreparedRealCubicEmbedding,
+    original_ideal: &CubicIdeal,
+) -> Result<H1NumericalPreparation, NumericalPreparationError> {
+    // CubicIdeal stores lattice generators as rows; the numerical lattice
+    // convention stores those generators as columns.
+    let rows = original_ideal.basis_rows();
+    let original = Matrix3::from_rows(from_fn(|row| from_fn(|column| rows[column][row].clone())));
+    prepare_with_embedding(
+        original,
+        &embedding.rounded,
+        &embedding.matrix,
+        embedding.precision,
+    )
+}
+
+fn prepare_with_embedding(
+    original_ideal: Matrix3,
+    rounded_embedding: &Matrix3,
+    embedding: &[[Float; DEGREE]; DEGREE],
+    precision: u32,
+) -> Result<H1NumericalPreparation, NumericalPreparationError> {
     let lll_input = rounded_embedding.multiply(&original_ideal);
     let reduction = lll_reduce_columns(&lll_input, 99, 100)?;
     let ideal = original_ideal.change_basis(&reduction.transform);
 
-    let embedding = embedding_matrix(H1_WORKING_PRECISION);
-    let matrix = embedded_ideal(&embedding, &ideal, H1_WORKING_PRECISION);
-    let (mu, squared_norms) = gram_schmidt(&matrix, H1_WORKING_PRECISION)?;
-    let (bound, bound_root_degree) = fincke_pohst_bound(
-        &squared_norms,
-        &mu[0][1],
-        h1_small_norm_scale(),
-        H1_WORKING_PRECISION,
-    );
+    let matrix = embedded_ideal(embedding, &ideal, precision);
+    let (mu, squared_norms) = gram_schmidt(&matrix, precision)?;
+    let (bound, bound_root_degree) =
+        fincke_pohst_bound(&squared_norms, &mu[0][1], h1_small_norm_scale(), precision);
 
     let mut q = [0.0; STRIDE * STRIDE];
     let mut v = [0.0; STRIDE];

@@ -9,9 +9,9 @@
 
 use rug::Integer;
 use sagejs_pari_class_group_rust_experiment::{
-    EmbeddingPrecisionState, PreparedCubicData, ValidatedPreparedCubic,
-    collect_validated_primitive_box_with_supplementary, prepared_cubic_factor_base,
-    prepared_maximal_cubic_factor_base,
+    EmbeddingPrecisionState, PreparedCollectorLimits, PreparedCubicData, ValidatedPreparedCubic,
+    collect_prepared_cubic_relations, collect_validated_primitive_box_with_supplementary,
+    prepared_cubic_factor_base, prepared_maximal_cubic_factor_base,
 };
 use std::env;
 use std::time::Instant;
@@ -276,6 +276,59 @@ fn admission_prefix(radius: i64) {
     );
 }
 
+fn small_norm_prefix(maximum_ideals: usize, maximum_candidates: usize) {
+    let field = maximal_order();
+    let started = Instant::now();
+    let answer = collect_prepared_cubic_relations(
+        &field,
+        PreparedCollectorLimits {
+            maximum_visited_ideals: maximum_ideals,
+            maximum_candidates,
+        },
+    )
+    .expect("maximal-order small-norm prefix failed");
+    println!(
+        "{}",
+        serde_json::json!({
+            "schema": "sagejs.rust-class-group/row6-maximal-small-norm-prefix-v1",
+            "qualificationStatus": "diagnostic-candidate-only",
+            "usesOracleAsInput": false,
+            "limits": {
+                "maximumVisitedIdeals": maximum_ideals,
+                "maximumCandidates": maximum_candidates,
+            },
+            "factorBase": {
+                "idealCount": answer.factor_base.catalog.ideals.len(),
+                "relationBound": answer.factor_base.catalog.relation_bound,
+            },
+            "relations": {
+                "rows": answer.relations.len() / answer.factor_base.catalog.ideals.len(),
+                "missingRank": answer.missing_rank,
+                "completeRankAndSurplus": answer.complete_rank_and_surplus,
+            },
+            "counters": {
+                "visitedIdeals": answer.counters.visited_ideals,
+                "cursorTrials": answer.counters.cursor_trials,
+                "primitiveNonscalarCandidates": answer.counters.primitive_nonscalar_candidates,
+                "smoothCandidates": answer.counters.smooth_candidates,
+                "appendedRelations": answer.counters.appended_relations,
+                "positiveCacheStatuses": answer.counters.positive_cache_statuses,
+            },
+            "timingsNanoseconds": {
+                "factorBase": answer.timings.factor_base_ns,
+                "initialCache": answer.timings.initial_cache_ns,
+                "catalogSetup": answer.timings.catalog_setup_ns,
+                "numericalPreparation": answer.timings.numerical_preparation_ns,
+                "enumerationAndNorm": answer.timings.enumeration_and_norm_ns,
+                "rationalFactorization": answer.timings.rational_factorization_ns,
+                "primeValuationAndCache": answer.timings.prime_valuation_and_cache_ns,
+                "totalInternal": answer.timings.total_ns,
+                "totalExternal": started.elapsed().as_nanos(),
+            },
+        })
+    );
+}
+
 fn main() {
     let arguments = env::args().skip(1).collect::<Vec<_>>();
     if arguments
@@ -305,6 +358,21 @@ fn main() {
                 .expect("usage: row6-candidate admission RADIUS")
                 .parse()
                 .expect("radius must be an integer"),
+        );
+        return;
+    }
+    if arguments.first().is_some_and(|value| value == "small-norm") {
+        small_norm_prefix(
+            arguments
+                .get(1)
+                .expect("usage: row6-candidate small-norm IDEALS CANDIDATES")
+                .parse()
+                .expect("ideals must be an integer"),
+            arguments
+                .get(2)
+                .expect("usage: row6-candidate small-norm IDEALS CANDIDATES")
+                .parse()
+                .expect("candidates must be an integer"),
         );
         return;
     }

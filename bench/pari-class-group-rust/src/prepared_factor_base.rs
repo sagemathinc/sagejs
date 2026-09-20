@@ -15,9 +15,9 @@ use crate::factor_base::{
     FactorBase, PrimeIdeal, prepared_cubic_bounds_for_discriminant, prepared_cubic_factor_pattern,
     rational_primes_through,
 };
-use crate::{
+use crate::prepared::ValidatedPreparedCubic;
+use crate::prepared_ideal::{
     CubicIdeal, DegreeOnePrimeCharacter, PreparedIdealError, PreparedIdealWorkspace,
-    ValidatedPreparedCubic,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -343,7 +343,7 @@ fn integer_array_to_i64<const N: usize>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{EmbeddingPrecisionState, PreparedCubicData};
+    use crate::prepared::{EmbeddingPrecisionState, PreparedCubicData};
 
     fn row6_field() -> ValidatedPreparedCubic {
         ValidatedPreparedCubic::validate(PreparedCubicData {
