@@ -17,6 +17,12 @@ structural rows, while 926 rank directions remain missing. The output is
 therefore explicitly `bounded-stage`; it is not a class group and is not W0 or
 R5 evidence.
 
+The qualification ABI makes those limits explicit in its request envelope:
+`maximumVisitedIdeals` must be 1 and `maximumCandidates` must be 64. They are
+artifact constants for this milestone, not caller-selectable performance
+controls. Missing or different values are rejected before the neutral prepared
+field is parsed, and the accepted values are echoed in the result.
+
 ## Arithmetic bridge
 
 The artifact includes the current production Rust modules by path. The
@@ -44,7 +50,7 @@ every engine. For the same-source native comparison, set both arithmetic
 prefixes to `packages/flint/.native/prefix`, use the cross-probe adapter with
 `SAGEJS_GMP_LIMB_BITS=64`, and run `native-benchmark`.
 
-From the repository root, run the complete 42-test native qualification suite
+From the repository root, run the complete 43-test native qualification suite
 with the exact prepared arithmetic environment:
 
 ```bash
@@ -58,8 +64,8 @@ cargo test --release --lib \
 
 ## Recorded result
 
-The frozen artifact is 691,342 bytes and has SHA-256
-`fd55293ad67d39547738f4406d8f341d7b1ba297cdac106071f4ae9ec65f5cbb`.
+The frozen SIMD-enabled artifact is 697,980 bytes and has SHA-256
+`4c1faa8506e43fa86cafb34b1c7ac4370ad0afb61e7a35610da93c85866ce13e`.
 All 45 browser calls (15 per engine) and all 15 native calls returned the same
 exact prefix digest,
 `7e4c9242d3fa92c7bc7f8fbb3e9c68cc77f66cbc5838657cf38e610c66ba22b3`.
@@ -71,18 +77,36 @@ Median complete-call times were:
 
 | Runtime | Median | Native ratio |
 | --- | ---: | ---: |
-| Native Linux | 285.734 ms | 1.000x |
-| Chromium | 690.5 ms | 2.416x |
-| Firefox | 4709 ms | 16.480x |
-| WebKit | 625 ms | 2.187x |
+| Native Linux | 223.851 ms | 1.000x |
+| Chromium | 526.4 ms | 2.352x |
+| Firefox | 3724 ms | 16.636x |
+| WebKit | 462 ms | 2.064x |
 
-The Wasm linear-memory high-water mark is currently large: every engine grew
-from 18 pages before the first call to 3,357 pages after the final call (about
-220 MB). The output buffers are freed with their exact slice layouts and the
-repeated lifecycle is correct, but the Rust/GMP allocator does not return its
-linear-memory high-water mark to the host. Reducing peak workspace allocation
-and proving reuse is therefore a required next optimization, not evidence of
-a leak in the exported buffer ABI.
+The production collector previously reserved its full 11,420-row PARI working
+capacity even though this bounded prefix can contain only the 203 seeded rows
+plus at most 64 counted candidate rows. That made the dense records allocation
+103,236,800 bytes. The collector now proves the bounded capacity as 267 rows
+and records it in every result; the corresponding allocation is 2,413,680
+bytes. The unbounded/default collector still selects the original full
+capacity, and an undersized seed cache fails with `CapacityExhausted`.
+
+The final bounded-storage plus SIMD artifact grows every engine from 18 pages
+to only 258 after all 15 calls (16,908,288 bytes), down from 3,357 pages
+(220,004,352 bytes): a 92.3% reduction. Relative to the original artifact, the
+combined result also lowers median time 21.7% natively, 23.8% in Chromium,
+20.9% in Firefox, and 26.1% in WebKit. In a separate same-source build
+comparison after bounding storage, stable Wasm SIMD changed Chromium/WebKit by
+less than 1% and lowered the Firefox median from 3,886 ms to 3,755 ms (3.4%),
+so the final build pins it explicitly.
+
+Firefox's ratio to native did not improve: it is 16.636x, versus 16.480x
+before this change, because native improved slightly more. The separately
+qualified prepared-factor-base artifact measures 216.698 ms natively and
+3,401 ms in Firefox—about 97% and 91% of this artifact's respective medians.
+Thus the residual Firefox ratio is localized primarily to the already-existing
+prepared factor-base/GMP path, not relation-cache storage or this bounded
+relation prefix. Exact before/after values and hashes are frozen in
+`optimization-receipt.json`.
 
 The browser qualification host supplies only an explicitly allowlisted empty
 environment shim plus WASI clock, file-descriptor, and process-exit functions:

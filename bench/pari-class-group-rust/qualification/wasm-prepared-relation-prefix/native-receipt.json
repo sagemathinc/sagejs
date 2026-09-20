@@ -1,7 +1,7 @@
 {
   "boundary": "prepared-cubic-relation-prefix",
-  "inputPath": "../row6-candidate/inputs/row6-neutral-prepared-field.json",
-  "medianMs": 285.73419,
+  "inputPath": "bench/pari-class-group-rust/qualification/row6-candidate/inputs/row6-neutral-prepared-field.json",
+  "medianMs": 223.851449,
   "result": {
     "completeRankAndSurplus": false,
     "counters": {
@@ -27,25 +27,31 @@
     "residentRelationRows": 204,
     "schema": "sagejs.rust-class-group/prepared-relation-prefix-v1",
     "stage": "prepared-cubic-relation-prefix",
-    "status": "bounded-stage"
+    "status": "bounded-stage",
+    "storage": {
+      "denseRecordsBytes": 2413680,
+      "fullDenseRecordsBytes": 103236800,
+      "fullRelationCacheCapacity": 11420,
+      "relationCacheCapacity": 267
+    }
   },
   "sampleCount": 15,
   "samplesMs": [
-    295.753357,
-    283.598961,
-    281.81695,
-    287.61501,
-    293.068198,
-    286.42548,
-    280.605011,
-    290.951699,
-    283.27173,
-    278.994372,
-    285.73419,
-    279.744182,
-    286.73532,
-    284.59112,
-    288.700199
+    229.706007,
+    225.687938,
+    224.020338,
+    224.226109,
+    223.54158800000002,
+    223.798068,
+    224.586428,
+    222.668678,
+    222.882349,
+    223.385928,
+    223.851449,
+    224.016388,
+    224.06314899999998,
+    223.844248,
+    223.214049
   ],
   "schema": "sagejs.rust-class-group/native-prepared-relation-prefix-benchmark-v1",
   "status": "pass"
