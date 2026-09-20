@@ -401,3 +401,443 @@ int sagejs_rust_flint_snf_class_map_i64(
     flint_cleanup();
     return status;
 }
+
+int sagejs_rust_flint_relation_witnesses_i64(
+    size_t rows, size_t columns, const int64_t *entries,
+    size_t target_count, const int64_t *targets, mpz_ptr const *witnesses,
+    size_t *maximum_coefficient_bits, size_t *nonzero_counts,
+    uint64_t *hnf_ns, uint64_t *solve_ns)
+{
+    if (rows < columns || columns == 0 || entries == NULL ||
+        target_count == 0 || targets == NULL || witnesses == NULL ||
+        maximum_coefficient_bits == NULL || nonzero_counts == NULL ||
+        hnf_ns == NULL || solve_ns == NULL || rows > LONG_MAX ||
+        columns > LONG_MAX || target_count > LONG_MAX ||
+        rows > SIZE_MAX / columns || target_count > SIZE_MAX / columns ||
+        target_count > SIZE_MAX / rows)
+        return -1;
+
+    fmpz_mat_t source;
+    fmpz_mat_t hermite;
+    fmpz_mat_t transform;
+    if (!sagejs_rust_flint_set_i64_matrix(source, rows, columns, entries))
+        return -1;
+    fmpz_mat_init(hermite, (slong) rows, (slong) columns);
+    fmpz_mat_init(transform, (slong) rows, (slong) rows);
+    uint64_t started = sagejs_rust_monotonic_ns();
+    fmpz_mat_hnf_transform(hermite, transform, source);
+    uint64_t finished = sagejs_rust_monotonic_ns();
+    *hnf_ns = finished >= started ? finished - started : 0;
+
+    size_t *basis_rows = flint_malloc(columns * sizeof(size_t));
+    size_t basis_count = 0;
+    for (size_t row = 0; row < rows; row++)
+    {
+        int nonzero = 0;
+        for (size_t column = 0; column < columns; column++)
+            if (!fmpz_is_zero(fmpz_mat_entry(
+                    hermite, (slong) row, (slong) column)))
+            {
+                nonzero = 1;
+                break;
+            }
+        if (nonzero)
+        {
+            if (basis_count == columns)
+            {
+                basis_count++;
+                break;
+            }
+            basis_rows[basis_count++] = row;
+        }
+    }
+
+    int status = basis_count == columns ? 0 : -3;
+    fmpz_mat_t basis_transpose;
+    fmpz_mat_t target_transpose;
+    fmpz_mat_t solution;
+    fmpz_mat_init(basis_transpose, (slong) columns, (slong) columns);
+    fmpz_mat_init(target_transpose, (slong) columns, (slong) target_count);
+    fmpz_mat_init(solution, (slong) columns, (slong) target_count);
+    if (status == 0)
+    {
+        for (size_t row = 0; row < columns; row++)
+            for (size_t column = 0; column < columns; column++)
+                fmpz_set(fmpz_mat_entry(basis_transpose,
+                        (slong) column, (slong) row),
+                    fmpz_mat_entry(hermite, (slong) basis_rows[row],
+                        (slong) column));
+        for (size_t target = 0; target < target_count; target++)
+            for (size_t column = 0; column < columns; column++)
+                fmpz_set_si(fmpz_mat_entry(target_transpose,
+                        (slong) column, (slong) target),
+                    (slong) targets[target * columns + column]);
+    }
+
+    fmpz_t denominator;
+    fmpz_t remainder;
+    fmpz_t coefficient;
+    fmpz_t check;
+    fmpz_init(denominator);
+    fmpz_init(remainder);
+    fmpz_init(coefficient);
+    fmpz_init(check);
+    if (status == 0)
+    {
+        started = sagejs_rust_monotonic_ns();
+        if (!fmpz_mat_solve(
+                solution, denominator, basis_transpose, target_transpose) ||
+            fmpz_is_zero(denominator))
+            status = -4;
+        finished = sagejs_rust_monotonic_ns();
+        *solve_ns = finished >= started ? finished - started : 0;
+    }
+
+    if (status == 0)
+        for (size_t row = 0; row < columns && status == 0; row++)
+            for (size_t target = 0; target < target_count; target++)
+            {
+                fmpz_mod(remainder,
+                    fmpz_mat_entry(solution, (slong) row, (slong) target),
+                    denominator);
+                if (!fmpz_is_zero(remainder))
+                {
+                    status = -5;
+                    break;
+                }
+                fmpz_divexact(
+                    fmpz_mat_entry(solution, (slong) row, (slong) target),
+                    fmpz_mat_entry(solution, (slong) row, (slong) target),
+                    denominator);
+            }
+
+    *maximum_coefficient_bits = 0;
+    for (size_t target = 0; target < target_count; target++)
+        nonzero_counts[target] = 0;
+    if (status == 0)
+        for (size_t target = 0; target < target_count && status == 0; target++)
+            for (size_t relation = 0; relation < rows; relation++)
+            {
+                fmpz_zero(coefficient);
+                for (size_t basis_row = 0; basis_row < columns; basis_row++)
+                    fmpz_addmul(coefficient,
+                        fmpz_mat_entry(solution, (slong) basis_row,
+                            (slong) target),
+                        fmpz_mat_entry(transform,
+                            (slong) basis_rows[basis_row],
+                            (slong) relation));
+                mpz_ptr output = witnesses[target * rows + relation];
+                if (output == NULL)
+                {
+                    status = -1;
+                    break;
+                }
+                fmpz_get_mpz(output, coefficient);
+                if (!fmpz_is_zero(coefficient))
+                {
+                    nonzero_counts[target]++;
+                    size_t bits = (size_t) fmpz_bits(coefficient);
+                    if (bits > *maximum_coefficient_bits)
+                        *maximum_coefficient_bits = bits;
+                }
+            }
+
+    /* Verify the exported coefficients against the original relation matrix
+       before releasing the FLINT-owned transform. */
+    if (status == 0)
+        for (size_t target = 0; target < target_count && status == 0; target++)
+            for (size_t column = 0; column < columns; column++)
+            {
+                fmpz_zero(check);
+                for (size_t relation = 0; relation < rows; relation++)
+                {
+                    fmpz_set_mpz(coefficient,
+                        witnesses[target * rows + relation]);
+                    fmpz_addmul_si(check, coefficient,
+                        (slong) entries[relation * columns + column]);
+                }
+                if (fmpz_cmp_si(check,
+                        (slong) targets[target * columns + column]) != 0)
+                    status = -6;
+            }
+
+    fmpz_clear(check);
+    fmpz_clear(coefficient);
+    fmpz_clear(remainder);
+    fmpz_clear(denominator);
+    fmpz_mat_clear(solution);
+    fmpz_mat_clear(target_transpose);
+    fmpz_mat_clear(basis_transpose);
+    flint_free(basis_rows);
+    fmpz_mat_clear(transform);
+    fmpz_mat_clear(hermite);
+    fmpz_mat_clear(source);
+    flint_cleanup();
+    return status;
+}
+
+int sagejs_rust_flint_staged_relation_witnesses_i64(
+    size_t size, size_t remaining_rows, const int64_t *square_entries,
+    const int64_t *remaining_entries, size_t target_count,
+    const int64_t *targets, mpz_ptr const *witnesses,
+    size_t *maximum_coefficient_bits, size_t *nonzero_counts,
+    uint64_t *initial_hnf_ns, uint64_t *saturation_transform_ns,
+    uint64_t *target_solve_ns, uint64_t *square_solve_ns)
+{
+    if (size == 0 || square_entries == NULL || target_count == 0 ||
+        targets == NULL || witnesses == NULL ||
+        maximum_coefficient_bits == NULL || nonzero_counts == NULL ||
+        initial_hnf_ns == NULL || saturation_transform_ns == NULL ||
+        target_solve_ns == NULL || square_solve_ns == NULL ||
+        (remaining_rows != 0 && remaining_entries == NULL) ||
+        size > LONG_MAX || remaining_rows > LONG_MAX - size ||
+        target_count > LONG_MAX)
+        return -1;
+    const size_t rows = size + remaining_rows;
+
+    fmpz_mat_t square;
+    fmpz_mat_t initial;
+    if (!sagejs_rust_flint_set_i64_matrix(square, size, size, square_entries))
+        return -1;
+    fmpz_mat_init(initial, (slong) size, (slong) size);
+    fmpz_t determinant;
+    fmpz_init(determinant);
+    fmpz_mat_det(determinant, square);
+    fmpz_abs(determinant, determinant);
+    int status = fmpz_is_zero(determinant) ? -3 : 0;
+    uint64_t started = sagejs_rust_monotonic_ns();
+    if (status == 0)
+    {
+        fmpz_mat_set(initial, square);
+        fmpz_mat_hnf_modular_eldiv(initial, determinant);
+    }
+    uint64_t finished = sagejs_rust_monotonic_ns();
+    *initial_hnf_ns = finished >= started ? finished - started : 0;
+
+    fmpz_mat_t augmented;
+    fmpz_mat_t hermite;
+    fmpz_mat_t transform;
+    fmpz_mat_init(augmented, (slong) rows, (slong) size);
+    fmpz_mat_init(hermite, (slong) rows, (slong) size);
+    fmpz_mat_init(transform, (slong) rows, (slong) rows);
+    if (status == 0)
+    {
+        for (size_t row = 0; row < size; row++)
+            for (size_t column = 0; column < size; column++)
+                fmpz_set(fmpz_mat_entry(augmented, (slong) row,
+                        (slong) column),
+                    fmpz_mat_entry(initial, (slong) row, (slong) column));
+        for (size_t row = 0; row < remaining_rows; row++)
+            for (size_t column = 0; column < size; column++)
+                fmpz_set_si(fmpz_mat_entry(augmented,
+                        (slong) (size + row), (slong) column),
+                    (slong) remaining_entries[row * size + column]);
+        started = sagejs_rust_monotonic_ns();
+        fmpz_mat_hnf_transform(hermite, transform, augmented);
+        finished = sagejs_rust_monotonic_ns();
+        *saturation_transform_ns = finished >= started ? finished - started : 0;
+    }
+
+    size_t *basis_rows = flint_malloc(size * sizeof(size_t));
+    size_t basis_count = 0;
+    if (status == 0)
+        for (size_t row = 0; row < rows; row++)
+        {
+            int nonzero = 0;
+            for (size_t column = 0; column < size; column++)
+                if (!fmpz_is_zero(fmpz_mat_entry(
+                        hermite, (slong) row, (slong) column)))
+                {
+                    nonzero = 1;
+                    break;
+                }
+            if (nonzero)
+            {
+                if (basis_count == size)
+                {
+                    basis_count++;
+                    break;
+                }
+                basis_rows[basis_count++] = row;
+            }
+        }
+    if (status == 0 && basis_count != size)
+        status = -3;
+
+    fmpz_mat_t basis_transpose;
+    fmpz_mat_t target_transpose;
+    fmpz_mat_t target_solution;
+    fmpz_mat_init(basis_transpose, (slong) size, (slong) size);
+    fmpz_mat_init(target_transpose, (slong) size, (slong) target_count);
+    fmpz_mat_init(target_solution, (slong) size, (slong) target_count);
+    if (status == 0)
+    {
+        for (size_t row = 0; row < size; row++)
+            for (size_t column = 0; column < size; column++)
+                fmpz_set(fmpz_mat_entry(basis_transpose,
+                        (slong) column, (slong) row),
+                    fmpz_mat_entry(hermite, (slong) basis_rows[row],
+                        (slong) column));
+        for (size_t target = 0; target < target_count; target++)
+            for (size_t column = 0; column < size; column++)
+                fmpz_set_si(fmpz_mat_entry(target_transpose,
+                        (slong) column, (slong) target),
+                    (slong) targets[target * size + column]);
+    }
+    fmpz_t denominator;
+    fmpz_t remainder;
+    fmpz_t check;
+    fmpz_init(denominator);
+    fmpz_init(remainder);
+    fmpz_init(check);
+    if (status == 0)
+    {
+        started = sagejs_rust_monotonic_ns();
+        if (!fmpz_mat_solve(target_solution, denominator,
+                basis_transpose, target_transpose) ||
+            fmpz_is_zero(denominator))
+            status = -4;
+        finished = sagejs_rust_monotonic_ns();
+        *target_solve_ns = finished >= started ? finished - started : 0;
+    }
+    if (status == 0)
+        for (size_t row = 0; row < size && status == 0; row++)
+            for (size_t target = 0; target < target_count; target++)
+            {
+                fmpz_mod(remainder, fmpz_mat_entry(target_solution,
+                    (slong) row, (slong) target), denominator);
+                if (!fmpz_is_zero(remainder))
+                {
+                    status = -5;
+                    break;
+                }
+                fmpz_divexact(fmpz_mat_entry(target_solution,
+                        (slong) row, (slong) target),
+                    fmpz_mat_entry(target_solution,
+                        (slong) row, (slong) target), denominator);
+            }
+
+    fmpz_mat_t augmented_weights;
+    fmpz_mat_init(augmented_weights, (slong) target_count, (slong) rows);
+    if (status == 0)
+        for (size_t target = 0; target < target_count; target++)
+            for (size_t row = 0; row < rows; row++)
+                for (size_t basis_row = 0; basis_row < size; basis_row++)
+                    fmpz_addmul(fmpz_mat_entry(augmented_weights,
+                            (slong) target, (slong) row),
+                        fmpz_mat_entry(target_solution,
+                            (slong) basis_row, (slong) target),
+                        fmpz_mat_entry(transform,
+                            (slong) basis_rows[basis_row], (slong) row));
+
+    fmpz_mat_t square_rhs;
+    fmpz_mat_t square_solution;
+    fmpz_mat_t square_transpose;
+    fmpz_mat_init(square_rhs, (slong) size, (slong) target_count);
+    fmpz_mat_init(square_solution, (slong) size, (slong) target_count);
+    fmpz_mat_init(square_transpose, (slong) size, (slong) size);
+    if (status == 0)
+    {
+        fmpz_mat_transpose(square_transpose, square);
+        for (size_t target = 0; target < target_count; target++)
+            for (size_t column = 0; column < size; column++)
+                for (size_t row = 0; row < size; row++)
+                    fmpz_addmul(fmpz_mat_entry(square_rhs,
+                            (slong) column, (slong) target),
+                        fmpz_mat_entry(augmented_weights,
+                            (slong) target, (slong) row),
+                        fmpz_mat_entry(initial,
+                            (slong) row, (slong) column));
+        started = sagejs_rust_monotonic_ns();
+        if (!fmpz_mat_solve(square_solution, denominator,
+                square_transpose, square_rhs) ||
+            fmpz_is_zero(denominator))
+            status = -4;
+        finished = sagejs_rust_monotonic_ns();
+        *square_solve_ns = finished >= started ? finished - started : 0;
+    }
+    if (status == 0)
+        for (size_t row = 0; row < size && status == 0; row++)
+            for (size_t target = 0; target < target_count; target++)
+            {
+                fmpz_mod(remainder, fmpz_mat_entry(square_solution,
+                    (slong) row, (slong) target), denominator);
+                if (!fmpz_is_zero(remainder))
+                {
+                    status = -5;
+                    break;
+                }
+                fmpz_divexact(fmpz_mat_entry(square_solution,
+                        (slong) row, (slong) target),
+                    fmpz_mat_entry(square_solution,
+                        (slong) row, (slong) target), denominator);
+            }
+
+    *maximum_coefficient_bits = 0;
+    for (size_t target = 0; target < target_count; target++)
+        nonzero_counts[target] = 0;
+    if (status == 0)
+        for (size_t target = 0; target < target_count && status == 0; target++)
+            for (size_t row = 0; row < rows; row++)
+            {
+                const fmpz *coefficient = row < size
+                    ? fmpz_mat_entry(square_solution, (slong) row,
+                        (slong) target)
+                    : fmpz_mat_entry(augmented_weights, (slong) target,
+                        (slong) row);
+                mpz_ptr output = witnesses[target * rows + row];
+                if (output == NULL)
+                {
+                    status = -1;
+                    break;
+                }
+                fmpz_get_mpz(output, coefficient);
+                if (!fmpz_is_zero(coefficient))
+                {
+                    nonzero_counts[target]++;
+                    size_t bits = (size_t) fmpz_bits(coefficient);
+                    if (bits > *maximum_coefficient_bits)
+                        *maximum_coefficient_bits = bits;
+                }
+            }
+
+    if (status == 0)
+        for (size_t target = 0; target < target_count && status == 0; target++)
+            for (size_t column = 0; column < size; column++)
+            {
+                fmpz_zero(check);
+                for (size_t row = 0; row < size; row++)
+                    fmpz_addmul_si(check,
+                        fmpz_mat_entry(square_solution,
+                            (slong) row, (slong) target),
+                        (slong) square_entries[row * size + column]);
+                for (size_t row = 0; row < remaining_rows; row++)
+                    fmpz_addmul_si(check,
+                        fmpz_mat_entry(augmented_weights,
+                            (slong) target, (slong) (size + row)),
+                        (slong) remaining_entries[row * size + column]);
+                if (fmpz_cmp_si(check,
+                        (slong) targets[target * size + column]) != 0)
+                    status = -6;
+            }
+
+    fmpz_mat_clear(square_transpose);
+    fmpz_mat_clear(square_solution);
+    fmpz_mat_clear(square_rhs);
+    fmpz_mat_clear(augmented_weights);
+    fmpz_clear(check);
+    fmpz_clear(remainder);
+    fmpz_clear(denominator);
+    fmpz_mat_clear(target_solution);
+    fmpz_mat_clear(target_transpose);
+    fmpz_mat_clear(basis_transpose);
+    flint_free(basis_rows);
+    fmpz_mat_clear(transform);
+    fmpz_mat_clear(hermite);
+    fmpz_mat_clear(augmented);
+    fmpz_clear(determinant);
+    fmpz_mat_clear(initial);
+    fmpz_mat_clear(square);
+    flint_cleanup();
+    return status;
+}

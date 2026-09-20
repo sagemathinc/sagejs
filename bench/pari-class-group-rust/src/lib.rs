@@ -63,9 +63,10 @@ pub use factor_base::prepared_cubic_factor_base;
 pub use factor_base::{FactorBase, PrimeIdeal};
 #[cfg(feature = "flint-normal-form")]
 pub use flint_normal_form::{
-    FlintHnfProfile, FlintIncrementalHnf, FlintNormalFormError, FlintSmithCandidate,
-    FlintSmithClassMap, flint_hnf_basis, flint_hnf_profile, flint_incremental_hnf,
-    flint_lll_column_transform, flint_smith_candidate, flint_smith_class_map,
+    FlintHnfProfile, FlintIncrementalHnf, FlintNormalFormError, FlintRelationWitnesses,
+    FlintSmithCandidate, FlintSmithClassMap, flint_hnf_basis, flint_hnf_profile,
+    flint_incremental_hnf, flint_lll_column_transform, flint_relation_witnesses,
+    flint_smith_candidate, flint_smith_class_map, flint_staged_relation_witnesses,
 };
 pub use gmp_smith::{
     ExactSmithCandidateInvariants, GmpSmithError, GmpSmithWorkspace,

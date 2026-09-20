@@ -12,7 +12,8 @@ use sagejs_pari_class_group_rust_experiment::{
     EmbeddingPrecisionState, PreparedCollectorLimits, PreparedCubicData, ValidatedPreparedCubic,
     collect_prepared_cubic_relations, collect_validated_primitive_box_with_supplementary,
     flint_hnf_basis, flint_hnf_profile, flint_incremental_hnf, flint_smith_candidate,
-    flint_smith_class_map, modular_independent_relation_rows, prepared_cubic_factor_base,
+    flint_smith_class_map, flint_staged_relation_witnesses,
+    modular_independent_relation_rows, prepared_cubic_factor_base,
     prepared_maximal_cubic_factor_base,
 };
 use std::env;
@@ -559,6 +560,131 @@ fn small_norm_incremental_hnf(maximum_ideals: usize, maximum_candidates: usize) 
     );
 }
 
+fn small_norm_order_witnesses(maximum_ideals: usize, maximum_candidates: usize) {
+    let field = maximal_order();
+    let total_started = Instant::now();
+    let answer = collect_prepared_cubic_relations(
+        &field,
+        PreparedCollectorLimits {
+            maximum_visited_ideals: maximum_ideals,
+            maximum_candidates,
+        },
+    )
+    .expect("maximal-order relation collection failed");
+    assert!(answer.complete_rank_and_surplus, "relation lattice is incomplete");
+    let columns = answer.factor_base.catalog.ideals.len();
+    let rows = answer.relations.len() / columns;
+    let (square, source_rows) = modular_independent_relation_rows(
+        &answer.relations,
+        &answer.first_nonzero_hints,
+        columns,
+    )
+    .expect("modularly independent row selection failed");
+    let mut selected = vec![false; rows];
+    for source_row in source_rows.iter().copied() {
+        selected[source_row] = true;
+    }
+    let mut remaining = Vec::with_capacity((rows - columns) * columns);
+    let mut ordered_source_rows = source_rows.clone();
+    for (row, relation) in answer.relations.chunks_exact(columns).enumerate() {
+        if !selected[row] {
+            remaining.extend_from_slice(relation);
+            ordered_source_rows.push(row);
+        }
+    }
+    let incremental = flint_incremental_hnf(&square, &remaining, columns)
+        .expect("incremental FLINT HNF failed");
+    let map = flint_smith_class_map(&incremental.basis, columns)
+        .expect("Smith class-map construction failed");
+    let mut generators = Vec::with_capacity(map.invariant_factors.len());
+    for coordinate in 0..map.invariant_factors.len() {
+        let generator = (0..columns)
+            .find(|generator| {
+                map.coordinates(*generator)
+                    .is_some_and(|values| {
+                        values.iter().enumerate().all(|(index, value)| {
+                            *value == if index == coordinate { 1 } else { 0 }
+                        })
+                    })
+            })
+            .expect("class map has no factor-base generator for an invariant coordinate");
+        generators.push(generator);
+    }
+    let mut targets = vec![0_i64; generators.len() * columns];
+    for (target, generator) in generators.iter().copied().enumerate() {
+        targets[target * columns + generator] = map.invariant_factors[target];
+    }
+    let witness_started = Instant::now();
+    let witnesses = flint_staged_relation_witnesses(&square, &remaining, columns, &targets)
+        .expect("exact staged relation witness construction failed");
+    let witness_external_ns = witness_started.elapsed().as_nanos();
+
+    let mut sparse_witnesses = Vec::with_capacity(witnesses.target_count);
+    for target in 0..witnesses.target_count {
+        let mut sparse = Vec::new();
+        for (ordered_relation, relation) in ordered_source_rows.iter().copied().enumerate() {
+            let coefficient = &witnesses.coefficients[target * rows + ordered_relation];
+            if coefficient != &0 {
+                sparse.push(serde_json::json!({
+                    "relationIndexZeroBased": relation,
+                    "coefficient": coefficient.to_string(),
+                    "principalGeneratorIntegralBasisCoordinates": answer.generators
+                        [relation * 3..relation * 3 + 3]
+                        .iter()
+                        .map(Integer::to_string)
+                        .collect::<Vec<_>>(),
+                }));
+            }
+        }
+        for column in 0..columns {
+            let mut replayed = Integer::from(0);
+            for (ordered_relation, relation) in ordered_source_rows.iter().copied().enumerate() {
+                replayed += &witnesses.coefficients[target * rows + ordered_relation]
+                    * answer.relations[relation * columns + column];
+            }
+            assert_eq!(replayed, targets[target * columns + column]);
+        }
+        sparse_witnesses.push(serde_json::json!({
+            "invariantCoordinate": target,
+            "factorBaseGeneratorIndexZeroBased": generators[target],
+            "order": map.invariant_factors[target],
+            "nonzeroCoefficientCount": witnesses.nonzero_counts[target],
+            "coefficients": sparse,
+        }));
+    }
+    println!(
+        "{}",
+        serde_json::json!({
+            "schema": "sagejs.rust-class-group/row6-order-relation-witnesses-v1",
+            "qualificationStatus": "exact-compact-principal-order-witnesses-not-complete",
+            "usesOracleAsInput": false,
+            "relations": { "rows": rows, "columns": columns },
+            "group": {
+                "invariantFactors": map.invariant_factors,
+                "classNumber": map.invariant_factors.iter().product::<i64>(),
+            },
+            "witnesses": {
+                "allReplayExactly": true,
+                "principalElementEncoding": "product-of-collected-integral-basis-elements-to-signed-powers-v1",
+                "maximumCoefficientBits": witnesses.maximum_coefficient_bits,
+                "targets": sparse_witnesses,
+            },
+            "timingsNanoseconds": {
+                "collection": answer.timings.total_ns,
+                "incrementalHnf": incremental.determinant_ns
+                    + incremental.initial_hnf_ns
+                    + incremental.saturation_ns,
+                "initialHnfInternal": witnesses.initial_hnf_ns,
+                "saturationTransformInternal": witnesses.hnf_ns,
+                "targetSolveInternal": witnesses.solve_ns,
+                "squareSolveInternal": witnesses.square_solve_ns,
+                "witnessExternal": witness_external_ns,
+                "totalExternal": total_started.elapsed().as_nanos(),
+            },
+        })
+    );
+}
+
 fn small_norm_class_map(maximum_ideals: usize, maximum_candidates: usize) {
     let field = maximal_order();
     let total_started = Instant::now();
@@ -764,6 +890,24 @@ fn main() {
             arguments
                 .get(2)
                 .expect("usage: row6-candidate small-norm-incremental-hnf IDEALS CANDIDATES")
+                .parse()
+                .expect("candidates must be an integer"),
+        );
+        return;
+    }
+    if arguments
+        .first()
+        .is_some_and(|value| value == "small-norm-order-witnesses")
+    {
+        small_norm_order_witnesses(
+            arguments
+                .get(1)
+                .expect("usage: row6-candidate small-norm-order-witnesses IDEALS CANDIDATES")
+                .parse()
+                .expect("ideals must be an integer"),
+            arguments
+                .get(2)
+                .expect("usage: row6-candidate small-norm-order-witnesses IDEALS CANDIDATES")
                 .parse()
                 .expect("candidates must be an integer"),
         );

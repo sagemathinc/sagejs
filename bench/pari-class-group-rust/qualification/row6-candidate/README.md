@@ -259,6 +259,48 @@ the earlier 252.55-second generic rectangular HNF with an exact algorithm that
 uses the collector's phase-lifetime information. The receipt is
 `results/maximal-incremental-hnf-class-map.json`.
 
+## 2026-09-20 exact order and compact principal witnesses
+
+A direct `fmpz_mat_hnf_transform` control on the complete 1,137 by 1,130
+relation matrix is not viable. It was stopped after five minutes with no
+result after resident memory had exceeded 9 GiB. The issue is provenance
+coefficient growth across a dense 1,137 by 1,137 unimodular transform, not the
+relation lattice or the final four-element quotient. This rejected control is
+retained in the bridge as a focused small-matrix oracle, not as the row-6
+route.
+
+The accepted provenance route uses the phase lifetime explicitly. It first
+reduces the selected square basis without a transform, then computes a
+transform only while adjoining the seven surplus rows. For each desired order
+target it solves back through the original selected square matrix exactly.
+This exports only two arbitrary-precision coefficient vectors rather than the
+full dense transform. The C bridge verifies them before returning; Rust then
+independently replays each signed combination against all 1,130 relation
+coordinates.
+
+The resulting targets are twice factor-base generators 8 and 6 (zero-based),
+whose compact Smith coordinates are respectively `(1, 0)` and `(0, 1)`.
+Their relation witnesses have 872 and 871 nonzero coefficients, with a maximum
+coefficient size of 616 bits. Every referenced relation retains the exact
+integral-basis element whose principal ideal produced it, so each witness also
+encodes a compact principal element as the product of those elements to the
+signed relation coefficients.
+
+The captured standalone diagnostic takes 82.055 seconds because it first runs
+the class-map route and then redundantly recomputes the initial modular HNF
+inside the 36.502-second witness pass. Within that witness pass, the repeated
+initial HNF costs 27.828 seconds; the seven-row saturation transform and
+the two exact target solves together cost about 3.5 seconds, with the remaining
+time in conversion and verification. The production design must fuse these
+passes, so the receipt is proof that witnesses are practical, not a new
+headline end-to-end latency. The complete sparse coefficient and compact
+principal-element receipt is `results/maximal-order-witnesses.json`.
+
+These witnesses establish the orders inside the collected presentation. They
+do not prove that the presentation equals the full ideal class group. Unit
+reconstruction, regulator/completion evidence and honesty/saturation remain
+the decisive R3 work.
+
 This remains a candidate computation. The modular HNF bridge currently exports
 the final lattice basis but not the provenance needed to reconstruct principal
 elements from relation generators. Unit reconstruction, regulator/completion

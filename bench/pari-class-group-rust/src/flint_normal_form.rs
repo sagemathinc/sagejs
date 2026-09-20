@@ -8,6 +8,7 @@
 //! return.
 
 use crate::ideal_arithmetic::Matrix3;
+use rug::Integer;
 use std::array::from_fn;
 use std::ffi::{c_int, c_longlong, c_void};
 
@@ -50,6 +51,21 @@ pub struct FlintIncrementalHnf {
     pub determinant_ns: u64,
     pub initial_hnf_ns: u64,
     pub saturation_ns: u64,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FlintRelationWitnesses {
+    /// Target-major coefficients expressing each target as a combination of
+    /// the original relation rows.
+    pub coefficients: Vec<Integer>,
+    pub relation_count: usize,
+    pub target_count: usize,
+    pub maximum_coefficient_bits: usize,
+    pub nonzero_counts: Vec<usize>,
+    pub initial_hnf_ns: u64,
+    pub hnf_ns: u64,
+    pub solve_ns: u64,
+    pub square_solve_ns: u64,
 }
 
 impl FlintSmithClassMap {
@@ -128,6 +144,160 @@ unsafe extern "C" {
         generator_coordinates: *mut c_longlong,
         invariant_count: *mut usize,
     ) -> c_int;
+    fn sagejs_rust_flint_relation_witnesses_i64(
+        rows: usize,
+        columns: usize,
+        entries: *const c_longlong,
+        target_count: usize,
+        targets: *const c_longlong,
+        witnesses: *const *mut c_void,
+        maximum_coefficient_bits: *mut usize,
+        nonzero_counts: *mut usize,
+        hnf_ns: *mut u64,
+        solve_ns: *mut u64,
+    ) -> c_int;
+    fn sagejs_rust_flint_staged_relation_witnesses_i64(
+        size: usize,
+        remaining_rows: usize,
+        square_entries: *const c_longlong,
+        remaining_entries: *const c_longlong,
+        target_count: usize,
+        targets: *const c_longlong,
+        witnesses: *const *mut c_void,
+        maximum_coefficient_bits: *mut usize,
+        nonzero_counts: *mut usize,
+        initial_hnf_ns: *mut u64,
+        saturation_transform_ns: *mut u64,
+        target_solve_ns: *mut u64,
+        square_solve_ns: *mut u64,
+    ) -> c_int;
+}
+
+pub fn flint_relation_witnesses(
+    relations: &[i64],
+    rows: usize,
+    columns: usize,
+    targets: &[i64],
+) -> Result<FlintRelationWitnesses, FlintNormalFormError> {
+    if rows < columns
+        || columns == 0
+        || rows.checked_mul(columns) != Some(relations.len())
+        || targets.is_empty()
+        || targets.len() % columns != 0
+    {
+        return Err(FlintNormalFormError::DimensionMismatch);
+    }
+    let target_count = targets.len() / columns;
+    let coefficient_count = target_count
+        .checked_mul(rows)
+        .ok_or(FlintNormalFormError::InvalidDimensions)?;
+    let mut coefficients = vec![Integer::from(0); coefficient_count];
+    let pointers = coefficients
+        .iter_mut()
+        .map(|value| value.as_raw_mut().cast::<c_void>())
+        .collect::<Vec<_>>();
+    let mut maximum_coefficient_bits = 0_usize;
+    let mut nonzero_counts = vec![0_usize; target_count];
+    let mut hnf_ns = 0_u64;
+    let mut solve_ns = 0_u64;
+    let status = unsafe {
+        sagejs_rust_flint_relation_witnesses_i64(
+            rows,
+            columns,
+            relations.as_ptr().cast(),
+            target_count,
+            targets.as_ptr().cast(),
+            pointers.as_ptr(),
+            &mut maximum_coefficient_bits,
+            nonzero_counts.as_mut_ptr(),
+            &mut hnf_ns,
+            &mut solve_ns,
+        )
+    };
+    match status {
+        0 => Ok(FlintRelationWitnesses {
+            coefficients,
+            relation_count: rows,
+            target_count,
+            maximum_coefficient_bits,
+            nonzero_counts,
+            initial_hnf_ns: 0,
+            hnf_ns,
+            solve_ns,
+            square_solve_ns: 0,
+        }),
+        -1 => Err(FlintNormalFormError::InvalidDimensions),
+        -3 => Err(FlintNormalFormError::RankDeficient),
+        code => Err(FlintNormalFormError::ForeignFailure(code)),
+    }
+}
+
+pub fn flint_staged_relation_witnesses(
+    square_relations: &[i64],
+    remaining_relations: &[i64],
+    size: usize,
+    targets: &[i64],
+) -> Result<FlintRelationWitnesses, FlintNormalFormError> {
+    if size == 0
+        || size.checked_mul(size) != Some(square_relations.len())
+        || remaining_relations.len() % size != 0
+        || targets.is_empty()
+        || targets.len() % size != 0
+    {
+        return Err(FlintNormalFormError::DimensionMismatch);
+    }
+    let remaining_rows = remaining_relations.len() / size;
+    let relation_count = size
+        .checked_add(remaining_rows)
+        .ok_or(FlintNormalFormError::InvalidDimensions)?;
+    let target_count = targets.len() / size;
+    let coefficient_count = target_count
+        .checked_mul(relation_count)
+        .ok_or(FlintNormalFormError::InvalidDimensions)?;
+    let mut coefficients = vec![Integer::from(0); coefficient_count];
+    let pointers = coefficients
+        .iter_mut()
+        .map(|value| value.as_raw_mut().cast::<c_void>())
+        .collect::<Vec<_>>();
+    let mut maximum_coefficient_bits = 0_usize;
+    let mut nonzero_counts = vec![0_usize; target_count];
+    let mut initial_hnf_ns = 0_u64;
+    let mut hnf_ns = 0_u64;
+    let mut solve_ns = 0_u64;
+    let mut square_solve_ns = 0_u64;
+    let status = unsafe {
+        sagejs_rust_flint_staged_relation_witnesses_i64(
+            size,
+            remaining_rows,
+            square_relations.as_ptr().cast(),
+            remaining_relations.as_ptr().cast(),
+            target_count,
+            targets.as_ptr().cast(),
+            pointers.as_ptr(),
+            &mut maximum_coefficient_bits,
+            nonzero_counts.as_mut_ptr(),
+            &mut initial_hnf_ns,
+            &mut hnf_ns,
+            &mut solve_ns,
+            &mut square_solve_ns,
+        )
+    };
+    match status {
+        0 => Ok(FlintRelationWitnesses {
+            coefficients,
+            relation_count,
+            target_count,
+            maximum_coefficient_bits,
+            nonzero_counts,
+            initial_hnf_ns,
+            hnf_ns,
+            solve_ns,
+            square_solve_ns,
+        }),
+        -1 => Err(FlintNormalFormError::InvalidDimensions),
+        -3 => Err(FlintNormalFormError::RankDeficient),
+        code => Err(FlintNormalFormError::ForeignFailure(code)),
+    }
 }
 
 pub fn flint_incremental_hnf(
@@ -430,5 +600,43 @@ mod tests {
         assert!(map.annihilates(&source, 2));
         assert!(map.coordinates(0).unwrap()[0] != 0 || map.coordinates(1).unwrap()[0] != 0);
         assert!(map.coordinates(2).is_none());
+    }
+
+    #[test]
+    fn relation_witnesses_replay_against_original_rows() {
+        let relations = [2, 0, 0, 3, 2, 3];
+        let targets = [2, 0, 0, 3];
+        let answer = flint_relation_witnesses(&relations, 3, 2, &targets).unwrap();
+        assert_eq!(answer.target_count, 2);
+        assert_eq!(answer.relation_count, 3);
+        for target in 0..answer.target_count {
+            for column in 0..2 {
+                let mut actual = Integer::from(0);
+                for relation in 0..3 {
+                    actual += &answer.coefficients[target * 3 + relation]
+                        * relations[relation * 2 + column];
+                }
+                assert_eq!(actual, targets[target * 2 + column]);
+            }
+        }
+    }
+
+    #[test]
+    fn staged_relation_witnesses_replay_square_and_surplus_rows() {
+        let square = [2, 0, 0, 6];
+        let remaining = [0, 3];
+        let targets = [2, 0, 0, 3];
+        let answer = flint_staged_relation_witnesses(&square, &remaining, 2, &targets).unwrap();
+        let relations = [2, 0, 0, 6, 0, 3];
+        for target in 0..2 {
+            for column in 0..2 {
+                let mut actual = Integer::from(0);
+                for relation in 0..3 {
+                    actual += &answer.coefficients[target * 3 + relation]
+                        * relations[relation * 2 + column];
+                }
+                assert_eq!(actual, targets[target * 2 + column]);
+            }
+        }
     }
 }
