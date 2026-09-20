@@ -9,8 +9,9 @@
 
 use rug::Integer;
 use sagejs_pari_class_group_rust_experiment::{
-    PreparedCollectorLimits, PublicCubicPreparationLimits, RelationPresentation,
-    class_group_candidate_invariants, collect_prepared_cubic_relations, prepare_monic_cubic,
+    CubicPresentationCandidateLimits, NormalFormLimits, PreparedCollectorLimits,
+    PublicCubicPreparationLimits, authenticate_cubic_presentation_candidate,
+    collect_prepared_cubic_relations, prepare_monic_cubic,
 };
 use serde::{Deserialize, Serialize};
 
@@ -20,7 +21,7 @@ pub const RECEIPT_SCHEMA: &str = "sagejs.rust-class-group/public-cubic-e2e-recei
 /// This is the missing public-library boundary, checked after every currently
 /// public stage has run.  Keep this text specific enough to be executable gap
 /// evidence rather than a generic qualification disclaimer.
-pub const MISSING_COMPLETE_API: &str = "the Rust library exports preparation, relation collection, and candidate Smith invariants, but exports no function that consumes a ValidatedPreparedCubic with proof/resource options and returns a proof-authorized complete class-group result with completeness evidence, generator ideals, arbitrary-ideal maps, and principal witnesses";
+pub const MISSING_COMPLETE_API: &str = "the Rust library exports preparation, relation collection, authenticated principal relations, an exact candidate Smith map, and generator-order evidence, but exports no function that attaches unit and analytic or unconditional completion to produce a proof-authorized complete class-group result with arbitrary-ideal maps and assembled principal quotient witnesses";
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case")]
@@ -37,6 +38,8 @@ pub struct Resources {
     pub embedding_precision_bits: u32,
     pub maximum_visited_ideals: usize,
     pub maximum_candidates: usize,
+    pub maximum_normal_form_entries: usize,
+    pub maximum_normal_form_operations: u64,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -72,6 +75,8 @@ pub struct RelationEvidence {
 pub struct CandidateEvidence {
     pub invariant_factors: Vec<String>,
     pub class_number: String,
+    pub authenticated_principal_relations: usize,
+    pub generator_order_witnesses: usize,
     pub authority: &'static str,
 }
 
@@ -99,7 +104,7 @@ pub enum QualificationError {
     InvalidCoefficient { index: usize, value: String },
     Preparation(String),
     RelationCollection(String),
-    CandidateReduction(String),
+    CandidateAuthentication(String),
 }
 
 /// Exercise the strongest route currently expressible entirely through the
@@ -182,20 +187,27 @@ pub fn qualify(request: Request) -> Result<Receipt, QualificationError> {
     };
 
     let candidate = if collected.complete_rank_and_surplus {
-        let presentation = RelationPresentation {
-            generator_count: factor_base_size,
-            relation_vectors: collected.relations,
-        };
-        let invariants = class_group_candidate_invariants(&presentation)
-            .map_err(|error| QualificationError::CandidateReduction(format!("{error:?}")))?;
+        let authenticated = authenticate_cubic_presentation_candidate(
+            &prepared,
+            collected,
+            CubicPresentationCandidateLimits {
+                normal_form: NormalFormLimits {
+                    max_entries: request.resources.maximum_normal_form_entries,
+                    max_operations: request.resources.maximum_normal_form_operations,
+                },
+            },
+        )
+        .map_err(|error| QualificationError::CandidateAuthentication(format!("{error:?}")))?;
         Some(CandidateEvidence {
-            invariant_factors: invariants
-                .invariant_factors
+            invariant_factors: authenticated
+                .invariant_factors()
                 .iter()
                 .map(Integer::to_string)
                 .collect(),
-            class_number: invariants.class_number.to_string(),
-            authority: "presentation-candidate-only",
+            class_number: authenticated.class_number_candidate().to_string(),
+            authenticated_principal_relations: authenticated.principal_relations().len(),
+            generator_order_witnesses: authenticated.generator_orders().len(),
+            authority: "authenticated-supplied-principal-relations-candidate-only",
         })
     } else {
         None
@@ -232,6 +244,8 @@ mod tests {
                 embedding_precision_bits: 192,
                 maximum_visited_ideals: 10_000,
                 maximum_candidates,
+                maximum_normal_form_entries: 10_000_000,
+                maximum_normal_form_operations: 50_000_000,
             },
         }
     }
@@ -245,7 +259,12 @@ mod tests {
         assert!(receipt.relations.complete_rank_and_surplus);
         let candidate = receipt.candidate.unwrap();
         assert_eq!(candidate.class_number, "1");
-        assert_eq!(candidate.authority, "presentation-candidate-only");
+        assert_eq!(
+            candidate.authority,
+            "authenticated-supplied-principal-relations-candidate-only"
+        );
+        assert!(candidate.authenticated_principal_relations > 0);
+        assert_eq!(candidate.generator_order_witnesses, 0);
         assert!(!receipt.public_complete);
         assert_eq!(
             receipt.first_unavailable_boundary,
@@ -264,7 +283,9 @@ mod tests {
                 "maximumIrreducibilityPrime":257,
                 "embeddingPrecisionBits":192,
                 "maximumVisitedIdeals":10000,
-                "maximumCandidates":10000
+                "maximumCandidates":10000,
+                "maximumNormalFormEntries":10000000,
+                "maximumNormalFormOperations":50000000
             },
             "preparedField":{"discriminant":"-23"}
         }"#;

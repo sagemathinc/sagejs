@@ -2377,6 +2377,20 @@
       "provenance_reference": "bench/pari-class-group-rust/qualification/provenance/manifest.json#modules"
     },
     {
+      "path": "bench/pari-class-group-rust/src/cubic_presentation.rs",
+      "category": "mathematical-algorithm",
+      "review_status": "accepted",
+      "lane": "integration",
+      "rationale": "Experimental first-party Rust boundary that authenticates supplied cubic relation presentations, principal relation elements, exact Smith maps, and generator-order evidence without asserting class-group completeness.",
+      "rust_role": "mathematical-core",
+      "qualification_status": "experimental-qualification",
+      "provenance_class": "original-sagejs",
+      "distribution_status": "review-required-before-distribution",
+      "safety_review": "not-applicable",
+      "safety_rationale": "The architecture scanner finds no unsafe or Rust ABI boundary in this source; any future boundary changes this classification and fails validation.",
+      "provenance_mapping_status": "not-applicable"
+    },
+    {
       "path": "bench/pari-class-group-rust/src/enumeration.rs",
       "category": "mathematical-algorithm",
       "review_status": "accepted",
@@ -2819,6 +2833,20 @@
       "review_status": "accepted",
       "lane": "integration",
       "rationale": "Qualification-only Rust integration tests for arbitrary ideal reduction; they exercise real small-field and row-6 certificates and are not linked into production.",
+      "rust_role": "qualification-harness",
+      "qualification_status": "experimental-qualification",
+      "provenance_class": "qualification-harness",
+      "distribution_status": "qualification-only",
+      "safety_review": "not-applicable",
+      "safety_rationale": "The architecture scanner finds no unsafe or Rust ABI boundary in this source; any future boundary changes this classification and fails validation.",
+      "provenance_mapping_status": "not-applicable"
+    },
+    {
+      "path": "bench/pari-class-group-rust/tests/cubic_presentation_candidate.rs",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration",
+      "rationale": "Qualification-only Rust integration tests for public cubic presentation authentication, exact principal relation replay, nontrivial generator-order evidence, and bounded failure.",
       "rust_role": "qualification-harness",
       "qualification_status": "experimental-qualification",
       "provenance_class": "qualification-harness",

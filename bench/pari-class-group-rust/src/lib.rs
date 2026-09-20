@@ -20,6 +20,7 @@ mod bruteforce_collector;
 mod class_group;
 mod class_maps;
 mod collector_schedule;
+mod cubic_presentation;
 mod enumeration;
 mod factor_base;
 #[cfg(feature = "flint-normal-form")]
@@ -79,6 +80,11 @@ pub use class_group::{
 pub use class_maps::{
     ClassCoordinates, ClassMapError, PresentationClassMap, PresentationZeroState,
     PrincipalElementWitnessState, RelationCombinationWitness, RelationCoverage,
+};
+pub use cubic_presentation::{
+    AuthenticatedCubicPresentationCandidate, CubicCandidateGeneratorOrderEvidence,
+    CubicPresentationCandidateError, CubicPresentationCandidateLimits,
+    authenticate_cubic_presentation_candidate,
 };
 #[doc(hidden)]
 pub use factor_base::prepared_cubic_factor_base;

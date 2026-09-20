@@ -9,7 +9,9 @@ public polynomial coefficients
   -> exhaustive cubic p-power superlattice search through the discriminant bound
   -> replay-validated maximal-order basis and multiplication table
   -> maximal-order factor base and PARI-style relation collection
-  -> exact Smith candidate invariants
+  -> exact transform-bearing Smith candidate map
+  -> exact replay of every principal relation element
+  -> exact candidate generator-order relation witnesses
   -> fail closed
 ```
 
@@ -34,13 +36,14 @@ route for larger discriminant valuations and overorder primes.
 
 The process exits with status 2 after printing an `incomplete` receipt even
 when every available stage succeeds. This is deliberate. The public library
-does not export a function that turns a `ValidatedPreparedCubic` and proof
-policy into a proof-authorized complete class-group result. In particular, the
-available Smith result remains a presentation candidate: no exported unified
-route supplies completeness evidence, generator ideals and order witnesses,
-or an arbitrary-ideal class map with principal quotient witnesses. The more
-complete class-and-unit assembly in `row6-candidate/src/main.rs` is executable-
-local qualification code, not a callable public library API.
+now retains and authenticates every collected principal relation, the exact
+Smith map, and candidate generator/order witnesses, but it does not yet attach
+the unit lattice and analytic or unconditional completion needed to turn that
+supplied-relation quotient into a proof-authorized class group. Nor does the
+unified route yet expose arbitrary-ideal mapping with assembled principal
+quotient witnesses. The more complete class-and-unit assembly in
+`row6-candidate/src/main.rs` remains executable-local qualification code, not
+a callable public library API.
 
 Run the regression tests with:
 
@@ -63,7 +66,9 @@ cargo run --release --manifest-path \
     "maximumIrreducibilityPrime": 257,
     "embeddingPrecisionBits": 192,
     "maximumVisitedIdeals": 10000,
-    "maximumCandidates": 10000
+    "maximumCandidates": 10000,
+    "maximumNormalFormEntries": 10000000,
+    "maximumNormalFormOperations": 50000000
   }
 }
 EOF

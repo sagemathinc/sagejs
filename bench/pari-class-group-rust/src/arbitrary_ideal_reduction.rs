@@ -24,7 +24,7 @@ use crate::enumeration::{EnumerationError, EnumerationWorkspace};
 use crate::numerical_preparation::{
     NumericalPreparationError, PreparedCubicEmbedding, prepare_cubic_ideal,
 };
-use crate::polynomial_preparation::RustPreparedMaximalCubic;
+use crate::polynomial_preparation::{PreparedPublicCubic, RustPreparedMaximalCubic};
 use crate::prepared::{EmbeddingPrecisionState, ValidatedPreparedCubic};
 use crate::prepared_factor_base::{PreparedFactorBase, prepared_maximal_cubic_factor_base};
 use crate::prepared_ideal::{
@@ -49,6 +49,19 @@ pub struct MaximalCubicOrder<'a> {
 
 impl<'a> MaximalCubicOrder<'a> {
     pub fn from_rust_prepared(prepared: &'a RustPreparedMaximalCubic) -> Self {
+        Self {
+            field: prepared.field(),
+        }
+    }
+
+    /// Enter exact ideal arithmetic from the bounded public-polynomial
+    /// maximal-order proof.
+    ///
+    /// `PreparedPublicCubic` has no public constructor: it is issued only
+    /// after exhaustive local overorder search and retains its replayable
+    /// maximal-order certificate.  Keeping this conversion here prevents a
+    /// bare `ValidatedPreparedCubic` from minting maximal-order authority.
+    pub fn from_public_prepared(prepared: &'a PreparedPublicCubic) -> Self {
         Self {
             field: prepared.field(),
         }

@@ -14,7 +14,7 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 330,
+    "classified-native-file": 332,
     "declared-ffi": 480,
     "declared-ffi-resource": 37,
     "napi-export": 358,
@@ -9985,6 +9985,14 @@
       "lane": "integration"
     },
     {
+      "id": "native-file:bench/pari-class-group-rust/src/cubic_presentation.rs",
+      "kind": "classified-native-file",
+      "path": "bench/pari-class-group-rust/src/cubic_presentation.rs",
+      "disposition": "mathematical-algorithm",
+      "review_status": "accepted",
+      "lane": "integration"
+    },
+    {
       "id": "native-file:bench/pari-class-group-rust/src/enumeration.rs",
       "kind": "classified-native-file",
       "path": "bench/pari-class-group-rust/src/enumeration.rs",
@@ -10188,6 +10196,14 @@
       "id": "native-file:bench/pari-class-group-rust/tests/collector_trace.rs",
       "kind": "classified-native-file",
       "path": "bench/pari-class-group-rust/tests/collector_trace.rs",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration"
+    },
+    {
+      "id": "native-file:bench/pari-class-group-rust/tests/cubic_presentation_candidate.rs",
+      "kind": "classified-native-file",
+      "path": "bench/pari-class-group-rust/tests/cubic_presentation_candidate.rs",
       "disposition": "benchmark-reference",
       "review_status": "accepted",
       "lane": "integration"

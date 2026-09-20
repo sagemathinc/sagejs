@@ -124,7 +124,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/arbitrary_ideal_reduction.rs",
-      "sha256": "8e58e31f91c4beeb66cdec185876a23225f3c3a78e8277e2a7a3ac38412b16a5",
+      "sha256": "1d821cb838b3d848cc91abd19326160db58ea9f81edd14623bb5d6e81208ef2a",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
@@ -188,6 +188,16 @@
       "mappings": [],
       "missing_mapping_explanation": "The file describes a translated small-norm schedule, but no authenticated source line/function map has yet been recorded.",
       "notes": "Classification follows its translated control-flow purpose; mapping remains deliberately fail-closed."
+    },
+    {
+      "path": "bench/pari-class-group-rust/src/cubic_presentation.rs",
+      "sha256": "bdcf006a0e63b433b8076c51fcc779a2872443feba2e89221c6fda97cdda3ac0",
+      "classification": "original",
+      "declared_license_expression": "GPL-2.0-or-later",
+      "mapping_status": "not_applicable",
+      "mappings": [],
+      "missing_mapping_explanation": null,
+      "notes": "Original typed authentication boundary for exact Smith candidate presentations, principal-relation replay, and generator-order evidence; it explicitly makes no completion claim."
     },
     {
       "path": "bench/pari-class-group-rust/src/enumeration.rs",
@@ -319,7 +329,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/lib.rs",
-      "sha256": "555411104f2d828f8f292f8bd491e7f5d78649b562be9370ff76b9b8b333d5be",
+      "sha256": "bad26f800e94e346dbc5ab34e0aaed55c23410ec6588624e0b0ffc23b6279a90",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",

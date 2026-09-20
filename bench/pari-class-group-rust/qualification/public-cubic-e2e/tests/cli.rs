@@ -14,7 +14,9 @@ const VALID_REQUEST: &str = r#"{
     "maximumIrreducibilityPrime": 257,
     "embeddingPrecisionBits": 192,
     "maximumVisitedIdeals": 10000,
-    "maximumCandidates": 10000
+    "maximumCandidates": 10000,
+    "maximumNormalFormEntries": 10000000,
+    "maximumNormalFormOperations": 50000000
   }
 }"#;
 
@@ -45,8 +47,9 @@ fn executable_emits_evidence_but_never_success_for_a_candidate() {
     assert_eq!(receipt["preparation"]["certificateVerified"], true);
     assert_eq!(
         receipt["candidate"]["authority"],
-        "presentation-candidate-only"
+        "authenticated-supplied-principal-relations-candidate-only"
     );
+    assert!(receipt["candidate"]["authenticatedPrincipalRelations"].as_u64().unwrap() > 0);
     assert_eq!(
         receipt["firstUnavailableBoundary"],
         "candidate-presentation-to-proof-authorized-complete-class-group"
