@@ -321,6 +321,14 @@ impl PresentationClassMap {
         self.generator_coordinates.is_some()
     }
 
+    /// Borrow the already-verified compact coordinate table without hashing
+    /// or remapping a basis vector for every generator.  This remains
+    /// crate-private: callers must separately bind the complete presentation
+    /// before treating the table as authority.
+    pub(crate) fn compact_generator_coordinates(&self) -> Option<&[Integer]> {
+        self.generator_coordinates.as_deref()
+    }
+
     /// Domain-separated digest of the complete verified map representation.
     ///
     /// This binds generator order, relation columns, Smith transforms, and

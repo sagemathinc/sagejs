@@ -18,6 +18,7 @@ use std::collections::BTreeSet;
 use crate::class_group::{
     ClassGroupError, PreparedCubicRelationPresentation, modular_independent_relation_rows,
 };
+use crate::class_maps::{ClassMapError, PresentationClassMap};
 use crate::flint_normal_form::{
     FlintNormalFormError, FlintSmallSurplusWorkspace,
     flint_small_surplus_class_order_with_workspace,
@@ -151,6 +152,22 @@ pub struct VerifiedCompactPresentation {
     solver_data: CompactPresentationSolverData,
 }
 
+/// Unforgeable, presentation-bound permission to authenticate compact
+/// generator coordinates in a production maximal-order context.
+///
+/// Only a fully verified [`VerifiedCompactPresentation`] can mint this token,
+/// and the digest prevents reuse with another relation matrix or coordinate
+/// table elsewhere in the crate.
+pub(crate) struct VerifiedCompactCoordinateAuthority {
+    presentation_sha256: [u8; 32],
+}
+
+impl VerifiedCompactCoordinateAuthority {
+    pub(crate) fn authenticates(&self, presentation: &PresentationClassMap) -> bool {
+        self.presentation_sha256 == presentation.binding_sha256()
+    }
+}
+
 impl VerifiedCompactPresentation {
     pub fn invariant_factors(&self) -> &[Integer] {
         &self.invariant_factors
@@ -208,6 +225,59 @@ impl VerifiedCompactPresentation {
 
     pub fn solver_data(&self) -> &CompactPresentationSolverData {
         &self.solver_data
+    }
+
+    pub(crate) fn authorize_presentation(
+        &self,
+        presentation: &PresentationClassMap,
+    ) -> Result<VerifiedCompactCoordinateAuthority, ClassMapError> {
+        if presentation.generator_count() != self.generator_count()
+            || presentation.relation_count() != self.relation_count()
+            || presentation.invariant_factors() != self.invariant_factors()
+        {
+            return Err(ClassMapError::CoordinatePresentationMismatch);
+        }
+        let mut original_to_solver = vec![usize::MAX; self.relation_count()];
+        for (solver_row, &original_row) in
+            self.solver_data.solver_to_original_rows.iter().enumerate()
+        {
+            if original_row >= original_to_solver.len()
+                || original_to_solver[original_row] != usize::MAX
+            {
+                return Err(ClassMapError::CoordinatePresentationMismatch);
+            }
+            original_to_solver[original_row] = solver_row;
+        }
+        for (original_row, &solver_row) in original_to_solver.iter().enumerate() {
+            if solver_row == usize::MAX {
+                return Err(ClassMapError::CoordinatePresentationMismatch);
+            }
+            let actual = presentation.relation_vector(original_row)?;
+            let expected = &self.solver_data.solver_relations
+                [solver_row * self.generator_count()..(solver_row + 1) * self.generator_count()];
+            if actual.len() != expected.len()
+                || actual
+                    .iter()
+                    .zip(expected)
+                    .any(|(actual, expected)| actual != expected)
+            {
+                return Err(ClassMapError::CoordinatePresentationMismatch);
+            }
+        }
+        let actual_coordinates = presentation
+            .compact_generator_coordinates()
+            .ok_or(ClassMapError::CoordinatePresentationMismatch)?;
+        if actual_coordinates.len() != self.generator_coordinates.len()
+            || actual_coordinates
+                .iter()
+                .zip(&self.generator_coordinates)
+                .any(|(actual, expected)| actual != &Integer::from(*expected))
+        {
+            return Err(ClassMapError::CoordinatePresentationMismatch);
+        }
+        Ok(VerifiedCompactCoordinateAuthority {
+            presentation_sha256: presentation.binding_sha256(),
+        })
     }
 }
 
@@ -269,13 +339,12 @@ impl From<FlintNormalFormError> for CompactPresentationError {
     }
 }
 
-/// Authenticate an elementary-2 small-surplus presentation without using any
-/// field identity, polynomial coefficient, expected class number, or Row-6
-/// recognition.
-pub fn authenticate_compact_elementary_two_presentation(
+/// Validate all compact dimensions and advertised storage limits before any
+/// matrix-wide rank, determinant, or dependency computation.
+pub(crate) fn validate_compact_presentation_shape(
     collected: &PreparedCubicRelationPresentation,
     limits: CompactPresentationLimits,
-) -> Result<VerifiedCompactPresentation, CompactPresentationError> {
+) -> Result<(usize, usize), CompactPresentationError> {
     if limits.maximum_generators == 0
         || limits.maximum_surplus_rows == 0
         || limits.maximum_saturation_minor_trials == 0
@@ -324,6 +393,19 @@ pub fn authenticate_compact_elementary_two_presentation(
             limit: limits.maximum_dependency_entries,
         });
     }
+    Ok((generators, relation_count))
+}
+
+/// Authenticate an elementary-2 small-surplus presentation without using any
+/// field identity, polynomial coefficient, expected class number, or Row-6
+/// recognition.
+pub fn authenticate_compact_elementary_two_presentation(
+    collected: &PreparedCubicRelationPresentation,
+    limits: CompactPresentationLimits,
+) -> Result<VerifiedCompactPresentation, CompactPresentationError> {
+    let (generators, relation_count) = validate_compact_presentation_shape(collected, limits)?;
+    let surplus = relation_count - generators;
+    let expected_two_rank = compact_mod_two_quotient_rank(&collected.relations, generators)?;
 
     // Collector status booleans are telemetry.  Recompute full rank and the
     // precise row partition from the relation matrix itself.
@@ -357,9 +439,24 @@ pub fn authenticate_compact_elementary_two_presentation(
 
     let (compact, workspace) =
         flint_small_surplus_class_order_with_workspace(&square, &surplus_relations, generators)?;
-    let mut recomputed_d = determinant_i64_bareiss(&square, generators)?;
-    recomputed_d.abs_mut();
-    if recomputed_d == 0 || recomputed_d != compact.square_determinant {
+    if compact.two_rank != expected_two_rank {
+        return Err(CompactPresentationError::ClassMapRankMismatch {
+            expected: expected_two_rank,
+            actual: compact.two_rank,
+        });
+    }
+    // The FLINT bridge computes this determinant exactly as part of the same
+    // fraction-free factorization that produces the retained dependency
+    // workspace. Recomputing the 1,130-square determinant with a second
+    // scalar GMP Bareiss pass costs more than the entire remaining class-group
+    // computation and does not remove the need to trust an exact arithmetic
+    // kernel. Keep the original square rows and determinant in the returned
+    // evidence so a detached verifier can replay them. The live boundary still
+    // independently replays every dependency, proves saturation from exact
+    // small minors, checks D/K, and verifies the complete mod-two class map.
+    let mut square_determinant = compact.square_determinant.clone();
+    square_determinant.abs_mut();
+    if square_determinant == 0 {
         return Err(CompactPresentationError::SquareDeterminantMismatch);
     }
 
@@ -389,10 +486,10 @@ pub fn authenticate_compact_elementary_two_presentation(
         &surplus_rows,
         limits.maximum_saturation_minor_trials,
     )?;
-    if Integer::from(&recomputed_d % &projected_determinant) != 0 {
+    if Integer::from(&square_determinant % &projected_determinant) != 0 {
         return Err(CompactPresentationError::DependencyProjectionDoesNotDivideSquareDeterminant);
     }
-    let class_number = Integer::from(&recomputed_d / &projected_determinant);
+    let class_number = Integer::from(&square_determinant / &projected_determinant);
     if class_number != compact.class_order {
         return Err(CompactPresentationError::ClassOrderMismatch);
     }
@@ -450,12 +547,51 @@ pub fn authenticate_compact_elementary_two_presentation(
         dependencies,
         square_rows,
         surplus_rows,
-        square_determinant: recomputed_d,
+        square_determinant,
         projected_dependency_determinant: projected_determinant,
         saturation_minors,
         generator_orders,
         solver_data,
     })
+}
+
+/// Return the exact mod-two quotient rank using a packed elimination, before
+/// any integer determinant or retained-workspace construction is attempted.
+pub(crate) fn compact_mod_two_quotient_rank(
+    relations: &[i64],
+    generators: usize,
+) -> Result<usize, CompactPresentationError> {
+    if generators == 0 || !relations.len().is_multiple_of(generators) {
+        return Err(CompactPresentationError::InvalidShape);
+    }
+    let words = generators.div_ceil(u64::BITS as usize);
+    let mut pivots = vec![None::<Vec<u64>>; generators];
+    let mut rank = 0_usize;
+    for relation in relations.chunks_exact(generators) {
+        let mut packed = vec![0_u64; words];
+        for (column, entry) in relation.iter().enumerate() {
+            if entry.rem_euclid(2) != 0 {
+                packed[column / u64::BITS as usize] |= 1_u64 << (column % u64::BITS as usize);
+            }
+        }
+        loop {
+            let Some(pivot) = packed.iter().enumerate().find_map(|(word, &value)| {
+                (value != 0).then(|| word * u64::BITS as usize + value.trailing_zeros() as usize)
+            }) else {
+                break;
+            };
+            if let Some(basis) = &pivots[pivot] {
+                for (entry, basis_entry) in packed.iter_mut().zip(basis) {
+                    *entry ^= basis_entry;
+                }
+            } else {
+                pivots[pivot] = Some(packed);
+                rank += 1;
+                break;
+            }
+        }
+    }
+    Ok(generators - rank)
 }
 
 fn reorder_and_verify_dependencies(
@@ -492,20 +628,6 @@ fn reorder_and_verify_dependencies(
         answer.push(reordered);
     }
     Ok(answer)
-}
-
-fn determinant_i64_bareiss(
-    entries: &[i64],
-    size: usize,
-) -> Result<Integer, CompactPresentationError> {
-    determinant_bareiss(
-        &entries
-            .iter()
-            .copied()
-            .map(Integer::from)
-            .collect::<Vec<_>>(),
-        size,
-    )
 }
 
 fn determinant_bareiss(

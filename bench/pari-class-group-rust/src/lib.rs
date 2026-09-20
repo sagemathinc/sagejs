@@ -98,6 +98,8 @@ pub use cubic_completion::{
     CubicConditionalCompletionError, CubicConditionalCompletionOptions, CubicUnitLatticeEvidence,
     GrhConditionalCompleteCubicClassGroup, complete_cubic_class_group_conditionally,
 };
+#[cfg(feature = "flint-normal-form")]
+pub use cubic_presentation::authenticate_compact_cubic_presentation_candidate;
 pub use cubic_presentation::{
     AuthenticatedCubicPresentationCandidate, CubicCandidateGeneratorOrderEvidence,
     CubicPresentationCandidateError, CubicPresentationCandidateLimits,

@@ -9,8 +9,8 @@ public polynomial coefficients
   -> exhaustive cubic p-power superlattice search through the discriminant bound
   -> replay-validated maximal-order basis and multiplication table
   -> maximal-order factor base and PARI-style relation collection
-  -> exact transform-bearing Smith candidate map
-  -> exact replay of every principal relation element
+  -> exact transform-bearing Smith map, or a small-surplus compact quotient proof
+  -> full external principal replay, or revalidation of a collector-sealed transcript
   -> exact candidate generator-order relation witnesses
   -> exact dependency lattice and compact unit reconstruction
   -> directed regulator enclosure
@@ -40,11 +40,12 @@ route for larger discriminant valuations and overorder primes.
 
 The process exits successfully only after the typed library completion phase
 has isolated class/unit index one and certified factor-base generation under
-the two hypotheses named in the receipt. Unconditional mode, exhausted
-resources, and equation-order index primes fail closed. Index primes remain
-disabled because the current splitting-record path does not yet distinguish
-all maximal-order splitting types there. The sealed result retains its
-authenticated presentation map for subsequent arbitrary-ideal operations.
+the two hypotheses named in the receipt. Unconditional mode and exhausted
+resources fail closed. Exact maximal-order index-prime decomposition is part
+of the admitted cubic path. Large elementary-2 presentations use the bounded
+compact verifier; unsupported large quotient structures fail explicitly
+rather than falling back to an impractical dense transform. The sealed result
+retains its authenticated presentation map for subsequent arbitrary-ideal operations.
 The receipt's stage clocks end when the sealed mathematical result is
 constructed; JSON projection and serialization are excluded, matching the
 PARI public-call control's exclusion of result getters.
@@ -76,6 +77,11 @@ cargo run --release --manifest-path \
     "maximumRelationExponent": 256,
     "maximumVerificationMultiplyAdds": 100000000,
     "maximumPrincipalFactorTerms": 10000000,
+    "maximumCompactGenerators": 16384,
+    "maximumCompactSurplusRows": 32,
+    "maximumCompactSaturationMinorTrials": 32768,
+    "maximumCompactDependencyEntries": 1000000,
+    "maximumCompactTargetCoefficientBits": 1000000,
     "logarithmPrecisionBits": 1024,
     "replayPrecisionBits": 512,
     "analyticPrecisionBits": 256,

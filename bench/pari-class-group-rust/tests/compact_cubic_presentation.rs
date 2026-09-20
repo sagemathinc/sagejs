@@ -5,9 +5,12 @@
 
 use rug::{Complete, Integer};
 use sagejs_pari_class_group_rust_experiment::{
-    CompactPresentationError, CompactPresentationLimits, PreparedCollectorLimits,
-    PublicCubicPreparationLimits, authenticate_compact_elementary_two_presentation,
-    collect_prepared_cubic_relations, prepare_monic_cubic,
+    ArbitraryIdealReductionError, CompactPresentationError, CompactPresentationLimits,
+    CubicConditionalCompletionOptions, CubicPresentationCandidateError,
+    CubicPresentationCandidateLimits, PreparedCollectorLimits, PublicCubicPreparationLimits,
+    authenticate_compact_cubic_presentation_candidate,
+    authenticate_compact_elementary_two_presentation, collect_prepared_cubic_relations,
+    complete_cubic_class_group_conditionally, prepare_monic_cubic,
 };
 
 fn collect(
@@ -26,6 +29,124 @@ fn collect(
         },
     )
     .unwrap()
+}
+
+#[test]
+fn compact_proof_reaches_the_authenticated_public_candidate_boundary() {
+    let prepared = prepare_monic_cubic(
+        [-37, -30, -8, 1].map(Integer::from),
+        PublicCubicPreparationLimits::default(),
+    )
+    .unwrap();
+    let collected = collect_prepared_cubic_relations(
+        prepared.field(),
+        PreparedCollectorLimits {
+            maximum_visited_ideals: 10_000,
+            maximum_candidates: 100_000,
+        },
+    )
+    .unwrap();
+    let candidate = authenticate_compact_cubic_presentation_candidate(
+        &prepared,
+        collected,
+        CubicPresentationCandidateLimits::default(),
+        CompactPresentationLimits::default(),
+    )
+    .unwrap();
+
+    assert_eq!(candidate.invariant_factors(), &[2, 2]);
+    assert_eq!(candidate.class_number_candidate(), &Integer::from(4));
+    assert_eq!(candidate.generator_orders().len(), 2);
+    assert_eq!(
+        candidate.dependency_lattice().len(),
+        candidate.principal_relations().len()
+            - candidate.collected().factor_base.exact_ideals.len()
+    );
+    candidate
+        .class_map()
+        .presentation()
+        .verify_all_relations_map_to_zero()
+        .unwrap();
+}
+
+#[test]
+fn row6_reaches_the_compact_authenticated_candidate_boundary_from_coefficients() {
+    let prepared = prepare_monic_cubic(
+        [2_000_000_000_018_i64, -2_000_000_000_010, 0, 1].map(Integer::from),
+        PublicCubicPreparationLimits::default(),
+    )
+    .unwrap();
+    let collected = collect_prepared_cubic_relations(
+        prepared.field(),
+        PreparedCollectorLimits {
+            maximum_visited_ideals: 1_000_000,
+            maximum_candidates: 1_000_000,
+        },
+    )
+    .unwrap();
+    let candidate = authenticate_compact_cubic_presentation_candidate(
+        &prepared,
+        collected,
+        CubicPresentationCandidateLimits::default(),
+        CompactPresentationLimits::default(),
+    )
+    .unwrap();
+
+    assert_eq!(candidate.invariant_factors(), &[2, 2]);
+    assert_eq!(candidate.class_number_candidate(), &Integer::from(4));
+    assert_eq!(candidate.collected().factor_base.exact_ideals.len(), 1_130);
+    assert_eq!(candidate.generator_orders().len(), 2);
+}
+
+#[test]
+fn row6_completes_conditionally_end_to_end_from_coefficients() {
+    let total_started = std::time::Instant::now();
+    let prepared = prepare_monic_cubic(
+        [2_000_000_000_018_i64, -2_000_000_000_010, 0, 1].map(Integer::from),
+        PublicCubicPreparationLimits::default(),
+    )
+    .unwrap();
+    let preparation = total_started.elapsed();
+    let collection_started = std::time::Instant::now();
+    let collected = collect_prepared_cubic_relations(
+        prepared.field(),
+        PreparedCollectorLimits {
+            maximum_visited_ideals: 1_000_000,
+            maximum_candidates: 1_000_000,
+        },
+    )
+    .unwrap();
+    let collection = collection_started.elapsed();
+    let authentication_started = std::time::Instant::now();
+    let candidate = authenticate_compact_cubic_presentation_candidate(
+        &prepared,
+        collected,
+        CubicPresentationCandidateLimits::default(),
+        CompactPresentationLimits::default(),
+    )
+    .unwrap();
+    let authentication = authentication_started.elapsed();
+    let completion_started = std::time::Instant::now();
+    let completed = complete_cubic_class_group_conditionally(
+        prepared,
+        candidate,
+        CubicConditionalCompletionOptions {
+            logarithm_precision_bits: 4_096,
+            replay_precision_bits: 2_048,
+            analytic_precision_bits: 512,
+            ..CubicConditionalCompletionOptions::default()
+        },
+    )
+    .unwrap();
+    let completion = completion_started.elapsed();
+
+    assert_eq!(completed.invariant_factors(), &[Integer::from(2), 2.into()]);
+    assert_eq!(completed.class_number(), &Integer::from(4));
+    assert!(completed.verify_sealed_evidence());
+    eprintln!(
+        "row6 stages: preparation={preparation:?} collection={collection:?} authentication={authentication:?} completion={completion:?} total={:?}",
+        total_started.elapsed()
+    );
 }
 
 #[test]
@@ -92,5 +213,144 @@ fn enforces_the_small_surplus_limit_before_flint_work() {
     assert!(matches!(
         authenticate_compact_elementary_two_presentation(&collected, limits),
         Err(CompactPresentationError::SurplusLimit { .. })
+    ));
+}
+
+#[test]
+fn compact_candidate_enforces_zero_verification_budget_before_exact_work() {
+    let prepared = prepare_monic_cubic(
+        [-37, -30, -8, 1].map(Integer::from),
+        PublicCubicPreparationLimits::default(),
+    )
+    .unwrap();
+    let collected = collect_prepared_cubic_relations(
+        prepared.field(),
+        PreparedCollectorLimits {
+            maximum_visited_ideals: 10_000,
+            maximum_candidates: 100_000,
+        },
+    )
+    .unwrap();
+    let mut limits = CubicPresentationCandidateLimits::default();
+    limits.maximum_verification_multiply_adds = 0;
+    assert!(matches!(
+        authenticate_compact_cubic_presentation_candidate(
+            &prepared,
+            collected,
+            limits,
+            CompactPresentationLimits::default(),
+        ),
+        Err(CubicPresentationCandidateError::VerificationBudgetExceeded { limit: 0, .. })
+    ));
+}
+
+#[test]
+fn compact_candidate_enforces_storage_limits_before_rank_work() {
+    let prepared = prepare_monic_cubic(
+        [-37, -30, -8, 1].map(Integer::from),
+        PublicCubicPreparationLimits::default(),
+    )
+    .unwrap();
+    let collected = collect_prepared_cubic_relations(
+        prepared.field(),
+        PreparedCollectorLimits {
+            maximum_visited_ideals: 10_000,
+            maximum_candidates: 100_000,
+        },
+    )
+    .unwrap();
+    let compact_limits = CompactPresentationLimits {
+        maximum_generators: 1,
+        ..CompactPresentationLimits::default()
+    };
+    assert!(matches!(
+        authenticate_compact_cubic_presentation_candidate(
+            &prepared,
+            collected,
+            CubicPresentationCandidateLimits::default(),
+            compact_limits,
+        ),
+        Err(CubicPresentationCandidateError::Compact(
+            CompactPresentationError::GeneratorLimit { limit: 1, .. }
+        ))
+    ));
+}
+
+#[test]
+fn compact_candidate_rejects_cross_field_and_corrupt_base_authority() {
+    let first = prepare_monic_cubic(
+        [-37, -30, -8, 1].map(Integer::from),
+        PublicCubicPreparationLimits::default(),
+    )
+    .unwrap();
+    let second = prepare_monic_cubic(
+        [-26, -30, -8, 1].map(Integer::from),
+        PublicCubicPreparationLimits::default(),
+    )
+    .unwrap();
+    let collect_first = || {
+        collect_prepared_cubic_relations(
+            first.field(),
+            PreparedCollectorLimits {
+                maximum_visited_ideals: 10_000,
+                maximum_candidates: 100_000,
+            },
+        )
+        .unwrap()
+    };
+    let compact_limits = CompactPresentationLimits::default();
+    assert!(matches!(
+        authenticate_compact_cubic_presentation_candidate(
+            &second,
+            collect_first(),
+            CubicPresentationCandidateLimits::default(),
+            compact_limits,
+        ),
+        Err(CubicPresentationCandidateError::Authentication(
+            ArbitraryIdealReductionError::FactorBaseShape
+        ))
+    ));
+
+    let mut corrupted = collect_first();
+    corrupted.factor_base.catalog.complete_groups[0] =
+        !corrupted.factor_base.catalog.complete_groups[0];
+    assert!(matches!(
+        authenticate_compact_cubic_presentation_candidate(
+            &first,
+            corrupted,
+            CubicPresentationCandidateLimits::default(),
+            compact_limits,
+        ),
+        Err(CubicPresentationCandidateError::Authentication(
+            ArbitraryIdealReductionError::FactorBaseShape
+        ))
+    ));
+
+    let mut corrupted_relation = collect_first();
+    corrupted_relation.relations[0] += 1;
+    assert!(matches!(
+        authenticate_compact_cubic_presentation_candidate(
+            &first,
+            corrupted_relation,
+            CubicPresentationCandidateLimits::default(),
+            compact_limits,
+        ),
+        Err(CubicPresentationCandidateError::Authentication(
+            ArbitraryIdealReductionError::PrincipalRelationWitnessMismatch { .. }
+        ))
+    ));
+
+    let mut corrupted_generator = collect_first();
+    corrupted_generator.generators[0] += 1;
+    assert!(matches!(
+        authenticate_compact_cubic_presentation_candidate(
+            &first,
+            corrupted_generator,
+            CubicPresentationCandidateLimits::default(),
+            compact_limits,
+        ),
+        Err(CubicPresentationCandidateError::Authentication(
+            ArbitraryIdealReductionError::PrincipalRelationWitnessMismatch { .. }
+        ))
     ));
 }

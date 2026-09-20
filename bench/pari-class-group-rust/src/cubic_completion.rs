@@ -360,6 +360,24 @@ fn interval_contains_unique_positive_one(interval: &FlintDyadicInterval) -> bool
     lower > 0 && lower <= 1 && upper >= 1 && upper < 2
 }
 
+fn regulator_refinement_precision(precision: u32) -> Option<u32> {
+    let refined = precision
+        .saturating_mul(2)
+        .min(MAXIMUM_COMPLETION_PRECISION_BITS);
+    (refined > precision).then_some(refined)
+}
+
+fn dyadic_interval_contains(
+    outer: &FlintDyadicInterval,
+    inner: &FlintDyadicInterval,
+) -> Option<bool> {
+    let outer_lower = dyadic_endpoint(&outer.lower, outer.binary_exponent)?;
+    let outer_upper = dyadic_endpoint(&outer.upper, outer.binary_exponent)?;
+    let inner_lower = dyadic_endpoint(&inner.lower, inner.binary_exponent)?;
+    let inner_upper = dyadic_endpoint(&inner.upper, inner.binary_exponent)?;
+    Some(outer_lower <= inner_lower && inner_upper <= outer_upper)
+}
+
 /// Complete a cubic candidate under the two explicitly recorded GRH
 /// hypotheses. No fixture identifier, expected answer, relation transcript,
 /// or external oracle enters this boundary.
@@ -598,7 +616,29 @@ pub fn complete_cubic_class_group_conditionally(
     let regulator_upper = dyadic_endpoint(&regulator.upper, regulator.binary_exponent)
         .ok_or(CubicConditionalCompletionError::MachineRepresentationLimit)?;
     if replayed_rational < regulator_lower || replayed_rational > regulator_upper {
-        return Err(CubicConditionalCompletionError::RegulatorReplayOutsideEnclosure);
+        // Large compact units can lose thousands of bits through cancellation
+        // in the independent MPFR point replay. Lazily recompute the directed
+        // Arb enclosure at a strictly higher precision and require it to refine
+        // the original enclosure. This is a fail-closed refinement-consistency
+        // check which relies on Arb's directed-enclosure contract; it is not an
+        // independent proof of that contract and does not promote the lossy
+        // MPFR point approximation to proof evidence.
+        let refinement_precision = regulator_refinement_precision(options.logarithm_precision_bits)
+            .ok_or(CubicConditionalCompletionError::RegulatorReplayOutsideEnclosure)?;
+        let refined_regulator = flint_compact_cubic_regulator(
+            polynomial,
+            basis,
+            denominator,
+            prepared.field().data().signature,
+            &collected.generators,
+            &flattened_exponents,
+            refinement_precision,
+        )?;
+        let nested = dyadic_interval_contains(&regulator, &refined_regulator)
+            .ok_or(CubicConditionalCompletionError::MachineRepresentationLimit)?;
+        if !nested {
+            return Err(CubicConditionalCompletionError::RegulatorReplayOutsideEnclosure);
+        }
     }
 
     let class_number = presentation
@@ -707,4 +747,42 @@ pub fn complete_cubic_class_group_conditionally(
         return Err(CubicConditionalCompletionError::UnitReplayMismatch);
     }
     Ok(result)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn interval(lower: i32, upper: i32, binary_exponent: i64) -> FlintDyadicInterval {
+        FlintDyadicInterval {
+            lower: Integer::from(lower),
+            upper: Integer::from(upper),
+            binary_exponent,
+        }
+    }
+
+    #[test]
+    fn regulator_refinement_is_strict_and_capped() {
+        assert_eq!(regulator_refinement_precision(4_096), Some(8_192));
+        assert_eq!(regulator_refinement_precision(12_000), Some(16_384));
+        assert_eq!(regulator_refinement_precision(16_384), None);
+    }
+
+    #[test]
+    fn regulator_refinement_must_be_nested_in_original_interval() {
+        let original = interval(4, 12, -2); // [1, 3]
+        let nested = interval(10, 22, -3); // [1.25, 2.75]
+        let protrudes_below = interval(7, 22, -3); // [0.875, 2.75]
+        let protrudes_above = interval(10, 25, -3); // [1.25, 3.125]
+
+        assert_eq!(dyadic_interval_contains(&original, &nested), Some(true));
+        assert_eq!(
+            dyadic_interval_contains(&original, &protrudes_below),
+            Some(false)
+        );
+        assert_eq!(
+            dyadic_interval_contains(&original, &protrudes_above),
+            Some(false)
+        );
+    }
 }

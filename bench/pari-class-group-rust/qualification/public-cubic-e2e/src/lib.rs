@@ -9,9 +9,10 @@
 
 use rug::Integer;
 use sagejs_pari_class_group_rust_experiment::{
-    CubicAnalyticEvidence, CubicCompletionProofMode, CubicConditionalCompletionOptions,
-    CubicPresentationCandidateLimits, NormalFormLimits, PreparedCollectorLimits,
-    PublicCubicPreparationLimits, authenticate_cubic_presentation_candidate,
+    CompactPresentationLimits, CubicAnalyticEvidence, CubicCompletionProofMode,
+    CubicConditionalCompletionOptions, CubicPresentationCandidateLimits, NormalFormLimits,
+    PreparedCollectorLimits, PublicCubicPreparationLimits,
+    authenticate_compact_cubic_presentation_candidate, authenticate_cubic_presentation_candidate,
     collect_prepared_cubic_relations, complete_cubic_class_group_conditionally,
     prepare_monic_cubic,
 };
@@ -41,6 +42,11 @@ pub struct Resources {
     pub maximum_relation_exponent: u32,
     pub maximum_verification_multiply_adds: u64,
     pub maximum_principal_factor_terms: usize,
+    pub maximum_compact_generators: usize,
+    pub maximum_compact_surplus_rows: usize,
+    pub maximum_compact_saturation_minor_trials: usize,
+    pub maximum_compact_dependency_entries: usize,
+    pub maximum_compact_target_coefficient_bits: usize,
     pub logarithm_precision_bits: u32,
     pub replay_precision_bits: u32,
     pub analytic_precision_bits: u32,
@@ -233,22 +239,55 @@ pub fn qualify(request: Request) -> Result<Receipt, QualificationError> {
         completion_ns,
         total_to_sealed_result,
     ) = if collected.complete_rank_and_surplus {
-        let authenticated = authenticate_cubic_presentation_candidate(
-            &prepared,
-            collected,
-            CubicPresentationCandidateLimits {
-                normal_form: NormalFormLimits {
-                    max_entries: request.resources.maximum_normal_form_entries,
-                    max_operations: request.resources.maximum_normal_form_operations,
-                },
-                maximum_relation_exponent: request.resources.maximum_relation_exponent,
-                maximum_verification_multiply_adds: request
-                    .resources
-                    .maximum_verification_multiply_adds,
-                maximum_principal_factor_terms: request.resources.maximum_principal_factor_terms,
+        let candidate_limits = CubicPresentationCandidateLimits {
+            normal_form: NormalFormLimits {
+                max_entries: request.resources.maximum_normal_form_entries,
+                max_operations: request.resources.maximum_normal_form_operations,
             },
-        )
-        .map_err(|error| QualificationError::CandidateAuthentication(format!("{error:?}")))?;
+            maximum_relation_exponent: request.resources.maximum_relation_exponent,
+            maximum_verification_multiply_adds: request
+                .resources
+                .maximum_verification_multiply_adds,
+            maximum_principal_factor_terms: request.resources.maximum_principal_factor_terms,
+        };
+        // Dense Smith transforms remain the most general route for modest
+        // presentations. Large small-surplus elementary-2 presentations use
+        // the exact compact quotient proof, avoiding quadratic-size
+        // transforms while retaining the same authenticated result type.
+        let (authenticated, authority) = if factor_base_size > 256 {
+            (
+                authenticate_compact_cubic_presentation_candidate(
+                    &prepared,
+                    collected,
+                    candidate_limits,
+                    CompactPresentationLimits {
+                        maximum_generators: request.resources.maximum_compact_generators,
+                        maximum_surplus_rows: request.resources.maximum_compact_surplus_rows,
+                        maximum_saturation_minor_trials: request
+                            .resources
+                            .maximum_compact_saturation_minor_trials,
+                        maximum_dependency_entries: request
+                            .resources
+                            .maximum_compact_dependency_entries,
+                        maximum_target_coefficient_bits: request
+                            .resources
+                            .maximum_compact_target_coefficient_bits,
+                    },
+                )
+                .map_err(|error| {
+                    QualificationError::CandidateAuthentication(format!("{error:?}"))
+                })?,
+                "authenticated-collector-sealed-compact-elementary-two-presentation",
+            )
+        } else {
+            (
+                authenticate_cubic_presentation_candidate(&prepared, collected, candidate_limits)
+                    .map_err(|error| {
+                    QualificationError::CandidateAuthentication(format!("{error:?}"))
+                })?,
+                "authenticated-supplied-principal-relations-candidate-only",
+            )
+        };
         let candidate_authentication_ns = candidate_start.elapsed().as_nanos();
         let candidate_evidence = CandidateEvidence {
             invariant_factors: authenticated
@@ -259,7 +298,7 @@ pub fn qualify(request: Request) -> Result<Receipt, QualificationError> {
             class_number: authenticated.class_number_candidate().to_string(),
             authenticated_principal_relations: authenticated.principal_relations().len(),
             generator_order_witnesses: authenticated.generator_orders().len(),
-            authority: "authenticated-supplied-principal-relations-candidate-only",
+            authority,
         };
         let options = CubicConditionalCompletionOptions {
             proof_mode: match request.proof_mode {
@@ -370,6 +409,11 @@ mod tests {
                 maximum_relation_exponent: 256,
                 maximum_verification_multiply_adds: 100_000_000,
                 maximum_principal_factor_terms: 10_000_000,
+                maximum_compact_generators: 16_384,
+                maximum_compact_surplus_rows: 32,
+                maximum_compact_saturation_minor_trials: 32_768,
+                maximum_compact_dependency_entries: 1_000_000,
+                maximum_compact_target_coefficient_bits: 1_000_000,
                 logarithm_precision_bits: 1_024,
                 replay_precision_bits: 512,
                 analytic_precision_bits: 256,
@@ -476,5 +520,35 @@ mod tests {
             assert!(completion.sealed_evidence_verified);
             assert!(completion.arbitrary_ideal_class_map_retained);
         }
+    }
+
+    #[test]
+    fn row6_reaches_the_sealed_public_boundary_through_the_compact_route() {
+        let mut input = request(1_000_000);
+        input.polynomial_ascending = [
+            "2000000000018".into(),
+            "-2000000000010".into(),
+            "0".into(),
+            "1".into(),
+        ];
+        input.resources.logarithm_precision_bits = 4_096;
+        input.resources.replay_precision_bits = 2_048;
+        input.resources.analytic_precision_bits = 512;
+        let receipt = qualify(input).unwrap();
+        assert!(receipt.public_complete);
+        assert_eq!(receipt.preparation.equation_order_index, "3");
+        assert_eq!(receipt.relations.factor_base_size, 1_130);
+        assert_eq!(receipt.relations.relation_count, 1_137);
+        let candidate = receipt.candidate.unwrap();
+        assert_eq!(candidate.invariant_factors, ["2", "2"]);
+        assert_eq!(candidate.class_number, "4");
+        assert_eq!(
+            candidate.authority,
+            "authenticated-collector-sealed-compact-elementary-two-presentation"
+        );
+        let completion = receipt.completion.unwrap();
+        assert_eq!(completion.class_number, "4");
+        assert_eq!(completion.unit_rank, 2);
+        assert!(completion.sealed_evidence_verified);
     }
 }

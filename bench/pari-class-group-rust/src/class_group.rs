@@ -108,6 +108,9 @@ pub struct PreparedCubicRelationPresentation {
     /// authenticator can avoid regenerating a base that this collector just
     /// constructed and used for every relation.
     pub(crate) factor_base_authority: PreparedFactorBaseAuthority,
+    /// Collector-only binding for the exact ordered principal-relation
+    /// transcript carried by this presentation.
+    pub(crate) principal_relations_authority: CollectedPrincipalRelationsAuthority,
     pub relations: Vec<i64>,
     pub generators: Vec<Integer>,
     pub first_nonzero_hints: Vec<usize>,
@@ -153,6 +156,81 @@ impl PreparedFactorBaseAuthority {
     }
 }
 
+/// Sealed provenance for a collector-produced principal-relation transcript.
+///
+/// Its constructor and digest are private to this module. Other crate modules
+/// can verify a live presentation, but cannot mint authority for supplied
+/// relation rows or principal generators.
+#[derive(Clone, Debug)]
+pub(crate) struct CollectedPrincipalRelationsAuthority {
+    transcript_sha256: [u8; 32],
+}
+
+impl CollectedPrincipalRelationsAuthority {
+    fn mint(
+        field: &ValidatedPreparedCubic,
+        factor_base: &PreparedFactorBase,
+        relations: &[i64],
+        generators: &[Integer],
+    ) -> Self {
+        Self {
+            transcript_sha256: collected_principal_relations_sha256(
+                field,
+                factor_base,
+                relations,
+                generators,
+            )
+            .expect("collector emits aligned relation and principal-generator rows"),
+        }
+    }
+
+    pub(crate) fn authenticates(
+        &self,
+        field: &ValidatedPreparedCubic,
+        factor_base: &PreparedFactorBase,
+        relations: &[i64],
+        generators: &[Integer],
+    ) -> bool {
+        collected_principal_relations_sha256(field, factor_base, relations, generators)
+            .is_some_and(|digest| digest == self.transcript_sha256)
+    }
+}
+
+fn collected_principal_relations_sha256(
+    field: &ValidatedPreparedCubic,
+    factor_base: &PreparedFactorBase,
+    relations: &[i64],
+    generators: &[Integer],
+) -> Option<[u8; 32]> {
+    let factor_count = factor_base.exact_ideals.len();
+    if factor_count == 0 || relations.len() % factor_count != 0 {
+        return None;
+    }
+    let relation_count = relations.len() / factor_count;
+    if generators.len() != relation_count.checked_mul(DEGREE)? {
+        return None;
+    }
+
+    let mut hasher = Sha256::new();
+    hasher.update(b"sagejs.collected-principal-relations/v1\0");
+    hasher.update(canonical_field_sha256(field));
+    hasher.update(factor_base_binding_sha256(factor_base));
+    hasher.update((factor_count as u64).to_le_bytes());
+    hasher.update((relation_count as u64).to_le_bytes());
+    hasher.update((relations.len() as u64).to_le_bytes());
+    for relation in relations {
+        hasher.update(relation.to_le_bytes());
+    }
+    hasher.update((DEGREE as u64).to_le_bytes());
+    hasher.update((generators.len() as u64).to_le_bytes());
+    for generator in generators {
+        let bytes = generator.to_string();
+        hasher.update((bytes.len() as u64).to_le_bytes());
+        hasher.update(bytes.as_bytes());
+    }
+    Some(hasher.finalize().into())
+}
+
 pub(crate) fn factor_base_binding_sha256(factor_base: &PreparedFactorBase) -> [u8; 32] {
     fn usize_value(hasher: &mut Sha256, value: usize) {
         hasher.update((value as u64).to_le_bytes());
@@ -171,7 +249,10 @@ pub(crate) fn factor_base_binding_sha256(factor_base: &PreparedFactorBase) -> [u
     hasher.update(b"sagejs.prepared-cubic-factor-base/v1\0");
     usize_value(&mut hasher, catalog.relation_bound);
     usize_value(&mut hasher, catalog.checking_bound);
+    hasher.update(b"catalog-ideals\0");
     usize_value(&mut hasher, catalog.ideals.len());
+    hasher.update(b"exact-ideals\0");
+    usize_value(&mut hasher, factor_base.exact_ideals.len());
     for (descriptor, ideal) in catalog.ideals.iter().zip(&factor_base.exact_ideals) {
         i64_value(&mut hasher, descriptor.prime);
         usize_value(&mut hasher, descriptor.ramification);
@@ -192,16 +273,23 @@ pub(crate) fn factor_base_binding_sha256(factor_base: &PreparedFactorBase) -> [u
             }
         }
     }
+    hasher.update(b"rational-primes\0");
     usize_value(&mut hasher, catalog.rational_primes.len());
     for &value in &catalog.rational_primes {
         i64_value(&mut hasher, value);
     }
+    hasher.update(b"rational-offsets\0");
+    usize_value(&mut hasher, catalog.rational_offsets.len());
     for &value in &catalog.rational_offsets {
         usize_value(&mut hasher, value);
     }
+    hasher.update(b"rational-counts\0");
+    usize_value(&mut hasher, catalog.rational_counts.len());
     for &value in &catalog.rational_counts {
         usize_value(&mut hasher, value);
     }
+    hasher.update(b"complete-groups\0");
+    usize_value(&mut hasher, catalog.complete_groups.len());
     hasher.update(
         catalog
             .complete_groups
@@ -1022,13 +1110,17 @@ pub fn collect_prepared_cubic_relations(
 
     timings.total_ns = total_started.elapsed().as_nanos();
     generators.truncate(cache.len() * DEGREE);
+    let relations = cache.records().to_vec();
+    let principal_relations_authority =
+        CollectedPrincipalRelationsAuthority::mint(field, &factor_base, &relations, &generators);
     Ok(PreparedCubicRelationPresentation {
-        relations: cache.records().to_vec(),
+        relations,
         generators,
         first_nonzero_hints: cache.first_nonzero_hints().to_vec(),
         metadata: cache.metadata().to_vec(),
         factor_base,
         factor_base_authority,
+        principal_relations_authority,
         subfactor_count,
         search_permutation,
         counters,
@@ -1043,6 +1135,65 @@ pub fn collect_prepared_cubic_relations(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::prepared::PreparedCubicData;
+
+    fn small_cubic(linear: i64, discriminant: i64) -> ValidatedPreparedCubic {
+        let higher_products = if linear == -1 {
+            [-1, 1, 0, 0, -1, 1]
+        } else {
+            [-1, -1, 0, 0, -1, -1]
+        };
+        ValidatedPreparedCubic::validate(PreparedCubicData {
+            polynomial_ascending: [1.into(), linear.into(), 0.into(), 1.into()],
+            irreducibility_prime: 2,
+            integral_basis_numerators: [
+                1.into(),
+                0.into(),
+                0.into(),
+                0.into(),
+                1.into(),
+                0.into(),
+                0.into(),
+                0.into(),
+                1.into(),
+            ],
+            basis_denominator: 1.into(),
+            multiplication_table: [
+                1.into(),
+                0.into(),
+                0.into(),
+                0.into(),
+                1.into(),
+                0.into(),
+                0.into(),
+                0.into(),
+                1.into(),
+                0.into(),
+                1.into(),
+                0.into(),
+                0.into(),
+                0.into(),
+                1.into(),
+                higher_products[0].into(),
+                higher_products[1].into(),
+                higher_products[2].into(),
+                0.into(),
+                0.into(),
+                1.into(),
+                higher_products[0].into(),
+                higher_products[1].into(),
+                higher_products[2].into(),
+                higher_products[3].into(),
+                higher_products[4].into(),
+                higher_products[5].into(),
+            ],
+            discriminant: discriminant.into(),
+            signature: (1, 1),
+            embedding_precision: EmbeddingPrecisionState::Pending { target_bits: 128 },
+            index_primes: Vec::new(),
+        })
+        .unwrap()
+    }
 
     #[test]
     fn bounded_prepared_capacity_preserves_the_unbounded_default() {
@@ -1074,5 +1225,82 @@ mod tests {
             modular_independent_relation_rows(&[1, 0, 0], &[1], 2),
             Err(ClassGroupError::InvalidRelationPresentation)
         );
+    }
+
+    #[test]
+    fn collected_principal_relations_authority_rejects_transcript_substitution() {
+        let first = small_cubic(-1, -23);
+        let second = small_cubic(1, -31);
+        let factor_base = prepared_maximal_cubic_factor_base(&first).unwrap();
+        let width = factor_base.exact_ideals.len();
+        assert_ne!(width, 0);
+        let relations = (0..2 * width)
+            .map(|index| i64::try_from(index).unwrap() - i64::try_from(width).unwrap())
+            .collect::<Vec<_>>();
+        let generators = [-3, 5, 7, 11, -13, 17].map(Integer::from).to_vec();
+        let authority = CollectedPrincipalRelationsAuthority::mint(
+            &first,
+            &factor_base,
+            &relations,
+            &generators,
+        );
+
+        assert!(authority.authenticates(&first, &factor_base, &relations, &generators));
+
+        let mut changed_row = relations.clone();
+        changed_row[0] += 1;
+        assert!(!authority.authenticates(&first, &factor_base, &changed_row, &generators));
+
+        let mut changed_generator = generators.clone();
+        changed_generator[0] += 1;
+        assert!(!authority.authenticates(&first, &factor_base, &relations, &changed_generator));
+
+        let mut reordered_rows = relations.clone();
+        reordered_rows.rotate_left(width);
+        let mut reordered_generators = generators.clone();
+        reordered_generators.rotate_left(DEGREE);
+        assert!(!authority.authenticates(
+            &first,
+            &factor_base,
+            &reordered_rows,
+            &reordered_generators
+        ));
+
+        assert!(!authority.authenticates(
+            &first,
+            &factor_base,
+            &relations[..width],
+            &generators[..DEGREE]
+        ));
+
+        let mut changed_factor_base = factor_base.clone();
+        changed_factor_base.catalog.complete_groups[0] =
+            !changed_factor_base.catalog.complete_groups[0];
+        assert!(!authority.authenticates(&first, &changed_factor_base, &relations, &generators));
+
+        let mut shifted_vector_boundary = factor_base.clone();
+        let moved = shifted_vector_boundary
+            .catalog
+            .rational_offsets
+            .pop()
+            .expect("nonempty rational-prime grouping");
+        shifted_vector_boundary
+            .catalog
+            .rational_counts
+            .insert(0, moved);
+        assert!(!authority.authenticates(
+            &first,
+            &shifted_vector_boundary,
+            &relations,
+            &generators
+        ));
+        assert!(!authority.authenticates(&second, &factor_base, &relations, &generators));
+
+        assert!(!authority.authenticates(
+            &first,
+            &factor_base,
+            &relations[..relations.len() - 1],
+            &generators
+        ));
     }
 }

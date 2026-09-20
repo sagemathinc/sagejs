@@ -21,10 +21,21 @@ use crate::arbitrary_ideal_reduction::{
     AuthenticatedPresentationClassMap, MaximalCubicOrder, PrincipalRelationWitness,
     authenticate_collected_presentation_class_map,
 };
+#[cfg(feature = "flint-normal-form")]
+use crate::arbitrary_ideal_reduction::{
+    authenticate_collected_compact_presentation_class_map,
+    validate_collected_factor_base_for_compact_presentation,
+};
 use crate::class_group::{
     PREPARED_CUBIC_SUPPLEMENTARY_RELATIONS, PreparedCubicRelationPresentation,
 };
 use crate::class_maps::{ClassMapError, PresentationClassMap, RelationCoverage};
+#[cfg(feature = "flint-normal-form")]
+use crate::compact_cubic_presentation::{
+    CompactPresentationError, CompactPresentationLimits,
+    authenticate_compact_elementary_two_presentation, compact_mod_two_quotient_rank,
+    validate_compact_presentation_shape,
+};
 use crate::hnf::{BigIntMatrix, ExactNormalFormWorkspace, NormalFormError, NormalFormLimits};
 use crate::polynomial_preparation::PreparedPublicCubic;
 use crate::prepared_ideal::PreparedIdealWorkspace;
@@ -191,6 +202,8 @@ pub enum CubicPresentationCandidateError {
     NormalForm(NormalFormError),
     ClassMap(ClassMapError),
     Authentication(ArbitraryIdealReductionError),
+    #[cfg(feature = "flint-normal-form")]
+    Compact(CompactPresentationError),
 }
 
 impl From<NormalFormError> for CubicPresentationCandidateError {
@@ -208,6 +221,13 @@ impl From<ClassMapError> for CubicPresentationCandidateError {
 impl From<ArbitraryIdealReductionError> for CubicPresentationCandidateError {
     fn from(value: ArbitraryIdealReductionError) -> Self {
         Self::Authentication(value)
+    }
+}
+
+#[cfg(feature = "flint-normal-form")]
+impl From<CompactPresentationError> for CubicPresentationCandidateError {
+    fn from(value: CompactPresentationError) -> Self {
+        Self::Compact(value)
     }
 }
 
@@ -432,6 +452,9 @@ pub fn authenticate_cubic_presentation_candidate(
         MaximalCubicOrder::from_public_prepared(prepared),
         &collected.factor_base,
         &collected.factor_base_authority,
+        &collected.principal_relations_authority,
+        &collected.relations,
+        &collected.generators,
         presentation,
         &principal_relations,
         &mut ideal_workspace,
@@ -446,6 +469,250 @@ pub fn authenticate_cubic_presentation_candidate(
         dependency_lattice,
         class_number_candidate,
     })
+}
+
+/// Authenticate a large, small-surplus elementary-2 presentation without a
+/// quadratic-size Smith transform.
+///
+/// This reaches the same sealed candidate boundary as
+/// [`authenticate_cubic_presentation_candidate`]. The only difference is the
+/// exact quotient proof: the compact verifier proves `D/K`, saturated
+/// dependencies, the complete GF(2) map, and order-two witnesses before this
+/// function revalidates the collector-sealed relation/generator transcript
+/// against the collector-bound field and factor base. External transcripts
+/// still use the detached full principal-ideal replay path.
+#[cfg(feature = "flint-normal-form")]
+pub fn authenticate_compact_cubic_presentation_candidate(
+    prepared: &PreparedPublicCubic,
+    mut collected: PreparedCubicRelationPresentation,
+    relation_limits: CubicPresentationCandidateLimits,
+    compact_limits: CompactPresentationLimits,
+) -> Result<AuthenticatedCubicPresentationCandidate, CubicPresentationCandidateError> {
+    if relation_limits.maximum_relation_exponent == 0
+        || relation_limits.maximum_relation_exponent > ARBITRARY_IDEAL_MAXIMUM_VALUATION
+    {
+        return Err(CubicPresentationCandidateError::InvalidLimits);
+    }
+    let factor_base_size = collected.factor_base.exact_ideals.len();
+    if factor_base_size == 0
+        || !collected.relations.len().is_multiple_of(factor_base_size)
+        || !collected.generators.len().is_multiple_of(DEGREE)
+    {
+        return Err(CubicPresentationCandidateError::InvalidShape);
+    }
+    let relation_count = collected.relations.len() / factor_base_size;
+    if collected.generators.len() / DEGREE != relation_count
+        || collected.first_nonzero_hints.len() != relation_count
+        || collected.metadata.len() != relation_count.saturating_mul(DEGREE)
+    {
+        return Err(CubicPresentationCandidateError::InvalidShape);
+    }
+    let required_relations = factor_base_size
+        .checked_add(PREPARED_CUBIC_SUPPLEMENTARY_RELATIONS)
+        .ok_or(NormalFormError::DimensionOverflow {
+            rows: factor_base_size,
+            columns: PREPARED_CUBIC_SUPPLEMENTARY_RELATIONS,
+        })?;
+    if relation_count < required_relations {
+        return Err(
+            CubicPresentationCandidateError::InsufficientRelationSurplus {
+                required: required_relations,
+                actual: relation_count,
+            },
+        );
+    }
+    let (compact_generators, compact_relations) =
+        validate_compact_presentation_shape(&collected, compact_limits)?;
+    if compact_generators != factor_base_size || compact_relations != relation_count {
+        return Err(CubicPresentationCandidateError::InvalidShape);
+    }
+    // Every accepted compact presentation must at least replay its complete
+    // surplus-rank dependency basis. Enforce that unavoidable lower bound
+    // before even the packed mod-two rank preflight.
+    let minimum_verification_multiply_adds =
+        compact_verification_multiply_adds(factor_base_size, relation_count, 0).ok_or(
+            CubicPresentationCandidateError::VerificationBudgetExceeded {
+                required: u64::MAX,
+                limit: relation_limits.maximum_verification_multiply_adds,
+            },
+        )?;
+    if minimum_verification_multiply_adds > relation_limits.maximum_verification_multiply_adds {
+        return Err(
+            CubicPresentationCandidateError::VerificationBudgetExceeded {
+                required: minimum_verification_multiply_adds,
+                limit: relation_limits.maximum_verification_multiply_adds,
+            },
+        );
+    }
+    let two_rank = compact_mod_two_quotient_rank(&collected.relations, factor_base_size)?;
+    let verification_multiply_adds =
+        compact_verification_multiply_adds(factor_base_size, relation_count, two_rank).ok_or(
+            CubicPresentationCandidateError::VerificationBudgetExceeded {
+                required: u64::MAX,
+                limit: relation_limits.maximum_verification_multiply_adds,
+            },
+        )?;
+    if verification_multiply_adds > relation_limits.maximum_verification_multiply_adds {
+        return Err(
+            CubicPresentationCandidateError::VerificationBudgetExceeded {
+                required: verification_multiply_adds,
+                limit: relation_limits.maximum_verification_multiply_adds,
+            },
+        );
+    }
+    // Authenticate the cheap collector seal before the square determinant,
+    // exact dependency kernel, or any principal-ideal replay is attempted.
+    let validated_factor_base = validate_collected_factor_base_for_compact_presentation(
+        MaximalCubicOrder::from_public_prepared(prepared),
+        &collected.factor_base,
+        &collected.factor_base_authority,
+        &collected.principal_relations_authority,
+        &collected.relations,
+        &collected.generators,
+    )?;
+    let relation_entries =
+        factor_base_size
+            .checked_mul(relation_count)
+            .ok_or(NormalFormError::DimensionOverflow {
+                rows: factor_base_size,
+                columns: relation_count,
+            })?;
+    if relation_entries > relation_limits.normal_form.max_entries {
+        return Err(NormalFormError::CapacityExceeded {
+            required: relation_entries,
+            limit: relation_limits.normal_form.max_entries,
+        }
+        .into());
+    }
+
+    let mut relation_values = vec![Integer::new(); relation_entries];
+    let mut principal_relations = Vec::with_capacity(relation_count);
+    let mut principal_factor_terms = 0_usize;
+    for relation in 0..relation_count {
+        let mut exponents = Vec::with_capacity(factor_base_size);
+        for factor in 0..factor_base_size {
+            let exponent = collected.relations[relation * factor_base_size + factor];
+            if exponent < 0 {
+                return Err(CubicPresentationCandidateError::NegativeRelationExponent {
+                    relation,
+                    factor,
+                    exponent,
+                });
+            }
+            let exponent = u32::try_from(exponent).map_err(|_| {
+                CubicPresentationCandidateError::RelationExponentOutsideU32 {
+                    relation,
+                    factor,
+                    exponent,
+                }
+            })?;
+            if exponent > relation_limits.maximum_relation_exponent {
+                return Err(CubicPresentationCandidateError::RelationExponentLimit {
+                    relation,
+                    factor,
+                    exponent,
+                    limit: relation_limits.maximum_relation_exponent,
+                });
+            }
+            if exponent != 0 {
+                principal_factor_terms = principal_factor_terms.checked_add(1).ok_or(
+                    CubicPresentationCandidateError::PrincipalFactorTermBudgetExceeded {
+                        required: usize::MAX,
+                        limit: relation_limits.maximum_principal_factor_terms,
+                    },
+                )?;
+                if principal_factor_terms > relation_limits.maximum_principal_factor_terms {
+                    return Err(
+                        CubicPresentationCandidateError::PrincipalFactorTermBudgetExceeded {
+                            required: principal_factor_terms,
+                            limit: relation_limits.maximum_principal_factor_terms,
+                        },
+                    );
+                }
+            }
+            relation_values[factor * relation_count + relation] = Integer::from(exponent);
+            exponents.push(exponent);
+        }
+        principal_relations.push(PrincipalRelationWitness {
+            exponents,
+            principal_element: std::array::from_fn(|coordinate| {
+                collected.generators[relation * DEGREE + coordinate].clone()
+            }),
+        });
+    }
+
+    let compact = authenticate_compact_elementary_two_presentation(&collected, compact_limits)?;
+    if compact.generator_count() != factor_base_size || compact.relation_count() != relation_count {
+        return Err(CubicPresentationCandidateError::InvalidShape);
+    }
+    let relations = BigIntMatrix::try_new(factor_base_size, relation_count, relation_values)?;
+    let presentation = PresentationClassMap::from_verified_generator_coordinates(
+        compact.invariant_factors().to_vec(),
+        compact
+            .generator_coordinates()
+            .iter()
+            .copied()
+            .map(Integer::from)
+            .collect(),
+        relations,
+    )?;
+    let coordinate_authority = compact.authorize_presentation(&presentation)?;
+    let generator_orders = compact
+        .generator_orders()
+        .iter()
+        .map(|evidence| {
+            let mut factor_base_exponents = vec![Integer::new(); factor_base_size];
+            factor_base_exponents[evidence.factor_base_index] = Integer::from(1);
+            CubicCandidateGeneratorOrderEvidence {
+                smith_position: evidence.coordinate,
+                invariant_factor: Integer::from(2),
+                factor_base_exponents,
+                relation_coefficients: evidence.relation_coefficients.clone(),
+            }
+        })
+        .collect();
+    let dependency_lattice = compact.dependencies().to_vec();
+    let class_number_candidate = compact.class_number().clone();
+
+    collected.complete_rank_and_surplus = true;
+    collected.missing_rank = 0;
+    let mut ideal_workspace = PreparedIdealWorkspace::new();
+    let class_map = authenticate_collected_compact_presentation_class_map(
+        validated_factor_base,
+        presentation,
+        coordinate_authority,
+        &principal_relations,
+        &mut ideal_workspace,
+    )?;
+
+    Ok(AuthenticatedCubicPresentationCandidate {
+        prepared: prepared.clone(),
+        collected,
+        principal_relations,
+        class_map,
+        generator_orders,
+        dependency_lattice,
+        class_number_candidate,
+    })
+}
+
+#[cfg(feature = "flint-normal-form")]
+fn compact_verification_multiply_adds(
+    generators: usize,
+    relations: usize,
+    two_rank: usize,
+) -> Option<u64> {
+    let generators = u64::try_from(generators).ok()?;
+    let relations = u64::try_from(relations).ok()?;
+    let surplus = relations.checked_sub(generators)?;
+    let two_rank = u64::try_from(two_rank).ok()?;
+    // Dense exact replay consists of every saturated dependency, every class
+    // coordinate, each retained target solve, the final presentation-map
+    // annihilation, and binding that map back to the compact authority.
+    // FLINT's bounded producer work is governed separately by
+    // CompactPresentationLimits.
+    let passes = surplus.checked_add(two_rank.checked_mul(4)?)?;
+    generators.checked_mul(relations)?.checked_mul(passes)
 }
 
 fn smith_verification_multiply_adds(generators: usize, relations: usize) -> Option<u64> {

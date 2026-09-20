@@ -417,6 +417,19 @@ fn prepare_monic_cubic_internal(
         });
     }
 
+    // Exhaustive overorder enumeration proves which lattice is maximal, but
+    // its final HNF representative can be a very poor arithmetic basis.  In a
+    // totally real cubic, Tr(xy) is positive definite.  Exact Gram size
+    // reduction against 1 and the preceding basis vectors chooses a stable
+    // representative without changing the order.  This is not cosmetic:
+    // relation coefficients, sparse elimination fill, and intermediate GMP
+    // sizes all depend strongly on this unimodular choice.
+    basis = trace_size_reduced_totally_real_basis(
+        basis,
+        &polynomial_ascending,
+        equation_discriminant > 0,
+    );
+
     let index =
         basis_index(&basis).ok_or(PublicCubicPreparationError::MaximalOrderConstructionFailed)?;
     let index_squared = index.clone().square();
@@ -491,6 +504,91 @@ fn normalized_basis(mut basis: RationalCubicBasis) -> RationalCubicBasis {
         basis.denominator = -basis.denominator;
         for value in &mut basis.numerators {
             *value = -value.clone();
+        }
+    }
+    basis
+}
+
+/// Round `numerator / denominator` to nearest, with half-integers toward
+/// positive infinity.  The denominator must be positive.
+fn nearest_integer_ratio(numerator: &Integer, denominator: &Integer) -> Integer {
+    debug_assert!(denominator > &0);
+    let mut quotient = numerator.clone() / denominator;
+    let mut remainder = numerator.clone() - quotient.clone() * denominator;
+    if remainder < 0 {
+        quotient -= 1;
+        remainder += denominator;
+    }
+    if remainder * 2 >= *denominator {
+        quotient += 1;
+    }
+    quotient
+}
+
+/// Return the numerator of `Tr(left * right)` when both vectors use the
+/// common order-basis denominator.  The omitted positive denominator is the
+/// same in every Gram quotient and therefore cancels during size reduction.
+fn trace_product_numerator(
+    left: &[Integer],
+    right: &[Integer],
+    polynomial: &[Integer; 4],
+) -> Integer {
+    let product = reduced_product(left, right, polynomial);
+    // Newton sums for x^3 + b*x^2 + c*x + d:
+    // Tr(1)=3, Tr(alpha)=-b, Tr(alpha^2)=b^2-2c.
+    let trace_alpha = -polynomial[2].clone();
+    let trace_alpha_squared = polynomial[2].clone().square() - 2 * &polynomial[1];
+    3 * &product[0] + trace_alpha * &product[1] + trace_alpha_squared * &product[2]
+}
+
+fn subtract_basis_row_multiple(
+    basis: &mut RationalCubicBasis,
+    target: usize,
+    source: usize,
+    multiple: &Integer,
+) {
+    for column in 0..3 {
+        let source_entry = basis.numerators[3 * source + column].clone();
+        let correction = multiple * source_entry;
+        basis.numerators[3 * target + column] -= correction;
+    }
+}
+
+/// Exactly size-reduce a totally real cubic order basis while preserving its
+/// ordered flag `Z*1 <= Z*1 + Z*b1 <= O`.  The transform is unit lower
+/// triangular, hence unimodular.  Complex cubics need the conjugate Minkowski
+/// form rather than `Tr(xy)` and are deliberately left unchanged here.
+fn trace_size_reduced_totally_real_basis(
+    mut basis: RationalCubicBasis,
+    polynomial: &[Integer; 4],
+    totally_real: bool,
+) -> RationalCubicBasis {
+    if !totally_real
+        || basis.numerators[0] != basis.denominator
+        || basis.numerators[1] != 0
+        || basis.numerators[2] != 0
+    {
+        return basis;
+    }
+    for target in 1..3 {
+        for source in (0..target).rev() {
+            let inner = trace_product_numerator(
+                &basis.numerators[3 * target..3 * target + 3],
+                &basis.numerators[3 * source..3 * source + 3],
+                polynomial,
+            );
+            let norm = trace_product_numerator(
+                &basis.numerators[3 * source..3 * source + 3],
+                &basis.numerators[3 * source..3 * source + 3],
+                polynomial,
+            );
+            if norm <= 0 {
+                return basis;
+            }
+            let multiple = nearest_integer_ratio(&inner, &norm);
+            if multiple != 0 {
+                subtract_basis_row_multiple(&mut basis, target, source, &multiple);
+            }
         }
     }
     basis
@@ -1115,5 +1213,24 @@ mod tests {
 
         let other = prepare_monic_cubic(integers([1, 1, 0, 1]), limits).unwrap();
         assert!(!prepared.certificate.verify(&other.field, limits));
+    }
+
+    #[test]
+    fn row6_maximal_order_basis_is_exactly_trace_size_reduced() {
+        let prepared = prepare_monic_cubic(
+            integers([2_000_000_000_018, -2_000_000_000_010, 0, 1]),
+            PublicCubicPreparationLimits::default(),
+        )
+        .unwrap();
+        assert_eq!(prepared.field.data().basis_denominator, 3);
+        assert_eq!(
+            prepared.field.data().integral_basis_numerators,
+            [3_i64, 0, 0, 0, 3, 0, -1_333_333_333_340, 1, 1,].map(Integer::from)
+        );
+        assert!(
+            prepared
+                .certificate
+                .verify(&prepared.field, PublicCubicPreparationLimits::default())
+        );
     }
 }

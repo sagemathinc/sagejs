@@ -19,11 +19,14 @@ use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 
 use crate::class_group::{
-    PreparedFactorBaseAuthority, canonical_field_sha256, factor_base_binding_sha256,
+    CollectedPrincipalRelationsAuthority, PreparedFactorBaseAuthority, canonical_field_sha256,
+    factor_base_binding_sha256,
 };
 use crate::class_maps::{
     ClassCoordinates, ClassMapError, PresentationClassMap, PresentationZeroState,
 };
+#[cfg(feature = "flint-normal-form")]
+use crate::compact_cubic_presentation::VerifiedCompactCoordinateAuthority;
 use crate::enumeration::{EnumerationError, EnumerationWorkspace};
 use crate::numerical_preparation::{
     NumericalPreparationError, PreparedCubicEmbedding, prepare_cubic_ideal,
@@ -459,8 +462,51 @@ pub fn authenticate_presentation_class_map(
         presentation,
         witnesses,
         workspace,
-        None,
+        FactorBaseAuthentication::Regenerate,
+        CoordinateMapAuthentication::SmithBackedOnly,
+        PrincipalRelationAuthentication::Replay,
     )
+}
+
+/// Sealed proof that the live field and factor base still match the authority
+/// minted by the collector.  It is deliberately borrowed and crate-private,
+/// so it cannot outlive or be detached from either authenticated value.
+#[cfg(feature = "flint-normal-form")]
+pub(crate) struct ValidatedCollectedFactorBase<'a> {
+    field: &'a ValidatedPreparedCubic,
+    factor_base: &'a PreparedFactorBase,
+    relations: &'a [i64],
+    generators: &'a [Integer],
+}
+
+/// Perform the cheap collector-authority check before compact determinant
+/// work. The returned capability is consumed by final principal replay.
+#[cfg(feature = "flint-normal-form")]
+pub(crate) fn validate_collected_factor_base_for_compact_presentation<'a>(
+    order: MaximalCubicOrder<'a>,
+    factor_base: &'a PreparedFactorBase,
+    factor_base_authority: &PreparedFactorBaseAuthority,
+    principal_relations_authority: &CollectedPrincipalRelationsAuthority,
+    relations: &'a [i64],
+    generators: &'a [Integer],
+) -> Result<ValidatedCollectedFactorBase<'a>, ArbitraryIdealReductionError> {
+    if !factor_base_authority.authenticates(order.field(), factor_base) {
+        return Err(ArbitraryIdealReductionError::FactorBaseShape);
+    }
+    if !principal_relations_authority.authenticates(
+        order.field(),
+        factor_base,
+        relations,
+        generators,
+    ) {
+        return Err(ArbitraryIdealReductionError::PrincipalRelationWitnessMismatch { index: 0 });
+    }
+    Ok(ValidatedCollectedFactorBase {
+        field: order.field(),
+        factor_base,
+        relations,
+        generators,
+    })
 }
 
 /// Authenticate a presentation against the exact factor base minted and used
@@ -474,6 +520,9 @@ pub(crate) fn authenticate_collected_presentation_class_map(
     order: MaximalCubicOrder<'_>,
     factor_base: &PreparedFactorBase,
     factor_base_authority: &PreparedFactorBaseAuthority,
+    principal_relations_authority: &CollectedPrincipalRelationsAuthority,
+    collected_relations: &[i64],
+    collected_generators: &[Integer],
     presentation: PresentationClassMap,
     witnesses: &[PrincipalRelationWitness],
     workspace: &mut PreparedIdealWorkspace,
@@ -485,7 +534,39 @@ pub(crate) fn authenticate_collected_presentation_class_map(
         presentation,
         witnesses,
         workspace,
-        Some(factor_base_authority),
+        FactorBaseAuthentication::Collector(factor_base_authority),
+        CoordinateMapAuthentication::SmithBackedOnly,
+        PrincipalRelationAuthentication::Collector {
+            authority: principal_relations_authority,
+            relations: collected_relations,
+            generators: collected_generators,
+        },
+    )
+}
+
+/// Authenticate a collector-bound coordinate map already proved by the exact
+/// compact small-surplus verifier.
+#[cfg(feature = "flint-normal-form")]
+pub(crate) fn authenticate_collected_compact_presentation_class_map(
+    validated: ValidatedCollectedFactorBase<'_>,
+    presentation: PresentationClassMap,
+    coordinate_authority: VerifiedCompactCoordinateAuthority,
+    witnesses: &[PrincipalRelationWitness],
+    workspace: &mut PreparedIdealWorkspace,
+) -> Result<AuthenticatedPresentationClassMap, ArbitraryIdealReductionError> {
+    authenticate_presentation_with_context(
+        validated.field,
+        MaximalOrderEvidenceStatus::RustProvedSquarefreeDiscriminant,
+        validated.factor_base,
+        presentation,
+        witnesses,
+        workspace,
+        FactorBaseAuthentication::PrevalidatedCollector,
+        CoordinateMapAuthentication::VerifiedCompact(coordinate_authority),
+        PrincipalRelationAuthentication::PrevalidatedCollector {
+            relations: validated.relations,
+            generators: validated.generators,
+        },
     )
 }
 
@@ -503,8 +584,37 @@ pub fn authenticate_upstream_assumed_row6_presentation_class_map(
         presentation,
         witnesses,
         workspace,
-        None,
+        FactorBaseAuthentication::Regenerate,
+        CoordinateMapAuthentication::SmithBackedOnly,
+        PrincipalRelationAuthentication::Replay,
     )
+}
+
+enum FactorBaseAuthentication<'a> {
+    Regenerate,
+    Collector(&'a PreparedFactorBaseAuthority),
+    #[cfg(feature = "flint-normal-form")]
+    PrevalidatedCollector,
+}
+
+enum CoordinateMapAuthentication {
+    SmithBackedOnly,
+    #[cfg(feature = "flint-normal-form")]
+    VerifiedCompact(VerifiedCompactCoordinateAuthority),
+}
+
+enum PrincipalRelationAuthentication<'a> {
+    Replay,
+    Collector {
+        authority: &'a CollectedPrincipalRelationsAuthority,
+        relations: &'a [i64],
+        generators: &'a [Integer],
+    },
+    #[cfg(feature = "flint-normal-form")]
+    PrevalidatedCollector {
+        relations: &'a [i64],
+        generators: &'a [Integer],
+    },
 }
 
 fn authenticate_presentation_with_context(
@@ -514,7 +624,9 @@ fn authenticate_presentation_with_context(
     presentation: PresentationClassMap,
     witnesses: &[PrincipalRelationWitness],
     workspace: &mut PreparedIdealWorkspace,
-    factor_base_authority: Option<&PreparedFactorBaseAuthority>,
+    factor_base_authentication: FactorBaseAuthentication<'_>,
+    coordinate_map_authentication: CoordinateMapAuthentication,
+    principal_relation_authentication: PrincipalRelationAuthentication<'_>,
 ) -> Result<AuthenticatedPresentationClassMap, ArbitraryIdealReductionError> {
     // This is deliberately the first operation. Witnesses are public input,
     // and neither malformed presentation/base data nor a later relation
@@ -545,17 +657,31 @@ fn authenticate_presentation_with_context(
     if evidence == MaximalOrderEvidenceStatus::RustProvedSquarefreeDiscriminant
         && presentation.uses_external_generator_coordinates()
     {
-        // An externally retained coordinate table is qualification evidence,
-        // not a Smith proof derived by this Rust process. Production maximal-
-        // order contexts accept only the exact Smith-backed constructors.
-        return Err(ArbitraryIdealReductionError::QualificationCoordinateMapInProductionContext);
-    }
-    if let Some(authority) = factor_base_authority {
-        if !authority.authenticates(field, factor_base) {
-            return Err(ArbitraryIdealReductionError::FactorBaseShape);
+        match coordinate_map_authentication {
+            #[cfg(feature = "flint-normal-form")]
+            CoordinateMapAuthentication::VerifiedCompact(authority)
+                if authority.authenticates(&presentation) => {}
+            _ => {
+                // An externally retained coordinate table is qualification
+                // evidence unless a compact proof bound to this exact map is
+                // consumed in the same authentication call.
+                return Err(
+                    ArbitraryIdealReductionError::QualificationCoordinateMapInProductionContext,
+                );
+            }
         }
-    } else {
-        validate_factor_base(field, factor_base, workspace)?;
+    }
+    match factor_base_authentication {
+        FactorBaseAuthentication::Regenerate => {
+            validate_factor_base(field, factor_base, workspace)?;
+        }
+        FactorBaseAuthentication::Collector(authority) => {
+            if !authority.authenticates(field, factor_base) {
+                return Err(ArbitraryIdealReductionError::FactorBaseShape);
+            }
+        }
+        #[cfg(feature = "flint-normal-form")]
+        FactorBaseAuthentication::PrevalidatedCollector => {}
     }
     if presentation.generator_count() != factor_base.exact_ideals.len() {
         return Err(ArbitraryIdealReductionError::ClassMapFactorBaseWidth {
@@ -566,14 +692,42 @@ fn authenticate_presentation_with_context(
     if witnesses.is_empty() || witnesses.len() != presentation.relation_count() {
         return Err(ArbitraryIdealReductionError::MissingPrincipalRelationWitnesses);
     }
+    let collector_transcript = match principal_relation_authentication {
+        PrincipalRelationAuthentication::Replay => None,
+        PrincipalRelationAuthentication::Collector {
+            authority,
+            relations,
+            generators,
+        } => {
+            if !authority.authenticates(field, factor_base, relations, generators) {
+                return Err(
+                    ArbitraryIdealReductionError::PrincipalRelationWitnessMismatch { index: 0 },
+                );
+            }
+            Some((relations, generators))
+        }
+        #[cfg(feature = "flint-normal-form")]
+        PrincipalRelationAuthentication::PrevalidatedCollector {
+            relations,
+            generators,
+        } => Some((relations, generators)),
+    };
+    let factor_count = factor_base.exact_ideals.len();
+    if collector_transcript.is_some_and(|(relations, generators)| {
+        relations.len() != witnesses.len().saturating_mul(factor_count)
+            || generators.len() != witnesses.len().saturating_mul(DEGREE)
+    }) {
+        return Err(ArbitraryIdealReductionError::PrincipalRelationWitnessMismatch { index: 0 });
+    }
     let mut witness_hasher = Sha256::new();
     witness_hasher.update(b"sagejs.principal-relation-witnesses/v1\0");
     witness_hasher.update((witnesses.len() as u64).to_le_bytes());
-    // Relation collections overwhelmingly reuse small powers of the same
-    // factor-base ideals.  The ideal power depends only on the authenticated
-    // field, factor-base position, and bounded exponent, so retain each exact
-    // canonical result while replaying the transcript.  Every relation still
-    // performs the complete ideal-product and principal-ideal equality check.
+    // Detached relation collections overwhelmingly reuse small powers of the
+    // same factor-base ideals. The ideal power depends only on the
+    // authenticated field, factor-base position, and bounded exponent, so
+    // retain each exact canonical result during full replay. The private
+    // collector route instead rehashes and compares the sealed raw transcript;
+    // its principal-ideal facts were proved at collection time.
     let mut power_cache = BTreeMap::<(usize, u32), CubicIdeal>::new();
     for (index, witness) in witnesses.iter().enumerate() {
         let relation = presentation.relation_vector(index)?;
@@ -587,6 +741,27 @@ fn authenticate_presentation_with_context(
         {
             return Err(ArbitraryIdealReductionError::PrincipalRelationWitnessMismatch { index });
         }
+        if let Some((relations, generators)) = collector_transcript {
+            let relation_start = index * factor_count;
+            let generator_start = index * DEGREE;
+            if witness
+                .exponents
+                .iter()
+                .enumerate()
+                .any(|(factor, exponent)| {
+                    i64::from(*exponent) != relations[relation_start + factor]
+                })
+                || witness
+                    .principal_element
+                    .iter()
+                    .zip(&generators[generator_start..generator_start + DEGREE])
+                    .any(|(witness_value, collected_value)| witness_value != collected_value)
+            {
+                return Err(
+                    ArbitraryIdealReductionError::PrincipalRelationWitnessMismatch { index },
+                );
+            }
+        }
         let mut product = CubicIdeal::unit();
         for (factor, (prime, exponent)) in factor_base
             .exact_ideals
@@ -595,7 +770,7 @@ fn authenticate_presentation_with_context(
             .enumerate()
         {
             witness_hasher.update(exponent.to_le_bytes());
-            if *exponent != 0 {
+            if collector_transcript.is_none() && *exponent != 0 {
                 let key = (factor, *exponent);
                 if !power_cache.contains_key(&key) {
                     power_cache.insert(key, ideal_pow(field, prime, *exponent, workspace)?);
@@ -611,9 +786,13 @@ fn authenticate_presentation_with_context(
             witness_hasher.update((bytes.len() as u64).to_le_bytes());
             witness_hasher.update(bytes.as_bytes());
         }
-        let principal = principal_ideal(field, &witness.principal_element, workspace)?;
-        if product != principal {
-            return Err(ArbitraryIdealReductionError::PrincipalRelationWitnessMismatch { index });
+        if collector_transcript.is_none() {
+            let principal = principal_ideal(field, &witness.principal_element, workspace)?;
+            if product != principal {
+                return Err(
+                    ArbitraryIdealReductionError::PrincipalRelationWitnessMismatch { index },
+                );
+            }
         }
     }
     presentation.verify_all_relations_map_to_zero()?;

@@ -12,16 +12,21 @@
     "maximumTrialDivisor": 10000,
     "maximumIrreducibilityPrime": 257,
     "embeddingPrecisionBits": 192,
-    "maximumVisitedIdeals": 10000,
-    "maximumCandidates": 10000,
+    "maximumVisitedIdeals": 1000000,
+    "maximumCandidates": 1000000,
     "maximumNormalFormEntries": 10000000,
     "maximumNormalFormOperations": 50000000,
     "maximumRelationExponent": 256,
     "maximumVerificationMultiplyAdds": 100000000,
     "maximumPrincipalFactorTerms": 10000000,
-    "logarithmPrecisionBits": 1024,
-    "replayPrecisionBits": 512,
-    "analyticPrecisionBits": 256,
+    "maximumCompactGenerators": 16384,
+    "maximumCompactSurplusRows": 32,
+    "maximumCompactSaturationMinorTrials": 32768,
+    "maximumCompactDependencyEntries": 1000000,
+    "maximumCompactTargetCoefficientBits": 1000000,
+    "logarithmPrecisionBits": 4096,
+    "replayPrecisionBits": 2048,
+    "analyticPrecisionBits": 512,
     "maximumRelations": 10000,
     "maximumDependencies": 1000,
     "maximumKernelCoefficientBits": 4080,
@@ -43,7 +48,8 @@
         "classNumber": "1",
         "invariantFactors": [],
         "unitRank": 1,
-        "bfThreshold": 1152
+        "bfThreshold": 1152,
+        "candidateAuthority": "authenticated-supplied-principal-relations-candidate-only"
       }
     },
     {
@@ -59,7 +65,25 @@
         "classNumber": "2",
         "invariantFactors": ["2"],
         "unitRank": 1,
-        "bfThreshold": 4608
+        "bfThreshold": 4608,
+        "candidateAuthority": "authenticated-supplied-principal-relations-candidate-only"
+      }
+    },
+    {
+      "id": "row6-continuation-cubic",
+      "polynomialAscending": ["2000000000018", "-2000000000010", "0", "1"],
+      "expected": {
+        "discriminant": "3555555555596888888888939555555555028",
+        "signature": [3, 0],
+        "equationOrderIndex": "3",
+        "discriminantPrimeFactors": ["2", "3", "32921810699971193415638329218106991"],
+        "factorBaseSize": 1130,
+        "relationCount": 1137,
+        "classNumber": "4",
+        "invariantFactors": ["2", "2"],
+        "unitRank": 2,
+        "bfThreshold": 23994,
+        "candidateAuthority": "authenticated-collector-sealed-compact-elementary-two-presentation"
       }
     }
   ]

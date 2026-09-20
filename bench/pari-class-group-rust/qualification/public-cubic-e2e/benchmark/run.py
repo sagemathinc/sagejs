@@ -192,7 +192,7 @@ def verify_rust(sample: dict[str, Any], field: dict[str, Any]) -> None:
         "classNumber": expected["classNumber"],
         "authenticatedPrincipalRelations": expected["relationCount"],
         "generatorOrderWitnesses": len(expected["invariantFactors"]),
-        "authority": "authenticated-supplied-principal-relations-candidate-only",
+        "authority": expected["candidateAuthority"],
     }
     completion = sample["completion"]
     assert completion == {
@@ -333,6 +333,7 @@ def main() -> int:
     assert [field["id"] for field in panel["fields"]] == [
         "small-x3-x-1",
         "small-class-number-2",
+        "row6-continuation-cubic",
     ]
     if not PARI_BUILD_IDENTITY.is_file():
         raise SystemExit(
