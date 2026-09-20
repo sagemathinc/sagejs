@@ -1,0 +1,556 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/rust-class-group-qualification/prepared-cubic-class-unit-candidate-v1.json",
+  "title": "Prepared cubic class/unit candidate evidence",
+  "description": "Closed structural contract for the Rust prepared-cubic diagnostic. Validation establishes only well-formed candidate evidence. It never authorizes a complete Sage.js class group, unit group, proof status, or public result.",
+  "$comment": "Candidate-only and incomplete at the public Sage.js boundary. Unknown producer fields, including any completion assertion, are rejected.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "inputId",
+    "polynomialAscending",
+    "qualificationStatus",
+    "usesOracleAsInput",
+    "usesClassGroupAnswersAsInput",
+    "mathematicalBoundary",
+    "relations",
+    "relationCollectionProfile",
+    "classMap",
+    "kernel",
+    "reconstructedUnitLattice",
+    "analyticCompletion",
+    "timingsNanoseconds"
+  ],
+  "properties": {
+    "schema": { "const": "sagejs.rust-class-group/prepared-cubic-class-unit-v1" },
+    "inputId": { "$ref": "#/$defs/contentId" },
+    "polynomialAscending": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": { "$ref": "#/$defs/integerString" }
+    },
+    "qualificationStatus": { "const": "grh-conditional-class-unit-index-one" },
+    "usesOracleAsInput": { "const": false },
+    "usesClassGroupAnswersAsInput": { "const": false },
+    "mathematicalBoundary": {
+      "const": "replay-validated-prepared-cubic-to-complete-class-and-unit-result"
+    },
+    "relations": { "$ref": "#/$defs/relationShape" },
+    "relationCollectionProfile": { "$ref": "#/$defs/collectionProfile" },
+    "classMap": { "$ref": "#/$defs/classMap" },
+    "kernel": { "$ref": "#/$defs/kernel" },
+    "reconstructedUnitLattice": { "$ref": "#/$defs/unitLattice" },
+    "analyticCompletion": { "$ref": "#/$defs/analyticCompletion" },
+    "timingsNanoseconds": { "$ref": "#/$defs/externalTimings" }
+  },
+  "$defs": {
+    "contentId": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "integerString": {
+      "type": "string",
+      "pattern": "^(0|-?[1-9][0-9]*)$"
+    },
+    "positiveIntegerString": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]*$"
+    },
+    "nonnegativeIntegerString": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)$"
+    },
+    "decimalApproximation": {
+      "type": "string",
+      "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?(?:e[+-]?[0-9]+)?$"
+    },
+    "nonnegativeInteger": { "type": "integer", "minimum": 0 },
+    "positiveInteger": { "type": "integer", "minimum": 1 },
+    "integerVector": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/integerString" }
+    },
+    "machineIntegerVector": {
+      "type": "array",
+      "items": { "type": "integer" }
+    },
+    "relationShape": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rows", "columns"],
+      "properties": {
+        "rows": { "$ref": "#/$defs/positiveInteger" },
+        "columns": { "$ref": "#/$defs/positiveInteger" }
+      }
+    },
+    "collectionProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["counters", "timingsNanoseconds"],
+      "properties": {
+        "counters": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "visitedIdeals", "cursorTrials", "primitiveNonscalarCandidates",
+            "smoothCandidates", "appendedRelations", "positiveCacheStatuses",
+            "randomIdeals", "randomSearchIdeals"
+          ],
+          "properties": {
+            "visitedIdeals": { "$ref": "#/$defs/nonnegativeInteger" },
+            "cursorTrials": { "$ref": "#/$defs/nonnegativeInteger" },
+            "primitiveNonscalarCandidates": { "$ref": "#/$defs/nonnegativeInteger" },
+            "smoothCandidates": { "$ref": "#/$defs/nonnegativeInteger" },
+            "appendedRelations": { "$ref": "#/$defs/nonnegativeInteger" },
+            "positiveCacheStatuses": { "$ref": "#/$defs/nonnegativeInteger" },
+            "randomIdeals": { "$ref": "#/$defs/nonnegativeInteger" },
+            "randomSearchIdeals": { "$ref": "#/$defs/nonnegativeInteger" }
+          }
+        },
+        "timingsNanoseconds": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "factorBase", "initialCache", "catalogSetup", "numericalPreparation",
+            "lll", "archimedeanPreparation", "enumerationAndNorm",
+            "rationalFactorization", "primeValuationAndCache", "totalInternal"
+          ],
+          "properties": {
+            "factorBase": { "$ref": "#/$defs/nonnegativeInteger" },
+            "initialCache": { "$ref": "#/$defs/nonnegativeInteger" },
+            "catalogSetup": { "$ref": "#/$defs/nonnegativeInteger" },
+            "numericalPreparation": { "$ref": "#/$defs/nonnegativeInteger" },
+            "lll": { "$ref": "#/$defs/nonnegativeInteger" },
+            "archimedeanPreparation": { "$ref": "#/$defs/nonnegativeInteger" },
+            "enumerationAndNorm": { "$ref": "#/$defs/nonnegativeInteger" },
+            "rationalFactorization": { "$ref": "#/$defs/nonnegativeInteger" },
+            "primeValuationAndCache": { "$ref": "#/$defs/nonnegativeInteger" },
+            "totalInternal": { "$ref": "#/$defs/nonnegativeInteger" }
+          }
+        }
+      }
+    },
+    "primeIdeal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["prime", "ramification", "residueDegree", "norm", "generator", "hnf"],
+      "properties": {
+        "prime": { "$ref": "#/$defs/positiveInteger" },
+        "ramification": { "$ref": "#/$defs/positiveInteger" },
+        "residueDegree": { "$ref": "#/$defs/positiveInteger" },
+        "norm": { "$ref": "#/$defs/positiveInteger" },
+        "generator": {
+          "anyOf": [
+            { "$ref": "#/$defs/machineIntegerVector" },
+            { "type": "null" }
+          ]
+        },
+        "hnf": { "$ref": "#/$defs/machineIntegerVector" }
+      }
+    },
+    "factorBasePrimeIdeal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "factorBaseIndexZeroBased", "prime", "ramification", "residueDegree",
+        "norm", "generator", "hnf"
+      ],
+      "properties": {
+        "factorBaseIndexZeroBased": { "$ref": "#/$defs/nonnegativeInteger" },
+        "prime": { "$ref": "#/$defs/positiveInteger" },
+        "ramification": { "$ref": "#/$defs/positiveInteger" },
+        "residueDegree": { "$ref": "#/$defs/positiveInteger" },
+        "norm": { "$ref": "#/$defs/positiveInteger" },
+        "generator": {
+          "anyOf": [
+            { "$ref": "#/$defs/machineIntegerVector" },
+            { "type": "null" }
+          ]
+        },
+        "hnf": { "$ref": "#/$defs/machineIntegerVector" }
+      }
+    },
+    "primePowerHnf": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["factorBaseIndexZeroBased", "exponent", "hnf"],
+      "properties": {
+        "factorBaseIndexZeroBased": { "$ref": "#/$defs/nonnegativeInteger" },
+        "exponent": { "$ref": "#/$defs/positiveInteger" },
+        "hnf": { "$ref": "#/$defs/integerVector" }
+      }
+    },
+    "primeIdealFactor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["factorBaseIndexZeroBased", "exponent"],
+      "properties": {
+        "factorBaseIndexZeroBased": { "$ref": "#/$defs/nonnegativeInteger" },
+        "exponent": { "$ref": "#/$defs/positiveInteger" }
+      }
+    },
+    "generatorOrderFactor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["relationIndexZeroBased", "exponent", "integralBasisCoordinates", "primeIdealFactors"],
+      "properties": {
+        "relationIndexZeroBased": { "$ref": "#/$defs/nonnegativeInteger" },
+        "exponent": { "$ref": "#/$defs/integerString" },
+        "integralBasisCoordinates": { "$ref": "#/$defs/integerVector" },
+        "primeIdealFactors": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/primeIdealFactor" }
+        }
+      }
+    },
+    "generatorOrderRelation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "generatorCoordinateZeroBased", "factorBaseIndexZeroBased", "order",
+        "allRelationCoordinatesReplayExactly", "construction",
+        "nonzeroCoefficientCount", "factors"
+      ],
+      "properties": {
+        "generatorCoordinateZeroBased": { "$ref": "#/$defs/nonnegativeInteger" },
+        "factorBaseIndexZeroBased": { "$ref": "#/$defs/nonnegativeInteger" },
+        "order": { "$ref": "#/$defs/positiveInteger" },
+        "allRelationCoordinatesReplayExactly": { "const": true },
+        "construction": {
+          "enum": [
+            "flint-staged-hnf-back-substitution",
+            "small-surplus-affine-congruence-reused-factorization"
+          ]
+        },
+        "nonzeroCoefficientCount": { "$ref": "#/$defs/positiveInteger" },
+        "factors": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/generatorOrderFactor" }
+        }
+      }
+    },
+    "classMap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "group", "construction", "isExactBecauseMapOrderMatchesCertifiedClassOrder",
+        "allRelationsMapToZero", "generatorMajorCoordinates",
+        "selectedGeneratorIndicesZeroBased", "selectedGeneratorPrimeIdeals"
+      ],
+      "properties": {
+        "group": { "type": "string", "minLength": 1 },
+        "construction": {
+          "enum": [
+            "packed-right-nullspace-modulo-two",
+            "incremental-hnf-plus-smith-transform"
+          ]
+        },
+        "isExactBecauseMapOrderMatchesCertifiedClassOrder": { "const": true },
+        "allRelationsMapToZero": { "const": true },
+        "generatorMajorCoordinates": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/machineIntegerVector" }
+        },
+        "selectedGeneratorIndicesZeroBased": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/nonnegativeInteger" },
+          "uniqueItems": true
+        },
+        "selectedGeneratorPrimeIdeals": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/primeIdeal" }
+        },
+        "generatorOrderWitnessStatus": {
+          "enum": ["trivial-group", "complete", "complete-small-surplus-affine-congruence"]
+        },
+        "maximumEagerGeneratorWitnessRelations": { "$ref": "#/$defs/positiveInteger" },
+        "generatorOrderFactorBaseCatalog": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/factorBasePrimeIdeal" }
+        },
+        "generatorOrderPrimePowerHnfs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/primePowerHnf" }
+        },
+        "generatorOrderRelations": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/generatorOrderRelation" }
+        }
+      },
+      "dependentRequired": {
+        "generatorOrderWitnessStatus": [
+          "maximumEagerGeneratorWitnessRelations",
+          "generatorOrderFactorBaseCatalog",
+          "generatorOrderPrimePowerHnfs",
+          "generatorOrderRelations"
+        ],
+        "maximumEagerGeneratorWitnessRelations": ["generatorOrderWitnessStatus"],
+        "generatorOrderFactorBaseCatalog": ["generatorOrderWitnessStatus"],
+        "generatorOrderPrimePowerHnfs": ["generatorOrderWitnessStatus"],
+        "generatorOrderRelations": ["generatorOrderWitnessStatus"]
+      }
+    },
+    "compactFactor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["relationIndexZeroBased", "exponent", "integralBasisCoordinates"],
+      "properties": {
+        "relationIndexZeroBased": { "$ref": "#/$defs/nonnegativeInteger" },
+        "exponent": { "$ref": "#/$defs/integerString" },
+        "integralBasisCoordinates": { "$ref": "#/$defs/integerVector" }
+      }
+    },
+    "compactUnit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dependencyIndex", "nonzeroCoefficientCount", "logAbsEmbeddingsApproximation", "factors"],
+      "properties": {
+        "dependencyIndex": { "$ref": "#/$defs/nonnegativeInteger" },
+        "nonzeroCoefficientCount": { "$ref": "#/$defs/positiveInteger" },
+        "logAbsEmbeddingsApproximation": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/decimalApproximation" }
+        },
+        "factors": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/compactFactor" } }
+      }
+    },
+    "pairDeterminant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["leftDependency", "rightDependency", "absoluteMinorApproximation"],
+      "properties": {
+        "leftDependency": { "$ref": "#/$defs/nonnegativeInteger" },
+        "rightDependency": { "$ref": "#/$defs/nonnegativeInteger" },
+        "absoluteMinorApproximation": { "$ref": "#/$defs/decimalApproximation" }
+      }
+    },
+    "kernel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rank", "isSaturated", "allReplayExactly", "construction",
+        "maximumCoefficientBits", "unitEncoding", "logPrecisionBits",
+        "maximumProductFormulaResidualApproximation",
+        "smallestNonzeroTwoByTwoMinorApproximation", "pairDeterminants", "compactUnits"
+      ],
+      "properties": {
+        "rank": { "$ref": "#/$defs/nonnegativeInteger" },
+        "isSaturated": { "const": true },
+        "allReplayExactly": { "const": true },
+        "construction": { "const": "reused-small-surplus-saturated-congruence-kernel" },
+        "maximumCoefficientBits": { "$ref": "#/$defs/nonnegativeInteger" },
+        "unitEncoding": { "const": "product-of-collected-integral-basis-elements-to-signed-powers-v1" },
+        "logPrecisionBits": { "$ref": "#/$defs/positiveInteger" },
+        "maximumProductFormulaResidualApproximation": { "$ref": "#/$defs/decimalApproximation" },
+        "smallestNonzeroTwoByTwoMinorApproximation": {
+          "anyOf": [{ "$ref": "#/$defs/decimalApproximation" }, { "type": "null" }]
+        },
+        "pairDeterminants": { "type": "array", "items": { "$ref": "#/$defs/pairDeterminant" } },
+        "compactUnits": { "type": "array", "items": { "$ref": "#/$defs/compactUnit" } }
+      }
+    },
+    "rational": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["numerator", "denominator"],
+      "properties": {
+        "numerator": { "$ref": "#/$defs/integerString" },
+        "denominator": { "$ref": "#/$defs/positiveIntegerString" }
+      }
+    },
+    "fundamentalUnit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "basisIndex", "dependencyCombination", "allRelationCoordinatesReplayExactly",
+        "nonzeroCoefficientCount", "logAbsEmbeddingsApproximation", "factors"
+      ],
+      "properties": {
+        "basisIndex": { "$ref": "#/$defs/nonnegativeInteger" },
+        "dependencyCombination": { "$ref": "#/$defs/integerVector" },
+        "allRelationCoordinatesReplayExactly": { "const": true },
+        "nonzeroCoefficientCount": { "$ref": "#/$defs/positiveInteger" },
+        "logAbsEmbeddingsApproximation": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/decimalApproximation" }
+        },
+        "factors": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/compactFactor" } }
+      }
+    },
+    "unitLattice": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "certificationStatus", "rationalReconstructionStableAtBits", "maximumDenominator",
+        "coordinateBasisDependencyIndices", "rationalCoordinates", "commonDenominator",
+        "selectedBasisIndex", "regulatorApproximation",
+        "independentlyReplayedRegulatorApproximation", "rigorousArbRegulatorEnclosure",
+        "fundamentalCompactUnits"
+      ],
+      "properties": {
+        "certificationStatus": { "const": "exact-compact-units-and-grh-conditional-analytic-index-one" },
+        "rationalReconstructionStableAtBits": {
+          "type": "array", "minItems": 2, "items": { "$ref": "#/$defs/positiveInteger" }
+        },
+        "maximumDenominator": { "$ref": "#/$defs/positiveIntegerString" },
+        "coordinateBasisDependencyIndices": {
+          "type": "array", "items": { "$ref": "#/$defs/nonnegativeInteger" }, "uniqueItems": true
+        },
+        "rationalCoordinates": {
+          "type": "array",
+          "items": { "type": "array", "items": { "$ref": "#/$defs/rational" } }
+        },
+        "commonDenominator": { "$ref": "#/$defs/positiveIntegerString" },
+        "selectedBasisIndex": { "$ref": "#/$defs/nonnegativeIntegerString" },
+        "regulatorApproximation": { "$ref": "#/$defs/decimalApproximation" },
+        "independentlyReplayedRegulatorApproximation": { "$ref": "#/$defs/decimalApproximation" },
+        "rigorousArbRegulatorEnclosure": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "encoding", "lowerMantissa", "upperMantissa", "binaryExponent",
+            "precisionBits", "containsIndependentMpfrReplay", "authority"
+          ],
+          "properties": {
+            "encoding": { "const": "closed-dyadic-interval-v1" },
+            "lowerMantissa": { "$ref": "#/$defs/integerString" },
+            "upperMantissa": { "$ref": "#/$defs/integerString" },
+            "binaryExponent": { "type": "integer" },
+            "precisionBits": { "$ref": "#/$defs/positiveInteger" },
+            "containsIndependentMpfrReplay": { "const": true },
+            "authority": { "const": "directed-arb-evaluation-from-exact-compact-units" }
+          }
+        },
+        "fundamentalCompactUnits": {
+          "type": "array", "items": { "$ref": "#/$defs/fundamentalUnit" }
+        }
+      }
+    },
+    "dyadicInterval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lowerMantissa", "upperMantissa", "binaryExponent"],
+      "properties": {
+        "lowerMantissa": { "$ref": "#/$defs/integerString" },
+        "upperMantissa": { "$ref": "#/$defs/integerString" },
+        "binaryExponent": { "type": "integer" }
+      }
+    },
+    "analyticCompletion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "hypothesis", "formula", "threshold", "thresholdSelection", "precisionBits",
+        "rationalPrimeCount", "rawPrimePowerTerms", "aggregatedPrimePowerTerms",
+        "rootsOfUnity", "rootsOfUnityJustification", "factorBaseGeneration",
+        "candidateClassNumber", "candidateInvariantFactors", "zetaLogResidueEnclosure",
+        "tailBoundEnclosure", "classUnitIndexEnclosure", "conclusion"
+      ],
+      "properties": {
+        "hypothesis": { "const": "GRH-for-the-Dedekind-zeta-residue-bound" },
+        "formula": { "const": "Belabas--Friedman-Theorem-1" },
+        "threshold": { "$ref": "#/$defs/positiveInteger" },
+        "thresholdSelection": { "const": "discriminant-size-start-then-rigorous-monotone-escalation" },
+        "precisionBits": { "$ref": "#/$defs/positiveInteger" },
+        "rationalPrimeCount": { "$ref": "#/$defs/positiveInteger" },
+        "rawPrimePowerTerms": { "$ref": "#/$defs/positiveInteger" },
+        "aggregatedPrimePowerTerms": { "$ref": "#/$defs/positiveInteger" },
+        "rootsOfUnity": { "const": 2 },
+        "rootsOfUnityJustification": { "const": "every cubic number field has only plus-or-minus-one" },
+        "factorBaseGeneration": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "hypothesis", "theorem", "boundExclusive", "retainedNormBoundInclusive",
+            "rawPrimeIdealPowerTerms", "aggregatedPrimeIdealPowerTerms",
+            "strictMarginEnclosure", "conclusion"
+          ],
+          "properties": {
+            "hypothesis": { "const": "GRH-for-all-unramified-Hecke-L-functions-of-class-group-characters" },
+            "theorem": { "const": "Belabas--Diaz-y-Diaz--Friedman-strict-inequality" },
+            "boundExclusive": { "$ref": "#/$defs/positiveInteger" },
+            "retainedNormBoundInclusive": { "$ref": "#/$defs/positiveInteger" },
+            "rawPrimeIdealPowerTerms": { "$ref": "#/$defs/positiveInteger" },
+            "aggregatedPrimeIdealPowerTerms": { "$ref": "#/$defs/positiveInteger" },
+            "strictMarginEnclosure": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "lowerMantissa", "upperMantissa", "binaryExponent",
+                "lowerStrictlyPositive"
+              ],
+              "properties": {
+                "lowerMantissa": { "$ref": "#/$defs/integerString" },
+                "upperMantissa": { "$ref": "#/$defs/integerString" },
+                "binaryExponent": { "type": "integer" },
+                "lowerStrictlyPositive": { "const": true }
+              }
+            },
+            "conclusion": { "const": "retained-factor-base-generates-the-full-class-group" }
+          }
+        },
+        "candidateClassNumber": { "$ref": "#/$defs/positiveIntegerString" },
+        "candidateInvariantFactors": {
+          "type": "array", "items": { "$ref": "#/$defs/positiveInteger" }
+        },
+        "zetaLogResidueEnclosure": { "$ref": "#/$defs/dyadicInterval" },
+        "tailBoundEnclosure": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "lowerMantissa", "upperMantissa", "binaryExponent",
+            "upperStrictlyBelowOneQuarter"
+          ],
+          "properties": {
+            "lowerMantissa": { "$ref": "#/$defs/integerString" },
+            "upperMantissa": { "$ref": "#/$defs/integerString" },
+            "binaryExponent": { "type": "integer" },
+            "upperStrictlyBelowOneQuarter": { "const": true }
+          }
+        },
+        "classUnitIndexEnclosure": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "lowerMantissa", "upperMantissa", "binaryExponent",
+            "uniquePositiveInteger"
+          ],
+          "properties": {
+            "lowerMantissa": { "$ref": "#/$defs/integerString" },
+            "upperMantissa": { "$ref": "#/$defs/integerString" },
+            "binaryExponent": { "type": "integer" },
+            "uniquePositiveInteger": { "const": 1 }
+          }
+        },
+        "conclusion": { "const": "candidate-class-index-times-candidate-unit-index-equals-one" }
+      }
+    },
+    "externalTimings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "collection", "presentationClassOrder", "presentationSquareDeterminantBits",
+        "presentationSquareDeterminant", "presentationSurplusCoordinateSolve",
+        "presentationSurplusKernel", "kernelReorderAndMetadata", "logarithmicEmbedding",
+        "unitLatticeReconstructionAndReplay", "analyticCompletion", "totalExternal"
+      ],
+      "properties": {
+        "collection": { "$ref": "#/$defs/nonnegativeInteger" },
+        "presentationClassOrder": { "$ref": "#/$defs/nonnegativeInteger" },
+        "presentationSquareDeterminantBits": { "$ref": "#/$defs/nonnegativeInteger" },
+        "presentationSquareDeterminant": { "$ref": "#/$defs/nonnegativeInteger" },
+        "presentationSurplusCoordinateSolve": { "$ref": "#/$defs/nonnegativeInteger" },
+        "presentationSurplusKernel": { "$ref": "#/$defs/nonnegativeInteger" },
+        "generatorOrderRelations": { "$ref": "#/$defs/nonnegativeInteger" },
+        "kernelReorderAndMetadata": { "$ref": "#/$defs/nonnegativeInteger" },
+        "logarithmicEmbedding": { "$ref": "#/$defs/nonnegativeInteger" },
+        "unitLatticeReconstructionAndReplay": { "$ref": "#/$defs/nonnegativeInteger" },
+        "analyticCompletion": { "$ref": "#/$defs/nonnegativeInteger" },
+        "totalExternal": { "$ref": "#/$defs/nonnegativeInteger" }
+      }
+    }
+  }
+}
