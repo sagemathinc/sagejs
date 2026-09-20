@@ -303,6 +303,38 @@ impl PreparedIdealWorkspace {
         }
         Err(PreparedIdealError::ValuationLimitExceeded { limit })
     }
+
+    /// Return `min(v_P(element), cap)`.
+    ///
+    /// Unlike [`Self::valuation`], reaching `cap` does not construct
+    /// `P^(cap + 1)` merely to prove that the valuation is no larger.  This is
+    /// the appropriate primitive when an independently exact norm identity
+    /// already proves `cap` is an upper bound.
+    pub fn valuation_capped_by_norm(
+        &mut self,
+        field: &ValidatedPreparedCubic,
+        prime: &CubicIdeal,
+        element: &[Integer; DEGREE],
+        cap: u32,
+    ) -> Result<u32, PreparedIdealError> {
+        if element.iter().all(|value| value == &0) {
+            return Err(PreparedIdealError::ZeroElementHasUnboundedValuation);
+        }
+        if cap == 0 {
+            return Ok(0);
+        }
+        let mut power = prime.clone();
+        for valuation in 0..cap {
+            if !power.contains(element)? {
+                return Ok(valuation);
+            }
+            if valuation + 1 == cap {
+                return Ok(cap);
+            }
+            power = self.multiply(field, &power, prime)?;
+        }
+        unreachable!("positive cap loop returns at or before its last iteration")
+    }
 }
 
 fn residue_u32(value: &Integer, modulus: u32) -> u32 {
@@ -412,6 +444,22 @@ mod tests {
         let x_minus_one = [Integer::from(-1), Integer::from(1), Integer::new()];
         let mut workspace = PreparedIdealWorkspace::new();
         assert_eq!(workspace.valuation(&field, &prime, &x_minus_one, 8), Ok(2));
+        assert_eq!(
+            workspace.valuation_capped_by_norm(&field, &prime, &x_minus_one, 0),
+            Ok(0)
+        );
+        assert_eq!(
+            workspace.valuation_capped_by_norm(&field, &prime, &x_minus_one, 1),
+            Ok(1)
+        );
+        assert_eq!(
+            workspace.valuation_capped_by_norm(&field, &prime, &x_minus_one, 2),
+            Ok(2)
+        );
+        assert_eq!(
+            workspace.valuation_capped_by_norm(&field, &prime, &x_minus_one, 3),
+            Ok(2)
+        );
 
         let square = workspace.multiply(&field, &prime, &prime).expect("P^2");
         let cube = workspace.multiply(&field, &square, &prime).expect("P^3");

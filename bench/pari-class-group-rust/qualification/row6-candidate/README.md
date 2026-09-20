@@ -381,10 +381,10 @@ norm at most `9196` generate the full class group. This closes the mathematical
 honesty gap for this prepared field; it is not merely the earlier PARI
 floating-point bound replay.
 
-The final combined diagnostic now takes 16.22 seconds: 7.79 seconds for
-relation collection, 5.63 seconds for exact class-order determination, 1.63
+The final combined diagnostic now takes 10.84 seconds: 2.78 seconds for
+relation collection, 5.46 seconds for exact class-order determination, 1.47
 seconds for the saturated unit kernel, 0.24 seconds for logarithmic embeddings,
-0.86 seconds for unit reconstruction/replay, and 0.65 seconds for both analytic
+0.83 seconds for unit reconstruction/replay, and 0.62 seconds for both analytic
 certificates. The class-order stage no longer constructs a 1,130-dimensional
 HNF. A single fraction-free LU decomposition computes the 306-bit determinant
 of the selected square relation basis and solves the seven surplus rows in that
@@ -402,6 +402,17 @@ annihilates all 1,137 relations, and selects independent concrete generator
 ideals above 11 and 19. Thus the fast completion path now retains a usable
 ideal-to-class map without constructing the large Smith transform.
 
+The collection gain comes from an exact bounded-valuation observation, not
+from skipping verification. Once `Norm(element) / Norm(divisor)` has been
+factored, its rational-prime exponent is a rigorous upper bound for all
+additional prime-ideal valuations above that prime. The old generic membership
+loop still constructed `P^(v+1)` to prove that a valuation known to be at most
+`v` was not larger. The new route checks every required divisor membership but
+returns at the norm-proved cap. On this run, prime valuation plus relation-cache
+time fell from 5.42 seconds to 0.52 seconds. The receipt retains the exact
+stage profile and all collector counters; they are unchanged from the prior
+route.
+
 This is not a qualified performance result: the current Rust incremental HNF
 is still used by the separately retained map/witness path, and the command
 emits a large diagnostic receipt. The prepared-field class-and-unit
@@ -416,13 +427,13 @@ its HNF driver.
 
 | closest region | Rust diagnostic | PARI 2.17.4 instrumented | ratio |
 | --- | ---: | ---: | ---: |
-| relation side | 7.790516 s | 1.100174 s | 7.0812x |
-| shared determinant/solve and exact class-order/map kernel / matrix side | 5.634919 s | 2.791358 s | 2.0187x |
-| explicit unit kernel, units, regulator and analytic completion / terminal residual | 3.388051 s | 0.009196 s | not algorithmically matched |
-| complete external diagnostic / instrumented control | 16.224103 s | 3.900729 s | 4.1592x |
+| relation side | 2.775377 s | 1.100174 s | 2.5227x |
+| shared determinant/solve and exact class-order/map kernel / matrix side | 5.461955 s | 2.791358 s | 1.9567x |
+| explicit unit kernel, units, regulator and analytic completion / terminal residual | 3.156146 s | 0.009196 s | not algorithmically matched |
+| complete external diagnostic / instrumented control | 10.838168 s | 3.900729 s | 2.7785x |
 
 Against the pristine PARI total of `3.886499614` seconds, the single Rust
-diagnostic is `4.1745x`. This is not yet a qualification median or competitive,
+diagnostic is `2.7887x`. This is not yet a qualification median or competitive,
 but it does answer
 the higher-risk mathematical question: the Rust path can reach a certified
 answer without PARI at runtime, and the remaining row-6 latency is now
@@ -430,7 +441,7 @@ localized to relation collection and the square determinant/surplus solve,
 rather than unit or analytic completion.
 
 The sparse receipt is `results/maximal-unit-lattice.json` (SHA-256
-`3da6c40bb1165590b46cbd895a2b5a42c5fa0a066b5220c1039794ba14bd1149`).
+`6285a46d06f3bf1847bd8d0a7f520dc6fceda33822b82094c8054e2315ed7b50`).
 Public generator/result construction, a production honesty-extension policy,
 unconditional certification, and the public polynomial-to-result route remain
 required; this prepared-field diagnostic does not authorize production

@@ -111,20 +111,23 @@ impl PreparedFactorBase {
                 .map_err(|_| PreparedFactorBaseError::PrimeMissingFromFactorBase(prime))?;
             let offset = self.catalog.rational_offsets[group];
             let count = self.catalog.rational_counts[group];
-            let known_rational_exponent =
-                (offset..offset + count).try_fold(0_usize, |sum, index| {
-                    let known = usize::try_from(divisor[index])
-                        .map_err(|_| PreparedFactorBaseError::ValuationOutsideI64)?;
-                    sum.checked_add(self.catalog.ideals[index].residue_degree * known)
-                        .ok_or(PreparedFactorBaseError::ValuationOutsideI64)
-                })?;
-            let limit = u32::try_from(exponent + known_rational_exponent + 1).unwrap_or(u32::MAX);
             let mut accounted = 0_usize;
+            let mut remaining = exponent;
             for index in offset..offset + count {
-                let full =
-                    workspace.valuation(field, &self.exact_ideals[index], element, limit)? as usize;
                 let known = usize::try_from(divisor[index])
                     .map_err(|_| PreparedFactorBaseError::ValuationOutsideI64)?;
+                let residue_degree = self.catalog.ideals[index].residue_degree;
+                let additional_cap = remaining / residue_degree;
+                let cap = known
+                    .checked_add(additional_cap)
+                    .ok_or(PreparedFactorBaseError::ValuationOutsideI64)?;
+                let full = workspace.valuation_capped_by_norm(
+                    field,
+                    &self.exact_ideals[index],
+                    element,
+                    u32::try_from(cap)
+                        .map_err(|_| PreparedFactorBaseError::ValuationOutsideI64)?,
+                )? as usize;
                 let quotient = full.checked_sub(known).ok_or(
                     PreparedFactorBaseError::NormValuationMismatch {
                         prime,
@@ -132,13 +135,23 @@ impl PreparedFactorBase {
                         accounted: 0,
                     },
                 )?;
-                accounted = accounted
-                    .checked_add(self.catalog.ideals[index].residue_degree * quotient)
+                let contribution = residue_degree
+                    .checked_mul(quotient)
                     .ok_or(PreparedFactorBaseError::ValuationOutsideI64)?;
+                accounted = accounted
+                    .checked_add(contribution)
+                    .ok_or(PreparedFactorBaseError::ValuationOutsideI64)?;
+                remaining = remaining.checked_sub(contribution).ok_or(
+                    PreparedFactorBaseError::NormValuationMismatch {
+                        prime,
+                        expected: exponent,
+                        accounted,
+                    },
+                )?;
                 relation[index] = i64::try_from(full)
                     .map_err(|_| PreparedFactorBaseError::ValuationOutsideI64)?;
             }
-            if accounted != exponent {
+            if accounted != exponent || remaining != 0 {
                 return Err(PreparedFactorBaseError::NormValuationMismatch {
                     prime,
                     expected: exponent,
@@ -598,5 +611,18 @@ mod tests {
         )
         .unwrap();
         assert_eq!(relation[index], 2);
+
+        divisor[index] = 3;
+        assert!(matches!(
+            base.refine_quotient_factorization(
+                &row6_field(),
+                &[(-1).into(), 1.into(), 0.into()],
+                &[(3, 1)],
+                &divisor,
+                &mut relation,
+                &mut workspace,
+            ),
+            Err(PreparedFactorBaseError::NormValuationMismatch { .. })
+        ));
     }
 }
