@@ -393,13 +393,35 @@ int sagejs_rust_flint_incremental_hnf_i64(
     return status;
 }
 
+typedef struct
+{
+    size_t size;
+    fmpz_mat_t fflu;
+    fmpz_t determinant;
+    slong *permutation;
+    int determinant_sign;
+} sagejs_rust_small_surplus_workspace;
+
+void sagejs_rust_flint_small_surplus_workspace_free(void *opaque)
+{
+    if (opaque == NULL)
+        return;
+    sagejs_rust_small_surplus_workspace *workspace = opaque;
+    fmpz_mat_clear(workspace->fflu);
+    fmpz_clear(workspace->determinant);
+    flint_free(workspace->permutation);
+    flint_free(workspace);
+    flint_cleanup();
+}
+
 int sagejs_rust_flint_small_surplus_class_order_i64(
     size_t size, size_t surplus_rows, const int64_t *square_entries,
     const int64_t *surplus_entries, mpz_ptr class_order,
     size_t *two_rank, uint8_t *class_coordinates,
     size_t class_coordinate_capacity, mpz_ptr const *dependency_entries,
     size_t dependency_capacity, size_t *determinant_bits,
-    uint64_t *determinant_ns, uint64_t *solve_ns, uint64_t *kernel_ns)
+    uint64_t *determinant_ns, uint64_t *solve_ns, uint64_t *kernel_ns,
+    void **workspace_output)
 {
     if (size == 0 || surplus_rows == 0 || square_entries == NULL ||
         surplus_entries == NULL || class_order == NULL || two_rank == NULL ||
@@ -416,14 +438,36 @@ int sagejs_rust_flint_small_surplus_class_order_i64(
         dependency_capacity < surplus_rows * (size + surplus_rows))
         return -1;
     int status = 0;
-    fmpz_mat_t square, square_transpose, surplus_transpose, coordinates, fflu;
+    fmpz_mat_t square, square_transpose, surplus_transpose, coordinates;
     if (!sagejs_rust_flint_set_i64_matrix(
             square, size, size, square_entries))
         return -1;
     fmpz_mat_init(square_transpose, (slong) size, (slong) size);
     fmpz_mat_init(surplus_transpose, (slong) size, (slong) surplus_rows);
     fmpz_mat_init(coordinates, (slong) size, (slong) surplus_rows);
-    fmpz_mat_init(fflu, (slong) size, (slong) size);
+    sagejs_rust_small_surplus_workspace *workspace =
+        flint_malloc(sizeof(sagejs_rust_small_surplus_workspace));
+    if (workspace == NULL)
+    {
+        fmpz_mat_clear(coordinates);
+        fmpz_mat_clear(surplus_transpose);
+        fmpz_mat_clear(square_transpose);
+        fmpz_mat_clear(square);
+        return -2;
+    }
+    workspace->size = size;
+    fmpz_mat_init(workspace->fflu, (slong) size, (slong) size);
+    fmpz_init(workspace->determinant);
+    workspace->permutation = flint_malloc(size * sizeof(slong));
+    if (workspace->permutation == NULL)
+    {
+        sagejs_rust_flint_small_surplus_workspace_free(workspace);
+        fmpz_mat_clear(coordinates);
+        fmpz_mat_clear(surplus_transpose);
+        fmpz_mat_clear(square_transpose);
+        fmpz_mat_clear(square);
+        return -2;
+    }
     fmpz_mat_transpose(square_transpose, square);
     for (size_t row = 0; row < surplus_rows; row++)
         for (size_t column = 0; column < size; column++)
@@ -431,35 +475,34 @@ int sagejs_rust_flint_small_surplus_class_order_i64(
                     (slong) column, (slong) row),
                 (slong) surplus_entries[row * size + column]);
 
-    fmpz_t determinant, denominator, kernel_index, quotient, remainder;
-    fmpz_init(determinant);
+    fmpz_t denominator, kernel_index, quotient, remainder;
     fmpz_init(denominator);
     fmpz_init(kernel_index);
     fmpz_init(quotient);
     fmpz_init(remainder);
     uint64_t started = sagejs_rust_monotonic_ns();
-    slong *permutation = flint_malloc(size * sizeof(slong));
     for (size_t index = 0; index < size; index++)
-        permutation[index] = (slong) index;
+        workspace->permutation[index] = (slong) index;
     slong rank = fmpz_mat_fflu(
-        fflu, determinant, permutation, square_transpose, 1);
-    const int determinant_sign = fmpz_sgn(determinant);
+        workspace->fflu, workspace->determinant, workspace->permutation,
+        square_transpose, 1);
+    workspace->determinant_sign = fmpz_sgn(workspace->determinant);
     uint64_t finished = sagejs_rust_monotonic_ns();
     *determinant_ns = finished >= started ? finished - started : 0;
-    fmpz_abs(determinant, determinant);
-    *determinant_bits = (size_t) fmpz_bits(determinant);
-    if (rank != (slong) size || fmpz_is_zero(determinant))
+    fmpz_abs(workspace->determinant, workspace->determinant);
+    *determinant_bits = (size_t) fmpz_bits(workspace->determinant);
+    if (rank != (slong) size || fmpz_is_zero(workspace->determinant))
         status = -3;
 
     started = sagejs_rust_monotonic_ns();
     if (status == 0 &&
-        (!fmpz_mat_solve_fflu_precomp(
-             coordinates, permutation, fflu, surplus_transpose) ||
-         fmpz_is_zero(determinant)))
+        (!fmpz_mat_solve_fflu_precomp(coordinates, workspace->permutation,
+             workspace->fflu, surplus_transpose) ||
+         fmpz_is_zero(workspace->determinant)))
         status = -4;
-    if (status == 0 && determinant_sign < 0)
+    if (status == 0 && workspace->determinant_sign < 0)
         fmpz_mat_neg(coordinates, coordinates);
-    fmpz_set(denominator, determinant);
+    fmpz_set(denominator, workspace->determinant);
     finished = sagejs_rust_monotonic_ns();
     *solve_ns = finished >= started ? finished - started : 0;
 
@@ -609,7 +652,7 @@ int sagejs_rust_flint_small_surplus_class_order_i64(
     }
     if (status == 0)
     {
-        fmpz_fdiv_qr(quotient, remainder, determinant, kernel_index);
+        fmpz_fdiv_qr(quotient, remainder, workspace->determinant, kernel_index);
         if (!fmpz_is_zero(remainder) || fmpz_sgn(quotient) <= 0)
             status = -8;
         else
@@ -647,14 +690,14 @@ int sagejs_rust_flint_small_surplus_class_order_i64(
     fmpz_clear(quotient);
     fmpz_clear(kernel_index);
     fmpz_clear(denominator);
-    fmpz_clear(determinant);
     fmpz_mat_clear(coordinates);
     fmpz_mat_clear(surplus_transpose);
     fmpz_mat_clear(square_transpose);
-    fmpz_mat_clear(fflu);
     fmpz_mat_clear(square);
-    flint_free(permutation);
-    flint_cleanup();
+    if (workspace_output != NULL && status == 0)
+        *workspace_output = workspace;
+    else
+        sagejs_rust_flint_small_surplus_workspace_free(workspace);
     return status;
 }
 
@@ -663,7 +706,8 @@ int sagejs_rust_flint_small_surplus_relation_witnesses_i64(
     const int64_t *surplus_entries, size_t target_count,
     const int64_t *targets, mpz_ptr const *witnesses,
     size_t *maximum_coefficient_bits, size_t *nonzero_counts,
-    uint64_t *solve_ns, uint64_t *affine_kernel_ns)
+    uint64_t *solve_ns, uint64_t *affine_kernel_ns,
+    void *workspace_input)
 {
     if (size == 0 || surplus_rows == 0 || target_count == 0 ||
         square_entries == NULL || surplus_entries == NULL || targets == NULL ||
@@ -676,16 +720,24 @@ int sagejs_rust_flint_small_surplus_relation_witnesses_i64(
         return -1;
 
     int status = 0;
+    sagejs_rust_small_surplus_workspace *workspace = workspace_input;
+    if (workspace != NULL && workspace->size != size)
+        return -1;
+    const int owns_factorization = workspace == NULL;
     const size_t right_columns = surplus_rows + target_count;
     const size_t relation_count = size + surplus_rows;
     fmpz_mat_t square, square_transpose, right, solutions, fflu;
-    if (!sagejs_rust_flint_set_i64_matrix(square, size, size, square_entries))
-        return -1;
-    fmpz_mat_init(square_transpose, (slong) size, (slong) size);
-    fmpz_mat_transpose(square_transpose, square);
+    if (owns_factorization)
+    {
+        if (!sagejs_rust_flint_set_i64_matrix(
+                square, size, size, square_entries))
+            return -1;
+        fmpz_mat_init(square_transpose, (slong) size, (slong) size);
+        fmpz_mat_transpose(square_transpose, square);
+        fmpz_mat_init(fflu, (slong) size, (slong) size);
+    }
     fmpz_mat_init(right, (slong) size, (slong) right_columns);
     fmpz_mat_init(solutions, (slong) size, (slong) right_columns);
-    fmpz_mat_init(fflu, (slong) size, (slong) size);
     for (size_t row = 0; row < surplus_rows; row++)
         for (size_t column = 0; column < size; column++)
             fmpz_set_si(fmpz_mat_entry(right, (slong) column, (slong) row),
@@ -709,21 +761,39 @@ int sagejs_rust_flint_small_surplus_relation_witnesses_i64(
     fmpz_init(old_left);
     fmpz_init(old_right);
     fmpz_init(multiplier);
-    slong *permutation = flint_malloc(size * sizeof(slong));
-    for (size_t index = 0; index < size; index++)
-        permutation[index] = (slong) index;
+    slong *permutation = NULL;
     uint64_t started = sagejs_rust_monotonic_ns();
-    slong rank = fmpz_mat_fflu(
-        fflu, determinant, permutation, square_transpose, 1);
-    const int determinant_sign = fmpz_sgn(determinant);
-    if (rank != (slong) size || fmpz_is_zero(determinant))
-        status = -3;
-    if (status == 0 && !fmpz_mat_solve_fflu_precomp(
-            solutions, permutation, fflu, right))
-        status = -4;
-    if (status == 0 && determinant_sign < 0)
-        fmpz_mat_neg(solutions, solutions);
-    fmpz_abs(determinant, determinant);
+    if (owns_factorization)
+    {
+        permutation = flint_malloc(size * sizeof(slong));
+        if (permutation == NULL)
+            status = -2;
+        for (size_t index = 0; index < size && status == 0; index++)
+            permutation[index] = (slong) index;
+        slong rank = status == 0
+            ? fmpz_mat_fflu(fflu, determinant, permutation,
+                square_transpose, 1)
+            : 0;
+        const int determinant_sign = fmpz_sgn(determinant);
+        if (status == 0 &&
+            (rank != (slong) size || fmpz_is_zero(determinant)))
+            status = -3;
+        if (status == 0 && !fmpz_mat_solve_fflu_precomp(
+                solutions, permutation, fflu, right))
+            status = -4;
+        if (status == 0 && determinant_sign < 0)
+            fmpz_mat_neg(solutions, solutions);
+        fmpz_abs(determinant, determinant);
+    }
+    else
+    {
+        fmpz_set(determinant, workspace->determinant);
+        if (!fmpz_mat_solve_fflu_precomp(solutions,
+                workspace->permutation, workspace->fflu, right))
+            status = -4;
+        if (status == 0 && workspace->determinant_sign < 0)
+            fmpz_mat_neg(solutions, solutions);
+    }
     uint64_t finished = sagejs_rust_monotonic_ns();
     *solve_ns = finished >= started ? finished - started : 0;
 
@@ -931,7 +1001,8 @@ int sagejs_rust_flint_small_surplus_relation_witnesses_i64(
     fmpz_mat_clear(next_basis);
     fmpz_mat_clear(transform);
     fmpz_mat_clear(lattice_basis);
-    flint_free(permutation);
+    if (owns_factorization)
+        flint_free(permutation);
     fmpz_clear(multiplier);
     fmpz_clear(old_right);
     fmpz_clear(old_left);
@@ -943,12 +1014,16 @@ int sagejs_rust_flint_small_surplus_relation_witnesses_i64(
     fmpz_clear(sum);
     fmpz_clear(remainder);
     fmpz_clear(determinant);
-    fmpz_mat_clear(fflu);
+    if (owns_factorization)
+        fmpz_mat_clear(fflu);
     fmpz_mat_clear(solutions);
     fmpz_mat_clear(right);
-    fmpz_mat_clear(square_transpose);
-    fmpz_mat_clear(square);
-    flint_cleanup();
+    if (owns_factorization)
+    {
+        fmpz_mat_clear(square_transpose);
+        fmpz_mat_clear(square);
+        flint_cleanup();
+    }
     return status;
 }
 

@@ -33,7 +33,7 @@
       "independentGeneratorOrderVerification": "passed",
       "independentlyVerifiedGeneratorOrders": 0,
       "classUnitIndex": 1,
-      "totalExternalNanoseconds": 26182632
+      "totalExternalNanoseconds": 74067559
     },
     {
       "id": "small-discriminant-49",
@@ -61,7 +61,7 @@
       "independentGeneratorOrderVerification": "passed",
       "independentlyVerifiedGeneratorOrders": 0,
       "classUnitIndex": 1,
-      "totalExternalNanoseconds": 53455893
+      "totalExternalNanoseconds": 53593215
     },
     {
       "id": "small-class-number-2",
@@ -91,7 +91,7 @@
       "independentGeneratorOrderVerification": "passed",
       "independentlyVerifiedGeneratorOrders": 1,
       "classUnitIndex": 1,
-      "totalExternalNanoseconds": 68107668
+      "totalExternalNanoseconds": 75057448
     },
     {
       "id": "small-class-number-3",
@@ -121,7 +121,7 @@
       "independentGeneratorOrderVerification": "passed",
       "independentlyVerifiedGeneratorOrders": 1,
       "classUnitIndex": 1,
-      "totalExternalNanoseconds": 38269128
+      "totalExternalNanoseconds": 38933609
     },
     {
       "id": "small-class-number-4",
@@ -152,7 +152,7 @@
       "independentGeneratorOrderVerification": "passed",
       "independentlyVerifiedGeneratorOrders": 2,
       "classUnitIndex": 1,
-      "totalExternalNanoseconds": 67883458
+      "totalExternalNanoseconds": 76022148
     },
     {
       "id": "small-class-number-6",
@@ -182,7 +182,7 @@
       "independentGeneratorOrderVerification": "passed",
       "independentlyVerifiedGeneratorOrders": 1,
       "classUnitIndex": 1,
-      "totalExternalNanoseconds": 62618360
+      "totalExternalNanoseconds": 63457582
     },
     {
       "id": "h1-real-cubic",
@@ -210,7 +210,7 @@
       "independentGeneratorOrderVerification": "passed",
       "independentlyVerifiedGeneratorOrders": 0,
       "classUnitIndex": 1,
-      "totalExternalNanoseconds": 217047441
+      "totalExternalNanoseconds": 216829967
     },
     {
       "id": "row1-index-3-cubic",
@@ -242,7 +242,7 @@
       "independentGeneratorOrderVerification": "passed",
       "independentlyVerifiedGeneratorOrders": 1,
       "classUnitIndex": 1,
-      "totalExternalNanoseconds": 248327701
+      "totalExternalNanoseconds": 210206610
     },
     {
       "id": "row6-continuation-cubic",
@@ -275,7 +275,7 @@
       "independentGeneratorOrderVerification": "passed",
       "independentlyVerifiedGeneratorOrders": 2,
       "classUnitIndex": 1,
-      "totalExternalNanoseconds": 11424357800
+      "totalExternalNanoseconds": 8136755492
     }
   ]
 }

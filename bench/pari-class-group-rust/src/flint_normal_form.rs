@@ -11,6 +11,7 @@ use crate::ideal_arithmetic::Matrix3;
 use rug::Integer;
 use std::array::from_fn;
 use std::ffi::{c_int, c_long, c_longlong, c_void};
+use std::ptr;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum FlintNormalFormError {
@@ -70,6 +71,40 @@ pub struct FlintSmallSurplusClassOrder {
     pub determinant_ns: u64,
     pub solve_ns: u64,
     pub kernel_ns: u64,
+}
+
+#[derive(Debug)]
+pub struct FlintSmallSurplusWorkspace {
+    pointer: *mut c_void,
+    size: usize,
+    square_relations: Vec<i64>,
+    surplus_relations: Vec<i64>,
+}
+
+impl Drop for FlintSmallSurplusWorkspace {
+    fn drop(&mut self) {
+        if !self.pointer.is_null() {
+            unsafe { sagejs_rust_flint_small_surplus_workspace_free(self.pointer) };
+            self.pointer = ptr::null_mut();
+        }
+    }
+}
+
+impl FlintSmallSurplusWorkspace {
+    /// Express targets using the exact fraction-free factorization retained
+    /// from the matching class-order phase.
+    pub fn relation_witnesses(
+        &self,
+        targets: &[i64],
+    ) -> Result<FlintRelationWitnesses, FlintNormalFormError> {
+        flint_small_surplus_relation_witnesses_impl(
+            &self.square_relations,
+            &self.surplus_relations,
+            self.size,
+            targets,
+            self.pointer,
+        )
+    }
 }
 
 impl FlintSmallSurplusClassOrder {
@@ -254,7 +289,9 @@ unsafe extern "C" {
         determinant_ns: *mut u64,
         solve_ns: *mut u64,
         kernel_ns: *mut u64,
+        workspace_output: *mut *mut c_void,
     ) -> c_int;
+    fn sagejs_rust_flint_small_surplus_workspace_free(workspace: *mut c_void);
     fn sagejs_rust_flint_small_surplus_relation_witnesses_i64(
         size: usize,
         surplus_rows: usize,
@@ -267,6 +304,7 @@ unsafe extern "C" {
         nonzero_counts: *mut usize,
         solve_ns: *mut u64,
         affine_kernel_ns: *mut u64,
+        workspace: *mut c_void,
     ) -> c_int;
     fn sagejs_rust_flint_lll_columns_mpz(
         entries: *const *const c_void,
@@ -373,6 +411,37 @@ pub fn flint_small_surplus_class_order(
     surplus_entries: &[i64],
     size: usize,
 ) -> Result<FlintSmallSurplusClassOrder, FlintNormalFormError> {
+    flint_small_surplus_class_order_impl(square_entries, surplus_entries, size, false)
+        .map(|(answer, _workspace)| answer)
+}
+
+/// Compute the exact class order and retain its fraction-free square
+/// factorization for immediate target-witness construction.
+pub fn flint_small_surplus_class_order_with_workspace(
+    square_entries: &[i64],
+    surplus_entries: &[i64],
+    size: usize,
+) -> Result<(FlintSmallSurplusClassOrder, FlintSmallSurplusWorkspace), FlintNormalFormError> {
+    let (answer, workspace) =
+        flint_small_surplus_class_order_impl(square_entries, surplus_entries, size, true)?;
+    Ok((
+        answer,
+        workspace.expect("the retained workspace was not returned"),
+    ))
+}
+
+fn flint_small_surplus_class_order_impl(
+    square_entries: &[i64],
+    surplus_entries: &[i64],
+    size: usize,
+    retain_workspace: bool,
+) -> Result<
+    (
+        FlintSmallSurplusClassOrder,
+        Option<FlintSmallSurplusWorkspace>,
+    ),
+    FlintNormalFormError,
+> {
     if size == 0
         || size.checked_mul(size) != Some(square_entries.len())
         || surplus_entries.is_empty()
@@ -396,6 +465,7 @@ pub fn flint_small_surplus_class_order(
     let mut determinant_ns = 0_u64;
     let mut solve_ns = 0_u64;
     let mut kernel_ns = 0_u64;
+    let mut workspace_pointer = ptr::null_mut();
     let status = unsafe {
         sagejs_rust_flint_small_surplus_class_order_i64(
             size,
@@ -412,23 +482,37 @@ pub fn flint_small_surplus_class_order(
             &mut determinant_ns,
             &mut solve_ns,
             &mut kernel_ns,
+            if retain_workspace {
+                &mut workspace_pointer
+            } else {
+                ptr::null_mut()
+            },
         )
     };
     match status {
         0 => {
             generator_coordinates.truncate(size * two_rank);
-            Ok(FlintSmallSurplusClassOrder {
-                class_order,
-                two_rank,
-                generator_count: size,
-                generator_coordinates,
-                dependency_coefficients,
-                dependency_rank: surplus_rows,
-                determinant_bits,
-                determinant_ns,
-                solve_ns,
-                kernel_ns,
-            })
+            let workspace = retain_workspace.then(|| FlintSmallSurplusWorkspace {
+                pointer: workspace_pointer,
+                size,
+                square_relations: square_entries.to_vec(),
+                surplus_relations: surplus_entries.to_vec(),
+            });
+            Ok((
+                FlintSmallSurplusClassOrder {
+                    class_order,
+                    two_rank,
+                    generator_count: size,
+                    generator_coordinates,
+                    dependency_coefficients,
+                    dependency_rank: surplus_rows,
+                    determinant_bits,
+                    determinant_ns,
+                    solve_ns,
+                    kernel_ns,
+                },
+                workspace,
+            ))
         }
         -1 => Err(FlintNormalFormError::InvalidDimensions),
         -3 => Err(FlintNormalFormError::RankDeficient),
@@ -449,6 +533,22 @@ pub fn flint_small_surplus_relation_witnesses(
     surplus_relations: &[i64],
     size: usize,
     targets: &[i64],
+) -> Result<FlintRelationWitnesses, FlintNormalFormError> {
+    flint_small_surplus_relation_witnesses_impl(
+        square_relations,
+        surplus_relations,
+        size,
+        targets,
+        ptr::null_mut(),
+    )
+}
+
+fn flint_small_surplus_relation_witnesses_impl(
+    square_relations: &[i64],
+    surplus_relations: &[i64],
+    size: usize,
+    targets: &[i64],
+    workspace: *mut c_void,
 ) -> Result<FlintRelationWitnesses, FlintNormalFormError> {
     if size == 0
         || square_relations.len() != size.checked_mul(size).unwrap_or(0)
@@ -489,6 +589,7 @@ pub fn flint_small_surplus_relation_witnesses(
             nonzero_counts.as_mut_ptr(),
             &mut solve_ns,
             &mut affine_kernel_ns,
+            workspace,
         )
     };
     match status {
@@ -1327,6 +1428,21 @@ mod tests {
                 assert_eq!(actual, targets[target * 2 + column]);
             }
         }
+    }
+
+    #[test]
+    fn small_surplus_workspace_reuses_the_exact_square_factorization() {
+        let square = [2, 0, 0, 6];
+        let surplus = [0, 3];
+        let targets = [2, 0, 0, 3];
+        let (class_order, workspace) =
+            flint_small_surplus_class_order_with_workspace(&square, &surplus, 2).unwrap();
+        let reused = workspace.relation_witnesses(&targets).unwrap();
+        let standalone =
+            flint_small_surplus_relation_witnesses(&square, &surplus, 2, &targets).unwrap();
+        assert_eq!(class_order.class_order, 6);
+        assert_eq!(reused.coefficients, standalone.coefficients);
+        assert_eq!(reused.nonzero_counts, standalone.nonzero_counts);
     }
 
     #[test]

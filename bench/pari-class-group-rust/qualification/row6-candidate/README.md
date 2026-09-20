@@ -297,16 +297,16 @@ integral-basis element whose principal ideal produced it, so each witness also
 encodes a compact principal element as the product of those elements to the
 signed relation coefficients.
 
-On the current Linux qualification host the complete answer-free row-6 run is
-about 11.4 seconds. A representative run spent 2.75 seconds in relation
-collection, 3.80 seconds in the two new generator witnesses, and 7.58 seconds
-in the complete presentation region. The authenticated PARI 2.17.4
-prepared-field control is 4.057 seconds,
-so the former roughly 16-fold gap has fallen to about 2.8-fold while retaining the
-previously omitted generator-order evidence. About 3.4 seconds remain
-artificial duplication: the class-order and affine-witness calls currently
-repeat the same square determinant solve. Sharing that phase-lifetime state is
-the next direct optimization.
+The class-order call now returns an owned phase-lifetime workspace containing
+its fraction-free LU, permutation and exact determinant. The affine witness
+call consumes that same workspace instead of repeating the factorization, and
+the workspace is freed automatically after the phase. A representative run
+spent 2.75 seconds in relation collection, 3.39 seconds in the single square
+factorization, and only 0.307 seconds constructing both generator witnesses.
+The complete answer-free row-6 run is 8.14 seconds. The authenticated PARI
+2.17.4 prepared-field control is 4.057 seconds, so the former roughly 16-fold
+gap is now about 2.00-fold while retaining the previously omitted
+generator-order evidence.
 
 The independent Sage.js result boundary also passes. It reconstructs the two
 selected prime ideals, validates 879 distinct source relations, validates the

@@ -14,12 +14,12 @@ use sagejs_pari_class_group_rust_experiment::{
     build_cubic_belabas_friedman_plan, collect_prepared_cubic_relations,
     collect_validated_primitive_box_with_supplementary, flint_bdf_factor_base_margin,
     flint_bf_index_enclosure, flint_compact_cubic_regulator, flint_hnf_basis, flint_hnf_profile,
-    flint_incremental_hnf, flint_small_surplus_class_order, flint_small_surplus_relation_witnesses,
-    flint_smith_candidate, flint_smith_class_map, flint_staged_relation_witnesses,
-    modular_independent_relation_rows, parse_neutral_prepared_cubic_json,
-    prepared_cubic_factor_base, prepared_cubic_splitting_records,
-    prepared_maximal_cubic_factor_base, reconstruct_rank_one_unit_lattice,
-    reconstruct_rank_two_unit_lattice,
+    flint_incremental_hnf, flint_small_surplus_class_order,
+    flint_small_surplus_class_order_with_workspace, flint_smith_candidate, flint_smith_class_map,
+    flint_staged_relation_witnesses, modular_independent_relation_rows,
+    parse_neutral_prepared_cubic_json, prepared_cubic_factor_base,
+    prepared_cubic_splitting_records, prepared_maximal_cubic_factor_base,
+    reconstruct_rank_one_unit_lattice, reconstruct_rank_two_unit_lattice,
 };
 use std::collections::HashMap;
 use std::time::Instant;
@@ -877,8 +877,18 @@ fn small_norm_unit_kernel_for_field(
             remaining_rows.push(row);
         }
     }
-    let class_order = flint_small_surplus_class_order(&square, &remaining, columns)
-        .expect("exact small-surplus class-order computation failed");
+    let (class_order, class_order_workspace) = if rows > MAX_EAGER_GENERATOR_WITNESS_RELATIONS {
+        let (answer, workspace) =
+            flint_small_surplus_class_order_with_workspace(&square, &remaining, columns)
+                .expect("exact reusable small-surplus class-order computation failed");
+        (answer, Some(workspace))
+    } else {
+        (
+            flint_small_surplus_class_order(&square, &remaining, columns)
+                .expect("exact small-surplus class-order computation failed"),
+            None,
+        )
+    };
     let expected_elementary_two_order = Integer::from(1) << class_order.two_rank;
     let elementary_two_map_is_exact = class_order.class_order == expected_elementary_two_order;
     let (invariant_factors, class_coordinates, class_map_construction) =
@@ -1029,9 +1039,12 @@ fn small_norm_unit_kernel_for_field(
         }
         let (staged, construction) = if rows > MAX_EAGER_GENERATOR_WITNESS_RELATIONS {
             (
-                flint_small_surplus_relation_witnesses(&square, &remaining, columns, &targets)
+                class_order_workspace
+                    .as_ref()
+                    .expect("the large relation phase lost its retained factorization")
+                    .relation_witnesses(&targets)
                     .expect("small-surplus class-generator witnesses failed"),
-                "small-surplus-affine-congruence",
+                "small-surplus-affine-congruence-reused-factorization",
             )
         } else {
             (
