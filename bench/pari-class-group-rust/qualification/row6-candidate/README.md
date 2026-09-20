@@ -194,15 +194,18 @@ which shows that high-precision embedded Gram--Schmidt and repeated per-ideal
 setup now dominate that bucket. Fine-grained preparation timings and reusable
 workspaces are the next collector optimization boundary.
 
-Fine-grained measurement rejects that provisional workspace hypothesis. Of
-51.489715053 seconds charged to numerical preparation on the exact-FLINT-LLL
-route, 51.354673344 seconds are inside LLL and only 0.108516933 seconds are in
+Fine-grained measurement rejects that provisional workspace hypothesis. After
+replacing decimal serialization with an immediate borrowed-GMP-to-FLINT copy,
+50.588540826 seconds are charged to numerical preparation on the exact-FLINT-LLL
+route, 50.452184215 seconds are inside LLL and only 0.109662954 seconds are in
 the subsequent embedded high-precision Gram--Schmidt and bound construction.
-Switching FLINT's Gram mode from `EXACT` to `APPROX` produced essentially the
-same 51.15-second LLL time, so the accepted qualification route retains the
-stronger exact mode. The next collector experiment must reduce repeated LLL
-work or its value-conversion/call boundary, not optimize archimedean storage.
-The exact-mode receipt is `results/maximal-flint-lll-profile.json`.
+The conversion change saves about 0.9 seconds on the identical 6,388-ideal
+trace; the bulk is genuine repeated reduction. Switching FLINT's Gram mode from
+`EXACT` to `APPROX` previously produced essentially the same result, so the
+accepted qualification route retains the stronger exact mode. The next
+collector experiment must reduce repeated LLL work or its number of calls, not
+optimize archimedean storage or serialization. The exact-mode receipt is
+`results/maximal-flint-lll-profile.json`.
 
 ## 2026-09-20 compact candidate class map
 

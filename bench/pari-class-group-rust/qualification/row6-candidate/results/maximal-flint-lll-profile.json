@@ -25,17 +25,17 @@
   },
   "schema": "sagejs.rust-class-group/row6-maximal-small-norm-prefix-v1",
   "timingsNanoseconds": {
-    "archimedeanPreparation": 108516933,
-    "catalogSetup": 3453208,
-    "enumerationAndNorm": 525800986,
-    "factorBase": 293500220,
-    "initialCache": 8266088,
-    "lll": 51354673344,
-    "numericalPreparation": 51489715053,
-    "primeValuationAndCache": 8067239665,
-    "rationalFactorization": 2849482765,
-    "totalExternal": 72152363946,
-    "totalInternal": 72140768980
+    "archimedeanPreparation": 109662954,
+    "catalogSetup": 3439749,
+    "enumerationAndNorm": 532324142,
+    "factorBase": 238877936,
+    "initialCache": 7835908,
+    "lll": 50452184215,
+    "numericalPreparation": 50588540826,
+    "primeValuationAndCache": 8022414301,
+    "rationalFactorization": 2856861775,
+    "totalExternal": 71154507169,
+    "totalInternal": 71143368031
   },
   "usesOracleAsInput": false
 }

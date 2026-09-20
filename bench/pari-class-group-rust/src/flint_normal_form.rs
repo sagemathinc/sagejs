@@ -9,7 +9,7 @@
 
 use crate::ideal_arithmetic::Matrix3;
 use std::array::from_fn;
-use std::ffi::{CString, c_char, c_int, c_longlong};
+use std::ffi::{c_int, c_longlong, c_void};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum FlintNormalFormError {
@@ -117,8 +117,8 @@ unsafe extern "C" {
         initial_hnf_ns: *mut u64,
         saturation_ns: *mut u64,
     ) -> c_int;
-    fn sagejs_rust_flint_lll_columns_decimal(
-        entries: *const *const c_char,
+    fn sagejs_rust_flint_lll_columns_mpz(
+        entries: *const *const c_void,
         transform: *mut c_longlong,
     ) -> c_int;
     fn sagejs_rust_flint_snf_class_map_i64(
@@ -264,17 +264,17 @@ pub fn flint_smith_class_map(
 }
 
 pub fn flint_lll_column_transform(input: &Matrix3) -> Result<Matrix3, FlintNormalFormError> {
-    let decimal: [CString; 9] = from_fn(|index| {
+    let pointers: [*const c_void; 9] = from_fn(|index| {
         let row = index / 3;
         let column = index % 3;
-        CString::new(input[(row, column)].to_string()).expect("integer decimal has no NUL")
+        input[(row, column)].as_raw().cast()
     });
-    let pointers: [*const c_char; 9] = from_fn(|index| decimal[index].as_ptr());
     let mut transform = [0_i64; 9];
-    // Every string and both pointer arrays remain alive across the call. The
-    // adapter parses by value and retains no Rust-owned pointer.
+    // Every borrowed GMP integer and the pointer array remain alive across the
+    // call. The adapter copies each value immediately into FLINT-owned storage
+    // and retains no Rust-owned pointer.
     let status = unsafe {
-        sagejs_rust_flint_lll_columns_decimal(pointers.as_ptr(), transform.as_mut_ptr().cast())
+        sagejs_rust_flint_lll_columns_mpz(pointers.as_ptr(), transform.as_mut_ptr().cast())
     };
     match status {
         0 => Ok(Matrix3::from_i64_rows(from_fn(|row| {

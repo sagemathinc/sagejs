@@ -1,6 +1,7 @@
 // Copyright (C) Sage.js contributors.
 // GPL-2.0-or-later, without warranty.
 
+#include <gmp.h>
 #include <flint/fmpz.h>
 #include <flint/fmpz_lll.h>
 #include <flint/fmpz_mat.h>
@@ -297,8 +298,8 @@ int sagejs_rust_flint_incremental_hnf_i64(
     return status;
 }
 
-int sagejs_rust_flint_lll_columns_decimal(
-    const char *const *entries, int64_t *transform)
+int sagejs_rust_flint_lll_columns_mpz(
+    mpz_srcptr const *entries, int64_t *transform)
 {
     if (entries == NULL || transform == NULL)
         return -1;
@@ -309,15 +310,15 @@ int sagejs_rust_flint_lll_columns_decimal(
     for (size_t row = 0; row < 3; row++)
         for (size_t column = 0; column < 3; column++)
         {
-            const char *entry = entries[column * 3 + row];
-            if (entry == NULL ||
-                fmpz_set_str(fmpz_mat_entry(basis, (slong) row, (slong) column),
-                             entry, 10) != 0)
+            mpz_srcptr entry = entries[column * 3 + row];
+            if (entry == NULL)
             {
                 fmpz_mat_clear(left_transform);
                 fmpz_mat_clear(basis);
                 return -1;
             }
+            fmpz_set_mpz(
+                fmpz_mat_entry(basis, (slong) row, (slong) column), entry);
         }
     fmpz_mat_one(left_transform);
     fmpz_lll_t context;
