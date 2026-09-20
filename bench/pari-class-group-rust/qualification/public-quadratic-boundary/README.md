@@ -1,8 +1,54 @@
-# Public real-quadratic qualification boundary
+# Public quadratic qualification
 
 This standalone crate answers the degree-2 public-route question without
 editing the active Rust core. It depends on the root experiment crate and uses
 only public polynomial coefficients at runtime.
+
+## Complete imaginary-quadratic engine
+
+The coefficient-only entry point
+`compute_imaginary_class_group_from_coefficients` returns an exact,
+unconditionally complete class group for this fail-closed domain:
+
+- integral monic quadratics with negative fundamental discriminant;
+- absolute discriminant at most 10,000,000; and
+- class number at most four.
+
+The engine completely enumerates primitive reduced positive-definite binary
+quadratic forms through the exact reduction bound `a <= sqrt(|D|/3)`. The
+classical reduced-form theorem proves that this is one representative per
+proper ideal class. For orders one through four, cardinality and the exact
+inversion involution determine the group as trivial, `C2`, `C3`, `C4`, or
+`C2 x C2`. This intentionally bounded argument avoids pretending that an
+unimplemented general form-composition algorithm exists.
+
+The public result includes normalized invariant factors, form generators with
+exact orders, integral ideal bases in `(1, alpha)`, a coordinate map for every
+canonical reduced-form class, the complete reduced-form enumeration, the
+fundamental-discriminant factorization, and `unconditional-complete` proof
+status. `verify_imaginary_class_group` replays the enumeration, fundamental
+discriminant proof, ideal closure and norms, inverses, coordinates, generator
+orders, and result shape using only coefficients and the emitted certificate.
+It rejects modified certificates.
+
+The current map domain is the complete set of canonical reduced-form
+representatives. Reduction of an arbitrary caller-supplied ideal into that map
+is not implemented. Inputs with nonfundamental discriminant, excessive
+discriminant, or class number above four fail closed.
+
+The six qualification examples cover trivial, `C2`, `C3`, `C4`, and
+`C2 x C2` groups. Their PARI comparison lives only in the integration test and
+receipt; the runtime has no PARI dependency and does not read expected answers.
+
+Run a public coefficient-only call, here for `x^2 - x + 10`, with:
+
+```sh
+cargo run --release --manifest-path \
+  bench/pari-class-group-rust/qualification/public-quadratic-boundary/Cargo.toml \
+  -- 10 -1 1
+```
+
+## Real-quadratic boundary evidence
 
 For four real monic quadratics, including PARI class numbers 3 and 5, it:
 

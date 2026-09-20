@@ -29,6 +29,14 @@ use sagejs_pari_class_group_rust_experiment::{
 use serde::Serialize;
 use std::fmt;
 
+mod imaginary;
+
+pub use imaginary::{
+    BinaryQuadraticForm, CompleteImaginaryClassGroup, ImaginaryClassGroupError,
+    PublicImaginaryQuadraticInput, SMALL_IMAGINARY_CASES, compute_imaginary_class_group,
+    compute_imaginary_class_group_from_coefficients, verify_imaginary_class_group,
+};
+
 pub const ENGINE_ENTRY_POINT: &str = "prepared_maximal_cubic_factor_base";
 pub const ENGINE_REQUIRED_TYPE: &str = "ValidatedPreparedCubic";
 pub const AVAILABLE_PREPARED_TYPE: &str = "ValidatedPreparedNumberField(degree=2)";
