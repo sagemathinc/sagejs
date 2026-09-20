@@ -31,6 +31,6 @@ bench/pari-class-group-rust/qualification/pari-control/build.py
 python3 bench/pari-class-group-rust/qualification/public-cubic-e2e/benchmark/run.py
 ```
 
-The generated `receipt.json` is ignored deliberately. A reviewed campaign can
-be copied to a separately named, checked-in receipt only after it was produced
-from a clean reachable source closure.
+The checked-in `receipt.json` is the reviewed clean campaign for the commit it
+names. Diagnostic or dirty-source reruns must not replace it; write those to a
+temporary path or restore the reviewed receipt afterward.
