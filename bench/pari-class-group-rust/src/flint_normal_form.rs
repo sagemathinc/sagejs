@@ -36,6 +36,22 @@ pub struct FlintSmithClassMap {
     pub generator_count: usize,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct FlintHnfProfile {
+    pub maximum_entry_bits: usize,
+    pub determinant_bits: usize,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FlintIncrementalHnf {
+    pub basis: Vec<i64>,
+    pub initial_profile: FlintHnfProfile,
+    pub final_profile: FlintHnfProfile,
+    pub determinant_ns: u64,
+    pub initial_hnf_ns: u64,
+    pub saturation_ns: u64,
+}
+
 impl FlintSmithClassMap {
     pub fn coordinates(&self, generator: usize) -> Option<&[i64]> {
         let width = self.invariant_factors.len();
@@ -81,6 +97,26 @@ unsafe extern "C" {
         entries: *const c_longlong,
         basis: *mut c_longlong,
     ) -> c_int;
+    fn sagejs_rust_flint_hnf_profile_i64(
+        size: usize,
+        entries: *const c_longlong,
+        maximum_entry_bits: *mut usize,
+        determinant_bits: *mut usize,
+    ) -> c_int;
+    fn sagejs_rust_flint_incremental_hnf_i64(
+        size: usize,
+        remaining_rows: usize,
+        square_entries: *const c_longlong,
+        remaining_entries: *const c_longlong,
+        basis: *mut c_longlong,
+        initial_maximum_entry_bits: *mut usize,
+        initial_determinant_bits: *mut usize,
+        final_maximum_entry_bits: *mut usize,
+        final_determinant_bits: *mut usize,
+        determinant_ns: *mut u64,
+        initial_hnf_ns: *mut u64,
+        saturation_ns: *mut u64,
+    ) -> c_int;
     fn sagejs_rust_flint_lll_columns_decimal(
         entries: *const *const c_char,
         transform: *mut c_longlong,
@@ -92,6 +128,95 @@ unsafe extern "C" {
         generator_coordinates: *mut c_longlong,
         invariant_count: *mut usize,
     ) -> c_int;
+}
+
+pub fn flint_incremental_hnf(
+    square_entries: &[i64],
+    remaining_entries: &[i64],
+    size: usize,
+) -> Result<FlintIncrementalHnf, FlintNormalFormError> {
+    if size == 0
+        || size.checked_mul(size) != Some(square_entries.len())
+        || remaining_entries.len() % size != 0
+    {
+        return Err(FlintNormalFormError::DimensionMismatch);
+    }
+    let remaining_rows = remaining_entries.len() / size;
+    let mut basis = vec![0_i64; square_entries.len()];
+    let mut initial_maximum_entry_bits = 0_usize;
+    let mut initial_determinant_bits = 0_usize;
+    let mut final_maximum_entry_bits = 0_usize;
+    let mut final_determinant_bits = 0_usize;
+    let mut determinant_ns = 0_u64;
+    let mut initial_hnf_ns = 0_u64;
+    let mut saturation_ns = 0_u64;
+    let status = unsafe {
+        sagejs_rust_flint_incremental_hnf_i64(
+            size,
+            remaining_rows,
+            square_entries.as_ptr().cast(),
+            remaining_entries.as_ptr().cast(),
+            basis.as_mut_ptr().cast(),
+            &mut initial_maximum_entry_bits,
+            &mut initial_determinant_bits,
+            &mut final_maximum_entry_bits,
+            &mut final_determinant_bits,
+            &mut determinant_ns,
+            &mut initial_hnf_ns,
+            &mut saturation_ns,
+        )
+    };
+    match status {
+        0 => Ok(FlintIncrementalHnf {
+            basis,
+            initial_profile: FlintHnfProfile {
+                maximum_entry_bits: initial_maximum_entry_bits,
+                determinant_bits: initial_determinant_bits,
+            },
+            final_profile: FlintHnfProfile {
+                maximum_entry_bits: final_maximum_entry_bits,
+                determinant_bits: final_determinant_bits,
+            },
+            determinant_ns,
+            initial_hnf_ns,
+            saturation_ns,
+        }),
+        -1 => Err(FlintNormalFormError::InvalidDimensions),
+        -2 => Err(FlintNormalFormError::DiagonalOutsideI64),
+        -3 => Err(FlintNormalFormError::RankDeficient),
+        code => Err(FlintNormalFormError::ForeignFailure(code)),
+    }
+}
+
+pub fn flint_hnf_profile(
+    entries: &[i64],
+    size: usize,
+) -> Result<FlintHnfProfile, FlintNormalFormError> {
+    if size == 0 || size.checked_mul(size) != Some(entries.len()) {
+        return Err(FlintNormalFormError::DimensionMismatch);
+    }
+    let mut maximum_entry_bits = 0_usize;
+    let mut determinant_bits = 0_usize;
+    // The input is a complete square i64 matrix. The adapter retains no
+    // pointer and returns only bounded metadata about its arbitrary-precision
+    // HNF, avoiding a lossy conversion of the intermediate basis.
+    let status = unsafe {
+        sagejs_rust_flint_hnf_profile_i64(
+            size,
+            entries.as_ptr().cast(),
+            &mut maximum_entry_bits,
+            &mut determinant_bits,
+        )
+    };
+    match status {
+        0 => Ok(FlintHnfProfile {
+            maximum_entry_bits,
+            determinant_bits,
+        }),
+        -1 => Err(FlintNormalFormError::InvalidDimensions),
+        -3 => Err(FlintNormalFormError::RankDeficient),
+        code => Err(FlintNormalFormError::ForeignFailure(code)),
+    }
 }
 
 pub fn flint_smith_class_map(
@@ -262,6 +387,26 @@ mod tests {
         let direct = flint_smith_candidate(&source, 3, 2).unwrap();
         let reduced = flint_smith_candidate(&basis, 2, 2).unwrap();
         assert_eq!(reduced, direct);
+    }
+
+    #[test]
+    fn hnf_profile_reports_exact_size_without_exporting_the_basis() {
+        let profile = flint_hnf_profile(&[2, 4, 1, 3], 2).unwrap();
+        assert_eq!(profile.maximum_entry_bits, 2);
+        assert_eq!(profile.determinant_bits, 2);
+        assert_eq!(
+            flint_hnf_profile(&[1, 2, 2, 4], 2),
+            Err(FlintNormalFormError::RankDeficient)
+        );
+    }
+
+    #[test]
+    fn incremental_hnf_saturates_a_square_starting_basis() {
+        let answer = flint_incremental_hnf(&[2, 0, 0, 6], &[0, 4], 2).unwrap();
+        let smith = flint_smith_candidate(&answer.basis, 2, 2).unwrap();
+        assert_eq!(smith.invariant_factors, [2, 2]);
+        assert_eq!(answer.initial_profile.determinant_bits, 4);
+        assert_eq!(answer.final_profile.determinant_bits, 3);
     }
 
     #[test]

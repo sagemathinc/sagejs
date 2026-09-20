@@ -11,7 +11,8 @@ use rug::Integer;
 use sagejs_pari_class_group_rust_experiment::{
     EmbeddingPrecisionState, PreparedCollectorLimits, PreparedCubicData, ValidatedPreparedCubic,
     collect_prepared_cubic_relations, collect_validated_primitive_box_with_supplementary,
-    flint_hnf_basis, flint_smith_candidate, flint_smith_class_map, prepared_cubic_factor_base,
+    flint_hnf_basis, flint_hnf_profile, flint_incremental_hnf, flint_smith_candidate,
+    flint_smith_class_map, modular_independent_relation_rows, prepared_cubic_factor_base,
     prepared_maximal_cubic_factor_base,
 };
 use std::env;
@@ -431,6 +432,133 @@ fn small_norm_hnf_smith(maximum_ideals: usize, maximum_candidates: usize) {
     );
 }
 
+fn small_norm_square_hnf_profile(maximum_ideals: usize, maximum_candidates: usize) {
+    let field = maximal_order();
+    let total_started = Instant::now();
+    let answer = collect_prepared_cubic_relations(
+        &field,
+        PreparedCollectorLimits {
+            maximum_visited_ideals: maximum_ideals,
+            maximum_candidates,
+        },
+    )
+    .expect("maximal-order relation collection failed");
+    assert!(answer.complete_rank_and_surplus, "relation lattice is incomplete");
+    let columns = answer.factor_base.catalog.ideals.len();
+    let rows = answer.relations.len() / columns;
+    let selection_started = Instant::now();
+    let (square, source_rows) = modular_independent_relation_rows(
+        &answer.relations,
+        &answer.first_nonzero_hints,
+        columns,
+    )
+    .expect("modularly independent row selection failed");
+    let selection_ns = selection_started.elapsed().as_nanos();
+    let hnf_started = Instant::now();
+    let profile = flint_hnf_profile(&square, columns).expect("square FLINT HNF profile failed");
+    let hnf_ns = hnf_started.elapsed().as_nanos();
+    println!(
+        "{}",
+        serde_json::json!({
+            "schema": "sagejs.rust-class-group/row6-square-hnf-profile-v1",
+            "qualificationStatus": "diagnostic-not-publicly-complete",
+            "usesOracleAsInput": false,
+            "relations": { "rows": rows, "columns": columns },
+            "squareStartingBasis": {
+                "rows": source_rows.len(),
+                "sourceRowIndicesZeroBased": source_rows,
+                "selectionModulus": 27449,
+                "maximumHnfEntryBits": profile.maximum_entry_bits,
+                "determinantBits": profile.determinant_bits,
+            },
+            "timingsNanoseconds": {
+                "collection": answer.timings.total_ns,
+                "squareSelection": selection_ns,
+                "squareHnf": hnf_ns,
+                "totalExternal": total_started.elapsed().as_nanos(),
+            },
+        })
+    );
+}
+
+fn small_norm_incremental_hnf(maximum_ideals: usize, maximum_candidates: usize) {
+    let field = maximal_order();
+    let total_started = Instant::now();
+    let answer = collect_prepared_cubic_relations(
+        &field,
+        PreparedCollectorLimits {
+            maximum_visited_ideals: maximum_ideals,
+            maximum_candidates,
+        },
+    )
+    .expect("maximal-order relation collection failed");
+    assert!(answer.complete_rank_and_surplus, "relation lattice is incomplete");
+    let columns = answer.factor_base.catalog.ideals.len();
+    let rows = answer.relations.len() / columns;
+    let selection_started = Instant::now();
+    let (square, source_rows) = modular_independent_relation_rows(
+        &answer.relations,
+        &answer.first_nonzero_hints,
+        columns,
+    )
+    .expect("modularly independent row selection failed");
+    let mut selected = vec![false; rows];
+    for source_row in source_rows.iter().copied() {
+        selected[source_row] = true;
+    }
+    let mut remaining = Vec::with_capacity((rows - columns) * columns);
+    for (row, relation) in answer.relations.chunks_exact(columns).enumerate() {
+        if !selected[row] {
+            remaining.extend_from_slice(relation);
+        }
+    }
+    let selection_ns = selection_started.elapsed().as_nanos();
+    let hnf_started = Instant::now();
+    let incremental = flint_incremental_hnf(&square, &remaining, columns)
+        .expect("incremental FLINT HNF failed");
+    let hnf_external_ns = hnf_started.elapsed().as_nanos();
+    let map_started = Instant::now();
+    let map = flint_smith_class_map(&incremental.basis, columns)
+        .expect("Smith class-map construction failed");
+    let map_ns = map_started.elapsed().as_nanos();
+    assert!(map.annihilates(&answer.relations, rows));
+    println!(
+        "{}",
+        serde_json::json!({
+            "schema": "sagejs.rust-class-group/row6-incremental-hnf-class-map-v1",
+            "qualificationStatus": "class-map-candidate-not-publicly-complete",
+            "usesOracleAsInput": false,
+            "relations": {
+                "rows": rows,
+                "columns": columns,
+                "squareRows": source_rows.len(),
+                "saturationRows": rows - source_rows.len(),
+                "allMapToZero": true,
+            },
+            "hnf": {
+                "initialMaximumEntryBits": incremental.initial_profile.maximum_entry_bits,
+                "initialDeterminantBits": incremental.initial_profile.determinant_bits,
+                "finalMaximumEntryBits": incremental.final_profile.maximum_entry_bits,
+                "finalDeterminantBits": incremental.final_profile.determinant_bits,
+            },
+            "group": {
+                "invariantFactors": map.invariant_factors,
+                "classNumber": map.invariant_factors.iter().product::<i64>(),
+            },
+            "timingsNanoseconds": {
+                "collection": answer.timings.total_ns,
+                "squareSelection": selection_ns,
+                "squareDeterminantInternal": incremental.determinant_ns,
+                "initialHnfInternal": incremental.initial_hnf_ns,
+                "modularSaturationInternal": incremental.saturation_ns,
+                "incrementalHnfExternal": hnf_external_ns,
+                "smithClassMap": map_ns,
+                "totalExternal": total_started.elapsed().as_nanos(),
+            },
+        })
+    );
+}
+
 fn small_norm_class_map(maximum_ideals: usize, maximum_candidates: usize) {
     let field = maximal_order();
     let total_started = Instant::now();
@@ -600,6 +728,42 @@ fn main() {
             arguments
                 .get(2)
                 .expect("usage: row6-candidate small-norm-class-map IDEALS CANDIDATES")
+                .parse()
+                .expect("candidates must be an integer"),
+        );
+        return;
+    }
+    if arguments
+        .first()
+        .is_some_and(|value| value == "small-norm-square-hnf-profile")
+    {
+        small_norm_square_hnf_profile(
+            arguments
+                .get(1)
+                .expect("usage: row6-candidate small-norm-square-hnf-profile IDEALS CANDIDATES")
+                .parse()
+                .expect("ideals must be an integer"),
+            arguments
+                .get(2)
+                .expect("usage: row6-candidate small-norm-square-hnf-profile IDEALS CANDIDATES")
+                .parse()
+                .expect("candidates must be an integer"),
+        );
+        return;
+    }
+    if arguments
+        .first()
+        .is_some_and(|value| value == "small-norm-incremental-hnf")
+    {
+        small_norm_incremental_hnf(
+            arguments
+                .get(1)
+                .expect("usage: row6-candidate small-norm-incremental-hnf IDEALS CANDIDATES")
+                .parse()
+                .expect("ideals must be an integer"),
+            arguments
+                .get(2)
+                .expect("usage: row6-candidate small-norm-incremental-hnf IDEALS CANDIDATES")
                 .parse()
                 .expect("candidates must be an integer"),
         );

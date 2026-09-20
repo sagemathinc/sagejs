@@ -221,3 +221,37 @@ factor-base presentation to `C2 x C2`, not merely an invariant-factor match.
 It still does not prove HNF provenance without its left transformation, furnish
 principal elements, select generator ideals with order witnesses, or prove
 that the relation lattice is complete. Those remain R2/R3 gates.
+
+## 2026-09-20 determinant-certified incremental HNF
+
+The relation cache's rank-changing rows now define a deterministic square
+starting basis. Replaying the 1,526-row presentation through the same modular
+rank filter selects exactly 1,130 source rows without inspecting the expected
+class group. Generic FLINT HNF on that square matrix takes 45.791380395 seconds.
+Its determinant is only 306 bits and its largest entry is 300 bits, establishing
+that the starting lattice is tractable rather than an uncontrolled coefficient
+explosion. The exact diagnostic is
+`results/maximal-square-hnf-profile.json`.
+
+The accepted route computes that square determinant, uses it as the certified
+elementary-divisor multiple for FLINT's modular HNF, then appends the 396
+omitted relations and performs a second modular saturation. On the captured
+run, exact determinant computation took 4.777826847 seconds, initial modular
+HNF 27.544016676 seconds, and saturation 3.287743253 seconds. The determinant
+falls from 306 bits to the 3-bit value 4, and the final basis contains only
+2-bit entries. Smith transformation plus compact class-map extraction takes
+2.372440047 seconds.
+
+The complete answer-free run takes 109.415094493 seconds: 71.212692777 seconds
+for collection and about 38 seconds for selection, exact linear algebra, map
+construction, and verification. It again gives invariant factors `[2, 2]`,
+class number 4, and all 1,526 original relation rows map to zero. This replaces
+the earlier 252.55-second generic rectangular HNF with an exact algorithm that
+uses the collector's phase-lifetime information. The receipt is
+`results/maximal-incremental-hnf-class-map.json`.
+
+This remains a candidate computation. The modular HNF bridge currently exports
+the final lattice basis but not the provenance needed to reconstruct principal
+elements from relation generators. Unit reconstruction, regulator/completion
+evidence, honesty/saturation checks beyond the collected presentation, and the
+public polynomial-to-result route remain required.

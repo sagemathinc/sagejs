@@ -113,6 +113,7 @@ pub struct PreparedCubicRelationPresentation {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ClassGroupError {
+    InvalidRelationPresentation,
     UnsupportedPreparedField,
     Schedule(ScheduleError),
     Numerical(NumericalPreparationError),
@@ -125,6 +126,51 @@ pub enum ClassGroupError {
     CollectorExhausted { relations: usize },
     PreparedFactorBase(PreparedFactorBaseError),
     PreparedIdeal(PreparedIdealError),
+}
+
+/// Select the exact rows that change the collector's modular rank.
+///
+/// This replays an already collected presentation through the same bounded
+/// finite-field filter used during collection, with supplementary storage
+/// disabled.  The returned square matrix is only an exact-HNF starting basis:
+/// it need not generate the full integral relation lattice until the omitted
+/// dependent rows have been incorporated.
+#[doc(hidden)]
+pub fn modular_independent_relation_rows(
+    relations: &[i64],
+    first_nonzero_hints: &[usize],
+    columns: usize,
+) -> Result<(Vec<i64>, Vec<usize>), ClassGroupError> {
+    if columns == 0
+        || relations.len() % columns != 0
+        || first_nonzero_hints.len() != relations.len() / columns
+    {
+        return Err(ClassGroupError::InvalidRelationPresentation);
+    }
+    let mut cache = RelationCache::new(columns, columns, 0);
+    let mut selected = Vec::with_capacity(columns * columns);
+    let mut source_rows = Vec::with_capacity(columns);
+    for (source_row, (relation, first_nonzero)) in relations
+        .chunks_exact(columns)
+        .zip(first_nonzero_hints.iter().copied())
+        .enumerate()
+    {
+        let outcome = cache.add_relation(relation, first_nonzero, 0, 0, 0, false)?;
+        if outcome.appended {
+            debug_assert!(outcome.rank_marker > 0);
+            selected.extend_from_slice(relation);
+            source_rows.push(source_row);
+            if cache.missing() == 0 {
+                break;
+            }
+        }
+    }
+    if cache.missing() != 0 || source_rows.len() != columns {
+        return Err(ClassGroupError::CollectorExhausted {
+            relations: source_rows.len(),
+        });
+    }
+    Ok((selected, source_rows))
 }
 
 impl From<ScheduleError> for ClassGroupError {
@@ -795,4 +841,25 @@ pub fn collect_prepared_cubic_relations(
         complete_rank_and_surplus: cache.missing() == 0 && cache.remaining_supplementary() == 0,
         missing_rank: cache.missing(),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn modular_row_selection_retains_only_rank_changes() {
+        let (square, source_rows) =
+            modular_independent_relation_rows(&[1, 0, 2, 0, 0, 1, 3, 4], &[1, 1, 2, 1], 2).unwrap();
+        assert_eq!(square, [1, 0, 0, 1]);
+        assert_eq!(source_rows, [0, 2]);
+    }
+
+    #[test]
+    fn modular_row_selection_rejects_misaligned_presentations() {
+        assert_eq!(
+            modular_independent_relation_rows(&[1, 0, 0], &[1], 2),
+            Err(ClassGroupError::InvalidRelationPresentation)
+        );
+    }
 }

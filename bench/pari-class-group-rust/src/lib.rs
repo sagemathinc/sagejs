@@ -52,6 +52,7 @@ pub use bruteforce_collector::{
 pub use class_group::{
     CollectorCounters, CollectorTimings, PreparedCollectorLimits,
     PreparedCubicRelationPresentation, collect_prepared_cubic_relations,
+    modular_independent_relation_rows,
 };
 pub use class_maps::{
     ClassCoordinates, ClassMapError, PresentationClassMap, PresentationZeroState,
@@ -62,7 +63,8 @@ pub use factor_base::prepared_cubic_factor_base;
 pub use factor_base::{FactorBase, PrimeIdeal};
 #[cfg(feature = "flint-normal-form")]
 pub use flint_normal_form::{
-    FlintNormalFormError, FlintSmithCandidate, FlintSmithClassMap, flint_hnf_basis,
+    FlintHnfProfile, FlintIncrementalHnf, FlintNormalFormError, FlintSmithCandidate,
+    FlintSmithClassMap, flint_hnf_basis, flint_hnf_profile, flint_incremental_hnf,
     flint_lll_column_transform, flint_smith_candidate, flint_smith_class_map,
 };
 pub use gmp_smith::{
