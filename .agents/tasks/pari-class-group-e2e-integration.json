@@ -14,9 +14,15 @@
     "agents/rust-class-group-core-qualification-plan.md",
     "agents/rust-class-group-public-contract-map.md",
     "architecture/decisions/0006-rust-math-core.md",
+    "architecture/package-graph.json",
     "architecture/native-boundaries.json",
     "architecture/native-code.json",
+    "architecture/optimizer-opportunities.manifest.json",
     "bench/pari-class-group-rust/",
+    "docs/optimizer-opportunities.md",
+    "pyrightconfig.json",
+    "src/lib/sagejs/number_fields/rust_class_group_preparation.py",
+    "test/number-field-rust-class-group-preparation.cjs",
     "packages/wasm-toolchain/recipes/libraries.cjs",
     "packages/wasm-toolchain/test/toolchain.test.cjs"
   ],
@@ -53,16 +59,16 @@
   ],
   "runs": [],
   "handoff": {
-    "summary": "R0/W0 foundations now include strict contracts, pinned PARI controls, a frozen answer-free candidate generator, reproducible GMP/MPFR/MPC Wasm routes in three browsers, checked GMP Smith retry, arbitrary-precision HNF/SNF transforms, validated cubic preparation, presentation class maps, and a bounded row-6 diagnostic. These are qualification components, not a complete class-group backend.",
+    "summary": "R0/W0 foundations and R1--R3 cubic work now include strict contracts, pinned PARI controls, reproducible GMP/MPFR/MPC Wasm routes, validated arbitrary-precision prepared inputs, complete GRH-conditional relation/class-map/unit/regulator evidence for H1, row 1, row 6, and one complex cubic, plus a certified answer-free Sage.js polynomial-to-prepared-field adapter. These remain qualification components rather than a production class-group backend.",
     "risks": [
-      "The current faithful fast path is authenticated only for H1 and does not yet provide a general prepared-field computation or public completion certificate.",
-      "The first Wasm class candidate is fast in Chromium, Firefox, and WebKit but remains a relation-presentation candidate, not a completed class group.",
-      "The current row-6 diagnostic uses the equation order because the public experimental boundary cannot yet carry its denominator-three maximal-order basis."
+      "The complete Rust prepared-field engine has not yet been integrated behind the Sage.js public result types or lifecycle API.",
+      "The complete class-and-unit path has not yet run in the actual browser route; the existing browser candidate stops at a relation presentation.",
+      "The certified preparation adapter currently covers cubic conditional-GRH requests only, and the balanced open/held-out corpus remains incomplete."
     ],
     "next_steps": [
       "Finish the balanced private 60-open plus 60-held-out corpus without committing held-out answers.",
-      "Profile and replace the row-6 initial-cache bottleneck, then carry neutral maximal-order data into the fast relation loop.",
-      "Implement relation principal elements, units, regulator/completion authority, saturation, generator ideals, and the public Sage.js adapter."
+      "Define and implement the Rust reactor/result ABI so the complete prepared-field result becomes an ordinary Sage.js class-group object without JSON phase round trips.",
+      "Build and qualify the complete class-and-unit reactor through the actual Chromium, Firefox, and WebKit worker route before broader-degree expansion."
     ]
   }
 }
