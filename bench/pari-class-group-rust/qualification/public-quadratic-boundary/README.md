@@ -52,6 +52,7 @@ Run a public coefficient-only call, here for `x^2 - x + 10`, with:
 ```sh
 cargo run --release --manifest-path \
   bench/pari-class-group-rust/qualification/public-quadratic-boundary/Cargo.toml \
+  --bin sagejs-public-quadratic-boundary-qualification \
   -- 10 -1 1
 ```
 
@@ -84,7 +85,8 @@ Run the product-path evidence and all tests with:
 
 ```sh
 cargo run --release --manifest-path \
-  bench/pari-class-group-rust/qualification/public-quadratic-boundary/Cargo.toml
+  bench/pari-class-group-rust/qualification/public-quadratic-boundary/Cargo.toml \
+  --bin sagejs-public-quadratic-boundary-qualification
 
 cargo test --release --all-targets --manifest-path \
   bench/pari-class-group-rust/qualification/public-quadratic-boundary/Cargo.toml
@@ -95,3 +97,11 @@ cargo test --release --doc --manifest-path \
 
 The differential test expects the authenticated control binary produced by
 `../pari-control/build.py`.
+
+## Native performance qualification
+
+The frozen alternating Rust/PARI 2.17.4 harness records all raw samples,
+medians, ratios, toolchain identity, and the deterministic replacement for the
+unavailable class-number-4,352 input as documented in
+[`benchmark/README.md`](benchmark/README.md). Run it with
+`python3 benchmark/run.py` from this crate.
