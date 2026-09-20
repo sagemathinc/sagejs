@@ -7,47 +7,32 @@
   },
   "builds": [
     {
-      "binaryBytes": 21447392,
-      "binarySha256": "83fb7a19cb38a8c690b92d06d91b3145f82de608d6749304475601317c75d8ce",
+      "binaryBytes": 21613992,
+      "binarySha256": "4cd46043fe8ba9c3d536953daab672c16f4c05722da87cabd33a1eb598a9aba2",
       "cargoTargetDir": "target/public-cubic-benchmark-repro-a",
       "command": "cargo build --locked --release",
-      "compilerMessages": "   Compiling version_check v0.9.5\n   Compiling proc-macro2 v1.0.107\n   Compiling unicode-ident v1.0.26\n   Compiling quote v1.0.47\n   Compiling typenum v1.20.1\n   Compiling libc v0.2.189\n   Compiling serde_core v1.0.229\n   Compiling gmp-mpfr-sys v1.7.1\n   Compiling libm v0.2.16\n   Compiling zmij v1.0.23\n   Compiling serde v1.0.229\n   Compiling rug v1.30.0\n   Compiling serde_json v1.0.151\n   Compiling cfg-if v1.0.5\n   Compiling sagejs-pari-class-group-rust-experiment v0.1.0 (/home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust)\n   Compiling memchr v2.8.3\n   Compiling cpufeatures v0.2.17\n   Compiling az v1.3.0\n   Compiling itoa v1.0.18\n   Compiling generic-array v0.14.7\n   Compiling syn v3.0.6\n   Compiling crypto-common v0.1.7\n   Compiling block-buffer v0.10.4\n   Compiling digest v0.10.7\n   Compiling sha2 v0.10.9\n   Compiling serde_derive v1.0.229\nwarning: constant `DEFAULT_SUPPLEMENTARY_RELATIONS` is never used\n  --> /home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/src/bruteforce_collector.rs:27:7\n   |\n27 | const DEFAULT_SUPPLEMENTARY_RELATIONS: usize = 7;\n   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n   |\n   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default\n\nwarning: function `collect_primitive_box` is never used\n   --> /home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/src/bruteforce_collector.rs:148:8\n    |\n148 | pub fn collect_primitive_box(\n    |        ^^^^^^^^^^^^^^^^^^^^^\n\nwarning: function `original_packet_index` is never used\n   --> /home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/src/collector_schedule.rs:144:8\n    |\n144 | pub fn original_packet_index(packet_ids: &[i64], selected: i64) -> Result<usize, ScheduleError> {\n    |        ^^^^^^^^^^^^^^^^^^^^^\n\nwarning: function `copy_original_packet` is never used\n   --> /home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/src/collector_schedule.rs:156:8\n    |\n156 | pub fn copy_original_packet<T: Clone>(\n    |        ^^^^^^^^^^^^^^^^^^^^\n\nwarning: method `at_most_half_in_absolute_value` is never used\n   --> /home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/src/ideal_arithmetic.rs:285:8\n    |\n191 | impl Fraction {\n    | ------------- method in this implementation\n...\n285 |     fn at_most_half_in_absolute_value(&self) -> bool {\n    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nwarning: function `verify_lll_reduction` is never used\n   --> /home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/src/ideal_arithmetic.rs:422:8\n    |\n422 | pub fn verify_lll_reduction(\n    |        ^^^^^^^^^^^^^^^^^^^^\n\nwarning: fields `transform`, `bound_root_degree`, `lll_swaps`, and `lll_size_reductions` are never read\n   --> /home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/src/numerical_preparation.rs:457:9\n    |\n455 | pub struct H1NumericalPreparation {\n    |            ---------------------- fields in this struct\n456 |     /// Exact unimodular basis change selected from `G0 * original_ideal`.\n457 |     pub transform: Matrix3,\n    |         ^^^^^^^^^\n...\n465 |     pub bound_root_degree: usize,\n    |         ^^^^^^^^^^^^^^^^^\n466 |     pub skip_first: bool,\n467 |     pub lll_swaps: usize,\n    |         ^^^^^^^^^\n468 |     pub lll_size_reductions: usize,\n    |         ^^^^^^^^^^^^^^^^^^^\n    |\n    = note: `H1NumericalPreparation` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis\n\nwarning: function `sparse_relation` is never used\n   --> /home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/src/prime_valuation.rs:291:8\n    |\n291 | pub fn sparse_relation(relation: &[i64]) -> Vec<(usize, i64)> {\n    |        ^^^^^^^^^^^^^^^\n\nwarning: method `coefficients` is never used\n   --> /home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/src/smooth_admission.rs:185:12\n    |\n120 | impl CubicNormForm {\n    | ------------------ method in this implementation\n...\n185 |     pub fn coefficients(&self) -> &[i128; 9] {\n    |            ^^^^^^^^^^^^\n\n   Compiling sagejs-public-cubic-class-group-e2e-qualification v0.1.0 (/home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/qualification/public-cubic-e2e)\nwarning: `sagejs-pari-class-group-rust-experiment` (lib) generated 9 warnings\n    Finished `release` profile [optimized] target(s) in 9.83s\n"
+      "compilerMessages": "   Compiling version_check v0.9.5\n   Compiling generic-array v0.14.7\n   Compiling proc-macro2 v1.0.107\n   Compiling unicode-ident v1.0.26\n   Compiling quote v1.0.47\n   Compiling typenum v1.20.1\n   Compiling serde_core v1.0.229\n   Compiling gmp-mpfr-sys v1.7.1\n   Compiling libc v0.2.189\n   Compiling libm v0.2.16\n   Compiling zmij v1.0.23\n   Compiling syn v3.0.6\n   Compiling block-buffer v0.10.4\n   Compiling crypto-common v0.1.7\n   Compiling serde_json v1.0.151\n   Compiling rug v1.30.0\n   Compiling serde v1.0.229\n   Compiling digest v0.10.7\n   Compiling serde_derive v1.0.229\n   Compiling sagejs-pari-class-group-rust-experiment v0.1.0 (/home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust)\n   Compiling cpufeatures v0.2.17\n   Compiling itoa v1.0.18\n   Compiling memchr v2.8.3\n   Compiling az v1.3.0\n   Compiling cfg-if v1.0.5\n   Compiling sha2 v0.10.9\nwarning: constant `DEFAULT_SUPPLEMENTARY_RELATIONS` is never used\n  --> /home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/src/bruteforce_collector.rs:27:7\n   |\n27 | const DEFAULT_SUPPLEMENTARY_RELATIONS: usize = 7;\n   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n   |\n   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default\n\nwarning: function `collect_primitive_box` is never used\n   --> /home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/src/bruteforce_collector.rs:148:8\n    |\n148 | pub fn collect_primitive_box(\n    |        ^^^^^^^^^^^^^^^^^^^^^\n\nwarning: function `original_packet_index` is never used\n   --> /home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/src/collector_schedule.rs:144:8\n    |\n144 | pub fn original_packet_index(packet_ids: &[i64], selected: i64) -> Result<usize, ScheduleError> {\n    |        ^^^^^^^^^^^^^^^^^^^^^\n\nwarning: function `copy_original_packet` is never used\n   --> /home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/src/collector_schedule.rs:156:8\n    |\n156 | pub fn copy_original_packet<T: Clone>(\n    |        ^^^^^^^^^^^^^^^^^^^^\n\nwarning: method `at_most_half_in_absolute_value` is never used\n   --> /home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/src/ideal_arithmetic.rs:285:8\n    |\n191 | impl Fraction {\n    | ------------- method in this implementation\n...\n285 |     fn at_most_half_in_absolute_value(&self) -> bool {\n    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nwarning: function `verify_lll_reduction` is never used\n   --> /home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/src/ideal_arithmetic.rs:422:8\n    |\n422 | pub fn verify_lll_reduction(\n    |        ^^^^^^^^^^^^^^^^^^^^\n\nwarning: fields `transform`, `bound_root_degree`, `lll_swaps`, and `lll_size_reductions` are never read\n   --> /home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/src/numerical_preparation.rs:457:9\n    |\n455 | pub struct H1NumericalPreparation {\n    |            ---------------------- fields in this struct\n456 |     /// Exact unimodular basis change selected from `G0 * original_ideal`.\n457 |     pub transform: Matrix3,\n    |         ^^^^^^^^^\n...\n465 |     pub bound_root_degree: usize,\n    |         ^^^^^^^^^^^^^^^^^\n466 |     pub skip_first: bool,\n467 |     pub lll_swaps: usize,\n    |         ^^^^^^^^^\n468 |     pub lll_size_reductions: usize,\n    |         ^^^^^^^^^^^^^^^^^^^\n    |\n    = note: `H1NumericalPreparation` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis\n\nwarning: function `sparse_relation` is never used\n   --> /home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/src/prime_valuation.rs:291:8\n    |\n291 | pub fn sparse_relation(relation: &[i64]) -> Vec<(usize, i64)> {\n    |        ^^^^^^^^^^^^^^^\n\nwarning: method `coefficients` is never used\n   --> /home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/src/smooth_admission.rs:185:12\n    |\n120 | impl CubicNormForm {\n    | ------------------ method in this implementation\n...\n185 |     pub fn coefficients(&self) -> &[i128; 9] {\n    |            ^^^^^^^^^^^^\n\nwarning: `sagejs-pari-class-group-rust-experiment` (lib) generated 9 warnings\n   Compiling sagejs-public-cubic-class-group-e2e-qualification v0.1.0 (/home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/qualification/public-cubic-e2e)\n    Finished `release` profile [optimized] target(s) in 42.51s\n"
     },
     {
-      "binaryBytes": 21447392,
-      "binarySha256": "83fb7a19cb38a8c690b92d06d91b3145f82de608d6749304475601317c75d8ce",
+      "binaryBytes": 21613992,
+      "binarySha256": "4cd46043fe8ba9c3d536953daab672c16f4c05722da87cabd33a1eb598a9aba2",
       "cargoTargetDir": "target/public-cubic-benchmark-repro-b",
       "command": "cargo build --locked --release",
-      "compilerMessages": "   Compiling version_check v0.9.5\n   Compiling proc-macro2 v1.0.107\n   Compiling unicode-ident v1.0.26\n   Compiling typenum v1.20.1\n   Compiling quote v1.0.47\n   Compiling libc v0.2.189\n   Compiling serde_core v1.0.229\n   Compiling gmp-mpfr-sys v1.7.1\n   Compiling libm v0.2.16\n   Compiling zmij v1.0.23\n   Compiling serde_json v1.0.151\n   Compiling rug v1.30.0\n   Compiling serde v1.0.229\n   Compiling cfg-if v1.0.5\n   Compiling cpufeatures v0.2.17\n   Compiling memchr v2.8.3\n   Compiling sagejs-pari-class-group-rust-experiment v0.1.0 (/home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust)\n   Compiling itoa v1.0.18\n   Compiling az v1.3.0\n   Compiling generic-array v0.14.7\n   Compiling syn v3.0.6\n   Compiling crypto-common v0.1.7\n   Compiling block-buffer v0.10.4\n   Compiling digest v0.10.7\n   Compiling sha2 v0.10.9\n   Compiling serde_derive v1.0.229\nwarning: constant `DEFAULT_SUPPLEMENTARY_RELATIONS` is never used\n  --> /home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/src/bruteforce_collector.rs:27:7\n   |\n27 | const DEFAULT_SUPPLEMENTARY_RELATIONS: usize = 7;\n   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n   |\n   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default\n\nwarning: function `collect_primitive_box` is never used\n   --> /home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/src/bruteforce_collector.rs:148:8\n    |\n148 | pub fn collect_primitive_box(\n    |        ^^^^^^^^^^^^^^^^^^^^^\n\nwarning: function `original_packet_index` is never used\n   --> /home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/src/collector_schedule.rs:144:8\n    |\n144 | pub fn original_packet_index(packet_ids: &[i64], selected: i64) -> Result<usize, ScheduleError> {\n    |        ^^^^^^^^^^^^^^^^^^^^^\n\nwarning: function `copy_original_packet` is never used\n   --> /home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/src/collector_schedule.rs:156:8\n    |\n156 | pub fn copy_original_packet<T: Clone>(\n    |        ^^^^^^^^^^^^^^^^^^^^\n\nwarning: method `at_most_half_in_absolute_value` is never used\n   --> /home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/src/ideal_arithmetic.rs:285:8\n    |\n191 | impl Fraction {\n    | ------------- method in this implementation\n...\n285 |     fn at_most_half_in_absolute_value(&self) -> bool {\n    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nwarning: function `verify_lll_reduction` is never used\n   --> /home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/src/ideal_arithmetic.rs:422:8\n    |\n422 | pub fn verify_lll_reduction(\n    |        ^^^^^^^^^^^^^^^^^^^^\n\nwarning: fields `transform`, `bound_root_degree`, `lll_swaps`, and `lll_size_reductions` are never read\n   --> /home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/src/numerical_preparation.rs:457:9\n    |\n455 | pub struct H1NumericalPreparation {\n    |            ---------------------- fields in this struct\n456 |     /// Exact unimodular basis change selected from `G0 * original_ideal`.\n457 |     pub transform: Matrix3,\n    |         ^^^^^^^^^\n...\n465 |     pub bound_root_degree: usize,\n    |         ^^^^^^^^^^^^^^^^^\n466 |     pub skip_first: bool,\n467 |     pub lll_swaps: usize,\n    |         ^^^^^^^^^\n468 |     pub lll_size_reductions: usize,\n    |         ^^^^^^^^^^^^^^^^^^^\n    |\n    = note: `H1NumericalPreparation` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis\n\nwarning: function `sparse_relation` is never used\n   --> /home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/src/prime_valuation.rs:291:8\n    |\n291 | pub fn sparse_relation(relation: &[i64]) -> Vec<(usize, i64)> {\n    |        ^^^^^^^^^^^^^^^\n\nwarning: method `coefficients` is never used\n   --> /home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/src/smooth_admission.rs:185:12\n    |\n120 | impl CubicNormForm {\n    | ------------------ method in this implementation\n...\n185 |     pub fn coefficients(&self) -> &[i128; 9] {\n    |            ^^^^^^^^^^^^\n\n   Compiling sagejs-public-cubic-class-group-e2e-qualification v0.1.0 (/home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/qualification/public-cubic-e2e)\nwarning: `sagejs-pari-class-group-rust-experiment` (lib) generated 9 warnings\n    Finished `release` profile [optimized] target(s) in 9.88s\n"
+      "compilerMessages": "   Compiling version_check v0.9.5\n   Compiling generic-array v0.14.7\n   Compiling proc-macro2 v1.0.107\n   Compiling unicode-ident v1.0.26\n   Compiling typenum v1.20.1\n   Compiling quote v1.0.47\n   Compiling serde_core v1.0.229\n   Compiling libc v0.2.189\n   Compiling gmp-mpfr-sys v1.7.1\n   Compiling zmij v1.0.23\n   Compiling libm v0.2.16\n   Compiling syn v3.0.6\n   Compiling block-buffer v0.10.4\n   Compiling crypto-common v0.1.7\n   Compiling serde v1.0.229\n   Compiling rug v1.30.0\n   Compiling serde_json v1.0.151\n   Compiling digest v0.10.7\n   Compiling serde_derive v1.0.229\n   Compiling az v1.3.0\n   Compiling sagejs-pari-class-group-rust-experiment v0.1.0 (/home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust)\n   Compiling cfg-if v1.0.5\n   Compiling memchr v2.8.3\n   Compiling itoa v1.0.18\n   Compiling cpufeatures v0.2.17\n   Compiling sha2 v0.10.9\nwarning: constant `DEFAULT_SUPPLEMENTARY_RELATIONS` is never used\n  --> /home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/src/bruteforce_collector.rs:27:7\n   |\n27 | const DEFAULT_SUPPLEMENTARY_RELATIONS: usize = 7;\n   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n   |\n   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default\n\nwarning: function `collect_primitive_box` is never used\n   --> /home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/src/bruteforce_collector.rs:148:8\n    |\n148 | pub fn collect_primitive_box(\n    |        ^^^^^^^^^^^^^^^^^^^^^\n\nwarning: function `original_packet_index` is never used\n   --> /home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/src/collector_schedule.rs:144:8\n    |\n144 | pub fn original_packet_index(packet_ids: &[i64], selected: i64) -> Result<usize, ScheduleError> {\n    |        ^^^^^^^^^^^^^^^^^^^^^\n\nwarning: function `copy_original_packet` is never used\n   --> /home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/src/collector_schedule.rs:156:8\n    |\n156 | pub fn copy_original_packet<T: Clone>(\n    |        ^^^^^^^^^^^^^^^^^^^^\n\nwarning: method `at_most_half_in_absolute_value` is never used\n   --> /home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/src/ideal_arithmetic.rs:285:8\n    |\n191 | impl Fraction {\n    | ------------- method in this implementation\n...\n285 |     fn at_most_half_in_absolute_value(&self) -> bool {\n    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nwarning: function `verify_lll_reduction` is never used\n   --> /home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/src/ideal_arithmetic.rs:422:8\n    |\n422 | pub fn verify_lll_reduction(\n    |        ^^^^^^^^^^^^^^^^^^^^\n\nwarning: fields `transform`, `bound_root_degree`, `lll_swaps`, and `lll_size_reductions` are never read\n   --> /home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/src/numerical_preparation.rs:457:9\n    |\n455 | pub struct H1NumericalPreparation {\n    |            ---------------------- fields in this struct\n456 |     /// Exact unimodular basis change selected from `G0 * original_ideal`.\n457 |     pub transform: Matrix3,\n    |         ^^^^^^^^^\n...\n465 |     pub bound_root_degree: usize,\n    |         ^^^^^^^^^^^^^^^^^\n466 |     pub skip_first: bool,\n467 |     pub lll_swaps: usize,\n    |         ^^^^^^^^^\n468 |     pub lll_size_reductions: usize,\n    |         ^^^^^^^^^^^^^^^^^^^\n    |\n    = note: `H1NumericalPreparation` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis\n\nwarning: function `sparse_relation` is never used\n   --> /home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/src/prime_valuation.rs:291:8\n    |\n291 | pub fn sparse_relation(relation: &[i64]) -> Vec<(usize, i64)> {\n    |        ^^^^^^^^^^^^^^^\n\nwarning: method `coefficients` is never used\n   --> /home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/src/smooth_admission.rs:185:12\n    |\n120 | impl CubicNormForm {\n    | ------------------ method in this implementation\n...\n185 |     pub fn coefficients(&self) -> &[i128; 9] {\n    |            ^^^^^^^^^^^^\n\nwarning: `sagejs-pari-class-group-rust-experiment` (lib) generated 9 warnings\n   Compiling sagejs-public-cubic-class-group-e2e-qualification v0.1.0 (/home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/qualification/public-cubic-e2e)\n    Finished `release` profile [optimized] target(s) in 42.58s\n"
     }
   ],
   "evidenceStatus": "promotion-candidate-clean-frozen-source",
   "executionContext": {
     "affinityLogicalCpus": [
-      0,
-      1,
-      2,
-      3,
-      4,
-      5,
-      6,
-      7,
-      8,
-      9,
-      10,
-      11,
-      12,
-      13,
-      14,
-      15
+      0
     ],
-    "capturedAtUnixNanoseconds": 1789939940000022331,
+    "capturedAtUnixNanoseconds": 1789946093522702225,
     "cpuModel": "AMD EPYC 7B13",
     "isolation": "not externally isolated; load and affinity are recorded",
     "loadAverage1m5m15m": [
-      2.53759765625,
-      3.20458984375,
-      2.75244140625
+      2.1455078125,
+      2.4580078125,
+      2.0830078125
     ],
     "logicalCpuCount": 16,
     "platform": "Linux-7.0.0-1011-gcp-x86_64-with-glibc2.43",
@@ -63,6 +48,7 @@
     {
       "expected": {
         "bfThreshold": 1152,
+        "candidateAuthority": "authenticated-supplied-principal-relations-candidate-only",
         "classNumber": "1",
         "discriminant": "-23",
         "discriminantPrimeFactors": [
@@ -80,58 +66,59 @@
       },
       "fieldId": "small-x3-x-1",
       "pariKernelNanoseconds": [
-        1876540,
-        1919830,
-        1955020,
-        2022499,
-        2091549,
-        2001790,
-        2029470,
-        1959219,
-        1985649,
-        2008069,
-        1918970,
-        2072090,
-        2052330,
-        1900759,
-        1979649
+        2083900,
+        2078569,
+        2048749,
+        2083460,
+        2306580,
+        2072439,
+        2099599,
+        2157969,
+        2151000,
+        2094990,
+        2131339,
+        2108219,
+        2208259,
+        2108309,
+        2049090
       ],
-      "pariMedianNanoseconds": 1985649,
+      "pariMedianNanoseconds": 2099599,
       "pariStageMediansNanoseconds": {
-        "bnfinit0-prepared-field-to-complete-bnf": 986890,
+        "bnfinit0-prepared-field-to-complete-bnf": 1024830,
         "complete-bnf-to-exact-projection": 80,
-        "nfinit0-polynomial-to-prepared-field": 995190
+        "nfinit0-polynomial-to-prepared-field": 1083540
       },
       "rustKernelNanoseconds": [
-        12610627,
-        12582777,
-        12641256,
-        12667766,
-        12615136,
-        12639506,
-        12791906,
-        26554042,
-        12469037,
-        12624737,
-        12590976,
-        12634576,
-        12608926,
-        12671126,
-        12558887
+        23440644,
+        23262764,
+        23078155,
+        23194684,
+        23203475,
+        23341263,
+        23238734,
+        23423125,
+        23156164,
+        23322954,
+        23277574,
+        23330814,
+        23127494,
+        23175804,
+        23108814
       ],
-      "rustMedianNanoseconds": 12624737,
-      "rustOverPariMedianRatio": 6.357990259104202,
+      "rustMedianNanoseconds": 23238734,
+      "rustOverPariMedianRatio": 11.068177304332876,
       "rustStageMediansNanoseconds": {
-        "candidateAuthentication": 3132139,
-        "publicInputAndPreparation": 235140,
-        "relationCollection": 5817348,
-        "totalToSealedResult": 12624737,
-        "unitAndAnalyticCompletion": 3431799
+        "candidateAuthentication": 246930,
+        "publicInputAndPreparation": 225760,
+        "relationCollection": 5765548,
+        "totalToSealedResult": 23238734,
+        "unitAndAnalyticCompletion": 16956626
       }
     },
     {
       "expected": {
         "bfThreshold": 4608,
+        "candidateAuthority": "authenticated-supplied-principal-relations-candidate-only",
         "classNumber": "2",
         "discriminant": "-41779",
         "discriminantPrimeFactors": [
@@ -152,58 +139,133 @@
       },
       "fieldId": "small-class-number-2",
       "pariKernelNanoseconds": [
-        2460809,
-        2580939,
-        2434480,
-        2354239,
-        2570599,
-        2400409,
-        2391099,
-        2485760,
-        2422220,
-        2486580,
-        2380380,
-        2606750,
-        2464120,
-        2374409,
-        2417130
+        2502439,
+        2545589,
+        2500540,
+        2504100,
+        2477309,
+        2543859,
+        2592529,
+        2524160,
+        2501649,
+        2679980,
+        2480910,
+        2499670,
+        2523290,
+        2508249,
+        2531100
       ],
-      "pariMedianNanoseconds": 2434480,
+      "pariMedianNanoseconds": 2508249,
       "pariStageMediansNanoseconds": {
-        "bnfinit0-prepared-field-to-complete-bnf": 1395330,
-        "complete-bnf-to-exact-projection": 80,
-        "nfinit0-polynomial-to-prepared-field": 1044110
+        "bnfinit0-prepared-field-to-complete-bnf": 1424629,
+        "complete-bnf-to-exact-projection": 90,
+        "nfinit0-polynomial-to-prepared-field": 1088430
       },
       "rustKernelNanoseconds": [
-        43837837,
-        68285820,
-        34603000,
-        34213730,
-        34123030,
-        147383637,
-        34457121,
-        49872036,
-        34225840,
-        34947020,
-        34320740,
-        34441950,
-        34168250,
-        34619150,
-        34311520
+        41072209,
+        41127130,
+        41033450,
+        41260370,
+        41210730,
+        41227319,
+        41218619,
+        41324300,
+        41180490,
+        41566360,
+        41698730,
+        41249529,
+        41144240,
+        41176329,
+        41374039
       ],
-      "rustMedianNanoseconds": 34457121,
-      "rustOverPariMedianRatio": 14.153790953304197,
+      "rustMedianNanoseconds": 41218619,
+      "rustOverPariMedianRatio": 16.433224532333114,
       "rustStageMediansNanoseconds": {
-        "candidateAuthentication": 9158687,
-        "publicInputAndPreparation": 260660,
-        "relationCollection": 7609268,
-        "totalToSealedResult": 34457121,
-        "unitAndAnalyticCompletion": 17370875
+        "candidateAuthentication": 789990,
+        "publicInputAndPreparation": 252011,
+        "relationCollection": 7532268,
+        "totalToSealedResult": 41218619,
+        "unitAndAnalyticCompletion": 32620392
+      }
+    },
+    {
+      "expected": {
+        "bfThreshold": 23994,
+        "candidateAuthority": "authenticated-collector-sealed-compact-elementary-two-presentation",
+        "classNumber": "4",
+        "discriminant": "3555555555596888888888939555555555028",
+        "discriminantPrimeFactors": [
+          "2",
+          "3",
+          "32921810699971193415638329218106991"
+        ],
+        "equationOrderIndex": "3",
+        "factorBaseSize": 1130,
+        "invariantFactors": [
+          "2",
+          "2"
+        ],
+        "relationCount": 1137,
+        "signature": [
+          3,
+          0
+        ],
+        "unitRank": 2
+      },
+      "fieldId": "row6-continuation-cubic",
+      "pariKernelNanoseconds": [
+        3934371047,
+        3978637916,
+        3995714561,
+        3968764148,
+        4042538689,
+        3949923513,
+        3987922333,
+        3984836774,
+        3987438984,
+        3989582783,
+        4025016893,
+        4006859508,
+        3993117091,
+        3890569338,
+        4011777237
+      ],
+      "pariMedianNanoseconds": 3987922333,
+      "pariStageMediansNanoseconds": {
+        "bnfinit0-prepared-field-to-complete-bnf": 3986867094,
+        "complete-bnf-to-exact-projection": 260,
+        "nfinit0-polynomial-to-prepared-field": 969880
+      },
+      "rustKernelNanoseconds": [
+        6288959206,
+        6358401289,
+        6328072557,
+        6298209644,
+        6278264980,
+        6283629507,
+        6299798724,
+        6333391805,
+        6328784487,
+        6349450811,
+        6313289400,
+        6293298515,
+        6330044343,
+        6357652569,
+        6336936084
+      ],
+      "rustMedianNanoseconds": 6328072557,
+      "rustOverPariMedianRatio": 1.586809378065187,
+      "rustStageMediansNanoseconds": {
+        "candidateAuthentication": 2097089525,
+        "publicInputAndPreparation": 58212745,
+        "relationCollection": 2723114186,
+        "totalToSealedResult": 6328072557,
+        "unitAndAnalyticCompletion": 1439884942
       }
     }
   ],
-  "gitCommit": "735a856d00023ce1af9bfeb2643b988044a0965f",
-  "panelSha256": "d4a2a0248c542e539875a5081b172fe65f7e7b39d85a2f34ff99663f6adf8c4f",
+  "gitCommit": "749e892fe3e517e52505e642751854bc06ff8eaa",
+  "panelSha256": "202f88690b7758111d67721fd7cd014aa2d7c4c36abb098ee0569588ac606e77",
   "pariControlIdentity": {
     "adapterBuildIdentitySha256": "6491429b61458beac026613f763e0fa567f130acc7cf2028268d7fe7ab5edd0f",
     "adapterExecutableSha256": "e2593aef376107799aeebaf8ce45d01b287a84b5065c2bed61e2d449fd5cad9b",
@@ -224,901 +286,1351 @@
     {
       "arm": "rust",
       "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 15616496,
+      "externalProcessNanosecondsExcluded": 26000473,
       "fieldId": "small-x3-x-1",
-      "kernelNanoseconds": 12610627,
+      "kernelNanoseconds": 23440644,
       "pairOneBased": 1,
       "positionInPairOneBased": 1,
       "stageTimingsNanoseconds": {
-        "candidateAuthentication": 3105469,
-        "publicInputAndPreparation": 235540,
-        "relationCollection": 5858018,
-        "totalToSealedResult": 12610627,
-        "unitAndAnalyticCompletion": 3401249
+        "candidateAuthentication": 246770,
+        "publicInputAndPreparation": 227390,
+        "relationCollection": 5752509,
+        "totalToSealedResult": 23440644,
+        "unitAndAnalyticCompletion": 17206316
       }
     },
     {
       "arm": "pari",
       "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 109620857,
+      "externalProcessNanosecondsExcluded": 110109342,
       "fieldId": "small-x3-x-1",
-      "kernelNanoseconds": 1876540,
+      "kernelNanoseconds": 2083900,
       "pairOneBased": 1,
       "positionInPairOneBased": 2,
       "stageTimingsNanoseconds": {
-        "bnfinit0-prepared-field-to-complete-bnf": 950180,
-        "complete-bnf-to-exact-projection": 70,
-        "nfinit0-polynomial-to-prepared-field": 926230
+        "bnfinit0-prepared-field-to-complete-bnf": 1067190,
+        "complete-bnf-to-exact-projection": 69,
+        "nfinit0-polynomial-to-prepared-field": 1016450
       }
     },
     {
       "arm": "pari",
       "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 109243548,
+      "externalProcessNanosecondsExcluded": 111114402,
       "fieldId": "small-x3-x-1",
-      "kernelNanoseconds": 1919830,
+      "kernelNanoseconds": 2078569,
       "pairOneBased": 2,
       "positionInPairOneBased": 1,
       "stageTimingsNanoseconds": {
-        "bnfinit0-prepared-field-to-complete-bnf": 974010,
-        "complete-bnf-to-exact-projection": 120,
-        "nfinit0-polynomial-to-prepared-field": 945700
+        "bnfinit0-prepared-field-to-complete-bnf": 1023550,
+        "complete-bnf-to-exact-projection": 90,
+        "nfinit0-polynomial-to-prepared-field": 1054889
       }
     },
     {
       "arm": "rust",
       "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 15499446,
+      "externalProcessNanosecondsExcluded": 25664653,
       "fieldId": "small-x3-x-1",
-      "kernelNanoseconds": 12582777,
+      "kernelNanoseconds": 23262764,
       "pairOneBased": 2,
       "positionInPairOneBased": 2,
       "stageTimingsNanoseconds": {
-        "candidateAuthentication": 3109259,
-        "publicInputAndPreparation": 251120,
-        "relationCollection": 5800739,
-        "totalToSealedResult": 12582777,
-        "unitAndAnalyticCompletion": 3413979
+        "candidateAuthentication": 244471,
+        "publicInputAndPreparation": 225760,
+        "relationCollection": 5840069,
+        "totalToSealedResult": 23262764,
+        "unitAndAnalyticCompletion": 16939405
       }
     },
     {
       "arm": "rust",
       "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 15414815,
+      "externalProcessNanosecondsExcluded": 25272074,
       "fieldId": "small-x3-x-1",
-      "kernelNanoseconds": 12641256,
+      "kernelNanoseconds": 23078155,
       "pairOneBased": 3,
       "positionInPairOneBased": 1,
       "stageTimingsNanoseconds": {
-        "candidateAuthentication": 3145449,
-        "publicInputAndPreparation": 246940,
-        "relationCollection": 5845238,
-        "totalToSealedResult": 12641256,
-        "unitAndAnalyticCompletion": 3400829
+        "candidateAuthentication": 254650,
+        "publicInputAndPreparation": 211040,
+        "relationCollection": 5714299,
+        "totalToSealedResult": 23078155,
+        "unitAndAnalyticCompletion": 16896116
       }
     },
     {
       "arm": "pari",
       "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 106910929,
+      "externalProcessNanosecondsExcluded": 110813822,
       "fieldId": "small-x3-x-1",
-      "kernelNanoseconds": 1955020,
+      "kernelNanoseconds": 2048749,
       "pairOneBased": 3,
       "positionInPairOneBased": 2,
       "stageTimingsNanoseconds": {
-        "bnfinit0-prepared-field-to-complete-bnf": 983710,
+        "bnfinit0-prepared-field-to-complete-bnf": 1016179,
         "complete-bnf-to-exact-projection": 70,
-        "nfinit0-polynomial-to-prepared-field": 971189
+        "nfinit0-polynomial-to-prepared-field": 1032430
       }
     },
     {
       "arm": "pari",
       "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 105256239,
+      "externalProcessNanosecondsExcluded": 109228162,
       "fieldId": "small-x3-x-1",
-      "kernelNanoseconds": 2022499,
+      "kernelNanoseconds": 2083460,
       "pairOneBased": 4,
       "positionInPairOneBased": 1,
       "stageTimingsNanoseconds": {
-        "bnfinit0-prepared-field-to-complete-bnf": 990539,
-        "complete-bnf-to-exact-projection": 80,
-        "nfinit0-polynomial-to-prepared-field": 1031840
+        "bnfinit0-prepared-field-to-complete-bnf": 1029260,
+        "complete-bnf-to-exact-projection": 70,
+        "nfinit0-polynomial-to-prepared-field": 1054079
       }
     },
     {
       "arm": "rust",
       "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 15610675,
+      "externalProcessNanosecondsExcluded": 25920444,
       "fieldId": "small-x3-x-1",
-      "kernelNanoseconds": 12667766,
+      "kernelNanoseconds": 23194684,
       "pairOneBased": 4,
       "positionInPairOneBased": 2,
       "stageTimingsNanoseconds": {
-        "candidateAuthentication": 3148648,
-        "publicInputAndPreparation": 247370,
-        "relationCollection": 5844439,
-        "totalToSealedResult": 12667766,
-        "unitAndAnalyticCompletion": 3424199
+        "candidateAuthentication": 246860,
+        "publicInputAndPreparation": 236970,
+        "relationCollection": 5798468,
+        "totalToSealedResult": 23194684,
+        "unitAndAnalyticCompletion": 16904166
       }
     },
     {
       "arm": "rust",
       "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 15532466,
+      "externalProcessNanosecondsExcluded": 25810603,
       "fieldId": "small-x3-x-1",
-      "kernelNanoseconds": 12615136,
+      "kernelNanoseconds": 23203475,
       "pairOneBased": 5,
       "positionInPairOneBased": 1,
       "stageTimingsNanoseconds": {
-        "candidateAuthentication": 3146159,
-        "publicInputAndPreparation": 228059,
-        "relationCollection": 5802518,
-        "totalToSealedResult": 12615136,
-        "unitAndAnalyticCompletion": 3431799
+        "candidateAuthentication": 250350,
+        "publicInputAndPreparation": 218790,
+        "relationCollection": 5727579,
+        "totalToSealedResult": 23203475,
+        "unitAndAnalyticCompletion": 17001155
       }
     },
     {
       "arm": "pari",
       "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 109007948,
+      "externalProcessNanosecondsExcluded": 112308731,
       "fieldId": "small-x3-x-1",
-      "kernelNanoseconds": 2091549,
+      "kernelNanoseconds": 2306580,
       "pairOneBased": 5,
       "positionInPairOneBased": 2,
       "stageTimingsNanoseconds": {
-        "bnfinit0-prepared-field-to-complete-bnf": 1025090,
-        "complete-bnf-to-exact-projection": 90,
-        "nfinit0-polynomial-to-prepared-field": 1066329
+        "bnfinit0-prepared-field-to-complete-bnf": 1216590,
+        "complete-bnf-to-exact-projection": 140,
+        "nfinit0-polynomial-to-prepared-field": 1089860
       }
     },
     {
       "arm": "pari",
       "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 109933398,
+      "externalProcessNanosecondsExcluded": 112116691,
       "fieldId": "small-x3-x-1",
-      "kernelNanoseconds": 2001790,
+      "kernelNanoseconds": 2072439,
       "pairOneBased": 6,
       "positionInPairOneBased": 1,
       "stageTimingsNanoseconds": {
-        "bnfinit0-prepared-field-to-complete-bnf": 986890,
-        "complete-bnf-to-exact-projection": 60,
-        "nfinit0-polynomial-to-prepared-field": 1014750
+        "bnfinit0-prepared-field-to-complete-bnf": 1010770,
+        "complete-bnf-to-exact-projection": 230,
+        "nfinit0-polynomial-to-prepared-field": 1061549
       }
     },
     {
       "arm": "rust",
       "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 15484195,
+      "externalProcessNanosecondsExcluded": 25875573,
       "fieldId": "small-x3-x-1",
-      "kernelNanoseconds": 12639506,
+      "kernelNanoseconds": 23341263,
       "pairOneBased": 6,
       "positionInPairOneBased": 2,
       "stageTimingsNanoseconds": {
-        "candidateAuthentication": 3132139,
-        "publicInputAndPreparation": 229630,
-        "relationCollection": 5822438,
-        "totalToSealedResult": 12639506,
-        "unitAndAnalyticCompletion": 3447569
+        "candidateAuthentication": 246200,
+        "publicInputAndPreparation": 236509,
+        "relationCollection": 5835179,
+        "totalToSealedResult": 23341263,
+        "unitAndAnalyticCompletion": 17015776
       }
     },
     {
       "arm": "rust",
       "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 15635155,
+      "externalProcessNanosecondsExcluded": 25892504,
       "fieldId": "small-x3-x-1",
-      "kernelNanoseconds": 12791906,
+      "kernelNanoseconds": 23238734,
       "pairOneBased": 7,
       "positionInPairOneBased": 1,
       "stageTimingsNanoseconds": {
-        "candidateAuthentication": 3274928,
-        "publicInputAndPreparation": 229730,
-        "relationCollection": 5812448,
-        "totalToSealedResult": 12791906,
-        "unitAndAnalyticCompletion": 3466010
+        "candidateAuthentication": 248549,
+        "publicInputAndPreparation": 219380,
+        "relationCollection": 5803858,
+        "totalToSealedResult": 23238734,
+        "unitAndAnalyticCompletion": 16956626
       }
     },
     {
       "arm": "pari",
       "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 108409639,
+      "externalProcessNanosecondsExcluded": 111504661,
       "fieldId": "small-x3-x-1",
-      "kernelNanoseconds": 2029470,
+      "kernelNanoseconds": 2099599,
       "pairOneBased": 7,
       "positionInPairOneBased": 2,
       "stageTimingsNanoseconds": {
-        "bnfinit0-prepared-field-to-complete-bnf": 1003110,
+        "bnfinit0-prepared-field-to-complete-bnf": 1015919,
         "complete-bnf-to-exact-projection": 70,
-        "nfinit0-polynomial-to-prepared-field": 1026230
+        "nfinit0-polynomial-to-prepared-field": 1083540
       }
     },
     {
       "arm": "pari",
       "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 105348869,
+      "externalProcessNanosecondsExcluded": 111439392,
       "fieldId": "small-x3-x-1",
-      "kernelNanoseconds": 1959219,
+      "kernelNanoseconds": 2157969,
       "pairOneBased": 8,
       "positionInPairOneBased": 1,
       "stageTimingsNanoseconds": {
-        "bnfinit0-prepared-field-to-complete-bnf": 988690,
-        "complete-bnf-to-exact-projection": 80,
-        "nfinit0-polynomial-to-prepared-field": 970410
-      }
-    },
-    {
-      "arm": "rust",
-      "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 29211471,
-      "fieldId": "small-x3-x-1",
-      "kernelNanoseconds": 26554042,
-      "pairOneBased": 8,
-      "positionInPairOneBased": 2,
-      "stageTimingsNanoseconds": {
-        "candidateAuthentication": 6098808,
-        "publicInputAndPreparation": 235140,
-        "relationCollection": 13797856,
-        "totalToSealedResult": 26554042,
-        "unitAndAnalyticCompletion": 6414998
-      }
-    },
-    {
-      "arm": "rust",
-      "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 15809525,
-      "fieldId": "small-x3-x-1",
-      "kernelNanoseconds": 12469037,
-      "pairOneBased": 9,
-      "positionInPairOneBased": 1,
-      "stageTimingsNanoseconds": {
-        "candidateAuthentication": 3113379,
-        "publicInputAndPreparation": 205000,
-        "relationCollection": 5766549,
-        "totalToSealedResult": 12469037,
-        "unitAndAnalyticCompletion": 3379009
-      }
-    },
-    {
-      "arm": "pari",
-      "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 104568390,
-      "fieldId": "small-x3-x-1",
-      "kernelNanoseconds": 1985649,
-      "pairOneBased": 9,
-      "positionInPairOneBased": 2,
-      "stageTimingsNanoseconds": {
-        "bnfinit0-prepared-field-to-complete-bnf": 1001580,
-        "complete-bnf-to-exact-projection": 80,
-        "nfinit0-polynomial-to-prepared-field": 983959
-      }
-    },
-    {
-      "arm": "pari",
-      "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 106796929,
-      "fieldId": "small-x3-x-1",
-      "kernelNanoseconds": 2008069,
-      "pairOneBased": 10,
-      "positionInPairOneBased": 1,
-      "stageTimingsNanoseconds": {
-        "bnfinit0-prepared-field-to-complete-bnf": 980879,
-        "complete-bnf-to-exact-projection": 60,
-        "nfinit0-polynomial-to-prepared-field": 1027060
-      }
-    },
-    {
-      "arm": "rust",
-      "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 15553146,
-      "fieldId": "small-x3-x-1",
-      "kernelNanoseconds": 12624737,
-      "pairOneBased": 10,
-      "positionInPairOneBased": 2,
-      "stageTimingsNanoseconds": {
-        "candidateAuthentication": 3130979,
-        "publicInputAndPreparation": 243080,
-        "relationCollection": 5797479,
-        "totalToSealedResult": 12624737,
-        "unitAndAnalyticCompletion": 3450489
-      }
-    },
-    {
-      "arm": "rust",
-      "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 15505305,
-      "fieldId": "small-x3-x-1",
-      "kernelNanoseconds": 12590976,
-      "pairOneBased": 11,
-      "positionInPairOneBased": 1,
-      "stageTimingsNanoseconds": {
-        "candidateAuthentication": 3114829,
-        "publicInputAndPreparation": 223550,
-        "relationCollection": 5817348,
-        "totalToSealedResult": 12590976,
-        "unitAndAnalyticCompletion": 3428539
-      }
-    },
-    {
-      "arm": "pari",
-      "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 108782038,
-      "fieldId": "small-x3-x-1",
-      "kernelNanoseconds": 1918970,
-      "pairOneBased": 11,
-      "positionInPairOneBased": 2,
-      "stageTimingsNanoseconds": {
-        "bnfinit0-prepared-field-to-complete-bnf": 980050,
-        "complete-bnf-to-exact-projection": 100,
-        "nfinit0-polynomial-to-prepared-field": 938800
-      }
-    },
-    {
-      "arm": "pari",
-      "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 108367378,
-      "fieldId": "small-x3-x-1",
-      "kernelNanoseconds": 2072090,
-      "pairOneBased": 12,
-      "positionInPairOneBased": 1,
-      "stageTimingsNanoseconds": {
-        "bnfinit0-prepared-field-to-complete-bnf": 1033100,
-        "complete-bnf-to-exact-projection": 80,
-        "nfinit0-polynomial-to-prepared-field": 1038880
-      }
-    },
-    {
-      "arm": "rust",
-      "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 15511676,
-      "fieldId": "small-x3-x-1",
-      "kernelNanoseconds": 12634576,
-      "pairOneBased": 12,
-      "positionInPairOneBased": 2,
-      "stageTimingsNanoseconds": {
-        "candidateAuthentication": 3148659,
-        "publicInputAndPreparation": 218230,
-        "relationCollection": 5831488,
-        "totalToSealedResult": 12634576,
-        "unitAndAnalyticCompletion": 3423789
-      }
-    },
-    {
-      "arm": "rust",
-      "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 15373525,
-      "fieldId": "small-x3-x-1",
-      "kernelNanoseconds": 12608926,
-      "pairOneBased": 13,
-      "positionInPairOneBased": 1,
-      "stageTimingsNanoseconds": {
-        "candidateAuthentication": 3108439,
-        "publicInputAndPreparation": 236810,
-        "relationCollection": 5819578,
-        "totalToSealedResult": 12608926,
-        "unitAndAnalyticCompletion": 3441488
-      }
-    },
-    {
-      "arm": "pari",
-      "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 108873828,
-      "fieldId": "small-x3-x-1",
-      "kernelNanoseconds": 2052330,
-      "pairOneBased": 13,
-      "positionInPairOneBased": 2,
-      "stageTimingsNanoseconds": {
-        "bnfinit0-prepared-field-to-complete-bnf": 1002690,
-        "complete-bnf-to-exact-projection": 70,
-        "nfinit0-polynomial-to-prepared-field": 1049520
-      }
-    },
-    {
-      "arm": "pari",
-      "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 107409209,
-      "fieldId": "small-x3-x-1",
-      "kernelNanoseconds": 1900759,
-      "pairOneBased": 14,
-      "positionInPairOneBased": 1,
-      "stageTimingsNanoseconds": {
-        "bnfinit0-prepared-field-to-complete-bnf": 966460,
-        "complete-bnf-to-exact-projection": 80,
-        "nfinit0-polynomial-to-prepared-field": 934190
-      }
-    },
-    {
-      "arm": "rust",
-      "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 15560025,
-      "fieldId": "small-x3-x-1",
-      "kernelNanoseconds": 12671126,
-      "pairOneBased": 14,
-      "positionInPairOneBased": 2,
-      "stageTimingsNanoseconds": {
-        "candidateAuthentication": 3142220,
-        "publicInputAndPreparation": 232970,
-        "relationCollection": 5790768,
-        "totalToSealedResult": 12671126,
-        "unitAndAnalyticCompletion": 3498018
-      }
-    },
-    {
-      "arm": "rust",
-      "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 15214366,
-      "fieldId": "small-x3-x-1",
-      "kernelNanoseconds": 12558887,
-      "pairOneBased": 15,
-      "positionInPairOneBased": 1,
-      "stageTimingsNanoseconds": {
-        "candidateAuthentication": 3073679,
-        "publicInputAndPreparation": 246331,
-        "relationCollection": 5798949,
-        "totalToSealedResult": 12558887,
-        "unitAndAnalyticCompletion": 3432979
-      }
-    },
-    {
-      "arm": "pari",
-      "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 108543818,
-      "fieldId": "small-x3-x-1",
-      "kernelNanoseconds": 1979649,
-      "pairOneBased": 15,
-      "positionInPairOneBased": 2,
-      "stageTimingsNanoseconds": {
-        "bnfinit0-prepared-field-to-complete-bnf": 984329,
+        "bnfinit0-prepared-field-to-complete-bnf": 1047600,
         "complete-bnf-to-exact-projection": 90,
-        "nfinit0-polynomial-to-prepared-field": 995190
+        "nfinit0-polynomial-to-prepared-field": 1110239
       }
     },
     {
       "arm": "rust",
       "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 48603066,
-      "fieldId": "small-class-number-2",
-      "kernelNanoseconds": 43837837,
-      "pairOneBased": 1,
+      "externalProcessNanosecondsExcluded": 26133163,
+      "fieldId": "small-x3-x-1",
+      "kernelNanoseconds": 23423125,
+      "pairOneBased": 8,
+      "positionInPairOneBased": 2,
+      "stageTimingsNanoseconds": {
+        "candidateAuthentication": 246530,
+        "publicInputAndPreparation": 231900,
+        "relationCollection": 5832199,
+        "totalToSealedResult": 23423125,
+        "unitAndAnalyticCompletion": 17104836
+      }
+    },
+    {
+      "arm": "rust",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 25691944,
+      "fieldId": "small-x3-x-1",
+      "kernelNanoseconds": 23156164,
+      "pairOneBased": 9,
       "positionInPairOneBased": 1,
       "stageTimingsNanoseconds": {
-        "candidateAuthentication": 9165417,
-        "publicInputAndPreparation": 232130,
-        "relationCollection": 16840606,
-        "totalToSealedResult": 43837837,
-        "unitAndAnalyticCompletion": 17587435
+        "candidateAuthentication": 246930,
+        "publicInputAndPreparation": 219080,
+        "relationCollection": 5765548,
+        "totalToSealedResult": 23156164,
+        "unitAndAnalyticCompletion": 16918876
       }
     },
     {
       "arm": "pari",
       "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 109353948,
+      "externalProcessNanosecondsExcluded": 112788971,
+      "fieldId": "small-x3-x-1",
+      "kernelNanoseconds": 2151000,
+      "pairOneBased": 9,
+      "positionInPairOneBased": 2,
+      "stageTimingsNanoseconds": {
+        "bnfinit0-prepared-field-to-complete-bnf": 1035180,
+        "complete-bnf-to-exact-projection": 140,
+        "nfinit0-polynomial-to-prepared-field": 1115700
+      }
+    },
+    {
+      "arm": "pari",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 112828181,
+      "fieldId": "small-x3-x-1",
+      "kernelNanoseconds": 2094990,
+      "pairOneBased": 10,
+      "positionInPairOneBased": 1,
+      "stageTimingsNanoseconds": {
+        "bnfinit0-prepared-field-to-complete-bnf": 1020740,
+        "complete-bnf-to-exact-projection": 130,
+        "nfinit0-polynomial-to-prepared-field": 1074139
+      }
+    },
+    {
+      "arm": "rust",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 25868674,
+      "fieldId": "small-x3-x-1",
+      "kernelNanoseconds": 23322954,
+      "pairOneBased": 10,
+      "positionInPairOneBased": 2,
+      "stageTimingsNanoseconds": {
+        "candidateAuthentication": 267420,
+        "publicInputAndPreparation": 250540,
+        "relationCollection": 5760308,
+        "totalToSealedResult": 23322954,
+        "unitAndAnalyticCompletion": 17037196
+      }
+    },
+    {
+      "arm": "rust",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 25691493,
+      "fieldId": "small-x3-x-1",
+      "kernelNanoseconds": 23277574,
+      "pairOneBased": 11,
+      "positionInPairOneBased": 1,
+      "stageTimingsNanoseconds": {
+        "candidateAuthentication": 249220,
+        "publicInputAndPreparation": 211520,
+        "relationCollection": 5774279,
+        "totalToSealedResult": 23277574,
+        "unitAndAnalyticCompletion": 17033345
+      }
+    },
+    {
+      "arm": "pari",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 113337301,
+      "fieldId": "small-x3-x-1",
+      "kernelNanoseconds": 2131339,
+      "pairOneBased": 11,
+      "positionInPairOneBased": 2,
+      "stageTimingsNanoseconds": {
+        "bnfinit0-prepared-field-to-complete-bnf": 1037909,
+        "complete-bnf-to-exact-projection": 440,
+        "nfinit0-polynomial-to-prepared-field": 1093290
+      }
+    },
+    {
+      "arm": "pari",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 112716991,
+      "fieldId": "small-x3-x-1",
+      "kernelNanoseconds": 2108219,
+      "pairOneBased": 12,
+      "positionInPairOneBased": 1,
+      "stageTimingsNanoseconds": {
+        "bnfinit0-prepared-field-to-complete-bnf": 1002049,
+        "complete-bnf-to-exact-projection": 60,
+        "nfinit0-polynomial-to-prepared-field": 1106050
+      }
+    },
+    {
+      "arm": "rust",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 26003594,
+      "fieldId": "small-x3-x-1",
+      "kernelNanoseconds": 23330814,
+      "pairOneBased": 12,
+      "positionInPairOneBased": 2,
+      "stageTimingsNanoseconds": {
+        "candidateAuthentication": 245410,
+        "publicInputAndPreparation": 228700,
+        "relationCollection": 5787699,
+        "totalToSealedResult": 23330814,
+        "unitAndAnalyticCompletion": 17060966
+      }
+    },
+    {
+      "arm": "rust",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 25727333,
+      "fieldId": "small-x3-x-1",
+      "kernelNanoseconds": 23127494,
+      "pairOneBased": 13,
+      "positionInPairOneBased": 1,
+      "stageTimingsNanoseconds": {
+        "candidateAuthentication": 243520,
+        "publicInputAndPreparation": 214410,
+        "relationCollection": 5736289,
+        "totalToSealedResult": 23127494,
+        "unitAndAnalyticCompletion": 16927475
+      }
+    },
+    {
+      "arm": "pari",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 112661932,
+      "fieldId": "small-x3-x-1",
+      "kernelNanoseconds": 2208259,
+      "pairOneBased": 13,
+      "positionInPairOneBased": 2,
+      "stageTimingsNanoseconds": {
+        "bnfinit0-prepared-field-to-complete-bnf": 1075429,
+        "complete-bnf-to-exact-projection": 80,
+        "nfinit0-polynomial-to-prepared-field": 1132710
+      }
+    },
+    {
+      "arm": "pari",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 111078312,
+      "fieldId": "small-x3-x-1",
+      "kernelNanoseconds": 2108309,
+      "pairOneBased": 14,
+      "positionInPairOneBased": 1,
+      "stageTimingsNanoseconds": {
+        "bnfinit0-prepared-field-to-complete-bnf": 1022960,
+        "complete-bnf-to-exact-projection": 70,
+        "nfinit0-polynomial-to-prepared-field": 1085209
+      }
+    },
+    {
+      "arm": "rust",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 25564424,
+      "fieldId": "small-x3-x-1",
+      "kernelNanoseconds": 23175804,
+      "pairOneBased": 14,
+      "positionInPairOneBased": 2,
+      "stageTimingsNanoseconds": {
+        "candidateAuthentication": 257570,
+        "publicInputAndPreparation": 249340,
+        "relationCollection": 5748608,
+        "totalToSealedResult": 23175804,
+        "unitAndAnalyticCompletion": 16908146
+      }
+    },
+    {
+      "arm": "rust",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 25394853,
+      "fieldId": "small-x3-x-1",
+      "kernelNanoseconds": 23108814,
+      "pairOneBased": 15,
+      "positionInPairOneBased": 1,
+      "stageTimingsNanoseconds": {
+        "candidateAuthentication": 247940,
+        "publicInputAndPreparation": 209690,
+        "relationCollection": 5698339,
+        "totalToSealedResult": 23108814,
+        "unitAndAnalyticCompletion": 16947275
+      }
+    },
+    {
+      "arm": "pari",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 110994232,
+      "fieldId": "small-x3-x-1",
+      "kernelNanoseconds": 2049090,
+      "pairOneBased": 15,
+      "positionInPairOneBased": 2,
+      "stageTimingsNanoseconds": {
+        "bnfinit0-prepared-field-to-complete-bnf": 1024830,
+        "complete-bnf-to-exact-projection": 70,
+        "nfinit0-polynomial-to-prepared-field": 1024140
+      }
+    },
+    {
+      "arm": "rust",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 43407579,
       "fieldId": "small-class-number-2",
-      "kernelNanoseconds": 2460809,
+      "kernelNanoseconds": 41072209,
+      "pairOneBased": 1,
+      "positionInPairOneBased": 1,
+      "stageTimingsNanoseconds": {
+        "candidateAuthentication": 786250,
+        "publicInputAndPreparation": 258020,
+        "relationCollection": 7523398,
+        "totalToSealedResult": 41072209,
+        "unitAndAnalyticCompletion": 32496341
+      }
+    },
+    {
+      "arm": "pari",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 108960313,
+      "fieldId": "small-class-number-2",
+      "kernelNanoseconds": 2502439,
       "pairOneBased": 1,
       "positionInPairOneBased": 2,
       "stageTimingsNanoseconds": {
-        "bnfinit0-prepared-field-to-complete-bnf": 1395330,
+        "bnfinit0-prepared-field-to-complete-bnf": 1424629,
+        "complete-bnf-to-exact-projection": 130,
+        "nfinit0-polynomial-to-prepared-field": 1077659
+      }
+    },
+    {
+      "arm": "pari",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 109517901,
+      "fieldId": "small-class-number-2",
+      "kernelNanoseconds": 2545589,
+      "pairOneBased": 2,
+      "positionInPairOneBased": 1,
+      "stageTimingsNanoseconds": {
+        "bnfinit0-prepared-field-to-complete-bnf": 1433209,
+        "complete-bnf-to-exact-projection": 90,
+        "nfinit0-polynomial-to-prepared-field": 1112270
+      }
+    },
+    {
+      "arm": "rust",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 43753249,
+      "fieldId": "small-class-number-2",
+      "kernelNanoseconds": 41127130,
+      "pairOneBased": 2,
+      "positionInPairOneBased": 2,
+      "stageTimingsNanoseconds": {
+        "candidateAuthentication": 787480,
+        "publicInputAndPreparation": 267080,
+        "relationCollection": 7538578,
+        "totalToSealedResult": 41127130,
+        "unitAndAnalyticCompletion": 32526012
+      }
+    },
+    {
+      "arm": "rust",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 43471658,
+      "fieldId": "small-class-number-2",
+      "kernelNanoseconds": 41033450,
+      "pairOneBased": 3,
+      "positionInPairOneBased": 1,
+      "stageTimingsNanoseconds": {
+        "candidateAuthentication": 775870,
+        "publicInputAndPreparation": 235400,
+        "relationCollection": 7482808,
+        "totalToSealedResult": 41033450,
+        "unitAndAnalyticCompletion": 32533692
+      }
+    },
+    {
+      "arm": "pari",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 111571302,
+      "fieldId": "small-class-number-2",
+      "kernelNanoseconds": 2500540,
+      "pairOneBased": 3,
+      "positionInPairOneBased": 2,
+      "stageTimingsNanoseconds": {
+        "bnfinit0-prepared-field-to-complete-bnf": 1435860,
+        "complete-bnf-to-exact-projection": 60,
+        "nfinit0-polynomial-to-prepared-field": 1064559
+      }
+    },
+    {
+      "arm": "pari",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 110468002,
+      "fieldId": "small-class-number-2",
+      "kernelNanoseconds": 2504100,
+      "pairOneBased": 4,
+      "positionInPairOneBased": 1,
+      "stageTimingsNanoseconds": {
+        "bnfinit0-prepared-field-to-complete-bnf": 1435340,
+        "complete-bnf-to-exact-projection": 80,
+        "nfinit0-polynomial-to-prepared-field": 1068640
+      }
+    },
+    {
+      "arm": "rust",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 43786698,
+      "fieldId": "small-class-number-2",
+      "kernelNanoseconds": 41260370,
+      "pairOneBased": 4,
+      "positionInPairOneBased": 2,
+      "stageTimingsNanoseconds": {
+        "candidateAuthentication": 823180,
+        "publicInputAndPreparation": 267240,
+        "relationCollection": 7503918,
+        "totalToSealedResult": 41260370,
+        "unitAndAnalyticCompletion": 32662652
+      }
+    },
+    {
+      "arm": "rust",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 43589278,
+      "fieldId": "small-class-number-2",
+      "kernelNanoseconds": 41210730,
+      "pairOneBased": 5,
+      "positionInPairOneBased": 1,
+      "stageTimingsNanoseconds": {
+        "candidateAuthentication": 796240,
+        "publicInputAndPreparation": 232280,
+        "relationCollection": 7509418,
+        "totalToSealedResult": 41210730,
+        "unitAndAnalyticCompletion": 32670332
+      }
+    },
+    {
+      "arm": "pari",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 110367542,
+      "fieldId": "small-class-number-2",
+      "kernelNanoseconds": 2477309,
+      "pairOneBased": 5,
+      "positionInPairOneBased": 2,
+      "stageTimingsNanoseconds": {
+        "bnfinit0-prepared-field-to-complete-bnf": 1410740,
+        "complete-bnf-to-exact-projection": 140,
+        "nfinit0-polynomial-to-prepared-field": 1066460
+      }
+    },
+    {
+      "arm": "pari",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 109995212,
+      "fieldId": "small-class-number-2",
+      "kernelNanoseconds": 2543859,
+      "pairOneBased": 6,
+      "positionInPairOneBased": 1,
+      "stageTimingsNanoseconds": {
+        "bnfinit0-prepared-field-to-complete-bnf": 1429049,
         "complete-bnf-to-exact-projection": 110,
-        "nfinit0-polynomial-to-prepared-field": 1065359
-      }
-    },
-    {
-      "arm": "pari",
-      "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 108131398,
-      "fieldId": "small-class-number-2",
-      "kernelNanoseconds": 2580939,
-      "pairOneBased": 2,
-      "positionInPairOneBased": 1,
-      "stageTimingsNanoseconds": {
-        "bnfinit0-prepared-field-to-complete-bnf": 1436550,
-        "complete-bnf-to-exact-projection": 100,
-        "nfinit0-polynomial-to-prepared-field": 1144280
+        "nfinit0-polynomial-to-prepared-field": 1114670
       }
     },
     {
       "arm": "rust",
       "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 71540439,
+      "externalProcessNanosecondsExcluded": 43776429,
       "fieldId": "small-class-number-2",
-      "kernelNanoseconds": 68285820,
-      "pairOneBased": 2,
-      "positionInPairOneBased": 2,
-      "stageTimingsNanoseconds": {
-        "candidateAuthentication": 18045485,
-        "publicInputAndPreparation": 2259689,
-        "relationCollection": 13578106,
-        "totalToSealedResult": 68285820,
-        "unitAndAnalyticCompletion": 34393200
-      }
-    },
-    {
-      "arm": "rust",
-      "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 37948638,
-      "fieldId": "small-class-number-2",
-      "kernelNanoseconds": 34603000,
-      "pairOneBased": 3,
-      "positionInPairOneBased": 1,
-      "stageTimingsNanoseconds": {
-        "candidateAuthentication": 9158687,
-        "publicInputAndPreparation": 255110,
-        "relationCollection": 7618308,
-        "totalToSealedResult": 34603000,
-        "unitAndAnalyticCompletion": 17559735
-      }
-    },
-    {
-      "arm": "pari",
-      "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 107706528,
-      "fieldId": "small-class-number-2",
-      "kernelNanoseconds": 2434480,
-      "pairOneBased": 3,
-      "positionInPairOneBased": 2,
-      "stageTimingsNanoseconds": {
-        "bnfinit0-prepared-field-to-complete-bnf": 1390240,
-        "complete-bnf-to-exact-projection": 100,
-        "nfinit0-polynomial-to-prepared-field": 1044110
-      }
-    },
-    {
-      "arm": "pari",
-      "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 108967298,
-      "fieldId": "small-class-number-2",
-      "kernelNanoseconds": 2354239,
-      "pairOneBased": 4,
-      "positionInPairOneBased": 1,
-      "stageTimingsNanoseconds": {
-        "bnfinit0-prepared-field-to-complete-bnf": 1348099,
-        "complete-bnf-to-exact-projection": 70,
-        "nfinit0-polynomial-to-prepared-field": 1006030
-      }
-    },
-    {
-      "arm": "rust",
-      "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 37463089,
-      "fieldId": "small-class-number-2",
-      "kernelNanoseconds": 34213730,
-      "pairOneBased": 4,
-      "positionInPairOneBased": 2,
-      "stageTimingsNanoseconds": {
-        "candidateAuthentication": 9052207,
-        "publicInputAndPreparation": 253610,
-        "relationCollection": 7575018,
-        "totalToSealedResult": 34213730,
-        "unitAndAnalyticCompletion": 17325025
-      }
-    },
-    {
-      "arm": "rust",
-      "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 37353069,
-      "fieldId": "small-class-number-2",
-      "kernelNanoseconds": 34123030,
-      "pairOneBased": 5,
-      "positionInPairOneBased": 1,
-      "stageTimingsNanoseconds": {
-        "candidateAuthentication": 9107747,
-        "publicInputAndPreparation": 218990,
-        "relationCollection": 7507758,
-        "totalToSealedResult": 34123030,
-        "unitAndAnalyticCompletion": 17283045
-      }
-    },
-    {
-      "arm": "pari",
-      "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 109415018,
-      "fieldId": "small-class-number-2",
-      "kernelNanoseconds": 2570599,
-      "pairOneBased": 5,
-      "positionInPairOneBased": 2,
-      "stageTimingsNanoseconds": {
-        "bnfinit0-prepared-field-to-complete-bnf": 1436470,
-        "complete-bnf-to-exact-projection": 70,
-        "nfinit0-polynomial-to-prepared-field": 1133990
-      }
-    },
-    {
-      "arm": "pari",
-      "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 108956488,
-      "fieldId": "small-class-number-2",
-      "kernelNanoseconds": 2400409,
+      "kernelNanoseconds": 41227319,
       "pairOneBased": 6,
+      "positionInPairOneBased": 2,
+      "stageTimingsNanoseconds": {
+        "candidateAuthentication": 783660,
+        "publicInputAndPreparation": 249710,
+        "relationCollection": 7553148,
+        "totalToSealedResult": 41227319,
+        "unitAndAnalyticCompletion": 32632391
+      }
+    },
+    {
+      "arm": "rust",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 43968849,
+      "fieldId": "small-class-number-2",
+      "kernelNanoseconds": 41218619,
+      "pairOneBased": 7,
       "positionInPairOneBased": 1,
       "stageTimingsNanoseconds": {
-        "bnfinit0-prepared-field-to-complete-bnf": 1398390,
+        "candidateAuthentication": 788339,
+        "publicInputAndPreparation": 232160,
+        "relationCollection": 7518478,
+        "totalToSealedResult": 41218619,
+        "unitAndAnalyticCompletion": 32673071
+      }
+    },
+    {
+      "arm": "pari",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 112069121,
+      "fieldId": "small-class-number-2",
+      "kernelNanoseconds": 2592529,
+      "pairOneBased": 7,
+      "positionInPairOneBased": 2,
+      "stageTimingsNanoseconds": {
+        "bnfinit0-prepared-field-to-complete-bnf": 1445450,
         "complete-bnf-to-exact-projection": 80,
-        "nfinit0-polynomial-to-prepared-field": 1001900
+        "nfinit0-polynomial-to-prepared-field": 1146940
+      }
+    },
+    {
+      "arm": "pari",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 111784282,
+      "fieldId": "small-class-number-2",
+      "kernelNanoseconds": 2524160,
+      "pairOneBased": 8,
+      "positionInPairOneBased": 1,
+      "stageTimingsNanoseconds": {
+        "bnfinit0-prepared-field-to-complete-bnf": 1435610,
+        "complete-bnf-to-exact-projection": 80,
+        "nfinit0-polynomial-to-prepared-field": 1088430
       }
     },
     {
       "arm": "rust",
       "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 150808616,
+      "externalProcessNanosecondsExcluded": 43883179,
       "fieldId": "small-class-number-2",
-      "kernelNanoseconds": 147383637,
+      "kernelNanoseconds": 41324300,
+      "pairOneBased": 8,
+      "positionInPairOneBased": 2,
+      "stageTimingsNanoseconds": {
+        "candidateAuthentication": 840670,
+        "publicInputAndPreparation": 267830,
+        "relationCollection": 7620718,
+        "totalToSealedResult": 41324300,
+        "unitAndAnalyticCompletion": 32586862
+      }
+    },
+    {
+      "arm": "rust",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 43767898,
+      "fieldId": "small-class-number-2",
+      "kernelNanoseconds": 41180490,
+      "pairOneBased": 9,
+      "positionInPairOneBased": 1,
+      "stageTimingsNanoseconds": {
+        "candidateAuthentication": 802300,
+        "publicInputAndPreparation": 233170,
+        "relationCollection": 7522048,
+        "totalToSealedResult": 41180490,
+        "unitAndAnalyticCompletion": 32616522
+      }
+    },
+    {
+      "arm": "pari",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 110664562,
+      "fieldId": "small-class-number-2",
+      "kernelNanoseconds": 2501649,
+      "pairOneBased": 9,
+      "positionInPairOneBased": 2,
+      "stageTimingsNanoseconds": {
+        "bnfinit0-prepared-field-to-complete-bnf": 1417400,
+        "complete-bnf-to-exact-projection": 120,
+        "nfinit0-polynomial-to-prepared-field": 1084119
+      }
+    },
+    {
+      "arm": "pari",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 110692392,
+      "fieldId": "small-class-number-2",
+      "kernelNanoseconds": 2679980,
+      "pairOneBased": 10,
+      "positionInPairOneBased": 1,
+      "stageTimingsNanoseconds": {
+        "bnfinit0-prepared-field-to-complete-bnf": 1431820,
+        "complete-bnf-to-exact-projection": 90,
+        "nfinit0-polynomial-to-prepared-field": 1248030
+      }
+    },
+    {
+      "arm": "rust",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 44120689,
+      "fieldId": "small-class-number-2",
+      "kernelNanoseconds": 41566360,
+      "pairOneBased": 10,
+      "positionInPairOneBased": 2,
+      "stageTimingsNanoseconds": {
+        "candidateAuthentication": 796589,
+        "publicInputAndPreparation": 252011,
+        "relationCollection": 7659178,
+        "totalToSealedResult": 41566360,
+        "unitAndAnalyticCompletion": 32854942
+      }
+    },
+    {
+      "arm": "rust",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 44349538,
+      "fieldId": "small-class-number-2",
+      "kernelNanoseconds": 41698730,
+      "pairOneBased": 11,
+      "positionInPairOneBased": 1,
+      "stageTimingsNanoseconds": {
+        "candidateAuthentication": 794320,
+        "publicInputAndPreparation": 237440,
+        "relationCollection": 7636638,
+        "totalToSealedResult": 41698730,
+        "unitAndAnalyticCompletion": 33024312
+      }
+    },
+    {
+      "arm": "pari",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 111316422,
+      "fieldId": "small-class-number-2",
+      "kernelNanoseconds": 2480910,
+      "pairOneBased": 11,
+      "positionInPairOneBased": 2,
+      "stageTimingsNanoseconds": {
+        "bnfinit0-prepared-field-to-complete-bnf": 1413100,
+        "complete-bnf-to-exact-projection": 70,
+        "nfinit0-polynomial-to-prepared-field": 1067660
+      }
+    },
+    {
+      "arm": "pari",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 109799682,
+      "fieldId": "small-class-number-2",
+      "kernelNanoseconds": 2499670,
+      "pairOneBased": 12,
+      "positionInPairOneBased": 1,
+      "stageTimingsNanoseconds": {
+        "bnfinit0-prepared-field-to-complete-bnf": 1409220,
+        "complete-bnf-to-exact-projection": 150,
+        "nfinit0-polynomial-to-prepared-field": 1090330
+      }
+    },
+    {
+      "arm": "rust",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 43844149,
+      "fieldId": "small-class-number-2",
+      "kernelNanoseconds": 41249529,
+      "pairOneBased": 12,
+      "positionInPairOneBased": 2,
+      "stageTimingsNanoseconds": {
+        "candidateAuthentication": 787289,
+        "publicInputAndPreparation": 269240,
+        "relationCollection": 7559807,
+        "totalToSealedResult": 41249529,
+        "unitAndAnalyticCompletion": 32620392
+      }
+    },
+    {
+      "arm": "rust",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 43866289,
+      "fieldId": "small-class-number-2",
+      "kernelNanoseconds": 41144240,
+      "pairOneBased": 13,
+      "positionInPairOneBased": 1,
+      "stageTimingsNanoseconds": {
+        "candidateAuthentication": 789990,
+        "publicInputAndPreparation": 252870,
+        "relationCollection": 7486739,
+        "totalToSealedResult": 41144240,
+        "unitAndAnalyticCompletion": 32608632
+      }
+    },
+    {
+      "arm": "pari",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 113255861,
+      "fieldId": "small-class-number-2",
+      "kernelNanoseconds": 2523290,
+      "pairOneBased": 13,
+      "positionInPairOneBased": 2,
+      "stageTimingsNanoseconds": {
+        "bnfinit0-prepared-field-to-complete-bnf": 1412310,
+        "complete-bnf-to-exact-projection": 90,
+        "nfinit0-polynomial-to-prepared-field": 1110860
+      }
+    },
+    {
+      "arm": "pari",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 112229301,
+      "fieldId": "small-class-number-2",
+      "kernelNanoseconds": 2508249,
+      "pairOneBased": 14,
+      "positionInPairOneBased": 1,
+      "stageTimingsNanoseconds": {
+        "bnfinit0-prepared-field-to-complete-bnf": 1420499,
+        "complete-bnf-to-exact-projection": 80,
+        "nfinit0-polynomial-to-prepared-field": 1087640
+      }
+    },
+    {
+      "arm": "rust",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 43812389,
+      "fieldId": "small-class-number-2",
+      "kernelNanoseconds": 41176329,
+      "pairOneBased": 14,
+      "positionInPairOneBased": 2,
+      "stageTimingsNanoseconds": {
+        "candidateAuthentication": 774309,
+        "publicInputAndPreparation": 254080,
+        "relationCollection": 7532268,
+        "totalToSealedResult": 41176329,
+        "unitAndAnalyticCompletion": 32607731
+      }
+    },
+    {
+      "arm": "rust",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 44120759,
+      "fieldId": "small-class-number-2",
+      "kernelNanoseconds": 41374039,
+      "pairOneBased": 15,
+      "positionInPairOneBased": 1,
+      "stageTimingsNanoseconds": {
+        "candidateAuthentication": 797599,
+        "publicInputAndPreparation": 230899,
+        "relationCollection": 7607589,
+        "totalToSealedResult": 41374039,
+        "unitAndAnalyticCompletion": 32728882
+      }
+    },
+    {
+      "arm": "pari",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 115316320,
+      "fieldId": "small-class-number-2",
+      "kernelNanoseconds": 2531100,
+      "pairOneBased": 15,
+      "positionInPairOneBased": 2,
+      "stageTimingsNanoseconds": {
+        "bnfinit0-prepared-field-to-complete-bnf": 1408750,
+        "complete-bnf-to-exact-projection": 80,
+        "nfinit0-polynomial-to-prepared-field": 1122230
+      }
+    },
+    {
+      "arm": "rust",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 6381003063,
+      "fieldId": "row6-continuation-cubic",
+      "kernelNanoseconds": 6288959206,
+      "pairOneBased": 1,
+      "positionInPairOneBased": 1,
+      "stageTimingsNanoseconds": {
+        "candidateAuthentication": 2082571439,
+        "publicInputAndPreparation": 58019565,
+        "relationCollection": 2712993828,
+        "totalToSealedResult": 6288959206,
+        "unitAndAnalyticCompletion": 1435355234
+      }
+    },
+    {
+      "arm": "pari",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 4084644879,
+      "fieldId": "row6-continuation-cubic",
+      "kernelNanoseconds": 3934371047,
+      "pairOneBased": 1,
+      "positionInPairOneBased": 2,
+      "stageTimingsNanoseconds": {
+        "bnfinit0-prepared-field-to-complete-bnf": 3933372978,
+        "complete-bnf-to-exact-projection": 220,
+        "nfinit0-polynomial-to-prepared-field": 997959
+      }
+    },
+    {
+      "arm": "pari",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 4127768778,
+      "fieldId": "row6-continuation-cubic",
+      "kernelNanoseconds": 3978637916,
+      "pairOneBased": 2,
+      "positionInPairOneBased": 1,
+      "stageTimingsNanoseconds": {
+        "bnfinit0-prepared-field-to-complete-bnf": 3977687816,
+        "complete-bnf-to-exact-projection": 250,
+        "nfinit0-polynomial-to-prepared-field": 949970
+      }
+    },
+    {
+      "arm": "rust",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 6448957836,
+      "fieldId": "row6-continuation-cubic",
+      "kernelNanoseconds": 6358401289,
+      "pairOneBased": 2,
+      "positionInPairOneBased": 2,
+      "stageTimingsNanoseconds": {
+        "candidateAuthentication": 2115532360,
+        "publicInputAndPreparation": 58180565,
+        "relationCollection": 2744781070,
+        "totalToSealedResult": 6358401289,
+        "unitAndAnalyticCompletion": 1439884942
+      }
+    },
+    {
+      "arm": "rust",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 6412470165,
+      "fieldId": "row6-continuation-cubic",
+      "kernelNanoseconds": 6328072557,
+      "pairOneBased": 3,
+      "positionInPairOneBased": 1,
+      "stageTimingsNanoseconds": {
+        "candidateAuthentication": 2115043740,
+        "publicInputAndPreparation": 58453775,
+        "relationCollection": 2724080246,
+        "totalToSealedResult": 6328072557,
+        "unitAndAnalyticCompletion": 1430477535
+      }
+    },
+    {
+      "arm": "pari",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 4141668244,
+      "fieldId": "row6-continuation-cubic",
+      "kernelNanoseconds": 3995714561,
+      "pairOneBased": 3,
+      "positionInPairOneBased": 2,
+      "stageTimingsNanoseconds": {
+        "bnfinit0-prepared-field-to-complete-bnf": 3994841422,
+        "complete-bnf-to-exact-projection": 270,
+        "nfinit0-polynomial-to-prepared-field": 873010
+      }
+    },
+    {
+      "arm": "pari",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 4116133660,
+      "fieldId": "row6-continuation-cubic",
+      "kernelNanoseconds": 3968764148,
+      "pairOneBased": 4,
+      "positionInPairOneBased": 1,
+      "stageTimingsNanoseconds": {
+        "bnfinit0-prepared-field-to-complete-bnf": 3967802418,
+        "complete-bnf-to-exact-projection": 260,
+        "nfinit0-polynomial-to-prepared-field": 961590
+      }
+    },
+    {
+      "arm": "rust",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 6386960232,
+      "fieldId": "row6-continuation-cubic",
+      "kernelNanoseconds": 6298209644,
+      "pairOneBased": 4,
+      "positionInPairOneBased": 2,
+      "stageTimingsNanoseconds": {
+        "candidateAuthentication": 2083922738,
+        "publicInputAndPreparation": 58212745,
+        "relationCollection": 2721744626,
+        "totalToSealedResult": 6298209644,
+        "unitAndAnalyticCompletion": 1434320055
+      }
+    },
+    {
+      "arm": "rust",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 6371891496,
+      "fieldId": "row6-continuation-cubic",
+      "kernelNanoseconds": 6278264980,
+      "pairOneBased": 5,
+      "positionInPairOneBased": 1,
+      "stageTimingsNanoseconds": {
+        "candidateAuthentication": 2072614881,
+        "publicInputAndPreparation": 58468075,
+        "relationCollection": 2717052568,
+        "totalToSealedResult": 6278264980,
+        "unitAndAnalyticCompletion": 1430114815
+      }
+    },
+    {
+      "arm": "pari",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 4192581471,
+      "fieldId": "row6-continuation-cubic",
+      "kernelNanoseconds": 4042538689,
+      "pairOneBased": 5,
+      "positionInPairOneBased": 2,
+      "stageTimingsNanoseconds": {
+        "bnfinit0-prepared-field-to-complete-bnf": 4041568679,
+        "complete-bnf-to-exact-projection": 260,
+        "nfinit0-polynomial-to-prepared-field": 969880
+      }
+    },
+    {
+      "arm": "pari",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 4101174854,
+      "fieldId": "row6-continuation-cubic",
+      "kernelNanoseconds": 3949923513,
+      "pairOneBased": 6,
+      "positionInPairOneBased": 1,
+      "stageTimingsNanoseconds": {
+        "bnfinit0-prepared-field-to-complete-bnf": 3949011253,
+        "complete-bnf-to-exact-projection": 250,
+        "nfinit0-polynomial-to-prepared-field": 912150
+      }
+    },
+    {
+      "arm": "rust",
+      "exactOutputChecked": true,
+      "externalProcessNanosecondsExcluded": 6373703525,
+      "fieldId": "row6-continuation-cubic",
+      "kernelNanoseconds": 6283629507,
       "pairOneBased": 6,
       "positionInPairOneBased": 2,
       "stageTimingsNanoseconds": {
-        "candidateAuthentication": 66916610,
-        "publicInputAndPreparation": 260660,
-        "relationCollection": 62816192,
-        "totalToSealedResult": 147383637,
-        "unitAndAnalyticCompletion": 17381875
+        "candidateAuthentication": 2074383451,
+        "publicInputAndPreparation": 58172885,
+        "relationCollection": 2711750538,
+        "totalToSealedResult": 6283629507,
+        "unitAndAnalyticCompletion": 1439309103
       }
     },
     {
       "arm": "rust",
       "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 38854959,
-      "fieldId": "small-class-number-2",
-      "kernelNanoseconds": 34457121,
+      "externalProcessNanosecondsExcluded": 6395202229,
+      "fieldId": "row6-continuation-cubic",
+      "kernelNanoseconds": 6299798724,
       "pairOneBased": 7,
       "positionInPairOneBased": 1,
       "stageTimingsNanoseconds": {
-        "candidateAuthentication": 9209397,
-        "publicInputAndPreparation": 262591,
-        "relationCollection": 7609268,
-        "totalToSealedResult": 34457121,
-        "unitAndAnalyticCompletion": 17368864
+        "candidateAuthentication": 2088297878,
+        "publicInputAndPreparation": 58291145,
+        "relationCollection": 2714267797,
+        "totalToSealedResult": 6299798724,
+        "unitAndAnalyticCompletion": 1438926983
       }
     },
     {
       "arm": "pari",
       "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 107876038,
-      "fieldId": "small-class-number-2",
-      "kernelNanoseconds": 2391099,
+      "externalProcessNanosecondsExcluded": 4140184024,
+      "fieldId": "row6-continuation-cubic",
+      "kernelNanoseconds": 3987922333,
       "pairOneBased": 7,
       "positionInPairOneBased": 2,
       "stageTimingsNanoseconds": {
-        "bnfinit0-prepared-field-to-complete-bnf": 1384749,
-        "complete-bnf-to-exact-projection": 100,
-        "nfinit0-polynomial-to-prepared-field": 1006140
+        "bnfinit0-prepared-field-to-complete-bnf": 3986867094,
+        "complete-bnf-to-exact-projection": 260,
+        "nfinit0-polynomial-to-prepared-field": 1055119
       }
     },
     {
       "arm": "pari",
       "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 110054218,
-      "fieldId": "small-class-number-2",
-      "kernelNanoseconds": 2485760,
+      "externalProcessNanosecondsExcluded": 4134741176,
+      "fieldId": "row6-continuation-cubic",
+      "kernelNanoseconds": 3984836774,
       "pairOneBased": 8,
       "positionInPairOneBased": 1,
       "stageTimingsNanoseconds": {
-        "bnfinit0-prepared-field-to-complete-bnf": 1409300,
-        "complete-bnf-to-exact-projection": 70,
-        "nfinit0-polynomial-to-prepared-field": 1076350
+        "bnfinit0-prepared-field-to-complete-bnf": 3983872474,
+        "complete-bnf-to-exact-projection": 330,
+        "nfinit0-polynomial-to-prepared-field": 964189
       }
     },
     {
       "arm": "rust",
       "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 53212115,
-      "fieldId": "small-class-number-2",
-      "kernelNanoseconds": 49872036,
+      "externalProcessNanosecondsExcluded": 6432791040,
+      "fieldId": "row6-continuation-cubic",
+      "kernelNanoseconds": 6333391805,
       "pairOneBased": 8,
       "positionInPairOneBased": 2,
       "stageTimingsNanoseconds": {
-        "candidateAuthentication": 15940985,
-        "publicInputAndPreparation": 2264030,
-        "relationCollection": 12566456,
-        "totalToSealedResult": 49872036,
-        "unitAndAnalyticCompletion": 19091845
+        "candidateAuthentication": 2102158754,
+        "publicInputAndPreparation": 58617165,
+        "relationCollection": 2729250454,
+        "totalToSealedResult": 6333391805,
+        "unitAndAnalyticCompletion": 1443349092
       }
     },
     {
       "arm": "rust",
       "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 37206340,
-      "fieldId": "small-class-number-2",
-      "kernelNanoseconds": 34225840,
+      "externalProcessNanosecondsExcluded": 6424666312,
+      "fieldId": "row6-continuation-cubic",
+      "kernelNanoseconds": 6328784487,
       "pairOneBased": 9,
       "positionInPairOneBased": 1,
       "stageTimingsNanoseconds": {
-        "candidateAuthentication": 9087378,
-        "publicInputAndPreparation": 254610,
-        "relationCollection": 7561337,
-        "totalToSealedResult": 34225840,
-        "unitAndAnalyticCompletion": 17315145
+        "candidateAuthentication": 2097089525,
+        "publicInputAndPreparation": 58253816,
+        "relationCollection": 2731941804,
+        "totalToSealedResult": 6328784487,
+        "unitAndAnalyticCompletion": 1441479693
       }
     },
     {
       "arm": "pari",
       "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 108720948,
-      "fieldId": "small-class-number-2",
-      "kernelNanoseconds": 2422220,
+      "externalProcessNanosecondsExcluded": 4137106885,
+      "fieldId": "row6-continuation-cubic",
+      "kernelNanoseconds": 3987438984,
       "pairOneBased": 9,
       "positionInPairOneBased": 2,
       "stageTimingsNanoseconds": {
-        "bnfinit0-prepared-field-to-complete-bnf": 1390720,
-        "complete-bnf-to-exact-projection": 70,
-        "nfinit0-polynomial-to-prepared-field": 1031390
+        "bnfinit0-prepared-field-to-complete-bnf": 3986462794,
+        "complete-bnf-to-exact-projection": 400,
+        "nfinit0-polynomial-to-prepared-field": 976070
       }
     },
     {
       "arm": "pari",
       "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 110016527,
-      "fieldId": "small-class-number-2",
-      "kernelNanoseconds": 2486580,
+      "externalProcessNanosecondsExcluded": 4139571024,
+      "fieldId": "row6-continuation-cubic",
+      "kernelNanoseconds": 3989582783,
       "pairOneBased": 10,
       "positionInPairOneBased": 1,
       "stageTimingsNanoseconds": {
-        "bnfinit0-prepared-field-to-complete-bnf": 1400770,
-        "complete-bnf-to-exact-projection": 70,
-        "nfinit0-polynomial-to-prepared-field": 1085680
+        "bnfinit0-prepared-field-to-complete-bnf": 3988629813,
+        "complete-bnf-to-exact-projection": 280,
+        "nfinit0-polynomial-to-prepared-field": 952860
       }
     },
     {
       "arm": "rust",
       "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 38389129,
-      "fieldId": "small-class-number-2",
-      "kernelNanoseconds": 34947020,
+      "externalProcessNanosecondsExcluded": 6439037818,
+      "fieldId": "row6-continuation-cubic",
+      "kernelNanoseconds": 6349450811,
       "pairOneBased": 10,
       "positionInPairOneBased": 2,
       "stageTimingsNanoseconds": {
-        "candidateAuthentication": 9670887,
-        "publicInputAndPreparation": 266080,
-        "relationCollection": 7544638,
-        "totalToSealedResult": 34947020,
-        "unitAndAnalyticCompletion": 17453875
+        "candidateAuthentication": 2102250384,
+        "publicInputAndPreparation": 58211455,
+        "relationCollection": 2738490112,
+        "totalToSealedResult": 6349450811,
+        "unitAndAnalyticCompletion": 1450482220
       }
     },
     {
       "arm": "rust",
       "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 37349569,
-      "fieldId": "small-class-number-2",
-      "kernelNanoseconds": 34320740,
+      "externalProcessNanosecondsExcluded": 6406701217,
+      "fieldId": "row6-continuation-cubic",
+      "kernelNanoseconds": 6313289400,
       "pairOneBased": 11,
       "positionInPairOneBased": 1,
       "stageTimingsNanoseconds": {
-        "candidateAuthentication": 9104518,
-        "publicInputAndPreparation": 239890,
-        "relationCollection": 7603068,
-        "totalToSealedResult": 34320740,
-        "unitAndAnalyticCompletion": 17370875
+        "candidateAuthentication": 2087156828,
+        "publicInputAndPreparation": 58101925,
+        "relationCollection": 2721998236,
+        "totalToSealedResult": 6313289400,
+        "unitAndAnalyticCompletion": 1446015591
       }
     },
     {
       "arm": "pari",
       "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 108294328,
-      "fieldId": "small-class-number-2",
-      "kernelNanoseconds": 2380380,
+      "externalProcessNanosecondsExcluded": 4177500565,
+      "fieldId": "row6-continuation-cubic",
+      "kernelNanoseconds": 4025016893,
       "pairOneBased": 11,
       "positionInPairOneBased": 2,
       "stageTimingsNanoseconds": {
-        "bnfinit0-prepared-field-to-complete-bnf": 1388620,
-        "complete-bnf-to-exact-projection": 60,
-        "nfinit0-polynomial-to-prepared-field": 991650
+        "bnfinit0-prepared-field-to-complete-bnf": 4024037443,
+        "complete-bnf-to-exact-projection": 229,
+        "nfinit0-polynomial-to-prepared-field": 979319
       }
     },
     {
       "arm": "pari",
       "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 108680808,
-      "fieldId": "small-class-number-2",
-      "kernelNanoseconds": 2606750,
+      "externalProcessNanosecondsExcluded": 4159338549,
+      "fieldId": "row6-continuation-cubic",
+      "kernelNanoseconds": 4006859508,
       "pairOneBased": 12,
       "positionInPairOneBased": 1,
       "stageTimingsNanoseconds": {
-        "bnfinit0-prepared-field-to-complete-bnf": 1476200,
-        "complete-bnf-to-exact-projection": 130,
-        "nfinit0-polynomial-to-prepared-field": 1130440
+        "bnfinit0-prepared-field-to-complete-bnf": 4005837198,
+        "complete-bnf-to-exact-projection": 369,
+        "nfinit0-polynomial-to-prepared-field": 1022090
       }
     },
     {
       "arm": "rust",
       "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 37544209,
-      "fieldId": "small-class-number-2",
-      "kernelNanoseconds": 34441950,
+      "externalProcessNanosecondsExcluded": 6388681501,
+      "fieldId": "row6-continuation-cubic",
+      "kernelNanoseconds": 6293298515,
       "pairOneBased": 12,
       "positionInPairOneBased": 2,
       "stageTimingsNanoseconds": {
-        "candidateAuthentication": 9138088,
-        "publicInputAndPreparation": 289790,
-        "relationCollection": 7593967,
-        "totalToSealedResult": 34441950,
-        "unitAndAnalyticCompletion": 17411925
+        "candidateAuthentication": 2083590109,
+        "publicInputAndPreparation": 58391655,
+        "relationCollection": 2709809819,
+        "totalToSealedResult": 6293298515,
+        "unitAndAnalyticCompletion": 1441489452
       }
     },
     {
       "arm": "rust",
       "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 37474989,
-      "fieldId": "small-class-number-2",
-      "kernelNanoseconds": 34168250,
+      "externalProcessNanosecondsExcluded": 6429833169,
+      "fieldId": "row6-continuation-cubic",
+      "kernelNanoseconds": 6330044343,
       "pairOneBased": 13,
       "positionInPairOneBased": 1,
       "stageTimingsNanoseconds": {
-        "candidateAuthentication": 9098828,
-        "publicInputAndPreparation": 251600,
-        "relationCollection": 7557728,
-        "totalToSealedResult": 34168250,
-        "unitAndAnalyticCompletion": 17251735
+        "candidateAuthentication": 2105738051,
+        "publicInputAndPreparation": 58178865,
+        "relationCollection": 2723114186,
+        "totalToSealedResult": 6330044343,
+        "unitAndAnalyticCompletion": 1442991331
       }
     },
     {
       "arm": "pari",
       "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 109159608,
-      "fieldId": "small-class-number-2",
-      "kernelNanoseconds": 2464120,
+      "externalProcessNanosecondsExcluded": 4142500003,
+      "fieldId": "row6-continuation-cubic",
+      "kernelNanoseconds": 3993117091,
       "pairOneBased": 13,
       "positionInPairOneBased": 2,
       "stageTimingsNanoseconds": {
-        "bnfinit0-prepared-field-to-complete-bnf": 1410990,
-        "complete-bnf-to-exact-projection": 130,
-        "nfinit0-polynomial-to-prepared-field": 1053010
+        "bnfinit0-prepared-field-to-complete-bnf": 3992122462,
+        "complete-bnf-to-exact-projection": 240,
+        "nfinit0-polynomial-to-prepared-field": 994519
       }
     },
     {
       "arm": "pari",
       "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 107570599,
-      "fieldId": "small-class-number-2",
-      "kernelNanoseconds": 2374409,
+      "externalProcessNanosecondsExcluded": 4036425461,
+      "fieldId": "row6-continuation-cubic",
+      "kernelNanoseconds": 3890569338,
       "pairOneBased": 14,
       "positionInPairOneBased": 1,
       "stageTimingsNanoseconds": {
-        "bnfinit0-prepared-field-to-complete-bnf": 1388309,
-        "complete-bnf-to-exact-projection": 70,
-        "nfinit0-polynomial-to-prepared-field": 985960
+        "bnfinit0-prepared-field-to-complete-bnf": 3889700868,
+        "complete-bnf-to-exact-projection": 370,
+        "nfinit0-polynomial-to-prepared-field": 868340
       }
     },
     {
       "arm": "rust",
       "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 38073629,
-      "fieldId": "small-class-number-2",
-      "kernelNanoseconds": 34619150,
+      "externalProcessNanosecondsExcluded": 6451109085,
+      "fieldId": "row6-continuation-cubic",
+      "kernelNanoseconds": 6357652569,
       "pairOneBased": 14,
       "positionInPairOneBased": 2,
       "stageTimingsNanoseconds": {
-        "candidateAuthentication": 9227228,
-        "publicInputAndPreparation": 269990,
-        "relationCollection": 7777418,
-        "totalToSealedResult": 34619150,
-        "unitAndAnalyticCompletion": 17336995
+        "candidateAuthentication": 2112495081,
+        "publicInputAndPreparation": 58405895,
+        "relationCollection": 2749431539,
+        "totalToSealedResult": 6357652569,
+        "unitAndAnalyticCompletion": 1437307584
       }
     },
     {
       "arm": "rust",
       "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 37147458,
-      "fieldId": "small-class-number-2",
-      "kernelNanoseconds": 34311520,
+      "externalProcessNanosecondsExcluded": 6434682469,
+      "fieldId": "row6-continuation-cubic",
+      "kernelNanoseconds": 6336936084,
       "pairOneBased": 15,
       "positionInPairOneBased": 1,
       "stageTimingsNanoseconds": {
-        "candidateAuthentication": 9086128,
-        "publicInputAndPreparation": 260800,
-        "relationCollection": 7628488,
-        "totalToSealedResult": 34311520,
-        "unitAndAnalyticCompletion": 17332405
+        "candidateAuthentication": 2100630354,
+        "publicInputAndPreparation": 58101175,
+        "relationCollection": 2726818795,
+        "totalToSealedResult": 6336936084,
+        "unitAndAnalyticCompletion": 1451368250
       }
     },
     {
       "arm": "pari",
       "exactOutputChecked": true,
-      "externalProcessNanosecondsExcluded": 109540377,
-      "fieldId": "small-class-number-2",
-      "kernelNanoseconds": 2417130,
+      "externalProcessNanosecondsExcluded": 4166850257,
+      "fieldId": "row6-continuation-cubic",
+      "kernelNanoseconds": 4011777237,
       "pairOneBased": 15,
       "positionInPairOneBased": 2,
       "stageTimingsNanoseconds": {
-        "bnfinit0-prepared-field-to-complete-bnf": 1380660,
-        "complete-bnf-to-exact-projection": 100,
-        "nfinit0-polynomial-to-prepared-field": 1036359
+        "bnfinit0-prepared-field-to-complete-bnf": 4010705087,
+        "complete-bnf-to-exact-projection": 290,
+        "nfinit0-polynomial-to-prepared-field": 1072040
       }
     }
   ],
@@ -1155,29 +1667,24 @@
         "sha256": "6877cc418e533ff800ede4179e7016deecf2603e532c38e3e67d188027143395"
       },
       {
-        "bytes": 13,
-        "path": "bench/pari-class-group-rust/qualification/public-cubic-e2e/benchmark/.gitignore",
-        "sha256": "9f82babad9a076126ee86458097cd1a99ca38ed06587a7a9648d9b9a8bc0e51c"
-      },
-      {
-        "bytes": 1964,
+        "bytes": 2063,
         "path": "bench/pari-class-group-rust/qualification/public-cubic-e2e/benchmark/README.md",
-        "sha256": "72750ec62bd7f4fcbf762738b2db8cbf276ac724dfffb1f7fe3094330a318025"
+        "sha256": "720045451a82214baf16975e981f588473a32f1f4e9215b3ccb01ca22a39de2d"
       },
       {
-        "bytes": 2309,
+        "bytes": 3377,
         "path": "bench/pari-class-group-rust/qualification/public-cubic-e2e/benchmark/panel.json",
-        "sha256": "d4a2a0248c542e539875a5081b172fe65f7e7b39d85a2f34ff99663f6adf8c4f"
+        "sha256": "202f88690b7758111d67721fd7cd014aa2d7c4c36abb098ee0569588ac606e77"
       },
       {
-        "bytes": 16071,
+        "bytes": 16048,
         "path": "bench/pari-class-group-rust/qualification/public-cubic-e2e/benchmark/run.py",
-        "sha256": "5f3fa79ec6c08d01d88b0e59c2bdf64b8088cdd6a001db583d52ff5d74ca1b6e"
+        "sha256": "c60c09d9fd4466f3b20b0cb4463181cd1da61652465f92ff69e0680573ea13cd"
       },
       {
-        "bytes": 19566,
+        "bytes": 23112,
         "path": "bench/pari-class-group-rust/qualification/public-cubic-e2e/src/lib.rs",
-        "sha256": "dbdf71c3b0ba2afc4145075ee1cdecd5c22b930e2476d41a499228671dc1c667"
+        "sha256": "52ff08443229224a3a66e22f87318e020e50086a7f97e864828f691e7feb9527"
       },
       {
         "bytes": 1255,
@@ -1185,9 +1692,9 @@
         "sha256": "62a94e92a6ce81c805bf4eb597d324f5210c2fc228d1e38087385656cb3c3ee0"
       },
       {
-        "bytes": 8717,
+        "bytes": 19656,
         "path": "bench/pari-class-group-rust/src/analytic_completion.rs",
-        "sha256": "2c1200233a57532cc4471a7f253859e9c60a4b7e4f3b1484e467b81b4e81a231"
+        "sha256": "9221e78a1664d17cf2d2d18267e5e0ef8f23736626abd3761b4e4e679b97f6ee"
       },
       {
         "bytes": 14772,
@@ -1195,9 +1702,9 @@
         "sha256": "1e1ba008b83c3d415eecb6ab9332ab4d695efbb771234924aeb9520630259807"
       },
       {
-        "bytes": 45578,
+        "bytes": 48656,
         "path": "bench/pari-class-group-rust/src/arbitrary_ideal_reduction.rs",
-        "sha256": "cbdff6d681a99565ca51849e9b678fbbb0773cd231110d3f01156dbe36aa017d"
+        "sha256": "3814e5029f1bfc53c81c90872eeeb6c10a5da2e9e2e00a2c74f1017bb69412af"
       },
       {
         "bytes": 15581,
@@ -1205,14 +1712,14 @@
         "sha256": "7a1dc481f518fa98ca46125550bb4a0252c3bda38617aa8cfe815d7c6081ffb7"
       },
       {
-        "bytes": 33932,
+        "bytes": 47624,
         "path": "bench/pari-class-group-rust/src/class_group.rs",
-        "sha256": "d26ed8d012b5ca46131ae9700e004d02b91a7f1675ad65e5d0bf9236b2356d79"
+        "sha256": "2598958770ba797410985de77f78f952167f1eb89f8a4f80c1e373f2b69c46bc"
       },
       {
-        "bytes": 25861,
+        "bytes": 26267,
         "path": "bench/pari-class-group-rust/src/class_maps.rs",
-        "sha256": "5062c177ffdb44c3dd66160c24c090fdcb96e2f87ee9b5b9fa307f517dd43db9"
+        "sha256": "2c70447f73becb8ccb164b909e2f0afe6a208937e4cc4d7c647ba2c5373a158a"
       },
       {
         "bytes": 6526,
@@ -1220,14 +1727,19 @@
         "sha256": "f5f4d65a68465fc29d5dd216763abb45ce8465ea8485334786e5cd3e7b45c783"
       },
       {
-        "bytes": 27637,
-        "path": "bench/pari-class-group-rust/src/cubic_completion.rs",
-        "sha256": "ae4952d50589c8d334f646fb448acf17724b0965134a5e1a1cc9dcc6de851030"
+        "bytes": 38485,
+        "path": "bench/pari-class-group-rust/src/compact_cubic_presentation.rs",
+        "sha256": "277fa4f420ff82a65b28424abc554cb173ca987d83356c933ff7e6d525ea1d7b"
       },
       {
-        "bytes": 18236,
+        "bytes": 30374,
+        "path": "bench/pari-class-group-rust/src/cubic_completion.rs",
+        "sha256": "b15aa5def92cb91149ea1dc9381d2376a4799ed39bbdb72a17d72ec871d3a746"
+      },
+      {
+        "bytes": 29929,
         "path": "bench/pari-class-group-rust/src/cubic_presentation.rs",
-        "sha256": "d0cbc57b40e5d04d48f3b0153190d34acca790e61e95668b3144eadc67c78c2a"
+        "sha256": "85032c7bab810cd99a20d970efe3c95531c6bbfc2ddca89a88fa73d79f378b4c"
       },
       {
         "bytes": 6295,
@@ -1265,9 +1777,9 @@
         "sha256": "4e18797b8b645b761c58b82d73af0a7c30eef0ddd4659f57624f9c3d5b4a9a52"
       },
       {
-        "bytes": 6690,
+        "bytes": 7227,
         "path": "bench/pari-class-group-rust/src/lib.rs",
-        "sha256": "fe94257226288e7c167865f90168c0e00315acb71f15ea4b5ec017fddb73782c"
+        "sha256": "f6c8589cb31b6a0c1657774d92a2eccebdbbb4e360e7669d5729405d04c04488"
       },
       {
         "bytes": 35044,
@@ -1285,9 +1797,9 @@
         "sha256": "7bed82f9c8d1cd27b753e0f39e5cf37ef49ae90e9c236ff9f9a397382d83e269"
       },
       {
-        "bytes": 39847,
+        "bytes": 44236,
         "path": "bench/pari-class-group-rust/src/polynomial_preparation.rs",
-        "sha256": "7f666f07f3cf2ab7d4a2b59cd3f80ab594f7bf727fc6ffffec98ade4f050d46b"
+        "sha256": "7d18effdf0affe5e8e7de8105578103a5ac87ead4c195c07bc71b208bddf59b6"
       },
       {
         "bytes": 44766,
@@ -1295,9 +1807,9 @@
         "sha256": "80b7ce8f953b2df50fb88ac4d1d068f1ac8148e1b335aa01f0d322e6c8feada5"
       },
       {
-        "bytes": 23053,
+        "bytes": 33974,
         "path": "bench/pari-class-group-rust/src/prepared_factor_base.rs",
-        "sha256": "53f24f03d1292190dc3a7705af336db9f1367a9c493b35232e1b9056ff507995"
+        "sha256": "64d620766692f377040f8e0d773ce062e4934659f51fb117cd5f021c490da40e"
       },
       {
         "bytes": 16283,
@@ -1336,7 +1848,7 @@
       }
     ],
     "reachableSourceStatusPorcelain": "",
-    "rootSha256": "0ee87eedbfc1e85975b8b34dac8eeef8f3be367445f4c68be9b7b0f5dbe91ec6"
+    "rootSha256": "6ca381b4c45a61faa05f3f4c317f454f4ecf17f58bb49e410e4101252dceb3c8"
   },
   "status": "passed",
   "warmupsPerArmPerFieldExcluded": 1

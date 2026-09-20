@@ -57,6 +57,27 @@ cargo test --release --manifest-path \
   bench/pari-class-group-rust/qualification/public-cubic-e2e/Cargo.toml
 ```
 
+## Frozen native benchmark
+
+The clean frozen-source campaign at commit `749e892fe` records 15 alternating
+Rust/PARI pairs per field on one pinned AMD EPYC 7B13 core. Every result was
+checked exactly before its timing was accepted. Median public-kernel times are:
+
+| Field | Rust | PARI 2.17.4 | Rust / PARI |
+| --- | ---: | ---: | ---: |
+| `x^3-x-1` | 23.239 ms | 2.100 ms | 11.07x |
+| `x^3-8*x^2-30*x-29` | 41.219 ms | 2.508 ms | 16.43x |
+| row-6 continuation cubic | 6.328 s | 3.988 s | 1.587x |
+
+For row 6, the Rust stage medians are 58.2 ms preparation, 2.723 s relation
+collection, 2.097 s candidate authentication, and 1.440 s unit/analytic
+completion. Thus the original approximately 16x row-6 gap is closed under the
+predeclared 2x native criterion, while tiny-field latency remains an explicit
+failure. Two clean builds produced the same 21,613,992-byte release executable
+with SHA-256 `4cd46043fe8ba9c3d536953daab672c16f4c05722da87cabd33a1eb598a9aba2`.
+The complete raw samples, build logs, source closure, PARI identity, and stage
+medians are in `benchmark/receipt.json`.
+
 Run the executable with:
 
 ```sh
