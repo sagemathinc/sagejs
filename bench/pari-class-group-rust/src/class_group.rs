@@ -45,6 +45,8 @@ pub struct CollectorTimings {
     pub initial_cache_ns: u128,
     pub catalog_setup_ns: u128,
     pub numerical_preparation_ns: u128,
+    pub lll_ns: u128,
+    pub archimedean_preparation_ns: u128,
     pub enumeration_and_norm_ns: u128,
     pub rational_factorization_ns: u128,
     pub prime_valuation_and_cache_ns: u128,
@@ -332,6 +334,8 @@ pub fn collect_h1_class_group(
         let started = Instant::now();
         let prepared = prepare_h1_ideal(packet.hnf)?;
         timings.numerical_preparation_ns += started.elapsed().as_nanos();
+        timings.lll_ns += prepared.lll_ns;
+        timings.archimedean_preparation_ns += prepared.archimedean_ns;
         enumeration.reset(&prepared.q, &prepared.v)?;
         let trials_before = enumeration.trials();
         let mut factor_attempts = 0_usize;
@@ -457,6 +461,8 @@ fn collect_prepared_ideal_relations(
     let started = Instant::now();
     let prepared = prepare_cubic_ideal(embedding, ideal)?;
     timings.numerical_preparation_ns += started.elapsed().as_nanos();
+    timings.lll_ns += prepared.lll_ns;
+    timings.archimedean_preparation_ns += prepared.archimedean_ns;
     enumeration.reset(&prepared.q, &prepared.v)?;
     let trials_before = enumeration.trials();
     let mut factor_attempts = 0_usize;

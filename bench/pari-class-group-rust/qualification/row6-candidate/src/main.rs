@@ -322,6 +322,8 @@ fn small_norm_prefix(maximum_ideals: usize, maximum_candidates: usize) {
                 "initialCache": answer.timings.initial_cache_ns,
                 "catalogSetup": answer.timings.catalog_setup_ns,
                 "numericalPreparation": answer.timings.numerical_preparation_ns,
+                "lll": answer.timings.lll_ns,
+                "archimedeanPreparation": answer.timings.archimedean_preparation_ns,
                 "enumerationAndNorm": answer.timings.enumeration_and_norm_ns,
                 "rationalFactorization": answer.timings.rational_factorization_ns,
                 "primeValuationAndCache": answer.timings.prime_valuation_and_cache_ns,

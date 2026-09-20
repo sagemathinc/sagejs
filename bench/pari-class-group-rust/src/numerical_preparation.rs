@@ -23,6 +23,7 @@ use crate::prepared::ValidatedPreparedCubic;
 use crate::prepared_ideal::CubicIdeal;
 use rug::{Assign, Float, Integer, float::Round};
 use std::array::from_fn;
+use std::time::Instant;
 
 const DEGREE: usize = 3;
 const CELLS: usize = DEGREE * DEGREE;
@@ -285,6 +286,8 @@ pub struct H1NumericalPreparation {
     pub skip_first: bool,
     pub lll_swaps: usize,
     pub lll_size_reductions: usize,
+    pub lll_ns: u128,
+    pub archimedean_ns: u128,
 }
 
 fn matrix3_from_row_major(values: [i64; CELLS]) -> Matrix3 {
@@ -443,6 +446,7 @@ fn prepare_with_embedding(
     precision: u32,
 ) -> Result<H1NumericalPreparation, NumericalPreparationError> {
     let lll_input = rounded_embedding.multiply(&original_ideal);
+    let lll_started = Instant::now();
     #[cfg(all(feature = "flint-normal-form", not(test)))]
     let reduction = match crate::flint_normal_form::flint_lll_column_transform(&lll_input) {
         Ok(transform) => LllReduction {
@@ -455,6 +459,8 @@ fn prepare_with_embedding(
     };
     #[cfg(any(not(feature = "flint-normal-form"), test))]
     let reduction = lll_reduce_columns(&lll_input, 99, 100)?;
+    let lll_ns = lll_started.elapsed().as_nanos();
+    let archimedean_started = Instant::now();
     let ideal = original_ideal.change_basis(&reduction.transform);
 
     let matrix = embedded_ideal(embedding, &ideal, precision);
@@ -480,6 +486,7 @@ fn prepare_with_embedding(
         return Err(NumericalPreparationError::NonFiniteOutput);
     }
     let skip_first = ideal[(1, 0)] == 0 && ideal[(2, 0)] == 0;
+    let archimedean_ns = archimedean_started.elapsed().as_nanos();
     Ok(H1NumericalPreparation {
         transform: reduction.transform,
         ideal,
@@ -490,6 +497,8 @@ fn prepare_with_embedding(
         skip_first,
         lll_swaps: reduction.swaps,
         lll_size_reductions: reduction.size_reductions,
+        lll_ns,
+        archimedean_ns,
     })
 }
 
