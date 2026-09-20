@@ -1,0 +1,39 @@
+{
+  "boundary": "prepared-maximal-cubic-factor-base",
+  "inputPath": "../row6-candidate/inputs/row6-neutral-prepared-field.json",
+  "medianMs": 216.698408,
+  "result": {
+    "checkingBound": 9196,
+    "completeGroupCount": 203,
+    "descriptorSha256": "dc63c73dbc419b05a4a1b907cdd8a60f70247f74a0d477880eb25d19c4356306",
+    "equationOrderIndex": "3",
+    "fieldId": "row6-x3-minus-2000000000010x-plus-2000000000018",
+    "idealCount": 1130,
+    "inputId": "sha256:42ecf93a56de4cc7763d33c8b422e7804582278674c1a6fef41a4799a9930bd5",
+    "rationalPrimeCount": 740,
+    "relationBound": 9196,
+    "schema": "sagejs.rust-class-group/prepared-factor-base-v1",
+    "stage": "prepared-maximal-cubic-factor-base",
+    "status": "bounded-stage"
+  },
+  "sampleCount": 15,
+  "samplesMs": [
+    214.952588,
+    217.314178,
+    216.698408,
+    216.064698,
+    217.082058,
+    221.020556,
+    218.139348,
+    216.284478,
+    216.706838,
+    215.80974899999998,
+    217.125968,
+    215.153388,
+    214.691529,
+    215.71342800000002,
+    218.589107
+  ],
+  "schema": "sagejs.rust-class-group/native-prepared-factor-base-benchmark-v1",
+  "status": "pass"
+}
