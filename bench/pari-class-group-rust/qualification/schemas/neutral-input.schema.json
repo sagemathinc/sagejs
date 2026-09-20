@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/rust-class-group-qualification/neutral-input-v1.json",
+  "title": "Rust class-group neutral computation input",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "inputId", "fieldId", "field", "preparation", "request",
+    "randomness", "containsOracleAnswers"
+  ],
+  "properties": {
+    "schema": { "const": "sagejs.rust-class-group.neutral-input/v1" },
+    "inputId": { "$ref": "common.schema.json#/$defs/contentId" },
+    "fieldId": { "$ref": "common.schema.json#/$defs/nonempty" },
+    "field": { "$ref": "common.schema.json#/$defs/integerPolynomial" },
+    "preparation": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": { "kind": { "const": "public-polynomial" } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind", "authority", "maximalOrderCertified", "basisNumeratorsRowMajor",
+            "basisDenominator", "discriminant", "signature", "multiplicationTable",
+            "sourceSha256"
+          ],
+          "properties": {
+            "kind": { "const": "neutral-prepared-field" },
+            "authority": { "enum": ["independent-oracle", "sagejs-certified-preparation"] },
+            "maximalOrderCertified": { "const": true },
+            "basisNumeratorsRowMajor": {
+              "type": "array",
+              "minItems": 4,
+              "items": { "$ref": "common.schema.json#/$defs/integerDecimal" }
+            },
+            "basisDenominator": { "$ref": "common.schema.json#/$defs/positiveDecimal" },
+            "discriminant": { "$ref": "common.schema.json#/$defs/integerDecimal" },
+            "signature": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["realPlaces", "complexPairs"],
+              "properties": {
+                "realPlaces": { "type": "integer", "minimum": 0, "maximum": 8 },
+                "complexPairs": { "type": "integer", "minimum": 0, "maximum": 4 }
+              }
+            },
+            "multiplicationTable": {
+              "type": "array",
+              "minItems": 2,
+              "items": {
+                "type": "array",
+                "minItems": 2,
+                "items": {
+                  "type": "array",
+                  "minItems": 2,
+                  "items": { "$ref": "common.schema.json#/$defs/rational" }
+                }
+              }
+            },
+            "sourceSha256": { "$ref": "common.schema.json#/$defs/sha256" }
+          }
+        }
+      ]
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["proof", "output", "mapPolicy", "unitPolicy", "limits"],
+      "properties": {
+        "proof": { "$ref": "common.schema.json#/$defs/proofRequest" },
+        "output": { "enum": ["class-group", "class-and-unit-group"] },
+        "mapPolicy": { "enum": ["construct-eagerly", "construct-on-first-use"] },
+        "unitPolicy": { "enum": ["completion-only", "compact-complete", "expanded-complete"] },
+        "limits": { "$ref": "common.schema.json#/$defs/resourceLimits" }
+      }
+    },
+    "randomness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "seed"],
+      "properties": {
+        "algorithm": { "enum": ["none", "chacha20-v1"] },
+        "seed": {
+          "oneOf": [
+            { "$ref": "common.schema.json#/$defs/sha256" },
+            { "type": "null" }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "algorithm": { "const": "none" } }, "required": ["algorithm"] },
+          "then": { "properties": { "seed": { "type": "null" } } },
+          "else": { "properties": { "seed": { "$ref": "common.schema.json#/$defs/sha256" } } }
+        }
+      ]
+    },
+    "containsOracleAnswers": { "const": false }
+  }
+}

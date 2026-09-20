@@ -1,7 +1,8 @@
 # Plan: qualify a Rust mathematical core through class groups
 
-Status: proposed execution plan; documentation only. No implementation,
-architecture policy, backend default, or release is changed by this file.
+Status: active qualification campaign. The Rust backend remains experimental;
+implementation milestones and receipts do not change the production default
+until every applicable promotion gate in this plan passes.
 
 ## Objective and decision
 
@@ -20,6 +21,9 @@ No finite benchmark proves competitive performance on all number fields. This
 plan qualifies an explicit domain and publishes failures and limits. It must
 not conclude general success from H1, from successful compilation, or from
 Smith invariants of an unverified relation lattice.
+
+The live milestone ledger and reproduction entry points are in the
+[qualification evidence directory](../bench/pari-class-group-rust/qualification/README.md).
 
 ## Evidence we actually have
 

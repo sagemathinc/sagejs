@@ -1,0 +1,123 @@
+{
+  "schema": "sagejs.rust-class-group/qualification-corpus-spec-v1",
+  "status": "r0-frozen-development-contract",
+  "targetPariVersion": "2.17.4",
+  "panel": {
+    "partitions": {
+      "open": 60,
+      "heldOut": 60
+    },
+    "degreeQuotaPerPartition": {
+      "2": 12,
+      "3": 12,
+      "4": 12,
+      "5": 12,
+      "6": 12
+    },
+    "timingStrata": [
+      "under-5ms",
+      "5ms-to-100ms",
+      "100ms-to-2s",
+      "2s-to-30s"
+    ],
+    "timingQuotaBoundsPerPartition": {
+      "minimumEach": 10,
+      "maximumEach": 20
+    },
+    "signatureMinimumPerLegalSignature": 1,
+    "traitMinimumPerPartition": {
+      "trivial-class-group": 6,
+      "nontrivial-class-group": 12,
+      "noncyclic-class-group": 4,
+      "nontrivial-equation-order-index": 6,
+      "ramified-factor-base-prime": 8,
+      "nontrivial-units": 8,
+      "precision-restart": 3,
+      "relation-continuation": 3,
+      "large-exact-intermediates": 4
+    }
+  },
+  "canonicalization": {
+    "coefficientOrder": "ascending",
+    "coefficientEncoding": "canonical-decimal-string",
+    "jsonEncoding": "utf8-compact-json-array",
+    "identityDigest": "sha256"
+  },
+  "selection": {
+    "algorithm": "sagejs-rust-class-group-deficit-greedy-v1",
+    "openSeed": "sagejs-rust-class-group-open-v1-2026-09-20",
+    "heldOutSeed": "sagejs-rust-class-group-heldout-v1-2026-09-20",
+    "mandatoryOpenIds": [
+      "small-x3-x-1",
+      "small-discriminant-49",
+      "small-class-number-2",
+      "small-class-number-3",
+      "small-class-number-4",
+      "small-class-number-6",
+      "h1-real-cubic",
+      "row1-index-3-cubic",
+      "row6-continuation-cubic"
+    ],
+    "priorityWeights": {
+      "missingLegalSignature": 1000000,
+      "timingBelowMinimum": 10000,
+      "traitBelowMinimum": 100,
+      "timingTowardMidpoint": 1
+    },
+    "tieBreak": "ascending sha256(seed + NUL + candidate-id)",
+    "partitionOrder": [
+      "open",
+      "heldOut"
+    ],
+    "degreeOrder": [
+      2,
+      3,
+      4,
+      5,
+      6
+    ]
+  },
+  "eligibility": {
+    "degreeMinimum": 2,
+    "degreeMaximum": 6,
+    "monic": true,
+    "integral": true,
+    "irreducibleRequired": true,
+    "allPossibleSignaturesRequired": true,
+    "arbitraryPrecisionInput": true,
+    "expectedEvidenceRequired": [
+      "classNumber",
+      "invariantFactors",
+      "pariPublicNanoseconds",
+      "oracleIdentity",
+      "validationStatus"
+    ]
+  },
+  "heldOutPolicy": {
+    "publicFields": [
+      "id",
+      "polynomialAscending",
+      "polynomialSha256",
+      "degree"
+    ],
+    "forbiddenPublicFields": [
+      "expected",
+      "classNumber",
+      "invariantFactors",
+      "pariPublicNanoseconds",
+      "integralBasis",
+      "relations",
+      "retrySchedule",
+      "oracleTrace"
+    ],
+    "privateAnswersMustBeOutsideRepository": true,
+    "failureDisclosure": "case-id-status-and-redacted-stage-only",
+    "replacementPolicy": "never-remove; fix requires a fresh confirmation set and seed"
+  },
+  "supplementaryCorpus": {
+    "boundedRandomFields": 1000,
+    "seed": "sagejs-rust-class-group-random-v1-2026-09-20",
+    "smallExhaustiveRanges": "freeze separately before R4 tuning",
+    "degree7And8": "separate extension panel"
+  }
+}

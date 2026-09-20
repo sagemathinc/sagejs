@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/rust-class-group-browser-route-v1.json",
+  "title": "Rust class-group browser actual-route receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "status",
+    "observed_at",
+    "repository_revision",
+    "artifact",
+    "vector",
+    "requested_engines",
+    "engines",
+    "failures"
+  ],
+  "properties": {
+    "schema": { "const": "sagejs.rust-class-group-browser-route/v1" },
+    "status": { "enum": ["pass", "fail"] },
+    "observed_at": { "type": "string", "format": "date-time" },
+    "repository_revision": { "type": ["string", "null"] },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "bytes"],
+      "properties": {
+        "path": { "type": "string" },
+        "sha256": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
+        "bytes": { "type": ["integer", "null"], "minimum": 0 }
+      }
+    },
+    "vector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "id", "request", "expected"],
+      "properties": {
+        "path": { "type": "string" },
+        "sha256": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
+        "id": { "type": ["string", "null"] },
+        "request": {},
+        "expected": {}
+      }
+    },
+    "requested_engines": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "enum": ["chromium", "firefox", "webkit"] }
+    },
+    "engines": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "engine", "status", "browser_version", "user_agent",
+          "cross_origin_isolated", "shared_array_buffer", "route",
+          "artifact_request_count", "imports", "exports", "timings_ms",
+          "memory_pages", "result", "failure"
+        ],
+        "properties": {
+          "engine": { "enum": ["chromium", "firefox", "webkit"] },
+          "status": { "enum": ["pass", "fail"] },
+          "browser_version": { "type": ["string", "null"] },
+          "user_agent": { "type": ["string", "null"] },
+          "cross_origin_isolated": { "type": ["boolean", "null"] },
+          "shared_array_buffer": { "type": ["boolean", "null"] },
+          "route": { "type": ["string", "null"] },
+          "artifact_request_count": { "type": "integer", "minimum": 0 },
+          "imports": { "type": "array", "items": { "type": "object" } },
+          "exports": { "type": "array", "items": { "type": "object" } },
+          "timings_ms": {
+            "type": ["object", "null"],
+            "additionalProperties": false,
+            "properties": {
+              "page_load": { "type": "number", "minimum": 0 },
+              "fetch": { "type": "number", "minimum": 0 },
+              "compile": { "type": "number", "minimum": 0 },
+              "instantiate": { "type": "number", "minimum": 0 },
+              "call": { "type": "number", "minimum": 0 }
+            },
+            "required": ["page_load", "fetch", "compile", "instantiate", "call"]
+          },
+          "memory_pages": {
+            "type": ["object", "null"],
+            "additionalProperties": false,
+            "required": ["before_call", "after_call"],
+            "properties": {
+              "before_call": { "type": "integer", "minimum": 0 },
+              "after_call": { "type": "integer", "minimum": 0 }
+            }
+          },
+          "result": {},
+          "failure": {
+            "oneOf": [
+              { "type": "null" },
+              { "$ref": "#/$defs/failure" }
+            ]
+          }
+        }
+      }
+    },
+    "failures": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/failure" }
+    }
+  },
+  "$defs": {
+    "failure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stage", "message"],
+      "properties": {
+        "stage": { "type": "string", "minLength": 1 },
+        "engine": { "enum": ["chromium", "firefox", "webkit"] },
+        "message": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

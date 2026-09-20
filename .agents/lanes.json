@@ -8,6 +8,8 @@
     "website/reference-data.json",
     "agents/hyperelliptic-magma-pari-performance-plan.md",
     "agents/hyperelliptic-magma-pari-performance-completion-audit.md",
+    "agents/rust-class-group-core-qualification-plan.md",
+    "agents/rust-class-group-public-contract-map.md",
     "upstream-tests/sage/"
   ],
   "lanes": [

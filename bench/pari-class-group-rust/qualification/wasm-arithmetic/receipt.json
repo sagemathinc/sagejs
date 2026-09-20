@@ -1,0 +1,224 @@
+{
+  "schema": "sagejs.rust-class-group.wasm-arithmetic-probe-receipt/v1",
+  "status": "first-executable-probe-passed-w0-still-open",
+  "sourceCommit": "805937e97c341019ee57d0aab6e4f9d6c1670b55",
+  "host": {
+    "vm": "opt",
+    "kernel": "Linux 7.0.0-1011-gcp x86_64",
+    "rustc": "1.98.1 (48a229cea 2026-09-01)",
+    "rustLlvm": "22.1.8",
+    "cargo": "1.98.1 (797e8a9bc 2026-08-05)",
+    "node": "v26.9.0",
+    "playwrightBrowsers": {
+      "chromium": "151.0.7922.34",
+      "firefox": "153.0",
+      "webkit": "26.5"
+    },
+    "nativeGmpPackage": "2:6.3.0+dfsg-5ubuntu2"
+  },
+  "arithmeticPipeline": {
+    "operations": [
+      "m = 2^521 - 1",
+      "q = 3^329 + 1",
+      "product = m*q",
+      "gcd(product+m, product) = m",
+      "divexact(product, m) = q",
+      "7^1000003 mod m",
+      "1000!",
+      "combined = (7^1000003 mod m)*1000! + q",
+      "decimal serialization"
+    ],
+    "internalChecks": [
+      "exact quotient reconstructs product",
+      "gcd equals m",
+      "quotient equals q"
+    ],
+    "resultBytes": 3300,
+    "canonicalResultSha256": "973f49930a209bd05f97d723416d155e8ac432bb120998e19248877b33f22eb2",
+    "independentOracle": {
+      "implementation": "CPython built-in arbitrary-precision integers plus math.factorial",
+      "resultBytes": 3300,
+      "sha256": "973f49930a209bd05f97d723416d155e8ac432bb120998e19248877b33f22eb2"
+    }
+  },
+  "native": {
+    "command": "cargo clean && cargo build --release && target/release/sagejs-rust-wasm-arithmetic-probe",
+    "cleanBuildSeconds": {
+      "wall": 3.16,
+      "user": 2.88,
+      "system": 0.31
+    },
+    "singleProcessRunSecondsBelowShellResolution": {
+      "wall": 0.0,
+      "user": 0.0,
+      "system": 0.0
+    },
+    "executableBytes": 316112,
+    "executableSha256": "cb87f5c719975556a951af0644ad000ae3660f0775cae48bd844a257747f44d8",
+    "linkage": "dynamically linked to /usr/lib/x86_64-linux-gnu/libgmp.so.10",
+    "result": "passed"
+  },
+  "wasm": {
+    "target": "wasm32-wasip1",
+    "rustTargetInstalled": true,
+    "command": "SAGEJS_GMP_PREFIX=$WASM_ROOT/prefixes/gmp SAGEJS_WASI_SYSROOT=$WASM_ROOT/sdk/share/wasi-sysroot cargo build --target wasm32-wasip1 --release --lib",
+    "incrementalBuildAfterNativeSeconds": {
+      "wall": 0.21,
+      "user": 0.12,
+      "system": 0.09
+    },
+    "artifactBytes": 189230,
+    "artifactSha256": "5e7fac30e966bf1bfed258abf344b660d41cf368c78b3dadd2832c7892895137",
+    "linkedLibraries": [
+      "Sage.js GMP 6.2.1 static archive",
+      "wasi-emulated-signal",
+      "Rust wasm32-wasip1 std/libc"
+    ],
+    "imports": [
+      "environ_get",
+      "environ_sizes_get",
+      "fd_close",
+      "fd_prestat_get",
+      "fd_prestat_dir_name",
+      "fd_seek",
+      "fd_write",
+      "proc_exit"
+    ],
+    "exports": [
+      "memory",
+      "sagejs_probe_status",
+      "sagejs_probe_result_ptr",
+      "sagejs_probe_result_len"
+    ]
+  },
+  "pinnedWasmToolchain": {
+    "preparedReceiptDigest": "bfd7e48e622a912f95ef24f64e93c85f3838459b8f75e47590f658b1feb84c74",
+    "wasiSdk": "33.0",
+    "wasiClang": "22.1.0-wasi-sdk",
+    "gmp": "6.2.1",
+    "gmpArchiveSha256": "66eb596677c3acd0e87f3118b69316dcba31695d569b5fe1020a9ff1ee0d12a4",
+    "currentRepositoryLockDigest": "241aebde980ebece5038c787b7efd947d3beed73ea5459b3976848121be5d973",
+    "currentRepositoryToolchainPrepared": false,
+    "currentPreparationAttempt": {
+      "command": "node packages/wasm-toolchain/scripts/toolchain.cjs prepare --json",
+      "sourcesDownloadedAndVerified": true,
+      "gmpBuilt": true,
+      "result": "failed",
+      "stage": "FLINT merged-object link",
+      "error": "wasm-ld reported duplicate _fmpz_* symbols from build/fmpz/fmpz.o while constructing build/fmpz_merged.o"
+    },
+    "qualification": "the cached prepared receipt was inspected and all named files were present; the current lock cannot qualify until its reproducible FLINT preparation failure is fixed"
+  },
+  "nodeSagejsHost": {
+    "command": "node run-wasm.mjs",
+    "runtime": "Sage.js createWasiHost plus zero-environment shims",
+    "compileMsSingleObservation": 0.86056,
+    "instantiateMsSingleObservation": 0.14808,
+    "computeMsSingleObservation": 3.10084,
+    "resultSha256": "973f49930a209bd05f97d723416d155e8ac432bb120998e19248877b33f22eb2",
+    "result": "passed"
+  },
+  "browserSagejsHost": {
+    "command": "node run-browser.mjs",
+    "runtime": "actual Playwright Chromium, Firefox and WebKit over HTTP using Sage.js createWasiHost plus zero-environment shims",
+    "sampleContract": "compile once per engine, then instantiate and compute in 15 fresh module instances",
+    "engines": [
+      {
+        "engine": "chromium",
+        "version": "151.0.7922.34",
+        "compileMs": 8.800000011920929,
+        "instantiateMs": {
+          "samples": [0.4000000059604645, 0.19999998807907104, 0, 0.09999999403953552, 0.09999999403953552, 0.09999999403953552, 0.09999999403953552, 0.09999999403953552, 0.09999999403953552, 0, 0, 0, 0, 0.09999999403953552, 0],
+          "median": 0.09999999403953552,
+          "min": 0,
+          "max": 0.4000000059604645,
+          "mad": 0.09999999403953552
+        },
+        "computeMs": {
+          "samples": [7.700000017881393, 0.4000000059604645, 0.5, 0.5, 0.5, 0.4000000059604645, 0.5, 0.4000000059604645, 0.5, 0.4000000059604645, 0.3999999761581421, 0.5, 0.4000000059604645, 0.4000000059604645, 0.5],
+          "median": 0.5,
+          "min": 0.3999999761581421,
+          "max": 7.700000017881393,
+          "mad": 0.09999999403953552
+        },
+        "memoryPagesBefore": [17],
+        "memoryPagesAfter": [17]
+      },
+      {
+        "engine": "firefox",
+        "version": "153.0",
+        "compileMs": 28,
+        "instantiateMs": {
+          "samples": [1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0],
+          "median": 0,
+          "min": 0,
+          "max": 1,
+          "mad": 0
+        },
+        "computeMs": {
+          "samples": [2, 2, 2, 2, 2, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2],
+          "median": 2,
+          "min": 1,
+          "max": 2,
+          "mad": 0
+        },
+        "memoryPagesBefore": [17],
+        "memoryPagesAfter": [17]
+      },
+      {
+        "engine": "webkit",
+        "version": "26.5",
+        "compileMs": 16,
+        "instantiateMs": {
+          "samples": [1, 0, 0, 2, 1, 0, 2, 1, 1, 8, 1, 0, 1, 1, 0],
+          "median": 1,
+          "min": 0,
+          "max": 8,
+          "mad": 1
+        },
+        "computeMs": {
+          "samples": [6, 3, 2, 1, 1, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0],
+          "median": 1,
+          "min": 0,
+          "max": 6,
+          "mad": 1
+        },
+        "memoryPagesBefore": [17],
+        "memoryPagesAfter": [17]
+      }
+    ],
+    "resultSha256": "973f49930a209bd05f97d723416d155e8ac432bb120998e19248877b33f22eb2",
+    "result": "passed"
+  },
+  "noStdImportExperiment": {
+    "source": "src/no_std_import_probe.rs",
+    "scope": "core-only Rust plus GMP; modular residue probe, not the full allocating and serializing pipeline",
+    "command": "rustc --edition 2024 --crate-type cdylib --target wasm32-wasip1 -O -C panic=abort -C strip=symbols -L native=$GMP_LIB -L native=$WASI_LIB -l static=gmp -l static=c -l static=wasi-emulated-signal src/no_std_import_probe.rs -o /tmp/sagejs-no-std-gmp-import-probe.wasm",
+    "artifactBytes": 81138,
+    "artifactSha256": "285372af7bcf1db9c35f6c2e6101d001d46a90d1aa397fd872840840863f8129",
+    "imports": ["fd_close", "fd_seek", "fd_write"],
+    "environmentImports": [],
+    "executionHost": "unmodified Sage.js createWasiHost",
+    "observedResidue": 22656,
+    "independentPythonResidue": 22656,
+    "memoryPages": 17,
+    "conclusion": "core-only Rust removes environ_get and environ_sizes_get; a full alloc/serialization route remains to be implemented"
+  },
+  "w0Disposition": {
+    "passed": false,
+    "established": [
+      "Rust can link Sage.js's pinned GMP Wasm archive without gmp-mpfr-sys",
+      "the same nontrivial exact Rust source graph returns byte-identical native, Node-Wasm, Chromium-Wasm, Firefox-Wasm and WebKit-Wasm results",
+      "all three actual browser engines completed 15 fresh-instance samples through Sage.js's bounded first-party WASI host with two explicit environment shims",
+      "all browser samples retained 17 linear-memory pages before and after computation",
+      "a no_std core/GMP experiment runs through the unmodified Sage.js host and proves the two environment imports are removable",
+      "the initial stripped full-probe Wasm artifact is 189230 bytes"
+    ],
+    "remaining": [
+      "fix the duplicate-symbol FLINT preparation failure and rebuild against the current repository toolchain digest",
+      "apply the no_std/core result to the full allocating and serializing pipeline so it uses the unmodified production WASI host",
+      "measure peak bytes inside the 17-page linear-memory allocation, not only page growth",
+      "extend the probe to high-precision real/complex and enclosure arithmetic"
+    ]
+  }
+}

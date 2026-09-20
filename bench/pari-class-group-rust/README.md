@@ -9,7 +9,8 @@ integral basis for `x^3 - 20018*x + 20034`.  Rust derives the 66-prime-ideal
 factor base, seeds the initial relation cache, numerically prepares and
 enumerates 16 ideal lattices, admits and values smooth elements, constructs a
 66 by 73 relation presentation, and computes its Smith invariants.  All 66
-Smith diagonal entries are one, so the resulting class group is trivial.
+Smith diagonal entries are one, so the resulting relation-lattice candidate
+has trivial invariants.
 
 The presentation is produced by the translated collector, not copied from an
 oracle.  The natural exact-Rust LLL and 320-bit Gram--Schmidt path chooses a
@@ -18,9 +19,10 @@ byte-identical to PARI's; the semantic terminal counters and class-group result
 agree.  JSON parsing, oracle comparison, and result serialization are outside
 the reported samples.
 
-This is an end-to-end **class-group relation and invariants** experiment, not a
-complete BNF implementation.  Unit reconstruction, regulator work, and PARI's
-final BNF object construction remain outside the Rust boundary.  The crate
+This is an end-to-end **class-group relation and candidate-invariants**
+experiment, not a complete BNF implementation.  Unit reconstruction,
+regulator work, completeness certification, class generators and maps, and
+PARI's final BNF object construction remain outside the Rust boundary.  The crate
 links GMP and MPFR statically through `rug`, but does not link or invoke PARI.
 
 The translated algorithm and fixture provenance are GPL-2.0-or-later and are

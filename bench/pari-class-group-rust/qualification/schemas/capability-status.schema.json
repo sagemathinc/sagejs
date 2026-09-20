@@ -1,0 +1,280 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/rust-class-group-qualification/capability-status-v1.json",
+  "title": "Rust class-group backend capability and qualification status",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "manifestId", "generatedAt", "repository", "backend", "capabilities",
+    "overallDecision"
+  ],
+  "properties": {
+    "schema": { "const": "sagejs.rust-class-group.capability-status/v1" },
+    "manifestId": { "$ref": "common.schema.json#/$defs/contentId" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "repository": { "$ref": "common.schema.json#/$defs/repository" },
+    "backend": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "hostIndependentCore", "linksPari", "license"],
+      "properties": {
+        "id": { "const": "sagejs-rust-class-group" },
+        "version": { "$ref": "common.schema.json#/$defs/nonempty" },
+        "hostIndependentCore": { "const": true },
+        "linksPari": { "const": false },
+        "license": { "$ref": "common.schema.json#/$defs/nonempty" }
+      }
+    },
+    "capabilities": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/capability" }
+    },
+    "overallDecision": {
+      "enum": [
+        "qualified-rust-class-group-backend",
+        "native-qualified-browser-unresolved",
+        "unqualified-experiment",
+        "campaign-in-progress"
+      ]
+    }
+  },
+  "$defs": {
+    "support": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "fallback", "limitation"],
+      "properties": {
+        "status": { "enum": ["backend", "fallback", "unsupported"] },
+        "fallback": { "type": ["string", "null"] },
+        "limitation": { "type": ["string", "null"] }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "fallback" } }, "required": ["status"] },
+          "then": { "properties": { "fallback": { "$ref": "common.schema.json#/$defs/nonempty" } } },
+          "else": { "properties": { "fallback": { "type": "null" } } }
+        },
+        {
+          "if": { "properties": { "status": { "const": "unsupported" } }, "required": ["status"] },
+          "then": { "properties": { "limitation": { "$ref": "common.schema.json#/$defs/nonempty" } } }
+        }
+      ]
+    },
+    "domain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "minimumDegree", "maximumDegree", "monicIntegralIrreducible",
+        "allSignatures", "basisDenominators", "indexPrimes", "resourceLimits"
+      ],
+      "properties": {
+        "minimumDegree": { "const": 2 },
+        "maximumDegree": { "type": "integer", "minimum": 2, "maximum": 8 },
+        "monicIntegralIrreducible": { "const": true },
+        "allSignatures": { "type": "boolean" },
+        "basisDenominators": { "type": "boolean" },
+        "indexPrimes": { "type": "boolean" },
+        "resourceLimits": { "$ref": "common.schema.json#/$defs/resourceLimits" }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["platform", "architecture", "route", "browserEngine", "threadsRequired"],
+      "properties": {
+        "platform": { "enum": ["linux", "macos", "windows", "browser"] },
+        "architecture": { "enum": ["x86_64", "aarch64", "wasm32"] },
+        "route": { "enum": ["native-addon", "wasm-worker", "portable-fallback"] },
+        "browserEngine": {
+          "oneOf": [
+            { "enum": ["chromium", "firefox", "webkit", "safari"] },
+            { "type": "null" }
+          ]
+        },
+        "threadsRequired": { "const": false }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "platform": { "const": "browser" } }, "required": ["platform"] },
+          "then": {
+            "properties": {
+              "architecture": { "const": "wasm32" },
+              "route": { "const": "wasm-worker" },
+              "browserEngine": { "enum": ["chromium", "firefox", "webkit", "safari"] }
+            }
+          },
+          "else": { "properties": { "browserEngine": { "type": "null" } } }
+        }
+      ]
+    },
+    "arithmetic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["exactInteger", "realComplex", "allocator", "overflowPolicy", "abiProbeSha256"],
+      "properties": {
+        "exactInteger": { "enum": ["bounded-promote-gmp", "gmp", "pure-rust-bigint"] },
+        "realComplex": { "enum": ["mpfr-mpc", "arb-acb", "pure-rust-reviewed"] },
+        "allocator": { "$ref": "common.schema.json#/$defs/nonempty" },
+        "overflowPolicy": { "const": "checked-checkpoint-promotion" },
+        "abiProbeSha256": { "$ref": "common.schema.json#/$defs/sha256" }
+      }
+    },
+    "gateState": { "enum": ["passed", "failed", "blocked", "not-run", "not-applicable"] },
+    "gates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "w0Arithmetic", "correctness", "publicCompleteness", "performance",
+        "memory", "browserLifecycle", "payloadAndStartup", "platformPackaging",
+        "maintainability"
+      ],
+      "properties": {
+        "w0Arithmetic": { "$ref": "#/$defs/gateState" },
+        "correctness": { "$ref": "#/$defs/gateState" },
+        "publicCompleteness": { "$ref": "#/$defs/gateState" },
+        "performance": { "$ref": "#/$defs/gateState" },
+        "memory": { "$ref": "#/$defs/gateState" },
+        "browserLifecycle": { "$ref": "#/$defs/gateState" },
+        "payloadAndStartup": { "$ref": "#/$defs/gateState" },
+        "platformPackaging": { "$ref": "#/$defs/gateState" },
+        "maintainability": { "$ref": "#/$defs/gateState" }
+      }
+    },
+    "qualificationBindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["corpusSha256", "receipts", "artifact"],
+      "properties": {
+        "corpusSha256": { "$ref": "common.schema.json#/$defs/sha256" },
+        "receipts": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/sha256" }
+        },
+        "artifact": { "$ref": "common.schema.json#/$defs/artifact" }
+      }
+    },
+    "capability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "capabilityId", "operation", "status", "maximumClaim", "domain", "target",
+        "proofModes", "outputs", "arithmetic", "gates", "qualification", "limitations"
+      ],
+      "properties": {
+        "capabilityId": { "$ref": "common.schema.json#/$defs/nonempty" },
+        "operation": { "enum": ["class-group", "class-and-unit-group"] },
+        "status": { "enum": ["unavailable", "development", "candidate", "qualified"] },
+        "maximumClaim": { "$ref": "common.schema.json#/$defs/claimStatus" },
+        "domain": { "$ref": "#/$defs/domain" },
+        "target": { "$ref": "#/$defs/target" },
+        "proofModes": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["conditionalGrh", "unconditional"],
+          "properties": {
+            "conditionalGrh": { "$ref": "#/$defs/support" },
+            "unconditional": { "$ref": "#/$defs/support" }
+          }
+        },
+        "outputs": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["classNumber", "invariantFactors", "generatorIdeals", "idealToClass", "principality"],
+          "properties": {
+            "classNumber": { "type": "boolean" },
+            "invariantFactors": { "type": "boolean" },
+            "generatorIdeals": { "type": "boolean" },
+            "idealToClass": { "type": "boolean" },
+            "principality": { "type": "boolean" }
+          }
+        },
+        "arithmetic": { "$ref": "#/$defs/arithmetic" },
+        "gates": { "$ref": "#/$defs/gates" },
+        "qualification": {
+          "oneOf": [
+            { "$ref": "#/$defs/qualificationBindings" },
+            { "type": "null" }
+          ]
+        },
+        "limitations": {
+          "type": "array",
+          "items": { "$ref": "common.schema.json#/$defs/nonempty" }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "qualified" } }, "required": ["status"] },
+          "then": {
+            "properties": {
+              "maximumClaim": { "const": "publicly-complete" },
+              "domain": {
+                "allOf": [
+                  { "$ref": "#/$defs/domain" },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "maximumDegree": { "const": 6 },
+                      "allSignatures": { "const": true },
+                      "basisDenominators": { "const": true },
+                      "indexPrimes": { "const": true }
+                    }
+                  }
+                ]
+              },
+              "outputs": {
+                "type": "object",
+                "properties": {
+                  "classNumber": { "const": true },
+                  "invariantFactors": { "const": true },
+                  "generatorIdeals": { "const": true },
+                  "idealToClass": { "const": true },
+                  "principality": { "const": true }
+                }
+              },
+              "gates": {
+                "type": "object",
+                "properties": {
+                  "correctness": { "const": "passed" },
+                  "publicCompleteness": { "const": "passed" },
+                  "performance": { "const": "passed" },
+                  "memory": { "const": "passed" },
+                  "platformPackaging": { "const": "passed" },
+                  "maintainability": { "const": "passed" }
+                }
+              },
+              "qualification": { "$ref": "#/$defs/qualificationBindings" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": { "const": "qualified" },
+              "target": {
+                "type": "object",
+                "properties": { "platform": { "const": "browser" } },
+                "required": ["platform"]
+              }
+            },
+            "required": ["status", "target"]
+          },
+          "then": {
+            "properties": {
+              "gates": {
+                "type": "object",
+                "properties": {
+                  "w0Arithmetic": { "const": "passed" },
+                  "browserLifecycle": { "const": "passed" },
+                  "payloadAndStartup": { "const": "passed" }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

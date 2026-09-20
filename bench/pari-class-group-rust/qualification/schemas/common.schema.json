@@ -1,0 +1,195 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/rust-class-group-qualification/common.schema.json",
+  "title": "Shared Rust class-group qualification definitions",
+  "$defs": {
+    "nonempty": { "type": "string", "minLength": 1 },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "contentId": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "unsignedDecimal": { "type": "string", "pattern": "^(0|[1-9][0-9]*)$" },
+    "positiveDecimal": { "type": "string", "pattern": "^[1-9][0-9]*$" },
+    "integerDecimal": { "type": "string", "pattern": "^(0|-?[1-9][0-9]*)$" },
+    "positiveInteger": { "type": "integer", "minimum": 1 },
+    "nonnegativeInteger": { "type": "integer", "minimum": 0 },
+    "rational": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["numerator", "denominator"],
+      "properties": {
+        "numerator": { "$ref": "#/$defs/integerDecimal" },
+        "denominator": { "$ref": "#/$defs/positiveDecimal" }
+      }
+    },
+    "rationalVector": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/rational" }
+    },
+    "rationalMatrix": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/rationalVector" }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "path", "sha256", "bytes"],
+      "properties": {
+        "name": { "$ref": "#/$defs/nonempty" },
+        "path": { "$ref": "#/$defs/nonempty" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "bytes": { "$ref": "#/$defs/unsignedDecimal" },
+        "compressedBytes": { "$ref": "#/$defs/unsignedDecimal" },
+        "mediaType": { "$ref": "#/$defs/nonempty" }
+      }
+    },
+    "repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commit", "tree", "clean", "statusSha256"],
+      "properties": {
+        "commit": { "type": "string", "pattern": "^[0-9a-f]{40,64}$" },
+        "tree": { "type": "string", "pattern": "^[0-9a-f]{40,64}$" },
+        "clean": { "type": "boolean" },
+        "statusSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "$ref": "#/$defs/nonempty" },
+        "version": { "$ref": "#/$defs/nonempty" },
+        "target": { "type": ["string", "null"] },
+        "flags": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "executableSha256": {
+          "oneOf": [
+            { "$ref": "#/$defs/sha256" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "host": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "hostId", "os", "architecture", "kernel", "cpu", "logicalCpus",
+        "memoryBytes", "quietTimingHost", "threadCount"
+      ],
+      "properties": {
+        "hostId": { "$ref": "#/$defs/nonempty" },
+        "os": { "enum": ["linux", "macos", "windows", "browser"] },
+        "architecture": { "enum": ["x86_64", "aarch64", "wasm32"] },
+        "kernel": { "$ref": "#/$defs/nonempty" },
+        "cpu": { "$ref": "#/$defs/nonempty" },
+        "logicalCpus": { "$ref": "#/$defs/positiveInteger" },
+        "memoryBytes": { "$ref": "#/$defs/positiveDecimal" },
+        "quietTimingHost": { "type": "boolean" },
+        "threadCount": { "$ref": "#/$defs/positiveInteger" },
+        "powerPolicy": { "type": ["string", "null"] },
+        "browser": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["engine", "version", "worker"],
+              "properties": {
+                "engine": { "enum": ["chromium", "firefox", "webkit", "safari"] },
+                "version": { "$ref": "#/$defs/nonempty" },
+                "worker": { "const": true }
+              }
+            },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "proofRequest": {
+      "enum": ["conditional-grh", "unconditional"]
+    },
+    "proofAuthority": {
+      "enum": ["none", "upstream-assumption", "conditional-grh", "unconditional"]
+    },
+    "claimStatus": {
+      "enum": ["candidate", "upstream-assumed-correspondence", "publicly-complete"]
+    },
+    "timingBoundaryKind": {
+      "enum": ["algorithm-stage", "prepared-field", "public-call"]
+    },
+    "publicTimingMode": {
+      "enum": [
+        "fresh-process-fresh-field", "warmed-code-fresh-field", "fresh-field",
+        "cached-result-lookup"
+      ]
+    },
+    "stageName": {
+      "enum": [
+        "field-preparation", "factor-base", "relation-collection",
+        "ideal-valuations", "incremental-hnf", "smith", "unit-reconstruction",
+        "regulator", "completion", "generator-maps", "result-construction",
+        "complete-prepared-field", "complete-public-call"
+      ]
+    },
+    "integerPolynomial": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["variable", "coefficientsAscending", "degree", "monic", "irreducible"],
+      "properties": {
+        "variable": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" },
+        "coefficientsAscending": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 9,
+          "items": { "$ref": "#/$defs/integerDecimal" }
+        },
+        "degree": { "type": "integer", "minimum": 2, "maximum": 8 },
+        "monic": { "const": true },
+        "irreducible": { "const": true }
+      }
+    },
+    "resourceLimits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "wallMilliseconds", "memoryBytes", "relationCandidates",
+        "precisionBits", "continuationPasses"
+      ],
+      "properties": {
+        "wallMilliseconds": { "$ref": "#/$defs/positiveDecimal" },
+        "memoryBytes": { "$ref": "#/$defs/positiveDecimal" },
+        "relationCandidates": { "$ref": "#/$defs/positiveDecimal" },
+        "precisionBits": { "$ref": "#/$defs/positiveInteger" },
+        "continuationPasses": { "$ref": "#/$defs/nonnegativeInteger" }
+      }
+    },
+    "ideal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["basisNumeratorsRowMajor", "basisDenominator", "norm"],
+      "properties": {
+        "basisNumeratorsRowMajor": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/integerDecimal" }
+        },
+        "basisDenominator": { "$ref": "#/$defs/positiveDecimal" },
+        "norm": { "$ref": "#/$defs/positiveDecimal" }
+      }
+    },
+    "evidenceBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "sha256", "replayable", "verified"],
+      "properties": {
+        "kind": { "$ref": "#/$defs/nonempty" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "replayable": { "type": "boolean" },
+        "verified": { "type": "boolean" },
+        "path": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

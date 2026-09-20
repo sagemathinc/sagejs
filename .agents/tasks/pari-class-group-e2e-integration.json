@@ -1,0 +1,61 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-class-group-e2e-integration",
+  "title": "Qualify a Rust class-group mathematical core",
+  "lane": "integration",
+  "status": "active",
+  "owner": "agent",
+  "objective": "Implement the Rust class-group core qualification plan through complete native and browser evidence, preserving Sage.js public semantics, proof authority, portability, and measured PARI comparisons",
+  "base_commit": "805937e97c341019ee57d0aab6e4f9d6c1670b55",
+  "claims": [
+    ".agents/lanes.json",
+    ".agents/tasks/pari-class-group-e2e-integration.json",
+    "agents/rust-class-group-public-contract-map.md",
+    "architecture/decisions/0006-rust-math-core.md",
+    "bench/pari-class-group-rust/"
+  ],
+  "dependencies": [],
+  "references": [
+    "ARCHITECTURE.md",
+    "agents/rust-class-group-core-qualification-plan.md",
+    "bench/pari-class-group-rust/cubic-corpus-development-receipt.json"
+  ],
+  "architecture": {
+    "strategy": "mixed",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Pinned PARI 2.17.4 correspondence controls",
+      "Independent exact relation, ideal, transformation, generator, and completion certificates",
+      "Existing Sage.js dynamic class-group and class-unit contracts"
+    ],
+    "exceptions": [
+      "This campaign evaluates attributed handwritten Rust mathematical algorithms as an explicit, receipt-gated architecture exception rather than source-transparent lowering of an ordinary Python body."
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "cargo test --release --all-targets --manifest-path bench/pari-class-group-rust/Cargo.toml",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "pnpm parallel:check"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [
+      "The current faithful fast path is authenticated only for H1 and does not yet provide a general prepared-field computation or public completion certificate.",
+      "The browser arithmetic backend and actual Chromium, Firefox, and WebKit performance remain unqualified."
+    ],
+    "next_steps": [
+      "Complete R0 contracts and the W0 native/browser arithmetic gate.",
+      "Generalize numerical preparation and relation collection to unseen prepared cubic fields before extending degrees."
+    ]
+  }
+}

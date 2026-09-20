@@ -1,18 +1,13 @@
 // Copyright (C) The PARI group and Sage.js contributors.
 // GPL-2.0-or-later, without warranty.
 
-mod bruteforce_collector;
-mod class_group;
-mod collector_schedule;
-mod enumeration;
-mod factor_base;
-mod ideal_arithmetic;
-mod numerical_preparation;
-mod prime_valuation;
-mod relation_cache;
-mod smooth_admission;
-
 use rug::Integer;
+use sagejs_pari_class_group_rust_experiment::{
+    BruteForceOptions, PreparedCubic, UpstreamAssumedH1, WordSmithWorkspace,
+    collect_prepared_cubic_presentation_candidate,
+    collect_upstream_assumed_h1_presentation_candidate, prepared_cubic_factor_base,
+    transpose_relation_records,
+};
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
@@ -65,195 +60,6 @@ struct SmithWorkspace {
     columns: usize,
     values: Vec<Integer>,
     operations: u64,
-}
-
-struct WordSmithWorkspace {
-    rows: usize,
-    columns: usize,
-    values: Vec<i128>,
-    operations: u64,
-    maximum_absolute_value: i128,
-}
-
-impl WordSmithWorkspace {
-    fn new(rows: usize, columns: usize) -> Self {
-        Self {
-            rows,
-            columns,
-            values: vec![0; rows * columns],
-            operations: 0,
-            maximum_absolute_value: 0,
-        }
-    }
-
-    #[inline]
-    fn index(&self, row: usize, column: usize) -> usize {
-        row * self.columns + column
-    }
-
-    fn reset_from(&mut self, source: &[i128]) {
-        self.values.copy_from_slice(source);
-        self.operations = 0;
-        self.maximum_absolute_value = source.iter().map(|value| value.abs()).max().unwrap_or(0);
-    }
-
-    fn swap_rows(&mut self, first: usize, second: usize) {
-        if first == second {
-            return;
-        }
-        for column in 0..self.columns {
-            let a = self.index(first, column);
-            let b = self.index(second, column);
-            self.values.swap(a, b);
-        }
-        self.operations += 1;
-    }
-
-    fn swap_columns(&mut self, first: usize, second: usize) {
-        if first == second {
-            return;
-        }
-        for row in 0..self.rows {
-            let a = self.index(row, first);
-            let b = self.index(row, second);
-            self.values.swap(a, b);
-        }
-        self.operations += 1;
-    }
-
-    fn checked_add_multiple(value: i128, source: i128, multiple: i128) -> i128 {
-        value
-            .checked_add(
-                source
-                    .checked_mul(multiple)
-                    .expect("bounded Smith multiplication overflowed i128"),
-            )
-            .expect("bounded Smith addition overflowed i128")
-    }
-
-    fn add_row_multiple(&mut self, target: usize, source: usize, multiple: i128) {
-        if multiple == 0 {
-            return;
-        }
-        for column in 0..self.columns {
-            let source_value = self.values[self.index(source, column)];
-            let target_index = self.index(target, column);
-            let answer =
-                Self::checked_add_multiple(self.values[target_index], source_value, multiple);
-            self.values[target_index] = answer;
-            self.maximum_absolute_value = self.maximum_absolute_value.max(answer.abs());
-        }
-        self.operations += 1;
-    }
-
-    fn add_column_multiple(&mut self, target: usize, source: usize, multiple: i128) {
-        if multiple == 0 {
-            return;
-        }
-        for row in 0..self.rows {
-            let source_value = self.values[self.index(row, source)];
-            let target_index = self.index(row, target);
-            let answer =
-                Self::checked_add_multiple(self.values[target_index], source_value, multiple);
-            self.values[target_index] = answer;
-            self.maximum_absolute_value = self.maximum_absolute_value.max(answer.abs());
-        }
-        self.operations += 1;
-    }
-
-    fn smallest_nonzero(&self, start: usize) -> Option<(usize, usize)> {
-        let mut answer: Option<(usize, usize, i128)> = None;
-        for row in start..self.rows {
-            for column in start..self.columns {
-                let value = self.values[self.index(row, column)];
-                if value == 0 {
-                    continue;
-                }
-                let absolute = value.abs();
-                if answer.is_none_or(|item| absolute < item.2) {
-                    answer = Some((row, column, absolute));
-                }
-            }
-        }
-        answer.map(|(row, column, _)| (row, column))
-    }
-
-    fn clear_pivot_cross(&mut self, pivot: usize) {
-        loop {
-            let mut changed = false;
-            for row in (pivot + 1)..self.rows {
-                while self.values[self.index(row, pivot)] != 0 {
-                    let quotient =
-                        self.values[self.index(row, pivot)] / self.values[self.index(pivot, pivot)];
-                    self.add_row_multiple(row, pivot, -quotient);
-                    if self.values[self.index(row, pivot)] != 0 {
-                        self.swap_rows(row, pivot);
-                    }
-                    changed = true;
-                }
-            }
-            for column in (pivot + 1)..self.columns {
-                while self.values[self.index(pivot, column)] != 0 {
-                    let quotient = self.values[self.index(pivot, column)]
-                        / self.values[self.index(pivot, pivot)];
-                    self.add_column_multiple(column, pivot, -quotient);
-                    if self.values[self.index(pivot, column)] != 0 {
-                        self.swap_columns(column, pivot);
-                    }
-                    changed = true;
-                }
-            }
-            let column_clear =
-                ((pivot + 1)..self.rows).all(|row| self.values[self.index(row, pivot)] == 0);
-            let row_clear = ((pivot + 1)..self.columns)
-                .all(|column| self.values[self.index(pivot, column)] == 0);
-            if column_clear && row_clear {
-                return;
-            }
-            assert!(changed, "bounded Smith pivot reduction stalled");
-        }
-    }
-
-    fn smith_diagonal(&mut self) -> Vec<i128> {
-        let limit = self.rows.min(self.columns);
-        let mut pivot = 0;
-        while pivot < limit {
-            let Some((row, column)) = self.smallest_nonzero(pivot) else {
-                break;
-            };
-            self.swap_rows(pivot, row);
-            self.swap_columns(pivot, column);
-            loop {
-                self.clear_pivot_cross(pivot);
-                let divisor = self.values[self.index(pivot, pivot)].abs();
-                let mut offending = None;
-                'search: for row in (pivot + 1)..self.rows {
-                    for column in (pivot + 1)..self.columns {
-                        if self.values[self.index(row, column)] % divisor != 0 {
-                            offending = Some(row);
-                            break 'search;
-                        }
-                    }
-                }
-                let Some(row) = offending else {
-                    break;
-                };
-                self.add_row_multiple(pivot, row, 1);
-            }
-            let diagonal_index = self.index(pivot, pivot);
-            if self.values[diagonal_index] < 0 {
-                for column in pivot..self.columns {
-                    let index = self.index(pivot, column);
-                    self.values[index] = -self.values[index];
-                }
-                self.operations += 1;
-            }
-            pivot += 1;
-        }
-        (0..limit)
-            .map(|index| self.values[self.index(index, index)])
-            .collect()
-    }
 }
 
 impl SmithWorkspace {
@@ -482,7 +288,7 @@ fn run_factor_base_experiment(checkpoint_path: &str) {
         *target = value.as_str().unwrap().parse().unwrap();
     }
 
-    let warm = factor_base::prepared_cubic_factor_base(polynomial, basis);
+    let warm = prepared_cubic_factor_base(polynomial, basis);
     let oracle = &checkpoint["oracleOnly"]["factorBase"];
     assert_eq!(warm.relation_bound, 333);
     assert_eq!(warm.checking_bound, 333);
@@ -526,7 +332,7 @@ fn run_factor_base_experiment(checkpoint_path: &str) {
     let mut samples = Vec::with_capacity(15);
     for _ in 0..15 {
         let started = Instant::now();
-        let result = black_box(factor_base::prepared_cubic_factor_base(polynomial, basis));
+        let result = black_box(prepared_cubic_factor_base(polynomial, basis));
         samples.push(started.elapsed().as_nanos());
         assert_eq!(result.ideals.len(), warm.ideals.len());
     }
@@ -550,17 +356,6 @@ fn run_factor_base_experiment(checkpoint_path: &str) {
             "timingExcludes": ["JSON parsing", "oracle verification", "subfactor ordering", "initial relation cache", "small-norm relation collection"],
         })
     );
-}
-
-fn transpose_relation_records(records: &[i64], rows: usize, columns: usize) -> Vec<i128> {
-    assert_eq!(records.len(), rows * columns);
-    let mut presentation = vec![0_i128; rows * columns];
-    for column in 0..columns {
-        for row in 0..rows {
-            presentation[row * columns + column] = i128::from(records[column * rows + row]);
-        }
-    }
-    presentation
 }
 
 fn run_class_group_experiment(checkpoint_path: &str) {
@@ -587,20 +382,28 @@ fn run_class_group_experiment(checkpoint_path: &str) {
         *target = value.as_str().unwrap().parse().unwrap();
     }
 
-    let warm = class_group::collect_h1_class_group(polynomial, basis)
+    assert_eq!(polynomial, UpstreamAssumedH1::POLYNOMIAL_ASCENDING);
+    assert_eq!(basis, UpstreamAssumedH1::INTEGRAL_BASIS_ROW_MAJOR);
+    let warm = collect_upstream_assumed_h1_presentation_candidate(UpstreamAssumedH1::new())
         .expect("Rust H1 relation collector failed");
     let rows = warm.factor_base.ideals.len();
-    let columns = warm.relations.len() / rows;
+    let columns = warm.presentation.relation_count();
     assert_eq!((rows, columns), (66, 73));
-    let presentation = transpose_relation_records(&warm.relations, rows, columns);
+    let presentation =
+        transpose_relation_records(&warm.presentation.relation_vectors, rows, columns);
     let mut smith = WordSmithWorkspace::new(rows, columns);
-    smith.reset_from(&presentation);
-    let diagonal = smith.smith_diagonal();
+    smith
+        .reset_from(&presentation)
+        .expect("bounded Smith reset failed");
+    let diagonal = smith
+        .smith_diagonal()
+        .expect("bounded Smith reduction failed");
     assert_eq!(diagonal.len(), rows);
     assert!(diagonal.iter().all(|value| *value == 1));
 
     let relation_text = warm
-        .relations
+        .presentation
+        .relation_vectors
         .iter()
         .map(i64::to_string)
         .collect::<Vec<_>>()
@@ -608,7 +411,7 @@ fn run_class_group_experiment(checkpoint_path: &str) {
     let relation_sha256 = format!("{:x}", Sha256::digest(relation_text.as_bytes()));
     let oracle_relations =
         json_i64_values(&checkpoint["oracleOnly"]["collectedRelations"]["records"]);
-    let presentation_matches_pari = warm.relations == oracle_relations;
+    let presentation_matches_pari = warm.presentation.relation_vectors == oracle_relations;
 
     let mut total_samples = Vec::with_capacity(15);
     let mut collector_samples = Vec::with_capacity(15);
@@ -623,17 +426,27 @@ fn run_class_group_experiment(checkpoint_path: &str) {
     for _ in 0..15 {
         let total_started = Instant::now();
         let answer = black_box(
-            class_group::collect_h1_class_group(polynomial, basis)
+            collect_upstream_assumed_h1_presentation_candidate(UpstreamAssumedH1::new())
                 .expect("repeated Rust H1 relation collector failed"),
         );
         let collector_elapsed = total_started.elapsed().as_nanos();
-        let presentation = transpose_relation_records(&answer.relations, rows, columns);
+        let presentation =
+            transpose_relation_records(&answer.presentation.relation_vectors, rows, columns);
         let smith_started = Instant::now();
-        smith.reset_from(&presentation);
-        let repeated_diagonal = black_box(smith.smith_diagonal());
+        smith
+            .reset_from(&presentation)
+            .expect("bounded Smith reset failed");
+        let repeated_diagonal = black_box(
+            smith
+                .smith_diagonal()
+                .expect("bounded Smith reduction failed"),
+        );
         let smith_elapsed = smith_started.elapsed().as_nanos();
         assert!(repeated_diagonal.iter().all(|value| *value == 1));
-        assert_eq!(answer.relations, warm.relations);
+        assert_eq!(
+            answer.presentation.relation_vectors,
+            warm.presentation.relation_vectors
+        );
         collector_samples.push(collector_elapsed);
         smith_samples.push(smith_elapsed);
         total_samples.push(total_started.elapsed().as_nanos());
@@ -714,27 +527,33 @@ fn run_brute_force_experiment(input_path: &str) {
 
     let solve = || {
         let started = Instant::now();
-        let answer = bruteforce_collector::collect_primitive_box_with_supplementary(
-            input.polynomial_ascending,
-            input.integral_basis_row_major,
-            input.maximum_radius,
-            input.supplementary_relations,
+        let answer = collect_prepared_cubic_presentation_candidate(
+            PreparedCubic {
+                polynomial_ascending: input.polynomial_ascending,
+                integral_basis_row_major: input.integral_basis_row_major,
+            },
+            BruteForceOptions {
+                maximum_radius: input.maximum_radius,
+                supplementary_relations: input.supplementary_relations,
+            },
         )
         .expect("Rust cubic coefficient-box collector failed");
         let collection_ns = started.elapsed().as_nanos();
-        assert_eq!(
-            answer.cache.missing(),
-            0,
-            "relation lattice is rank deficient"
-        );
-        let relation_rows = answer.cache.len();
+        let relation_rows = answer.presentation.relation_count();
         let factor_base_size = answer.factor_base.ideals.len();
-        let presentation =
-            transpose_relation_records(answer.cache.records(), factor_base_size, relation_rows);
+        let presentation = transpose_relation_records(
+            &answer.presentation.relation_vectors,
+            factor_base_size,
+            relation_rows,
+        );
         let smith_started = Instant::now();
         let mut smith = WordSmithWorkspace::new(factor_base_size, relation_rows);
-        smith.reset_from(&presentation);
-        let diagonal = smith.smith_diagonal();
+        smith
+            .reset_from(&presentation)
+            .expect("bounded Smith reset failed");
+        let diagonal = smith
+            .smith_diagonal()
+            .expect("bounded Smith reduction failed");
         let smith_ns = smith_started.elapsed().as_nanos();
         assert!(diagonal.iter().all(|value| *value != 0));
         let invariant_factors = diagonal
@@ -757,14 +576,14 @@ fn run_brute_force_experiment(input_path: &str) {
     };
 
     let (warm, warm_invariants, warm_class_number, _, _, _) = solve();
-    let warm_records = warm.cache.records().to_vec();
+    let warm_records = warm.presentation.relation_vectors.clone();
     let mut collection_samples = Vec::with_capacity(input.samples);
     let mut smith_samples = Vec::with_capacity(input.samples);
     let mut total_samples = Vec::with_capacity(input.samples);
     for _ in 0..input.samples {
         let (answer, invariants, class_number, collection_ns, smith_ns, total_ns) =
             black_box(solve());
-        assert_eq!(answer.cache.records(), warm_records);
+        assert_eq!(answer.presentation.relation_vectors, warm_records);
         assert_eq!(invariants, warm_invariants);
         assert_eq!(class_number, warm_class_number);
         collection_samples.push(collection_ns);
@@ -786,7 +605,7 @@ fn run_brute_force_experiment(input_path: &str) {
             "polynomialAscending": input.polynomial_ascending,
             "integralBasisRowMajor": input.integral_basis_row_major,
             "factorBaseSize": warm.factor_base.ideals.len(),
-            "relationRows": warm.cache.len(),
+            "relationRows": warm.presentation.relation_count(),
             "maximumRadiusRequested": input.maximum_radius,
             "maximumRadiusUsed": warm.statistics.maximum_radius,
             "supplementaryRelations": input.supplementary_relations,
@@ -801,8 +620,8 @@ fn run_brute_force_experiment(input_path: &str) {
                 "duplicate": warm.statistics.duplicate,
             },
             "witnesses": input.include_witnesses.then(|| serde_json::json!({
-                "elements": warm.elements,
-                "relations": warm.cache.records(),
+                "elements": warm.relation_elements,
+                "relations": warm.presentation.relation_vectors,
                 "primeIdeals": warm.factor_base.ideals.iter().map(|ideal| serde_json::json!({
                     "prime": ideal.prime,
                     "ramification": ideal.ramification,
@@ -902,16 +721,26 @@ fn main() {
         checkpoint.logical_shape.relation_rows,
         checkpoint.logical_shape.relation_columns,
     );
-    word_workspace.reset_from(&word_input);
-    let warm_word_diagonal = word_workspace.smith_diagonal();
+    word_workspace
+        .reset_from(&word_input)
+        .expect("bounded Smith reset failed");
+    let warm_word_diagonal = word_workspace
+        .smith_diagonal()
+        .expect("bounded Smith reduction failed");
     assert_eq!(warm_word_diagonal, vec![1_i128; 66]);
     assert_eq!(word_workspace.operations, expected_operations);
     let maximum_absolute_value = word_workspace.maximum_absolute_value;
     let mut word_samples = Vec::with_capacity(31);
     for _ in 0..31 {
-        word_workspace.reset_from(&word_input);
+        word_workspace
+            .reset_from(&word_input)
+            .expect("bounded Smith reset failed");
         let started = Instant::now();
-        let diagonal = black_box(word_workspace.smith_diagonal());
+        let diagonal = black_box(
+            word_workspace
+                .smith_diagonal()
+                .expect("bounded Smith reduction failed"),
+        );
         let elapsed = started.elapsed().as_nanos();
         assert_eq!(diagonal, warm_word_diagonal);
         assert_eq!(word_workspace.operations, expected_operations);
@@ -963,14 +792,15 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::{
-        SmithWorkspace, WordSmithWorkspace, bruteforce_collector, transpose_relation_records,
+        BruteForceOptions, PreparedCubic, SmithWorkspace, WordSmithWorkspace,
+        collect_prepared_cubic_presentation_candidate, transpose_relation_records,
     };
     use rug::Integer;
 
     fn smith_word(rows: usize, columns: usize, values: &[i128]) -> Vec<i128> {
         let mut workspace = WordSmithWorkspace::new(rows, columns);
-        workspace.reset_from(values);
-        workspace.smith_diagonal()
+        workspace.reset_from(values).unwrap();
+        workspace.smith_diagonal().unwrap()
     }
 
     #[test]
@@ -1023,15 +853,24 @@ mod tests {
             ),
         ];
         for (polynomial, basis, radius, expected) in cases {
-            let answer = bruteforce_collector::collect_primitive_box_with_supplementary(
-                polynomial, basis, radius, 20,
+            let answer = collect_prepared_cubic_presentation_candidate(
+                PreparedCubic {
+                    polynomial_ascending: polynomial,
+                    integral_basis_row_major: basis,
+                },
+                BruteForceOptions {
+                    maximum_radius: radius,
+                    supplementary_relations: 20,
+                },
             )
             .unwrap();
-            assert_eq!(answer.cache.missing(), 0);
             let size = answer.factor_base.ideals.len();
-            let relation_rows = answer.cache.len();
-            let presentation =
-                transpose_relation_records(answer.cache.records(), size, relation_rows);
+            let relation_rows = answer.presentation.relation_count();
+            let presentation = transpose_relation_records(
+                &answer.presentation.relation_vectors,
+                size,
+                relation_rows,
+            );
             let diagonal = smith_word(size, relation_rows, &presentation);
             let invariants = diagonal
                 .into_iter()
