@@ -318,13 +318,14 @@ int sagejs_rust_flint_small_surplus_class_order_i64(
         class_coordinate_capacity < size * size)
         return -1;
     int status = 0;
-    fmpz_mat_t square, square_transpose, surplus_transpose, coordinates;
+    fmpz_mat_t square, square_transpose, surplus_transpose, coordinates, fflu;
     if (!sagejs_rust_flint_set_i64_matrix(
             square, size, size, square_entries))
         return -1;
     fmpz_mat_init(square_transpose, (slong) size, (slong) size);
     fmpz_mat_init(surplus_transpose, (slong) size, (slong) surplus_rows);
     fmpz_mat_init(coordinates, (slong) size, (slong) surplus_rows);
+    fmpz_mat_init(fflu, (slong) size, (slong) size);
     fmpz_mat_transpose(square_transpose, square);
     for (size_t row = 0; row < surplus_rows; row++)
         for (size_t column = 0; column < size; column++)
@@ -339,20 +340,25 @@ int sagejs_rust_flint_small_surplus_class_order_i64(
     fmpz_init(quotient);
     fmpz_init(remainder);
     uint64_t started = sagejs_rust_monotonic_ns();
-    fmpz_mat_det(determinant, square);
+    slong *permutation = flint_malloc(size * sizeof(slong));
+    for (size_t index = 0; index < size; index++)
+        permutation[index] = (slong) index;
+    slong rank = fmpz_mat_fflu(
+        fflu, determinant, permutation, square_transpose, 1);
     uint64_t finished = sagejs_rust_monotonic_ns();
     *determinant_ns = finished >= started ? finished - started : 0;
     fmpz_abs(determinant, determinant);
     *determinant_bits = (size_t) fmpz_bits(determinant);
-    if (fmpz_is_zero(determinant))
+    if (rank != (slong) size || fmpz_is_zero(determinant))
         status = -3;
 
     started = sagejs_rust_monotonic_ns();
     if (status == 0 &&
-        (!fmpz_mat_solve(coordinates, denominator,
-             square_transpose, surplus_transpose) ||
-         fmpz_is_zero(denominator)))
+        (!fmpz_mat_solve_fflu_precomp(
+             coordinates, permutation, fflu, surplus_transpose) ||
+         fmpz_is_zero(determinant)))
         status = -4;
+    fmpz_set(denominator, determinant);
     finished = sagejs_rust_monotonic_ns();
     *solve_ns = finished >= started ? finished - started : 0;
 
@@ -493,7 +499,9 @@ int sagejs_rust_flint_small_surplus_class_order_i64(
     fmpz_mat_clear(coordinates);
     fmpz_mat_clear(surplus_transpose);
     fmpz_mat_clear(square_transpose);
+    fmpz_mat_clear(fflu);
     fmpz_mat_clear(square);
+    flint_free(permutation);
     flint_cleanup();
     return status;
 }

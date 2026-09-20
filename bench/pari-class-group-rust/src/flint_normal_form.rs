@@ -1047,6 +1047,7 @@ mod tests {
             (&[6, 0, 0, 10], &[2, 2, 3, 5], 2),
             (&[4, 1, 0, 0, 9, 1, 0, 0, 15], &[2, 1, 3, 1, 4, 2], 3),
             (&[2, 1, 0, 6], &[1, 3], 2),
+            (&[0, 1, 1, 0], &[1, 0], 2),
         ];
         for &(square, surplus, size) in examples {
             let answer = flint_small_surplus_class_order(square, surplus, size).unwrap();

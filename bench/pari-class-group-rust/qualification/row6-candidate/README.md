@@ -381,14 +381,15 @@ norm at most `9196` generate the full class group. This closes the mathematical
 honesty gap for this prepared field; it is not merely the earlier PARI
 floating-point bound replay.
 
-The final combined diagnostic now takes 18.06 seconds: 7.67 seconds for
-relation collection, 7.81 seconds for exact class-order determination, 1.46
+The final combined diagnostic now takes 16.22 seconds: 7.79 seconds for
+relation collection, 5.63 seconds for exact class-order determination, 1.63
 seconds for the saturated unit kernel, 0.24 seconds for logarithmic embeddings,
-0.82 seconds for unit reconstruction/replay, and 0.62 seconds for both analytic
+0.86 seconds for unit reconstruction/replay, and 0.65 seconds for both analytic
 certificates. The class-order stage no longer constructs a 1,130-dimensional
-HNF. It computes the 306-bit determinant of the selected square relation basis,
-solves the seven surplus rows in that basis, and identifies the exact subgroup
-they generate via a saturated integer congruence kernel of nullity seven. This
+HNF. A single fraction-free LU decomposition computes the 306-bit determinant
+of the selected square relation basis and solves the seven surplus rows in that
+basis; the solve itself is only 0.16 seconds. A saturated integer congruence
+kernel of nullity seven then identifies the exact subgroup they generate. This
 proves the final index is four. Exact rank modulo two is two, distinguishing
 `C2 x C2` from `C4`. Differential tests compare this algorithm with direct
 Smith form on independent small presentations.
@@ -415,23 +416,21 @@ its HNF driver.
 
 | closest region | Rust diagnostic | PARI 2.17.4 instrumented | ratio |
 | --- | ---: | ---: | ---: |
-| relation side | 7.787758 s | 1.100174 s | 7.0787x |
-| determinant, surplus solve and exact class-order/map kernel / matrix side | 8.025166 s | 2.791358 s | 2.8750x |
-| explicit unit kernel, units, regulator and analytic completion / terminal residual | 3.304250 s | 0.009196 s | not algorithmically matched |
-| complete external diagnostic / instrumented control | 18.492325 s | 3.900729 s | 4.7407x |
+| relation side | 7.790516 s | 1.100174 s | 7.0812x |
+| shared determinant/solve and exact class-order/map kernel / matrix side | 5.634919 s | 2.791358 s | 2.0187x |
+| explicit unit kernel, units, regulator and analytic completion / terminal residual | 3.388051 s | 0.009196 s | not algorithmically matched |
+| complete external diagnostic / instrumented control | 16.224103 s | 3.900729 s | 4.1592x |
 
 Against the pristine PARI total of `3.886499614` seconds, the single Rust
-diagnostic is `4.7581x`. The preceding run without a material algorithm change
-was 18.064180 seconds, so the observed range is currently 18.06--18.49 seconds;
-this is not yet a qualification median. It is not yet competitive. It does,
-however, answer
+diagnostic is `4.1745x`. This is not yet a qualification median or competitive,
+but it does answer
 the higher-risk mathematical question: the Rust path can reach a certified
 answer without PARI at runtime, and the remaining row-6 latency is now
 localized to relation collection and the square determinant/surplus solve,
 rather than unit or analytic completion.
 
 The sparse receipt is `results/maximal-unit-lattice.json` (SHA-256
-`42b32df88500b092dc340da0c37eeb119215d341b1e18cf5eb59eb3900bfae1e`).
+`3da6c40bb1165590b46cbd895a2b5a42c5fa0a066b5220c1039794ba14bd1149`).
 Public generator/result construction, a production honesty-extension policy,
 unconditional certification, and the public polynomial-to-result route remain
 required; this prepared-field diagnostic does not authorize production
