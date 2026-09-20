@@ -24,6 +24,7 @@ mod gmp_smith;
 mod hnf;
 mod ideal_arithmetic;
 mod numerical_preparation;
+mod pari_random;
 mod prepared;
 mod prepared_factor_base;
 mod prepared_ideal;

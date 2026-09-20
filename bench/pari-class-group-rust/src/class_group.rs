@@ -15,11 +15,12 @@ use crate::factor_base::{FactorBase, prepared_cubic_factor_base};
 use crate::numerical_preparation::{
     NumericalPreparationError, PreparedRealCubicEmbedding, prepare_cubic_ideal, prepare_h1_ideal,
 };
+use crate::pari_random::PariRandom;
 use crate::prepared::ValidatedPreparedCubic;
 use crate::prepared_factor_base::{
     PreparedFactorBase, PreparedFactorBaseError, prepared_maximal_cubic_factor_base,
 };
-use crate::prepared_ideal::PreparedIdealWorkspace;
+use crate::prepared_ideal::{CubicIdeal, PreparedIdealError, PreparedIdealWorkspace};
 use crate::prime_valuation::{
     PrimeValuationError, PrimeValuationWorkspace, RationalPrimePower, refine_quotient_factorization,
 };
@@ -58,6 +59,8 @@ pub struct CollectorCounters {
     pub smooth_candidates: usize,
     pub appended_relations: usize,
     pub positive_cache_statuses: usize,
+    pub random_ideals: usize,
+    pub random_search_ideals: usize,
 }
 
 /// Complete output of the Rust relation-collection experiment.
@@ -119,6 +122,7 @@ pub enum ClassGroupError {
     UnresolvedFactor(Integer),
     CollectorExhausted { relations: usize },
     PreparedFactorBase(PreparedFactorBaseError),
+    PreparedIdeal(PreparedIdealError),
 }
 
 impl From<ScheduleError> for ClassGroupError {
@@ -154,6 +158,11 @@ impl From<CacheError> for ClassGroupError {
 impl From<PreparedFactorBaseError> for ClassGroupError {
     fn from(error: PreparedFactorBaseError) -> Self {
         Self::PreparedFactorBase(error)
+    }
+}
+impl From<PreparedIdealError> for ClassGroupError {
+    fn from(error: PreparedIdealError) -> Self {
+        Self::PreparedIdeal(error)
     }
 }
 
@@ -423,6 +432,139 @@ pub fn collect_h1_class_group(
     })
 }
 
+#[allow(clippy::too_many_arguments)]
+fn collect_prepared_ideal_relations(
+    field: &ValidatedPreparedCubic,
+    factor_base: &PreparedFactorBase,
+    ideal: &CubicIdeal,
+    divisor_relation: &[i64],
+    embedding: &PreparedRealCubicEmbedding,
+    factor_product: &Integer,
+    factor_primes: &[u64],
+    prime_products: &[Integer],
+    cache: &mut RelationCache,
+    relation: &mut [i64],
+    generators: &mut [Integer],
+    enumeration: &mut EnumerationWorkspace,
+    ideal_workspace: &mut PreparedIdealWorkspace,
+    counters: &mut CollectorCounters,
+    timings: &mut CollectorTimings,
+    maximum_candidates: usize,
+    maximum_factor_attempts: usize,
+    maximum_positive_relations: usize,
+    random_relation: bool,
+) -> Result<bool, ClassGroupError> {
+    let started = Instant::now();
+    let prepared = prepare_cubic_ideal(embedding, ideal)?;
+    timings.numerical_preparation_ns += started.elapsed().as_nanos();
+    enumeration.reset(&prepared.q, &prepared.v)?;
+    let trials_before = enumeration.trials();
+    let mut factor_attempts = 0_usize;
+    let mut positive_for_ideal = 0_usize;
+    let mut appended_any = false;
+
+    while positive_for_ideal < maximum_positive_relations
+        && (cache.missing() != 0 || cache.remaining_supplementary() != 0)
+        && counters.primitive_nonscalar_candidates < maximum_candidates
+    {
+        let started = Instant::now();
+        let element = loop {
+            if !enumeration.next(prepared.bound, prepared.skip_first)? {
+                break None;
+            }
+            if let Some(element) =
+                exact_candidate_element(enumeration.coordinates(), &prepared.ideal)
+            {
+                factor_attempts += 1;
+                counters.primitive_nonscalar_candidates += 1;
+                if factor_attempts > maximum_factor_attempts {
+                    break None;
+                }
+                break Some(element);
+            }
+        };
+        timings.enumeration_and_norm_ns += started.elapsed().as_nanos();
+        let Some(element) = element else { break };
+
+        let norm = field.norm(&element);
+        let ideal_norm = ideal.norm();
+        if ideal_norm <= 0 {
+            return Err(ClassGroupError::Admission(
+                AdmissionError::NonintegralNormQuotient,
+            ));
+        }
+        let mut remainder = norm.clone();
+        remainder %= &ideal_norm;
+        if remainder != 0 {
+            return Err(ClassGroupError::Admission(
+                AdmissionError::NonintegralNormQuotient,
+            ));
+        }
+        let quotient_norm = norm / ideal_norm;
+        let started = Instant::now();
+        let factors = match factor_integer_norm(
+            &quotient_norm,
+            factor_product,
+            factor_primes,
+            prime_products,
+            FACTOR_LIMIT,
+            PRIME_LIMIT as u64,
+        )? {
+            FactorOutcome::Nonsmooth => {
+                timings.rational_factorization_ns += started.elapsed().as_nanos();
+                continue;
+            }
+            FactorOutcome::Unresolved(value) => {
+                return Err(ClassGroupError::UnresolvedFactor(value));
+            }
+            FactorOutcome::Factored(factors) => factors,
+        };
+        timings.rational_factorization_ns += started.elapsed().as_nanos();
+        counters.smooth_candidates += 1;
+        let rational = factors
+            .iter()
+            .map(|factor| (factor.prime as i64, factor.exponent as usize))
+            .collect::<Vec<_>>();
+
+        let started = Instant::now();
+        let refinement = factor_base.refine_quotient_factorization(
+            field,
+            &element,
+            &rational,
+            divisor_relation,
+            relation,
+            ideal_workspace,
+        );
+        if matches!(
+            refinement,
+            Err(PreparedFactorBaseError::NormValuationMismatch { .. })
+        ) {
+            timings.prime_valuation_and_cache_ns += started.elapsed().as_nanos();
+            continue;
+        }
+        refinement?;
+        let hint = first_nonzero(relation);
+        let row = cache.len();
+        let outcome =
+            cache.add_relation(relation, hint, (row + 1) as i64, 0, 0, random_relation)?;
+        if outcome.appended {
+            generators[row * DEGREE..(row + 1) * DEGREE].clone_from_slice(&element);
+            counters.appended_relations += 1;
+            appended_any = true;
+        }
+        if outcome.rank_marker > 0 {
+            positive_for_ideal += 1;
+            counters.positive_cache_statuses += 1;
+        }
+        timings.prime_valuation_and_cache_ns += started.elapsed().as_nanos();
+        if random_relation && appended_any {
+            break;
+        }
+    }
+    counters.cursor_trials += enumeration.trials() - trials_before;
+    Ok(appended_any)
+}
+
 /// Run the first PARI-style small-norm pass over a validated maximal-order
 /// cubic.  Resource limits return an honest partial presentation instead of
 /// publishing a class-group candidate.
@@ -450,6 +592,7 @@ pub fn collect_prepared_cubic_relations(
         .map(|ideal| ideal.ramification as i64)
         .collect();
     let mut relation = vec![0_i64; size];
+    let mut divisor_relation = vec![0_i64; size];
     cache.initialize_complete_prime_groups(
         SUPPLEMENTARY_RELATIONS,
         &factor_base.catalog.rational_primes,
@@ -493,10 +636,8 @@ pub fn collect_prepared_cubic_relations(
     let mut enumeration = EnumerationWorkspace::new(DEGREE);
     let mut ideal_workspace = PreparedIdealWorkspace::new();
     let mut counters = CollectorCounters::default();
-    let mut pass = 0_usize;
-    let mut pass_start_missing = cache.missing();
 
-    while cache.len() < target
+    while (cache.missing() != 0 || cache.remaining_supplementary() != 0)
         && counters.visited_ideals < limits.maximum_visited_ideals
         && counters.primitive_nonscalar_candidates < limits.maximum_candidates
     {
@@ -517,106 +658,120 @@ pub fn collect_prepared_cubic_relations(
             &mut schedule_counters,
             &mut schedule_progress,
         )?;
-        let Some(packet_id) = packet_id else {
-            if cache.missing() == 0 || pass >= 3 || cache.missing() >= pass_start_missing {
-                break;
-            }
-            pass += 1;
-            pass_start_missing = cache.missing();
-            schedule = [0; 4];
-            schedule_cursor = [0; 5];
-            schedule_counters = [0; 4];
-            schedule_progress = [0; 4];
-            continue;
-        };
+        let Some(packet_id) = packet_id else { break };
         let packet_index = usize::try_from(packet_id - 1)
             .map_err(|_| ClassGroupError::UnsupportedPreparedField)?;
         counters.visited_ideals += 1;
+        divisor_relation.fill(0);
+        divisor_relation[packet_index] = 1;
+        let maximum_positive_relations = if cache.missing() == 0 {
+            RELATIONS_PER_IDEAL + SUPPLEMENTARY_RELATIONS
+        } else {
+            RELATIONS_PER_IDEAL
+        };
+        let _ = collect_prepared_ideal_relations(
+            field,
+            &factor_base,
+            &factor_base.exact_ideals[packet_index],
+            &divisor_relation,
+            &embedding,
+            &factor_product,
+            &factor_primes,
+            &prime_products,
+            &mut cache,
+            &mut relation,
+            &mut generators,
+            &mut enumeration,
+            &mut ideal_workspace,
+            &mut counters,
+            &mut timings,
+            limits.maximum_candidates,
+            500,
+            maximum_positive_relations,
+            false,
+        )?;
+    }
 
-        let started = Instant::now();
-        let prepared = prepare_cubic_ideal(&embedding, &factor_base.exact_ideals[packet_index])?;
-        timings.numerical_preparation_ns += started.elapsed().as_nanos();
-        enumeration.reset(&prepared.q, &prepared.v)?;
-        let trials_before = enumeration.trials();
-        let mut factor_attempts = 0_usize;
-        let mut positive_for_ideal = 0_usize;
-
-        while positive_for_ideal
-            < if cache.missing() == 0 {
-                RELATIONS_PER_IDEAL + SUPPLEMENTARY_RELATIONS
-            } else {
-                RELATIONS_PER_IDEAL
+    // PARI's continuation changes the searched lattice: it forms a random
+    // product of the live subfactor base and multiplies that by each search
+    // ideal.  Repeating the first schedule with a larger cursor bound cannot
+    // reveal missing class directions and is intentionally not used here.
+    let mut random = PariRandom::from_seed(1).expect("the fixed qualification seed is positive");
+    let maximum_random_ideals = 16 * subfactor_count;
+    while (cache.missing() != 0 || cache.remaining_supplementary() != 0)
+        && counters.random_ideals < maximum_random_ideals
+        && counters.visited_ideals < limits.maximum_visited_ideals
+        && counters.primitive_nonscalar_candidates < limits.maximum_candidates
+    {
+        let (random_ideal, random_divisor) = loop {
+            let mut product = CubicIdeal::unit();
+            let mut divisor = vec![0_i64; size];
+            let mut nonzero = false;
+            for &one_based in &search_permutation[..subfactor_count] {
+                let exponent = random.next_four_bits();
+                if exponent == 0 {
+                    continue;
+                }
+                nonzero = true;
+                divisor[one_based - 1] += i64::from(exponent);
+                let power = ideal_workspace.pow(
+                    field,
+                    &factor_base.exact_ideals[one_based - 1],
+                    exponent,
+                )?;
+                product = ideal_workspace.multiply(field, &product, &power)?;
             }
-            && cache.len() < target
-            && counters.primitive_nonscalar_candidates < limits.maximum_candidates
-        {
-            let started = Instant::now();
-            let element = loop {
-                if !enumeration.next(prepared.bound, prepared.skip_first)? {
-                    break None;
-                }
-                if let Some(element) =
-                    exact_candidate_element(enumeration.coordinates(), &prepared.ideal)
-                {
-                    factor_attempts += 1;
-                    counters.primitive_nonscalar_candidates += 1;
-                    if factor_attempts > 500 * (pass + 1) {
-                        break None;
-                    }
-                    break Some(element);
-                }
-            };
-            timings.enumeration_and_norm_ns += started.elapsed().as_nanos();
-            let Some(element) = element else { break };
+            if nonzero && !product.is_scalar() {
+                break (product, divisor);
+            }
+        };
+        counters.random_ideals += 1;
+        let mut appended_this_random = 0_usize;
 
-            let norm = field.norm(&element);
-            let started = Instant::now();
-            let factors = match factor_integer_norm(
-                &norm,
+        for &one_based in &search_permutation {
+            if (cache.missing() == 0 && cache.remaining_supplementary() == 0)
+                || counters.visited_ideals >= limits.maximum_visited_ideals
+                || counters.primitive_nonscalar_candidates >= limits.maximum_candidates
+            {
+                break;
+            }
+            let search_ideal = ideal_workspace.multiply(
+                field,
+                &random_ideal,
+                &factor_base.exact_ideals[one_based - 1],
+            )?;
+            counters.visited_ideals += 1;
+            counters.random_search_ideals += 1;
+            divisor_relation.copy_from_slice(&random_divisor);
+            divisor_relation[one_based - 1] += 1;
+            let appended = collect_prepared_ideal_relations(
+                field,
+                &factor_base,
+                &search_ideal,
+                &divisor_relation,
+                &embedding,
                 &factor_product,
                 &factor_primes,
                 &prime_products,
-                FACTOR_LIMIT,
-                PRIME_LIMIT as u64,
-            )? {
-                FactorOutcome::Nonsmooth => {
-                    timings.rational_factorization_ns += started.elapsed().as_nanos();
-                    continue;
-                }
-                FactorOutcome::Unresolved(value) => {
-                    return Err(ClassGroupError::UnresolvedFactor(value));
-                }
-                FactorOutcome::Factored(factors) => factors,
-            };
-            timings.rational_factorization_ns += started.elapsed().as_nanos();
-            counters.smooth_candidates += 1;
-            let rational = factors
-                .iter()
-                .map(|factor| (factor.prime as i64, factor.exponent as usize))
-                .collect::<Vec<_>>();
-
-            let started = Instant::now();
-            factor_base.refine_element_factorization(
-                field,
-                &element,
-                &rational,
+                &mut cache,
                 &mut relation,
+                &mut generators,
+                &mut enumeration,
                 &mut ideal_workspace,
+                &mut counters,
+                &mut timings,
+                limits.maximum_candidates,
+                500,
+                1,
+                true,
             )?;
-            let hint = first_nonzero(&relation);
-            let row = cache.len();
-            let outcome = cache.add_relation(&relation, hint, (row + 1) as i64, 0, 0, false)?;
-            if outcome.appended {
-                generators[row * DEGREE..(row + 1) * DEGREE].clone_from_slice(&element);
-                counters.appended_relations += 1;
+            if appended {
+                appended_this_random += 1;
+                if appended_this_random >= 16 {
+                    break;
+                }
             }
-            if outcome.rank_marker > 0 {
-                positive_for_ideal += 1;
-                counters.positive_cache_statuses += 1;
-            }
-            timings.prime_valuation_and_cache_ns += started.elapsed().as_nanos();
         }
-        counters.cursor_trials += enumeration.trials() - trials_before;
     }
 
     timings.total_ns = total_started.elapsed().as_nanos();
@@ -631,7 +786,7 @@ pub fn collect_prepared_cubic_relations(
         search_permutation,
         counters,
         timings,
-        complete_rank_and_surplus: cache.len() >= target && cache.missing() == 0,
+        complete_rank_and_surplus: cache.missing() == 0 && cache.remaining_supplementary() == 0,
         missing_rank: cache.missing(),
     })
 }

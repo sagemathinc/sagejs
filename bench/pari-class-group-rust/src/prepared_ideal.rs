@@ -132,6 +132,19 @@ impl CubicIdeal {
         determinant(&self.basis_rows).abs()
     }
 
+    pub fn is_scalar(&self) -> bool {
+        let diagonal = &self.basis_rows[0][0];
+        (0..DEGREE).all(|row| {
+            (0..DEGREE).all(|column| {
+                if row == column {
+                    &self.basis_rows[row][column] == diagonal
+                } else {
+                    self.basis_rows[row][column] == 0
+                }
+            })
+        })
+    }
+
     pub fn contains(&self, element: &[Integer; DEGREE]) -> Result<bool, PreparedIdealError> {
         let denominator = determinant(&self.basis_rows);
         if denominator == 0 {
@@ -192,6 +205,26 @@ impl PreparedIdealWorkspace {
             })
         });
         Ok(CubicIdeal { basis_rows })
+    }
+
+    pub fn pow(
+        &mut self,
+        field: &ValidatedPreparedCubic,
+        ideal: &CubicIdeal,
+        mut exponent: u8,
+    ) -> Result<CubicIdeal, PreparedIdealError> {
+        let mut answer = CubicIdeal::unit();
+        let mut power = ideal.clone();
+        while exponent != 0 {
+            if exponent & 1 != 0 {
+                answer = self.multiply(field, &answer, &power)?;
+            }
+            exponent >>= 1;
+            if exponent != 0 {
+                power = self.multiply(field, &power, &power)?;
+            }
+        }
+        Ok(answer)
     }
 
     /// Canonicalize an integral generating set as a rank-three row lattice.
@@ -382,6 +415,11 @@ mod tests {
 
         let square = workspace.multiply(&field, &prime, &prime).expect("P^2");
         let cube = workspace.multiply(&field, &square, &prime).expect("P^3");
+        assert_eq!(
+            workspace.pow(&field, &prime, 0).unwrap(),
+            CubicIdeal::unit()
+        );
+        assert_eq!(workspace.pow(&field, &prime, 3).unwrap(), cube);
         assert_eq!(square.norm(), 9);
         assert_eq!(cube.norm(), 27);
         assert!(square.contains(&x_minus_one).expect("membership"));

@@ -71,6 +71,84 @@ pub struct PreparedFactorBase {
 }
 
 impl PreparedFactorBase {
+    /// Refine the factorization of `Norm(element) / Norm(divisor)` and add it
+    /// to the already known factorization of `divisor`.
+    ///
+    /// Random relation search deliberately uses composite factor-base ideals.
+    /// Factoring the full element norm would reject rational primes whose
+    /// omitted conjugate factors lie beyond the active factor-base bound.
+    /// PARI instead factors the quotient norm and carries the divisor
+    /// exponents separately; this is the exact maximal-order equivalent.
+    pub fn refine_quotient_factorization(
+        &self,
+        field: &ValidatedPreparedCubic,
+        element: &[Integer; 3],
+        rational_factors: &[(i64, usize)],
+        divisor: &[i64],
+        relation: &mut [i64],
+        workspace: &mut PreparedIdealWorkspace,
+    ) -> Result<(), PreparedFactorBaseError> {
+        if relation.len() != self.catalog.ideals.len() || divisor.len() != relation.len() {
+            return Err(PreparedFactorBaseError::RelationStorageMismatch);
+        }
+        relation.copy_from_slice(divisor);
+        let mut previous = 0;
+        for &(prime, exponent) in rational_factors {
+            if prime < 2 || exponent == 0 {
+                return Err(PreparedFactorBaseError::InvalidRationalFactor { prime, exponent });
+            }
+            if prime <= previous {
+                return Err(PreparedFactorBaseError::RationalFactorsOutOfOrder {
+                    previous,
+                    current: prime,
+                });
+            }
+            previous = prime;
+            let group = self
+                .catalog
+                .rational_primes
+                .binary_search(&prime)
+                .map_err(|_| PreparedFactorBaseError::PrimeMissingFromFactorBase(prime))?;
+            let offset = self.catalog.rational_offsets[group];
+            let count = self.catalog.rational_counts[group];
+            let known_rational_exponent =
+                (offset..offset + count).try_fold(0_usize, |sum, index| {
+                    let known = usize::try_from(divisor[index])
+                        .map_err(|_| PreparedFactorBaseError::ValuationOutsideI64)?;
+                    sum.checked_add(self.catalog.ideals[index].residue_degree * known)
+                        .ok_or(PreparedFactorBaseError::ValuationOutsideI64)
+                })?;
+            let limit = u32::try_from(exponent + known_rational_exponent + 1).unwrap_or(u32::MAX);
+            let mut accounted = 0_usize;
+            for index in offset..offset + count {
+                let full =
+                    workspace.valuation(field, &self.exact_ideals[index], element, limit)? as usize;
+                let known = usize::try_from(divisor[index])
+                    .map_err(|_| PreparedFactorBaseError::ValuationOutsideI64)?;
+                let quotient = full.checked_sub(known).ok_or(
+                    PreparedFactorBaseError::NormValuationMismatch {
+                        prime,
+                        expected: exponent,
+                        accounted: 0,
+                    },
+                )?;
+                accounted = accounted
+                    .checked_add(self.catalog.ideals[index].residue_degree * quotient)
+                    .ok_or(PreparedFactorBaseError::ValuationOutsideI64)?;
+                relation[index] = i64::try_from(full)
+                    .map_err(|_| PreparedFactorBaseError::ValuationOutsideI64)?;
+            }
+            if accounted != exponent {
+                return Err(PreparedFactorBaseError::NormValuationMismatch {
+                    prime,
+                    expected: exponent,
+                    accounted,
+                });
+            }
+        }
+        Ok(())
+    }
+
     /// Refine a rational norm factorization using exact ideal-power
     /// membership in the validated maximal-order basis.
     pub fn refine_element_factorization(
@@ -427,6 +505,19 @@ mod tests {
             &row6_field(),
             &[(-1).into(), 1.into(), 0.into()],
             &[(3, 2)],
+            &mut relation,
+            &mut workspace,
+        )
+        .unwrap();
+        assert_eq!(relation[index], 2);
+
+        let mut divisor = vec![0; base.catalog.ideals.len()];
+        divisor[index] = 1;
+        base.refine_quotient_factorization(
+            &row6_field(),
+            &[(-1).into(), 1.into(), 0.into()],
+            &[(3, 1)],
+            &divisor,
             &mut relation,
             &mut workspace,
         )

@@ -18,6 +18,8 @@ mod hnf;
 mod ideal_arithmetic;
 #[path = "../src/numerical_preparation.rs"]
 mod numerical_preparation;
+#[path = "../src/pari_random.rs"]
+mod pari_random;
 #[path = "../src/prepared.rs"]
 mod prepared;
 #[path = "../src/prepared_factor_base.rs"]

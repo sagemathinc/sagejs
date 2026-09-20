@@ -113,3 +113,25 @@ more smooth elements but no new rank. Thus the exact blocker has moved to
 PARI's continuation/random-relation and sparse-HNF loop; it is no longer
 factor-base construction, rational-basis arithmetic, embeddings, LLL,
 enumeration, norm factorization, or local valuations.
+
+## 2026-09-20 deterministic random continuation
+
+The collector now implements PARI 2.17.4's XORGEN4096 stream, exact
+factor-base ideal powers/products, quotient-norm admission for `R * P[j]`, and
+batched random relation insertion. Quotient admission matters: the known
+factorization of the divisor must be carried separately so an intentionally
+omitted conjugate above a rational prime is not mistaken for a smooth active
+factor-base contribution.
+
+With fixed seed 1 and explicit limits of 12,000 searched ideals and 5.5
+million primitive candidates, row 6 reaches modular rank 1,130/1,130 and has
+no remaining supplementary-relation deficit. The completed relation
+presentation contains 1,526 rows. It used 25 random ideals and 5,258 composite
+search ideals after the deterministic first pass, completing in
+111.942058868 seconds internally. Exact composite-ideal preparation accounts
+for 88.357510296 seconds and is the dominant optimization target.
+
+This is a completed relation lattice, not yet a class group. Exact scalable
+HNF/Smith, unit reconstruction, regulator/completion evidence, saturation,
+and public result construction remain mandatory. The raw bounded receipt is
+`results/maximal-random-continuation-full-rank.json`.

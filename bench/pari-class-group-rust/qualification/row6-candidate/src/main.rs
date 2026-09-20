@@ -313,6 +313,8 @@ fn small_norm_prefix(maximum_ideals: usize, maximum_candidates: usize) {
                 "smoothCandidates": answer.counters.smooth_candidates,
                 "appendedRelations": answer.counters.appended_relations,
                 "positiveCacheStatuses": answer.counters.positive_cache_statuses,
+                "randomIdeals": answer.counters.random_ideals,
+                "randomSearchIdeals": answer.counters.random_search_ideals,
             },
             "timingsNanoseconds": {
                 "factorBase": answer.timings.factor_base_ns,
