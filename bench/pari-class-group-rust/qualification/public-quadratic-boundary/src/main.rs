@@ -2,8 +2,8 @@
 // GPL-2.0-or-later, without warranty.
 
 use sagejs_public_quadratic_boundary_qualification::{
-    REAL_QUADRATIC_CASES, SMALL_IMAGINARY_CASES, compute_imaginary_class_group,
-    compute_imaginary_class_group_from_coefficients, qualify_case,
+    GENERAL_IMAGINARY_CASES, REAL_QUADRATIC_CASES, SMALL_IMAGINARY_CASES,
+    compute_imaginary_class_group, compute_imaginary_class_group_from_coefficients, qualify_case,
 };
 use serde::Serialize;
 
@@ -39,6 +39,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .collect::<Result<Vec<_>, _>>()?;
     let complete_imaginary_class_groups = SMALL_IMAGINARY_CASES
         .into_iter()
+        .chain(GENERAL_IMAGINARY_CASES)
         .map(compute_imaginary_class_group)
         .collect::<Result<Vec<_>, _>>()?;
     println!(

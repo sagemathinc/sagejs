@@ -1,10 +1,11 @@
 // Copyright (C) Sage.js contributors.
 // GPL-2.0-or-later, without warranty.
 
-use sagejs_public_quadratic_boundary_qualification::{REAL_QUADRATIC_CASES, qualify_case};
 use sagejs_public_quadratic_boundary_qualification::{
-    SMALL_IMAGINARY_CASES, compute_imaginary_class_group, verify_imaginary_class_group,
+    GENERAL_IMAGINARY_CASES, SMALL_IMAGINARY_CASES, compute_imaginary_class_group,
+    verify_imaginary_class_group,
 };
+use sagejs_public_quadratic_boundary_qualification::{REAL_QUADRATIC_CASES, qualify_case};
 use serde::Deserialize;
 use std::{path::PathBuf, process::Command};
 
@@ -69,7 +70,7 @@ fn complete_imaginary_groups_match_authenticated_pari() {
             answer
                 .invariant_factors
                 .iter()
-                .map(u8::to_string)
+                .map(u64::to_string)
                 .collect::<Vec<_>>(),
             expected.invariant_factors
         );
@@ -86,6 +87,54 @@ struct ReceiptCase {
     signature: [String; 2],
     class_number: String,
     invariant_factors: Vec<String>,
+}
+
+#[test]
+fn general_cyclic_and_noncyclic_groups_match_authenticated_pari() {
+    let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let control = manifest.join("../pari-control/build/pari-control");
+    assert!(control.is_file());
+    let receipt: Receipt = serde_json::from_str(include_str!(
+        "../receipts/pari-2.17.4-general-imaginary-groups.json"
+    ))
+    .unwrap();
+    assert_eq!(
+        receipt.schema,
+        "sagejs.rust-class-group/general-imaginary-pari-differential-v1"
+    );
+    assert_eq!(receipt.pari_version, "2.17.4");
+    for input in GENERAL_IMAGINARY_CASES {
+        let answer = compute_imaginary_class_group(input).unwrap();
+        verify_imaginary_class_group(input, &answer).unwrap();
+        let expected = receipt
+            .cases
+            .iter()
+            .find(|case| case.field_id == input.id)
+            .unwrap();
+        let [constant, linear, _] = input.polynomial_ascending;
+        let expression = format!("x^2+({linear})*x+({constant})");
+        let output = Command::new(&control)
+            .args(["public-call", &expression, input.id, "1"])
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        let pari: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        assert_eq!(pari["detail"]["discriminant"], expected.discriminant);
+        assert_eq!(pari["result"]["classNumber"], expected.class_number);
+        assert_eq!(
+            pari["result"]["invariantFactors"],
+            serde_json::to_value(&expected.invariant_factors).unwrap()
+        );
+        assert_eq!(answer.class_number.to_string(), expected.class_number);
+        assert_eq!(
+            answer
+                .invariant_factors
+                .iter()
+                .map(u64::to_string)
+                .collect::<Vec<_>>(),
+            expected.invariant_factors
+        );
+    }
 }
 
 #[test]

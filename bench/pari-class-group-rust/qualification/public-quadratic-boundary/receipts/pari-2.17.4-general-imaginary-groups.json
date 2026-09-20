@@ -1,0 +1,56 @@
+{
+  "schema": "sagejs.rust-class-group/general-imaginary-pari-differential-v1",
+  "pariVersion": "2.17.4",
+  "oracleBoundary": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+  "productRuntimeUsesPariOrFixtureAnswers": false,
+  "cases": [
+    {
+      "fieldId": "imaginary-d47-c5",
+      "polynomialAscending": ["12", "-1", "1"],
+      "discriminant": "-47",
+      "signature": ["0", "1"],
+      "classNumber": "5",
+      "invariantFactors": ["5"]
+    },
+    {
+      "fieldId": "imaginary-d87-c6",
+      "polynomialAscending": ["22", "-1", "1"],
+      "discriminant": "-87",
+      "signature": ["0", "1"],
+      "classNumber": "6",
+      "invariantFactors": ["6"]
+    },
+    {
+      "fieldId": "imaginary-d231-c2xc6",
+      "polynomialAscending": ["58", "-1", "1"],
+      "discriminant": "-231",
+      "signature": ["0", "1"],
+      "classNumber": "12",
+      "invariantFactors": ["2", "6"]
+    },
+    {
+      "fieldId": "imaginary-d260-c2xc4",
+      "polynomialAscending": ["65", "0", "1"],
+      "discriminant": "-260",
+      "signature": ["0", "1"],
+      "classNumber": "8",
+      "invariantFactors": ["2", "4"]
+    },
+    {
+      "fieldId": "imaginary-d420-c2xc2xc2",
+      "polynomialAscending": ["105", "0", "1"],
+      "discriminant": "-420",
+      "signature": ["0", "1"],
+      "classNumber": "8",
+      "invariantFactors": ["2", "2", "2"]
+    },
+    {
+      "fieldId": "imaginary-d9999991-c1715",
+      "polynomialAscending": ["2499998", "-1", "1"],
+      "discriminant": "-9999991",
+      "signature": ["0", "1"],
+      "classNumber": "1715",
+      "invariantFactors": ["1715"]
+    }
+  ]
+}

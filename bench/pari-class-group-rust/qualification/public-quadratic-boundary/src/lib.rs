@@ -1,16 +1,19 @@
 // Copyright (C) Sage.js contributors.
 // GPL-2.0-or-later, without warranty.
 
-//! Isolated qualification of the first public quadratic boundary.
+//! Isolated qualification of public quadratic class groups.
 //!
-//! This crate deliberately stops at the first unsupported root-library API.
-//! The public coefficients are sufficient to prove maximality for the admitted
-//! squarefree-discriminant subset and to construct a replay-validated generic
-//! prepared field. The existing class-group engine cannot consume that value:
-//! its first factor-base entry point is cubic-only.
+//! The imaginary-quadratic v2 route is a complete, answer-free engine on its
+//! documented bounded domain. It validates maximal-order preparation from
+//! public coefficients, enumerates reduced forms, uses exact ideal-lattice
+//! Gauss composition, and returns replay-verifiable invariants, generators,
+//! class coordinates, and unconditional proof status.
 //!
-//! The type boundary is executable documentation. Removing `compile_fail`
-//! must become possible before this qualification may claim an engine result:
+//! The real-quadratic experiment remains preparation-only. Public coefficients
+//! reach a replay-validated generic prepared field, but the root experiment's
+//! next factor-base and collector APIs are cubic-only. The following
+//! compile-fail test preserves that precise real-quadratic boundary; it does
+//! not limit the independent imaginary-quadratic engine in this crate:
 //!
 //! ```compile_fail,E0308
 //! use sagejs_pari_class_group_rust_experiment::{
@@ -32,8 +35,9 @@ use std::fmt;
 mod imaginary;
 
 pub use imaginary::{
-    BinaryQuadraticForm, CompleteImaginaryClassGroup, ImaginaryClassGroupError,
-    PublicImaginaryQuadraticInput, SMALL_IMAGINARY_CASES, compute_imaginary_class_group,
+    BinaryQuadraticForm, CompleteImaginaryClassGroup, GENERAL_IMAGINARY_CASES,
+    ImaginaryClassGroupError, PublicImaginaryQuadraticInput, SMALL_IMAGINARY_CASES,
+    compose_reduced_forms, compute_imaginary_class_group,
     compute_imaginary_class_group_from_coefficients, verify_imaginary_class_group,
 };
 

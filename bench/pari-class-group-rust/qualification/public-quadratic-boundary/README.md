@@ -12,33 +12,40 @@ unconditionally complete class group for this fail-closed domain:
 
 - integral monic quadratics with negative fundamental discriminant;
 - absolute discriminant at most 10,000,000; and
-- class number at most four.
+- at most 20,000 reduced forms, an explicit memory/work resource cap.
 
 The engine completely enumerates primitive reduced positive-definite binary
 quadratic forms through the exact reduction bound `a <= sqrt(|D|/3)`. The
 classical reduced-form theorem proves that this is one representative per
-proper ideal class. For orders one through four, cardinality and the exact
-inversion involution determine the group as trivial, `C2`, `C3`, `C4`, or
-`C2 x C2`. This intentionally bounded argument avoids pretending that an
-unimplemented general form-composition algorithm exists.
+proper ideal class. Exact Gauss composition multiplies the forms' rank-two
+integer ideal lattices, normalizes their lattice index with extended gcds and
+2-by-2 minors, and reduces the resulting form canonically. The engine computes
+orders, primary components, independent generators, normalized invariant
+factors, and every class coordinate from this actual group law.
 
 The public result includes normalized invariant factors, form generators with
 exact orders, integral ideal bases in `(1, alpha)`, a coordinate map for every
 canonical reduced-form class, the complete reduced-form enumeration, the
 fundamental-discriminant factorization, and `unconditional-complete` proof
 status. `verify_imaginary_class_group` replays the enumeration, fundamental
-discriminant proof, ideal closure and norms, inverses, coordinates, generator
-orders, and result shape using only coefficients and the emitted certificate.
-It rejects modified certificates.
+discriminant proof, ideal closure and norms, inverses, generator orders,
+generation, and result shape using only coefficients and the emitted
+certificate. It verifies every generator translation in the coordinate map;
+given the associative class-group law supplied by exact ideal-lattice
+multiplication, these checks authenticate that the published coordinates are
+a homomorphism and that the published generators span every class. It rejects
+modified composition maps and certificates.
 
 The current map domain is the complete set of canonical reduced-form
 representatives. Reduction of an arbitrary caller-supplied ideal into that map
 is not implemented. Inputs with nonfundamental discriminant, excessive
-discriminant, or class number above four fail closed.
+discriminant, or more than 20,000 reduced forms fail closed.
 
-The six qualification examples cover trivial, `C2`, `C3`, `C4`, and
-`C2 x C2` groups. Their PARI comparison lives only in the integration test and
-receipt; the runtime has no PARI dependency and does not read expected answers.
+The qualification examples cover trivial, cyclic groups through class number
+1,715, and noncyclic `C2 x C2`, `C2 x C4`, `C2 x C6`, and
+`C2 x C2 x C2` groups. Their PARI comparison lives only in the integration
+test and receipts; the runtime has no PARI dependency and does not read
+expected answers.
 
 Run a public coefficient-only call, here for `x^2 - x + 10`, with:
 
