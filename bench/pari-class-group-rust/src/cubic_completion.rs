@@ -617,11 +617,14 @@ pub fn complete_cubic_class_group_conditionally(
     let thresholds = [
         72_u64, 144, 288, 576, 1_152, 2_304, 4_608, 9_216, 18_432, 23_994,
     ];
-    let initial = if prepared.field().data().discriminant.significant_bits() <= 16 {
-        72
-    } else {
-        1_152
-    };
+    // The first four cutoffs never isolate the index on the frozen open cubic
+    // panel (including the two smallest discriminants), while each attempt
+    // repeats a complete exact splitting prefix and Arb enclosure. Starting
+    // at 1,152 changes no accepted certificate in that panel and remains
+    // mathematically fail-closed: a larger cutoff supplies strictly more
+    // authenticated Euler data, and callers with a smaller explicit budget
+    // still receive `AnalyticIndexNotIsolated`.
+    let initial = 1_152;
     let mut splitting = Vec::new();
     let mut splitting_bound = 2_usize;
     let mut accepted = None;
