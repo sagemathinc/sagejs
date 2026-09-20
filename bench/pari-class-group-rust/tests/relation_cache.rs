@@ -2,6 +2,16 @@
 mod relation_cache;
 
 use relation_cache::{AddOutcome, RelationCache, relation_mod_inverse};
+
+#[test]
+fn missing_pivot_indices_follow_rank_updates() {
+    let mut cache = RelationCache::new(3, 8, 0);
+    assert_eq!(cache.missing_pivot_indices(), [0, 1, 2]);
+    cache.add_relation(&[1, 0, 0], 1, 0, 0, 0, false).unwrap();
+    assert_eq!(cache.missing_pivot_indices(), [1, 2]);
+    cache.add_relation(&[0, 0, 1], 3, 0, 0, 0, false).unwrap();
+    assert_eq!(cache.missing_pivot_indices(), [1]);
+}
 use serde_json::json;
 use sha2::{Digest, Sha256};
 

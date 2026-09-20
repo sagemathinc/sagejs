@@ -779,8 +779,15 @@ pub fn collect_prepared_cubic_relations(
         };
         counters.random_ideals += 1;
         let mut appended_this_random = 0_usize;
+        let unresolved = cache.missing_pivot_indices();
+        let targeted = !unresolved.is_empty();
 
-        for &one_based in &search_permutation {
+        for search_index in unresolved.iter().copied().chain(
+            (!targeted)
+                .then_some(0)
+                .into_iter()
+                .flat_map(|_| search_permutation.iter().map(|one_based| one_based - 1)),
+        ) {
             if (cache.missing() == 0 && cache.remaining_supplementary() == 0)
                 || counters.visited_ideals >= limits.maximum_visited_ideals
                 || counters.primitive_nonscalar_candidates >= limits.maximum_candidates
@@ -790,12 +797,12 @@ pub fn collect_prepared_cubic_relations(
             let search_ideal = ideal_workspace.multiply(
                 field,
                 &random_ideal,
-                &factor_base.exact_ideals[one_based - 1],
+                &factor_base.exact_ideals[search_index],
             )?;
             counters.visited_ideals += 1;
             counters.random_search_ideals += 1;
             divisor_relation.copy_from_slice(&random_divisor);
-            divisor_relation[one_based - 1] += 1;
+            divisor_relation[search_index] += 1;
             let appended = collect_prepared_ideal_relations(
                 field,
                 &factor_base,

@@ -194,17 +194,14 @@ which shows that high-precision embedded Gram--Schmidt and repeated per-ideal
 setup now dominate that bucket. Fine-grained preparation timings and reusable
 workspaces are the next collector optimization boundary.
 
-Fine-grained measurement rejects that provisional workspace hypothesis. After
-replacing decimal serialization with an immediate borrowed-GMP-to-FLINT copy,
-50.588540826 seconds are charged to numerical preparation on the exact-FLINT-LLL
-route, 50.452184215 seconds are inside LLL and only 0.109662954 seconds are in
-the subsequent embedded high-precision Gram--Schmidt and bound construction.
-The conversion change saves about 0.9 seconds on the identical 6,388-ideal
-trace; the bulk is genuine repeated reduction. Switching FLINT's Gram mode from
-`EXACT` to `APPROX` previously produced essentially the same result, so the
-accepted qualification route retains the stronger exact mode. The next
-collector experiment must reduce repeated LLL work or its number of calls, not
-optimize archimedean storage or serialization. The exact-mode receipt is
+Fine-grained measurement first showed that the unfiltered random continuation
+spent 50.452 seconds in repeated LLL across 6,388 ideals; direct GMP-to-FLINT
+copying saved only about 0.9 seconds. Feeding the modular cache's unresolved
+pivots back into ideal selection changes the algorithmic work instead: the
+accepted trace visits 1,167 ideals, including only 37 random searches, and
+spends 0.541 seconds in LLL. Its complete collection time is 7.673 seconds.
+Only 14.4 milliseconds are spent in archimedean Gram--Schmidt and bound
+construction. The exact-mode receipt is
 `results/maximal-flint-lll-profile.json`.
 
 ## 2026-09-20 compact candidate class map
@@ -227,6 +224,15 @@ that the relation lattice is complete. Those remain R2/R3 gates.
 
 ## 2026-09-20 determinant-certified incremental HNF
 
+The continuation now closes the feedback loop already implicit in PARI's
+`need`/`L_jid` policy. After the first schedule, the finite-field relation
+cache exposes four coordinates whose diagonal pivots remain zero. Each seeded
+random ideal is tested only against those unresolved factor-base ideals, and
+the target list is recomputed after every rank gain. This reduces random
+searches from 5,258 to 37 and retains exactly 1,130 independent plus seven
+supplementary relations. It is a modular search heuristic only: the subsequent
+arbitrary-precision HNF and all-relation Smith-map check remain the authority.
+
 The relation cache's rank-changing rows now define a deterministic square
 starting basis. Replaying the 1,526-row presentation through the same modular
 rank filter selects exactly 1,130 source rows without inspecting the expected
@@ -239,16 +245,16 @@ explosion. The exact diagnostic is
 The accepted route computes that square determinant, uses it as the certified
 elementary-divisor multiple for FLINT's modular HNF, then appends the 396
 omitted relations and performs a second modular saturation. On the captured
-run, exact determinant computation took 4.777826847 seconds, initial modular
-HNF 27.544016676 seconds, and saturation 3.287743253 seconds. The determinant
+run, exact determinant computation took 4.925233197 seconds, initial modular
+HNF 30.197258869 seconds, and saturation 3.243619535 seconds. The determinant
 falls from 306 bits to the 3-bit value 4, and the final basis contains only
 2-bit entries. Smith transformation plus compact class-map extraction takes
-2.372440047 seconds.
+2.347174184 seconds.
 
-The complete answer-free run takes 109.415094493 seconds: 71.212692777 seconds
-for collection and about 38 seconds for selection, exact linear algebra, map
+The complete answer-free run takes 48.561829883 seconds: 7.643504352 seconds
+for collection and about 41 seconds for selection, exact linear algebra, map
 construction, and verification. It again gives invariant factors `[2, 2]`,
-class number 4, and all 1,526 original relation rows map to zero. This replaces
+class number 4, and all 1,137 original relation rows map to zero. This replaces
 the earlier 252.55-second generic rectangular HNF with an exact algorithm that
 uses the collector's phase-lifetime information. The receipt is
 `results/maximal-incremental-hnf-class-map.json`.

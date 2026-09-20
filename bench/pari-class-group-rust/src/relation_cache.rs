@@ -89,6 +89,13 @@ impl RelationCache {
         &self.basis
     }
 
+    /// Zero-based coordinates not yet represented by a modular pivot.
+    pub fn missing_pivot_indices(&self) -> Vec<usize> {
+        (0..self.size)
+            .filter(|index| self.basis[index * self.size + index] == 0)
+            .collect()
+    }
+
     pub fn records(&self) -> &[i64] {
         &self.records[..self.last * self.size]
     }
