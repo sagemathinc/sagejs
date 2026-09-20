@@ -1,0 +1,23 @@
+{
+  "qualificationStatus": "smith-candidate-not-publicly-complete",
+  "relations": {
+    "columns": 1130,
+    "rows": 1526
+  },
+  "schema": "sagejs.rust-class-group/row6-maximal-smith-candidate-v1",
+  "smith": {
+    "classNumber": 4,
+    "hasTransformEvidence": false,
+    "invariantFactors": [
+      2,
+      2
+    ],
+    "rank": 1130
+  },
+  "timingsNanoseconds": {
+    "collection": 72999378942,
+    "smith": 256534886485,
+    "totalExternal": 329545455325
+  },
+  "usesOracleAsInput": false
+}

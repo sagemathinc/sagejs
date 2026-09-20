@@ -16,6 +16,8 @@
 //! rounded conversion to `f64`.  Candidate/relation differential testing must
 //! therefore precede any claim of an identical PARI cursor trace.
 
+#[cfg(all(feature = "flint-normal-form", not(test)))]
+use crate::ideal_arithmetic::LllReduction;
 use crate::ideal_arithmetic::{LllError, Matrix3, lll_reduce_columns};
 use crate::prepared::ValidatedPreparedCubic;
 use crate::prepared_ideal::CubicIdeal;
@@ -441,6 +443,17 @@ fn prepare_with_embedding(
     precision: u32,
 ) -> Result<H1NumericalPreparation, NumericalPreparationError> {
     let lll_input = rounded_embedding.multiply(&original_ideal);
+    #[cfg(all(feature = "flint-normal-form", not(test)))]
+    let reduction = match crate::flint_normal_form::flint_lll_column_transform(&lll_input) {
+        Ok(transform) => LllReduction {
+            basis: lll_input.change_basis(&transform),
+            transform,
+            swaps: 0,
+            size_reductions: 0,
+        },
+        Err(_) => lll_reduce_columns(&lll_input, 99, 100)?,
+    };
+    #[cfg(any(not(feature = "flint-normal-form"), test))]
     let reduction = lll_reduce_columns(&lll_input, 99, 100)?;
     let ideal = original_ideal.change_basis(&reduction.transform);
 

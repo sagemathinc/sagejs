@@ -11,7 +11,8 @@ use rug::Integer;
 use sagejs_pari_class_group_rust_experiment::{
     EmbeddingPrecisionState, PreparedCollectorLimits, PreparedCubicData, ValidatedPreparedCubic,
     collect_prepared_cubic_relations, collect_validated_primitive_box_with_supplementary,
-    flint_smith_candidate, prepared_cubic_factor_base, prepared_maximal_cubic_factor_base,
+    flint_hnf_basis, flint_smith_candidate, prepared_cubic_factor_base,
+    prepared_maximal_cubic_factor_base,
 };
 use std::env;
 use std::time::Instant;
@@ -376,6 +377,58 @@ fn small_norm_smith(maximum_ideals: usize, maximum_candidates: usize) {
     );
 }
 
+fn small_norm_hnf_smith(maximum_ideals: usize, maximum_candidates: usize) {
+    let field = maximal_order();
+    let total_started = Instant::now();
+    let answer = collect_prepared_cubic_relations(
+        &field,
+        PreparedCollectorLimits {
+            maximum_visited_ideals: maximum_ideals,
+            maximum_candidates,
+        },
+    )
+    .expect("maximal-order relation collection failed");
+    assert!(answer.complete_rank_and_surplus, "relation lattice is incomplete");
+    let rows = answer.relations.len() / answer.factor_base.catalog.ideals.len();
+    let columns = answer.factor_base.catalog.ideals.len();
+    eprintln!(
+        "stage=relation-collection-complete rows={rows} columns={columns} elapsed_ns={}",
+        answer.timings.total_ns
+    );
+    let hnf_started = Instant::now();
+    let basis = flint_hnf_basis(&answer.relations, rows, columns)
+        .expect("FLINT HNF basis reduction failed");
+    let hnf_ns = hnf_started.elapsed().as_nanos();
+    eprintln!("stage=hnf-basis-complete elapsed_ns={hnf_ns}");
+    let smith_started = Instant::now();
+    let smith = flint_smith_candidate(&basis, columns, columns)
+        .expect("FLINT reduced-basis Smith reduction failed");
+    let smith_ns = smith_started.elapsed().as_nanos();
+    eprintln!("stage=reduced-smith-complete elapsed_ns={smith_ns}");
+    println!(
+        "{}",
+        serde_json::json!({
+            "schema": "sagejs.rust-class-group/row6-maximal-hnf-smith-candidate-v1",
+            "qualificationStatus": "smith-candidate-not-publicly-complete",
+            "usesOracleAsInput": false,
+            "relations": { "rows": rows, "columns": columns },
+            "hnfBasis": { "rows": columns, "columns": columns },
+            "smith": {
+                "rank": smith.rank,
+                "invariantFactors": smith.invariant_factors,
+                "classNumber": smith.class_number,
+                "hasTransformEvidence": false,
+            },
+            "timingsNanoseconds": {
+                "collection": answer.timings.total_ns,
+                "hnfBasis": hnf_ns,
+                "smith": smith_ns,
+                "totalExternal": total_started.elapsed().as_nanos(),
+            },
+        })
+    );
+}
+
 fn main() {
     let arguments = env::args().skip(1).collect::<Vec<_>>();
     if arguments
@@ -436,6 +489,24 @@ fn main() {
             arguments
                 .get(2)
                 .expect("usage: row6-candidate small-norm-smith IDEALS CANDIDATES")
+                .parse()
+                .expect("candidates must be an integer"),
+        );
+        return;
+    }
+    if arguments
+        .first()
+        .is_some_and(|value| value == "small-norm-hnf-smith")
+    {
+        small_norm_hnf_smith(
+            arguments
+                .get(1)
+                .expect("usage: row6-candidate small-norm-hnf-smith IDEALS CANDIDATES")
+                .parse()
+                .expect("ideals must be an integer"),
+            arguments
+                .get(2)
+                .expect("usage: row6-candidate small-norm-hnf-smith IDEALS CANDIDATES")
                 .parse()
                 .expect("candidates must be an integer"),
         );

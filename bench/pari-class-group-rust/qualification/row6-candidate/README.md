@@ -163,3 +163,33 @@ matrix directly to dense Smith form is not a competitive linear-algebra
 architecture. The next boundary is sparse/incremental HNF or lattice-basis
 reduction with transformations, followed by Smith form on the reduced square
 basis. The exact receipt is `results/maximal-smith-candidate.json`.
+
+The immediate HNF-first control is also now measured. FLINT reduced the same
+rectangular presentation to a square 1,130 by 1,130 row-lattice basis in
+250.150881495 seconds; Smith form on that reduced basis then took only
+13.394962874 seconds and again returned `[2, 2]`. Including a 109.919471376
+second collector run, the route took 373.476580892 seconds. Thus basis reduction
+does make the final Smith problem about nineteen times cheaper, but FLINT's
+generic dense HNF simply moves almost all of the cost into the preceding stage.
+This negative result rules out a superficial HNF-before-Smith rearrangement;
+the next implementation must exploit sparse incremental relation insertion and
+retain transformations as the lattice changes. The receipt is
+`results/maximal-hnf-smith-candidate.json`.
+
+The same feature-gated bridge can perform each three-dimensional LLL basis
+change in FLINT while retaining Rust ownership of the ideal, embedding,
+enumeration and relation logic. Values cross this experimental boundary as
+decimal integers, and a focused exact test verifies the returned unimodular
+transform against the existing Rust column-basis contract. On row 6 this
+reduces the complete relation-collection time to 72.999378942 seconds. A direct
+exact Smith reduction of the resulting (slightly reordered) 1,526-row lattice
+again gives `[2, 2]` and class number 4, so the optimization preserves the
+candidate group. The direct Smith stage remains 256.534886485 seconds and is
+unchanged, as expected. The receipt is
+`results/maximal-flint-lll-smith-candidate.json`.
+
+This is a meaningful collector improvement, not yet the competitive endpoint.
+The broad numerical-preparation bucket falls from 88.36 to roughly 52 seconds,
+which shows that high-precision embedded Gram--Schmidt and repeated per-ideal
+setup now dominate that bucket. Fine-grained preparation timings and reusable
+workspaces are the next collector optimization boundary.
