@@ -118,16 +118,24 @@ expectRejected("oracle answer injection", neutralInputId, {
   classNumber: "1",
 });
 
-const row6PreparedInput = JSON.parse(
-  fs.readFileSync(
-    path.join(
-      directory,
-      "../row6-candidate/inputs/row6-neutral-prepared-field.json",
+const preparedInputDirectory = path.join(directory, "../row6-candidate/inputs");
+const preparedInputs = fs
+  .readdirSync(preparedInputDirectory)
+  .filter((name) => name.endsWith("-neutral-prepared-field.json"))
+  .sort()
+  .map((name) => ({
+    name,
+    value: JSON.parse(
+      fs.readFileSync(path.join(preparedInputDirectory, name), "utf8"),
     ),
-    "utf8",
-  ),
-);
-expectAccepted("row-6 neutral prepared input", neutralInputId, row6PreparedInput);
+  }));
+assert.equal(preparedInputs.length, 3);
+for (const { name, value } of preparedInputs) {
+  expectAccepted(`neutral prepared input ${name}`, neutralInputId, value);
+}
+const row6PreparedInput = preparedInputs.find(({ name }) =>
+  name.startsWith("row6-"),
+).value;
 const nonIntegralTable = clone(row6PreparedInput);
 nonIntegralTable.preparation.multiplicationTable[0][0][0].denominator = "2";
 expectAccepted(

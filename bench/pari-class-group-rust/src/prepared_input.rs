@@ -307,6 +307,10 @@ mod tests {
 
     const ROW6: &str =
         include_str!("../qualification/row6-candidate/inputs/row6-neutral-prepared-field.json");
+    const H1: &str =
+        include_str!("../qualification/row6-candidate/inputs/h1-neutral-prepared-field.json");
+    const ROW1: &str =
+        include_str!("../qualification/row6-candidate/inputs/row1-neutral-prepared-field.json");
 
     #[test]
     fn accepts_and_replays_row6() {
@@ -316,6 +320,15 @@ mod tests {
             "row6-x3-minus-2000000000010x-plus-2000000000018"
         );
         assert_eq!(parsed.field.equation_order_index(), &3);
+    }
+
+    #[test]
+    fn accepts_distinct_trivial_and_cyclic_preparations() {
+        let h1 = parse_neutral_prepared_cubic_json(H1).unwrap();
+        let row1 = parse_neutral_prepared_cubic_json(ROW1).unwrap();
+        assert_eq!(h1.field.equation_order_index(), &1);
+        assert_eq!(row1.field.equation_order_index(), &3);
+        assert_ne!(h1.field.data().discriminant, row1.field.data().discriminant);
     }
 
     #[test]

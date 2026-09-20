@@ -7,23 +7,21 @@
 //! shared Rust boundary cannot represent row 6's index-three maximal-order
 //! basis.  It must never be interpreted as a class-group result.
 
-use rug::{Assign, Float, Integer, Rational};
+use rug::{Assign, Complete, Float, Integer, Rational};
 use sagejs_pari_class_group_rust_experiment::{
     EmbeddingPrecisionState, PreparedCollectorLimits, PreparedCubicData,
-    PreparedRealCubicEmbedding, ValidatedPreparedCubic, collect_prepared_cubic_relations,
-    collect_validated_primitive_box_with_supplementary, flint_hnf_basis, flint_hnf_profile,
-    build_cubic_bdf_factor_base_plan, build_cubic_belabas_friedman_plan,
-    flint_bdf_factor_base_margin, flint_bf_index_enclosure, flint_compact_cubic_regulator,
-    flint_incremental_hnf, flint_small_surplus_class_order,
-    flint_smith_candidate, flint_smith_class_map, flint_staged_relation_witnesses,
-    modular_independent_relation_rows,
-    parse_neutral_prepared_cubic_json,
-    prepared_cubic_factor_base, prepared_cubic_splitting_records,
-    prepared_maximal_cubic_factor_base,
+    PreparedRealCubicEmbedding, ValidatedPreparedCubic, build_cubic_bdf_factor_base_plan,
+    build_cubic_belabas_friedman_plan, collect_prepared_cubic_relations,
+    collect_validated_primitive_box_with_supplementary, flint_bdf_factor_base_margin,
+    flint_bf_index_enclosure, flint_compact_cubic_regulator, flint_hnf_basis, flint_hnf_profile,
+    flint_incremental_hnf, flint_small_surplus_class_order, flint_smith_candidate,
+    flint_smith_class_map, flint_staged_relation_witnesses, modular_independent_relation_rows,
+    parse_neutral_prepared_cubic_json, prepared_cubic_factor_base,
+    prepared_cubic_splitting_records, prepared_maximal_cubic_factor_base,
     reconstruct_rank_two_unit_lattice,
 };
-use std::{env, fs};
 use std::time::Instant;
+use std::{env, fs};
 
 #[path = "../../../src/relation_cache.rs"]
 mod relation_cache;
@@ -32,17 +30,7 @@ mod smooth_admission;
 
 const POLYNOMIAL: [i64; 4] = [2_000_000_000_018, -2_000_000_000_010, 0, 1];
 const EQUATION_ORDER_BASIS: [i64; 9] = [1, 0, 0, 0, 1, 0, 0, 0, 1];
-const MAXIMAL_ORDER_BASIS_NUMERATORS: [i64; 9] = [
-    3,
-    0,
-    0,
-    0,
-    3,
-    0,
-    -1_333_333_333_340,
-    1,
-    1,
-];
+const MAXIMAL_ORDER_BASIS_NUMERATORS: [i64; 9] = [3, 0, 0, 0, 3, 0, -1_333_333_333_340, 1, 1];
 
 fn maximal_order() -> ValidatedPreparedCubic {
     ValidatedPreparedCubic::validate(PreparedCubicData {
@@ -354,7 +342,10 @@ fn small_norm_smith(maximum_ideals: usize, maximum_candidates: usize) {
         },
     )
     .expect("maximal-order relation collection failed");
-    assert!(answer.complete_rank_and_surplus, "relation lattice is incomplete");
+    assert!(
+        answer.complete_rank_and_surplus,
+        "relation lattice is incomplete"
+    );
     let rows = answer.relations.len() / answer.factor_base.catalog.ideals.len();
     let columns = answer.factor_base.catalog.ideals.len();
     eprintln!(
@@ -399,7 +390,10 @@ fn small_norm_hnf_smith(maximum_ideals: usize, maximum_candidates: usize) {
         },
     )
     .expect("maximal-order relation collection failed");
-    assert!(answer.complete_rank_and_surplus, "relation lattice is incomplete");
+    assert!(
+        answer.complete_rank_and_surplus,
+        "relation lattice is incomplete"
+    );
     let rows = answer.relations.len() / answer.factor_base.catalog.ideals.len();
     let columns = answer.factor_base.catalog.ideals.len();
     eprintln!(
@@ -451,16 +445,16 @@ fn small_norm_square_hnf_profile(maximum_ideals: usize, maximum_candidates: usiz
         },
     )
     .expect("maximal-order relation collection failed");
-    assert!(answer.complete_rank_and_surplus, "relation lattice is incomplete");
+    assert!(
+        answer.complete_rank_and_surplus,
+        "relation lattice is incomplete"
+    );
     let columns = answer.factor_base.catalog.ideals.len();
     let rows = answer.relations.len() / columns;
     let selection_started = Instant::now();
-    let (square, source_rows) = modular_independent_relation_rows(
-        &answer.relations,
-        &answer.first_nonzero_hints,
-        columns,
-    )
-    .expect("modularly independent row selection failed");
+    let (square, source_rows) =
+        modular_independent_relation_rows(&answer.relations, &answer.first_nonzero_hints, columns)
+            .expect("modularly independent row selection failed");
     let selection_ns = selection_started.elapsed().as_nanos();
     let hnf_started = Instant::now();
     let profile = flint_hnf_profile(&square, columns).expect("square FLINT HNF profile failed");
@@ -500,16 +494,16 @@ fn small_norm_incremental_hnf(maximum_ideals: usize, maximum_candidates: usize) 
         },
     )
     .expect("maximal-order relation collection failed");
-    assert!(answer.complete_rank_and_surplus, "relation lattice is incomplete");
+    assert!(
+        answer.complete_rank_and_surplus,
+        "relation lattice is incomplete"
+    );
     let columns = answer.factor_base.catalog.ideals.len();
     let rows = answer.relations.len() / columns;
     let selection_started = Instant::now();
-    let (square, source_rows) = modular_independent_relation_rows(
-        &answer.relations,
-        &answer.first_nonzero_hints,
-        columns,
-    )
-    .expect("modularly independent row selection failed");
+    let (square, source_rows) =
+        modular_independent_relation_rows(&answer.relations, &answer.first_nonzero_hints, columns)
+            .expect("modularly independent row selection failed");
     let mut selected = vec![false; rows];
     for source_row in source_rows.iter().copied() {
         selected[source_row] = true;
@@ -522,8 +516,8 @@ fn small_norm_incremental_hnf(maximum_ideals: usize, maximum_candidates: usize) 
     }
     let selection_ns = selection_started.elapsed().as_nanos();
     let hnf_started = Instant::now();
-    let incremental = flint_incremental_hnf(&square, &remaining, columns)
-        .expect("incremental FLINT HNF failed");
+    let incremental =
+        flint_incremental_hnf(&square, &remaining, columns).expect("incremental FLINT HNF failed");
     let hnf_external_ns = hnf_started.elapsed().as_nanos();
     let map_started = Instant::now();
     let map = flint_smith_class_map(&incremental.basis, columns)
@@ -578,15 +572,15 @@ fn small_norm_order_witnesses(maximum_ideals: usize, maximum_candidates: usize) 
         },
     )
     .expect("maximal-order relation collection failed");
-    assert!(answer.complete_rank_and_surplus, "relation lattice is incomplete");
+    assert!(
+        answer.complete_rank_and_surplus,
+        "relation lattice is incomplete"
+    );
     let columns = answer.factor_base.catalog.ideals.len();
     let rows = answer.relations.len() / columns;
-    let (square, source_rows) = modular_independent_relation_rows(
-        &answer.relations,
-        &answer.first_nonzero_hints,
-        columns,
-    )
-    .expect("modularly independent row selection failed");
+    let (square, source_rows) =
+        modular_independent_relation_rows(&answer.relations, &answer.first_nonzero_hints, columns)
+            .expect("modularly independent row selection failed");
     let mut selected = vec![false; rows];
     for source_row in source_rows.iter().copied() {
         selected[source_row] = true;
@@ -599,20 +593,20 @@ fn small_norm_order_witnesses(maximum_ideals: usize, maximum_candidates: usize) 
             ordered_source_rows.push(row);
         }
     }
-    let incremental = flint_incremental_hnf(&square, &remaining, columns)
-        .expect("incremental FLINT HNF failed");
+    let incremental =
+        flint_incremental_hnf(&square, &remaining, columns).expect("incremental FLINT HNF failed");
     let map = flint_smith_class_map(&incremental.basis, columns)
         .expect("Smith class-map construction failed");
     let mut generators = Vec::with_capacity(map.invariant_factors.len());
     for coordinate in 0..map.invariant_factors.len() {
         let generator = (0..columns)
             .find(|generator| {
-                map.coordinates(*generator)
-                    .is_some_and(|values| {
-                        values.iter().enumerate().all(|(index, value)| {
-                            *value == if index == coordinate { 1 } else { 0 }
-                        })
-                    })
+                map.coordinates(*generator).is_some_and(|values| {
+                    values
+                        .iter()
+                        .enumerate()
+                        .all(|(index, value)| *value == if index == coordinate { 1 } else { 0 })
+                })
             })
             .expect("class map has no factor-base generator for an invariant coordinate");
         generators.push(generator);
@@ -701,6 +695,67 @@ fn small_norm_unit_kernel(maximum_ideals: usize, maximum_candidates: usize) {
     );
 }
 
+fn rational_coordinate_systems_are_unimodularly_equivalent(
+    left: &[[Rational; 2]],
+    right: &[[Rational; 2]],
+) -> bool {
+    let determinant_2x2 = |left: [&Rational; 2], right: [&Rational; 2]| {
+        let mut value = Rational::from(left[0] * right[1]);
+        value -= Rational::from(left[1] * right[0]);
+        value
+    };
+    if left.len() != right.len() {
+        return false;
+    }
+    let Some((first, second, determinant)) = (0..left.len()).find_map(|first| {
+        (first + 1..left.len()).find_map(|second| {
+            let determinant = determinant_2x2(
+                [&left[first][0], &left[first][1]],
+                [&left[second][0], &left[second][1]],
+            );
+            (determinant != 0).then_some((first, second, determinant))
+        })
+    }) else {
+        return false;
+    };
+    let transform = [
+        [
+            determinant_2x2(
+                [&left[second][1], &left[first][1]],
+                [&right[second][0], &right[first][0]],
+            ) / &determinant,
+            determinant_2x2(
+                [&left[second][1], &left[first][1]],
+                [&right[second][1], &right[first][1]],
+            ) / &determinant,
+        ],
+        [
+            determinant_2x2(
+                [&left[first][0], &left[second][0]],
+                [&right[first][0], &right[second][0]],
+            ) / &determinant,
+            determinant_2x2(
+                [&left[first][0], &left[second][0]],
+                [&right[first][1], &right[second][1]],
+            ) / &determinant,
+        ],
+    ];
+    let transform_determinant = determinant_2x2(
+        [&transform[0][0], &transform[0][1]],
+        [&transform[1][0], &transform[1][1]],
+    );
+    if transform_determinant != 1 && transform_determinant != -1 {
+        return false;
+    }
+    left.iter().zip(right).all(|(source, target)| {
+        let mut first = Rational::from(&source[0] * &transform[0][0]);
+        first += Rational::from(&source[1] * &transform[1][0]);
+        let mut second = Rational::from(&source[0] * &transform[0][1]);
+        second += Rational::from(&source[1] * &transform[1][1]);
+        first == target[0] && second == target[1]
+    })
+}
+
 fn small_norm_unit_kernel_for_field(
     field: ValidatedPreparedCubic,
     input_id: &str,
@@ -716,16 +771,16 @@ fn small_norm_unit_kernel_for_field(
         },
     )
     .expect("maximal-order relation collection failed");
-    assert!(answer.complete_rank_and_surplus, "relation lattice is incomplete");
+    assert!(
+        answer.complete_rank_and_surplus,
+        "relation lattice is incomplete"
+    );
     let columns = answer.factor_base.catalog.ideals.len();
     let rows = answer.relations.len() / columns;
     let presentation_started = Instant::now();
-    let (square, source_rows) = modular_independent_relation_rows(
-        &answer.relations,
-        &answer.first_nonzero_hints,
-        columns,
-    )
-    .expect("modularly independent row selection failed");
+    let (square, source_rows) =
+        modular_independent_relation_rows(&answer.relations, &answer.first_nonzero_hints, columns)
+            .expect("modularly independent row selection failed");
     let mut selected = vec![false; rows];
     for &source_row in &source_rows {
         selected[source_row] = true;
@@ -740,28 +795,73 @@ fn small_norm_unit_kernel_for_field(
     }
     let class_order = flint_small_surplus_class_order(&square, &remaining, columns)
         .expect("exact small-surplus class-order computation failed");
-    assert_eq!(class_order.class_order, 4);
-    assert_eq!(class_order.two_rank, 2);
-    assert!(
-        class_order.annihilates(&answer.relations, rows),
-        "mod-2 class map does not annihilate the relation lattice"
-    );
-    let first_class_generator = (0..columns)
-        .find(|&generator| class_order.coordinates(generator) != Some(&[0, 0]))
-        .expect("class map has no nonzero generator");
-    let first_coordinates = class_order
-        .coordinates(first_class_generator)
-        .expect("missing first class-generator coordinates")
-        .to_vec();
-    let second_class_generator = (first_class_generator + 1..columns)
-        .chain(0..first_class_generator)
-        .find(|&generator| {
-            let coordinates = class_order.coordinates(generator).unwrap();
-            coordinates != [0, 0] && coordinates != first_coordinates
+    let expected_elementary_two_order = Integer::from(1) << class_order.two_rank;
+    let elementary_two_map_is_exact = class_order.class_order == expected_elementary_two_order;
+    let (invariant_factors, class_coordinates, class_map_construction) =
+        if elementary_two_map_is_exact {
+            assert!(
+                class_order.annihilates(&answer.relations, rows),
+                "mod-2 class map does not annihilate the relation lattice"
+            );
+            (
+                vec![2_i64; class_order.two_rank],
+                class_order
+                    .generator_coordinates
+                    .iter()
+                    .map(|value| i64::from(*value))
+                    .collect::<Vec<_>>(),
+                "packed-right-nullspace-modulo-two",
+            )
+        } else {
+            let incremental = flint_incremental_hnf(&square, &remaining, columns)
+                .expect("generic exact class-map HNF failed");
+            let map = flint_smith_class_map(&incremental.basis, columns)
+                .expect("generic exact Smith class-map construction failed");
+            assert!(
+                map.annihilates(&answer.relations, rows),
+                "a collected relation survived the generic Smith class map"
+            );
+            let smith_order = map
+                .invariant_factors
+                .iter()
+                .fold(Integer::from(1), |product, factor| product * factor);
+            assert_eq!(smith_order, class_order.class_order);
+            (
+                map.invariant_factors,
+                map.generator_coordinates,
+                "incremental-hnf-plus-smith-transform",
+            )
+        };
+    let class_width = invariant_factors.len();
+    let class_generator_indices = invariant_factors
+        .iter()
+        .enumerate()
+        .filter_map(|(coordinate, modulus)| {
+            (0..columns).find(|generator| {
+                let values =
+                    &class_coordinates[generator * class_width..(generator + 1) * class_width];
+                values.iter().enumerate().all(|(index, value)| {
+                    if index == coordinate {
+                        Integer::from(*value)
+                            .gcd_ref(&Integer::from(*modulus))
+                            .complete()
+                            == 1
+                    } else {
+                        *value == 0
+                    }
+                })
+            })
         })
-        .expect("class map has no independent second generator");
-    let class_generator_indices = [first_class_generator, second_class_generator];
-    let invariant_factors = [2_i64, 2_i64];
+        .collect::<Vec<_>>();
+    let class_group_label = if invariant_factors.is_empty() {
+        "trivial".to_owned()
+    } else {
+        invariant_factors
+            .iter()
+            .map(|factor| format!("C{factor}"))
+            .collect::<Vec<_>>()
+            .join(" x ")
+    };
     let presentation_ns = presentation_started.elapsed().as_nanos();
     let kernel_started = Instant::now();
     assert_eq!(class_order.dependency_rank, rows - columns);
@@ -770,14 +870,13 @@ fn small_norm_unit_kernel_for_field(
     let mut kernel_nonzero_counts = vec![0_usize; class_order.dependency_rank];
     let mut maximum_kernel_coefficient_bits = 0_usize;
     for dependency in 0..class_order.dependency_rank {
-        let source = &class_order.dependency_coefficients
-            [dependency * rows..(dependency + 1) * rows];
+        let source =
+            &class_order.dependency_coefficients[dependency * rows..(dependency + 1) * rows];
         for (position, &relation) in source_rows.iter().enumerate() {
             kernel_coefficients[dependency * rows + relation].assign(&source[position]);
         }
         for (position, &relation) in remaining_rows.iter().enumerate() {
-            kernel_coefficients[dependency * rows + relation]
-                .assign(&source[columns + position]);
+            kernel_coefficients[dependency * rows + relation].assign(&source[columns + position]);
         }
         for coefficient in &kernel_coefficients[dependency * rows..(dependency + 1) * rows] {
             if coefficient != &0 {
@@ -821,8 +920,7 @@ fn small_norm_unit_kernel_for_field(
     let mut unit_logs = Vec::with_capacity(kernel.rank);
     let mut maximum_product_formula_residual = Float::with_val(LOG_PRECISION, 0);
     for dependency in 0..kernel.rank {
-        let mut logs: [Float; 3] =
-            std::array::from_fn(|_| Float::with_val(LOG_PRECISION, 0));
+        let mut logs: [Float; 3] = std::array::from_fn(|_| Float::with_val(LOG_PRECISION, 0));
         for relation in 0..rows {
             let coefficient = &kernel.coefficients[dependency * rows + relation];
             if coefficient == &0 {
@@ -882,10 +980,10 @@ fn small_norm_unit_kernel_for_field(
     let reduced_precision_lattice =
         reconstruct_rank_two_unit_lattice(&reduced_precision_logs, &reconstruction_bound)
             .expect("reduced-precision unit-lattice reconstruction failed");
-    assert_eq!(
-        lattice.rational_coordinates,
-        reduced_precision_lattice.rational_coordinates
-    );
+    assert!(rational_coordinate_systems_are_unimodularly_equivalent(
+        &lattice.rational_coordinates,
+        &reduced_precision_lattice.rational_coordinates,
+    ));
     assert_eq!(
         lattice.common_denominator,
         reduced_precision_lattice.common_denominator
@@ -912,14 +1010,12 @@ fn small_norm_unit_kernel_for_field(
         for column in 0..columns {
             let mut replayed = Integer::from(0);
             for relation in 0..rows {
-                replayed += &coefficients[relation]
-                    * answer.relations[relation * columns + column];
+                replayed += &coefficients[relation] * answer.relations[relation * columns + column];
             }
             assert_eq!(replayed, 0);
         }
         fundamental_exponents.extend(coefficients.iter().cloned());
-        let mut logs: [Float; 3] =
-            std::array::from_fn(|_| Float::with_val(LOG_PRECISION, 0));
+        let mut logs: [Float; 3] = std::array::from_fn(|_| Float::with_val(LOG_PRECISION, 0));
         let mut factors = Vec::new();
         for relation in 0..rows {
             if coefficients[relation] == 0 {
@@ -1052,10 +1148,8 @@ fn small_norm_unit_kernel_for_field(
     assert!(tail_upper < Rational::from((1, 4)));
     let index_lower = dyadic_endpoint(&bf.index.lower, bf.index.binary_exponent);
     let index_upper = dyadic_endpoint(&bf.index.upper, bf.index.binary_exponent);
-    let unique_positive_integer_one = index_lower > 0
-        && index_lower <= 1
-        && index_upper >= 1
-        && index_upper < 2;
+    let unique_positive_integer_one =
+        index_lower > 0 && index_lower <= 1 && index_upper >= 1 && index_upper < 2;
     assert!(
         unique_positive_integer_one,
         "analytic enclosure did not isolate the positive integral index one"
@@ -1100,11 +1194,13 @@ fn small_norm_unit_kernel_for_field(
     println!(
         "{}",
         serde_json::json!({
-            "schema": "sagejs.rust-class-group/row6-saturated-relation-kernel-v1",
+            "schema": "sagejs.rust-class-group/prepared-cubic-class-unit-v1",
             "inputId": input_id,
             "polynomialAscending": field.data().polynomial_ascending.iter().map(ToString::to_string).collect::<Vec<_>>(),
             "qualificationStatus": "grh-conditional-class-unit-index-one",
             "usesOracleAsInput": false,
+            "usesClassGroupAnswersAsInput": false,
+            "mathematicalBoundary": "replay-validated-prepared-cubic-to-complete-class-and-unit-result",
             "relations": { "rows": rows, "columns": columns },
             "relationCollectionProfile": {
                 "counters": {
@@ -1131,15 +1227,15 @@ fn small_norm_unit_kernel_for_field(
                 },
             },
             "classMap": {
-                "group": "C2 x C2",
-                "construction": "right-nullspace-of-the-complete-relation-matrix-modulo-two",
-                "isExactBecauseCertifiedOrderEqualsFour": true,
+                "group": class_group_label,
+                "construction": class_map_construction,
+                "isExactBecauseMapOrderMatchesCertifiedClassOrder": true,
                 "allRelationsMapToZero": true,
-                "generatorMajorCoordinates": class_order.generator_coordinates
-                    .chunks_exact(class_order.two_rank)
-                    .collect::<Vec<_>>(),
-                "selectedGeneratorIndicesZeroBased": class_generator_indices,
-                "selectedGeneratorPrimeIdeals": class_generator_indices.map(|index| {
+                "generatorMajorCoordinates": (0..columns).map(|generator| {
+                    class_coordinates[generator * class_width..(generator + 1) * class_width].to_vec()
+                }).collect::<Vec<_>>(),
+                "selectedGeneratorIndicesZeroBased": &class_generator_indices,
+                "selectedGeneratorPrimeIdeals": class_generator_indices.iter().map(|&index| {
                     let ideal = &answer.factor_base.catalog.ideals[index];
                     serde_json::json!({
                         "prime": ideal.prime,
@@ -1149,7 +1245,7 @@ fn small_norm_unit_kernel_for_field(
                         "generator": ideal.generator,
                         "hnf": ideal.hnf,
                     })
-                }),
+                }).collect::<Vec<_>>(),
             },
             "kernel": {
                 "rank": kernel.rank,
@@ -1266,7 +1362,10 @@ fn small_norm_class_map(maximum_ideals: usize, maximum_candidates: usize) {
         },
     )
     .expect("maximal-order relation collection failed");
-    assert!(answer.complete_rank_and_surplus, "relation lattice is incomplete");
+    assert!(
+        answer.complete_rank_and_surplus,
+        "relation lattice is incomplete"
+    );
     let rows = answer.relations.len() / answer.factor_base.catalog.ideals.len();
     let columns = answer.factor_base.catalog.ideals.len();
     eprintln!(
@@ -1279,8 +1378,8 @@ fn small_norm_class_map(maximum_ideals: usize, maximum_candidates: usize) {
     let hnf_ns = hnf_started.elapsed().as_nanos();
     eprintln!("stage=hnf-basis-complete elapsed_ns={hnf_ns}");
     let map_started = Instant::now();
-    let map = flint_smith_class_map(&basis, columns)
-        .expect("FLINT Smith class-map construction failed");
+    let map =
+        flint_smith_class_map(&basis, columns).expect("FLINT Smith class-map construction failed");
     let map_ns = map_started.elapsed().as_nanos();
     assert!(
         map.annihilates(&answer.relations, rows),
@@ -1607,4 +1706,38 @@ fn main() {
             },
         })
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn rational(numerator: i32, denominator: i32) -> Rational {
+        Rational::from((Integer::from(numerator), Integer::from(denominator)))
+    }
+
+    #[test]
+    fn precision_replays_accept_unimodular_coordinate_changes_only() {
+        let left = vec![
+            [rational(1, 1), rational(0, 1)],
+            [rational(0, 1), rational(1, 1)],
+            [rational(9, 11), rational(8, 11)],
+        ];
+        let swapped = vec![
+            [rational(0, 1), rational(1, 1)],
+            [rational(1, 1), rational(0, 1)],
+            [rational(8, 11), rational(9, 11)],
+        ];
+        let scaled = vec![
+            [rational(2, 1), rational(0, 1)],
+            [rational(0, 1), rational(1, 1)],
+            [rational(18, 11), rational(8, 11)],
+        ];
+        assert!(rational_coordinate_systems_are_unimodularly_equivalent(
+            &left, &swapped
+        ));
+        assert!(!rational_coordinate_systems_are_unimodularly_equivalent(
+            &left, &scaled
+        ));
+    }
 }

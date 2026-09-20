@@ -494,6 +494,22 @@ is a Sage.js-certified polynomial-to-prepared-field adapter, followed by the
 same replay validation and a multi-field differential corpus. The compact
 evidence is `results/neutral-prepared-input-replay.json`.
 
+The same executable has now crossed two additional prepared-field boundaries.
+H1, whose maximal order equals its equation order, completes with trivial class
+group and analytic class/unit index one in 0.693218116 seconds. The independent
+index-three row-1 preparation completes with cyclic class group `C3` and index
+one in 0.702380143 seconds. The latter cannot use the elementary-2 map: the
+engine automatically constructs an exact incremental HNF and Smith transform,
+checks that every relation maps to zero, and retains a concrete prime-ideal
+generator. No class-group answers occur in either runtime input.
+
+This also corrected a subtle cross-precision test. Rational unit coordinates
+at 2,048 and 4,096 bits can legitimately select bases related by a unimodular
+swap; literal array equality rejected H1. The replay now solves for the exact
+rational basis change, requires determinant `+1` or `-1`, and checks every
+coordinate. A non-unimodular scaling is rejected by a focused test. The three
+case receipt is `results/prepared-cubic-generalization.json`.
+
 ## 2026-09-20 multiplier continuation control
 
 PARI 2.17.4 interleaves deterministic `P_0^e P_j` small-norm passes with
