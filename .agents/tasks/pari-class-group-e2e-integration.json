@@ -7,13 +7,15 @@
   "status": "active",
   "owner": "agent",
   "objective": "Implement the Rust class-group core qualification plan through complete native and browser evidence, preserving Sage.js public semantics, proof authority, portability, and measured PARI comparisons",
-  "base_commit": "805937e97c341019ee57d0aab6e4f9d6c1670b55",
+  "base_commit": "fb26dedf5c3d34de452c853d9a22475e233742c1",
   "claims": [
     ".agents/lanes.json",
     ".agents/tasks/pari-class-group-e2e-integration.json",
     "agents/rust-class-group-core-qualification-plan.md",
     "agents/rust-class-group-public-contract-map.md",
     "architecture/decisions/0006-rust-math-core.md",
+    "architecture/native-boundaries.json",
+    "architecture/native-code.json",
     "bench/pari-class-group-rust/",
     "packages/wasm-toolchain/recipes/libraries.cjs",
     "packages/wasm-toolchain/test/toolchain.test.cjs"
