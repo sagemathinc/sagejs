@@ -13,6 +13,15 @@
     "containsClassNumber": false,
     "containsInvariantFactors": false
   },
+  "requestValidation": {
+    "closedObject": true,
+    "requiredFields": ["schema", "polynomial", "proof"],
+    "exactSchema": "sagejs.class-group-request/v1",
+    "exactProofMode": "candidate",
+    "unknownPropertiesRejected": true,
+    "oracleBearingPropertiesRejected": true,
+    "duplicatePropertiesRejected": true
+  },
   "runtimeStages": [
     "factor-base construction",
     "exact coefficient-box relation search",
@@ -37,9 +46,9 @@
   "artifact": {
     "target": "wasm32-wasip1",
     "profile": "release",
-    "bytes": 146358,
-    "sha256": "cfcf1b21993906dedec2eb8b0547d3d6e49cefa8edab4b09f3834b2d3c73026b",
-    "incrementalBuildSeconds": 2.02,
+    "bytes": 218491,
+    "sha256": "9f27b7283160a944e016b5701429fddd923b6aab069e9c01881c871b4776bab8",
+    "recordedRebuildSeconds": 5.24,
     "linksPari": false,
     "usesOracleInput": false,
     "imports": [
@@ -57,40 +66,40 @@
     "wasiSdkSourceSha256": "0ba8b5bfaeb2adf3f29bab5841d76cf5318ab8e1642ea195f88baba1abd47bce",
     "wasmLdVersion": "LLD 22.1.0 (https://github.com/llvm/llvm-project 4434dabb69916856b824f68a64b029c67175e532)",
     "wasmLdSha256": "5c965a9e8525c7206aa583f9691f1a7a5e46bd4d793bf65f809b7124c670df26",
-    "cleanBuildSeconds": 2.021,
-    "byteIdenticalToPriorSelfContainedLink": true
+    "recordedRebuildSeconds": 5.24,
+    "priorSelfContainedLinkCompared": false
   },
   "browserRun": {
-    "observedAt": "2026-09-20T06:43:44.761Z",
+    "observedAt": "2026-09-20T18:02:52.554Z",
     "samplesPerEngine": 15,
     "engines": [
       {
         "engine": "chromium",
         "version": "151.0.7922.34",
-        "compileMilliseconds": 1,
-        "instantiateMilliseconds": 0.19999998807907104,
+        "compileMilliseconds": 1.4000000059604645,
+        "instantiateMilliseconds": 0.09999999403953552,
         "callMedianMilliseconds": 1.4000000059604645,
-        "callSamplesMilliseconds": [7, 1.7000000178813934, 1.4000000059604645, 1.2000000178813934, 1.600000023841858, 1.5, 1.7000000178813934, 1.4000000059604645, 1.5999999940395355, 1.699999988079071, 1.199999988079071, 1.0999999940395355, 1.0999999940395355, 1.0999999940395355, 1.0999999940395355],
+        "callSamplesMilliseconds": [7.300000011920929, 1.699999988079071, 1.4000000059604645, 1.5, 1.4000000059604645, 1.4000000059604645, 1.300000011920929, 1.4000000059604645, 1.4000000059604645, 1.199999988079071, 1.2000000178813934, 1.100000023841858, 1.0999999940395355, 1.0999999940395355, 1],
         "memoryPagesBefore": 17,
         "memoryPagesAfter": 18
       },
       {
         "engine": "firefox",
         "version": "153.0",
-        "compileMilliseconds": 22,
+        "compileMilliseconds": 7,
         "instantiateMilliseconds": 0,
         "callMedianMilliseconds": 6,
-        "callSamplesMilliseconds": [7, 7, 7, 6, 6, 7, 7, 7, 6, 7, 6, 7, 8, 7, 7],
+        "callSamplesMilliseconds": [6, 6, 7, 8, 7, 7, 6, 7, 6, 6, 7, 7, 7, 6, 7],
         "memoryPagesBefore": 17,
         "memoryPagesAfter": 18
       },
       {
         "engine": "webkit",
         "version": "26.5",
-        "compileMilliseconds": 12,
-        "instantiateMilliseconds": 0,
-        "callMedianMilliseconds": 2,
-        "callSamplesMilliseconds": [7, 2, 2, 1, 2, 1, 1, 1, 2, 2, 2, 1, 2, 1, 2],
+        "compileMilliseconds": 3,
+        "instantiateMilliseconds": 1,
+        "callMedianMilliseconds": 1,
+        "callSamplesMilliseconds": [10, 2, 2, 2, 1, 1, 2, 1, 1, 2, 1, 1, 1, 1, 2],
         "memoryPagesBefore": 17,
         "memoryPagesAfter": 18
       }

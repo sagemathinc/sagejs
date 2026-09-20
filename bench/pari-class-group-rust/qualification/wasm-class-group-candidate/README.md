@@ -7,7 +7,8 @@ not be published as a complete class-group result.
 For the request polynomial `x^3 - 8*x^2 - 30*x - 34`, the artifact performs
 all of the following at runtime:
 
-1. parse the four polynomial coefficients from the neutral JSON request;
+1. deserialize one closed request shape, verify its exact schema/proof values,
+   and parse four bounded polynomial coefficients;
 2. construct PARI-policy factor-base descriptors from the polynomial;
 3. enumerate primitive algebraic integers in deterministic coefficient shells;
 4. compute exact `i128` norms and factor them over the derived factor base;
@@ -67,5 +68,8 @@ The recorded artifact was linked with the prepared Sage.js toolchain whose
 content-addressed lock digest is
 `37d8d819fd533570e0b707d3101ab2944f6488c4b4452b2b0a1a9ea04366452c`.
 Its WASI SDK is 33.0 and its `wasm-ld` reports LLVM 22.1.0. A clean link with
-that prepared `wasm-ld` produced exactly the same 146,358-byte artifact and
-SHA-256 as the prior Rust self-contained link.
+that prepared `wasm-ld` produced the recorded 218,491-byte artifact with SHA-256
+`9f27b7283160a944e016b5701429fddd923b6aab069e9c01881c871b4776bab8`.
+The size increase from the earlier 146,358-byte artifact is the cost of replacing
+its substring parser with `serde`/`serde_json` closed-shape deserialization; it
+is disclosed rather than hidden as benchmark noise.

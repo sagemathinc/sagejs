@@ -1,0 +1,220 @@
+{
+  "schema": "sagejs.rust-class-group-lifecycle/v1",
+  "status": "failed-required-cooperative-cancellation-abi",
+  "claim": {
+    "productionQualified": false,
+    "artifactScope": "small fixed-width presentation candidate",
+    "mathematicalCompletionClaim": false
+  },
+  "artifact": {
+    "path": "bench/pari-class-group-rust/qualification/wasm-class-group-candidate/target/wasm32-wasip1/release/sagejs_rust_wasm_class_group_candidate.wasm",
+    "bytes": 218491,
+    "sha256": "9f27b7283160a944e016b5701429fddd923b6aab069e9c01881c871b4776bab8",
+    "abiVersion": 1
+  },
+  "repeatedCalls": {
+    "status": "pass",
+    "count": 1000,
+    "exactResultSha256": "78947e27c601fae89b2cbc5501e7aa0b709f331326091ebfa9ca9ff1a055b777",
+    "initialMemoryPages": 17,
+    "memoryPageObservations": [
+      {
+        "call": 1,
+        "pages": 18
+      },
+      {
+        "call": 2,
+        "pages": 18
+      },
+      {
+        "call": 3,
+        "pages": 18
+      },
+      {
+        "call": 4,
+        "pages": 18
+      },
+      {
+        "call": 5,
+        "pages": 18
+      },
+      {
+        "call": 6,
+        "pages": 18
+      },
+      {
+        "call": 7,
+        "pages": 18
+      },
+      {
+        "call": 8,
+        "pages": 18
+      },
+      {
+        "call": 16,
+        "pages": 18
+      },
+      {
+        "call": 32,
+        "pages": 18
+      },
+      {
+        "call": 64,
+        "pages": 18
+      },
+      {
+        "call": 128,
+        "pages": 18
+      },
+      {
+        "call": 256,
+        "pages": 18
+      },
+      {
+        "call": 512,
+        "pages": 18
+      },
+      {
+        "call": 1000,
+        "pages": 18
+      }
+    ],
+    "stabilizedAfterCall": 8,
+    "stableMemoryPages": 18,
+    "stableMemoryMinimumPages": 18,
+    "stableMemoryMaximumPages": 18,
+    "pagesAfterMalformedRecovery": 18
+  },
+  "malformedInput": {
+    "status": "pass",
+    "cases": [
+      {
+        "id": "invalid-utf8",
+        "status": "structured-error",
+        "error": "Input"
+      },
+      {
+        "id": "truncated-json",
+        "status": "structured-error",
+        "error": "Input"
+      },
+      {
+        "id": "empty-object",
+        "status": "structured-error",
+        "error": "Input"
+      },
+      {
+        "id": "wrong-schema",
+        "status": "structured-error",
+        "error": "Input"
+      },
+      {
+        "id": "oracle-bearing",
+        "status": "structured-error",
+        "error": "Input"
+      },
+      {
+        "id": "missing-schema",
+        "status": "structured-error",
+        "error": "Input"
+      },
+      {
+        "id": "missing-proof",
+        "status": "structured-error",
+        "error": "Input"
+      },
+      {
+        "id": "duplicate-schema",
+        "status": "structured-error",
+        "error": "Input"
+      },
+      {
+        "id": "numeric-coefficients",
+        "status": "structured-error",
+        "error": "Input"
+      },
+      {
+        "id": "wrong-proof",
+        "status": "structured-error",
+        "error": "Input"
+      },
+      {
+        "id": "bad-polynomial",
+        "status": "structured-error",
+        "error": "Input"
+      },
+      {
+        "id": "null-zero-range",
+        "status": "structured-error",
+        "error": "Input"
+      },
+      {
+        "id": "oversized-allocation",
+        "status": "rejected-before-allocation"
+      }
+    ],
+    "incorrectlyAccepted": [],
+    "validCallAfterErrors": "pass",
+    "trapsObserved": 0
+  },
+  "lifecycle": {
+    "hostClose": "pass-idempotent",
+    "staleUseAfterClose": "pass-rejected",
+    "guestHandlesPresent": false,
+    "guestStaleHandleTest": "not-applicable-no-handle-abi",
+    "guestDoubleDropTest": "not-applicable-no-handle-abi",
+    "rawDoubleDeallocTest": "not-run-undefined-behavior-in-current-abi"
+  },
+  "termination": {
+    "status": "pass",
+    "mechanism": "node-worker-hard-termination",
+    "exitCode": 1,
+    "begunObserved": true,
+    "resultPublished": false,
+    "scope": "host termination only; not cooperative in-reactor cancellation"
+  },
+  "transactionalPublication": {
+    "status": "pass-for-hard-worker-termination-only",
+    "observation": "no result message was published after a begun computation was terminated",
+    "durableState": "none"
+  },
+  "cancellation": {
+    "status": "fail",
+    "cooperative": false,
+    "reason": "sagejs_class_group_run_json is one synchronous monolithic call with no context, step, cancel, or progress operation",
+    "hardWorkerTerminationAvailable": true,
+    "requiredAbi": [
+      "create(request) -> generation-tagged context handle or structured error",
+      "step(handle, bounded_work) -> running | complete | cancelled | structured error",
+      "cancel(handle) -> accepted | already complete | stale handle",
+      "result(handle) publishes output only after complete",
+      "drop(handle) is idempotent and stale/double-use is rejected without dereference",
+      "long relation, HNF, unit, and certification loops check cancellation at documented bounded intervals"
+    ]
+  },
+  "requiredInputChange": {
+    "status": "not-required",
+    "rule": "parse and validate the closed request schema before reading the polynomial; reject unknown/oracle-bearing properties"
+  },
+  "campaignCoverage": {
+    "repeatedSmallCalls": {
+      "required": 1000,
+      "observed": 1000,
+      "status": "pass"
+    },
+    "mixedMediumCalls": {
+      "required": 100,
+      "observed": 0,
+      "status": "fail-no-frozen-complete-medium-artifact"
+    },
+    "precisionFailure": "fail-not-exposed-by-candidate",
+    "arithmeticCapacityFailure": "fail-not-exposed-by-candidate",
+    "concurrentIndependentJobs": {
+      "status": "pass-small-artifact-only",
+      "jobs": 4,
+      "identicalResults": true
+    },
+    "nativeLeakSanitizer": "fail-not-run",
+    "actualBrowserLifecycle": "fail-not-run-by-this-receipt"
+  }
+}

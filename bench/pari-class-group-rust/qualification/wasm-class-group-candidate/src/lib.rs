@@ -15,6 +15,7 @@ mod smith;
 
 use factor_base::{FactorBase, PrimeIdeal, prepared_cubic_factor_base};
 use relation_cache::RelationCache;
+use serde::Deserialize;
 use smith::{WordSmithWorkspace, transpose_relation_records};
 use std::alloc::{Layout, alloc, dealloc};
 
@@ -324,26 +325,22 @@ fn candidate(polynomial: [i64; 4]) -> Result<(Vec<i128>, i128, usize, usize, Sta
     ))
 }
 
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Request {
+    schema: String,
+    polynomial: [String; 4],
+    proof: String,
+}
+
 fn parse_polynomial(input: &str) -> Result<[i64; 4], Error> {
-    let key = "\"polynomial\"";
-    let start = input.find(key).ok_or(Error::Input)? + key.len();
-    let array_start = input[start..].find('[').ok_or(Error::Input)? + start + 1;
-    let array_end = input[array_start..].find(']').ok_or(Error::Input)? + array_start;
-    let mut answer = [0_i64; 4];
-    let mut count = 0;
-    for item in input[array_start..array_end].split(',') {
-        if count == answer.len() {
-            return Err(Error::Input);
-        }
-        answer[count] = item
-            .trim()
-            .trim_matches('"')
-            .parse::<i64>()
-            .map_err(|_| Error::Input)?;
-        count += 1;
-    }
-    if count != answer.len() {
+    let request: Request = serde_json::from_str(input).map_err(|_| Error::Input)?;
+    if request.schema != "sagejs.class-group-request/v1" || request.proof != "candidate" {
         return Err(Error::Input);
+    }
+    let mut answer = [0_i64; 4];
+    for (target, source) in answer.iter_mut().zip(request.polynomial) {
+        *target = source.parse::<i64>().map_err(|_| Error::Input)?;
     }
     Ok(answer)
 }
@@ -439,6 +436,29 @@ mod tests {
     #[test]
     fn parses_neutral_browser_input() {
         let request = r#"{"schema":"sagejs.class-group-request/v1","polynomial":["-34","-30","-8","1"],"proof":"candidate"}"#;
+        assert_eq!(parse_polynomial(request).unwrap(), [-34, -30, -8, 1]);
+    }
+
+    #[test]
+    fn rejects_nonclosed_or_oracle_bearing_requests() {
+        let counterfeits = [
+            r#"{"schema":"wrong","polynomial":["-34","-30","-8","1"],"proof":"candidate"}"#,
+            r#"{"schema":"sagejs.class-group-request/v1","polynomial":["-34","-30","-8","1"],"proof":"candidate","expected":{"classNumber":"6"}}"#,
+            r#"{"polynomial":["-34","-30","-8","1"],"proof":"candidate"}"#,
+            r#"{"schema":"sagejs.class-group-request/v1","polynomial":["-34","-30","-8","1"]}"#,
+            r#"{"schema":"sagejs.class-group-request/v1","schema":"sagejs.class-group-request/v1","polynomial":["-34","-30","-8","1"],"proof":"candidate"}"#,
+            r#"{"schema":"sagejs.class-group-request/v1","polynomial":[-34,-30,-8,1],"proof":"candidate"}"#,
+            r#"{"schema":"sagejs.class-group-request/v1","polynomial":["-34","-30","-8","1"],"proof":"unconditional"}"#,
+            r#"{"schema":"sagejs.class-group-request/v1","polynomial":["-34","-30","-8","1","0"],"proof":"candidate"}"#,
+        ];
+        for counterfeit in counterfeits {
+            assert!(matches!(parse_polynomial(counterfeit), Err(Error::Input)));
+        }
+    }
+
+    #[test]
+    fn accepts_reordered_closed_request_fields() {
+        let request = r#"{"proof":"candidate","polynomial":["-34","-30","-8","1"],"schema":"sagejs.class-group-request/v1"}"#;
         assert_eq!(parse_polynomial(request).unwrap(), [-34, -30, -8, 1]);
     }
 }
