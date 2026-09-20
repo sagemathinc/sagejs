@@ -19,6 +19,10 @@ export SAGEJS_GMP_PREFIX="$toolchain/prefixes/gmp"
 export SAGEJS_MPFR_PREFIX="$toolchain/prefixes/mpfr"
 export SAGEJS_WASI_SYSROOT="$toolchain/sdk/share/wasi-sysroot"
 export CARGO_TARGET_WASM32_WASIP1_LINKER="$toolchain/sdk/bin/wasm-ld"
+# All three qualified engines support the stable Wasm SIMD proposal. LLVM's
+# SIMD lowering is neutral in Chromium/WebKit and measurably helps Firefox on
+# this exact arithmetic path; pin it rather than inheriting ambient flags.
+export RUSTFLAGS="-C target-feature=+simd128"
 
 cargo build --locked --release --target wasm32-wasip1
 mkdir -p build

@@ -39,13 +39,23 @@ pub use prepared::{
 use class_group::{PreparedCollectorLimits, collect_prepared_cubic_relations};
 use prepared_input::parse_neutral_prepared_cubic_json;
 use rug::Integer;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::alloc::{Layout, alloc, dealloc};
 
 const MAX_INPUT_BYTES: usize = 16 * 1024 * 1024;
 const MAXIMUM_VISITED_IDEALS: usize = 1;
 const MAXIMUM_CANDIDATES: usize = 64;
+const REQUEST_SCHEMA: &str = "sagejs.rust-class-group/prepared-relation-prefix-request-v1";
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct BoundedRequest {
+    schema: String,
+    maximum_visited_ideals: usize,
+    maximum_candidates: usize,
+    prepared_field: serde_json::Value,
+}
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -69,6 +79,15 @@ struct Counters {
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
+struct Storage {
+    relation_cache_capacity: usize,
+    full_relation_cache_capacity: usize,
+    dense_records_bytes: usize,
+    full_dense_records_bytes: usize,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 struct ResultDocument {
     schema: &'static str,
     status: &'static str,
@@ -82,6 +101,7 @@ struct ResultDocument {
     missing_rank: usize,
     complete_rank_and_surplus: bool,
     counters: Counters,
+    storage: Storage,
     prefix_sha256: String,
 }
 
@@ -100,8 +120,26 @@ fn hash_integer(hasher: &mut Sha256, value: &Integer) {
     hasher.update(text.as_bytes());
 }
 
+fn dense_record_bytes(capacity: usize, width: usize) -> Result<usize, String> {
+    capacity
+        .checked_mul(width)
+        .and_then(|value| value.checked_mul(size_of::<i64>()))
+        .ok_or_else(|| "dense relation-record byte count overflow".into())
+}
+
 fn run(source: &str) -> Result<ResultDocument, String> {
-    let input = parse_neutral_prepared_cubic_json(source).map_err(|error| error.to_string())?;
+    let request: BoundedRequest = serde_json::from_str(source)
+        .map_err(|error| format!("invalid bounded request: {error}"))?;
+    if request.schema != REQUEST_SCHEMA
+        || request.maximum_visited_ideals != MAXIMUM_VISITED_IDEALS
+        || request.maximum_candidates != MAXIMUM_CANDIDATES
+    {
+        return Err("unsupported bounded relation-prefix request".into());
+    }
+    let prepared_source = serde_json::to_string(&request.prepared_field)
+        .map_err(|error| format!("invalid prepared field: {error}"))?;
+    let input =
+        parse_neutral_prepared_cubic_json(&prepared_source).map_err(|error| error.to_string())?;
     let presentation = collect_prepared_cubic_relations(
         &input.field,
         PreparedCollectorLimits {
@@ -132,6 +170,8 @@ fn run(source: &str) -> Result<ResultDocument, String> {
         hash.update((*value as u64).to_le_bytes());
     }
     let counters = &presentation.counters;
+    let dense_records_bytes = dense_record_bytes(presentation.relation_capacity, width)?;
+    let full_dense_records_bytes = dense_record_bytes(presentation.full_relation_capacity, width)?;
     Ok(ResultDocument {
         schema: "sagejs.rust-class-group/prepared-relation-prefix-v1",
         status: "bounded-stage",
@@ -156,6 +196,12 @@ fn run(source: &str) -> Result<ResultDocument, String> {
             positive_cache_statuses: counters.positive_cache_statuses,
             random_ideals: counters.random_ideals,
             random_search_ideals: counters.random_search_ideals,
+        },
+        storage: Storage {
+            relation_cache_capacity: presentation.relation_capacity,
+            full_relation_cache_capacity: presentation.full_relation_capacity,
+            dense_records_bytes,
+            full_dense_records_bytes,
         },
         prefix_sha256: format!("{:x}", hash.finalize()),
     })
@@ -233,21 +279,49 @@ mod tests {
 
     const ROW6: &str = include_str!("../../row6-candidate/inputs/row6-neutral-prepared-field.json");
 
+    fn bounded(prepared: &str) -> String {
+        serde_json::to_string(&serde_json::json!({
+            "schema": REQUEST_SCHEMA,
+            "maximumVisitedIdeals": MAXIMUM_VISITED_IDEALS,
+            "maximumCandidates": MAXIMUM_CANDIDATES,
+            "preparedField": serde_json::from_str::<serde_json::Value>(prepared).unwrap(),
+        }))
+        .unwrap()
+    }
+
+    fn bounded_row6() -> String {
+        bounded(ROW6)
+    }
+
     #[test]
     fn malformed_and_oracle_bearing_inputs_fail_closed() {
         assert!(run("{}").is_err());
+        assert!(run(ROW6).is_err());
         let forbidden = ROW6.replacen(
             "\"containsOracleAnswers\": false",
             "\"containsOracleAnswers\": true",
             1,
         );
-        assert!(run(&forbidden).is_err());
+        let forbidden_request = bounded(&forbidden);
+        assert!(run(&forbidden_request).is_err());
+
+        let wrong_limit =
+            bounded_row6().replacen("\"maximumCandidates\":64", "\"maximumCandidates\":65", 1);
+        assert!(run(&wrong_limit).is_err());
+        let wrong_visited = bounded_row6().replacen(
+            "\"maximumVisitedIdeals\":1",
+            "\"maximumVisitedIdeals\":2",
+            1,
+        );
+        assert!(run(&wrong_visited).is_err());
+        assert!(dense_record_bytes(usize::MAX, 2).is_err());
+        assert!(dense_record_bytes(2, usize::MAX).is_err());
     }
 
     #[test]
     fn real_row6_relation_prefix_is_stable_and_incomplete() {
         for _ in 0..3 {
-            let result = run(ROW6).expect("row-6 relation prefix");
+            let result = run(&bounded_row6()).expect("row-6 relation prefix");
             assert_eq!(result.status, "bounded-stage");
             assert_eq!(result.factor_base_ideals, 1130);
             assert_eq!(result.resident_relation_rows, 204);
@@ -257,6 +331,10 @@ mod tests {
             assert_eq!(result.counters.primitive_nonscalar_candidates, 64);
             assert_eq!(result.counters.smooth_candidates, 1);
             assert_eq!(result.counters.appended_relations, 1);
+            assert_eq!(result.storage.relation_cache_capacity, 267);
+            assert_eq!(result.storage.full_relation_cache_capacity, 11_420);
+            assert_eq!(result.storage.dense_records_bytes, 2_413_680);
+            assert_eq!(result.storage.full_dense_records_bytes, 103_236_800);
             assert_eq!(
                 result.prefix_sha256,
                 "7e4c9242d3fa92c7bc7f8fbb3e9c68cc77f66cbc5838657cf38e610c66ba22b3"

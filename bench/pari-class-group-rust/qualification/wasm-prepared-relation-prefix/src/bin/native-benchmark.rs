@@ -8,7 +8,16 @@ const SAMPLES: usize = 15;
 
 fn main() {
     let input_path = env::args().nth(1).expect("usage: native-benchmark INPUT");
-    let source = fs::read_to_string(&input_path).expect("read neutral input");
+    let prepared: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&input_path).expect("read neutral input"))
+            .expect("parse neutral input");
+    let source = serde_json::to_string(&json!({
+        "schema": "sagejs.rust-class-group/prepared-relation-prefix-request-v1",
+        "maximumVisitedIdeals": 1,
+        "maximumCandidates": 64,
+        "preparedField": prepared,
+    }))
+    .expect("bounded request JSON");
     let expected = run_prepared_relation_prefix_json(&source);
     let mut samples = Vec::with_capacity(SAMPLES);
     for _ in 0..SAMPLES {

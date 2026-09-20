@@ -109,6 +109,26 @@ pub struct PreparedCubicRelationPresentation {
     pub timings: CollectorTimings,
     pub complete_rank_and_surplus: bool,
     pub missing_rank: usize,
+    pub relation_capacity: usize,
+    pub full_relation_capacity: usize,
+}
+
+fn prepared_relation_capacity(
+    size: usize,
+    initial_relations: usize,
+    maximum_candidates: usize,
+) -> Result<(usize, usize), ClassGroupError> {
+    let target = size
+        .checked_add(SUPPLEMENTARY_RELATIONS)
+        .ok_or(ClassGroupError::CandidateOverflow)?;
+    let full = target
+        .checked_mul(10)
+        .and_then(|value| value.checked_add(50))
+        .ok_or(ClassGroupError::CandidateOverflow)?;
+    Ok((
+        full.min(initial_relations.saturating_add(maximum_candidates)),
+        full,
+    ))
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -632,11 +652,24 @@ pub fn collect_prepared_cubic_relations(
     let (subfactor_count, search_permutation) = factor_base.catalog.subfactor_permutation(3);
     timings.factor_base_ns = started.elapsed().as_nanos();
     let size = factor_base.catalog.ideals.len();
-    let target = size + SUPPLEMENTARY_RELATIONS;
-    let capacity = 10 * target + 50;
+    let target = size
+        .checked_add(SUPPLEMENTARY_RELATIONS)
+        .ok_or(ClassGroupError::CandidateOverflow)?;
+    // Every complete rational-prime group seeds at most one resident row and
+    // every subsequently appended row consumes one counted candidate.  A
+    // bounded prefix therefore does not need the full PARI working capacity.
+    // The default unbounded collector still selects `full_relation_capacity`.
+    let initial_relation_capacity = factor_base
+        .catalog
+        .complete_groups
+        .iter()
+        .filter(|complete| **complete)
+        .count();
+    let (capacity, full_relation_capacity) =
+        prepared_relation_capacity(size, initial_relation_capacity, limits.maximum_candidates)?;
 
     let started = Instant::now();
-    let mut cache = RelationCache::new(size, capacity, SUPPLEMENTARY_RELATIONS);
+    let mut cache = RelationCache::try_new(size, capacity, SUPPLEMENTARY_RELATIONS)?;
     let ramification: Vec<i64> = factor_base
         .catalog
         .ideals
@@ -853,12 +886,30 @@ pub fn collect_prepared_cubic_relations(
         timings,
         complete_rank_and_surplus: cache.missing() == 0 && cache.len() >= target,
         missing_rank: cache.missing(),
+        relation_capacity: capacity,
+        full_relation_capacity,
     })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn bounded_prepared_capacity_preserves_the_unbounded_default() {
+        assert_eq!(
+            prepared_relation_capacity(1_130, 203, 64),
+            Ok((267, 11_420))
+        );
+        assert_eq!(
+            prepared_relation_capacity(1_130, 203, usize::MAX),
+            Ok((11_420, 11_420))
+        );
+        assert_eq!(
+            prepared_relation_capacity(usize::MAX, 0, 0),
+            Err(ClassGroupError::CandidateOverflow)
+        );
+    }
 
     #[test]
     fn modular_row_selection_retains_only_rank_changes() {

@@ -1,7 +1,7 @@
 #[path = "../src/relation_cache.rs"]
 mod relation_cache;
 
-use relation_cache::{AddOutcome, RelationCache, relation_mod_inverse};
+use relation_cache::{AddOutcome, CacheError, RelationCache, relation_mod_inverse};
 
 #[test]
 fn missing_pivot_indices_follow_rank_updates() {
@@ -115,6 +115,59 @@ fn complete_prime_groups_seed_the_cache_without_new_storage() {
         .unwrap();
     assert_eq!(generators, [2, 0, 0, 3, 0, 0]);
     assert_eq!(cache.metadata(), &[1, 0, 0, 2, 0, 0]);
+}
+
+#[test]
+fn complete_prime_groups_accept_exact_bounded_capacity_and_fail_closed_below_it() {
+    let arguments = (
+        2,
+        [2, 3, 5],
+        [0_usize, 1, 0],
+        [1_usize, 2, 3],
+        [true, true, false],
+        [1_i64, 2, 1],
+    );
+    let mut exact = RelationCache::new(3, arguments.0, 2);
+    let mut relation = [0_i64; 3];
+    assert_eq!(
+        exact.initialize_complete_prime_groups(
+            2,
+            &arguments.1,
+            &arguments.2,
+            &arguments.3,
+            &arguments.4,
+            &arguments.5,
+            &mut relation,
+        ),
+        Ok(arguments.0)
+    );
+    assert_eq!(exact.records(), &[1, 0, 0, 0, 2, 1]);
+
+    let mut too_small = RelationCache::new(3, arguments.0 - 1, 2);
+    assert_eq!(
+        too_small.initialize_complete_prime_groups(
+            2,
+            &arguments.1,
+            &arguments.2,
+            &arguments.3,
+            &arguments.4,
+            &arguments.5,
+            &mut relation,
+        ),
+        Err(CacheError::CapacityExhausted)
+    );
+}
+
+#[test]
+fn allocation_dimensions_reject_usize_overflow() {
+    assert!(matches!(
+        RelationCache::try_new(usize::MAX, 2, 0),
+        Err(CacheError::InvalidLayout)
+    ));
+    assert!(matches!(
+        RelationCache::try_new(2, usize::MAX, 0),
+        Err(CacheError::InvalidLayout)
+    ));
 }
 
 #[test]

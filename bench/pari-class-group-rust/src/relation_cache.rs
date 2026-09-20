@@ -47,18 +47,27 @@ pub struct RelationCache {
 
 impl RelationCache {
     pub fn new(size: usize, capacity: usize, relsup: usize) -> Self {
-        Self {
+        Self::try_new(size, capacity, relsup).expect("relation-cache dimensions fit in usize")
+    }
+
+    pub fn try_new(size: usize, capacity: usize, relsup: usize) -> Result<Self, CacheError> {
+        let basis_length = size.checked_mul(size).ok_or(CacheError::InvalidLayout)?;
+        let records_length = capacity
+            .checked_mul(size)
+            .ok_or(CacheError::InvalidLayout)?;
+        let metadata_length = capacity.checked_mul(3).ok_or(CacheError::InvalidLayout)?;
+        Ok(Self {
             size,
             capacity,
             last: 0,
             missing: size,
             relsup,
-            basis: vec![0; size * size],
-            records: vec![0; capacity * size],
+            basis: vec![0; basis_length],
+            records: vec![0; records_length],
             hashes: vec![0; capacity],
-            metadata: vec![0; capacity * 3],
+            metadata: vec![0; metadata_length],
             scratch: vec![0; size],
-        }
+        })
     }
 
     pub fn reset(&mut self, relsup: usize) {
@@ -129,9 +138,11 @@ impl RelationCache {
             || complete.len() != groups
             || ramification.len() != self.size
             || relation.len() != self.size
-            || self.capacity < 10 * (self.size + additional) + 50
         {
             return Err(CacheError::InvalidLayout);
+        }
+        if self.capacity < complete.iter().filter(|value| **value).count() {
+            return Err(CacheError::CapacityExhausted);
         }
         self.reset(additional);
         for group in 0..groups {
