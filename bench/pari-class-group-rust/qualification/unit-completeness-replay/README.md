@@ -67,8 +67,9 @@ result. The exact ideal arithmetic is authenticated by the allowlisted row-6
 prepared maximal-order boundary; Rust does not yet independently prove
 maximality for this nonsquarefree-discriminant fixture.
 
-`results/row6-replay-receipt.json` records a successful retained-artifact
-replay from the preceding unit/completeness stage. It is intentionally marked
-as requiring an integration commit and must be regenerated after the exact
-algebra replay code has a code-bearing revision; this qualification lane does
-not promote or rewrite that final receipt prematurely.
+`results/row6-replay-receipt.json` records two deterministic successful
+replays plus the complete counterfeit suite from the exact code-bearing
+revision named in the receipt. The verifier source, Cargo inputs, neutral
+input, prepared evidence, mathematical digest, outputs, and toolchain are all
+content-bound. This promotes the prepared row-6 replay evidence only; the
+scope limitations above remain unchanged.

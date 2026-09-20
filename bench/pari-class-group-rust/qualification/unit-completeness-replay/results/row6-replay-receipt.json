@@ -1,0 +1,96 @@
+{
+  "schema": "sagejs.rust-class-group/unit-completeness-replay-receipt-v1",
+  "qualificationStatus": "independently-replayed-grh-conditional-class-unit-index-one",
+  "inputId": "sha256:42ecf93a56de4cc7763d33c8b422e7804582278674c1a6fef41a4799a9930bd5",
+  "sourceRevisionAtValidation": "809bc1cdbedee250a2f6a59653568b9fa3b3b896",
+  "sourceRevisionContainsVerifier": true,
+  "integrationCommitRequiredBeforePromotion": false,
+  "verifierSourceSha256": "sha256:2db71ee7edeb6bcf9c80e1e0aa94ca6ac75abbc8faabdefe783544677f657247",
+  "cargoManifestSha256": "sha256:bf361736222bfb1d224dfe0f2b4b2b63842e1909408aacc4d33e9743498a8e6e",
+  "cargoLockSha256": "sha256:dc51698e4f2487bdbe96db57a5970c60cf5e39b6b9a9835a3138f2922bec7d31",
+  "toolchain": {
+    "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+    "cargo": "cargo 1.98.1 (797e8a9bc 2026-08-05)",
+    "llvm": "22.1.8",
+    "cc": "cc (Ubuntu 15.2.0-16ubuntu1) 15.2.0",
+    "host": "x86_64-unknown-linux-gnu"
+  },
+  "neutralInputSha256": "sha256:24551723d43685e5592d9b3f866bf73e3f0bbde69ee5afec1eb2dc2f760314b5",
+  "sourceEvidenceSha256": "sha256:99a848722b9dfd13d938a036a20fce9152caf601bfd37c8927f211d3d3b8ea8e",
+  "freshSourceEvidenceSha256": "sha256:99a848722b9dfd13d938a036a20fce9152caf601bfd37c8927f211d3d3b8ea8e",
+  "mathematicalEvidenceWithoutTimingsSha256": "sha256:2206b337683165da6d641f2af71d32ad5638d65b081d55cbdf2a29e89faa96eb",
+  "freshMathematicalEvidenceWithoutTimingsSha256": "sha256:2206b337683165da6d641f2af71d32ad5638d65b081d55cbdf2a29e89faa96eb",
+  "repeatedMathematicalDigestMatches": true,
+  "replayOutputSha256": "sha256:faa9d78e5b8869876e397a8dfa3c390880ffe3a2bbfbf39b47a7dcf28c99f713",
+  "freshReplayOutputSha256": "sha256:faa9d78e5b8869876e397a8dfa3c390880ffe3a2bbfbf39b47a7dcf28c99f713",
+  "counterfeitOutputSha256": "sha256:78278963d7677810b1e574b5b555f0414572a97cd97b03083959b18d9d927f1c",
+  "exactClassLatticeEvidence": {
+    "invariantFactors": [2, 2],
+    "classNumber": 4,
+    "relationRows": 1137,
+    "relationColumns": 1130,
+    "dependencyRank": 7,
+    "compactCertificateSha256": "sha256:ce85dcbcfdae9e73f6fe789f8712c463765295c7f41749c0d6950f53127cfaf2",
+    "independentSagejsReplayReceiptSha256": "sha256:92a07b5503961be92c18d3ba272f9d9e6c47135961f933d5a7fe3e8c7f7fe9cd",
+    "independentSagejsVerifierSourceSha256": "sha256:84d50a5900f11f3a46a6d7f7c1b22d141407bf17ed6a2f4538021708f8b260cc",
+    "fullSquareDeterminantIndependentlyRecomputed": true
+  },
+  "exactUnitEvidence": {
+    "relationRows": 1137,
+    "compactDependencies": 7,
+    "fundamentalUnits": 2,
+    "fundamentalUnitRelationTerms": 879,
+    "everyCompactUnitAnnihilatesTheExactRelationPresentation": true,
+    "everyFundamentalUnitEqualsItsExactDependencyCombination": true
+  },
+  "principalRelationAlgebraEvidence": {
+    "relationRows": 1137,
+    "factorTerms": 7136,
+    "everyPrincipalElementReconstructedFromExactIntegralBasisMultiplication": true,
+    "everyFactorBaseProductRecomputedInCanonicalExactIdealArithmetic": true,
+    "everyPrincipalIdealEqualsItsCompleteRetainedNonnegativeFactorBaseProduct": true,
+    "maximalOrderEvidence": "upstream-assumed-allowlisted-row6"
+  },
+  "regulatorEvidence": {
+    "precisionBits": 4096,
+    "directedArbEnclosureRecomputedExactly": true,
+    "auxiliaryMpfrReplayContained": false,
+    "auxiliaryMpfrReplayRole": "reported lower-precision cancellation diagnostic, never proof authority"
+  },
+  "factorBaseGenerationEvidence": {
+    "boundExclusive": 9197,
+    "orderedCatalogColumns": 1130,
+    "everyCatalogDescriptorMatchesExactMaximalOrderReplay": true,
+    "rawPrimeIdealPowerTerms": 1176,
+    "aggregatedPrimeIdealPowerTerms": 794,
+    "strictMarginRecomputedAndPositive": true,
+    "hypothesis": "GRH-for-all-unramified-Hecke-L-functions-of-class-group-characters"
+  },
+  "analyticCompletionEvidence": {
+    "threshold": 23994,
+    "rawPrimePowerTerms": 6291,
+    "aggregatedPrimePowerTerms": 1656,
+    "directedArbEnclosuresRecomputedExactly": true,
+    "uniquePositiveInteger": 1,
+    "hypothesis": "GRH-for-the-Dedekind-zeta-functions-of-K-and-Q-in-the-Belabas-Friedman-residue-bound"
+  },
+  "counterfeitMutationsRejected": [
+    "analyticSchedule",
+    "classMap",
+    "classNumber",
+    "factorBaseCatalog",
+    "factorBaseMargin",
+    "fundamentalNonzeroCount",
+    "invariantFactorDecomposition",
+    "kernelSaturation",
+    "principalGenerator",
+    "principalRelationElementAlgebra",
+    "principalRelationFactorExponentAlgebra",
+    "principalRelationFactorOrderingAlgebra",
+    "regulatorInterval",
+    "squarePresentationDeterminant",
+    "unitDependency"
+  ],
+  "usesPariAtRuntime": false,
+  "remainingGap": "This closes prepared row-6 exact relation-element algebra plus unit/regulator/conditional-completeness replay. Maximality for this nonsquarefree-discriminant fixture remains the explicit authenticated upstream row-6 assumption; this does not construct the public Sage.js result, support unconditional proof, or qualify other fields/signatures/degrees."
+}
