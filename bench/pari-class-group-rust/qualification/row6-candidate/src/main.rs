@@ -14,7 +14,7 @@ use sagejs_pari_class_group_rust_experiment::{
     collect_validated_primitive_box_with_supplementary, flint_hnf_basis, flint_hnf_profile,
     build_cubic_bdf_factor_base_plan, build_cubic_belabas_friedman_plan,
     flint_bdf_factor_base_margin, flint_bf_index_enclosure, flint_compact_cubic_regulator,
-    flint_incremental_hnf, flint_left_kernel,
+    flint_incremental_hnf, flint_left_kernel, flint_small_surplus_class_order,
     flint_smith_candidate, flint_smith_class_map, flint_staged_relation_witnesses,
     modular_independent_relation_rows,
     prepared_cubic_factor_base, prepared_cubic_splitting_records,
@@ -722,12 +722,11 @@ fn small_norm_unit_kernel(maximum_ideals: usize, maximum_candidates: usize) {
             remaining.extend_from_slice(relation);
         }
     }
-    let incremental = flint_incremental_hnf(&square, &remaining, columns)
-        .expect("incremental exact relation HNF failed");
-    let smith = flint_smith_candidate(&incremental.basis, columns, columns)
-        .expect("exact Smith candidate failed");
-    assert_eq!(smith.class_number, 4);
-    assert_eq!(smith.invariant_factors, [2, 2]);
+    let class_order = flint_small_surplus_class_order(&square, &remaining, columns)
+        .expect("exact small-surplus class-order computation failed");
+    assert_eq!(class_order.class_order, 4);
+    assert_eq!(class_order.two_rank, 2);
+    let invariant_factors = [2_i64, 2_i64];
     let presentation_ns = presentation_started.elapsed().as_nanos();
     let kernel_started = Instant::now();
     let kernel = flint_left_kernel(&answer.relations, rows, columns)
@@ -960,7 +959,10 @@ fn small_norm_unit_kernel(maximum_ideals: usize, maximum_candidates: usize) {
         &bf_plan.terms,
         BF_THRESHOLD,
         &field.data().discriminant,
-        smith.class_number as u64,
+        class_order
+            .class_order
+            .to_u64()
+            .expect("class order is outside u64"),
         2,
         (3, 0),
         &rigorous_regulator,
@@ -1088,8 +1090,8 @@ fn small_norm_unit_kernel(maximum_ideals: usize, maximum_candidates: usize) {
                     },
                     "conclusion": "retained-factor-base-generates-the-full-class-group",
                 },
-                "candidateClassNumber": smith.class_number,
-                "candidateInvariantFactors": smith.invariant_factors,
+                "candidateClassNumber": class_order.class_order.to_string(),
+                "candidateInvariantFactors": invariant_factors,
                 "zetaLogResidueEnclosure": {
                     "lowerMantissa": bf.zeta_log_residue.lower.to_string(),
                     "upperMantissa": bf.zeta_log_residue.upper.to_string(),
@@ -1111,7 +1113,10 @@ fn small_norm_unit_kernel(maximum_ideals: usize, maximum_candidates: usize) {
             },
             "timingsNanoseconds": {
                 "collection": answer.timings.total_ns,
-                "presentationHnfAndSmith": presentation_ns,
+                "presentationClassOrder": presentation_ns,
+                "presentationSquareDeterminant": class_order.determinant_ns,
+                "presentationSurplusCoordinateSolve": class_order.solve_ns,
+                "presentationSurplusKernel": class_order.kernel_ns,
                 "kernelInternal": kernel.kernel_ns,
                 "kernelExternal": kernel_external_ns,
                 "logarithmicEmbedding": logarithms_ns,

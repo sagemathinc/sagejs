@@ -70,11 +70,12 @@ pub use factor_base::{FactorBase, PrimeIdeal};
 #[cfg(feature = "flint-normal-form")]
 pub use flint_normal_form::{
     FlintBfIndexEnclosure, FlintDyadicInterval, FlintHnfProfile, FlintIncrementalHnf,
-    FlintLeftKernel, FlintNormalFormError, FlintRelationWitnesses, FlintSmithCandidate,
-    FlintSmithClassMap, flint_bdf_factor_base_margin, flint_bf_index_enclosure,
-    flint_compact_cubic_regulator, flint_hnf_basis, flint_hnf_profile, flint_incremental_hnf,
-    flint_left_kernel, flint_lll_column_transform, flint_relation_witnesses, flint_smith_candidate,
-    flint_smith_class_map, flint_staged_relation_witnesses,
+    FlintLeftKernel, FlintNormalFormError, FlintRelationWitnesses, FlintSmallSurplusClassOrder,
+    FlintSmithCandidate, FlintSmithClassMap, flint_bdf_factor_base_margin,
+    flint_bf_index_enclosure, flint_compact_cubic_regulator, flint_hnf_basis, flint_hnf_profile,
+    flint_incremental_hnf, flint_left_kernel, flint_lll_column_transform, flint_relation_witnesses,
+    flint_small_surplus_class_order, flint_smith_candidate, flint_smith_class_map,
+    flint_staged_relation_witnesses,
 };
 pub use gmp_smith::{
     ExactSmithCandidateInvariants, GmpSmithError, GmpSmithWorkspace,

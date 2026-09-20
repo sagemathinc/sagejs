@@ -54,6 +54,16 @@ pub struct FlintIncrementalHnf {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FlintSmallSurplusClassOrder {
+    pub class_order: Integer,
+    pub two_rank: usize,
+    pub determinant_bits: usize,
+    pub determinant_ns: u64,
+    pub solve_ns: u64,
+    pub kernel_ns: u64,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FlintRelationWitnesses {
     /// Target-major coefficients expressing each target as a combination of
     /// the original relation rows.
@@ -159,6 +169,18 @@ unsafe extern "C" {
         initial_hnf_ns: *mut u64,
         saturation_ns: *mut u64,
     ) -> c_int;
+    fn sagejs_rust_flint_small_surplus_class_order_i64(
+        size: usize,
+        surplus_rows: usize,
+        square_entries: *const c_longlong,
+        surplus_entries: *const c_longlong,
+        class_order: *mut c_void,
+        two_rank: *mut usize,
+        determinant_bits: *mut usize,
+        determinant_ns: *mut u64,
+        solve_ns: *mut u64,
+        kernel_ns: *mut u64,
+    ) -> c_int;
     fn sagejs_rust_flint_lll_columns_mpz(
         entries: *const *const c_void,
         transform: *mut c_longlong,
@@ -255,6 +277,54 @@ unsafe extern "C" {
         upper: *mut c_void,
         exponent: *mut c_longlong,
     ) -> c_int;
+}
+
+pub fn flint_small_surplus_class_order(
+    square_entries: &[i64],
+    surplus_entries: &[i64],
+    size: usize,
+) -> Result<FlintSmallSurplusClassOrder, FlintNormalFormError> {
+    if size == 0
+        || size.checked_mul(size) != Some(square_entries.len())
+        || surplus_entries.is_empty()
+        || !surplus_entries.len().is_multiple_of(size)
+    {
+        return Err(FlintNormalFormError::DimensionMismatch);
+    }
+    let surplus_rows = surplus_entries.len() / size;
+    let mut class_order = Integer::new();
+    let mut two_rank = 0_usize;
+    let mut determinant_bits = 0_usize;
+    let mut determinant_ns = 0_u64;
+    let mut solve_ns = 0_u64;
+    let mut kernel_ns = 0_u64;
+    let status = unsafe {
+        sagejs_rust_flint_small_surplus_class_order_i64(
+            size,
+            surplus_rows,
+            square_entries.as_ptr().cast(),
+            surplus_entries.as_ptr().cast(),
+            class_order.as_raw_mut().cast(),
+            &mut two_rank,
+            &mut determinant_bits,
+            &mut determinant_ns,
+            &mut solve_ns,
+            &mut kernel_ns,
+        )
+    };
+    match status {
+        0 => Ok(FlintSmallSurplusClassOrder {
+            class_order,
+            two_rank,
+            determinant_bits,
+            determinant_ns,
+            solve_ns,
+            kernel_ns,
+        }),
+        -1 => Err(FlintNormalFormError::InvalidDimensions),
+        -3 => Err(FlintNormalFormError::RankDeficient),
+        code => Err(FlintNormalFormError::ForeignFailure(code)),
+    }
 }
 
 pub fn flint_bdf_factor_base_margin(
@@ -898,6 +968,38 @@ mod tests {
         assert_eq!(smith.invariant_factors, [2, 2]);
         assert_eq!(answer.initial_profile.determinant_bits, 4);
         assert_eq!(answer.final_profile.determinant_bits, 3);
+    }
+
+    #[test]
+    fn small_surplus_order_avoids_a_large_hnf() {
+        let answer = flint_small_surplus_class_order(&[2, 0, 0, 6], &[0, 4], 2).unwrap();
+        assert_eq!(answer.class_order, 4);
+        assert_eq!(answer.two_rank, 2);
+        assert_eq!(answer.determinant_bits, 4);
+    }
+
+    #[test]
+    fn small_surplus_order_matches_direct_smith_examples() {
+        let examples: &[(&[i64], &[i64], usize)] = &[
+            (&[6, 0, 0, 10], &[2, 2, 3, 5], 2),
+            (&[4, 1, 0, 0, 9, 1, 0, 0, 15], &[2, 1, 3, 1, 4, 2], 3),
+            (&[2, 1, 0, 6], &[1, 3], 2),
+        ];
+        for &(square, surplus, size) in examples {
+            let answer = flint_small_surplus_class_order(square, surplus, size).unwrap();
+            let mut complete = square.to_vec();
+            complete.extend_from_slice(surplus);
+            let smith = flint_smith_candidate(&complete, complete.len() / size, size).unwrap();
+            assert_eq!(answer.class_order, smith.class_number);
+            assert_eq!(
+                answer.two_rank,
+                smith
+                    .diagonal
+                    .iter()
+                    .filter(|entry| **entry != 0 && entry.rem_euclid(2) == 0)
+                    .count()
+            );
+        }
     }
 
     #[test]

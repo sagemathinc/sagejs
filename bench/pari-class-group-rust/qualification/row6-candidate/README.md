@@ -381,15 +381,22 @@ norm at most `9196` generate the full class group. This closes the mathematical
 honesty gap for this prepared field; it is not merely the earlier PARI
 floating-point bound replay.
 
-The final combined diagnostic took 56.18 seconds: 7.73 seconds for relation
-collection, 45.81 seconds for incremental HNF and Smith, 1.51 seconds for the
-saturated kernel, 0.24 seconds for logarithmic embeddings, 0.82 seconds for
-unit reconstruction/replay, and 0.62 seconds for both analytic certificates.
+The final combined diagnostic now takes 18.06 seconds: 7.67 seconds for
+relation collection, 7.81 seconds for exact class-order determination, 1.46
+seconds for the saturated unit kernel, 0.24 seconds for logarithmic embeddings,
+0.82 seconds for unit reconstruction/replay, and 0.62 seconds for both analytic
+certificates. The class-order stage no longer constructs a 1,130-dimensional
+HNF. It computes the 306-bit determinant of the selected square relation basis,
+solves the seven surplus rows in that basis, and identifies the exact subgroup
+they generate via a saturated integer congruence kernel of nullity seven. This
+proves the final index is four. Exact rank modulo two is two, distinguishing
+`C2 x C2` from `C4`. Differential tests compare this algorithm with direct
+Smith form on independent small presentations.
+
 This is not a qualified performance result: the current Rust incremental HNF
-is substantially slower than the earlier optimized Python-to-C artifact, and
-the command still emits a large diagnostic receipt. The mathematical result
-is the important new evidence; HNF is now the sharply dominant Rust
-performance problem.
+is still used by the separately retained map/witness path, and the command
+emits a large diagnostic receipt. The prepared-field class-and-unit
+certificate itself no longer depends on that expensive HNF.
 
 For orientation, the closest available PARI 2.17.4 instrumented boundaries
 from the frozen row-6 campaign compare as follows. These are deliberately
@@ -400,20 +407,20 @@ its HNF driver.
 
 | closest region | Rust diagnostic | PARI 2.17.4 instrumented | ratio |
 | --- | ---: | ---: | ---: |
-| relation side | 7.730068 s | 1.100174 s | 7.0262x |
-| presentation HNF and Smith / matrix side | 45.813069 s | 2.791358 s | 16.4125x |
-| explicit kernel, units, regulator and analytic completion / terminal residual | 3.184720 s | 0.009196 s | not algorithmically matched |
-| complete external diagnostic / instrumented control | 56.176176 s | 3.900729 s | 14.4015x |
+| relation side | 7.669527 s | 1.100174 s | 6.9712x |
+| determinant, surplus solve and exact class-order kernel / matrix side | 7.807095 s | 2.791358 s | 2.7969x |
+| explicit unit kernel, units, regulator and analytic completion / terminal residual | 3.143168 s | 0.009196 s | not algorithmically matched |
+| complete external diagnostic / instrumented control | 18.064180 s | 3.900729 s | 4.6310x |
 
 Against the pristine PARI total of `3.886499614` seconds, the single Rust
-diagnostic is `14.4542x`. This is not yet competitive. It does, however, answer
+diagnostic is `4.6479x`. This is not yet competitive. It does, however, answer
 the higher-risk mathematical question: the Rust path can reach a certified
 answer without PARI at runtime, and the remaining row-6 latency is now
-overwhelmingly localized to presentation HNF rather than unit or analytic
-completion.
+localized to relation collection and the square determinant/surplus solve,
+rather than unit or analytic completion.
 
 The sparse receipt is `results/maximal-unit-lattice.json` (SHA-256
-`b453e918573871ec9a9ee3c4654dfe7bc22417eea8375f2e192930b54b2a6802`).
+`f2c0c8a9f72bcdf9883070f2cdadc24a960f72f18d0ef511209b6988fa0c2755`).
 Public generator/result construction, a production honesty-extension policy,
 unconditional certification, and the public polynomial-to-result route remain
 required; this prepared-field diagnostic does not authorize production
