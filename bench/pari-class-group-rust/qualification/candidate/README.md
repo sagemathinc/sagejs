@@ -58,3 +58,26 @@ exits with status 1 and emits no certificate.
 ```sh
 cargo run --release -- path/to/prepared-cubic-v2.json > compact.json
 ```
+
+## Hash-bound Sage.js replay
+
+The retained qualification receipt is
+`row6-sagejs-compact-replay-receipt.json`. It binds the exact prepared and
+certificate bytes, the independently replayed result, the verifier source,
+and the measured verification budget. Reproduce it from the repository root
+using the content-addressed `/tmp` artifacts named in that receipt:
+
+```sh
+sha256sum \
+  /tmp/sagejs-row6-v2-fresh-r3.json \
+  /tmp/sagejs-row6-compact-fresh-r3.json \
+  bench/pari-class-group-rust/qualification/candidate/test_sagejs_compact_adapter.py
+SAGEJS_ROW6_HASH_BOUND=1 \
+SAGEJS_RUST_PREPARED_V2=/tmp/sagejs-row6-v2-fresh-r3.json \
+SAGEJS_RUST_COMPACT_CERTIFICATE=/tmp/sagejs-row6-compact-fresh-r3.json \
+node bin/sagejs --python \
+  bench/pari-class-group-rust/qualification/candidate/test_sagejs_compact_adapter.py
+```
+
+The test refuses a hash mismatch, replays the complete compact proof without
+using producer booleans as authority, and emits one canonical JSON result line.

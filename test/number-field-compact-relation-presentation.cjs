@@ -145,6 +145,123 @@ assert large_payload["index_certificate"]["minors"][0][
 ] == str(huge)
 assert CompactRelationPresentation.from_dict(large_payload).verify()
 
+# The rigorous small-surplus variant proves the full relation-lattice index
+# from a primitive exact left kernel without constructing dense m-by-m
+# transforms.  The square/surplus partition is deliberately interleaved and
+# two dependency minors are needed to prove gcd one.  Here D=12, K=2, and the
+# quotient is cyclic of order 6.
+small_surplus = CompactRelationPresentation.from_small_surplus(
+    2,
+    (
+        SparseRelationRow(2, (2, 0)),
+        SparseRelationRow(2, (0, 3)),
+        SparseRelationRow(2, (0, 6)),
+    ),
+    (6,),
+    ((3,), (2,)),
+    ((1, 2),),
+    ((0, -2, 1),),
+    (0, 2),
+    (1,),
+    12,
+    2,
+    (((1,), 2), ((2,), 1)),
+)
+assert small_surplus.verify()
+assert small_surplus.dependency_combination(0) == (0, -2, 1)
+assert small_surplus.class_coordinates((1, 2)) == (1,)
+small_payload = small_surplus.to_dict()
+assert small_payload["index_certificate"]["method"] == "small-surplus-kernel-gcd"
+assert CompactRelationPresentation.from_dict(small_payload).to_dict() == small_payload
+
+counterfeit_dependency = copy.deepcopy(small_payload)
+counterfeit_dependency["index_certificate"]["dependency_transforms"][0][0] = 1
+rejected(counterfeit_dependency)
+
+counterfeit_square = copy.deepcopy(small_payload)
+counterfeit_square["index_certificate"]["square_determinant"] = "24"
+rejected(counterfeit_square)
+
+counterfeit_projection = copy.deepcopy(small_payload)
+counterfeit_projection["index_certificate"][
+    "projected_dependency_determinant"
+] = "4"
+rejected(counterfeit_projection)
+
+counterfeit_minor = copy.deepcopy(small_payload)
+counterfeit_minor["index_certificate"]["dependency_minors"][0][
+    "absolute_determinant"
+] = "3"
+rejected(counterfeit_minor)
+
+nonsaturated = copy.deepcopy(small_payload)
+nonsaturated["index_certificate"]["dependency_minors"][0][
+    "relation_row_indices"
+] = [2]
+rejected(nonsaturated)
+
+counterfeit_partition = copy.deepcopy(small_payload)
+counterfeit_partition["index_certificate"]["surplus_row_indices"][0] = 0
+rejected(counterfeit_partition)
+
+noncanonical_square_order = copy.deepcopy(small_payload)
+noncanonical_square_order["index_certificate"]["square_row_indices"] = [2, 0]
+rejected(noncanonical_square_order)
+
+# A simultaneous row permutation and corresponding witness permutation leaves
+# the certificate valid; row positions themselves have no hidden semantics.
+permuted = CompactRelationPresentation.from_small_surplus(
+    2,
+    (
+        SparseRelationRow(2, (0, 6)),
+        SparseRelationRow(2, (2, 0)),
+        SparseRelationRow(2, (0, 3)),
+    ),
+    (6,),
+    ((3,), (2,)),
+    ((1, 2),),
+    ((1, 0, -2),),
+    (0, 1),
+    (2,),
+    12,
+    2,
+    (((0,), 1), ((2,), 2)),
+)
+assert permuted.verify()
+
+for bad_dependency_index in (-1, 1, True):
+    try:
+        small_surplus.dependency_combination(bad_dependency_index)
+    except RelationMatrixError:
+        pass
+    else:
+        raise AssertionError("invalid dependency index was accepted")
+
+# Arbitrary precision is retained in D, the relation rows, and serialization.
+huge_surplus_order = 2**100 + 643
+huge_surplus = CompactRelationPresentation.from_small_surplus(
+    1,
+    (
+        SparseRelationRow(1, (2 * huge_surplus_order,)),
+        SparseRelationRow(1, (huge_surplus_order,)),
+    ),
+    (huge_surplus_order,),
+    ((1,),),
+    ((1,),),
+    ((-1, 2),),
+    (0,),
+    (1,),
+    2 * huge_surplus_order,
+    2,
+    (((0,), 1),),
+)
+assert huge_surplus.verify()
+huge_surplus_payload = huge_surplus.to_dict()
+assert huge_surplus_payload["index_certificate"]["square_determinant"] == str(
+    2 * huge_surplus_order
+)
+assert CompactRelationPresentation.from_dict(huge_surplus_payload).verify()
+
 print("compact relation presentation tests passed")
 `,
   );
