@@ -72,6 +72,24 @@ tool identities to `identityCommands` for a real campaign. Record host
 exclusivity, CPU governor and pinning in the campaign manifest or an attached
 host receipt; this harness does not silently change machine policy.
 
+For the exact prepared-cubic engine, `run-rust-prepared.py` verifies the
+conditional class/unit index-one status before exposing a sample, while
+`run-pari-prepared.py` authenticates and invokes the pinned PARI 2.17.4
+control. `prepared-cubic-campaign.config.json` compares these as
+`prepared-field/complete-grh-class-unit-v1`. It is expressly not a public-call
+comparison: maximal-order preparation and the Sage.js public interface are
+outside both timers. Both wrappers add child-process peak RSS and preserve the
+implementations' stage clocks. The campaign hashes the Rust and PARI
+executables, wrappers, lockfile, and build identities, including their byte
+sizes.
+
+`results/prepared-cubic-overlapping-host-smoke.note.json` classifies the first
+complete campaign as functional evidence only because a browser campaign ran
+on the same host. Its times must not be used as headline or gate evidence.
+`summarize-receipt.mjs` derives stage medians and Rust/PARI ratios from a
+passed raw receipt while retaining its SHA-256 link. The stage buckets preserve
+each engine's definitions and may be nested; they must not be summed blindly.
+
 ## Tests
 
 The tests use only a fake subprocess adapter. They cover strict boundaries,

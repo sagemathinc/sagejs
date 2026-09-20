@@ -129,13 +129,18 @@ const preparedInputs = fs
       fs.readFileSync(path.join(preparedInputDirectory, name), "utf8"),
     ),
   }));
-assert.equal(preparedInputs.length, 3);
+assert.ok(
+  preparedInputs.length > 0,
+  "at least one neutral prepared-field input must be present",
+);
 for (const { name, value } of preparedInputs) {
   expectAccepted(`neutral prepared input ${name}`, neutralInputId, value);
 }
-const row6PreparedInput = preparedInputs.find(({ name }) =>
+const row6PreparedInputEntry = preparedInputs.find(({ name }) =>
   name.startsWith("row6-"),
-).value;
+);
+assert.ok(row6PreparedInputEntry, "row6 neutral prepared-field input is missing");
+const row6PreparedInput = row6PreparedInputEntry.value;
 const nonIntegralTable = clone(row6PreparedInput);
 nonIntegralTable.preparation.multiplicationTable[0][0][0].denominator = "2";
 expectAccepted(

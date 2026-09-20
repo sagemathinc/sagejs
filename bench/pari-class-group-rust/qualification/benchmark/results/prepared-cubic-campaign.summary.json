@@ -1,0 +1,315 @@
+{
+  "schema": "sagejs.rust-class-group/prepared-benchmark-summary-v1",
+  "classification": "quiet-host-development-comparison",
+  "headlineEligible": false,
+  "qualificationCaveat": "Prepared-field conditional class-and-unit comparison; not a Sage.js public-call comparison. Repository state was an active development worktree.",
+  "boundary": {
+    "kind": "prepared-field",
+    "label": "prepared-field/complete-grh-class-unit-v1",
+    "includedWork": [
+      "replay-validated prepared cubic through class group, compact units, regulator enclosure, and conditional analytic index-one completion"
+    ],
+    "excludedWork": [
+      "polynomial validation and maximal-order preparation",
+      "adapter process startup, result projection, and JSON serialization"
+    ],
+    "proofMode": "conditional-grh",
+    "outputPolicy": "complete class-and-unit computation with exact common class-number and invariant-factor projection"
+  },
+  "rawReceipt": "prepared-cubic-campaign.receipt.json",
+  "rawReceiptSha256": "ed336c68446bcc1e6612a11bd1901f8596557e24800fefbf744ba6b98d4480ca",
+  "configSha256": "fce07c46843a1a028b415dce1e42d7cd39b8ea8f4eb20dfab5c6c762f893b6d6",
+  "environment": {
+    "capturedAt": "2026-09-20T15:18:04.585Z",
+    "node": {
+      "version": "v26.9.0",
+      "versions": {
+        "node": "26.9.0",
+        "acorn": "8.18.0",
+        "ada": "4.0.0",
+        "amaro": "1.1.11",
+        "ares": "1.34.8",
+        "brotli": "1.2.0",
+        "cldr": "48.0",
+        "icu": "78.3",
+        "libffi": "3.8.0",
+        "lief": "0.17.0",
+        "llhttp": "9.4.3",
+        "merve": "1.2.2",
+        "modules": "147",
+        "napi": "10",
+        "nbytes": "0.1.4",
+        "ncrypto": "0.0.1",
+        "nghttp2": "1.70.0",
+        "nghttp3": "",
+        "ngtcp2": "",
+        "openssl": "3.5.8",
+        "simdjson": "4.6.11",
+        "simdutf": "7.7.0",
+        "sqlite": "3.53.4",
+        "tz": "2026c",
+        "undici": "8.10.2",
+        "unicode": "17.0",
+        "uv": "1.52.1",
+        "uvwasi": "0.0.23",
+        "v8": "14.6.202.34-node.32",
+        "zlib": "1.3.2.1-motley-285e94b",
+        "zstd": "1.5.7"
+      }
+    },
+    "host": {
+      "platform": "linux",
+      "architecture": "x64",
+      "osRelease": "7.0.0-1011-gcp",
+      "osType": "Linux",
+      "cpuCount": 16,
+      "cpuModel": "AMD EPYC 7B13",
+      "totalMemoryBytes": "67416625152"
+    },
+    "environment": {
+      "OMP_NUM_THREADS": null,
+      "OPENBLAS_NUM_THREADS": null,
+      "MKL_NUM_THREADS": null,
+      "RAYON_NUM_THREADS": null
+    },
+    "git": {
+      "commit": "47f9a62c913710fc017276bb3a3ac25d9d5ad806",
+      "statusSha256": "47595ce4be9be3b2f9f082bd0448976e95367455bc5855426d8b92360d7585ca"
+    },
+    "commands": [
+      {
+        "id": "rustc",
+        "command": [
+          "rustc",
+          "--version",
+          "--verbose"
+        ],
+        "status": 0,
+        "stdout": "rustc 1.98.1 (48a229cea 2026-09-01)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: x86_64-unknown-linux-gnu\nrelease: 1.98.1\nLLVM version: 22.1.8",
+        "stderr": ""
+      },
+      {
+        "id": "cargo",
+        "command": [
+          "cargo",
+          "--version",
+          "--verbose"
+        ],
+        "status": 0,
+        "stdout": "cargo 1.98.1 (797e8a9bc 2026-08-05)\nrelease: 1.98.1\ncommit-hash: 797e8a9bca276c1c9f9f738d2a20f484fa4eea9d\ncommit-date: 2026-08-05\nhost: x86_64-unknown-linux-gnu\nlibgit2: 1.9.4 (sys:0.21.0 vendored)\nlibcurl: 8.21.0-DEV (sys:0.4.90+curl-8.21.0 vendored ssl:OpenSSL/3.6.3)\nssl: OpenSSL 3.6.3 9 Jun 2026\nos: Ubuntu 26.4.0 (resolute) [64-bit]",
+        "stderr": ""
+      },
+      {
+        "id": "cc",
+        "command": [
+          "cc",
+          "--version"
+        ],
+        "status": 0,
+        "stdout": "cc (Ubuntu 15.2.0-16ubuntu1) 15.2.0\nCopyright (C) 2025 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+        "stderr": ""
+      },
+      {
+        "id": "pari-control",
+        "command": [
+          "python3",
+          "../pari-control/identity.py"
+        ],
+        "status": 0,
+        "stdout": "{\"authenticatedPin\":{\"archiveSha256\":\"02651d99c391007d384b3fadbc20abc6916b77036f9e496c99e9ce8688ca4b53\",\"files\":{\"Olinux-x86_64/config.log\":\"c9ffafa5f81b614569b006c7dcaf06e12c663ec04487e25e9fa360a88eb6c106\",\"Olinux-x86_64/gp-dyn\":\"915f8085d7eace9f9778edcbc657083a234cdea657dfcc677a26003fde4232c4\",\"Olinux-x86_64/libpari-gmp-tls.so.9\":\"fdc8f2d7ff050c8e8c6cb8994b0f9dc971267ac763eaf5cd927454937d37357f\",\"Olinux-x86_64/paricfg.h\":\"4a493914198a0acc21edf413ff430b84e7243ce792426968cf6ec17ba1a6d2c2\",\"config/version\":\"08a85a6d8dd5b8599092195cdfcf0f45647a66f8be310ec59717a30e1340e8f1\",\"src/basemath/buch2.c\":\"904ced8034732c7fcfe1da393e23950aac0862b085150fdc24ce1e31beb7d1ac\"},\"root\":\"/home/user/upstream/pari-2.17.4\",\"schema\":\"sagejs.rust-class-group/pari-control-pinned-identity-v1\",\"version\":\"2.17.4\"},\"compilerArguments\":[\"cc\",\"-O3\",\"-DNDEBUG\",\"-std=c11\",\"-Wall\",\"-Wextra\",\"-fno-strict-aliasing\",\"-I/home/user/upstream/pari-2.17.4/src/headers\",\"-I/home/user/upstream/pari-2.17.4/Olinux-x86_64\",\"/home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/qualification/pari-control/pari_control.c\",\"-L/home/user/upstream/pari-2.17.4/Olinux-x86_64\",\"-Wl,-rpath,/home/user/upstream/pari-2.17.4/Olinux-x86_64\",\"-lpari\",\"-lm\",\"-o\",\"/home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/qualification/pari-control/build/pari-control\"],\"compilerVersion\":\"cc (Ubuntu 15.2.0-16ubuntu1) 15.2.0\\nCopyright (C) 2025 Free Software Foundation, Inc.\\nThis is free software; see the source for copying conditions.  There is NO\\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\",\"executableSha256\":\"e2593aef376107799aeebaf8ce45d01b287a84b5065c2bed61e2d449fd5cad9b\",\"schema\":\"sagejs.rust-class-group/pari-control-build-identity-v1\",\"sourceSha256\":\"a7a205bb0d0d53a18cf18db3c1d5d369f2ce564cf5cf4a8be766fc544993c91e\"}",
+        "stderr": ""
+      }
+    ],
+    "armExecutableArtifacts": [
+      {
+        "armId": "rust",
+        "path": "/home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/qualification/benchmark/run-rust-prepared.py",
+        "bytes": "4959",
+        "sha256": "fe45db1042da82c115c5d9bd23321f6f1b40b402264231c50dd8a570231a28cc"
+      },
+      {
+        "armId": "rust",
+        "path": "/home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/qualification/row6-candidate/target/release/sagejs-row6-rust-candidate-diagnostic",
+        "bytes": "21792496",
+        "sha256": "7efe1eba2e20c64b7b8a0484a8b1bf0f6012abefcea29fa7f609da8d3aefbe6f"
+      },
+      {
+        "armId": "rust",
+        "path": "/home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/qualification/row6-candidate/Cargo.toml",
+        "bytes": "310",
+        "sha256": "19f2a2bbc404ab69eaaeeaee80e0ddaaf6f099de1058974afcb1dcf671bd6d37"
+      },
+      {
+        "armId": "rust",
+        "path": "/home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/qualification/row6-candidate/Cargo.lock",
+        "bytes": "6380",
+        "sha256": "1a39993905d79968e5daec63f7c38e06a254dbbdc543a24eeded5e5e5067f398"
+      },
+      {
+        "armId": "pari",
+        "path": "/home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/qualification/benchmark/run-pari-prepared.py",
+        "bytes": "1862",
+        "sha256": "953c308b8bc64eac2ea7174f2674e7895db3756e6c9aeba6386abb81a9143b68"
+      },
+      {
+        "armId": "pari",
+        "path": "/home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/qualification/pari-control/build/pari-control",
+        "bytes": "16784",
+        "sha256": "e2593aef376107799aeebaf8ce45d01b287a84b5065c2bed61e2d449fd5cad9b"
+      },
+      {
+        "armId": "pari",
+        "path": "/home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/qualification/pari-control/build/build-identity.json",
+        "bytes": "2079",
+        "sha256": "6491429b61458beac026613f763e0fa567f130acc7cf2028268d7fe7ab5edd0f"
+      },
+      {
+        "armId": "pari",
+        "path": "/home/user/sagejs-worktrees/pari-class-group-e2e-integration/bench/pari-class-group-rust/qualification/pari-control/pinned-identity.json",
+        "bytes": "837",
+        "sha256": "cdf85a4ed6da194d534dbba557cd4c6500a4da073069f862e8e4e7f5d208f50e"
+      }
+    ]
+  },
+  "fields": {
+    "h1-real-cubic": {
+      "rust": {
+        "retainedSamples": 15,
+        "medianKernelNanoseconds": "249938198",
+        "medianWallNanoseconds": "352350049",
+        "maximumPeakRssKiB": "21168",
+        "exactResult": {
+          "classNumber": "1",
+          "invariantFactors": []
+        },
+        "exactResultSha256": "ea95935a5dc3f39dfd5f354f5263f510ca8adb9b94e73281607379d0d4dc601b",
+        "medianStageTimingsNanoseconds": {
+          "analyticCompletion": "134232111",
+          "collection": "32198091",
+          "generatorOrderRelations": "89260",
+          "kernelReorderAndMetadata": "17230",
+          "logarithmicEmbedding": "16137945",
+          "presentationClassOrder": "1145630",
+          "presentationSquareDeterminant": "620140",
+          "presentationSurplusCoordinateSolve": "127800",
+          "presentationSurplusKernel": "47340",
+          "totalExternal": "249938198",
+          "unitLatticeReconstructionAndReplay": "177584629"
+        }
+      },
+      "pari": {
+        "retainedSamples": 15,
+        "medianKernelNanoseconds": "8979798",
+        "medianWallNanoseconds": "181758128",
+        "maximumPeakRssKiB": "35292",
+        "exactResult": {
+          "classNumber": "1",
+          "invariantFactors": []
+        },
+        "exactResultSha256": "ea95935a5dc3f39dfd5f354f5263f510ca8adb9b94e73281607379d0d4dc601b",
+        "medianStageTimingsNanoseconds": {
+          "bnfinit0-prepared-field-to-complete-bnf": "8979798",
+          "complete-bnf-to-exact-projection": "111",
+          "nfinit0-polynomial-to-prepared-field": "671230"
+        }
+      },
+      "rustToPariMedianKernelRatio": 27.833387566179105
+    },
+    "row1-index-3-cubic": {
+      "rust": {
+        "retainedSamples": 15,
+        "medianKernelNanoseconds": "229431663",
+        "medianWallNanoseconds": "336485593",
+        "maximumPeakRssKiB": "21168",
+        "exactResult": {
+          "classNumber": "3",
+          "invariantFactors": [
+            "3"
+          ]
+        },
+        "exactResultSha256": "b39539a65c8bb6724a0066a9987e669ca5e83e9acb9d2aa5edcde5c7a32b8174",
+        "medianStageTimingsNanoseconds": {
+          "analyticCompletion": "137220251",
+          "collection": "14061076",
+          "generatorOrderRelations": "4803238",
+          "kernelReorderAndMetadata": "14840",
+          "logarithmicEmbedding": "12870446",
+          "presentationClassOrder": "6521348",
+          "presentationSquareDeterminant": "267870",
+          "presentationSurplusCoordinateSolve": "82460",
+          "presentationSurplusKernel": "39649",
+          "totalExternal": "229431663",
+          "unitLatticeReconstructionAndReplay": "193231484"
+        }
+      },
+      "pari": {
+        "retainedSamples": 15,
+        "medianKernelNanoseconds": "6486039",
+        "medianWallNanoseconds": "179263278",
+        "maximumPeakRssKiB": "35280",
+        "exactResult": {
+          "classNumber": "3",
+          "invariantFactors": [
+            "3"
+          ]
+        },
+        "exactResultSha256": "b39539a65c8bb6724a0066a9987e669ca5e83e9acb9d2aa5edcde5c7a32b8174",
+        "medianStageTimingsNanoseconds": {
+          "bnfinit0-prepared-field-to-complete-bnf": "6486039",
+          "complete-bnf-to-exact-projection": "110",
+          "nfinit0-polynomial-to-prepared-field": "844279"
+        }
+      },
+      "rustToPariMedianKernelRatio": 35.37315501803181
+    },
+    "row6-continuation-cubic": {
+      "rust": {
+        "retainedSamples": 15,
+        "medianKernelNanoseconds": "7933361401",
+        "medianWallNanoseconds": "8108261901",
+        "maximumPeakRssKiB": "101132",
+        "exactResult": {
+          "classNumber": "4",
+          "invariantFactors": [
+            "2",
+            "2"
+          ]
+        },
+        "exactResultSha256": "dabaee18f54a1d1735c37b50bee4b8d6c2dace60798dc0e63ec727245f260692",
+        "medianStageTimingsNanoseconds": {
+          "analyticCompletion": "593083069",
+          "collection": "2752048069",
+          "generatorOrderRelations": "318799218",
+          "kernelReorderAndMetadata": "502960",
+          "logarithmicEmbedding": "238900841",
+          "presentationClassOrder": "4042137738",
+          "presentationSquareDeterminant": "3391235116",
+          "presentationSurplusCoordinateSolve": "165657212",
+          "presentationSurplusKernel": "3647659",
+          "totalExternal": "7933361401",
+          "unitLatticeReconstructionAndReplay": "800395070"
+        }
+      },
+      "pari": {
+        "retainedSamples": 15,
+        "medianKernelNanoseconds": "3925076682",
+        "medianWallNanoseconds": "4144077939",
+        "maximumPeakRssKiB": "490792",
+        "exactResult": {
+          "classNumber": "4",
+          "invariantFactors": [
+            "2",
+            "2"
+          ]
+        },
+        "exactResultSha256": "dabaee18f54a1d1735c37b50bee4b8d6c2dace60798dc0e63ec727245f260692",
+        "medianStageTimingsNanoseconds": {
+          "bnfinit0-prepared-field-to-complete-bnf": "3925076682",
+          "complete-bnf-to-exact-projection": "270",
+          "nfinit0-polynomial-to-prepared-field": "962830"
+        }
+      },
+      "rustToPariMedianKernelRatio": 2.0211990857099895
+    }
+  }
+}

@@ -9,6 +9,8 @@ const invariants = field === "noncyclic" ? ["2", "2"] : ["3"];
 console.log(JSON.stringify({
   schema: "fake-class-group-result-v1",
   timing: { nanoseconds: String(1000 + Number(round) + (arm === "b" ? 10 : 0)) },
+  stages: { collection: "700", completion: "300" },
+  resources: { peakRssKiB: arm === "b" ? "2048" : "1024" },
   answer: {
     classNumber: field === "noncyclic" ? "4" : "3",
     invariantFactors: mode === "mismatch" && arm === "b" ? ["9"] : invariants,

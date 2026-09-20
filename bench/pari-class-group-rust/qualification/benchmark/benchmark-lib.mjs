@@ -96,6 +96,12 @@ export function validateConfig(config) {
     }
     stringArray(arm.command, `arms[${index}].command`, { nonempty: true });
     if (arm.durationPointer !== undefined) requiredString(arm.durationPointer, `${arm.id}.durationPointer`);
+    if (arm.stageTimingsPointer !== undefined) {
+      requiredString(arm.stageTimingsPointer, `${arm.id}.stageTimingsPointer`);
+    }
+    if (arm.peakRssKiBPointer !== undefined) {
+      requiredString(arm.peakRssKiBPointer, `${arm.id}.peakRssKiBPointer`);
+    }
     if (arm.jsonLinePrefix !== undefined) requiredString(arm.jsonLinePrefix, `${arm.id}.jsonLinePrefix`);
     if (arm.timeoutMilliseconds !== undefined &&
         (!Number.isInteger(arm.timeoutMilliseconds) || arm.timeoutMilliseconds < 1)) {
@@ -108,6 +114,9 @@ export function validateConfig(config) {
     for (const [name, pointer] of Object.entries(arm.resultProjection)) {
       requiredString(name, `${arm.id}.resultProjection key`);
       requiredString(pointer, `${arm.id}.resultProjection.${name}`);
+    }
+    if (arm.artifactPaths !== undefined) {
+      stringArray(arm.artifactPaths, `${arm.id}.artifactPaths`, { nonempty: true });
     }
     const names = Object.keys(arm.resultProjection).sort();
     if (projectionNames === undefined) projectionNames = names;
@@ -288,14 +297,19 @@ export async function environmentIdentity(config, root) {
   for (const spec of config.identityCommands ?? []) commandResults.push(await commandIdentity(spec, root));
   const artifacts = [];
   for (const arm of config.arms) {
-    const candidate = substitute(arm.command[0], {
+    const variables = {
       input: config.fields[0].input ? path.resolve(root, config.fields[0].input) : "",
       fieldId: config.fields[0].id,
       seed: "identity",
       sampleIndex: "0",
       round: "0",
-    });
-    artifacts.push(await fileIdentity(path.resolve(arm.cwd ? path.resolve(root, arm.cwd) : root, candidate)));
+    };
+    const armRoot = arm.cwd ? path.resolve(root, substitute(arm.cwd, variables)) : root;
+    const candidates = arm.artifactPaths ?? [arm.command[0]];
+    for (const item of candidates) {
+      const candidate = substitute(item, variables);
+      artifacts.push({ armId: arm.id, ...(await fileIdentity(path.resolve(armRoot, candidate))) });
+    }
   }
   return {
     capturedAt: new Date().toISOString(),
@@ -325,6 +339,26 @@ function medianDecimalStrings(values) {
   return (sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2n).toString();
 }
 
+function unsignedDecimal(value, where) {
+  const text = String(value);
+  if (!/^(0|[1-9][0-9]*)$/.test(text)) {
+    throw new Error(`${where} is not a nonnegative integer`);
+  }
+  return text;
+}
+
+function stageTimings(value, where) {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`${where} must be an object`);
+  }
+  return Object.fromEntries(
+    Object.entries(value).map(([name, duration]) => [
+      name,
+      unsignedDecimal(duration, `${where}.${name}`),
+    ]),
+  );
+}
+
 function summarize(samples, arms, fields) {
   const answer = {};
   for (const field of fields) {
@@ -345,8 +379,19 @@ function summarize(samples, arms, fields) {
           ? medianDecimalStrings(selected.map((sample) => sample.wallNanoseconds))
           : null,
         exactResultFingerprints: [...new Set(selected.map((sample) => sample.resultSha256))].sort(),
+        maximumPeakRssKiB: selected.some((sample) => sample.peakRssKiB !== undefined)
+          ? selected
+              .filter((sample) => sample.peakRssKiB !== undefined)
+              .map((sample) => BigInt(sample.peakRssKiB))
+              .reduce((left, right) => (left > right ? left : right))
+              .toString()
+          : null,
       };
     }
+    const left = answer[field.id][arms[0].id].medianAdapterNanoseconds;
+    const right = answer[field.id][arms[1].id].medianAdapterNanoseconds;
+    answer[field.id].medianRatioArm0OverArm1 =
+      left !== null && right !== null && right !== "0" ? Number(left) / Number(right) : null;
   }
   return answer;
 }
@@ -429,9 +474,7 @@ export async function runBenchmark(config, options = {}) {
       const adapterNanoseconds = arm.durationPointer
         ? String(jsonPointer(output, arm.durationPointer))
         : processResult.wallNanoseconds;
-      if (!/^(0|[1-9][0-9]*)$/.test(adapterNanoseconds)) {
-        throw new Error("adapter duration is not a nonnegative integer nanosecond string");
-      }
+      unsignedDecimal(adapterNanoseconds, "adapter duration");
       Object.assign(sample, {
         status: "ok",
         adapterNanoseconds,
@@ -440,6 +483,18 @@ export async function runBenchmark(config, options = {}) {
         resultSha256: sha256(canonicalJson(projection)),
         outputSchema: output.schema ?? null,
       });
+      if (arm.stageTimingsPointer) {
+        sample.stageTimingsNanoseconds = stageTimings(
+          jsonPointer(output, arm.stageTimingsPointer),
+          "stage timings",
+        );
+      }
+      if (arm.peakRssKiBPointer) {
+        sample.peakRssKiB = unsignedDecimal(
+          jsonPointer(output, arm.peakRssKiBPointer),
+          "peak RSS KiB",
+        );
+      }
     } catch (error) {
       sample.error = error.message;
     }
