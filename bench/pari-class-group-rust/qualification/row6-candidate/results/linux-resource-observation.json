@@ -1,0 +1,31 @@
+{
+  "schema": "sagejs.rust-class-group/row6-linux-resource-observation-v1",
+  "date": "2026-09-20",
+  "status": "diagnostic-not-a-memory-or-download-gate",
+  "command": "./target/release/sagejs-row6-rust-candidate-diagnostic small-norm-unit-kernel 2000 600000",
+  "result": {
+    "qualificationStatus": "grh-conditional-class-unit-index-one",
+    "totalExternalNanoseconds": 7643018177,
+    "receiptSha256": "9bb02629d1addc5909562d281eaee58ff0689fbd24f83e510f567461e54f28c9"
+  },
+  "nativeMemory": {
+    "peakVmRSSKiB": 80148,
+    "measurement": "poll-/proc/PID/status-VmRSS-at-approximately-20ms",
+    "limitations": [
+      "not an allocator high-water mark",
+      "not yet paired with a same-host PARI RSS measurement",
+      "does not measure browser linear memory"
+    ]
+  },
+  "standaloneExecutable": {
+    "unstrippedBytes": 21353384,
+    "strippedBytes": 19773936,
+    "strippedGzip9Bytes": 7822833,
+    "linkage": "static FLINT, OpenBLAS, MPFR and GMP qualification executable",
+    "limitations": [
+      "not the planned lazy browser artifact",
+      "does not account for sharing Sage.js arithmetic libraries",
+      "must not be compared directly with the five-MiB browser payload gate"
+    ]
+  }
+}

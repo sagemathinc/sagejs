@@ -457,6 +457,11 @@ The median-run sparse receipt is `results/maximal-unit-lattice.json` (SHA-256
 The three raw timing records, their receipt hashes, the frozen PARI control,
 and the machine-readable gate decision are in
 `results/competitive-timing-repeats.json`.
+An initial Linux resource observation records about 78.3 MiB peak sampled RSS
+and a 19.8 MB stripped, 7.8 MB gzip-compressed standalone qualification
+executable in `results/linux-resource-observation.json`. The executable
+statically includes FLINT, OpenBLAS, MPFR and GMP; it is not the planned lazy
+browser artifact and therefore is not a browser payload-gate measurement.
 Public generator/result construction, a production honesty-extension policy,
 unconditional certification, and the public polynomial-to-result route remain
 required; this prepared-field diagnostic does not authorize production
