@@ -7,14 +7,15 @@
 //! shared Rust boundary cannot represent row 6's index-three maximal-order
 //! basis.  It must never be interpreted as a class-group result.
 
-use rug::Integer;
+use rug::{Float, Integer};
 use sagejs_pari_class_group_rust_experiment::{
-    EmbeddingPrecisionState, PreparedCollectorLimits, PreparedCubicData, ValidatedPreparedCubic,
-    collect_prepared_cubic_relations, collect_validated_primitive_box_with_supplementary,
-    flint_hnf_basis, flint_hnf_profile, flint_incremental_hnf, flint_smith_candidate,
-    flint_smith_class_map, flint_staged_relation_witnesses,
-    modular_independent_relation_rows, prepared_cubic_factor_base,
-    prepared_maximal_cubic_factor_base,
+    EmbeddingPrecisionState, PreparedCollectorLimits, PreparedCubicData,
+    PreparedRealCubicEmbedding, ValidatedPreparedCubic, collect_prepared_cubic_relations,
+    collect_validated_primitive_box_with_supplementary, flint_hnf_basis, flint_hnf_profile,
+    flint_incremental_hnf, flint_left_kernel, flint_smith_candidate, flint_smith_class_map,
+    flint_staged_relation_witnesses, modular_independent_relation_rows,
+    prepared_cubic_factor_base, prepared_maximal_cubic_factor_base,
+    reconstruct_rank_two_unit_lattice,
 };
 use std::env;
 use std::time::Instant;
@@ -685,6 +686,274 @@ fn small_norm_order_witnesses(maximum_ideals: usize, maximum_candidates: usize) 
     );
 }
 
+fn small_norm_unit_kernel(maximum_ideals: usize, maximum_candidates: usize) {
+    let field = maximal_order();
+    let total_started = Instant::now();
+    let answer = collect_prepared_cubic_relations(
+        &field,
+        PreparedCollectorLimits {
+            maximum_visited_ideals: maximum_ideals,
+            maximum_candidates,
+        },
+    )
+    .expect("maximal-order relation collection failed");
+    assert!(answer.complete_rank_and_surplus, "relation lattice is incomplete");
+    let columns = answer.factor_base.catalog.ideals.len();
+    let rows = answer.relations.len() / columns;
+    let kernel_started = Instant::now();
+    let kernel = flint_left_kernel(&answer.relations, rows, columns)
+        .expect("exact saturated left-kernel construction failed");
+    let kernel_external_ns = kernel_started.elapsed().as_nanos();
+    assert_eq!(kernel.rank, rows - columns);
+    let logarithms_started = Instant::now();
+    // The HNF-derived basis change can involve about 800-bit coefficients,
+    // multiplying source logarithms of roughly 320 bits before severe
+    // cancellation.  Keep a wide guard margin so the independently flattened
+    // compact-unit replay remains meaningful.
+    const LOG_PRECISION: u32 = 4096;
+    let embedding = PreparedRealCubicEmbedding::from_validated(&field, LOG_PRECISION)
+        .expect("high-precision real embeddings failed");
+    let mut relation_logs = Vec::with_capacity(rows);
+    for coordinates in answer.generators.chunks_exact(3) {
+        let element = [
+            coordinates[0].clone(),
+            coordinates[1].clone(),
+            coordinates[2].clone(),
+        ];
+        relation_logs.push(
+            embedding
+                .logarithmic_embedding(&element)
+                .expect("a relation generator has a zero real embedding"),
+        );
+    }
+    let mut unit_logs = Vec::with_capacity(kernel.rank);
+    let mut maximum_product_formula_residual = Float::with_val(LOG_PRECISION, 0);
+    for dependency in 0..kernel.rank {
+        let mut logs: [Float; 3] =
+            std::array::from_fn(|_| Float::with_val(LOG_PRECISION, 0));
+        for relation in 0..rows {
+            let coefficient = &kernel.coefficients[dependency * rows + relation];
+            if coefficient == &0 {
+                continue;
+            }
+            for embedding_index in 0..3 {
+                let mut term = relation_logs[relation][embedding_index].clone();
+                term *= coefficient;
+                logs[embedding_index] += term;
+            }
+        }
+        let mut residual = logs[0].clone();
+        residual += &logs[1];
+        residual += &logs[2];
+        residual.abs_mut();
+        if residual > maximum_product_formula_residual {
+            maximum_product_formula_residual = residual;
+        }
+        unit_logs.push(logs);
+    }
+    let mut pair_determinants = Vec::new();
+    let mut smallest_nonzero_determinant: Option<Float> = None;
+    for left in 0..kernel.rank {
+        for right in left + 1..kernel.rank {
+            let mut determinant = unit_logs[left][0].clone();
+            determinant *= &unit_logs[right][1];
+            let mut cross = unit_logs[left][1].clone();
+            cross *= &unit_logs[right][0];
+            determinant -= cross;
+            determinant.abs_mut();
+            if !determinant.is_zero()
+                && smallest_nonzero_determinant
+                    .as_ref()
+                    .is_none_or(|smallest| &determinant < smallest)
+            {
+                smallest_nonzero_determinant = Some(determinant.clone());
+            }
+            pair_determinants.push(serde_json::json!({
+                "leftDependency": left,
+                "rightDependency": right,
+                "absoluteMinorApproximation": format!("{determinant:.300e}"),
+            }));
+        }
+    }
+    let logarithms_ns = logarithms_started.elapsed().as_nanos();
+    let reconstruction_started = Instant::now();
+    // The current diagnostic does not yet have an analytic denominator bound.
+    // Use a deliberately generous bound derived only from the exact kernel
+    // coefficient size, then record it prominently in the receipt.
+    let reconstruction_bound = Integer::from(1) << (kernel.maximum_coefficient_bits + 16);
+    let lattice = reconstruct_rank_two_unit_lattice(&unit_logs, &reconstruction_bound)
+        .expect("rank-two unit-lattice reconstruction failed");
+    let reduced_precision_logs = unit_logs
+        .iter()
+        .map(|row| std::array::from_fn(|index| Float::with_val(2048, &row[index])))
+        .collect::<Vec<_>>();
+    let reduced_precision_lattice =
+        reconstruct_rank_two_unit_lattice(&reduced_precision_logs, &reconstruction_bound)
+            .expect("reduced-precision unit-lattice reconstruction failed");
+    assert_eq!(
+        lattice.rational_coordinates,
+        reduced_precision_lattice.rational_coordinates
+    );
+    assert_eq!(
+        lattice.common_denominator,
+        reduced_precision_lattice.common_denominator
+    );
+    assert_eq!(
+        lattice.selected_basis_index,
+        reduced_precision_lattice.selected_basis_index
+    );
+    let mut fundamental_units = Vec::with_capacity(2);
+    let mut fundamental_logs = Vec::with_capacity(2);
+    for basis in 0..2 {
+        let mut coefficients = vec![Integer::from(0); rows];
+        for dependency in 0..kernel.rank {
+            let multiplier = &lattice.generator_combinations[basis][dependency];
+            if multiplier == &0 {
+                continue;
+            }
+            for relation in 0..rows {
+                coefficients[relation] +=
+                    multiplier * &kernel.coefficients[dependency * rows + relation];
+            }
+        }
+        for column in 0..columns {
+            let mut replayed = Integer::from(0);
+            for relation in 0..rows {
+                replayed += &coefficients[relation]
+                    * answer.relations[relation * columns + column];
+            }
+            assert_eq!(replayed, 0);
+        }
+        let mut logs: [Float; 3] =
+            std::array::from_fn(|_| Float::with_val(LOG_PRECISION, 0));
+        let mut factors = Vec::new();
+        for relation in 0..rows {
+            if coefficients[relation] == 0 {
+                continue;
+            }
+            for embedding_index in 0..3 {
+                let mut term = relation_logs[relation][embedding_index].clone();
+                term *= &coefficients[relation];
+                logs[embedding_index] += term;
+            }
+            factors.push(serde_json::json!({
+                "relationIndexZeroBased": relation,
+                "exponent": coefficients[relation].to_string(),
+                "integralBasisCoordinates": answer.generators
+                    [relation * 3..relation * 3 + 3]
+                    .iter()
+                    .map(Integer::to_string)
+                    .collect::<Vec<_>>(),
+            }));
+        }
+        fundamental_units.push(serde_json::json!({
+            "basisIndex": basis,
+            "allRelationCoordinatesReplayExactly": true,
+            "nonzeroCoefficientCount": factors.len(),
+            "dependencyCombination": lattice.generator_combinations[basis]
+                .iter()
+                .map(Integer::to_string)
+                .collect::<Vec<_>>(),
+            "logAbsEmbeddingsApproximation": logs
+                .iter()
+                .map(|value| format!("{value:.300e}"))
+                .collect::<Vec<_>>(),
+            "factors": factors,
+        }));
+        fundamental_logs.push(logs);
+    }
+    let mut replayed_regulator = fundamental_logs[0][0].clone();
+    replayed_regulator *= &fundamental_logs[1][1];
+    let mut cross = fundamental_logs[0][1].clone();
+    cross *= &fundamental_logs[1][0];
+    replayed_regulator -= cross;
+    replayed_regulator.abs_mut();
+    let reconstruction_ns = reconstruction_started.elapsed().as_nanos();
+    let mut compact_units = Vec::with_capacity(kernel.rank);
+    for dependency in 0..kernel.rank {
+        let mut factors = Vec::new();
+        for relation in 0..rows {
+            let coefficient = &kernel.coefficients[dependency * rows + relation];
+            if coefficient != &0 {
+                factors.push(serde_json::json!({
+                    "relationIndexZeroBased": relation,
+                    "exponent": coefficient.to_string(),
+                    "integralBasisCoordinates": answer.generators
+                        [relation * 3..relation * 3 + 3]
+                        .iter()
+                        .map(Integer::to_string)
+                        .collect::<Vec<_>>(),
+                }));
+            }
+        }
+        for column in 0..columns {
+            let mut replayed = Integer::from(0);
+            for relation in 0..rows {
+                replayed += &kernel.coefficients[dependency * rows + relation]
+                    * answer.relations[relation * columns + column];
+            }
+            assert_eq!(replayed, 0);
+        }
+        compact_units.push(serde_json::json!({
+            "dependencyIndex": dependency,
+            "nonzeroCoefficientCount": kernel.nonzero_counts[dependency],
+            "logAbsEmbeddingsApproximation": unit_logs[dependency]
+                .iter()
+                .map(|value| format!("{value:.300e}"))
+                .collect::<Vec<_>>(),
+            "factors": factors,
+        }));
+    }
+    println!(
+        "{}",
+        serde_json::json!({
+            "schema": "sagejs.rust-class-group/row6-saturated-relation-kernel-v1",
+            "qualificationStatus": "compact-unit-candidates-not-regulator-certified",
+            "usesOracleAsInput": false,
+            "relations": { "rows": rows, "columns": columns },
+            "kernel": {
+                "rank": kernel.rank,
+                "isSaturated": true,
+                "allReplayExactly": true,
+                "maximumCoefficientBits": kernel.maximum_coefficient_bits,
+                "unitEncoding": "product-of-collected-integral-basis-elements-to-signed-powers-v1",
+                "logPrecisionBits": LOG_PRECISION,
+                "maximumProductFormulaResidualApproximation": maximum_product_formula_residual
+                    .to_string(),
+                "smallestNonzeroTwoByTwoMinorApproximation": smallest_nonzero_determinant
+                    .map(|value| format!("{value:.300e}")),
+                "pairDeterminants": pair_determinants,
+                "compactUnits": compact_units,
+            },
+            "reconstructedUnitLattice": {
+                "certificationStatus": "heuristic-denominator-bound-not-analytic-completion",
+                "rationalReconstructionStableAtBits": [2048, LOG_PRECISION],
+                "maximumDenominator": reconstruction_bound.to_string(),
+                "coordinateBasisDependencyIndices": lattice.coordinate_basis_indices,
+                "rationalCoordinates": lattice.rational_coordinates.iter().map(|coordinate| {
+                    coordinate.iter().map(|value| serde_json::json!({
+                        "numerator": value.numer().to_string(),
+                        "denominator": value.denom().to_string(),
+                    })).collect::<Vec<_>>()
+                }).collect::<Vec<_>>(),
+                "commonDenominator": lattice.common_denominator.to_string(),
+                "selectedBasisIndex": lattice.selected_basis_index.to_string(),
+                "regulatorApproximation": format!("{:.300e}", lattice.regulator_approximation),
+                "independentlyReplayedRegulatorApproximation": format!("{replayed_regulator:.300e}"),
+                "fundamentalCompactUnits": fundamental_units,
+            },
+            "timingsNanoseconds": {
+                "collection": answer.timings.total_ns,
+                "kernelInternal": kernel.kernel_ns,
+                "kernelExternal": kernel_external_ns,
+                "logarithmicEmbedding": logarithms_ns,
+                "unitLatticeReconstructionAndReplay": reconstruction_ns,
+                "totalExternal": total_started.elapsed().as_nanos(),
+            },
+        })
+    );
+}
+
 fn small_norm_class_map(maximum_ideals: usize, maximum_candidates: usize) {
     let field = maximal_order();
     let total_started = Instant::now();
@@ -908,6 +1177,24 @@ fn main() {
             arguments
                 .get(2)
                 .expect("usage: row6-candidate small-norm-order-witnesses IDEALS CANDIDATES")
+                .parse()
+                .expect("candidates must be an integer"),
+        );
+        return;
+    }
+    if arguments
+        .first()
+        .is_some_and(|value| value == "small-norm-unit-kernel")
+    {
+        small_norm_unit_kernel(
+            arguments
+                .get(1)
+                .expect("usage: row6-candidate small-norm-unit-kernel IDEALS CANDIDATES")
+                .parse()
+                .expect("ideals must be an integer"),
+            arguments
+                .get(2)
+                .expect("usage: row6-candidate small-norm-unit-kernel IDEALS CANDIDATES")
                 .parse()
                 .expect("candidates must be an integer"),
         );

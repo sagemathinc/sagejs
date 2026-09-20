@@ -301,11 +301,55 @@ do not prove that the presentation equals the full ideal class group. Unit
 reconstruction, regulator/completion evidence and honesty/saturation remain
 the decisive R3 work.
 
-This remains a candidate computation. The modular HNF bridge currently exports
-the final lattice basis but not the provenance needed to reconstruct principal
-elements from relation generators. Unit reconstruction, regulator/completion
-evidence, honesty/saturation checks beyond the collected presentation, and the
-public polynomial-to-result route remain required.
+## 2026-09-20 saturated relation kernel and unit lattice
+
+The exact FLINT bridge now computes the saturated left kernel of the full
+1,137 by 1,130 relation matrix rather than treating the seven surplus rows as
+mere rank insurance. It returns seven independent integer dependencies in
+1.63 seconds externally (1.57 seconds inside FLINT), and both the C boundary
+and Rust replay verify every dependency against all 1,130 relation
+coordinates. The largest dependency coefficient is 316 bits.
+
+Each dependency is also a compact exact unit candidate: a product of the
+retained principal relation generators to signed powers. At 4,096-bit
+precision their logarithmic embeddings satisfy the product formula to far
+more precision than is needed here. Rational reconstruction recovers the
+rank-two unit lattice from the seven highly redundant candidates. The exact
+coordinate data is unchanged when reconstructed independently at 2,048 and
+4,096 bits. Its selected two-vector lattice has index
+
+```text
+633864164639955485156933800558027338788037545076700998940971649147252552428274422
+```
+
+in the reconstructed lattice. Flattening the resulting two basis vectors all
+the way back to the original relation generators again annihilates every
+finite relation coordinate exactly. Recomputing the determinant from those
+flattened compact units gives
+
+```text
+83268030694439630.29650600032488368532504410209...
+```
+
+which agrees with the independent PARI 2.17.4 value
+`83268030694439630.296506000324883685321...`. The Rust diagnostic takes 9.79
+seconds total: 7.83 seconds collecting relations, 1.63 seconds for the exact
+kernel, 0.24 seconds for 4,096-bit logarithms, and 0.024 seconds for lattice
+reconstruction plus flattened replay. The full sparse receipt is
+`results/maximal-unit-lattice.json`.
+
+This is a major R3 candidate milestone, but its status remains deliberately
+non-certified. The current rational-reconstruction denominator ceiling is a
+generous bound derived from the observed exact kernel coefficient size; it is
+not yet a theorem-derived bound. The logarithms are high-precision MPFR
+approximations, not outward Arb intervals, and the computation has not yet
+performed the analytic class-number-formula index proof or honesty extension.
+Consequently neither the recovered regulator nor the finite presentation is
+yet published as complete.
+
+This remains a candidate computation. Analytic completion, rigorous interval
+enclosures, honesty checks beyond the collected presentation, and the public
+polynomial-to-result route remain required.
 
 ## 2026-09-20 multiplier continuation control
 

@@ -841,3 +841,146 @@ int sagejs_rust_flint_staged_relation_witnesses_i64(
     flint_cleanup();
     return status;
 }
+
+int sagejs_rust_flint_left_kernel_i64(
+    size_t rows, size_t columns, const int64_t *entries,
+    size_t kernel_capacity, mpz_ptr const *kernel_entries,
+    size_t *kernel_rank, size_t *maximum_coefficient_bits,
+    size_t *nonzero_counts, uint64_t *kernel_ns)
+{
+    if (rows < columns || columns == 0 || entries == NULL ||
+        kernel_capacity == 0 || kernel_entries == NULL ||
+        kernel_rank == NULL || maximum_coefficient_bits == NULL ||
+        nonzero_counts == NULL || kernel_ns == NULL || rows > LONG_MAX ||
+        columns > LONG_MAX || kernel_capacity > rows)
+        return -1;
+
+    fmpz_mat_t transpose;
+    fmpz_mat_init(transpose, (slong) columns, (slong) rows);
+    for (size_t row = 0; row < rows; row++)
+        for (size_t column = 0; column < columns; column++)
+            fmpz_set_si(fmpz_mat_entry(transpose,
+                    (slong) column, (slong) row),
+                (slong) entries[row * columns + column]);
+
+    uint64_t started = sagejs_rust_monotonic_ns();
+    fmpz_mat_t nullspace_columns;
+    fmpz_mat_init(nullspace_columns, (slong) rows, (slong) rows);
+    const slong nullity = fmpz_mat_nullspace(nullspace_columns, transpose);
+    int status = nullity < 0 || (size_t) nullity > kernel_capacity ? -7 : 0;
+
+    fmpz_mat_t basis;
+    fmpz_mat_t basis_transpose;
+    fmpz_mat_t hermite_transpose;
+    fmpz_mat_t lattice_basis;
+    fmpz_mat_t saturated;
+    fmpz_mat_init(basis, nullity, (slong) rows);
+    fmpz_mat_init(basis_transpose, (slong) rows, nullity);
+    fmpz_mat_init(hermite_transpose, (slong) rows, nullity);
+    fmpz_mat_init(lattice_basis, nullity, nullity);
+    fmpz_mat_init(saturated, nullity, (slong) rows);
+    if (status == 0)
+    {
+        for (slong row = 0; row < nullity; row++)
+            for (size_t column = 0; column < rows; column++)
+                fmpz_set(fmpz_mat_entry(basis, row, (slong) column),
+                    fmpz_mat_entry(nullspace_columns,
+                        (slong) column, row));
+        fmpz_mat_transpose(basis_transpose, basis);
+        fmpz_mat_hnf(hermite_transpose, basis_transpose);
+        for (slong row = 0; row < nullity; row++)
+            for (slong column = 0; column < nullity; column++)
+                fmpz_set(fmpz_mat_entry(lattice_basis, row, column),
+                    fmpz_mat_entry(hermite_transpose, column, row));
+    }
+
+    fmpz_t denominator;
+    fmpz_t remainder;
+    fmpz_t check;
+    fmpz_init(denominator);
+    fmpz_init(remainder);
+    fmpz_init(check);
+    if (status == 0 && nullity != 0)
+    {
+        if (!fmpz_mat_solve(
+                saturated, denominator, lattice_basis, basis) ||
+            fmpz_is_zero(denominator))
+            status = -4;
+    }
+    if (status == 0)
+        for (slong row = 0; row < nullity && status == 0; row++)
+            for (size_t column = 0; column < rows; column++)
+            {
+                fmpz_mod(remainder,
+                    fmpz_mat_entry(saturated, row, (slong) column),
+                    denominator);
+                if (!fmpz_is_zero(remainder))
+                {
+                    status = -5;
+                    break;
+                }
+                fmpz_divexact(fmpz_mat_entry(saturated,
+                        row, (slong) column),
+                    fmpz_mat_entry(saturated, row, (slong) column),
+                    denominator);
+            }
+    if (status == 0 && nullity != 0)
+        fmpz_mat_hnf(basis, saturated);
+    uint64_t finished = sagejs_rust_monotonic_ns();
+    *kernel_ns = finished >= started ? finished - started : 0;
+
+    *kernel_rank = status == 0 ? (size_t) nullity : 0;
+    *maximum_coefficient_bits = 0;
+    for (size_t row = 0; row < kernel_capacity; row++)
+        nonzero_counts[row] = 0;
+    if (status == 0)
+        for (slong kernel_row = 0; kernel_row < nullity; kernel_row++)
+            for (size_t relation = 0; relation < rows; relation++)
+            {
+                const fmpz *coefficient = fmpz_mat_entry(
+                    basis, kernel_row, (slong) relation);
+                mpz_ptr output = kernel_entries[
+                    (size_t) kernel_row * rows + relation];
+                if (output == NULL)
+                {
+                    status = -1;
+                    break;
+                }
+                fmpz_get_mpz(output, coefficient);
+                if (!fmpz_is_zero(coefficient))
+                {
+                    nonzero_counts[kernel_row]++;
+                    size_t bits = (size_t) fmpz_bits(coefficient);
+                    if (bits > *maximum_coefficient_bits)
+                        *maximum_coefficient_bits = bits;
+                }
+            }
+
+    if (status == 0)
+        for (slong kernel_row = 0;
+             kernel_row < nullity && status == 0; kernel_row++)
+            for (size_t column = 0; column < columns; column++)
+            {
+                fmpz_zero(check);
+                for (size_t relation = 0; relation < rows; relation++)
+                    fmpz_addmul_si(check,
+                        fmpz_mat_entry(basis,
+                            kernel_row, (slong) relation),
+                        (slong) entries[relation * columns + column]);
+                if (!fmpz_is_zero(check))
+                    status = -6;
+            }
+
+    fmpz_clear(check);
+    fmpz_clear(remainder);
+    fmpz_clear(denominator);
+    fmpz_mat_clear(saturated);
+    fmpz_mat_clear(lattice_basis);
+    fmpz_mat_clear(hermite_transpose);
+    fmpz_mat_clear(basis_transpose);
+    fmpz_mat_clear(basis);
+    fmpz_mat_clear(nullspace_columns);
+    fmpz_mat_clear(transpose);
+    flint_cleanup();
+    return status;
+}

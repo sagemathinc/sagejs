@@ -68,6 +68,17 @@ pub struct FlintRelationWitnesses {
     pub square_solve_ns: u64,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FlintLeftKernel {
+    /// Kernel-row-major coefficients on the original relation rows.
+    pub coefficients: Vec<Integer>,
+    pub relation_count: usize,
+    pub rank: usize,
+    pub maximum_coefficient_bits: usize,
+    pub nonzero_counts: Vec<usize>,
+    pub kernel_ns: u64,
+}
+
 impl FlintSmithClassMap {
     pub fn coordinates(&self, generator: usize) -> Option<&[i64]> {
         let width = self.invariant_factors.len();
@@ -171,6 +182,72 @@ unsafe extern "C" {
         target_solve_ns: *mut u64,
         square_solve_ns: *mut u64,
     ) -> c_int;
+    fn sagejs_rust_flint_left_kernel_i64(
+        rows: usize,
+        columns: usize,
+        entries: *const c_longlong,
+        kernel_capacity: usize,
+        kernel_entries: *const *mut c_void,
+        kernel_rank: *mut usize,
+        maximum_coefficient_bits: *mut usize,
+        nonzero_counts: *mut usize,
+        kernel_ns: *mut u64,
+    ) -> c_int;
+}
+
+pub fn flint_left_kernel(
+    relations: &[i64],
+    rows: usize,
+    columns: usize,
+) -> Result<FlintLeftKernel, FlintNormalFormError> {
+    if rows <= columns || columns == 0 || rows.checked_mul(columns) != Some(relations.len()) {
+        return Err(FlintNormalFormError::DimensionMismatch);
+    }
+    let capacity = rows - columns;
+    let coefficient_count = capacity
+        .checked_mul(rows)
+        .ok_or(FlintNormalFormError::InvalidDimensions)?;
+    let mut coefficients = vec![Integer::from(0); coefficient_count];
+    let pointers = coefficients
+        .iter_mut()
+        .map(|value| value.as_raw_mut().cast::<c_void>())
+        .collect::<Vec<_>>();
+    let mut rank = 0_usize;
+    let mut maximum_coefficient_bits = 0_usize;
+    let mut nonzero_counts = vec![0_usize; capacity];
+    let mut kernel_ns = 0_u64;
+    let status = unsafe {
+        sagejs_rust_flint_left_kernel_i64(
+            rows,
+            columns,
+            relations.as_ptr().cast(),
+            capacity,
+            pointers.as_ptr(),
+            &mut rank,
+            &mut maximum_coefficient_bits,
+            nonzero_counts.as_mut_ptr(),
+            &mut kernel_ns,
+        )
+    };
+    match status {
+        0 => {
+            if rank > capacity {
+                return Err(FlintNormalFormError::ForeignFailure(-8));
+            }
+            coefficients.truncate(rank * rows);
+            nonzero_counts.truncate(rank);
+            Ok(FlintLeftKernel {
+                coefficients,
+                relation_count: rows,
+                rank,
+                maximum_coefficient_bits,
+                nonzero_counts,
+                kernel_ns,
+            })
+        }
+        -1 => Err(FlintNormalFormError::InvalidDimensions),
+        code => Err(FlintNormalFormError::ForeignFailure(code)),
+    }
 }
 
 pub fn flint_relation_witnesses(
@@ -540,6 +617,7 @@ pub fn flint_smith_candidate(
 mod tests {
     use super::*;
     use crate::ideal_arithmetic::{LllReduction, verify_lll_reduction};
+    use rug::Complete;
 
     #[test]
     fn rectangular_candidate_matches_known_smith_factors() {
@@ -638,5 +716,24 @@ mod tests {
                 assert_eq!(actual, targets[target * 2 + column]);
             }
         }
+    }
+
+    #[test]
+    fn left_kernel_is_saturated_and_replays() {
+        let relations = [2, 0, 0, 3, 2, 3];
+        let kernel = flint_left_kernel(&relations, 3, 2).unwrap();
+        assert_eq!(kernel.rank, 1);
+        for column in 0..2 {
+            let mut actual = Integer::from(0);
+            for relation in 0..3 {
+                actual += &kernel.coefficients[relation] * relations[relation * 2 + column];
+            }
+            assert_eq!(actual, 0);
+        }
+        let gcd = kernel
+            .coefficients
+            .iter()
+            .fold(Integer::from(0), |gcd, value| gcd.gcd_ref(value).complete());
+        assert_eq!(gcd, 1);
     }
 }

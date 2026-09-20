@@ -187,6 +187,31 @@ impl PreparedRealCubicEmbedding {
             precision,
         })
     }
+
+    /// Return `log(abs(sigma_i(element)))` for all three real embeddings.
+    ///
+    /// This is the additive representation used for compact products of
+    /// relation generators. The caller chooses enough precision for the
+    /// integer exponents it will subsequently apply.
+    pub fn logarithmic_embedding(
+        &self,
+        element: &[Integer; DEGREE],
+    ) -> Result<[Float; DEGREE], NumericalPreparationError> {
+        let mut answer: [Float; DEGREE] = from_fn(|_| Float::with_val(self.precision, 0));
+        for (embedding, output) in answer.iter_mut().enumerate() {
+            for (basis, coefficient) in element.iter().enumerate() {
+                let mut term = self.matrix[embedding][basis].clone();
+                term *= coefficient;
+                *output += term;
+            }
+            if output == &0 {
+                return Err(NumericalPreparationError::SingularEmbedding);
+            }
+            output.abs_mut();
+            output.ln_mut();
+        }
+        Ok(answer)
+    }
 }
 
 fn isolate_three_real_roots(

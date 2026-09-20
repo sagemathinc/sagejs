@@ -34,6 +34,7 @@ mod prime_valuation;
 mod relation_cache;
 mod smith;
 mod smooth_admission;
+mod unit_lattice;
 
 pub use api::{
     BruteForceOptions, ClassGroupCandidateInvariants, PreparedCubic,
@@ -63,10 +64,11 @@ pub use factor_base::prepared_cubic_factor_base;
 pub use factor_base::{FactorBase, PrimeIdeal};
 #[cfg(feature = "flint-normal-form")]
 pub use flint_normal_form::{
-    FlintHnfProfile, FlintIncrementalHnf, FlintNormalFormError, FlintRelationWitnesses,
-    FlintSmithCandidate, FlintSmithClassMap, flint_hnf_basis, flint_hnf_profile,
-    flint_incremental_hnf, flint_lll_column_transform, flint_relation_witnesses,
-    flint_smith_candidate, flint_smith_class_map, flint_staged_relation_witnesses,
+    FlintHnfProfile, FlintIncrementalHnf, FlintLeftKernel, FlintNormalFormError,
+    FlintRelationWitnesses, FlintSmithCandidate, FlintSmithClassMap, flint_hnf_basis,
+    flint_hnf_profile, flint_incremental_hnf, flint_left_kernel, flint_lll_column_transform,
+    flint_relation_witnesses, flint_smith_candidate, flint_smith_class_map,
+    flint_staged_relation_witnesses,
 };
 pub use gmp_smith::{
     ExactSmithCandidateInvariants, GmpSmithError, GmpSmithWorkspace,
@@ -76,6 +78,7 @@ pub use hnf::{
     BigIntMatrix, ExactArithmeticError, ExactNormalFormWorkspace, HnfDecomposition,
     NormalFormError, NormalFormLimits, SmithDecomposition, UpdateStrategy,
 };
+pub use numerical_preparation::{NumericalPreparationError, PreparedRealCubicEmbedding};
 pub use prepared::{
     EmbeddingPrecisionState, PreparedCubicData, PreparedCubicValidationError,
     ValidatedPreparedCubic,
@@ -87,3 +90,6 @@ pub use prepared_ideal::{
     CubicIdeal, DegreeOnePrimeCharacter, PreparedIdealError, PreparedIdealWorkspace,
 };
 pub use smith::{SmithError, WordSmithWorkspace, transpose_relation_records};
+pub use unit_lattice::{
+    ReconstructedUnitLattice, UnitLatticeError, reconstruct_rank_two_unit_lattice,
+};
