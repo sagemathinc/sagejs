@@ -10,6 +10,7 @@
 #include <flint/arb_calc.h>
 #include <limits.h>
 #include <stdint.h>
+#include <string.h>
 #include <time.h>
 
 static uint64_t sagejs_rust_monotonic_ns(void)
@@ -19,6 +20,97 @@ static uint64_t sagejs_rust_monotonic_ns(void)
         return 0;
     return (uint64_t) value.tv_sec * UINT64_C(1000000000) +
         (uint64_t) value.tv_nsec;
+}
+
+static int sagejs_rust_gf2_right_nullspace_i64(
+    size_t rows, size_t columns, const int64_t *entries,
+    uint8_t *generator_coordinates, size_t coordinate_capacity,
+    size_t *nullity)
+{
+    if (rows == 0 || columns == 0 || entries == NULL ||
+        generator_coordinates == NULL || nullity == NULL ||
+        columns > SIZE_MAX - 63 || rows > SIZE_MAX / columns ||
+        coordinate_capacity < columns * columns)
+        return 0;
+    const size_t words = (columns + 63) / 64;
+    if (words == 0 || rows > SIZE_MAX / words ||
+        rows * words > SIZE_MAX / sizeof(uint64_t))
+        return 0;
+    uint64_t *bits = flint_calloc(rows * words, sizeof(uint64_t));
+    size_t *pivot_columns = flint_malloc(columns * sizeof(size_t));
+    uint64_t *vector = flint_calloc(words, sizeof(uint64_t));
+    if (bits == NULL || pivot_columns == NULL || vector == NULL)
+    {
+        flint_free(vector);
+        flint_free(pivot_columns);
+        flint_free(bits);
+        return 0;
+    }
+    for (size_t row = 0; row < rows; row++)
+        for (size_t column = 0; column < columns; column++)
+            if (((uint64_t) entries[row * columns + column]) & 1)
+                bits[row * words + column / 64] |=
+                    UINT64_C(1) << (column % 64);
+
+    size_t rank = 0;
+    for (size_t column = 0; column < columns && rank < rows; column++)
+    {
+        size_t pivot = rank;
+        while (pivot < rows &&
+            !(bits[pivot * words + column / 64] &
+                (UINT64_C(1) << (column % 64))))
+            pivot++;
+        if (pivot == rows)
+            continue;
+        if (pivot != rank)
+            for (size_t word = 0; word < words; word++)
+            {
+                uint64_t temporary = bits[rank * words + word];
+                bits[rank * words + word] = bits[pivot * words + word];
+                bits[pivot * words + word] = temporary;
+            }
+        pivot_columns[rank] = column;
+        for (size_t row = rank + 1; row < rows; row++)
+            if (bits[row * words + column / 64] &
+                (UINT64_C(1) << (column % 64)))
+                for (size_t word = column / 64; word < words; word++)
+                    bits[row * words + word] ^= bits[rank * words + word];
+        rank++;
+    }
+
+    *nullity = columns - rank;
+    size_t free_index = 0;
+    size_t next_pivot = 0;
+    for (size_t free_column = 0; free_column < columns; free_column++)
+    {
+        if (next_pivot < rank && pivot_columns[next_pivot] == free_column)
+        {
+            next_pivot++;
+            continue;
+        }
+        memset(vector, 0, words * sizeof(uint64_t));
+        vector[free_column / 64] |= UINT64_C(1) << (free_column % 64);
+        for (size_t offset = rank; offset > 0; offset--)
+        {
+            const size_t pivot_row = offset - 1;
+            unsigned parity = 0;
+            for (size_t word = pivot_columns[pivot_row] / 64;
+                 word < words; word++)
+                parity ^= (unsigned) __builtin_parityll(
+                    bits[pivot_row * words + word] & vector[word]);
+            if (parity & 1)
+                vector[pivot_columns[pivot_row] / 64] |=
+                    UINT64_C(1) << (pivot_columns[pivot_row] % 64);
+        }
+        for (size_t generator = 0; generator < columns; generator++)
+            generator_coordinates[generator * *nullity + free_index] =
+                (uint8_t) ((vector[generator / 64] >> (generator % 64)) & 1);
+        free_index++;
+    }
+    flint_free(vector);
+    flint_free(pivot_columns);
+    flint_free(bits);
+    return 1;
 }
 
 static void sagejs_rust_flint_hnf_metadata(
@@ -305,17 +397,23 @@ int sagejs_rust_flint_small_surplus_class_order_i64(
     size_t size, size_t surplus_rows, const int64_t *square_entries,
     const int64_t *surplus_entries, mpz_ptr class_order,
     size_t *two_rank, uint8_t *class_coordinates,
-    size_t class_coordinate_capacity, size_t *determinant_bits,
+    size_t class_coordinate_capacity, mpz_ptr const *dependency_entries,
+    size_t dependency_capacity, size_t *determinant_bits,
     uint64_t *determinant_ns, uint64_t *solve_ns, uint64_t *kernel_ns)
 {
     if (size == 0 || surplus_rows == 0 || square_entries == NULL ||
         surplus_entries == NULL || class_order == NULL || two_rank == NULL ||
         class_coordinates == NULL ||
+        dependency_entries == NULL ||
         determinant_bits == NULL || determinant_ns == NULL ||
         solve_ns == NULL || kernel_ns == NULL || size > LONG_MAX ||
         surplus_rows > LONG_MAX || surplus_rows > SIZE_MAX - size ||
         size > SIZE_MAX / size || surplus_rows > SIZE_MAX / size ||
-        class_coordinate_capacity < size * size)
+        surplus_rows > SIZE_MAX / (size + surplus_rows) ||
+        size + surplus_rows > SIZE_MAX / size ||
+        (size + surplus_rows) * size > SIZE_MAX / sizeof(int64_t) ||
+        class_coordinate_capacity < size * size ||
+        dependency_capacity < surplus_rows * (size + surplus_rows))
         return -1;
     int status = 0;
     fmpz_mat_t square, square_transpose, surplus_transpose, coordinates, fflu;
@@ -345,6 +443,7 @@ int sagejs_rust_flint_small_surplus_class_order_i64(
         permutation[index] = (slong) index;
     slong rank = fmpz_mat_fflu(
         fflu, determinant, permutation, square_transpose, 1);
+    const int determinant_sign = fmpz_sgn(determinant);
     uint64_t finished = sagejs_rust_monotonic_ns();
     *determinant_ns = finished >= started ? finished - started : 0;
     fmpz_abs(determinant, determinant);
@@ -358,90 +457,153 @@ int sagejs_rust_flint_small_surplus_class_order_i64(
              coordinates, permutation, fflu, surplus_transpose) ||
          fmpz_is_zero(determinant)))
         status = -4;
+    if (status == 0 && determinant_sign < 0)
+        fmpz_mat_neg(coordinates, coordinates);
     fmpz_set(denominator, determinant);
     finished = sagejs_rust_monotonic_ns();
     *solve_ns = finished >= started ? finished - started : 0;
 
     const size_t augmented_columns = surplus_rows + size;
-    fmpz_mat_t congruences, nullspace_columns, basis, basis_transpose;
-    fmpz_mat_t hermite_transpose, lattice_basis, saturated;
-    fmpz_mat_init(congruences, (slong) size, (slong) augmented_columns);
-    fmpz_mat_init(nullspace_columns,
-        (slong) augmented_columns, (slong) augmented_columns);
-    fmpz_mat_init(basis, (slong) surplus_rows, (slong) augmented_columns);
-    fmpz_mat_init(basis_transpose,
-        (slong) augmented_columns, (slong) surplus_rows);
-    fmpz_mat_init(hermite_transpose,
-        (slong) augmented_columns, (slong) surplus_rows);
+    fmpz_mat_t lattice_basis, transform, next_basis, vector, saturated;
     fmpz_mat_init(lattice_basis, (slong) surplus_rows, (slong) surplus_rows);
+    fmpz_mat_init(transform, (slong) surplus_rows, (slong) surplus_rows);
+    fmpz_mat_init(next_basis, (slong) surplus_rows, (slong) surplus_rows);
+    fmpz_mat_init(vector, (slong) surplus_rows, 1);
     fmpz_mat_init(saturated, (slong) surplus_rows, (slong) augmented_columns);
-    if (status == 0)
-        for (size_t row = 0; row < size; row++)
-        {
-            for (size_t column = 0; column < surplus_rows; column++)
-                fmpz_set(fmpz_mat_entry(congruences,
-                        (slong) row, (slong) column),
-                    fmpz_mat_entry(coordinates,
-                        (slong) row, (slong) column));
-            fmpz_neg(fmpz_mat_entry(congruences,
-                    (slong) row, (slong) (surplus_rows + row)),
-                denominator);
-        }
+    fmpz_mat_one(lattice_basis);
+    fmpz_t gcd, bezout_left, bezout_right, quotient_left, quotient_right;
+    fmpz_t old_left, old_right, sum, multiplier;
+    fmpz_init(gcd);
+    fmpz_init(bezout_left);
+    fmpz_init(bezout_right);
+    fmpz_init(quotient_left);
+    fmpz_init(quotient_right);
+    fmpz_init(old_left);
+    fmpz_init(old_right);
+    fmpz_init(sum);
+    fmpz_init(multiplier);
 
     started = sagejs_rust_monotonic_ns();
-    slong nullity = status == 0
-        ? fmpz_mat_nullspace(nullspace_columns, congruences) : -1;
-    if (status == 0 && nullity != (slong) surplus_rows)
-        status = -7;
     if (status == 0)
     {
-        for (size_t row = 0; row < surplus_rows; row++)
-            for (size_t column = 0; column < augmented_columns; column++)
-                fmpz_set(fmpz_mat_entry(basis,
-                        (slong) row, (slong) column),
-                    fmpz_mat_entry(nullspace_columns,
-                        (slong) column, (slong) row));
-        fmpz_mat_transpose(basis_transpose, basis);
-        fmpz_mat_hnf(hermite_transpose, basis_transpose);
-        for (size_t row = 0; row < surplus_rows; row++)
-            for (size_t column = 0; column < surplus_rows; column++)
-                fmpz_set(fmpz_mat_entry(lattice_basis,
-                        (slong) row, (slong) column),
-                    fmpz_mat_entry(hermite_transpose,
-                        (slong) column, (slong) row));
-        if (!fmpz_mat_solve(saturated, quotient, lattice_basis, basis) ||
-            fmpz_is_zero(quotient))
-            status = -4;
-    }
-    if (status == 0)
-        for (size_t row = 0; row < surplus_rows && status == 0; row++)
-            for (size_t column = 0; column < augmented_columns; column++)
+        /* Intersect Z^surplus_rows with one congruence at a time.  Every
+         * update is only surplus_rows square (seven for row 6), instead of
+         * constructing a (size + surplus_rows)-square rational nullspace. */
+        for (size_t constraint = 0; constraint < size; constraint++)
+        {
+            int nonzero = 0;
+            for (size_t row = 0; row < surplus_rows; row++)
             {
-                fmpz_mod(remainder, fmpz_mat_entry(saturated,
-                    (slong) row, (slong) column), quotient);
+                fmpz_zero(sum);
+                for (size_t column = 0; column < surplus_rows; column++)
+                    fmpz_addmul(sum,
+                        fmpz_mat_entry(lattice_basis,
+                            (slong) row, (slong) column),
+                        fmpz_mat_entry(coordinates,
+                            (slong) constraint, (slong) column));
+                fmpz_mod(fmpz_mat_entry(vector, (slong) row, 0),
+                    sum, denominator);
+                nonzero |= !fmpz_is_zero(
+                    fmpz_mat_entry(vector, (slong) row, 0));
+            }
+            if (!nonzero)
+                continue;
+
+            fmpz_mat_one(transform);
+            for (size_t row = 1; row < surplus_rows; row++)
+            {
+                const fmpz *left = fmpz_mat_entry(vector, 0, 0);
+                const fmpz *right = fmpz_mat_entry(vector, (slong) row, 0);
+                if (fmpz_is_zero(right))
+                    continue;
+                fmpz_xgcd(gcd, bezout_left, bezout_right, left, right);
+                fmpz_divexact(quotient_left, left, gcd);
+                fmpz_divexact(quotient_right, right, gcd);
+                for (size_t column = 0; column < surplus_rows; column++)
+                {
+                    fmpz_set(old_left,
+                        fmpz_mat_entry(transform, 0, (slong) column));
+                    fmpz_set(old_right,
+                        fmpz_mat_entry(transform, (slong) row,
+                            (slong) column));
+                    fmpz_mul(sum, bezout_left, old_left);
+                    fmpz_addmul(sum, bezout_right, old_right);
+                    fmpz_set(fmpz_mat_entry(transform, 0,
+                        (slong) column), sum);
+                    fmpz_mul(sum, quotient_left, old_right);
+                    fmpz_submul(sum, quotient_right, old_left);
+                    fmpz_set(fmpz_mat_entry(transform, (slong) row,
+                        (slong) column), sum);
+                }
+                fmpz_set(fmpz_mat_entry(vector, 0, 0), gcd);
+                fmpz_zero(fmpz_mat_entry(vector, (slong) row, 0));
+            }
+            fmpz_gcd(gcd, denominator, fmpz_mat_entry(vector, 0, 0));
+            fmpz_divexact(multiplier, denominator, gcd);
+            for (size_t column = 0; column < surplus_rows; column++)
+                fmpz_mul(fmpz_mat_entry(transform, 0, (slong) column),
+                    fmpz_mat_entry(transform, 0, (slong) column), multiplier);
+            fmpz_mat_mul(next_basis, transform, lattice_basis);
+            fmpz_mat_hnf(lattice_basis, next_basis);
+        }
+
+        for (size_t row = 0; row < surplus_rows; row++)
+        {
+            for (size_t column = 0; column < surplus_rows; column++)
+                fmpz_set(fmpz_mat_entry(saturated, (slong) row,
+                        (slong) column),
+                    fmpz_mat_entry(lattice_basis, (slong) row,
+                        (slong) column));
+            for (size_t column = 0; column < size; column++)
+            {
+                fmpz_zero(sum);
+                for (size_t index = 0; index < surplus_rows; index++)
+                    fmpz_addmul(sum,
+                        fmpz_mat_entry(lattice_basis, (slong) row,
+                            (slong) index),
+                        fmpz_mat_entry(coordinates, (slong) column,
+                            (slong) index));
+                fmpz_fdiv_qr(quotient, remainder, sum, denominator);
                 if (!fmpz_is_zero(remainder))
                 {
                     status = -5;
                     break;
                 }
-                fmpz_divexact(fmpz_mat_entry(saturated,
-                        (slong) row, (slong) column),
-                    fmpz_mat_entry(saturated,
-                        (slong) row, (slong) column), quotient);
+                fmpz_set(fmpz_mat_entry(saturated, (slong) row,
+                    (slong) (surplus_rows + column)), quotient);
+            }
+        }
+    }
+    if (status == 0)
+        for (size_t row = 0; row < surplus_rows && status == 0; row++)
+            for (size_t column = 0; column < augmented_columns; column++)
+            {
+                mpz_ptr destination = dependency_entries[
+                    row * augmented_columns + column];
+                if (destination == NULL)
+                {
+                    status = -1;
+                    break;
+                }
+                /* saturated stores (y,z) with B^T y = A^T z.  Export
+                 * (-z,y), ordered as the square rows followed by the
+                 * surplus rows, so each row directly annihilates [A;B]. */
+                if (column < size)
+                {
+                    fmpz_neg(quotient,
+                        fmpz_mat_entry(saturated, (slong) row,
+                            (slong) (surplus_rows + column)));
+                    fmpz_get_mpz(destination, quotient);
+                }
+                else
+                    fmpz_get_mpz(destination,
+                        fmpz_mat_entry(saturated, (slong) row,
+                            (slong) (column - size)));
             }
     if (status == 0)
     {
-        fmpz_mat_t projected;
-        fmpz_mat_init(projected, (slong) surplus_rows, (slong) surplus_rows);
-        for (size_t row = 0; row < surplus_rows; row++)
-            for (size_t column = 0; column < surplus_rows; column++)
-                fmpz_set(fmpz_mat_entry(projected,
-                        (slong) row, (slong) column),
-                    fmpz_mat_entry(saturated,
-                        (slong) row, (slong) column));
-        fmpz_mat_det(kernel_index, projected);
+        fmpz_mat_det(kernel_index, lattice_basis);
         fmpz_abs(kernel_index, kernel_index);
-        fmpz_mat_clear(projected);
         if (fmpz_is_zero(kernel_index))
             status = -7;
     }
@@ -456,41 +618,31 @@ int sagejs_rust_flint_small_surplus_class_order_i64(
     finished = sagejs_rust_monotonic_ns();
     *kernel_ns = finished >= started ? finished - started : 0;
 
-    nmod_mat_t modulo_two, modulo_two_kernel;
-    nmod_mat_init(modulo_two, (slong) (size + surplus_rows), (slong) size, 2);
-    nmod_mat_init(modulo_two_kernel, (slong) size, (slong) size, 2);
-    for (size_t row = 0; row < size; row++)
-        for (size_t column = 0; column < size; column++)
-            nmod_mat_set_entry(modulo_two, (slong) row, (slong) column,
-                (ulong) ((uint64_t) square_entries[row * size + column] & 1));
-    for (size_t row = 0; row < surplus_rows; row++)
-        for (size_t column = 0; column < size; column++)
-            nmod_mat_set_entry(modulo_two, (slong) (size + row),
-                (slong) column,
-                (ulong) ((uint64_t) surplus_entries[row * size + column] & 1));
-    slong nullity_two = nmod_mat_nullspace(modulo_two_kernel, modulo_two);
-    if (nullity_two < 0 || (size_t) nullity_two > size)
+    int64_t *complete_entries = flint_malloc(
+        (size + surplus_rows) * size * sizeof(int64_t));
+    memcpy(complete_entries, square_entries, size * size * sizeof(int64_t));
+    memcpy(complete_entries + size * size, surplus_entries,
+        surplus_rows * size * sizeof(int64_t));
+    if (!sagejs_rust_gf2_right_nullspace_i64(size + surplus_rows, size,
+            complete_entries, class_coordinates, class_coordinate_capacity,
+            two_rank))
         status = -9;
-    else
-    {
-        *two_rank = (size_t) nullity_two;
-        for (size_t generator = 0; generator < size; generator++)
-            for (size_t coordinate = 0;
-                 coordinate < (size_t) nullity_two; coordinate++)
-                class_coordinates[generator * (size_t) nullity_two + coordinate] =
-                    (uint8_t) nmod_mat_get_entry(modulo_two_kernel,
-                        (slong) generator, (slong) coordinate);
-    }
-    nmod_mat_clear(modulo_two_kernel);
-    nmod_mat_clear(modulo_two);
+    flint_free(complete_entries);
 
+    fmpz_clear(multiplier);
+    fmpz_clear(sum);
+    fmpz_clear(old_right);
+    fmpz_clear(old_left);
+    fmpz_clear(quotient_right);
+    fmpz_clear(quotient_left);
+    fmpz_clear(bezout_right);
+    fmpz_clear(bezout_left);
+    fmpz_clear(gcd);
     fmpz_mat_clear(saturated);
+    fmpz_mat_clear(vector);
+    fmpz_mat_clear(next_basis);
+    fmpz_mat_clear(transform);
     fmpz_mat_clear(lattice_basis);
-    fmpz_mat_clear(hermite_transpose);
-    fmpz_mat_clear(basis_transpose);
-    fmpz_mat_clear(basis);
-    fmpz_mat_clear(nullspace_columns);
-    fmpz_mat_clear(congruences);
     fmpz_clear(remainder);
     fmpz_clear(quotient);
     fmpz_clear(kernel_index);

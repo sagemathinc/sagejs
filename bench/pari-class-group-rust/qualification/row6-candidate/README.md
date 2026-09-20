@@ -381,18 +381,32 @@ norm at most `9196` generate the full class group. This closes the mathematical
 honesty gap for this prepared field; it is not merely the earlier PARI
 floating-point bound replay.
 
-The final combined diagnostic now takes 10.84 seconds: 2.78 seconds for
-relation collection, 5.46 seconds for exact class-order determination, 1.47
-seconds for the saturated unit kernel, 0.24 seconds for logarithmic embeddings,
-0.83 seconds for unit reconstruction/replay, and 0.62 seconds for both analytic
-certificates. The class-order stage no longer constructs a 1,130-dimensional
+The final combined diagnostic has a three-run median of 7.6025 seconds: 2.76
+seconds for relation collection, 3.71 seconds for exact class-order and
+saturated-kernel determination, 0.24 seconds for logarithmic embeddings, 0.82
+seconds for unit reconstruction/replay including 0.62 seconds for both
+analytic certificates. The class-order stage no longer constructs a 1,130-dimensional
 HNF. A single fraction-free LU decomposition computes the 306-bit determinant
 of the selected square relation basis and solves the seven surplus rows in that
-basis; the solve itself is only 0.16 seconds. A saturated integer congruence
-kernel of nullity seven then identifies the exact subgroup they generate. This
-proves the final index is four. Exact rank modulo two is two, distinguishing
-`C2 x C2` from `C4`. Differential tests compare this algorithm with direct
-Smith form on independent small presentations.
+basis; the solve itself is about 0.16 seconds.
+
+The congruence kernel now stays in its actual dimension. Starting from
+`Z^7`, it intersects one congruence at a time, using an extended-GCD basis
+change and a 7 by 7 HNF after every effective constraint. This replaces the
+former 1,137-dimensional rational nullspace: the surplus-kernel phase falls
+from 1.83 seconds to about 0.003 seconds. Its saturated basis already contains
+the seven full relation dependencies, so the terminal unit stage reorders and
+reuses them instead of separately recomputing a 1,137 by 1,130 left kernel.
+That formerly 1.47-second pass now costs about 0.0006 seconds. Every exported
+dependency is replayed against every relation coordinate. Exact rank modulo
+two is two, distinguishing `C2 x C2` from `C4`, and differential tests compare
+the small-surplus order and dependency construction with direct Smith form on
+independent small presentations.
+
+The complete mod-2 map uses a packed-bit row-echelon kernel specialized to
+GF(2), rather than FLINT's word-per-entry generic modular matrix. This retains
+the same exact two-character map and selected generators while removing about
+0.16 seconds of representation overhead.
 
 The same pass takes the right nullspace of the complete relation matrix modulo
 two. Because the exact class order is four and the exact 2-rank is two, this
@@ -427,21 +441,22 @@ its HNF driver.
 
 | closest region | Rust diagnostic | PARI 2.17.4 instrumented | ratio |
 | --- | ---: | ---: | ---: |
-| relation side | 2.775377 s | 1.100174 s | 2.5227x |
-| shared determinant/solve and exact class-order/map kernel / matrix side | 5.461955 s | 2.791358 s | 1.9567x |
-| explicit unit kernel, units, regulator and analytic completion / terminal residual | 3.156146 s | 0.009196 s | not algorithmically matched |
-| complete external diagnostic / instrumented control | 10.838168 s | 3.900729 s | 2.7785x |
+| relation side | 2.758939 s | 1.100174 s | 2.5077x |
+| shared determinant/solve and exact class-order/map kernel / matrix side | 3.713325 s | 2.791358 s | 1.3303x |
+| explicit units, regulator and analytic completion / terminal residual | 1.130273 s | 0.009196 s | not algorithmically matched |
+| complete external diagnostic / instrumented control | 7.602536 s | 3.900729 s | 1.9490x |
 
-Against the pristine PARI total of `3.886499614` seconds, the single Rust
-diagnostic is `2.7887x`. This is not yet a qualification median or competitive,
-but it does answer
-the higher-risk mathematical question: the Rust path can reach a certified
-answer without PARI at runtime, and the remaining row-6 latency is now
-localized to relation collection and the square determinant/surplus solve,
-rather than unit or analytic completion.
+Against the pristine PARI total of `3.886499614` seconds, three consecutive
+Rust runs take 7.6018, 7.6025, and 7.6418 seconds. Their median is `1.9561x`
+PARI, passing the row-6 `<= 2x` median gate. The remaining latency is localized
+to relation collection and especially the 1,130-square fraction-free
+decomposition, rather than surplus processing or a duplicated unit kernel.
 
-The sparse receipt is `results/maximal-unit-lattice.json` (SHA-256
-`6285a46d06f3bf1847bd8d0a7f520dc6fceda33822b82094c8054e2315ed7b50`).
+The median-run sparse receipt is `results/maximal-unit-lattice.json` (SHA-256
+`ce367a8f88174d91f4c5b0941f2ad0152d8f3ed9dfbe5e25688e1399766822c0`).
+The three raw timing records, their receipt hashes, the frozen PARI control,
+and the machine-readable gate decision are in
+`results/competitive-timing-repeats.json`.
 Public generator/result construction, a production honesty-extension policy,
 unconditional certification, and the public polynomial-to-result route remain
 required; this prepared-field diagnostic does not authorize production

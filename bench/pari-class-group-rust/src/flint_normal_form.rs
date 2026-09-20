@@ -61,6 +61,11 @@ pub struct FlintSmallSurplusClassOrder {
     /// Generator-major coordinates in the dual mod-2 character basis.
     /// When the class order is `2^two_rank`, this is an exact class map.
     pub generator_coordinates: Vec<u8>,
+    /// Dependency-row-major coefficients on the square rows followed by the
+    /// surplus rows.  These are the exact saturated dependencies already
+    /// constructed while computing the small-surplus quotient.
+    pub dependency_coefficients: Vec<Integer>,
+    pub dependency_rank: usize,
     pub determinant_bits: usize,
     pub determinant_ns: u64,
     pub solve_ns: u64,
@@ -80,6 +85,34 @@ impl FlintSmallSurplusClassOrder {
 
     pub fn generator_count(&self) -> usize {
         self.generator_count
+    }
+
+    pub fn dependency(&self, index: usize) -> Option<&[Integer]> {
+        if index >= self.dependency_rank {
+            return None;
+        }
+        let relation_count = self.generator_count + self.dependency_rank;
+        Some(
+            &self.dependency_coefficients
+                [index * relation_count..(index + 1) * relation_count],
+        )
+    }
+
+    pub fn dependencies_annihilate(&self, relations: &[i64]) -> bool {
+        let relation_count = self.generator_count + self.dependency_rank;
+        if relations.len() != relation_count * self.generator_count {
+            return false;
+        }
+        (0..self.dependency_rank).all(|dependency| {
+            (0..self.generator_count).all(|column| {
+                let mut sum = Integer::from(0);
+                for row in 0..relation_count {
+                    sum += &self.dependency_coefficients[dependency * relation_count + row]
+                        * relations[row * self.generator_count + column];
+                }
+                sum == 0
+            })
+        })
     }
 
     pub fn annihilates(&self, relations: &[i64], rows: usize) -> bool {
@@ -219,6 +252,8 @@ unsafe extern "C" {
         two_rank: *mut usize,
         class_coordinates: *mut u8,
         class_coordinate_capacity: usize,
+        dependency_entries: *const *mut c_void,
+        dependency_capacity: usize,
         determinant_bits: *mut usize,
         determinant_ns: *mut u64,
         solve_ns: *mut u64,
@@ -338,6 +373,14 @@ pub fn flint_small_surplus_class_order(
     let mut class_order = Integer::new();
     let mut two_rank = 0_usize;
     let mut generator_coordinates = vec![0_u8; square_entries.len()];
+    let dependency_capacity = surplus_rows
+        .checked_mul(size + surplus_rows)
+        .ok_or(FlintNormalFormError::InvalidDimensions)?;
+    let mut dependency_coefficients = vec![Integer::from(0); dependency_capacity];
+    let dependency_pointers = dependency_coefficients
+        .iter_mut()
+        .map(|value| value.as_raw_mut().cast::<c_void>())
+        .collect::<Vec<_>>();
     let mut determinant_bits = 0_usize;
     let mut determinant_ns = 0_u64;
     let mut solve_ns = 0_u64;
@@ -352,6 +395,8 @@ pub fn flint_small_surplus_class_order(
             &mut two_rank,
             generator_coordinates.as_mut_ptr(),
             generator_coordinates.len(),
+            dependency_pointers.as_ptr(),
+            dependency_pointers.len(),
             &mut determinant_bits,
             &mut determinant_ns,
             &mut solve_ns,
@@ -366,6 +411,8 @@ pub fn flint_small_surplus_class_order(
                 two_rank,
                 generator_count: size,
                 generator_coordinates,
+                dependency_coefficients,
+                dependency_rank: surplus_rows,
                 determinant_bits,
                 determinant_ns,
                 solve_ns,
@@ -1028,6 +1075,8 @@ mod tests {
         assert_eq!(answer.two_rank, 2);
         assert_eq!(answer.generator_coordinates, [1, 0, 0, 1]);
         assert!(answer.annihilates(&[2, 0, 0, 6, 0, 4], 3));
+        assert!(answer.dependencies_annihilate(&[2, 0, 0, 6, 0, 4]));
+        assert_eq!(answer.dependency_rank, 1);
         assert_eq!(answer.determinant_bits, 4);
     }
 
@@ -1064,6 +1113,50 @@ mod tests {
                     .count()
             );
             assert!(answer.annihilates(&complete, complete.len() / size));
+            assert!(
+                answer.dependencies_annihilate(&complete),
+                "dependency failure for size={size}, square={square:?}, surplus={surplus:?}, dependencies={:?}",
+                answer.dependency_coefficients
+            );
+        }
+    }
+
+    #[test]
+    fn successive_congruence_intersections_match_a_deterministic_smith_sweep() {
+        let mut state = 0x6a09_e667_f3bc_c909_u64;
+        let mut accepted = 0;
+        while accepted < 128 {
+            state = state
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            let size = 2 + (state as usize % 3);
+            let surplus_rows = 1 + ((state >> 8) as usize % 3);
+            let mut next_entry = || {
+                state = state
+                    .wrapping_mul(6_364_136_223_846_793_005)
+                    .wrapping_add(1_442_695_040_888_963_407);
+                ((state >> 32) % 9) as i64 - 4
+            };
+            let square = (0..size * size)
+                .map(|_| next_entry())
+                .collect::<Vec<_>>();
+            let surplus = (0..surplus_rows * size)
+                .map(|_| next_entry())
+                .collect::<Vec<_>>();
+            let Ok(answer) = flint_small_surplus_class_order(&square, &surplus, size) else {
+                continue;
+            };
+            let mut complete = square.clone();
+            complete.extend_from_slice(&surplus);
+            let smith = flint_smith_candidate(&complete, size + surplus_rows, size).unwrap();
+            assert_eq!(answer.class_order, smith.class_number);
+            assert_eq!(answer.dependency_rank, surplus_rows);
+            assert!(
+                answer.dependencies_annihilate(&complete),
+                "dependency failure for size={size}, square={square:?}, surplus={surplus:?}, dependencies={:?}",
+                answer.dependency_coefficients
+            );
+            accepted += 1;
         }
     }
 

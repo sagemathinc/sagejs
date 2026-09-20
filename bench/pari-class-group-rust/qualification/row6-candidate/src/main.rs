@@ -7,14 +7,14 @@
 //! shared Rust boundary cannot represent row 6's index-three maximal-order
 //! basis.  It must never be interpreted as a class-group result.
 
-use rug::{Float, Integer, Rational};
+use rug::{Assign, Float, Integer, Rational};
 use sagejs_pari_class_group_rust_experiment::{
     EmbeddingPrecisionState, PreparedCollectorLimits, PreparedCubicData,
     PreparedRealCubicEmbedding, ValidatedPreparedCubic, collect_prepared_cubic_relations,
     collect_validated_primitive_box_with_supplementary, flint_hnf_basis, flint_hnf_profile,
     build_cubic_bdf_factor_base_plan, build_cubic_belabas_friedman_plan,
     flint_bdf_factor_base_margin, flint_bf_index_enclosure, flint_compact_cubic_regulator,
-    flint_incremental_hnf, flint_left_kernel, flint_small_surplus_class_order,
+    flint_incremental_hnf, flint_small_surplus_class_order,
     flint_smith_candidate, flint_smith_class_map, flint_staged_relation_witnesses,
     modular_independent_relation_rows,
     prepared_cubic_factor_base, prepared_cubic_splitting_records,
@@ -713,13 +713,15 @@ fn small_norm_unit_kernel(maximum_ideals: usize, maximum_candidates: usize) {
     )
     .expect("modularly independent row selection failed");
     let mut selected = vec![false; rows];
-    for source_row in source_rows {
+    for &source_row in &source_rows {
         selected[source_row] = true;
     }
     let mut remaining = Vec::with_capacity((rows - columns) * columns);
+    let mut remaining_rows = Vec::with_capacity(rows - columns);
     for (row, relation) in answer.relations.chunks_exact(columns).enumerate() {
         if !selected[row] {
             remaining.extend_from_slice(relation);
+            remaining_rows.push(row);
         }
     }
     let class_order = flint_small_surplus_class_order(&square, &remaining, columns)
@@ -748,8 +750,37 @@ fn small_norm_unit_kernel(maximum_ideals: usize, maximum_candidates: usize) {
     let invariant_factors = [2_i64, 2_i64];
     let presentation_ns = presentation_started.elapsed().as_nanos();
     let kernel_started = Instant::now();
-    let kernel = flint_left_kernel(&answer.relations, rows, columns)
-        .expect("exact saturated left-kernel construction failed");
+    assert_eq!(class_order.dependency_rank, rows - columns);
+    assert_eq!(source_rows.len() + remaining_rows.len(), rows);
+    let mut kernel_coefficients = vec![Integer::from(0); class_order.dependency_rank * rows];
+    let mut kernel_nonzero_counts = vec![0_usize; class_order.dependency_rank];
+    let mut maximum_kernel_coefficient_bits = 0_usize;
+    for dependency in 0..class_order.dependency_rank {
+        let source = &class_order.dependency_coefficients
+            [dependency * rows..(dependency + 1) * rows];
+        for (position, &relation) in source_rows.iter().enumerate() {
+            kernel_coefficients[dependency * rows + relation].assign(&source[position]);
+        }
+        for (position, &relation) in remaining_rows.iter().enumerate() {
+            kernel_coefficients[dependency * rows + relation]
+                .assign(&source[columns + position]);
+        }
+        for coefficient in &kernel_coefficients[dependency * rows..(dependency + 1) * rows] {
+            if coefficient != &0 {
+                kernel_nonzero_counts[dependency] += 1;
+                maximum_kernel_coefficient_bits =
+                    maximum_kernel_coefficient_bits.max(coefficient.significant_bits() as usize);
+            }
+        }
+    }
+    let kernel = sagejs_pari_class_group_rust_experiment::FlintLeftKernel {
+        coefficients: kernel_coefficients,
+        relation_count: rows,
+        rank: class_order.dependency_rank,
+        maximum_coefficient_bits: maximum_kernel_coefficient_bits,
+        nonzero_counts: kernel_nonzero_counts,
+        kernel_ns: 0,
+    };
     let kernel_external_ns = kernel_started.elapsed().as_nanos();
     assert_eq!(kernel.rank, rows - columns);
     let logarithms_started = Instant::now();
@@ -1093,6 +1124,7 @@ fn small_norm_unit_kernel(maximum_ideals: usize, maximum_candidates: usize) {
                 "rank": kernel.rank,
                 "isSaturated": true,
                 "allReplayExactly": true,
+                "construction": "reused-small-surplus-saturated-congruence-kernel",
                 "maximumCoefficientBits": kernel.maximum_coefficient_bits,
                 "unitEncoding": "product-of-collected-integral-basis-elements-to-signed-powers-v1",
                 "logPrecisionBits": LOG_PRECISION,
@@ -1178,11 +1210,11 @@ fn small_norm_unit_kernel(maximum_ideals: usize, maximum_candidates: usize) {
             "timingsNanoseconds": {
                 "collection": answer.timings.total_ns,
                 "presentationClassOrder": presentation_ns,
+                "presentationSquareDeterminantBits": class_order.determinant_bits,
                 "presentationSquareDeterminant": class_order.determinant_ns,
                 "presentationSurplusCoordinateSolve": class_order.solve_ns,
                 "presentationSurplusKernel": class_order.kernel_ns,
-                "kernelInternal": kernel.kernel_ns,
-                "kernelExternal": kernel_external_ns,
+                "kernelReorderAndMetadata": kernel_external_ns,
                 "logarithmicEmbedding": logarithms_ns,
                 "unitLatticeReconstructionAndReplay": reconstruction_ns,
                 "analyticCompletion": analytic_ns,
