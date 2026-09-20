@@ -193,3 +193,21 @@ The broad numerical-preparation bucket falls from 88.36 to roughly 52 seconds,
 which shows that high-precision embedded Gram--Schmidt and repeated per-ideal
 setup now dominate that bucket. Fine-grained preparation timings and reusable
 workspaces are the next collector optimization boundary.
+
+## 2026-09-20 compact candidate class map
+
+Smith transformation data is now retained in compact form instead of stopping
+at invariant factors. After the square HNF basis is constructed, FLINT computes
+Smith transforms and the bridge exports each of the 1,130 factor-base
+generators' two coordinates modulo 2. Rust independently evaluates every one
+of the 1,526 original relation rows under this map; all map to zero. The 2,260
+binary coordinates are recorded losslessly, generator-major and least-
+significant-bit first, in `results/maximal-class-map-candidate.json`.
+
+On the captured run, collection took 72.337437820 seconds, generic HNF took
+252.549092196 seconds, and Smith transformation plus compact map extraction
+took 2.389889556 seconds. This is a genuine candidate homomorphism from the
+factor-base presentation to `C2 x C2`, not merely an invariant-factor match.
+It still does not prove HNF provenance without its left transformation, furnish
+principal elements, select generator ideals with order witnesses, or prove
+that the relation lattice is complete. Those remain R2/R3 gates.

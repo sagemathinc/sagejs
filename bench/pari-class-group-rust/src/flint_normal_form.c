@@ -152,3 +152,58 @@ int sagejs_rust_flint_lll_columns_decimal(
     flint_cleanup();
     return status;
 }
+
+int sagejs_rust_flint_snf_class_map_i64(
+    size_t size, const int64_t *entries, int64_t *invariant_factors,
+    int64_t *generator_coordinates, size_t *invariant_count)
+{
+    if (size == 0 || invariant_factors == NULL ||
+        generator_coordinates == NULL || invariant_count == NULL)
+        return -1;
+    fmpz_mat_t source;
+    fmpz_mat_t smith;
+    fmpz_mat_t left_transform;
+    fmpz_mat_t right_transform;
+    if (!sagejs_rust_flint_set_i64_matrix(source, size, size, entries))
+        return -1;
+    fmpz_mat_init(smith, (slong) size, (slong) size);
+    fmpz_mat_init(left_transform, (slong) size, (slong) size);
+    fmpz_mat_init(right_transform, (slong) size, (slong) size);
+    fmpz_mat_snf_transform(smith, left_transform, right_transform, source);
+
+    size_t count = 0;
+    int status = 0;
+    fmpz_t absolute;
+    fmpz_init(absolute);
+    for (size_t diagonal = 0; diagonal < size; diagonal++)
+    {
+        const fmpz *entry = fmpz_mat_entry(
+            smith, (slong) diagonal, (slong) diagonal);
+        fmpz_abs(absolute, entry);
+        if (fmpz_cmp_ui(absolute, 1) <= 0)
+            continue;
+        if (!fmpz_fits_si(absolute))
+        {
+            status = -2;
+            break;
+        }
+        const ulong modulus = fmpz_get_ui(absolute);
+        invariant_factors[count] = (int64_t) modulus;
+        for (size_t generator = 0; generator < size; generator++)
+        {
+            const fmpz *coordinate = fmpz_mat_entry(
+                right_transform, (slong) generator, (slong) diagonal);
+            generator_coordinates[generator * size + count] =
+                (int64_t) fmpz_fdiv_ui(coordinate, modulus);
+        }
+        count++;
+    }
+    *invariant_count = count;
+    fmpz_clear(absolute);
+    fmpz_mat_clear(right_transform);
+    fmpz_mat_clear(left_transform);
+    fmpz_mat_clear(smith);
+    fmpz_mat_clear(source);
+    flint_cleanup();
+    return status;
+}

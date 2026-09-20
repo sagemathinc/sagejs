@@ -62,8 +62,8 @@ pub use factor_base::prepared_cubic_factor_base;
 pub use factor_base::{FactorBase, PrimeIdeal};
 #[cfg(feature = "flint-normal-form")]
 pub use flint_normal_form::{
-    FlintNormalFormError, FlintSmithCandidate, flint_hnf_basis, flint_lll_column_transform,
-    flint_smith_candidate,
+    FlintNormalFormError, FlintSmithCandidate, FlintSmithClassMap, flint_hnf_basis,
+    flint_lll_column_transform, flint_smith_candidate, flint_smith_class_map,
 };
 pub use gmp_smith::{
     ExactSmithCandidateInvariants, GmpSmithError, GmpSmithWorkspace,

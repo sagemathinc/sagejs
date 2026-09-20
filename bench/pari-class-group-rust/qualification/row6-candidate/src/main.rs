@@ -11,7 +11,7 @@ use rug::Integer;
 use sagejs_pari_class_group_rust_experiment::{
     EmbeddingPrecisionState, PreparedCollectorLimits, PreparedCubicData, ValidatedPreparedCubic,
     collect_prepared_cubic_relations, collect_validated_primitive_box_with_supplementary,
-    flint_hnf_basis, flint_smith_candidate, prepared_cubic_factor_base,
+    flint_hnf_basis, flint_smith_candidate, flint_smith_class_map, prepared_cubic_factor_base,
     prepared_maximal_cubic_factor_base,
 };
 use std::env;
@@ -429,6 +429,79 @@ fn small_norm_hnf_smith(maximum_ideals: usize, maximum_candidates: usize) {
     );
 }
 
+fn small_norm_class_map(maximum_ideals: usize, maximum_candidates: usize) {
+    let field = maximal_order();
+    let total_started = Instant::now();
+    let answer = collect_prepared_cubic_relations(
+        &field,
+        PreparedCollectorLimits {
+            maximum_visited_ideals: maximum_ideals,
+            maximum_candidates,
+        },
+    )
+    .expect("maximal-order relation collection failed");
+    assert!(answer.complete_rank_and_surplus, "relation lattice is incomplete");
+    let rows = answer.relations.len() / answer.factor_base.catalog.ideals.len();
+    let columns = answer.factor_base.catalog.ideals.len();
+    eprintln!(
+        "stage=relation-collection-complete rows={rows} columns={columns} elapsed_ns={}",
+        answer.timings.total_ns
+    );
+    let hnf_started = Instant::now();
+    let basis = flint_hnf_basis(&answer.relations, rows, columns)
+        .expect("FLINT HNF basis reduction failed");
+    let hnf_ns = hnf_started.elapsed().as_nanos();
+    eprintln!("stage=hnf-basis-complete elapsed_ns={hnf_ns}");
+    let map_started = Instant::now();
+    let map = flint_smith_class_map(&basis, columns)
+        .expect("FLINT Smith class-map construction failed");
+    let map_ns = map_started.elapsed().as_nanos();
+    assert!(
+        map.annihilates(&answer.relations, rows),
+        "a collected relation survived the Smith quotient map"
+    );
+    eprintln!("stage=smith-class-map-complete elapsed_ns={map_ns}");
+    let class_number = map.invariant_factors.iter().product::<i64>();
+    assert!(
+        map.invariant_factors.iter().all(|factor| *factor == 2),
+        "the row-6 compact receipt currently specifies binary coordinates"
+    );
+    let mut packed = vec![0_u8; map.generator_coordinates.len().div_ceil(8)];
+    for (index, coordinate) in map.generator_coordinates.iter().copied().enumerate() {
+        assert!((0..=1).contains(&coordinate));
+        packed[index / 8] |= (coordinate as u8) << (index % 8);
+    }
+    let packed_hex = packed
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>();
+    println!(
+        "{}",
+        serde_json::json!({
+            "schema": "sagejs.rust-class-group/row6-maximal-class-map-candidate-v1",
+            "qualificationStatus": "class-map-candidate-not-publicly-complete",
+            "usesOracleAsInput": false,
+            "relations": { "rows": rows, "columns": columns, "allMapToZero": true },
+            "hnfBasis": { "rows": columns, "columns": columns },
+            "group": {
+                "invariantFactors": map.invariant_factors,
+                "classNumber": class_number,
+                "factorBaseGeneratorCoordinates": {
+                    "encoding": "generator-major-lsb-first-binary-v1",
+                    "coordinateCount": map.generator_coordinates.len(),
+                    "packedHex": packed_hex,
+                },
+            },
+            "timingsNanoseconds": {
+                "collection": answer.timings.total_ns,
+                "hnfBasis": hnf_ns,
+                "smithClassMap": map_ns,
+                "totalExternal": total_started.elapsed().as_nanos(),
+            },
+        })
+    );
+}
+
 fn main() {
     let arguments = env::args().skip(1).collect::<Vec<_>>();
     if arguments
@@ -507,6 +580,24 @@ fn main() {
             arguments
                 .get(2)
                 .expect("usage: row6-candidate small-norm-hnf-smith IDEALS CANDIDATES")
+                .parse()
+                .expect("candidates must be an integer"),
+        );
+        return;
+    }
+    if arguments
+        .first()
+        .is_some_and(|value| value == "small-norm-class-map")
+    {
+        small_norm_class_map(
+            arguments
+                .get(1)
+                .expect("usage: row6-candidate small-norm-class-map IDEALS CANDIDATES")
+                .parse()
+                .expect("ideals must be an integer"),
+            arguments
+                .get(2)
+                .expect("usage: row6-candidate small-norm-class-map IDEALS CANDIDATES")
                 .parse()
                 .expect("candidates must be an integer"),
         );
