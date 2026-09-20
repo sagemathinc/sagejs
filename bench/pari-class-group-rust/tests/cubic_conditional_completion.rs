@@ -128,21 +128,17 @@ fn counterfeit_relation_generator_never_reaches_completion() {
 }
 
 #[test]
-fn rejects_index_prime_fields_until_maximal_order_splitting_is_exact() {
-    // This equation order has index four in the maximal order. Completion
-    // must not feed its ambiguous index-prime residue characters to BF/BDF.
+fn completes_an_index_prime_field_using_maximal_order_splitting() {
     let prepared = prepare([20_018, -20_010, 0, 1]);
     assert!(!prepared.field().data().index_primes.is_empty());
     let candidate = candidate(&prepared);
-    assert_eq!(
-        complete_cubic_class_group_conditionally(
-            prepared,
-            candidate,
-            CubicConditionalCompletionOptions::default(),
-        )
-        .unwrap_err(),
-        CubicConditionalCompletionError::UnsupportedIndexPrimeCompletion
-    );
+    let completed = complete_cubic_class_group_conditionally(
+        prepared,
+        candidate,
+        CubicConditionalCompletionOptions::default(),
+    )
+    .unwrap();
+    assert!(completed.verify_sealed_evidence());
 }
 
 #[test]

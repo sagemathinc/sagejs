@@ -18,6 +18,9 @@ use rug::Integer;
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 
+use crate::class_group::{
+    PreparedFactorBaseAuthority, canonical_field_sha256, factor_base_binding_sha256,
+};
 use crate::class_maps::{
     ClassCoordinates, ClassMapError, PresentationClassMap, PresentationZeroState,
 };
@@ -26,11 +29,9 @@ use crate::numerical_preparation::{
     NumericalPreparationError, PreparedCubicEmbedding, prepare_cubic_ideal,
 };
 use crate::polynomial_preparation::{PreparedPublicCubic, RustPreparedMaximalCubic};
-use crate::prepared::{EmbeddingPrecisionState, ValidatedPreparedCubic};
+use crate::prepared::ValidatedPreparedCubic;
 use crate::prepared_factor_base::{PreparedFactorBase, prepared_maximal_cubic_factor_base};
-use crate::prepared_ideal::{
-    CubicIdeal, DegreeOnePrimeCharacter, PreparedIdealError, PreparedIdealWorkspace,
-};
+use crate::prepared_ideal::{CubicIdeal, PreparedIdealError, PreparedIdealWorkspace};
 use crate::prepared_input::NeutralPreparedCubicInput;
 
 const DEGREE: usize = 3;
@@ -458,6 +459,33 @@ pub fn authenticate_presentation_class_map(
         presentation,
         witnesses,
         workspace,
+        None,
+    )
+}
+
+/// Authenticate a presentation against the exact factor base minted and used
+/// by the in-process collector.
+///
+/// This entry point is crate-private because its only purpose is to preserve
+/// trusted producer provenance across the collection/authentication boundary.
+/// Public and replay-facing entry points deliberately have no way to supply an
+/// authority and therefore retain full factor-base regeneration.
+pub(crate) fn authenticate_collected_presentation_class_map(
+    order: MaximalCubicOrder<'_>,
+    factor_base: &PreparedFactorBase,
+    factor_base_authority: &PreparedFactorBaseAuthority,
+    presentation: PresentationClassMap,
+    witnesses: &[PrincipalRelationWitness],
+    workspace: &mut PreparedIdealWorkspace,
+) -> Result<AuthenticatedPresentationClassMap, ArbitraryIdealReductionError> {
+    authenticate_presentation_with_context(
+        order.field(),
+        MaximalOrderEvidenceStatus::RustProvedSquarefreeDiscriminant,
+        factor_base,
+        presentation,
+        witnesses,
+        workspace,
+        Some(factor_base_authority),
     )
 }
 
@@ -475,6 +503,7 @@ pub fn authenticate_upstream_assumed_row6_presentation_class_map(
         presentation,
         witnesses,
         workspace,
+        None,
     )
 }
 
@@ -485,6 +514,7 @@ fn authenticate_presentation_with_context(
     presentation: PresentationClassMap,
     witnesses: &[PrincipalRelationWitness],
     workspace: &mut PreparedIdealWorkspace,
+    factor_base_authority: Option<&PreparedFactorBaseAuthority>,
 ) -> Result<AuthenticatedPresentationClassMap, ArbitraryIdealReductionError> {
     // This is deliberately the first operation. Witnesses are public input,
     // and neither malformed presentation/base data nor a later relation
@@ -520,7 +550,13 @@ fn authenticate_presentation_with_context(
         // order contexts accept only the exact Smith-backed constructors.
         return Err(ArbitraryIdealReductionError::QualificationCoordinateMapInProductionContext);
     }
-    validate_factor_base(field, factor_base, workspace)?;
+    if let Some(authority) = factor_base_authority {
+        if !authority.authenticates(field, factor_base) {
+            return Err(ArbitraryIdealReductionError::FactorBaseShape);
+        }
+    } else {
+        validate_factor_base(field, factor_base, workspace)?;
+    }
     if presentation.generator_count() != factor_base.exact_ideals.len() {
         return Err(ArbitraryIdealReductionError::ClassMapFactorBaseWidth {
             factor_base: factor_base.exact_ideals.len(),
@@ -881,52 +917,13 @@ fn validate_factor_base(
             }
             let generator = descriptor.generator.map(Integer::from);
             let canonical_exact = workspace.from_generators(exact_rows)?;
-            let is_index_prime = field
-                .data()
-                .index_primes
-                .iter()
-                .any(|index_prime| index_prime == &prime);
-            if is_index_prime {
-                let rational_prime = u32::try_from(prime)
-                    .map_err(|_| ArbitraryIdealReductionError::FactorBaseShape)?;
-                if rational_prime > 257 {
-                    return Err(ArbitraryIdealReductionError::FactorBaseShape);
-                }
-                let Some(first_image) = descriptor.generator[0]
-                    .checked_neg()
-                    .and_then(|value| u32::try_from(value).ok())
-                    .filter(|value| *value < rational_prime)
-                else {
-                    return Err(ArbitraryIdealReductionError::FactorBaseShape);
-                };
-                if descriptor.generator[1..] != [1, 0]
-                    || !(0..rational_prime).any(|second_image| {
-                        DegreeOnePrimeCharacter::validate(
-                            field,
-                            rational_prime,
-                            [1, first_image, second_image],
-                        )
-                        .ok()
-                        .and_then(|character| {
-                            workspace
-                                .from_generators(character.kernel().basis_rows())
-                                .ok()
-                        })
-                        .is_some_and(|kernel| kernel == canonical_exact)
-                    })
-                {
-                    return Err(ArbitraryIdealReductionError::FactorBaseShape);
-                }
-            } else {
-                let reconstructed = workspace.prime_from_generator(
-                    field,
-                    u32::try_from(prime)
-                        .map_err(|_| ArbitraryIdealReductionError::FactorBaseShape)?,
-                    &generator,
-                )?;
-                if reconstructed != canonical_exact {
-                    return Err(ArbitraryIdealReductionError::FactorBaseShape);
-                }
+            let reconstructed = workspace.prime_from_generator(
+                field,
+                u32::try_from(prime).map_err(|_| ArbitraryIdealReductionError::FactorBaseShape)?,
+                &generator,
+            )?;
+            if reconstructed != canonical_exact {
+                return Err(ArbitraryIdealReductionError::FactorBaseShape);
             }
         }
         expected_offset = end;
@@ -1135,113 +1132,6 @@ fn integer_pow(mut base: Integer, mut exponent: u32) -> Integer {
         }
     }
     answer
-}
-
-fn factor_base_binding_sha256(factor_base: &PreparedFactorBase) -> [u8; 32] {
-    fn usize_value(hasher: &mut Sha256, value: usize) {
-        hasher.update((value as u64).to_le_bytes());
-    }
-    fn i64_value(hasher: &mut Sha256, value: i64) {
-        hasher.update(value.to_le_bytes());
-    }
-    fn integer(hasher: &mut Sha256, value: &Integer) {
-        let bytes = value.to_string();
-        usize_value(hasher, bytes.len());
-        hasher.update(bytes.as_bytes());
-    }
-
-    let catalog = &factor_base.catalog;
-    let mut hasher = Sha256::new();
-    hasher.update(b"sagejs.prepared-cubic-factor-base/v1\0");
-    usize_value(&mut hasher, catalog.relation_bound);
-    usize_value(&mut hasher, catalog.checking_bound);
-    usize_value(&mut hasher, catalog.ideals.len());
-    for (descriptor, ideal) in catalog.ideals.iter().zip(&factor_base.exact_ideals) {
-        i64_value(&mut hasher, descriptor.prime);
-        usize_value(&mut hasher, descriptor.ramification);
-        usize_value(&mut hasher, descriptor.residue_degree);
-        for value in descriptor.generator {
-            i64_value(&mut hasher, value);
-        }
-        for value in descriptor.tau {
-            i64_value(&mut hasher, value);
-        }
-        for value in descriptor.hnf {
-            i64_value(&mut hasher, value);
-        }
-        i64_value(&mut hasher, descriptor.norm);
-        for row in ideal.basis_rows() {
-            for value in row {
-                integer(&mut hasher, value);
-            }
-        }
-    }
-    usize_value(&mut hasher, catalog.rational_primes.len());
-    for &value in &catalog.rational_primes {
-        i64_value(&mut hasher, value);
-    }
-    for &value in &catalog.rational_offsets {
-        usize_value(&mut hasher, value);
-    }
-    for &value in &catalog.rational_counts {
-        usize_value(&mut hasher, value);
-    }
-    hasher.update(
-        catalog
-            .complete_groups
-            .iter()
-            .map(|value| u8::from(*value))
-            .collect::<Vec<_>>(),
-    );
-    hasher.finalize().into()
-}
-
-fn canonical_field_sha256(field: &ValidatedPreparedCubic) -> [u8; 32] {
-    fn bytes(hasher: &mut Sha256, value: &[u8]) {
-        hasher.update((value.len() as u64).to_le_bytes());
-        hasher.update(value);
-    }
-    fn integer(hasher: &mut Sha256, value: &Integer) {
-        bytes(hasher, value.to_string().as_bytes());
-    }
-
-    let data = field.data();
-    let mut hasher = Sha256::new();
-    hasher.update(b"sagejs.maximal-cubic-field-data/v1\0");
-    for value in &data.polynomial_ascending {
-        integer(&mut hasher, value);
-    }
-    hasher.update(data.irreducibility_prime.to_le_bytes());
-    for value in &data.integral_basis_numerators {
-        integer(&mut hasher, value);
-    }
-    integer(&mut hasher, &data.basis_denominator);
-    for value in &data.multiplication_table {
-        integer(&mut hasher, value);
-    }
-    integer(&mut hasher, &data.discriminant);
-    hasher.update([data.signature.0, data.signature.1]);
-    match &data.embedding_precision {
-        EmbeddingPrecisionState::Pending { target_bits } => {
-            hasher.update([0]);
-            hasher.update(target_bits.to_le_bytes());
-        }
-        EmbeddingPrecisionState::Certified {
-            target_bits,
-            working_bits,
-            certified_bits,
-        } => {
-            hasher.update([1]);
-            hasher.update(target_bits.to_le_bytes());
-            hasher.update(working_bits.to_le_bytes());
-            hasher.update(certified_bits.to_le_bytes());
-        }
-    }
-    hasher.update((data.index_primes.len() as u64).to_le_bytes());
-    for value in &data.index_primes {
-        integer(&mut hasher, value);
-    }
-    hasher.finalize().into()
 }
 
 fn canonical_field_digest(field: &ValidatedPreparedCubic) -> String {

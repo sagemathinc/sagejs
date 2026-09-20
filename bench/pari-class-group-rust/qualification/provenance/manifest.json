@@ -104,7 +104,7 @@
   "modules": [
     {
       "path": "bench/pari-class-group-rust/src/analytic_completion.rs",
-      "sha256": "2c1200233a57532cc4471a7f253859e9c60a4b7e4f3b1484e467b81b4e81a231",
+      "sha256": "9221e78a1664d17cf2d2d18267e5e0ef8f23736626abd3761b4e4e679b97f6ee",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
@@ -124,7 +124,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/arbitrary_ideal_reduction.rs",
-      "sha256": "cbdff6d681a99565ca51849e9b678fbbb0773cd231110d3f01156dbe36aa017d",
+      "sha256": "1b526425e95b18e59b62c9c7b2b04b47a2c31ae5b29e84c6c3232646bf5cd0ae",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
@@ -144,7 +144,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/class_group.rs",
-      "sha256": "d26ed8d012b5ca46131ae9700e004d02b91a7f1675ad65e5d0bf9236b2356d79",
+      "sha256": "c58c7ba72e22a2cccc61b0151a6c651bd4ec08d9d19d72fd351327115024af87",
       "classification": "behavioral_reimplementation",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "partial",
@@ -190,8 +190,18 @@
       "notes": "Classification follows its translated control-flow purpose; mapping remains deliberately fail-closed."
     },
     {
+      "path": "bench/pari-class-group-rust/src/compact_cubic_presentation.rs",
+      "sha256": "8cf3e3ad32b493ba12f0761c23d810793d9ffb712edb667e7ed388579a954cdf",
+      "classification": "original",
+      "declared_license_expression": "GPL-2.0-or-later",
+      "mapping_status": "not_applicable",
+      "mappings": [],
+      "missing_mapping_explanation": null,
+      "notes": "Original exact compact authentication for full-rank small-surplus relation matrices with an elementary-2 quotient."
+    },
+    {
       "path": "bench/pari-class-group-rust/src/cubic_completion.rs",
-      "sha256": "ae4952d50589c8d334f646fb448acf17724b0965134a5e1a1cc9dcc6de851030",
+      "sha256": "c674de01e8e4b792c5006069eaa4444493ebaabc28ce499ac16946e6510775ae",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
@@ -201,7 +211,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/cubic_presentation.rs",
-      "sha256": "d0cbc57b40e5d04d48f3b0153190d34acca790e61e95668b3144eadc67c78c2a",
+      "sha256": "7b288f6d3efaa5e9abcc0aa2aba9fefc2ccff54d26639125d85f0be95cb06472",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
@@ -339,7 +349,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/lib.rs",
-      "sha256": "fe94257226288e7c167865f90168c0e00315acb71f15ea4b5ec017fddb73782c",
+      "sha256": "ebbbfc9b8b7918933372d64b6f9a75dedfe4dfdd762965f70caa72b6267ce410",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
@@ -427,7 +437,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/prepared_factor_base.rs",
-      "sha256": "53f24f03d1292190dc3a7705af336db9f1367a9c493b35232e1b9056ff507995",
+      "sha256": "64d620766692f377040f8e0d773ce062e4934659f51fb117cd5f021c490da40e",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",

@@ -21,6 +21,8 @@ mod class_group;
 mod class_maps;
 mod collector_schedule;
 #[cfg(feature = "flint-normal-form")]
+mod compact_cubic_presentation;
+#[cfg(feature = "flint-normal-form")]
 mod cubic_completion;
 mod cubic_presentation;
 mod enumeration;
@@ -45,7 +47,8 @@ mod unit_lattice;
 
 pub use analytic_completion::{
     BdfFactorBasePlan, BelabasFriedmanPlan, BelabasFriedmanPlanError,
-    build_cubic_bdf_factor_base_plan, build_cubic_belabas_friedman_plan,
+    IncrementalCubicBelabasFriedmanPlan, build_cubic_bdf_factor_base_plan,
+    build_cubic_belabas_friedman_plan,
 };
 pub use api::{
     BruteForceOptions, ClassGroupCandidateInvariants, PreparedCubic,
@@ -82,6 +85,12 @@ pub use class_group::{
 pub use class_maps::{
     ClassCoordinates, ClassMapError, PresentationClassMap, PresentationZeroState,
     PrincipalElementWitnessState, RelationCombinationWitness, RelationCoverage,
+};
+#[cfg(feature = "flint-normal-form")]
+pub use compact_cubic_presentation::{
+    CompactGeneratorOrderEvidence, CompactPresentationError, CompactPresentationLimits,
+    CompactPresentationSolverData, CompactSaturationMinor, VerifiedCompactPresentation,
+    authenticate_compact_elementary_two_presentation,
 };
 #[cfg(feature = "flint-normal-form")]
 pub use cubic_completion::{

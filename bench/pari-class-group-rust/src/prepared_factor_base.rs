@@ -29,9 +29,11 @@ pub enum PreparedFactorBaseError {
         prime: u32,
         limit: u32,
     },
-    AmbiguousIndexPrimeDecomposition {
+    InvalidIndexPrimeDecomposition {
         prime: u32,
-        degree_one_primes: usize,
+    },
+    IndexPrimeGeneratorNotFound {
+        prime: u32,
     },
     IdealNormMismatch {
         prime: i64,
@@ -333,8 +335,11 @@ pub fn prepared_maximal_cubic_factor_base(
             .iter()
             .any(|index_prime| index_prime == &prime);
         let (mut descriptors, full_count) = if is_index_prime {
-            let descriptors = index_prime_descriptors(field, prime, &mut normal_forms)?;
+            let mut descriptors = index_prime_descriptors(field, prime, &mut normal_forms)?;
             let full_count = descriptors.len();
+            descriptors.retain(|(descriptor, _)| {
+                descriptor.residue_degree != 3 && descriptor.residue_degree <= limit
+            });
             (descriptors, full_count)
         } else {
             let pattern = prepared_cubic_factor_pattern(polynomial, prime);
@@ -406,7 +411,7 @@ fn ordinary_prime_descriptors(
 fn index_prime_descriptors(
     field: &ValidatedPreparedCubic,
     prime: i64,
-    _workspace: &mut PreparedIdealWorkspace,
+    workspace: &mut PreparedIdealWorkspace,
 ) -> Result<Vec<(PrimeIdeal, CubicIdeal)>, PreparedFactorBaseError> {
     let prime = u32::try_from(prime).map_err(|_| PreparedFactorBaseError::IndexPrimeOutsideU32)?;
     if prime > INDEX_CHARACTER_SEARCH_LIMIT {
@@ -415,41 +420,322 @@ fn index_prime_descriptors(
             limit: INDEX_CHARACTER_SEARCH_LIMIT,
         });
     }
-    let mut characters = Vec::new();
+    let mut ideals = Vec::new();
     for first in 0..prime {
         for second in 0..prime {
             if let Ok(character) =
                 DegreeOnePrimeCharacter::validate(field, prime, [1, first, second])
             {
-                characters.push(character);
+                let kernel = character.kernel();
+                let ideal = workspace.from_generators(kernel.basis_rows())?;
+                let preferred = [
+                    -Integer::from(character.basis_images()[1]),
+                    Integer::from(1),
+                    Integer::new(),
+                ];
+                let preferred = (workspace.prime_from_generator(field, prime, &preferred)?
+                    == ideal)
+                    .then_some(preferred);
+                ideals.push((1_usize, ideal, preferred));
             }
         }
     }
-    let ramification = match characters.len() {
-        1 => 3,
-        3 => 1,
-        count => {
-            return Err(PreparedFactorBaseError::AmbiguousIndexPrimeDecomposition {
-                prime,
-                degree_one_primes: count,
-            });
+
+    // A degree-two maximal ideal has a one-dimensional image in A = O/pO.
+    // Enumerating normalized projective lines is bounded by p^2+p+1 and avoids
+    // making any equation-order/Dedekind assumption at an index prime.
+    for pivot in 0..3 {
+        let mut line = [0_u32; 3];
+        line[pivot] = 1;
+        let suffix = 2 - pivot;
+        let count = prime.pow(suffix as u32);
+        for encoded in 0..count {
+            let mut value = encoded;
+            for coordinate in pivot + 1..3 {
+                line[coordinate] = value % prime;
+                value /= prime;
+            }
+            if line == [1, 0, 0] || !is_stable_line(field, prime, &line) {
+                continue;
+            }
+            let Some(u) = quotient_generator(&line, prime) else {
+                continue;
+            };
+            let u_squared = multiply_mod_p(field, prime, &u, &u);
+            let Some(coefficients) = coordinates_mod_p([one_mod_p(), u, line], u_squared, prime)
+            else {
+                continue;
+            };
+            let constant = coefficients[0];
+            let linear = coefficients[1];
+            if (0..prime).any(|root| {
+                mod_sub(
+                    mod_sub(
+                        mod_mul(root, root, prime),
+                        mod_mul(linear, root, prime),
+                        prime,
+                    ),
+                    constant,
+                    prime,
+                ) == 0
+            }) {
+                continue;
+            }
+            let p = Integer::from(prime);
+            let generators = [
+                [p.clone(), Integer::new(), Integer::new()],
+                [Integer::new(), p.clone(), Integer::new()],
+                [Integer::new(), Integer::new(), p],
+                line.map(Integer::from),
+            ];
+            let ideal = workspace.from_generators(&generators)?;
+            if ideal.norm() == Integer::from(prime).pow(2_u32)
+                && !ideals.iter().any(|(_, known, _)| known == &ideal)
+            {
+                ideals.push((2, ideal, None));
+            }
         }
-    };
+    }
+
+    // With no proper residue component, authenticate that A itself is the
+    // degree-three residue field.  In a cubic field algebra one of the two
+    // nonconstant basis vectors is cyclic; its rootless cubic proves this.
+    if ideals.is_empty() {
+        let field_proved = [[0, 1, 0], [0, 0, 1]].into_iter().any(|u| {
+            let square = multiply_mod_p(field, prime, &u, &u);
+            let Some(cube_coordinates) = coordinates_mod_p(
+                [one_mod_p(), u, square],
+                multiply_mod_p(field, prime, &square, &u),
+                prime,
+            ) else {
+                return false;
+            };
+            !(0..prime).any(|root| {
+                let root_squared = mod_mul(root, root, prime);
+                let root_cubed = mod_mul(root_squared, root, prime);
+                let evaluated = mod_sub(
+                    mod_sub(
+                        mod_sub(
+                            root_cubed,
+                            mod_mul(cube_coordinates[2], root_squared, prime),
+                            prime,
+                        ),
+                        mod_mul(cube_coordinates[1], root, prime),
+                        prime,
+                    ),
+                    cube_coordinates[0],
+                    prime,
+                );
+                evaluated == 0
+            })
+        });
+        if !field_proved {
+            return Err(PreparedFactorBaseError::InvalidIndexPrimeDecomposition { prime });
+        }
+        let zero = [Integer::new(), Integer::new(), Integer::new()];
+        ideals.push((
+            3,
+            workspace.prime_from_generator(field, prime, &zero)?,
+            Some(zero),
+        ));
+    }
+
+    let scalar = [Integer::from(prime), Integer::new(), Integer::new()];
+    let mut authenticated = Vec::with_capacity(ideals.len());
+    let mut dimension = 0_usize;
+    let mut product = CubicIdeal::unit();
+    for (residue_degree, ideal, preferred_generator) in ideals {
+        check_norm(
+            i64::from(prime),
+            &Integer::from(prime).pow(residue_degree as u32),
+            &ideal,
+        )?;
+        let ramification = workspace.valuation(field, &ideal, &scalar, 4)? as usize;
+        if ramification == 0 || ramification > 3 {
+            return Err(PreparedFactorBaseError::InvalidIndexPrimeDecomposition { prime });
+        }
+        dimension = dimension
+            .checked_add(ramification * residue_degree)
+            .ok_or(PreparedFactorBaseError::InvalidIndexPrimeDecomposition { prime })?;
+        let power = workspace.pow(field, &ideal, ramification as u8)?;
+        product = workspace.multiply(field, &product, &power)?;
+        authenticated.push((ramification, residue_degree, ideal, preferred_generator));
+    }
+    let p = Integer::from(prime);
+    let p_ideal = workspace.from_generators(&[
+        [p.clone(), Integer::new(), Integer::new()],
+        [Integer::new(), p.clone(), Integer::new()],
+        [Integer::new(), Integer::new(), p],
+    ])?;
+    if dimension != 3 || product != p_ideal {
+        return Err(PreparedFactorBaseError::InvalidIndexPrimeDecomposition { prime });
+    }
+
     let mut answer = Vec::new();
-    for character in characters {
-        let exact = character.kernel();
-        check_norm(i64::from(prime), &Integer::from(prime), &exact)?;
-        let generator = [
-            -Integer::from(character.basis_images()[1]),
-            Integer::from(1),
-            Integer::new(),
-        ];
+    for (ramification, residue_degree, exact, preferred_generator) in authenticated {
+        let generator = match preferred_generator {
+            Some(generator) => generator,
+            None => ideal_generator(field, prime, &exact, workspace)?,
+        };
         answer.push((
-            descriptor(i64::from(prime), ramification, 1, &generator, &exact)?,
+            descriptor(
+                i64::from(prime),
+                ramification,
+                residue_degree,
+                &generator,
+                &exact,
+            )?,
             exact,
         ));
     }
+    answer.sort_by(|left, right| {
+        left.0
+            .residue_degree
+            .cmp(&right.0.residue_degree)
+            .then_with(|| left.0.ramification.cmp(&right.0.ramification))
+            .then_with(|| left.0.generator.cmp(&right.0.generator))
+    });
     Ok(answer)
+}
+
+fn one_mod_p() -> [u32; 3] {
+    [1, 0, 0]
+}
+
+fn mod_mul(left: u32, right: u32, prime: u32) -> u32 {
+    ((u64::from(left) * u64::from(right)) % u64::from(prime)) as u32
+}
+
+fn mod_sub(left: u32, right: u32, prime: u32) -> u32 {
+    (left + prime - right) % prime
+}
+
+fn residue_mod_p(value: &Integer, prime: u32) -> u32 {
+    let mut residue = value.clone() % prime;
+    if residue < 0 {
+        residue += prime;
+    }
+    residue.to_u32_wrapping()
+}
+
+fn multiply_mod_p(
+    field: &ValidatedPreparedCubic,
+    prime: u32,
+    left: &[u32; 3],
+    right: &[u32; 3],
+) -> [u32; 3] {
+    let mut answer = [0_u32; 3];
+    for (left_index, &left_value) in left.iter().enumerate() {
+        for (right_index, &right_value) in right.iter().enumerate() {
+            let scalar = mod_mul(left_value, right_value, prime);
+            for (coordinate, entry) in answer.iter_mut().enumerate() {
+                let coefficient = residue_mod_p(
+                    &field.data().multiplication_table
+                        [9 * left_index + 3 * right_index + coordinate],
+                    prime,
+                );
+                *entry = (*entry + mod_mul(scalar, coefficient, prime)) % prime;
+            }
+        }
+    }
+    answer
+}
+
+fn is_stable_line(field: &ValidatedPreparedCubic, prime: u32, line: &[u32; 3]) -> bool {
+    let pivot = line.iter().position(|&value| value != 0).unwrap();
+    (0..3).all(|basis_index| {
+        let basis = std::array::from_fn(|index| u32::from(index == basis_index));
+        let product = multiply_mod_p(field, prime, line, &basis);
+        let scalar = product[pivot];
+        (0..3).all(|index| product[index] == mod_mul(scalar, line[index], prime))
+    })
+}
+
+fn quotient_generator(line: &[u32; 3], prime: u32) -> Option<[u32; 3]> {
+    [[0, 1, 0], [0, 0, 1]]
+        .into_iter()
+        .find(|candidate| determinant_mod_p(&[one_mod_p(), *candidate, *line], prime) != 0)
+}
+
+fn determinant_mod_p(rows: &[[u32; 3]; 3], prime: u32) -> u32 {
+    let positive = (mod_mul(rows[0][0], mod_mul(rows[1][1], rows[2][2], prime), prime)
+        + mod_mul(rows[0][1], mod_mul(rows[1][2], rows[2][0], prime), prime)
+        + mod_mul(rows[0][2], mod_mul(rows[1][0], rows[2][1], prime), prime))
+        % prime;
+    let negative = (mod_mul(rows[0][2], mod_mul(rows[1][1], rows[2][0], prime), prime)
+        + mod_mul(rows[0][1], mod_mul(rows[1][0], rows[2][2], prime), prime)
+        + mod_mul(rows[0][0], mod_mul(rows[1][2], rows[2][1], prime), prime))
+        % prime;
+    mod_sub(positive, negative, prime)
+}
+
+fn inverse_mod_p(value: u32, prime: u32) -> u32 {
+    (1..prime)
+        .find(|&candidate| mod_mul(value, candidate, prime) == 1)
+        .expect("nonzero field element has an inverse")
+}
+
+/// Solve `columns * coefficients = value` over F_p.
+fn coordinates_mod_p(columns: [[u32; 3]; 3], value: [u32; 3], prime: u32) -> Option<[u32; 3]> {
+    let mut augmented = [[0_u32; 4]; 3];
+    for row in 0..3 {
+        for column in 0..3 {
+            augmented[row][column] = columns[column][row];
+        }
+        augmented[row][3] = value[row];
+    }
+    for pivot in 0..3 {
+        let source = (pivot..3).find(|&row| augmented[row][pivot] != 0)?;
+        augmented.swap(pivot, source);
+        let inverse = inverse_mod_p(augmented[pivot][pivot], prime);
+        for column in pivot..4 {
+            augmented[pivot][column] = mod_mul(augmented[pivot][column], inverse, prime);
+        }
+        for row in 0..3 {
+            if row == pivot {
+                continue;
+            }
+            let scalar = augmented[row][pivot];
+            for column in pivot..4 {
+                augmented[row][column] = mod_sub(
+                    augmented[row][column],
+                    mod_mul(scalar, augmented[pivot][column], prime),
+                    prime,
+                );
+            }
+        }
+    }
+    Some(std::array::from_fn(|index| augmented[index][3]))
+}
+
+fn ideal_generator(
+    field: &ValidatedPreparedCubic,
+    prime: u32,
+    ideal: &CubicIdeal,
+    workspace: &mut PreparedIdealWorkspace,
+) -> Result<[Integer; 3], PreparedFactorBaseError> {
+    if ideal.norm() == Integer::from(prime).pow(3_u32) {
+        return Ok([Integer::new(), Integer::new(), Integer::new()]);
+    }
+    for pivot in 0..3 {
+        let mut vector = [0_u32; 3];
+        vector[pivot] = 1;
+        let suffix = 2 - pivot;
+        for encoded in 0..prime.pow(suffix as u32) {
+            let mut value = encoded;
+            for coordinate in pivot + 1..3 {
+                vector[coordinate] = value % prime;
+                value /= prime;
+            }
+            let candidate = vector.map(Integer::from);
+            if ideal.contains(&candidate)?
+                && workspace.prime_from_generator(field, prime, &candidate)? == *ideal
+            {
+                return Ok(candidate);
+            }
+        }
+    }
+    Err(PreparedFactorBaseError::IndexPrimeGeneratorNotFound { prime })
 }
 
 fn check_norm(

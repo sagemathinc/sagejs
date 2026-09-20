@@ -19,7 +19,7 @@ use rug::Integer;
 use crate::arbitrary_ideal_reduction::{
     ARBITRARY_IDEAL_MAXIMUM_VALUATION, ArbitraryIdealReductionError,
     AuthenticatedPresentationClassMap, MaximalCubicOrder, PrincipalRelationWitness,
-    authenticate_presentation_class_map,
+    authenticate_collected_presentation_class_map,
 };
 use crate::class_group::{
     PREPARED_CUBIC_SUPPLEMENTARY_RELATIONS, PreparedCubicRelationPresentation,
@@ -428,9 +428,10 @@ pub fn authenticate_cubic_presentation_candidate(
         .iter()
         .fold(Integer::from(1), |product, factor| product * factor);
     let mut ideal_workspace = PreparedIdealWorkspace::new();
-    let class_map = authenticate_presentation_class_map(
+    let class_map = authenticate_collected_presentation_class_map(
         MaximalCubicOrder::from_public_prepared(prepared),
         &collected.factor_base,
+        &collected.factor_base_authority,
         presentation,
         &principal_relations,
         &mut ideal_workspace,

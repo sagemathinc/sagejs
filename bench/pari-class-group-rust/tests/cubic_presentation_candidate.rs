@@ -171,6 +171,44 @@ fn rejects_counterfeit_principal_elements_and_relation_exponents() {
 }
 
 #[test]
+fn rejects_mutated_or_cross_field_collector_authority() {
+    let first = public_small_cubic();
+    let second = public_cubic([1, 1, 0, 1]);
+    let collect = || {
+        collect_prepared_cubic_relations(
+            first.field(),
+            PreparedCollectorLimits {
+                maximum_visited_ideals: 10_000,
+                maximum_candidates: 10_000,
+            },
+        )
+        .unwrap()
+    };
+
+    let cross_field = collect();
+    assert!(
+        authenticate_cubic_presentation_candidate(
+            &second,
+            cross_field,
+            CubicPresentationCandidateLimits::default(),
+        )
+        .is_err()
+    );
+
+    let mut mutated = collect();
+    mutated.factor_base.catalog.complete_groups[0] =
+        !mutated.factor_base.catalog.complete_groups[0];
+    assert!(
+        authenticate_cubic_presentation_candidate(
+            &first,
+            mutated,
+            CubicPresentationCandidateLimits::default(),
+        )
+        .is_err()
+    );
+}
+
+#[test]
 fn recomputes_surplus_instead_of_trusting_collector_flags() {
     let prepared = public_small_cubic();
     let mut collected = collect_prepared_cubic_relations(

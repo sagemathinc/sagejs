@@ -22,7 +22,7 @@ use sha2::{Digest, Sha256};
 const ROW6_INPUT_ID_FOR_TEST: &str =
     "sha256:42ecf93a56de4cc7763d33c8b422e7804582278674c1a6fef41a4799a9930bd5";
 const ROW6_AUTHORITY_SHA256: &str =
-    "42fb95f3b8c42c2cd59071d679b18d25b5c1ea9f0b53ded83865cd922d056b43";
+    "9c1d1904ddb36cfab89039d37d3757c3831d4c667be363dc7871c97e0cbcf112";
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]

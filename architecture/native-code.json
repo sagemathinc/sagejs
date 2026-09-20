@@ -2377,6 +2377,20 @@
       "provenance_reference": "bench/pari-class-group-rust/qualification/provenance/manifest.json#modules"
     },
     {
+      "path": "bench/pari-class-group-rust/src/compact_cubic_presentation.rs",
+      "category": "mathematical-algorithm",
+      "review_status": "experimental-pending-review",
+      "lane": "integration",
+      "rationale": "Experimental exact compact authentication for full-rank small-surplus cubic relation presentations; promotion requires broader quotient support, differential evidence, and row-6 end-to-end qualification.",
+      "rust_role": "mathematical-core",
+      "qualification_status": "experimental-qualification",
+      "provenance_class": "original-sagejs",
+      "distribution_status": "review-required-before-distribution",
+      "safety_review": "not-applicable",
+      "safety_rationale": "The architecture scanner finds no unsafe or Rust ABI boundary in this source; any future boundary changes this classification and fails validation.",
+      "provenance_mapping_status": "not-applicable"
+    },
+    {
       "path": "bench/pari-class-group-rust/src/cubic_completion.rs",
       "category": "mathematical-algorithm",
       "review_status": "experimental-pending-review",
@@ -2856,6 +2870,20 @@
       "provenance_mapping_status": "not-applicable"
     },
     {
+      "path": "bench/pari-class-group-rust/tests/compact_cubic_presentation.rs",
+      "category": "benchmark-reference",
+      "review_status": "experimental-pending-review",
+      "lane": "integration",
+      "rationale": "Qualification-only tests for exact compact elementary-2 presentation authentication, resource limits, and fail-closed quotient recognition.",
+      "rust_role": "qualification-harness",
+      "qualification_status": "experimental-qualification",
+      "provenance_class": "qualification-harness",
+      "distribution_status": "qualification-only",
+      "safety_review": "not-applicable",
+      "safety_rationale": "The architecture scanner finds no unsafe or Rust ABI boundary in this source; any future boundary changes this classification and fails validation.",
+      "provenance_mapping_status": "not-applicable"
+    },
+    {
       "path": "bench/pari-class-group-rust/tests/cubic_presentation_candidate.rs",
       "category": "benchmark-reference",
       "review_status": "accepted",
@@ -2875,6 +2903,20 @@
       "review_status": "experimental-pending-review",
       "lane": "integration",
       "rationale": "Qualification-only tests for coefficient-derived cubic unit reconstruction, conditional completion, authority binding, and fail-closed resource and index-prime behavior.",
+      "rust_role": "qualification-harness",
+      "qualification_status": "experimental-qualification",
+      "provenance_class": "qualification-harness",
+      "distribution_status": "qualification-only",
+      "safety_review": "not-applicable",
+      "safety_rationale": "The architecture scanner finds no unsafe or Rust ABI boundary in this source; any future boundary changes this classification and fails validation.",
+      "provenance_mapping_status": "not-applicable"
+    },
+    {
+      "path": "bench/pari-class-group-rust/tests/index_prime_decomposition.rs",
+      "category": "benchmark-reference",
+      "review_status": "experimental-pending-review",
+      "lane": "integration",
+      "rationale": "Qualification-only tests for exact maximal-order decomposition at cubic equation-order index primes, including residue degrees one, two, and three.",
       "rust_role": "qualification-harness",
       "qualification_status": "experimental-qualification",
       "provenance_class": "qualification-harness",

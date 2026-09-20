@@ -16,7 +16,7 @@ use crate::numerical_preparation::{
     NumericalPreparationError, PreparedCubicEmbedding, prepare_cubic_ideal, prepare_h1_ideal,
 };
 use crate::pari_random::PariRandom;
-use crate::prepared::ValidatedPreparedCubic;
+use crate::prepared::{EmbeddingPrecisionState, ValidatedPreparedCubic};
 use crate::prepared_factor_base::{
     PreparedFactorBase, PreparedFactorBaseError, prepared_maximal_cubic_factor_base,
 };
@@ -30,6 +30,7 @@ use crate::smooth_admission::{
     factor_norm, primes_through,
 };
 use rug::Integer;
+use sha2::{Digest, Sha256};
 use std::time::Instant;
 
 const DEGREE: usize = 3;
@@ -100,6 +101,13 @@ impl Default for PreparedCollectorLimits {
 #[derive(Clone, Debug)]
 pub struct PreparedCubicRelationPresentation {
     pub factor_base: PreparedFactorBase,
+    /// Collector-minted provenance for the exact field/base pair above.
+    ///
+    /// This is deliberately crate-private: untrusted callers cannot attach a
+    /// seal to an arbitrary `PreparedFactorBase`, while the presentation
+    /// authenticator can avoid regenerating a base that this collector just
+    /// constructed and used for every relation.
+    pub(crate) factor_base_authority: PreparedFactorBaseAuthority,
     pub relations: Vec<i64>,
     pub generators: Vec<Integer>,
     pub first_nonzero_hints: Vec<usize>,
@@ -112,6 +120,144 @@ pub struct PreparedCubicRelationPresentation {
     pub missing_rank: usize,
     pub relation_capacity: usize,
     pub full_relation_capacity: usize,
+}
+
+/// Sealed proof that `collect_prepared_cubic_relations` obtained a factor base
+/// from `prepared_maximal_cubic_factor_base` for one canonical field.
+///
+/// The fields and constructor are private to this module, so even other crate
+/// modules can only consume an authority emitted by the collector.  Matching
+/// hashes the live values again, detecting mutation, substitution, and reuse
+/// with another field before the trusted fast path is entered.
+#[derive(Clone, Debug)]
+pub(crate) struct PreparedFactorBaseAuthority {
+    field_sha256: [u8; 32],
+    factor_base_sha256: [u8; 32],
+}
+
+impl PreparedFactorBaseAuthority {
+    fn mint(field: &ValidatedPreparedCubic, factor_base: &PreparedFactorBase) -> Self {
+        Self {
+            field_sha256: canonical_field_sha256(field),
+            factor_base_sha256: factor_base_binding_sha256(factor_base),
+        }
+    }
+
+    pub(crate) fn authenticates(
+        &self,
+        field: &ValidatedPreparedCubic,
+        factor_base: &PreparedFactorBase,
+    ) -> bool {
+        self.field_sha256 == canonical_field_sha256(field)
+            && self.factor_base_sha256 == factor_base_binding_sha256(factor_base)
+    }
+}
+
+pub(crate) fn factor_base_binding_sha256(factor_base: &PreparedFactorBase) -> [u8; 32] {
+    fn usize_value(hasher: &mut Sha256, value: usize) {
+        hasher.update((value as u64).to_le_bytes());
+    }
+    fn i64_value(hasher: &mut Sha256, value: i64) {
+        hasher.update(value.to_le_bytes());
+    }
+    fn integer(hasher: &mut Sha256, value: &Integer) {
+        let bytes = value.to_string();
+        usize_value(hasher, bytes.len());
+        hasher.update(bytes.as_bytes());
+    }
+
+    let catalog = &factor_base.catalog;
+    let mut hasher = Sha256::new();
+    hasher.update(b"sagejs.prepared-cubic-factor-base/v1\0");
+    usize_value(&mut hasher, catalog.relation_bound);
+    usize_value(&mut hasher, catalog.checking_bound);
+    usize_value(&mut hasher, catalog.ideals.len());
+    for (descriptor, ideal) in catalog.ideals.iter().zip(&factor_base.exact_ideals) {
+        i64_value(&mut hasher, descriptor.prime);
+        usize_value(&mut hasher, descriptor.ramification);
+        usize_value(&mut hasher, descriptor.residue_degree);
+        for value in descriptor.generator {
+            i64_value(&mut hasher, value);
+        }
+        for value in descriptor.tau {
+            i64_value(&mut hasher, value);
+        }
+        for value in descriptor.hnf {
+            i64_value(&mut hasher, value);
+        }
+        i64_value(&mut hasher, descriptor.norm);
+        for row in ideal.basis_rows() {
+            for value in row {
+                integer(&mut hasher, value);
+            }
+        }
+    }
+    usize_value(&mut hasher, catalog.rational_primes.len());
+    for &value in &catalog.rational_primes {
+        i64_value(&mut hasher, value);
+    }
+    for &value in &catalog.rational_offsets {
+        usize_value(&mut hasher, value);
+    }
+    for &value in &catalog.rational_counts {
+        usize_value(&mut hasher, value);
+    }
+    hasher.update(
+        catalog
+            .complete_groups
+            .iter()
+            .map(|value| u8::from(*value))
+            .collect::<Vec<_>>(),
+    );
+    hasher.finalize().into()
+}
+
+pub(crate) fn canonical_field_sha256(field: &ValidatedPreparedCubic) -> [u8; 32] {
+    fn bytes(hasher: &mut Sha256, value: &[u8]) {
+        hasher.update((value.len() as u64).to_le_bytes());
+        hasher.update(value);
+    }
+    fn integer(hasher: &mut Sha256, value: &Integer) {
+        bytes(hasher, value.to_string().as_bytes());
+    }
+
+    let data = field.data();
+    let mut hasher = Sha256::new();
+    hasher.update(b"sagejs.maximal-cubic-field-data/v1\0");
+    for value in &data.polynomial_ascending {
+        integer(&mut hasher, value);
+    }
+    hasher.update(data.irreducibility_prime.to_le_bytes());
+    for value in &data.integral_basis_numerators {
+        integer(&mut hasher, value);
+    }
+    integer(&mut hasher, &data.basis_denominator);
+    for value in &data.multiplication_table {
+        integer(&mut hasher, value);
+    }
+    integer(&mut hasher, &data.discriminant);
+    hasher.update([data.signature.0, data.signature.1]);
+    match &data.embedding_precision {
+        EmbeddingPrecisionState::Pending { target_bits } => {
+            hasher.update([0]);
+            hasher.update(target_bits.to_le_bytes());
+        }
+        EmbeddingPrecisionState::Certified {
+            target_bits,
+            working_bits,
+            certified_bits,
+        } => {
+            hasher.update([1]);
+            hasher.update(target_bits.to_le_bytes());
+            hasher.update(working_bits.to_le_bytes());
+            hasher.update(certified_bits.to_le_bytes());
+        }
+    }
+    hasher.update((data.index_primes.len() as u64).to_le_bytes());
+    for value in &data.index_primes {
+        integer(&mut hasher, value);
+    }
+    hasher.finalize().into()
 }
 
 fn prepared_relation_capacity(
@@ -650,6 +796,7 @@ pub fn collect_prepared_cubic_relations(
 
     let started = Instant::now();
     let factor_base = prepared_maximal_cubic_factor_base(field)?;
+    let factor_base_authority = PreparedFactorBaseAuthority::mint(field, &factor_base);
     let (subfactor_count, search_permutation) = factor_base.catalog.subfactor_permutation(3);
     timings.factor_base_ns = started.elapsed().as_nanos();
     let size = factor_base.catalog.ideals.len();
@@ -881,6 +1028,7 @@ pub fn collect_prepared_cubic_relations(
         first_nonzero_hints: cache.first_nonzero_hints().to_vec(),
         metadata: cache.metadata().to_vec(),
         factor_base,
+        factor_base_authority,
         subfactor_count,
         search_permutation,
         counters,

@@ -12,7 +12,7 @@
 
 use crate::analytic_completion::{
     BdfFactorBasePlan, BelabasFriedmanPlan, BelabasFriedmanPlanError,
-    build_cubic_bdf_factor_base_plan, build_cubic_belabas_friedman_plan,
+    IncrementalCubicBelabasFriedmanPlan, build_cubic_bdf_factor_base_plan,
 };
 use crate::cubic_presentation::AuthenticatedCubicPresentationCandidate;
 use crate::flint_normal_form::{
@@ -83,7 +83,6 @@ pub enum CubicConditionalCompletionError {
     PreparedAuthorityMismatch,
     /// Exact maximal-order splitting at equation-order index primes is not
     /// available to the BF/BDF phase yet.
-    UnsupportedIndexPrimeCompletion,
     ResourceLimit(&'static str),
     InvalidPresentationShape,
     KernelRankMismatch {
@@ -391,14 +390,6 @@ pub fn complete_cubic_class_group_conditionally(
     if presentation.prepared() != &prepared {
         return Err(CubicConditionalCompletionError::PreparedAuthorityMismatch);
     }
-    // The splitting-record route is exact for equation-order primes. At an
-    // index prime, one F_p residue character does not distinguish total
-    // ramification from residue degrees (1, 2), so BF/BDF use would be
-    // unsound. Keep completion closed until maximal-order decomposition is
-    // represented exactly there.
-    if !prepared.field().data().index_primes.is_empty() {
-        return Err(CubicConditionalCompletionError::UnsupportedIndexPrimeCompletion);
-    }
     let collected = presentation.collected();
     let columns = collected.factor_base.exact_ideals.len();
     if columns == 0 || !collected.relations.len().is_multiple_of(columns) {
@@ -627,18 +618,20 @@ pub fn complete_cubic_class_group_conditionally(
     let initial = 1_152;
     let mut splitting = Vec::new();
     let mut splitting_bound = 2_usize;
+    let mut incremental_bf = IncrementalCubicBelabasFriedmanPlan::new();
     let mut accepted = None;
     for threshold in thresholds
         .into_iter()
         .filter(|value| *value >= initial && *value <= options.maximum_analytic_threshold)
     {
-        splitting.extend(prepared_cubic_splitting_records_range(
+        let extension = prepared_cubic_splitting_records_range(
             prepared.field(),
             splitting_bound,
             threshold as usize,
-        )?);
+        )?;
         splitting_bound = threshold as usize;
-        let plan = build_cubic_belabas_friedman_plan(threshold, &splitting)?;
+        let plan = incremental_bf.extend_to(threshold, &extension)?;
+        splitting.extend(extension);
         let enclosure = flint_bf_index_enclosure(
             &plan.terms,
             threshold,

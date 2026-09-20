@@ -14,7 +14,7 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 334,
+    "classified-native-file": 337,
     "declared-ffi": 480,
     "declared-ffi-resource": 37,
     "napi-export": 358,
@@ -9985,6 +9985,14 @@
       "lane": "integration"
     },
     {
+      "id": "native-file:bench/pari-class-group-rust/src/compact_cubic_presentation.rs",
+      "kind": "classified-native-file",
+      "path": "bench/pari-class-group-rust/src/compact_cubic_presentation.rs",
+      "disposition": "mathematical-algorithm",
+      "review_status": "experimental-pending-review",
+      "lane": "integration"
+    },
+    {
       "id": "native-file:bench/pari-class-group-rust/src/cubic_completion.rs",
       "kind": "classified-native-file",
       "path": "bench/pari-class-group-rust/src/cubic_completion.rs",
@@ -10209,6 +10217,14 @@
       "lane": "integration"
     },
     {
+      "id": "native-file:bench/pari-class-group-rust/tests/compact_cubic_presentation.rs",
+      "kind": "classified-native-file",
+      "path": "bench/pari-class-group-rust/tests/compact_cubic_presentation.rs",
+      "disposition": "benchmark-reference",
+      "review_status": "experimental-pending-review",
+      "lane": "integration"
+    },
+    {
       "id": "native-file:bench/pari-class-group-rust/tests/cubic_conditional_completion.rs",
       "kind": "classified-native-file",
       "path": "bench/pari-class-group-rust/tests/cubic_conditional_completion.rs",
@@ -10230,6 +10246,14 @@
       "path": "bench/pari-class-group-rust/tests/hnf.rs",
       "disposition": "benchmark-reference",
       "review_status": "accepted",
+      "lane": "integration"
+    },
+    {
+      "id": "native-file:bench/pari-class-group-rust/tests/index_prime_decomposition.rs",
+      "kind": "classified-native-file",
+      "path": "bench/pari-class-group-rust/tests/index_prime_decomposition.rs",
+      "disposition": "benchmark-reference",
+      "review_status": "experimental-pending-review",
       "lane": "integration"
     },
     {
