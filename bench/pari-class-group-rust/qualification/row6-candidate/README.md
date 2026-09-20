@@ -258,3 +258,21 @@ the final lattice basis but not the provenance needed to reconstruct principal
 elements from relation generators. Unit reconstruction, regulator/completion
 evidence, honesty/saturation checks beyond the collected presentation, and the
 public polynomial-to-result route remain required.
+
+## 2026-09-20 multiplier continuation control
+
+PARI 2.17.4 interleaves deterministic `P_0^e P_j` small-norm passes with
+sparse-HNF feedback and `trim_list` before switching to random relations. A
+controlled port of the multiplier passes without that feedback was rejected.
+One complete untrimmed pass searches 1,130 additional ideals, gains no rank,
+leaves the subsequent 25 random ideals unchanged, and raises collection time
+from 71.143 to 84.029 seconds. Ten untrimmed passes recover three of the four
+missing directions and make LLL nearly free, but create 26,477 smooth
+candidates, spend 71.463 seconds in valuation/cache work, and hit the
+5.5-million-candidate limit one rank short.
+
+Thus the useful next unit is not the multiplier loop alone: it is the complete
+sparse-HNF feedback cycle that updates the permutation and removes resolved
+factor-base directions before another pass. The exact negative receipt is
+`results/multiplier-without-trim-negative.json`; the accepted runtime remains
+the deterministic first pass followed by seeded random continuation.

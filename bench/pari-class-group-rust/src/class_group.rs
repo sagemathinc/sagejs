@@ -744,7 +744,7 @@ pub fn collect_prepared_cubic_relations(
         )?;
     }
 
-    // PARI's continuation changes the searched lattice: it forms a random
+    // PARI's random continuation changes the searched lattice: it forms a random
     // product of the live subfactor base and multiplies that by each search
     // ideal.  Repeating the first schedule with a larger cursor bound cannot
     // reveal missing class directions and is intentionally not used here.
