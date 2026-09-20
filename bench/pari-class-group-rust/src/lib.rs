@@ -28,6 +28,7 @@ mod hnf;
 mod ideal_arithmetic;
 mod numerical_preparation;
 mod pari_random;
+mod polynomial_preparation;
 mod prepared;
 mod prepared_factor_base;
 mod prepared_ideal;
@@ -88,6 +89,10 @@ pub use hnf::{
     NormalFormError, NormalFormLimits, SmithDecomposition, UpdateStrategy,
 };
 pub use numerical_preparation::{NumericalPreparationError, PreparedCubicEmbedding};
+pub use polynomial_preparation::{
+    PublicCubicPreparationError, PublicCubicPreparationLimits, RustPreparedMaximalCubic,
+    SquarefreeDiscriminantCertificate, prepare_squarefree_discriminant_monic_cubic,
+};
 pub use prepared::{
     EmbeddingPrecisionState, PreparedCubicData, PreparedCubicValidationError,
     PreparedNumberFieldData, PreparedNumberFieldValidationError, ValidatedPreparedCubic,
