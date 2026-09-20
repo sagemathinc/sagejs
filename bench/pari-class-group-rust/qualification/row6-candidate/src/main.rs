@@ -7,13 +7,14 @@
 //! shared Rust boundary cannot represent row 6's index-three maximal-order
 //! basis.  It must never be interpreted as a class-group result.
 
-use rug::{Float, Integer};
+use rug::{Float, Integer, Rational};
 use sagejs_pari_class_group_rust_experiment::{
     EmbeddingPrecisionState, PreparedCollectorLimits, PreparedCubicData,
     PreparedRealCubicEmbedding, ValidatedPreparedCubic, collect_prepared_cubic_relations,
     collect_validated_primitive_box_with_supplementary, flint_hnf_basis, flint_hnf_profile,
-    flint_incremental_hnf, flint_left_kernel, flint_smith_candidate, flint_smith_class_map,
-    flint_staged_relation_witnesses, modular_independent_relation_rows,
+    flint_compact_cubic_regulator, flint_incremental_hnf, flint_left_kernel,
+    flint_smith_candidate, flint_smith_class_map, flint_staged_relation_witnesses,
+    modular_independent_relation_rows,
     prepared_cubic_factor_base, prepared_maximal_cubic_factor_base,
     reconstruct_rank_two_unit_lattice,
 };
@@ -27,22 +28,23 @@ mod smooth_admission;
 
 const POLYNOMIAL: [i64; 4] = [2_000_000_000_018, -2_000_000_000_010, 0, 1];
 const EQUATION_ORDER_BASIS: [i64; 9] = [1, 0, 0, 0, 1, 0, 0, 0, 1];
+const MAXIMAL_ORDER_BASIS_NUMERATORS: [i64; 9] = [
+    3,
+    0,
+    0,
+    0,
+    3,
+    0,
+    -1_333_333_333_340,
+    1,
+    1,
+];
 
 fn maximal_order() -> ValidatedPreparedCubic {
     ValidatedPreparedCubic::validate(PreparedCubicData {
         polynomial_ascending: POLYNOMIAL.map(Integer::from),
         irreducibility_prime: 7,
-        integral_basis_numerators: [
-            3.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            3.into(),
-            0.into(),
-            (-1_333_333_333_340_i64).into(),
-            1.into(),
-            1.into(),
-        ],
+        integral_basis_numerators: MAXIMAL_ORDER_BASIS_NUMERATORS.map(Integer::from),
         basis_denominator: 3.into(),
         multiplication_table: [
             1.into(),
@@ -804,6 +806,7 @@ fn small_norm_unit_kernel(maximum_ideals: usize, maximum_candidates: usize) {
     );
     let mut fundamental_units = Vec::with_capacity(2);
     let mut fundamental_logs = Vec::with_capacity(2);
+    let mut fundamental_exponents = Vec::with_capacity(2 * rows);
     for basis in 0..2 {
         let mut coefficients = vec![Integer::from(0); rows];
         for dependency in 0..kernel.rank {
@@ -824,6 +827,7 @@ fn small_norm_unit_kernel(maximum_ideals: usize, maximum_candidates: usize) {
             }
             assert_eq!(replayed, 0);
         }
+        fundamental_exponents.extend(coefficients.iter().cloned());
         let mut logs: [Float; 3] =
             std::array::from_fn(|_| Float::with_val(LOG_PRECISION, 0));
         let mut factors = Vec::new();
@@ -868,6 +872,31 @@ fn small_norm_unit_kernel(maximum_ideals: usize, maximum_candidates: usize) {
     cross *= &fundamental_logs[1][0];
     replayed_regulator -= cross;
     replayed_regulator.abs_mut();
+    let rigorous_regulator = flint_compact_cubic_regulator(
+        POLYNOMIAL,
+        MAXIMAL_ORDER_BASIS_NUMERATORS,
+        3,
+        &answer.generators,
+        &fundamental_exponents,
+        LOG_PRECISION,
+    )
+    .expect("Arb compact-unit regulator enclosure failed");
+    let dyadic_endpoint = |mantissa: &Integer| {
+        if rigorous_regulator.binary_exponent >= 0 {
+            Rational::from(mantissa << rigorous_regulator.binary_exponent as u32)
+        } else {
+            Rational::from((
+                mantissa.clone(),
+                Integer::from(1) << (-rigorous_regulator.binary_exponent) as u32,
+            ))
+        }
+    };
+    let replayed_exact_binary = replayed_regulator
+        .to_rational()
+        .expect("the replayed regulator must be finite");
+    let mpfr_replay_contained = dyadic_endpoint(&rigorous_regulator.lower)
+        <= replayed_exact_binary
+        && replayed_exact_binary <= dyadic_endpoint(&rigorous_regulator.upper);
     let reconstruction_ns = reconstruction_started.elapsed().as_nanos();
     let mut compact_units = Vec::with_capacity(kernel.rank);
     for dependency in 0..kernel.rank {
@@ -940,6 +969,15 @@ fn small_norm_unit_kernel(maximum_ideals: usize, maximum_candidates: usize) {
                 "selectedBasisIndex": lattice.selected_basis_index.to_string(),
                 "regulatorApproximation": format!("{:.300e}", lattice.regulator_approximation),
                 "independentlyReplayedRegulatorApproximation": format!("{replayed_regulator:.300e}"),
+                "rigorousArbRegulatorEnclosure": {
+                    "encoding": "closed-dyadic-interval-v1",
+                    "lowerMantissa": rigorous_regulator.lower.to_string(),
+                    "upperMantissa": rigorous_regulator.upper.to_string(),
+                    "binaryExponent": rigorous_regulator.binary_exponent,
+                    "precisionBits": LOG_PRECISION,
+                    "containsIndependentMpfrReplay": mpfr_replay_contained,
+                    "authority": "directed-arb-evaluation-from-exact-compact-units",
+                },
                 "fundamentalCompactUnits": fundamental_units,
             },
             "timingsNanoseconds": {

@@ -10,7 +10,7 @@
 use crate::ideal_arithmetic::Matrix3;
 use rug::Integer;
 use std::array::from_fn;
-use std::ffi::{c_int, c_longlong, c_void};
+use std::ffi::{c_int, c_long, c_longlong, c_void};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum FlintNormalFormError {
@@ -77,6 +77,14 @@ pub struct FlintLeftKernel {
     pub maximum_coefficient_bits: usize,
     pub nonzero_counts: Vec<usize>,
     pub kernel_ns: u64,
+}
+
+/// Rigorous dyadic enclosure `[lower, upper] * 2^binary_exponent`.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FlintDyadicInterval {
+    pub lower: Integer,
+    pub upper: Integer,
+    pub binary_exponent: i64,
 }
 
 impl FlintSmithClassMap {
@@ -193,6 +201,76 @@ unsafe extern "C" {
         nonzero_counts: *mut usize,
         kernel_ns: *mut u64,
     ) -> c_int;
+    fn sagejs_rust_flint_compact_cubic_regulator(
+        polynomial: *const c_longlong,
+        basis_numerators: *const c_longlong,
+        basis_denominator: u64,
+        relations: usize,
+        generator_coordinates: *const *const c_void,
+        unit_exponents: *const *const c_void,
+        precision: c_long,
+        lower: *mut c_void,
+        upper: *mut c_void,
+        binary_exponent: *mut c_longlong,
+    ) -> c_int;
+}
+
+pub fn flint_compact_cubic_regulator(
+    polynomial: [i64; 4],
+    basis_numerators: [i64; 9],
+    basis_denominator: u64,
+    generator_coordinates: &[Integer],
+    unit_exponents: &[Integer],
+    precision: u32,
+) -> Result<FlintDyadicInterval, FlintNormalFormError> {
+    if basis_denominator == 0
+        || generator_coordinates.is_empty()
+        || !generator_coordinates.len().is_multiple_of(3)
+        || precision < 64
+    {
+        return Err(FlintNormalFormError::InvalidDimensions);
+    }
+    let relations = generator_coordinates.len() / 3;
+    if unit_exponents.len() != 2 * relations {
+        return Err(FlintNormalFormError::DimensionMismatch);
+    }
+    let coordinate_pointers = generator_coordinates
+        .iter()
+        .map(|value| value.as_raw().cast::<c_void>())
+        .collect::<Vec<_>>();
+    let exponent_pointers = unit_exponents
+        .iter()
+        .map(|value| value.as_raw().cast::<c_void>())
+        .collect::<Vec<_>>();
+    let mut lower = Integer::new();
+    let mut upper = Integer::new();
+    let mut binary_exponent = 0_i64;
+    // Every GMP pointer is borrowed for this call only. The bridge copies
+    // exact inputs into FLINT-owned temporaries and writes the two output GMP
+    // integers without retaining any Rust allocation.
+    let status = unsafe {
+        sagejs_rust_flint_compact_cubic_regulator(
+            polynomial.as_ptr().cast(),
+            basis_numerators.as_ptr().cast(),
+            basis_denominator,
+            relations,
+            coordinate_pointers.as_ptr(),
+            exponent_pointers.as_ptr(),
+            precision.into(),
+            lower.as_raw_mut().cast(),
+            upper.as_raw_mut().cast(),
+            &mut binary_exponent,
+        )
+    };
+    match status {
+        0 => Ok(FlintDyadicInterval {
+            lower,
+            upper,
+            binary_exponent,
+        }),
+        -1 => Err(FlintNormalFormError::InvalidDimensions),
+        code => Err(FlintNormalFormError::ForeignFailure(code)),
+    }
 }
 
 pub fn flint_left_kernel(
@@ -735,5 +813,31 @@ mod tests {
             .iter()
             .fold(Integer::from(0), |gcd, value| gcd.gcd_ref(value).complete());
         assert_eq!(gcd, 1);
+    }
+
+    #[test]
+    fn arb_regulator_encloses_two_exact_cubic_units() {
+        // x and x-1 are independent units in x^3-3*x+1.
+        let generators = [
+            0.into(),
+            1.into(),
+            0.into(),
+            (-1).into(),
+            1.into(),
+            0.into(),
+        ];
+        let exponents = [1.into(), 0.into(), 0.into(), 1.into()];
+        let interval = flint_compact_cubic_regulator(
+            [1, -3, 0, 1],
+            [1, 0, 0, 0, 1, 0, 0, 0, 1],
+            1,
+            &generators,
+            &exponents,
+            256,
+        )
+        .unwrap();
+        assert!(interval.lower > 0);
+        assert!(interval.upper >= interval.lower);
+        assert!(interval.binary_exponent < 0);
     }
 }

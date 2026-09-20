@@ -341,9 +341,17 @@ reconstruction plus flattened replay. The full sparse receipt is
 This is a major R3 candidate milestone, but its status remains deliberately
 non-certified. The current rational-reconstruction denominator ceiling is a
 generous bound derived from the observed exact kernel coefficient size; it is
-not yet a theorem-derived bound. The logarithms are high-precision MPFR
-approximations, not outward Arb intervals, and the computation has not yet
-performed the analytic class-number-formula index proof or honesty extension.
+not yet a theorem-derived bound. A subsequent direct Arb pass now reevaluates
+the two flattened compact units from the exact polynomial, integral basis,
+relation generators and exponents. It emits a 4,096-bit outward dyadic
+regulator enclosure whose decimal value begins
+`83268030694439630.296506000324883685320925...`. This pass notably detects
+that the heavily cancelled MPFR diagnostic, while agreeing for about 47
+significant decimal digits, is not inside the much narrower Arb enclosure.
+The Arb pass adds about 0.18 seconds and is the regulator authority.
+
+The computation has still not performed the Belabas--Friedman zeta-residue
+enclosure, analytic class-number-formula index proof, or honesty extension.
 Consequently neither the recovered regulator nor the finite presentation is
 yet published as complete.
 

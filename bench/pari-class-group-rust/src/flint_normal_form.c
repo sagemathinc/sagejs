@@ -5,6 +5,8 @@
 #include <flint/fmpz.h>
 #include <flint/fmpz_lll.h>
 #include <flint/fmpz_mat.h>
+#include <flint/arb.h>
+#include <flint/arb_calc.h>
 #include <limits.h>
 #include <stdint.h>
 #include <time.h>
@@ -981,6 +983,221 @@ int sagejs_rust_flint_left_kernel_i64(
     fmpz_mat_clear(basis);
     fmpz_mat_clear(nullspace_columns);
     fmpz_mat_clear(transpose);
+    flint_cleanup();
+    return status;
+}
+
+static int sagejs_rust_cubic_callback(
+    arb_ptr output, const arb_t input, void *parameter, slong order, slong prec)
+{
+    const int64_t *polynomial = (const int64_t *) parameter;
+    if (order > 0)
+    {
+        arb_set_si(output + 0, (slong) polynomial[3]);
+        arb_mul(output + 0, output + 0, input, prec);
+        arb_add_si(output + 0, output + 0, (slong) polynomial[2], prec);
+        arb_mul(output + 0, output + 0, input, prec);
+        arb_add_si(output + 0, output + 0, (slong) polynomial[1], prec);
+        arb_mul(output + 0, output + 0, input, prec);
+        arb_add_si(output + 0, output + 0, (slong) polynomial[0], prec);
+    }
+    if (order > 1)
+    {
+        arb_set_si(output + 1, 3 * (slong) polynomial[3]);
+        arb_mul(output + 1, output + 1, input, prec);
+        arb_add_si(output + 1, output + 1, 2 * (slong) polynomial[2], prec);
+        arb_mul(output + 1, output + 1, input, prec);
+        arb_add_si(output + 1, output + 1, (slong) polynomial[1], prec);
+    }
+    if (order > 2)
+    {
+        arb_mul_si(output + 2, input, 3 * (slong) polynomial[3], prec);
+        arb_add_si(output + 2, output + 2, (slong) polynomial[2], prec);
+    }
+    if (order > 3)
+        arb_set_si(output + 3, (slong) polynomial[3]);
+    for (slong index = 4; index < order; index++)
+        arb_zero(output + index);
+    return 0;
+}
+
+int sagejs_rust_flint_compact_cubic_regulator(
+    const int64_t *polynomial, const int64_t *basis_numerators,
+    uint64_t basis_denominator, size_t relations,
+    mpz_srcptr const *generator_coordinates, mpz_srcptr const *unit_exponents,
+    slong precision, mpz_ptr lower, mpz_ptr upper, int64_t *binary_exponent)
+{
+    if (polynomial == NULL || basis_numerators == NULL ||
+        basis_denominator == 0 || relations == 0 ||
+        generator_coordinates == NULL || unit_exponents == NULL ||
+        precision < 64 || lower == NULL || upper == NULL ||
+        binary_exponent == NULL || sizeof(slong) < sizeof(int64_t))
+        return -1;
+
+    int status = 0;
+    int64_t bound = 2;
+    for (size_t index = 0; index < 3; index++)
+    {
+        int64_t coefficient = polynomial[index];
+        int64_t magnitude = coefficient < 0 ? -coefficient : coefficient;
+        if (magnitude >= bound)
+            bound = magnitude + 1;
+    }
+    arf_interval_t initial;
+    arf_interval_init(initial);
+    arf_set_si(&initial->a, (slong) -bound);
+    arf_set_si(&initial->b, (slong) bound);
+    arf_interval_ptr isolated = NULL;
+    int *flags = NULL;
+    slong root_count = arb_calc_isolate_roots(
+        &isolated, &flags, sagejs_rust_cubic_callback, (void *) polynomial,
+        initial, 256, 100000, 3, 128);
+    slong selected_roots[3];
+    slong selected_count = 0;
+    /* flags distinguish certified roots from unresolved subintervals. */
+    for (slong index = 0; index < root_count && selected_count < 3; index++)
+        if (flags[index] != 0)
+            selected_roots[selected_count++] = index;
+    if (selected_count != 3)
+        status = -2;
+
+    arb_t roots[3];
+    for (size_t root = 0; root < 3; root++)
+        arb_init(roots[root]);
+    if (status == 0)
+        for (size_t root = 0; root < 3; root++)
+        {
+            arf_interval_t refined;
+            arf_interval_init(refined);
+            int refined_status = arb_calc_refine_root_bisect(
+                refined, sagejs_rust_cubic_callback, (void *) polynomial,
+                isolated + selected_roots[root], precision + 32, precision + 64);
+            if (refined_status != ARB_CALC_SUCCESS)
+                status = -3;
+            else
+                arf_interval_get_arb(roots[root], refined, precision);
+            arf_interval_clear(refined);
+        }
+
+    arb_t unit_logs[2][3];
+    for (size_t unit = 0; unit < 2; unit++)
+        for (size_t root = 0; root < 3; root++)
+        {
+            arb_init(unit_logs[unit][root]);
+            arb_zero(unit_logs[unit][root]);
+        }
+    fmpz_t coordinates[3], coefficients[3], exponent;
+    for (size_t index = 0; index < 3; index++)
+    {
+        fmpz_init(coordinates[index]);
+        fmpz_init(coefficients[index]);
+    }
+    fmpz_init(exponent);
+    arb_t value, logarithm;
+    arb_init(value);
+    arb_init(logarithm);
+    if (status == 0)
+        for (size_t relation = 0; relation < relations && status == 0; relation++)
+        {
+            for (size_t coordinate = 0; coordinate < 3; coordinate++)
+            {
+                mpz_srcptr input = generator_coordinates[3 * relation + coordinate];
+                if (input == NULL)
+                {
+                    status = -1;
+                    break;
+                }
+                fmpz_set_mpz(coordinates[coordinate], input);
+            }
+            for (size_t power = 0; power < 3 && status == 0; power++)
+            {
+                fmpz_zero(coefficients[power]);
+                for (size_t coordinate = 0; coordinate < 3; coordinate++)
+                    fmpz_addmul_si(coefficients[power], coordinates[coordinate],
+                        (slong) basis_numerators[3 * coordinate + power]);
+            }
+            for (size_t root = 0; root < 3 && status == 0; root++)
+            {
+                arb_set_fmpz(value, coefficients[2]);
+                arb_mul(value, value, roots[root], precision);
+                arb_add_fmpz(value, value, coefficients[1], precision);
+                arb_mul(value, value, roots[root], precision);
+                arb_add_fmpz(value, value, coefficients[0], precision);
+                arb_div_ui(value, value, (ulong) basis_denominator, precision);
+                arb_abs(value, value);
+                if (arb_contains_zero(value))
+                {
+                    status = -4;
+                    break;
+                }
+                arb_log(logarithm, value, precision);
+                for (size_t unit = 0; unit < 2; unit++)
+                {
+                    mpz_srcptr input = unit_exponents[unit * relations + relation];
+                    if (input == NULL)
+                    {
+                        status = -1;
+                        break;
+                    }
+                    fmpz_set_mpz(exponent, input);
+                    arb_addmul_fmpz(unit_logs[unit][root], logarithm,
+                        exponent, precision);
+                }
+            }
+        }
+
+    arb_t determinant, cross;
+    arb_init(determinant);
+    arb_init(cross);
+    fmpz_t lower_fmpz, upper_fmpz, interval_exponent;
+    fmpz_init(lower_fmpz);
+    fmpz_init(upper_fmpz);
+    fmpz_init(interval_exponent);
+    if (status == 0)
+    {
+        arb_mul(determinant, unit_logs[0][0], unit_logs[1][1], precision);
+        arb_mul(cross, unit_logs[0][1], unit_logs[1][0], precision);
+        arb_sub(determinant, determinant, cross, precision);
+        arb_abs(determinant, determinant);
+        if (!arb_is_finite(determinant) || arb_contains_zero(determinant))
+            status = -5;
+        else
+        {
+            arb_get_interval_fmpz_2exp(
+                lower_fmpz, upper_fmpz, interval_exponent, determinant);
+            if (!fmpz_fits_si(interval_exponent))
+                status = -6;
+            else
+            {
+                fmpz_get_mpz(lower, lower_fmpz);
+                fmpz_get_mpz(upper, upper_fmpz);
+                *binary_exponent = (int64_t) fmpz_get_si(interval_exponent);
+            }
+        }
+    }
+
+    fmpz_clear(interval_exponent);
+    fmpz_clear(upper_fmpz);
+    fmpz_clear(lower_fmpz);
+    arb_clear(cross);
+    arb_clear(determinant);
+    arb_clear(logarithm);
+    arb_clear(value);
+    fmpz_clear(exponent);
+    for (size_t index = 0; index < 3; index++)
+    {
+        fmpz_clear(coefficients[index]);
+        fmpz_clear(coordinates[index]);
+    }
+    for (size_t unit = 0; unit < 2; unit++)
+        for (size_t root = 0; root < 3; root++)
+            arb_clear(unit_logs[unit][root]);
+    for (size_t root = 0; root < 3; root++)
+        arb_clear(roots[root]);
+    if (isolated != NULL)
+        _arf_interval_vec_clear(isolated, root_count);
+    flint_free(flags);
+    arf_interval_clear(initial);
     flint_cleanup();
     return status;
 }
