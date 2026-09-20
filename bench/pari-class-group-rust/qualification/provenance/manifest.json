@@ -144,7 +144,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/class_group.rs",
-      "sha256": "2598958770ba797410985de77f78f952167f1eb89f8a4f80c1e373f2b69c46bc",
+      "sha256": "75b28b18f9b5492e62d0e62429aa692c5648a85f528440d728206a9cb89ea6d2",
       "classification": "behavioral_reimplementation",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "partial",
@@ -184,10 +184,23 @@
       "sha256": "f5f4d65a68465fc29d5dd216763abb45ce8465ea8485334786e5cd3e7b45c783",
       "classification": "source_translation_adaptation",
       "declared_license_expression": "GPL-2.0-or-later",
-      "mapping_status": "missing",
-      "mappings": [],
-      "missing_mapping_explanation": "The file describes a translated small-norm schedule, but no authenticated source line/function map has yet been recorded.",
-      "notes": "Classification follows its translated control-flow purpose; mapping remains deliberately fail-closed."
+      "mapping_status": "partial",
+      "mappings": [
+        {
+          "source_id": "pari-buch2",
+          "symbols": [
+            "small_norm",
+            "Fincke_Pohst_ideal"
+          ],
+          "line_ranges": [
+            "2574-2617"
+          ],
+          "evidence": "The reverse traversal of the live ideal list, one-based ideal identifiers, distinguished-prime trivial-relation exclusion, and per-ideal handoff correspond directly to the pinned small_norm loop. Differential schedule tests cover resumed and terminal state transitions.",
+          "confidence": "documented"
+        }
+      ],
+      "missing_mapping_explanation": "Rust-owned resumable state arrays, explicit checked-error behavior, and original serialized-packet lookup/copy helpers have no direct PARI source body and remain outside this source map.",
+      "notes": "The mathematical schedule is mapped to the pinned small_norm loop; the resumable host representation and packet adapter remain Sage.js-owned."
     },
     {
       "path": "bench/pari-class-group-rust/src/compact_cubic_presentation.rs",
@@ -513,7 +526,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/relation_cache.rs",
-      "sha256": "4ceda4440a747c151389dc00a1deee06c32cb18845a3e5738345cad8410ecc3e",
+      "sha256": "d474991bbfc02e842bb563d109b946bf1d88285ef667e82e1a40f0f605be619b",
       "classification": "source_translation_adaptation",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "complete",
