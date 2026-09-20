@@ -366,6 +366,19 @@ fn prepared_relation_capacity(
     ))
 }
 
+fn ensure_generator_rows<T: Default>(
+    generators: &mut Vec<T>,
+    rows: usize,
+) -> Result<(), ClassGroupError> {
+    let length = rows
+        .checked_mul(DEGREE)
+        .ok_or(ClassGroupError::CandidateOverflow)?;
+    if generators.len() < length {
+        generators.resize_with(length, T::default);
+    }
+    Ok(())
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ClassGroupError {
     InvalidRelationPresentation,
@@ -554,7 +567,13 @@ pub fn collect_h1_class_group(
     let capacity = 10 * (size + SUPPLEMENTARY_RELATIONS) + 50;
 
     let started = Instant::now();
-    let mut cache = RelationCache::new(size, capacity, SUPPLEMENTARY_RELATIONS);
+    let initial_capacity = factor_base
+        .complete_groups
+        .iter()
+        .filter(|complete| **complete)
+        .count();
+    let mut cache =
+        RelationCache::try_new_growing(size, initial_capacity, capacity, SUPPLEMENTARY_RELATIONS)?;
     let ramification: Vec<i64> = factor_base
         .ideals
         .iter()
@@ -570,7 +589,7 @@ pub fn collect_h1_class_group(
         &ramification,
         &mut relation,
     )?;
-    let mut generators = vec![0_i64; capacity * DEGREE];
+    let mut generators = vec![0_i64; cache.resident_capacity() * DEGREE];
     cache.publish_initial_generators(DEGREE, &mut generators)?;
     let initial_relations = cache.len();
     timings.initial_cache_ns = started.elapsed().as_nanos();
@@ -709,6 +728,7 @@ pub fn collect_h1_class_group(
             let row = cache.len();
             let outcome = cache.add_relation(&relation, hint, (row + 1) as i64, 0, 0, false)?;
             if outcome.appended {
+                ensure_generator_rows(&mut generators, cache.resident_capacity())?;
                 generators[row * DEGREE..(row + 1) * DEGREE].copy_from_slice(&element);
                 counters.appended_relations += 1;
             }
@@ -749,7 +769,7 @@ fn collect_prepared_ideal_relations(
     prime_products: &[Integer],
     cache: &mut RelationCache,
     relation: &mut [i64],
-    generators: &mut [Integer],
+    generators: &mut Vec<Integer>,
     enumeration: &mut EnumerationWorkspace,
     ideal_workspace: &mut PreparedIdealWorkspace,
     counters: &mut CollectorCounters,
@@ -855,6 +875,7 @@ fn collect_prepared_ideal_relations(
         let outcome =
             cache.add_relation(relation, hint, (row + 1) as i64, 0, 0, random_relation)?;
         if outcome.appended {
+            ensure_generator_rows(generators, cache.resident_capacity())?;
             generators[row * DEGREE..(row + 1) * DEGREE].clone_from_slice(&element);
             counters.appended_relations += 1;
             appended_any = true;
@@ -905,7 +926,12 @@ pub fn collect_prepared_cubic_relations(
         prepared_relation_capacity(size, initial_relation_capacity, limits.maximum_candidates)?;
 
     let started = Instant::now();
-    let mut cache = RelationCache::try_new(size, capacity, SUPPLEMENTARY_RELATIONS)?;
+    let mut cache = RelationCache::try_new_growing(
+        size,
+        initial_relation_capacity.min(capacity),
+        capacity,
+        SUPPLEMENTARY_RELATIONS,
+    )?;
     let ramification: Vec<i64> = factor_base
         .catalog
         .ideals
@@ -923,7 +949,7 @@ pub fn collect_prepared_cubic_relations(
         &ramification,
         &mut relation,
     )?;
-    let mut generators = vec![Integer::new(); capacity * DEGREE];
+    let mut generators = vec![Integer::new(); cache.resident_capacity() * DEGREE];
     for (row, metadata) in cache.metadata().chunks_exact(3).enumerate() {
         generators[row * DEGREE] = Integer::from(metadata[0]);
     }
@@ -1209,6 +1235,17 @@ mod tests {
             prepared_relation_capacity(usize::MAX, 0, 0),
             Err(ClassGroupError::CandidateOverflow)
         );
+    }
+
+    #[test]
+    fn generator_storage_grows_without_changing_existing_rows() {
+        let mut generators = vec![1_i64, 2, 3];
+        ensure_generator_rows(&mut generators, 4).unwrap();
+        assert_eq!(&generators[..3], [1, 2, 3]);
+        assert_eq!(generators.len(), 12);
+        assert!(generators[3..].iter().all(|value| *value == 0));
+        ensure_generator_rows(&mut generators, 2).unwrap();
+        assert_eq!(generators.len(), 12);
     }
 
     #[test]

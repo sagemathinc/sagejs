@@ -1,7 +1,7 @@
 // Copyright (C) The PARI group and Sage.js contributors.
 // GPL-2.0-or-later, without warranty.
 
-//! Allocation-free Rust port of PARI 2.17.4's `add_rel_i` relation cache.
+//! Reusing-storage Rust port of PARI 2.17.4's `add_rel_i` relation cache.
 //!
 //! The cache is deliberately a machine-word component.  Relation exponents,
 //! the elimination basis, and all dimensions in the prepared H1 experiment
@@ -30,11 +30,13 @@ pub struct AddOutcome {
 /// Caller-owned storage for the resident relation cache.
 ///
 /// `basis` is column-major, matching PARI and the Python port.  `records` are
-/// consecutive row vectors.  Allocation happens only in `new`; `reset` and
-/// `add_relation` reuse all storage.
+/// consecutive row vectors.  The resident row storage grows geometrically up
+/// to `hard_capacity`; `reset` and additions within the resident allocation
+/// reuse storage.
 pub struct RelationCache {
     size: usize,
-    capacity: usize,
+    hard_capacity: usize,
+    resident_capacity: usize,
     last: usize,
     missing: usize,
     relsup: usize,
@@ -51,23 +53,109 @@ impl RelationCache {
     }
 
     pub fn try_new(size: usize, capacity: usize, relsup: usize) -> Result<Self, CacheError> {
+        Self::try_new_growing(size, capacity, capacity, relsup)
+    }
+
+    /// Construct a cache whose admitted-row limit is independent of its
+    /// initial resident allocation.
+    ///
+    /// Growth never changes the hard admission limit or the order in which
+    /// rows are considered.  This makes the usual large PARI working bound a
+    /// safety limit instead of an eager `capacity * size` allocation.
+    pub fn try_new_growing(
+        size: usize,
+        initial_capacity: usize,
+        hard_capacity: usize,
+        relsup: usize,
+    ) -> Result<Self, CacheError> {
+        if initial_capacity > hard_capacity {
+            return Err(CacheError::InvalidLayout);
+        }
         let basis_length = size.checked_mul(size).ok_or(CacheError::InvalidLayout)?;
-        let records_length = capacity
+        let records_length = initial_capacity
             .checked_mul(size)
             .ok_or(CacheError::InvalidLayout)?;
-        let metadata_length = capacity.checked_mul(3).ok_or(CacheError::InvalidLayout)?;
+        let metadata_length = initial_capacity
+            .checked_mul(3)
+            .ok_or(CacheError::InvalidLayout)?;
         Ok(Self {
             size,
-            capacity,
+            hard_capacity,
+            resident_capacity: initial_capacity,
             last: 0,
             missing: size,
             relsup,
             basis: vec![0; basis_length],
             records: vec![0; records_length],
-            hashes: vec![0; capacity],
+            hashes: vec![0; initial_capacity],
             metadata: vec![0; metadata_length],
             scratch: vec![0; size],
         })
+    }
+
+    /// Number of rows for which backing storage is currently resident.
+    pub fn resident_capacity(&self) -> usize {
+        self.resident_capacity
+    }
+
+    /// Maximum number of rows this cache may admit.
+    pub fn hard_capacity(&self) -> usize {
+        self.hard_capacity
+    }
+
+    /// Bytes reserved by the cache's owned vector buffers.
+    ///
+    /// This intentionally includes the fixed elimination basis and scratch as
+    /// well as the growable row storage, and excludes only the `Vec` headers
+    /// embedded in `Self`.
+    pub fn resident_storage_bytes(&self) -> usize {
+        self.basis
+            .capacity()
+            .saturating_mul(std::mem::size_of::<i64>())
+            .saturating_add(
+                self.records
+                    .capacity()
+                    .saturating_mul(std::mem::size_of::<i64>()),
+            )
+            .saturating_add(
+                self.hashes
+                    .capacity()
+                    .saturating_mul(std::mem::size_of::<usize>()),
+            )
+            .saturating_add(
+                self.metadata
+                    .capacity()
+                    .saturating_mul(std::mem::size_of::<i64>()),
+            )
+            .saturating_add(
+                self.scratch
+                    .capacity()
+                    .saturating_mul(std::mem::size_of::<i64>()),
+            )
+    }
+
+    fn ensure_resident_row(&mut self) -> Result<(), CacheError> {
+        if self.last >= self.hard_capacity {
+            return Err(CacheError::CapacityExhausted);
+        }
+        if self.last < self.resident_capacity {
+            return Ok(());
+        }
+        let required = self.last.checked_add(1).ok_or(CacheError::InvalidLayout)?;
+        let doubled = self
+            .resident_capacity
+            .checked_mul(2)
+            .unwrap_or(self.hard_capacity);
+        let grown = doubled.max(required).min(self.hard_capacity);
+        let records_length = grown
+            .checked_mul(self.size)
+            .ok_or(CacheError::InvalidLayout)?;
+        let metadata_length = grown.checked_mul(3).ok_or(CacheError::InvalidLayout)?;
+        self.records.resize(records_length, 0);
+        self.hashes.resize(grown, 0);
+        self.metadata.resize(metadata_length, 0);
+        self.resident_capacity = grown;
+        Ok(())
     }
 
     pub fn reset(&mut self, relsup: usize) {
@@ -141,7 +229,7 @@ impl RelationCache {
         {
             return Err(CacheError::InvalidLayout);
         }
-        if self.capacity < complete.iter().filter(|value| **value).count() {
+        if self.hard_capacity < complete.iter().filter(|value| **value).count() {
             return Err(CacheError::CapacityExhausted);
         }
         self.reset(additional);
@@ -223,7 +311,7 @@ impl RelationCache {
                     });
                 }
             }
-            if self.last >= self.capacity {
+            if self.last >= self.hard_capacity {
                 return Ok(AddOutcome {
                     rank_marker: 0,
                     appended: false,
@@ -316,9 +404,7 @@ impl RelationCache {
             || self.relsup > 0
             || (generator != 0 && random_relation)
         {
-            if self.last >= self.capacity {
-                return Err(CacheError::CapacityExhausted);
-            }
+            self.ensure_resident_row()?;
             if rank_marker == 0 && self.relsup > 0 && first_nonzero < n + 1 {
                 self.relsup -= 1;
                 rank_marker = (self.last + 1 + self.missing) as i64;
@@ -384,5 +470,105 @@ pub fn relation_mod_inverse(value: i64) -> Result<i64, CacheError> {
         Err(CacheError::NoninvertiblePivot)
     } else {
         Ok(answer as i64)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn growing_storage_preserves_rows_hashes_and_metadata() {
+        let mut cache = RelationCache::try_new_growing(2, 1, 4, 0).unwrap();
+        assert_eq!(cache.resident_capacity(), 1);
+        assert_eq!(cache.hard_capacity(), 4);
+
+        for (relation, hint, generator) in [
+            ([1, 0], 1, 11),
+            ([0, 1], 2, 13),
+            ([1, 1], 1, 17),
+            ([2, 1], 1, 19),
+        ] {
+            assert!(
+                cache
+                    .add_relation(&relation, hint, generator, 0, 0, false)
+                    .unwrap()
+                    .appended
+            );
+        }
+
+        assert_eq!(cache.resident_capacity(), 4);
+        assert_eq!(cache.records(), [1, 0, 0, 1, 1, 1, 2, 1]);
+        assert_eq!(cache.first_nonzero_hints(), [1, 2, 1, 1]);
+        assert_eq!(cache.metadata(), [11, 0, 0, 13, 0, 0, 17, 0, 0, 19, 0, 0]);
+
+        // Preserve `add_rel_i`'s full-cache behavior: an ordinary nonzero row
+        // is ignored, while the always-admitted zero-row branch reports the
+        // hard-cap exhaustion.
+        assert_eq!(
+            cache.add_relation(&[3, 1], 1, 23, 0, 0, false),
+            Ok(AddOutcome {
+                rank_marker: 0,
+                appended: false,
+            })
+        );
+        assert_eq!(
+            cache.add_relation(&[0, 0], 3, 23, 0, 0, false),
+            Err(CacheError::CapacityExhausted)
+        );
+    }
+
+    #[test]
+    fn zero_initial_storage_grows_geometrically_to_the_hard_cap() {
+        let mut cache = RelationCache::try_new_growing(1, 0, 3, 0).unwrap();
+        assert_eq!(cache.resident_capacity(), 0);
+        assert!(
+            cache
+                .add_relation(&[1], 1, 1, 0, 0, false)
+                .unwrap()
+                .appended
+        );
+        assert_eq!(cache.resident_capacity(), 1);
+        assert!(
+            cache
+                .add_relation(&[2], 1, 2, 0, 0, false)
+                .unwrap()
+                .appended
+        );
+        assert_eq!(cache.resident_capacity(), 2);
+        assert!(
+            cache
+                .add_relation(&[3], 1, 3, 0, 0, false)
+                .unwrap()
+                .appended
+        );
+        assert_eq!(cache.resident_capacity(), 3);
+    }
+
+    #[test]
+    fn initial_storage_cannot_exceed_the_hard_cap() {
+        assert_eq!(
+            RelationCache::try_new_growing(2, 3, 2, 0).map(|_| ()),
+            Err(CacheError::InvalidLayout)
+        );
+    }
+
+    #[test]
+    fn row6_sized_initial_storage_avoids_the_full_row_reservation() {
+        let cache = RelationCache::try_new_growing(1_130, 203, 11_420, 0).unwrap();
+        let eager_row_bytes = 11_420_usize
+            .checked_mul(1_130)
+            .unwrap()
+            .checked_mul(std::mem::size_of::<i64>())
+            .unwrap();
+        let resident_row_bytes = cache
+            .resident_capacity()
+            .checked_mul(1_130)
+            .unwrap()
+            .checked_mul(std::mem::size_of::<i64>())
+            .unwrap();
+        assert_eq!(resident_row_bytes, 1_835_120);
+        assert_eq!(eager_row_bytes, 103_236_800);
+        assert!(cache.resident_storage_bytes() < 13_000_000);
     }
 }
