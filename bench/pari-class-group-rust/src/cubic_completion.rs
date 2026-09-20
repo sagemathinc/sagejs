@@ -17,7 +17,7 @@ use crate::analytic_completion::{
 use crate::cubic_presentation::AuthenticatedCubicPresentationCandidate;
 use crate::flint_normal_form::{
     FlintBfIndexEnclosure, FlintDyadicInterval, FlintNormalFormError, flint_bdf_factor_base_margin,
-    flint_bf_index_enclosure, flint_compact_cubic_regulator, flint_left_kernel,
+    flint_bf_index_enclosure, flint_compact_cubic_regulator,
 };
 use crate::numerical_preparation::{NumericalPreparationError, PreparedCubicEmbedding};
 use crate::polynomial_preparation::PreparedPublicCubic;
@@ -416,23 +416,30 @@ pub fn complete_cubic_class_group_conditionally(
             "dependencies",
         ));
     }
-    let kernel = flint_left_kernel(&collected.relations, rows, columns)?;
-    if kernel.rank != expected_dependencies {
+    let dependencies = presentation.dependency_lattice().to_vec();
+    if dependencies.len() != expected_dependencies {
         return Err(CubicConditionalCompletionError::KernelRankMismatch {
             expected: expected_dependencies,
-            actual: kernel.rank,
+            actual: dependencies.len(),
         });
     }
-    if kernel.maximum_coefficient_bits > options.maximum_kernel_coefficient_bits {
+    if dependencies
+        .iter()
+        .any(|dependency| dependency.len() != rows)
+    {
+        return Err(CubicConditionalCompletionError::InvalidPresentationShape);
+    }
+    let maximum_coefficient_bits = dependencies
+        .iter()
+        .flatten()
+        .map(Integer::significant_bits)
+        .max()
+        .unwrap_or(0) as usize;
+    if maximum_coefficient_bits > options.maximum_kernel_coefficient_bits {
         return Err(CubicConditionalCompletionError::ResourceLimit(
             "kernel coefficient bits",
         ));
     }
-    let dependencies = kernel
-        .coefficients
-        .chunks_exact(rows)
-        .map(<[_]>::to_vec)
-        .collect::<Vec<_>>();
     if dependencies.iter().any(|dependency| {
         (0..columns).any(|column| {
             (0..rows).fold(Integer::from(0), |sum, row| {
@@ -474,7 +481,7 @@ pub fn complete_cubic_class_group_conditionally(
             logs
         })
         .collect::<Vec<_>>();
-    let denominator_bits = kernel.maximum_coefficient_bits.checked_add(16).ok_or(
+    let denominator_bits = maximum_coefficient_bits.checked_add(16).ok_or(
         CubicConditionalCompletionError::ResourceLimit("denominator exponent"),
     )?;
     if denominator_bits > options.maximum_reconstruction_denominator_bits {

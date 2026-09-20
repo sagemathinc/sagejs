@@ -453,4 +453,28 @@ mod tests {
         assert_eq!(completion.invariant_factors, ["2"]);
         assert!(completion.arbitrary_ideal_class_map_retained);
     }
+
+    #[test]
+    fn open_cubic_panel_reaches_exact_nontrivial_group_structures() {
+        let cases = [
+            ([-26, -30, -8, 1], "3", &["3"][..]),
+            ([-37, -30, -8, 1], "4", &["2", "2"][..]),
+            ([-34, -30, -8, 1], "6", &["6"][..]),
+        ];
+        for (coefficients, expected_order, expected_invariants) in cases {
+            let mut input = request(100_000);
+            input.polynomial_ascending = coefficients.map(|value| value.to_string());
+            let receipt = qualify(input).unwrap();
+            assert!(receipt.public_complete);
+            assert!(receipt.preparation.certificate_verified);
+            let candidate = receipt.candidate.unwrap();
+            let completion = receipt.completion.unwrap();
+            assert_eq!(candidate.class_number, expected_order);
+            assert_eq!(candidate.invariant_factors, expected_invariants);
+            assert_eq!(completion.class_number, expected_order);
+            assert_eq!(completion.invariant_factors, expected_invariants);
+            assert!(completion.sealed_evidence_verified);
+            assert!(completion.arbitrary_ideal_class_map_retained);
+        }
+    }
 }

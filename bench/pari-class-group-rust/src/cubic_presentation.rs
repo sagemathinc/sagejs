@@ -95,6 +95,7 @@ pub struct AuthenticatedCubicPresentationCandidate {
     principal_relations: Vec<PrincipalRelationWitness>,
     class_map: AuthenticatedPresentationClassMap,
     generator_orders: Vec<CubicCandidateGeneratorOrderEvidence>,
+    dependency_lattice: Vec<Vec<Integer>>,
     class_number_candidate: Integer,
 }
 
@@ -122,6 +123,16 @@ impl AuthenticatedCubicPresentationCandidate {
 
     pub fn generator_orders(&self) -> &[CubicCandidateGeneratorOrderEvidence] {
         &self.generator_orders
+    }
+
+    /// Return the saturated integral relation dependencies proved by the
+    /// transform-bearing Smith decomposition.
+    ///
+    /// Each vector has one coefficient per collected relation and annihilates
+    /// the factor-base relation matrix.  These are retained so later unit
+    /// completion does not repeat an equivalent exact-kernel computation.
+    pub fn dependency_lattice(&self) -> &[Vec<Integer>] {
+        &self.dependency_lattice
     }
 
     pub fn invariant_factors(&self) -> &[Integer] {
@@ -397,6 +408,20 @@ pub fn authenticate_cubic_presentation_candidate(
         });
     }
 
+    // Since `left * relations * right = diagonal` and the Smith rank is the
+    // number of factor-base generators, the remaining columns of the
+    // unimodular right transform are a saturated Z-basis of the relation
+    // kernel.  Preserve them before moving the Smith result into the class
+    // map.  Completion independently replays every vector against the
+    // relation matrix before using it for unit reconstruction.
+    let dependency_lattice = (factor_base_size..relation_count)
+        .map(|column| {
+            (0..relation_count)
+                .map(|row| smith.right_transform.get(row, column).cloned())
+                .collect::<Result<Vec<_>, _>>()
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
     let presentation = PresentationClassMap::from_verified_smith(relations, smith)?;
     let class_number_candidate = presentation
         .invariant_factors()
@@ -417,6 +442,7 @@ pub fn authenticate_cubic_presentation_candidate(
         principal_relations,
         class_map,
         generator_orders,
+        dependency_lattice,
         class_number_candidate,
     })
 }

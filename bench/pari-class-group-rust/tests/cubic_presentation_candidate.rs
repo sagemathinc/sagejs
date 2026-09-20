@@ -49,6 +49,24 @@ fn authenticates_public_small_cubic_without_claiming_completeness() {
     assert_eq!(candidate.class_number_candidate(), &Integer::from(1));
     assert!(candidate.invariant_factors().is_empty());
     assert!(candidate.generator_orders().is_empty());
+    let factor_base_size = candidate.collected().factor_base.exact_ideals.len();
+    assert_eq!(
+        candidate.dependency_lattice().len(),
+        relation_count - factor_base_size
+    );
+    for dependency in candidate.dependency_lattice() {
+        assert_eq!(dependency.len(), relation_count);
+        for factor in 0..factor_base_size {
+            let replayed = dependency.iter().enumerate().fold(
+                Integer::from(0),
+                |sum, (relation, coefficient)| {
+                    sum + coefficient
+                        * candidate.collected().relations[relation * factor_base_size + factor]
+                },
+            );
+            assert_eq!(replayed, 0);
+        }
+    }
     candidate
         .class_map()
         .presentation()

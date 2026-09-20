@@ -1,0 +1,66 @@
+{
+  "schema": "sagejs.rust-class-group/public-cubic-e2e-benchmark-panel-v1",
+  "frozenBeforeTiming": true,
+  "samplesPerArmPerField": 15,
+  "warmupsPerArmPerField": 1,
+  "boundary": {
+    "rust": "public-coefficients-to-sealed-conditional-class-group-v2",
+    "pari": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+    "comparison": "Both clocks start from the same public monic polynomial coefficients and end after complete class-group and unit work. Rust ends at its sealed GRH-conditional result; PARI flag zero also constructs a complete BNF. Process startup, JSON parsing/projection, and serialization are excluded by in-process clocks."
+  },
+  "resources": {
+    "maximumTrialDivisor": 10000,
+    "maximumIrreducibilityPrime": 257,
+    "embeddingPrecisionBits": 192,
+    "maximumVisitedIdeals": 10000,
+    "maximumCandidates": 10000,
+    "maximumNormalFormEntries": 10000000,
+    "maximumNormalFormOperations": 50000000,
+    "maximumRelationExponent": 256,
+    "maximumVerificationMultiplyAdds": 100000000,
+    "maximumPrincipalFactorTerms": 10000000,
+    "logarithmPrecisionBits": 1024,
+    "replayPrecisionBits": 512,
+    "analyticPrecisionBits": 256,
+    "maximumRelations": 10000,
+    "maximumDependencies": 1000,
+    "maximumKernelCoefficientBits": 4080,
+    "maximumUnitExponentBits": 8192,
+    "maximumReconstructionDenominatorBits": 4096,
+    "maximumAnalyticThreshold": 23994
+  },
+  "fields": [
+    {
+      "id": "small-x3-x-1",
+      "polynomialAscending": ["-1", "-1", "0", "1"],
+      "expected": {
+        "discriminant": "-23",
+        "signature": [1, 1],
+        "equationOrderIndex": "1",
+        "discriminantPrimeFactors": ["23"],
+        "factorBaseSize": 3,
+        "relationCount": 15,
+        "classNumber": "1",
+        "invariantFactors": [],
+        "unitRank": 1,
+        "bfThreshold": 1152
+      }
+    },
+    {
+      "id": "small-class-number-2",
+      "polynomialAscending": ["-29", "-30", "-8", "1"],
+      "expected": {
+        "discriminant": "-41779",
+        "signature": [1, 1],
+        "equationOrderIndex": "1",
+        "discriminantPrimeFactors": ["41", "1019"],
+        "factorBaseSize": 7,
+        "relationCount": 21,
+        "classNumber": "2",
+        "invariantFactors": ["2"],
+        "unitRank": 1,
+        "bfThreshold": 4608
+      }
+    }
+  ]
+}
