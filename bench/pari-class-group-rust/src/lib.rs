@@ -20,6 +20,8 @@ mod class_maps;
 mod collector_schedule;
 mod enumeration;
 mod factor_base;
+#[cfg(feature = "flint-normal-form")]
+mod flint_normal_form;
 mod gmp_smith;
 mod hnf;
 mod ideal_arithmetic;
@@ -58,6 +60,8 @@ pub use class_maps::{
 #[doc(hidden)]
 pub use factor_base::prepared_cubic_factor_base;
 pub use factor_base::{FactorBase, PrimeIdeal};
+#[cfg(feature = "flint-normal-form")]
+pub use flint_normal_form::{FlintNormalFormError, FlintSmithCandidate, flint_smith_candidate};
 pub use gmp_smith::{
     ExactSmithCandidateInvariants, GmpSmithError, GmpSmithWorkspace,
     exact_candidate_invariants_from_i128,

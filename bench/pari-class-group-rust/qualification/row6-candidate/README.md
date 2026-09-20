@@ -135,3 +135,31 @@ This is a completed relation lattice, not yet a class group. Exact scalable
 HNF/Smith, unit reconstruction, regulator/completion evidence, saturation,
 and public result construction remain mandatory. The raw bounded receipt is
 `results/maximal-random-continuation-full-rank.json`.
+
+## 2026-09-20 exact Smith candidate
+
+A feature-gated qualification adapter now copies the complete signed `i64`
+relation presentation into the repository's pinned FLINT 3.6 build and asks
+FLINT for its exact Smith diagonal. This is deliberately a thin foreign-library
+boundary: the normal-form algorithm remains in FLINT, and the adapter is not a
+Sage.js product route.
+
+On the captured deterministic run, relation collection produced the same
+1,526 by 1,130 presentation in 109.219965760 seconds. FLINT's direct dense
+Smith reduction took another 257.964417946 seconds and returned full rank,
+invariant factors `[2, 2]`, and class number 4. Those exact candidate invariants
+agree with the authenticated PARI 2.17.4 prepared-field result. The complete
+Rust-plus-FLINT diagnostic took 367.195208203 seconds, versus PARI's
+4.057270249-second prepared-field computation; these are not matched contracts
+because PARI also completes units and certification while this route still
+stops at candidate invariants.
+
+This result proves that the answer-free Rust relation lattice encodes the
+expected finite group. It does **not** establish that the presentation is the
+full class group: this first bridge returns no transformations, generator
+ideals, class/principality maps, units, regulator, saturation, or completion
+certificate. It also shows that feeding the unreduced rectangular relation
+matrix directly to dense Smith form is not a competitive linear-algebra
+architecture. The next boundary is sparse/incremental HNF or lattice-basis
+reduction with transformations, followed by Smith form on the reduced square
+basis. The exact receipt is `results/maximal-smith-candidate.json`.

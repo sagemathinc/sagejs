@@ -5,6 +5,6 @@ edition = "2024"
 publish = false
 
 [dependencies]
-sagejs-pari-class-group-rust-experiment = { path = "../.." }
+sagejs-pari-class-group-rust-experiment = { path = "../..", features = ["flint-normal-form"] }
 serde_json = "1"
 rug = { version = "1", default-features = false, features = ["integer"] }

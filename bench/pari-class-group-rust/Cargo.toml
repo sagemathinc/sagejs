@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2024"
 publish = false
 
+[features]
+flint-normal-form = []
+
 [dependencies]
 rug = { version = "1.30", default-features = false, features = ["float", "integer"] }
 serde = { version = "1.0", features = ["derive"] }

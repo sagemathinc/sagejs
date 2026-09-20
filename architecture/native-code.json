@@ -151,6 +151,13 @@
       "rationale": "Linux-only qualification adapter for authenticated PARI 2.17.4 algorithm-stage, prepared-field, and public-call controls. It is compiled into a disposable oracle process and is never linked into or shipped with Sage.js."
     },
     {
+      "path": "bench/pari-class-group-rust/src/flint_normal_form.c",
+      "category": "external-library-bridge",
+      "review_status": "accepted",
+      "lane": "integration",
+      "rationale": "Thin qualification-only Rust-to-FLINT adapter that copies an i64 relation matrix into the repository's pinned FLINT representation and extracts exact Smith diagonal entries. The mathematical normal-form algorithm remains in FLINT; this adapter is feature-gated and is not linked into the Sage.js product path."
+    },
+    {
       "path": "bench/pari-class-group-port/pari_compact_flag_one_row20_authority.c",
       "category": "benchmark-reference",
       "review_status": "accepted",
