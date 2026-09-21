@@ -29,12 +29,12 @@ expected post-run change within that closure.
 
 ## Current result
 
-The receipt generated from source commit `2233d78a9` records exact agreement
-in all 180 alternating pairs. Summed per-field medians are 1.915 seconds for
-Rust and 0.578 seconds for PARI 2.17.4, or a 3.31x weighted gap. The geometric
-mean is 4.82x, p90 is 8.46x, and the maximum is 12.76x. Rust's summed stage
-medians are 0.612 seconds for relation collection, 0.543 seconds for candidate
-authentication, 0.625 seconds for unit and analytic completion, and 0.077
+The receipt generated from source commit `39c3732ae` records exact agreement
+in all 180 alternating pairs. Summed per-field medians are 1.918 seconds for
+Rust and 0.585 seconds for PARI 2.17.4, or a 3.28x weighted gap. The geometric
+mean is 4.76x, p90 is 8.37x, and the maximum is 12.33x. Rust's summed stage
+medians are 0.617 seconds for relation collection, 0.542 seconds for candidate
+authentication, 0.621 seconds for unit and analytic completion, and 0.078
 seconds for public preparation. Exact continuation retains the FLINT
 fraction-free factorization only when the selected square relation block is
 identical and the previous surplus is an exact prefix; it recomputes and
@@ -52,3 +52,9 @@ then omits a generator only when it has zero support across every unit. This
 reduced summed unit/analytic completion from 0.693 to 0.625 seconds and the
 Rust total from 1.995 to 1.915 seconds, while retaining the same independently
 enclosed regulator. Field 0012 fell again to 366.0 ms total.
+Borrowing the authenticated high-precision relation-log cache through unit
+reconstruction and independent replay removes a complete arbitrary-precision
+matrix clone per attempt. Summed completion fell another 3.4 ms to 0.621
+seconds. The Rust total varied upward by 3.3 ms because relation collection
+varied upward by 5.2 ms; the weighted ratio also reflects a 6.6 ms upward
+change in the PARI sum.

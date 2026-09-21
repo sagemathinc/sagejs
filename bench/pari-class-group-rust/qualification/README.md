@@ -48,18 +48,18 @@ not pass the frozen performance target. After starting answer-blind
 continuation at fourteen surplus rows when the caller's budget permits it, the
 replacement clean 15-sample alternating campaign on the original twelve
 regressions matched every exact result and measured summed per-field medians of
-1.915 seconds for Rust and 0.578 seconds for PARI 2.17.4: 3.31x weighted, 4.82x
-by geometric mean, 8.46x at p90, and 12.76x maximum. The source commit is
-`2233d78a9`. Precision-specific relation logarithms are reused only after an
+1.918 seconds for Rust and 0.585 seconds for PARI 2.17.4: 3.28x weighted, 4.76x
+by geometric mean, 8.37x at p90, and 12.33x maximum. The source commit is
+`39c3732ae`. Precision-specific relation logarithms are reused only after an
 exact generator-prefix check. Checked fixed-width relation replay restarts in
 GMP on any overflow. Exact back substitution removes unit pivots from the
 modular HNF before the Smith map is computed and lifts the verified residual
 map back to every original generator. Relation refinement lazily retains at
 most 64 exact powers per encountered factor-base ideal and fails closed on a
 cache/prime mismatch; higher powers remain exact but are not retained. Rust's
-summed stage medians are 0.612 seconds relation collection, 0.543 seconds
-candidate authentication, 0.625 seconds unit and analytic completion, and
-0.077 seconds public preparation. Batching exact dependency replay reduced the
+summed stage medians are 0.617 seconds relation collection, 0.542 seconds
+candidate authentication, 0.621 seconds unit and analytic completion, and
+0.078 seconds public preparation. Batching exact dependency replay reduced the
 Rust absolute sum from 2.129 to 2.045 seconds. Exact continuation now reuses a
 FLINT fraction-free square factorization only after matching the selected
 square block and complete prior surplus prefix, then recomputes and verifies
@@ -74,6 +74,10 @@ every reconstructed unit reduced summed unit/analytic completion from 0.693 to
 0.625 seconds and the total from 1.995 to 1.915 seconds, while retaining the
 same independent Arb regulator enclosure. Field 0012's complete call fell to
 366.0 ms.
+Borrowing the authenticated high-precision relation-log cache instead of
+cloning it reduced summed completion by another 3.4 ms. The Rust total varied
+upward by 3.3 ms because relation collection varied upward by 5.2 ms; the
+weighted ratio also includes a 6.6 ms upward change in the PARI sum.
 Relation collection was 1.063 seconds before the exact ideal-power cache. See
 `public-cubic-heldout-performance/receipt.json`. The fresh confirmation set
 remains correctness-only; its contextual diagnostic timings are not a formal
