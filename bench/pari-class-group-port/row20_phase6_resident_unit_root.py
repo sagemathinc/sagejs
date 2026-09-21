@@ -1,6 +1,6 @@
 """One resident native rank-two unit root for qualification row 20.
 
-This is the ordinary typed-Python orchestration from ``row20_fresh_units``
+This is the ordinary typed-Python orchestration from `row20_fresh_units`
 with every variable-size allocation made explicit at the host boundary.  It
 does not read an owner, spawn CPython, or serialize an intermediate value.
 """

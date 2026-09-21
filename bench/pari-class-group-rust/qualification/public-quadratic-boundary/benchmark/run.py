@@ -27,11 +27,17 @@ REPRO_B = CRATE / "target" / "benchmark-repro-b" / "release" / "benchmark_public
 
 
 def command(
-    *args: object, cwd: Path = CRATE, env: dict[str, str] | None = None,
+    *args: object,
+    cwd: Path = CRATE,
+    env: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        [str(value) for value in args], cwd=cwd, check=True, text=True,
-        capture_output=True, env=env,
+        [str(value) for value in args],
+        cwd=cwd,
+        check=True,
+        text=True,
+        capture_output=True,
+        env=env,
     )
 
 
@@ -60,40 +66,71 @@ def read_optional(path: Path) -> str | None:
 
 
 def execution_context() -> dict:
-    governors = sorted({
-        value for path in Path("/sys/devices/system/cpu").glob("cpu*/cpufreq/scaling_governor")
-        if (value := read_optional(path))
-    })
-    cpufreq_drivers = sorted({
-        value for path in Path("/sys/devices/system/cpu").glob("cpu*/cpufreq/scaling_driver")
-        if (value := read_optional(path))
-    })
-    energy_preferences = sorted({
-        value for path in Path("/sys/devices/system/cpu").glob("cpu*/cpufreq/energy_performance_preference")
-        if (value := read_optional(path))
-    })
+    governors = sorted(
+        {
+            value
+            for path in Path("/sys/devices/system/cpu").glob(
+                "cpu*/cpufreq/scaling_governor"
+            )
+            if (value := read_optional(path))
+        }
+    )
+    cpufreq_drivers = sorted(
+        {
+            value
+            for path in Path("/sys/devices/system/cpu").glob(
+                "cpu*/cpufreq/scaling_driver"
+            )
+            if (value := read_optional(path))
+        }
+    )
+    energy_preferences = sorted(
+        {
+            value
+            for path in Path("/sys/devices/system/cpu").glob(
+                "cpu*/cpufreq/energy_performance_preference"
+            )
+            if (value := read_optional(path))
+        }
+    )
     cpu_model = None
     cpuinfo = read_optional(Path("/proc/cpuinfo"))
     if cpuinfo:
-        cpu_model = next((
-            line.split(":", 1)[1].strip() for line in cpuinfo.splitlines()
-            if line.startswith("model name")
-        ), None)
+        cpu_model = next(
+            (
+                line.split(":", 1)[1].strip()
+                for line in cpuinfo.splitlines()
+                if line.startswith("model name")
+            ),
+            None,
+        )
     thread_names = [
-        "OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS",
-        "RAYON_NUM_THREADS", "VECLIB_MAXIMUM_THREADS", "NUMEXPR_NUM_THREADS",
+        "OMP_NUM_THREADS",
+        "OPENBLAS_NUM_THREADS",
+        "MKL_NUM_THREADS",
+        "RAYON_NUM_THREADS",
+        "VECLIB_MAXIMUM_THREADS",
+        "NUMEXPR_NUM_THREADS",
     ]
     return {
         "capturedAtUnixNanoseconds": time.time_ns(),
         "cpuModel": cpu_model,
         "logicalCpuCount": os.cpu_count(),
-        "processAffinityLogicalCpus": sorted(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else None,
+        "processAffinityLogicalCpus": sorted(os.sched_getaffinity(0))
+        if hasattr(os, "sched_getaffinity")
+        else None,
         "scalingGovernors": governors,
         "scalingDrivers": cpufreq_drivers,
         "energyPerformancePreferences": energy_preferences,
-        "intelPstateStatus": read_optional(Path("/sys/devices/system/cpu/intel_pstate/status")),
-        "amdPstateStatus": read_optional(Path("/sys/devices/system/cpu/amd_pstate/status")),
-        "acpiPlatformProfile": read_optional(Path("/sys/firmware/acpi/platform_profile")),
+        "intelPstateStatus": read_optional(
+            Path("/sys/devices/system/cpu/intel_pstate/status")
+        ),
+        "amdPstateStatus": read_optional(
+            Path("/sys/devices/system/cpu/amd_pstate/status")
+        ),
+        "acpiPlatformProfile": read_optional(
+            Path("/sys/firmware/acpi/platform_profile")
+        ),
         "threadEnvironment": {name: os.environ.get(name) for name in thread_names},
         "loadAverage1m5m15m": list(os.getloadavg()),
         "quietIsolation": "not externally isolated; observed load is recorded",
@@ -102,21 +139,33 @@ def execution_context() -> dict:
 
 def source_closure(repository: Path) -> dict:
     paths = [
-        CRATE / "Cargo.toml", CRATE / "Cargo.lock", HERE / "run.py", PANEL_PATH,
-        ROOT_CRATE / "Cargo.toml", ROOT_CRATE / "Cargo.lock", ROOT_CRATE / "build.rs",
+        CRATE / "Cargo.toml",
+        CRATE / "Cargo.lock",
+        HERE / "run.py",
+        PANEL_PATH,
+        ROOT_CRATE / "Cargo.toml",
+        ROOT_CRATE / "Cargo.lock",
+        ROOT_CRATE / "build.rs",
     ]
     paths.extend(sorted((CRATE / "src").rglob("*.rs")))
     paths.extend(sorted((ROOT_CRATE / "src").rglob("*.rs")))
     paths.extend(sorted((ROOT_CRATE / "src").rglob("*.c")))
-    entries = [{
-        "path": path.relative_to(repository).as_posix(),
-        "sha256": sha256(path),
-        "bytes": path.stat().st_size,
-    } for path in sorted(set(paths))]
+    entries = [
+        {
+            "path": path.relative_to(repository).as_posix(),
+            "sha256": sha256(path),
+            "bytes": path.stat().st_size,
+        }
+        for path in sorted(set(paths))
+    ]
     encoded = json.dumps(entries, separators=(",", ":"), sort_keys=True).encode()
     status = command(
-        "git", "status", "--porcelain=v1", "--",
-        *(entry["path"] for entry in entries), cwd=repository,
+        "git",
+        "status",
+        "--porcelain=v1",
+        "--",
+        *(entry["path"] for entry in entries),
+        cwd=repository,
     ).stdout
     return {
         "algorithm": "sha256-canonical-json-file-list-v1",
@@ -127,7 +176,9 @@ def source_closure(repository: Path) -> dict:
     }
 
 
-def verify_rust(sample: dict, field: dict, boundary_label: str, computations: int = 1) -> None:
+def verify_rust(
+    sample: dict, field: dict, boundary_label: str, computations: int = 1
+) -> None:
     expected = field["expected"]
     assert sample["schema"] == "sagejs.public-quadratic/benchmark-sample-v1"
     assert sample["boundaryLabel"] == boundary_label
@@ -146,7 +197,9 @@ def verify_pari(sample: dict, field: dict, boundary_label: str) -> None:
     assert sample["boundaryLabel"] == boundary_label
     assert sample["detail"]["discriminant"] == str(expected["discriminant"])
     assert projected["classNumber"] == str(expected["classNumber"])
-    assert projected["invariantFactors"] == [str(value) for value in expected["invariantFactors"]]
+    assert projected["invariantFactors"] == [
+        str(value) for value in expected["invariantFactors"]
+    ]
     assert sample["call"]["pariVersion"] == ["2", "17", "4"]
     assert sample["call"]["noPariInProductPath"] is True
 
@@ -158,7 +211,9 @@ def main() -> int:
     count = panel["samplesPerArmPerField"]
     assert count >= 15
     if not PARI_CONTROL.is_file() or not PARI_IDENTITY.is_file():
-        raise SystemExit("authenticated PARI control is missing; run ../pari-control/build.py")
+        raise SystemExit(
+            "authenticated PARI control is missing; run ../pari-control/build.py"
+        )
 
     repository = Path(command("git", "rev-parse", "--show-toplevel").stdout.strip())
     source = source_closure(repository)
@@ -174,18 +229,27 @@ def main() -> int:
         shutil.rmtree(target, ignore_errors=True)
         environment = dict(build_environment, CARGO_TARGET_DIR=str(target))
         completed = command(
-            "cargo", "build", "--locked", "--release", "--bin", "benchmark_public",
+            "cargo",
+            "build",
+            "--locked",
+            "--release",
+            "--bin",
+            "benchmark_public",
             env=environment,
         )
-        builds.append({
-            "command": "cargo build --locked --release --bin benchmark_public",
-            "cargoTargetDir": str(target.relative_to(CRATE)),
-            "stderr": completed.stderr,
-            "binarySha256": sha256(binary),
-        })
+        builds.append(
+            {
+                "command": "cargo build --locked --release --bin benchmark_public",
+                "cargoTargetDir": str(target.relative_to(CRATE)),
+                "stderr": completed.stderr,
+                "binarySha256": sha256(binary),
+            }
+        )
     reproducible_binary = builds[0]["binarySha256"] == builds[1]["binarySha256"]
     if not reproducible_binary:
-        raise RuntimeError("two clean-target release builds produced different binaries")
+        raise RuntimeError(
+            "two clean-target release builds produced different binaries"
+        )
 
     context_before = execution_context()
     raw_samples: list[dict] = []
@@ -204,42 +268,54 @@ def main() -> int:
                 else:
                     seed = 2_026_092_000 + field_index * 100 + pair
                     completed = command(
-                        PARI_CONTROL, "public-call", field["pariPolynomial"],
-                        field["id"], seed,
+                        PARI_CONTROL,
+                        "public-call",
+                        field["pariPolynomial"],
+                        field["id"],
+                        seed,
                     )
                     sample = json.loads(completed.stdout)
                     verify_pari(sample, field, panel["boundary"]["pari"])
                     kernel_ns = int(sample["kernelNanoseconds"])
                 external_ns = time.monotonic_ns() - before
                 arm_values[arm].append(kernel_ns)
-                raw_samples.append({
-                    "fieldId": field["id"], "pairOneBased": pair + 1,
-                    "positionInPairOneBased": position + 1, "arm": arm,
-                    "kernelNanoseconds": kernel_ns,
-                    "externalProcessNanosecondsExcluded": external_ns,
-                    "exactOutputChecked": True,
-                    "boundaryLabelAsserted": sample["boundaryLabel"],
-                })
+                raw_samples.append(
+                    {
+                        "fieldId": field["id"],
+                        "pairOneBased": pair + 1,
+                        "positionInPairOneBased": position + 1,
+                        "arm": arm,
+                        "kernelNanoseconds": kernel_ns,
+                        "externalProcessNanosecondsExcluded": external_ns,
+                        "exactOutputChecked": True,
+                        "boundaryLabelAsserted": sample["boundaryLabel"],
+                    }
+                )
         rust_median = median(arm_values["rust"])
         pari_median = median(arm_values["pari"])
         ratio = rust_median / pari_median
-        summaries.append({
-            "fieldId": field["id"],
-            "traits": field["traits"],
-            "rustKernelNanoseconds": arm_values["rust"],
-            "pariKernelNanoseconds": arm_values["pari"],
-            "rustMedianNanoseconds": rust_median,
-            "pariMedianNanoseconds": pari_median,
-            "rustOverPariMedianRatio": ratio,
-            "observedPariBand": "under-5ms" if pari_median < 5_000_000 else (
-                "5-to-100ms" if pari_median <= 100_000_000 else "over-100ms"
-            ),
-            "tinyFieldTargetPass": (
-                rust_median <= max(2 * pari_median, pari_median + 2_000_000)
-                if pari_median < 5_000_000 else None
-            ),
-            "nativeIndividualRatioAtMost3Pass": ratio <= 3 if pari_median >= 5_000_000 else None,
-        })
+        summaries.append(
+            {
+                "fieldId": field["id"],
+                "traits": field["traits"],
+                "rustKernelNanoseconds": arm_values["rust"],
+                "pariKernelNanoseconds": arm_values["pari"],
+                "rustMedianNanoseconds": rust_median,
+                "pariMedianNanoseconds": pari_median,
+                "rustOverPariMedianRatio": ratio,
+                "observedPariBand": "under-5ms"
+                if pari_median < 5_000_000
+                else ("5-to-100ms" if pari_median <= 100_000_000 else "over-100ms"),
+                "tinyFieldTargetPass": (
+                    rust_median <= max(2 * pari_median, pari_median + 2_000_000)
+                    if pari_median < 5_000_000
+                    else None
+                ),
+                "nativeIndividualRatioAtMost3Pass": ratio <= 3
+                if pari_median >= 5_000_000
+                else None,
+            }
+        )
 
     batch = panel["tinyBatchThroughput"]
     batch_fields = {field["id"]: field for field in panel["fields"]}
@@ -249,26 +325,35 @@ def main() -> int:
         samples = []
         for sample_index in range(batch["samplesPerField"]):
             completed = command(
-                REPRO_A, "--batch", batch["computationsPerSample"],
+                REPRO_A,
+                "--batch",
+                batch["computationsPerSample"],
                 *field["polynomialAscending"],
             )
             result = json.loads(completed.stdout)
             verify_rust(
-                result, field, panel["boundary"]["rust"],
+                result,
+                field,
+                panel["boundary"]["rust"],
                 batch["computationsPerSample"],
             )
             samples.append(int(result["kernelNanoseconds"]))
         batch_median = median(samples)
-        batch_summaries.append({
-            "fieldId": field_id,
-            "computationsPerSample": batch["computationsPerSample"],
-            "kernelNanoseconds": samples,
-            "medianBatchNanoseconds": batch_median,
-            "medianNanosecondsPerComputation": batch_median / batch["computationsPerSample"],
-            "medianComputationsPerSecond": batch["computationsPerSample"] * 1_000_000_000 / batch_median,
-            "everyComputationReconstructedAndVerified": True,
-            "boundaryLabelAsserted": panel["boundary"]["rust"],
-        })
+        batch_summaries.append(
+            {
+                "fieldId": field_id,
+                "computationsPerSample": batch["computationsPerSample"],
+                "kernelNanoseconds": samples,
+                "medianBatchNanoseconds": batch_median,
+                "medianNanosecondsPerComputation": batch_median
+                / batch["computationsPerSample"],
+                "medianComputationsPerSecond": batch["computationsPerSample"]
+                * 1_000_000_000
+                / batch_median,
+                "everyComputationReconstructedAndVerified": True,
+                "boundaryLabelAsserted": panel["boundary"]["rust"],
+            }
+        )
 
     context_after = execution_context()
 
@@ -281,14 +366,15 @@ def main() -> int:
     git_status = command("git", "status", "--porcelain=v1", cwd=CRATE).stdout
     evidence_status = (
         "pre-promotion-dirty-source-bound-by-content-not-commit"
-        if source["containsDirtyReachableSources"] or git_status else
-        "promotion-candidate-clean-frozen-source"
+        if source["containsDirtyReachableSources"] or git_status
+        else "promotion-candidate-clean-frozen-source"
     )
     receipt = {
         "schema": "sagejs.public-quadratic/native-pari-benchmark-receipt-v1",
         "qualificationOnly": True,
         "evidenceStatus": evidence_status,
-        "promotionEligible": evidence_status == "promotion-candidate-clean-frozen-source",
+        "promotionEligible": evidence_status
+        == "promotion-candidate-clean-frozen-source",
         "panelSha256": hashlib.sha256(panel_bytes).hexdigest(),
         "panel": panel,
         "method": {
@@ -308,21 +394,36 @@ def main() -> int:
         },
         "aggregate": {
             "geometricMeanRustOverPariMedianRatio": statistics.geometric_mean(ratios),
-            "p90RustOverPariMedianRatioNearestRank": percentile_nearest_rank(ratios, 0.9),
+            "p90RustOverPariMedianRatioNearestRank": percentile_nearest_rank(
+                ratios, 0.9
+            ),
             "tinyFieldCount": len(tiny),
             "tinyFieldTarget": "rust median <= max(2*PARI median, PARI median + 2ms)",
-            "tinyFieldTargetPass": bool(tiny) and all(entry["tinyFieldTargetPass"] for entry in tiny),
+            "tinyFieldTargetPass": bool(tiny)
+            and all(entry["tinyFieldTargetPass"] for entry in tiny),
             "pari5To100msFieldCount": len(medium),
             "pari5To100msCoveragePass": bool(medium),
             "nativeTarget": "on PARI>=5ms fields: geometric mean ratio <=1.5, p90 ratio <=2, and each ratio <=3",
-            "nativeTargetPass": bool(medium) and (
-                statistics.geometric_mean([entry["rustOverPariMedianRatio"] for entry in medium]) <= 1.5
-                and percentile_nearest_rank([entry["rustOverPariMedianRatio"] for entry in medium], 0.9) <= 2
+            "nativeTargetPass": bool(medium)
+            and (
+                statistics.geometric_mean(
+                    [entry["rustOverPariMedianRatio"] for entry in medium]
+                )
+                <= 1.5
+                and percentile_nearest_rank(
+                    [entry["rustOverPariMedianRatio"] for entry in medium], 0.9
+                )
+                <= 2
                 and all(entry["rustOverPariMedianRatio"] <= 3 for entry in medium)
             ),
         },
         "identity": {
-            "host": {"platform": platform.platform(), "machine": platform.machine(), "processor": platform.processor(), "node": platform.node()},
+            "host": {
+                "platform": platform.platform(),
+                "machine": platform.machine(),
+                "processor": platform.processor(),
+                "node": platform.node(),
+            },
             "executionContextBefore": context_before,
             "executionContextAfter": context_after,
             "python": sys.version,
@@ -330,9 +431,14 @@ def main() -> int:
             "cargoVersionVerbose": cargo,
             "releaseBuilds": builds,
             "releaseBuildEnvironment": {
-                name: build_environment.get(name) for name in [
-                    "CARGO_INCREMENTAL", "SOURCE_DATE_EPOCH", "RUSTFLAGS",
-                    "CARGO_ENCODED_RUSTFLAGS", "RUSTC_WRAPPER", "CARGO_BUILD_TARGET",
+                name: build_environment.get(name)
+                for name in [
+                    "CARGO_INCREMENTAL",
+                    "SOURCE_DATE_EPOCH",
+                    "RUSTFLAGS",
+                    "CARGO_ENCODED_RUSTFLAGS",
+                    "RUSTC_WRAPPER",
+                    "CARGO_BUILD_TARGET",
                 ]
             },
             "retainedRustBinary": str(REPRO_A.relative_to(CRATE)),

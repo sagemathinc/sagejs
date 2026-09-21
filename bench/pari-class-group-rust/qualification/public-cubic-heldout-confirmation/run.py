@@ -33,7 +33,9 @@ RECEIPT_SCHEMA = "sagejs.rust-class-group/cubic-confirmation-execution-v1"
 
 
 def load_runner() -> Any:
-    spec = importlib.util.spec_from_file_location("heldout_executor_support", HELDOUT_RUNNER)
+    spec = importlib.util.spec_from_file_location(
+        "heldout_executor_support", HELDOUT_RUNNER
+    )
     if spec is None or spec.loader is None:
         raise RuntimeError("cannot load held-out executor support")
     module = importlib.util.module_from_spec(spec)
@@ -59,7 +61,10 @@ def validate_inputs() -> tuple[list[dict[str, Any]], dict[str, Any]]:
         "sagejs.rust-class-group/heldout-cubic-confirmation-policy-v2"
     ):
         raise RuntimeError("unexpected confirmation policy")
-    if selection.get("status") != "passed" or selection.get("inputsExecuted") is not False:
+    if (
+        selection.get("status") != "passed"
+        or selection.get("inputsExecuted") is not False
+    ):
         raise RuntimeError("confirmation selection receipt is not pristine")
     if selection.get("inputsSha256") != SUPPORT.sha256_file(INPUTS_PATH):
         raise RuntimeError("selection receipt does not bind confirmation inputs")

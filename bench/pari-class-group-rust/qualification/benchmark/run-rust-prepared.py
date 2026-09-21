@@ -12,8 +12,7 @@ import subprocess
 
 HERE = pathlib.Path(__file__).resolve().parent
 ENGINE = (
-    HERE.parent
-    / "row6-candidate/target/release/sagejs-row6-rust-candidate-diagnostic"
+    HERE.parent / "row6-candidate/target/release/sagejs-row6-rust-candidate-diagnostic"
 )
 BOUNDARY = "prepared-field/complete-grh-class-unit-v1"
 
@@ -39,9 +38,7 @@ def main() -> None:
     source = json.loads(arguments.input.read_text())
     source_id = source.get("fieldId")
     accepted_source_ids = {
-        "row6-continuation-cubic": {
-            "row6-x3-minus-2000000000010x-plus-2000000000018"
-        }
+        "row6-continuation-cubic": {"row6-x3-minus-2000000000010x-plus-2000000000018"}
     }.get(arguments.field_id, {arguments.field_id})
     if source_id not in accepted_source_ids:
         raise SystemExit("neutral input fieldId does not match --field-id")
@@ -65,7 +62,9 @@ def main() -> None:
     if answer.get("schema") != "sagejs.rust-class-group/prepared-cubic-class-unit-v1":
         raise SystemExit("Rust engine returned the wrong schema")
     if answer.get("qualificationStatus") != "grh-conditional-class-unit-index-one":
-        raise SystemExit("Rust engine did not establish the conditional completion contract")
+        raise SystemExit(
+            "Rust engine did not establish the conditional completion contract"
+        )
     if answer.get("mathematicalBoundary") != (
         "replay-validated-prepared-cubic-to-complete-class-and-unit-result"
     ):
@@ -113,7 +112,9 @@ def main() -> None:
                     "executableSha256": sha256(ENGINE),
                     "seed": arguments.seed,
                     "randomness": "engine-declares-no-randomness",
-                    "stderrSha256": hashlib.sha256(completed.stderr.encode()).hexdigest(),
+                    "stderrSha256": hashlib.sha256(
+                        completed.stderr.encode()
+                    ).hexdigest(),
                 },
             }
         )

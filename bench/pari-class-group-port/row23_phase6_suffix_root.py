@@ -1,7 +1,7 @@
 """One-call resident row-23 post-HNF class-and-unit suffix.
 
 This experimental root deliberately exposes the large analytic catalog owners
-and the high-capacity exact ``getfu`` arena at the boundary.  Everything else
+and the high-capacity exact `getfu` arena at the boundary.  Everything else
 is fixed bounded storage owned by the compiled call graph.  The source is
 ordinary CPython-parseable Python; the native compiler privately clones its
 imported mathematical dependencies.
