@@ -29,12 +29,12 @@ expected post-run change within that closure.
 
 ## Current result
 
-The receipt generated from source commit `39c3732ae` records exact agreement
-in all 180 alternating pairs. Summed per-field medians are 1.918 seconds for
-Rust and 0.585 seconds for PARI 2.17.4, or a 3.28x weighted gap. The geometric
-mean is 4.76x, p90 is 8.37x, and the maximum is 12.33x. Rust's summed stage
-medians are 0.617 seconds for relation collection, 0.542 seconds for candidate
-authentication, 0.621 seconds for unit and analytic completion, and 0.078
+The receipt generated from source commit `0f7574501` records exact agreement
+in all 180 alternating pairs. Summed per-field medians are 1.887 seconds for
+Rust and 0.585 seconds for PARI 2.17.4, or a 3.23x weighted gap. The geometric
+mean is 4.71x, p90 is 8.34x, and the maximum is 12.42x. Rust's summed stage
+medians are 0.621 seconds for relation collection, 0.543 seconds for candidate
+authentication, 0.588 seconds for unit and analytic completion, and 0.079
 seconds for public preparation. Exact continuation retains the FLINT
 fraction-free factorization only when the selected square relation block is
 identical and the previous surplus is an exact prefix; it recomputes and
@@ -58,3 +58,9 @@ matrix clone per attempt. Summed completion fell another 3.4 ms to 0.621
 seconds. The Rust total varied upward by 3.3 ms because relation collection
 varied upward by 5.2 ms; the weighted ratio also reflects a 6.6 ms upward
 change in the PARI sum.
+The bounded precision driver now retains ownership of complete prepared and
+authenticated evidence across retries. It clones only for a nonfinal attempt
+and moves the existing evidence into the final permitted attempt, preserving
+failure atomicity while eliminating the common full-presentation copy. Summed
+completion fell from 0.621 to 0.588 seconds and the Rust total from 1.918 to
+1.887 seconds.
