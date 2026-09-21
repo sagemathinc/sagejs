@@ -419,7 +419,7 @@ def matching_parenthesis_backward(masked: str, closing: int) -> int | None:
 
 
 def c_declarator_name(masked: str, start: int, end: int) -> tuple[str, int] | None:
-    """Return a lexical function declarator name from ``masked[start:end]``."""
+    """Return a lexical function declarator name from `masked[start:end]`."""
 
     controls = {"if", "for", "while", "switch", "sizeof"}
     cursor = end - 1

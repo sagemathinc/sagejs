@@ -95,7 +95,7 @@ def pari_row21_factor_supported_hnf(
 ) -> int:
     """Factor one integral HNF on the retained row-21 prime-ideal base.
 
-    ``state=[status,abs_norm,residual,reconstructed_norm,groups_used]``.
+    `state=[status,abs_norm,residual,reconstructed_norm,groups_used]`.
     Status 0 is success; 1 is the zero ideal, 2 outside rational support,
     3 an incomplete prime group, and 4 an inconsistent retained norm.
     """
@@ -362,7 +362,7 @@ def factor_supported_fractional_ideal(
     numerator_hnf: Sequence[Any],
     denominator: Any,
 ) -> dict[str, Any]:
-    """Factor ``numerator_hnf / denominator`` on the retained prime base."""
+    """Factor `numerator_hnf / denominator` on the retained prime base."""
     if isinstance(denominator, bool) or not isinstance(denominator, (str, int)):
         raise Row21NativeMapFailure("fractional denominator is not integer data")
     divisor = int(denominator)

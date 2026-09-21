@@ -486,12 +486,26 @@ def pari_row23_phase6_aggregate_root(
     if status != 0:
         return 1
     status = pari_row23_phase6_suffix_root(
-        analytic_polynomial, basis_table, analytic_primes,
-        analytic_prime_count, analytic_discriminant, analytic_roots_of_unity,
-        catalog_workspace, pattern_offsets, pattern_counts, pattern_degrees,
-        pattern_multiplicities, hnf_result_h, hnf_result_c,
-        suffix_embedding_matrix, suffix_work_arena, suffix_exact_arena,
-        output_units, output_norms, output_class_number, output_invariants,
+        analytic_polynomial,
+        basis_table,
+        analytic_primes,
+        analytic_prime_count,
+        analytic_discriminant,
+        analytic_roots_of_unity,
+        catalog_workspace,
+        pattern_offsets,
+        pattern_counts,
+        pattern_degrees,
+        pattern_multiplicities,
+        hnf_result_h,
+        hnf_result_c,
+        suffix_embedding_matrix,
+        suffix_work_arena,
+        suffix_exact_arena,
+        output_units,
+        output_norms,
+        output_class_number,
+        output_invariants,
         suffix_state,
     )
     aggregate_state[2] = status
@@ -500,5 +514,6 @@ def pari_row23_phase6_aggregate_root(
     aggregate_state[0] = 0
     aggregate_state[3] = 1
     return 0
+
 
 __all__ = ["pari_row23_phase6_aggregate_root"]
