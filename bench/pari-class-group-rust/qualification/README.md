@@ -46,11 +46,11 @@ degree-2-through-6 product milestone. The engine remains cubic-specific,
 conditional-GRH only, and outside the live Sage.js dispatch path. It also does
 not pass the frozen performance target. After starting answer-blind
 continuation at fourteen surplus rows when the caller's budget permits it, the
-replacement clean 15-sample alternating campaign on the original twelve
+current clean 15-sample alternating campaign on the original twelve
 regressions matched every exact result and measured summed per-field medians of
-1.884 seconds for Rust and 0.585 seconds for PARI 2.17.4: 3.22x weighted, 4.69x
-by geometric mean, 8.33x at p90, and 12.13x maximum. The source commit is
-`05fd99d68`. Precision-specific relation logarithms are reused only after an
+1.914 seconds for Rust and 0.610 seconds for PARI 2.17.4: 3.13x weighted, 4.41x
+by geometric mean, 7.74x at p90, and 8.65x maximum. The source commit is
+`a795448cc`. Precision-specific relation logarithms are reused only after an
 exact generator-prefix check. Checked fixed-width relation replay restarts in
 GMP on any overflow. Exact back substitution removes unit pivots from the
 modular HNF before the Smith map is computed and lifts the verified residual
@@ -97,7 +97,9 @@ larger Euler prefixes for the unchanged nonunit index. In a CPU-pinned
 31-pair before/after diagnostic, the retrying 27-column field fell from 56.08
 to 41.71 ms (completion 29.50 to 15.02 ms), while the retry-heavy 187-column
 field fell from 372.87 to 362.02 ms (completion 111.50 to 102.21 ms). A clean
-full Rust/PARI campaign remains the authoritative comparative gate.
+clean full Rust/PARI campaign records the same exact results in all 180 pairs;
+it improves the former 12.13x maximum to 8.65x, while whole-panel absolute
+times moved within host variation.
 Relation collection was 1.063 seconds before the exact ideal-power cache. See
 `public-cubic-heldout-performance/receipt.json`. The fresh confirmation set
 remains correctness-only; its contextual diagnostic timings are not a formal

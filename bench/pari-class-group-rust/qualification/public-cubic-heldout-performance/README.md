@@ -29,12 +29,12 @@ expected post-run change within that closure.
 
 ## Current result
 
-The receipt generated from source commit `05fd99d68` records exact agreement
-in all 180 alternating pairs. Summed per-field medians are 1.884 seconds for
-Rust and 0.585 seconds for PARI 2.17.4, or a 3.22x weighted gap. The geometric
-mean is 4.69x, p90 is 8.33x, and the maximum is 12.13x. Rust's summed stage
-medians are 0.617 seconds for relation collection, 0.543 seconds for candidate
-authentication, 0.591 seconds for unit and analytic completion, and 0.078
+The receipt generated from source commit `a795448cc` records exact agreement
+in all 180 alternating pairs. Summed per-field medians are 1.914 seconds for
+Rust and 0.610 seconds for PARI 2.17.4, or a 3.13x weighted gap. The geometric
+mean is 4.41x, p90 is 7.74x, and the maximum is 8.65x. Rust's summed stage
+medians are 0.630 seconds for relation collection, 0.569 seconds for candidate
+authentication, 0.577 seconds for unit and analytic completion, and 0.080
 seconds for public preparation. Exact continuation retains the FLINT
 fraction-free factorization only when the selected square relation block is
 identical and the previous surplus is an exact prefix; it recomputes and
@@ -70,3 +70,12 @@ the sealed result no longer stores the same evidence twice. The 2.6 ms total
 change and 3.3 ms upward completion-stage change are within campaign noise, so
 this receipt treats the change as a storage/ownership improvement rather than
 a stage-speed claim.
+The current receipt adds rigorous early rejection of an unchanged continuation
+candidate once the Belabas--Friedman tail is below `1/4` and the entire exact
+index enclosure lies strictly above one. The formerly worst tiny field fell
+from 54.46 to 41.69 ms and its completion stage from 28.67 to 15.06 ms; its
+ratio fell from 12.13x to 8.65x. The retry-heavy field 0012's completion fell
+from 107.91 to 101.35 ms. Whole-panel Rust time varied upward by 29 ms while
+PARI varied upward by 25 ms, so the absolute aggregate is not claimed as a
+speedup; the deterministic removed work and focused paired campaign establish
+the optimization, while this clean receipt establishes the improved tail.
