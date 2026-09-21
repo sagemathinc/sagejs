@@ -13,7 +13,8 @@ use crate::collector_schedule::{ScheduleError, next_small_norm_ideal};
 use crate::enumeration::{EnumerationError, EnumerationWorkspace};
 use crate::factor_base::{FactorBase, prepared_cubic_factor_base};
 use crate::numerical_preparation::{
-    NumericalPreparationError, PreparedCubicEmbedding, prepare_cubic_ideal, prepare_h1_ideal,
+    H1NumericalPreparation, NumericalPreparationError, PreparedCubicEmbedding, prepare_cubic_ideal,
+    prepare_h1_ideal,
 };
 use crate::pari_random::PariRandom;
 use crate::prepared::{EmbeddingPrecisionState, ValidatedPreparedCubic};
@@ -86,6 +87,19 @@ pub struct H1ClassGroupPresentation {
 pub struct PreparedCollectorLimits {
     pub maximum_visited_ideals: usize,
     pub maximum_candidates: usize,
+}
+
+/// Cumulative resource ceilings for a resumable prepared-field collector.
+///
+/// Every ceiling applies to the lifetime of one collector, not to one call to
+/// `advance_to_supplementary`.  Consequently, pausing and resuming cannot
+/// silently reset a work budget.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct PreparedContinuationLimits {
+    pub maximum_visited_ideals: usize,
+    pub maximum_candidates: usize,
+    pub maximum_relations: usize,
+    pub maximum_dependencies: usize,
 }
 
 impl Default for PreparedCollectorLimits {
@@ -351,9 +365,10 @@ fn prepared_relation_capacity(
     size: usize,
     initial_relations: usize,
     maximum_candidates: usize,
+    supplementary_relations: usize,
 ) -> Result<(usize, usize), ClassGroupError> {
     let target = size
-        .checked_add(SUPPLEMENTARY_RELATIONS)
+        .checked_add(supplementary_relations)
         .ok_or(ClassGroupError::CandidateOverflow)?;
     let full = target
         .checked_mul(10)
@@ -389,6 +404,8 @@ pub enum ClassGroupError {
     PrimeValuation(PrimeValuationError),
     Cache(CacheError),
     CandidateOverflow,
+    ContinuationTargetDecreased,
+    ContinuationBudgetExceeded,
     UnresolvedFactor(Integer),
     CollectorExhausted { relations: usize },
     PreparedFactorBase(PreparedFactorBaseError),
@@ -757,140 +774,609 @@ pub fn collect_h1_class_group(
     })
 }
 
-#[allow(clippy::too_many_arguments)]
-fn collect_prepared_ideal_relations(
-    field: &ValidatedPreparedCubic,
-    factor_base: &PreparedFactorBase,
-    ideal: &CubicIdeal,
-    divisor_relation: &[i64],
-    embedding: &PreparedCubicEmbedding,
-    factor_product: &Integer,
-    factor_primes: &[u64],
-    prime_products: &[Integer],
-    cache: &mut RelationCache,
-    relation: &mut [i64],
-    generators: &mut Vec<Integer>,
-    enumeration: &mut EnumerationWorkspace,
-    ideal_workspace: &mut PreparedIdealWorkspace,
-    counters: &mut CollectorCounters,
-    timings: &mut CollectorTimings,
-    maximum_candidates: usize,
-    maximum_factor_attempts: usize,
-    maximum_positive_relations: usize,
-    random_relation: bool,
-) -> Result<bool, ClassGroupError> {
-    let started = Instant::now();
-    let prepared = prepare_cubic_ideal(embedding, ideal)?;
-    timings.numerical_preparation_ns += started.elapsed().as_nanos();
-    timings.lll_ns += prepared.lll_ns;
-    timings.archimedean_preparation_ns += prepared.archimedean_ns;
-    enumeration.reset(&prepared.q, &prepared.v)?;
-    let trials_before = enumeration.trials();
-    let mut factor_attempts = 0_usize;
-    let mut positive_for_ideal = 0_usize;
-    let mut appended_any = false;
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum PreparedCollectionPhase {
+    Scheduled,
+    Random,
+    Exhausted,
+}
 
-    while positive_for_ideal < maximum_positive_relations
-        && (cache.missing() != 0 || cache.remaining_supplementary() != 0)
-        && counters.primitive_nonscalar_candidates < maximum_candidates
-    {
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum ActiveIdealOrigin {
+    Scheduled,
+    Random,
+}
+
+struct ActivePreparedIdeal {
+    ideal: CubicIdeal,
+    divisor_relation: Vec<i64>,
+    prepared: H1NumericalPreparation,
+    factor_attempts: usize,
+    positive_relations: usize,
+    maximum_positive_relations: usize,
+    appended_any: bool,
+    random_relation: bool,
+    accounted_trials: usize,
+    origin: ActiveIdealOrigin,
+}
+
+struct RandomIdealBatch {
+    ideal: CubicIdeal,
+    divisor_relation: Vec<i64>,
+    search_indices: Vec<usize>,
+    next_search_index: usize,
+    appended_relations: usize,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum ActiveIdealProgress {
+    Paused,
+    Complete {
+        origin: ActiveIdealOrigin,
+        appended_any: bool,
+    },
+}
+
+/// Stateful deterministic relation collector used to qualify bounded
+/// continuation without replaying an already visited ideal.
+///
+/// The state owns the relation cache, schedule, active Fincke--Pohst cursor,
+/// random stream, and random-batch cursor.  Increasing the requested surplus
+/// therefore only appends work to the existing transcript.  Targets affect
+/// when the collector pauses, never which next ideal or lattice point it
+/// chooses. The fixed pre-rank `relsup` quota is deliberately independent of
+/// every pause target. A target can stop collection only after modular rank is
+/// full; from that point `RelationCache` admits every nonduplicate row without
+/// consulting `relsup`, so continuation neither restores nor invents quota.
+#[doc(hidden)]
+pub struct PreparedCubicRelationCollector<'a> {
+    field: &'a ValidatedPreparedCubic,
+    limits: PreparedContinuationLimits,
+    factor_base: PreparedFactorBase,
+    factor_base_authority: PreparedFactorBaseAuthority,
+    subfactor_count: usize,
+    search_permutation: Vec<usize>,
+    ramification: Vec<i64>,
+    residue_degrees: Vec<i64>,
+    scheduled: Vec<i64>,
+    factor_product: Integer,
+    factor_primes: &'static [u64],
+    prime_products: &'static [Integer],
+    embedding: PreparedCubicEmbedding,
+    cache: RelationCache,
+    relation: Vec<i64>,
+    generators: Vec<Integer>,
+    enumeration: EnumerationWorkspace,
+    ideal_workspace: PreparedIdealWorkspace,
+    schedule: [i64; 4],
+    schedule_cursor: [i64; 5],
+    schedule_counters: [i64; 4],
+    schedule_progress: [i64; 4],
+    random: PariRandom,
+    random_batch: Option<RandomIdealBatch>,
+    active: Option<ActivePreparedIdeal>,
+    phase: PreparedCollectionPhase,
+    requested_supplementary: usize,
+    counters: CollectorCounters,
+    timings: CollectorTimings,
+    relation_capacity: usize,
+    full_relation_capacity: usize,
+}
+
+impl<'a> PreparedCubicRelationCollector<'a> {
+    pub fn new(
+        field: &'a ValidatedPreparedCubic,
+        limits: PreparedContinuationLimits,
+    ) -> Result<Self, ClassGroupError> {
+        let total_started = Instant::now();
+        let mut timings = CollectorTimings::default();
+
         let started = Instant::now();
-        let element = loop {
-            if !enumeration.next(prepared.bound, prepared.skip_first)? {
-                break None;
+        let factor_base = prepared_maximal_cubic_factor_base(field)?;
+        let factor_base_authority = PreparedFactorBaseAuthority::mint(field, &factor_base);
+        let (subfactor_count, search_permutation) = factor_base.catalog.subfactor_permutation(3);
+        timings.factor_base_ns = started.elapsed().as_nanos();
+        let size = factor_base.catalog.ideals.len();
+        let initial_relation_capacity = factor_base
+            .catalog
+            .complete_groups
+            .iter()
+            .filter(|complete| **complete)
+            .count();
+        let (candidate_bounded_capacity, full_relation_capacity) = prepared_relation_capacity(
+            size,
+            initial_relation_capacity,
+            limits.maximum_candidates,
+            limits.maximum_dependencies,
+        )?;
+        let relation_capacity = candidate_bounded_capacity.min(limits.maximum_relations);
+        if relation_capacity < initial_relation_capacity {
+            return Err(ClassGroupError::ContinuationBudgetExceeded);
+        }
+
+        let started = Instant::now();
+        let initial_supplementary =
+            PREPARED_CUBIC_SUPPLEMENTARY_RELATIONS.min(limits.maximum_dependencies);
+        let mut cache = RelationCache::try_new_growing(
+            size,
+            initial_relation_capacity.min(relation_capacity),
+            relation_capacity,
+            initial_supplementary,
+        )?;
+        let ramification = factor_base
+            .catalog
+            .ideals
+            .iter()
+            .map(|ideal| ideal.ramification as i64)
+            .collect::<Vec<_>>();
+        let mut relation = vec![0_i64; size];
+        cache.initialize_complete_prime_groups(
+            initial_supplementary,
+            &factor_base.catalog.rational_primes,
+            &factor_base.catalog.rational_offsets,
+            &factor_base.catalog.rational_counts,
+            &factor_base.catalog.complete_groups,
+            &ramification,
+            &mut relation,
+        )?;
+        let mut generators = vec![Integer::new(); cache.resident_capacity() * DEGREE];
+        for (row, metadata) in cache.metadata().chunks_exact(3).enumerate() {
+            generators[row * DEGREE] = Integer::from(metadata[0]);
+        }
+        timings.initial_cache_ns = started.elapsed().as_nanos();
+
+        let started = Instant::now();
+        let embedding = PreparedCubicEmbedding::from_validated(field, 320)?;
+        let factor_catalog = class_group_factor_catalog()?;
+        let factor_product = factor_base
+            .catalog
+            .rational_primes
+            .iter()
+            .fold(Integer::from(1), |product, prime| product * prime);
+        timings.catalog_setup_ns = started.elapsed().as_nanos();
+        timings.total_ns = total_started.elapsed().as_nanos();
+
+        let scheduled = search_permutation
+            .iter()
+            .map(|value| *value as i64)
+            .collect();
+        let residue_degrees = factor_base
+            .catalog
+            .ideals
+            .iter()
+            .map(|ideal| ideal.residue_degree as i64)
+            .collect();
+        Ok(Self {
+            field,
+            limits,
+            factor_base,
+            factor_base_authority,
+            subfactor_count,
+            search_permutation,
+            ramification,
+            residue_degrees,
+            scheduled,
+            factor_product,
+            factor_primes: factor_catalog.primes(),
+            prime_products: factor_catalog.cumulative_products(),
+            embedding,
+            cache,
+            relation,
+            generators,
+            enumeration: EnumerationWorkspace::new(DEGREE),
+            ideal_workspace: PreparedIdealWorkspace::new(),
+            schedule: [0; 4],
+            schedule_cursor: [0; 5],
+            schedule_counters: [0; 4],
+            schedule_progress: [0; 4],
+            random: PariRandom::from_seed(1).expect("the fixed qualification seed is positive"),
+            random_batch: None,
+            active: None,
+            phase: PreparedCollectionPhase::Scheduled,
+            requested_supplementary: 0,
+            counters: CollectorCounters::default(),
+            timings,
+            relation_capacity,
+            full_relation_capacity,
+        })
+    }
+
+    fn start_active(
+        &mut self,
+        ideal: CubicIdeal,
+        divisor_relation: Vec<i64>,
+        maximum_positive_relations: usize,
+        random_relation: bool,
+        origin: ActiveIdealOrigin,
+    ) -> Result<(), ClassGroupError> {
+        let started = Instant::now();
+        let prepared = prepare_cubic_ideal(&self.embedding, &ideal)?;
+        self.timings.numerical_preparation_ns += started.elapsed().as_nanos();
+        self.timings.lll_ns += prepared.lll_ns;
+        self.timings.archimedean_preparation_ns += prepared.archimedean_ns;
+        self.enumeration.reset(&prepared.q, &prepared.v)?;
+        self.active = Some(ActivePreparedIdeal {
+            ideal,
+            divisor_relation,
+            prepared,
+            factor_attempts: 0,
+            positive_relations: 0,
+            maximum_positive_relations,
+            appended_any: false,
+            random_relation,
+            accounted_trials: 0,
+            origin,
+        });
+        Ok(())
+    }
+
+    fn account_enumeration_trials(&mut self, active: &mut ActivePreparedIdeal) {
+        let trials = self.enumeration.trials();
+        self.counters.cursor_trials += trials - active.accounted_trials;
+        active.accounted_trials = trials;
+    }
+
+    fn advance_active(&mut self, target: usize) -> Result<ActiveIdealProgress, ClassGroupError> {
+        let mut active = self.active.take().expect("active ideal exists");
+        loop {
+            if self.cache.missing() == 0 && self.cache.len() >= target {
+                self.active = Some(active);
+                return Ok(ActiveIdealProgress::Paused);
             }
-            if let Some(element) =
-                exact_candidate_element(enumeration.coordinates(), &prepared.ideal)
+            if active.positive_relations >= active.maximum_positive_relations
+                || active.factor_attempts > 500
             {
-                factor_attempts += 1;
-                counters.primitive_nonscalar_candidates += 1;
-                if factor_attempts > maximum_factor_attempts {
+                return Ok(ActiveIdealProgress::Complete {
+                    origin: active.origin,
+                    appended_any: active.appended_any,
+                });
+            }
+            if self.counters.primitive_nonscalar_candidates >= self.limits.maximum_candidates {
+                self.active = Some(active);
+                return Ok(ActiveIdealProgress::Paused);
+            }
+
+            let started = Instant::now();
+            let element = loop {
+                if !self
+                    .enumeration
+                    .next(active.prepared.bound, active.prepared.skip_first)?
+                {
                     break None;
                 }
-                break Some(element);
-            }
-        };
-        timings.enumeration_and_norm_ns += started.elapsed().as_nanos();
-        let Some(element) = element else { break };
+                if let Some(element) =
+                    exact_candidate_element(self.enumeration.coordinates(), &active.prepared.ideal)
+                {
+                    active.factor_attempts += 1;
+                    self.counters.primitive_nonscalar_candidates += 1;
+                    if active.factor_attempts > 500 {
+                        break None;
+                    }
+                    break Some(element);
+                }
+            };
+            self.timings.enumeration_and_norm_ns += started.elapsed().as_nanos();
+            self.account_enumeration_trials(&mut active);
+            let Some(element) = element else {
+                return Ok(ActiveIdealProgress::Complete {
+                    origin: active.origin,
+                    appended_any: active.appended_any,
+                });
+            };
 
-        let norm = field.norm(&element);
-        let ideal_norm = ideal.norm();
-        if ideal_norm <= 0 {
-            return Err(ClassGroupError::Admission(
-                AdmissionError::NonintegralNormQuotient,
-            ));
-        }
-        let mut remainder = norm.clone();
-        remainder %= &ideal_norm;
-        if remainder != 0 {
-            return Err(ClassGroupError::Admission(
-                AdmissionError::NonintegralNormQuotient,
-            ));
-        }
-        let quotient_norm = norm / ideal_norm;
-        let started = Instant::now();
-        let factors = match factor_integer_norm(
-            &quotient_norm,
-            factor_product,
-            factor_primes,
-            prime_products,
-            FACTOR_LIMIT,
-            PRIME_LIMIT as u64,
-        )? {
-            FactorOutcome::Nonsmooth => {
-                timings.rational_factorization_ns += started.elapsed().as_nanos();
+            let norm = self.field.norm(&element);
+            let ideal_norm = active.ideal.norm();
+            if ideal_norm <= 0 {
+                return Err(ClassGroupError::Admission(
+                    AdmissionError::NonintegralNormQuotient,
+                ));
+            }
+            let mut remainder = norm.clone();
+            remainder %= &ideal_norm;
+            if remainder != 0 {
+                return Err(ClassGroupError::Admission(
+                    AdmissionError::NonintegralNormQuotient,
+                ));
+            }
+            let quotient_norm = norm / ideal_norm;
+            let started = Instant::now();
+            let factors = match factor_integer_norm(
+                &quotient_norm,
+                &self.factor_product,
+                self.factor_primes,
+                self.prime_products,
+                FACTOR_LIMIT,
+                PRIME_LIMIT as u64,
+            )? {
+                FactorOutcome::Nonsmooth => {
+                    self.timings.rational_factorization_ns += started.elapsed().as_nanos();
+                    continue;
+                }
+                FactorOutcome::Unresolved(value) => {
+                    return Err(ClassGroupError::UnresolvedFactor(value));
+                }
+                FactorOutcome::Factored(factors) => factors,
+            };
+            self.timings.rational_factorization_ns += started.elapsed().as_nanos();
+            self.counters.smooth_candidates += 1;
+            let rational = factors
+                .iter()
+                .map(|factor| (factor.prime as i64, factor.exponent as usize))
+                .collect::<Vec<_>>();
+
+            let started = Instant::now();
+            let refinement = self.factor_base.refine_quotient_factorization(
+                self.field,
+                &element,
+                &rational,
+                &active.divisor_relation,
+                &mut self.relation,
+                &mut self.ideal_workspace,
+            );
+            if matches!(
+                refinement,
+                Err(PreparedFactorBaseError::NormValuationMismatch { .. })
+            ) {
+                self.timings.prime_valuation_and_cache_ns += started.elapsed().as_nanos();
                 continue;
             }
-            FactorOutcome::Unresolved(value) => {
-                return Err(ClassGroupError::UnresolvedFactor(value));
+            refinement?;
+            let hint = first_nonzero(&self.relation);
+            let row = self.cache.len();
+            let outcome = self.cache.add_relation(
+                &self.relation,
+                hint,
+                (row + 1) as i64,
+                0,
+                0,
+                active.random_relation,
+            )?;
+            if outcome.appended {
+                ensure_generator_rows(&mut self.generators, self.cache.resident_capacity())?;
+                self.generators[row * DEGREE..(row + 1) * DEGREE].clone_from_slice(&element);
+                self.counters.appended_relations += 1;
+                active.appended_any = true;
             }
-            FactorOutcome::Factored(factors) => factors,
-        };
-        timings.rational_factorization_ns += started.elapsed().as_nanos();
-        counters.smooth_candidates += 1;
-        let rational = factors
-            .iter()
-            .map(|factor| (factor.prime as i64, factor.exponent as usize))
-            .collect::<Vec<_>>();
-
-        let started = Instant::now();
-        let refinement = factor_base.refine_quotient_factorization(
-            field,
-            &element,
-            &rational,
-            divisor_relation,
-            relation,
-            ideal_workspace,
-        );
-        if matches!(
-            refinement,
-            Err(PreparedFactorBaseError::NormValuationMismatch { .. })
-        ) {
-            timings.prime_valuation_and_cache_ns += started.elapsed().as_nanos();
-            continue;
-        }
-        refinement?;
-        let hint = first_nonzero(relation);
-        let row = cache.len();
-        let outcome =
-            cache.add_relation(relation, hint, (row + 1) as i64, 0, 0, random_relation)?;
-        if outcome.appended {
-            ensure_generator_rows(generators, cache.resident_capacity())?;
-            generators[row * DEGREE..(row + 1) * DEGREE].clone_from_slice(&element);
-            counters.appended_relations += 1;
-            appended_any = true;
-        }
-        if outcome.rank_marker > 0 {
-            positive_for_ideal += 1;
-            counters.positive_cache_statuses += 1;
-        }
-        timings.prime_valuation_and_cache_ns += started.elapsed().as_nanos();
-        if random_relation && appended_any {
-            break;
+            if outcome.rank_marker > 0 {
+                active.positive_relations += 1;
+                self.counters.positive_cache_statuses += 1;
+            }
+            self.timings.prime_valuation_and_cache_ns += started.elapsed().as_nanos();
+            if active.random_relation && active.appended_any {
+                return Ok(ActiveIdealProgress::Complete {
+                    origin: active.origin,
+                    appended_any: true,
+                });
+            }
         }
     }
-    counters.cursor_trials += enumeration.trials() - trials_before;
-    Ok(appended_any)
+
+    fn start_next_scheduled(&mut self) -> Result<bool, ClassGroupError> {
+        if self.schedule[1] != 0 {
+            self.schedule_progress[2] = 1;
+            self.schedule_progress[3] = 0;
+        }
+        let packet_id = next_small_norm_ideal(
+            &self.scheduled,
+            self.scheduled.len(),
+            &self.ramification,
+            &self.residue_degrees,
+            DEGREE as i64,
+            0,
+            0,
+            &mut self.schedule,
+            &mut self.schedule_cursor,
+            &mut self.schedule_counters,
+            &mut self.schedule_progress,
+        )?;
+        let Some(packet_id) = packet_id else {
+            return Ok(false);
+        };
+        let packet_index = usize::try_from(packet_id - 1)
+            .map_err(|_| ClassGroupError::UnsupportedPreparedField)?;
+        self.counters.visited_ideals += 1;
+        let mut divisor_relation = vec![0_i64; self.ramification.len()];
+        divisor_relation[packet_index] = 1;
+        let maximum_positive_relations = if self.cache.missing() == 0 {
+            RELATIONS_PER_IDEAL + PREPARED_CUBIC_SUPPLEMENTARY_RELATIONS
+        } else {
+            RELATIONS_PER_IDEAL
+        };
+        self.start_active(
+            self.factor_base.exact_ideals[packet_index].clone(),
+            divisor_relation,
+            maximum_positive_relations,
+            false,
+            ActiveIdealOrigin::Scheduled,
+        )?;
+        Ok(true)
+    }
+
+    fn start_random_batch(&mut self) -> Result<bool, ClassGroupError> {
+        let maximum_random_ideals = 16 * self.subfactor_count;
+        if self.counters.random_ideals >= maximum_random_ideals {
+            return Ok(false);
+        }
+        let (ideal, divisor_relation) = loop {
+            let mut product = CubicIdeal::unit();
+            let mut divisor = vec![0_i64; self.ramification.len()];
+            let mut nonzero = false;
+            for &one_based in &self.search_permutation[..self.subfactor_count] {
+                let exponent = self.random.next_four_bits();
+                if exponent == 0 {
+                    continue;
+                }
+                nonzero = true;
+                divisor[one_based - 1] += i64::from(exponent);
+                let power = self.ideal_workspace.pow(
+                    self.field,
+                    &self.factor_base.exact_ideals[one_based - 1],
+                    exponent,
+                )?;
+                product = self
+                    .ideal_workspace
+                    .multiply(self.field, &product, &power)?;
+            }
+            if nonzero && !product.is_scalar() {
+                break (product, divisor);
+            }
+        };
+        self.counters.random_ideals += 1;
+        let unresolved = self.cache.missing_pivot_indices();
+        let search_indices = if unresolved.is_empty() {
+            self.search_permutation
+                .iter()
+                .map(|one_based| one_based - 1)
+                .collect()
+        } else {
+            unresolved
+        };
+        self.random_batch = Some(RandomIdealBatch {
+            ideal,
+            divisor_relation,
+            search_indices,
+            next_search_index: 0,
+            appended_relations: 0,
+        });
+        Ok(true)
+    }
+
+    fn start_next_random_search(&mut self) -> Result<bool, ClassGroupError> {
+        loop {
+            let needs_batch = self.random_batch.as_ref().is_none_or(|batch| {
+                batch.next_search_index >= batch.search_indices.len()
+                    || batch.appended_relations >= 16
+            });
+            if needs_batch {
+                self.random_batch = None;
+                if !self.start_random_batch()? {
+                    return Ok(false);
+                }
+            }
+            let batch = self.random_batch.as_mut().expect("batch was created");
+            let search_index = batch.search_indices[batch.next_search_index];
+            batch.next_search_index += 1;
+            let search_ideal = self.ideal_workspace.multiply(
+                self.field,
+                &batch.ideal,
+                &self.factor_base.exact_ideals[search_index],
+            )?;
+            let mut divisor_relation = batch.divisor_relation.clone();
+            divisor_relation[search_index] += 1;
+            self.counters.visited_ideals += 1;
+            self.counters.random_search_ideals += 1;
+            self.start_active(
+                search_ideal,
+                divisor_relation,
+                1,
+                true,
+                ActiveIdealOrigin::Random,
+            )?;
+            return Ok(true);
+        }
+    }
+
+    pub fn advance_to_supplementary(
+        &mut self,
+        supplementary_relations: usize,
+    ) -> Result<PreparedCubicRelationPresentation, ClassGroupError> {
+        if supplementary_relations < self.requested_supplementary {
+            return Err(ClassGroupError::ContinuationTargetDecreased);
+        }
+        let size = self.factor_base.catalog.ideals.len();
+        let target = size
+            .checked_add(supplementary_relations)
+            .ok_or(ClassGroupError::CandidateOverflow)?;
+        if supplementary_relations > self.limits.maximum_dependencies
+            || target > self.limits.maximum_relations
+            || target > self.relation_capacity
+        {
+            return Err(ClassGroupError::ContinuationBudgetExceeded);
+        }
+        self.requested_supplementary = supplementary_relations;
+        let advance_started = Instant::now();
+        while (self.cache.missing() != 0 || self.cache.len() < target)
+            && self.counters.visited_ideals < self.limits.maximum_visited_ideals
+            && self.counters.primitive_nonscalar_candidates < self.limits.maximum_candidates
+            && self.phase != PreparedCollectionPhase::Exhausted
+        {
+            if self.active.is_some() {
+                match self.advance_active(target)? {
+                    ActiveIdealProgress::Paused => break,
+                    ActiveIdealProgress::Complete {
+                        origin: ActiveIdealOrigin::Random,
+                        appended_any,
+                    } => {
+                        if appended_any {
+                            self.random_batch
+                                .as_mut()
+                                .expect("random active ideal belongs to a batch")
+                                .appended_relations += 1;
+                        }
+                    }
+                    ActiveIdealProgress::Complete {
+                        origin: ActiveIdealOrigin::Scheduled,
+                        ..
+                    } => {}
+                }
+                continue;
+            }
+            if self.counters.visited_ideals >= self.limits.maximum_visited_ideals {
+                break;
+            }
+            match self.phase {
+                PreparedCollectionPhase::Scheduled => {
+                    if !self.start_next_scheduled()? {
+                        self.phase = PreparedCollectionPhase::Random;
+                    }
+                }
+                PreparedCollectionPhase::Random => {
+                    if !self.start_next_random_search()? {
+                        self.phase = PreparedCollectionPhase::Exhausted;
+                    }
+                }
+                PreparedCollectionPhase::Exhausted => break,
+            }
+        }
+        self.timings.total_ns += advance_started.elapsed().as_nanos();
+        self.presentation(target)
+    }
+
+    fn presentation(
+        &self,
+        target: usize,
+    ) -> Result<PreparedCubicRelationPresentation, ClassGroupError> {
+        let generator_length = self
+            .cache
+            .len()
+            .checked_mul(DEGREE)
+            .ok_or(ClassGroupError::CandidateOverflow)?;
+        let generators = self.generators[..generator_length].to_vec();
+        let relations = self.cache.records().to_vec();
+        let principal_relations_authority = CollectedPrincipalRelationsAuthority::mint(
+            self.field,
+            &self.factor_base,
+            &relations,
+            &generators,
+        );
+        Ok(PreparedCubicRelationPresentation {
+            relations,
+            generators,
+            first_nonzero_hints: self.cache.first_nonzero_hints().to_vec(),
+            metadata: self.cache.metadata().to_vec(),
+            factor_base: self.factor_base.clone(),
+            factor_base_authority: self.factor_base_authority.clone(),
+            principal_relations_authority,
+            subfactor_count: self.subfactor_count,
+            search_permutation: self.search_permutation.clone(),
+            counters: self.counters.clone(),
+            timings: self.timings.clone(),
+            complete_rank_and_surplus: self.cache.missing() == 0 && self.cache.len() >= target,
+            missing_rank: self.cache.missing(),
+            relation_capacity: self.relation_capacity,
+            full_relation_capacity: self.full_relation_capacity,
+        })
+    }
 }
 
 /// Run the first PARI-style small-norm pass over a validated maximal-order
@@ -900,263 +1386,53 @@ pub fn collect_prepared_cubic_relations(
     field: &ValidatedPreparedCubic,
     limits: PreparedCollectorLimits,
 ) -> Result<PreparedCubicRelationPresentation, ClassGroupError> {
-    let total_started = Instant::now();
-    let mut timings = CollectorTimings::default();
+    collect_prepared_cubic_relations_with_supplementary(
+        field,
+        limits,
+        PREPARED_CUBIC_SUPPLEMENTARY_RELATIONS,
+    )
+}
 
-    let started = Instant::now();
-    let factor_base = prepared_maximal_cubic_factor_base(field)?;
-    let factor_base_authority = PreparedFactorBaseAuthority::mint(field, &factor_base);
-    let (subfactor_count, search_permutation) = factor_base.catalog.subfactor_permutation(3);
-    timings.factor_base_ns = started.elapsed().as_nanos();
-    let size = factor_base.catalog.ideals.len();
-    let target = size
-        .checked_add(SUPPLEMENTARY_RELATIONS)
-        .ok_or(ClassGroupError::CandidateOverflow)?;
-    // Every complete rational-prime group seeds at most one resident row and
-    // every subsequently appended row consumes one counted candidate.  A
-    // bounded prefix therefore does not need the full PARI working capacity.
-    // The default unbounded collector still selects `full_relation_capacity`.
-    let initial_relation_capacity = factor_base
-        .catalog
-        .complete_groups
-        .iter()
-        .filter(|complete| **complete)
-        .count();
-    let (capacity, full_relation_capacity) =
-        prepared_relation_capacity(size, initial_relation_capacity, limits.maximum_candidates)?;
-
-    let started = Instant::now();
-    let mut cache = RelationCache::try_new_growing(
-        size,
-        initial_relation_capacity.min(capacity),
-        capacity,
-        SUPPLEMENTARY_RELATIONS,
+/// Collect a deterministic bounded presentation with an explicit relation
+/// surplus target.
+///
+/// This convenience entry point creates a resumable collector and advances it
+/// once. Callers that need several increasing targets should retain
+/// `PreparedCubicRelationCollector` itself. No class-group or analytic answer
+/// influences the relation schedule.
+#[doc(hidden)]
+pub fn collect_prepared_cubic_relations_with_supplementary(
+    field: &ValidatedPreparedCubic,
+    limits: PreparedCollectorLimits,
+    supplementary_relations: usize,
+) -> Result<PreparedCubicRelationPresentation, ClassGroupError> {
+    let mut collector = PreparedCubicRelationCollector::new(
+        field,
+        PreparedContinuationLimits {
+            maximum_visited_ideals: limits.maximum_visited_ideals,
+            maximum_candidates: limits.maximum_candidates,
+            maximum_relations: usize::MAX,
+            maximum_dependencies: supplementary_relations,
+        },
     )?;
-    let ramification: Vec<i64> = factor_base
-        .catalog
-        .ideals
-        .iter()
-        .map(|ideal| ideal.ramification as i64)
-        .collect();
-    let mut relation = vec![0_i64; size];
-    let mut divisor_relation = vec![0_i64; size];
-    cache.initialize_complete_prime_groups(
-        SUPPLEMENTARY_RELATIONS,
-        &factor_base.catalog.rational_primes,
-        &factor_base.catalog.rational_offsets,
-        &factor_base.catalog.rational_counts,
-        &factor_base.catalog.complete_groups,
-        &ramification,
-        &mut relation,
-    )?;
-    let mut generators = vec![Integer::new(); cache.resident_capacity() * DEGREE];
-    for (row, metadata) in cache.metadata().chunks_exact(3).enumerate() {
-        generators[row * DEGREE] = Integer::from(metadata[0]);
-    }
-    timings.initial_cache_ns = started.elapsed().as_nanos();
-
-    let started = Instant::now();
-    let embedding = PreparedCubicEmbedding::from_validated(field, 320)?;
-    let factor_catalog = class_group_factor_catalog()?;
-    let factor_primes = factor_catalog.primes();
-    let prime_products = factor_catalog.cumulative_products();
-    let factor_product = factor_base
-        .catalog
-        .rational_primes
-        .iter()
-        .fold(Integer::from(1), |product, prime| product * prime);
-    timings.catalog_setup_ns = started.elapsed().as_nanos();
-
-    let scheduled: Vec<i64> = search_permutation
-        .iter()
-        .map(|value| *value as i64)
-        .collect();
-    let residue_degrees: Vec<i64> = factor_base
-        .catalog
-        .ideals
-        .iter()
-        .map(|ideal| ideal.residue_degree as i64)
-        .collect();
-    let mut schedule = [0_i64; 4];
-    let mut schedule_cursor = [0_i64; 5];
-    let mut schedule_counters = [0_i64; 4];
-    let mut schedule_progress = [0_i64; 4];
-    let mut enumeration = EnumerationWorkspace::new(DEGREE);
-    let mut ideal_workspace = PreparedIdealWorkspace::new();
-    let mut counters = CollectorCounters::default();
-
-    // PARI's `relsup` is consumed only by dependent relations found before
-    // full modular rank.  Once rank is full, `add_rel_i` assigns every new
-    // row a positive marker and deliberately leaves `relsup` unchanged.  The
-    // actual completion condition is therefore the requested resident row
-    // count, not `relsup == 0`.  This distinction matters for tiny factor
-    // bases that reach rank before encountering any dependent row.
-    while (cache.missing() != 0 || cache.len() < target)
-        && counters.visited_ideals < limits.maximum_visited_ideals
-        && counters.primitive_nonscalar_candidates < limits.maximum_candidates
-    {
-        if schedule[1] != 0 {
-            schedule_progress[2] = 1;
-            schedule_progress[3] = 0;
+    match collector.advance_to_supplementary(supplementary_relations) {
+        Ok(presentation) => Ok(presentation),
+        // The historical one-shot contract reports exhausted work budgets as
+        // an honest incomplete presentation.  Explicit continuation callers
+        // retain the stricter typed error so that a target can never appear to
+        // have been accepted when its lifetime capacity was insufficient.
+        Err(ClassGroupError::ContinuationBudgetExceeded) => {
+            let target = collector
+                .factor_base
+                .catalog
+                .ideals
+                .len()
+                .checked_add(supplementary_relations)
+                .ok_or(ClassGroupError::CandidateOverflow)?;
+            collector.presentation(target)
         }
-        let packet_id = next_small_norm_ideal(
-            &scheduled,
-            scheduled.len(),
-            &ramification,
-            &residue_degrees,
-            DEGREE as i64,
-            0,
-            0,
-            &mut schedule,
-            &mut schedule_cursor,
-            &mut schedule_counters,
-            &mut schedule_progress,
-        )?;
-        let Some(packet_id) = packet_id else { break };
-        let packet_index = usize::try_from(packet_id - 1)
-            .map_err(|_| ClassGroupError::UnsupportedPreparedField)?;
-        counters.visited_ideals += 1;
-        divisor_relation.fill(0);
-        divisor_relation[packet_index] = 1;
-        let maximum_positive_relations = if cache.missing() == 0 {
-            RELATIONS_PER_IDEAL + SUPPLEMENTARY_RELATIONS
-        } else {
-            RELATIONS_PER_IDEAL
-        };
-        let _ = collect_prepared_ideal_relations(
-            field,
-            &factor_base,
-            &factor_base.exact_ideals[packet_index],
-            &divisor_relation,
-            &embedding,
-            &factor_product,
-            factor_primes,
-            prime_products,
-            &mut cache,
-            &mut relation,
-            &mut generators,
-            &mut enumeration,
-            &mut ideal_workspace,
-            &mut counters,
-            &mut timings,
-            limits.maximum_candidates,
-            500,
-            maximum_positive_relations,
-            false,
-        )?;
+        Err(error) => Err(error),
     }
-
-    // PARI's random continuation changes the searched lattice: it forms a random
-    // product of the live subfactor base and multiplies that by each search
-    // ideal.  Repeating the first schedule with a larger cursor bound cannot
-    // reveal missing class directions and is intentionally not used here.
-    let mut random = PariRandom::from_seed(1).expect("the fixed qualification seed is positive");
-    let maximum_random_ideals = 16 * subfactor_count;
-    while (cache.missing() != 0 || cache.len() < target)
-        && counters.random_ideals < maximum_random_ideals
-        && counters.visited_ideals < limits.maximum_visited_ideals
-        && counters.primitive_nonscalar_candidates < limits.maximum_candidates
-    {
-        let (random_ideal, random_divisor) = loop {
-            let mut product = CubicIdeal::unit();
-            let mut divisor = vec![0_i64; size];
-            let mut nonzero = false;
-            for &one_based in &search_permutation[..subfactor_count] {
-                let exponent = random.next_four_bits();
-                if exponent == 0 {
-                    continue;
-                }
-                nonzero = true;
-                divisor[one_based - 1] += i64::from(exponent);
-                let power = ideal_workspace.pow(
-                    field,
-                    &factor_base.exact_ideals[one_based - 1],
-                    exponent,
-                )?;
-                product = ideal_workspace.multiply(field, &product, &power)?;
-            }
-            if nonzero && !product.is_scalar() {
-                break (product, divisor);
-            }
-        };
-        counters.random_ideals += 1;
-        let mut appended_this_random = 0_usize;
-        let unresolved = cache.missing_pivot_indices();
-        let targeted = !unresolved.is_empty();
-
-        for search_index in unresolved.iter().copied().chain(
-            (!targeted)
-                .then_some(0)
-                .into_iter()
-                .flat_map(|_| search_permutation.iter().map(|one_based| one_based - 1)),
-        ) {
-            if (cache.missing() == 0 && cache.len() >= target)
-                || counters.visited_ideals >= limits.maximum_visited_ideals
-                || counters.primitive_nonscalar_candidates >= limits.maximum_candidates
-            {
-                break;
-            }
-            let search_ideal = ideal_workspace.multiply(
-                field,
-                &random_ideal,
-                &factor_base.exact_ideals[search_index],
-            )?;
-            counters.visited_ideals += 1;
-            counters.random_search_ideals += 1;
-            divisor_relation.copy_from_slice(&random_divisor);
-            divisor_relation[search_index] += 1;
-            let appended = collect_prepared_ideal_relations(
-                field,
-                &factor_base,
-                &search_ideal,
-                &divisor_relation,
-                &embedding,
-                &factor_product,
-                factor_primes,
-                prime_products,
-                &mut cache,
-                &mut relation,
-                &mut generators,
-                &mut enumeration,
-                &mut ideal_workspace,
-                &mut counters,
-                &mut timings,
-                limits.maximum_candidates,
-                500,
-                1,
-                true,
-            )?;
-            if appended {
-                appended_this_random += 1;
-                if appended_this_random >= 16 {
-                    break;
-                }
-            }
-        }
-    }
-
-    timings.total_ns = total_started.elapsed().as_nanos();
-    generators.truncate(cache.len() * DEGREE);
-    let relations = cache.records().to_vec();
-    let principal_relations_authority =
-        CollectedPrincipalRelationsAuthority::mint(field, &factor_base, &relations, &generators);
-    Ok(PreparedCubicRelationPresentation {
-        relations,
-        generators,
-        first_nonzero_hints: cache.first_nonzero_hints().to_vec(),
-        metadata: cache.metadata().to_vec(),
-        factor_base,
-        factor_base_authority,
-        principal_relations_authority,
-        subfactor_count,
-        search_permutation,
-        counters,
-        timings,
-        complete_rank_and_surplus: cache.missing() == 0 && cache.len() >= target,
-        missing_rank: cache.missing(),
-        relation_capacity: capacity,
-        full_relation_capacity,
-    })
 }
 
 #[cfg(test)]
@@ -1225,15 +1501,20 @@ mod tests {
     #[test]
     fn bounded_prepared_capacity_preserves_the_unbounded_default() {
         assert_eq!(
-            prepared_relation_capacity(1_130, 203, 64),
+            prepared_relation_capacity(1_130, 203, 64, PREPARED_CUBIC_SUPPLEMENTARY_RELATIONS),
             Ok((267, 11_420))
         );
         assert_eq!(
-            prepared_relation_capacity(1_130, 203, usize::MAX),
+            prepared_relation_capacity(
+                1_130,
+                203,
+                usize::MAX,
+                PREPARED_CUBIC_SUPPLEMENTARY_RELATIONS,
+            ),
             Ok((11_420, 11_420))
         );
         assert_eq!(
-            prepared_relation_capacity(usize::MAX, 0, 0),
+            prepared_relation_capacity(usize::MAX, 0, 0, PREPARED_CUBIC_SUPPLEMENTARY_RELATIONS,),
             Err(ClassGroupError::CandidateOverflow)
         );
     }

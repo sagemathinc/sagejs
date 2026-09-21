@@ -10,11 +10,11 @@
 use rug::Integer;
 use sagejs_pari_class_group_rust_experiment::{
     CompactPresentationLimits, CubicAnalyticEvidence, CubicCompletionProofMode,
-    CubicConditionalCompletionOptions, CubicPresentationCandidateLimits, NormalFormLimits,
-    PreparedCollectorLimits, PublicCubicPreparationLimits,
+    CubicConditionalCompletionError, CubicConditionalCompletionOptions,
+    CubicPresentationCandidateLimits, NormalFormLimits, PreparedContinuationLimits,
+    PreparedCubicRelationCollector, PublicCubicPreparationLimits,
     authenticate_compact_cubic_presentation_candidate, authenticate_cubic_presentation_candidate,
-    collect_prepared_cubic_relations, complete_cubic_class_group_conditionally,
-    prepare_monic_cubic,
+    complete_cubic_class_group_conditionally, prepare_monic_cubic,
 };
 use serde::{Deserialize, Serialize};
 use std::time::Instant;
@@ -130,6 +130,22 @@ pub struct StageTimingsNanoseconds {
     pub total_to_sealed_result: u128,
 }
 
+/// Redacted evidence that a single deterministic collector was advanced.
+///
+/// Failed mathematical candidates are intentionally absent. The outcome only
+/// records whether the sealed completion boundary requested more relations.
+#[derive(Clone, Debug, Serialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ContinuationAttemptEvidence {
+    pub supplementary_target: usize,
+    pub relation_count: usize,
+    pub visited_ideals: usize,
+    pub cursor_trials: usize,
+    pub primitive_nonscalar_candidates: usize,
+    pub smooth_candidates: usize,
+    pub outcome_category: &'static str,
+}
+
 #[derive(Clone, Debug, Serialize, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Receipt {
@@ -148,6 +164,8 @@ pub struct Receipt {
     pub completion: Option<CompletionEvidence>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub first_unavailable_boundary: Option<&'static str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub continuation_attempts: Option<Vec<ContinuationAttemptEvidence>>,
     pub stage_timings_nanoseconds: StageTimingsNanoseconds,
 }
 
@@ -222,7 +240,7 @@ fn select_candidate_authentication_route(
         CandidateAuthenticationRoute::CompactSmallSurplus
     } else {
         // Both authenticators fail closed before expensive work. Retain the
-        // general dense route when the compact elementary-2 shape contract is
+        // general dense route when the compact small-surplus shape contract is
         // unavailable, so shape alone never changes group semantics.
         CandidateAuthenticationRoute::DenseSmith
     }
@@ -286,94 +304,142 @@ pub fn qualify(request: Request) -> Result<Receipt, QualificationError> {
     };
 
     let collection_start = Instant::now();
-    let collected = collect_prepared_cubic_relations(
+    let mut collector = PreparedCubicRelationCollector::new(
         prepared.field(),
-        PreparedCollectorLimits {
+        PreparedContinuationLimits {
             maximum_visited_ideals: request.resources.maximum_visited_ideals,
             maximum_candidates: request.resources.maximum_candidates,
+            maximum_relations: request.resources.maximum_relations,
+            maximum_dependencies: request.resources.maximum_dependencies,
         },
     )
     .map_err(|error| QualificationError::RelationCollection(format!("{error:?}")))?;
-    let relation_collection_ns = collection_start.elapsed().as_nanos();
-    let factor_base_size = collected.factor_base.catalog.ideals.len();
-    let relation_count = if factor_base_size == 0 {
-        0
-    } else {
-        collected.relations.len() / factor_base_size
+    let mut relation_collection_ns = collection_start.elapsed().as_nanos();
+    let candidate_limits = CubicPresentationCandidateLimits {
+        normal_form: NormalFormLimits {
+            max_entries: request.resources.maximum_normal_form_entries,
+            max_operations: request.resources.maximum_normal_form_operations,
+        },
+        maximum_relation_exponent: request.resources.maximum_relation_exponent,
+        maximum_verification_multiply_adds: request.resources.maximum_verification_multiply_adds,
+        maximum_principal_factor_terms: request.resources.maximum_principal_factor_terms,
     };
-    let relations = RelationEvidence {
-        factor_base_size,
-        relation_count,
-        complete_rank_and_surplus: collected.complete_rank_and_surplus,
-        missing_rank: collected.missing_rank,
+    let completion_options = || CubicConditionalCompletionOptions {
+        proof_mode: match request.proof_mode {
+            ProofMode::ConditionalGrh => CubicCompletionProofMode::GrhConditional,
+            ProofMode::Unconditional => CubicCompletionProofMode::Unconditional,
+        },
+        logarithm_precision_bits: request.resources.logarithm_precision_bits,
+        replay_precision_bits: request.resources.replay_precision_bits,
+        analytic_precision_bits: request.resources.analytic_precision_bits,
+        maximum_relations: request.resources.maximum_relations,
+        maximum_dependencies: request.resources.maximum_dependencies,
+        maximum_kernel_coefficient_bits: request.resources.maximum_kernel_coefficient_bits,
+        maximum_unit_exponent_bits: request.resources.maximum_unit_exponent_bits,
+        maximum_reconstruction_denominator_bits: request
+            .resources
+            .maximum_reconstruction_denominator_bits,
+        maximum_analytic_threshold: request.resources.maximum_analytic_threshold,
     };
 
-    let candidate_start = Instant::now();
-    let (
-        candidate_evidence,
-        completion,
-        candidate_authentication_ns,
-        completion_ns,
-        total_to_sealed_result,
-    ) = if collected.complete_rank_and_surplus {
-        let candidate_limits = CubicPresentationCandidateLimits {
-            normal_form: NormalFormLimits {
-                max_entries: request.resources.maximum_normal_form_entries,
-                max_operations: request.resources.maximum_normal_form_operations,
-            },
-            maximum_relation_exponent: request.resources.maximum_relation_exponent,
-            maximum_verification_multiply_adds: request
-                .resources
-                .maximum_verification_multiply_adds,
-            maximum_principal_factor_terms: request.resources.maximum_principal_factor_terms,
+    let mut attempts = Vec::new();
+    let mut final_relations = None;
+    let mut final_candidate = None;
+    let mut final_completion = None;
+    let mut candidate_authentication_ns = 0_u128;
+    let mut completion_ns = 0_u128;
+    const SUPPLEMENTARY_TARGETS: [usize; 6] = [7, 8, 9, 10, 12, 16];
+    for supplementary_target in SUPPLEMENTARY_TARGETS {
+        if supplementary_target > request.resources.maximum_dependencies {
+            break;
+        }
+        let started = Instant::now();
+        let collected = collector
+            .advance_to_supplementary(supplementary_target)
+            .map_err(|error| QualificationError::RelationCollection(format!("{error:?}")))?;
+        relation_collection_ns += started.elapsed().as_nanos();
+        let factor_base_size = collected.factor_base.catalog.ideals.len();
+        let relation_count = if factor_base_size == 0 {
+            0
+        } else {
+            collected.relations.len() / factor_base_size
         };
-        // Dense Smith transforms remain the most general route when their
-        // declared storage and replay budgets admit this exact shape. If they
-        // do not, a bounded small-surplus shape may use the exact compact
-        // elementary-2 quotient proof. Column count alone does not predict
-        // dense verification cost.
+        let relations = RelationEvidence {
+            factor_base_size,
+            relation_count,
+            complete_rank_and_surplus: collected.complete_rank_and_surplus,
+            missing_rank: collected.missing_rank,
+        };
+        let counters = collected.counters.clone();
+        if !relations.complete_rank_and_surplus {
+            return Err(QualificationError::RelationCollection(
+                "cumulative relation-collection resource ceiling exhausted".to_owned(),
+            ));
+        }
+
         let route = select_candidate_authentication_route(
             factor_base_size,
             relation_count,
             &request.resources,
         );
-        let (authenticated, authority) = if route
-            == CandidateAuthenticationRoute::CompactSmallSurplus
-        {
-            (
-                authenticate_compact_cubic_presentation_candidate(
-                    &prepared,
-                    collected,
-                    candidate_limits,
-                    CompactPresentationLimits {
-                        maximum_generators: request.resources.maximum_compact_generators,
-                        maximum_surplus_rows: request.resources.maximum_compact_surplus_rows,
-                        maximum_saturation_minor_trials: request
-                            .resources
-                            .maximum_compact_saturation_minor_trials,
-                        maximum_dependency_entries: request
-                            .resources
-                            .maximum_compact_dependency_entries,
-                        maximum_target_coefficient_bits: request
-                            .resources
-                            .maximum_compact_target_coefficient_bits,
-                    },
-                )
-                .map_err(|error| {
-                    QualificationError::CandidateAuthentication(format!("{error:?}"))
-                })?,
-                "authenticated-collector-sealed-compact-elementary-two-presentation",
-            )
-        } else {
-            (
-                authenticate_cubic_presentation_candidate(&prepared, collected, candidate_limits)
+        let attempt_prepared = prepared.clone();
+        let started = Instant::now();
+        let (authenticated, authority) =
+            if route == CandidateAuthenticationRoute::CompactSmallSurplus {
+                (
+                    authenticate_compact_cubic_presentation_candidate(
+                        &attempt_prepared,
+                        collected,
+                        candidate_limits,
+                        CompactPresentationLimits {
+                            maximum_generators: request.resources.maximum_compact_generators,
+                            maximum_surplus_rows: request.resources.maximum_compact_surplus_rows,
+                            maximum_saturation_minor_trials: request
+                                .resources
+                                .maximum_compact_saturation_minor_trials,
+                            maximum_dependency_entries: request
+                                .resources
+                                .maximum_compact_dependency_entries,
+                            maximum_invariant_factors: request.resources.maximum_compact_generators,
+                            maximum_map_entries: request.resources.maximum_normal_form_entries,
+                            maximum_map_coefficient_bits: request
+                                .resources
+                                .maximum_compact_target_coefficient_bits,
+                            maximum_general_smith_bytes: request
+                                .resources
+                                .maximum_normal_form_entries
+                                .checked_mul(std::mem::size_of::<i64>())
+                                .unwrap_or(usize::MAX),
+                            maximum_general_smith_transform_work: request
+                                .resources
+                                .maximum_normal_form_operations,
+                            maximum_verification_multiply_adds: request
+                                .resources
+                                .maximum_verification_multiply_adds,
+                            maximum_target_coefficient_bits: request
+                                .resources
+                                .maximum_compact_target_coefficient_bits,
+                        },
+                    )
                     .map_err(|error| {
-                    QualificationError::CandidateAuthentication(format!("{error:?}"))
-                })?,
-                "authenticated-supplied-principal-relations-candidate-only",
-            )
-        };
-        let candidate_authentication_ns = candidate_start.elapsed().as_nanos();
+                        QualificationError::CandidateAuthentication(format!("{error:?}"))
+                    })?,
+                    "authenticated-collector-sealed-compact-mixed-invariant-presentation",
+                )
+            } else {
+                (
+                    authenticate_cubic_presentation_candidate(
+                        &attempt_prepared,
+                        collected,
+                        candidate_limits,
+                    )
+                    .map_err(|error| {
+                        QualificationError::CandidateAuthentication(format!("{error:?}"))
+                    })?,
+                    "authenticated-supplied-principal-relations-candidate-only",
+                )
+            };
+        candidate_authentication_ns += started.elapsed().as_nanos();
         let candidate_evidence = CandidateEvidence {
             invariant_factors: authenticated
                 .invariant_factors()
@@ -385,82 +451,92 @@ pub fn qualify(request: Request) -> Result<Receipt, QualificationError> {
             generator_order_witnesses: authenticated.generator_orders().len(),
             authority,
         };
-        let options = CubicConditionalCompletionOptions {
-            proof_mode: match request.proof_mode {
-                ProofMode::ConditionalGrh => CubicCompletionProofMode::GrhConditional,
-                ProofMode::Unconditional => CubicCompletionProofMode::Unconditional,
-            },
-            logarithm_precision_bits: request.resources.logarithm_precision_bits,
-            replay_precision_bits: request.resources.replay_precision_bits,
-            analytic_precision_bits: request.resources.analytic_precision_bits,
-            maximum_relations: request.resources.maximum_relations,
-            maximum_dependencies: request.resources.maximum_dependencies,
-            maximum_kernel_coefficient_bits: request.resources.maximum_kernel_coefficient_bits,
-            maximum_unit_exponent_bits: request.resources.maximum_unit_exponent_bits,
-            maximum_reconstruction_denominator_bits: request
-                .resources
-                .maximum_reconstruction_denominator_bits,
-            maximum_analytic_threshold: request.resources.maximum_analytic_threshold,
-        };
-        let completion_start = Instant::now();
-        let completed = complete_cubic_class_group_conditionally(prepared, authenticated, options)
-            .map_err(|error| QualificationError::Completion(format!("{error:?}")))?;
-        let completion_ns = completion_start.elapsed().as_nanos();
-        let total_to_sealed_result = total_start.elapsed().as_nanos();
-        let sealed_evidence_verified = completed.verify_sealed_evidence();
-        if !sealed_evidence_verified {
-            return Err(QualificationError::Completion(
-                "sealed evidence invariant failed after construction".to_owned(),
-            ));
-        }
-        let completion = CompletionEvidence {
-            proof: "conditional-grh",
-            class_number: completed.class_number().to_string(),
-            invariant_factors: completed
-                .invariant_factors()
-                .iter()
-                .map(Integer::to_string)
-                .collect(),
-            unit_rank: completed.units().fundamental_units().len(),
-            bf_threshold: completed.analytic().bf_threshold(),
-            class_unit_hypothesis: CubicAnalyticEvidence::CLASS_UNIT_HYPOTHESIS,
-            factor_base_hypothesis: CubicAnalyticEvidence::FACTOR_BASE_HYPOTHESIS,
-            requested_logarithm_precision_bits: completed
-                .precision()
-                .requested_logarithm_precision_bits(),
-            requested_replay_precision_bits: completed
-                .precision()
-                .requested_replay_precision_bits(),
-            attempted_precision_levels: completed
-                .precision()
-                .attempted_levels()
-                .iter()
-                .map(|level| CompletionPrecisionLevelEvidence {
-                    logarithm_precision_bits: level.logarithm_precision_bits,
-                    replay_precision_bits: level.replay_precision_bits,
-                })
-                .collect(),
-            sealed_evidence_verified,
-            arbitrary_ideal_class_map_retained: true,
-        };
-        (
-            Some(candidate_evidence),
-            Some(completion),
-            candidate_authentication_ns,
-            completion_ns,
-            total_to_sealed_result,
-        )
-    } else {
-        (
-            None,
-            None,
-            candidate_start.elapsed().as_nanos(),
-            0,
-            total_start.elapsed().as_nanos(),
-        )
-    };
 
-    let public_complete = completion.is_some();
+        let started = Instant::now();
+        let completion_result = complete_cubic_class_group_conditionally(
+            attempt_prepared,
+            authenticated,
+            completion_options(),
+        );
+        completion_ns += started.elapsed().as_nanos();
+        match completion_result {
+            Ok(completed) => {
+                let sealed_evidence_verified = completed.verify_sealed_evidence();
+                if !sealed_evidence_verified {
+                    return Err(QualificationError::Completion(
+                        "sealed evidence invariant failed after construction".to_owned(),
+                    ));
+                }
+                attempts.push(ContinuationAttemptEvidence {
+                    supplementary_target,
+                    relation_count,
+                    visited_ideals: counters.visited_ideals,
+                    cursor_trials: counters.cursor_trials,
+                    primitive_nonscalar_candidates: counters.primitive_nonscalar_candidates,
+                    smooth_candidates: counters.smooth_candidates,
+                    outcome_category: "sealed",
+                });
+                let completion = CompletionEvidence {
+                    proof: "conditional-grh",
+                    class_number: completed.class_number().to_string(),
+                    invariant_factors: completed
+                        .invariant_factors()
+                        .iter()
+                        .map(Integer::to_string)
+                        .collect(),
+                    unit_rank: completed.units().fundamental_units().len(),
+                    bf_threshold: completed.analytic().bf_threshold(),
+                    class_unit_hypothesis: CubicAnalyticEvidence::CLASS_UNIT_HYPOTHESIS,
+                    factor_base_hypothesis: CubicAnalyticEvidence::FACTOR_BASE_HYPOTHESIS,
+                    requested_logarithm_precision_bits: completed
+                        .precision()
+                        .requested_logarithm_precision_bits(),
+                    requested_replay_precision_bits: completed
+                        .precision()
+                        .requested_replay_precision_bits(),
+                    attempted_precision_levels: completed
+                        .precision()
+                        .attempted_levels()
+                        .iter()
+                        .map(|level| CompletionPrecisionLevelEvidence {
+                            logarithm_precision_bits: level.logarithm_precision_bits,
+                            replay_precision_bits: level.replay_precision_bits,
+                        })
+                        .collect(),
+                    sealed_evidence_verified,
+                    arbitrary_ideal_class_map_retained: true,
+                };
+                final_relations = Some(relations);
+                final_candidate = Some(candidate_evidence);
+                final_completion = Some(completion);
+                break;
+            }
+            Err(CubicConditionalCompletionError::AnalyticIndexNotIsolated { .. }) => {
+                attempts.push(ContinuationAttemptEvidence {
+                    supplementary_target,
+                    relation_count,
+                    visited_ideals: counters.visited_ideals,
+                    cursor_trials: counters.cursor_trials,
+                    primitive_nonscalar_candidates: counters.primitive_nonscalar_candidates,
+                    smooth_candidates: counters.smooth_candidates,
+                    outcome_category: "analytic-index-not-isolated",
+                });
+            }
+            Err(error) => {
+                return Err(QualificationError::Completion(format!("{error:?}")));
+            }
+        }
+    }
+
+    let relations = final_relations.ok_or_else(|| {
+        QualificationError::Completion(
+            "analytic index remained nontrivial within the fixed continuation schedule".to_owned(),
+        )
+    })?;
+    let candidate_evidence = final_candidate;
+    let completion = final_completion;
+    let total_to_sealed_result = total_start.elapsed().as_nanos();
+    let public_complete = true;
 
     Ok(Receipt {
         schema: RECEIPT_SCHEMA,
@@ -479,6 +555,7 @@ pub fn qualify(request: Request) -> Result<Receipt, QualificationError> {
         candidate: candidate_evidence,
         completion,
         first_unavailable_boundary: (!public_complete).then_some("relation-collection"),
+        continuation_attempts: (attempts.len() > 1).then_some(attempts),
         stage_timings_nanoseconds: StageTimingsNanoseconds {
             public_input_and_preparation: preparation_ns,
             relation_collection: relation_collection_ns,
@@ -590,6 +667,57 @@ mod tests {
         assert!(completion.sealed_evidence_verified);
         assert!(completion.arbitrary_ideal_class_map_retained);
         assert_eq!(receipt.first_unavailable_boundary, None);
+        assert_eq!(receipt.continuation_attempts, None);
+    }
+
+    #[test]
+    fn opened_analytic_index_case_seals_through_bounded_public_continuation() {
+        let mut input = request(1_000_000);
+        input.polynomial_ascending = ["-295".into(), "304".into(), "-13".into(), "1".into()];
+        input.resources.logarithm_precision_bits = 4_096;
+        input.resources.replay_precision_bits = 2_048;
+        input.resources.analytic_precision_bits = 512;
+        let receipt = qualify(input).unwrap();
+        assert!(receipt.public_complete);
+        assert_eq!(receipt.relations.relation_count, 43);
+        let attempts = receipt.continuation_attempts.unwrap();
+        assert_eq!(
+            attempts
+                .iter()
+                .map(|attempt| attempt.supplementary_target)
+                .collect::<Vec<_>>(),
+            [7, 8, 9, 10, 12, 16]
+        );
+        assert!(
+            attempts[..attempts.len() - 1]
+                .iter()
+                .all(|attempt| attempt.outcome_category == "analytic-index-not-isolated")
+        );
+        assert_eq!(attempts.last().unwrap().outcome_category, "sealed");
+        for pair in attempts.windows(2) {
+            assert!(pair[1].relation_count > pair[0].relation_count);
+            assert!(pair[1].visited_ideals >= pair[0].visited_ideals);
+            assert!(pair[1].cursor_trials >= pair[0].cursor_trials);
+            assert!(
+                pair[1].primitive_nonscalar_candidates >= pair[0].primitive_nonscalar_candidates
+            );
+            assert!(pair[1].smooth_candidates >= pair[0].smooth_candidates);
+        }
+    }
+
+    #[test]
+    fn continuation_schedule_exhaustion_fails_closed() {
+        let mut input = request(1_000_000);
+        input.polynomial_ascending = ["-295".into(), "304".into(), "-13".into(), "1".into()];
+        input.resources.logarithm_precision_bits = 4_096;
+        input.resources.replay_precision_bits = 2_048;
+        input.resources.analytic_precision_bits = 512;
+        input.resources.maximum_dependencies = 12;
+        assert!(matches!(
+            qualify(input),
+            Err(QualificationError::Completion(message))
+                if message.contains("fixed continuation schedule")
+        ));
     }
 
     #[test]
@@ -651,6 +779,7 @@ mod tests {
             let receipt = qualify(input).unwrap();
             assert!(receipt.public_complete);
             assert!(receipt.preparation.certificate_verified);
+            assert_eq!(receipt.continuation_attempts, None);
             let candidate = receipt.candidate.unwrap();
             let completion = receipt.completion.unwrap();
             assert_eq!(candidate.class_number, expected_order);
@@ -676,6 +805,7 @@ mod tests {
         input.resources.analytic_precision_bits = 512;
         let receipt = qualify(input).unwrap();
         assert!(receipt.public_complete);
+        assert_eq!(receipt.continuation_attempts, None);
         assert_eq!(receipt.preparation.equation_order_index, "3");
         assert_eq!(receipt.relations.factor_base_size, 1_130);
         assert_eq!(receipt.relations.relation_count, 1_137);
@@ -684,7 +814,7 @@ mod tests {
         assert_eq!(candidate.class_number, "4");
         assert_eq!(
             candidate.authority,
-            "authenticated-collector-sealed-compact-elementary-two-presentation"
+            "authenticated-collector-sealed-compact-mixed-invariant-presentation"
         );
         let completion = receipt.completion.unwrap();
         assert_eq!(completion.class_number, "4");

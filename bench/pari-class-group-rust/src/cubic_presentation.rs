@@ -32,9 +32,8 @@ use crate::class_group::{
 use crate::class_maps::{ClassMapError, PresentationClassMap, RelationCoverage};
 #[cfg(feature = "flint-normal-form")]
 use crate::compact_cubic_presentation::{
-    CompactPresentationError, CompactPresentationLimits,
-    authenticate_compact_elementary_two_presentation, compact_mod_two_quotient_rank,
-    validate_compact_presentation_shape,
+    CompactPresentationError, CompactPresentationLimits, authenticate_compact_presentation,
+    compact_verification_multiply_adds, validate_compact_presentation_shape,
 };
 use crate::hnf::{BigIntMatrix, ExactNormalFormWorkspace, NormalFormError, NormalFormLimits};
 use crate::polynomial_preparation::PreparedPublicCubic;
@@ -471,13 +470,14 @@ pub fn authenticate_cubic_presentation_candidate(
     })
 }
 
-/// Authenticate a large, small-surplus elementary-2 presentation without a
+/// Authenticate a large, full-rank small-surplus presentation without a
 /// quadratic-size Smith transform.
 ///
 /// This reaches the same sealed candidate boundary as
 /// [`authenticate_cubic_presentation_candidate`]. The only difference is the
 /// exact quotient proof: the compact verifier proves `D/K`, saturated
-/// dependencies, the complete GF(2) map, and order-two witnesses before this
+/// dependencies, the complete mixed-modulus map and its right inverse, and
+/// cyclic-generator order witnesses before this
 /// function revalidates the collector-sealed relation/generator transcript
 /// against the collector-bound field and factor base. External transcripts
 /// still use the detached full principal-ideal replay path.
@@ -493,6 +493,14 @@ pub fn authenticate_compact_cubic_presentation_candidate(
     {
         return Err(CubicPresentationCandidateError::InvalidLimits);
     }
+    // The compact authenticator must enforce the caller's public replay budget
+    // before it verifies the mixed map or solves generator-order targets.
+    let compact_limits = CompactPresentationLimits {
+        maximum_verification_multiply_adds: compact_limits
+            .maximum_verification_multiply_adds
+            .min(relation_limits.maximum_verification_multiply_adds),
+        ..compact_limits
+    };
     let factor_base_size = collected.factor_base.exact_ideals.len();
     if factor_base_size == 0
         || !collected.relations.len().is_multiple_of(factor_base_size)
@@ -540,22 +548,6 @@ pub fn authenticate_compact_cubic_presentation_candidate(
         return Err(
             CubicPresentationCandidateError::VerificationBudgetExceeded {
                 required: minimum_verification_multiply_adds,
-                limit: relation_limits.maximum_verification_multiply_adds,
-            },
-        );
-    }
-    let two_rank = compact_mod_two_quotient_rank(&collected.relations, factor_base_size)?;
-    let verification_multiply_adds =
-        compact_verification_multiply_adds(factor_base_size, relation_count, two_rank).ok_or(
-            CubicPresentationCandidateError::VerificationBudgetExceeded {
-                required: u64::MAX,
-                limit: relation_limits.maximum_verification_multiply_adds,
-            },
-        )?;
-    if verification_multiply_adds > relation_limits.maximum_verification_multiply_adds {
-        return Err(
-            CubicPresentationCandidateError::VerificationBudgetExceeded {
-                required: verification_multiply_adds,
                 limit: relation_limits.maximum_verification_multiply_adds,
             },
         );
@@ -641,34 +633,25 @@ pub fn authenticate_compact_cubic_presentation_candidate(
         });
     }
 
-    let compact = authenticate_compact_elementary_two_presentation(&collected, compact_limits)?;
+    let compact = authenticate_compact_presentation(&collected, compact_limits)?;
     if compact.generator_count() != factor_base_size || compact.relation_count() != relation_count {
         return Err(CubicPresentationCandidateError::InvalidShape);
     }
     let relations = BigIntMatrix::try_new(factor_base_size, relation_count, relation_values)?;
     let presentation = PresentationClassMap::from_verified_generator_coordinates(
         compact.invariant_factors().to_vec(),
-        compact
-            .generator_coordinates()
-            .iter()
-            .copied()
-            .map(Integer::from)
-            .collect(),
+        compact.generator_coordinates().to_vec(),
         relations,
     )?;
     let coordinate_authority = compact.authorize_presentation(&presentation)?;
     let generator_orders = compact
         .generator_orders()
         .iter()
-        .map(|evidence| {
-            let mut factor_base_exponents = vec![Integer::new(); factor_base_size];
-            factor_base_exponents[evidence.factor_base_index] = Integer::from(1);
-            CubicCandidateGeneratorOrderEvidence {
-                smith_position: evidence.coordinate,
-                invariant_factor: Integer::from(2),
-                factor_base_exponents,
-                relation_coefficients: evidence.relation_coefficients.clone(),
-            }
+        .map(|evidence| CubicCandidateGeneratorOrderEvidence {
+            smith_position: evidence.coordinate,
+            invariant_factor: compact.invariant_factors()[evidence.coordinate].clone(),
+            factor_base_exponents: evidence.factor_base_exponents.clone(),
+            relation_coefficients: evidence.relation_coefficients.clone(),
         })
         .collect();
     let dependency_lattice = compact.dependencies().to_vec();
@@ -694,25 +677,6 @@ pub fn authenticate_compact_cubic_presentation_candidate(
         dependency_lattice,
         class_number_candidate,
     })
-}
-
-#[cfg(feature = "flint-normal-form")]
-fn compact_verification_multiply_adds(
-    generators: usize,
-    relations: usize,
-    two_rank: usize,
-) -> Option<u64> {
-    let generators = u64::try_from(generators).ok()?;
-    let relations = u64::try_from(relations).ok()?;
-    let surplus = relations.checked_sub(generators)?;
-    let two_rank = u64::try_from(two_rank).ok()?;
-    // Dense exact replay consists of every saturated dependency, every class
-    // coordinate, each retained target solve, the final presentation-map
-    // annihilation, and binding that map back to the compact authority.
-    // FLINT's bounded producer work is governed separately by
-    // CompactPresentationLimits.
-    let passes = surplus.checked_add(two_rank.checked_mul(4)?)?;
-    generators.checked_mul(relations)?.checked_mul(passes)
 }
 
 fn smith_verification_multiply_adds(generators: usize, relations: usize) -> Option<u64> {

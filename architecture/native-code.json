@@ -2981,6 +2981,20 @@
       "provenance_mapping_status": "not-applicable"
     },
     {
+      "path": "bench/pari-class-group-rust/tests/prepared_relation_continuation.rs",
+      "category": "benchmark-reference",
+      "review_status": "experimental-pending-review",
+      "lane": "integration",
+      "rationale": "Qualification-only tests for deterministic stateful relation continuation, exact prefix preservation, and cumulative resource enforcement.",
+      "rust_role": "qualification-harness",
+      "qualification_status": "experimental-qualification",
+      "provenance_class": "qualification-harness",
+      "distribution_status": "qualification-only",
+      "safety_review": "not-applicable",
+      "safety_rationale": "The architecture scanner finds no unsafe or Rust ABI boundary in this source; any future boundary changes this classification and fails validation.",
+      "provenance_mapping_status": "not-applicable"
+    },
+    {
       "path": "bench/pari-class-group-rust/qualification/unit-completeness-replay/src/main.rs",
       "category": "benchmark-reference",
       "review_status": "experimental-pending-review",

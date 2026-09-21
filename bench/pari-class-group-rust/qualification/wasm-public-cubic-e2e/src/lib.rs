@@ -45,11 +45,16 @@ fn into_output(bytes: Vec<u8>) -> u64 {
     ((length as u64) << 32) | pointer as u64
 }
 
+// FFI-SAFETY: this version query uses the C ABI and exchanges only an `i32`;
+// it neither accepts pointers nor accesses guest memory.
 #[unsafe(no_mangle)]
 pub extern "C" fn sagejs_class_group_abi_version() -> i32 {
     ABI_VERSION
 }
 
+// FFI-SAFETY: the exported allocator accepts a Wasm `usize`, rejects zero and
+// oversized transfers, and returns either null or a guest pointer allocated
+// with the exact byte layout required by `sagejs_class_group_dealloc`.
 #[unsafe(no_mangle)]
 pub extern "C" fn sagejs_class_group_alloc(length: usize) -> *mut u8 {
     if length == 0 || length > MAX_TRANSFER_BYTES {
@@ -62,6 +67,9 @@ pub extern "C" fn sagejs_class_group_alloc(length: usize) -> *mut u8 {
     unsafe { alloc(layout) }
 }
 
+// FFI-SAFETY: callers may pass only a non-null pointer returned by this ABI
+// together with its unchanged allocation length; the function rejects invalid
+// transfer lengths before reconstructing the allocation layout.
 #[unsafe(no_mangle)]
 pub extern "C" fn sagejs_class_group_dealloc(pointer: *mut u8, length: usize) {
     if pointer.is_null() || length == 0 || length > MAX_TRANSFER_BYTES {
@@ -74,6 +82,9 @@ pub extern "C" fn sagejs_class_group_dealloc(pointer: *mut u8, length: usize) {
     }
 }
 
+// FFI-SAFETY: callers must pass a readable, initialized guest allocation from
+// this ABI for the full `length`; zero and oversized transfers are rejected,
+// and the borrowed input is used only for the duration of this call.
 #[unsafe(no_mangle)]
 pub extern "C" fn sagejs_class_group_run_json(pointer: *const u8, length: usize) -> u64 {
     if pointer.is_null() || length == 0 || length > MAX_TRANSFER_BYTES {

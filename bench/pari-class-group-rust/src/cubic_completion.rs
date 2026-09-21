@@ -19,6 +19,7 @@ use crate::flint_normal_form::{
     FlintBfIndexEnclosure, FlintDyadicInterval, FlintNormalFormError, flint_bdf_factor_base_margin,
     flint_bf_index_enclosure, flint_compact_cubic_regulator,
 };
+use crate::hnf::{BigIntMatrix, ExactNormalFormWorkspace, NormalFormError, NormalFormLimits};
 use crate::numerical_preparation::{NumericalPreparationError, PreparedCubicEmbedding};
 use crate::polynomial_preparation::PreparedPublicCubic;
 use crate::prepared_factor_base::{
@@ -33,6 +34,7 @@ const DEGREE: usize = 3;
 const ROOTS_OF_UNITY_IN_CUBIC_FIELD: u64 = 2;
 const MAXIMUM_COMPLETION_PRECISION_BITS: u32 = 16_384;
 const MAXIMUM_DYADIC_SHIFT: u32 = 1_000_000;
+const MAXIMUM_DEPENDENCY_REDUCTION_OPERATIONS: u64 = 1_000_000;
 
 /// The proof contract requested by the caller.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -387,7 +389,6 @@ impl GrhConditionalCompleteCubicClassGroup {
 }
 
 struct ReconstructedLattice {
-    rational_coordinates: Vec<Vec<Rational>>,
     common_denominator: Integer,
     selected_basis_index: Integer,
     generator_combinations: Vec<Vec<Integer>>,
@@ -402,11 +403,6 @@ fn reconstruct(
         (1, 1) => {
             let value = reconstruct_rank_one_unit_lattice(logarithms, bound)?;
             Ok(ReconstructedLattice {
-                rational_coordinates: value
-                    .rational_coordinates
-                    .into_iter()
-                    .map(|x| vec![x])
-                    .collect(),
                 common_denominator: value.common_denominator,
                 selected_basis_index: value.selected_basis_index,
                 generator_combinations: vec![value.generator_combination],
@@ -415,11 +411,6 @@ fn reconstruct(
         (3, 0) => {
             let value = reconstruct_rank_two_unit_lattice(logarithms, bound)?;
             Ok(ReconstructedLattice {
-                rational_coordinates: value
-                    .rational_coordinates
-                    .into_iter()
-                    .map(|x| x.to_vec())
-                    .collect(),
                 common_denominator: value.common_denominator,
                 selected_basis_index: value.selected_basis_index,
                 generator_combinations: value.generator_combinations.to_vec(),
@@ -427,6 +418,212 @@ fn reconstruct(
         }
         _ => Err(UnitLatticeError::WrongRank),
     }
+}
+
+fn reduce_dependency_basis_exact(
+    dependencies: &[Vec<Integer>],
+    relation_count: usize,
+    relation_columns: usize,
+    relations: &[i64],
+) -> Result<Vec<Vec<Integer>>, CubicConditionalCompletionError> {
+    let dependency_count = dependencies.len();
+    let entry_count = dependency_count
+        .checked_mul(relation_count)
+        .ok_or(CubicConditionalCompletionError::MachineRepresentationLimit)?;
+    let transform_entries = dependency_count
+        .checked_mul(dependency_count)
+        .ok_or(CubicConditionalCompletionError::MachineRepresentationLimit)?;
+    // Charge the exact certificate replay before constructing the HNF.  The
+    // workspace separately interrupts its reduction operations; this bound
+    // covers H = U*D, both U/U^-1 products, and replaying every reduced
+    // dependency against every original relation column.
+    let dependency_count_u64 = u64::try_from(dependency_count)
+        .map_err(|_| CubicConditionalCompletionError::MachineRepresentationLimit)?;
+    let relation_count_u64 = u64::try_from(relation_count)
+        .map_err(|_| CubicConditionalCompletionError::MachineRepresentationLimit)?;
+    let relation_columns_u64 = u64::try_from(relation_columns)
+        .map_err(|_| CubicConditionalCompletionError::MachineRepresentationLimit)?;
+    let square = dependency_count_u64
+        .checked_mul(dependency_count_u64)
+        .ok_or(CubicConditionalCompletionError::MachineRepresentationLimit)?;
+    let transform_replay = square
+        .checked_mul(relation_count_u64)
+        .and_then(|work| {
+            square
+                .checked_mul(dependency_count_u64)
+                .and_then(|cube| cube.checked_mul(2))
+                .and_then(|identities| work.checked_add(identities))
+        })
+        .ok_or(CubicConditionalCompletionError::MachineRepresentationLimit)?;
+    let relation_replay = dependency_count_u64
+        .checked_mul(relation_count_u64)
+        .and_then(|work| work.checked_mul(relation_columns_u64))
+        .ok_or(CubicConditionalCompletionError::MachineRepresentationLimit)?;
+    let certificate_work = transform_replay
+        .checked_add(relation_replay)
+        .ok_or(CubicConditionalCompletionError::MachineRepresentationLimit)?;
+    if certificate_work > MAXIMUM_DEPENDENCY_REDUCTION_OPERATIONS {
+        return Err(CubicConditionalCompletionError::ResourceLimit(
+            "dependency basis reduction certificate",
+        ));
+    }
+    let source = BigIntMatrix::try_new(
+        dependency_count,
+        relation_count,
+        dependencies.iter().flatten().cloned().collect(),
+    )
+    .map_err(|_| CubicConditionalCompletionError::InvalidPresentationShape)?;
+    let mut workspace = ExactNormalFormWorkspace::new(NormalFormLimits {
+        max_entries: entry_count.max(transform_entries),
+        max_operations: MAXIMUM_DEPENDENCY_REDUCTION_OPERATIONS,
+    });
+    let reduction = workspace.row_hnf(&source).map_err(|error| match error {
+        NormalFormError::CapacityExceeded { .. }
+        | NormalFormError::OperationLimitExceeded { .. } => {
+            CubicConditionalCompletionError::ResourceLimit("dependency basis reduction")
+        }
+        _ => CubicConditionalCompletionError::KernelReplayMismatch,
+    })?;
+    // `verify` proves both H = U*D and that U and U^-1 are mutual inverses,
+    // hence the reduced rows span exactly the authenticated saturated kernel.
+    reduction
+        .verify(&source)
+        .map_err(|_| CubicConditionalCompletionError::KernelReplayMismatch)?;
+    if reduction.rank() != dependency_count {
+        return Err(CubicConditionalCompletionError::KernelRankMismatch {
+            expected: dependency_count,
+            actual: reduction.rank(),
+        });
+    }
+    let reduced = reduction
+        .hnf
+        .values()
+        .chunks_exact(relation_count)
+        .map(<[Integer]>::to_vec)
+        .collect::<Vec<_>>();
+    if reduced.len() != dependency_count
+        || reduced.iter().any(|dependency| {
+            (0..relation_columns).any(|column| {
+                (0..relation_count).fold(Integer::from(0), |sum, row| {
+                    sum + &dependency[row] * relations[row * relation_columns + column]
+                }) != 0
+            })
+        })
+    {
+        return Err(CubicConditionalCompletionError::KernelReplayMismatch);
+    }
+    Ok(reduced)
+}
+
+fn reconstructed_unit_lattices_agree(
+    left: &ReconstructedLattice,
+    right: &ReconstructedLattice,
+    dependency_count: usize,
+) -> Result<bool, CubicConditionalCompletionError> {
+    if left.selected_basis_index != right.selected_basis_index
+        || left.generator_combinations.len() != right.generator_combinations.len()
+        || left
+            .generator_combinations
+            .iter()
+            .chain(&right.generator_combinations)
+            .any(|combination| combination.len() != dependency_count)
+    {
+        return Ok(false);
+    }
+    let row_count = left.generator_combinations.len();
+    let entry_count = row_count
+        .checked_mul(dependency_count)
+        .ok_or(CubicConditionalCompletionError::MachineRepresentationLimit)?;
+    let max_entries = entry_count.max(
+        row_count
+            .checked_mul(row_count)
+            .ok_or(CubicConditionalCompletionError::MachineRepresentationLimit)?,
+    );
+    let limits = NormalFormLimits {
+        max_entries,
+        max_operations: MAXIMUM_DEPENDENCY_REDUCTION_OPERATIONS,
+    };
+    let canonical = |combinations: &[Vec<Integer>]| {
+        let matrix = BigIntMatrix::try_new(
+            row_count,
+            dependency_count,
+            combinations.iter().flatten().cloned().collect(),
+        )
+        .map_err(|_| CubicConditionalCompletionError::InvalidPresentationShape)?;
+        let mut workspace = ExactNormalFormWorkspace::new(limits);
+        let hnf = workspace.row_hnf(&matrix).map_err(|error| match error {
+            NormalFormError::CapacityExceeded { .. }
+            | NormalFormError::OperationLimitExceeded { .. } => {
+                CubicConditionalCompletionError::ResourceLimit(
+                    "reconstructed unit lattice comparison",
+                )
+            }
+            _ => CubicConditionalCompletionError::KernelReplayMismatch,
+        })?;
+        if hnf.rank() != row_count {
+            return Err(CubicConditionalCompletionError::UnitRankMismatch {
+                expected: row_count,
+                actual: hnf.rank(),
+            });
+        }
+        Ok(hnf.hnf)
+    };
+    Ok(canonical(&left.generator_combinations)? == canonical(&right.generator_combinations)?)
+}
+
+fn reconstruct_dependency_basis(
+    dependencies: &[Vec<Integer>],
+    relation_logs: &[[Float; 3]],
+    options: CubicConditionalCompletionOptions,
+    signature: (u8, u8),
+) -> Result<ReconstructedLattice, CubicConditionalCompletionError> {
+    let maximum_coefficient_bits = dependencies
+        .iter()
+        .flatten()
+        .map(Integer::significant_bits)
+        .max()
+        .unwrap_or(0) as usize;
+    if maximum_coefficient_bits > options.maximum_kernel_coefficient_bits {
+        return Err(CubicConditionalCompletionError::ResourceLimit(
+            "kernel coefficient bits",
+        ));
+    }
+    let dependency_logs = dependencies
+        .iter()
+        .map(|dependency| {
+            let mut logs: [Float; 3] =
+                std::array::from_fn(|_| Float::with_val(options.logarithm_precision_bits, 0));
+            for (coefficient, relation) in dependency.iter().zip(relation_logs) {
+                for index in 0..DEGREE {
+                    let mut term = relation[index].clone();
+                    term *= coefficient;
+                    logs[index] += term;
+                }
+            }
+            logs
+        })
+        .collect::<Vec<_>>();
+    let denominator_bits = maximum_coefficient_bits.checked_add(16).ok_or(
+        CubicConditionalCompletionError::ResourceLimit("denominator exponent"),
+    )?;
+    if denominator_bits > options.maximum_reconstruction_denominator_bits {
+        return Err(CubicConditionalCompletionError::ResourceLimit(
+            "reconstruction denominator bits",
+        ));
+    }
+    let denominator_bound = Integer::from(1) << denominator_bits;
+    let lattice = reconstruct(&dependency_logs, &denominator_bound, signature)?;
+    let replay_logs = dependency_logs
+        .iter()
+        .map(|row| {
+            std::array::from_fn(|index| Float::with_val(options.replay_precision_bits, &row[index]))
+        })
+        .collect::<Vec<_>>();
+    let replay_lattice = reconstruct(&replay_logs, &denominator_bound, signature)?;
+    if !reconstructed_unit_lattices_agree(&lattice, &replay_lattice, dependencies.len())? {
+        return Err(CubicConditionalCompletionError::ReconstructionUnstable);
+    }
+    Ok(lattice)
 }
 
 fn dyadic_endpoint(mantissa: &Integer, exponent: i64) -> Option<Rational> {
@@ -654,52 +851,30 @@ fn complete_cubic_class_group_at_precision(
     if relation_logs.len() != rows {
         return Err(CubicConditionalCompletionError::InvalidPresentationShape);
     }
-    let dependency_logs = dependencies
-        .iter()
-        .map(|dependency| {
-            let mut logs: [Float; 3] =
-                std::array::from_fn(|_| Float::with_val(options.logarithm_precision_bits, 0));
-            for (coefficient, relation) in dependency.iter().zip(&relation_logs) {
-                for index in 0..DEGREE {
-                    let mut term = relation[index].clone();
-                    term *= coefficient;
-                    logs[index] += term;
-                }
+    let original_reconstruction = reconstruct_dependency_basis(
+        &dependencies,
+        &relation_logs,
+        options,
+        prepared.field().data().signature,
+    );
+    let (working_dependencies, lattice) = match original_reconstruction {
+        Ok(lattice) => (dependencies.clone(), lattice),
+        Err(CubicConditionalCompletionError::ReconstructionUnstable) => {
+            let reduced =
+                reduce_dependency_basis_exact(&dependencies, rows, columns, &collected.relations)?;
+            if reduced == dependencies {
+                return Err(CubicConditionalCompletionError::ReconstructionUnstable);
             }
-            logs
-        })
-        .collect::<Vec<_>>();
-    let denominator_bits = maximum_coefficient_bits.checked_add(16).ok_or(
-        CubicConditionalCompletionError::ResourceLimit("denominator exponent"),
-    )?;
-    if denominator_bits > options.maximum_reconstruction_denominator_bits {
-        return Err(CubicConditionalCompletionError::ResourceLimit(
-            "reconstruction denominator bits",
-        ));
-    }
-    let denominator_bound = Integer::from(1) << denominator_bits;
-    let lattice = reconstruct(
-        &dependency_logs,
-        &denominator_bound,
-        prepared.field().data().signature,
-    )?;
-    let replay_logs = dependency_logs
-        .iter()
-        .map(|row| {
-            std::array::from_fn(|index| Float::with_val(options.replay_precision_bits, &row[index]))
-        })
-        .collect::<Vec<_>>();
-    let replay_lattice = reconstruct(
-        &replay_logs,
-        &denominator_bound,
-        prepared.field().data().signature,
-    )?;
-    if lattice.rational_coordinates != replay_lattice.rational_coordinates
-        || lattice.common_denominator != replay_lattice.common_denominator
-        || lattice.selected_basis_index != replay_lattice.selected_basis_index
-    {
-        return Err(CubicConditionalCompletionError::ReconstructionUnstable);
-    }
+            let lattice = reconstruct_dependency_basis(
+                &reduced,
+                &relation_logs,
+                options,
+                prepared.field().data().signature,
+            )?;
+            (reduced, lattice)
+        }
+        Err(error) => return Err(error),
+    };
     let unit_rank = usize::from(prepared.field().data().signature.0)
         + usize::from(prepared.field().data().signature.1)
         - 1;
@@ -712,11 +887,11 @@ fn complete_cubic_class_group_at_precision(
     let mut fundamental_units = Vec::with_capacity(unit_rank);
     let mut flattened_exponents = Vec::with_capacity(unit_rank * rows);
     for combination in &lattice.generator_combinations {
-        if combination.len() != dependencies.len() {
+        if combination.len() != working_dependencies.len() {
             return Err(CubicConditionalCompletionError::InvalidPresentationShape);
         }
         let mut exponents = vec![Integer::from(0); rows];
-        for (multiple, dependency) in combination.iter().zip(&dependencies) {
+        for (multiple, dependency) in combination.iter().zip(&working_dependencies) {
             for row in 0..rows {
                 exponents[row] += multiple * &dependency[row];
             }

@@ -990,10 +990,10 @@ int sagejs_rust_flint_small_surplus_class_order_i64(
     return status;
 }
 
-int sagejs_rust_flint_small_surplus_relation_witnesses_i64(
+int sagejs_rust_flint_small_surplus_relation_witnesses_mpz(
     size_t size, size_t surplus_rows, const int64_t *square_entries,
     const int64_t *surplus_entries, size_t target_count,
-    const int64_t *targets, mpz_ptr const *witnesses,
+    mpz_srcptr const *targets, mpz_ptr const *witnesses,
     size_t *maximum_coefficient_bits, size_t *nonzero_counts,
     uint64_t *solve_ns, uint64_t *affine_kernel_ns,
     void *workspace_input)
@@ -1039,9 +1039,9 @@ int sagejs_rust_flint_small_surplus_relation_witnesses_i64(
                 (slong) surplus_entries[row * size + column]);
     for (size_t target = 0; target < target_count; target++)
         for (size_t column = 0; column < size; column++)
-            fmpz_set_si(fmpz_mat_entry(right, (slong) column,
+            fmpz_set_mpz(fmpz_mat_entry(right, (slong) column,
                     (slong) (surplus_rows + target)),
-                (slong) targets[target * size + column]);
+                targets[target * size + column]);
 
     fmpz_t determinant, remainder, sum, gcd, bezout_left, bezout_right;
     fmpz_t quotient_left, quotient_right, old_left, old_right, multiplier;
@@ -1302,9 +1302,12 @@ int sagejs_rust_flint_small_surplus_relation_witnesses_i64(
                     : surplus_entries[(relation - size) * size + column];
                 fmpz_addmul_si(sum, multiplier, (slong) entry);
             }
-            if (fmpz_cmp_si(sum,
-                    (slong) targets[target * size + column]) != 0)
+            fmpz_t expected;
+            fmpz_init(expected);
+            fmpz_set_mpz(expected, targets[target * size + column]);
+            if (!fmpz_equal(sum, expected))
                 status = -6;
+            fmpz_clear(expected);
         }
     }
     finished = sagejs_rust_monotonic_ns();
@@ -1396,10 +1399,12 @@ int sagejs_rust_flint_lll_columns_mpz(
 
 int sagejs_rust_flint_snf_class_map_i64(
     size_t size, const int64_t *entries, int64_t *invariant_factors,
-    int64_t *generator_coordinates, size_t *invariant_count)
+    int64_t *generator_coordinates, int64_t *generator_preimages,
+    size_t *invariant_count)
 {
     if (size == 0 || invariant_factors == NULL ||
-        generator_coordinates == NULL || invariant_count == NULL)
+        generator_coordinates == NULL || generator_preimages == NULL ||
+        invariant_count == NULL)
         return -1;
     fmpz_mat_t source;
     fmpz_mat_t smith;
@@ -1413,6 +1418,15 @@ int sagejs_rust_flint_snf_class_map_i64(
     fmpz_mat_snf_transform(smith, left_transform, right_transform, source);
 
     size_t count = 0;
+    size_t *diagonal_positions = flint_malloc(size * sizeof(size_t));
+    if (diagonal_positions == NULL)
+    {
+        fmpz_mat_clear(right_transform);
+        fmpz_mat_clear(left_transform);
+        fmpz_mat_clear(smith);
+        fmpz_mat_clear(source);
+        return -3;
+    }
     int status = 0;
     fmpz_t absolute;
     fmpz_init(absolute);
@@ -1429,6 +1443,7 @@ int sagejs_rust_flint_snf_class_map_i64(
             break;
         }
         const ulong modulus = fmpz_get_ui(absolute);
+        diagonal_positions[count] = diagonal;
         invariant_factors[count] = (int64_t) modulus;
         for (size_t generator = 0; generator < size; generator++)
         {
@@ -1439,7 +1454,35 @@ int sagejs_rust_flint_snf_class_map_i64(
         }
         count++;
     }
+    if (status == 0 && count != 0)
+    {
+        fmpz_mat_t right_inverse;
+        fmpz_mat_init(right_inverse, (slong) size, (slong) size);
+        fmpz_t denominator;
+        fmpz_init(denominator);
+        if (!fmpz_mat_inv(right_inverse, denominator, right_transform) ||
+            (fmpz_cmp_si(denominator, 1) != 0 &&
+                fmpz_cmp_si(denominator, -1) != 0))
+            status = -3;
+        const ulong exponent = (ulong) invariant_factors[count - 1];
+        if (status == 0)
+            for (size_t coordinate = 0; coordinate < count; coordinate++)
+                for (size_t generator = 0; generator < size; generator++)
+                {
+                    const fmpz *entry = fmpz_mat_entry(right_inverse,
+                        (slong) diagonal_positions[coordinate],
+                        (slong) generator);
+                    ulong residue = fmpz_fdiv_ui(entry, exponent);
+                    if (fmpz_sgn(denominator) < 0 && residue != 0)
+                        residue = exponent - residue;
+                    generator_preimages[coordinate * size + generator] =
+                        (int64_t) residue;
+                }
+        fmpz_clear(denominator);
+        fmpz_mat_clear(right_inverse);
+    }
     *invariant_count = count;
+    flint_free(diagonal_positions);
     fmpz_clear(absolute);
     fmpz_mat_clear(right_transform);
     fmpz_mat_clear(left_transform);

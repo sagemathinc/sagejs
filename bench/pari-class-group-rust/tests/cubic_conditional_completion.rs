@@ -142,40 +142,37 @@ fn completes_an_index_prime_field_using_maximal_order_splitting() {
 }
 
 #[test]
-fn bounded_precision_escalation_seals_the_open_d3_0019_field() {
+fn exact_dependency_reduction_seals_open_d3_0019_at_frozen_precision() {
     // generated-d3-0019-d998ace3f59a: x^3 + x^2 - 225*x - 214.
     let prepared = prepare([-214, -225, 1, 1]);
     let authenticated = candidate(&prepared);
-    let low_options = CubicConditionalCompletionOptions {
-        logarithm_precision_bits: 4_096,
-        replay_precision_bits: 2_048,
-        analytic_precision_bits: 512,
-        ..CubicConditionalCompletionOptions::default()
-    };
-    assert_eq!(
-        complete_cubic_class_group_conditionally(
-            prepared.clone(),
-            authenticated.clone(),
-            low_options,
-        )
-        .unwrap_err(),
-        CubicConditionalCompletionError::ReconstructionUnstable
-    );
-
+    let authenticated_dependencies = authenticated.dependency_lattice().to_vec();
     let completed = complete_cubic_class_group_conditionally(
         prepared,
         authenticated,
         CubicConditionalCompletionOptions {
-            logarithm_precision_bits: 8_192,
-            replay_precision_bits: 4_096,
+            logarithm_precision_bits: 4_096,
+            replay_precision_bits: 2_048,
             analytic_precision_bits: 512,
             ..CubicConditionalCompletionOptions::default()
         },
     )
     .unwrap();
     assert!(completed.verify_sealed_evidence());
+    assert_eq!(
+        completed.units().dependency_lattice(),
+        authenticated_dependencies
+    );
     assert_eq!(completed.class_number(), &Integer::from(1));
-    assert_eq!(completed.precision().attempted_levels().len(), 2);
+    assert_eq!(
+        completed.precision().requested_logarithm_precision_bits(),
+        4_096
+    );
+    assert_eq!(
+        completed.precision().requested_replay_precision_bits(),
+        2_048
+    );
+    assert_eq!(completed.precision().attempted_levels().len(), 1);
     assert_eq!(
         completed.precision().attempted_levels()[0].logarithm_precision_bits,
         4_096
@@ -185,11 +182,11 @@ fn bounded_precision_escalation_seals_the_open_d3_0019_field() {
             .precision()
             .accepted_level()
             .logarithm_precision_bits,
-        8_192
+        4_096
     );
     assert_eq!(
         completed.precision().accepted_level().replay_precision_bits,
-        4_096
+        2_048
     );
 }
 

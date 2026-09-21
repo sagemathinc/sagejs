@@ -8,9 +8,9 @@ use sagejs_pari_class_group_rust_experiment::{
     ArbitraryIdealReductionError, CompactPresentationError, CompactPresentationLimits,
     CubicConditionalCompletionOptions, CubicPresentationCandidateError,
     CubicPresentationCandidateLimits, PreparedCollectorLimits, PublicCubicPreparationLimits,
-    authenticate_compact_cubic_presentation_candidate,
-    authenticate_compact_elementary_two_presentation, collect_prepared_cubic_relations,
-    complete_cubic_class_group_conditionally, prepare_monic_cubic,
+    authenticate_compact_cubic_presentation_candidate, authenticate_compact_presentation,
+    collect_prepared_cubic_relations, complete_cubic_class_group_conditionally,
+    prepare_monic_cubic,
 };
 
 fn collect(
@@ -88,7 +88,12 @@ fn row6_reaches_the_compact_authenticated_candidate_boundary_from_coefficients()
         &prepared,
         collected,
         CubicPresentationCandidateLimits::default(),
-        CompactPresentationLimits::default(),
+        CompactPresentationLimits {
+            // Row 6 is elementary 2, so it must remain on the packed GF(2)
+            // route and never enter the general dense-Smith producer.
+            maximum_general_smith_transform_work: 0,
+            ..CompactPresentationLimits::default()
+        },
     )
     .unwrap();
 
@@ -159,11 +164,9 @@ fn authenticates_a_generic_elementary_two_presentation() {
     collected.complete_rank_and_surplus = false;
     collected.missing_rank = usize::MAX;
     collected.first_nonzero_hints.fill(1);
-    let verified = authenticate_compact_elementary_two_presentation(
-        &collected,
-        CompactPresentationLimits::default(),
-    )
-    .unwrap();
+    let verified =
+        authenticate_compact_presentation(&collected, CompactPresentationLimits::default())
+            .unwrap();
 
     assert_eq!(verified.invariant_factors(), &[2, 2]);
     assert_eq!(verified.class_number(), &Integer::from(4));
@@ -181,28 +184,49 @@ fn authenticates_a_generic_elementary_two_presentation() {
         });
     assert_eq!(minor_gcd, 1);
 
-    for evidence in verified.generator_orders() {
-        let coordinate = verified.coordinates(evidence.factor_base_index).unwrap();
-        assert_eq!(coordinate[evidence.coordinate], 1);
-        assert!(
-            coordinate
-                .iter()
-                .enumerate()
-                .all(|(index, &value)| index == evidence.coordinate || value == 0)
-        );
-    }
+    assert!(
+        verified
+            .generator_orders()
+            .iter()
+            .all(|evidence| { evidence.factor_base_exponents.len() == verified.generator_count() })
+    );
 }
 
 #[test]
-fn rejects_a_non_elementary_two_quotient() {
+fn authenticates_a_non_elementary_two_quotient() {
     // x^3 - 8*x^2 - 30*x - 26 has cyclic class group C3.
     let collected = collect([-26, -30, -8, 1]);
+    let verified =
+        authenticate_compact_presentation(&collected, CompactPresentationLimits::default())
+            .unwrap();
+    assert_eq!(verified.invariant_factors(), &[Integer::from(3)]);
+    assert_eq!(verified.class_number(), &Integer::from(3));
+}
+
+#[test]
+fn general_smith_work_limit_fails_closed_before_the_general_producer() {
+    // This C3 quotient cannot use the elementary-two route.
+    let collected = collect([-26, -30, -8, 1]);
+    let limits = CompactPresentationLimits {
+        maximum_general_smith_transform_work: 0,
+        ..CompactPresentationLimits::default()
+    };
     assert!(matches!(
-        authenticate_compact_elementary_two_presentation(
-            &collected,
-            CompactPresentationLimits::default(),
-        ),
-        Err(CompactPresentationError::NonElementaryTwo { .. })
+        authenticate_compact_presentation(&collected, limits),
+        Err(CompactPresentationError::GeneralSmithWorkLimit { limit: 0, .. })
+    ));
+}
+
+#[test]
+fn exact_mixed_map_verification_budget_is_enforced_before_replay() {
+    let collected = collect([-26, -30, -8, 1]);
+    let limits = CompactPresentationLimits {
+        maximum_verification_multiply_adds: 0,
+        ..CompactPresentationLimits::default()
+    };
+    assert!(matches!(
+        authenticate_compact_presentation(&collected, limits),
+        Err(CompactPresentationError::VerificationBudgetExceeded { limit: 0, .. })
     ));
 }
 
@@ -212,7 +236,7 @@ fn enforces_the_small_surplus_limit_before_flint_work() {
     let mut limits = CompactPresentationLimits::default();
     limits.maximum_surplus_rows = 1;
     assert!(matches!(
-        authenticate_compact_elementary_two_presentation(&collected, limits),
+        authenticate_compact_presentation(&collected, limits),
         Err(CompactPresentationError::SurplusLimit { .. })
     ));
 }

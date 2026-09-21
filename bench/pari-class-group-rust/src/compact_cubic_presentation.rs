@@ -3,14 +3,13 @@
 
 //! Exact compact authentication for full-rank, small-surplus relation matrices.
 //!
-//! This module deliberately recognizes a mathematical corridor, not a field:
-//! the quotient of the supplied relation lattice must be elementary abelian of
-//! exponent two.  The retained FLINT factorization is only a fast producer of
-//! candidate exact data.  Before the sealed result is returned, Rust replays
-//! the dependency lattice in the collector's original row order, proves its
-//! saturation from exact maximal minors, checks `D / K`, verifies and
-//! normalizes the complete GF(2) map, and replays an order witness for every
-//! selected generator.
+//! This module deliberately recognizes a mathematical corridor, not a field.
+//! The retained FLINT factorization is only a fast producer of candidate exact
+//! data. Before the sealed result is returned, Rust replays the dependency
+//! lattice in the collector's original row order, proves its saturation from
+//! exact maximal minors, checks `D / K`, verifies a complete mixed-modulus
+//! class map and its modular right inverse, and replays an order witness for
+//! every nontrivial invariant factor.
 
 use rug::{Complete, Integer};
 use std::collections::BTreeSet;
@@ -21,7 +20,7 @@ use crate::class_group::{
 use crate::class_maps::{ClassMapError, PresentationClassMap};
 use crate::flint_normal_form::{
     FlintNormalFormError, FlintSmallSurplusWorkspace,
-    flint_small_surplus_class_order_with_workspace,
+    flint_small_surplus_class_order_with_workspace, flint_small_surplus_smith_class_map,
 };
 
 const DEGREE: usize = 3;
@@ -36,6 +35,21 @@ pub struct CompactPresentationLimits {
     pub maximum_saturation_minor_trials: usize,
     /// Maximum number of integers retained in the dense dependency basis.
     pub maximum_dependency_entries: usize,
+    /// Maximum number of nontrivial invariant factors retained in the compact map.
+    pub maximum_invariant_factors: usize,
+    /// Maximum combined number of generator-coordinate and preimage entries.
+    pub maximum_map_entries: usize,
+    /// Maximum absolute bit length of an invariant factor, map coordinate, or
+    /// canonical-generator preimage coefficient.
+    pub maximum_map_coefficient_bits: usize,
+    /// Maximum bytes in the dense factor/coordinate/preimage buffers of the
+    /// general Smith producer. A zero limit deliberately disables that route.
+    pub maximum_general_smith_bytes: usize,
+    /// Conservative cubic work cap for the general square-Smith and reduced
+    /// quotient transforms. A zero limit deliberately disables that route.
+    pub maximum_general_smith_transform_work: u64,
+    /// Exact Rust verification/replay multiply-add budget.
+    pub maximum_verification_multiply_adds: u64,
     /// Maximum absolute bit length of a coefficient in a generator-order
     /// witness or in a later target solve through the retained workspace.
     pub maximum_target_coefficient_bits: usize,
@@ -48,6 +62,12 @@ impl Default for CompactPresentationLimits {
             maximum_surplus_rows: 32,
             maximum_saturation_minor_trials: 32_768,
             maximum_dependency_entries: 1_000_000,
+            maximum_invariant_factors: 16_384,
+            maximum_map_entries: 2_000_000,
+            maximum_map_coefficient_bits: 1_000_000,
+            maximum_general_smith_bytes: 64 * 1024 * 1024,
+            maximum_general_smith_transform_work: 100_000_000_000,
+            maximum_verification_multiply_adds: u64::MAX,
             maximum_target_coefficient_bits: 1_000_000,
         }
     }
@@ -61,13 +81,14 @@ pub struct CompactSaturationMinor {
     pub determinant: Integer,
 }
 
-/// Exact proof that a normalized coordinate generator has order two.
+/// Exact proof for one normalized cyclic coordinate generator.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CompactGeneratorOrderEvidence {
     pub coordinate: usize,
-    pub factor_base_index: usize,
+    /// A preimage of the canonical cyclic generator in the free factor-base lattice.
+    pub factor_base_exponents: Vec<Integer>,
     /// Original-collector-order coefficients `c` satisfying
-    /// `sum_j c[j] relation[j] = 2 e_factor_base_index`.
+    /// `sum_j c[j] relation[j] = d_coordinate * factor_base_exponents`.
     pub relation_coefficients: Vec<Integer>,
 }
 
@@ -92,11 +113,14 @@ impl CompactPresentationSolverData {
 
     /// Express one or more row-major targets in the verified relation lattice.
     /// The result is target-major and uses original collector relation order.
-    pub fn solve_targets(&self, targets: &[i64]) -> Result<Vec<Integer>, CompactPresentationError> {
+    pub fn solve_targets(
+        &self,
+        targets: &[Integer],
+    ) -> Result<Vec<Integer>, CompactPresentationError> {
         if targets.is_empty() || !targets.len().is_multiple_of(self.factor_base_size) {
             return Err(CompactPresentationError::InvalidTargetShape);
         }
-        let answer = self.workspace.relation_witnesses(targets)?;
+        let answer = self.workspace.relation_witnesses_mpz(targets)?;
         if answer.relation_count != self.solver_to_original_rows.len()
             || answer.target_count != targets.len() / self.factor_base_size
         {
@@ -140,7 +164,7 @@ pub struct VerifiedCompactPresentation {
     invariant_factors: Vec<Integer>,
     class_number: Integer,
     /// Generator-major normalized coordinates, one bit per invariant factor.
-    generator_coordinates: Vec<u8>,
+    generator_coordinates: Vec<Integer>,
     /// Dependency-major saturated basis, in original collector row order.
     dependencies: Vec<Vec<Integer>>,
     square_rows: Vec<usize>,
@@ -185,13 +209,13 @@ impl VerifiedCompactPresentation {
         self.solver_data.solver_to_original_rows.len()
     }
 
-    pub fn coordinates(&self, generator: usize) -> Option<&[u8]> {
+    pub fn coordinates(&self, generator: usize) -> Option<&[Integer]> {
         let width = self.invariant_factors.len();
         (generator < self.generator_count())
             .then(|| &self.generator_coordinates[generator * width..(generator + 1) * width])
     }
 
-    pub fn generator_coordinates(&self) -> &[u8] {
+    pub fn generator_coordinates(&self) -> &[Integer] {
         &self.generator_coordinates
     }
 
@@ -271,7 +295,7 @@ impl VerifiedCompactPresentation {
             || actual_coordinates
                 .iter()
                 .zip(&self.generator_coordinates)
-                .any(|(actual, expected)| actual != &Integer::from(*expected))
+                .any(|(actual, expected)| actual != expected)
         {
             return Err(ClassMapError::CoordinatePresentationMismatch);
         }
@@ -285,52 +309,33 @@ impl VerifiedCompactPresentation {
 pub enum CompactPresentationError {
     InvalidLimits,
     InvalidShape,
-    GeneratorLimit {
-        required: usize,
-        limit: usize,
-    },
-    SurplusLimit {
-        required: usize,
-        limit: usize,
-    },
-    DependencyEntryLimit {
-        required: usize,
-        limit: usize,
-    },
+    GeneratorLimit { required: usize, limit: usize },
+    SurplusLimit { required: usize, limit: usize },
+    DependencyEntryLimit { required: usize, limit: usize },
     RankSelection(ClassGroupError),
     Flint(FlintNormalFormError),
     SquareDeterminantMismatch,
-    DependencyDoesNotAnnihilate {
-        dependency: usize,
-        column: usize,
-    },
+    DependencyDoesNotAnnihilate { dependency: usize, column: usize },
     SingularDependencyProjection,
     DependencyProjectionDoesNotDivideSquareDeterminant,
     ClassOrderMismatch,
-    SaturationNotProved {
-        trials: usize,
-        gcd: Integer,
-    },
-    NonElementaryTwo {
-        class_order: Integer,
-        two_rank: usize,
-    },
-    ClassMapDoesNotAnnihilate {
-        relation: usize,
-        coordinate: usize,
-    },
-    ClassMapRankMismatch {
-        expected: usize,
-        actual: usize,
-    },
+    SaturationNotProved { trials: usize, gcd: Integer },
+    InvariantFactorLimit { required: usize, limit: usize },
+    MapEntryLimit { required: usize, limit: usize },
+    MapCoefficientLimit { required: usize, limit: usize },
+    GeneralSmithDimensionLimit { required: usize, limit: usize },
+    GeneralSmithEntryLimit { required: usize, limit: usize },
+    GeneralSmithByteLimit { required: usize, limit: usize },
+    GeneralSmithWorkLimit { required: u64, limit: u64 },
+    VerificationBudgetExceeded { required: u64, limit: u64 },
+    InvalidInvariantFactors,
+    InvariantFactorProductMismatch,
+    ClassMapDoesNotAnnihilate { relation: usize, coordinate: usize },
+    ClassMapRankMismatch { expected: usize, actual: usize },
+    ClassMapNotSurjective { coordinate: usize },
     InvalidTargetShape,
-    TargetCoefficientLimit {
-        required: usize,
-        limit: usize,
-    },
-    TargetWitnessMismatch {
-        target: usize,
-    },
+    TargetCoefficientLimit { required: usize, limit: usize },
+    TargetWitnessMismatch { target: usize },
 }
 
 impl From<FlintNormalFormError> for CompactPresentationError {
@@ -349,6 +354,9 @@ pub(crate) fn validate_compact_presentation_shape(
         || limits.maximum_surplus_rows == 0
         || limits.maximum_saturation_minor_trials == 0
         || limits.maximum_dependency_entries == 0
+        || limits.maximum_invariant_factors == 0
+        || limits.maximum_map_entries == 0
+        || limits.maximum_map_coefficient_bits == 0
         || limits.maximum_target_coefficient_bits == 0
     {
         return Err(CompactPresentationError::InvalidLimits);
@@ -396,16 +404,15 @@ pub(crate) fn validate_compact_presentation_shape(
     Ok((generators, relation_count))
 }
 
-/// Authenticate an elementary-2 small-surplus presentation without using any
+/// Authenticate a full-rank small-surplus presentation without using any
 /// field identity, polynomial coefficient, expected class number, or Row-6
 /// recognition.
-pub fn authenticate_compact_elementary_two_presentation(
+pub fn authenticate_compact_presentation(
     collected: &PreparedCubicRelationPresentation,
     limits: CompactPresentationLimits,
 ) -> Result<VerifiedCompactPresentation, CompactPresentationError> {
     let (generators, relation_count) = validate_compact_presentation_shape(collected, limits)?;
     let surplus = relation_count - generators;
-    let expected_two_rank = compact_mod_two_quotient_rank(&collected.relations, generators)?;
 
     // Collector status booleans are telemetry.  Recompute full rank and the
     // precise row partition from the relation matrix itself.
@@ -439,12 +446,6 @@ pub fn authenticate_compact_elementary_two_presentation(
 
     let (compact, workspace) =
         flint_small_surplus_class_order_with_workspace(&square, &surplus_relations, generators)?;
-    if compact.two_rank != expected_two_rank {
-        return Err(CompactPresentationError::ClassMapRankMismatch {
-            expected: expected_two_rank,
-            actual: compact.two_rank,
-        });
-    }
     // The FLINT bridge computes this determinant exactly as part of the same
     // fraction-free factorization that produces the retained dependency
     // workspace. Recomputing the 1,130-square determinant with a second
@@ -493,21 +494,73 @@ pub fn authenticate_compact_elementary_two_presentation(
     if class_number != compact.class_order {
         return Err(CompactPresentationError::ClassOrderMismatch);
     }
+    // FLINT is only a producer for the compact Smith map.  The exact D/K
+    // index proof above remains the authority; Rust independently verifies
+    // the map, its mixed-modulus right inverse, and the invariant-factor
+    // product before accepting it.
     let elementary_order = Integer::from(1) << compact.two_rank;
-    if class_number != elementary_order {
-        return Err(CompactPresentationError::NonElementaryTwo {
-            class_order: class_number,
-            two_rank: compact.two_rank,
+    let (invariant_factors, generator_coordinates, generator_preimages): (
+        Vec<Integer>,
+        Vec<Integer>,
+        Vec<Integer>,
+    ) = if class_number == elementary_order {
+        preflight_retained_map(generators, compact.two_rank, limits)?;
+        let (normalized, selected) =
+            normalize_gf2_map(&compact.generator_coordinates, generators, compact.two_rank)?;
+        let mut preimages = vec![Integer::from(0); compact.two_rank * generators];
+        for (coordinate, generator) in selected.into_iter().enumerate() {
+            preimages[coordinate * generators + generator] = Integer::from(1);
+        }
+        (
+            vec![Integer::from(2); compact.two_rank],
+            normalized.into_iter().map(Integer::from).collect(),
+            preimages,
+        )
+    } else {
+        preflight_general_smith(generators, surplus, limits)?;
+        let smith_map =
+            flint_small_surplus_smith_class_map(&square, &surplus_relations, generators)?;
+        (
+            smith_map
+                .invariant_factors
+                .into_iter()
+                .map(Integer::from)
+                .collect(),
+            smith_map
+                .generator_coordinates
+                .into_iter()
+                .map(Integer::from)
+                .collect(),
+            smith_map
+                .generator_preimages
+                .into_iter()
+                .map(Integer::from)
+                .collect(),
+        )
+    };
+    let invariant_count = invariant_factors.len();
+    preflight_retained_map(generators, invariant_count, limits)?;
+    let verification_multiply_adds =
+        compact_verification_multiply_adds(generators, relation_count, invariant_count).ok_or(
+            CompactPresentationError::VerificationBudgetExceeded {
+                required: u64::MAX,
+                limit: limits.maximum_verification_multiply_adds,
+            },
+        )?;
+    if verification_multiply_adds > limits.maximum_verification_multiply_adds {
+        return Err(CompactPresentationError::VerificationBudgetExceeded {
+            required: verification_multiply_adds,
+            limit: limits.maximum_verification_multiply_adds,
         });
     }
-
-    let (generator_coordinates, selected_generators) =
-        normalize_gf2_map(&compact.generator_coordinates, generators, compact.two_rank)?;
-    verify_gf2_annihilation(
+    verify_mixed_modulus_map(
+        &invariant_factors,
         &generator_coordinates,
-        compact.two_rank,
+        &generator_preimages,
         &collected.relations,
         generators,
+        &class_number,
+        limits.maximum_map_coefficient_bits,
     )?;
 
     let solver_data = CompactPresentationSolverData {
@@ -517,31 +570,34 @@ pub fn authenticate_compact_elementary_two_presentation(
         factor_base_size: generators,
         maximum_target_coefficient_bits: limits.maximum_target_coefficient_bits,
     };
-    let generator_orders = if compact.two_rank == 0 {
+    let generator_orders = if invariant_count == 0 {
         Vec::new()
     } else {
-        let mut targets = vec![0_i64; compact.two_rank * generators];
-        for (coordinate, &generator) in selected_generators.iter().enumerate() {
-            targets[coordinate * generators + generator] = 2;
+        let mut targets = vec![Integer::from(0); invariant_count * generators];
+        for coordinate in 0..invariant_count {
+            for generator in 0..generators {
+                targets[coordinate * generators + generator] = Integer::from(
+                    &invariant_factors[coordinate]
+                        * &generator_preimages[coordinate * generators + generator],
+                );
+            }
         }
         let coefficients = solver_data.solve_targets(&targets)?;
-        selected_generators
-            .into_iter()
-            .enumerate()
-            .map(
-                |(coordinate, factor_base_index)| CompactGeneratorOrderEvidence {
-                    coordinate,
-                    factor_base_index,
-                    relation_coefficients: coefficients
-                        [coordinate * relation_count..(coordinate + 1) * relation_count]
-                        .to_vec(),
-                },
-            )
+        (0..invariant_count)
+            .map(|coordinate| CompactGeneratorOrderEvidence {
+                coordinate,
+                factor_base_exponents: generator_preimages
+                    [coordinate * generators..(coordinate + 1) * generators]
+                    .to_vec(),
+                relation_coefficients: coefficients
+                    [coordinate * relation_count..(coordinate + 1) * relation_count]
+                    .to_vec(),
+            })
             .collect()
     };
 
     Ok(VerifiedCompactPresentation {
-        invariant_factors: vec![Integer::from(2); compact.two_rank],
+        invariant_factors,
         class_number,
         generator_coordinates,
         dependencies,
@@ -555,43 +611,150 @@ pub fn authenticate_compact_elementary_two_presentation(
     })
 }
 
-/// Return the exact mod-two quotient rank using a packed elimination, before
-/// any integer determinant or retained-workspace construction is attempted.
-pub(crate) fn compact_mod_two_quotient_rank(
-    relations: &[i64],
+fn preflight_retained_map(
     generators: usize,
-) -> Result<usize, CompactPresentationError> {
-    if generators == 0 || !relations.len().is_multiple_of(generators) {
-        return Err(CompactPresentationError::InvalidShape);
+    invariant_count: usize,
+    limits: CompactPresentationLimits,
+) -> Result<(), CompactPresentationError> {
+    if invariant_count > limits.maximum_invariant_factors {
+        return Err(CompactPresentationError::InvariantFactorLimit {
+            required: invariant_count,
+            limit: limits.maximum_invariant_factors,
+        });
     }
-    let words = generators.div_ceil(u64::BITS as usize);
-    let mut pivots = vec![None::<Vec<u64>>; generators];
-    let mut rank = 0_usize;
-    for relation in relations.chunks_exact(generators) {
-        let mut packed = vec![0_u64; words];
-        for (column, entry) in relation.iter().enumerate() {
-            if entry.rem_euclid(2) != 0 {
-                packed[column / u64::BITS as usize] |= 1_u64 << (column % u64::BITS as usize);
-            }
-        }
-        loop {
-            let Some(pivot) = packed.iter().enumerate().find_map(|(word, &value)| {
-                (value != 0).then(|| word * u64::BITS as usize + value.trailing_zeros() as usize)
-            }) else {
-                break;
-            };
-            if let Some(basis) = &pivots[pivot] {
-                for (entry, basis_entry) in packed.iter_mut().zip(basis) {
-                    *entry ^= basis_entry;
-                }
-            } else {
-                pivots[pivot] = Some(packed);
-                rank += 1;
-                break;
-            }
-        }
+    let map_entries = generators
+        .checked_mul(invariant_count)
+        .and_then(|entries| entries.checked_mul(2))
+        .ok_or(CompactPresentationError::MapEntryLimit {
+            required: usize::MAX,
+            limit: limits.maximum_map_entries,
+        })?;
+    if map_entries > limits.maximum_map_entries {
+        return Err(CompactPresentationError::MapEntryLimit {
+            required: map_entries,
+            limit: limits.maximum_map_entries,
+        });
     }
-    Ok(generators - rank)
+    Ok(())
+}
+
+fn preflight_general_smith(
+    generators: usize,
+    surplus: usize,
+    limits: CompactPresentationLimits,
+) -> Result<(), CompactPresentationError> {
+    if generators > limits.maximum_invariant_factors {
+        return Err(CompactPresentationError::GeneralSmithDimensionLimit {
+            required: generators,
+            limit: limits.maximum_invariant_factors,
+        });
+    }
+    let square_entries = generators.checked_mul(generators).ok_or(
+        CompactPresentationError::GeneralSmithEntryLimit {
+            required: usize::MAX,
+            limit: limits.maximum_map_entries,
+        },
+    )?;
+    // The producer must provision both complete generator-coordinate and
+    // preimage maps before the actual invariant count is known.
+    let map_entries =
+        square_entries
+            .checked_mul(2)
+            .ok_or(CompactPresentationError::GeneralSmithEntryLimit {
+                required: usize::MAX,
+                limit: limits.maximum_map_entries,
+            })?;
+    if map_entries > limits.maximum_map_entries {
+        return Err(CompactPresentationError::GeneralSmithEntryLimit {
+            required: map_entries,
+            limit: limits.maximum_map_entries,
+        });
+    }
+    // Conservative fixed-slot peak: initial/reduced/final Rust maps and
+    // relations (eight squares plus the surplus rectangle and two factor
+    // vectors), together with the five simultaneous FLINT fmpz matrix slot
+    // arrays used by a transform-bearing square Smith call. This deliberately
+    // excludes allocator metadata and dynamically grown intermediate fmpz
+    // limbs. Those limbs do not have an allocator-hard byte cap here; the
+    // admitted matrix dimension, i64 input representation, and transform-work
+    // cap bound the practical corridor, while output coefficients are checked
+    // independently after the producer returns.
+    let dense_slots = square_entries
+        .checked_mul(13)
+        .and_then(|entries| entries.checked_add(surplus.checked_mul(generators)?))
+        .and_then(|entries| entries.checked_add(generators.checked_mul(2)?))
+        .ok_or(CompactPresentationError::GeneralSmithByteLimit {
+            required: usize::MAX,
+            limit: limits.maximum_general_smith_bytes,
+        })?;
+    let dense_bytes = dense_slots.checked_mul(std::mem::size_of::<i64>()).ok_or(
+        CompactPresentationError::GeneralSmithByteLimit {
+            required: usize::MAX,
+            limit: limits.maximum_general_smith_bytes,
+        },
+    )?;
+    if dense_bytes > limits.maximum_general_smith_bytes {
+        return Err(CompactPresentationError::GeneralSmithByteLimit {
+            required: dense_bytes,
+            limit: limits.maximum_general_smith_bytes,
+        });
+    }
+    let dimension =
+        u64::try_from(generators).map_err(|_| CompactPresentationError::GeneralSmithWorkLimit {
+            required: u64::MAX,
+            limit: limits.maximum_general_smith_transform_work,
+        })?;
+    let surplus =
+        u64::try_from(surplus).map_err(|_| CompactPresentationError::GeneralSmithWorkLimit {
+            required: u64::MAX,
+            limit: limits.maximum_general_smith_transform_work,
+        })?;
+    let square = dimension.checked_mul(dimension).ok_or(
+        CompactPresentationError::GeneralSmithWorkLimit {
+            required: u64::MAX,
+            limit: limits.maximum_general_smith_transform_work,
+        },
+    )?;
+    // Initial square Smith, worst-case reduced HNF and Smith, plus both map
+    // compositions: 5*m^3 + surplus*m^2.
+    let work = square
+        .checked_mul(dimension)
+        .and_then(|cube| cube.checked_mul(5))
+        .and_then(|base| {
+            surplus
+                .checked_mul(square)
+                .and_then(|tail| base.checked_add(tail))
+        })
+        .ok_or(CompactPresentationError::GeneralSmithWorkLimit {
+            required: u64::MAX,
+            limit: limits.maximum_general_smith_transform_work,
+        })?;
+    if work > limits.maximum_general_smith_transform_work {
+        return Err(CompactPresentationError::GeneralSmithWorkLimit {
+            required: work,
+            limit: limits.maximum_general_smith_transform_work,
+        });
+    }
+    Ok(())
+}
+
+pub(crate) fn compact_verification_multiply_adds(
+    generators: usize,
+    relations: usize,
+    invariant_count: usize,
+) -> Option<u64> {
+    let generators = u64::try_from(generators).ok()?;
+    let relations = u64::try_from(relations).ok()?;
+    let surplus = relations.checked_sub(generators)?;
+    let invariant_count = u64::try_from(invariant_count).ok()?;
+    let dense_passes = surplus.checked_add(invariant_count.checked_mul(4)?)?;
+    let dense = generators
+        .checked_mul(relations)?
+        .checked_mul(dense_passes)?;
+    let right_inverse = generators
+        .checked_mul(invariant_count)?
+        .checked_mul(invariant_count)?;
+    dense.checked_add(right_inverse)
 }
 
 fn reorder_and_verify_dependencies(
@@ -875,6 +1038,109 @@ fn consider_saturation_minor(
     Ok(*gcd == 1)
 }
 
+fn verify_mixed_modulus_map(
+    invariant_factors: &[Integer],
+    coordinates: &[Integer],
+    preimages: &[Integer],
+    relations: &[i64],
+    generators: usize,
+    class_number: &Integer,
+    maximum_coefficient_bits: usize,
+) -> Result<(), CompactPresentationError> {
+    let width = invariant_factors.len();
+    let expected = generators
+        .checked_mul(width)
+        .ok_or(CompactPresentationError::InvalidShape)?;
+    if coordinates.len() != expected
+        || preimages.len() != expected
+        || !relations.len().is_multiple_of(generators)
+        || invariant_factors.iter().any(|factor| factor <= &1)
+        || invariant_factors
+            .windows(2)
+            .any(|pair| Integer::from(&pair[1] % &pair[0]) != 0)
+    {
+        return Err(CompactPresentationError::InvalidInvariantFactors);
+    }
+    let product = invariant_factors
+        .iter()
+        .fold(Integer::from(1), |product, factor| product * factor);
+    if &product != class_number {
+        return Err(CompactPresentationError::InvariantFactorProductMismatch);
+    }
+    if width == 0 {
+        return Ok(());
+    }
+    let exponent = invariant_factors.last().expect("nonempty factors");
+    for value in invariant_factors.iter().chain(coordinates).chain(preimages) {
+        if value.significant_bits() as usize > maximum_coefficient_bits {
+            return Err(CompactPresentationError::MapCoefficientLimit {
+                required: value.significant_bits() as usize,
+                limit: maximum_coefficient_bits,
+            });
+        }
+    }
+    for generator in 0..generators {
+        for coordinate in 0..width {
+            let value = &coordinates[generator * width + coordinate];
+            if value < &0 || value >= &invariant_factors[coordinate] {
+                return Err(CompactPresentationError::InvalidInvariantFactors);
+            }
+        }
+    }
+    if preimages
+        .iter()
+        .any(|value| value < &0 || value >= exponent)
+    {
+        return Err(CompactPresentationError::InvalidInvariantFactors);
+    }
+    for (relation, row) in relations.chunks_exact(generators).enumerate() {
+        for coordinate in 0..width {
+            let modulus = &invariant_factors[coordinate];
+            let mut sum = Integer::from(0);
+            for generator in 0..generators {
+                sum += Integer::from(&coordinates[generator * width + coordinate] * row[generator]);
+            }
+            sum %= modulus;
+            if sum < 0 {
+                sum += modulus;
+            }
+            if sum != 0 {
+                return Err(CompactPresentationError::ClassMapDoesNotAnnihilate {
+                    relation,
+                    coordinate,
+                });
+            }
+        }
+    }
+    for source_coordinate in 0..width {
+        for target_coordinate in 0..width {
+            let modulus = &invariant_factors[target_coordinate];
+            let mut sum = Integer::from(0);
+            for generator in 0..generators {
+                sum += Integer::from(
+                    &preimages[source_coordinate * generators + generator]
+                        * &coordinates[generator * width + target_coordinate],
+                );
+            }
+            sum %= modulus;
+            if sum < 0 {
+                sum += modulus;
+            }
+            let expected = Integer::from(if source_coordinate == target_coordinate {
+                1
+            } else {
+                0
+            });
+            if sum != expected {
+                return Err(CompactPresentationError::ClassMapNotSurjective {
+                    coordinate: source_coordinate,
+                });
+            }
+        }
+    }
+    Ok(())
+}
+
 fn normalize_gf2_map(
     coordinates: &[u8],
     generators: usize,
@@ -888,8 +1154,6 @@ fn normalize_gf2_map(
     if rank == 0 {
         return Ok((Vec::new(), Vec::new()));
     }
-    // Row elimination selects actual factor-base generators.  The augmented
-    // identity tracks P^-1, where P consists of the selected source rows.
     let mut basis = Vec::<(usize, Vec<u8>, usize)>::with_capacity(rank);
     for generator in 0..generators {
         let mut row = coordinates[generator * rank..(generator + 1) * rank].to_vec();
@@ -901,9 +1165,6 @@ fn normalize_gf2_map(
             }
         }
         if let Some(pivot) = row.iter().position(|&entry| entry != 0) {
-            // A newly discovered pivot can precede an older one.  Clear it
-            // from every retained basis row so subsequent reductions cannot
-            // reintroduce an earlier pivot.
             for (_, basis_row, _) in &mut basis {
                 if basis_row[pivot] != 0 {
                     for column in 0..rank {
@@ -924,12 +1185,11 @@ fn normalize_gf2_map(
             actual: basis.len(),
         });
     }
-    let selected_generators = basis.iter().map(|entry| entry.2).collect::<Vec<_>>();
+    let selected = basis.iter().map(|entry| entry.2).collect::<Vec<_>>();
     let mut augmented = vec![vec![0_u8; 2 * rank]; rank];
     for row in 0..rank {
-        augmented[row][..rank].copy_from_slice(
-            &coordinates[selected_generators[row] * rank..(selected_generators[row] + 1) * rank],
-        );
+        augmented[row][..rank]
+            .copy_from_slice(&coordinates[selected[row] * rank..(selected[row] + 1) * rank]);
         augmented[row][rank + row] = 1;
     }
     for column in 0..rank {
@@ -957,7 +1217,7 @@ fn normalize_gf2_map(
             });
         }
     }
-    for (coordinate, &generator) in selected_generators.iter().enumerate() {
+    for (coordinate, &generator) in selected.iter().enumerate() {
         for image in 0..rank {
             if normalized[generator * rank + image] != u8::from(image == coordinate) {
                 return Err(CompactPresentationError::ClassMapRankMismatch {
@@ -967,35 +1227,7 @@ fn normalize_gf2_map(
             }
         }
     }
-    Ok((normalized, selected_generators))
-}
-
-fn verify_gf2_annihilation(
-    coordinates: &[u8],
-    rank: usize,
-    relations: &[i64],
-    generators: usize,
-) -> Result<(), CompactPresentationError> {
-    if coordinates.len() != generators.saturating_mul(rank) || relations.len() % generators != 0 {
-        return Err(CompactPresentationError::InvalidShape);
-    }
-    for (relation, row) in relations.chunks_exact(generators).enumerate() {
-        for coordinate in 0..rank {
-            let image = row
-                .iter()
-                .enumerate()
-                .fold(0_u8, |sum, (generator, entry)| {
-                    sum ^ ((entry.rem_euclid(2) as u8) & coordinates[generator * rank + coordinate])
-                });
-            if image != 0 {
-                return Err(CompactPresentationError::ClassMapDoesNotAnnihilate {
-                    relation,
-                    coordinate,
-                });
-            }
-        }
-    }
-    Ok(())
+    Ok((normalized, selected))
 }
 
 #[cfg(test)]
@@ -1003,14 +1235,18 @@ mod tests {
     use super::*;
 
     #[test]
-    fn normalization_selects_a_standard_generator_basis() {
-        // g0=(1,1), g1=(1,0), g2=(0,1).  The first two are selected and
-        // become the standard basis after the coordinate change.
-        let (normalized, selected) = normalize_gf2_map(&[1, 1, 1, 0, 0, 1], 3, 2).unwrap();
-        assert_eq!(selected, [0, 1]);
-        assert_eq!(&normalized[0..2], &[1, 0]);
-        assert_eq!(&normalized[2..4], &[0, 1]);
-        assert_eq!(&normalized[4..6], &[1, 1]);
+    fn retained_map_preflight_counts_coordinates_and_preimages() {
+        let limits = CompactPresentationLimits {
+            maximum_map_entries: 11,
+            ..CompactPresentationLimits::default()
+        };
+        assert_eq!(
+            preflight_retained_map(3, 2, limits),
+            Err(CompactPresentationError::MapEntryLimit {
+                required: 12,
+                limit: 11,
+            })
+        );
     }
 
     #[test]
@@ -1041,10 +1277,125 @@ mod tests {
     }
 
     #[test]
-    fn gf2_annihilation_rejects_a_counterfeit_map() {
+    fn mixed_modulus_map_accepts_c2_by_c4_and_c4_by_c8() {
+        for (factors, relations, class_number) in [
+            (
+                vec![Integer::from(2), Integer::from(4)],
+                vec![2, 0, 0, 4],
+                Integer::from(8),
+            ),
+            (
+                vec![Integer::from(4), Integer::from(8)],
+                vec![4, 0, 0, 8],
+                Integer::from(32),
+            ),
+        ] {
+            let coordinates = vec![
+                Integer::from(1),
+                Integer::from(0),
+                Integer::from(0),
+                Integer::from(1),
+            ];
+            let preimages = coordinates.clone();
+            verify_mixed_modulus_map(
+                &factors,
+                &coordinates,
+                &preimages,
+                &relations,
+                2,
+                &class_number,
+                64,
+            )
+            .unwrap();
+        }
+    }
+
+    #[test]
+    fn mixed_modulus_map_rejects_coordinatewise_but_not_joint_surjectivity() {
+        // On C2 x C4, both target coordinates are individually hit, but
+        // (0,2) and (1,1) generate only the cyclic subgroup of order four.
+        let factors = [Integer::from(2), Integer::from(4)];
+        let coordinates = [
+            Integer::from(0),
+            Integer::from(2),
+            Integer::from(1),
+            Integer::from(1),
+        ];
+        let counterfeit_preimages = [
+            Integer::from(1),
+            Integer::from(0),
+            Integer::from(0),
+            Integer::from(1),
+        ];
         assert!(matches!(
-            verify_gf2_annihilation(&[1, 0], 1, &[1, 0], 2),
-            Err(CompactPresentationError::ClassMapDoesNotAnnihilate { .. })
+            verify_mixed_modulus_map(
+                &factors,
+                &coordinates,
+                &counterfeit_preimages,
+                &[2, 0, 0, 4],
+                2,
+                &Integer::from(8),
+                64,
+            ),
+            Err(CompactPresentationError::ClassMapNotSurjective { .. })
         ));
+    }
+
+    #[test]
+    fn elementary_fast_and_general_routes_verify_the_same_quotient() {
+        let square = [2, 0, 0, 2];
+        let surplus = [2, 2];
+        let relations = [2, 0, 0, 2, 2, 2];
+        let fast = crate::flint_normal_form::flint_small_surplus_class_order(&square, &surplus, 2)
+            .unwrap();
+        let (fast_coordinates, selected) =
+            normalize_gf2_map(&fast.generator_coordinates, 2, fast.two_rank).unwrap();
+        let mut fast_preimages = vec![Integer::from(0); fast.two_rank * 2];
+        for (coordinate, generator) in selected.into_iter().enumerate() {
+            fast_preimages[coordinate * 2 + generator] = Integer::from(1);
+        }
+        let fast_factors = vec![Integer::from(2); fast.two_rank];
+        verify_mixed_modulus_map(
+            &fast_factors,
+            &fast_coordinates
+                .into_iter()
+                .map(Integer::from)
+                .collect::<Vec<_>>(),
+            &fast_preimages,
+            &relations,
+            2,
+            &fast.class_order,
+            64,
+        )
+        .unwrap();
+
+        let general = flint_small_surplus_smith_class_map(&square, &surplus, 2).unwrap();
+        let general_factors = general
+            .invariant_factors
+            .iter()
+            .copied()
+            .map(Integer::from)
+            .collect::<Vec<_>>();
+        verify_mixed_modulus_map(
+            &general_factors,
+            &general
+                .generator_coordinates
+                .iter()
+                .copied()
+                .map(Integer::from)
+                .collect::<Vec<_>>(),
+            &general
+                .generator_preimages
+                .iter()
+                .copied()
+                .map(Integer::from)
+                .collect::<Vec<_>>(),
+            &relations,
+            2,
+            &fast.class_order,
+            64,
+        )
+        .unwrap();
+        assert_eq!(fast_factors, general_factors);
     }
 }

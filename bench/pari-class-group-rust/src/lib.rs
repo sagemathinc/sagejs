@@ -78,9 +78,9 @@ pub use bruteforce_collector::{
     collect_validated_primitive_box_with_supplementary,
 };
 pub use class_group::{
-    CollectorCounters, CollectorTimings, PreparedCollectorLimits,
-    PreparedCubicRelationPresentation, collect_prepared_cubic_relations,
-    modular_independent_relation_rows,
+    ClassGroupError, CollectorCounters, CollectorTimings, PreparedCollectorLimits,
+    PreparedContinuationLimits, PreparedCubicRelationCollector, PreparedCubicRelationPresentation,
+    collect_prepared_cubic_relations, modular_independent_relation_rows,
 };
 pub use class_maps::{
     ClassCoordinates, ClassMapError, PresentationClassMap, PresentationZeroState,
@@ -90,7 +90,7 @@ pub use class_maps::{
 pub use compact_cubic_presentation::{
     CompactGeneratorOrderEvidence, CompactPresentationError, CompactPresentationLimits,
     CompactPresentationSolverData, CompactSaturationMinor, VerifiedCompactPresentation,
-    authenticate_compact_elementary_two_presentation,
+    authenticate_compact_presentation,
 };
 #[cfg(feature = "flint-normal-form")]
 pub use cubic_completion::{
@@ -120,8 +120,8 @@ pub use flint_normal_form::{
     flint_small_surplus_class_order_with_workspace,
     flint_small_surplus_class_order_with_workspace_natural_order,
     flint_small_surplus_class_order_with_workspace_static_minimum_degree,
-    flint_small_surplus_relation_witnesses, flint_smith_candidate, flint_smith_class_map,
-    flint_staged_relation_witnesses,
+    flint_small_surplus_relation_witnesses, flint_small_surplus_smith_class_map,
+    flint_smith_candidate, flint_smith_class_map, flint_staged_relation_witnesses,
 };
 pub use gmp_smith::{
     ExactSmithCandidateInvariants, GmpSmithError, GmpSmithWorkspace,

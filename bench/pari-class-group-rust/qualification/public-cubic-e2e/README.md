@@ -42,9 +42,23 @@ The process exits successfully only after the typed library completion phase
 has isolated class/unit index one and certified factor-base generation under
 the two hypotheses named in the receipt. Unconditional mode and exhausted
 resources fail closed. Exact maximal-order index-prime decomposition is part
-of the admitted cubic path. Large elementary-2 presentations use the bounded
-compact verifier; unsupported large quotient structures fail explicitly
-rather than falling back to an impractical dense transform. The sealed result
+of the admitted cubic path. Large small-surplus presentations use the bounded
+compact verifier, including mixed invariant factors; unsupported shapes fail
+explicitly rather than falling back to an impractical dense transform. Under
+the frozen V2 request schema, compact invariant width is capped by
+`maximumCompactGenerators`, map storage and fixed Smith-buffer storage by
+`maximumNormalFormEntries` (the latter measured in machine-word slots), map
+coefficient size by `maximumCompactTargetCoefficientBits`, and general Smith
+transform work by `maximumNormalFormOperations`. Thus the new verifier has no
+implicit resource defaults and old V2 request bytes retain their exact meaning.
+When the analytic index alone is not isolated, one stateful collector advances
+through the fixed answer-free supplementary targets `7, 8, 9, 10, 12, 16`,
+bounded by the request's cumulative relation, dependency, ideal, and candidate
+ceilings. Only that analytic outcome permits another target; authentication,
+resource, programming, or proof failures stop immediately. Successful
+multi-target receipts include redacted continuation counters but never failed
+class numbers or invariant factors.
+The sealed result
 retains its authenticated presentation map for subsequent arbitrary-ideal operations.
 The receipt's stage clocks end when the sealed mathematical result is
 constructed; JSON projection and serialization are excluded, matching the

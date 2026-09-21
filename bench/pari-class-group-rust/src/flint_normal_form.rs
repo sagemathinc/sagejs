@@ -35,6 +35,9 @@ pub struct FlintSmithClassMap {
     pub invariant_factors: Vec<i64>,
     /// Generator-major coordinates, reduced to `[0, invariant_factor)`.
     pub generator_coordinates: Vec<i64>,
+    /// Coordinate-major preimages of the canonical cyclic generators,
+    /// reduced modulo the largest invariant factor.
+    pub generator_preimages: Vec<i64>,
     pub generator_count: usize,
 }
 
@@ -108,6 +111,19 @@ impl FlintSmallSurplusWorkspace {
     pub fn relation_witnesses(
         &self,
         targets: &[i64],
+    ) -> Result<FlintRelationWitnesses, FlintNormalFormError> {
+        let targets = targets
+            .iter()
+            .copied()
+            .map(Integer::from)
+            .collect::<Vec<_>>();
+        self.relation_witnesses_mpz(&targets)
+    }
+
+    /// Arbitrary-precision counterpart of [`Self::relation_witnesses`].
+    pub fn relation_witnesses_mpz(
+        &self,
+        targets: &[Integer],
     ) -> Result<FlintRelationWitnesses, FlintNormalFormError> {
         flint_small_surplus_relation_witnesses_impl(
             &self.square_relations,
@@ -309,13 +325,13 @@ unsafe extern "C" {
         workspace_output: *mut *mut c_void,
     ) -> c_int;
     fn sagejs_rust_flint_small_surplus_workspace_free(workspace: *mut c_void);
-    fn sagejs_rust_flint_small_surplus_relation_witnesses_i64(
+    fn sagejs_rust_flint_small_surplus_relation_witnesses_mpz(
         size: usize,
         surplus_rows: usize,
         square_entries: *const c_longlong,
         surplus_entries: *const c_longlong,
         target_count: usize,
-        targets: *const c_longlong,
+        targets: *const *const c_void,
         witnesses: *const *mut c_void,
         maximum_coefficient_bits: *mut usize,
         nonzero_counts: *mut usize,
@@ -332,6 +348,7 @@ unsafe extern "C" {
         entries: *const c_longlong,
         invariant_factors: *mut c_longlong,
         generator_coordinates: *mut c_longlong,
+        generator_preimages: *mut c_longlong,
         invariant_count: *mut usize,
     ) -> c_int;
     fn sagejs_rust_flint_relation_witnesses_i64(
@@ -629,11 +646,16 @@ pub fn flint_small_surplus_relation_witnesses(
     size: usize,
     targets: &[i64],
 ) -> Result<FlintRelationWitnesses, FlintNormalFormError> {
+    let targets = targets
+        .iter()
+        .copied()
+        .map(Integer::from)
+        .collect::<Vec<_>>();
     flint_small_surplus_relation_witnesses_impl(
         square_relations,
         surplus_relations,
         size,
-        targets,
+        &targets,
         ptr::null_mut(),
     )
 }
@@ -642,7 +664,7 @@ fn flint_small_surplus_relation_witnesses_impl(
     square_relations: &[i64],
     surplus_relations: &[i64],
     size: usize,
-    targets: &[i64],
+    targets: &[Integer],
     workspace: *mut c_void,
 ) -> Result<FlintRelationWitnesses, FlintNormalFormError> {
     if size == 0
@@ -667,18 +689,22 @@ fn flint_small_surplus_relation_witnesses_impl(
         .iter_mut()
         .map(|value| value.as_raw_mut().cast::<c_void>())
         .collect::<Vec<_>>();
+    let target_pointers = targets
+        .iter()
+        .map(|value| value.as_raw().cast::<c_void>())
+        .collect::<Vec<_>>();
     let mut maximum_coefficient_bits = 0_usize;
     let mut nonzero_counts = vec![0_usize; target_count];
     let mut solve_ns = 0_u64;
     let mut affine_kernel_ns = 0_u64;
     let status = unsafe {
-        sagejs_rust_flint_small_surplus_relation_witnesses_i64(
+        sagejs_rust_flint_small_surplus_relation_witnesses_mpz(
             size,
             surplus_rows,
             square_relations.as_ptr().cast(),
             surplus_relations.as_ptr().cast(),
             target_count,
-            targets.as_ptr().cast(),
+            target_pointers.as_ptr(),
             pointers.as_ptr(),
             &mut maximum_coefficient_bits,
             nonzero_counts.as_mut_ptr(),
@@ -1174,6 +1200,7 @@ pub fn flint_smith_class_map(
     }
     let mut factors = vec![0_i64; size];
     let mut unpacked_coordinates = vec![0_i64; basis.len()];
+    let mut unpacked_preimages = vec![0_i64; basis.len()];
     let mut invariant_count = 0_usize;
     // Buffers are disjoint and fully sized for the maximum possible number of
     // invariant factors. The bridge writes the actual count before returning.
@@ -1183,6 +1210,7 @@ pub fn flint_smith_class_map(
             basis.as_ptr().cast(),
             factors.as_mut_ptr().cast(),
             unpacked_coordinates.as_mut_ptr().cast(),
+            unpacked_preimages.as_mut_ptr().cast(),
             &mut invariant_count,
         )
     };
@@ -1202,9 +1230,123 @@ pub fn flint_smith_class_map(
             &unpacked_coordinates[generator * size..generator * size + invariant_count],
         );
     }
+    let generator_preimages = unpacked_preimages[..size * invariant_count].to_vec();
     Ok(FlintSmithClassMap {
         invariant_factors: factors,
         generator_coordinates,
+        generator_preimages,
+        generator_count: size,
+    })
+}
+
+/// Produce a Smith map for a full-rank relation lattice from one square basis
+/// and a small number of surplus rows.
+///
+/// The expensive transform is confined to the square starting quotient. Its
+/// nontrivial Smith coordinates form a usually tiny presentation; adjoining
+/// the surplus images and reducing that presentation avoids an HNF transform
+/// of the complete rectangular relation matrix.
+pub fn flint_small_surplus_smith_class_map(
+    square: &[i64],
+    surplus: &[i64],
+    size: usize,
+) -> Result<FlintSmithClassMap, FlintNormalFormError> {
+    if size == 0
+        || square.len() != size.checked_mul(size).unwrap_or(0)
+        || !surplus.len().is_multiple_of(size)
+    {
+        return Err(FlintNormalFormError::DimensionMismatch);
+    }
+    let initial = flint_smith_class_map(square, size)?;
+    let initial_width = initial.invariant_factors.len();
+    if initial_width == 0 {
+        return Ok(FlintSmithClassMap {
+            invariant_factors: Vec::new(),
+            generator_coordinates: Vec::new(),
+            generator_preimages: Vec::new(),
+            generator_count: size,
+        });
+    }
+    let surplus_rows = surplus.len() / size;
+    let mut reduced_relations = vec![0_i64; (initial_width + surplus_rows) * initial_width];
+    for coordinate in 0..initial_width {
+        reduced_relations[coordinate * initial_width + coordinate] =
+            initial.invariant_factors[coordinate];
+    }
+    for relation in 0..surplus_rows {
+        for coordinate in 0..initial_width {
+            let modulus = Integer::from(initial.invariant_factors[coordinate]);
+            let mut image = Integer::from(0);
+            for generator in 0..size {
+                image += Integer::from(surplus[relation * size + generator])
+                    * initial.generator_coordinates[generator * initial_width + coordinate];
+            }
+            image %= &modulus;
+            if image < 0 {
+                image += &modulus;
+            }
+            reduced_relations[(initial_width + relation) * initial_width + coordinate] = image
+                .to_i64()
+                .ok_or(FlintNormalFormError::DiagonalOutsideI64)?;
+        }
+    }
+    let reduced_basis = flint_hnf_basis(
+        &reduced_relations,
+        initial_width + surplus_rows,
+        initial_width,
+    )?;
+    let reduced = flint_smith_class_map(&reduced_basis, initial_width)?;
+    let final_width = reduced.invariant_factors.len();
+    if final_width == 0 {
+        return Ok(FlintSmithClassMap {
+            invariant_factors: Vec::new(),
+            generator_coordinates: Vec::new(),
+            generator_preimages: Vec::new(),
+            generator_count: size,
+        });
+    }
+    let final_exponent = Integer::from(reduced.invariant_factors[final_width - 1]);
+    let mut generator_coordinates = vec![0_i64; size * final_width];
+    for generator in 0..size {
+        for target in 0..final_width {
+            let modulus = Integer::from(reduced.invariant_factors[target]);
+            let mut image = Integer::from(0);
+            for source in 0..initial_width {
+                image += Integer::from(
+                    initial.generator_coordinates[generator * initial_width + source],
+                ) * reduced.generator_coordinates[source * final_width + target];
+            }
+            image %= &modulus;
+            if image < 0 {
+                image += &modulus;
+            }
+            generator_coordinates[generator * final_width + target] = image
+                .to_i64()
+                .ok_or(FlintNormalFormError::DiagonalOutsideI64)?;
+        }
+    }
+    let mut generator_preimages = vec![0_i64; final_width * size];
+    for target in 0..final_width {
+        for generator in 0..size {
+            let mut preimage = Integer::from(0);
+            for source in 0..initial_width {
+                preimage +=
+                    Integer::from(reduced.generator_preimages[target * initial_width + source])
+                        * initial.generator_preimages[source * size + generator];
+            }
+            preimage %= &final_exponent;
+            if preimage < 0 {
+                preimage += &final_exponent;
+            }
+            generator_preimages[target * size + generator] = preimage
+                .to_i64()
+                .ok_or(FlintNormalFormError::DiagonalOutsideI64)?;
+        }
+    }
+    Ok(FlintSmithClassMap {
+        invariant_factors: reduced.invariant_factors,
+        generator_coordinates,
+        generator_preimages,
         generator_count: size,
     })
 }
@@ -1467,7 +1609,84 @@ mod tests {
         assert_eq!(map.invariant_factors, [4]);
         assert!(map.annihilates(&source, 2));
         assert!(map.coordinates(0).unwrap()[0] != 0 || map.coordinates(1).unwrap()[0] != 0);
+        let modulus = map.invariant_factors[0];
+        let preimage_value = (0..2).fold(0_i128, |sum, generator| {
+            sum + i128::from(map.generator_preimages[generator])
+                * i128::from(map.generator_coordinates[generator])
+        });
+        assert_eq!(preimage_value.rem_euclid(i128::from(modulus)), 1);
+        assert!(
+            map.generator_preimages
+                .iter()
+                .all(|value| *value >= 0 && *value < modulus)
+        );
         assert!(map.coordinates(2).is_none());
+    }
+
+    #[test]
+    fn compact_smith_map_handles_mixed_invariant_factors() {
+        for (basis, expected) in [([2, 0, 0, 4], vec![2, 4]), ([4, 0, 0, 8], vec![4, 8])] {
+            let map = flint_smith_class_map(&basis, 2).unwrap();
+            assert_eq!(map.invariant_factors, expected);
+            assert!(map.annihilates(&basis, 2));
+            for source in 0..2 {
+                for target in 0..2 {
+                    let modulus = map.invariant_factors[target];
+                    let value = (0..2).fold(0_i128, |sum, generator| {
+                        sum + i128::from(map.generator_preimages[source * 2 + generator])
+                            * i128::from(map.generator_coordinates[generator * 2 + target])
+                    });
+                    assert_eq!(
+                        value.rem_euclid(i128::from(modulus)),
+                        if source == target { 1 } else { 0 }
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn compact_smith_maps_match_rectangular_smith_candidates() {
+        let mut state = 0x243f_6a88_85a3_08d3_u64;
+        let mut accepted = 0;
+        while accepted < 64 {
+            state = state
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            let size = 2 + (state as usize & 1);
+            let rows = size + 2;
+            let relations = (0..rows * size)
+                .map(|_| {
+                    state = state
+                        .wrapping_mul(6_364_136_223_846_793_005)
+                        .wrapping_add(1_442_695_040_888_963_407);
+                    ((state >> 32) % 9) as i64 - 4
+                })
+                .collect::<Vec<_>>();
+            let square = &relations[..size * size];
+            let surplus = &relations[size * size..];
+            let Ok(map) = flint_small_surplus_smith_class_map(square, surplus, size) else {
+                continue;
+            };
+            let direct = flint_smith_candidate(&relations, rows, size).unwrap();
+            assert_eq!(map.invariant_factors, direct.invariant_factors);
+            assert!(map.annihilates(&relations, rows));
+            let width = map.invariant_factors.len();
+            for source in 0..width {
+                for target in 0..width {
+                    let modulus = map.invariant_factors[target];
+                    let value = (0..size).fold(0_i128, |sum, generator| {
+                        sum + i128::from(map.generator_preimages[source * size + generator])
+                            * i128::from(map.generator_coordinates[generator * width + target])
+                    });
+                    assert_eq!(
+                        value.rem_euclid(i128::from(modulus)),
+                        if source == target { 1 } else { 0 }
+                    );
+                }
+            }
+            accepted += 1;
+        }
     }
 
     #[test]
