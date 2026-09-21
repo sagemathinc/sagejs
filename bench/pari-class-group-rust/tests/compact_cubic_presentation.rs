@@ -217,6 +217,8 @@ fn continuation_cache_matches_fresh_authentication_of_enlarged_relations() {
         None,
     )
     .unwrap();
+    let first_class_number = first.class_number().clone();
+    let first_invariant_factors = first.invariant_factors().to_vec();
     let cache = first.into_continuation_cache();
     let enlarged = collector.advance_to_supplementary(14).unwrap();
     let reused = authenticate_compact_presentation_with_cache(
@@ -228,6 +230,12 @@ fn continuation_cache_matches_fresh_authentication_of_enlarged_relations() {
     let fresh =
         authenticate_compact_presentation(&enlarged, CompactPresentationLimits::default()).unwrap();
 
+    // This fixture keeps the same quotient after enlargement, so the reused
+    // route consumes the cached map and then authenticates it against every
+    // relation in the enlarged presentation. The fresh route remains the
+    // independent oracle.
+    assert_eq!(reused.class_number(), &first_class_number);
+    assert_eq!(reused.invariant_factors(), first_invariant_factors);
     assert_eq!(reused.invariant_factors(), fresh.invariant_factors());
     assert_eq!(reused.class_number(), fresh.class_number());
     assert_eq!(

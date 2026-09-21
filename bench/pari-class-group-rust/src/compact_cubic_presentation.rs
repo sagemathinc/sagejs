@@ -111,13 +111,29 @@ pub struct CompactPresentationSolverData {
     maximum_target_coefficient_bits: usize,
 }
 
-/// Exact square factorization retained across answer-free relation
-/// continuation. It is only a producer cache: every enlarged presentation is
-/// independently replayed and authenticated before publication.
+/// Exact square factorization and quotient map retained across answer-free
+/// relation continuation. This is only a producer cache: the quotient map is
+/// reused solely when the exact class order is unchanged, and every enlarged
+/// presentation independently replays all dependencies, relations, inverse
+/// identities, saturation evidence, and generator-order witnesses before
+/// publication.
 #[derive(Debug)]
 pub struct CompactPresentationContinuationCache {
     workspace: FlintSmallSurplusWorkspace,
     square_rows: Vec<usize>,
+    map: CompactPresentationMapCache,
+}
+
+/// A previously verified quotient map retained only as a continuation
+/// producer. It carries no authority into the enlarged presentation: the
+/// current class order must be identical and the complete map, right inverse,
+/// and every enlarged relation are verified again before publication.
+#[derive(Debug)]
+struct CompactPresentationMapCache {
+    class_number: Integer,
+    invariant_factors: Vec<Integer>,
+    generator_coordinates: Vec<Integer>,
+    generator_preimages: Vec<Integer>,
 }
 
 impl CompactPresentationSolverData {
@@ -266,9 +282,24 @@ impl VerifiedCompactPresentation {
     }
 
     pub fn into_continuation_cache(self) -> CompactPresentationContinuationCache {
+        let generator_preimages = self
+            .generator_orders
+            .iter()
+            .flat_map(|evidence| evidence.factor_base_exponents.iter().cloned())
+            .collect::<Vec<_>>();
+        debug_assert_eq!(
+            generator_preimages.len(),
+            self.invariant_factors.len() * self.solver_data.factor_base_size,
+        );
         CompactPresentationContinuationCache {
             workspace: self.solver_data.workspace,
             square_rows: self.square_rows,
+            map: CompactPresentationMapCache {
+                class_number: self.class_number,
+                invariant_factors: self.invariant_factors,
+                generator_coordinates: self.generator_coordinates,
+                generator_preimages,
+            },
         }
     }
 
@@ -430,13 +461,14 @@ pub fn authenticate_compact_presentation(
 }
 
 /// Authenticate an enlarged small-surplus presentation, reusing a matching
-/// exact square factorization when available.
+/// exact square factorization and a still-valid quotient map when available.
 ///
 /// Cache matching requires the identical selected square rows and exact
-/// square/surplus relation prefix. A mismatch simply discards the optimization
-/// and computes a fresh factorization. Regardless of the producer path, all
-/// dependency, saturation, index, map, and order-witness checks below rerun on
-/// the complete current presentation.
+/// square/surplus relation prefix. Map reuse additionally requires an identical
+/// exact class order. Any mismatch simply discards the corresponding
+/// optimization and computes fresh evidence. Regardless of the producer path,
+/// all dependency, saturation, index, map, and order-witness checks below rerun
+/// on the complete current presentation.
 pub fn authenticate_compact_presentation_with_cache(
     collected: &PreparedCubicRelationPresentation,
     limits: CompactPresentationLimits,
@@ -475,7 +507,7 @@ pub fn authenticate_compact_presentation_with_cache(
             .extend_from_slice(&collected.relations[row * generators..(row + 1) * generators]);
     }
 
-    let (compact, workspace) = match cache {
+    let (compact, workspace, cached_map) = match cache {
         Some(mut cache)
             if cache.square_rows == square_rows
                 && cache
@@ -483,10 +515,15 @@ pub fn authenticate_compact_presentation_with_cache(
                     .matches_extension(&square, &surplus_relations) =>
         {
             let compact = cache.workspace.extend_surplus(&surplus_relations)?;
-            (compact, cache.workspace)
+            (compact, cache.workspace, Some(cache.map))
         }
         _ => {
-            flint_small_surplus_class_order_with_workspace(&square, &surplus_relations, generators)?
+            let (compact, workspace) = flint_small_surplus_class_order_with_workspace(
+                &square,
+                &surplus_relations,
+                generators,
+            )?;
+            (compact, workspace, None)
         }
     };
     // The FLINT bridge computes this determinant exactly as part of the same
@@ -546,7 +583,13 @@ pub fn authenticate_compact_presentation_with_cache(
         Vec<Integer>,
         Vec<Integer>,
         Vec<Integer>,
-    ) = if class_number == elementary_order {
+    ) = if let Some(cached) = cached_map.filter(|cached| cached.class_number == class_number) {
+        (
+            cached.invariant_factors,
+            cached.generator_coordinates,
+            cached.generator_preimages,
+        )
+    } else if class_number == elementary_order {
         preflight_retained_map(generators, compact.two_rank, limits)?;
         let (normalized, selected) =
             normalize_gf2_map(&compact.generator_coordinates, generators, compact.two_rank)?;
