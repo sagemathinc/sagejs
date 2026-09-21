@@ -48,18 +48,18 @@ not pass the frozen performance target. After starting answer-blind
 continuation at fourteen surplus rows when the caller's budget permits it, the
 replacement clean 15-sample alternating campaign on the original twelve
 regressions matched every exact result and measured summed per-field medians of
-1.995 seconds for Rust and 0.582 seconds for PARI 2.17.4: 3.43x weighted, 5.01x
-by geometric mean, 8.88x at p90, and 13.08x maximum. The source commit is
-`809cd4f81`. Precision-specific relation logarithms are reused only after an
+1.915 seconds for Rust and 0.578 seconds for PARI 2.17.4: 3.31x weighted, 4.82x
+by geometric mean, 8.46x at p90, and 12.76x maximum. The source commit is
+`2233d78a9`. Precision-specific relation logarithms are reused only after an
 exact generator-prefix check. Checked fixed-width relation replay restarts in
 GMP on any overflow. Exact back substitution removes unit pivots from the
 modular HNF before the Smith map is computed and lifts the verified residual
 map back to every original generator. Relation refinement lazily retains at
 most 64 exact powers per encountered factor-base ideal and fails closed on a
 cache/prime mismatch; higher powers remain exact but are not retained. Rust's
-summed stage medians are 0.616 seconds relation collection, 0.548 seconds
-candidate authentication, 0.693 seconds unit and analytic completion, and
-0.079 seconds public preparation. Batching exact dependency replay reduced the
+summed stage medians are 0.612 seconds relation collection, 0.543 seconds
+candidate authentication, 0.625 seconds unit and analytic completion, and
+0.077 seconds public preparation. Batching exact dependency replay reduced the
 Rust absolute sum from 2.129 to 2.045 seconds. Exact continuation now reuses a
 FLINT fraction-free square factorization only after matching the selected
 square block and complete prior surplus prefix, then recomputes and verifies
@@ -69,6 +69,11 @@ complete call from 406.1 to 390.2 ms. Minting the immutable class-map binding
 once after exact constructor verification reduced summed authentication from
 0.571 to 0.548 seconds and the total from 2.013 to 1.995 seconds. Field 0012's
 authentication fell again to 169.7 ms and its complete call to 379.9 ms.
+Skipping compact principal generators whose exact exponents are zero across
+every reconstructed unit reduced summed unit/analytic completion from 0.693 to
+0.625 seconds and the total from 1.995 to 1.915 seconds, while retaining the
+same independent Arb regulator enclosure. Field 0012's complete call fell to
+366.0 ms.
 Relation collection was 1.063 seconds before the exact ideal-power cache. See
 `public-cubic-heldout-performance/receipt.json`. The fresh confirmation set
 remains correctness-only; its contextual diagnostic timings are not a formal
