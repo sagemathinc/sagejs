@@ -271,6 +271,36 @@ impl PreparedCubicEmbedding {
         }
         Ok(answer)
     }
+
+    /// Return only the logarithmic coordinates used to reconstruct the unit lattice.
+    ///
+    /// Rank-one signature `(1, 1)` reconstruction and regulator replay use only
+    /// `log|sigma_real|`. Avoid evaluating the unused complex coordinate for
+    /// every relation. The exact compact-unit replay and directed Arb regulator
+    /// enclosure remain independent downstream checks. Other supported
+    /// signatures retain the complete Dirichlet embedding.
+    pub(crate) fn unit_lattice_logarithmic_embedding(
+        &self,
+        element: &[Integer; DEGREE],
+    ) -> Result<[Float; DEGREE], NumericalPreparationError> {
+        if self.signature != (1, 1) {
+            return self.logarithmic_embedding(element);
+        }
+        let mut real = Float::with_val(self.precision, 0);
+        for (basis, coefficient) in element.iter().enumerate() {
+            real += Float::with_val(self.precision, &self.matrix[0][basis] * coefficient);
+        }
+        if real == 0 {
+            return Err(NumericalPreparationError::SingularEmbedding);
+        }
+        real.abs_mut();
+        real.ln_mut();
+        Ok([
+            real,
+            Float::with_val(self.precision, 0),
+            Float::with_val(self.precision, 0),
+        ])
+    }
 }
 
 fn evaluate_real_basis_element(
@@ -846,14 +876,20 @@ mod tests {
     fn complex_cubic_minkowski_embedding_obeys_the_product_formula() {
         let field = complex_cubic();
         let embedding = PreparedCubicEmbedding::from_validated(&field, 320).unwrap();
-        let logs = embedding
-            .logarithmic_embedding(&[0.into(), 1.into(), 0.into()])
-            .unwrap();
+        let element = [0.into(), 1.into(), 0.into()];
+        let logs = embedding.logarithmic_embedding(&element).unwrap();
         let mut residual = logs[0].clone();
         residual += &logs[1];
         residual.abs_mut();
         assert!(residual < Float::with_val(320, 1) >> 250);
         assert_eq!(logs[2], 0);
+
+        let rank_one_logs = embedding
+            .unit_lattice_logarithmic_embedding(&element)
+            .unwrap();
+        assert_eq!(rank_one_logs[0], logs[0]);
+        assert_eq!(rank_one_logs[1], 0);
+        assert_eq!(rank_one_logs[2], 0);
 
         let prepared = prepare_cubic_ideal(&embedding, &CubicIdeal::unit()).unwrap();
         assert!(prepared.bound.is_finite() && prepared.bound > 0.0);

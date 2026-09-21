@@ -131,8 +131,8 @@ fn row6_completes_conditionally_end_to_end_from_coefficients() {
         prepared,
         candidate,
         CubicConditionalCompletionOptions {
-            logarithm_precision_bits: 4_096,
-            replay_precision_bits: 2_048,
+            logarithm_precision_bits: 8_192,
+            replay_precision_bits: 4_096,
             analytic_precision_bits: 512,
             ..CubicConditionalCompletionOptions::default()
         },
@@ -142,6 +142,7 @@ fn row6_completes_conditionally_end_to_end_from_coefficients() {
 
     assert_eq!(completed.invariant_factors(), &[Integer::from(2), 2.into()]);
     assert_eq!(completed.class_number(), &Integer::from(4));
+    assert_eq!(completed.precision().attempted_levels().len(), 2);
     assert!(completed.verify_sealed_evidence());
     eprintln!(
         "row6 stages: preparation={preparation:?} collection={collection:?} authentication={authentication:?} completion={completion:?} total={:?}",

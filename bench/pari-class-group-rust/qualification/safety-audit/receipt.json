@@ -3211,8 +3211,8 @@
     {
       "file": "qualification/public-cubic-e2e/src/lib.rs",
       "scope": "qualification-only",
-      "sha256": "52ff08443229224a3a66e22f87318e020e50086a7f97e864828f691e7feb9527",
-      "bytes": 23112,
+      "sha256": "b6e279613ab5bc50f11c15c81c1b9c161e97636f8a1393ccfe6b15073bd86869",
+      "bytes": 29048,
       "copyrightNotices": [
         "Copyright (C) Sage.js contributors."
       ],
@@ -3593,8 +3593,8 @@
     {
       "file": "src/class_group.rs",
       "scope": "product-candidate",
-      "sha256": "75b28b18f9b5492e62d0e62429aa692c5648a85f528440d728206a9cb89ea6d2",
-      "bytes": 48866,
+      "sha256": "3d8024c5a22d6bc6539fc2eb24d5ffcbb99305580f4148004293bded39569034",
+      "bytes": 48923,
       "copyrightNotices": [
         "Copyright (C) The PARI group and Sage.js contributors."
       ],
@@ -3605,8 +3605,8 @@
     {
       "file": "src/class_maps.rs",
       "scope": "product-candidate",
-      "sha256": "2c70447f73becb8ccb164b909e2f0afe6a208937e4cc4d7c647ba2c5373a158a",
-      "bytes": 26267,
+      "sha256": "28517f4bbeb8d724b23fb94ad3ce014b057106155dbadb4f3d76b997a380bcab",
+      "bytes": 26427,
       "copyrightNotices": [
         "Copyright (C) Sage.js contributors."
       ],
@@ -3641,8 +3641,8 @@
     {
       "file": "src/cubic_completion.rs",
       "scope": "product-candidate",
-      "sha256": "b15aa5def92cb91149ea1dc9381d2376a4799ed39bbdb72a17d72ec871d3a746",
-      "bytes": 30374,
+      "sha256": "a4ddfbeaecc01245f54b64565b6e01b83bf1ab1f01fec7c4aa8e44b5f1326c94",
+      "bytes": 38527,
       "copyrightNotices": [
         "Copyright (C) Sage.js contributors."
       ],
@@ -3749,8 +3749,8 @@
     {
       "file": "src/lib.rs",
       "scope": "product-candidate",
-      "sha256": "f6c8589cb31b6a0c1657774d92a2eccebdbbb4e360e7669d5729405d04c04488",
-      "bytes": 7227,
+      "sha256": "734d16351c182875f97ac341804ca871dd6e7e46d64808110a388488e2344cbd",
+      "bytes": 7328,
       "copyrightNotices": [
         "Copyright (C) The PARI group and Sage.js contributors."
       ],
@@ -3773,8 +3773,8 @@
     {
       "file": "src/numerical_preparation.rs",
       "scope": "product-candidate",
-      "sha256": "d966d2805b83a255ac42111cc09cc69498b30fba92aba610c0fa7b46d2e6b343",
-      "bytes": 32236,
+      "sha256": "760cb3dce5ac14e96c1032918a13999e661922a8225a27a5f4b1397154074d8b",
+      "bytes": 33748,
       "copyrightNotices": [
         "Copyright (C) The PARI group and Sage.js contributors."
       ],
@@ -3893,8 +3893,8 @@
     {
       "file": "src/smooth_admission.rs",
       "scope": "product-candidate",
-      "sha256": "4936644436d471b91e11f8690f9abbbf03d4450b81a6f6483b9f237c6b982573",
-      "bytes": 24142,
+      "sha256": "b0931be1a8a9298594a69892637cb4d1bfeb051e0231101875ef0115c08cc00e",
+      "bytes": 28454,
       "copyrightNotices": [
         "Copyright (C) The PARI group and Sage.js contributors."
       ],
@@ -3939,8 +3939,8 @@
     {
       "file": "tests/class_maps.rs",
       "scope": "product-candidate-test",
-      "sha256": "ac351a929af41e1324d78f4f031befad176dd9cfe1d7c6977c62a2ef537e709f",
-      "bytes": 14586,
+      "sha256": "381ded822890f9e143545db91387bcf15e9ce16b6324de752f562f1ad38c2cce",
+      "bytes": 16102,
       "copyrightNotices": [
         "Copyright (C) Sage.js contributors."
       ],
@@ -3975,8 +3975,8 @@
     {
       "file": "tests/compact_cubic_presentation.rs",
       "scope": "product-candidate-test",
-      "sha256": "006f9773f2d5c15de0503fc40a3040740cdcb49f17c51c5cdd3a6b0437c23d76",
-      "bytes": 12102,
+      "sha256": "f5af3c65b0aa2b777c188e87edf48ef3479b1f75942ab05522c6a711d4f0ace6",
+      "bytes": 12169,
       "copyrightNotices": [
         "Copyright (C) Sage.js contributors."
       ],
@@ -3987,8 +3987,8 @@
     {
       "file": "tests/cubic_conditional_completion.rs",
       "scope": "product-candidate-test",
-      "sha256": "183e593c0410c5c87e8d465ac5abf56e5373c658126a8de3b4bc7b10ea747870",
-      "bytes": 5416,
+      "sha256": "3362b57b76c777e72c5f4a887e9ec018e67862859f58a08b5a237d1b5f305c6e",
+      "bytes": 8416,
       "copyrightNotices": [
         "Copyright (C) Sage.js contributors."
       ],
@@ -4434,5 +4434,5 @@
     "miriCoverageEstablished": false,
     "productionQualified": false
   },
-  "inventorySha256": "966ea98de155aa521db8cfbf5caa57540f093889fe80b018bc39c8c71c5fb507"
+  "inventorySha256": "9ddb8d5062c57f38fffc1aa28af9fa20c5ab1726edfa5b05d0a503d59899ab0f"
 }

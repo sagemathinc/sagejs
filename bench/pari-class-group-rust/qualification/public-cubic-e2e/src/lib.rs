@@ -96,6 +96,13 @@ pub struct CandidateEvidence {
     pub authority: &'static str,
 }
 
+#[derive(Clone, Copy, Debug, Serialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct CompletionPrecisionLevelEvidence {
+    pub logarithm_precision_bits: u32,
+    pub replay_precision_bits: u32,
+}
+
 #[derive(Clone, Debug, Serialize, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct CompletionEvidence {
@@ -106,6 +113,9 @@ pub struct CompletionEvidence {
     pub bf_threshold: u64,
     pub class_unit_hypothesis: &'static str,
     pub factor_base_hypothesis: &'static str,
+    pub requested_logarithm_precision_bits: u32,
+    pub requested_replay_precision_bits: u32,
+    pub attempted_precision_levels: Vec<CompletionPrecisionLevelEvidence>,
     pub sealed_evidence_verified: bool,
     pub arbitrary_ideal_class_map_retained: bool,
 }
@@ -415,6 +425,21 @@ pub fn qualify(request: Request) -> Result<Receipt, QualificationError> {
             bf_threshold: completed.analytic().bf_threshold(),
             class_unit_hypothesis: CubicAnalyticEvidence::CLASS_UNIT_HYPOTHESIS,
             factor_base_hypothesis: CubicAnalyticEvidence::FACTOR_BASE_HYPOTHESIS,
+            requested_logarithm_precision_bits: completed
+                .precision()
+                .requested_logarithm_precision_bits(),
+            requested_replay_precision_bits: completed
+                .precision()
+                .requested_replay_precision_bits(),
+            attempted_precision_levels: completed
+                .precision()
+                .attempted_levels()
+                .iter()
+                .map(|level| CompletionPrecisionLevelEvidence {
+                    logarithm_precision_bits: level.logarithm_precision_bits,
+                    replay_precision_bits: level.replay_precision_bits,
+                })
+                .collect(),
             sealed_evidence_verified,
             arbitrary_ideal_class_map_retained: true,
         };
@@ -553,6 +578,15 @@ mod tests {
         let completion = receipt.completion.unwrap();
         assert_eq!(completion.class_number, "1");
         assert_eq!(completion.unit_rank, 1);
+        assert_eq!(completion.requested_logarithm_precision_bits, 1_024);
+        assert_eq!(completion.requested_replay_precision_bits, 512);
+        assert_eq!(
+            completion.attempted_precision_levels,
+            [CompletionPrecisionLevelEvidence {
+                logarithm_precision_bits: 1_024,
+                replay_precision_bits: 512,
+            }]
+        );
         assert!(completion.sealed_evidence_verified);
         assert!(completion.arbitrary_ideal_class_map_retained);
         assert_eq!(receipt.first_unavailable_boundary, None);
@@ -637,8 +671,8 @@ mod tests {
             "0".into(),
             "1".into(),
         ];
-        input.resources.logarithm_precision_bits = 4_096;
-        input.resources.replay_precision_bits = 2_048;
+        input.resources.logarithm_precision_bits = 8_192;
+        input.resources.replay_precision_bits = 4_096;
         input.resources.analytic_precision_bits = 512;
         let receipt = qualify(input).unwrap();
         assert!(receipt.public_complete);
@@ -654,6 +688,14 @@ mod tests {
         );
         let completion = receipt.completion.unwrap();
         assert_eq!(completion.class_number, "4");
+        assert_eq!(completion.attempted_precision_levels.len(), 2);
+        assert_eq!(
+            completion.attempted_precision_levels[1],
+            CompletionPrecisionLevelEvidence {
+                logarithm_precision_bits: 8_192,
+                replay_precision_bits: 4_096,
+            }
+        );
         assert_eq!(completion.unit_rank, 2);
         assert!(completion.sealed_evidence_verified);
     }

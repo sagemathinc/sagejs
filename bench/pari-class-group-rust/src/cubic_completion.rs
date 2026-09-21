@@ -76,7 +76,26 @@ impl Default for CubicConditionalCompletionOptions {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+/// Exact final BF enclosure retained only when analytic completion declines.
+///
+/// The interval is diagnostic evidence, not completion authority. In
+/// particular, retaining it does not establish index one or permit callers to
+/// construct a completed class group. Its `Debug` representation is redacted
+/// so generic public error receipts do not publish analytic values.
+#[derive(Clone, Eq, PartialEq)]
+pub struct AnalyticIndexFailureDiagnostic {
+    pub threshold: u64,
+    pub enclosure: FlintBfIndexEnclosure,
+    pub tail_bound_below_quarter: bool,
+}
+
+impl std::fmt::Debug for AnalyticIndexFailureDiagnostic {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("AnalyticIndexFailureDiagnostic(<redacted>)")
+    }
+}
+
+#[derive(Clone, Eq, PartialEq)]
 pub enum CubicConditionalCompletionError {
     UnsupportedProofMode,
     InvalidOptions,
@@ -98,13 +117,57 @@ pub enum CubicConditionalCompletionError {
     ReconstructionUnstable,
     MachineRepresentationLimit,
     RegulatorReplayOutsideEnclosure,
-    AnalyticIndexNotIsolated,
+    AnalyticIndexNotIsolated {
+        final_attempt: Option<AnalyticIndexFailureDiagnostic>,
+    },
     FactorBaseNotCertified,
     Numerical(NumericalPreparationError),
     UnitLattice(UnitLatticeError),
     Splitting(PreparedFactorBaseError),
     AnalyticPlan(BelabasFriedmanPlanError),
     Flint(FlintNormalFormError),
+}
+
+impl std::fmt::Debug for CubicConditionalCompletionError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::UnsupportedProofMode => formatter.write_str("UnsupportedProofMode"),
+            Self::InvalidOptions => formatter.write_str("InvalidOptions"),
+            Self::PreparedAuthorityMismatch => formatter.write_str("PreparedAuthorityMismatch"),
+            Self::ResourceLimit(value) => {
+                formatter.debug_tuple("ResourceLimit").field(value).finish()
+            }
+            Self::InvalidPresentationShape => formatter.write_str("InvalidPresentationShape"),
+            Self::KernelRankMismatch { expected, actual } => formatter
+                .debug_struct("KernelRankMismatch")
+                .field("expected", expected)
+                .field("actual", actual)
+                .finish(),
+            Self::KernelReplayMismatch => formatter.write_str("KernelReplayMismatch"),
+            Self::UnitRankMismatch { expected, actual } => formatter
+                .debug_struct("UnitRankMismatch")
+                .field("expected", expected)
+                .field("actual", actual)
+                .finish(),
+            Self::UnitReplayMismatch => formatter.write_str("UnitReplayMismatch"),
+            Self::ReconstructionUnstable => formatter.write_str("ReconstructionUnstable"),
+            Self::MachineRepresentationLimit => formatter.write_str("MachineRepresentationLimit"),
+            Self::RegulatorReplayOutsideEnclosure => {
+                formatter.write_str("RegulatorReplayOutsideEnclosure")
+            }
+            Self::AnalyticIndexNotIsolated { .. } => {
+                formatter.write_str("AnalyticIndexNotIsolated")
+            }
+            Self::FactorBaseNotCertified => formatter.write_str("FactorBaseNotCertified"),
+            Self::Numerical(error) => formatter.debug_tuple("Numerical").field(error).finish(),
+            Self::UnitLattice(error) => formatter.debug_tuple("UnitLattice").field(error).finish(),
+            Self::Splitting(error) => formatter.debug_tuple("Splitting").field(error).finish(),
+            Self::AnalyticPlan(error) => {
+                formatter.debug_tuple("AnalyticPlan").field(error).finish()
+            }
+            Self::Flint(error) => formatter.debug_tuple("Flint").field(error).finish(),
+        }
+    }
 }
 
 impl From<NumericalPreparationError> for CubicConditionalCompletionError {
@@ -185,6 +248,42 @@ pub struct CubicAnalyticEvidence {
     bdf_margin: FlintDyadicInterval,
 }
 
+/// One independently reconstructed logarithm/replay precision pair.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct CubicCompletionPrecisionLevel {
+    pub logarithm_precision_bits: u32,
+    pub replay_precision_bits: u32,
+}
+
+/// Auditable evidence for bounded adaptive numerical reconstruction.
+///
+/// The requested values are hard ceilings. Every attempted level is recorded
+/// in deterministic order and the accepted level is always the final entry.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CubicCompletionPrecisionEvidence {
+    requested_logarithm_precision_bits: u32,
+    requested_replay_precision_bits: u32,
+    attempted_levels: Vec<CubicCompletionPrecisionLevel>,
+}
+
+impl CubicCompletionPrecisionEvidence {
+    pub fn requested_logarithm_precision_bits(&self) -> u32 {
+        self.requested_logarithm_precision_bits
+    }
+    pub fn requested_replay_precision_bits(&self) -> u32 {
+        self.requested_replay_precision_bits
+    }
+    pub fn attempted_levels(&self) -> &[CubicCompletionPrecisionLevel] {
+        &self.attempted_levels
+    }
+    pub fn accepted_level(&self) -> CubicCompletionPrecisionLevel {
+        *self
+            .attempted_levels
+            .last()
+            .expect("sealed completion records an accepted precision level")
+    }
+}
+
 impl CubicAnalyticEvidence {
     pub const CLASS_UNIT_HYPOTHESIS: &'static str = "GRH for the Dedekind-zeta residue bound";
     pub const FACTOR_BASE_HYPOTHESIS: &'static str =
@@ -215,6 +314,7 @@ pub struct GrhConditionalCompleteCubicClassGroup {
     presentation: AuthenticatedCubicPresentationCandidate,
     units: CubicUnitLatticeEvidence,
     analytic: CubicAnalyticEvidence,
+    precision: CubicCompletionPrecisionEvidence,
 }
 
 impl GrhConditionalCompleteCubicClassGroup {
@@ -229,6 +329,9 @@ impl GrhConditionalCompleteCubicClassGroup {
     }
     pub fn analytic(&self) -> &CubicAnalyticEvidence {
         &self.analytic
+    }
+    pub fn precision(&self) -> &CubicCompletionPrecisionEvidence {
+        &self.precision
     }
     pub fn class_number(&self) -> &Integer {
         self.presentation.class_number_candidate()
@@ -279,6 +382,7 @@ impl GrhConditionalCompleteCubicClassGroup {
             )
             && interval_contains_unique_positive_one(&self.analytic.bf_enclosure.index)
             && interval_lower_gt_zero(&self.analytic.bdf_margin)
+            && precision_evidence_is_valid(&self.precision)
     }
 }
 
@@ -360,22 +464,51 @@ fn interval_contains_unique_positive_one(interval: &FlintDyadicInterval) -> bool
     lower > 0 && lower <= 1 && upper >= 1 && upper < 2
 }
 
-fn regulator_refinement_precision(precision: u32) -> Option<u32> {
-    let refined = precision
-        .saturating_mul(2)
-        .min(MAXIMUM_COMPLETION_PRECISION_BITS);
-    (refined > precision).then_some(refined)
+fn precision_evidence_is_valid(evidence: &CubicCompletionPrecisionEvidence) -> bool {
+    if evidence.requested_logarithm_precision_bits < 64
+        || evidence.requested_replay_precision_bits < 64
+        || evidence.requested_replay_precision_bits >= evidence.requested_logarithm_precision_bits
+        || evidence.requested_logarithm_precision_bits > MAXIMUM_COMPLETION_PRECISION_BITS
+        || evidence.requested_replay_precision_bits > MAXIMUM_COMPLETION_PRECISION_BITS
+    {
+        return false;
+    }
+    let schedule = completion_precision_schedule(
+        evidence.requested_logarithm_precision_bits,
+        evidence.requested_replay_precision_bits,
+    );
+    !evidence.attempted_levels.is_empty()
+        && evidence.attempted_levels.len() <= schedule.len()
+        && evidence.attempted_levels == schedule[..evidence.attempted_levels.len()]
 }
 
-fn dyadic_interval_contains(
-    outer: &FlintDyadicInterval,
-    inner: &FlintDyadicInterval,
-) -> Option<bool> {
-    let outer_lower = dyadic_endpoint(&outer.lower, outer.binary_exponent)?;
-    let outer_upper = dyadic_endpoint(&outer.upper, outer.binary_exponent)?;
-    let inner_lower = dyadic_endpoint(&inner.lower, inner.binary_exponent)?;
-    let inner_upper = dyadic_endpoint(&inner.upper, inner.binary_exponent)?;
-    Some(outer_lower <= inner_lower && inner_upper <= outer_upper)
+fn completion_precision_schedule(
+    logarithm_ceiling: u32,
+    replay_ceiling: u32,
+) -> Vec<CubicCompletionPrecisionLevel> {
+    let mut logarithm = logarithm_ceiling.min(4_096);
+    let mut replay = replay_ceiling.min(2_048);
+    let mut levels = Vec::new();
+    loop {
+        levels.push(CubicCompletionPrecisionLevel {
+            logarithm_precision_bits: logarithm,
+            replay_precision_bits: replay,
+        });
+        if logarithm == logarithm_ceiling && replay == replay_ceiling {
+            break;
+        }
+        logarithm = logarithm.saturating_mul(2).min(logarithm_ceiling);
+        replay = replay.saturating_mul(2).min(replay_ceiling);
+    }
+    levels
+}
+
+fn retryable_precision_error(error: &CubicConditionalCompletionError) -> bool {
+    matches!(
+        error,
+        CubicConditionalCompletionError::ReconstructionUnstable
+            | CubicConditionalCompletionError::RegulatorReplayOutsideEnclosure
+    )
 }
 
 /// Complete a cubic candidate under the two explicitly recorded GRH
@@ -385,6 +518,52 @@ pub fn complete_cubic_class_group_conditionally(
     prepared: PreparedPublicCubic,
     presentation: AuthenticatedCubicPresentationCandidate,
     options: CubicConditionalCompletionOptions,
+) -> Result<GrhConditionalCompleteCubicClassGroup, CubicConditionalCompletionError> {
+    if options.logarithm_precision_bits < 64
+        || options.replay_precision_bits < 64
+        || options.replay_precision_bits >= options.logarithm_precision_bits
+        || options.logarithm_precision_bits > MAXIMUM_COMPLETION_PRECISION_BITS
+        || options.replay_precision_bits > MAXIMUM_COMPLETION_PRECISION_BITS
+    {
+        return Err(CubicConditionalCompletionError::InvalidOptions);
+    }
+    let levels = completion_precision_schedule(
+        options.logarithm_precision_bits,
+        options.replay_precision_bits,
+    );
+    let mut attempted_levels = Vec::with_capacity(levels.len());
+    for (index, level) in levels.iter().copied().enumerate() {
+        attempted_levels.push(level);
+        let mut attempt_options = options;
+        attempt_options.logarithm_precision_bits = level.logarithm_precision_bits;
+        attempt_options.replay_precision_bits = level.replay_precision_bits;
+        let precision = CubicCompletionPrecisionEvidence {
+            requested_logarithm_precision_bits: options.logarithm_precision_bits,
+            requested_replay_precision_bits: options.replay_precision_bits,
+            attempted_levels: attempted_levels.clone(),
+        };
+        match complete_cubic_class_group_at_precision(
+            prepared.clone(),
+            presentation.clone(),
+            attempt_options,
+            precision,
+        ) {
+            Ok(completed) => {
+                debug_assert!(completed.verify_sealed_evidence());
+                return Ok(completed);
+            }
+            Err(error) if retryable_precision_error(&error) && index + 1 < levels.len() => {}
+            Err(error) => return Err(error),
+        }
+    }
+    unreachable!("a nonempty precision schedule always returns from its final level")
+}
+
+fn complete_cubic_class_group_at_precision(
+    prepared: PreparedPublicCubic,
+    presentation: AuthenticatedCubicPresentationCandidate,
+    options: CubicConditionalCompletionOptions,
+    precision: CubicCompletionPrecisionEvidence,
 ) -> Result<GrhConditionalCompleteCubicClassGroup, CubicConditionalCompletionError> {
     if options.proof_mode != CubicCompletionProofMode::GrhConditional {
         return Err(CubicConditionalCompletionError::UnsupportedProofMode);
@@ -465,7 +644,7 @@ pub fn complete_cubic_class_group_conditionally(
         .generators
         .chunks_exact(DEGREE)
         .map(|coordinates| {
-            embedding.logarithmic_embedding(&[
+            embedding.unit_lattice_logarithmic_embedding(&[
                 coordinates[0].clone(),
                 coordinates[1].clone(),
                 coordinates[2].clone(),
@@ -616,29 +795,7 @@ pub fn complete_cubic_class_group_conditionally(
     let regulator_upper = dyadic_endpoint(&regulator.upper, regulator.binary_exponent)
         .ok_or(CubicConditionalCompletionError::MachineRepresentationLimit)?;
     if replayed_rational < regulator_lower || replayed_rational > regulator_upper {
-        // Large compact units can lose thousands of bits through cancellation
-        // in the independent MPFR point replay. Lazily recompute the directed
-        // Arb enclosure at a strictly higher precision and require it to refine
-        // the original enclosure. This is a fail-closed refinement-consistency
-        // check which relies on Arb's directed-enclosure contract; it is not an
-        // independent proof of that contract and does not promote the lossy
-        // MPFR point approximation to proof evidence.
-        let refinement_precision = regulator_refinement_precision(options.logarithm_precision_bits)
-            .ok_or(CubicConditionalCompletionError::RegulatorReplayOutsideEnclosure)?;
-        let refined_regulator = flint_compact_cubic_regulator(
-            polynomial,
-            basis,
-            denominator,
-            prepared.field().data().signature,
-            &collected.generators,
-            &flattened_exponents,
-            refinement_precision,
-        )?;
-        let nested = dyadic_interval_contains(&regulator, &refined_regulator)
-            .ok_or(CubicConditionalCompletionError::MachineRepresentationLimit)?;
-        if !nested {
-            return Err(CubicConditionalCompletionError::RegulatorReplayOutsideEnclosure);
-        }
+        return Err(CubicConditionalCompletionError::RegulatorReplayOutsideEnclosure);
     }
 
     let class_number = presentation
@@ -660,6 +817,7 @@ pub fn complete_cubic_class_group_conditionally(
     let mut splitting_bound = 2_usize;
     let mut incremental_bf = IncrementalCubicBelabasFriedmanPlan::new();
     let mut accepted = None;
+    let mut final_failed_attempt = None;
     for threshold in thresholds
         .into_iter()
         .filter(|value| *value >= initial && *value <= options.maximum_analytic_threshold)
@@ -685,15 +843,23 @@ pub fn complete_cubic_class_group_conditionally(
             &regulator,
             options.analytic_precision_bits,
         )?;
-        if interval_upper_lt(&enclosure.tail_bound, Rational::from((1, 4)))
-            && interval_contains_unique_positive_one(&enclosure.index)
-        {
+        let tail_bound_below_quarter =
+            interval_upper_lt(&enclosure.tail_bound, Rational::from((1, 4)));
+        let index_isolated = interval_contains_unique_positive_one(&enclosure.index);
+        if tail_bound_below_quarter && index_isolated {
             accepted = Some((threshold, plan, enclosure));
             break;
         }
+        final_failed_attempt = Some(AnalyticIndexFailureDiagnostic {
+            threshold,
+            enclosure,
+            tail_bound_below_quarter,
+        });
     }
     let Some((bf_threshold, bf_plan, bf_enclosure)) = accepted else {
-        return Err(CubicConditionalCompletionError::AnalyticIndexNotIsolated);
+        return Err(CubicConditionalCompletionError::AnalyticIndexNotIsolated {
+            final_attempt: final_failed_attempt,
+        });
     };
     let bdf_bound = u64::try_from(collected.factor_base.catalog.relation_bound)
         .map_err(|_| CubicConditionalCompletionError::MachineRepresentationLimit)?
@@ -742,6 +908,7 @@ pub fn complete_cubic_class_group_conditionally(
             bdf_plan,
             bdf_margin,
         },
+        precision,
     };
     if !result.verify_sealed_evidence() {
         return Err(CubicConditionalCompletionError::UnitReplayMismatch);
@@ -753,36 +920,64 @@ pub fn complete_cubic_class_group_conditionally(
 mod tests {
     use super::*;
 
-    fn interval(lower: i32, upper: i32, binary_exponent: i64) -> FlintDyadicInterval {
-        FlintDyadicInterval {
-            lower: Integer::from(lower),
-            upper: Integer::from(upper),
-            binary_exponent,
-        }
+    #[test]
+    fn precision_schedule_is_bounded_deterministic_and_ends_at_the_ceiling() {
+        assert_eq!(
+            completion_precision_schedule(8_192, 4_096),
+            [
+                CubicCompletionPrecisionLevel {
+                    logarithm_precision_bits: 4_096,
+                    replay_precision_bits: 2_048,
+                },
+                CubicCompletionPrecisionLevel {
+                    logarithm_precision_bits: 8_192,
+                    replay_precision_bits: 4_096,
+                },
+            ]
+        );
+        assert_eq!(
+            completion_precision_schedule(4_096, 2_048),
+            [CubicCompletionPrecisionLevel {
+                logarithm_precision_bits: 4_096,
+                replay_precision_bits: 2_048,
+            }]
+        );
+        let uneven = completion_precision_schedule(10_000, 3_000);
+        assert_eq!(
+            uneven.last(),
+            Some(&CubicCompletionPrecisionLevel {
+                logarithm_precision_bits: 10_000,
+                replay_precision_bits: 3_000,
+            })
+        );
+        assert!(uneven.iter().all(|level| {
+            level.logarithm_precision_bits <= 10_000 && level.replay_precision_bits <= 3_000
+        }));
     }
 
     #[test]
-    fn regulator_refinement_is_strict_and_capped() {
-        assert_eq!(regulator_refinement_precision(4_096), Some(8_192));
-        assert_eq!(regulator_refinement_precision(12_000), Some(16_384));
-        assert_eq!(regulator_refinement_precision(16_384), None);
+    fn precision_evidence_rejects_a_level_above_the_requested_ceiling() {
+        let evidence = CubicCompletionPrecisionEvidence {
+            requested_logarithm_precision_bits: 4_096,
+            requested_replay_precision_bits: 2_048,
+            attempted_levels: vec![CubicCompletionPrecisionLevel {
+                logarithm_precision_bits: 8_192,
+                replay_precision_bits: 4_096,
+            }],
+        };
+        assert!(!precision_evidence_is_valid(&evidence));
     }
 
     #[test]
-    fn regulator_refinement_must_be_nested_in_original_interval() {
-        let original = interval(4, 12, -2); // [1, 3]
-        let nested = interval(10, 22, -3); // [1.25, 2.75]
-        let protrudes_below = interval(7, 22, -3); // [0.875, 2.75]
-        let protrudes_above = interval(10, 25, -3); // [1.25, 3.125]
-
-        assert_eq!(dyadic_interval_contains(&original, &nested), Some(true));
-        assert_eq!(
-            dyadic_interval_contains(&original, &protrudes_below),
-            Some(false)
-        );
-        assert_eq!(
-            dyadic_interval_contains(&original, &protrudes_above),
-            Some(false)
-        );
+    fn precision_evidence_rejects_a_noncanonical_schedule_prefix() {
+        let evidence = CubicCompletionPrecisionEvidence {
+            requested_logarithm_precision_bits: 8_192,
+            requested_replay_precision_bits: 4_096,
+            attempted_levels: vec![CubicCompletionPrecisionLevel {
+                logarithm_precision_bits: 8_192,
+                replay_precision_bits: 4_096,
+            }],
+        };
+        assert!(!precision_evidence_is_valid(&evidence));
     }
 }

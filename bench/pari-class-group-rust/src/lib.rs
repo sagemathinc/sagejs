@@ -94,7 +94,8 @@ pub use compact_cubic_presentation::{
 };
 #[cfg(feature = "flint-normal-form")]
 pub use cubic_completion::{
-    CompactCubicUnit, CubicAnalyticEvidence, CubicCompletionProofMode,
+    AnalyticIndexFailureDiagnostic, CompactCubicUnit, CubicAnalyticEvidence,
+    CubicCompletionPrecisionEvidence, CubicCompletionPrecisionLevel, CubicCompletionProofMode,
     CubicConditionalCompletionError, CubicConditionalCompletionOptions, CubicUnitLatticeEvidence,
     GrhConditionalCompleteCubicClassGroup, complete_cubic_class_group_conditionally,
 };

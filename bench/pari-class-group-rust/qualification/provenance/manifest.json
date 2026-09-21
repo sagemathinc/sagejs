@@ -144,7 +144,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/class_group.rs",
-      "sha256": "75b28b18f9b5492e62d0e62429aa692c5648a85f528440d728206a9cb89ea6d2",
+      "sha256": "3d8024c5a22d6bc6539fc2eb24d5ffcbb99305580f4148004293bded39569034",
       "classification": "behavioral_reimplementation",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "partial",
@@ -171,7 +171,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/class_maps.rs",
-      "sha256": "2c70447f73becb8ccb164b909e2f0afe6a208937e4cc4d7c647ba2c5373a158a",
+      "sha256": "28517f4bbeb8d724b23fb94ad3ce014b057106155dbadb4f3d76b997a380bcab",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
@@ -214,7 +214,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/cubic_completion.rs",
-      "sha256": "b15aa5def92cb91149ea1dc9381d2376a4799ed39bbdb72a17d72ec871d3a746",
+      "sha256": "a4ddfbeaecc01245f54b64565b6e01b83bf1ab1f01fec7c4aa8e44b5f1326c94",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
@@ -362,7 +362,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/lib.rs",
-      "sha256": "f6c8589cb31b6a0c1657774d92a2eccebdbbb4e360e7669d5729405d04c04488",
+      "sha256": "734d16351c182875f97ac341804ca871dd6e7e46d64808110a388488e2344cbd",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
@@ -382,7 +382,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/numerical_preparation.rs",
-      "sha256": "d966d2805b83a255ac42111cc09cc69498b30fba92aba610c0fa7b46d2e6b343",
+      "sha256": "760cb3dce5ac14e96c1032918a13999e661922a8225a27a5f4b1397154074d8b",
       "classification": "behavioral_reimplementation",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "partial",
@@ -560,7 +560,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/smooth_admission.rs",
-      "sha256": "4936644436d471b91e11f8690f9abbbf03d4450b81a6f6483b9f237c6b982573",
+      "sha256": "b0931be1a8a9298594a69892637cb4d1bfeb051e0231101875ef0115c08cc00e",
       "classification": "behavioral_reimplementation",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "partial",
