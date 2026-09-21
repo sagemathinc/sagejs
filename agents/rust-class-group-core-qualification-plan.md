@@ -45,14 +45,19 @@ attempts, while retaining seven for tighter explicit budgets. Completion also
 reuses precision-specific logarithms only after authenticating the complete
 exact principal-generator prefix. The replacement
 clean 15-sample alternating campaign on the original twelve cubic regressions
-records exact agreement in every measured pair. Summed per-field medians are
-2.728 seconds for Rust and 0.585 seconds for PARI 2.17.4: a 4.66x weighted gap,
-with a 6.15x geometric mean, 9.47x p90, and 14.16x maximum. This improves the
-previous formal receipt from 5.24x weighted and 7.24x geometric mean but still
-fails the frozen native performance gate. Rust's summed stage medians are 1.053
-seconds relation collection, 0.849 seconds candidate authentication, 0.693
-seconds unit and analytic completion, and 0.077 seconds public preparation, so
-no single phase explains the remaining gap.
+records exact agreement in every measured pair. The modular HNF's unit pivots
+are now eliminated by exact back substitution before Smith, reducing Smith to
+the residual nonunit presentation and lifting its independently verified map
+back to the full factor base. At source `3575c2313`, summed per-field medians
+are 2.526 seconds for Rust and 0.601 seconds for PARI 2.17.4: a 4.20x weighted
+gap, with a 5.72x geometric mean, 8.93x p90, and 13.26x maximum. This improves
+the immediately preceding formal receipt from 4.66x weighted and 6.15x
+geometric mean but still fails the frozen native performance gate. Rust's
+summed stage medians are 1.063 seconds relation collection, 0.608 seconds
+candidate authentication, 0.715 seconds unit and analytic completion, and
+0.078 seconds public preparation. Authentication fell from 0.849 seconds in
+the preceding receipt; the remaining cost is distributed across all three
+mathematical phases rather than isolated in Smith.
 
 ## Evidence we actually have
 
