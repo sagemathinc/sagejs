@@ -40,8 +40,8 @@ python3 bench/pari-class-group-rust/qualification/public-cubic-heldout-confirmat
 
 ## Current confirmation result
 
-The current execution was made from committed source `56e60817d`. All twelve
-fresh processes reached a self-sealed conditional-GRH result in 1.535 seconds
+The current execution was made from committed source `7e65b04ce`. All twelve
+fresh processes reached a self-sealed conditional-GRH result in 1.489 seconds
 total under the frozen
 per-case limits. The restricted post-execution comparison passed all nine exact
 checks for every field: polynomial identity, signature, equation-order index,
@@ -51,8 +51,8 @@ and unit rank. See `execution-receipt.json` and `comparison-receipt.json`.
 This is a correctness and generalization gate, not a performance pass. The
 private qualification pool's previously collected PARI public-call medians put
 the Rust/PARI geometric-mean ratio around 10--12 on diagnostic reruns of these
-fields after the compact-route and geometric-continuation changes, improved
-from about 15.4.
+fields after the compact-route, geometric-continuation, and reusable analytic
+plan changes, improved from about 15.4.
 A clean alternating campaign remains required for a publishable performance
 receipt.
 

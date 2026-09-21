@@ -33,8 +33,9 @@ pathological compact-HNF presentations. It does not complete this plan: degrees
 4--6, unconditional completion, product dispatch, platform qualification, and
 the frozen native/browser performance gates remain open. Moving the
 dense/compact authentication crossover to its measured range and using a
-geometric answer-free continuation schedule reduced the untouched confirmation
-campaign from 3.046 to about 1.5 seconds; contextual
+geometric answer-free continuation schedule and reusing exact analytic plans
+reduced the untouched confirmation campaign from 3.046 to about 1.5 seconds;
+contextual
 PARI medians still show roughly a 10--12x geometric-mean native gap, with
 unit/analytic completion and the remaining authentication work dominant.
 

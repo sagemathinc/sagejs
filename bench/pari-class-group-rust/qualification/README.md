@@ -35,8 +35,8 @@ the original twelve frozen cubics reran 12/12 to self-sealed conditional-GRH
 results and matched every available private exact check, and the separate
 untouched confirmation set then ran 12/12 and passed all 108 private exact
 comparisons. After moving the dense/compact crossover to its measured range,
-the committed confirmation executor recorded 1.535 seconds total at source
-`56e60817d`; see
+the committed confirmation executor recorded 1.489 seconds total at source
+`7e65b04ce`; see
 `public-cubic-heldout-confirmation/execution-receipt.json` and
 `public-cubic-heldout-confirmation/comparison-receipt.json`.
 
