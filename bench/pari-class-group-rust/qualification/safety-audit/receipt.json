@@ -3649,8 +3649,8 @@
     {
       "file": "src/class_maps.rs",
       "scope": "product-candidate",
-      "sha256": "26c3306e46715ed7f439f643313e76c1bafa6d5b83a9d2a7e4efe1a28d633db4",
-      "bytes": 27136,
+      "sha256": "fbb7dea79b0943b2ba87e40b0a4c1b161830acf788769dc46fd10d6f6e919fcb",
+      "bytes": 27824,
       "copyrightNotices": [
         "Copyright (C) Sage.js contributors."
       ],
@@ -4490,5 +4490,5 @@
     "miriCoverageEstablished": false,
     "productionQualified": false
   },
-  "inventorySha256": "3e68621711f98df7f398f2b17a50350c7431104f41319e0baba5bfadd1aa65e4"
+  "inventorySha256": "8250f1dbcc5822ce2bd242fe604aa4d7a8e59bf966364a0eefb86a9fa305a2d0"
 }

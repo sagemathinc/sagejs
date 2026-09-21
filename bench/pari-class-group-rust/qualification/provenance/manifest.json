@@ -171,7 +171,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/class_maps.rs",
-      "sha256": "26c3306e46715ed7f439f643313e76c1bafa6d5b83a9d2a7e4efe1a28d633db4",
+      "sha256": "fbb7dea79b0943b2ba87e40b0a4c1b161830acf788769dc46fd10d6f6e919fcb",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",

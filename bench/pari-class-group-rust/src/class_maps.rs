@@ -158,6 +158,10 @@ pub struct PresentationClassMap {
     right_transform: Option<BigIntMatrix>,
     compact_generator_to_smith: Option<Vec<usize>>,
     generator_coordinates: Option<Vec<Integer>>,
+    /// Minted once after the complete immutable representation has passed its
+    /// constructor checks. Coordinate operations can then bind to this map
+    /// without repeatedly serializing a large exact relation matrix.
+    binding_sha256: [u8; 32],
 }
 
 impl PresentationClassMap {
@@ -203,7 +207,7 @@ impl PresentationClassMap {
             diagonal.push(value);
         }
 
-        let answer = Self {
+        let mut answer = Self {
             generator_count: relations.rows(),
             relation_count: relations.columns(),
             relations: Some(relations),
@@ -214,8 +218,10 @@ impl PresentationClassMap {
             right_transform: Some(smith.right_transform),
             compact_generator_to_smith: None,
             generator_coordinates: None,
+            binding_sha256: [0; 32],
         };
         answer.verify_all_relations_map_to_zero()?;
+        answer.binding_sha256 = answer.compute_binding_sha256();
         Ok(answer)
     }
 
@@ -269,7 +275,7 @@ impl PresentationClassMap {
                 invariant_factors.push(value.clone());
             }
         }
-        Ok(Self {
+        let mut answer = Self {
             relations: None,
             generator_count: generators,
             relation_count: generators,
@@ -280,7 +286,10 @@ impl PresentationClassMap {
             right_transform: None,
             compact_generator_to_smith: Some(generator_to_smith),
             generator_coordinates: None,
-        })
+            binding_sha256: [0; 32],
+        };
+        answer.binding_sha256 = answer.compute_binding_sha256();
+        Ok(answer)
     }
 
     /// Construct a compact coordinate map and verify every supplied relation
@@ -306,7 +315,7 @@ impl PresentationClassMap {
                 actual: generator_coordinates.len(),
             });
         }
-        let answer = Self {
+        let mut answer = Self {
             relation_count: relations.columns(),
             relations: Some(relations),
             generator_count: generators,
@@ -317,8 +326,10 @@ impl PresentationClassMap {
             right_transform: None,
             compact_generator_to_smith: None,
             generator_coordinates: Some(generator_coordinates),
+            binding_sha256: [0; 32],
         };
         answer.verify_all_relations_map_to_zero()?;
+        answer.binding_sha256 = answer.compute_binding_sha256();
         Ok(answer)
     }
 
@@ -353,6 +364,10 @@ impl PresentationClassMap {
     /// certificates, but is not a substitute for verifying the supplied
     /// principal relations before constructing this capability.
     pub fn binding_sha256(&self) -> [u8; 32] {
+        self.binding_sha256
+    }
+
+    fn compute_binding_sha256(&self) -> [u8; 32] {
         fn integer(hasher: &mut Sha256, value: &Integer) {
             let bytes = value.to_string();
             hasher.update((bytes.len() as u64).to_le_bytes());
