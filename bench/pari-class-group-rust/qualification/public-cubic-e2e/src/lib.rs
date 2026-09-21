@@ -355,8 +355,27 @@ impl QualifiedCubic {
         let units = completed.units();
         let analytic = completed.analytic();
         let bf_enclosure = analytic.bf_enclosure();
+        let lattice_index_evidence = match presentation.compact_lattice_certificate() {
+            Some(certificate) => json!({
+                "method": "compact-small-surplus",
+                "squareRowIndicesZeroBased": certificate.square_rows,
+                "surplusRowIndicesZeroBased": certificate.surplus_rows,
+                "squareDeterminant": certificate.square_determinant.to_string(),
+                "projectedDependencyDeterminant": certificate
+                    .projected_dependency_determinant
+                    .to_string(),
+                "dependencySaturation": {
+                    "criterion": "gcd-of-exhibited-maximal-dependency-minors-is-one",
+                    "selectedMinors": certificate.saturation_minors.iter().map(|minor| json!({
+                        "relationRowIndicesZeroBased": minor.relation_row_indices,
+                        "determinant": minor.determinant.to_string(),
+                    })).collect::<Vec<_>>(),
+                },
+            }),
+            None => json!({ "method": "detached-dense-recompute" }),
+        };
         Ok(json!({
-            "schema": "sagejs.rust-class-group/public-cubic-publication-candidate-v1",
+            "schema": "sagejs.rust-class-group/public-cubic-publication-candidate-v2",
             "status": "detached-replay-required-before-publication",
             "proofMode": "conditional-grh",
             "field": {
@@ -374,6 +393,7 @@ impl QualifiedCubic {
                 "discriminant": field_data.discriminant.to_string(),
                 "signature": [field_data.signature.0, field_data.signature.1],
                 "equationOrderIndex": field.equation_order_index().to_string(),
+                "bindingSha256": hexadecimal(class_map.field_sha256()),
             },
             "maximalOrderCertificate": {
                 "equationDiscriminant": certificate.equation_discriminant().to_string(),
@@ -396,15 +416,25 @@ impl QualifiedCubic {
                 "principalWitnessesSha256": hexadecimal(
                     class_map.principal_witnesses_sha256()
                 ),
+                "factorBasePolicy": {
+                    "relationBound": factor_base.catalog.relation_bound,
+                    "checkingBound": factor_base.catalog.checking_bound,
+                    "hypothesis": CubicAnalyticEvidence::FACTOR_BASE_HYPOTHESIS,
+                },
                 "factorBase": factor_base_entries,
                 "principalRelations": principal_relations,
                 "generatorOrders": generator_orders,
                 "relationDependencies": completed.dependency_lattice().iter().map(|row|
                     sparse_integer_vector(row)
                 ).collect::<Vec<_>>(),
+                "latticeIndexEvidence": lattice_index_evidence,
             },
             "units": {
-                "rootsOfUnityOrder": "2",
+                "rootsOfUnity": {
+                    "order": "2",
+                    "generatorIntegralBasisCoordinates": ["-1", "0", "0"],
+                    "exhaustionTheorem": "odd-degree-number-fields-have-only-plus-or-minus-one-roots-of-unity",
+                },
                 "fundamentalUnits": units.fundamental_units().iter().map(|unit| json!({
                     "relationExponents": sparse_integer_vector(unit.relation_exponents()),
                 })).collect::<Vec<_>>(),
@@ -431,6 +461,17 @@ impl QualifiedCubic {
                     "terms": analytic.bdf_plan().terms,
                 },
                 "bdfMargin": dyadic_interval(analytic.bdf_margin()),
+                "precision": {
+                    "requestedLogarithmPrecisionBits": completed.precision()
+                        .requested_logarithm_precision_bits(),
+                    "requestedReplayPrecisionBits": completed.precision()
+                        .requested_replay_precision_bits(),
+                    "attemptedLevels": completed.precision().attempted_levels().iter()
+                        .map(|level| json!({
+                            "logarithmPrecisionBits": level.logarithm_precision_bits,
+                            "replayPrecisionBits": level.replay_precision_bits,
+                        })).collect::<Vec<_>>(),
+                },
             },
         }))
     }
@@ -1150,7 +1191,7 @@ mod tests {
         let publication = qualified.publication_bundle().unwrap();
         assert_eq!(
             publication["schema"],
-            "sagejs.rust-class-group/public-cubic-publication-candidate-v1"
+            "sagejs.rust-class-group/public-cubic-publication-candidate-v2"
         );
         assert_eq!(
             publication["status"],

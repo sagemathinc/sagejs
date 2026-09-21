@@ -305,3 +305,35 @@ test("resource and canonical-integer preflights reject hostile evidence", async 
     "['square determinant exceeds the verifier work limit', 'too many dependency-minor witnesses', 'dependency-minor replay exceeds the verifier work limit', 'factor-base coordinate exceeds the exact-integer bit limit', 'prepared result is not canonical JSON data', 'class-map row has an unsupported schema', 'class-map row count mismatch', 'principal coordinate is not a canonical decimal']",
   );
 });
+
+test("detached publication replay accepts an exact alternative maximal-order basis", async () => {
+  const answer = await evaluate([
+    "from sagejs.number_fields.rust_class_group_preparation import _transform_multiplication_table",
+    "from sagejs.number_fields.rust_class_group_presentation import _replay_publication_field",
+    "from sagejs.number_fields.maximal_order import equation_order_index",
+    "base_rows = [prepared['preparation']['basisNumeratorsRowMajor'][3*i:3*i+3] for i in range(3)]",
+    "base_rows = [[int(value) for value in row] for row in base_rows]",
+    "left = [[1, 0, 0], [1, 1, 0], [0, 0, 1]]",
+    "right = [[1, 0, 0], [-1, 1, 0], [0, 0, 1]]",
+    "alternative_rows = [[sum(left[i][k] * base_rows[k][j] for k in range(3)) for j in range(3)] for i in range(3)]",
+    "base_table = [[ [int(entry['numerator']) for entry in product] for product in row] for row in prepared['preparation']['multiplicationTable']]",
+    "alternative_table = _transform_multiplication_table(base_table, left, right)",
+    "published = {'polynomialAscending': prepared['field']['coefficientsAscending'], 'irreducibilityPrime': prepared['preparation']['irreducibilityPrime'], 'integralBasisNumerators': [str(value) for row in alternative_rows for value in row], 'basisDenominator': prepared['preparation']['basisDenominator'], 'multiplicationTable': [str(value) for row in alternative_table for product in row for value in product], 'discriminant': prepared['preparation']['discriminant'], 'signature': [prepared['preparation']['signature']['realPlaces'], prepared['preparation']['signature']['complexPairs']], 'equationOrderIndex': str(equation_order_index(K.maximal_order())), 'bindingSha256': '0' * 64}",
+    "basis, table, replay = _replay_publication_field(K, published, prepared)",
+    "messages = []",
+    "bad_table = deepcopy(published)",
+    "bad_table['multiplicationTable'][0] = str(int(bad_table['multiplicationTable'][0]) + 1)",
+    "bad_basis = deepcopy(published)",
+    "bad_basis['integralBasisNumerators'][3:6] = [str(2 * int(value)) for value in bad_basis['integralBasisNumerators'][3:6]]",
+    "for candidate in (bad_table, bad_basis):",
+    "    try:",
+    "        _replay_publication_field(K, candidate, prepared)",
+    "    except ValueError as error:",
+    "        messages.append(str(error))",
+    "[replay['changeOfBasisDeterminant'], replay['multiplicationTableReplayed'], len(basis), len(table), messages]",
+  ]);
+  assert.equal(
+    answer.repr,
+    "[1, True, 3, 3, ['publication multiplication table does not replay', 'publication basis is not the full maximal order']]",
+  );
+});

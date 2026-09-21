@@ -58,7 +58,7 @@ function fakeWorkers() {
         result = { outcome: "complete-conditional-grh-ideal-class", handle: 7 };
       } else if (message.request?.schema?.endsWith("cubic-session-publication-v1")) {
         result = {
-          schema: "sagejs.rust-class-group/public-cubic-publication-candidate-v1",
+          schema: "sagejs.rust-class-group/public-cubic-publication-candidate-v2",
           status: "detached-replay-required-before-publication",
         };
       } else if (message.request?.schema?.endsWith("cubic-session-close-v1")) {

@@ -609,23 +609,39 @@ cycling, and browser repetition are not yet qualified.
 
 Publication-candidate checkpoint (2026-09-21): the resident worker can now
 detach a bounded, lossless candidate bundle instead of exposing Rust objects or
-pointers. The bundle contains decimal-string field and maximal-order data,
-exact factor-base ideal lattices and class coordinates, sparse authenticated
-principal relations, generator-order lifts, dependency rows, compact unit
-combinations, and directed analytic intervals and replay plans. The rebuilt
-5,913,579-byte artifact
-(`213627330407a0552c23b27a5620b7793329c4b641e756aa01246aa9fe7400f9`)
-produced a 21,859-byte bundle for the small `C6` field and a 2,913,749-byte
-bundle for row 6. The final-artifact resident publication calls took 3.92 ms and
-178.74 ms in the Node qualification run; complete session opening took
-123.85 ms and 30.44 s. Structural checks matched the sealed receipts exactly:
+pointers. Version two adds the compact small-surplus lattice-index certificate
+that an independent consumer needs to prove the complete quotient rather than
+trusting its invariant factors. The bundle contains decimal-string field and
+maximal-order data, exact factor-base ideal lattices and class coordinates,
+sparse authenticated principal relations, generator-order lifts, dependency
+rows, compact unit combinations, and directed analytic intervals and replay
+plans. The final 5,923,795-byte artifact
+(`6281d67de5364fed00d49e026705de10e3d28304d43769829e20d66c0f4a62d4`)
+produced a 22,917-byte bundle for the small `C6` field and a 2,920,205-byte
+bundle for row 6. The final-artifact resident publication calls took 4.64 ms and
+182.12 ms in the Node qualification run; complete session opening took
+126.19 ms and 30.32 s. Structural checks matched the sealed receipts exactly:
 row 6 exported 1,130 factor-base ideals, 1,144 principal relations, 14
 dependency rows, two order witnesses, and two compact units. Both bundles fit
-the explicit 16 MiB transfer ceiling. This is intentionally labelled
-`detached-replay-required-before-publication`: an independent Sage.js adapter
-has not yet replayed these witnesses or constructed the public
-`IdealClassGroup` and unit objects, so this checkpoint does not authorize
-production dispatch or make the result public-complete at the Sage boundary.
+the explicit 16 MiB transfer ceiling.
+
+The independent Sage.js adapter now proves that Rust's published integral
+basis is the same live certified maximal order through an exact unimodular
+change of basis, rather than requiring Sage.js and Rust to choose byte-identical
+bases. It recomputes the multiplication table in that basis, replays the exact
+1,130-column compact quotient certificate, reconstructs all 1,130 factor-base
+prime ideals, validates their exported integral lattices, and checks all 1,144
+principal-ideal equalities covering 7,213 factor terms. The row-6 replay derived
+the exact tentative invariants `[2, 2]`; field/table replay took 0.07 seconds,
+the compact quotient proof 7.6 seconds, and live ideal replay 108.5 seconds in
+the diagnostic run. End-to-end verifier latency was 357.8 seconds because
+startup, canonical JSON processing, context construction, and a second
+defensive quotient verification remain expensive. The adapter still returns an
+explicitly incomplete computation: compact-unit expansion, exact live-unit
+replay, directed regulator/analytic-plan replay, and construction of the public
+group objects are the next boundary. Thus this checkpoint proves the detached
+class quotient but does not authorize production dispatch or public-complete
+class/unit results.
 
 Run the released browser module in a Web Worker through Sage.js's public API.
 The default path must work without SharedArrayBuffer, special cross-origin

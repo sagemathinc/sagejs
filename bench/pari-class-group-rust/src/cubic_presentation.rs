@@ -33,8 +33,8 @@ use crate::class_maps::{ClassMapError, PresentationClassMap, RelationCoverage};
 #[cfg(feature = "flint-normal-form")]
 use crate::compact_cubic_presentation::{
     CompactPresentationContinuationCache, CompactPresentationError, CompactPresentationLimits,
-    authenticate_compact_presentation_with_cache, compact_verification_multiply_adds,
-    validate_compact_presentation_shape,
+    CompactSaturationMinor, authenticate_compact_presentation_with_cache,
+    compact_verification_multiply_adds, validate_compact_presentation_shape,
 };
 use crate::hnf::{BigIntMatrix, ExactNormalFormWorkspace, NormalFormError, NormalFormLimits};
 use crate::polynomial_preparation::PreparedPublicCubic;
@@ -93,6 +93,22 @@ pub struct CubicCandidateGeneratorOrderEvidence {
     pub relation_coefficients: Vec<Integer>,
 }
 
+/// The compact small-surplus proof retained for detached quotient replay.
+///
+/// Dense Smith candidates deliberately store `None`: their small relation
+/// matrices can be reduced independently by a detached verifier. Large
+/// compact candidates retain these already-authenticated witnesses so replay
+/// never has to repeat the producer's large exact factorization.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg(feature = "flint-normal-form")]
+pub struct CubicCompactLatticeCertificate {
+    pub square_rows: Vec<usize>,
+    pub surplus_rows: Vec<usize>,
+    pub square_determinant: Integer,
+    pub projected_dependency_determinant: Integer,
+    pub saturation_minors: Vec<CompactSaturationMinor>,
+}
+
 /// A sealed, exact view of the quotient by all supplied principal relations.
 ///
 /// The type name intentionally includes `Candidate`: rank plus surplus,
@@ -107,6 +123,8 @@ pub struct AuthenticatedCubicPresentationCandidate {
     class_map: AuthenticatedPresentationClassMap,
     generator_orders: Vec<CubicCandidateGeneratorOrderEvidence>,
     dependency_lattice: Vec<Vec<Integer>>,
+    #[cfg(feature = "flint-normal-form")]
+    compact_lattice_certificate: Option<CubicCompactLatticeCertificate>,
     class_number_candidate: Integer,
 }
 
@@ -144,6 +162,11 @@ impl AuthenticatedCubicPresentationCandidate {
     /// completion does not repeat an equivalent exact-kernel computation.
     pub fn dependency_lattice(&self) -> &[Vec<Integer>] {
         &self.dependency_lattice
+    }
+
+    #[cfg(feature = "flint-normal-form")]
+    pub fn compact_lattice_certificate(&self) -> Option<&CubicCompactLatticeCertificate> {
+        self.compact_lattice_certificate.as_ref()
     }
 
     pub fn invariant_factors(&self) -> &[Integer] {
@@ -467,6 +490,8 @@ pub fn authenticate_cubic_presentation_candidate(
         class_map,
         generator_orders,
         dependency_lattice,
+        #[cfg(feature = "flint-normal-form")]
+        compact_lattice_certificate: None,
         class_number_candidate,
     })
 }
@@ -683,6 +708,13 @@ pub fn authenticate_compact_cubic_presentation_candidate_with_cache(
         })
         .collect();
     let dependency_lattice = compact.dependencies().to_vec();
+    let compact_lattice_certificate = CubicCompactLatticeCertificate {
+        square_rows: compact.square_rows().to_vec(),
+        surplus_rows: compact.surplus_rows().to_vec(),
+        square_determinant: compact.square_determinant().clone(),
+        projected_dependency_determinant: compact.projected_dependency_determinant().clone(),
+        saturation_minors: compact.saturation_minors().to_vec(),
+    };
     let class_number_candidate = compact.class_number().clone();
     let continuation_cache = compact.into_continuation_cache();
 
@@ -705,6 +737,7 @@ pub fn authenticate_compact_cubic_presentation_candidate_with_cache(
             class_map,
             generator_orders,
             dependency_lattice,
+            compact_lattice_certificate: Some(compact_lattice_certificate),
             class_number_candidate,
         },
         continuation_cache,

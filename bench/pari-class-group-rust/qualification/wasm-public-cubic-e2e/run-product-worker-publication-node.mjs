@@ -52,7 +52,7 @@ try {
     const publicationBytes = Buffer.byteLength(JSON.stringify(publication));
     assert.equal(
       publication.schema,
-      "sagejs.rust-class-group/public-cubic-publication-candidate-v1",
+      "sagejs.rust-class-group/public-cubic-publication-candidate-v2",
     );
     assert.equal(publication.status, "detached-replay-required-before-publication");
     assert.equal(publication.presentation.classNumber, testCase.expectedClassNumber);
@@ -73,6 +73,10 @@ try {
       completion.completion.unitRank,
     );
     assert.ok(publicationBytes < 16 * 1024 * 1024);
+    await writeFile(
+      new URL(`./build/${testCase.name}-publication-candidate.json`, import.meta.url),
+      `${JSON.stringify(publication)}\n`,
+    );
 
     results.push({
       name: testCase.name,

@@ -48,11 +48,12 @@ cargo test --release --all-targets
 
 ## Current complete result
 
-The current qualification reactor is 5,913,579 bytes (2,371,300 bytes gzip),
+The current qualification reactor is 5,923,795 bytes (2,374,536 bytes gzip),
 with SHA-256
-`213627330407a0552c23b27a5620b7793329c4b641e756aa01246aa9fe7400f9`.
-Its stable row-6 projection passed in Node and Chromium after adding the
-detached publication-candidate bundle. The preceding 5,867,215-byte artifact
+`6281d67de5364fed00d49e026705de10e3d28304d43769829e20d66c0f4a62d4`.
+Its stable row-6 projection passed in Node after adding the version-two
+detached publication candidate and its compact lattice-index certificate. The
+preceding 5,867,215-byte artifact
 passed the same projection in Node, Chromium, Firefox, and WebKit after the
 general mixed-invariant remediation. The result has 1,144 authenticated
 relations and records both requested precision and the exact two-attempt
@@ -66,7 +67,7 @@ medians. The native frozen public benchmark for the same field is 5.826 seconds
 256-MiB worker memory ceiling, but is not yet competitive. Firefox remains the
 largest target-specific problem.
 
-The Node guest's stage times localize its 30.66-second sealed computation to
+The Node guest's stage times localize its approximately 30-second sealed computation to
 0.17 seconds of public preparation, 9.44 seconds of relation collection, 4.46
 seconds of candidate authentication, and 16.54 seconds of unit/analytic
 completion. This is actionable evidence: the full computation does not fail at
@@ -94,6 +95,17 @@ qualification route at `qualification/browser/class-group-route.html`. This is
 strong feasibility evidence, not final product integration. See
 `ROOT-INTEGRATION.md` for the completed source integration and remaining product
 loader work.
+
+The resident publication boundary now emits
+`public-cubic-publication-candidate-v2`. The final-artifact Node run produced a
+22,917-byte small-C6 candidate and a 2,920,205-byte row-6 candidate in 4.64 ms
+and 182.12 ms after session opening. An independent Sage.js verifier accepts a
+different integral basis only after proving an exact unimodular basis change,
+recomputes its multiplication table, replays the compact quotient certificate,
+reconstructs all 1,130 row-6 factor-base primes, and checks all 1,144 principal
+ideal equalities. That replay proves the detached class quotient `[2, 2]`; it
+still returns an explicitly incomplete result because compact units and the
+analytic completion have not yet crossed the independent replay boundary.
 
 The reactor also accepts
 `public-cubic-arbitrary-ideal-query-request-v1`. The committed nontrivial C2
