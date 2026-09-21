@@ -29,12 +29,12 @@ expected post-run change within that closure.
 
 ## Current result
 
-The receipt generated from source commit `6afb130cb` records exact agreement
-in all 180 alternating pairs. Summed per-field medians are 1.749 seconds for
-Rust and 0.606 seconds for PARI 2.17.4, or a 2.89x weighted gap. The geometric
-mean is 4.01x, p90 is 6.43x, and the maximum is 7.12x. Rust's summed stage
-medians are 0.630 seconds for relation collection, 0.428 seconds for candidate
-authentication, 0.552 seconds for unit and analytic completion, and 0.081
+The receipt generated from source commit `334b9fabe` records exact agreement
+in all 180 alternating pairs. Summed per-field medians are 1.621 seconds for
+Rust and 0.585 seconds for PARI 2.17.4, or a 2.77x weighted gap. The geometric
+mean is 3.92x, p90 is 6.43x, and the maximum is 7.54x. Rust's summed stage
+medians are 0.616 seconds for relation collection, 0.411 seconds for candidate
+authentication, 0.501 seconds for unit and analytic completion, and 0.078
 seconds for public preparation. Exact continuation retains the FLINT
 fraction-free factorization only when the selected square relation block is
 identical and the previous surplus is an exact prefix; it recomputes and
@@ -105,3 +105,13 @@ to the preceding clean receipt, all twelve Rust field medians fell: summed
 authentication dropped by 85.58 ms, total Rust time by 84.81 ms, and field
 0012 by 22.99 ms. PARI varied upward by 4.32 ms. The weighted ratio therefore
 fell from 3.05x to 2.89x, the first clean campaign below 3x.
+Final sealed-evidence authentication now reuses the same rigorously bounded
+batch verifier instead of folding every dependency and unit relation through a
+fresh GMP accumulator for every column. A row is admitted to the fixed-width
+path only after its complete absolute sum is proved to fit in `i128`; all
+unproved rows restart exactly in GMP. Relative to the preceding clean receipt,
+summed Rust time fell by 127.81 ms, candidate authentication by 17.03 ms, and
+unit/analytic completion by 50.48 ms. Field 0012 fell by 37.94 ms to 276.34
+ms. PARI simultaneously varied downward by 20.32 ms, so the weighted gap fell
+from 2.89x to 2.77x; the maximum remains dominated by variation in a
+few-millisecond PARI case.
