@@ -46,11 +46,11 @@ reuses precision-specific logarithms only after authenticating the complete
 exact principal-generator prefix. The replacement
 clean 15-sample alternating campaign on the original twelve cubic regressions
 records exact agreement in every measured pair. Summed per-field medians are
-2.747 seconds for Rust and 0.580 seconds for PARI 2.17.4: a 4.74x weighted gap,
-with a 6.24x geometric mean, 9.97x p90, and 14.30x maximum. This improves the
+2.728 seconds for Rust and 0.585 seconds for PARI 2.17.4: a 4.66x weighted gap,
+with a 6.15x geometric mean, 9.47x p90, and 14.16x maximum. This improves the
 previous formal receipt from 5.24x weighted and 7.24x geometric mean but still
-fails the frozen native performance gate. Rust's summed stage medians are 1.051
-seconds relation collection, 0.856 seconds candidate authentication, 0.706
+fails the frozen native performance gate. Rust's summed stage medians are 1.053
+seconds relation collection, 0.849 seconds candidate authentication, 0.693
 seconds unit and analytic completion, and 0.077 seconds public preparation, so
 no single phase explains the remaining gap.
 

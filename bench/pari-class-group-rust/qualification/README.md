@@ -48,11 +48,12 @@ not pass the frozen performance target. After starting answer-blind
 continuation at fourteen surplus rows when the caller's budget permits it, the
 replacement clean 15-sample alternating campaign on the original twelve
 regressions matched every exact result and measured summed per-field medians of
-2.747 seconds for Rust and 0.580 seconds for PARI 2.17.4: 4.74x weighted, 6.24x
-by geometric mean, 9.97x at p90, and 14.30x maximum. Precision-specific
+2.728 seconds for Rust and 0.585 seconds for PARI 2.17.4: 4.66x weighted, 6.15x
+by geometric mean, 9.47x at p90, and 14.16x maximum. Precision-specific
 relation logarithms are reused only after an exact generator-prefix check.
-Rust's summed stage medians are 1.051 seconds relation collection, 0.856
-seconds candidate authentication, 0.706 seconds unit and analytic completion,
+Checked fixed-width relation replay restarts in GMP on any overflow. Rust's
+summed stage medians are 1.053 seconds relation collection, 0.849 seconds
+candidate authentication, 0.693 seconds unit and analytic completion,
 and 0.077 seconds public preparation. See
 `public-cubic-heldout-performance/receipt.json`. The fresh confirmation set
 remains correctness-only; its contextual diagnostic timings are not a formal
