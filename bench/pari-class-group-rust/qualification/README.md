@@ -35,8 +35,9 @@ the original twelve frozen cubics reran 12/12 to self-sealed conditional-GRH
 results and matched every available private exact check, and the separate
 untouched confirmation set then ran 12/12 and passed all 108 private exact
 comparisons. After moving the dense/compact crossover to its measured range,
-the committed confirmation executor recorded 1.489 seconds total at source
-`7e65b04ce`; see
+reusing exact analytic plans, and binding a versioned compact-64 resource
+profile, the committed confirmation executor recorded 1.793 seconds total at
+source `485d84398`; see
 `public-cubic-heldout-confirmation/execution-receipt.json` and
 `public-cubic-heldout-confirmation/comparison-receipt.json`.
 
@@ -47,7 +48,12 @@ not pass the frozen performance target: contextual PARI medians for the fresh
 confirmation set imply roughly a 10--12x geometric-mean gap on diagnostic
 reruns, improved from about 15.4x but still concentrated in candidate
 authentication and unit/analytic completion. A matched alternating campaign is
-still required before that ratio becomes a formal performance receipt.
+still required before that ratio becomes a formal performance receipt. On the
+original twelve regressions, a clean one-sample compact-64 diagnostic totaled
+3.893 seconds of Rust sealed-result time versus 0.509 seconds summed from the
+previous PARI medians: 7.65x weighted and 8.84x by geometric mean. That is a
+substantial reduction from the prior 11.731-second Rust campaign, but remains
+context rather than the frozen alternating performance gate.
 
 ## Layout
 

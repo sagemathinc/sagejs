@@ -40,13 +40,20 @@ python3 bench/pari-class-group-rust/qualification/public-cubic-heldout-confirmat
 
 ## Current confirmation result
 
-The current execution was made from committed source `7e65b04ce`. All twelve
-fresh processes reached a self-sealed conditional-GRH result in 1.489 seconds
-total under the frozen
-per-case limits. The restricted post-execution comparison passed all nine exact
+The current execution was made from committed algorithm/executor source
+`485d84398` using the hash-bound
+`conditional-grh-cubic-compact-64-v2` resource profile. All twelve fresh
+processes reached a self-sealed conditional-GRH result in 1.793 seconds total
+under the frozen per-case limits. The restricted post-execution comparison
+passed all nine exact
 checks for every field: polynomial identity, signature, equation-order index,
 field discriminant, candidate and completed class number and invariant factors,
 and unit rank. See `execution-receipt.json` and `comparison-receipt.json`.
+
+The versioned profile raises only the compact-presentation surplus ceiling from
+32 to 64. The dependency-entry, saturation-minor, exact replay, coefficient,
+wall-time, and memory ceilings remain unchanged. Historical held-out receipts
+continue to bind their original max-32 configuration; they were not rewritten.
 
 This is a correctness and generalization gate, not a performance pass. The
 private qualification pool's previously collected PARI public-call medians put
