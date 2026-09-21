@@ -186,6 +186,14 @@ enum CandidateAuthenticationRoute {
     CompactSmallSurplus,
 }
 
+// Dense Smith remains the simplest route for genuinely small presentations,
+// but its transform work loses decisively to the compact small-nullity route
+// well before the hard normal-form resource ceiling. This is a route-choice
+// threshold, not an execution limit: dense authentication may still consume
+// the caller's full bounded budget when compact authentication is structurally
+// unavailable (notably during large-surplus analytic continuation).
+const DENSE_SMITH_PREFERRED_MULTIPLY_ADDS: u64 = 1_000_000;
+
 fn dense_verification_multiply_adds(generators: usize, relations: usize) -> Option<u64> {
     let g = u64::try_from(generators).ok()?;
     let r = u64::try_from(relations).ok()?;
@@ -220,8 +228,11 @@ fn select_candidate_authentication_route(
     let dense_work = dense_verification_multiply_adds(generators, relations);
     let dense_verification_fits =
         dense_work.is_some_and(|work| work <= resources.maximum_verification_multiply_adds);
-    let dense_is_preferred = dense_entries_fit
-        && dense_work.is_some_and(|work| work <= resources.maximum_normal_form_operations);
+    let dense_preference_limit = resources
+        .maximum_normal_form_operations
+        .min(DENSE_SMITH_PREFERRED_MULTIPLY_ADDS);
+    let dense_is_preferred =
+        dense_entries_fit && dense_work.is_some_and(|work| work <= dense_preference_limit);
 
     let compact_limits_are_nonzero = resources.maximum_compact_generators > 0
         && resources.maximum_compact_surplus_rows > 0
@@ -691,11 +702,19 @@ mod tests {
     }
 
     #[test]
-    fn route_selector_keeps_budgeted_modest_presentations_dense() {
+    fn route_selector_keeps_only_low_work_presentations_dense() {
         let input = request(10_000);
         assert_eq!(
-            select_candidate_authentication_route(64, 71, &input.resources),
+            select_candidate_authentication_route(16, 23, &input.resources),
             CandidateAuthenticationRoute::DenseSmith,
+        );
+        assert!(
+            dense_verification_multiply_adds(64, 71)
+                .is_some_and(|work| work > DENSE_SMITH_PREFERRED_MULTIPLY_ADDS)
+        );
+        assert_eq!(
+            select_candidate_authentication_route(64, 71, &input.resources),
+            CandidateAuthenticationRoute::CompactSmallSurplus,
         );
     }
 
