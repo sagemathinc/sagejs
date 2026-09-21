@@ -16,6 +16,7 @@
     "ARCHITECTURE.md",
     "architecture/decisions/0006-rust-math-core.md",
     "architecture/package-graph.json",
+    "bench/modular/qexp-correctness/source-freeze.json",
     "architecture/native-boundaries.json",
     "architecture/native-code.json",
     "architecture/optimizer-opportunities.manifest.json",
@@ -30,11 +31,13 @@
     "packages/flint-wasm/release/production-kernel-coverage.json",
     "pyrightconfig.json",
     "scripts/check-native-architecture.cjs",
+    "src/lib/sagejs/number_fields/rust_class_group_qualification.py",
     "src/lib/sagejs/number_fields/rust_class_group_preparation.py",
     "test/architecture-policy.cjs",
     "test/dense-prime-migration.cjs",
     "test/gf2-polynomial-packed-core.cjs",
     "test/number-field-compact-relation-presentation.cjs",
+    "test/number-field-rust-class-group-qualification.cjs",
     "test/number-field-rust-class-group-preparation.cjs",
     "test/wasm-production-native-kernels.cjs",
     "test/wasm-production-resource-closure.cjs",
@@ -76,16 +79,16 @@
   ],
   "runs": [],
   "handoff": {
-    "summary": "R0/W0 foundations and R1--R3 cubic work now include strict contracts, pinned PARI controls, reproducible GMP/MPFR/MPC Wasm routes, validated arbitrary-precision prepared inputs, complete GRH-conditional relation/class-map/unit/regulator evidence for all nine initial open cubics, plus a certified answer-free Sage.js polynomial-to-prepared-field adapter. These remain qualification components rather than a production class-group backend.",
+    "summary": "R0/W0 foundations and R1--R3 cubic work now include strict contracts, pinned PARI controls, validated arbitrary-precision prepared inputs, complete GRH-conditional relation/class-map/unit/regulator evidence for the open cubic panel, a fail-closed Sage.js qualification-receipt adapter, and exact full-row-6 execution in Node, Chromium, Firefox, and WebKit through a qualification-only GMP/MPFR/FLINT Wasm reactor. These remain qualification components rather than a production class-group backend.",
     "risks": [
       "The complete Rust prepared-field engine has not yet been integrated behind the Sage.js public result types or lifecycle API.",
-      "The complete class-and-unit path has not yet run in the actual browser route; the existing browser candidate stops at a relation presentation.",
-      "The certified preparation adapter currently covers cubic conditional-GRH requests only, and the balanced open/held-out corpus remains incomplete."
+      "The complete browser path currently uses a synchronous qualification route rather than the Sage.js Web Worker product API and lacks cancellation, retained map handles, lifecycle qualification, and competitive Firefox performance.",
+      "The certified preparation and receipt adapters currently cover cubic conditional-GRH requests only; the first blind held-out cubic campaign completed 3 of 12 cases, and the untouched confirmation set must remain unexecuted until general fixes are ready."
     ],
     "next_steps": [
       "Finish the balanced private 60-open plus 60-held-out corpus without committing held-out answers.",
       "Define and implement the Rust reactor/result ABI so the complete prepared-field result becomes an ordinary Sage.js class-group object without JSON phase round trips.",
-      "Build and qualify the complete class-and-unit reactor through the actual Chromium, Firefox, and WebKit worker route before broader-degree expansion."
+      "Integrate the complete class-and-unit reactor through the actual Sage.js Web Worker route, then qualify cancellation, lifecycle, retained maps, cold start, and browser performance before broader-degree expansion."
     ]
   }
 }

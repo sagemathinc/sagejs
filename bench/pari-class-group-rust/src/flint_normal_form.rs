@@ -839,6 +839,7 @@ pub fn flint_compact_cubic_regulator(
 ) -> Result<FlintDyadicInterval, FlintNormalFormError> {
     let unit_rank = u64::from(signature.0) + u64::from(signature.1) - 1;
     if basis_denominator == 0
+        || polynomial[3] != 1
         || generator_coordinates.is_empty()
         || !generator_coordinates.len().is_multiple_of(3)
         || precision < 64
@@ -846,6 +847,8 @@ pub fn flint_compact_cubic_regulator(
     {
         return Err(FlintNormalFormError::InvalidDimensions);
     }
+    let precision =
+        c_long::try_from(precision).map_err(|_| FlintNormalFormError::InvalidDimensions)?;
     let relations = generator_coordinates.len() / 3;
     if unit_exponents.len() != unit_rank as usize * relations {
         return Err(FlintNormalFormError::DimensionMismatch);
@@ -874,7 +877,7 @@ pub fn flint_compact_cubic_regulator(
             relations,
             coordinate_pointers.as_ptr(),
             exponent_pointers.as_ptr(),
-            precision.into(),
+            precision,
             lower.as_raw_mut().cast(),
             upper.as_raw_mut().cast(),
             &mut binary_exponent,
@@ -1781,6 +1784,167 @@ mod tests {
             assert!(interval.lower > 0);
             assert!(interval.upper >= interval.lower);
         }
+    }
+
+    #[test]
+    fn arb_regulator_accepts_full_width_polynomial_coefficients() {
+        let generators = [0.into(), 1.into(), 0.into()];
+        let exponents = [1.into()];
+        for polynomial in [[i64::MIN, 0, 0, 1], [1, 0, i64::MAX, 1]] {
+            let interval = flint_compact_cubic_regulator(
+                polynomial,
+                [1, 0, 0, 0, 1, 0, 0, 0, 1],
+                1,
+                (1, 1),
+                &generators,
+                &exponents,
+                256,
+            )
+            .unwrap();
+            assert!(interval.lower > 0);
+            assert!(interval.upper >= interval.lower);
+        }
+    }
+
+    #[test]
+    fn arb_regulator_full_width_basis_matches_the_identity_basis() {
+        let polynomial = [1, -3, 0, 1];
+        let exponents = [1.into(), 0.into(), 0.into(), 1.into()];
+        let ordinary = flint_compact_cubic_regulator(
+            polynomial,
+            [1, 0, 0, 0, 1, 0, 0, 0, 1],
+            1,
+            (3, 0),
+            &[
+                0.into(),
+                1.into(),
+                0.into(),
+                (-1).into(),
+                1.into(),
+                0.into(),
+            ],
+            &exponents,
+            256,
+        )
+        .unwrap();
+        for (basis, denominator, generators) in [
+            (
+                [i64::MAX, 0, 0, 0, i64::MAX, 0, 0, 0, i64::MAX],
+                i64::MAX as u64,
+                [0, 1, 0, -1, 1, 0],
+            ),
+            (
+                [i64::MIN, 0, 0, 0, i64::MIN, 0, 0, 0, i64::MIN],
+                1_u64 << 63,
+                [0, -1, 0, 1, -1, 0],
+            ),
+        ] {
+            let generators = generators.map(Integer::from);
+            let scaled = flint_compact_cubic_regulator(
+                polynomial,
+                basis,
+                denominator,
+                (3, 0),
+                &generators,
+                &exponents,
+                256,
+            )
+            .unwrap();
+            let common_exponent = scaled.binary_exponent.min(ordinary.binary_exponent);
+            let endpoint = |value: &Integer, exponent: i64| {
+                Integer::from(value << usize::try_from(exponent - common_exponent).unwrap())
+            };
+            assert!(
+                endpoint(&scaled.lower, scaled.binary_exponent)
+                    <= endpoint(&ordinary.upper, ordinary.binary_exponent)
+            );
+            assert!(
+                endpoint(&ordinary.lower, ordinary.binary_exponent)
+                    <= endpoint(&scaled.upper, scaled.binary_exponent)
+            );
+        }
+    }
+
+    #[test]
+    fn arb_regulator_preserves_arbitrary_signed_gmp_exponents() {
+        let ordinary = flint_compact_cubic_regulator(
+            [1, -1, 0, 1],
+            [1, 0, 0, 0, 1, 0, 0, 0, 1],
+            1,
+            (1, 1),
+            &[0.into(), 1.into(), 0.into()],
+            &[1.into()],
+            256,
+        )
+        .unwrap();
+        let large: Integer = Integer::from(1) << 130_u32;
+        let split = flint_compact_cubic_regulator(
+            [1, -1, 0, 1],
+            [1, 0, 0, 0, 1, 0, 0, 0, 1],
+            1,
+            (1, 1),
+            &[0.into(), 1.into(), 0.into(), 0.into(), 1.into(), 0.into()],
+            &[large.clone(), Integer::from(1) - large.clone()],
+            256,
+        )
+        .unwrap();
+        let common_exponent = split.binary_exponent.min(ordinary.binary_exponent);
+        let scaled = |value: &Integer, exponent: i64| {
+            Integer::from(value << usize::try_from(exponent - common_exponent).unwrap())
+        };
+        assert!(
+            scaled(&split.lower, split.binary_exponent)
+                <= scaled(&ordinary.upper, ordinary.binary_exponent)
+        );
+        assert!(
+            scaled(&ordinary.lower, ordinary.binary_exponent)
+                <= scaled(&split.upper, split.binary_exponent)
+        );
+        let wide_coordinate = flint_compact_cubic_regulator(
+            [1, -1, 0, 1],
+            [1, 0, 0, 0, 1, 0, 0, 0, 1],
+            u64::MAX,
+            (1, 1),
+            &[large, 1.into(), 0.into()],
+            &[1.into()],
+            256,
+        )
+        .unwrap();
+        assert!(wide_coordinate.lower > 0);
+        assert!(wide_coordinate.upper >= wide_coordinate.lower);
+    }
+
+    #[test]
+    fn arb_regulator_rejects_nonmonic_polynomials() {
+        assert_eq!(
+            flint_compact_cubic_regulator(
+                [1, -1, 0, 2],
+                [1, 0, 0, 0, 1, 0, 0, 0, 1],
+                1,
+                (1, 1),
+                &[0.into(), 1.into(), 0.into()],
+                &[1.into()],
+                256,
+            ),
+            Err(FlintNormalFormError::InvalidDimensions)
+        );
+    }
+
+    #[cfg(target_pointer_width = "32")]
+    #[test]
+    fn arb_regulator_rejects_precision_outside_c_long_without_panicking() {
+        assert_eq!(
+            flint_compact_cubic_regulator(
+                [1, -1, 0, 1],
+                [1, 0, 0, 0, 1, 0, 0, 0, 1],
+                1,
+                (1, 1),
+                &[0.into(), 1.into(), 0.into()],
+                &[1.into()],
+                u32::MAX,
+            ),
+            Err(FlintNormalFormError::InvalidDimensions)
+        );
     }
 
     #[test]

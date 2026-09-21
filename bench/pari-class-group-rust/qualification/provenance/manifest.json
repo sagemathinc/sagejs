@@ -182,7 +182,7 @@
     {
       "path": "bench/pari-class-group-rust/src/collector_schedule.rs",
       "sha256": "f5f4d65a68465fc29d5dd216763abb45ce8465ea8485334786e5cd3e7b45c783",
-      "classification": "source_translation_adaptation",
+      "classification": "behavioral_reimplementation",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "partial",
       "mappings": [
@@ -200,7 +200,7 @@
         }
       ],
       "missing_mapping_explanation": "Rust-owned resumable state arrays, explicit checked-error behavior, and original serialized-packet lookup/copy helpers have no direct PARI source body and remain outside this source map.",
-      "notes": "The mathematical schedule is mapped to the pinned small_norm loop; the resumable host representation and packet adapter remain Sage.js-owned."
+      "notes": "The Rust-owned resumable state machine reproduces the pinned small_norm schedule behavior but is not asserted to be a direct source translation; the serialized-packet adapter is also Sage.js-owned."
     },
     {
       "path": "bench/pari-class-group-rust/src/compact_cubic_presentation.rs",
@@ -283,23 +283,23 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/flint_normal_form.c",
-      "sha256": "6dd673197980fac8d44adf82c9b3a607e5d07a8e67023021894681a53a80e193",
+      "sha256": "eaf32df2d801b9c42eadea069d650dda9d770e9eb56d479baecadb146761a267",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
       "mappings": [],
       "missing_mapping_explanation": null,
-      "notes": "Original FFI bridge calling public FLINT APIs; FLINT is inventoried as a foreign dependency, not as translated source."
+      "notes": "Original portable fixed-width FFI bridge calling public FLINT APIs, including exact i64/u64 conversion on 32- and 64-bit FLINT word targets; FLINT is inventoried as a foreign dependency, not as translated source."
     },
     {
       "path": "bench/pari-class-group-rust/src/flint_normal_form.rs",
-      "sha256": "90624ecfd229ddf6848cac4cb0b32263339e3937a4d21839caafb6b4ac4d3a48",
+      "sha256": "03993c4e7a2a3d38d1a8f0002e5302a9ed9145b539a0376f688941e5cffe412d",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
       "mappings": [],
       "missing_mapping_explanation": null,
-      "notes": "Original safe Rust wrapper and qualification evidence around the C/FLINT boundary."
+      "notes": "Original safe Rust wrapper and qualification evidence around the portable fixed-width C/FLINT boundary."
     },
     {
       "path": "bench/pari-class-group-rust/src/gmp_smith.rs",

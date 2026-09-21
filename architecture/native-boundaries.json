@@ -14,12 +14,12 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 337,
+    "classified-native-file": 341,
     "declared-ffi": 480,
     "declared-ffi-resource": 37,
     "napi-export": 358,
     "runtime-intrinsic": 148,
-    "rust-abi-export": 30,
+    "rust-abi-export": 34,
     "rust-abi-import": 56,
     "wasm-export": 74
   },
@@ -9929,6 +9929,38 @@
       "lane": "integration"
     },
     {
+      "id": "native-file:bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/core-wasm/build.rs",
+      "kind": "classified-native-file",
+      "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/core-wasm/build.rs",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration"
+    },
+    {
+      "id": "native-file:bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/core-wasm/src/lib.rs",
+      "kind": "classified-native-file",
+      "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/core-wasm/src/lib.rs",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration"
+    },
+    {
+      "id": "native-file:bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/public-wasm/src/lib.rs",
+      "kind": "classified-native-file",
+      "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/public-wasm/src/lib.rs",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration"
+    },
+    {
+      "id": "native-file:bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/src/lib.rs",
+      "kind": "classified-native-file",
+      "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/src/lib.rs",
+      "disposition": "benchmark-reference",
+      "review_status": "experimental-pending-review",
+      "lane": "integration"
+    },
+    {
       "id": "native-file:bench/pari-class-group-rust/src/analytic_completion.rs",
       "kind": "classified-native-file",
       "path": "bench/pari-class-group-rust/src/analytic_completion.rs",
@@ -13574,6 +13606,46 @@
       "id": "rust-abi-export:bench/pari-class-group-rust/qualification/wasm-prepared-relation-prefix/src/lib.rs:sagejs_class_group_run_json",
       "kind": "rust-abi-export",
       "path": "bench/pari-class-group-rust/qualification/wasm-prepared-relation-prefix/src/lib.rs",
+      "package": "@sagemath/sagejs",
+      "abi": "C",
+      "export": "sagejs_class_group_run_json",
+      "symbol": "sagejs_class_group_run_json",
+      "disposition": "experimental-rust-qualification-abi"
+    },
+    {
+      "id": "rust-abi-export:bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/src/lib.rs:sagejs_class_group_abi_version",
+      "kind": "rust-abi-export",
+      "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/src/lib.rs",
+      "package": "@sagemath/sagejs",
+      "abi": "C",
+      "export": "sagejs_class_group_abi_version",
+      "symbol": "sagejs_class_group_abi_version",
+      "disposition": "experimental-rust-qualification-abi"
+    },
+    {
+      "id": "rust-abi-export:bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/src/lib.rs:sagejs_class_group_alloc",
+      "kind": "rust-abi-export",
+      "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/src/lib.rs",
+      "package": "@sagemath/sagejs",
+      "abi": "C",
+      "export": "sagejs_class_group_alloc",
+      "symbol": "sagejs_class_group_alloc",
+      "disposition": "experimental-rust-qualification-abi"
+    },
+    {
+      "id": "rust-abi-export:bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/src/lib.rs:sagejs_class_group_dealloc",
+      "kind": "rust-abi-export",
+      "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/src/lib.rs",
+      "package": "@sagemath/sagejs",
+      "abi": "C",
+      "export": "sagejs_class_group_dealloc",
+      "symbol": "sagejs_class_group_dealloc",
+      "disposition": "experimental-rust-qualification-abi"
+    },
+    {
+      "id": "rust-abi-export:bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/src/lib.rs:sagejs_class_group_run_json",
+      "kind": "rust-abi-export",
+      "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/src/lib.rs",
       "package": "@sagemath/sagejs",
       "abi": "C",
       "export": "sagejs_class_group_run_json",

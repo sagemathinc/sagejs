@@ -39,15 +39,15 @@
     ]
   },
   "summary": {
-    "sourceFiles": 80,
-    "unsafeItems": 91,
-    "unsafeItemsMissingRationale": 82,
-    "ffiBoundaries": 106,
-    "ffiBoundariesMissingRationale": 106,
+    "sourceFiles": 84,
+    "unsafeItems": 98,
+    "unsafeItemsMissingRationale": 86,
+    "ffiBoundaries": 110,
+    "ffiBoundariesMissingRationale": 110,
     "unclassifiedSafetyTokens": 0,
     "unclassifiedFfiTokens": 0,
     "unclassifiedSourceScopes": 0,
-    "sourceFilesMissingProvenanceHeader": 23,
+    "sourceFilesMissingProvenanceHeader": 26,
     "byScope": {
       "product-build-support": {
         "sourceFiles": 1,
@@ -74,20 +74,20 @@
         "sourceFilesMissingProvenanceHeader": 4
       },
       "qualification-build-support": {
-        "sourceFiles": 4,
+        "sourceFiles": 5,
         "unsafeItems": 0,
         "unsafeItemsMissingRationale": 0,
         "ffiBoundaries": 0,
         "ffiBoundariesMissingRationale": 0,
-        "sourceFilesMissingProvenanceHeader": 4
+        "sourceFilesMissingProvenanceHeader": 5
       },
       "qualification-only": {
-        "sourceFiles": 30,
-        "unsafeItems": 75,
-        "unsafeItemsMissingRationale": 66,
-        "ffiBoundaries": 75,
-        "ffiBoundariesMissingRationale": 75,
-        "sourceFilesMissingProvenanceHeader": 14
+        "sourceFiles": 33,
+        "unsafeItems": 82,
+        "unsafeItemsMissingRationale": 70,
+        "ffiBoundaries": 79,
+        "ffiBoundariesMissingRationale": 79,
+        "sourceFilesMissingProvenanceHeader": 16
       }
     },
     "documentationGatePassed": false,
@@ -1145,6 +1145,104 @@
       }
     },
     {
+      "kind": "unsafe_attribute",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-public-cubic-e2e/src/lib.rs",
+      "line": 48,
+      "column": 3,
+      "snippet": "#[unsafe(no_mangle)]",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_attribute",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-public-cubic-e2e/src/lib.rs",
+      "line": 53,
+      "column": 3,
+      "snippet": "#[unsafe(no_mangle)]",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-public-cubic-e2e/src/lib.rs",
+      "line": 62,
+      "column": 5,
+      "snippet": "unsafe { alloc(layout) }",
+      "safetyRationale": {
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 61,
+        "text": "// SAFETY: the matching ABI deallocator receives the same byte length."
+      }
+    },
+    {
+      "kind": "unsafe_attribute",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-public-cubic-e2e/src/lib.rs",
+      "line": 65,
+      "column": 3,
+      "snippet": "#[unsafe(no_mangle)]",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-public-cubic-e2e/src/lib.rs",
+      "line": 73,
+      "column": 9,
+      "snippet": "unsafe { dealloc(pointer, layout) };",
+      "safetyRationale": {
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 71,
+        "text": "// SAFETY: the host returns only pointers allocated by this ABI with the"
+      }
+    },
+    {
+      "kind": "unsafe_attribute",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-public-cubic-e2e/src/lib.rs",
+      "line": 77,
+      "column": 3,
+      "snippet": "#[unsafe(no_mangle)]",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-public-cubic-e2e/src/lib.rs",
+      "line": 83,
+      "column": 17,
+      "snippet": "let bytes = unsafe { std::slice::from_raw_parts(pointer, length) };",
+      "safetyRationale": {
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 82,
+        "text": "// SAFETY: the checked host ABI allocates and initializes this guest range."
+      }
+    },
+    {
       "kind": "unsafe_block",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
@@ -1232,13 +1330,13 @@
       "kind": "unsafe_block",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
-      "line": 867,
+      "line": 870,
       "column": 18,
       "snippet": "let status = unsafe {",
       "safetyRationale": {
         "present": false,
         "classification": "adjacent-comment-without-explicit-rationale",
-        "line": 866,
+        "line": 869,
         "text": "// integers without retaining any Rust allocation."
       }
     },
@@ -1246,7 +1344,7 @@
       "kind": "unsafe_block",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
-      "line": 915,
+      "line": 918,
       "column": 18,
       "snippet": "let status = unsafe {",
       "safetyRationale": {
@@ -1260,7 +1358,7 @@
       "kind": "unsafe_block",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
-      "line": 976,
+      "line": 979,
       "column": 18,
       "snippet": "let status = unsafe {",
       "safetyRationale": {
@@ -1274,7 +1372,7 @@
       "kind": "unsafe_block",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
-      "line": 1041,
+      "line": 1044,
       "column": 18,
       "snippet": "let status = unsafe {",
       "safetyRationale": {
@@ -1288,7 +1386,7 @@
       "kind": "unsafe_block",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
-      "line": 1096,
+      "line": 1099,
       "column": 18,
       "snippet": "let status = unsafe {",
       "safetyRationale": {
@@ -1302,13 +1400,13 @@
       "kind": "unsafe_block",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
-      "line": 1146,
+      "line": 1149,
       "column": 18,
       "snippet": "let status = unsafe {",
       "safetyRationale": {
         "present": false,
         "classification": "adjacent-comment-without-explicit-rationale",
-        "line": 1145,
+        "line": 1148,
         "text": "// HNF, avoiding a lossy conversion of the intermediate basis."
       }
     },
@@ -1316,13 +1414,13 @@
       "kind": "unsafe_block",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
-      "line": 1177,
+      "line": 1180,
       "column": 18,
       "snippet": "let status = unsafe {",
       "safetyRationale": {
         "present": false,
         "classification": "adjacent-comment-without-explicit-rationale",
-        "line": 1176,
+        "line": 1179,
         "text": "// invariant factors. The bridge writes the actual count before returning."
       }
     },
@@ -1330,13 +1428,13 @@
       "kind": "unsafe_block",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
-      "line": 1219,
+      "line": 1222,
       "column": 18,
       "snippet": "let status = unsafe {",
       "safetyRationale": {
         "present": false,
         "classification": "adjacent-comment-without-explicit-rationale",
-        "line": 1218,
+        "line": 1221,
         "text": "// and retains no Rust-owned pointer."
       }
     },
@@ -1344,13 +1442,13 @@
       "kind": "unsafe_block",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
-      "line": 1249,
+      "line": 1252,
       "column": 18,
       "snippet": "let status = unsafe {",
       "safetyRationale": {
         "present": false,
         "classification": "adjacent-comment-without-explicit-rationale",
-        "line": 1248,
+        "line": 1251,
         "text": "// pointer. FLINT owns and clears all arbitrary-precision temporaries."
       }
     },
@@ -1358,13 +1456,13 @@
       "kind": "unsafe_block",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
-      "line": 1280,
+      "line": 1283,
       "column": 18,
       "snippet": "let status = unsafe {",
       "safetyRationale": {
         "present": false,
         "classification": "adjacent-comment-without-explicit-rationale",
-        "line": 1279,
+        "line": 1282,
         "text": "// buffers, and does not retain either pointer."
       }
     }
@@ -2493,6 +2591,66 @@
       "name": "sagejs_class_group_run_json"
     },
     {
+      "kind": "rust_ffi_export",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-public-cubic-e2e/src/lib.rs",
+      "line": 49,
+      "column": 1,
+      "snippet": "pub extern \"C\" fn sagejs_class_group_abi_version() -> i32 {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_class_group_abi_version"
+    },
+    {
+      "kind": "rust_ffi_export",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-public-cubic-e2e/src/lib.rs",
+      "line": 54,
+      "column": 1,
+      "snippet": "pub extern \"C\" fn sagejs_class_group_alloc(length: usize) -> *mut u8 {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_class_group_alloc"
+    },
+    {
+      "kind": "rust_ffi_export",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-public-cubic-e2e/src/lib.rs",
+      "line": 66,
+      "column": 1,
+      "snippet": "pub extern \"C\" fn sagejs_class_group_dealloc(pointer: *mut u8, length: usize) {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_class_group_dealloc"
+    },
+    {
+      "kind": "rust_ffi_export",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-public-cubic-e2e/src/lib.rs",
+      "line": 78,
+      "column": 1,
+      "snippet": "pub extern \"C\" fn sagejs_class_group_run_json(pointer: *const u8, length: usize) -> u64 {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_class_group_run_json"
+    },
+    {
       "kind": "c_ffi_export",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.c",
@@ -2676,7 +2834,7 @@
       "kind": "c_ffi_export",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.c",
-      "line": 2132,
+      "line": 2201,
       "column": 5,
       "snippet": "int sagejs_rust_flint_compact_cubic_regulator(",
       "safetyRationale": {
@@ -2691,7 +2849,7 @@
       "kind": "c_ffi_export",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.c",
-      "line": 2337,
+      "line": 2437,
       "column": 5,
       "snippet": "int sagejs_rust_flint_bdf_factor_base_margin(",
       "safetyRationale": {
@@ -2706,7 +2864,7 @@
       "kind": "c_ffi_export",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.c",
-      "line": 2470,
+      "line": 2570,
       "column": 5,
       "snippet": "int sagejs_rust_flint_bf_index_enclosure(",
       "safetyRationale": {
@@ -3343,6 +3501,48 @@
       "headerComplete": false
     },
     {
+      "file": "qualification/wasm-public-cubic-e2e/core-wasm/build.rs",
+      "scope": "qualification-build-support",
+      "sha256": "a7dfd2056b11089fc4ab6c298194c9544d7d382343e39e4e302fb62cc87b95c4",
+      "bytes": 7197,
+      "copyrightNotices": [],
+      "licenseExpression": null,
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": false
+    },
+    {
+      "file": "qualification/wasm-public-cubic-e2e/core-wasm/src/lib.rs",
+      "scope": "qualification-only",
+      "sha256": "a87660d1c7db1b821a230d43ad071baaed1d5f66324ed54b44ee8402239163bc",
+      "bytes": 52,
+      "copyrightNotices": [],
+      "licenseExpression": null,
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": false
+    },
+    {
+      "file": "qualification/wasm-public-cubic-e2e/public-wasm/src/lib.rs",
+      "scope": "qualification-only",
+      "sha256": "001810c357e4e0d46ec9322b57991d7cdbda83768934b9be9ed074988af5bb5f",
+      "bytes": 97,
+      "copyrightNotices": [],
+      "licenseExpression": null,
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": false
+    },
+    {
+      "file": "qualification/wasm-public-cubic-e2e/src/lib.rs",
+      "scope": "qualification-only",
+      "sha256": "d5fbc2dcb6f30fbe47ddc2b668fb71caae1c479d1d3b3a33918bd7c2ed42be85",
+      "bytes": 3152,
+      "copyrightNotices": [
+        "Copyright (C) Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": true
+    },
+    {
       "file": "src/analytic_completion.rs",
       "scope": "product-candidate",
       "sha256": "9221e78a1664d17cf2d2d18267e5e0ef8f23736626abd3761b4e4e679b97f6ee",
@@ -3393,8 +3593,8 @@
     {
       "file": "src/class_group.rs",
       "scope": "product-candidate",
-      "sha256": "2598958770ba797410985de77f78f952167f1eb89f8a4f80c1e373f2b69c46bc",
-      "bytes": 47624,
+      "sha256": "75b28b18f9b5492e62d0e62429aa692c5648a85f528440d728206a9cb89ea6d2",
+      "bytes": 48866,
       "copyrightNotices": [
         "Copyright (C) The PARI group and Sage.js contributors."
       ],
@@ -3489,8 +3689,8 @@
     {
       "file": "src/flint_normal_form.c",
       "scope": "product-candidate",
-      "sha256": "6dd673197980fac8d44adf82c9b3a607e5d07a8e67023021894681a53a80e193",
-      "bytes": 105612,
+      "sha256": "eaf32df2d801b9c42eadea069d650dda9d770e9eb56d479baecadb146761a267",
+      "bytes": 108777,
       "copyrightNotices": [
         "Copyright (C) Sage.js contributors."
       ],
@@ -3501,8 +3701,8 @@
     {
       "file": "src/flint_normal_form.rs",
       "scope": "product-candidate",
-      "sha256": "90624ecfd229ddf6848cac4cb0b32263339e3937a4d21839caafb6b4ac4d3a48",
-      "bytes": 64674,
+      "sha256": "03993c4e7a2a3d38d1a8f0002e5302a9ed9145b539a0376f688941e5cffe412d",
+      "bytes": 70037,
       "copyrightNotices": [
         "Copyright (C) Sage.js contributors."
       ],
@@ -3669,8 +3869,8 @@
     {
       "file": "src/relation_cache.rs",
       "scope": "product-candidate",
-      "sha256": "4ceda4440a747c151389dc00a1deee06c32cb18845a3e5738345cad8410ecc3e",
-      "bytes": 14270,
+      "sha256": "d474991bbfc02e842bb563d109b946bf1d88285ef667e82e1a40f0f605be619b",
+      "bytes": 20626,
       "copyrightNotices": [
         "Copyright (C) The PARI group and Sage.js contributors."
       ],
@@ -4183,6 +4383,46 @@
       "packageName": "sagejs-rust-wasm-prepared-relation-prefix",
       "packageVersion": "0.1.0",
       "declaredLicense": null
+    },
+    {
+      "file": "qualification/wasm-public-cubic-e2e/Cargo.lock",
+      "scope": "qualification-build-support",
+      "sha256": "49d552faa2fca362ab5371afa34433eee39143424ffb8c4b80b7aab29f549394",
+      "kind": "cargo-lock",
+      "packageCount": 35,
+      "sourceCounts": {
+        "registry": 32,
+        "git": 0,
+        "localOrUnspecified": 3,
+        "other": 0
+      }
+    },
+    {
+      "file": "qualification/wasm-public-cubic-e2e/Cargo.toml",
+      "scope": "qualification-build-support",
+      "sha256": "955afcfa358c01375122f90ee355a80da564ed9f620ddc12ecc7bc2c06503019",
+      "kind": "cargo-manifest",
+      "packageName": "sagejs-rust-wasm-public-cubic-e2e",
+      "packageVersion": "0.1.0",
+      "declaredLicense": "GPL-2.0-or-later"
+    },
+    {
+      "file": "qualification/wasm-public-cubic-e2e/core-wasm/Cargo.toml",
+      "scope": "qualification-build-support",
+      "sha256": "6d6ac99e186bcc70475065d4286f23872f7646068ca1fd4ef194b6a8502f9e9f",
+      "kind": "cargo-manifest",
+      "packageName": "sagejs-pari-class-group-rust-experiment",
+      "packageVersion": "0.1.0",
+      "declaredLicense": "GPL-2.0-or-later"
+    },
+    {
+      "file": "qualification/wasm-public-cubic-e2e/public-wasm/Cargo.toml",
+      "scope": "qualification-build-support",
+      "sha256": "8e587d2e445c196b80a9e087b062a53d9f7b4a3c5509d9fd3e6c4b40a0027e8e",
+      "kind": "cargo-manifest",
+      "packageName": "sagejs-public-cubic-class-group-e2e-qualification",
+      "packageVersion": "0.1.0",
+      "declaredLicense": "GPL-2.0-or-later"
     }
   ],
   "claims": {
@@ -4194,5 +4434,5 @@
     "miriCoverageEstablished": false,
     "productionQualified": false
   },
-  "inventorySha256": "7e4c73643f62ba79ef70f2cdf9f47df8dd3df45f07a354fbf317960f6e29bf3a"
+  "inventorySha256": "966ea98de155aa521db8cfbf5caa57540f093889fe80b018bc39c8c71c5fb507"
 }

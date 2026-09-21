@@ -1,0 +1,17 @@
+[package]
+name = "sagejs-pari-class-group-rust-experiment"
+version = "0.1.0"
+edition = "2024"
+license = "GPL-2.0-or-later"
+publish = false
+build = "build.rs"
+
+[features]
+flint-normal-form = []
+
+[dependencies]
+gmp-mpfr-sys = { version = "=1.5.3", default-features = false, features = ["force-cross", "mpfr", "use-system-libs"] }
+rug = { version = "=1.19.2", default-features = false, features = ["float", "integer", "rational"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+sha2 = "0.10"

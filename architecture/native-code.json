@@ -168,7 +168,7 @@
       "category": "external-library-bridge",
       "review_status": "accepted",
       "lane": "integration",
-      "rationale": "Thin qualification-only Rust-to-FLINT adapter that copies an i64 relation matrix into the repository's pinned FLINT representation and extracts exact Smith diagonal entries. The mathematical normal-form algorithm remains in FLINT; this adapter is feature-gated and is not linked into the Sage.js product path."
+      "rationale": "Qualification-only Rust-to-FLINT adapter for exact normal forms, retained fraction-free solves, and Arb regulator/root-enclosure operations. Fixed-width values cross through exact fmpz conversions on Unix and wasm32 rather than target slong narrowing. The mathematical kernels remain in pinned FLINT/Arb; this feature-gated adapter is not linked into the Sage.js product path, and a distinct ABI review is required before any native Windows route."
     },
     {
       "path": "bench/pari-class-group-port/pari_compact_flag_one_row20_authority.c",
@@ -2068,6 +2068,62 @@
       "provenance_mapping_status": "not-applicable"
     },
     {
+      "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/core-wasm/build.rs",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration",
+      "rationale": "Qualification-only build adapter for the experimental complete public-cubic WebAssembly campaign; it compiles the shared core against the authenticated Sage.js arithmetic toolchain and is not a production-dispatched backend.",
+      "rust_role": "qualification-harness",
+      "qualification_status": "experimental-qualification",
+      "provenance_class": "qualification-harness",
+      "distribution_status": "qualification-only",
+      "safety_review": "not-applicable",
+      "safety_rationale": "The architecture scanner finds no unsafe or Rust ABI boundary in this source; any future boundary changes this classification and fails validation.",
+      "provenance_mapping_status": "not-applicable"
+    },
+    {
+      "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/core-wasm/src/lib.rs",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration",
+      "rationale": "Qualification-only manifest adapter that includes the shared Rust class-group core for the complete public-cubic WebAssembly campaign; it is not a production-dispatched backend.",
+      "rust_role": "qualification-harness",
+      "qualification_status": "experimental-qualification",
+      "provenance_class": "qualification-harness",
+      "distribution_status": "qualification-only",
+      "safety_review": "not-applicable",
+      "safety_rationale": "The architecture scanner finds no unsafe or Rust ABI boundary in this source; any future boundary changes this classification and fails validation.",
+      "provenance_mapping_status": "not-applicable"
+    },
+    {
+      "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/public-wasm/src/lib.rs",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration",
+      "rationale": "Qualification-only manifest adapter that includes the coefficient-only public cubic wrapper for the complete WebAssembly campaign; it is not a production-dispatched backend.",
+      "rust_role": "qualification-harness",
+      "qualification_status": "experimental-qualification",
+      "provenance_class": "qualification-harness",
+      "distribution_status": "qualification-only",
+      "safety_review": "not-applicable",
+      "safety_rationale": "The architecture scanner finds no unsafe or Rust ABI boundary in this source; any future boundary changes this classification and fails validation.",
+      "provenance_mapping_status": "not-applicable"
+    },
+    {
+      "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/src/lib.rs",
+      "category": "benchmark-reference",
+      "review_status": "experimental-pending-review",
+      "lane": "integration",
+      "rationale": "Qualification-only fail-closed JSON reactor ABI for the complete row-6 WebAssembly campaign; it supplies reproducible actual-browser evidence and is not a production-dispatched backend.",
+      "rust_role": "qualification-harness",
+      "qualification_status": "experimental-qualification",
+      "provenance_class": "qualification-harness",
+      "distribution_status": "qualification-only",
+      "safety_review": "pending-documentation",
+      "safety_rationale": "This experimental source contains unsafe ABI attributes, raw guest-memory access, and allocator boundaries; its per-export FFI-SAFETY documentation and receipt review remain pending before promotion.",
+      "provenance_mapping_status": "not-applicable"
+    },
+    {
       "path": "bench/pari-class-group-rust/qualification/wasm-arithmetic/build.rs",
       "category": "benchmark-reference",
       "review_status": "accepted",
@@ -2366,15 +2422,14 @@
       "category": "mathematical-algorithm",
       "review_status": "experimental-pending-review",
       "lane": "integration",
-      "rationale": "Experimental handwritten Rust mathematical source derived from or closely corresponding to PARI 2.17.4 class-group machinery; promotion requires the maintained source map, GPL notices, differential evidence, and exact release receipt.",
+      "rationale": "Experimental handwritten Rust behavioral reimplementation of the PARI 2.17.4 small-norm ideal schedule using Sage.js-owned resumable state and packet adapters; the maintained provenance inventory retains the useful upstream correspondence without claiming direct translation.",
       "rust_role": "mathematical-core",
       "qualification_status": "experimental-qualification",
-      "provenance_class": "source-translation",
+      "provenance_class": "behavioral-reimplementation",
       "distribution_status": "review-required-before-distribution",
       "safety_review": "not-applicable",
       "safety_rationale": "The architecture scanner finds no unsafe or Rust ABI boundary in this source; any future boundary changes this classification and fails validation.",
-      "provenance_mapping_status": "pending",
-      "provenance_reference": "bench/pari-class-group-rust/qualification/provenance/manifest.json#modules"
+      "provenance_mapping_status": "not-applicable"
     },
     {
       "path": "bench/pari-class-group-rust/src/compact_cubic_presentation.rs",

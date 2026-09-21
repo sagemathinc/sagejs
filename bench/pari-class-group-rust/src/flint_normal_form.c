@@ -2032,35 +2032,103 @@ int sagejs_rust_flint_left_kernel_i64(
     return status;
 }
 
+/*
+ * Import fixed-width ABI integers without assuming that FLINT's slong/ulong
+ * have the host width.  In particular, wasm32 uses 32-bit FLINT words.  The
+ * unsigned arithmetic in the signed helper also handles INT64_MIN exactly.
+ */
+static void sagejs_rust_fmpz_set_u64(fmpz_t output, uint64_t value)
+{
+    fmpz_set_ui(output, (ulong) (value >> 32));
+    fmpz_mul_2exp(output, output, 32);
+    fmpz_add_ui(output, output, (ulong) (value & UINT32_MAX));
+}
+
+static void sagejs_rust_fmpz_set_i64(fmpz_t output, int64_t value)
+{
+    uint64_t magnitude = value < 0
+        ? UINT64_C(0) - (uint64_t) value
+        : (uint64_t) value;
+    sagejs_rust_fmpz_set_u64(output, magnitude);
+    if (value < 0)
+        fmpz_neg(output, output);
+}
+
+static int sagejs_rust_fmpz_get_i64(int64_t *output, const fmpz_t value)
+{
+    int status = 0;
+    fmpz_t minimum, maximum;
+    fmpz_init(minimum);
+    fmpz_init(maximum);
+    sagejs_rust_fmpz_set_i64(minimum, INT64_MIN);
+    sagejs_rust_fmpz_set_i64(maximum, INT64_MAX);
+    if (fmpz_cmp(value, minimum) < 0 || fmpz_cmp(value, maximum) > 0)
+        status = -1;
+    else
+    {
+#if FLINT_BITS == 64
+        *output = (int64_t) fmpz_get_si(value);
+#else
+        fmpz_t magnitude;
+        fmpz_init(magnitude);
+        fmpz_abs(magnitude, value);
+        ulong high, low;
+        fmpz_get_uiui(&high, &low, magnitude);
+        uint64_t bits = ((uint64_t) high << 32) | (uint64_t) low;
+        if (fmpz_sgn(value) < 0)
+            *output = bits == (UINT64_C(1) << 63)
+                ? INT64_MIN
+                : -(int64_t) bits;
+        else
+            *output = (int64_t) bits;
+        fmpz_clear(magnitude);
+#endif
+    }
+    fmpz_clear(maximum);
+    fmpz_clear(minimum);
+    return status;
+}
+
+typedef struct
+{
+    fmpz polynomial[4];
+    fmpz derivative_two_quadratic;
+    fmpz derivative_three_cubic;
+} sagejs_rust_cubic_callback_context;
+
 static int sagejs_rust_cubic_callback(
     arb_ptr output, const arb_t input, void *parameter, slong order, slong prec)
 {
-    const int64_t *polynomial = (const int64_t *) parameter;
+    const sagejs_rust_cubic_callback_context *context =
+        (const sagejs_rust_cubic_callback_context *) parameter;
+    const fmpz *polynomial = context->polynomial;
     if (order > 0)
     {
-        arb_set_si(output + 0, (slong) polynomial[3]);
+        arb_set_fmpz(output + 0, polynomial + 3);
         arb_mul(output + 0, output + 0, input, prec);
-        arb_add_si(output + 0, output + 0, (slong) polynomial[2], prec);
+        arb_add_fmpz(output + 0, output + 0, polynomial + 2, prec);
         arb_mul(output + 0, output + 0, input, prec);
-        arb_add_si(output + 0, output + 0, (slong) polynomial[1], prec);
+        arb_add_fmpz(output + 0, output + 0, polynomial + 1, prec);
         arb_mul(output + 0, output + 0, input, prec);
-        arb_add_si(output + 0, output + 0, (slong) polynomial[0], prec);
+        arb_add_fmpz(output + 0, output + 0, polynomial + 0, prec);
     }
     if (order > 1)
     {
-        arb_set_si(output + 1, 3 * (slong) polynomial[3]);
+        arb_set_fmpz(output + 1, &context->derivative_three_cubic);
         arb_mul(output + 1, output + 1, input, prec);
-        arb_add_si(output + 1, output + 1, 2 * (slong) polynomial[2], prec);
+        arb_add_fmpz(output + 1, output + 1,
+            &context->derivative_two_quadratic, prec);
         arb_mul(output + 1, output + 1, input, prec);
-        arb_add_si(output + 1, output + 1, (slong) polynomial[1], prec);
+        arb_add_fmpz(output + 1, output + 1, polynomial + 1, prec);
     }
     if (order > 2)
     {
-        arb_mul_si(output + 2, input, 3 * (slong) polynomial[3], prec);
-        arb_add_si(output + 2, output + 2, (slong) polynomial[2], prec);
+        arb_set_fmpz(output + 2, &context->derivative_three_cubic);
+        arb_mul(output + 2, output + 2, input, prec);
+        arb_add_fmpz(output + 2, output + 2, polynomial + 2, prec);
     }
     if (order > 3)
-        arb_set_si(output + 3, (slong) polynomial[3]);
+        arb_set_fmpz(output + 3, polynomial + 3);
     for (slong index = 4; index < order; index++)
         arb_zero(output + index);
     return 0;
@@ -2075,7 +2143,8 @@ static int sagejs_rust_cubic_callback(
  * as an exact fallback.
  */
 static int sagejs_rust_refine_cubic_root(
-    arb_t root, const int64_t *polynomial, const arf_interval_t isolated,
+    arb_t root, sagejs_rust_cubic_callback_context *context,
+    const arf_interval_t isolated,
     slong precision)
 {
     int status = ARB_CALC_SUCCESS;
@@ -2091,20 +2160,20 @@ static int sagejs_rust_refine_cubic_root(
 
     status = arb_calc_refine_root_bisect(
         convergence_interval, sagejs_rust_cubic_callback,
-        (void *) polynomial, isolated, 32, 128);
+        (void *) context, isolated, 32, 128);
     if (status == ARB_CALC_SUCCESS)
         status = arb_calc_refine_root_bisect(
             start_interval, sagejs_rust_cubic_callback,
-            (void *) polynomial, convergence_interval, 32, 128);
+            (void *) context, convergence_interval, 32, 128);
     if (status == ARB_CALC_SUCCESS)
     {
         arf_interval_get_arb(convergence_region, convergence_interval, precision);
         arf_interval_get_arb(start, start_interval, precision);
         arb_calc_newton_conv_factor(
             convergence_factor, sagejs_rust_cubic_callback,
-            (void *) polynomial, convergence_region, 128);
+            (void *) context, convergence_region, 128);
         status = arb_calc_refine_root_newton(
-            root, sagejs_rust_cubic_callback, (void *) polynomial,
+            root, sagejs_rust_cubic_callback, (void *) context,
             start, convergence_region, convergence_factor, 32, precision);
         if (status == ARB_CALC_SUCCESS &&
             arb_rel_accuracy_bits(root) < precision - 16)
@@ -2114,7 +2183,7 @@ static int sagejs_rust_refine_cubic_root(
     if (status != ARB_CALC_SUCCESS)
     {
         status = arb_calc_refine_root_bisect(
-            fallback, sagejs_rust_cubic_callback, (void *) polynomial,
+            fallback, sagejs_rust_cubic_callback, (void *) context,
             isolated, precision + 32, precision + 64);
         if (status == ARB_CALC_SUCCESS)
             arf_interval_get_arb(root, fallback, precision);
@@ -2138,30 +2207,53 @@ int sagejs_rust_flint_compact_cubic_regulator(
 {
     if (polynomial == NULL || basis_numerators == NULL ||
         basis_denominator == 0 || relations == 0 ||
+        polynomial[3] != 1 ||
         !((real_places == 3 && unit_rank == 2) ||
           (real_places == 1 && unit_rank == 1)) ||
         generator_coordinates == NULL || unit_exponents == NULL ||
-        precision < 64 || lower == NULL || upper == NULL ||
-        binary_exponent == NULL || sizeof(slong) < sizeof(int64_t))
+        precision < 64 || precision > WORD_MAX - 64 ||
+        lower == NULL || upper == NULL || binary_exponent == NULL)
         return -1;
 
     int status = 0;
-    int64_t bound = 2;
+    sagejs_rust_cubic_callback_context context;
+    fmpz basis[9];
+    for (size_t index = 0; index < 4; index++)
+    {
+        fmpz_init(context.polynomial + index);
+        sagejs_rust_fmpz_set_i64(context.polynomial + index, polynomial[index]);
+    }
+    fmpz_init(&context.derivative_two_quadratic);
+    fmpz_init(&context.derivative_three_cubic);
+    fmpz_mul_ui(&context.derivative_two_quadratic,
+        context.polynomial + 2, 2);
+    fmpz_mul_ui(&context.derivative_three_cubic,
+        context.polynomial + 3, 3);
+    for (size_t index = 0; index < 9; index++)
+    {
+        fmpz_init(basis + index);
+        sagejs_rust_fmpz_set_i64(basis + index, basis_numerators[index]);
+    }
+    fmpz_t denominator, bound, magnitude;
+    fmpz_init(denominator);
+    fmpz_init(bound);
+    fmpz_init(magnitude);
+    sagejs_rust_fmpz_set_u64(denominator, basis_denominator);
+    fmpz_set_ui(bound, 2);
     for (size_t index = 0; index < 3; index++)
     {
-        int64_t coefficient = polynomial[index];
-        int64_t magnitude = coefficient < 0 ? -coefficient : coefficient;
-        if (magnitude >= bound)
-            bound = magnitude + 1;
+        fmpz_abs(magnitude, context.polynomial + index);
+        if (fmpz_cmp(magnitude, bound) >= 0)
+            fmpz_add_ui(bound, magnitude, 1);
     }
     arf_interval_t initial;
     arf_interval_init(initial);
-    arf_set_si(&initial->a, (slong) -bound);
-    arf_set_si(&initial->b, (slong) bound);
+    arf_set_fmpz(&initial->b, bound);
+    arf_neg(&initial->a, &initial->b);
     arf_interval_ptr isolated = NULL;
     int *flags = NULL;
     slong root_count = arb_calc_isolate_roots(
-        &isolated, &flags, sagejs_rust_cubic_callback, (void *) polynomial,
+        &isolated, &flags, sagejs_rust_cubic_callback, (void *) &context,
         initial, 256, 100000, 3, 128);
     slong selected_roots[3];
     slong selected_count = 0;
@@ -2180,7 +2272,7 @@ int sagejs_rust_flint_compact_cubic_regulator(
         for (size_t root = 0; root < real_places; root++)
         {
             int refined_status = sagejs_rust_refine_cubic_root(
-                roots[root], polynomial, isolated + selected_roots[root], precision);
+                roots[root], &context, isolated + selected_roots[root], precision);
             if (refined_status != ARB_CALC_SUCCESS)
                 status = -3;
         }
@@ -2219,8 +2311,8 @@ int sagejs_rust_flint_compact_cubic_regulator(
             {
                 fmpz_zero(coefficients[power]);
                 for (size_t coordinate = 0; coordinate < 3; coordinate++)
-                    fmpz_addmul_si(coefficients[power], coordinates[coordinate],
-                        (slong) basis_numerators[3 * coordinate + power]);
+                    fmpz_addmul(coefficients[power], coordinates[coordinate],
+                        basis + 3 * coordinate + power);
             }
             for (size_t root = 0; root < real_places && status == 0; root++)
             {
@@ -2229,7 +2321,7 @@ int sagejs_rust_flint_compact_cubic_regulator(
                 arb_add_fmpz(value, value, coefficients[1], precision);
                 arb_mul(value, value, roots[root], precision);
                 arb_add_fmpz(value, value, coefficients[0], precision);
-                arb_div_ui(value, value, (ulong) basis_denominator, precision);
+                arb_div_fmpz(value, value, denominator, precision);
                 arb_abs(value, value);
                 if (arb_contains_zero(value))
                 {
@@ -2276,13 +2368,12 @@ int sagejs_rust_flint_compact_cubic_regulator(
         {
             arb_get_interval_fmpz_2exp(
                 lower_fmpz, upper_fmpz, interval_exponent, determinant);
-            if (!fmpz_fits_si(interval_exponent))
+            if (sagejs_rust_fmpz_get_i64(binary_exponent, interval_exponent) != 0)
                 status = -6;
             else
             {
                 fmpz_get_mpz(lower, lower_fmpz);
                 fmpz_get_mpz(upper, upper_fmpz);
-                *binary_exponent = (int64_t) fmpz_get_si(interval_exponent);
             }
         }
     }
@@ -2309,6 +2400,15 @@ int sagejs_rust_flint_compact_cubic_regulator(
         _arf_interval_vec_clear(isolated, root_count);
     flint_free(flags);
     arf_interval_clear(initial);
+    fmpz_clear(magnitude);
+    fmpz_clear(bound);
+    fmpz_clear(denominator);
+    for (size_t index = 0; index < 9; index++)
+        fmpz_clear(basis + index);
+    for (size_t index = 0; index < 4; index++)
+        fmpz_clear(context.polynomial + index);
+    fmpz_clear(&context.derivative_three_cubic);
+    fmpz_clear(&context.derivative_two_quadratic);
     flint_cleanup();
     return status;
 }

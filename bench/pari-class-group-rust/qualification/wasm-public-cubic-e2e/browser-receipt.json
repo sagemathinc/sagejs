@@ -1,0 +1,2535 @@
+{
+  "schema": "sagejs.rust-class-group/wasm-public-cubic-browser-smoke-v1",
+  "outcome": "pass",
+  "artifact": {
+    "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/build/public-cubic-e2e.wasm",
+    "bytes": 5679772,
+    "sha256": "62a04ab9573f09fd8533c613e5ce60321975bb3aa49910fecb9e0d23451b5121",
+    "gzipBytes": 2290695,
+    "gzipSha256": "79df17b5512d2d4803c5383f3ea673dc457f96de437f6a12309b0f09d641af3e"
+  },
+  "vector": {
+    "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/row6.vector.json",
+    "sha256": "c52c44662ed7e1e1db8b203094258164d17b9f0868c22c5bb777a49034df431c"
+  },
+  "toolchain": {
+    "identity": "37d8d819fd533570e0b707d3101ab2944f6488c4b4452b2b0a1a9ea04366452c",
+    "receiptSha256": "e0d16b87271b855dd0b045860c841014b3a5d69fa7e96e45752e299823533978",
+    "receipt": {
+      "schema": "sagejs.wasm-prepared-toolchain/v2",
+      "lockDigest": "37d8d819fd533570e0b707d3101ab2944f6488c4b4452b2b0a1a9ea04366452c",
+      "platform": "linux-x64",
+      "canonicalBuilder": "linux-x64",
+      "wasiSdk": {
+        "version": "33.0",
+        "source": "wasi-sdk-linux-x64",
+        "sourceSha256": "0ba8b5bfaeb2adf3f29bab5841d76cf5318ab8e1642ea195f88baba1abd47bce",
+        "clangVersion": "clang version 22.1.0-wasi-sdk (https://github.com/llvm/llvm-project 4434dabb69916856b824f68a64b029c67175e532)",
+        "clangSha256": "6985ec66b1065976616156773f95ed318b1793f7761fe9e9f38f8e771571021c",
+        "clangxxSha256": "6985ec66b1065976616156773f95ed318b1793f7761fe9e9f38f8e771571021c",
+        "llvmArSha256": "0b52c0242b9c3998dd106ce11bcff8ac33b134dd0d05aa9215692ecd7feb1da9",
+        "llvmRanlibSha256": "0b52c0242b9c3998dd106ce11bcff8ac33b134dd0d05aa9215692ecd7feb1da9",
+        "llvmStripSha256": "f020ba49404039ce48e0449bf38c763a5a8e65fd9cfe7e9a26c3d78e21a98ee4",
+        "wasmLdSha256": "5c965a9e8525c7206aa583f9691f1a7a5e46bd4d793bf65f809b7124c670df26"
+      },
+      "libraries": {
+        "gmp": {
+          "version": "6.2.1",
+          "source": "gmp-wasm",
+          "sourceSha256": "eae9326beb4158c386e39a356818031bd28f3124cf915f8c5b1dc4c7a36b4d7c",
+          "archiveSha256": "66eb596677c3acd0e87f3118b69316dcba31695d569b5fe1020a9ff1ee0d12a4",
+          "headersSha256": "9212dc80c842042bcbfb513f74f05452bc0bb7d8ad59395593f7786289012d7a"
+        },
+        "mpfr": {
+          "version": "4.2.2",
+          "source": "mpfr",
+          "sourceSha256": "b67ba0383ef7e8a8563734e2e889ef5ec3c3b898a01d00fa0a6869ad81c6ce01",
+          "archiveSha256": "7a072da2bff34576648422e0c83ad7cf82c8ea99f0898902cf1653de3654998a",
+          "headersSha256": "44afcda7329a32f49e948ca0c9ae998748ecebb0186f5ce752e2389914a5a767"
+        },
+        "mpc": {
+          "version": "1.4.1",
+          "source": "mpc",
+          "sourceSha256": "91204cd32f164bd3b7c992d4a6a8ce6519511aadab30f78b6982d0bf8d73e931",
+          "archiveSha256": "2fb5399428f3aeda8f9bed9ab10df35495ee2fc3f5355f73c40640b02825ba91",
+          "headersSha256": "625f115ece87a93698cd52e7e3c327df3580e544d5e9b045565f93ebe44ea2d6"
+        },
+        "flint": {
+          "version": "3.6.0",
+          "source": "flint",
+          "sourceSha256": "b95e2c7792f5eea4a1c8d2d42c4098434756832e57a094b295eb5dfdc9b4c36b",
+          "archiveSha256": "827b12b26ec81559cd7e9635682fdf377516f7b870b266f7118a77b39d27f291",
+          "headersSha256": "268c9b890aa969cd1d0632c3c00b4908aa889bcd132c673ef17cda0ffe93c283"
+        },
+        "m4ri": {
+          "version": "20260122",
+          "source": "m4ri",
+          "sourceSha256": "7e033ca1fd36be8861e2f67d9d124c398fc0d830209bb0226462485876346404",
+          "archiveSha256": "270b3652be341f133c706011509385ac15611279a1715293fa1adb9994f7da37",
+          "headersSha256": "16567d21ab5f61f471fa01c6c6007c964b5b631a165f138d0524f92578f9c8d4"
+        },
+        "ffpoly": {
+          "version": "1.2.7",
+          "source": "ffpoly",
+          "sourceSha256": "ffbe5c7f7ce077f3fedb530656b0f7ae95268cf23a38c9adfc3f654a65973b13",
+          "archiveSha256": "96231d441b16d495aaf881172f5a413ea8d7aaef7741d7aa867977adcccd9a01",
+          "headersSha256": "024ed1265b9347caa4280702a7bd0ddaa5d5e3ddacb3465ac06714c1b8e9457f"
+        },
+        "smalljac": {
+          "version": "4.1.3",
+          "source": "smalljac",
+          "sourceSha256": "5a145509e491bba19bf73d8104576083286bd35aea2a149c7c516e9ea5ca8ec7",
+          "archiveSha256": "63751221196f2e3ffe753435e72ed29d8127b1daf434987e27f71c369c66ff99",
+          "headersSha256": "ccc66e5cf608db19ccb8c0b15fe84267889e8acbd622cbc9977cc705e54d402a"
+        }
+      },
+      "commands": [
+        {
+          "command": "tar",
+          "arguments": [
+            "-xf",
+            "$SOURCE_ARCHIVE/gmp-wasm",
+            "-C",
+            "$TOOLCHAIN_ROOT/.build/gmp-source"
+          ],
+          "cwd": "$REPOSITORY_ROOT",
+          "environment": {
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.2.1/configure",
+          "arguments": [
+            "--build=x86_64-pc-linux-gnu",
+            "--host=wasm32-wasi",
+            "--prefix=$TOOLCHAIN_ROOT/prefixes/gmp",
+            "--disable-assembly",
+            "--disable-shared",
+            "--enable-static",
+            "--disable-cxx"
+          ],
+          "cwd": "$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.2.1",
+          "environment": {
+            "ABI": "standard",
+            "AR": "$TOOLCHAIN_ROOT/sdk/bin/llvm-ar",
+            "CC": "$TOOLCHAIN_ROOT/sdk/bin/clang --target=wasm32-wasip1 --sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot -D__wasi__ -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS",
+            "CC_FOR_BUILD": "cc",
+            "CFLAGS": "-Oz -fPIC -fvisibility=hidden -ffile-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.2.1=/sagejs/native-source -fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.2.1=/sagejs/native-source -fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.2.1=/sagejs/native-source -ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -ffile-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fdebug-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fmacro-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain",
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "CXX": "$TOOLCHAIN_ROOT/sdk/bin/clang++ --target=wasm32-wasip1 --sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot -D__wasi__ -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS",
+            "CXX_FOR_BUILD": "c++",
+            "CXXFLAGS": "-Oz -fPIC -fvisibility=hidden -ffile-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.2.1=/sagejs/native-source -fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.2.1=/sagejs/native-source -fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.2.1=/sagejs/native-source -ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -ffile-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fdebug-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fmacro-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LDFLAGS": "-lwasi-emulated-signal",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "RANLIB": "$TOOLCHAIN_ROOT/sdk/bin/llvm-ranlib",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "STRIP": "$TOOLCHAIN_ROOT/sdk/bin/llvm-strip",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "make",
+          "arguments": [
+            "-j8"
+          ],
+          "cwd": "$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.2.1",
+          "environment": {
+            "ABI": "standard",
+            "AR": "$TOOLCHAIN_ROOT/sdk/bin/llvm-ar",
+            "CC": "$TOOLCHAIN_ROOT/sdk/bin/clang --target=wasm32-wasip1 --sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot -D__wasi__ -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS",
+            "CC_FOR_BUILD": "cc",
+            "CFLAGS": "-Oz -fPIC -fvisibility=hidden -ffile-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.2.1=/sagejs/native-source -fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.2.1=/sagejs/native-source -fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.2.1=/sagejs/native-source -ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -ffile-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fdebug-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fmacro-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain",
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "CXX": "$TOOLCHAIN_ROOT/sdk/bin/clang++ --target=wasm32-wasip1 --sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot -D__wasi__ -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS",
+            "CXX_FOR_BUILD": "c++",
+            "CXXFLAGS": "-Oz -fPIC -fvisibility=hidden -ffile-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.2.1=/sagejs/native-source -fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.2.1=/sagejs/native-source -fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.2.1=/sagejs/native-source -ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -ffile-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fdebug-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fmacro-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LDFLAGS": "-lwasi-emulated-signal",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "RANLIB": "$TOOLCHAIN_ROOT/sdk/bin/llvm-ranlib",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "STRIP": "$TOOLCHAIN_ROOT/sdk/bin/llvm-strip",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "make",
+          "arguments": [
+            "install"
+          ],
+          "cwd": "$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.2.1",
+          "environment": {
+            "ABI": "standard",
+            "AR": "$TOOLCHAIN_ROOT/sdk/bin/llvm-ar",
+            "CC": "$TOOLCHAIN_ROOT/sdk/bin/clang --target=wasm32-wasip1 --sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot -D__wasi__ -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS",
+            "CC_FOR_BUILD": "cc",
+            "CFLAGS": "-Oz -fPIC -fvisibility=hidden -ffile-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.2.1=/sagejs/native-source -fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.2.1=/sagejs/native-source -fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.2.1=/sagejs/native-source -ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -ffile-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fdebug-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fmacro-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain",
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "CXX": "$TOOLCHAIN_ROOT/sdk/bin/clang++ --target=wasm32-wasip1 --sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot -D__wasi__ -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS",
+            "CXX_FOR_BUILD": "c++",
+            "CXXFLAGS": "-Oz -fPIC -fvisibility=hidden -ffile-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.2.1=/sagejs/native-source -fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.2.1=/sagejs/native-source -fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.2.1=/sagejs/native-source -ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -ffile-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fdebug-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fmacro-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LDFLAGS": "-lwasi-emulated-signal",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "RANLIB": "$TOOLCHAIN_ROOT/sdk/bin/llvm-ranlib",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "STRIP": "$TOOLCHAIN_ROOT/sdk/bin/llvm-strip",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "tar",
+          "arguments": [
+            "-xf",
+            "$SOURCE_ARCHIVE/mpfr",
+            "-C",
+            "$TOOLCHAIN_ROOT/.build/mpfr-source"
+          ],
+          "cwd": "$REPOSITORY_ROOT",
+          "environment": {
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "$TOOLCHAIN_ROOT/.build/mpfr-source/mpfr-4.2.2/configure",
+          "arguments": [
+            "--build=x86_64-pc-linux-gnu",
+            "--host=wasm32-wasi",
+            "--prefix=$TOOLCHAIN_ROOT/prefixes/mpfr",
+            "--with-gmp=$TOOLCHAIN_ROOT/prefixes/gmp",
+            "--disable-shared",
+            "--enable-static",
+            "--disable-thread-safe"
+          ],
+          "cwd": "$TOOLCHAIN_ROOT/.build/mpfr-source/mpfr-4.2.2",
+          "environment": {
+            "AR": "$TOOLCHAIN_ROOT/sdk/bin/llvm-ar",
+            "CC": "$TOOLCHAIN_ROOT/sdk/bin/clang --target=wasm32-wasip1 --sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot -D__wasi__ -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS",
+            "CC_FOR_BUILD": "cc",
+            "CFLAGS": "-Oz -fPIC -fvisibility=hidden -ffile-prefix-map=$TOOLCHAIN_ROOT/.build/mpfr-source/mpfr-4.2.2=/sagejs/native-source -fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/mpfr-source/mpfr-4.2.2=/sagejs/native-source -fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/mpfr-source/mpfr-4.2.2=/sagejs/native-source -ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -ffile-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fdebug-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fmacro-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain",
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "CPPFLAGS": "-I$TOOLCHAIN_ROOT/prefixes/gmp/include",
+            "CXX": "$TOOLCHAIN_ROOT/sdk/bin/clang++ --target=wasm32-wasip1 --sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot -D__wasi__ -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS",
+            "CXX_FOR_BUILD": "c++",
+            "CXXFLAGS": "-Oz -fPIC -fvisibility=hidden -ffile-prefix-map=$TOOLCHAIN_ROOT/.build/mpfr-source/mpfr-4.2.2=/sagejs/native-source -fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/mpfr-source/mpfr-4.2.2=/sagejs/native-source -fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/mpfr-source/mpfr-4.2.2=/sagejs/native-source -ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -ffile-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fdebug-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fmacro-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LDFLAGS": "-L$TOOLCHAIN_ROOT/prefixes/gmp/lib -lwasi-emulated-signal",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "RANLIB": "$TOOLCHAIN_ROOT/sdk/bin/llvm-ranlib",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "STRIP": "$TOOLCHAIN_ROOT/sdk/bin/llvm-strip",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "make",
+          "arguments": [
+            "-j8"
+          ],
+          "cwd": "$TOOLCHAIN_ROOT/.build/mpfr-source/mpfr-4.2.2",
+          "environment": {
+            "AR": "$TOOLCHAIN_ROOT/sdk/bin/llvm-ar",
+            "CC": "$TOOLCHAIN_ROOT/sdk/bin/clang --target=wasm32-wasip1 --sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot -D__wasi__ -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS",
+            "CC_FOR_BUILD": "cc",
+            "CFLAGS": "-Oz -fPIC -fvisibility=hidden -ffile-prefix-map=$TOOLCHAIN_ROOT/.build/mpfr-source/mpfr-4.2.2=/sagejs/native-source -fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/mpfr-source/mpfr-4.2.2=/sagejs/native-source -fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/mpfr-source/mpfr-4.2.2=/sagejs/native-source -ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -ffile-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fdebug-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fmacro-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain",
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "CPPFLAGS": "-I$TOOLCHAIN_ROOT/prefixes/gmp/include",
+            "CXX": "$TOOLCHAIN_ROOT/sdk/bin/clang++ --target=wasm32-wasip1 --sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot -D__wasi__ -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS",
+            "CXX_FOR_BUILD": "c++",
+            "CXXFLAGS": "-Oz -fPIC -fvisibility=hidden -ffile-prefix-map=$TOOLCHAIN_ROOT/.build/mpfr-source/mpfr-4.2.2=/sagejs/native-source -fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/mpfr-source/mpfr-4.2.2=/sagejs/native-source -fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/mpfr-source/mpfr-4.2.2=/sagejs/native-source -ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -ffile-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fdebug-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fmacro-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LDFLAGS": "-L$TOOLCHAIN_ROOT/prefixes/gmp/lib -lwasi-emulated-signal",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "RANLIB": "$TOOLCHAIN_ROOT/sdk/bin/llvm-ranlib",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "STRIP": "$TOOLCHAIN_ROOT/sdk/bin/llvm-strip",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "make",
+          "arguments": [
+            "install"
+          ],
+          "cwd": "$TOOLCHAIN_ROOT/.build/mpfr-source/mpfr-4.2.2",
+          "environment": {
+            "AR": "$TOOLCHAIN_ROOT/sdk/bin/llvm-ar",
+            "CC": "$TOOLCHAIN_ROOT/sdk/bin/clang --target=wasm32-wasip1 --sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot -D__wasi__ -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS",
+            "CC_FOR_BUILD": "cc",
+            "CFLAGS": "-Oz -fPIC -fvisibility=hidden -ffile-prefix-map=$TOOLCHAIN_ROOT/.build/mpfr-source/mpfr-4.2.2=/sagejs/native-source -fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/mpfr-source/mpfr-4.2.2=/sagejs/native-source -fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/mpfr-source/mpfr-4.2.2=/sagejs/native-source -ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -ffile-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fdebug-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fmacro-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain",
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "CPPFLAGS": "-I$TOOLCHAIN_ROOT/prefixes/gmp/include",
+            "CXX": "$TOOLCHAIN_ROOT/sdk/bin/clang++ --target=wasm32-wasip1 --sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot -D__wasi__ -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS",
+            "CXX_FOR_BUILD": "c++",
+            "CXXFLAGS": "-Oz -fPIC -fvisibility=hidden -ffile-prefix-map=$TOOLCHAIN_ROOT/.build/mpfr-source/mpfr-4.2.2=/sagejs/native-source -fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/mpfr-source/mpfr-4.2.2=/sagejs/native-source -fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/mpfr-source/mpfr-4.2.2=/sagejs/native-source -ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -ffile-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fdebug-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fmacro-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LDFLAGS": "-L$TOOLCHAIN_ROOT/prefixes/gmp/lib -lwasi-emulated-signal",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "RANLIB": "$TOOLCHAIN_ROOT/sdk/bin/llvm-ranlib",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "STRIP": "$TOOLCHAIN_ROOT/sdk/bin/llvm-strip",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "tar",
+          "arguments": [
+            "-xf",
+            "$SOURCE_ARCHIVE/mpc",
+            "-C",
+            "$TOOLCHAIN_ROOT/.build/mpc-source"
+          ],
+          "cwd": "$REPOSITORY_ROOT",
+          "environment": {
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "$TOOLCHAIN_ROOT/.build/mpc-source/mpc-1.4.1/configure",
+          "arguments": [
+            "--build=x86_64-pc-linux-gnu",
+            "--host=wasm32-wasi",
+            "--prefix=$TOOLCHAIN_ROOT/prefixes/mpc",
+            "--with-gmp=$TOOLCHAIN_ROOT/prefixes/gmp",
+            "--with-mpfr=$TOOLCHAIN_ROOT/prefixes/mpfr",
+            "--disable-shared",
+            "--enable-static"
+          ],
+          "cwd": "$TOOLCHAIN_ROOT/.build/mpc-source/mpc-1.4.1",
+          "environment": {
+            "AR": "$TOOLCHAIN_ROOT/sdk/bin/llvm-ar",
+            "CC": "$TOOLCHAIN_ROOT/sdk/bin/clang --target=wasm32-wasip1 --sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot -D__wasi__ -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS",
+            "CC_FOR_BUILD": "cc",
+            "CFLAGS": "-Oz -fPIC -fvisibility=hidden -ffile-prefix-map=$TOOLCHAIN_ROOT/.build/mpc-source/mpc-1.4.1=/sagejs/native-source -fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/mpc-source/mpc-1.4.1=/sagejs/native-source -fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/mpc-source/mpc-1.4.1=/sagejs/native-source -ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -ffile-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fdebug-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fmacro-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain",
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "CPPFLAGS": "-I$TOOLCHAIN_ROOT/prefixes/gmp/include -I$TOOLCHAIN_ROOT/prefixes/mpfr/include",
+            "CXX": "$TOOLCHAIN_ROOT/sdk/bin/clang++ --target=wasm32-wasip1 --sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot -D__wasi__ -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS",
+            "CXX_FOR_BUILD": "c++",
+            "CXXFLAGS": "-Oz -fPIC -fvisibility=hidden -ffile-prefix-map=$TOOLCHAIN_ROOT/.build/mpc-source/mpc-1.4.1=/sagejs/native-source -fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/mpc-source/mpc-1.4.1=/sagejs/native-source -fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/mpc-source/mpc-1.4.1=/sagejs/native-source -ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -ffile-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fdebug-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fmacro-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LDFLAGS": "-L$TOOLCHAIN_ROOT/prefixes/gmp/lib -L$TOOLCHAIN_ROOT/prefixes/mpfr/lib -lwasi-emulated-signal",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "RANLIB": "$TOOLCHAIN_ROOT/sdk/bin/llvm-ranlib",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "STRIP": "$TOOLCHAIN_ROOT/sdk/bin/llvm-strip",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "make",
+          "arguments": [
+            "-j8"
+          ],
+          "cwd": "$TOOLCHAIN_ROOT/.build/mpc-source/mpc-1.4.1",
+          "environment": {
+            "AR": "$TOOLCHAIN_ROOT/sdk/bin/llvm-ar",
+            "CC": "$TOOLCHAIN_ROOT/sdk/bin/clang --target=wasm32-wasip1 --sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot -D__wasi__ -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS",
+            "CC_FOR_BUILD": "cc",
+            "CFLAGS": "-Oz -fPIC -fvisibility=hidden -ffile-prefix-map=$TOOLCHAIN_ROOT/.build/mpc-source/mpc-1.4.1=/sagejs/native-source -fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/mpc-source/mpc-1.4.1=/sagejs/native-source -fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/mpc-source/mpc-1.4.1=/sagejs/native-source -ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -ffile-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fdebug-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fmacro-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain",
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "CPPFLAGS": "-I$TOOLCHAIN_ROOT/prefixes/gmp/include -I$TOOLCHAIN_ROOT/prefixes/mpfr/include",
+            "CXX": "$TOOLCHAIN_ROOT/sdk/bin/clang++ --target=wasm32-wasip1 --sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot -D__wasi__ -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS",
+            "CXX_FOR_BUILD": "c++",
+            "CXXFLAGS": "-Oz -fPIC -fvisibility=hidden -ffile-prefix-map=$TOOLCHAIN_ROOT/.build/mpc-source/mpc-1.4.1=/sagejs/native-source -fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/mpc-source/mpc-1.4.1=/sagejs/native-source -fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/mpc-source/mpc-1.4.1=/sagejs/native-source -ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -ffile-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fdebug-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fmacro-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LDFLAGS": "-L$TOOLCHAIN_ROOT/prefixes/gmp/lib -L$TOOLCHAIN_ROOT/prefixes/mpfr/lib -lwasi-emulated-signal",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "RANLIB": "$TOOLCHAIN_ROOT/sdk/bin/llvm-ranlib",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "STRIP": "$TOOLCHAIN_ROOT/sdk/bin/llvm-strip",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "make",
+          "arguments": [
+            "install"
+          ],
+          "cwd": "$TOOLCHAIN_ROOT/.build/mpc-source/mpc-1.4.1",
+          "environment": {
+            "AR": "$TOOLCHAIN_ROOT/sdk/bin/llvm-ar",
+            "CC": "$TOOLCHAIN_ROOT/sdk/bin/clang --target=wasm32-wasip1 --sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot -D__wasi__ -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS",
+            "CC_FOR_BUILD": "cc",
+            "CFLAGS": "-Oz -fPIC -fvisibility=hidden -ffile-prefix-map=$TOOLCHAIN_ROOT/.build/mpc-source/mpc-1.4.1=/sagejs/native-source -fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/mpc-source/mpc-1.4.1=/sagejs/native-source -fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/mpc-source/mpc-1.4.1=/sagejs/native-source -ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -ffile-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fdebug-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fmacro-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain",
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "CPPFLAGS": "-I$TOOLCHAIN_ROOT/prefixes/gmp/include -I$TOOLCHAIN_ROOT/prefixes/mpfr/include",
+            "CXX": "$TOOLCHAIN_ROOT/sdk/bin/clang++ --target=wasm32-wasip1 --sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot -D__wasi__ -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS",
+            "CXX_FOR_BUILD": "c++",
+            "CXXFLAGS": "-Oz -fPIC -fvisibility=hidden -ffile-prefix-map=$TOOLCHAIN_ROOT/.build/mpc-source/mpc-1.4.1=/sagejs/native-source -fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/mpc-source/mpc-1.4.1=/sagejs/native-source -fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/mpc-source/mpc-1.4.1=/sagejs/native-source -ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -ffile-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fdebug-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fmacro-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LDFLAGS": "-L$TOOLCHAIN_ROOT/prefixes/gmp/lib -L$TOOLCHAIN_ROOT/prefixes/mpfr/lib -lwasi-emulated-signal",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "RANLIB": "$TOOLCHAIN_ROOT/sdk/bin/llvm-ranlib",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "STRIP": "$TOOLCHAIN_ROOT/sdk/bin/llvm-strip",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "tar",
+          "arguments": [
+            "-xf",
+            "$SOURCE_ARCHIVE/flint",
+            "-C",
+            "$TOOLCHAIN_ROOT/.build/flint-source"
+          ],
+          "cwd": "$REPOSITORY_ROOT",
+          "environment": {
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "$TOOLCHAIN_ROOT/.build/flint-source/flint-3.6.0/configure",
+          "arguments": [
+            "--build=x86_64-pc-linux-gnu",
+            "--host=wasm32-wasi",
+            "--prefix=$TOOLCHAIN_ROOT/prefixes/flint",
+            "--with-gmp=$TOOLCHAIN_ROOT/prefixes/gmp",
+            "--with-mpfr=$TOOLCHAIN_ROOT/prefixes/mpfr",
+            "--disable-shared",
+            "--enable-static",
+            "--disable-pthread",
+            "--disable-thread-safe",
+            "--disable-assembly"
+          ],
+          "cwd": "$TOOLCHAIN_ROOT/.build/flint-source/flint-3.6.0",
+          "environment": {
+            "AR": "$TOOLCHAIN_ROOT/sdk/bin/llvm-ar",
+            "CC": "$TOOLCHAIN_ROOT/sdk/bin/clang --target=wasm32-wasip1 --sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot -D__wasi__ -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS",
+            "CC_FOR_BUILD": "cc",
+            "CFLAGS": "-Oz -fPIC -fvisibility=hidden -ffile-prefix-map=$TOOLCHAIN_ROOT/.build/flint-source/flint-3.6.0=/sagejs/native-source -fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/flint-source/flint-3.6.0=/sagejs/native-source -fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/flint-source/flint-3.6.0=/sagejs/native-source -ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -ffile-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fdebug-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fmacro-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -include $REPOSITORY_ROOT/packages/wasm-toolchain/patches/sagejs_wasi_fenv_compat.h",
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "CPPFLAGS": "-I$TOOLCHAIN_ROOT/prefixes/gmp/include -I$TOOLCHAIN_ROOT/prefixes/mpfr/include",
+            "CXX": "$TOOLCHAIN_ROOT/sdk/bin/clang++ --target=wasm32-wasip1 --sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot -D__wasi__ -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS",
+            "CXX_FOR_BUILD": "c++",
+            "CXXFLAGS": "-Oz -fPIC -fvisibility=hidden -ffile-prefix-map=$TOOLCHAIN_ROOT/.build/flint-source/flint-3.6.0=/sagejs/native-source -fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/flint-source/flint-3.6.0=/sagejs/native-source -fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/flint-source/flint-3.6.0=/sagejs/native-source -ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -ffile-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fdebug-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fmacro-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LD": "$TOOLCHAIN_ROOT/sdk/bin/wasm-ld",
+            "LDFLAGS": "-L$TOOLCHAIN_ROOT/prefixes/gmp/lib -L$TOOLCHAIN_ROOT/prefixes/mpfr/lib -lwasi-emulated-signal",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "RANLIB": "$TOOLCHAIN_ROOT/sdk/bin/llvm-ranlib",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "STRIP": "$TOOLCHAIN_ROOT/sdk/bin/llvm-strip",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "make",
+          "arguments": [
+            "-j8",
+            "LD=$TOOLCHAIN_ROOT/sdk/bin/wasm-ld"
+          ],
+          "cwd": "$TOOLCHAIN_ROOT/.build/flint-source/flint-3.6.0",
+          "environment": {
+            "AR": "$TOOLCHAIN_ROOT/sdk/bin/llvm-ar",
+            "CC": "$TOOLCHAIN_ROOT/sdk/bin/clang --target=wasm32-wasip1 --sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot -D__wasi__ -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS",
+            "CC_FOR_BUILD": "cc",
+            "CFLAGS": "-Oz -fPIC -fvisibility=hidden -ffile-prefix-map=$TOOLCHAIN_ROOT/.build/flint-source/flint-3.6.0=/sagejs/native-source -fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/flint-source/flint-3.6.0=/sagejs/native-source -fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/flint-source/flint-3.6.0=/sagejs/native-source -ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -ffile-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fdebug-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fmacro-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -include $REPOSITORY_ROOT/packages/wasm-toolchain/patches/sagejs_wasi_fenv_compat.h",
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "CPPFLAGS": "-I$TOOLCHAIN_ROOT/prefixes/gmp/include -I$TOOLCHAIN_ROOT/prefixes/mpfr/include",
+            "CXX": "$TOOLCHAIN_ROOT/sdk/bin/clang++ --target=wasm32-wasip1 --sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot -D__wasi__ -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS",
+            "CXX_FOR_BUILD": "c++",
+            "CXXFLAGS": "-Oz -fPIC -fvisibility=hidden -ffile-prefix-map=$TOOLCHAIN_ROOT/.build/flint-source/flint-3.6.0=/sagejs/native-source -fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/flint-source/flint-3.6.0=/sagejs/native-source -fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/flint-source/flint-3.6.0=/sagejs/native-source -ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -ffile-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fdebug-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fmacro-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LD": "$TOOLCHAIN_ROOT/sdk/bin/wasm-ld",
+            "LDFLAGS": "-L$TOOLCHAIN_ROOT/prefixes/gmp/lib -L$TOOLCHAIN_ROOT/prefixes/mpfr/lib -lwasi-emulated-signal",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "RANLIB": "$TOOLCHAIN_ROOT/sdk/bin/llvm-ranlib",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "STRIP": "$TOOLCHAIN_ROOT/sdk/bin/llvm-strip",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "make",
+          "arguments": [
+            "install",
+            "LD=$TOOLCHAIN_ROOT/sdk/bin/wasm-ld"
+          ],
+          "cwd": "$TOOLCHAIN_ROOT/.build/flint-source/flint-3.6.0",
+          "environment": {
+            "AR": "$TOOLCHAIN_ROOT/sdk/bin/llvm-ar",
+            "CC": "$TOOLCHAIN_ROOT/sdk/bin/clang --target=wasm32-wasip1 --sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot -D__wasi__ -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS",
+            "CC_FOR_BUILD": "cc",
+            "CFLAGS": "-Oz -fPIC -fvisibility=hidden -ffile-prefix-map=$TOOLCHAIN_ROOT/.build/flint-source/flint-3.6.0=/sagejs/native-source -fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/flint-source/flint-3.6.0=/sagejs/native-source -fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/flint-source/flint-3.6.0=/sagejs/native-source -ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -ffile-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fdebug-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fmacro-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -include $REPOSITORY_ROOT/packages/wasm-toolchain/patches/sagejs_wasi_fenv_compat.h",
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "CPPFLAGS": "-I$TOOLCHAIN_ROOT/prefixes/gmp/include -I$TOOLCHAIN_ROOT/prefixes/mpfr/include",
+            "CXX": "$TOOLCHAIN_ROOT/sdk/bin/clang++ --target=wasm32-wasip1 --sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot -D__wasi__ -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS",
+            "CXX_FOR_BUILD": "c++",
+            "CXXFLAGS": "-Oz -fPIC -fvisibility=hidden -ffile-prefix-map=$TOOLCHAIN_ROOT/.build/flint-source/flint-3.6.0=/sagejs/native-source -fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/flint-source/flint-3.6.0=/sagejs/native-source -fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/flint-source/flint-3.6.0=/sagejs/native-source -ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -ffile-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fdebug-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fmacro-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LD": "$TOOLCHAIN_ROOT/sdk/bin/wasm-ld",
+            "LDFLAGS": "-L$TOOLCHAIN_ROOT/prefixes/gmp/lib -L$TOOLCHAIN_ROOT/prefixes/mpfr/lib -lwasi-emulated-signal",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "RANLIB": "$TOOLCHAIN_ROOT/sdk/bin/llvm-ranlib",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "STRIP": "$TOOLCHAIN_ROOT/sdk/bin/llvm-strip",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "tar",
+          "arguments": [
+            "-xf",
+            "$SOURCE_ARCHIVE/m4ri",
+            "-C",
+            "$TOOLCHAIN_ROOT/.build/m4ri-source"
+          ],
+          "cwd": "$REPOSITORY_ROOT",
+          "environment": {
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "$TOOLCHAIN_ROOT/.build/m4ri-source/m4ri-20260122/configure",
+          "arguments": [
+            "--build=x86_64-pc-linux-gnu",
+            "--host=wasm32-wasi",
+            "--prefix=$TOOLCHAIN_ROOT/prefixes/m4ri",
+            "--disable-shared",
+            "--enable-static",
+            "--disable-sse2",
+            "--disable-png",
+            "--with-cachesize=32768:262144:8388608"
+          ],
+          "cwd": "$TOOLCHAIN_ROOT/.build/m4ri-source/m4ri-20260122",
+          "environment": {
+            "AR": "$TOOLCHAIN_ROOT/sdk/bin/llvm-ar",
+            "CC": "$TOOLCHAIN_ROOT/sdk/bin/clang --target=wasm32-wasip1 --sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot -D__wasi__ -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS",
+            "CC_FOR_BUILD": "cc",
+            "CFLAGS": "-Oz -fPIC -fvisibility=hidden -ffile-prefix-map=$TOOLCHAIN_ROOT/.build/m4ri-source/m4ri-20260122=/sagejs/native-source -fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/m4ri-source/m4ri-20260122=/sagejs/native-source -fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/m4ri-source/m4ri-20260122=/sagejs/native-source -ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -ffile-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fdebug-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fmacro-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain",
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "CXX": "$TOOLCHAIN_ROOT/sdk/bin/clang++ --target=wasm32-wasip1 --sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot -D__wasi__ -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS",
+            "CXX_FOR_BUILD": "c++",
+            "CXXFLAGS": "-Oz -fPIC -fvisibility=hidden -ffile-prefix-map=$TOOLCHAIN_ROOT/.build/m4ri-source/m4ri-20260122=/sagejs/native-source -fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/m4ri-source/m4ri-20260122=/sagejs/native-source -fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/m4ri-source/m4ri-20260122=/sagejs/native-source -ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -ffile-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fdebug-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fmacro-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LDFLAGS": "-lwasi-emulated-signal",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "RANLIB": "$TOOLCHAIN_ROOT/sdk/bin/llvm-ranlib",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "STRIP": "$TOOLCHAIN_ROOT/sdk/bin/llvm-strip",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "make",
+          "arguments": [
+            "-j8"
+          ],
+          "cwd": "$TOOLCHAIN_ROOT/.build/m4ri-source/m4ri-20260122",
+          "environment": {
+            "AR": "$TOOLCHAIN_ROOT/sdk/bin/llvm-ar",
+            "CC": "$TOOLCHAIN_ROOT/sdk/bin/clang --target=wasm32-wasip1 --sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot -D__wasi__ -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS",
+            "CC_FOR_BUILD": "cc",
+            "CFLAGS": "-Oz -fPIC -fvisibility=hidden -ffile-prefix-map=$TOOLCHAIN_ROOT/.build/m4ri-source/m4ri-20260122=/sagejs/native-source -fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/m4ri-source/m4ri-20260122=/sagejs/native-source -fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/m4ri-source/m4ri-20260122=/sagejs/native-source -ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -ffile-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fdebug-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fmacro-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain",
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "CXX": "$TOOLCHAIN_ROOT/sdk/bin/clang++ --target=wasm32-wasip1 --sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot -D__wasi__ -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS",
+            "CXX_FOR_BUILD": "c++",
+            "CXXFLAGS": "-Oz -fPIC -fvisibility=hidden -ffile-prefix-map=$TOOLCHAIN_ROOT/.build/m4ri-source/m4ri-20260122=/sagejs/native-source -fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/m4ri-source/m4ri-20260122=/sagejs/native-source -fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/m4ri-source/m4ri-20260122=/sagejs/native-source -ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -ffile-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fdebug-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fmacro-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LDFLAGS": "-lwasi-emulated-signal",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "RANLIB": "$TOOLCHAIN_ROOT/sdk/bin/llvm-ranlib",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "STRIP": "$TOOLCHAIN_ROOT/sdk/bin/llvm-strip",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "make",
+          "arguments": [
+            "install"
+          ],
+          "cwd": "$TOOLCHAIN_ROOT/.build/m4ri-source/m4ri-20260122",
+          "environment": {
+            "AR": "$TOOLCHAIN_ROOT/sdk/bin/llvm-ar",
+            "CC": "$TOOLCHAIN_ROOT/sdk/bin/clang --target=wasm32-wasip1 --sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot -D__wasi__ -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS",
+            "CC_FOR_BUILD": "cc",
+            "CFLAGS": "-Oz -fPIC -fvisibility=hidden -ffile-prefix-map=$TOOLCHAIN_ROOT/.build/m4ri-source/m4ri-20260122=/sagejs/native-source -fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/m4ri-source/m4ri-20260122=/sagejs/native-source -fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/m4ri-source/m4ri-20260122=/sagejs/native-source -ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -ffile-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fdebug-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fmacro-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain",
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "CXX": "$TOOLCHAIN_ROOT/sdk/bin/clang++ --target=wasm32-wasip1 --sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot -D__wasi__ -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS",
+            "CXX_FOR_BUILD": "c++",
+            "CXXFLAGS": "-Oz -fPIC -fvisibility=hidden -ffile-prefix-map=$TOOLCHAIN_ROOT/.build/m4ri-source/m4ri-20260122=/sagejs/native-source -fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/m4ri-source/m4ri-20260122=/sagejs/native-source -fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/m4ri-source/m4ri-20260122=/sagejs/native-source -ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -ffile-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fdebug-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fmacro-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LDFLAGS": "-lwasi-emulated-signal",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "RANLIB": "$TOOLCHAIN_ROOT/sdk/bin/llvm-ranlib",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "STRIP": "$TOOLCHAIN_ROOT/sdk/bin/llvm-strip",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "tar",
+          "arguments": [
+            "-xf",
+            "$SOURCE_ARCHIVE/ffpoly",
+            "-C",
+            "$TOOLCHAIN_ROOT/.build/ffpoly-source"
+          ],
+          "cwd": "$REPOSITORY_ROOT",
+          "environment": {
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "tar",
+          "arguments": [
+            "-xf",
+            "$SOURCE_ARCHIVE/smalljac",
+            "-C",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source"
+          ],
+          "cwd": "$REPOSITORY_ROOT",
+          "environment": {
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "$TOOLCHAIN_ROOT/sdk/bin/clang",
+          "arguments": [
+            "--target=wasm32-wasip1",
+            "--sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot",
+            "-O2",
+            "-fomit-frame-pointer",
+            "-fvisibility=hidden",
+            "-std=gnu99",
+            "-DSAGEJS_FFPOLY_PORTABLE=1",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7=/sagejs/native-source",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7=/sagejs/native-source",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7=/sagejs/native-source",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-I",
+            "$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/gmp/include",
+            "-c",
+            "$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7/cstd.c",
+            "-o",
+            "$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7/.sagejs-wasm-objects/cstd.o"
+          ],
+          "cwd": "$REPOSITORY_ROOT",
+          "environment": {
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "$TOOLCHAIN_ROOT/sdk/bin/clang",
+          "arguments": [
+            "--target=wasm32-wasip1",
+            "--sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot",
+            "-O2",
+            "-fomit-frame-pointer",
+            "-fvisibility=hidden",
+            "-std=gnu99",
+            "-DSAGEJS_FFPOLY_PORTABLE=1",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7=/sagejs/native-source",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7=/sagejs/native-source",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7=/sagejs/native-source",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-I",
+            "$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/gmp/include",
+            "-c",
+            "$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7/ff.c",
+            "-o",
+            "$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7/.sagejs-wasm-objects/ff.o"
+          ],
+          "cwd": "$REPOSITORY_ROOT",
+          "environment": {
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "$TOOLCHAIN_ROOT/sdk/bin/clang",
+          "arguments": [
+            "--target=wasm32-wasip1",
+            "--sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot",
+            "-O2",
+            "-fomit-frame-pointer",
+            "-fvisibility=hidden",
+            "-std=gnu99",
+            "-DSAGEJS_FFPOLY_PORTABLE=1",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7=/sagejs/native-source",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7=/sagejs/native-source",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7=/sagejs/native-source",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-I",
+            "$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/gmp/include",
+            "-c",
+            "$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7/ff2k.c",
+            "-o",
+            "$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7/.sagejs-wasm-objects/ff2k.o"
+          ],
+          "cwd": "$REPOSITORY_ROOT",
+          "environment": {
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "$TOOLCHAIN_ROOT/sdk/bin/clang",
+          "arguments": [
+            "--target=wasm32-wasip1",
+            "--sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot",
+            "-O2",
+            "-fomit-frame-pointer",
+            "-fvisibility=hidden",
+            "-std=gnu99",
+            "-DSAGEJS_FFPOLY_PORTABLE=1",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7=/sagejs/native-source",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7=/sagejs/native-source",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7=/sagejs/native-source",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-I",
+            "$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/gmp/include",
+            "-c",
+            "$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7/ffext.c",
+            "-o",
+            "$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7/.sagejs-wasm-objects/ffext.o"
+          ],
+          "cwd": "$REPOSITORY_ROOT",
+          "environment": {
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "$TOOLCHAIN_ROOT/sdk/bin/clang",
+          "arguments": [
+            "--target=wasm32-wasip1",
+            "--sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot",
+            "-O2",
+            "-fomit-frame-pointer",
+            "-fvisibility=hidden",
+            "-std=gnu99",
+            "-DSAGEJS_FFPOLY_PORTABLE=1",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7=/sagejs/native-source",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7=/sagejs/native-source",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7=/sagejs/native-source",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-I",
+            "$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/gmp/include",
+            "-c",
+            "$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7/ffpoly.c",
+            "-o",
+            "$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7/.sagejs-wasm-objects/ffpoly_small.o"
+          ],
+          "cwd": "$REPOSITORY_ROOT",
+          "environment": {
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "$TOOLCHAIN_ROOT/sdk/bin/clang",
+          "arguments": [
+            "--target=wasm32-wasip1",
+            "--sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot",
+            "-O2",
+            "-fomit-frame-pointer",
+            "-fvisibility=hidden",
+            "-std=gnu99",
+            "-DSAGEJS_FFPOLY_PORTABLE=1",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7=/sagejs/native-source",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7=/sagejs/native-source",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7=/sagejs/native-source",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-I",
+            "$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/gmp/include",
+            "-c",
+            "$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7/ffpolyfromroots.c",
+            "-o",
+            "$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7/.sagejs-wasm-objects/ffpolyfromroots.o"
+          ],
+          "cwd": "$REPOSITORY_ROOT",
+          "environment": {
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "$TOOLCHAIN_ROOT/sdk/bin/clang",
+          "arguments": [
+            "--target=wasm32-wasip1",
+            "--sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot",
+            "-O2",
+            "-fomit-frame-pointer",
+            "-fvisibility=hidden",
+            "-std=gnu99",
+            "-DSAGEJS_FFPOLY_PORTABLE=1",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7=/sagejs/native-source",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7=/sagejs/native-source",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7=/sagejs/native-source",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-I",
+            "$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/gmp/include",
+            "-c",
+            "$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7/ffpolysmall.c",
+            "-o",
+            "$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7/.sagejs-wasm-objects/ffpolysmall.o"
+          ],
+          "cwd": "$REPOSITORY_ROOT",
+          "environment": {
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "$TOOLCHAIN_ROOT/sdk/bin/clang",
+          "arguments": [
+            "--target=wasm32-wasip1",
+            "--sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot",
+            "-O2",
+            "-fomit-frame-pointer",
+            "-fvisibility=hidden",
+            "-std=gnu99",
+            "-DSAGEJS_FFPOLY_PORTABLE=1",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7=/sagejs/native-source",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7=/sagejs/native-source",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7=/sagejs/native-source",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-I",
+            "$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/gmp/include",
+            "-c",
+            "$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7/polyparse.c",
+            "-o",
+            "$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7/.sagejs-wasm-objects/polyparse.o"
+          ],
+          "cwd": "$REPOSITORY_ROOT",
+          "environment": {
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "$TOOLCHAIN_ROOT/sdk/bin/llvm-ar",
+          "arguments": [
+            "rcsD",
+            "$TOOLCHAIN_ROOT/prefixes/ffpoly/lib/libff_poly.a",
+            "$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7/.sagejs-wasm-objects/cstd.o",
+            "$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7/.sagejs-wasm-objects/ff.o",
+            "$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7/.sagejs-wasm-objects/ff2k.o",
+            "$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7/.sagejs-wasm-objects/ffext.o",
+            "$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7/.sagejs-wasm-objects/ffpoly_small.o",
+            "$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7/.sagejs-wasm-objects/ffpolyfromroots.o",
+            "$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7/.sagejs-wasm-objects/ffpolysmall.o",
+            "$TOOLCHAIN_ROOT/.build/ffpoly-source/ff_poly_v1.2.7/.sagejs-wasm-objects/polyparse.o"
+          ],
+          "cwd": "$REPOSITORY_ROOT",
+          "environment": {
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "$TOOLCHAIN_ROOT/sdk/bin/clang",
+          "arguments": [
+            "--target=wasm32-wasip1",
+            "--sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot",
+            "-O2",
+            "-fomit-frame-pointer",
+            "-fvisibility=hidden",
+            "-std=gnu99",
+            "-DSAGEJS_FFPOLY_PORTABLE=1",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-I",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/ffpoly/include",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/gmp/include",
+            "-c",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/ecurve.c",
+            "-o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/ecurve.o"
+          ],
+          "cwd": "$REPOSITORY_ROOT",
+          "environment": {
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "$TOOLCHAIN_ROOT/sdk/bin/clang",
+          "arguments": [
+            "--target=wasm32-wasip1",
+            "--sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot",
+            "-O2",
+            "-fomit-frame-pointer",
+            "-fvisibility=hidden",
+            "-std=gnu99",
+            "-DSAGEJS_FFPOLY_PORTABLE=1",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-I",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/ffpoly/include",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/gmp/include",
+            "-c",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/ecurve_ladic.c",
+            "-o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/ecurve_ladic.o"
+          ],
+          "cwd": "$REPOSITORY_ROOT",
+          "environment": {
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "$TOOLCHAIN_ROOT/sdk/bin/clang",
+          "arguments": [
+            "--target=wasm32-wasip1",
+            "--sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot",
+            "-O2",
+            "-fomit-frame-pointer",
+            "-fvisibility=hidden",
+            "-std=gnu99",
+            "-DSAGEJS_FFPOLY_PORTABLE=1",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-I",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/ffpoly/include",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/gmp/include",
+            "-c",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/ecurve_ff2.c",
+            "-o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/ecurve_ff2.o"
+          ],
+          "cwd": "$REPOSITORY_ROOT",
+          "environment": {
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "$TOOLCHAIN_ROOT/sdk/bin/clang",
+          "arguments": [
+            "--target=wasm32-wasip1",
+            "--sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot",
+            "-O2",
+            "-fomit-frame-pointer",
+            "-fvisibility=hidden",
+            "-std=gnu99",
+            "-DSAGEJS_FFPOLY_PORTABLE=1",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-I",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/ffpoly/include",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/gmp/include",
+            "-c",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/hcpoly.c",
+            "-o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/hcpoly.o"
+          ],
+          "cwd": "$REPOSITORY_ROOT",
+          "environment": {
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "$TOOLCHAIN_ROOT/sdk/bin/clang",
+          "arguments": [
+            "--target=wasm32-wasip1",
+            "--sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot",
+            "-O2",
+            "-fomit-frame-pointer",
+            "-fvisibility=hidden",
+            "-std=gnu99",
+            "-DSAGEJS_FFPOLY_PORTABLE=1",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-I",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/ffpoly/include",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/gmp/include",
+            "-c",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/hecurve.c",
+            "-o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/hecurve.o"
+          ],
+          "cwd": "$REPOSITORY_ROOT",
+          "environment": {
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "$TOOLCHAIN_ROOT/sdk/bin/clang",
+          "arguments": [
+            "--target=wasm32-wasip1",
+            "--sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot",
+            "-O2",
+            "-fomit-frame-pointer",
+            "-fvisibility=hidden",
+            "-std=gnu99",
+            "-DSAGEJS_FFPOLY_PORTABLE=1",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-I",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/ffpoly/include",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/gmp/include",
+            "-c",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/hecurve1.c",
+            "-o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/hecurve1.o"
+          ],
+          "cwd": "$REPOSITORY_ROOT",
+          "environment": {
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "$TOOLCHAIN_ROOT/sdk/bin/clang",
+          "arguments": [
+            "--target=wasm32-wasip1",
+            "--sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot",
+            "-O2",
+            "-fomit-frame-pointer",
+            "-fvisibility=hidden",
+            "-std=gnu99",
+            "-DSAGEJS_FFPOLY_PORTABLE=1",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-I",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/ffpoly/include",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/gmp/include",
+            "-c",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/hecurve2_ladic.c",
+            "-o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/hecurve2_ladic.o"
+          ],
+          "cwd": "$REPOSITORY_ROOT",
+          "environment": {
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "$TOOLCHAIN_ROOT/sdk/bin/clang",
+          "arguments": [
+            "--target=wasm32-wasip1",
+            "--sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot",
+            "-O2",
+            "-fomit-frame-pointer",
+            "-fvisibility=hidden",
+            "-std=gnu99",
+            "-DSAGEJS_FFPOLY_PORTABLE=1",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-I",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/ffpoly/include",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/gmp/include",
+            "-c",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/hecurve2.c",
+            "-o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/hecurve2.o"
+          ],
+          "cwd": "$REPOSITORY_ROOT",
+          "environment": {
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "$TOOLCHAIN_ROOT/sdk/bin/clang",
+          "arguments": [
+            "--target=wasm32-wasip1",
+            "--sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot",
+            "-O2",
+            "-fomit-frame-pointer",
+            "-fvisibility=hidden",
+            "-std=gnu99",
+            "-DSAGEJS_FFPOLY_PORTABLE=1",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-I",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/ffpoly/include",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/gmp/include",
+            "-c",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/igusa.c",
+            "-o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/igusa.o"
+          ],
+          "cwd": "$REPOSITORY_ROOT",
+          "environment": {
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "$TOOLCHAIN_ROOT/sdk/bin/clang",
+          "arguments": [
+            "--target=wasm32-wasip1",
+            "--sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot",
+            "-O2",
+            "-fomit-frame-pointer",
+            "-fvisibility=hidden",
+            "-std=gnu99",
+            "-DSAGEJS_FFPOLY_PORTABLE=1",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-I",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/ffpoly/include",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/gmp/include",
+            "-c",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/jac.c",
+            "-o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/jac.o"
+          ],
+          "cwd": "$REPOSITORY_ROOT",
+          "environment": {
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "$TOOLCHAIN_ROOT/sdk/bin/clang",
+          "arguments": [
+            "--target=wasm32-wasip1",
+            "--sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot",
+            "-O2",
+            "-fomit-frame-pointer",
+            "-fvisibility=hidden",
+            "-std=gnu99",
+            "-DSAGEJS_FFPOLY_PORTABLE=1",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-I",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/ffpoly/include",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/gmp/include",
+            "-c",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/jacorder.c",
+            "-o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/jacorder.o"
+          ],
+          "cwd": "$REPOSITORY_ROOT",
+          "environment": {
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "$TOOLCHAIN_ROOT/sdk/bin/clang",
+          "arguments": [
+            "--target=wasm32-wasip1",
+            "--sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot",
+            "-O2",
+            "-fomit-frame-pointer",
+            "-fvisibility=hidden",
+            "-std=gnu99",
+            "-DSAGEJS_FFPOLY_PORTABLE=1",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-I",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/ffpoly/include",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/gmp/include",
+            "-c",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/jacstructure.c",
+            "-o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/jacstructure.o"
+          ],
+          "cwd": "$REPOSITORY_ROOT",
+          "environment": {
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "$TOOLCHAIN_ROOT/sdk/bin/clang",
+          "arguments": [
+            "--target=wasm32-wasip1",
+            "--sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot",
+            "-O2",
+            "-fomit-frame-pointer",
+            "-fvisibility=hidden",
+            "-std=gnu99",
+            "-DSAGEJS_FFPOLY_PORTABLE=1",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-I",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/ffpoly/include",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/gmp/include",
+            "-c",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/nfpoly.c",
+            "-o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/nfpoly.o"
+          ],
+          "cwd": "$REPOSITORY_ROOT",
+          "environment": {
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "$TOOLCHAIN_ROOT/sdk/bin/clang",
+          "arguments": [
+            "--target=wasm32-wasip1",
+            "--sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot",
+            "-O2",
+            "-fomit-frame-pointer",
+            "-fvisibility=hidden",
+            "-std=gnu99",
+            "-DSAGEJS_FFPOLY_PORTABLE=1",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-I",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/ffpoly/include",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/gmp/include",
+            "-c",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/pointcount.c",
+            "-o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/pointcount.o"
+          ],
+          "cwd": "$REPOSITORY_ROOT",
+          "environment": {
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "$TOOLCHAIN_ROOT/sdk/bin/clang",
+          "arguments": [
+            "--target=wasm32-wasip1",
+            "--sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot",
+            "-O2",
+            "-fomit-frame-pointer",
+            "-fvisibility=hidden",
+            "-std=gnu99",
+            "-DSAGEJS_FFPOLY_PORTABLE=1",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-I",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/ffpoly/include",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/gmp/include",
+            "-c",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/prime.c",
+            "-o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/prime.o"
+          ],
+          "cwd": "$REPOSITORY_ROOT",
+          "environment": {
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "$TOOLCHAIN_ROOT/sdk/bin/clang",
+          "arguments": [
+            "--target=wasm32-wasip1",
+            "--sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot",
+            "-O2",
+            "-fomit-frame-pointer",
+            "-fvisibility=hidden",
+            "-std=gnu99",
+            "-DSAGEJS_FFPOLY_PORTABLE=1",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-I",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/ffpoly/include",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/gmp/include",
+            "-c",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/smalljac.c",
+            "-o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/smalljac.o"
+          ],
+          "cwd": "$REPOSITORY_ROOT",
+          "environment": {
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "$TOOLCHAIN_ROOT/sdk/bin/clang",
+          "arguments": [
+            "--target=wasm32-wasip1",
+            "--sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot",
+            "-O2",
+            "-fomit-frame-pointer",
+            "-fvisibility=hidden",
+            "-std=gnu99",
+            "-DSAGEJS_FFPOLY_PORTABLE=1",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-I",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/ffpoly/include",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/gmp/include",
+            "-c",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/smalljac_special.c",
+            "-o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/smalljac_special.o"
+          ],
+          "cwd": "$REPOSITORY_ROOT",
+          "environment": {
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "$TOOLCHAIN_ROOT/sdk/bin/clang",
+          "arguments": [
+            "--target=wasm32-wasip1",
+            "--sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot",
+            "-O2",
+            "-fomit-frame-pointer",
+            "-fvisibility=hidden",
+            "-std=gnu99",
+            "-DSAGEJS_FFPOLY_PORTABLE=1",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-I",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/ffpoly/include",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/gmp/include",
+            "-c",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/smalljactab.c",
+            "-o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/smalljactab.o"
+          ],
+          "cwd": "$REPOSITORY_ROOT",
+          "environment": {
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "$TOOLCHAIN_ROOT/sdk/bin/clang",
+          "arguments": [
+            "--target=wasm32-wasip1",
+            "--sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot",
+            "-O2",
+            "-fomit-frame-pointer",
+            "-fvisibility=hidden",
+            "-std=gnu99",
+            "-DSAGEJS_FFPOLY_PORTABLE=1",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-I",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/ffpoly/include",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/gmp/include",
+            "-c",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/smalljac_g23.c",
+            "-o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/smalljac_g23.o"
+          ],
+          "cwd": "$REPOSITORY_ROOT",
+          "environment": {
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "$TOOLCHAIN_ROOT/sdk/bin/clang",
+          "arguments": [
+            "--target=wasm32-wasip1",
+            "--sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot",
+            "-O2",
+            "-fomit-frame-pointer",
+            "-fvisibility=hidden",
+            "-std=gnu99",
+            "-DSAGEJS_FFPOLY_PORTABLE=1",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-I",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/ffpoly/include",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/gmp/include",
+            "-c",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/smalljac_tiny.c",
+            "-o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/smalljac_tiny.o"
+          ],
+          "cwd": "$REPOSITORY_ROOT",
+          "environment": {
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "$TOOLCHAIN_ROOT/sdk/bin/clang",
+          "arguments": [
+            "--target=wasm32-wasip1",
+            "--sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot",
+            "-O2",
+            "-fomit-frame-pointer",
+            "-fvisibility=hidden",
+            "-std=gnu99",
+            "-DSAGEJS_FFPOLY_PORTABLE=1",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-I",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/ffpoly/include",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/gmp/include",
+            "-c",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/mpzpolyutil.c",
+            "-o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/mpzpolyutil.o"
+          ],
+          "cwd": "$REPOSITORY_ROOT",
+          "environment": {
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "$TOOLCHAIN_ROOT/sdk/bin/clang",
+          "arguments": [
+            "--target=wasm32-wasip1",
+            "--sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot",
+            "-O2",
+            "-fomit-frame-pointer",
+            "-fvisibility=hidden",
+            "-std=gnu99",
+            "-DSAGEJS_FFPOLY_PORTABLE=1",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-I",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/ffpoly/include",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/gmp/include",
+            "-c",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/mpzutil.c",
+            "-o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/mpzutil.o"
+          ],
+          "cwd": "$REPOSITORY_ROOT",
+          "environment": {
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "$TOOLCHAIN_ROOT/sdk/bin/clang",
+          "arguments": [
+            "--target=wasm32-wasip1",
+            "--sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot",
+            "-O2",
+            "-fomit-frame-pointer",
+            "-fvisibility=hidden",
+            "-std=gnu99",
+            "-DSAGEJS_FFPOLY_PORTABLE=1",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3=/sagejs/native-source",
+            "-ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain",
+            "-I",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/ffpoly/include",
+            "-I",
+            "$TOOLCHAIN_ROOT/prefixes/gmp/include",
+            "-c",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/polyparse.c",
+            "-o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/polyparse.o"
+          ],
+          "cwd": "$REPOSITORY_ROOT",
+          "environment": {
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        },
+        {
+          "command": "$TOOLCHAIN_ROOT/sdk/bin/llvm-ar",
+          "arguments": [
+            "rcsD",
+            "$TOOLCHAIN_ROOT/prefixes/smalljac/lib/libsmalljac.a",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/ecurve.o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/ecurve_ladic.o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/ecurve_ff2.o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/hcpoly.o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/hecurve.o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/hecurve1.o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/hecurve2_ladic.o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/hecurve2.o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/igusa.o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/jac.o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/jacorder.o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/jacstructure.o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/nfpoly.o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/pointcount.o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/prime.o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/smalljac.o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/smalljac_special.o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/smalljactab.o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/smalljac_g23.o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/smalljac_tiny.o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/mpzpolyutil.o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/mpzutil.o",
+            "$TOOLCHAIN_ROOT/.build/smalljac-source/smalljac_v4.1.3/.sagejs-wasm-objects/polyparse.o"
+          ],
+          "cwd": "$REPOSITORY_ROOT",
+          "environment": {
+            "CONFIG_SITE": "/dev/null",
+            "CPATH": "",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "LIBRARY_PATH": "",
+            "MAKEFLAGS": "",
+            "MFLAGS": "",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PKG_CONFIG_PATH": "",
+            "SOURCE_DATE_EPOCH": "1704067200",
+            "TZ": "UTC",
+            "ZERO_AR_DATE": "1"
+          }
+        }
+      ]
+    },
+    "target": "wasm32-wasip1",
+    "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: x86_64-unknown-linux-gnu\nrelease: 1.98.1\nLLVM version: 22.1.8",
+    "cargo": "cargo 1.98.1 (797e8a9bc 2026-08-05)\nrelease: 1.98.1\ncommit-hash: 797e8a9bca276c1c9f9f738d2a20f484fa4eea9d\ncommit-date: 2026-08-05\nhost: x86_64-unknown-linux-gnu\nlibgit2: 1.9.4 (sys:0.21.0 vendored)\nlibcurl: 8.21.0-DEV (sys:0.4.90+curl-8.21.0 vendored ssl:OpenSSL/3.6.3)\nssl: OpenSSL 3.6.3 9 Jun 2026\nos: Ubuntu 26.4.0 (resolute) [64-bit]",
+    "clang": "clang version 22.1.0-wasi-sdk (https://github.com/llvm/llvm-project 4434dabb69916856b824f68a64b029c67175e532)\nTarget: wasm32-unknown-wasip1\nThread model: posix\nInstalledDir: /scratch/sagejs-project-cache/20260918/main-git/sagejs-wasm-toolchains/v2/37d8d819fd533570e0b707d3101ab2944f6488c4b4452b2b0a1a9ea04366452c/sdk/bin\nConfiguration file: /scratch/sagejs-project-cache/20260918/main-git/sagejs-wasm-toolchains/v2/37d8d819fd533570e0b707d3101ab2944f6488c4b4452b2b0a1a9ea04366452c/sdk/bin/clang.cfg",
+    "wasmLd": "LLD 22.1.0 (https://github.com/llvm/llvm-project 4434dabb69916856b824f68a64b029c67175e532)"
+  },
+  "sourceClosure": {
+    "gitHead": "de093549cc4dcfa89a5817a8dff8c82726304e0a",
+    "fileCount": 63,
+    "sha256": "484b31ed77bf8f02ff60173da1257ef93c9c4f070c14ca3a859e7d0130530f2b",
+    "files": [
+      {
+        "path": "bench/pari-class-group-rust/Cargo.lock",
+        "sha256": "139ba4b68ac92e06b6c9b7d5c4fbc9526a9948b90eb313e3ae0d12c913ac252f"
+      },
+      {
+        "path": "bench/pari-class-group-rust/Cargo.toml",
+        "sha256": "e607bf9540ab65775a120f58745711bd4e43e31f27144056c4522c45d946930c"
+      },
+      {
+        "path": "bench/pari-class-group-rust/build.rs",
+        "sha256": "c9ae28e42eaeadc550fbca72b338288dc84310c7035df534f2770f4d9b962bb1"
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/browser/browser-loader.mjs",
+        "sha256": "d9bbb9eafd4e27dcee1ca450d49537d646178954ff8c1bfe84285d8c7fca9788"
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/browser/class-group-route.html",
+        "sha256": "d1e4df53d4fc1ba49488cb609ddc6e0f0556d5a330dce01420b4925ce313d250"
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/browser/class-group-route.mjs",
+        "sha256": "f8e2c6513d4bd2bbeaea42b7bdcfab8df8ca731b6f0dd8e5da96754090221aaf"
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/public-cubic-e2e/Cargo.lock",
+        "sha256": "6ed695fcd15a0de2df7f8bc5da47777bf96b43eb3497a49ddd19b10daf1996d0"
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/public-cubic-e2e/Cargo.toml",
+        "sha256": "6877cc418e533ff800ede4179e7016deecf2603e532c38e3e67d188027143395"
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/public-cubic-e2e/src/lib.rs",
+        "sha256": "52ff08443229224a3a66e22f87318e020e50086a7f97e864828f691e7feb9527"
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/public-cubic-e2e/src/main.rs",
+        "sha256": "62a94e92a6ce81c805bf4eb597d324f5210c2fc228d1e38087385656cb3c3ee0"
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/.gitignore",
+        "sha256": "6192c78b3a190e1deae3b9235fba123041714ebbb86b43ccb858ba34b26994d5"
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/Cargo.lock",
+        "sha256": "49d552faa2fca362ab5371afa34433eee39143424ffb8c4b80b7aab29f549394"
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/Cargo.toml",
+        "sha256": "955afcfa358c01375122f90ee355a80da564ed9f620ddc12ecc7bc2c06503019"
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/README.md",
+        "sha256": "ee0acc2c3699020f0d666c247b0ee86088864cc4128dea937e17c721d346cd3a"
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/ROOT-INTEGRATION.md",
+        "sha256": "3c43d66be962deccda1c43a804fc3fe31d7f52418f175fb647c536985531a366"
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/build-wasm.sh",
+        "sha256": "2162918e0d00512518ea0d416d28911c2c2d6c5f33cc36ba12b11ab144720877"
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/core-wasm/Cargo.toml",
+        "sha256": "6d6ac99e186bcc70475065d4286f23872f7646068ca1fd4ef194b6a8502f9e9f"
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/core-wasm/build.rs",
+        "sha256": "a7dfd2056b11089fc4ab6c298194c9544d7d382343e39e4e302fb62cc87b95c4"
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/core-wasm/src/lib.rs",
+        "sha256": "a87660d1c7db1b821a230d43ad071baaed1d5f66324ed54b44ee8402239163bc"
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/gmp-mpfr-cross-cc.sh",
+        "sha256": "c9d723c955487e5c679ae03db02217fd7dea2ee169d7708e0919e75d43c60f96"
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/public-wasm/Cargo.toml",
+        "sha256": "8e587d2e445c196b80a9e087b062a53d9f7b4a3c5509d9fd3e6c4b40a0027e8e"
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/public-wasm/src/lib.rs",
+        "sha256": "001810c357e4e0d46ec9322b57991d7cdbda83768934b9be9ed074988af5bb5f"
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/receipt-identity.mjs",
+        "sha256": "c3a22be702db398db2479765b5c79979efa10b0e14bbf9f6dc7d5eeab5663c39"
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/row6.vector.json",
+        "sha256": "c52c44662ed7e1e1db8b203094258164d17b9f0868c22c5bb777a49034df431c"
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/run-browsers.mjs",
+        "sha256": "a5160f53b967469b5b229a5160e3ccb98196a7136bed6db194a3735a7d961149"
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/run-node.mjs",
+        "sha256": "1c42bd7cd34f821d851fda00d44cec4e91b86aa567de8d1cadcd396df000b016"
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/src/lib.rs",
+        "sha256": "d5fbc2dcb6f30fbe47ddc2b668fb71caae1c479d1d3b3a33918bd7c2ed42be85"
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/analytic_completion.rs",
+        "sha256": "9221e78a1664d17cf2d2d18267e5e0ef8f23736626abd3761b4e4e679b97f6ee"
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/api.rs",
+        "sha256": "1e1ba008b83c3d415eecb6ab9332ab4d695efbb771234924aeb9520630259807"
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/arbitrary_ideal_reduction.rs",
+        "sha256": "3814e5029f1bfc53c81c90872eeeb6c10a5da2e9e2e00a2c74f1017bb69412af"
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/bruteforce_collector.rs",
+        "sha256": "7a1dc481f518fa98ca46125550bb4a0252c3bda38617aa8cfe815d7c6081ffb7"
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/class_group.rs",
+        "sha256": "75b28b18f9b5492e62d0e62429aa692c5648a85f528440d728206a9cb89ea6d2"
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/class_maps.rs",
+        "sha256": "2c70447f73becb8ccb164b909e2f0afe6a208937e4cc4d7c647ba2c5373a158a"
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/collector_schedule.rs",
+        "sha256": "f5f4d65a68465fc29d5dd216763abb45ce8465ea8485334786e5cd3e7b45c783"
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/compact_cubic_presentation.rs",
+        "sha256": "277fa4f420ff82a65b28424abc554cb173ca987d83356c933ff7e6d525ea1d7b"
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/cubic_completion.rs",
+        "sha256": "b15aa5def92cb91149ea1dc9381d2376a4799ed39bbdb72a17d72ec871d3a746"
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/cubic_presentation.rs",
+        "sha256": "85032c7bab810cd99a20d970efe3c95531c6bbfc2ddca89a88fa73d79f378b4c"
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/enumeration.rs",
+        "sha256": "0ea9216253e830e099fd0c9d2cbdb162b141309346729900e431896d65568b38"
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/factor_base.rs",
+        "sha256": "b8682e13cb701dfbbea13fe22ef3d85fc16d42c7b764f13efd9d5bb985cfa6a2"
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/flint_normal_form.c",
+        "sha256": "eaf32df2d801b9c42eadea069d650dda9d770e9eb56d479baecadb146761a267"
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/flint_normal_form.rs",
+        "sha256": "03993c4e7a2a3d38d1a8f0002e5302a9ed9145b539a0376f688941e5cffe412d"
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/gmp_smith.rs",
+        "sha256": "36e11e8eb20de9df5b5ecb0a2f9d5ca8ffda9239224c9331f45ec0ba032f0802"
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/hnf.rs",
+        "sha256": "d35bf3f4d154e3425f95a365f09b5147eaaf7353ae2ab1f67bb5321b470a87e6"
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/ideal_arithmetic.rs",
+        "sha256": "4e18797b8b645b761c58b82d73af0a7c30eef0ddd4659f57624f9c3d5b4a9a52"
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/lib.rs",
+        "sha256": "f6c8589cb31b6a0c1657774d92a2eccebdbbb4e360e7669d5729405d04c04488"
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/main.rs",
+        "sha256": "746f5a6a967c5369556158ae0242501f4bd61c9a0bfa02e522401c51502bcf4d"
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/numerical_preparation.rs",
+        "sha256": "d966d2805b83a255ac42111cc09cc69498b30fba92aba610c0fa7b46d2e6b343"
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/pari_random.rs",
+        "sha256": "7bed82f9c8d1cd27b753e0f39e5cf37ef49ae90e9c236ff9f9a397382d83e269"
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/polynomial_preparation.rs",
+        "sha256": "7d18effdf0affe5e8e7de8105578103a5ac87ead4c195c07bc71b208bddf59b6"
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/prepared.rs",
+        "sha256": "80b7ce8f953b2df50fb88ac4d1d068f1ac8148e1b335aa01f0d322e6c8feada5"
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/prepared_factor_base.rs",
+        "sha256": "2a1bb6e572cdced8786b5a9024cd6741b09b73f5e1b9e43b007a27a6616d09ac"
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/prepared_ideal.rs",
+        "sha256": "261059e71fef692939ed1f09ad44b4fdae376b8c123c47604b2743036453d5b0"
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/prepared_input.rs",
+        "sha256": "d40a584a67d7c798464ada71c17270e788999f002153c24f7fc866b3b359370c"
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/prime_valuation.rs",
+        "sha256": "5b533a94a1eed76a1fa09b97d6e43071678babc88910133c32f561423d770a9e"
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/relation_cache.rs",
+        "sha256": "d474991bbfc02e842bb563d109b946bf1d88285ef667e82e1a40f0f605be619b"
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/smith.rs",
+        "sha256": "d367b6bcc7d372bfe886dcb746ab327b4eaafb1cb7ccda26935404d2e7842192"
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/smooth_admission.rs",
+        "sha256": "4936644436d471b91e11f8690f9abbbf03d4450b81a6f6483b9f237c6b982573"
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/unit_lattice.rs",
+        "sha256": "47c958f225d7a7ccda5f2b62d6ca062ad2bd8a092f05627c05e97ac447f8fb56"
+      },
+      {
+        "path": "packages/flint-wasm/src/wasi-constants.mjs",
+        "sha256": "51859f734bba03868366fc289af89ee6df78c481f50f74273c77fff5db06a566"
+      },
+      {
+        "path": "packages/flint-wasm/src/wasi-filesystem.mjs",
+        "sha256": "f84477236a45972d28ecf1cf3dd6ce16250b4de2cc5a5c87027033d8b4deeaf5"
+      },
+      {
+        "path": "packages/flint-wasm/src/wasi-runtime.mjs",
+        "sha256": "4387a28ca75c7356406a7ed15673ab81a48072a8ca6a3ae47724d9734c684b1e"
+      },
+      {
+        "path": "packages/flint-wasm/src/wasi-stubs.c",
+        "sha256": "7c192f819c49fb6e4535600fa56fe5c279373b883e3cb229f36da10c0748bb0d"
+      },
+      {
+        "path": "packages/flint-wasm/test/browser-wasm-support.mjs",
+        "sha256": "4a586dfa5868480b9aabb4bc25cd03d332f1fb1c9f0487531d7a4d3288ca6ee9"
+      }
+    ]
+  },
+  "stableProjection": {
+    "schema": "sagejs.rust-class-group/public-cubic-e2e-receipt-v2",
+    "outcome": "complete-conditional-grh",
+    "publicComplete": true,
+    "requestedProof": "conditional-grh",
+    "usesPariInput": false,
+    "usesPreparedFixture": false,
+    "usesFieldAnswersAsInput": false,
+    "preparation": {
+      "discriminant": "3555555555596888888888939555555555028",
+      "signature": [
+        3,
+        0
+      ],
+      "equationOrderIndex": "3",
+      "discriminantPrimeFactors": [
+        "2",
+        "3",
+        "32921810699971193415638329218106991"
+      ],
+      "certificateVerified": true
+    },
+    "relations": {
+      "factorBaseSize": 1130,
+      "relationCount": 1137,
+      "completeRankAndSurplus": true,
+      "missingRank": 0
+    },
+    "candidate": {
+      "invariantFactors": [
+        "2",
+        "2"
+      ],
+      "classNumber": "4",
+      "authenticatedPrincipalRelations": 1137,
+      "generatorOrderWitnesses": 2,
+      "authority": "authenticated-collector-sealed-compact-elementary-two-presentation"
+    },
+    "completion": {
+      "proof": "conditional-grh",
+      "classNumber": "4",
+      "invariantFactors": [
+        "2",
+        "2"
+      ],
+      "unitRank": 2,
+      "bfThreshold": 23994,
+      "classUnitHypothesis": "GRH for the Dedekind-zeta residue bound",
+      "factorBaseHypothesis": "GRH for all unramified Hecke L-functions of class-group characters",
+      "sealedEvidenceVerified": true,
+      "arbitraryIdealClassMapRetained": true
+    },
+    "firstUnavailableBoundary": null
+  },
+  "stableProjectionSha256": "4e086278f49fc01c8a85ae3087ec697c15929cc833a579303ad995b4255a785c",
+  "engines": [
+    {
+      "engine": "chromium",
+      "browserVersion": "151.0.7922.34",
+      "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36",
+      "timingsMs": {
+        "fetch": 59.599999994039536,
+        "compile": 9,
+        "instantiate": 1.0999999940395355,
+        "call": 22619.90000000596
+      },
+      "memoryPages": {
+        "before_call": 256,
+        "after_call": 1865
+      },
+      "stableProjectionSha256": "4e086278f49fc01c8a85ae3087ec697c15929cc833a579303ad995b4255a785c"
+    },
+    {
+      "engine": "firefox",
+      "browserVersion": "153.0",
+      "userAgent": "Mozilla/5.0 (X11; Linux x86_64; rv:153.0) Gecko/20100101 Firefox/153.0",
+      "timingsMs": {
+        "fetch": 142,
+        "compile": 107,
+        "instantiate": 1,
+        "call": 162305
+      },
+      "memoryPages": {
+        "before_call": 256,
+        "after_call": 1865
+      },
+      "stableProjectionSha256": "4e086278f49fc01c8a85ae3087ec697c15929cc833a579303ad995b4255a785c"
+    },
+    {
+      "engine": "webkit",
+      "browserVersion": "26.5",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Safari/605.1.15",
+      "timingsMs": {
+        "fetch": 45,
+        "compile": 16,
+        "instantiate": 1,
+        "call": 22720
+      },
+      "memoryPages": {
+        "before_call": 256,
+        "after_call": 1865
+      },
+      "stableProjectionSha256": "4e086278f49fc01c8a85ae3087ec697c15929cc833a579303ad995b4255a785c"
+    }
+  ]
+}
