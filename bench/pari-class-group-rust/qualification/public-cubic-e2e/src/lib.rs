@@ -515,7 +515,7 @@ pub fn qualify(request: Request) -> Result<Receipt, QualificationError> {
 
         let started = Instant::now();
         let options = completion_options();
-        let completion_result = if let Some(context) = completion_context.as_ref() {
+        let completion_result = if let Some(context) = completion_context.as_mut() {
             complete_cubic_class_group_conditionally_with_context(
                 attempt_prepared,
                 authenticated,
@@ -535,7 +535,7 @@ pub fn qualify(request: Request) -> Result<Receipt, QualificationError> {
                         authenticated,
                         options,
                         completion_context
-                            .as_ref()
+                            .as_mut()
                             .expect("context was just stored"),
                     )
                 }

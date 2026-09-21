@@ -99,7 +99,7 @@ fn shared_completion_context_rejects_cross_field_and_option_drift() {
     let second = prepare([1, -1, -2, 1]);
     let first_candidate = candidate(&first);
     let options = CubicConditionalCompletionOptions::default();
-    let context =
+    let mut context =
         prepare_cubic_conditional_completion_context(&first, &first_candidate, options).unwrap();
 
     assert_eq!(
@@ -107,7 +107,7 @@ fn shared_completion_context_rejects_cross_field_and_option_drift() {
             second,
             first_candidate.clone(),
             options,
-            &context,
+            &mut context,
         )
         .unwrap_err(),
         CubicConditionalCompletionError::PreparedAuthorityMismatch
@@ -120,7 +120,7 @@ fn shared_completion_context_rejects_cross_field_and_option_drift() {
             first,
             first_candidate,
             changed_options,
-            &context,
+            &mut context,
         )
         .unwrap_err(),
         CubicConditionalCompletionError::InvalidOptions

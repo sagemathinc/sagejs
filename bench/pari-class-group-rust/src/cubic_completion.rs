@@ -85,11 +85,14 @@ impl Default for CubicConditionalCompletionOptions {
 /// Field-level analytic data shared by continuation and numerical-precision
 /// retries for one authenticated factor base.
 ///
-/// Construction performs the complete splitting prefix and rigorous BDF
-/// margin enclosure once. Completion still checks that the prepared field,
-/// factor-base bound, analytic precision, and resource ceiling agree before
-/// using the retained evidence.
-#[derive(Clone, Debug, Eq, PartialEq)]
+/// Construction performs the complete factor-base splitting prefix and
+/// rigorous BDF margin enclosure once. Completion also retains the monotone
+/// exact Belabas--Friedman splitting plans it has reached, so continuation and
+/// precision retries do not re-authenticate the same prime prefixes. The
+/// candidate-dependent regulator and index enclosure are always recomputed.
+/// Completion checks that the prepared field, factor-base bound, analytic
+/// precision, and resource ceiling agree before using any retained evidence.
+#[derive(Clone, Debug)]
 pub struct CubicConditionalCompletionContext {
     prepared: PreparedPublicCubic,
     factor_base_bound: u64,
@@ -97,6 +100,9 @@ pub struct CubicConditionalCompletionContext {
     maximum_analytic_threshold: u64,
     bdf_plan: BdfFactorBasePlan,
     bdf_margin: FlintDyadicInterval,
+    bf_splitting_bound: usize,
+    bf_incremental_plan: IncrementalCubicBelabasFriedmanPlan,
+    bf_plans: Vec<BelabasFriedmanPlan>,
 }
 
 /// Exact final BF enclosure retained only when analytic completion declines.
@@ -831,6 +837,9 @@ pub fn prepare_cubic_conditional_completion_context(
         maximum_analytic_threshold: options.maximum_analytic_threshold,
         bdf_plan,
         bdf_margin,
+        bf_splitting_bound: 2,
+        bf_incremental_plan: IncrementalCubicBelabasFriedmanPlan::new(),
+        bf_plans: Vec::new(),
     })
 }
 
@@ -841,7 +850,7 @@ pub fn complete_cubic_class_group_conditionally_with_context(
     prepared: PreparedPublicCubic,
     presentation: AuthenticatedCubicPresentationCandidate,
     options: CubicConditionalCompletionOptions,
-    context: &CubicConditionalCompletionContext,
+    context: &mut CubicConditionalCompletionContext,
 ) -> Result<GrhConditionalCompleteCubicClassGroup, CubicConditionalCompletionError> {
     let factor_base_bound =
         u64::try_from(presentation.collected().factor_base.catalog.relation_bound)
@@ -878,8 +887,7 @@ pub fn complete_cubic_class_group_conditionally_with_context(
             presentation.clone(),
             attempt_options,
             precision,
-            &context.bdf_plan,
-            &context.bdf_margin,
+            context,
         ) {
             Ok(completed) => {
                 debug_assert!(completed.verify_sealed_evidence());
@@ -900,8 +908,14 @@ pub fn complete_cubic_class_group_conditionally(
     presentation: AuthenticatedCubicPresentationCandidate,
     options: CubicConditionalCompletionOptions,
 ) -> Result<GrhConditionalCompleteCubicClassGroup, CubicConditionalCompletionError> {
-    let context = prepare_cubic_conditional_completion_context(&prepared, &presentation, options)?;
-    complete_cubic_class_group_conditionally_with_context(prepared, presentation, options, &context)
+    let mut context =
+        prepare_cubic_conditional_completion_context(&prepared, &presentation, options)?;
+    complete_cubic_class_group_conditionally_with_context(
+        prepared,
+        presentation,
+        options,
+        &mut context,
+    )
 }
 
 fn complete_cubic_class_group_at_precision(
@@ -909,8 +923,7 @@ fn complete_cubic_class_group_at_precision(
     presentation: AuthenticatedCubicPresentationCandidate,
     options: CubicConditionalCompletionOptions,
     precision: CubicCompletionPrecisionEvidence,
-    bdf_plan: &BdfFactorBasePlan,
-    bdf_margin: &FlintDyadicInterval,
+    context: &mut CubicConditionalCompletionContext,
 ) -> Result<GrhConditionalCompleteCubicClassGroup, CubicConditionalCompletionError> {
     if options.proof_mode != CubicCompletionProofMode::GrhConditional {
         return Err(CubicConditionalCompletionError::UnsupportedProofMode);
@@ -1139,23 +1152,31 @@ fn complete_cubic_class_group_at_precision(
     // authenticated Euler data, and callers with a smaller explicit budget
     // still receive `AnalyticIndexNotIsolated`.
     let initial = 1_152;
-    let mut splitting = Vec::new();
-    let mut splitting_bound = 2_usize;
-    let mut incremental_bf = IncrementalCubicBelabasFriedmanPlan::new();
     let mut accepted = None;
     let mut final_failed_attempt = None;
     for threshold in thresholds
         .into_iter()
         .filter(|value| *value >= initial && *value <= options.maximum_analytic_threshold)
     {
-        let extension = prepared_cubic_splitting_records_range(
-            prepared.field(),
-            splitting_bound,
-            threshold as usize,
-        )?;
-        splitting_bound = threshold as usize;
-        let plan = incremental_bf.extend_to(threshold, &extension)?;
-        splitting.extend(extension);
+        let plan = if let Some(plan) = context
+            .bf_plans
+            .iter()
+            .find(|plan| plan.threshold == threshold)
+        {
+            plan.clone()
+        } else {
+            let extension = prepared_cubic_splitting_records_range(
+                prepared.field(),
+                context.bf_splitting_bound,
+                threshold as usize,
+            )?;
+            let plan = context
+                .bf_incremental_plan
+                .extend_to(threshold, &extension)?;
+            context.bf_splitting_bound = threshold as usize;
+            context.bf_plans.push(plan.clone());
+            plan
+        };
         let enclosure = flint_bf_index_enclosure(
             &plan.terms,
             threshold,
@@ -1201,8 +1222,8 @@ fn complete_cubic_class_group_at_precision(
             bf_threshold,
             bf_plan,
             bf_enclosure,
-            bdf_plan: bdf_plan.clone(),
-            bdf_margin: bdf_margin.clone(),
+            bdf_plan: context.bdf_plan.clone(),
+            bdf_margin: context.bdf_margin.clone(),
         },
         precision,
     };
