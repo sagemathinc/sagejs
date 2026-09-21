@@ -171,6 +171,15 @@ ms, authentication by 0.68 ms, and total time by 2.30 ms. The clean receipt at
 0.603 seconds for PARI, a 2.653x weighted gap. Since every aggregate Rust stage
 varied upward, only the focused A/B—not the clean ratio movement—is attributed
 to this change.
+The completion constructor now avoids an immediate second replay of exact
+dependency and fundamental-unit equations that its private construction path
+has already proved. The public independent sealed-evidence replay remains and
+is still exercised by the qualification executable. A CPU-pinned 31-pair
+field-0012 comparison reduced the completion stage by 1.15 ms and the complete
+call by 2.17 ms. The first clean panel at source `e45994e5d` matched all 180
+pairs and measured 1.578 seconds for Rust versus 0.595 seconds for PARI;
+completion fell from 0.511 to 0.501 seconds, while simultaneous variation in
+the other stages leaves the weighted ratio essentially unchanged at 2.653x.
 Relation collection was 1.063 seconds before the exact ideal-power cache. See
 `public-cubic-heldout-performance/receipt.json`. The fresh confirmation set
 remains correctness-only; its contextual diagnostic timings are not a formal

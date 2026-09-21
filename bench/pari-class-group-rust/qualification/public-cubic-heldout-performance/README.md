@@ -186,3 +186,17 @@ seconds authentication, and 0.511 seconds completion. All aggregate Rust stages
 varied upward relative to the prior clean run, so the focused alternating A/B
 is the speed evidence; the improved clean ratio is not presented as an
 absolute Rust speedup.
+
+The conditional completion constructor now relies on the exact dependency,
+unit-relation, BF-index, and BDF-margin checks already performed on its only
+private construction path instead of immediately scanning the relation matrix
+a second time. The public independent `verify_sealed_evidence` replay remains
+unchanged and the qualification executable still runs it after construction.
+A CPU-pinned 31-pair field-0012 A/B reduced the timed completion stage from
+75.55 to 74.39 ms and the complete call from 259.72 to 257.55 ms, with one
+identical exact answer across all 62 executions and a successful independent
+replay every time. The first clean 180-pair campaign at source `e45994e5d`
+measured 1.578 seconds for Rust versus 0.595 seconds for PARI, with summed
+completion falling from 0.511 to 0.501 seconds. All other Rust stages and PARI
+also varied downward, so only the focused A/B and deterministic removed replay
+are attributed to the change; the weighted ratio remained 2.653x.

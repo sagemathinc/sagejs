@@ -200,6 +200,20 @@ versus 0.603 seconds for PARI, a 2.653x weighted gap, 3.771x geometric mean,
 every aggregate stage varied upward, so the clean ratio change is not claimed
 as an absolute Rust speedup; the focused alternating A/B is the optimization
 evidence.
+Conditional completion no longer performs a second full dependency and unit-
+relation replay immediately before constructing its private immutable result.
+The same exact equations are already proved on the only construction path;
+the inexpensive precision transcript check remains there, and the public
+`verify_sealed_evidence` replay remains available and is still exercised by
+the qualification boundary after construction. A CPU-pinned 31-pair field-0012
+A/B reduced completion from 75.55 to 74.39 ms and the complete qualification
+call from 259.72 to 257.55 ms, with all 62 results and independent replays
+agreeing. The first clean 180-pair panel at source `e45994e5d` reduced summed
+completion from 0.511 to 0.501 seconds and total Rust time from 1.600 to 1.578
+seconds. PARI simultaneously varied from 0.603 to 0.595 seconds, leaving the
+weighted ratio statistically unchanged at 2.653x; only the focused paired
+result and removal of the deterministic duplicate work are attributed to this
+change.
 This remains substantially ahead of the earlier pre-power-cache receipt at
 4.20x weighted and 5.72x geometric mean, but still fails the frozen native
 performance gate. Rust's summed stage
