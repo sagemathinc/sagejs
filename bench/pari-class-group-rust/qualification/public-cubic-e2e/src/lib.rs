@@ -275,6 +275,16 @@ fn next_supplementary_target(current: usize) -> Option<usize> {
     current.checked_mul(2)
 }
 
+fn initial_supplementary_target(maximum_dependencies: usize) -> usize {
+    // A seven-row candidate is the smallest admitted presentation, but the
+    // authentication and analytic-completion passes are much more expensive
+    // than collecting the next seven rows. Start at fourteen whenever the
+    // caller's explicit budget permits it. Retain seven for smaller budgets so
+    // this performance policy does not silently narrow the public resource
+    // contract.
+    if maximum_dependencies >= 14 { 14 } else { 7 }
+}
+
 fn candidate_authentication_route_fits(
     generators: usize,
     relations: usize,
@@ -407,7 +417,8 @@ pub fn qualify(request: Request) -> Result<Receipt, QualificationError> {
     let mut candidate_authentication_ns = 0_u128;
     let mut completion_ns = 0_u128;
     let mut completion_context = None;
-    let mut supplementary_target = 7_usize;
+    let mut supplementary_target =
+        initial_supplementary_target(request.resources.maximum_dependencies);
     loop {
         if supplementary_target > request.resources.maximum_dependencies {
             break;
@@ -782,11 +793,13 @@ mod tests {
 
     #[test]
     fn continuation_schedule_grows_geometrically_without_field_feedback() {
-        let mut targets = vec![7];
+        assert_eq!(initial_supplementary_target(13), 7);
+        assert_eq!(initial_supplementary_target(14), 14);
+        let mut targets = vec![initial_supplementary_target(1_000)];
         while targets.len() < 7 {
             targets.push(next_supplementary_target(*targets.last().unwrap()).unwrap());
         }
-        assert_eq!(targets, vec![7, 14, 28, 56, 112, 224, 448]);
+        assert_eq!(targets, vec![14, 28, 56, 112, 224, 448, 896]);
     }
 
     #[test]
@@ -857,7 +870,7 @@ mod tests {
                 .iter()
                 .map(|attempt| attempt.supplementary_target)
                 .collect::<Vec<_>>(),
-            [7, 14, 28]
+            [14, 28]
         );
         assert!(
             attempts[..attempts.len() - 1]
@@ -1006,7 +1019,7 @@ mod tests {
         assert_eq!(receipt.continuation_attempts, None);
         assert_eq!(receipt.preparation.equation_order_index, "3");
         assert_eq!(receipt.relations.factor_base_size, 1_130);
-        assert_eq!(receipt.relations.relation_count, 1_137);
+        assert_eq!(receipt.relations.relation_count, 1_144);
         let candidate = receipt.candidate.unwrap();
         assert_eq!(candidate.invariant_factors, ["2", "2"]);
         assert_eq!(candidate.class_number, "4");

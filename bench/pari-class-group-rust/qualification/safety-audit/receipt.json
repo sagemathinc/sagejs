@@ -3255,8 +3255,8 @@
     {
       "file": "qualification/public-cubic-e2e/src/lib.rs",
       "scope": "qualification-only",
-      "sha256": "585a45e1699da13d9119aa7e19173b66f457878083d187081d0e8d0f15ef2956",
-      "bytes": 44517,
+      "sha256": "6b586e5d6d0db69220a8105483b5de34529e4e8483336292c9cbdad48c3d2bff",
+      "bytes": 45262,
       "copyrightNotices": [
         "Copyright (C) Sage.js contributors."
       ],
@@ -4490,5 +4490,5 @@
     "miriCoverageEstablished": false,
     "productionQualified": false
   },
-  "inventorySha256": "f8712ba06d33ef89c92c4b76e2f0979d622616b4d2be21e888848d934c183b25"
+  "inventorySha256": "69852cdbc0a372f67b3b0b0fa837f67d2db900bc32e6f43aeac171eb04727c75"
 }
