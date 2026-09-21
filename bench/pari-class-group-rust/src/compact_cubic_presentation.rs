@@ -19,7 +19,7 @@ use crate::class_group::{
 };
 use crate::class_maps::{ClassMapError, PresentationClassMap};
 use crate::flint_normal_form::{
-    FlintNormalFormError, FlintSmallSurplusWorkspace, flint_hnf_basis_modular,
+    FlintNormalFormError, FlintSmallSurplusWorkspace, FlintSmithClassMap, flint_hnf_basis_modular,
     flint_small_surplus_class_order_with_workspace, flint_smith_class_map,
 };
 
@@ -531,7 +531,10 @@ pub fn authenticate_compact_presentation(
         // invariant-factor product before accepting the map.
         let reduced_basis =
             flint_hnf_basis_modular(&solver_relations, relation_count, generators, &class_number)?;
-        let smith_map = flint_smith_class_map(&reduced_basis, generators)?;
+        let smith_map = match compressed_hnf_smith_class_map(&reduced_basis, generators)? {
+            Some(map) => map,
+            None => flint_smith_class_map(&reduced_basis, generators)?,
+        };
         (
             smith_map
                 .invariant_factors
@@ -648,6 +651,116 @@ fn preflight_retained_map(
         });
     }
     Ok(())
+}
+
+/// Eliminate the unit pivots of an upper-triangular row HNF before Smith.
+///
+/// If `H[i,i]` is a unit, its relation expresses generator `i` exactly in
+/// terms of later generators. Back substitution therefore reduces the
+/// quotient to the rows and generators at nonunit pivots, whose count is at
+/// most `log2(det(H))`. Coordinates are lifted to every original generator;
+/// preimages lift directly because each retained generator is an original
+/// standard basis vector. Unsupported shapes or coefficients outside `i64`
+/// return `None` so the caller can use the full transform unchanged.
+fn compressed_hnf_smith_class_map(
+    basis: &[i64],
+    size: usize,
+) -> Result<Option<FlintSmithClassMap>, FlintNormalFormError> {
+    if size == 0 || size.checked_mul(size) != Some(basis.len()) {
+        return Err(FlintNormalFormError::DimensionMismatch);
+    }
+    if (0..size).any(|row| (0..row).any(|column| basis[row * size + column] != 0)) {
+        return Ok(None);
+    }
+    let retained = (0..size)
+        .filter(|&index| basis[index * size + index].unsigned_abs() > 1)
+        .collect::<Vec<_>>();
+    if (0..size).any(|index| basis[index * size + index] == 0) {
+        return Err(FlintNormalFormError::RankDeficient);
+    }
+    if retained.len() == size {
+        return Ok(None);
+    }
+    if retained.is_empty() {
+        return Ok(Some(FlintSmithClassMap {
+            invariant_factors: Vec::new(),
+            generator_coordinates: Vec::new(),
+            generator_preimages: Vec::new(),
+            generator_count: size,
+        }));
+    }
+    let width = retained.len();
+    let mut retained_position = vec![None; size];
+    for (position, &generator) in retained.iter().enumerate() {
+        retained_position[generator] = Some(position);
+    }
+    let mut coordinates = vec![vec![Integer::from(0); width]; size];
+    let mut reduced_relations = vec![Integer::from(0); width * width];
+    for row in (0..size).rev() {
+        let diagonal = basis[row * size + row];
+        if diagonal.unsigned_abs() == 1 {
+            for coordinate in 0..width {
+                let mut value = (row + 1..size).fold(Integer::from(0), |sum, column| {
+                    sum + basis[row * size + column] * &coordinates[column][coordinate]
+                });
+                if diagonal == 1 {
+                    value = -value;
+                }
+                coordinates[row][coordinate] = value;
+            }
+            continue;
+        }
+        let position =
+            retained_position[row].expect("every nonunit diagonal position was retained");
+        coordinates[row][position] = Integer::from(1);
+        for coordinate in 0..width {
+            reduced_relations[position * width + coordinate] = (row + 1..size)
+                .fold(Integer::from(0), |sum, column| {
+                    sum + basis[row * size + column] * &coordinates[column][coordinate]
+                });
+        }
+        reduced_relations[position * width + position] += diagonal;
+    }
+    let Some(reduced_i64) = reduced_relations
+        .iter()
+        .map(Integer::to_i64)
+        .collect::<Option<Vec<_>>>()
+    else {
+        return Ok(None);
+    };
+    let reduced = flint_smith_class_map(&reduced_i64, width)?;
+    let invariant_count = reduced.invariant_factors.len();
+    let mut generator_coordinates = vec![0_i64; size * invariant_count];
+    for generator in 0..size {
+        for target in 0..invariant_count {
+            let modulus = Integer::from(reduced.invariant_factors[target]);
+            let mut value = (0..width).fold(Integer::from(0), |sum, source| {
+                sum + &coordinates[generator][source]
+                    * reduced.generator_coordinates[source * invariant_count + target]
+            });
+            value %= &modulus;
+            if value < 0 {
+                value += &modulus;
+            }
+            let Some(value) = value.to_i64() else {
+                return Ok(None);
+            };
+            generator_coordinates[generator * invariant_count + target] = value;
+        }
+    }
+    let mut generator_preimages = vec![0_i64; invariant_count * size];
+    for target in 0..invariant_count {
+        for (source, &generator) in retained.iter().enumerate() {
+            generator_preimages[target * size + generator] =
+                reduced.generator_preimages[target * width + source];
+        }
+    }
+    Ok(Some(FlintSmithClassMap {
+        invariant_factors: reduced.invariant_factors,
+        generator_coordinates,
+        generator_preimages,
+        generator_count: size,
+    }))
 }
 
 fn preflight_general_smith(
@@ -1370,6 +1483,101 @@ mod tests {
             2,
             0,
         ));
+    }
+
+    #[test]
+    fn unit_hnf_pivots_compress_and_lift_a_mixed_smith_map() {
+        let basis = [
+            1_i64, 0, 1, 0, // e0 = -e2
+            0, 1, 0, 1, // e1 = -e3
+            0, 0, 2, 0, // 2 e2 = 0
+            0, 0, 0, 4, // 4 e3 = 0
+        ];
+        let map = compressed_hnf_smith_class_map(&basis, 4)
+            .unwrap()
+            .expect("unit pivots compress");
+        assert_eq!(map.invariant_factors, [2, 4]);
+        assert!(map.annihilates(&basis, 4));
+        verify_mixed_modulus_map(
+            &map.invariant_factors
+                .iter()
+                .copied()
+                .map(Integer::from)
+                .collect::<Vec<_>>(),
+            &map.generator_coordinates
+                .iter()
+                .copied()
+                .map(Integer::from)
+                .collect::<Vec<_>>(),
+            &map.generator_preimages
+                .iter()
+                .copied()
+                .map(Integer::from)
+                .collect::<Vec<_>>(),
+            &basis,
+            4,
+            &Integer::from(8),
+            64,
+        )
+        .unwrap();
+        let non_hnf = [1_i64, 0, 1, 1];
+        assert_eq!(compressed_hnf_smith_class_map(&non_hnf, 2).unwrap(), None,);
+    }
+
+    #[test]
+    fn compressed_hnf_maps_match_full_smith_on_varied_triangular_bases() {
+        for size in 2..=8 {
+            for variant in 0..12 {
+                let mut basis = vec![0_i64; size * size];
+                let mut class_number = Integer::from(1);
+                for row in 0..size {
+                    let diagonal = if (row + variant) % 3 == 0 {
+                        2 + ((row + 2 * variant) % 3) as i64
+                    } else if (row + variant) % 2 == 0 {
+                        -1
+                    } else {
+                        1
+                    };
+                    basis[row * size + row] = diagonal;
+                    class_number *= diagonal.unsigned_abs();
+                    for column in row + 1..size {
+                        basis[row * size + column] =
+                            ((row * 5 + column * 3 + variant * 7) % 9) as i64 - 4;
+                    }
+                }
+                let compressed = compressed_hnf_smith_class_map(&basis, size)
+                    .unwrap()
+                    .expect("every generated basis contains a unit pivot");
+                let full = flint_smith_class_map(&basis, size).unwrap();
+                assert_eq!(compressed.invariant_factors, full.invariant_factors);
+                assert!(compressed.annihilates(&basis, size));
+                verify_mixed_modulus_map(
+                    &compressed
+                        .invariant_factors
+                        .iter()
+                        .copied()
+                        .map(Integer::from)
+                        .collect::<Vec<_>>(),
+                    &compressed
+                        .generator_coordinates
+                        .iter()
+                        .copied()
+                        .map(Integer::from)
+                        .collect::<Vec<_>>(),
+                    &compressed
+                        .generator_preimages
+                        .iter()
+                        .copied()
+                        .map(Integer::from)
+                        .collect::<Vec<_>>(),
+                    &basis,
+                    size,
+                    &class_number,
+                    64,
+                )
+                .unwrap();
+            }
+        }
     }
 
     #[test]
