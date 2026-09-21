@@ -2,93 +2,93 @@
   "answerDisclosure": "none",
   "build": {
     "binaryBytes": 21738592,
-    "binarySha256": "803c8f058616713cb8cd4bc3fcd52632d6491d07bb5f4dfa68478c2e178cd2b5",
+    "binarySha256": "f130a27ee99e40bf6f0a3f7cd46c7f9ff69163544862648f90e1286780351b70",
     "kind": "cargo-build-locked-release",
-    "nanoseconds": 45371471,
+    "nanoseconds": 44643380,
     "pariLinked": false
   },
-  "campaignNanoseconds": 1949095277,
+  "campaignNanoseconds": 1534707816,
   "caseCount": 12,
   "cases": [
     {
-      "externalNanoseconds": 328209669,
+      "externalNanoseconds": 225878651,
       "fieldId": "admissible-v2-d3-0010-343b845140b2",
       "requestSha256": "d10a23b1a1e5fd6b394b89381b5ac56d549e7f1e2eaab6980ea526063c5ce21b",
       "status": "completed-self-sealed",
       "timedOut": false
     },
     {
-      "externalNanoseconds": 48769289,
+      "externalNanoseconds": 25725384,
       "fieldId": "admissible-v2-d3-0014-4962451c563d",
       "requestSha256": "7641110f3a7b69465468cef0042d766313c759d8bdd75cb8583c73c020a8987a",
       "status": "completed-self-sealed",
       "timedOut": false
     },
     {
-      "externalNanoseconds": 47659330,
+      "externalNanoseconds": 31058033,
       "fieldId": "admissible-v2-d3-0024-4acbbe9ded11",
       "requestSha256": "27c7e09cda0ff775ebced3b3406c3ff8e7d2be9ed51982795e4344946303ebed",
       "status": "completed-self-sealed",
       "timedOut": false
     },
     {
-      "externalNanoseconds": 52982138,
+      "externalNanoseconds": 23514084,
       "fieldId": "admissible-v2-d3-0031-e9060b2ef32c",
       "requestSha256": "ecccfb428118ae7f5986cdb7d8c2d330cf714243104b1c74bbd3b519d8f5ac82",
       "status": "completed-self-sealed",
       "timedOut": false
     },
     {
-      "externalNanoseconds": 59636637,
+      "externalNanoseconds": 29659814,
       "fieldId": "generated-d3-0002-7db82abb5115",
       "requestSha256": "6fbe0da402ad994cb837fb63c1945c6a18055d8705a9a110d3e93ff2f65b0c44",
       "status": "completed-self-sealed",
       "timedOut": false
     },
     {
-      "externalNanoseconds": 73051614,
+      "externalNanoseconds": 67081115,
       "fieldId": "generated-d3-0006-d81624e879a6",
       "requestSha256": "6f287b8bebe16eebeb6b79c1e5922b305d2e54732df425d62345afd498549291",
       "status": "completed-self-sealed",
       "timedOut": false
     },
     {
-      "externalNanoseconds": 202133397,
+      "externalNanoseconds": 157741376,
       "fieldId": "generated-d3-0008-b209c15188b7",
       "requestSha256": "1fa802d25130679ce01a0b8c718fafd13c2348677e10e29f1528d7400ea05d05",
       "status": "completed-self-sealed",
       "timedOut": false
     },
     {
-      "externalNanoseconds": 215050163,
+      "externalNanoseconds": 235827489,
       "fieldId": "generated-d3-0013-1581e15bb214",
       "requestSha256": "686aeaee910861d0494921734ef80ae07f2a99d91d885041d945e6db2186ceae",
       "status": "completed-self-sealed",
       "timedOut": false
     },
     {
-      "externalNanoseconds": 355875572,
+      "externalNanoseconds": 252072945,
       "fieldId": "generated-d3-0026-c42a5e234637",
       "requestSha256": "e5d91e58f79b7d831e98f89ea0822fc109a61550d178b2a6ac8c2d844713b6a7",
       "status": "completed-self-sealed",
       "timedOut": false
     },
     {
-      "externalNanoseconds": 77485764,
+      "externalNanoseconds": 75140773,
       "fieldId": "generated-d3-0027-3a12b23b68b9",
       "requestSha256": "be42eece76c99e84395f37ac623d8d8c00b02a516c82dbed439bc7914bd34382",
       "status": "completed-self-sealed",
       "timedOut": false
     },
     {
-      "externalNanoseconds": 227242370,
+      "externalNanoseconds": 140406120,
       "fieldId": "generated-d3-0028-5653225ef214",
       "requestSha256": "fa745884e9c69d7261cb82955597aaa83f16695b90372e2d1e1d512662b85c4d",
       "status": "completed-self-sealed",
       "timedOut": false
     },
     {
-      "externalNanoseconds": 258722574,
+      "externalNanoseconds": 268547412,
       "fieldId": "generated-d3-0035-084f10db1050",
       "requestSha256": "42ba9677a96201e0789456557510d329bf0d29026f9e68ec09c5af3dc948d2cc",
       "status": "completed-self-sealed",
@@ -99,12 +99,12 @@
   "executionRole": "answer-free-confirmation-executor",
   "executorSha256": "df67fdf8580a2b349aa59c015a02b84db599c8bda06bc5383f8accf696565c3e",
   "executorSupportSha256": "925138af5d97bac66166f97ab9fbe7ea2138e2188c6a8c5cd763480747ab1edf",
-  "gitCommit": "4ecd5bdeda249ad6d8018140c3467de7d3f1f1d0",
+  "gitCommit": "56e60817d09f45a31a72028636e092500617658c",
   "inputsSha256": "6f8166cc84e7ee37b818373a702f113daf18eec116a3bc9f55409d60404e9c53",
   "policySha256": "23dcb6b3124c4475963194d05c65eded01d592cd538e350be63766c13ff8380f",
   "privateResults": {
     "pathPublished": false,
-    "sha256": "d6ee9cc4c26d28aba84c2f49447f3858af4343e88f1ad5eb90bf2988fd96f5ef"
+    "sha256": "c03588067f9ccdb2a5a1b9ba1951ec479e537eedbcc086dfc9559364e73b4a40"
   },
   "schema": "sagejs.rust-class-group/cubic-confirmation-execution-v1",
   "selectionReceiptSha256": "28ca6f005ce529deb94c6b3a862ac069bda58a9618f63d013fd7c0bdce6daba7",
