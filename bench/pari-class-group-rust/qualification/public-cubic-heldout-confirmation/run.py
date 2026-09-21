@@ -19,7 +19,12 @@ PUBLIC_CRATE = QUALIFICATION / "public-cubic-e2e"
 INPUTS_PATH = HERE / "inputs.json"
 POLICY_PATH = HERE / "policy.json"
 SELECTION_PATH = HERE / "selection-receipt.json"
-RESOURCE_CONFIG_PATH = QUALIFICATION / "public-cubic-heldout-corpus" / "config.json"
+RESOURCE_PROFILE_PATH = (
+    QUALIFICATION
+    / "public-cubic-e2e"
+    / "resource-profiles"
+    / "conditional-grh-cubic-v2.json"
+)
 HELDOUT_RUNNER = QUALIFICATION / "public-cubic-heldout-corpus" / "run.py"
 BINARY_NAME = "sagejs-public-cubic-class-group-e2e-qualification"
 REQUEST_SCHEMA = "sagejs.rust-class-group/public-cubic-e2e-request-v2"
@@ -43,7 +48,7 @@ def validate_inputs() -> tuple[list[dict[str, Any]], dict[str, Any]]:
     inputs = SUPPORT.load_json(INPUTS_PATH)
     policy = SUPPORT.load_json(POLICY_PATH)
     selection = SUPPORT.load_json(SELECTION_PATH)
-    resources = SUPPORT.load_json(RESOURCE_CONFIG_PATH)
+    profile = SUPPORT.load_json(RESOURCE_PROFILE_PATH)
     if inputs.get("schema") != (
         "sagejs.rust-class-group/heldout-cubic-confirmation-inputs-v1"
     ):
@@ -60,6 +65,19 @@ def validate_inputs() -> tuple[list[dict[str, Any]], dict[str, Any]]:
         raise RuntimeError("selection receipt does not bind confirmation inputs")
     if selection.get("policySha256") != SUPPORT.sha256_file(POLICY_PATH):
         raise RuntimeError("selection receipt does not bind confirmation policy")
+    if profile.get("schema") != (
+        "sagejs.rust-class-group/public-cubic-resource-profile-v2"
+    ):
+        raise RuntimeError("unexpected confirmation resource-profile schema")
+    if profile.get("profileId") != "conditional-grh-cubic-compact-64-v2":
+        raise RuntimeError("unexpected confirmation resource profile")
+    if profile.get("proofMode") != "conditional-grh":
+        raise RuntimeError("resource profile has another proof mode")
+    resources = profile.get("publicResources")
+    if not isinstance(resources, dict):
+        raise RuntimeError("resource profile has no public resources")
+    if resources.get("maximumCompactSurplusRows") != 64:
+        raise RuntimeError("resource profile does not admit the measured compact shape")
     cases = inputs.get("cases")
     if not isinstance(cases, list) or len(cases) != 12:
         raise RuntimeError("confirmation case count changed")
@@ -218,6 +236,7 @@ def main() -> int:
         "inputsSha256": SUPPORT.sha256_file(INPUTS_PATH),
         "policySha256": SUPPORT.sha256_file(POLICY_PATH),
         "selectionReceiptSha256": SUPPORT.sha256_file(SELECTION_PATH),
+        "resourceProfileSha256": SUPPORT.sha256_file(RESOURCE_PROFILE_PATH),
         "binarySha256": SUPPORT.sha256_file(binary),
         "campaignNanoseconds": campaign_ns,
         "cases": private_cases,
@@ -235,6 +254,7 @@ def main() -> int:
         "inputsSha256": SUPPORT.sha256_file(INPUTS_PATH),
         "policySha256": SUPPORT.sha256_file(POLICY_PATH),
         "selectionReceiptSha256": SUPPORT.sha256_file(SELECTION_PATH),
+        "resourceProfileSha256": SUPPORT.sha256_file(RESOURCE_PROFILE_PATH),
         "build": {
             "kind": build_kind,
             "nanoseconds": build_ns,

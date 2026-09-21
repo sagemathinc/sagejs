@@ -60,7 +60,11 @@ impl Default for CompactPresentationLimits {
     fn default() -> Self {
         Self {
             maximum_generators: 16_384,
-            maximum_surplus_rows: 32,
+            // The exact compact route remains bounded by the dependency-entry,
+            // saturation-minor, replay-work, and coefficient ceilings below.
+            // Sixty-four admits the observed 54-surplus continuation shape;
+            // the former value 32 merely diverted it to dense Smith transforms.
+            maximum_surplus_rows: 64,
             maximum_saturation_minor_trials: 32_768,
             maximum_dependency_entries: 1_000_000,
             maximum_invariant_factors: 16_384,

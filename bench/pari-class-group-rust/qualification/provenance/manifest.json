@@ -204,7 +204,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/compact_cubic_presentation.rs",
-      "sha256": "6c5964a71eb4536e0071b608168119a16cd6c8a128c06c949820030082a026b3",
+      "sha256": "63af0a620e4cce1d7c75ecf72df158b678706ba56daadb562cce4b3ee02bbb77",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",

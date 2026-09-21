@@ -689,7 +689,7 @@ mod tests {
                 maximum_verification_multiply_adds: 100_000_000,
                 maximum_principal_factor_terms: 10_000_000,
                 maximum_compact_generators: 16_384,
-                maximum_compact_surplus_rows: 32,
+                maximum_compact_surplus_rows: 64,
                 maximum_compact_saturation_minor_trials: 32_768,
                 maximum_compact_dependency_entries: 1_000_000,
                 maximum_compact_target_coefficient_bits: 1_000_000,
@@ -743,10 +743,21 @@ mod tests {
 
     #[test]
     fn route_selector_does_not_use_compact_for_an_inadmissible_surplus_shape() {
-        let input = request(10_000);
+        let mut input = request(10_000);
+        input.resources.maximum_compact_surplus_rows = 32;
         assert_eq!(
             select_candidate_authentication_route(192, 225, &input.resources),
             CandidateAuthenticationRoute::DenseSmith,
+        );
+    }
+
+    #[test]
+    fn route_selector_admits_the_measured_54_surplus_shape() {
+        let input = request(10_000);
+        assert_eq!(input.resources.maximum_compact_surplus_rows, 64);
+        assert_eq!(
+            select_candidate_authentication_route(26, 80, &input.resources),
+            CandidateAuthenticationRoute::CompactSmallSurplus,
         );
     }
 

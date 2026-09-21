@@ -17,6 +17,12 @@ QUALIFICATION = HERE.parent
 INPUTS_PATH = HERE / "inputs.json"
 POLICY_PATH = HERE / "policy.json"
 SELECTION_PATH = HERE / "selection-receipt.json"
+RESOURCE_PROFILE_PATH = (
+    QUALIFICATION
+    / "public-cubic-e2e"
+    / "resource-profiles"
+    / "conditional-grh-cubic-v2.json"
+)
 COMPARATOR_PATH = QUALIFICATION / "public-cubic-heldout-oracle" / "verify.py"
 RECEIPT_SCHEMA = "sagejs.rust-class-group/cubic-confirmation-comparison-v1"
 
@@ -73,6 +79,7 @@ def main() -> int:
         ("inputsSha256", INPUTS_PATH),
         ("policySha256", POLICY_PATH),
         ("selectionReceiptSha256", SELECTION_PATH),
+        ("resourceProfileSha256", RESOURCE_PROFILE_PATH),
     ):
         expected = digest(path)
         if binding.get(key) != expected:
