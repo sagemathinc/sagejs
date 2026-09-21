@@ -246,7 +246,7 @@ impl GmpSmithWorkspace {
             });
         }
         let diagonal = self.smith_diagonal()?;
-        let rank = diagonal.iter().filter(|value| !value.is_zero()).count();
+        let rank = diagonal.iter().filter(|value| **value != 0).count();
         if rank != expected_rank {
             return Err(GmpSmithError::RankDeficient {
                 rank,

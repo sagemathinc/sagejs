@@ -39,7 +39,7 @@
     ]
   },
   "summary": {
-    "sourceFiles": 85,
+    "sourceFiles": 82,
     "unsafeItems": 99,
     "unsafeItemsMissingRationale": 83,
     "ffiBoundaries": 112,
@@ -47,7 +47,7 @@
     "unclassifiedSafetyTokens": 0,
     "unclassifiedFfiTokens": 0,
     "unclassifiedSourceScopes": 0,
-    "sourceFilesMissingProvenanceHeader": 26,
+    "sourceFilesMissingProvenanceHeader": 23,
     "byScope": {
       "product-build-support": {
         "sourceFiles": 1,
@@ -74,20 +74,20 @@
         "sourceFilesMissingProvenanceHeader": 4
       },
       "qualification-build-support": {
-        "sourceFiles": 5,
+        "sourceFiles": 4,
         "unsafeItems": 0,
         "unsafeItemsMissingRationale": 0,
         "ffiBoundaries": 0,
         "ffiBoundariesMissingRationale": 0,
-        "sourceFilesMissingProvenanceHeader": 5
+        "sourceFilesMissingProvenanceHeader": 4
       },
       "qualification-only": {
-        "sourceFiles": 33,
+        "sourceFiles": 31,
         "unsafeItems": 82,
         "unsafeItemsMissingRationale": 66,
         "ffiBoundaries": 79,
         "ffiBoundariesMissingRationale": 75,
-        "sourceFilesMissingProvenanceHeader": 16
+        "sourceFilesMissingProvenanceHeader": 14
       }
     },
     "documentationGatePassed": false,
@@ -3165,8 +3165,8 @@
     {
       "file": "build.rs",
       "scope": "product-build-support",
-      "sha256": "c9ae28e42eaeadc550fbca72b338288dc84310c7035df534f2770f4d9b962bb1",
-      "bytes": 1887,
+      "sha256": "667190bd26654dcb8f4684b6c8f7e24f5f4c458d4565ff1945ea711f9f373327",
+      "bytes": 4900,
       "copyrightNotices": [],
       "licenseExpression": null,
       "originClassification": "sagejs-original-or-unspecified",
@@ -3545,36 +3545,6 @@
       "headerComplete": false
     },
     {
-      "file": "qualification/wasm-public-cubic-e2e/core-wasm/build.rs",
-      "scope": "qualification-build-support",
-      "sha256": "629c45241889edab6e4d39812f7363677052fe23baaf12982bd32026b716a687",
-      "bytes": 7470,
-      "copyrightNotices": [],
-      "licenseExpression": null,
-      "originClassification": "sagejs-original-or-unspecified",
-      "headerComplete": false
-    },
-    {
-      "file": "qualification/wasm-public-cubic-e2e/core-wasm/src/lib.rs",
-      "scope": "qualification-only",
-      "sha256": "a87660d1c7db1b821a230d43ad071baaed1d5f66324ed54b44ee8402239163bc",
-      "bytes": 52,
-      "copyrightNotices": [],
-      "licenseExpression": null,
-      "originClassification": "sagejs-original-or-unspecified",
-      "headerComplete": false
-    },
-    {
-      "file": "qualification/wasm-public-cubic-e2e/public-wasm/src/lib.rs",
-      "scope": "qualification-only",
-      "sha256": "001810c357e4e0d46ec9322b57991d7cdbda83768934b9be9ed074988af5bb5f",
-      "bytes": 97,
-      "copyrightNotices": [],
-      "licenseExpression": null,
-      "originClassification": "sagejs-original-or-unspecified",
-      "headerComplete": false
-    },
-    {
       "file": "qualification/wasm-public-cubic-e2e/src/lib.rs",
       "scope": "qualification-only",
       "sha256": "647a08e1a927566bfe58f8d9b2b4b64f67da09abf4e66364cf30f6b6a5c76106",
@@ -3745,8 +3715,8 @@
     {
       "file": "src/flint_normal_form.rs",
       "scope": "product-candidate",
-      "sha256": "eb92649e4157ae9401e5772048fdfb91a042a45c401988dc12adfc5eeb506a19",
-      "bytes": 85767,
+      "sha256": "e34eda1552e637ed5f06b66caca9ef18a69ccee21e455cee6de293a57154c6a6",
+      "bytes": 85897,
       "copyrightNotices": [
         "Copyright (C) Sage.js contributors."
       ],
@@ -3757,8 +3727,8 @@
     {
       "file": "src/gmp_smith.rs",
       "scope": "product-candidate",
-      "sha256": "36e11e8eb20de9df5b5ecb0a2f9d5ca8ffda9239224c9331f45ec0ba032f0802",
-      "bytes": 12967,
+      "sha256": "65a98c0bef3233260d979d53cd22b0e98f78471fb08c1fa4f7f850010e264af8",
+      "bytes": 12963,
       "copyrightNotices": [
         "Copyright (C) Sage.js contributors."
       ],
@@ -4135,7 +4105,7 @@
     {
       "file": "Cargo.lock",
       "scope": "product-build-support",
-      "sha256": "139ba4b68ac92e06b6c9b7d5c4fbc9526a9948b90eb313e3ae0d12c913ac252f",
+      "sha256": "bc79288b1020f10a17333e0d07306429d8bdc36f589f79a96995a039734d8af3",
       "kind": "cargo-lock",
       "packageCount": 28,
       "sourceCounts": {
@@ -4148,7 +4118,7 @@
     {
       "file": "Cargo.toml",
       "scope": "product-build-support",
-      "sha256": "e607bf9540ab65775a120f58745711bd4e43e31f27144056c4522c45d946930c",
+      "sha256": "ef3040d612eb1547ef554645536ebea1b31fe1d64a4104a12f6c35acc8cdaf40",
       "kind": "cargo-manifest",
       "packageName": "sagejs-pari-class-group-rust-experiment",
       "packageVersion": "0.1.0",
@@ -4223,7 +4193,7 @@
     {
       "file": "qualification/public-cubic-e2e/Cargo.lock",
       "scope": "qualification-build-support",
-      "sha256": "6ed695fcd15a0de2df7f8bc5da47777bf96b43eb3497a49ddd19b10daf1996d0",
+      "sha256": "46211265f8e9a0a1a9d43c874a36a5443ba3fe96c00df2277e2ce088de16c798",
       "kind": "cargo-lock",
       "packageCount": 29,
       "sourceCounts": {
@@ -4443,11 +4413,11 @@
     {
       "file": "qualification/wasm-public-cubic-e2e/Cargo.lock",
       "scope": "qualification-build-support",
-      "sha256": "49d552faa2fca362ab5371afa34433eee39143424ffb8c4b80b7aab29f549394",
+      "sha256": "2820522dab242993b3e645e59b8e015d472abd0690bb326e514104a574d047cb",
       "kind": "cargo-lock",
-      "packageCount": 35,
+      "packageCount": 30,
       "sourceCounts": {
-        "registry": 32,
+        "registry": 27,
         "git": 0,
         "localOrUnspecified": 3,
         "other": 0
@@ -4456,27 +4426,9 @@
     {
       "file": "qualification/wasm-public-cubic-e2e/Cargo.toml",
       "scope": "qualification-build-support",
-      "sha256": "955afcfa358c01375122f90ee355a80da564ed9f620ddc12ecc7bc2c06503019",
+      "sha256": "82f0b284f9723165f8f641220ae265c2b9c6f5c25f883c1a2fdadbbb48ebc42a",
       "kind": "cargo-manifest",
       "packageName": "sagejs-rust-wasm-public-cubic-e2e",
-      "packageVersion": "0.1.0",
-      "declaredLicense": "GPL-2.0-or-later"
-    },
-    {
-      "file": "qualification/wasm-public-cubic-e2e/core-wasm/Cargo.toml",
-      "scope": "qualification-build-support",
-      "sha256": "6d6ac99e186bcc70475065d4286f23872f7646068ca1fd4ef194b6a8502f9e9f",
-      "kind": "cargo-manifest",
-      "packageName": "sagejs-pari-class-group-rust-experiment",
-      "packageVersion": "0.1.0",
-      "declaredLicense": "GPL-2.0-or-later"
-    },
-    {
-      "file": "qualification/wasm-public-cubic-e2e/public-wasm/Cargo.toml",
-      "scope": "qualification-build-support",
-      "sha256": "8e587d2e445c196b80a9e087b062a53d9f7b4a3c5509d9fd3e6c4b40a0027e8e",
-      "kind": "cargo-manifest",
-      "packageName": "sagejs-public-cubic-class-group-e2e-qualification",
       "packageVersion": "0.1.0",
       "declaredLicense": "GPL-2.0-or-later"
     }
@@ -4490,5 +4442,5 @@
     "miriCoverageEstablished": false,
     "productionQualified": false
   },
-  "inventorySha256": "ee591e1deb26e356ba473e481a1b50ecb791af47ca8577d9a3a88e3a5b8a00e7"
+  "inventorySha256": "9d98daab2851ed59ff7d646c18ddd5f0f754015c1d44076dc043284973198d90"
 }

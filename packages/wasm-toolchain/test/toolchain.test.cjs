@@ -93,10 +93,10 @@ test("the selected toolchain contains only the SDK and mathematical sources", ()
   assert.deepEqual(Object.keys(sources), [
     "ffpoly",
     "flint",
-    "gmp-wasm",
     "m4ri",
     "mpc",
     "mpfr",
+    "native-gmp",
     "smalljac",
     "wasi-sdk-linux-x64",
   ]);

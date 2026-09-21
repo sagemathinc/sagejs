@@ -14,7 +14,7 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 342,
+    "classified-native-file": 339,
     "declared-ffi": 480,
     "declared-ffi-resource": 37,
     "napi-export": 358,
@@ -9926,30 +9926,6 @@
       "path": "bench/pari-class-group-rust/qualification/wasm-prepared-relation-prefix/src/lib.rs",
       "disposition": "benchmark-reference",
       "review_status": "experimental-pending-review",
-      "lane": "integration"
-    },
-    {
-      "id": "native-file:bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/core-wasm/build.rs",
-      "kind": "classified-native-file",
-      "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/core-wasm/build.rs",
-      "disposition": "benchmark-reference",
-      "review_status": "accepted",
-      "lane": "integration"
-    },
-    {
-      "id": "native-file:bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/core-wasm/src/lib.rs",
-      "kind": "classified-native-file",
-      "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/core-wasm/src/lib.rs",
-      "disposition": "benchmark-reference",
-      "review_status": "accepted",
-      "lane": "integration"
-    },
-    {
-      "id": "native-file:bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/public-wasm/src/lib.rs",
-      "kind": "classified-native-file",
-      "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/public-wasm/src/lib.rs",
-      "disposition": "benchmark-reference",
-      "review_status": "accepted",
       "lane": "integration"
     },
     {

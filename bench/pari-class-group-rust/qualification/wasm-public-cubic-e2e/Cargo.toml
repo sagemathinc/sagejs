@@ -9,7 +9,7 @@ publish = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-sagejs-public-cubic-class-group-e2e-qualification = { path = "public-wasm" }
+sagejs-public-cubic-class-group-e2e-qualification = { path = "../public-cubic-e2e" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 

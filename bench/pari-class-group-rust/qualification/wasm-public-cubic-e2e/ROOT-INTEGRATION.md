@@ -1,16 +1,16 @@
-# Proposed shared integration after source-closure qualification
+# Shared integration after source-closure qualification
 
-Do not apply these changes while the frozen held-out/source-closure campaign is
-running. This document records the exact integration work exposed by the
-isolated complete-Wasm experiment.
+The shared integration described below is now implemented. This document
+records the decisions exposed by the isolated complete-Wasm experiment and the
+remaining product boundary.
 
 ## Arithmetic dependency decision
 
-Prefer upgrading the content-addressed Wasm toolchain from GMP 6.2.1 to GMP
-6.3.0, then keep the shared Rug 1.30 / `gmp-mpfr-sys` 1.7.1 line. Add a
-target-specific direct `gmp-mpfr-sys` dependency enabling `force-cross` and
-`use-system-libs` so Cargo feature unification makes Rug's binding usable for
-`wasm32-wasip1`. Authenticate the GMP/MPFR ABI metadata with the same checked
+The content-addressed Wasm toolchain is upgraded from GMP 6.2.1 to GMP 6.3.0,
+while retaining the shared Rug 1.30 / `gmp-mpfr-sys` 1.7.1 line. A
+target-specific direct `gmp-mpfr-sys` dependency enables `force-cross` and
+`use-system-libs`, so Cargo feature unification makes Rug's binding usable for
+`wasm32-wasip1`. GMP/MPFR ABI metadata is authenticated with the same checked
 cross-probe mechanism used here. Do not claim the existing GMP 6.2.1 archive
 is 6.3.0.
 
@@ -20,7 +20,7 @@ does not recommend it as the product configuration.
 
 ## Target-aware shared build script
 
-Teach `bench/pari-class-group-rust/build.rs` to select by Cargo `TARGET`:
+`bench/pari-class-group-rust/build.rs` now selects by Cargo `TARGET`:
 
 - native: retain the current pinned native FLINT/OpenBLAS/MPFR/GMP route;
 - `wasm32-wasip1`: require content-addressed FLINT, MPFR, GMP, WASI sysroot,
@@ -38,7 +38,7 @@ route.
 ## Shared bridge status
 
 The qualification campaign exposed a required exact-width bridge change. It is
-now present in the shared working tree (pending integration review): Rust uses
+now present in the shared source: Rust uses
 a checked target-width precision conversion,
 
 ```rust
@@ -67,12 +67,15 @@ This is not an unchecked cast workaround: the C ABI remains `int64_t`, exact
 values remain exact on both targets, and the shared implementation is what the
 final clean artifact compiles. Keep these changes when integrating the lane.
 
-## Remove the qualification shims
+## Qualification-shim removal
 
-After shared integration and full native regression:
+The integration now:
 
 - point the reactor directly at `../public-cubic-e2e`;
 - delete `core-wasm`, `public-wasm`, and their generated compatibility logic;
 - rebuild with the upgraded content-addressed toolchain;
-- repeat Node plus Chromium/Firefox/WebKit exact stable-projection runs; and
-- run the open and held-out cubic panels on both native and browser routes.
+- passes the Node exact resident-session lifecycle.
+
+Chromium, Firefox, and WebKit exact stable-projection runs now also pass. The
+remaining work is to run broader browser panels where the harness supports
+them and place the reactor behind the actual Sage.js worker/product loader.

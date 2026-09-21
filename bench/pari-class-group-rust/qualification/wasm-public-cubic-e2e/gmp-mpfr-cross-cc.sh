@@ -25,8 +25,8 @@ if [ -n "$source_name" ]; then
 cat > system_gmp.out <<'DATA'
 #undef _LONG_LONG_LIMB
 #define __GNU_MP_VERSION 6
-#define __GNU_MP_VERSION_MINOR 2
-#define __GNU_MP_VERSION_PATCHLEVEL 1
+#define __GNU_MP_VERSION_MINOR 3
+#define __GNU_MP_VERSION_PATCHLEVEL 0
 PLACEHOLDER_LIMB_BITS
 #define GMP_NAIL_BITS 0
 #define __GMP_CC "Sage.js prepared WASI clang"

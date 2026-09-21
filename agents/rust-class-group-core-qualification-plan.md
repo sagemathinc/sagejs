@@ -233,19 +233,21 @@ nearly balanced.
 
 The current shared source also completes row 6 from coefficients through the
 qualification Wasm reactor in Node, Chromium, Firefox, and WebKit with the same
-sealed projection. The 5,776,914-byte artifact is 2,326,379 bytes gzip and
-finishes with 2,166 linear-memory pages (135.38 MiB), inside the plan's 256-MiB
-worker ceiling. One-shot calls are 31.91, 32.25, 238.61, and 33.12 seconds,
+sealed projection. The direct-shared-source 5,867,215-byte artifact is
+2,357,581 bytes gzip and finishes with 2,109 linear-memory pages (131.81 MiB),
+inside the plan's 256-MiB worker ceiling. One-shot calls are 30.68, 31.69,
+235.46, and 32.77 seconds,
 respectively. The receipts bind the current 1,144-relation mixed-invariant
 presentation and explicitly expose the failed 4,096/2,048-bit attempt followed
 by the successful 8,192/4,096-bit attempt. This passes current-source browser
 feasibility and memory, not the browser performance or product gates: the route
 is still a synchronous qualification harness rather than the Sage.js worker
 API, and Firefox remains the dominant target-specific performance failure.
-The compatibility adapter now declares the shared Rust source directory as a
-Cargo rebuild input. A clean build produced the current artifact, and touching
-a shared core module forced all three adapter crates to rebuild, closing the
-previous stale-generated-source risk.
+The compatibility adapters are now gone. The shared root crate has one
+target-aware manifest and build script for native and `wasm32-wasip1`, backed
+by the upgraded content-addressed GMP 6.3.0 toolchain. The reactor depends
+directly on the real public-cubic crate, so native and Wasm compile the same
+Rust modules and exact-width C bridge rather than copied or rewritten source.
 The fail-closed Sage.js receipt adapter now accepts this current
 mixed-invariant result and validates its complete precision-attempt transcript
 against the caller's resource request. It still returns an explicitly
@@ -291,10 +293,10 @@ consumes the same closed envelope, binds the exact polynomial and queried
 lattice, and invokes the compact context's independent principal-ideal and
 coordinate replay. Keeping this normalization out of the lazy product package
 preserved its frozen byte budget. The qualification reactor now also retains a
-completed class group behind a bounded resident handle. Its rebuilt
-5,867,663-byte artifact opened and completed the C2 field in 89.85 ms, answered
-the same independently replayed nontrivial ideal query in 11.05 and 8.07 ms,
-and closed the handle in 0.43 ms without growing beyond the initial 256 pages
+completed class group behind a bounded resident handle. Its direct-shared-source
+5,867,215-byte artifact opened and completed the C2 field in 88.96 ms, answered
+the same independently replayed nontrivial ideal query in 10.75 and 7.93 ms,
+and closed the handle in 0.42 ms without growing beyond the initial 256 pages
 (16 MiB). Handles are monotone and never reused, at most four sessions coexist,
 and the checked harness rejects stale queries, double closes, and a fifth open
 before doing another completion. The remaining product gap is therefore

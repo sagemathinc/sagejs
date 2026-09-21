@@ -2068,48 +2068,6 @@
       "provenance_mapping_status": "not-applicable"
     },
     {
-      "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/core-wasm/build.rs",
-      "category": "benchmark-reference",
-      "review_status": "accepted",
-      "lane": "integration",
-      "rationale": "Qualification-only build adapter for the experimental complete public-cubic WebAssembly campaign; it compiles the shared core against the authenticated Sage.js arithmetic toolchain and is not a production-dispatched backend.",
-      "rust_role": "qualification-harness",
-      "qualification_status": "experimental-qualification",
-      "provenance_class": "qualification-harness",
-      "distribution_status": "qualification-only",
-      "safety_review": "not-applicable",
-      "safety_rationale": "The architecture scanner finds no unsafe or Rust ABI boundary in this source; any future boundary changes this classification and fails validation.",
-      "provenance_mapping_status": "not-applicable"
-    },
-    {
-      "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/core-wasm/src/lib.rs",
-      "category": "benchmark-reference",
-      "review_status": "accepted",
-      "lane": "integration",
-      "rationale": "Qualification-only manifest adapter that includes the shared Rust class-group core for the complete public-cubic WebAssembly campaign; it is not a production-dispatched backend.",
-      "rust_role": "qualification-harness",
-      "qualification_status": "experimental-qualification",
-      "provenance_class": "qualification-harness",
-      "distribution_status": "qualification-only",
-      "safety_review": "not-applicable",
-      "safety_rationale": "The architecture scanner finds no unsafe or Rust ABI boundary in this source; any future boundary changes this classification and fails validation.",
-      "provenance_mapping_status": "not-applicable"
-    },
-    {
-      "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/public-wasm/src/lib.rs",
-      "category": "benchmark-reference",
-      "review_status": "accepted",
-      "lane": "integration",
-      "rationale": "Qualification-only manifest adapter that includes the coefficient-only public cubic wrapper for the complete WebAssembly campaign; it is not a production-dispatched backend.",
-      "rust_role": "qualification-harness",
-      "qualification_status": "experimental-qualification",
-      "provenance_class": "qualification-harness",
-      "distribution_status": "qualification-only",
-      "safety_review": "not-applicable",
-      "safety_rationale": "The architecture scanner finds no unsafe or Rust ABI boundary in this source; any future boundary changes this classification and fails validation.",
-      "provenance_mapping_status": "not-applicable"
-    },
-    {
       "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/src/lib.rs",
       "category": "benchmark-reference",
       "review_status": "experimental-pending-review",

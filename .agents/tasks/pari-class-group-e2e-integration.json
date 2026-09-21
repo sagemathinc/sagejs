@@ -46,6 +46,7 @@
     "tools/ffi/boundary-audit.cjs",
     "tools/native-kernel/c-backend.cjs",
     "packages/wasm-toolchain/recipes/libraries.cjs",
+    "packages/wasm-toolchain/lock.json",
     "packages/wasm-toolchain/test/toolchain.test.cjs"
   ],
   "dependencies": [],

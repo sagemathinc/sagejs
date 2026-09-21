@@ -30,8 +30,8 @@ node run-browsers.mjs
 ```
 
 The build script accepts only the content-addressed Sage.js Wasm toolchain
-`37d8d819fd533570e0b707d3101ab2944f6488c4b4452b2b0a1a9ea04366452c`
-and verifies its GMP 6.2.1, MPFR 4.2.2, and FLINT 3.6.0 identities. The
+`1e306620de0571d34f6fc1bf0010aaf164e9b328d304bcd3cfd0d86f945634ba`
+and verifies its GMP 6.3.0, MPFR 4.2.2, and FLINT 3.6.0 identities. The
 reactor links those static archives and the repository's bounded WASI host.
 
 For a same-source native regression run:
@@ -47,69 +47,48 @@ cargo test --release --all-targets
 
 ## Current complete result
 
-The current qualified reactor is 5,776,914 bytes (2,326,379 bytes gzip). Its
+The current qualified reactor is 5,867,215 bytes (2,357,581 bytes gzip). Its
 stable row-6 projection passed in Node, Chromium, Firefox, and WebKit after the
 general mixed-invariant remediation. The result has 1,144 authenticated
 relations and records both requested precision and the exact two-attempt
 4,096/2,048- then 8,192/4,096-bit schedule. Each runtime grew from 256 to 2,166
-Wasm pages (16.0 to 135.4 MiB). Representative one-shot calls were 31.91
-seconds in Node, 32.25 seconds in Chromium, 238.61 seconds in Firefox, and
-33.12 seconds in WebKit. These are smoke measurements, not warmed benchmark
+Wasm pages in the earlier adapter build and now reaches 2,109 pages (131.8 MiB)
+from the same 256-page start. Representative direct-shared-source one-shot calls
+were 30.68 seconds in Node, 31.69 seconds in Chromium, 235.46 seconds in Firefox,
+and 32.77 seconds in WebKit. These are smoke measurements, not warmed benchmark
 medians. The native frozen public benchmark for the same field is 5.826 seconds
 (PARI 3.960 seconds), so Wasm is working end to end and remains within the
 256-MiB worker memory ceiling, but is not yet competitive. Firefox remains the
 largest target-specific problem.
 
-The Node guest's stage times localize its 31.90-second sealed computation to
-0.17 seconds of public preparation, 9.93 seconds of relation collection, 4.93
-seconds of candidate authentication, and 16.81 seconds of unit/analytic
+The Node guest's stage times localize its 30.66-second sealed computation to
+0.17 seconds of public preparation, 9.44 seconds of relation collection, 4.46
+seconds of candidate authentication, and 16.54 seconds of unit/analytic
 completion. This is actionable evidence: the full computation does not fail at
 an incomplete boundary, and the dominant Wasm work is known. The historical
 5,679,772-byte, 1,137-relation result remains useful as a pre-remediation
 baseline but is no longer the current source closure.
 
-## Why there are two manifest adapters
+## Shared native and Wasm source closure
 
-The public adapter depends on `public-wasm`, which compiles the exact
-`public-cubic-e2e/src/lib.rs` source. That in turn depends on `core-wasm`, which
-compiles the exact shared Rust core modules. The shims exist because the
-current shared manifests are not yet cross-target manifests:
+The reactor now depends directly on `../public-cubic-e2e`, which in turn uses
+the same root class-group crate as the native executable. The root manifest
+unifies Rug 1.30 with `gmp-mpfr-sys` 1.7.1's authenticated cross-build features,
+and its target-aware `build.rs` selects native FLINT/OpenBLAS or the pinned WASI
+FLINT/GMP/MPFR archives. The former `core-wasm` and `public-wasm` compatibility
+copies have been deleted: there is one mathematical Rust source graph and one
+checked exact-width C bridge for both targets.
 
-- Rug 1.30 selects `gmp-mpfr-sys` 1.7.1, which rejects cross-compilation unless
-  `force-cross` is unified and requires GMP 6.3.0; the authenticated Sage.js
-  Wasm toolchain currently contains GMP 6.2.1.
-- the shared `build.rs` invokes host `cc`/`ar`, uses the native FLINT prefix,
-  and always links native OpenBLAS and pthread assumptions;
-- Rust-to-C precision conversion assumed native `c_long` width; and
-- the regulator C bridge explicitly rejected 32-bit FLINT `slong` and narrowed
-  signed 64-bit polynomial and basis values through it.
+The shared bridge converts every signed/unsigned 64-bit value through `fmpz`,
+uses `arb_*_fmpz` operations, and checks precision against target `c_long`.
+The same source passes native tests and the exact wasm32 resident-query harness.
 
-The qualification shim therefore uses the already-qualified Rug 1.19.2 /
-`gmp-mpfr-sys` 1.5.3 line. Its Rust source adaptations are the spelling of one
-zero predicate missing from old Rug and two fail-closed `u32`-to-`c_long`
-precision conversions; the build asserts the exact source counts before
-changing them. The shared bridge now converts every signed/unsigned
-64-bit value through `fmpz`, uses `arb_*_fmpz` operations, and checks precision
-against target `c_long`. The shared core's six applicable 64-bit regulator
-tests pass natively, including row-6; the seventh width-specific test is
-compiled only for 32-bit targets, and the exact row-6 browser receipts exercise
-the wasm32 bridge in Node and all three browser engines.
-
-The adapter build script now declares the complete shared Rust source directory
-as a Cargo input. A clean rebuild after sealing the collector-owned relation
-storage produced artifact SHA-256
-`ee446c2256512e59aa2132df099decef7efab25919533dfeda8217baba6f90ec`;
-touching a shared core module then caused Cargo to rebuild `core-wasm`,
-`public-wasm`, and the final reactor. This closes the previously observed risk
-that an incremental build could silently reuse stale compatibility-generated
-Rust sources.
-
-This is an isolated qualification adapter. It is **not the Sage.js public
+This remains an isolated qualification reactor. It is **not the Sage.js public
 loader/product route**: the browser smoke intentionally reuses the dedicated
 qualification route at `qualification/browser/class-group-route.html`. This is
 strong feasibility evidence, not final product integration. See
-`ROOT-INTEGRATION.md` for the remaining shared manifest/toolchain work needed
-to remove the adapter.
+`ROOT-INTEGRATION.md` for the completed source integration and remaining product
+loader work.
 
 The reactor also accepts
 `public-cubic-arbitrary-ideal-query-request-v1`. The committed nontrivial C2
@@ -118,10 +97,10 @@ the complete class number, nonzero class coordinate, echoed input lattice, and
 nonempty exact quotient witness. The same harness now opens a bounded resident
 completed-field session, repeats that query byte-for-byte, closes it, and proves that
 stale queries, double closes, and a fifth concurrent session fail closed. The
-current artifact is 5,867,663 bytes with SHA-256
-`6eb175301d90809a864beca93c7b9ff91bbe94c44b60466fe791de0511e5ef3e`.
-The recorded Node run took 89.85 ms to open and complete the field, 11.05 ms
-for the first query, 8.07 ms for the repeated query, and 0.43 ms to close it.
+current artifact is 5,867,215 bytes with SHA-256
+`0b94eeaddaa40984b223968384d8a4db4842e9728c71f6e58572481a92603bd6`.
+The direct-shared-source Node run took 88.96 ms to open and complete the field,
+10.75 ms for the first query, 7.93 ms for the repeated query, and 0.42 ms to close it.
 Linear memory remained at 256 pages (16 MiB). Handles increase monotonically,
 are never reused after close, and the qualification reactor admits at most four
 resident sessions.

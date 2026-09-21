@@ -2,10 +2,10 @@
   "schema": "sagejs.rust-class-group/wasm-public-cubic-node-smoke-v1",
   "outcome": "pass",
   "artifact": {
-    "bytes": 5776914,
-    "sha256": "ee446c2256512e59aa2132df099decef7efab25919533dfeda8217baba6f90ec",
-    "gzipBytes": 2326379,
-    "gzipSha256": "33d00e658f6e735998081bec6114dbb06a53c9a127a0a7bf107178614065092b",
+    "bytes": 5867215,
+    "sha256": "0b94eeaddaa40984b223968384d8a4db4842e9728c71f6e58572481a92603bd6",
+    "gzipBytes": 2357581,
+    "gzipSha256": "27b6b765d0902c1bfbb780ca3cb0f7e07847af5eaaeb298e44ddd2e5cd5b1674",
     "imports": [
       {
         "module": "wasi_snapshot_preview1",
@@ -108,11 +108,11 @@
   },
   "vectorSha256": "42441762ac52865120c54e21c1bd34b64e84ce1aa00bd3e84085492e10734b5d",
   "toolchain": {
-    "identity": "37d8d819fd533570e0b707d3101ab2944f6488c4b4452b2b0a1a9ea04366452c",
-    "receiptSha256": "e0d16b87271b855dd0b045860c841014b3a5d69fa7e96e45752e299823533978",
+    "identity": "1e306620de0571d34f6fc1bf0010aaf164e9b328d304bcd3cfd0d86f945634ba",
+    "receiptSha256": "fd0670612b853ac7af5469d188bc9698fdabb662c9c72d5d912be9bf0e67993b",
     "receipt": {
       "schema": "sagejs.wasm-prepared-toolchain/v2",
-      "lockDigest": "37d8d819fd533570e0b707d3101ab2944f6488c4b4452b2b0a1a9ea04366452c",
+      "lockDigest": "1e306620de0571d34f6fc1bf0010aaf164e9b328d304bcd3cfd0d86f945634ba",
       "platform": "linux-x64",
       "canonicalBuilder": "linux-x64",
       "wasiSdk": {
@@ -129,11 +129,11 @@
       },
       "libraries": {
         "gmp": {
-          "version": "6.2.1",
-          "source": "gmp-wasm",
-          "sourceSha256": "eae9326beb4158c386e39a356818031bd28f3124cf915f8c5b1dc4c7a36b4d7c",
-          "archiveSha256": "66eb596677c3acd0e87f3118b69316dcba31695d569b5fe1020a9ff1ee0d12a4",
-          "headersSha256": "9212dc80c842042bcbfb513f74f05452bc0bb7d8ad59395593f7786289012d7a"
+          "version": "6.3.0",
+          "source": "native-gmp",
+          "sourceSha256": "a3c2b80201b89e68616f4ad30bc66aee4927c3ce50e33929ca819d5c43538898",
+          "archiveSha256": "7764218e53a8382d5c59273e4b6786fa3cb175e0abb6f85d6b08ee77c7809a6f",
+          "headersSha256": "dd4498ad99898eace60a7089eaeb539a4311dede51c30a0be658c359a48f1f5e"
         },
         "mpfr": {
           "version": "4.2.2",
@@ -153,7 +153,7 @@
           "version": "3.6.0",
           "source": "flint",
           "sourceSha256": "b95e2c7792f5eea4a1c8d2d42c4098434756832e57a094b295eb5dfdc9b4c36b",
-          "archiveSha256": "827b12b26ec81559cd7e9635682fdf377516f7b870b266f7118a77b39d27f291",
+          "archiveSha256": "b327524f71920e4e877bde652fb4ba47a7dbdcc878d04232080b78d15c9d1900",
           "headersSha256": "268c9b890aa969cd1d0632c3c00b4908aa889bcd132c673ef17cda0ffe93c283"
         },
         "m4ri": {
@@ -183,7 +183,7 @@
           "command": "tar",
           "arguments": [
             "-xf",
-            "$SOURCE_ARCHIVE/gmp-wasm",
+            "$SOURCE_ARCHIVE/native-gmp",
             "-C",
             "$TOOLCHAIN_ROOT/.build/gmp-source"
           ],
@@ -204,7 +204,7 @@
           }
         },
         {
-          "command": "$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.2.1/configure",
+          "command": "$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.3.0/configure",
           "arguments": [
             "--build=x86_64-pc-linux-gnu",
             "--host=wasm32-wasi",
@@ -214,18 +214,18 @@
             "--enable-static",
             "--disable-cxx"
           ],
-          "cwd": "$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.2.1",
+          "cwd": "$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.3.0",
           "environment": {
             "ABI": "standard",
             "AR": "$TOOLCHAIN_ROOT/sdk/bin/llvm-ar",
             "CC": "$TOOLCHAIN_ROOT/sdk/bin/clang --target=wasm32-wasip1 --sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot -D__wasi__ -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS",
             "CC_FOR_BUILD": "cc",
-            "CFLAGS": "-Oz -fPIC -fvisibility=hidden -ffile-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.2.1=/sagejs/native-source -fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.2.1=/sagejs/native-source -fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.2.1=/sagejs/native-source -ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -ffile-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fdebug-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fmacro-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain",
+            "CFLAGS": "-Oz -fPIC -fvisibility=hidden -ffile-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.3.0=/sagejs/native-source -fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.3.0=/sagejs/native-source -fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.3.0=/sagejs/native-source -ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -ffile-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fdebug-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fmacro-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain",
             "CONFIG_SITE": "/dev/null",
             "CPATH": "",
             "CXX": "$TOOLCHAIN_ROOT/sdk/bin/clang++ --target=wasm32-wasip1 --sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot -D__wasi__ -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS",
             "CXX_FOR_BUILD": "c++",
-            "CXXFLAGS": "-Oz -fPIC -fvisibility=hidden -ffile-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.2.1=/sagejs/native-source -fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.2.1=/sagejs/native-source -fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.2.1=/sagejs/native-source -ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -ffile-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fdebug-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fmacro-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain",
+            "CXXFLAGS": "-Oz -fPIC -fvisibility=hidden -ffile-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.3.0=/sagejs/native-source -fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.3.0=/sagejs/native-source -fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.3.0=/sagejs/native-source -ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -ffile-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fdebug-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fmacro-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain",
             "LANG": "C",
             "LC_ALL": "C",
             "LDFLAGS": "-lwasi-emulated-signal",
@@ -246,18 +246,18 @@
           "arguments": [
             "-j8"
           ],
-          "cwd": "$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.2.1",
+          "cwd": "$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.3.0",
           "environment": {
             "ABI": "standard",
             "AR": "$TOOLCHAIN_ROOT/sdk/bin/llvm-ar",
             "CC": "$TOOLCHAIN_ROOT/sdk/bin/clang --target=wasm32-wasip1 --sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot -D__wasi__ -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS",
             "CC_FOR_BUILD": "cc",
-            "CFLAGS": "-Oz -fPIC -fvisibility=hidden -ffile-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.2.1=/sagejs/native-source -fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.2.1=/sagejs/native-source -fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.2.1=/sagejs/native-source -ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -ffile-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fdebug-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fmacro-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain",
+            "CFLAGS": "-Oz -fPIC -fvisibility=hidden -ffile-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.3.0=/sagejs/native-source -fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.3.0=/sagejs/native-source -fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.3.0=/sagejs/native-source -ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -ffile-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fdebug-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fmacro-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain",
             "CONFIG_SITE": "/dev/null",
             "CPATH": "",
             "CXX": "$TOOLCHAIN_ROOT/sdk/bin/clang++ --target=wasm32-wasip1 --sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot -D__wasi__ -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS",
             "CXX_FOR_BUILD": "c++",
-            "CXXFLAGS": "-Oz -fPIC -fvisibility=hidden -ffile-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.2.1=/sagejs/native-source -fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.2.1=/sagejs/native-source -fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.2.1=/sagejs/native-source -ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -ffile-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fdebug-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fmacro-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain",
+            "CXXFLAGS": "-Oz -fPIC -fvisibility=hidden -ffile-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.3.0=/sagejs/native-source -fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.3.0=/sagejs/native-source -fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.3.0=/sagejs/native-source -ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -ffile-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fdebug-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fmacro-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain",
             "LANG": "C",
             "LC_ALL": "C",
             "LDFLAGS": "-lwasi-emulated-signal",
@@ -278,18 +278,18 @@
           "arguments": [
             "install"
           ],
-          "cwd": "$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.2.1",
+          "cwd": "$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.3.0",
           "environment": {
             "ABI": "standard",
             "AR": "$TOOLCHAIN_ROOT/sdk/bin/llvm-ar",
             "CC": "$TOOLCHAIN_ROOT/sdk/bin/clang --target=wasm32-wasip1 --sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot -D__wasi__ -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS",
             "CC_FOR_BUILD": "cc",
-            "CFLAGS": "-Oz -fPIC -fvisibility=hidden -ffile-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.2.1=/sagejs/native-source -fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.2.1=/sagejs/native-source -fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.2.1=/sagejs/native-source -ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -ffile-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fdebug-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fmacro-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain",
+            "CFLAGS": "-Oz -fPIC -fvisibility=hidden -ffile-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.3.0=/sagejs/native-source -fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.3.0=/sagejs/native-source -fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.3.0=/sagejs/native-source -ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -ffile-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fdebug-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fmacro-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain",
             "CONFIG_SITE": "/dev/null",
             "CPATH": "",
             "CXX": "$TOOLCHAIN_ROOT/sdk/bin/clang++ --target=wasm32-wasip1 --sysroot=$TOOLCHAIN_ROOT/sdk/share/wasi-sysroot -D__wasi__ -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS",
             "CXX_FOR_BUILD": "c++",
-            "CXXFLAGS": "-Oz -fPIC -fvisibility=hidden -ffile-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.2.1=/sagejs/native-source -fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.2.1=/sagejs/native-source -fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.2.1=/sagejs/native-source -ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -ffile-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fdebug-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fmacro-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain",
+            "CXXFLAGS": "-Oz -fPIC -fvisibility=hidden -ffile-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.3.0=/sagejs/native-source -fdebug-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.3.0=/sagejs/native-source -fmacro-prefix-map=$TOOLCHAIN_ROOT/.build/gmp-source/gmp-6.3.0=/sagejs/native-source -ffile-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fdebug-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -fmacro-prefix-map=$TOOLCHAIN_ROOT=/sagejs/toolchain -ffile-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fdebug-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain -fmacro-prefix-map=$REPOSITORY_ROOT/packages/wasm-toolchain=/sagejs/wasm-toolchain",
             "LANG": "C",
             "LC_ALL": "C",
             "LDFLAGS": "-lwasi-emulated-signal",
@@ -2260,25 +2260,25 @@
     "target": "wasm32-wasip1",
     "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: x86_64-unknown-linux-gnu\nrelease: 1.98.1\nLLVM version: 22.1.8",
     "cargo": "cargo 1.98.1 (797e8a9bc 2026-08-05)\nrelease: 1.98.1\ncommit-hash: 797e8a9bca276c1c9f9f738d2a20f484fa4eea9d\ncommit-date: 2026-08-05\nhost: x86_64-unknown-linux-gnu\nlibgit2: 1.9.4 (sys:0.21.0 vendored)\nlibcurl: 8.21.0-DEV (sys:0.4.90+curl-8.21.0 vendored ssl:OpenSSL/3.6.3)\nssl: OpenSSL 3.6.3 9 Jun 2026\nos: Ubuntu 26.4.0 (resolute) [64-bit]",
-    "clang": "clang version 22.1.0-wasi-sdk (https://github.com/llvm/llvm-project 4434dabb69916856b824f68a64b029c67175e532)\nTarget: wasm32-unknown-wasip1\nThread model: posix\nInstalledDir: /scratch/sagejs-project-cache/20260918/main-git/sagejs-wasm-toolchains/v2/37d8d819fd533570e0b707d3101ab2944f6488c4b4452b2b0a1a9ea04366452c/sdk/bin\nConfiguration file: /scratch/sagejs-project-cache/20260918/main-git/sagejs-wasm-toolchains/v2/37d8d819fd533570e0b707d3101ab2944f6488c4b4452b2b0a1a9ea04366452c/sdk/bin/clang.cfg",
+    "clang": "clang version 22.1.0-wasi-sdk (https://github.com/llvm/llvm-project 4434dabb69916856b824f68a64b029c67175e532)\nTarget: wasm32-unknown-wasip1\nThread model: posix\nInstalledDir: /scratch/sagejs-project-cache/20260918/main-git/sagejs-wasm-toolchains/v2/1e306620de0571d34f6fc1bf0010aaf164e9b328d304bcd3cfd0d86f945634ba/sdk/bin\nConfiguration file: /scratch/sagejs-project-cache/20260918/main-git/sagejs-wasm-toolchains/v2/1e306620de0571d34f6fc1bf0010aaf164e9b328d304bcd3cfd0d86f945634ba/sdk/bin/clang.cfg",
     "wasmLd": "LLD 22.1.0 (https://github.com/llvm/llvm-project 4434dabb69916856b824f68a64b029c67175e532)"
   },
   "sourceClosure": {
-    "gitHead": "3fc10f59bb59cb806e5d9430ed13d4997c7231dc",
-    "fileCount": 63,
-    "sha256": "c6ebfc4a096d35cffc9ebad760dd5856aad7413e2935d90773f976ee25b5c997",
+    "gitHead": "bfe87a8a440b99bab8f549aa046db3e519aabdf2",
+    "fileCount": 60,
+    "sha256": "eed15db86a00696d8eb731054ff69f9f6422a99a31cdad4c70c291e305fbd942",
     "files": [
       {
         "path": "bench/pari-class-group-rust/Cargo.lock",
-        "sha256": "139ba4b68ac92e06b6c9b7d5c4fbc9526a9948b90eb313e3ae0d12c913ac252f"
+        "sha256": "bc79288b1020f10a17333e0d07306429d8bdc36f589f79a96995a039734d8af3"
       },
       {
         "path": "bench/pari-class-group-rust/Cargo.toml",
-        "sha256": "e607bf9540ab65775a120f58745711bd4e43e31f27144056c4522c45d946930c"
+        "sha256": "ef3040d612eb1547ef554645536ebea1b31fe1d64a4104a12f6c35acc8cdaf40"
       },
       {
         "path": "bench/pari-class-group-rust/build.rs",
-        "sha256": "c9ae28e42eaeadc550fbca72b338288dc84310c7035df534f2770f4d9b962bb1"
+        "sha256": "667190bd26654dcb8f4684b6c8f7e24f5f4c458d4565ff1945ea711f9f373327"
       },
       {
         "path": "bench/pari-class-group-rust/qualification/browser/browser-loader.mjs",
@@ -2294,7 +2294,7 @@
       },
       {
         "path": "bench/pari-class-group-rust/qualification/public-cubic-e2e/Cargo.lock",
-        "sha256": "6ed695fcd15a0de2df7f8bc5da47777bf96b43eb3497a49ddd19b10daf1996d0"
+        "sha256": "46211265f8e9a0a1a9d43c874a36a5443ba3fe96c00df2277e2ce088de16c798"
       },
       {
         "path": "bench/pari-class-group-rust/qualification/public-cubic-e2e/Cargo.toml",
@@ -2302,11 +2302,11 @@
       },
       {
         "path": "bench/pari-class-group-rust/qualification/public-cubic-e2e/src/lib.rs",
-        "sha256": "2b1df22ee692353e14a84faa300819c1db93b9806697ce67405777c80c4ed617"
+        "sha256": "05d4947a3a745632e0678b4374cfb459d9b8b0ff598605849424adc78bac427d"
       },
       {
         "path": "bench/pari-class-group-rust/qualification/public-cubic-e2e/src/main.rs",
-        "sha256": "62a94e92a6ce81c805bf4eb597d324f5210c2fc228d1e38087385656cb3c3ee0"
+        "sha256": "5d2713f15438a35c2b97736baf1c51440174fc174e2cb6e719d240099c6d8e84"
       },
       {
         "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/.gitignore",
@@ -2314,51 +2314,35 @@
       },
       {
         "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/Cargo.lock",
-        "sha256": "49d552faa2fca362ab5371afa34433eee39143424ffb8c4b80b7aab29f549394"
+        "sha256": "2820522dab242993b3e645e59b8e015d472abd0690bb326e514104a574d047cb"
       },
       {
         "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/Cargo.toml",
-        "sha256": "955afcfa358c01375122f90ee355a80da564ed9f620ddc12ecc7bc2c06503019"
+        "sha256": "82f0b284f9723165f8f641220ae265c2b9c6f5c25f883c1a2fdadbbb48ebc42a"
       },
       {
         "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/README.md",
-        "sha256": "02b760b9bcb5612b7c24ea4761742fab62d479e088cb3b0e46321a79b50a2094"
+        "sha256": "2d5a7fd53aed0f4dfdacaa03049a2a0c916218d91c43d15f3c50838ec462a215"
       },
       {
         "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/ROOT-INTEGRATION.md",
-        "sha256": "3c43d66be962deccda1c43a804fc3fe31d7f52418f175fb647c536985531a366"
+        "sha256": "4bbb8ad4915f0f027fc7c61359265658af975be2ffd354185eae0bffcfbf736e"
       },
       {
         "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/build-wasm.sh",
-        "sha256": "2162918e0d00512518ea0d416d28911c2c2d6c5f33cc36ba12b11ab144720877"
-      },
-      {
-        "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/core-wasm/Cargo.toml",
-        "sha256": "6d6ac99e186bcc70475065d4286f23872f7646068ca1fd4ef194b6a8502f9e9f"
-      },
-      {
-        "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/core-wasm/build.rs",
-        "sha256": "629c45241889edab6e4d39812f7363677052fe23baaf12982bd32026b716a687"
-      },
-      {
-        "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/core-wasm/src/lib.rs",
-        "sha256": "a87660d1c7db1b821a230d43ad071baaed1d5f66324ed54b44ee8402239163bc"
+        "sha256": "c8c2f93785074df2bf3499c1a10e415fa2eb00fd418fa91c3eb95ab99f814b5f"
       },
       {
         "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/gmp-mpfr-cross-cc.sh",
-        "sha256": "c9d723c955487e5c679ae03db02217fd7dea2ee169d7708e0919e75d43c60f96"
+        "sha256": "68dd5cdfe22818b5495bdb87faad55a529c7c3f7e944754546ffeace63734102"
       },
       {
-        "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/public-wasm/Cargo.toml",
-        "sha256": "8e587d2e445c196b80a9e087b062a53d9f7b4a3c5509d9fd3e6c4b40a0027e8e"
-      },
-      {
-        "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/public-wasm/src/lib.rs",
-        "sha256": "001810c357e4e0d46ec9322b57991d7cdbda83768934b9be9ed074988af5bb5f"
+        "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/nontrivial-ideal-query.vector.json",
+        "sha256": "5835121de772eb47df3f77b00afdde28c860a762c4713a9dae93d6f1c3b94653"
       },
       {
         "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/receipt-identity.mjs",
-        "sha256": "c3a22be702db398db2479765b5c79979efa10b0e14bbf9f6dc7d5eeab5663c39"
+        "sha256": "b33c59b750ce80812bcc516fb4a1c72e2fd257eb32e699b5955f26ffd1d9e9f9"
       },
       {
         "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/row6.vector.json",
@@ -2373,8 +2357,12 @@
         "sha256": "1c42bd7cd34f821d851fda00d44cec4e91b86aa567de8d1cadcd396df000b016"
       },
       {
+        "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/run-query-node.mjs",
+        "sha256": "045bbc47e0d7a79a300af15a8b522921f9026d3c13a2d32d2b0a06ead489131b"
+      },
+      {
         "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/src/lib.rs",
-        "sha256": "7fdb19372a0208745815e42029106e29f7f0f9c6b473aa06b1a08f4053261344"
+        "sha256": "647a08e1a927566bfe58f8d9b2b4b64f67da09abf4e66364cf30f6b6a5c76106"
       },
       {
         "path": "bench/pari-class-group-rust/src/analytic_completion.rs",
@@ -2386,7 +2374,7 @@
       },
       {
         "path": "bench/pari-class-group-rust/src/arbitrary_ideal_reduction.rs",
-        "sha256": "891c846fe01af65024eec377625fa41a52bf453266a3beb3492456157efb1f6b"
+        "sha256": "81f624add39e8101ce004becd2ae984127249e06884273ee926143de8fc15733"
       },
       {
         "path": "bench/pari-class-group-rust/src/bruteforce_collector.rs",
@@ -2394,7 +2382,7 @@
       },
       {
         "path": "bench/pari-class-group-rust/src/class_group.rs",
-        "sha256": "3f17024e198131fdf311d93ef20664c98d9c09ab12cc196198a14fea557cb9ed"
+        "sha256": "382059d537f7e3d60529f0461fe6a8b113f98a30b63c969613c6c99e9803ab77"
       },
       {
         "path": "bench/pari-class-group-rust/src/class_maps.rs",
@@ -2410,7 +2398,7 @@
       },
       {
         "path": "bench/pari-class-group-rust/src/cubic_completion.rs",
-        "sha256": "f2f6f9545cbb458f35a7841c6f66dbc72338c473064ed01b17d256d01a95af23"
+        "sha256": "5697fef9b529e78f1f4e0dc06b9216e2765e846a5308a2dde77e0d48a9e6cc18"
       },
       {
         "path": "bench/pari-class-group-rust/src/cubic_presentation.rs",
@@ -2430,11 +2418,11 @@
       },
       {
         "path": "bench/pari-class-group-rust/src/flint_normal_form.rs",
-        "sha256": "eb92649e4157ae9401e5772048fdfb91a042a45c401988dc12adfc5eeb506a19"
+        "sha256": "e34eda1552e637ed5f06b66caca9ef18a69ccee21e455cee6de293a57154c6a6"
       },
       {
         "path": "bench/pari-class-group-rust/src/gmp_smith.rs",
-        "sha256": "36e11e8eb20de9df5b5ecb0a2f9d5ca8ffda9239224c9331f45ec0ba032f0802"
+        "sha256": "65a98c0bef3233260d979d53cd22b0e98f78471fb08c1fa4f7f850010e264af8"
       },
       {
         "path": "bench/pari-class-group-rust/src/hnf.rs",
@@ -2446,7 +2434,7 @@
       },
       {
         "path": "bench/pari-class-group-rust/src/lib.rs",
-        "sha256": "06a21e0c0bd8f07424574f0e78f24f12d85883ceb4eba623165cea5db27ac596"
+        "sha256": "1a713082ade1e813183b37517daa9b0a8fef613829a621d4beb65b04d9a2eedd"
       },
       {
         "path": "bench/pari-class-group-rust/src/main.rs",
@@ -2470,11 +2458,11 @@
       },
       {
         "path": "bench/pari-class-group-rust/src/prepared_factor_base.rs",
-        "sha256": "4623901ad8c4c7d31cc78eb5373c57303f097ee11ff01f022cb2fd701ef31721"
+        "sha256": "588b86af0748e91d2472ada9759df226be07e4684e63be4f368ce44e9259d266"
       },
       {
         "path": "bench/pari-class-group-rust/src/prepared_ideal.rs",
-        "sha256": "9ff91511cf4533c172c270f54a2098537f1618fcf3f83dbde0f0cda12c7fba5f"
+        "sha256": "7e783a4296a7a800fe86b62ed25c82459d68b6b6a7125d7d457fbf5d4537540c"
       },
       {
         "path": "bench/pari-class-group-rust/src/prepared_input.rs",
@@ -2522,17 +2510,17 @@
       }
     ]
   },
-  "elapsedMs": 31351.22381,
+  "elapsedMs": 30735.109813,
   "memoryPagesBefore": 256,
-  "memoryPagesAfter": 2166,
+  "memoryPagesAfter": 2109,
   "processResourceUsage": {
-    "userCPUTime": 32157515,
-    "systemCPUTime": 219003,
-    "maxRSS": 469900,
+    "userCPUTime": 31557953,
+    "systemCPUTime": 164020,
+    "maxRSS": 225656,
     "sharedMemorySize": 0,
     "unsharedDataSize": 0,
     "unsharedStackSize": 0,
-    "minorPageFault": 59041,
+    "minorPageFault": 61097,
     "majorPageFault": 0,
     "swappedOut": 0,
     "fsRead": 0,
@@ -2540,8 +2528,8 @@
     "ipcSent": 0,
     "ipcReceived": 0,
     "signalsCount": 0,
-    "voluntaryContextSwitches": 1044,
-    "involuntaryContextSwitches": 287
+    "voluntaryContextSwitches": 1021,
+    "involuntaryContextSwitches": 269
   },
   "guestResult": {
     "schema": "sagejs.rust-class-group/public-cubic-e2e-receipt-v2",
@@ -2608,11 +2596,11 @@
       "arbitraryIdealClassMapRetained": true
     },
     "stageTimingsNanoseconds": {
-      "publicInputAndPreparation": 168026651,
-      "relationCollection": 9596822271,
-      "candidateAuthentication": 4778870042,
-      "unitAndAnalyticCompletion": 16738333047,
-      "totalToSealedResult": 31340729883
+      "publicInputAndPreparation": 168296468,
+      "relationCollection": 9454328495,
+      "candidateAuthentication": 4460738904,
+      "unitAndAnalyticCompletion": 16581072133,
+      "totalToSealedResult": 30717448368
     }
   },
   "stableProjection": {

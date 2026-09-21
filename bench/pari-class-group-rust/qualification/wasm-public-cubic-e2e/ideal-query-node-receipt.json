@@ -2,16 +2,16 @@
   "schema": "sagejs.rust-class-group/wasm-public-cubic-ideal-query-node-v1",
   "outcome": "pass",
   "artifact": {
-    "bytes": 5867663,
-    "sha256": "6eb175301d90809a864beca93c7b9ff91bbe94c44b60466fe791de0511e5ef3e"
+    "bytes": 5867215,
+    "sha256": "0b94eeaddaa40984b223968384d8a4db4842e9728c71f6e58572481a92603bd6"
   },
   "vectorSha256": "5835121de772eb47df3f77b00afdde28c860a762c4713a9dae93d6f1c3b94653",
   "timingsMs": {
-    "open": 89.84834400000001,
-    "firstQuery": 11.045777000000015,
-    "secondQuery": 8.072258000000005,
-    "close": 0.430279999999982,
-    "staleQueryRejection": 0.07951999999997383
+    "open": 86.11454800000001,
+    "firstQuery": 10.944467000000003,
+    "secondQuery": 8.014897999999988,
+    "close": 0.4228999999999985,
+    "staleQueryRejection": 0.07019999999999982
   },
   "memoryPagesBefore": 256,
   "memoryPagesAfter": 256,

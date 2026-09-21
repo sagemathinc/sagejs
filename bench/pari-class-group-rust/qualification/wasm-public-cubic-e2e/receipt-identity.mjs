@@ -5,7 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const TOOLCHAIN_DIGEST =
-  "37d8d819fd533570e0b707d3101ab2944f6488c4b4452b2b0a1a9ea04366452c";
+  "1e306620de0571d34f6fc1bf0010aaf164e9b328d304bcd3cfd0d86f945634ba";
 
 export function sha256(bytes) {
   return createHash("sha256").update(bytes).digest("hex");

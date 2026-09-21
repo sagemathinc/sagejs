@@ -6,15 +6,15 @@
   "inputs": {
     "cargo_toml": {
       "path": "bench/pari-class-group-rust/Cargo.toml",
-      "sha256": "e607bf9540ab65775a120f58745711bd4e43e31f27144056c4522c45d946930c"
+      "sha256": "ef3040d612eb1547ef554645536ebea1b31fe1d64a4104a12f6c35acc8cdaf40"
     },
     "cargo_lock": {
       "path": "bench/pari-class-group-rust/Cargo.lock",
-      "sha256": "139ba4b68ac92e06b6c9b7d5c4fbc9526a9948b90eb313e3ae0d12c913ac252f"
+      "sha256": "bc79288b1020f10a17333e0d07306429d8bdc36f589f79a96995a039734d8af3"
     },
     "build_rs": {
       "path": "bench/pari-class-group-rust/build.rs",
-      "sha256": "c9ae28e42eaeadc550fbca72b338288dc84310c7035df534f2770f4d9b962bb1"
+      "sha256": "667190bd26654dcb8f4684b6c8f7e24f5f4c458d4565ff1945ea711f9f373327"
     },
     "native_dependency_declarations": [
       {
@@ -293,7 +293,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/flint_normal_form.rs",
-      "sha256": "eb92649e4157ae9401e5772048fdfb91a042a45c401988dc12adfc5eeb506a19",
+      "sha256": "e34eda1552e637ed5f06b66caca9ef18a69ccee21e455cee6de293a57154c6a6",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
@@ -303,7 +303,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/gmp_smith.rs",
-      "sha256": "36e11e8eb20de9df5b5ecb0a2f9d5ca8ffda9239224c9331f45ec0ba032f0802",
+      "sha256": "65a98c0bef3233260d979d53cd22b0e98f78471fb08c1fa4f7f850010e264af8",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
