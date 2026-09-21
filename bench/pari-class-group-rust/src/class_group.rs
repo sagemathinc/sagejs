@@ -31,7 +31,7 @@ use crate::smooth_admission::{
     CLASS_GROUP_PRIME_LIMIT as PRIME_LIMIT, CubicNormForm, FactorOutcome,
     class_group_factor_catalog, factor_integer_norm, factor_norm,
 };
-use rug::Integer;
+use rug::{Integer, integer::Order};
 use sha2::{Digest, Sha256};
 use std::time::Instant;
 
@@ -40,6 +40,20 @@ const RELATION_TARGET: usize = 73;
 pub(crate) const PREPARED_CUBIC_SUPPLEMENTARY_RELATIONS: usize = 7;
 const SUPPLEMENTARY_RELATIONS: usize = PREPARED_CUBIC_SUPPLEMENTARY_RELATIONS;
 const RELATIONS_PER_IDEAL: usize = 4;
+
+pub(crate) fn update_integer_sha256(hasher: &mut Sha256, value: &Integer) {
+    if let Some(value) = value.to_i64() {
+        let mut encoded = [0_u8; 9];
+        encoded[1..].copy_from_slice(&value.to_le_bytes());
+        hasher.update(encoded);
+        return;
+    }
+    let mut magnitude = vec![0_u8; value.significant_digits::<u8>()];
+    value.write_digits(&mut magnitude, Order::Lsf);
+    hasher.update([if value < &0 { 1 } else { 2 }]);
+    hasher.update((magnitude.len() as u64).to_le_bytes());
+    hasher.update(magnitude);
+}
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct CollectorTimings {
@@ -225,7 +239,7 @@ fn collected_principal_relations_sha256(
     }
 
     let mut hasher = Sha256::new();
-    hasher.update(b"sagejs.collected-principal-relations/v1\0");
+    hasher.update(b"sagejs.collected-principal-relations/v2\0");
     hasher.update(canonical_field_sha256(field));
     hasher.update(factor_base_binding_sha256(factor_base));
     hasher.update((factor_count as u64).to_le_bytes());
@@ -237,9 +251,7 @@ fn collected_principal_relations_sha256(
     hasher.update((DEGREE as u64).to_le_bytes());
     hasher.update((generators.len() as u64).to_le_bytes());
     for generator in generators {
-        let bytes = generator.to_string();
-        hasher.update((bytes.len() as u64).to_le_bytes());
-        hasher.update(bytes.as_bytes());
+        update_integer_sha256(&mut hasher, generator);
     }
     Some(hasher.finalize().into())
 }
@@ -251,15 +263,9 @@ pub(crate) fn factor_base_binding_sha256(factor_base: &PreparedFactorBase) -> [u
     fn i64_value(hasher: &mut Sha256, value: i64) {
         hasher.update(value.to_le_bytes());
     }
-    fn integer(hasher: &mut Sha256, value: &Integer) {
-        let bytes = value.to_string();
-        usize_value(hasher, bytes.len());
-        hasher.update(bytes.as_bytes());
-    }
-
     let catalog = &factor_base.catalog;
     let mut hasher = Sha256::new();
-    hasher.update(b"sagejs.prepared-cubic-factor-base/v1\0");
+    hasher.update(b"sagejs.prepared-cubic-factor-base/v2\0");
     usize_value(&mut hasher, catalog.relation_bound);
     usize_value(&mut hasher, catalog.checking_bound);
     hasher.update(b"catalog-ideals\0");
@@ -282,7 +288,7 @@ pub(crate) fn factor_base_binding_sha256(factor_base: &PreparedFactorBase) -> [u
         i64_value(&mut hasher, descriptor.norm);
         for row in ideal.basis_rows() {
             for value in row {
-                integer(&mut hasher, value);
+                update_integer_sha256(&mut hasher, value);
             }
         }
     }
@@ -1565,6 +1571,18 @@ mod tests {
         );
 
         assert!(authority.authenticates(&first, &factor_base, &relations, &generators));
+
+        let mut huge_generators = generators.clone();
+        huge_generators[0] = Integer::from(1) << 200_u32;
+        let huge_authority = CollectedPrincipalRelationsAuthority::mint(
+            &first,
+            &factor_base,
+            &relations,
+            &huge_generators,
+        );
+        assert!(huge_authority.authenticates(&first, &factor_base, &relations, &huge_generators));
+        huge_generators[0] = -huge_generators[0].clone();
+        assert!(!huge_authority.authenticates(&first, &factor_base, &relations, &huge_generators));
 
         let mut changed_row = relations.clone();
         changed_row[0] += 1;

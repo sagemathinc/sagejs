@@ -89,6 +89,10 @@ fn prepare_compatibility_source(source_dir: &Path, output: &Path) {
 }
 
 fn main() {
+    // This build script copies and compatibility-rewrites every shared Rust
+    // module into OUT_DIR. Without a directory dependency, Cargo can reuse a
+    // stale generated tree after the mathematical core changes.
+    println!("cargo:rerun-if-changed=../../../src");
     println!("cargo:rerun-if-changed=../../../src/flint_normal_form.c");
     println!("cargo:rerun-if-changed=../../../../../packages/flint-wasm/src/wasi-stubs.c");
     if env::var_os("CARGO_FEATURE_FLINT_NORMAL_FORM").is_none() {

@@ -35,6 +35,24 @@ use sha2::{Digest, Sha256};
 
 use crate::hnf::{BigIntMatrix, NormalFormError, SmithDecomposition};
 
+/// Append one exact integer to a domain-separated SHA-256 transcript without
+/// decimal formatting. The leading tag makes the fixed-width and arbitrary-
+/// precision representations disjoint; the explicit magnitude length makes
+/// the latter prefix-free.
+pub(crate) fn update_integer_sha256(hasher: &mut Sha256, value: &Integer) {
+    if let Some(value) = value.to_i64() {
+        let mut encoded = [0_u8; 9];
+        encoded[1..].copy_from_slice(&value.to_le_bytes());
+        hasher.update(encoded);
+        return;
+    }
+    let mut magnitude = vec![0_u8; value.significant_digits::<u8>()];
+    value.write_digits(&mut magnitude, Order::Lsf);
+    hasher.update([if value < &0 { 1 } else { 2 }]);
+    hasher.update((magnitude.len() as u64).to_le_bytes());
+    hasher.update(magnitude);
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ClassMapError {
     NormalForm(NormalFormError),
@@ -368,25 +386,12 @@ impl PresentationClassMap {
     }
 
     fn compute_binding_sha256(&self) -> [u8; 32] {
-        fn integer(hasher: &mut Sha256, value: &Integer) {
-            if let Some(value) = value.to_i64() {
-                let mut encoded = [0_u8; 9];
-                encoded[1..].copy_from_slice(&value.to_le_bytes());
-                hasher.update(encoded);
-                return;
-            }
-            let mut magnitude = vec![0_u8; value.significant_digits::<u8>()];
-            value.write_digits(&mut magnitude, Order::Lsf);
-            hasher.update([if value < &0 { 1 } else { 2 }]);
-            hasher.update((magnitude.len() as u64).to_le_bytes());
-            hasher.update(magnitude);
-        }
         fn matrix(hasher: &mut Sha256, value: &BigIntMatrix) {
             hasher.update((value.rows() as u64).to_le_bytes());
             hasher.update((value.columns() as u64).to_le_bytes());
             for row in 0..value.rows() {
                 for column in 0..value.columns() {
-                    integer(
+                    update_integer_sha256(
                         hasher,
                         value.get(row, column).expect("indices are in bounds"),
                     );
@@ -411,7 +416,7 @@ impl PresentationClassMap {
                 for (generator, &smith_position) in generator_to_smith.iter().enumerate() {
                     hasher.update((generator as u64).to_le_bytes());
                     hasher.update((smith_position as u64).to_le_bytes());
-                    integer(&mut hasher, &self.diagonal[smith_position]);
+                    update_integer_sha256(&mut hasher, &self.diagonal[smith_position]);
                 }
             }
             (Some(relations), None, Some(generator_coordinates)) => {
@@ -419,14 +424,14 @@ impl PresentationClassMap {
                 matrix(&mut hasher, relations);
                 hasher.update((generator_coordinates.len() as u64).to_le_bytes());
                 for value in generator_coordinates {
-                    integer(&mut hasher, value);
+                    update_integer_sha256(&mut hasher, value);
                 }
             }
             _ => unreachable!("presentation storage variants remain paired"),
         }
         hasher.update((self.diagonal.len() as u64).to_le_bytes());
         for value in &self.diagonal {
-            integer(&mut hasher, value);
+            update_integer_sha256(&mut hasher, value);
         }
         hasher.update((self.nontrivial_positions.len() as u64).to_le_bytes());
         for &position in &self.nontrivial_positions {
@@ -434,7 +439,7 @@ impl PresentationClassMap {
         }
         hasher.update((self.invariant_factors.len() as u64).to_le_bytes());
         for value in &self.invariant_factors {
-            integer(&mut hasher, value);
+            update_integer_sha256(&mut hasher, value);
         }
         if let Some(left_transform) = &self.left_transform {
             matrix(&mut hasher, left_transform);

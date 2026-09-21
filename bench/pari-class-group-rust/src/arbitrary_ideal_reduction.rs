@@ -20,7 +20,7 @@ use std::collections::BTreeMap;
 
 use crate::class_group::{
     CollectedPrincipalRelationsAuthority, PreparedFactorBaseAuthority, canonical_field_sha256,
-    factor_base_binding_sha256,
+    factor_base_binding_sha256, update_integer_sha256,
 };
 use crate::class_maps::{
     ClassCoordinates, ClassMapError, PresentationClassMap, PresentationZeroState,
@@ -720,7 +720,7 @@ fn authenticate_presentation_with_context(
         return Err(ArbitraryIdealReductionError::PrincipalRelationWitnessMismatch { index: 0 });
     }
     let mut witness_hasher = Sha256::new();
-    witness_hasher.update(b"sagejs.principal-relation-witnesses/v1\0");
+    witness_hasher.update(b"sagejs.principal-relation-witnesses/v2\0");
     witness_hasher.update((witnesses.len() as u64).to_le_bytes());
     // Detached relation collections overwhelmingly reuse small powers of the
     // same factor-base ideals. The ideal power depends only on the
@@ -776,9 +776,7 @@ fn authenticate_presentation_with_context(
             }
         }
         for coordinate in &witness.principal_element {
-            let bytes = coordinate.to_string();
-            witness_hasher.update((bytes.len() as u64).to_le_bytes());
-            witness_hasher.update(bytes.as_bytes());
+            update_integer_sha256(&mut witness_hasher, coordinate);
         }
         if collector_transcript.is_none() {
             let principal = principal_ideal(field, &witness.principal_element, workspace)?;
