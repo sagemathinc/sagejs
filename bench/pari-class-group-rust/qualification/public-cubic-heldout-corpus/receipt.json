@@ -1,0 +1,364 @@
+{
+  "answerDisclosure": "none",
+  "build": {
+    "binaryBytes": 21635320,
+    "binarySha256": "a4b2538b4106363c5a6629201fd447aca881b847d09ac7953279e908d46809b2",
+    "kind": "cargo-build-locked-release",
+    "linkageSha256": "a106d995d36850ea62a669350344fbad7336fc6d9e464ee3bbbe26f08919e5da",
+    "linksPari": false,
+    "nanoseconds": 5379124785
+  },
+  "caseCount": 12,
+  "cases": [
+    {
+      "externalNanoseconds": 122860505,
+      "fieldId": "admissible-v2-d3-0004-d434e138a2ff",
+      "redactedStage": "unit-and-analytic-completion",
+      "requestSha256": "aaeaa4623dd6f0eabaf4b2f8bdb6ea2ad4197c823dc2b00f976e9f7d0145a61a",
+      "status": "failed"
+    },
+    {
+      "externalNanoseconds": 257570517,
+      "fieldId": "generated-d3-0009-bdf9e0243d34",
+      "redactedStage": "unit-and-analytic-completion",
+      "requestSha256": "64f30575c4385a6916df28eb93afbccf23be410258e5080221817d187798dd43",
+      "status": "failed"
+    },
+    {
+      "externalNanoseconds": 23259849871,
+      "fieldId": "generated-d3-0012-d6fd4141859d",
+      "redactedStage": "unit-and-analytic-completion",
+      "requestSha256": "5696f695a33a97e1b4a6d5e099f9975124469738aff36cc7de9d3be4469ad26e",
+      "status": "failed"
+    },
+    {
+      "externalNanoseconds": 885081279,
+      "fieldId": "generated-d3-0015-8a2ac6c14b3a",
+      "redactedStage": null,
+      "requestSha256": "a2ab0bf299d929869543f57fb5828545af6c499c37138378aa88f0600aab3e20",
+      "status": "completed-self-sealed"
+    },
+    {
+      "externalNanoseconds": 326992139,
+      "fieldId": "generated-d3-0016-9eec8d96a3f4",
+      "redactedStage": "candidate-authentication",
+      "requestSha256": "4b66f679ecefa4b192c7118d1fd3cc6815f0a548adea756af1dd4b2b3c0264ac",
+      "status": "failed"
+    },
+    {
+      "externalNanoseconds": 218644002,
+      "fieldId": "generated-d3-0017-acafe79505bd",
+      "redactedStage": "candidate-authentication",
+      "requestSha256": "45e9ca78b2b1bc2566bdbcda8c55c27ec4d402f3227542ccb6cf4912a64ff371",
+      "status": "failed"
+    },
+    {
+      "externalNanoseconds": 365807274,
+      "fieldId": "generated-d3-0018-d56f2c5a4146",
+      "redactedStage": "candidate-authentication",
+      "requestSha256": "03847308db2d7e08a1ebc29d0abd6919229a1f5e78e3da0efb05f9fc9aa2da4a",
+      "status": "failed"
+    },
+    {
+      "externalNanoseconds": 61379773,
+      "fieldId": "generated-d3-0019-d998ace3f59a",
+      "redactedStage": "unit-and-analytic-completion",
+      "requestSha256": "1dc163d5d898169aa6a859072ee529ce5e8d3b35ae8a03aae93c8cb1086c2735",
+      "status": "failed"
+    },
+    {
+      "externalNanoseconds": 120472355,
+      "fieldId": "generated-d3-0020-16d771bab607",
+      "redactedStage": null,
+      "requestSha256": "af2cf9c85c0c87bef70788518e79b51fc2628257a7131d2f5a0906f2395f795b",
+      "status": "completed-self-sealed"
+    },
+    {
+      "externalNanoseconds": 55692673,
+      "fieldId": "generated-d3-0022-a037ad04653f",
+      "redactedStage": null,
+      "requestSha256": "779869cdb9211cadbc6afc83d2ce15e30c3bcbfd2d68b9cd3dae8ed8a1b9554b",
+      "status": "completed-self-sealed"
+    },
+    {
+      "externalNanoseconds": 171013839,
+      "fieldId": "generated-d3-0023-853d80c99b79",
+      "redactedStage": "unit-and-analytic-completion",
+      "requestSha256": "f81be6a0c6943f61e60e06d36b87562a1ae1b53e857d97c684a441f1a5bab603",
+      "status": "failed"
+    },
+    {
+      "externalNanoseconds": 263006097,
+      "fieldId": "generated-d3-0034-53bc32dff114",
+      "redactedStage": "candidate-authentication",
+      "requestSha256": "f2083a3eb131875ee5adcc7255ed25c74a5e56ebdbf72c68501085e71458278a",
+      "status": "failed"
+    }
+  ],
+  "confirmationPolicy": {
+    "confirmationFailureRequiresNewSeedAndVersion": true,
+    "excludeOriginalQualificationPanel": true,
+    "failureCasesRemainPermanentRegressions": true,
+    "fixRequiresUntouchedConfirmationSet": true,
+    "freezeBeforeInitialHeldoutExecution": true,
+    "neverRemoveOrReplaceFailure": true,
+    "schema": "sagejs.rust-class-group/heldout-cubic-confirmation-policy-v1",
+    "seed": "sagejs-rust-class-group-heldout-cubic-confirmation-v1-2026-09-20",
+    "selectionAlgorithm": "qualified-unused-candidates-seeded-sha256-v1"
+  },
+  "degree": 3,
+  "execution": {
+    "campaignNanoseconds": 26110620733,
+    "continuedThroughFailures": true,
+    "executionEndedUnixNanoseconds": 1789948781423482367,
+    "gitCommit": "bd8c23cc415e4c0ec4fae052fb0e10bc011db5f5",
+    "platform": "Linux-7.0.0-1011-gcp-x86_64-with-glibc2.43",
+    "processBoundary": "fresh-process-per-field",
+    "python": "3.14.4",
+    "threadEnvironment": {
+      "MKL_NUM_THREADS": null,
+      "OMP_NUM_THREADS": null,
+      "OPENBLAS_NUM_THREADS": null,
+      "RAYON_NUM_THREADS": null
+    }
+  },
+  "inputs": {
+    "configSha256": "b87e9a7b814690de3f9083f328caf8e9e7b0682ff16df186e12ba0c8a46ad343",
+    "panelSha256": "8117302d247e6ded8a6172c2ea43b4b2533c84a20b8c42ba07d49bfe8de38a0e",
+    "selectionReceiptSha256": "cbc875f823fd3462e4a5dad143d4930e66e3e1de7c98d90cd1845612dbe381f0"
+  },
+  "oracleComparison": "not-yet-performed",
+  "partition": "heldOut",
+  "privateResults": {
+    "mode": "0600",
+    "sha256": "6c4981a82b747b1fd5a2dc1e6d253b65058a2bd492b3027e17df846e33a52b06"
+  },
+  "schema": "sagejs.rust-class-group/heldout-cubic-execution-receipt-v1",
+  "sourceClosure": {
+    "algorithm": "sha256-canonical-json-file-list-v1",
+    "algorithmFiles": [
+      {
+        "bytes": 6216,
+        "path": "bench/pari-class-group-rust/Cargo.lock",
+        "sha256": "139ba4b68ac92e06b6c9b7d5c4fbc9526a9948b90eb313e3ae0d12c913ac252f"
+      },
+      {
+        "bytes": 438,
+        "path": "bench/pari-class-group-rust/Cargo.toml",
+        "sha256": "e607bf9540ab65775a120f58745711bd4e43e31f27144056c4522c45d946930c"
+      },
+      {
+        "bytes": 1887,
+        "path": "bench/pari-class-group-rust/build.rs",
+        "sha256": "c9ae28e42eaeadc550fbca72b338288dc84310c7035df534f2770f4d9b962bb1"
+      },
+      {
+        "bytes": 5835,
+        "path": "bench/pari-class-group-rust/qualification/corpus/qualification-selection-receipt-v1.json",
+        "sha256": "cbc875f823fd3462e4a5dad143d4930e66e3e1de7c98d90cd1845612dbe381f0"
+      },
+      {
+        "bytes": 156569,
+        "path": "bench/pari-class-group-rust/qualification/corpus/qualified-neutral-panel-v1.json",
+        "sha256": "8117302d247e6ded8a6172c2ea43b4b2533c84a20b8c42ba07d49bfe8de38a0e"
+      },
+      {
+        "bytes": 6402,
+        "path": "bench/pari-class-group-rust/qualification/public-cubic-e2e/Cargo.lock",
+        "sha256": "6ed695fcd15a0de2df7f8bc5da47777bf96b43eb3497a49ddd19b10daf1996d0"
+      },
+      {
+        "bytes": 403,
+        "path": "bench/pari-class-group-rust/qualification/public-cubic-e2e/Cargo.toml",
+        "sha256": "6877cc418e533ff800ede4179e7016deecf2603e532c38e3e67d188027143395"
+      },
+      {
+        "bytes": 23112,
+        "path": "bench/pari-class-group-rust/qualification/public-cubic-e2e/src/lib.rs",
+        "sha256": "52ff08443229224a3a66e22f87318e020e50086a7f97e864828f691e7feb9527"
+      },
+      {
+        "bytes": 1255,
+        "path": "bench/pari-class-group-rust/qualification/public-cubic-e2e/src/main.rs",
+        "sha256": "62a94e92a6ce81c805bf4eb597d324f5210c2fc228d1e38087385656cb3c3ee0"
+      },
+      {
+        "bytes": 19656,
+        "path": "bench/pari-class-group-rust/src/analytic_completion.rs",
+        "sha256": "9221e78a1664d17cf2d2d18267e5e0ef8f23736626abd3761b4e4e679b97f6ee"
+      },
+      {
+        "bytes": 14772,
+        "path": "bench/pari-class-group-rust/src/api.rs",
+        "sha256": "1e1ba008b83c3d415eecb6ab9332ab4d695efbb771234924aeb9520630259807"
+      },
+      {
+        "bytes": 48656,
+        "path": "bench/pari-class-group-rust/src/arbitrary_ideal_reduction.rs",
+        "sha256": "3814e5029f1bfc53c81c90872eeeb6c10a5da2e9e2e00a2c74f1017bb69412af"
+      },
+      {
+        "bytes": 15581,
+        "path": "bench/pari-class-group-rust/src/bruteforce_collector.rs",
+        "sha256": "7a1dc481f518fa98ca46125550bb4a0252c3bda38617aa8cfe815d7c6081ffb7"
+      },
+      {
+        "bytes": 48866,
+        "path": "bench/pari-class-group-rust/src/class_group.rs",
+        "sha256": "75b28b18f9b5492e62d0e62429aa692c5648a85f528440d728206a9cb89ea6d2"
+      },
+      {
+        "bytes": 26267,
+        "path": "bench/pari-class-group-rust/src/class_maps.rs",
+        "sha256": "2c70447f73becb8ccb164b909e2f0afe6a208937e4cc4d7c647ba2c5373a158a"
+      },
+      {
+        "bytes": 6526,
+        "path": "bench/pari-class-group-rust/src/collector_schedule.rs",
+        "sha256": "f5f4d65a68465fc29d5dd216763abb45ce8465ea8485334786e5cd3e7b45c783"
+      },
+      {
+        "bytes": 38485,
+        "path": "bench/pari-class-group-rust/src/compact_cubic_presentation.rs",
+        "sha256": "277fa4f420ff82a65b28424abc554cb173ca987d83356c933ff7e6d525ea1d7b"
+      },
+      {
+        "bytes": 30374,
+        "path": "bench/pari-class-group-rust/src/cubic_completion.rs",
+        "sha256": "b15aa5def92cb91149ea1dc9381d2376a4799ed39bbdb72a17d72ec871d3a746"
+      },
+      {
+        "bytes": 29929,
+        "path": "bench/pari-class-group-rust/src/cubic_presentation.rs",
+        "sha256": "85032c7bab810cd99a20d970efe3c95531c6bbfc2ddca89a88fa73d79f378b4c"
+      },
+      {
+        "bytes": 6295,
+        "path": "bench/pari-class-group-rust/src/enumeration.rs",
+        "sha256": "0ea9216253e830e099fd0c9d2cbdb162b141309346729900e431896d65568b38"
+      },
+      {
+        "bytes": 44597,
+        "path": "bench/pari-class-group-rust/src/factor_base.rs",
+        "sha256": "b8682e13cb701dfbbea13fe22ef3d85fc16d42c7b764f13efd9d5bb985cfa6a2"
+      },
+      {
+        "bytes": 105612,
+        "path": "bench/pari-class-group-rust/src/flint_normal_form.c",
+        "sha256": "6dd673197980fac8d44adf82c9b3a607e5d07a8e67023021894681a53a80e193"
+      },
+      {
+        "bytes": 64674,
+        "path": "bench/pari-class-group-rust/src/flint_normal_form.rs",
+        "sha256": "90624ecfd229ddf6848cac4cb0b32263339e3937a4d21839caafb6b4ac4d3a48"
+      },
+      {
+        "bytes": 12967,
+        "path": "bench/pari-class-group-rust/src/gmp_smith.rs",
+        "sha256": "36e11e8eb20de9df5b5ecb0a2f9d5ca8ffda9239224c9331f45ec0ba032f0802"
+      },
+      {
+        "bytes": 28189,
+        "path": "bench/pari-class-group-rust/src/hnf.rs",
+        "sha256": "d35bf3f4d154e3425f95a365f09b5147eaaf7353ae2ab1f67bb5321b470a87e6"
+      },
+      {
+        "bytes": 17888,
+        "path": "bench/pari-class-group-rust/src/ideal_arithmetic.rs",
+        "sha256": "4e18797b8b645b761c58b82d73af0a7c30eef0ddd4659f57624f9c3d5b4a9a52"
+      },
+      {
+        "bytes": 7227,
+        "path": "bench/pari-class-group-rust/src/lib.rs",
+        "sha256": "f6c8589cb31b6a0c1657774d92a2eccebdbbb4e360e7669d5729405d04c04488"
+      },
+      {
+        "bytes": 35044,
+        "path": "bench/pari-class-group-rust/src/main.rs",
+        "sha256": "746f5a6a967c5369556158ae0242501f4bd61c9a0bfa02e522401c51502bcf4d"
+      },
+      {
+        "bytes": 32236,
+        "path": "bench/pari-class-group-rust/src/numerical_preparation.rs",
+        "sha256": "d966d2805b83a255ac42111cc09cc69498b30fba92aba610c0fa7b46d2e6b343"
+      },
+      {
+        "bytes": 2696,
+        "path": "bench/pari-class-group-rust/src/pari_random.rs",
+        "sha256": "7bed82f9c8d1cd27b753e0f39e5cf37ef49ae90e9c236ff9f9a397382d83e269"
+      },
+      {
+        "bytes": 44236,
+        "path": "bench/pari-class-group-rust/src/polynomial_preparation.rs",
+        "sha256": "7d18effdf0affe5e8e7de8105578103a5ac87ead4c195c07bc71b208bddf59b6"
+      },
+      {
+        "bytes": 44766,
+        "path": "bench/pari-class-group-rust/src/prepared.rs",
+        "sha256": "80b7ce8f953b2df50fb88ac4d1d068f1ac8148e1b335aa01f0d322e6c8feada5"
+      },
+      {
+        "bytes": 35706,
+        "path": "bench/pari-class-group-rust/src/prepared_factor_base.rs",
+        "sha256": "2a1bb6e572cdced8786b5a9024cd6741b09b73f5e1b9e43b007a27a6616d09ac"
+      },
+      {
+        "bytes": 16283,
+        "path": "bench/pari-class-group-rust/src/prepared_ideal.rs",
+        "sha256": "261059e71fef692939ed1f09ad44b4fdae376b8c123c47604b2743036453d5b0"
+      },
+      {
+        "bytes": 13343,
+        "path": "bench/pari-class-group-rust/src/prepared_input.rs",
+        "sha256": "d40a584a67d7c798464ada71c17270e788999f002153c24f7fc866b3b359370c"
+      },
+      {
+        "bytes": 11014,
+        "path": "bench/pari-class-group-rust/src/prime_valuation.rs",
+        "sha256": "5b533a94a1eed76a1fa09b97d6e43071678babc88910133c32f561423d770a9e"
+      },
+      {
+        "bytes": 20626,
+        "path": "bench/pari-class-group-rust/src/relation_cache.rs",
+        "sha256": "d474991bbfc02e842bb563d109b946bf1d88285ef667e82e1a40f0f605be619b"
+      },
+      {
+        "bytes": 10463,
+        "path": "bench/pari-class-group-rust/src/smith.rs",
+        "sha256": "d367b6bcc7d372bfe886dcb746ab327b4eaafb1cb7ccda26935404d2e7842192"
+      },
+      {
+        "bytes": 24142,
+        "path": "bench/pari-class-group-rust/src/smooth_admission.rs",
+        "sha256": "4936644436d471b91e11f8690f9abbbf03d4450b81a6f6483b9f237c6b982573"
+      },
+      {
+        "bytes": 14210,
+        "path": "bench/pari-class-group-rust/src/unit_lattice.rs",
+        "sha256": "47c958f225d7a7ccda5f2b62d6ca062ad2bd8a092f05627c05e97ac447f8fb56"
+      }
+    ],
+    "algorithmRootSha256": "d8b1aef71c8f49e816d19a80edf1aa2bacc8f2f02ce87c5dac665861d849a8bb",
+    "algorithmStatusPorcelain": "",
+    "containsDirtyAlgorithmSources": false,
+    "harnessFiles": [
+      {
+        "bytes": 1437,
+        "path": "bench/pari-class-group-rust/qualification/public-cubic-heldout-corpus/README.md",
+        "sha256": "8f952fbf1c3a87512760ea73f012cc6952eddb725385c35c780008f9ce204ddb"
+      },
+      {
+        "bytes": 1959,
+        "path": "bench/pari-class-group-rust/qualification/public-cubic-heldout-corpus/config.json",
+        "sha256": "b87e9a7b814690de3f9083f328caf8e9e7b0682ff16df186e12ba0c8a46ad343"
+      },
+      {
+        "bytes": 18871,
+        "path": "bench/pari-class-group-rust/qualification/public-cubic-heldout-corpus/run.py",
+        "sha256": "7161868e66cf2619b11df21041a9de4fdd9ad50deada96c80cf7e3fbb85e1def"
+      }
+    ],
+    "harnessRootSha256": "a7777eedb42ca31cad3f779d33da9d3605ff7d428f25bfc5dbf1875b03f3f58e"
+  },
+  "status": "execution-complete-with-failures"
+}

@@ -1,0 +1,28 @@
+{
+  "schema": "sagejs.rust-class-group/public-cubic-heldout-oracle-config-v1",
+  "executionReceipt": "../public-cubic-heldout-corpus/receipt.json",
+  "executionConfig": "../public-cubic-heldout-corpus/config.json",
+  "executionConfigSha256": "b87e9a7b814690de3f9083f328caf8e9e7b0682ff16df186e12ba0c8a46ad343",
+  "panel": "../corpus/qualified-neutral-panel-v1.json",
+  "panelSha256": "8117302d247e6ded8a6172c2ea43b4b2533c84a20b8c42ba07d49bfe8de38a0e",
+  "selectionReceipt": "../corpus/qualification-selection-receipt-v1.json",
+  "selectionReceiptSha256": "cbc875f823fd3462e4a5dad143d4930e66e3e1de7c98d90cd1845612dbe381f0",
+  "oracleIdentity": "../corpus/pari-2.17.4-oracle-identity.json",
+  "oracleIdentitySha256": "e6eb5e0cbd901791cf232ff03d946b1ee4b4a924659616bd24ddc0c02d14742f",
+  "traceContract": "../corpus/pari-buchall-debug-trace-v1.json",
+  "traceContractSha256": "2e4f10b85601930c89bf94ef2b92db06b79f4ab11361a9fb4c675d5eab37eafe",
+  "partition": "heldOut",
+  "degree": 3,
+  "expectedCaseCount": 12,
+  "comparisonFields": [
+    "polynomialAscending",
+    "signature",
+    "equationOrderIndex",
+    "fieldDiscriminant",
+    "candidate.classNumber",
+    "candidate.invariantFactors",
+    "completion.classNumber",
+    "completion.invariantFactors",
+    "unitRank"
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "schema": "sagejs.rust-class-group/heldout-cubic-historical-status-v1",
+  "status": "audited",
+  "initialBlindCampaign": {
+    "executionCommit": "bd8c23cc415e4c0ec4fae052fb0e10bc011db5f5",
+    "executionReceiptSha256": "9ed956b7017dc84ec73977c046bc7c425e28da1b5815e9d305a5abf58002a60b",
+    "comparisonReceiptSha256": "3c9916a538ee4852b1f2d021a4b243ac1718d8a706a8ef153bb801bd8a921fbd",
+    "completedAndIndependentlyMatched": 3,
+    "failedBeforeComparison": 9,
+    "policyStateAtExecution": "uncommitted-worktree-only",
+    "preregistered": false,
+    "receiptsBytePreserved": true
+  },
+  "formattedHarness": {
+    "rustReplayPerformed": false,
+    "executorSha256": "925138af5d97bac66166f97ab9fbe7ea2138e2188c6a8c5cd763480747ab1edf",
+    "restrictedVerifierReplayPerformed": true,
+    "verifierSha256": "5905358f96b6fdcefb5962ea3a28b479ad6a430bf8d9f2ba3a7eeb42e29dcd0d",
+    "strengthenedReceiptSha256": "17ae2cf9e33394c0137b1fcb8aa9b40a4d5a49cba196d59cc9ed2cd939569242"
+  },
+  "untouchedConfirmationGate": {
+    "freezeCommit": "de093549c",
+    "inputsPath": "../public-cubic-heldout-confirmation/inputs.json",
+    "inputsSha256": "6f8166cc84e7ee37b818373a702f113daf18eec116a3bc9f55409d60404e9c53",
+    "caseCount": 12,
+    "executed": false
+  }
+}
