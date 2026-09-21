@@ -45,7 +45,7 @@ def validate_inputs() -> tuple[list[dict[str, Any]], dict[str, Any]]:
     selection = SUPPORT.load_json(SELECTION_PATH)
     resources = SUPPORT.load_json(RESOURCE_CONFIG_PATH)
     if inputs.get("schema") != (
-        "sagejs.rust-class-group/heldout-cubic-confirmation-inputs-v2"
+        "sagejs.rust-class-group/heldout-cubic-confirmation-inputs-v1"
     ):
         raise RuntimeError("unexpected confirmation-input schema")
     if inputs.get("executed") is not False or inputs.get("caseCount") != 12:
