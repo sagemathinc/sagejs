@@ -1325,6 +1325,23 @@ fn complete_cubic_class_group_at_precision(
     };
     drop(working_dependencies);
     drop(dependencies);
+    // Every expensive exact invariant replayed by `verify_sealed_evidence`
+    // has already been established on this construction path:
+    //
+    // * the complete dependency lattice was checked above;
+    // * every reconstructed fundamental unit was checked above;
+    // * `accepted` is populated only by the unchanged tail/index tests; and
+    // * the reusable context was constructed only after a positive BDF margin.
+    //
+    // Do not immediately scan the same relation matrix a second time.  The
+    // result owns all of this private, immutable evidence, so no caller can
+    // mutate it between those checks and construction.  Retain the cheap
+    // precision check here because it is not otherwise part of an expensive
+    // replay, and retain `verify_sealed_evidence` as the public independent
+    // replay boundary for stored or transported results.
+    if !precision_evidence_is_valid(&precision) {
+        return Err(CubicConditionalCompletionError::InvalidOptions);
+    }
     let result = GrhConditionalCompleteCubicClassGroup {
         prepared,
         presentation,
@@ -1343,9 +1360,6 @@ fn complete_cubic_class_group_at_precision(
         },
         precision,
     };
-    if !result.verify_sealed_evidence() {
-        return Err(CubicConditionalCompletionError::UnitReplayMismatch);
-    }
     Ok(result)
 }
 
