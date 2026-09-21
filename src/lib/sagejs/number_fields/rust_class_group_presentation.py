@@ -58,6 +58,8 @@ _MAX_ARBITRARY_IDEAL_VALUATION = 256
 _MAX_PUBLICATION_COLUMNS = 2_048
 _MAX_PUBLICATION_RELATIONS = 2_112
 _MAX_PUBLICATION_FACTOR_TERMS = 10_000_000
+_MAX_ANALYTIC_INTEGER_BITS = 16_384
+_MAX_ANALYTIC_DECIMAL_DIGITS = 5_000
 
 _PREPARED_KEYS = {
     "analyticCompletion",
@@ -189,6 +191,25 @@ def _signed_decimal(value: Any, label: str, *, nonzero: bool = False) -> int:
     return answer
 
 
+def _analytic_decimal(value: Any, label: str) -> int:
+    """Decode one canonical directed-rounding endpoint under its own cap."""
+    if not isinstance(value, str) or not value:
+        raise RelationMatrixError(label + " is not a canonical decimal")
+    digits = value[1:] if value.startswith("-") else value
+    if (
+        not digits
+        or (len(digits) > 1 and digits[0] == "0")
+        or len(digits) > _MAX_ANALYTIC_DECIMAL_DIGITS
+        or any(character < "0" or character > "9" for character in digits)
+        or value == "-0"
+    ):
+        raise RelationMatrixError(label + " is not a canonical decimal")
+    answer = int(value)
+    if abs(answer).bit_length() > _MAX_ANALYTIC_INTEGER_BITS:
+        raise RelationMatrixError(label + " exceeds the analytic integer bit limit")
+    return answer
+
+
 def _sha256_identifier(value: Any, label: str) -> str:
     if not isinstance(value, str) or not value.startswith("sha256:"):
         raise RelationMatrixError(label + " is not a SHA-256 identifier")
@@ -293,6 +314,8 @@ class RustCompactPresentationReplay:
         producer_input_id: str,
         prepared_result_identity: str,
         certificate_identity: str,
+        factored_units: Sequence[Any] = (),
+        unit_certificates: Sequence[Any] = (),
     ) -> None:
         if not presentation.verify():
             raise RelationMatrixError("the compact relation presentation is invalid")
@@ -314,6 +337,8 @@ class RustCompactPresentationReplay:
         self.producer_input_id = producer_input_id
         self.prepared_result_identity = prepared_result_identity
         self.certificate_identity = certificate_identity
+        self._factored_units = tuple(factored_units)
+        self._unit_certificates = tuple(unit_certificates)
 
     @property
     def invariants(self) -> tuple[int, ...]:
@@ -326,6 +351,22 @@ class RustCompactPresentationReplay:
     @property
     def relation_count(self) -> int:
         return self._presentation.row_count
+
+    def factored_units(self) -> tuple[Any, ...]:
+        """Return exact compact units authenticated by the relation replay."""
+        return self._factored_units
+
+    def verify_factored_units(self) -> bool:
+        """Replay every exact compact-unit certificate."""
+        return bool(
+            len(self._factored_units) == len(self._unit_certificates)
+            and all(
+                certificate.verify(unit)
+                for certificate, unit in zip(
+                    self._unit_certificates, self._factored_units, strict=True
+                )
+            )
+        )
 
     def class_coordinates(
         self, factor_base_exponents: Sequence[int]
@@ -1117,6 +1158,568 @@ def _publication_sparse_vector(
     return _sparse_vector(terms, length, index_key, "value", label)
 
 
+class RustCompactUnitReplayCertificate:
+    """Exact proof that a factored relation product is a unit.
+
+    Every factor is the principal generator of a relation already replayed as
+    an exact ideal equality.  An exponent vector which annihilates the complete
+    factor-base relation matrix therefore has principal ideal `(1)`.  Keeping
+    the product factored is essential: expanded fundamental units can be
+    astronomically larger than the relation generators which define them.
+    """
+
+    def __init__(
+        self,
+        relation_elements: Sequence[Any],
+        relation_rows: Sequence[SparseRelationRow],
+        exponents: Sequence[int],
+    ) -> None:
+        if len(relation_elements) != len(relation_rows) or len(exponents) != len(
+            relation_rows
+        ):
+            raise RelationMatrixError("compact-unit relation dimensions mismatch")
+        self._relation_elements = tuple(relation_elements)
+        self._relation_rows = tuple(relation_rows)
+        self._exponents = tuple(int(value) for value in exponents)
+        self.proof_status = "exact-principal-relation-unit"
+
+    @property
+    def relation_exponents(self) -> tuple[int, ...]:
+        return self._exponents
+
+    def verify(self, unit: Any) -> bool:
+        try:
+            factored = __import__(
+                "sagejs.number_fields.factored_elements",
+                fromlist=["factored_elements"],
+            )
+            expected = factored.FactoredNumberFieldElement(
+                unit.field(),
+                (
+                    (element, exponent)
+                    for element, exponent in zip(
+                        self._relation_elements, self._exponents, strict=True
+                    )
+                    if exponent
+                ),
+            )
+            if expected != unit:
+                return False
+            columns = self._relation_rows[0].column_count
+            totals = [0] * columns
+            for coefficient, row in zip(
+                self._exponents, self._relation_rows, strict=True
+            ):
+                if coefficient:
+                    for column, value in row.entries:
+                        totals[column] += coefficient * value
+            return not any(totals)
+        except (AttributeError, TypeError, ValueError, ArithmeticError):
+            return False
+
+
+def _replay_publication_units(
+    field: Any,
+    publication_basis: Sequence[Any],
+    relation_records: Sequence[dict[str, Any]],
+    relation_rows: Sequence[SparseRelationRow],
+    payload: Any,
+) -> tuple[Any, tuple[RustCompactUnitReplayCertificate, ...], dict[str, Any]]:
+    """Reconstruct exact factored units without expanding their huge values."""
+    units_data = _closed(
+        payload,
+        {
+            "commonDenominator",
+            "fundamentalUnits",
+            "regulator",
+            "rootsOfUnity",
+            "selectedBasisIndex",
+        },
+        "publication units",
+    )
+    common_denominator = _positive_decimal(
+        units_data["commonDenominator"], "unit common denominator"
+    )
+    selected_basis_index = _positive_decimal(
+        units_data["selectedBasisIndex"], "selected unit-basis index"
+    )
+    if selected_basis_index > common_denominator:
+        raise RelationMatrixError("selected unit-basis index exceeds its denominator")
+
+    relation_count = len(relation_rows)
+    relation_elements = tuple(
+        _element_from_prepared_coordinates(
+            field,
+            publication_basis,
+            tuple(
+                _signed_decimal(value, "principal coordinate")
+                for value in record["integralBasisCoordinates"]
+            ),
+        )
+        for record in relation_records
+    )
+    factored = __import__(
+        "sagejs.number_fields.factored_elements", fromlist=["factored_elements"]
+    )
+    signature_module = __import__(
+        "sagejs.number_fields.embeddings", fromlist=["embeddings"]
+    )
+    signature = signature_module.exact_signature(field)
+    unit_rank = int(signature[0]) + int(signature[1]) - 1
+    fundamental = units_data["fundamentalUnits"]
+    if not isinstance(fundamental, list) or len(fundamental) != unit_rank:
+        raise RelationMatrixError("publication fundamental-unit rank mismatch")
+    compact_units = []
+    certificates = []
+    nonzero_terms = 0
+    for entry in fundamental:
+        entry = _closed(entry, {"relationExponents"}, "publication unit")
+        exponents = _publication_sparse_vector(
+            entry["relationExponents"],
+            relation_count,
+            "indexZeroBased",
+            "unit relation exponent",
+        )
+        nonzero_terms += sum(1 for value in exponents if value)
+        certificate = RustCompactUnitReplayCertificate(
+            relation_elements, relation_rows, exponents
+        )
+        unit = factored.FactoredNumberFieldElement(
+            field,
+            (
+                (element, exponent)
+                for element, exponent in zip(relation_elements, exponents, strict=True)
+                if exponent
+            ),
+        )
+        if not certificate.verify(unit):
+            raise ArithmeticError("compact unit does not annihilate the relations")
+        compact_units.append(unit)
+        certificates.append(certificate)
+
+    roots_data = _closed(
+        units_data["rootsOfUnity"],
+        {"exhaustionTheorem", "generatorIntegralBasisCoordinates", "order"},
+        "publication roots of unity",
+    )
+    if (
+        roots_data["exhaustionTheorem"]
+        != "odd-degree-number-fields-have-only-plus-or-minus-one-roots-of-unity"
+        or int(field.degree()) % 2 != 1
+    ):
+        raise RelationMatrixError("unsupported roots-of-unity publication theorem")
+    roots_order = _positive_decimal(roots_data["order"], "roots-of-unity order")
+    raw_root = roots_data["generatorIntegralBasisCoordinates"]
+    if not isinstance(raw_root, list) or len(raw_root) != int(field.degree()):
+        raise RelationMatrixError("roots-of-unity generator has the wrong dimension")
+    published_root = _element_from_prepared_coordinates(
+        field,
+        publication_basis,
+        tuple(_signed_decimal(value, "torsion coordinate") for value in raw_root),
+    )
+    units_module = __import__("sagejs.number_fields.units", fromlist=["units"])
+    torsion = units_module.roots_of_unity(field)
+    if (
+        roots_order != 2
+        or published_root != -field.one()
+        or int(torsion.order) != roots_order
+        or not torsion.complete
+        or not torsion.verify()
+    ):
+        raise ArithmeticError("roots-of-unity theorem failed independent replay")
+
+    groups = __import__(
+        "sagejs.number_fields.class_unit_groups", fromlist=["class_unit_groups"]
+    )
+    unit_group = groups.UnitGroupComputation(
+        torsion,
+        compact_units,
+        unit_rank,
+        complete=False,
+        reason="exact compact units replayed; analytic index-one proof remains detached",
+        proof_status=groups.INCOMPLETE_RESOURCE_LIMIT,
+    )
+    return (
+        unit_group,
+        tuple(certificates),
+        {
+            "schema": "sagejs.rust-class-group/compact-unit-replay-v1",
+            "authority": "independent-exact-principal-relation-annihilation",
+            "unitRank": unit_rank,
+            "factoredUnitCount": len(compact_units),
+            "nonzeroRelationExponentTerms": nonzero_terms,
+            "selectedBasisIndex": selected_basis_index,
+            "commonDenominator": common_denominator,
+            "rootsOfUnityOrder": roots_order,
+            "allRelationProductsAreUnits": True,
+        },
+    )
+
+
+def _replay_publication_regulator(
+    unit_group: Any, units_payload: Any, analytic_payload: Any
+) -> tuple[Any, dict[str, Any]]:
+    """Independently enclose the regulator of the exact factored units."""
+    units_data = _closed(
+        units_payload,
+        {
+            "commonDenominator",
+            "fundamentalUnits",
+            "regulator",
+            "rootsOfUnity",
+            "selectedBasisIndex",
+        },
+        "publication units",
+    )
+    regulator_data = _closed(
+        units_data["regulator"],
+        {"binaryExponent", "lower", "upper"},
+        "publication regulator",
+    )
+    analytic_data = _closed(
+        analytic_payload,
+        {
+            "bdfMargin",
+            "bdfPlan",
+            "bfEnclosure",
+            "bfPlan",
+            "classUnitHypothesis",
+            "factorBaseHypothesis",
+            "precision",
+        },
+        "publication analytic completion",
+    )
+    precision_data = _closed(
+        analytic_data["precision"],
+        {
+            "attemptedLevels",
+            "requestedLogarithmPrecisionBits",
+            "requestedReplayPrecisionBits",
+        },
+        "publication precision evidence",
+    )
+    requested_logarithm = _natural(
+        precision_data["requestedLogarithmPrecisionBits"],
+        "requested logarithm precision",
+    )
+    requested_replay = _natural(
+        precision_data["requestedReplayPrecisionBits"],
+        "requested replay precision",
+    )
+    attempted = precision_data["attemptedLevels"]
+    if not isinstance(attempted, list) or not attempted:
+        raise RelationMatrixError("publication precision history is empty")
+    levels = []
+    for entry in attempted:
+        entry = _closed(
+            entry,
+            {"logarithmPrecisionBits", "replayPrecisionBits"},
+            "publication precision level",
+        )
+        level = (
+            _positive_natural(entry["logarithmPrecisionBits"], "logarithm precision"),
+            _positive_natural(entry["replayPrecisionBits"], "replay precision"),
+        )
+        if levels and (level[0] <= levels[-1][0] or level[1] <= levels[-1][1]):
+            raise RelationMatrixError("publication precision levels are not increasing")
+        levels.append(level)
+    accepted_logarithm, accepted_replay = levels[-1]
+    if (
+        accepted_logarithm > requested_logarithm
+        or accepted_replay > requested_replay
+        or accepted_replay > accepted_logarithm
+        or accepted_logarithm > 16_384
+    ):
+        raise RelationMatrixError("publication precision history exceeds its request")
+
+    analytic = __import__(
+        "sagejs.number_fields.class_unit_analytic", fromlist=["class_unit_analytic"]
+    )
+    factored = __import__(
+        "sagejs.number_fields.factored_elements", fromlist=["factored_elements"]
+    )
+    exponent = _bounded_integer(
+        regulator_data["binaryExponent"], "regulator binary exponent"
+    )
+    published = analytic.RealBall.dyadic_endpoints(
+        _analytic_decimal(regulator_data["lower"], "regulator lower endpoint"),
+        exponent,
+        _analytic_decimal(regulator_data["upper"], "regulator upper endpoint"),
+        exponent,
+        precision_bits=accepted_logarithm,
+        rigorous=True,
+        source="Rust/Arb detached regulator enclosure",
+    )
+    if published.contains_zero():
+        raise ArithmeticError("published regulator enclosure contains zero")
+    workspace = factored.FactoredLogarithmWorkspace(
+        unit_group.generators[0].field(), maximum_entries=4096
+    )
+    independent = analytic.regulator_from_factored_units(
+        unit_group.generators,
+        unit_rank=unit_group.unit_rank,
+        precision_bits=accepted_logarithm,
+        absolute_tolerance_bits=64,
+        maximum_precision_bits=accepted_logarithm,
+        logarithm_workspace=workspace,
+    )
+    if not independent.rigorous:
+        raise ArithmeticError("independent factored-unit regulator is not rigorous")
+    try:
+        overlap = independent.ball.intersection(published)
+    except ValueError as error:
+        raise ArithmeticError(
+            "published regulator is disjoint from independent replay"
+        ) from error
+    unit_group.regulator_enclosure = independent
+    return (
+        independent,
+        {
+            "schema": "sagejs.rust-class-group/regulator-replay-v1",
+            "authority": "independent-sagejs-factored-unit-directed-logarithms",
+            "acceptedLogarithmPrecisionBits": accepted_logarithm,
+            "acceptedReplayPrecisionBits": accepted_replay,
+            "attemptedLevels": [list(level) for level in levels],
+            "publishedAndIndependentIntervalsOverlap": True,
+            "independentRegulatorProofStatus": independent.proof_status,
+            "overlapContainsZero": overlap.contains_zero(),
+            "logarithmWorkspace": workspace.diagnostics(),
+        },
+    )
+
+
+def _publication_dyadic_ball(analytic: Any, payload: Any, label: str) -> Any:
+    data = _closed(payload, {"binaryExponent", "lower", "upper"}, label + " interval")
+    exponent = _bounded_integer(data["binaryExponent"], label + " exponent")
+    return analytic.RealBall.dyadic_endpoints(
+        _analytic_decimal(data["lower"], label + " lower endpoint"),
+        exponent,
+        _analytic_decimal(data["upper"], label + " upper endpoint"),
+        exponent,
+        precision_bits=512,
+        rigorous=True,
+        source="Rust/Arb detached " + label,
+    )
+
+
+def _replay_publication_analytic_completion(
+    field: Any,
+    class_number: int,
+    unit_group: Any,
+    payload: Any,
+) -> dict[str, Any]:
+    """Rebuild the BF and BDF plans and their directed analytic decisions."""
+    data = _closed(
+        payload,
+        {
+            "bdfMargin",
+            "bdfPlan",
+            "bfEnclosure",
+            "bfPlan",
+            "classUnitHypothesis",
+            "factorBaseHypothesis",
+            "precision",
+        },
+        "publication analytic completion",
+    )
+    if (
+        data["classUnitHypothesis"] != "GRH for the Dedekind-zeta residue bound"
+        or data["factorBaseHypothesis"]
+        != "GRH for all unramified Hecke L-functions of class-group characters"
+    ):
+        raise RelationMatrixError("unsupported analytic completion hypotheses")
+    analytic = __import__(
+        "sagejs.number_fields.class_unit_analytic", fromlist=["class_unit_analytic"]
+    )
+    primes = __import__("sagejs.number_fields.prime_ideals", fromlist=["prime_ideals"])
+    factor_base = __import__(
+        "sagejs.number_fields.class_group_factor_base",
+        fromlist=["class_group_factor_base"],
+    )
+    bf_data = _closed(
+        data["bfPlan"], {"rawTerms", "terms", "threshold"}, "publication BF plan"
+    )
+    threshold = _positive_decimal(bf_data["threshold"], "BF threshold")
+    if threshold > 1_000_000:
+        raise RelationMatrixError("BF threshold exceeds the detached replay cap")
+    expected_primes = tuple(analytic._primes_below(threshold))
+    splitting = {}
+    for record in primes.splitting_records(field.maximal_order(), 2, threshold):
+        prime, factors = analytic._splitting_record(record, int(field.degree()))
+        splitting[prime] = factors
+    if tuple(sorted(splitting)) != expected_primes:
+        raise ArithmeticError("BF replay did not cover the complete prime interval")
+    plan = analytic._build_bf_plan_readable(threshold, splitting)
+    raw_bf_terms = bf_data["terms"]
+    if not isinstance(raw_bf_terms, list):
+        raise RelationMatrixError("BF terms must be an array")
+    published_bf_terms = tuple(
+        tuple(_bounded_integer(value, "BF term") for value in term)
+        if isinstance(term, list) and len(term) == 4
+        else ()
+        for term in raw_bf_terms
+    )
+    if (
+        any(not term for term in published_bf_terms)
+        or _natural(bf_data["rawTerms"], "BF raw term count") != plan.raw_terms
+        or published_bf_terms != plan.terms
+    ):
+        raise ArithmeticError("BF prime-power plan failed independent replay")
+
+    interval_field = analytic.IntervalBallField(512)
+    finite = analytic._bf_finite_term(plan, interval_field)
+    tail = analytic._BFErrorModel(
+        int(field.maximal_order().discriminant()),
+        int(field.degree()),
+        interval_field,
+    ).bound(threshold)
+    zeta = finite.add_error(tail.upper)
+    embeddings = __import__("sagejs.number_fields.embeddings", fromlist=["embeddings"])
+    signature = tuple(int(value) for value in embeddings.exact_signature(field))
+    index = analytic.validate_hr_index(
+        signature=signature,
+        discriminant=int(field.maximal_order().discriminant()),
+        class_number=class_number,
+        roots_of_unity=int(unit_group.torsion.order),
+        regulator=unit_group.regulator_enclosure,
+        zeta_log_residue=zeta,
+        precision_bits=512,
+    )
+    if not index.index_one:
+        raise ArithmeticError("independent BF replay did not isolate index one")
+    bf_enclosure = _closed(
+        data["bfEnclosure"],
+        {"index", "tailBound", "zetaLogResidue"},
+        "publication BF enclosure",
+    )
+    published_index = _publication_dyadic_ball(
+        analytic, bf_enclosure["index"], "BF index"
+    )
+    published_tail = _publication_dyadic_ball(
+        analytic, bf_enclosure["tailBound"], "BF tail"
+    )
+    published_zeta = _publication_dyadic_ball(
+        analytic, bf_enclosure["zetaLogResidue"], "BF zeta residue"
+    )
+    try:
+        published_index.intersection(index.index_ball)
+        published_tail.intersection(tail)
+        published_zeta.intersection(zeta)
+    except ValueError as error:
+        raise ArithmeticError(
+            "published BF enclosure is disjoint from independent replay"
+        ) from error
+    quarter = analytic.RationalEndpoint(1, 4)
+    if (
+        published_index.lower.ceil() != 1
+        or published_index.upper.floor() != 1
+        or not published_tail.upper < quarter
+    ):
+        raise ArithmeticError("published BF tail does not prove the quarter bound")
+
+    bdf_data = _closed(
+        data["bdfPlan"], {"bound", "rawTerms", "terms"}, "publication BDF plan"
+    )
+    bdf_bound = _positive_decimal(bdf_data["bound"], "BDF bound")
+    if bdf_bound > threshold:
+        raise RelationMatrixError("BDF bound exceeds the replayed prime interval")
+    aggregated: dict[tuple[int, int], int] = {}
+    raw_bdf_terms = 0
+    for prime in expected_primes:
+        if prime >= bdf_bound:
+            break
+        for _ramification, residue_degree in splitting[prime]:
+            norm = prime**residue_degree
+            if norm >= bdf_bound:
+                continue
+            exponent = 1
+            power = norm
+            while power < bdf_bound:
+                raw_bdf_terms += 1
+                key = (norm, exponent)
+                aggregated[key] = aggregated.get(key, 0) + 1
+                exponent += 1
+                power *= norm
+    bdf_terms = tuple(
+        (multiplicity, norm, exponent)
+        for (norm, exponent), multiplicity in sorted(aggregated.items())
+    )
+    raw_published_bdf_terms = bdf_data["terms"]
+    if not isinstance(raw_published_bdf_terms, list):
+        raise RelationMatrixError("BDF terms must be an array")
+    published_bdf_terms = tuple(
+        tuple(_bounded_integer(value, "BDF term") for value in term)
+        if isinstance(term, list) and len(term) == 3
+        else ()
+        for term in raw_published_bdf_terms
+    )
+    if (
+        any(not term for term in published_bdf_terms)
+        or _natural(bdf_data["rawTerms"], "BDF raw term count") != raw_bdf_terms
+        or published_bdf_terms != bdf_terms
+    ):
+        raise ArithmeticError("BDF prime-power plan failed independent replay")
+    bdf = factor_base.bdf_bound(
+        field.maximal_order(),
+        max_bound=bdf_bound,
+        _compact_index_primes=True,
+    )
+    if int(bdf.bound) > bdf_bound:
+        raise ArithmeticError("published BDF bound precedes the independent bound")
+    evaluator = factor_base._BDFEvaluator(
+        field.maximal_order(), bdf_bound, compact_index_primes=True
+    )
+    counted_terms, right_side, left_side = evaluator.inequality(
+        bdf_bound,
+        int(field.degree()),
+        signature[0],
+        abs(int(field.maximal_order().discriminant())),
+        512,
+    )
+    if counted_terms != raw_bdf_terms or not right_side.lower > left_side.upper:
+        raise ArithmeticError("independent BDF inequality is not strictly positive")
+    independent_margin = right_side - left_side
+    published_margin = _publication_dyadic_ball(
+        analytic, data["bdfMargin"], "BDF margin"
+    )
+    if not analytic.RationalEndpoint(0) < published_margin.lower:
+        raise ArithmeticError("published BDF margin is not strictly positive")
+    bdf_interval = analytic.RealBall(
+        analytic.RationalEndpoint(
+            independent_margin.lower.numerator,
+            independent_margin.lower.denominator,
+        ),
+        analytic.RationalEndpoint(
+            independent_margin.upper.numerator,
+            independent_margin.upper.denominator,
+        ),
+        precision_bits=512,
+        rigorous=True,
+        source="independent Sage.js BDF inequality",
+    )
+    try:
+        published_margin.intersection(bdf_interval)
+    except ValueError as error:
+        raise ArithmeticError(
+            "published BDF margin is disjoint from independent replay"
+        ) from error
+    return {
+        "schema": "sagejs.rust-class-group/analytic-completion-replay-v1",
+        "authority": "independent-sagejs-bf-and-bdf-directed-interval-replay",
+        "bfThreshold": threshold,
+        "bfRawTerms": plan.raw_terms,
+        "bfAggregatedTerms": len(plan.terms),
+        "bfIndex": 1,
+        "bfTailBelowOneQuarter": True,
+        "bdfBound": bdf_bound,
+        "bdfSmallestIndependentBound": int(bdf.bound),
+        "bdfRawTerms": raw_bdf_terms,
+        "bdfAggregatedTerms": len(bdf_terms),
+        "bdfStrictMargin": True,
+        "hypothesis": "conditional-grh",
+    }
+
+
 def adapt_rust_public_cubic_publication_candidate(
     field: Any,
     publication_candidate: dict[str, Any],
@@ -1126,9 +1729,10 @@ def adapt_rust_public_cubic_publication_candidate(
 
     This is deliberately an incomplete public result. It establishes the
     maximal-order field binding, every factor-base prime and principal
-    relation, and the compact small-surplus quotient certificate. Unit and
-    analytic completion still need their independent Sage.js replay before an
-    `IdealClassGroup` or complete unit group may be constructed.
+    relation, the compact small-surplus quotient certificate, compact units,
+    regulator, and analytic completion. Public group construction and
+    arbitrary-ideal dispatch remain separate boundaries, so this adapter does
+    not yet claim an `IdealClassGroup` or complete unit group.
     """
     if (
         not isinstance(artifact_sha256, str)
@@ -1451,6 +2055,19 @@ def adapt_rust_public_cubic_publication_candidate(
         basis_override=publication_basis,
         table_override=publication_table,
     )
+    unit_group, unit_certificates, unit_replay = _replay_publication_units(
+        field,
+        publication_basis,
+        old_records,
+        relation_rows,
+        top["units"],
+    )
+    _regulator, regulator_replay = _replay_publication_regulator(
+        unit_group, top["units"], top["analyticCompletion"]
+    )
+    analytic_replay = _replay_publication_analytic_completion(
+        field, expected_class_number, unit_group, top["analyticCompletion"]
+    )
     candidate_identity = _identity(candidate)
     context = RustCompactPresentationReplay(
         presentation,
@@ -1461,15 +2078,13 @@ def adapt_rust_public_cubic_publication_candidate(
         producer_input_id=prepared_input["inputId"],
         prepared_result_identity=candidate_identity,
         certificate_identity="sha256:" + artifact_sha256,
+        factored_units=unit_group.generators,
+        unit_certificates=unit_certificates,
     )
     groups = __import__(
         "sagejs.number_fields.class_unit_groups", fromlist=["class_unit_groups"]
     )
-    remaining = (
-        "compact-unit-expansion-and-exact-unit-replay",
-        "directed-regulator-and-analytic-plan-replay",
-        "public-ideal-class-group-and-unit-group-construction",
-    )
+    remaining = ("public-ideal-class-group-and-unit-group-construction",)
     diagnostics = {
         "schema": "sagejs.rust-class-group/publication-candidate-replay-v1",
         "automaticDispatch": False,
@@ -1479,13 +2094,16 @@ def adapt_rust_public_cubic_publication_candidate(
         "fieldReplay": field_replay,
         "relationPresentationReplay": "exact-compact-small-surplus",
         "relationIdealReplay": ideal_replay,
+        "compactUnitReplay": unit_replay,
+        "regulatorReplay": regulator_replay,
+        "analyticCompletionReplay": analytic_replay,
         "remainingEvidenceGaps": list(remaining),
     }
     return groups.ClassUnitComputation(
         field,
         proof_status=groups.INCOMPLETE_RESOURCE_LIMIT,
         complete=False,
-        reason="the detached class-group quotient is exact, but unit and analytic completion still require independent replay",
+        reason="the detached class/unit mathematics is independently replayed, but public group construction and arbitrary-ideal dispatch remain unfinished",
         algorithm="rust-public-cubic-publication-candidate-experimental",
         stages=(
             groups.ClassUnitStage(
@@ -1499,11 +2117,25 @@ def adapt_rust_public_cubic_publication_candidate(
                 },
             ),
             groups.ClassUnitStage(
-                "sagejs-detached-unit-and-analytic-replay",
+                "sagejs-detached-compact-unit-replay",
+                "complete",
+                unit_replay,
+            ),
+            groups.ClassUnitStage(
+                "sagejs-detached-regulator-replay",
+                "complete",
+                regulator_replay,
+            ),
+            groups.ClassUnitStage(
+                "sagejs-detached-analytic-replay", "complete", analytic_replay
+            ),
+            groups.ClassUnitStage(
+                "sagejs-public-class-unit-construction",
                 "incomplete",
                 {"missingEvidence": list(remaining)},
             ),
         ),
+        unit_group=unit_group,
         tentative_invariants=invariants,
         context=context,
         diagnostics=diagnostics,

@@ -167,6 +167,40 @@ test("v2 replay proves principal rows and exposes live factor-base ideals", asyn
   );
 });
 
+test("compact Rust units remain exact factored relation products", async () => {
+  const session = await createSage();
+  try {
+    const answer = await session.evaluate(
+      [
+        "from copy import deepcopy",
+        "from sagejs.number_fields.class_group_matrix import SparseRelationRow",
+        "from sagejs.number_fields.rust_class_group_presentation import _replay_publication_units",
+        "R.<x> = QQ[]",
+        "K.<a> = NumberField(x^3-2)",
+        "basis = list(K.maximal_order().basis())",
+        "records = [{'integralBasisCoordinates': ['2', '0', '0']}, {'integralBasisCoordinates': ['2', '0', '0']}]",
+        "rows = [SparseRelationRow(1, [(0, 3)]), SparseRelationRow(1, [(0, 3)])]",
+        "payload = {'commonDenominator': '1', 'selectedBasisIndex': '1', 'regulator': {}, 'rootsOfUnity': {'exhaustionTheorem': 'odd-degree-number-fields-have-only-plus-or-minus-one-roots-of-unity', 'generatorIntegralBasisCoordinates': ['-1', '0', '0'], 'order': '2'}, 'fundamentalUnits': [{'relationExponents': [{'indexZeroBased': 0, 'value': '1'}, {'indexZeroBased': 1, 'value': '-1'}]}]}",
+        "group, certificates, replay = _replay_publication_units(K, basis, records, rows, payload)",
+        "bad = deepcopy(payload)",
+        "bad['fundamentalUnits'][0]['relationExponents'][1]['value'] = '-2'",
+        "message = ''",
+        "try:",
+        "    _replay_publication_units(K, basis, records, rows, bad)",
+        "except ArithmeticError as error:",
+        "    message = str(error)",
+        "[len(group.generators), group.generators[0].is_one(), certificates[0].verify(group.generators[0]), replay['allRelationProductsAreUnits'], replay['rootsOfUnityOrder'], message]",
+      ].join("\n"),
+    );
+    assert.equal(
+      answer.repr,
+      "[1, True, True, True, 2, 'compact unit does not annihilate the relations']",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
 test("arbitrary-ideal certificates fail closed under witness and authority mutation", async () => {
   const answer = await evaluate([
     "answer = adapt_rust_prepared_cubic_v2_presentation(K, prepared, result, certificate)",

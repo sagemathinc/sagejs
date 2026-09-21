@@ -643,6 +643,35 @@ group objects are the next boundary. Thus this checkpoint proves the detached
 class quotient but does not authorize production dispatch or public-complete
 class/unit results.
 
+Independent class/unit replay checkpoint (2026-09-21): the adapter now keeps
+the published fundamental units as exact factored products of authenticated
+principal relations instead of expanding enormous powers. It proves every
+factor-base exponent cancels, independently verifies odd-cubic torsion order
+two, recomputes the regulator with directed Sage.js logarithms, regenerates the
+BF and BDF prime-power plans from live maximal-order splitting, reevaluates
+their directed intervals, and independently isolates analytic index one under
+the candidate's explicit GRH hypotheses. The small `C6` publication candidate
+passed this complete mathematical audit in 99.421 seconds. Row 6 proved both
+compact units across 1,764 nonzero relation-exponent terms and independently
+recomputed its 8,192-bit regulator in 845.256 seconds; the published and
+independent enclosures overlap. The generic audit used about 1.14 GB RSS, so it
+is qualification evidence rather than the intended product runtime path. The
+Rust/Arb certificate remains the fast producer, while the independent Sage.js
+implementation establishes that its evidence is not self-authenticating. The
+only remaining adapter gap is now construction of public class/unit objects
+and retained arbitrary-ideal dispatch; the detached class/unit mathematics is
+no longer incomplete.
+
+The first isolated row-6 BF/BDF audit was intentionally interrupted after 30
+wall minutes at roughly 0.78 GB RSS. It remained CPU-bound while rebuilding
+splitting data through the generic maximal-order prime-ideal path for BF
+threshold 23,994 (6,291 raw / 1,656 aggregated terms) and BDF bound 9,197
+(1,176 raw / 794 aggregated terms). This does not contradict the completed
+Rust/Arb certificate or the successful complete small-field audit. It records
+a verifier-performance task: derive ordinary-prime splitting types by exact
+modular polynomial factorization, use full maximal-order local arithmetic only
+at index primes, and retain term-for-term plan and directed-interval comparison.
+
 Run the released browser module in a Web Worker through Sage.js's public API.
 The default path must work without SharedArrayBuffer, special cross-origin
 isolation, threads, a server, a native helper or runtime compilation. Optional
