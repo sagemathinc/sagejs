@@ -949,6 +949,8 @@ pub fn complete_cubic_class_group_conditionally_with_context(
         options.logarithm_precision_bits,
         options.replay_precision_bits,
     );
+    let mut prepared_owner = Some(prepared);
+    let mut presentation_owner = Some(presentation);
     let mut attempted_levels = Vec::with_capacity(levels.len());
     for (index, level) in levels.iter().copied().enumerate() {
         attempted_levels.push(level);
@@ -960,9 +962,30 @@ pub fn complete_cubic_class_group_conditionally_with_context(
             requested_replay_precision_bits: options.replay_precision_bits,
             attempted_levels: attempted_levels.clone(),
         };
+        let final_level = index + 1 == levels.len();
+        let attempt_prepared = if final_level {
+            prepared_owner
+                .take()
+                .expect("the final precision level is attempted once")
+        } else {
+            prepared_owner
+                .as_ref()
+                .expect("an earlier precision level retains the owner")
+                .clone()
+        };
+        let attempt_presentation = if final_level {
+            presentation_owner
+                .take()
+                .expect("the final precision level is attempted once")
+        } else {
+            presentation_owner
+                .as_ref()
+                .expect("an earlier precision level retains the owner")
+                .clone()
+        };
         match complete_cubic_class_group_at_precision(
-            prepared.clone(),
-            presentation.clone(),
+            attempt_prepared,
+            attempt_presentation,
             attempt_options,
             precision,
             context,
