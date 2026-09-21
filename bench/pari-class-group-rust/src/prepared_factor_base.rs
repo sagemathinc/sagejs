@@ -71,7 +71,24 @@ impl From<PreparedIdealError> for PreparedFactorBaseError {
 pub struct PreparedFactorBase {
     pub catalog: FactorBase,
     pub exact_ideals: Vec<CubicIdeal>,
-    valuation_powers: Vec<Vec<CubicIdeal>>,
+}
+
+/// Request-local exact ideal powers retained while refining relations.
+///
+/// This is deliberately separate from the immutable factor base.  Candidate
+/// snapshots can therefore share the exact catalog and ideals with a live
+/// collector without also cloning or aliasing its evolving valuation cache.
+#[derive(Debug)]
+pub(crate) struct PreparedFactorBaseValuationCache {
+    powers: Vec<Vec<CubicIdeal>>,
+}
+
+impl PreparedFactorBaseValuationCache {
+    pub(crate) fn new(factor_base: &PreparedFactorBase) -> Self {
+        Self {
+            powers: vec![Vec::new(); factor_base.exact_ideals.len()],
+        }
+    }
 }
 
 impl PreparedFactorBase {
@@ -83,8 +100,9 @@ impl PreparedFactorBase {
     /// omitted conjugate factors lie beyond the active factor-base bound.
     /// PARI instead factors the quotient norm and carries the divisor
     /// exponents separately; this is the exact maximal-order equivalent.
-    pub fn refine_quotient_factorization(
-        &mut self,
+    pub(crate) fn refine_quotient_factorization(
+        &self,
+        valuation_cache: &mut PreparedFactorBaseValuationCache,
         field: &ValidatedPreparedCubic,
         element: &[Integer; 3],
         rational_factors: &[(i64, usize)],
@@ -92,7 +110,10 @@ impl PreparedFactorBase {
         relation: &mut [i64],
         workspace: &mut PreparedIdealWorkspace,
     ) -> Result<(), PreparedFactorBaseError> {
-        if relation.len() != self.catalog.ideals.len() || divisor.len() != relation.len() {
+        if relation.len() != self.catalog.ideals.len()
+            || divisor.len() != relation.len()
+            || valuation_cache.powers.len() != self.exact_ideals.len()
+        {
             return Err(PreparedFactorBaseError::RelationStorageMismatch);
         }
         relation.copy_from_slice(divisor);
@@ -130,7 +151,7 @@ impl PreparedFactorBase {
                     &self.exact_ideals[index],
                     element,
                     u32::try_from(cap).map_err(|_| PreparedFactorBaseError::ValuationOutsideI64)?,
-                    &mut self.valuation_powers[index],
+                    &mut valuation_cache.powers[index],
                 )? as usize;
                 let quotient = full.checked_sub(known).ok_or(
                     PreparedFactorBaseError::NormValuationMismatch {
@@ -410,9 +431,6 @@ pub fn prepared_maximal_cubic_factor_base(
             exact_ideals.push(ideal);
         }
     }
-    // Populate a slot only if relation refinement actually encounters its
-    // rational prime. Large factor bases therefore pay no eager clone cost.
-    let valuation_powers = vec![Vec::new(); exact_ideals.len()];
     Ok(PreparedFactorBase {
         catalog: FactorBase {
             relation_bound,
@@ -424,7 +442,6 @@ pub fn prepared_maximal_cubic_factor_base(
             complete_groups,
         },
         exact_ideals,
-        valuation_powers,
     })
 }
 
@@ -902,7 +919,8 @@ mod tests {
 
     #[test]
     fn row6_maximal_factor_base_has_the_predeclared_dimensions() {
-        let mut base = prepared_maximal_cubic_factor_base(&row6_field()).unwrap();
+        let base = prepared_maximal_cubic_factor_base(&row6_field()).unwrap();
+        let mut valuation_cache = PreparedFactorBaseValuationCache::new(&base);
         assert_eq!(base.catalog.ideals.len(), 1_130);
         assert_eq!(base.exact_ideals.len(), base.catalog.ideals.len());
         let group = base
@@ -962,6 +980,7 @@ mod tests {
         let mut divisor = vec![0; base.catalog.ideals.len()];
         divisor[index] = 1;
         base.refine_quotient_factorization(
+            &mut valuation_cache,
             &row6_field(),
             &[(-1).into(), 1.into(), 0.into()],
             &[(3, 1)],
@@ -975,6 +994,7 @@ mod tests {
         divisor[index] = 3;
         assert!(matches!(
             base.refine_quotient_factorization(
+                &mut valuation_cache,
                 &row6_field(),
                 &[(-1).into(), 1.into(), 0.into()],
                 &[(3, 1)],

@@ -19,7 +19,8 @@ use crate::numerical_preparation::{
 use crate::pari_random::PariRandom;
 use crate::prepared::{EmbeddingPrecisionState, ValidatedPreparedCubic};
 use crate::prepared_factor_base::{
-    PreparedFactorBase, PreparedFactorBaseError, prepared_maximal_cubic_factor_base,
+    PreparedFactorBase, PreparedFactorBaseError, PreparedFactorBaseValuationCache,
+    prepared_maximal_cubic_factor_base,
 };
 use crate::prepared_ideal::{CubicIdeal, PreparedIdealError, PreparedIdealWorkspace};
 use crate::prime_valuation::{
@@ -33,6 +34,7 @@ use crate::smooth_admission::{
 };
 use rug::{Integer, integer::Order};
 use sha2::{Digest, Sha256};
+use std::sync::Arc;
 use std::time::Instant;
 
 const DEGREE: usize = 3;
@@ -127,12 +129,12 @@ impl Default for PreparedCollectorLimits {
 
 #[derive(Clone, Debug)]
 pub struct PreparedCubicRelationPresentation {
-    /// Exact factor base owned by the collector-produced presentation.
+    /// Exact factor base shared with the collector that produced this snapshot.
     ///
     /// This is crate-private so safe external code cannot mutate or substitute
     /// it after the collector has established the provenance below.  Detached
     /// inputs use the public replay boundary instead of this owned fast path.
-    pub(crate) factor_base: PreparedFactorBase,
+    pub(crate) factor_base: Arc<PreparedFactorBase>,
     /// Collector-minted provenance for the exact field/base pair above.
     ///
     /// This is deliberately crate-private: untrusted callers cannot attach a
@@ -805,7 +807,8 @@ enum ActiveIdealProgress {
 pub struct PreparedCubicRelationCollector<'a> {
     field: &'a ValidatedPreparedCubic,
     limits: PreparedContinuationLimits,
-    factor_base: PreparedFactorBase,
+    factor_base: Arc<PreparedFactorBase>,
+    factor_base_valuation_cache: PreparedFactorBaseValuationCache,
     factor_base_authority: PreparedFactorBaseAuthority,
     subfactor_count: usize,
     search_permutation: Vec<usize>,
@@ -845,7 +848,8 @@ impl<'a> PreparedCubicRelationCollector<'a> {
         let mut timings = CollectorTimings::default();
 
         let started = Instant::now();
-        let factor_base = prepared_maximal_cubic_factor_base(field)?;
+        let factor_base = Arc::new(prepared_maximal_cubic_factor_base(field)?);
+        let factor_base_valuation_cache = PreparedFactorBaseValuationCache::new(&factor_base);
         let factor_base_authority = PreparedFactorBaseAuthority::mint(field);
         let (subfactor_count, search_permutation) = factor_base.catalog.subfactor_permutation(3);
         timings.factor_base_ns = started.elapsed().as_nanos();
@@ -923,6 +927,7 @@ impl<'a> PreparedCubicRelationCollector<'a> {
             field,
             limits,
             factor_base,
+            factor_base_valuation_cache,
             factor_base_authority,
             subfactor_count,
             search_permutation,
@@ -1079,6 +1084,7 @@ impl<'a> PreparedCubicRelationCollector<'a> {
 
             let started = Instant::now();
             let refinement = self.factor_base.refine_quotient_factorization(
+                &mut self.factor_base_valuation_cache,
                 self.field,
                 &element,
                 &rational,
@@ -1522,5 +1528,29 @@ mod tests {
 
         assert!(authority.authenticates(&first));
         assert!(!authority.authenticates(&second));
+    }
+
+    #[test]
+    fn collector_snapshots_share_only_the_immutable_factor_base() {
+        let field = small_cubic(-1, -23);
+        let collector = PreparedCubicRelationCollector::new(
+            &field,
+            PreparedContinuationLimits {
+                maximum_visited_ideals: 100,
+                maximum_candidates: 100,
+                maximum_relations: 100,
+                maximum_dependencies: 20,
+            },
+        )
+        .unwrap();
+        let first = collector.presentation(0).unwrap();
+        let second = collector.presentation(0).unwrap();
+
+        assert!(Arc::ptr_eq(&collector.factor_base, &first.factor_base));
+        assert!(Arc::ptr_eq(&first.factor_base, &second.factor_base));
+        assert_eq!(
+            first.factor_base.exact_ideals,
+            second.factor_base.exact_ideals
+        );
     }
 }

@@ -180,6 +180,12 @@ call by 2.17 ms. The first clean panel at source `e45994e5d` matched all 180
 pairs and measured 1.578 seconds for Rust versus 0.595 seconds for PARI;
 completion fell from 0.511 to 0.501 seconds, while simultaneous variation in
 the other stages leaves the weighted ratio essentially unchanged at 2.653x.
+The collector and its continuation snapshots now share one immutable exact
+factor base, while the evolving ideal-power cache remains request-local to the
+collector. A focused field-0012 timing comparison was flat within noise, while
+nine alternating process pairs reduced median peak RSS from 16,984 to 16,788
+KiB. The benefit is phase-lifetime ownership and removal of mutable-cache
+clones, not a claimed speedup.
 Relation collection was 1.063 seconds before the exact ideal-power cache. See
 `public-cubic-heldout-performance/receipt.json`. The fresh confirmation set
 remains correctness-only; its contextual diagnostic timings are not a formal

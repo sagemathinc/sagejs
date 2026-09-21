@@ -144,7 +144,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/class_group.rs",
-      "sha256": "3f17024e198131fdf311d93ef20664c98d9c09ab12cc196198a14fea557cb9ed",
+      "sha256": "382059d537f7e3d60529f0461fe6a8b113f98a30b63c969613c6c99e9803ab77",
       "classification": "behavioral_reimplementation",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "partial",
@@ -450,7 +450,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/prepared_factor_base.rs",
-      "sha256": "4623901ad8c4c7d31cc78eb5373c57303f097ee11ff01f022cb2fd701ef31721",
+      "sha256": "588b86af0748e91d2472ada9759df226be07e4684e63be4f368ce44e9259d266",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",

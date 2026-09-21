@@ -200,3 +200,12 @@ measured 1.578 seconds for Rust versus 0.595 seconds for PARI, with summed
 completion falling from 0.511 to 0.501 seconds. All other Rust stages and PARI
 also varied downward, so only the focused A/B and deterministic removed replay
 are attributed to the change; the weighted ratio remained 2.653x.
+
+The immutable exact factor base is now shared between the live collector and
+all continuation snapshots. Its lazily populated ideal-power cache has a
+separate request-local owner and therefore is neither cloned into nor aliased
+by candidate evidence. A CPU-pinned 31-pair field-0012 timing comparison was
+flat within noise (251.25 ms before versus 252.30 ms after). Across nine
+alternating fresh-process pairs, median peak RSS fell from 16,984 to 16,788
+KiB. This is recorded as a storage/ownership improvement rather than a latency
+optimization.

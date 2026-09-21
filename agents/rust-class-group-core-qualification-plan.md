@@ -214,6 +214,14 @@ seconds. PARI simultaneously varied from 0.603 to 0.595 seconds, leaving the
 weighted ratio statistically unchanged at 2.653x; only the focused paired
 result and removal of the deterministic duplicate work are attributed to this
 change.
+The exact factor base is now immutable shared storage across a live collector
+and every continuation snapshot, while its lazily populated ideal-power cache
+has a separate request-local owner. This prevents candidate snapshots from
+deep-cloning or aliasing mutable cache state. On field 0012, a CPU-pinned
+31-pair timing comparison was flat within noise (251.25 ms before versus
+252.30 ms after); nine alternating fresh-process pairs reduced median peak RSS
+from 16,984 to 16,788 KiB. This is a phase-lifetime ownership and modest memory
+improvement, not a speed claim.
 This remains substantially ahead of the earlier pre-power-cache receipt at
 4.20x weighted and 5.72x geometric mean, but still fails the frozen native
 performance gate. Rust's summed stage
