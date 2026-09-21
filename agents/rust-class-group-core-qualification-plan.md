@@ -31,10 +31,11 @@ twelve inputs in the untouched post-fix confirmation set. This establishes the
 current conditional-GRH cubic correctness boundary, including the formerly
 pathological compact-HNF presentations. It does not complete this plan: degrees
 4--6, unconditional completion, product dispatch, platform qualification, and
-the frozen native/browser performance gates remain open. On the untouched
-confirmation fields, contextual PARI medians still show about a 15.4x
-geometric-mean native gap, with candidate authentication and unit/analytic
-completion dominant.
+the frozen native/browser performance gates remain open. Moving the
+dense/compact authentication crossover to its measured range reduced the
+untouched confirmation campaign from 3.046 to about 1.9 seconds; contextual
+PARI medians still show roughly a 10--12x geometric-mean native gap, with
+unit/analytic completion and the remaining authentication work dominant.
 
 ## Evidence we actually have
 
