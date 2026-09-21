@@ -88,8 +88,11 @@ impl Default for CubicConditionalCompletionOptions {
 /// Construction performs the complete factor-base splitting prefix and
 /// rigorous BDF margin enclosure once. Completion also retains the monotone
 /// exact Belabas--Friedman splitting plans it has reached, so continuation and
-/// precision retries do not re-authenticate the same prime prefixes. The
-/// candidate-dependent regulator and index enclosure are always recomputed.
+/// precision retries do not re-authenticate the same prime prefixes. Exact
+/// principal-generator prefixes and their precision-specific logarithms are
+/// retained only after a coordinate-for-coordinate prefix check. The
+/// candidate-dependent dependency lattice, units, regulator certificate, and
+/// index enclosure are always recomputed.
 /// Completion checks that the prepared field, factor-base bound, analytic
 /// precision, and resource ceiling agree before using any retained evidence.
 #[derive(Clone, Debug)]
@@ -103,6 +106,31 @@ pub struct CubicConditionalCompletionContext {
     bf_splitting_bound: usize,
     bf_incremental_plan: IncrementalCubicBelabasFriedmanPlan,
     bf_plans: Vec<BelabasFriedmanPlan>,
+    relation_log_prefixes: Vec<CachedRelationLogPrefix>,
+}
+
+/// Precision-specific logarithms for an exact prefix of principal generators.
+///
+/// This is retained computation, not authority. Before reuse, completion
+/// compares every cached generator coordinate with the current authenticated
+/// presentation. A shorter or different presentation resets the prefix.
+#[derive(Clone, Debug)]
+struct CachedRelationLogPrefix {
+    precision_bits: u32,
+    embedding: PreparedCubicEmbedding,
+    generator_coordinates: Vec<Integer>,
+    logarithms: Vec<[Float; DEGREE]>,
+}
+
+fn exact_generator_prefix_matches(
+    cached_coordinates: &[Integer],
+    cached_logarithm_count: usize,
+    current_coordinates: &[Integer],
+) -> bool {
+    cached_coordinates.len().is_multiple_of(DEGREE)
+        && cached_logarithm_count.saturating_mul(DEGREE) == cached_coordinates.len()
+        && cached_coordinates.len() <= current_coordinates.len()
+        && cached_coordinates == &current_coordinates[..cached_coordinates.len()]
 }
 
 /// Exact final BF enclosure retained only when analytic completion declines.
@@ -840,7 +868,57 @@ pub fn prepare_cubic_conditional_completion_context(
         bf_splitting_bound: 2,
         bf_incremental_plan: IncrementalCubicBelabasFriedmanPlan::new(),
         bf_plans: Vec::new(),
+        relation_log_prefixes: Vec::new(),
     })
+}
+
+fn cached_relation_logs(
+    prepared: &PreparedPublicCubic,
+    collected: &crate::class_group::PreparedCubicRelationPresentation,
+    precision_bits: u32,
+    context: &mut CubicConditionalCompletionContext,
+) -> Result<Vec<[Float; DEGREE]>, CubicConditionalCompletionError> {
+    if !collected.generators.len().is_multiple_of(DEGREE) {
+        return Err(CubicConditionalCompletionError::InvalidPresentationShape);
+    }
+    let cache_index = if let Some(index) = context
+        .relation_log_prefixes
+        .iter()
+        .position(|cache| cache.precision_bits == precision_bits)
+    {
+        index
+    } else {
+        context.relation_log_prefixes.push(CachedRelationLogPrefix {
+            precision_bits,
+            embedding: PreparedCubicEmbedding::from_validated(prepared.field(), precision_bits)?,
+            generator_coordinates: Vec::new(),
+            logarithms: Vec::new(),
+        });
+        context.relation_log_prefixes.len() - 1
+    };
+    let cache = &mut context.relation_log_prefixes[cache_index];
+    if !exact_generator_prefix_matches(
+        &cache.generator_coordinates,
+        cache.logarithms.len(),
+        &collected.generators,
+    ) {
+        cache.generator_coordinates.clear();
+        cache.logarithms.clear();
+    }
+    let first_new_entry = cache.generator_coordinates.len();
+    for coordinates in collected.generators[first_new_entry..].chunks_exact(DEGREE) {
+        cache
+            .logarithms
+            .push(cache.embedding.unit_lattice_logarithmic_embedding(&[
+                coordinates[0].clone(),
+                coordinates[1].clone(),
+                coordinates[2].clone(),
+            ])?);
+    }
+    cache
+        .generator_coordinates
+        .extend_from_slice(&collected.generators[first_new_entry..]);
+    Ok(cache.logarithms.clone())
 }
 
 /// Complete a cubic candidate using previously authenticated field-level
@@ -999,19 +1077,12 @@ fn complete_cubic_class_group_at_precision(
         return Err(CubicConditionalCompletionError::KernelReplayMismatch);
     }
 
-    let embedding =
-        PreparedCubicEmbedding::from_validated(prepared.field(), options.logarithm_precision_bits)?;
-    let relation_logs = collected
-        .generators
-        .chunks_exact(DEGREE)
-        .map(|coordinates| {
-            embedding.unit_lattice_logarithmic_embedding(&[
-                coordinates[0].clone(),
-                coordinates[1].clone(),
-                coordinates[2].clone(),
-            ])
-        })
-        .collect::<Result<Vec<_>, _>>()?;
+    let relation_logs = cached_relation_logs(
+        &prepared,
+        collected,
+        options.logarithm_precision_bits,
+        context,
+    )?;
     if relation_logs.len() != rows {
         return Err(CubicConditionalCompletionError::InvalidPresentationShape);
     }
@@ -1236,6 +1307,18 @@ fn complete_cubic_class_group_at_precision(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn relation_log_cache_reuses_only_an_exact_complete_generator_prefix() {
+        let cached = [1, 2, 3, 4, 5, 6].map(Integer::from);
+        let extension = [1, 2, 3, 4, 5, 6, 7, 8, 9].map(Integer::from);
+        assert!(exact_generator_prefix_matches(&cached, 2, &extension));
+        assert!(!exact_generator_prefix_matches(&cached, 1, &extension));
+        assert!(!exact_generator_prefix_matches(&cached, 2, &extension[..3]));
+        let mut changed = extension;
+        changed[4] = Integer::from(50);
+        assert!(!exact_generator_prefix_matches(&cached, 2, &changed));
+    }
 
     #[test]
     fn precision_schedule_is_bounded_deterministic_and_ends_at_the_ceiling() {
