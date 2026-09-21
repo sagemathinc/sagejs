@@ -7,10 +7,11 @@ use rug::{Complete, Integer};
 use sagejs_pari_class_group_rust_experiment::{
     ArbitraryIdealReductionError, CompactPresentationError, CompactPresentationLimits,
     CubicConditionalCompletionOptions, CubicPresentationCandidateError,
-    CubicPresentationCandidateLimits, PreparedCollectorLimits, PublicCubicPreparationLimits,
+    CubicPresentationCandidateLimits, PreparedCollectorLimits, PreparedContinuationLimits,
+    PreparedCubicRelationCollector, PublicCubicPreparationLimits,
     authenticate_compact_cubic_presentation_candidate, authenticate_compact_presentation,
-    collect_prepared_cubic_relations, complete_cubic_class_group_conditionally,
-    prepare_monic_cubic,
+    authenticate_compact_presentation_with_cache, collect_prepared_cubic_relations,
+    complete_cubic_class_group_conditionally, prepare_monic_cubic,
 };
 
 fn collect(
@@ -190,6 +191,53 @@ fn authenticates_a_generic_elementary_two_presentation() {
             .iter()
             .all(|evidence| { evidence.factor_base_exponents.len() == verified.generator_count() })
     );
+}
+
+#[test]
+fn continuation_cache_matches_fresh_authentication_of_enlarged_relations() {
+    let prepared = prepare_monic_cubic(
+        [-37, -30, -8, 1].map(Integer::from),
+        PublicCubicPreparationLimits::default(),
+    )
+    .unwrap();
+    let mut collector = PreparedCubicRelationCollector::new(
+        prepared.field(),
+        PreparedContinuationLimits {
+            maximum_visited_ideals: 10_000,
+            maximum_candidates: 100_000,
+            maximum_relations: 10_000,
+            maximum_dependencies: 64,
+        },
+    )
+    .unwrap();
+    let first = collector.advance_to_supplementary(7).unwrap();
+    let first = authenticate_compact_presentation_with_cache(
+        &first,
+        CompactPresentationLimits::default(),
+        None,
+    )
+    .unwrap();
+    let cache = first.into_continuation_cache();
+    let enlarged = collector.advance_to_supplementary(14).unwrap();
+    let reused = authenticate_compact_presentation_with_cache(
+        &enlarged,
+        CompactPresentationLimits::default(),
+        Some(cache),
+    )
+    .unwrap();
+    let fresh =
+        authenticate_compact_presentation(&enlarged, CompactPresentationLimits::default()).unwrap();
+
+    assert_eq!(reused.invariant_factors(), fresh.invariant_factors());
+    assert_eq!(reused.class_number(), fresh.class_number());
+    assert_eq!(
+        reused.generator_coordinates(),
+        fresh.generator_coordinates()
+    );
+    assert_eq!(reused.dependencies(), fresh.dependencies());
+    assert_eq!(reused.square_rows(), fresh.square_rows());
+    assert_eq!(reused.surplus_rows(), fresh.surplus_rows());
+    assert_eq!(reused.square_determinant(), fresh.square_determinant());
 }
 
 #[test]

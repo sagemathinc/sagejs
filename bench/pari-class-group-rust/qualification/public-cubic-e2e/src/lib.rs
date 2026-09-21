@@ -9,11 +9,12 @@
 
 use rug::Integer;
 use sagejs_pari_class_group_rust_experiment::{
-    CompactPresentationLimits, CubicAnalyticEvidence, CubicCompletionProofMode,
-    CubicConditionalCompletionError, CubicConditionalCompletionOptions,
+    CompactPresentationContinuationCache, CompactPresentationLimits, CubicAnalyticEvidence,
+    CubicCompletionProofMode, CubicConditionalCompletionError, CubicConditionalCompletionOptions,
     CubicPresentationCandidateLimits, NormalFormLimits, PreparedContinuationLimits,
     PreparedCubicRelationCollector, PublicCubicPreparationLimits,
-    authenticate_compact_cubic_presentation_candidate, authenticate_cubic_presentation_candidate,
+    authenticate_compact_cubic_presentation_candidate_with_cache,
+    authenticate_cubic_presentation_candidate,
     complete_cubic_class_group_conditionally_with_context,
     prepare_cubic_conditional_completion_context, prepare_monic_cubic,
 };
@@ -417,6 +418,7 @@ pub fn qualify(request: Request) -> Result<Receipt, QualificationError> {
     let mut candidate_authentication_ns = 0_u128;
     let mut completion_ns = 0_u128;
     let mut completion_context = None;
+    let mut compact_continuation_cache: Option<CompactPresentationContinuationCache> = None;
     let mut supplementary_target =
         initial_supplementary_target(request.resources.maximum_dependencies);
     loop {
@@ -463,8 +465,8 @@ pub fn qualify(request: Request) -> Result<Receipt, QualificationError> {
         let started = Instant::now();
         let (authenticated, authority) =
             if route == CandidateAuthenticationRoute::CompactSmallSurplus {
-                (
-                    authenticate_compact_cubic_presentation_candidate(
+                let (authenticated, cache) =
+                    authenticate_compact_cubic_presentation_candidate_with_cache(
                         &attempt_prepared,
                         collected,
                         candidate_limits,
@@ -497,13 +499,18 @@ pub fn qualify(request: Request) -> Result<Receipt, QualificationError> {
                                 .resources
                                 .maximum_compact_target_coefficient_bits,
                         },
+                        compact_continuation_cache.take(),
                     )
                     .map_err(|error| {
                         QualificationError::CandidateAuthentication(format!("{error:?}"))
-                    })?,
+                    })?;
+                compact_continuation_cache = Some(cache);
+                (
+                    authenticated,
                     "authenticated-collector-sealed-compact-mixed-invariant-presentation",
                 )
             } else {
+                compact_continuation_cache = None;
                 (
                     authenticate_cubic_presentation_candidate(
                         &attempt_prepared,

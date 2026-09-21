@@ -204,7 +204,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/compact_cubic_presentation.rs",
-      "sha256": "47b6ef99d9628b3a895be84a44562952d65efd4ed479b80bb1ac8788baca4b76",
+      "sha256": "47453a2935ced4ed6b4e2093509197e1296bf0a2fe4f6f3bbc65f6ac5800fa6d",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
@@ -214,7 +214,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/cubic_completion.rs",
-      "sha256": "6c3c29eefdbc1bff93a29035b05dce1ca7d274ea1ba6360e488556ef8b3bf584",
+      "sha256": "b8a440b8bd7bf65dfe4201670b2735ae1f1cdce7baf24a9b4073bc9b1d5bff03",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
@@ -224,7 +224,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/cubic_presentation.rs",
-      "sha256": "0acebb9b32b6cefadc2428e778d6ee87b2d7bd1e158d5bd875d52db322c76ade",
+      "sha256": "974adc6b6bc9a0dfd56c9e2c16ea0198fc01add7b0869cbb554ccc6a00a76ade",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
@@ -283,7 +283,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/flint_normal_form.c",
-      "sha256": "a9f8a43c19aee12fa9092d0a5f7fb663ba6ca3f3a68ba032fca1c4d088580b1a",
+      "sha256": "353bdff6a190e012f21deb98dd9a67ff3ab456de5f69634392d219c617224785",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
@@ -293,7 +293,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/flint_normal_form.rs",
-      "sha256": "837242cc2fa881ff836adba675399ef86a1563e8cbb814ea6f08eb794229700a",
+      "sha256": "6f3102c24a3090dee8ab3b102417cd7e57f305988525579dc9a5af131dec347c",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
@@ -362,7 +362,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/lib.rs",
-      "sha256": "c636b0178b65e2841050dc883a366127deb07a8809ce5dafac1056a655a1be9b",
+      "sha256": "06a21e0c0bd8f07424574f0e78f24f12d85883ceb4eba623165cea5db27ac596",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",

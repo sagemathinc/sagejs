@@ -88,9 +88,10 @@ pub use class_maps::{
 };
 #[cfg(feature = "flint-normal-form")]
 pub use compact_cubic_presentation::{
-    CompactGeneratorOrderEvidence, CompactPresentationError, CompactPresentationLimits,
-    CompactPresentationSolverData, CompactSaturationMinor, VerifiedCompactPresentation,
-    authenticate_compact_presentation,
+    CompactGeneratorOrderEvidence, CompactPresentationContinuationCache, CompactPresentationError,
+    CompactPresentationLimits, CompactPresentationSolverData, CompactSaturationMinor,
+    VerifiedCompactPresentation, authenticate_compact_presentation,
+    authenticate_compact_presentation_with_cache,
 };
 #[cfg(feature = "flint-normal-form")]
 pub use cubic_completion::{
@@ -102,12 +103,15 @@ pub use cubic_completion::{
     complete_cubic_class_group_conditionally_with_context,
     prepare_cubic_conditional_completion_context,
 };
-#[cfg(feature = "flint-normal-form")]
-pub use cubic_presentation::authenticate_compact_cubic_presentation_candidate;
 pub use cubic_presentation::{
     AuthenticatedCubicPresentationCandidate, CubicCandidateGeneratorOrderEvidence,
     CubicPresentationCandidateError, CubicPresentationCandidateLimits,
     authenticate_cubic_presentation_candidate,
+};
+#[cfg(feature = "flint-normal-form")]
+pub use cubic_presentation::{
+    authenticate_compact_cubic_presentation_candidate,
+    authenticate_compact_cubic_presentation_candidate_with_cache,
 };
 #[doc(hidden)]
 pub use factor_base::prepared_cubic_factor_base;

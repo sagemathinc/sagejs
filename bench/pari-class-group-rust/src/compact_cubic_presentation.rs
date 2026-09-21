@@ -111,6 +111,15 @@ pub struct CompactPresentationSolverData {
     maximum_target_coefficient_bits: usize,
 }
 
+/// Exact square factorization retained across answer-free relation
+/// continuation. It is only a producer cache: every enlarged presentation is
+/// independently replayed and authenticated before publication.
+#[derive(Debug)]
+pub struct CompactPresentationContinuationCache {
+    workspace: FlintSmallSurplusWorkspace,
+    square_rows: Vec<usize>,
+}
+
 impl CompactPresentationSolverData {
     pub fn solver_to_original_rows(&self) -> &[usize] {
         &self.solver_to_original_rows
@@ -254,6 +263,13 @@ impl VerifiedCompactPresentation {
 
     pub fn solver_data(&self) -> &CompactPresentationSolverData {
         &self.solver_data
+    }
+
+    pub fn into_continuation_cache(self) -> CompactPresentationContinuationCache {
+        CompactPresentationContinuationCache {
+            workspace: self.solver_data.workspace,
+            square_rows: self.square_rows,
+        }
     }
 
     pub(crate) fn authorize_presentation(
@@ -416,6 +432,22 @@ pub fn authenticate_compact_presentation(
     collected: &PreparedCubicRelationPresentation,
     limits: CompactPresentationLimits,
 ) -> Result<VerifiedCompactPresentation, CompactPresentationError> {
+    authenticate_compact_presentation_with_cache(collected, limits, None)
+}
+
+/// Authenticate an enlarged small-surplus presentation, reusing a matching
+/// exact square factorization when available.
+///
+/// Cache matching requires the identical selected square rows and exact
+/// square/surplus relation prefix. A mismatch simply discards the optimization
+/// and computes a fresh factorization. Regardless of the producer path, all
+/// dependency, saturation, index, map, and order-witness checks below rerun on
+/// the complete current presentation.
+pub fn authenticate_compact_presentation_with_cache(
+    collected: &PreparedCubicRelationPresentation,
+    limits: CompactPresentationLimits,
+    cache: Option<CompactPresentationContinuationCache>,
+) -> Result<VerifiedCompactPresentation, CompactPresentationError> {
     let (generators, relation_count) = validate_compact_presentation_shape(collected, limits)?;
     let surplus = relation_count - generators;
 
@@ -449,8 +481,20 @@ pub fn authenticate_compact_presentation(
             .extend_from_slice(&collected.relations[row * generators..(row + 1) * generators]);
     }
 
-    let (compact, workspace) =
-        flint_small_surplus_class_order_with_workspace(&square, &surplus_relations, generators)?;
+    let (compact, workspace) = match cache {
+        Some(mut cache)
+            if cache.square_rows == square_rows
+                && cache
+                    .workspace
+                    .matches_extension(&square, &surplus_relations) =>
+        {
+            let compact = cache.workspace.extend_surplus(&surplus_relations)?;
+            (compact, cache.workspace)
+        }
+        _ => {
+            flint_small_surplus_class_order_with_workspace(&square, &surplus_relations, generators)?
+        }
+    };
     // The FLINT bridge computes this determinant exactly as part of the same
     // fraction-free factorization that produces the retained dependency
     // workspace. Recomputing the 1,130-square determinant with a second

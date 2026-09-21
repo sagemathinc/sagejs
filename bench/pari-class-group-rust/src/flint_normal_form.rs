@@ -92,6 +92,7 @@ pub enum FlintSmallSurplusOrdering {
 pub struct FlintSmallSurplusWorkspace {
     pointer: *mut c_void,
     size: usize,
+    ordering: FlintSmallSurplusOrdering,
     square_relations: Vec<i64>,
     surplus_relations: Vec<i64>,
 }
@@ -106,6 +107,40 @@ impl Drop for FlintSmallSurplusWorkspace {
 }
 
 impl FlintSmallSurplusWorkspace {
+    pub(crate) fn matches_extension(
+        &self,
+        square_relations: &[i64],
+        surplus_relations: &[i64],
+    ) -> bool {
+        square_relations == self.square_relations
+            && surplus_relations.len() >= self.surplus_relations.len()
+            && surplus_relations.starts_with(&self.surplus_relations)
+    }
+
+    /// Recompute the small-surplus quotient after appending relation rows,
+    /// reusing the exact fraction-free factorization of the unchanged square
+    /// block. The prior surplus must be an exact prefix of the new rows.
+    pub fn extend_surplus(
+        &mut self,
+        surplus_relations: &[i64],
+    ) -> Result<FlintSmallSurplusClassOrder, FlintNormalFormError> {
+        if !self.matches_extension(&self.square_relations, surplus_relations) {
+            return Err(FlintNormalFormError::DimensionMismatch);
+        }
+        let (answer, workspace) = flint_small_surplus_class_order_impl(
+            &self.square_relations,
+            surplus_relations,
+            self.size,
+            false,
+            self.ordering,
+            self.pointer,
+        )?;
+        debug_assert!(workspace.is_none());
+        self.surplus_relations.clear();
+        self.surplus_relations.extend_from_slice(surplus_relations);
+        Ok(answer)
+    }
+
     /// Express targets using the exact fraction-free factorization retained
     /// from the matching class-order phase.
     pub fn relation_witnesses(
@@ -329,6 +364,7 @@ unsafe extern "C" {
         determinant_ns: *mut u64,
         solve_ns: *mut u64,
         kernel_ns: *mut u64,
+        workspace_input: *mut c_void,
         workspace_output: *mut *mut c_void,
     ) -> c_int;
     fn sagejs_rust_flint_small_surplus_workspace_free(workspace: *mut c_void);
@@ -458,6 +494,7 @@ pub fn flint_small_surplus_class_order(
         size,
         false,
         FlintSmallSurplusOrdering::Natural,
+        ptr::null_mut(),
     )
     .map(|(answer, _workspace)| answer)
 }
@@ -475,6 +512,7 @@ pub fn flint_small_surplus_class_order_with_workspace(
         size,
         true,
         FlintSmallSurplusOrdering::StaticMinimumDegree,
+        ptr::null_mut(),
     ) {
         Ok((answer, workspace)) => Ok((
             answer,
@@ -506,6 +544,7 @@ pub fn flint_small_surplus_class_order_with_workspace_natural_order(
         size,
         true,
         FlintSmallSurplusOrdering::Natural,
+        ptr::null_mut(),
     )?;
     Ok((
         answer,
@@ -527,6 +566,7 @@ pub fn flint_small_surplus_class_order_with_workspace_static_minimum_degree(
         size,
         true,
         FlintSmallSurplusOrdering::StaticMinimumDegree,
+        ptr::null_mut(),
     )?;
     Ok((
         answer,
@@ -540,6 +580,7 @@ fn flint_small_surplus_class_order_impl(
     size: usize,
     retain_workspace: bool,
     ordering: FlintSmallSurplusOrdering,
+    workspace_input: *mut c_void,
 ) -> Result<
     (
         FlintSmallSurplusClassOrder,
@@ -596,6 +637,7 @@ fn flint_small_surplus_class_order_impl(
             &mut determinant_ns,
             &mut solve_ns,
             &mut kernel_ns,
+            workspace_input,
             if retain_workspace {
                 &mut workspace_pointer
             } else {
@@ -609,6 +651,7 @@ fn flint_small_surplus_class_order_impl(
             let workspace = retain_workspace.then(|| FlintSmallSurplusWorkspace {
                 pointer: workspace_pointer,
                 size,
+                ordering,
                 square_relations: square_entries.to_vec(),
                 surplus_relations: surplus_entries.to_vec(),
             });
@@ -1818,6 +1861,54 @@ mod tests {
         assert_eq!(class_order.class_order, 6);
         assert_eq!(reused.coefficients, standalone.coefficients);
         assert_eq!(reused.nonzero_counts, standalone.nonzero_counts);
+    }
+
+    #[test]
+    fn small_surplus_workspace_extends_an_exact_surplus_prefix() {
+        let square = [2, 0, 0, 6];
+        let initial_surplus = [0, 3];
+        let extended_surplus = [0, 3, 1, 0];
+        let twice_extended_surplus = [0, 3, 1, 0, 1, 1];
+        let (_, mut workspace) =
+            flint_small_surplus_class_order_with_workspace(&square, &initial_surplus, 2).unwrap();
+        assert_eq!(
+            workspace.extend_surplus(&[0, 4, 1, 0]),
+            Err(FlintNormalFormError::DimensionMismatch)
+        );
+        let reused = workspace.extend_surplus(&extended_surplus).unwrap();
+        let fresh = flint_small_surplus_class_order_with_workspace(&square, &extended_surplus, 2)
+            .unwrap()
+            .0;
+        assert_eq!(reused.class_order, fresh.class_order);
+        assert_eq!(reused.square_determinant, fresh.square_determinant);
+        assert_eq!(reused.two_rank, fresh.two_rank);
+        assert_eq!(reused.generator_coordinates, fresh.generator_coordinates);
+        assert_eq!(
+            reused.dependency_coefficients,
+            fresh.dependency_coefficients
+        );
+        assert_eq!(reused.determinant_ns, 0);
+
+        let reused_again = workspace.extend_surplus(&twice_extended_surplus).unwrap();
+        let fresh_again =
+            flint_small_surplus_class_order_with_workspace(&square, &twice_extended_surplus, 2)
+                .unwrap()
+                .0;
+        assert_eq!(reused_again.class_order, fresh_again.class_order);
+        assert_eq!(
+            reused_again.square_determinant,
+            fresh_again.square_determinant
+        );
+        assert_eq!(reused_again.two_rank, fresh_again.two_rank);
+        assert_eq!(
+            reused_again.generator_coordinates,
+            fresh_again.generator_coordinates
+        );
+        assert_eq!(
+            reused_again.dependency_coefficients,
+            fresh_again.dependency_coefficients
+        );
+        assert_eq!(reused_again.determinant_ns, 0);
     }
 
     #[test]

@@ -32,8 +32,9 @@ use crate::class_group::{
 use crate::class_maps::{ClassMapError, PresentationClassMap, RelationCoverage};
 #[cfg(feature = "flint-normal-form")]
 use crate::compact_cubic_presentation::{
-    CompactPresentationError, CompactPresentationLimits, authenticate_compact_presentation,
-    compact_verification_multiply_adds, validate_compact_presentation_shape,
+    CompactPresentationContinuationCache, CompactPresentationError, CompactPresentationLimits,
+    authenticate_compact_presentation_with_cache, compact_verification_multiply_adds,
+    validate_compact_presentation_shape,
 };
 use crate::hnf::{BigIntMatrix, ExactNormalFormWorkspace, NormalFormError, NormalFormLimits};
 use crate::polynomial_preparation::PreparedPublicCubic;
@@ -484,10 +485,37 @@ pub fn authenticate_cubic_presentation_candidate(
 #[cfg(feature = "flint-normal-form")]
 pub fn authenticate_compact_cubic_presentation_candidate(
     prepared: &PreparedPublicCubic,
-    mut collected: PreparedCubicRelationPresentation,
+    collected: PreparedCubicRelationPresentation,
     relation_limits: CubicPresentationCandidateLimits,
     compact_limits: CompactPresentationLimits,
 ) -> Result<AuthenticatedCubicPresentationCandidate, CubicPresentationCandidateError> {
+    authenticate_compact_cubic_presentation_candidate_with_cache(
+        prepared,
+        collected,
+        relation_limits,
+        compact_limits,
+        None,
+    )
+    .map(|(candidate, _cache)| candidate)
+}
+
+/// Continuation-aware compact authentication. The optional cache can only
+/// reuse an exact factorization for an identical square relation block and an
+/// exact surplus prefix; it conveys no mathematical authority.
+#[cfg(feature = "flint-normal-form")]
+pub fn authenticate_compact_cubic_presentation_candidate_with_cache(
+    prepared: &PreparedPublicCubic,
+    mut collected: PreparedCubicRelationPresentation,
+    relation_limits: CubicPresentationCandidateLimits,
+    compact_limits: CompactPresentationLimits,
+    cache: Option<CompactPresentationContinuationCache>,
+) -> Result<
+    (
+        AuthenticatedCubicPresentationCandidate,
+        CompactPresentationContinuationCache,
+    ),
+    CubicPresentationCandidateError,
+> {
     if relation_limits.maximum_relation_exponent == 0
         || relation_limits.maximum_relation_exponent > ARBITRARY_IDEAL_MAXIMUM_VALUATION
     {
@@ -633,7 +661,7 @@ pub fn authenticate_compact_cubic_presentation_candidate(
         });
     }
 
-    let compact = authenticate_compact_presentation(&collected, compact_limits)?;
+    let compact = authenticate_compact_presentation_with_cache(&collected, compact_limits, cache)?;
     if compact.generator_count() != factor_base_size || compact.relation_count() != relation_count {
         return Err(CubicPresentationCandidateError::InvalidShape);
     }
@@ -656,6 +684,7 @@ pub fn authenticate_compact_cubic_presentation_candidate(
         .collect();
     let dependency_lattice = compact.dependencies().to_vec();
     let class_number_candidate = compact.class_number().clone();
+    let continuation_cache = compact.into_continuation_cache();
 
     collected.complete_rank_and_surplus = true;
     collected.missing_rank = 0;
@@ -668,15 +697,18 @@ pub fn authenticate_compact_cubic_presentation_candidate(
         &mut ideal_workspace,
     )?;
 
-    Ok(AuthenticatedCubicPresentationCandidate {
-        prepared: prepared.clone(),
-        collected,
-        principal_relations,
-        class_map,
-        generator_orders,
-        dependency_lattice,
-        class_number_candidate,
-    })
+    Ok((
+        AuthenticatedCubicPresentationCandidate {
+            prepared: prepared.clone(),
+            collected,
+            principal_relations,
+            class_map,
+            generator_orders,
+            dependency_lattice,
+            class_number_candidate,
+        },
+        continuation_cache,
+    ))
 }
 
 fn smith_verification_multiply_adds(generators: usize, relations: usize) -> Option<u64> {
