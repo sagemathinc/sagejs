@@ -29,18 +29,21 @@ expected post-run change within that closure.
 
 ## Current result
 
-The receipt generated from source commit `f2ee94847` records exact agreement
-in all 180 alternating pairs. Summed per-field medians are 2.013 seconds for
-Rust and 0.583 seconds for PARI 2.17.4, or a 3.45x weighted gap. The geometric
-mean is 5.02x, p90 is 8.67x, and the maximum is 13.08x. Rust's summed stage
-medians are 0.615 seconds for relation collection, 0.571 seconds for candidate
-authentication, 0.690 seconds for unit and analytic completion, and 0.078
-seconds for public preparation. Exact continuation now retains the FLINT
+The receipt generated from source commit `809cd4f81` records exact agreement
+in all 180 alternating pairs. Summed per-field medians are 1.995 seconds for
+Rust and 0.582 seconds for PARI 2.17.4, or a 3.43x weighted gap. The geometric
+mean is 5.01x, p90 is 8.88x, and the maximum is 13.08x. Rust's summed stage
+medians are 0.616 seconds for relation collection, 0.548 seconds for candidate
+authentication, 0.693 seconds for unit and analytic completion, and 0.079
+seconds for public preparation. Exact continuation retains the FLINT
 fraction-free factorization only when the selected square relation block is
 identical and the previous surplus is an exact prefix; it recomputes and
 independently verifies the complete enlarged presentation. This reduced the
 Rust sum from 2.045 seconds and candidate authentication from 0.593 seconds in
 the preceding receipt. On the retry-heavy field 0012, authentication fell from
-196.1 to 178.7 ms and the complete call from 406.1 to 390.2 ms. The geometric,
-p90, and maximum ratios remain sensitive to simultaneous PARI variation on the
-few-millisecond cases.
+196.1 to 178.7 ms and the complete call from 406.1 to 390.2 ms. Minting the
+immutable class-map binding once after exact constructor verification then
+reduced summed authentication from 0.571 to 0.548 seconds and the Rust total
+from 2.013 to 1.995 seconds. Field 0012 fell again to 169.7 ms authentication
+and 379.9 ms total. The geometric, p90, and maximum ratios remain sensitive to
+simultaneous PARI variation on the few-millisecond cases.
