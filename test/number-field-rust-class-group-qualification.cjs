@@ -2,6 +2,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
 const test = require("node:test");
 const { createSage } = require("../dist/tools/kernel.js");
 
@@ -79,6 +80,11 @@ function completeReceipt() {
       classUnitHypothesis: "GRH for the Dedekind-zeta residue bound",
       factorBaseHypothesis:
         "GRH for all unramified Hecke L-functions of class-group characters",
+      requestedLogarithmPrecisionBits: 1024,
+      requestedReplayPrecisionBits: 512,
+      attemptedPrecisionLevels: [
+        { logarithmPrecisionBits: 1024, replayPrecisionBits: 512 },
+      ],
       sealedEvidenceVerified: true,
       arbitraryIdealClassMapRetained: true,
     },
@@ -92,7 +98,12 @@ function completeReceipt() {
   };
 }
 
-async function evaluateWithDocuments(lines, requestDocument, receiptDocument) {
+async function evaluateWithDocuments(
+  lines,
+  requestDocument,
+  receiptDocument,
+  polynomial = "x^3-x-1",
+) {
   const session = await createSage();
   try {
     return await session.evaluate(
@@ -101,7 +112,7 @@ async function evaluateWithDocuments(lines, requestDocument, receiptDocument) {
         `request = json.loads(${JSON.stringify(JSON.stringify(requestDocument))})`,
         `receipt = json.loads(${JSON.stringify(JSON.stringify(receiptDocument))})`,
         "R.<x> = QQ[]",
-        "K.<a> = NumberField(x^3-x-1)",
+        `K.<a> = NumberField(${polynomial})`,
         ...lines,
       ].join("\n"),
     );
@@ -165,7 +176,11 @@ test("the receipt adapter rejects field, proof, and completion corruption", asyn
       "bad_completion['completion']['classNumber'] = '2'",
       "bad_extra = deepcopy(receipt)",
       "bad_extra['trustedBySagejs'] = True",
-      "for candidate_request, candidate_receipt in ((bad_request, receipt), (request, bad_proof), (request, bad_completion), (request, bad_extra)):",
+      "bad_precision = deepcopy(receipt)",
+      "bad_precision['completion']['requestedLogarithmPrecisionBits'] = 2048",
+      "bad_schedule = deepcopy(receipt)",
+      "bad_schedule['completion']['attemptedPrecisionLevels'] = [{'logarithmPrecisionBits': 512, 'replayPrecisionBits': 256}]",
+      "for candidate_request, candidate_receipt in ((bad_request, receipt), (request, bad_proof), (request, bad_completion), (request, bad_extra), (request, bad_precision), (request, bad_schedule)):",
       "    try:",
       "        adapt_rust_public_cubic_qualification_receipt(K, candidate_request, candidate_receipt)",
       "    except (ArithmeticError, ValueError) as error:",
@@ -177,7 +192,57 @@ test("the receipt adapter rejects field, proof, and completion corruption", asyn
   );
   assert.equal(
     result.repr,
-    "['the Rust qualification request is not bound to this number field', 'the Rust receipt changed the requested proof mode', 'the Rust receipt invariant product is inconsistent', \"receipt has the wrong fields (missing=[], unknown=['trustedBySagejs'])\"]",
+    "['the Rust qualification request is not bound to this number field', 'the Rust receipt changed the requested proof mode', 'the Rust receipt invariant product is inconsistent', \"receipt has the wrong fields (missing=[], unknown=['trustedBySagejs'])\", 'the completion changed logarithm precision', 'the final precision attempt does not match the request']",
+  );
+});
+
+test("the receipt adapter accepts the current mixed-invariant authority", async () => {
+  const receipt = completeReceipt();
+  receipt.candidate.invariantFactors = ["2", "2"];
+  receipt.candidate.classNumber = "4";
+  receipt.candidate.generatorOrderWitnesses = 2;
+  receipt.candidate.authority =
+    "authenticated-collector-sealed-compact-mixed-invariant-presentation";
+  receipt.completion.classNumber = "4";
+  receipt.completion.invariantFactors = ["2", "2"];
+
+  const result = await evaluateWithDocuments(
+    [
+      "from sagejs.number_fields.rust_class_group_qualification import adapt_rust_public_cubic_qualification_receipt",
+      "answer = adapt_rust_public_cubic_qualification_receipt(K, request, receipt)",
+      "[answer.complete, answer.tentative_invariants, answer.diagnostics['candidateAuthority'], answer.diagnostics['requestedLogarithmPrecisionBits'], answer.diagnostics['requestedReplayPrecisionBits'], answer.diagnostics['attemptedPrecisionLevels']]",
+    ],
+    request(),
+    receipt,
+  );
+  assert.equal(
+    result.repr,
+    "[False, (2, 2), 'authenticated-collector-sealed-compact-mixed-invariant-presentation', 1024, 512, [{'logarithmPrecisionBits': 1024, 'replayPrecisionBits': 512}]]",
+  );
+});
+
+test("the checked current row-6 receipt crosses the Sage.js adapter", async () => {
+  const directory =
+    "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e";
+  const vector = JSON.parse(
+    fs.readFileSync(`${directory}/row6.vector.json`, "utf8"),
+  );
+  const nodeReceipt = JSON.parse(
+    fs.readFileSync(`${directory}/node-receipt.json`, "utf8"),
+  );
+  const result = await evaluateWithDocuments(
+    [
+      "from sagejs.number_fields.rust_class_group_qualification import adapt_rust_public_cubic_qualification_receipt",
+      "answer = adapt_rust_public_cubic_qualification_receipt(K, request, receipt)",
+      "[answer.complete, answer.tentative_invariants, answer.diagnostics['candidateAuthority'], answer.diagnostics['attemptedPrecisionLevels']]",
+    ],
+    vector.request,
+    nodeReceipt.guestResult,
+    "x^3 - 2000000000010*x + 2000000000018",
+  );
+  assert.equal(
+    result.repr,
+    "[False, (2, 2), 'authenticated-collector-sealed-compact-mixed-invariant-presentation', [{'logarithmPrecisionBits': 4096, 'replayPrecisionBits': 2048}, {'logarithmPrecisionBits': 8192, 'replayPrecisionBits': 4096}]]",
   );
 });
 

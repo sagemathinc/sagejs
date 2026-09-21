@@ -8,7 +8,6 @@ import json
 from typing import Any
 
 import sagejs as sage
-
 from sagejs.number_fields.rust_class_group_preparation import prepare_cubic_for_rust
 
 REQUEST_SCHEMA = "sagejs.rust-class-group/public-cubic-e2e-request-v2"
@@ -67,8 +66,11 @@ _CANDIDATE = _keys(
 )
 _COMPLETION = _keys(
     "proof classNumber invariantFactors unitRank bfThreshold classUnitHypothesis "
-    "factorBaseHypothesis sealedEvidenceVerified arbitraryIdealClassMapRetained"
+    "factorBaseHypothesis requestedLogarithmPrecisionBits "
+    "requestedReplayPrecisionBits attemptedPrecisionLevels sealedEvidenceVerified "
+    "arbitraryIdealClassMapRetained"
 )
+_PRECISION_LEVEL = _keys("logarithmPrecisionBits replayPrecisionBits")
 _TIMINGS = _keys(
     "publicInputAndPreparation relationCollection candidateAuthentication "
     "unitAndAnalyticCompletion totalToSealedResult"
@@ -240,7 +242,10 @@ def _time(receipt: dict[str, Any]) -> dict[str, int]:
 
 
 def _complete(
-    field: Any, receipt: dict[str, Any], rel: dict[str, Any]
+    field: Any,
+    request: dict[str, Any],
+    receipt: dict[str, Any],
+    rel: dict[str, Any],
 ) -> tuple[tuple[int, ...], dict[str, Any]]:
     cand = _closed(receipt["candidate"], "receipt.candidate", _CANDIDATE)
     done = _closed(receipt["completion"], "receipt.completion", _COMPLETION)
@@ -257,6 +262,7 @@ def _complete(
     if cand["authority"] not in {
         "authenticated-supplied-principal-relations-candidate-only",
         "authenticated-collector-sealed-compact-elementary-two-presentation",
+        "authenticated-collector-sealed-compact-mixed-invariant-presentation",
     }:
         raise ValueError("unknown candidate authority")
     authenticated = _uint(cand["authenticatedPrincipalRelations"])
@@ -276,6 +282,46 @@ def _complete(
         "GRH for all unramified Hecke L-functions of class-group characters"
     ):
         raise ValueError("unknown factor-base hypothesis")
+    requested_logarithm = _uint(done["requestedLogarithmPrecisionBits"], 2**32 - 1)
+    requested_replay = _uint(done["requestedReplayPrecisionBits"], 2**32 - 1)
+    requested_resources = request["resources"]
+    if requested_logarithm != requested_resources["logarithmPrecisionBits"]:
+        raise ArithmeticError("the completion changed logarithm precision")
+    if requested_replay != requested_resources["replayPrecisionBits"]:
+        raise ArithmeticError("the completion changed replay precision")
+    raw_levels = done["attemptedPrecisionLevels"]
+    if not isinstance(raw_levels, list) or not raw_levels:
+        raise ValueError("missing attempted precision levels")
+    levels: list[dict[str, int]] = []
+    previous_logarithm = 0
+    previous_replay = 0
+    for index, raw_level in enumerate(raw_levels):
+        level = _closed(
+            raw_level,
+            f"receipt.completion.attemptedPrecisionLevels[{index}]",
+            _PRECISION_LEVEL,
+        )
+        logarithm = _uint(level["logarithmPrecisionBits"], 2**32 - 1)
+        replay = _uint(level["replayPrecisionBits"], 2**32 - 1)
+        if logarithm == 0 or replay == 0 or replay > logarithm:
+            raise ValueError("invalid attempted precision level")
+        if logarithm <= previous_logarithm or replay <= previous_replay:
+            raise ValueError("attempted precision levels are not increasing")
+        if logarithm > requested_logarithm or replay > requested_replay:
+            raise ArithmeticError("an attempted precision exceeds the request")
+        levels.append(
+            {
+                "logarithmPrecisionBits": logarithm,
+                "replayPrecisionBits": replay,
+            }
+        )
+        previous_logarithm = logarithm
+        previous_replay = replay
+    if levels[-1] != {
+        "logarithmPrecisionBits": requested_logarithm,
+        "replayPrecisionBits": requested_replay,
+    }:
+        raise ArithmeticError("the final precision attempt does not match the request")
     if done["sealedEvidenceVerified"] is not True:
         raise ArithmeticError("unverified sealed evidence")
     if done["arbitraryIdealClassMapRetained"] is not True:
@@ -285,6 +331,9 @@ def _complete(
         "candidateAuthority": cand["authority"],
         "authenticatedPrincipalRelations": authenticated,
         "generatorOrderWitnesses": witnesses,
+        "requestedLogarithmPrecisionBits": requested_logarithm,
+        "requestedReplayPrecisionBits": requested_replay,
+        "attemptedPrecisionLevels": levels,
         "rustInternalSealedEvidenceVerified": True,
         "rustInternalArbitraryIdealClassMapRetained": True,
     }
@@ -329,7 +378,7 @@ def adapt_rust_public_cubic_qualification_receipt(
     if outcome == _COMPLETE:
         if not complete_rank or rel["missingRank"] != 0:
             raise ArithmeticError("incomplete relation rank")
-        tentative, details = _complete(field, receipt, rels)
+        tentative, details = _complete(field, request, receipt, rels)
         unavailable = "sagejs-public-evidence-adaptation"
     else:
         if complete_rank or rel["missingRank"] == 0:

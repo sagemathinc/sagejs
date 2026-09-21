@@ -109,6 +109,12 @@ by the successful 8,192/4,096-bit attempt. This passes current-source browser
 feasibility and memory, not the browser performance or product gates: the route
 is still a synchronous qualification harness rather than the Sage.js worker
 API, and Firefox remains the dominant target-specific performance failure.
+The fail-closed Sage.js receipt adapter now accepts this current
+mixed-invariant result and validates its complete precision-attempt transcript
+against the caller's resource request. It still returns an explicitly
+incomplete Sage.js computation and cannot dispatch or claim a public proof;
+replayable maps, units, regulator, saturation, request binding, and artifact
+identity remain required before promotion.
 
 ## Evidence we actually have
 
