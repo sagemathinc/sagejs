@@ -29,12 +29,12 @@ expected post-run change within that closure.
 
 ## Current result
 
-The receipt generated from source commit `66ef3b3ae` records exact agreement
-in all 180 alternating pairs. Summed per-field medians are 1.834 seconds for
-Rust and 0.601 seconds for PARI 2.17.4, or a 3.05x weighted gap. The geometric
-mean is 4.15x, p90 is 6.51x, and the maximum is 7.21x. Rust's summed stage
-medians are 0.633 seconds for relation collection, 0.514 seconds for candidate
-authentication, 0.552 seconds for unit and analytic completion, and 0.080
+The receipt generated from source commit `6afb130cb` records exact agreement
+in all 180 alternating pairs. Summed per-field medians are 1.749 seconds for
+Rust and 0.606 seconds for PARI 2.17.4, or a 2.89x weighted gap. The geometric
+mean is 4.01x, p90 is 6.43x, and the maximum is 7.12x. Rust's summed stage
+medians are 0.630 seconds for relation collection, 0.428 seconds for candidate
+authentication, 0.552 seconds for unit and analytic completion, and 0.081
 seconds for public preparation. Exact continuation retains the FLINT
 fraction-free factorization only when the selected square relation block is
 identical and the previous surplus is an exact prefix; it recomputes and
@@ -95,3 +95,13 @@ replay. Relative to the preceding clean receipt, summed Rust time fell by
 fell from 364.76 to 337.28 ms. PARI's simultaneous sum fell by 7.54 ms, and
 its smallest field varied enough to move the maximum ratio upward; the
 absolute Rust stage reductions and weighted ratio are the useful comparison.
+Compact class-map validation now consumes retained relation-matrix columns in
+place. It accumulates only quotient-width exact coordinates and compares
+machine-word principal-relation transcripts directly with borrowed GMP
+coefficients, while the generic diagonal representation retains the original
+materialized-vector path. This removes a full GMP relation-vector allocation
+and clone at each of three independent exact validation boundaries. Relative
+to the preceding clean receipt, all twelve Rust field medians fell: summed
+authentication dropped by 85.58 ms, total Rust time by 84.81 ms, and field
+0012 by 22.99 ms. PARI varied upward by 4.32 ms. The weighted ratio therefore
+fell from 3.05x to 2.89x, the first clean campaign below 3x.

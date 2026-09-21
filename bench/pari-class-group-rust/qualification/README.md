@@ -48,9 +48,9 @@ not pass the frozen performance target. After starting answer-blind
 continuation at fourteen surplus rows when the caller's budget permits it, the
 current clean 15-sample alternating campaign on the original twelve
 regressions matched every exact result and measured summed per-field medians of
-1.834 seconds for Rust and 0.601 seconds for PARI 2.17.4: 3.05x weighted, 4.15x
-by geometric mean, 6.51x at p90, and 7.21x maximum. The source commit is
-`66ef3b3ae`. Precision-specific relation logarithms are reused only after an
+1.749 seconds for Rust and 0.606 seconds for PARI 2.17.4: 2.89x weighted, 4.01x
+by geometric mean, 6.43x at p90, and 7.12x maximum. The source commit is
+`6afb130cb`. Precision-specific relation logarithms are reused only after an
 exact generator-prefix check. Checked fixed-width relation replay restarts in
 GMP on any overflow. Exact back substitution removes unit pivots from the
 modular HNF before the Smith map is computed and lifts the verified residual
@@ -119,6 +119,13 @@ from 1.898 to 1.834 seconds, authentication from 0.547 to 0.514 seconds, and
 completion from 0.581 to 0.552 seconds. PARI varied from 0.609 to 0.601 seconds
 in the paired campaign; the fastest PARI field also made the maximum ratio
 noisier even though Rust's absolute time improved there.
+The current source verifies retained relation columns in place at the class-map,
+compact-presentation, and principal-witness boundaries. It avoids allocating
+and cloning a full GMP vector for each column while preserving exact quotient
+divisibility and the generic diagonal fallback. All twelve field medians
+improved in the next clean campaign: summed authentication fell from 0.514 to
+0.428 seconds, total Rust time from 1.834 to 1.749 seconds, and the weighted
+gap from 3.05x to 2.89x.
 Relation collection was 1.063 seconds before the exact ideal-power cache. See
 `public-cubic-heldout-performance/receipt.json`. The fresh confirmation set
 remains correctness-only; its contextual diagnostic timings are not a formal
