@@ -37,19 +37,20 @@ geometric answer-free continuation schedule and reusing exact analytic plans
 reduced the untouched confirmation campaign from 3.046 to 1.373 seconds. A
 separately versioned qualification profile now admits the compact
 route through 64 surplus rows while preserving its independent storage, exact
-work, saturation, and coefficient ceilings. The clean committed 15-sample
-alternating campaign on the original twelve cubic regressions records exact
-agreement in every measured pair. Summed per-field medians are 3.027 seconds
-for Rust and 0.578 seconds for PARI 2.17.4: a 5.24x weighted gap, with a 7.24x
-geometric mean, 12.79x p90, and 19.16x maximum. This improves materially on the
-earlier contextual 6.85x weighted estimate but still fails the frozen native
-performance gate. Rust's summed stage medians are 1.043 seconds relation
-collection, 0.954 seconds candidate authentication, 0.906 seconds unit and
-analytic completion, and 0.077 seconds public preparation, so no single phase
-explains the remaining gap. Per-attempt telemetry reconciles exactly with those
-stage totals; on the hardest original regression it showed that repeated exact
-authentication/completion, not incremental relation collection, dominated, so
-the answer-blind continuation schedule now doubles between attempts.
+work, saturation, and coefficient ceilings. Per-attempt telemetry showed that
+failed exact authentication/completion at the minimum seven-row surplus cost
+far more than collecting seven more rows. The answer-blind schedule therefore
+starts at fourteen when the caller's budget permits and doubles between
+attempts, while retaining seven for tighter explicit budgets. The replacement
+clean 15-sample alternating campaign on the original twelve cubic regressions
+records exact agreement in every measured pair. Summed per-field medians are
+2.772 seconds for Rust and 0.578 seconds for PARI 2.17.4: a 4.80x weighted gap,
+with a 6.29x geometric mean, 10.55x p90, and 15.08x maximum. This improves the
+previous formal receipt from 5.24x weighted and 7.24x geometric mean but still
+fails the frozen native performance gate. Rust's summed stage medians are 1.047
+seconds relation collection, 0.850 seconds candidate authentication, 0.739
+seconds unit and analytic completion, and 0.077 seconds public preparation, so
+no single phase explains the remaining gap.
 
 ## Evidence we actually have
 

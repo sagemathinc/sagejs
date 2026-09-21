@@ -44,13 +44,15 @@ source `5a09f7407`; see
 This qualifies the current native cubic correctness boundary, not R4 as a
 degree-2-through-6 product milestone. The engine remains cubic-specific,
 conditional-GRH only, and outside the live Sage.js dispatch path. It also does
-not pass the frozen performance target. The clean committed 15-sample
-alternating campaign on the original twelve regressions matched every exact
-result and measured summed per-field medians of 3.027 seconds for Rust and
-0.578 seconds for PARI 2.17.4: 5.24x weighted, 7.24x by geometric mean, 12.79x
-at p90, and 19.16x maximum. Rust's summed stage medians are 1.043 seconds
-relation collection, 0.954 seconds candidate authentication, 0.906 seconds
-unit and analytic completion, and 0.077 seconds public preparation. See
+not pass the frozen performance target. After starting answer-blind
+continuation at fourteen surplus rows when the caller's budget permits it, the
+replacement clean 15-sample alternating campaign on the original twelve
+regressions matched every exact result and measured summed per-field medians of
+2.772 seconds for Rust and 0.578 seconds for PARI 2.17.4: 4.80x weighted, 6.29x
+by geometric mean, 10.55x at p90, and 15.08x maximum. Rust's summed stage
+medians are 1.047 seconds relation collection, 0.850 seconds candidate
+authentication, 0.739 seconds unit and analytic completion, and 0.077 seconds
+public preparation. See
 `public-cubic-heldout-performance/receipt.json`. The fresh confirmation set
 remains correctness-only; its contextual diagnostic timings are not a formal
 comparative receipt.
