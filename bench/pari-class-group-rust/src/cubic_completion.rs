@@ -32,6 +32,7 @@ use crate::unit_lattice::{
     UnitLatticeError, reconstruct_rank_one_unit_lattice, reconstruct_rank_two_unit_lattice,
 };
 use rug::{Float, Integer, Rational};
+use std::borrow::Cow;
 
 const DEGREE: usize = 3;
 const ROOTS_OF_UNITY_IN_CUBIC_FIELD: u64 = 2;
@@ -269,7 +270,6 @@ impl CompactCubicUnit {
 /// Exact and numerical evidence for the reconstructed unit lattice.
 #[derive(Clone, Debug)]
 pub struct CubicUnitLatticeEvidence {
-    dependency_lattice: Vec<Vec<Integer>>,
     fundamental_units: Vec<CompactCubicUnit>,
     selected_basis_index: Integer,
     common_denominator: Integer,
@@ -277,9 +277,6 @@ pub struct CubicUnitLatticeEvidence {
 }
 
 impl CubicUnitLatticeEvidence {
-    pub fn dependency_lattice(&self) -> &[Vec<Integer>] {
-        &self.dependency_lattice
-    }
     pub fn fundamental_units(&self) -> &[CompactCubicUnit] {
         &self.fundamental_units
     }
@@ -384,6 +381,9 @@ impl GrhConditionalCompleteCubicClassGroup {
     pub fn units(&self) -> &CubicUnitLatticeEvidence {
         &self.units
     }
+    pub fn dependency_lattice(&self) -> &[Vec<Integer>] {
+        self.presentation.dependency_lattice()
+    }
     pub fn analytic(&self) -> &CubicAnalyticEvidence {
         &self.analytic
     }
@@ -423,8 +423,8 @@ impl GrhConditionalCompleteCubicClassGroup {
         let unit_rank = usize::from(self.prepared.field().data().signature.0)
             + usize::from(self.prepared.field().data().signature.1)
             - 1;
-        self.units
-            .dependency_lattice
+        self.presentation
+            .dependency_lattice()
             .iter()
             .all(|row| annihilates(row))
             && self.units.fundamental_units.len() == unit_rank
@@ -1051,7 +1051,8 @@ fn complete_cubic_class_group_at_precision(
     let collected = presentation.collected();
     let (columns, rows, expected_dependencies) =
         preflight_completion_presentation(&prepared, &presentation, options)?;
-    let mut dependencies = presentation.dependency_lattice().to_vec();
+    let mut dependencies: Cow<'_, [Vec<Integer>]> =
+        Cow::Borrowed(presentation.dependency_lattice());
     if dependencies.len() != expected_dependencies {
         return Err(CubicConditionalCompletionError::KernelRankMismatch {
             expected: expected_dependencies,
@@ -1076,8 +1077,12 @@ fn complete_cubic_class_group_at_precision(
     // produces a fresh integral left kernel from the original relation
     // matrix; Rust then replays it and proves saturation independently.
     if maximum_coefficient_bits > options.maximum_kernel_coefficient_bits {
-        dependencies =
-            reduce_dependency_basis_exact(&dependencies, rows, columns, &collected.relations)?;
+        dependencies = Cow::Owned(reduce_dependency_basis_exact(
+            dependencies.as_ref(),
+            rows,
+            columns,
+            &collected.relations,
+        )?);
         maximum_coefficient_bits = dependencies
             .iter()
             .flatten()
@@ -1107,17 +1112,21 @@ fn complete_cubic_class_group_at_precision(
         return Err(CubicConditionalCompletionError::InvalidPresentationShape);
     }
     let original_reconstruction = reconstruct_dependency_basis(
-        &dependencies,
+        dependencies.as_ref(),
         &relation_logs,
         options,
         prepared.field().data().signature,
     );
     let (working_dependencies, lattice) = match original_reconstruction {
-        Ok(lattice) => (dependencies.clone(), lattice),
+        Ok(lattice) => (Cow::Borrowed(dependencies.as_ref()), lattice),
         Err(CubicConditionalCompletionError::ReconstructionUnstable) => {
-            let reduced =
-                reduce_dependency_basis_exact(&dependencies, rows, columns, &collected.relations)?;
-            if reduced == dependencies {
+            let reduced = reduce_dependency_basis_exact(
+                dependencies.as_ref(),
+                rows,
+                columns,
+                &collected.relations,
+            )?;
+            if reduced.as_slice() == dependencies.as_ref() {
                 return Err(CubicConditionalCompletionError::ReconstructionUnstable);
             }
             let lattice = reconstruct_dependency_basis(
@@ -1126,7 +1135,7 @@ fn complete_cubic_class_group_at_precision(
                 options,
                 prepared.field().data().signature,
             )?;
-            (reduced, lattice)
+            (Cow::Owned(reduced), lattice)
         }
         Err(error) => return Err(error),
     };
@@ -1146,7 +1155,7 @@ fn complete_cubic_class_group_at_precision(
             return Err(CubicConditionalCompletionError::InvalidPresentationShape);
         }
         let mut exponents = vec![Integer::from(0); rows];
-        for (multiple, dependency) in combination.iter().zip(&working_dependencies) {
+        for (multiple, dependency) in combination.iter().zip(working_dependencies.iter()) {
             for row in 0..rows {
                 exponents[row] += multiple * &dependency[row];
             }
@@ -1295,11 +1304,12 @@ fn complete_cubic_class_group_at_precision(
             final_attempt: final_failed_attempt,
         });
     };
+    drop(working_dependencies);
+    drop(dependencies);
     let result = GrhConditionalCompleteCubicClassGroup {
         prepared,
         presentation,
         units: CubicUnitLatticeEvidence {
-            dependency_lattice: dependencies,
             fundamental_units,
             selected_basis_index: lattice.selected_basis_index,
             common_denominator: lattice.common_denominator,

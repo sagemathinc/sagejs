@@ -195,10 +195,7 @@ fn exact_dependency_reduction_seals_open_d3_0019_at_frozen_precision() {
     )
     .unwrap();
     assert!(completed.verify_sealed_evidence());
-    assert_eq!(
-        completed.units().dependency_lattice(),
-        authenticated_dependencies
-    );
+    assert_eq!(completed.dependency_lattice(), authenticated_dependencies);
     assert_eq!(completed.class_number(), &Integer::from(1));
     assert_eq!(
         completed.precision().requested_logarithm_precision_bits(),
