@@ -115,6 +115,13 @@ The reactor also accepts
 `public-cubic-arbitrary-ideal-query-request-v1`. The committed nontrivial C2
 vector supplies a canonical integral-ideal HNF, and `run-query-node.mjs` checks
 the complete class number, nonzero class coordinate, echoed input lattice, and
-nonempty exact quotient witness. The current artifact is 5,834,548 bytes with
-SHA-256 `7aafd17aa0f183d14ce131a0f74849595e58ec99e01ff4028c1d7a519fe38c55`;
-the measured query took 100.4 ms without growing beyond 256 pages.
+nonempty exact quotient witness. The same harness now opens a bounded resident
+completed-field session, repeats that query byte-for-byte, closes it, and proves that
+stale queries, double closes, and a fifth concurrent session fail closed. The
+current artifact is 5,867,663 bytes with SHA-256
+`6eb175301d90809a864beca93c7b9ff91bbe94c44b60466fe791de0511e5ef3e`.
+The recorded Node run took 89.85 ms to open and complete the field, 11.05 ms
+for the first query, 8.07 ms for the repeated query, and 0.43 ms to close it.
+Linear memory remained at 256 pages (16 MiB). Handles increase monotonically,
+are never reused after close, and the qualification reactor admits at most four
+resident sessions.

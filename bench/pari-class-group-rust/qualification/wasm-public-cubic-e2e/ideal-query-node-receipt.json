@@ -2,13 +2,28 @@
   "schema": "sagejs.rust-class-group/wasm-public-cubic-ideal-query-node-v1",
   "outcome": "pass",
   "artifact": {
-    "bytes": 5834548,
-    "sha256": "7aafd17aa0f183d14ce131a0f74849595e58ec99e01ff4028c1d7a519fe38c55"
+    "bytes": 5867663,
+    "sha256": "6eb175301d90809a864beca93c7b9ff91bbe94c44b60466fe791de0511e5ef3e"
   },
   "vectorSha256": "5835121de772eb47df3f77b00afdde28c860a762c4713a9dae93d6f1c3b94653",
-  "elapsedMs": 100.36459199999999,
+  "timingsMs": {
+    "open": 89.84834400000001,
+    "firstQuery": 11.045777000000015,
+    "secondQuery": 8.072258000000005,
+    "close": 0.430279999999982,
+    "staleQueryRejection": 0.07951999999997383
+  },
   "memoryPagesBefore": 256,
   "memoryPagesAfter": 256,
+  "lifecycle": {
+    "handle": 1,
+    "maximumResidentSessions": 4,
+    "repeatedQueryByteIdentical": true,
+    "closeSucceeded": true,
+    "staleQueryRejected": true,
+    "doubleCloseRejected": true,
+    "capacityExhaustionRejected": true
+  },
   "observed": {
     "schema": "sagejs.rust-class-group/public-cubic-arbitrary-ideal-query-receipt-v1",
     "outcome": "complete-conditional-grh-ideal-class",

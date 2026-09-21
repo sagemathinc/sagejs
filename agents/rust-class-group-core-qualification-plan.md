@@ -290,10 +290,17 @@ remained at the initial 256 pages (16 MiB). A qualification-only Sage.js bridge
 consumes the same closed envelope, binds the exact polynomial and queried
 lattice, and invokes the compact context's independent principal-ideal and
 coordinate replay. Keeping this normalization out of the lazy product package
-preserved its frozen byte budget. The remaining product gap is invocation,
-resident session lifetime, and placement of this small envelope adapter in the
-actual Sage.js native/browser loader, not mathematical query production or
-certificate serialization.
+preserved its frozen byte budget. The qualification reactor now also retains a
+completed class group behind a bounded resident handle. Its rebuilt
+5,867,663-byte artifact opened and completed the C2 field in 89.85 ms, answered
+the same independently replayed nontrivial ideal query in 11.05 and 8.07 ms,
+and closed the handle in 0.43 ms without growing beyond the initial 256 pages
+(16 MiB). Handles are monotone and never reused, at most four sessions coexist,
+and the checked harness rejects stale queries, double closes, and a fifth open
+before doing another completion. The remaining product gap is therefore
+placement and automatic invocation of this lifecycle through the actual
+Sage.js native/browser loader, not resident-state feasibility, mathematical
+query production, or certificate serialization.
 
 ## Evidence we actually have
 

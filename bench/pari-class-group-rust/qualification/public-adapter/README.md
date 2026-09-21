@@ -37,8 +37,11 @@ binds its polynomial and exact queried lattice, and asks the compact Sage.js
 context to derive the class coordinate rather than trusting the producer's
 claim. It remains outside the lazy product package to preserve that package's
 frozen byte budget. The checked C2 query returns the nonzero coordinate
-`1 mod 2` in native Rust and Wasm. Automatic product invocation and resident
-context handles remain explicitly unsupported.
+`1 mod 2` in native Rust and Wasm. The qualification reactor also proves a
+bounded resident open/query/query/close lifecycle with exact repeated results,
+monotone handles, and fail-closed stale, double-close, and capacity behavior.
+Automatic product invocation and product-owned resident handles remain
+explicitly unsupported.
 
 Run the focused structural qualification with:
 
