@@ -164,20 +164,32 @@ fields, unrelated relation and completion variation raised Rust's sum by 9.82
 ms and PARI varied upward by 3.12 ms, leaving the weighted ratio statistically
 unchanged at 2.748x versus 2.746x. This is a localized exact-replay gain, not an
 aggregate-speed claim.
+The immutable class-map binding now uses a versioned injective binary encoding
+instead of decimal formatting every exact coordinate. A CPU-pinned 31-pair
+field-0012 comparison reduced authentication by 5.56 ms and the complete call
+by 4.99 ms; a twelve-field diagnostic reduced summed authentication by 22.59
+ms. Callgrind independently records a reduction from 2.978 to 2.884 billion
+instructions on field 0012, with the former binding hotspot absent. The next
+clean 180-pair campaign still matched every exact result. It measured 1.623
+seconds for Rust and 0.601 seconds for PARI, a 2.699x weighted gap, 3.839x
+geometric mean, 6.33x p90, and 7.18x maximum. Rust authentication fell another
+6.83 ms, but variation in the other stages raised the Rust sum by 16.17 ms
+while PARI rose by 16.56 ms; the aggregate ratio movement is not attributed to
+the encoding change.
 This remains substantially ahead of the earlier pre-power-cache receipt at
 4.20x weighted and 5.72x geometric mean, but still fails the frozen native
 performance gate. Rust's summed stage
-medians are 0.621 seconds relation collection, 0.392 seconds candidate
-authentication, 0.503 seconds unit and analytic completion, and 0.078 seconds
+medians are 0.628 seconds relation collection, 0.385 seconds candidate
+authentication, 0.513 seconds unit and analytic completion, and 0.079 seconds
 public preparation. Relation collection fell from 1.063 seconds before the
 exact ideal-power cache; the three principal mathematical phases are now
 nearly balanced.
 
 The current shared source also completes row 6 from coefficients through the
 qualification Wasm reactor in Node, Chromium, Firefox, and WebKit with the same
-sealed projection. The 5,771,254-byte artifact is 2,324,095 bytes gzip and
+sealed projection. The 5,771,254-byte artifact is 2,324,094 bytes gzip and
 finishes with 2,166 linear-memory pages (135.38 MiB), inside the plan's 256-MiB
-worker ceiling. One-shot calls are 31.32, 31.82, 239.47, and 32.93 seconds,
+worker ceiling. One-shot calls are 32.81, 33.29, 244.44, and 33.94 seconds,
 respectively. The receipts bind the current 1,144-relation mixed-invariant
 presentation and explicitly expose the failed 4,096/2,048-bit attempt followed
 by the successful 8,192/4,096-bit attempt. This passes current-source browser

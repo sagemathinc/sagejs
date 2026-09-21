@@ -29,12 +29,12 @@ expected post-run change within that closure.
 
 ## Current result
 
-The receipt generated from source commit `f18561329` records exact agreement
-in all 180 alternating pairs. Summed per-field medians are 1.607 seconds for
-Rust and 0.585 seconds for PARI 2.17.4, or a 2.748x weighted gap. The geometric
-mean is 3.935x, p90 is 6.63x, and the maximum is 7.42x. Rust's summed stage
-medians are 0.621 seconds for relation collection, 0.392 seconds for candidate
-authentication, 0.503 seconds for unit and analytic completion, and 0.078
+The receipt generated from source commit `38cba69fc` records exact agreement
+in all 180 alternating pairs. Summed per-field medians are 1.623 seconds for
+Rust and 0.601 seconds for PARI 2.17.4, or a 2.699x weighted gap. The geometric
+mean is 3.839x, p90 is 6.33x, and the maximum is 7.18x. Rust's summed stage
+medians are 0.628 seconds for relation collection, 0.385 seconds for candidate
+authentication, 0.513 seconds for unit and analytic completion, and 0.079
 seconds for public preparation. Exact continuation retains the FLINT
 fraction-free factorization only when the selected square relation block is
 identical and the previous surplus is an exact prefix; it recomputes and
@@ -134,3 +134,27 @@ on retry-heavy field 0012 reduced authentication by 4.96 ms and total time by
 ms in authentication. Unrelated relation and completion variation increased
 the twelve-field Rust sum by 9.82 ms, so the aggregate 2.748x ratio is
 statistically unchanged from 2.746x; no aggregate speedup is claimed.
+
+The class-map binding is now an injective versioned binary encoding rather
+than a decimal-text encoding of every exact coordinate. Machine-size values
+use a tagged fixed-width representation; larger GMP values use an explicit
+sign and little-endian magnitude length. A CPU-pinned 31-pair A/B comparison
+on field 0012 reduced authentication by 5.56 ms and the complete call by 4.99
+ms. A separate 7-pair diagnostic across the twelve fields reduced summed
+authentication by 22.59 ms and total time by 23.18 ms. In the clean campaign,
+authentication fell by 6.83 ms, but unrelated preparation, collection, and
+completion variation raised Rust's sum by 16.17 ms while PARI rose by 16.56
+ms. The ratio change from 2.748x to 2.699x is therefore not an aggregate Rust
+speed claim.
+
+Callgrind supplies deterministic work evidence for the same field-0012
+executable. The preceding generator-witness-cache binary executed
+2,977,680,082 instructions; the binary-binding executable executed
+2,884,489,129, a reduction of 93,190,953 instructions (3.13%). The former
+roughly 160.8-million-instruction binding computation disappears from the
+reported call graph, and inclusive class-map construction falls to 72.1
+million instructions. The two raw profiles have SHA-256 digests
+`0dd9be2c10b53317a7851f95015b85ba58dafe3d20676309604ea49a040fc89a`
+and `dc78ed296a1fe47b657b81113a5430e48a1ed9401f619d664ffb31e3b360a0c4`,
+respectively. They were collected on the same optimization VM with Valgrind
+3.22.0, one public coefficient-only request, and identical Callgrind options.

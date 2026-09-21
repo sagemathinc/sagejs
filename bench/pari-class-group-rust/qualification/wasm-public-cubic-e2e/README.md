@@ -46,22 +46,22 @@ cargo test --release --all-targets
 
 ## Current complete result
 
-The current qualified reactor is 5,771,254 bytes (2,324,095 bytes gzip). Its
+The current qualified reactor is 5,771,254 bytes (2,324,094 bytes gzip). Its
 stable row-6 projection passed in Node, Chromium, Firefox, and WebKit after the
 general mixed-invariant remediation. The result has 1,144 authenticated
 relations and records both requested precision and the exact two-attempt
 4,096/2,048- then 8,192/4,096-bit schedule. Each runtime grew from 256 to 2,166
-Wasm pages (16.0 to 135.4 MiB). Representative one-shot calls were 31.32
-seconds in Node, 31.82 seconds in Chromium, 239.47 seconds in Firefox, and
-32.93 seconds in WebKit. These are smoke measurements, not warmed benchmark
+Wasm pages (16.0 to 135.4 MiB). Representative one-shot calls were 32.81
+seconds in Node, 33.29 seconds in Chromium, 244.44 seconds in Firefox, and
+33.94 seconds in WebKit. These are smoke measurements, not warmed benchmark
 medians. The native frozen public benchmark for the same field is 5.826 seconds
 (PARI 3.960 seconds), so Wasm is working end to end and remains within the
 256-MiB worker memory ceiling, but is not yet competitive. Firefox remains the
 largest target-specific problem.
 
-The Node guest's stage times localize its 31.31-second sealed computation to
-0.17 seconds of public preparation, 9.50 seconds of relation collection, 4.74
-seconds of candidate authentication, and 16.73 seconds of unit/analytic
+The Node guest's stage times localize its 32.80-second sealed computation to
+0.17 seconds of public preparation, 10.16 seconds of relation collection, 5.28
+seconds of candidate authentication, and 16.99 seconds of unit/analytic
 completion. This is actionable evidence: the full computation does not fail at
 an incomplete boundary, and the dominant Wasm work is known. The historical
 5,679,772-byte, 1,137-relation result remains useful as a pre-remediation

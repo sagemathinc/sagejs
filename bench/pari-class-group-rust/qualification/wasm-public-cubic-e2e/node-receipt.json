@@ -3,9 +3,9 @@
   "outcome": "pass",
   "artifact": {
     "bytes": 5771254,
-    "sha256": "eb2c4a79d59cb90be9af6f0248e1acf2e88d0ae29c26dc9b091b3ed1b41a4e18",
-    "gzipBytes": 2324095,
-    "gzipSha256": "48b1fa66b1954a32b44600ab356dc56160af3e84953eb41578b6e13d69042070",
+    "sha256": "8942eb281d0fbb3a18caec50d28f4650f3ee387b24857bfa35a2f784231a52cf",
+    "gzipBytes": 2324094,
+    "gzipSha256": "a4031b877ec39c76f70cc6bfd0a517de7e0714b6223904adeb597d0e84cbd2ae",
     "imports": [
       {
         "module": "wasi_snapshot_preview1",
@@ -2264,9 +2264,9 @@
     "wasmLd": "LLD 22.1.0 (https://github.com/llvm/llvm-project 4434dabb69916856b824f68a64b029c67175e532)"
   },
   "sourceClosure": {
-    "gitHead": "64e6ba729fc8daf6e1369ba93c988413748ff313",
+    "gitHead": "38cba69fcbb8a32c68f1dcbee93b0284fc09462f",
     "fileCount": 63,
-    "sha256": "63d997a5123babb8a87691527addb007a1ed044166a2f37f2f0f64fdc740032c",
+    "sha256": "6893320d5710002af21b448d50e37d36d84db06d7ea0a011b19595047fdc6baa",
     "files": [
       {
         "path": "bench/pari-class-group-rust/Cargo.lock",
@@ -2302,7 +2302,7 @@
       },
       {
         "path": "bench/pari-class-group-rust/qualification/public-cubic-e2e/src/lib.rs",
-        "sha256": "7e51e9f81c957571de58eaab028ac20b01b3811e348f9757d9ff638e9f8e4e62"
+        "sha256": "767281757ef0a4b7856ec93e6197a480c322d8cc826359cd37b323693ccccdba"
       },
       {
         "path": "bench/pari-class-group-rust/qualification/public-cubic-e2e/src/main.rs",
@@ -2386,7 +2386,7 @@
       },
       {
         "path": "bench/pari-class-group-rust/src/arbitrary_ideal_reduction.rs",
-        "sha256": "3814e5029f1bfc53c81c90872eeeb6c10a5da2e9e2e00a2c74f1017bb69412af"
+        "sha256": "8424c7f23b907caf3431989bf4a3d296e27ad3b053c1692d0d3e5fa783632fd7"
       },
       {
         "path": "bench/pari-class-group-rust/src/bruteforce_collector.rs",
@@ -2398,7 +2398,7 @@
       },
       {
         "path": "bench/pari-class-group-rust/src/class_maps.rs",
-        "sha256": "fbb7dea79b0943b2ba87e40b0a4c1b161830acf788769dc46fd10d6f6e919fcb"
+        "sha256": "0508c05ba0504c09d068b23c962fcc1dd6731ce4ae2140b2a5de1a97e9757102"
       },
       {
         "path": "bench/pari-class-group-rust/src/collector_schedule.rs",
@@ -2406,11 +2406,11 @@
       },
       {
         "path": "bench/pari-class-group-rust/src/compact_cubic_presentation.rs",
-        "sha256": "47453a2935ced4ed6b4e2093509197e1296bf0a2fe4f6f3bbc65f6ac5800fa6d"
+        "sha256": "17d4b641e16556b2c0ae501e858fee6075858efbf7fa88504d953d4a39cc1ac7"
       },
       {
         "path": "bench/pari-class-group-rust/src/cubic_completion.rs",
-        "sha256": "f6189b3a6cd8bbd89135c044631765fdcadeca0c96343618ac0aa85fa9699db1"
+        "sha256": "f2f6f9545cbb458f35a7841c6f66dbc72338c473064ed01b17d256d01a95af23"
       },
       {
         "path": "bench/pari-class-group-rust/src/cubic_presentation.rs",
@@ -2522,17 +2522,17 @@
       }
     ]
   },
-  "elapsedMs": 31021.853683,
+  "elapsedMs": 32808.911767,
   "memoryPagesBefore": 256,
   "memoryPagesAfter": 2166,
   "processResourceUsage": {
-    "userCPUTime": 31798764,
-    "systemCPUTime": 186033,
-    "maxRSS": 469884,
+    "userCPUTime": 33661472,
+    "systemCPUTime": 247988,
+    "maxRSS": 469628,
     "sharedMemorySize": 0,
     "unsharedDataSize": 0,
     "unsharedStackSize": 0,
-    "minorPageFault": 60028,
+    "minorPageFault": 63197,
     "majorPageFault": 0,
     "swappedOut": 0,
     "fsRead": 0,
@@ -2540,8 +2540,8 @@
     "ipcSent": 0,
     "ipcReceived": 0,
     "signalsCount": 0,
-    "voluntaryContextSwitches": 1047,
-    "involuntaryContextSwitches": 271
+    "voluntaryContextSwitches": 1061,
+    "involuntaryContextSwitches": 289
   },
   "guestResult": {
     "schema": "sagejs.rust-class-group/public-cubic-e2e-receipt-v2",
@@ -2608,11 +2608,11 @@
       "arbitraryIdealClassMapRetained": true
     },
     "stageTimingsNanoseconds": {
-      "publicInputAndPreparation": 164979197,
-      "relationCollection": 9389347394,
-      "candidateAuthentication": 4633405797,
-      "unitAndAnalyticCompletion": 16665973599,
-      "totalToSealedResult": 31011662656
+      "publicInputAndPreparation": 167151906,
+      "relationCollection": 10157474910,
+      "candidateAuthentication": 5276420218,
+      "unitAndAnalyticCompletion": 16989006626,
+      "totalToSealedResult": 32797897799
     }
   },
   "stableProjection": {
