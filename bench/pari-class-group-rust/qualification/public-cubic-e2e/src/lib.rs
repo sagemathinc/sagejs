@@ -151,6 +151,73 @@ pub enum QualificationError {
     Completion(String),
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum CandidateAuthenticationRoute {
+    DenseSmith,
+    CompactSmallSurplus,
+}
+
+fn dense_verification_multiply_adds(generators: usize, relations: usize) -> Option<u64> {
+    let g = u64::try_from(generators).ok()?;
+    let r = u64::try_from(relations).ok()?;
+    let cube = |value: u64| {
+        value
+            .checked_mul(value)
+            .and_then(|square| square.checked_mul(value))
+    };
+    let g3 = cube(g)?;
+    let r3 = cube(r)?;
+    let g2r = g.checked_mul(g)?.checked_mul(r)?;
+    let gr2 = g.checked_mul(r)?.checked_mul(r)?;
+    // This is the same conservative work bound enforced by the dense
+    // authenticator: two Smith verification passes, inverse checks,
+    // generator-order replay, and relation-image replay.
+    g2r.checked_add(gr2)
+        .and_then(|value| value.checked_add(g3.checked_mul(2)?))
+        .and_then(|value| value.checked_add(r3.checked_mul(2)?))
+        .and_then(|value| value.checked_mul(2))
+        .and_then(|value| value.checked_add(g2r.checked_mul(2)?))
+}
+
+fn select_candidate_authentication_route(
+    generators: usize,
+    relations: usize,
+    resources: &Resources,
+) -> CandidateAuthenticationRoute {
+    let dense_entries_fit = resources.maximum_normal_form_operations > 0
+        && generators
+            .checked_mul(relations)
+            .is_some_and(|entries| entries <= resources.maximum_normal_form_entries);
+    let dense_verification_fits = dense_verification_multiply_adds(generators, relations)
+        .is_some_and(|work| work <= resources.maximum_verification_multiply_adds);
+    if dense_entries_fit && dense_verification_fits {
+        return CandidateAuthenticationRoute::DenseSmith;
+    }
+
+    let compact_limits_are_nonzero = resources.maximum_compact_generators > 0
+        && resources.maximum_compact_surplus_rows > 0
+        && resources.maximum_compact_saturation_minor_trials > 0
+        && resources.maximum_compact_dependency_entries > 0
+        && resources.maximum_compact_target_coefficient_bits > 0;
+    let compact_shape_fits = compact_limits_are_nonzero
+        && relations
+            .checked_sub(generators)
+            .filter(|surplus| *surplus > 0 && *surplus <= resources.maximum_compact_surplus_rows)
+            .and_then(|surplus| surplus.checked_mul(relations))
+            .is_some_and(|dependency_entries| {
+                generators <= resources.maximum_compact_generators
+                    && dependency_entries <= resources.maximum_compact_dependency_entries
+            });
+    if compact_shape_fits {
+        CandidateAuthenticationRoute::CompactSmallSurplus
+    } else {
+        // Both authenticators fail closed before expensive work. Retain the
+        // general dense route when the compact elementary-2 shape contract is
+        // unavailable, so shape alone never changes group semantics.
+        CandidateAuthenticationRoute::DenseSmith
+    }
+}
+
 /// Exercise the coefficient-only route through conditional completion.
 pub fn qualify(request: Request) -> Result<Receipt, QualificationError> {
     let total_start = Instant::now();
@@ -250,11 +317,19 @@ pub fn qualify(request: Request) -> Result<Receipt, QualificationError> {
                 .maximum_verification_multiply_adds,
             maximum_principal_factor_terms: request.resources.maximum_principal_factor_terms,
         };
-        // Dense Smith transforms remain the most general route for modest
-        // presentations. Large small-surplus elementary-2 presentations use
-        // the exact compact quotient proof, avoiding quadratic-size
-        // transforms while retaining the same authenticated result type.
-        let (authenticated, authority) = if factor_base_size > 256 {
+        // Dense Smith transforms remain the most general route when their
+        // declared storage and replay budgets admit this exact shape. If they
+        // do not, a bounded small-surplus shape may use the exact compact
+        // elementary-2 quotient proof. Column count alone does not predict
+        // dense verification cost.
+        let route = select_candidate_authentication_route(
+            factor_base_size,
+            relation_count,
+            &request.resources,
+        );
+        let (authenticated, authority) = if route
+            == CandidateAuthenticationRoute::CompactSmallSurplus
+        {
             (
                 authenticate_compact_cubic_presentation_candidate(
                     &prepared,
@@ -425,6 +500,37 @@ mod tests {
                 maximum_analytic_threshold: 23_994,
             },
         }
+    }
+
+    #[test]
+    fn route_selector_keeps_budgeted_modest_presentations_dense() {
+        let input = request(10_000);
+        assert_eq!(
+            select_candidate_authentication_route(64, 71, &input.resources),
+            CandidateAuthenticationRoute::DenseSmith,
+        );
+    }
+
+    #[test]
+    fn route_selector_uses_compact_for_the_opened_failure_shape() {
+        let input = request(10_000);
+        assert_eq!(
+            dense_verification_multiply_adds(217, 224),
+            Some(149_799_076),
+        );
+        assert_eq!(
+            select_candidate_authentication_route(217, 224, &input.resources),
+            CandidateAuthenticationRoute::CompactSmallSurplus,
+        );
+    }
+
+    #[test]
+    fn route_selector_does_not_use_compact_for_an_inadmissible_surplus_shape() {
+        let input = request(10_000);
+        assert_eq!(
+            select_candidate_authentication_route(192, 225, &input.resources),
+            CandidateAuthenticationRoute::DenseSmith,
+        );
     }
 
     #[test]
