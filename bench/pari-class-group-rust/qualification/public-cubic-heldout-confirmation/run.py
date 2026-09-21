@@ -126,7 +126,7 @@ def main() -> int:
 
     repository = SUPPORT.repository_root()
     private_path = SUPPORT.refuse_repository_path(arguments.private_results, repository)
-    cases, resource_config = validate_inputs()
+    cases, public_resources = validate_inputs()
     commit = reject_dirty_algorithm_sources(repository)
 
     build_start = time.monotonic_ns()
@@ -166,7 +166,7 @@ def main() -> int:
             "schema": REQUEST_SCHEMA,
             "polynomialAscending": case["field"]["coefficientsAscending"],
             "proofMode": "conditional-grh",
-            "resources": resource_config["publicResources"],
+            "resources": public_resources,
         }
         request_text = SUPPORT.canonical_json(request) + "\n"
         started = time.monotonic_ns()
