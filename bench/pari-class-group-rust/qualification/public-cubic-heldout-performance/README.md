@@ -29,12 +29,12 @@ expected post-run change within that closure.
 
 ## Current result
 
-The receipt generated from source commit `0f7574501` records exact agreement
-in all 180 alternating pairs. Summed per-field medians are 1.887 seconds for
-Rust and 0.585 seconds for PARI 2.17.4, or a 3.23x weighted gap. The geometric
-mean is 4.71x, p90 is 8.34x, and the maximum is 12.42x. Rust's summed stage
-medians are 0.621 seconds for relation collection, 0.543 seconds for candidate
-authentication, 0.588 seconds for unit and analytic completion, and 0.079
+The receipt generated from source commit `05fd99d68` records exact agreement
+in all 180 alternating pairs. Summed per-field medians are 1.884 seconds for
+Rust and 0.585 seconds for PARI 2.17.4, or a 3.22x weighted gap. The geometric
+mean is 4.69x, p90 is 8.33x, and the maximum is 12.13x. Rust's summed stage
+medians are 0.617 seconds for relation collection, 0.543 seconds for candidate
+authentication, 0.591 seconds for unit and analytic completion, and 0.078
 seconds for public preparation. Exact continuation retains the FLINT
 fraction-free factorization only when the selected square relation block is
 identical and the previous surplus is an exact prefix; it recomputes and
@@ -64,3 +64,9 @@ and moves the existing evidence into the final permitted attempt, preserving
 failure atomicity while eliminating the common full-presentation copy. Summed
 completion fell from 0.621 to 0.588 seconds and the Rust total from 1.918 to
 1.887 seconds.
+Copy-on-write dependency reconstruction now borrows the lattice owned by the
+authenticated presentation and allocates only when exact reduction is needed;
+the sealed result no longer stores the same evidence twice. The 2.6 ms total
+change and 3.3 ms upward completion-stage change are within campaign noise, so
+this receipt treats the change as a storage/ownership improvement rather than
+a stage-speed claim.

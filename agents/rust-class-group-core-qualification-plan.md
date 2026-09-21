@@ -51,9 +51,9 @@ the residual nonunit presentation and lifting its independently verified map
 back to the full factor base. Relation refinement now also retains a bounded,
 lazy cache of exact factor-base ideal powers. On its profiled field this reduced
 repeated ideal multiplications from 1,384 to 74 while preserving all 15,619
-exact valuation calls. At source `0f7574501`, summed per-field medians are
-1.887 seconds for Rust and 0.585 seconds for PARI 2.17.4: a 3.23x weighted gap,
-with a 4.71x geometric mean, 8.34x p90, and 12.42x maximum. Batching the
+exact valuation calls. At source `05fd99d68`, summed per-field medians are
+1.884 seconds for Rust and 0.585 seconds for PARI 2.17.4: a 3.22x weighted gap,
+with a 4.69x geometric mean, 8.33x p90, and 12.13x maximum. Batching the
 independent exact dependency replay across every relation column first reduced
 Rust's absolute sum from 2.129 to 2.045 seconds. Exact answer-free continuation
 now also retains the FLINT fraction-free factorization only for an identical
@@ -81,13 +81,19 @@ attempt and moving the existing evidence into the final permitted attempt.
 This preserves failure atomicity while removing the common full relation
 matrix, generator, dependency, and class-map copy; summed completion fell from
 0.621 to 0.588 seconds and the Rust total from 1.918 to 1.887 seconds.
+Completion now also borrows the presentation-owned dependency lattice and
+allocates a copy only when exact basis reduction is actually required. The
+sealed result exposes that single authenticated owner rather than storing the
+lattice twice. Its 2.6 ms whole-run change and 3.3 ms upward completion-stage
+change are below campaign noise; this is currently a storage/ownership result,
+not a claimed stage-speed gain.
 Simultaneous PARI variation on the smallest fields keeps the geometric and tail
 ratios noisy.
 This remains substantially ahead of the earlier pre-power-cache receipt at
 4.20x weighted and 5.72x geometric mean, but still fails the frozen native
 performance gate. Rust's summed stage
-medians are 0.621 seconds relation collection, 0.543 seconds candidate
-authentication, 0.588 seconds unit and analytic completion, and 0.079 seconds
+medians are 0.617 seconds relation collection, 0.543 seconds candidate
+authentication, 0.591 seconds unit and analytic completion, and 0.078 seconds
 public preparation. Relation collection fell from 1.063 seconds before the
 exact ideal-power cache; the three principal mathematical phases are now
 nearly balanced.
