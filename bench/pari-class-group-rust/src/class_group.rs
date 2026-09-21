@@ -26,8 +26,9 @@ use crate::prime_valuation::{
 };
 use crate::relation_cache::{CacheError, RelationCache};
 use crate::smooth_admission::{
-    AdmissionError, CubicNormForm, FactorOutcome, cumulative_prime_products, factor_integer_norm,
-    factor_norm, primes_through,
+    AdmissionError, CLASS_GROUP_FACTOR_LIMIT as FACTOR_LIMIT,
+    CLASS_GROUP_PRIME_LIMIT as PRIME_LIMIT, CubicNormForm, FactorOutcome,
+    class_group_factor_catalog, factor_integer_norm, factor_norm,
 };
 use rug::Integer;
 use sha2::{Digest, Sha256};
@@ -38,8 +39,6 @@ const RELATION_TARGET: usize = 73;
 pub(crate) const PREPARED_CUBIC_SUPPLEMENTARY_RELATIONS: usize = 7;
 const SUPPLEMENTARY_RELATIONS: usize = PREPARED_CUBIC_SUPPLEMENTARY_RELATIONS;
 const RELATIONS_PER_IDEAL: usize = 4;
-const FACTOR_LIMIT: u64 = 1_048_576;
-const PRIME_LIMIT: usize = 65_537;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct CollectorTimings {
@@ -596,8 +595,9 @@ pub fn collect_h1_class_group(
 
     let started = Instant::now();
     let norm_form = CubicNormForm::from_prepared_basis(polynomial, basis)?;
-    let factor_primes = primes_through(PRIME_LIMIT);
-    let prime_products = cumulative_prime_products(&factor_primes, FACTOR_LIMIT)?;
+    let factor_catalog = class_group_factor_catalog()?;
+    let factor_primes = factor_catalog.primes();
+    let prime_products = factor_catalog.cumulative_products();
     let factor_product = factor_base
         .rational_primes
         .iter()
@@ -688,8 +688,8 @@ pub fn collect_h1_class_group(
             let factors = match factor_norm(
                 quotient_norm,
                 &factor_product,
-                &factor_primes,
-                &prime_products,
+                factor_primes,
+                prime_products,
                 FACTOR_LIMIT,
                 PRIME_LIMIT as u64,
             )? {
@@ -957,8 +957,9 @@ pub fn collect_prepared_cubic_relations(
 
     let started = Instant::now();
     let embedding = PreparedCubicEmbedding::from_validated(field, 320)?;
-    let factor_primes = primes_through(PRIME_LIMIT);
-    let prime_products = cumulative_prime_products(&factor_primes, FACTOR_LIMIT)?;
+    let factor_catalog = class_group_factor_catalog()?;
+    let factor_primes = factor_catalog.primes();
+    let prime_products = factor_catalog.cumulative_products();
     let factor_product = factor_base
         .catalog
         .rational_primes
@@ -1029,8 +1030,8 @@ pub fn collect_prepared_cubic_relations(
             &divisor_relation,
             &embedding,
             &factor_product,
-            &factor_primes,
-            &prime_products,
+            factor_primes,
+            prime_products,
             &mut cache,
             &mut relation,
             &mut generators,
@@ -1111,8 +1112,8 @@ pub fn collect_prepared_cubic_relations(
                 &divisor_relation,
                 &embedding,
                 &factor_product,
-                &factor_primes,
-                &prime_products,
+                factor_primes,
+                prime_products,
                 &mut cache,
                 &mut relation,
                 &mut generators,

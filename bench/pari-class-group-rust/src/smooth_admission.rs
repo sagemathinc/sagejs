@@ -9,6 +9,53 @@
 //! prime products and the smoothness GCD loop.
 
 use rug::Integer;
+use std::sync::OnceLock;
+
+pub(crate) const CLASS_GROUP_PRIME_LIMIT: usize = 65_537;
+pub(crate) const CLASS_GROUP_FACTOR_LIMIT: u64 = 1_048_576;
+
+/// Immutable rational-factorization data shared by public cubic collectors.
+///
+/// The cache owns every value for the process lifetime and exposes only
+/// shared slices. A request can neither replace an entry nor retain mutable
+/// access to GMP-backed products, so reuse does not create cross-request
+/// mathematical state.
+#[derive(Debug)]
+pub(crate) struct SmoothFactorCatalog {
+    primes: Box<[u64]>,
+    cumulative_products: Box<[Integer]>,
+}
+
+impl SmoothFactorCatalog {
+    pub(crate) fn primes(&self) -> &[u64] {
+        &self.primes
+    }
+
+    pub(crate) fn cumulative_products(&self) -> &[Integer] {
+        &self.cumulative_products
+    }
+}
+
+/// Return the field-independent catalog used by the public cubic relation
+/// collectors.
+///
+/// `OnceLock` is available on both native and `wasm32-unknown-unknown`. The
+/// initialized value is immutable; request-local factorization state remains
+/// owned by each caller.
+pub(crate) fn class_group_factor_catalog() -> Result<&'static SmoothFactorCatalog, AdmissionError> {
+    static CATALOG: OnceLock<Result<SmoothFactorCatalog, AdmissionError>> = OnceLock::new();
+    CATALOG
+        .get_or_init(|| {
+            let primes = primes_through(CLASS_GROUP_PRIME_LIMIT);
+            let cumulative_products = cumulative_prime_products(&primes, CLASS_GROUP_FACTOR_LIMIT)?;
+            Ok(SmoothFactorCatalog {
+                primes: primes.into_boxed_slice(),
+                cumulative_products: cumulative_products.into_boxed_slice(),
+            })
+        })
+        .as_ref()
+        .map_err(Clone::clone)
+}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum AdmissionError {
@@ -765,5 +812,70 @@ mod arbitrary_precision_norm_tests {
                 exponent: 160,
             }]))
         );
+    }
+}
+
+#[cfg(test)]
+mod cached_catalog_tests {
+    use super::*;
+
+    #[test]
+    fn cached_class_group_catalog_matches_fresh_construction_and_reuses_storage() {
+        let first = class_group_factor_catalog().unwrap();
+        let second = class_group_factor_catalog().unwrap();
+        assert!(std::ptr::eq(first, second));
+        assert!(std::ptr::eq(
+            first.primes().as_ptr(),
+            second.primes().as_ptr()
+        ));
+        assert!(std::ptr::eq(
+            first.cumulative_products().as_ptr(),
+            second.cumulative_products().as_ptr()
+        ));
+
+        let fresh_primes = primes_through(CLASS_GROUP_PRIME_LIMIT);
+        let fresh_products =
+            cumulative_prime_products(&fresh_primes, CLASS_GROUP_FACTOR_LIMIT).unwrap();
+        assert_eq!(first.primes(), fresh_primes);
+        assert_eq!(first.cumulative_products(), fresh_products);
+    }
+
+    #[test]
+    fn request_local_clones_cannot_contaminate_the_cached_catalog() {
+        let cached = class_group_factor_catalog().unwrap();
+        let expected_first_product = cached.cumulative_products()[0].clone();
+        let mut detached_products = cached.cumulative_products().to_vec();
+        detached_products[0] += 1;
+
+        let reused = class_group_factor_catalog().unwrap();
+        assert_eq!(reused.cumulative_products()[0], expected_first_product);
+        assert_ne!(reused.cumulative_products()[0], detached_products[0]);
+    }
+
+    #[test]
+    fn concurrent_requests_share_the_same_read_only_catalog() {
+        let expected = class_group_factor_catalog().unwrap();
+        let expected_catalog = expected as *const SmoothFactorCatalog as usize;
+        let expected_primes = expected.primes().as_ptr() as usize;
+        let observed = std::thread::scope(|scope| {
+            (0..8)
+                .map(|_| {
+                    scope.spawn(|| {
+                        let catalog = class_group_factor_catalog().unwrap();
+                        (
+                            catalog as *const SmoothFactorCatalog as usize,
+                            catalog.primes().as_ptr() as usize,
+                            catalog.cumulative_products()[0].clone(),
+                        )
+                    })
+                })
+                .map(|thread| thread.join().unwrap())
+                .collect::<Vec<_>>()
+        });
+        for (catalog, primes, first_product) in observed {
+            assert_eq!(catalog, expected_catalog);
+            assert_eq!(primes, expected_primes);
+            assert_eq!(first_product, expected.cumulative_products()[0]);
+        }
     }
 }
