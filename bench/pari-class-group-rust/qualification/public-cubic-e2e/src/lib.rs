@@ -9,10 +9,12 @@
 
 use rug::Integer;
 use sagejs_pari_class_group_rust_experiment::{
-    CompactPresentationContinuationCache, CompactPresentationLimits, CubicAnalyticEvidence,
-    CubicCompletionProofMode, CubicConditionalCompletionError, CubicConditionalCompletionOptions,
-    CubicPresentationCandidateLimits, NormalFormLimits, PreparedContinuationLimits,
-    PreparedCubicRelationCollector, PublicCubicPreparationLimits,
+    ArbitraryIdealReductionLimits, CompactPresentationContinuationCache, CompactPresentationLimits,
+    CubicAnalyticEvidence, CubicCompletionProofMode, CubicConditionalCompletionError,
+    CubicConditionalCompletionOptions, CubicPresentationCandidateLimits,
+    GrhConditionalCompleteCubicClassGroup, MaximalOrderEvidenceStatus, NormalFormLimits,
+    PreparedContinuationLimits, PreparedCubicRelationCollector, PreparedIdealWorkspace,
+    PresentationZeroState, PublicCubicPreparationLimits,
     authenticate_compact_cubic_presentation_candidate_with_cache,
     authenticate_cubic_presentation_candidate,
     complete_cubic_class_group_conditionally_with_context,
@@ -23,6 +25,10 @@ use std::time::Instant;
 
 pub const REQUEST_SCHEMA: &str = "sagejs.rust-class-group/public-cubic-e2e-request-v2";
 pub const RECEIPT_SCHEMA: &str = "sagejs.rust-class-group/public-cubic-e2e-receipt-v2";
+pub const IDEAL_QUERY_REQUEST_SCHEMA: &str =
+    "sagejs.rust-class-group/public-cubic-arbitrary-ideal-query-request-v1";
+pub const IDEAL_QUERY_RECEIPT_SCHEMA: &str =
+    "sagejs.rust-class-group/public-cubic-arbitrary-ideal-query-receipt-v1";
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case")]
@@ -67,6 +73,56 @@ pub struct Request {
     pub polynomial_ascending: [String; 4],
     pub proof_mode: ProofMode,
     pub resources: Resources,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct IdealQueryResources {
+    pub embedding_precision_bits: u32,
+    pub maximum_candidates: usize,
+    pub maximum_valuation: u32,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct IdealQueryRequest {
+    pub schema: String,
+    pub completion_request: Request,
+    /// Three full-rank lattice rows in the authenticated integral basis.
+    pub ideal_integral_basis_rows: [[String; 3]; 3],
+    pub resources: IdealQueryResources,
+}
+
+#[derive(Clone, Debug, Serialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SparseQuotientExponent {
+    pub factor_base_index_zero_based: usize,
+    pub exponent: String,
+}
+
+#[derive(Clone, Debug, Serialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct IdealQueryCertificateReceipt {
+    pub maximal_order_evidence: &'static str,
+    pub factor_base_size: usize,
+    pub principal_element_integral_basis_coordinates: [String; 3],
+    pub quotient_factor_base_exponents: Vec<SparseQuotientExponent>,
+    pub class_coordinates: Vec<String>,
+    pub presentation_zero: bool,
+    pub cursor_trials: usize,
+    pub primitive_candidates: usize,
+    pub smooth_quotient_norms: usize,
+}
+
+#[derive(Clone, Debug, Serialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct IdealQueryReceipt {
+    pub schema: &'static str,
+    pub outcome: &'static str,
+    pub polynomial_ascending: [String; 4],
+    pub completion: Receipt,
+    pub queried_ideal_integral_basis_rows: [[String; 3]; 3],
+    pub certificate: IdealQueryCertificateReceipt,
 }
 
 #[derive(Clone, Debug, Serialize, Eq, PartialEq)]
@@ -183,6 +239,12 @@ pub enum QualificationError {
     RelationCollection(String),
     CandidateAuthentication(String),
     Completion(String),
+    IdealQuery(String),
+}
+
+pub struct QualifiedCubic {
+    pub receipt: Receipt,
+    completed: GrhConditionalCompleteCubicClassGroup,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -317,8 +379,8 @@ fn candidate_authentication_route_fits(
     dense_fits || compact_fits
 }
 
-/// Exercise the coefficient-only route through conditional completion.
-pub fn qualify(request: Request) -> Result<Receipt, QualificationError> {
+/// Exercise the coefficient-only route and retain its sealed query state.
+pub fn qualify_with_state(request: Request) -> Result<QualifiedCubic, QualificationError> {
     let total_start = Instant::now();
     if request.schema != REQUEST_SCHEMA {
         return Err(QualificationError::UnsupportedSchema);
@@ -418,6 +480,7 @@ pub fn qualify(request: Request) -> Result<Receipt, QualificationError> {
     let mut final_relations = None;
     let mut final_candidate = None;
     let mut final_completion = None;
+    let mut final_completed = None;
     let mut candidate_authentication_ns = 0_u128;
     let mut completion_ns = 0_u128;
     let mut completion_context = None;
@@ -629,6 +692,7 @@ pub fn qualify(request: Request) -> Result<Receipt, QualificationError> {
                 final_relations = Some(relations);
                 final_candidate = Some(candidate_evidence);
                 final_completion = Some(completion);
+                final_completed = Some(completed);
                 break;
             }
             Err(CubicConditionalCompletionError::AnalyticIndexNotIsolated { .. }) => {
@@ -680,7 +744,7 @@ pub fn qualify(request: Request) -> Result<Receipt, QualificationError> {
     let total_to_sealed_result = total_start.elapsed().as_nanos();
     let public_complete = true;
 
-    Ok(Receipt {
+    let receipt = Receipt {
         schema: RECEIPT_SCHEMA,
         outcome: if public_complete {
             "complete-conditional-grh"
@@ -705,6 +769,147 @@ pub fn qualify(request: Request) -> Result<Receipt, QualificationError> {
             unit_and_analytic_completion: completion_ns,
             total_to_sealed_result,
         },
+    };
+    Ok(QualifiedCubic {
+        receipt,
+        completed: final_completed.expect("a final receipt retains its sealed result"),
+    })
+}
+
+/// Exercise the coefficient-only route through conditional completion.
+pub fn qualify(request: Request) -> Result<Receipt, QualificationError> {
+    qualify_with_state(request).map(|qualified| qualified.receipt)
+}
+
+impl QualifiedCubic {
+    /// Query one ideal without recomputing the completed field state.
+    pub fn query_integral_ideal(
+        &self,
+        source_rows: &[[String; 3]; 3],
+        resources: IdealQueryResources,
+    ) -> Result<([[String; 3]; 3], IdealQueryCertificateReceipt), QualificationError> {
+        if resources.maximum_candidates == 0 || resources.maximum_valuation == 0 {
+            return Err(QualificationError::IdealQuery(
+                "arbitrary-ideal resource limits must be positive".to_owned(),
+            ));
+        }
+        let mut rows: [[Integer; 3]; 3] =
+            std::array::from_fn(|_| std::array::from_fn(|_| Integer::new()));
+        for (row_index, source_row) in source_rows.iter().enumerate() {
+            for (column_index, source) in source_row.iter().enumerate() {
+                if source.len() > 1_234 {
+                    return Err(QualificationError::IdealQuery(format!(
+                        "ideal entry ({row_index}, {column_index}) exceeds 1234 bytes"
+                    )));
+                }
+                rows[row_index][column_index] = source.parse::<Integer>().map_err(|_| {
+                    QualificationError::IdealQuery(format!(
+                        "ideal entry ({row_index}, {column_index}) is not an integer"
+                    ))
+                })?;
+            }
+        }
+        let mut workspace = PreparedIdealWorkspace::new();
+        let ideal = workspace
+            .from_integral_ideal_basis(self.completed.prepared().field(), &rows)
+            .map_err(|error| QualificationError::IdealQuery(format!("{error:?}")))?;
+        let limits = ArbitraryIdealReductionLimits {
+            maximum_candidates: resources.maximum_candidates,
+            maximum_valuation: resources.maximum_valuation,
+        };
+        let certificate = self
+            .completed
+            .ideal_class_certificate(
+                &ideal,
+                resources.embedding_precision_bits,
+                limits,
+                &mut workspace,
+            )
+            .map_err(|error| QualificationError::IdealQuery(format!("{error:?}")))?;
+        self.completed
+            .replay_ideal_class_certificate(&ideal, &certificate, limits, &mut workspace)
+            .map_err(|error| QualificationError::IdealQuery(format!("{error:?}")))?;
+
+        let factor_base_size = certificate.reduction.quotient_exponents.len();
+        let quotient_factor_base_exponents = certificate
+            .reduction
+            .quotient_exponents
+            .iter()
+            .enumerate()
+            .filter(|(_, exponent)| **exponent != 0)
+            .map(
+                |(factor_base_index_zero_based, exponent)| SparseQuotientExponent {
+                    factor_base_index_zero_based,
+                    exponent: exponent.to_string(),
+                },
+            )
+            .collect();
+        let maximal_order_evidence = match certificate.reduction.maximal_order_evidence {
+            MaximalOrderEvidenceStatus::RustProvedSquarefreeDiscriminant => {
+                "rust-proved-maximal-order"
+            }
+            MaximalOrderEvidenceStatus::UpstreamAssumedAllowlistedRow6 => {
+                "upstream-assumed-allowlisted-row6"
+            }
+        };
+        let presentation_zero = match certificate.class_map.presentation_zero_state {
+            PresentationZeroState::ZeroByVerifiedRelations { .. } => true,
+            PresentationZeroState::NonzeroInCurrentPresentation { .. } => false,
+        };
+        let statistics = certificate.reduction.statistics.clone();
+        Ok((
+            ideal
+                .basis_rows()
+                .clone()
+                .map(|row| row.map(|value| value.to_string())),
+            IdealQueryCertificateReceipt {
+                maximal_order_evidence,
+                factor_base_size,
+                principal_element_integral_basis_coordinates: certificate
+                    .reduction
+                    .element
+                    .map(|value| value.to_string()),
+                quotient_factor_base_exponents,
+                class_coordinates: certificate
+                    .class_map
+                    .coordinates
+                    .values()
+                    .iter()
+                    .map(Integer::to_string)
+                    .collect(),
+                presentation_zero,
+                cursor_trials: statistics.cursor_trials,
+                primitive_candidates: statistics.primitive_candidates,
+                smooth_quotient_norms: statistics.smooth_quotient_norms,
+            },
+        ))
+    }
+}
+
+/// Complete a public cubic and answer one exact integral-ideal class query.
+///
+/// This one-shot qualification API deliberately serializes canonical integers
+/// rather than leaking GMP/Rust layouts. Product adapters may retain
+/// `QualifiedCubic` and call the same sealed method repeatedly; the one-shot
+/// envelope proves that both native JSON and Wasm can transport the complete
+/// mathematical query without host callbacks.
+pub fn qualify_ideal_query(
+    request: IdealQueryRequest,
+) -> Result<IdealQueryReceipt, QualificationError> {
+    if request.schema != IDEAL_QUERY_REQUEST_SCHEMA {
+        return Err(QualificationError::UnsupportedSchema);
+    }
+    let polynomial_ascending = request.completion_request.polynomial_ascending.clone();
+    let qualified = qualify_with_state(request.completion_request)?;
+    let (queried_ideal_integral_basis_rows, certificate) =
+        qualified.query_integral_ideal(&request.ideal_integral_basis_rows, request.resources)?;
+    Ok(IdealQueryReceipt {
+        schema: IDEAL_QUERY_RECEIPT_SCHEMA,
+        outcome: "complete-conditional-grh-ideal-class",
+        polynomial_ascending,
+        completion: qualified.receipt,
+        queried_ideal_integral_basis_rows,
+        certificate,
     })
 }
 
@@ -744,6 +949,69 @@ mod tests {
                 maximum_analytic_threshold: 23_994,
             },
         }
+    }
+
+    #[test]
+    fn public_integral_ideal_query_serializes_a_nonzero_class() {
+        let mut completion_request = request(100_000);
+        completion_request.polynomial_ascending =
+            ["-29".into(), "-30".into(), "-8".into(), "1".into()];
+        let qualified = qualify_with_state(completion_request.clone()).unwrap();
+        assert_eq!(qualified.completed.invariant_factors(), &[Integer::from(2)]);
+        let factor_base = qualified.completed.presentation().collected().factor_base();
+        let nontrivial = factor_base
+            .exact_ideals
+            .iter()
+            .enumerate()
+            .find(|(index, _)| {
+                let mut exponents = vec![Integer::new(); factor_base.exact_ideals.len()];
+                exponents[*index] = Integer::from(1);
+                !qualified
+                    .completed
+                    .presentation()
+                    .class_map()
+                    .presentation()
+                    .coordinates(&exponents)
+                    .unwrap()
+                    .is_zero()
+            })
+            .map(|(_, ideal)| ideal)
+            .unwrap();
+        let ideal_integral_basis_rows = nontrivial
+            .basis_rows()
+            .clone()
+            .map(|row| row.map(|entry| entry.to_string()));
+        let (_, resident_certificate) = qualified
+            .query_integral_ideal(
+                &ideal_integral_basis_rows,
+                IdealQueryResources {
+                    embedding_precision_bits: 320,
+                    maximum_candidates: 2_000,
+                    maximum_valuation: 64,
+                },
+            )
+            .unwrap();
+        assert_eq!(resident_certificate.class_coordinates, ["1"]);
+        let receipt = qualify_ideal_query(IdealQueryRequest {
+            schema: IDEAL_QUERY_REQUEST_SCHEMA.to_owned(),
+            completion_request,
+            ideal_integral_basis_rows,
+            resources: IdealQueryResources {
+                embedding_precision_bits: 320,
+                maximum_candidates: 2_000,
+                maximum_valuation: 64,
+            },
+        })
+        .unwrap();
+        assert_eq!(receipt.schema, IDEAL_QUERY_RECEIPT_SCHEMA);
+        assert_eq!(receipt.certificate.class_coordinates, ["1"]);
+        assert!(!receipt.certificate.presentation_zero);
+        assert!(
+            !receipt
+                .certificate
+                .quotient_factor_base_exponents
+                .is_empty()
+        );
     }
 
     #[test]

@@ -23,6 +23,7 @@ pub enum PreparedIdealError {
     CharacterDoesNotPreserveOne,
     CharacterDoesNotPreserveMultiplication { left: usize, right: usize },
     SingularIdeal,
+    NotClosedUnderOrderMultiplication,
     ZeroElementHasUnboundedValuation,
     ValuationLimitExceeded { limit: u32 },
     ValuationPowerCacheMismatch,
@@ -252,6 +253,31 @@ impl PreparedIdealWorkspace {
             })
         });
         Ok(CubicIdeal { basis_rows })
+    }
+
+    /// Validate an externally supplied full-rank lattice as an integral ideal.
+    ///
+    /// The rows use the field's authenticated integral basis. Canonical row
+    /// HNF alone proves only that they span a lattice; closure under
+    /// multiplication by every integral-basis element is checked separately
+    /// before the lattice may cross the public arbitrary-ideal boundary.
+    pub fn from_integral_ideal_basis(
+        &mut self,
+        field: &ValidatedPreparedCubic,
+        basis_rows: &[[Integer; DEGREE]],
+    ) -> Result<CubicIdeal, PreparedIdealError> {
+        let ideal = self.from_generators(basis_rows)?;
+        for generator in ideal.basis_rows() {
+            for basis_index in 0..DEGREE {
+                let basis_element: [Integer; DEGREE] =
+                    std::array::from_fn(|index| Integer::from(u8::from(index == basis_index)));
+                let product = field.multiply_coordinates(generator, &basis_element);
+                if !ideal.contains(&product)? {
+                    return Err(PreparedIdealError::NotClosedUnderOrderMultiplication);
+                }
+            }
+        }
+        Ok(ideal)
     }
 
     /// Construct `p O + generator O` in the validated integral basis.
@@ -565,6 +591,29 @@ mod tests {
                 &mut powers,
             ),
             Err(PreparedIdealError::ValuationPowerCacheMismatch)
+        );
+    }
+
+    #[test]
+    fn external_integral_lattices_must_be_order_ideals() {
+        let field = row6_field();
+        let mut workspace = PreparedIdealWorkspace::new();
+        let unit_rows = CubicIdeal::unit().basis_rows().clone();
+        assert_eq!(
+            workspace
+                .from_integral_ideal_basis(&field, &unit_rows)
+                .unwrap(),
+            CubicIdeal::unit()
+        );
+
+        let not_an_ideal = [
+            [Integer::from(1), Integer::new(), Integer::new()],
+            [Integer::new(), Integer::from(2), Integer::new()],
+            [Integer::new(), Integer::new(), Integer::from(1)],
+        ];
+        assert_eq!(
+            workspace.from_integral_ideal_basis(&field, &not_an_ideal),
+            Err(PreparedIdealError::NotClosedUnderOrderMultiplication)
         );
     }
 

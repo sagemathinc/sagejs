@@ -278,6 +278,22 @@ deriving the signed coordinates itself; it rejects mutated elements,
 exponents, coordinates, principality state, and authority identities. The
 remaining map gap is therefore the native/Wasm serialization and transport
 that connects these two real ends, not missing mathematical query logic.
+That serialization boundary is now live in both the native public-cubic CLI
+and the checked Wasm JSON reactor. An external 3-by-3 integral-basis lattice
+is canonicalized and rejected unless it is full rank and closed under the
+authenticated maximal order; the sealed result then computes and independently
+replays the query before canonical decimal serialization. The nontrivial ideal
+with rows `[[1,0,2],[0,1,2],[0,0,3]]` in the C2 cubic
+`x^3 - 8*x^2 - 30*x - 29` returns coordinate `1 mod 2` natively and through
+the rebuilt 5,834,548-byte Wasm reactor. The Node Wasm call took 100.4 ms and
+remained at the initial 256 pages (16 MiB). A qualification-only Sage.js bridge
+consumes the same closed envelope, binds the exact polynomial and queried
+lattice, and invokes the compact context's independent principal-ideal and
+coordinate replay. Keeping this normalization out of the lazy product package
+preserved its frozen byte budget. The remaining product gap is invocation,
+resident session lifetime, and placement of this small envelope adapter in the
+actual Sage.js native/browser loader, not mathematical query production or
+certificate serialization.
 
 ## Evidence we actually have
 

@@ -129,6 +129,7 @@ async function evaluate(lines, resultDocument = preparedResult(), certDocument =
         "from copy import deepcopy",
         "from sagejs.number_fields.rust_class_group_preparation import prepare_cubic_for_rust",
         "from sagejs.number_fields.rust_class_group_presentation import adapt_rust_prepared_cubic_v2_presentation",
+        "exec(open('bench/pari-class-group-rust/qualification/public-adapter/query_transport.py').read(), globals())",
         `result = json.loads(${JSON.stringify(JSON.stringify(resultDocument))})`,
         `certificate = json.loads(${JSON.stringify(JSON.stringify(certDocument))})`,
         "R.<x> = QQ[]",
@@ -156,11 +157,13 @@ test("v2 replay proves principal rows and exposes live factor-base ideals", asyn
     "    class_error = str(error)",
     "prime = context.factor_base_ideal(0)",
     "query = {'schema': 'sagejs.rust-class-group/arbitrary-ideal-class-query-v1', 'sourceInputId': context.producer_input_id, 'preparedResultIdentity': context.prepared_result_identity, 'compactCertificateIdentity': context.certificate_identity, 'maximalOrderEvidence': 'rust-proved-maximal-order', 'factorBaseSize': 1, 'principalElementIntegralBasisCoordinates': ['2', '0', '0'], 'quotientFactorBaseExponents': [{'factorBaseIndexZeroBased': 0, 'exponent': '2'}], 'classCoordinates': ['1'], 'presentationZero': False}",
-    "[answer.complete, answer.proof_status, answer.tentative_invariants, context.verify(), context.factor_base_class_coordinates(0), context.class_coordinates((4,)), context.lift_class_coordinates((1,)), prime == K.maximal_order().ideal(2, a), context.smooth_ideal_class_coordinates(prime), context.smooth_ideal_class_coordinates(prime^3), context.class_generator_ideal(0) == prime, context.representative_ideal((2,)) == prime^2, context.replay_arbitrary_ideal_class_certificate(prime, query), answer.diagnostics['relationPresentationReplay'], answer.diagnostics['relationIdealReplay']['allPrincipalIdealEqualitiesReplayed'], answer.diagnostics['arbitraryIdealClassMap'], answer.diagnostics['automaticDispatch'], len(answer.diagnostics['acceptedEvidenceJoins']), len(answer.diagnostics['remainingEvidenceGaps']), [(stage.name, stage.state) for stage in answer.stages], class_error]",
+    "relative = prime.basis_matrix() * K.maximal_order()._basis_inverse_matrix()",
+    "public_query = {'schema': 'sagejs.rust-class-group/public-cubic-arbitrary-ideal-query-receipt-v1', 'outcome': 'complete-conditional-grh-ideal-class', 'polynomialAscending': result['polynomialAscending'], 'completion': {'schema': 'sagejs.rust-class-group/public-cubic-e2e-receipt-v2', 'outcome': 'complete-conditional-grh', 'publicComplete': True, 'usesPariInput': False, 'usesPreparedFixture': False, 'usesFieldAnswersAsInput': False, 'completion': {'invariantFactors': ['3']}}, 'queriedIdealIntegralBasisRows': [[str(value._numerator) for value in row] for row in relative.rows()], 'certificate': {'maximalOrderEvidence': 'rust-proved-maximal-order', 'factorBaseSize': 1, 'principalElementIntegralBasisCoordinates': ['2', '0', '0'], 'quotientFactorBaseExponents': [{'factorBaseIndexZeroBased': 0, 'exponent': '2'}], 'classCoordinates': ['1'], 'presentationZero': False, 'cursorTrials': 3, 'primitiveCandidates': 1, 'smoothQuotientNorms': 1}}",
+    "[answer.complete, answer.proof_status, answer.tentative_invariants, context.verify(), context.factor_base_class_coordinates(0), context.class_coordinates((4,)), context.lift_class_coordinates((1,)), prime == K.maximal_order().ideal(2, a), context.smooth_ideal_class_coordinates(prime), context.smooth_ideal_class_coordinates(prime^3), context.class_generator_ideal(0) == prime, context.representative_ideal((2,)) == prime^2, context.replay_arbitrary_ideal_class_certificate(prime, query), replay_public_arbitrary_ideal_query_receipt(context, prime, result['polynomialAscending'], public_query), answer.diagnostics['relationPresentationReplay'], answer.diagnostics['relationIdealReplay']['allPrincipalIdealEqualitiesReplayed'], answer.diagnostics['arbitraryIdealClassMap'], answer.diagnostics['automaticDispatch'], len(answer.diagnostics['acceptedEvidenceJoins']), len(answer.diagnostics['remainingEvidenceGaps']), [(stage.name, stage.state) for stage in answer.stages], class_error]",
   ]);
   assert.equal(
     answer.repr,
-    "[False, 'incomplete-resource-limit', (3,), True, (1,), (1,), (1,), True, (1,), (0,), True, True, (1,), 'exact-principal-ideal-and-integer-lattice', True, 'certificate-replay-available-through-context', False, 7, 5, [('rust-compact-relation-presentation-replay', 'complete'), ('sagejs-public-class-unit-certification', 'incomplete')], 'an incomplete class/unit computation has no proved class group']",
+    "[False, 'incomplete-resource-limit', (3,), True, (1,), (1,), (1,), True, (1,), (0,), True, True, (1,), (1,), 'exact-principal-ideal-and-integer-lattice', True, 'certificate-replay-available-through-context', False, 7, 5, [('rust-compact-relation-presentation-replay', 'complete'), ('sagejs-public-class-unit-certification', 'incomplete')], 'an incomplete class/unit computation has no proved class group']",
   );
 });
 
@@ -182,11 +185,17 @@ test("arbitrary-ideal certificates fail closed under witness and authority mutat
     "        context.replay_arbitrary_ideal_class_certificate(prime, candidate)",
     "    except (ArithmeticError, ValueError) as error:",
     "        messages.append(str(error))",
+    "relative = prime.basis_matrix() * K.maximal_order()._basis_inverse_matrix()",
+    "public_query = {'schema': 'sagejs.rust-class-group/public-cubic-arbitrary-ideal-query-receipt-v1', 'outcome': 'complete-conditional-grh-ideal-class', 'polynomialAscending': ['-3', '0', '0', '1'], 'completion': {'schema': 'sagejs.rust-class-group/public-cubic-e2e-receipt-v2', 'outcome': 'complete-conditional-grh', 'publicComplete': True, 'usesPariInput': False, 'usesPreparedFixture': False, 'usesFieldAnswersAsInput': False, 'completion': {'invariantFactors': ['3']}}, 'queriedIdealIntegralBasisRows': [[str(value._numerator) for value in row] for row in relative.rows()], 'certificate': {'maximalOrderEvidence': 'rust-proved-maximal-order', 'factorBaseSize': 1, 'principalElementIntegralBasisCoordinates': ['2', '0', '0'], 'quotientFactorBaseExponents': [{'factorBaseIndexZeroBased': 0, 'exponent': '2'}], 'classCoordinates': ['1'], 'presentationZero': False, 'cursorTrials': 3, 'primitiveCandidates': 1, 'smoothQuotientNorms': 1}}",
+    "try:",
+    "    replay_public_arbitrary_ideal_query_receipt(context, prime, result['polynomialAscending'], public_query)",
+    "except ValueError as error:",
+    "    messages.append(str(error))",
     "messages",
   ]);
   assert.equal(
     answer.repr,
-    "['arbitrary-ideal principal equality failed exact replay', 'arbitrary-ideal principal equality failed exact replay', 'arbitrary-ideal class coordinates mismatch', 'arbitrary-ideal certificate authority mismatch', 'arbitrary-ideal principality state mismatch']",
+    "['arbitrary-ideal principal equality failed exact replay', 'arbitrary-ideal principal equality failed exact replay', 'arbitrary-ideal class coordinates mismatch', 'arbitrary-ideal certificate authority mismatch', 'arbitrary-ideal principality state mismatch', 'public arbitrary-ideal query authority mismatch']",
   );
 });
 

@@ -460,7 +460,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/prepared_ideal.rs",
-      "sha256": "9ff91511cf4533c172c270f54a2098537f1618fcf3f83dbde0f0cda12c7fba5f",
+      "sha256": "7e783a4296a7a800fe86b62ed25c82459d68b6b6a7125d7d457fbf5d4537540c",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",

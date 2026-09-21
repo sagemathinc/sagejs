@@ -97,7 +97,7 @@ _VERIFIED_KEYS = {
     "standardGeneratorLiftsMapToCoordinateBasis",
 }
 _REMAINING_GAPS = (
-    "rust-arbitrary-ideal-query-producer-boundary",
+    "rust-arbitrary-ideal-query-product-invocation",
     "units-torsion-regulator-and-saturation",
     "conditional-factor-base-and-completion-proof-replay",
     "request-and-resource-binding",
@@ -920,7 +920,7 @@ def adapt_rust_prepared_cubic_v2_presentation(
         field,
         proof_status=groups.INCOMPLETE_RESOURCE_LIMIT,
         complete=False,
-        reason="the exact principal relation quotient lacks a connected Rust arbitrary-ideal query producer, unit, completion, resource, and artifact authority",
+        reason="the exact principal relation quotient lacks product invocation/session lifetime, unit, completion, resource, and artifact authority",
         algorithm="rust-prepared-cubic-compact-presentation-experimental",
         stages=stages,
         tentative_invariants=presentation.invariants,

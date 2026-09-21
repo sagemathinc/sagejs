@@ -25,6 +25,7 @@ From this directory:
 ```bash
 ./build-wasm.sh
 node run-node.mjs
+node run-query-node.mjs
 node run-browsers.mjs
 ```
 
@@ -109,3 +110,11 @@ qualification route at `qualification/browser/class-group-route.html`. This is
 strong feasibility evidence, not final product integration. See
 `ROOT-INTEGRATION.md` for the remaining shared manifest/toolchain work needed
 to remove the adapter.
+
+The reactor also accepts
+`public-cubic-arbitrary-ideal-query-request-v1`. The committed nontrivial C2
+vector supplies a canonical integral-ideal HNF, and `run-query-node.mjs` checks
+the complete class number, nonzero class coordinate, echoed input lattice, and
+nonempty exact quotient witness. The current artifact is 5,834,548 bytes with
+SHA-256 `7aafd17aa0f183d14ce131a0f74849595e58ec99e01ff4028c1d7a519fe38c55`;
+the measured query took 100.4 ms without growing beyond 256 pages.

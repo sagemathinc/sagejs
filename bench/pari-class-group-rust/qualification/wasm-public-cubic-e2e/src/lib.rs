@@ -28,7 +28,23 @@ fn error_receipt(error: impl Into<String>) -> Vec<u8> {
 }
 
 fn execute(bytes: &[u8]) -> Vec<u8> {
-    let request = match serde_json::from_slice::<public_cubic::Request>(bytes) {
+    let value = match serde_json::from_slice::<serde_json::Value>(bytes) {
+        Ok(value) => value,
+        Err(error) => return error_receipt(format!("invalid request: {error}")),
+    };
+    if value.get("schema").and_then(serde_json::Value::as_str)
+        == Some(public_cubic::IDEAL_QUERY_REQUEST_SCHEMA)
+    {
+        let request = match serde_json::from_value::<public_cubic::IdealQueryRequest>(value) {
+            Ok(request) => request,
+            Err(error) => return error_receipt(format!("invalid ideal query: {error}")),
+        };
+        return match public_cubic::qualify_ideal_query(request) {
+            Ok(receipt) => serde_json::to_vec(&receipt).expect("the query receipt is serializable"),
+            Err(error) => error_receipt(format!("{error:?}")),
+        };
+    }
+    let request = match serde_json::from_value::<public_cubic::Request>(value) {
         Ok(request) => request,
         Err(error) => return error_receipt(format!("invalid request: {error}")),
     };

@@ -31,8 +31,14 @@ now have a closed, bounded certificate-replay method. It independently checks
 coordinates, and rejects field/presentation substitution. The sealed Rust
 result likewise now owns a single query method which performs reduction,
 mapping, and independent replay against its retained authenticated state. The
-remaining integration gap is serialization and transport between those two
-implemented ends; automatic public queries remain explicitly unsupported.
+native public-cubic CLI and checked Wasm reactor now transport that query as
+canonical JSON. A qualification-only bridge validates the closed envelope,
+binds its polynomial and exact queried lattice, and asks the compact Sage.js
+context to derive the class coordinate rather than trusting the producer's
+claim. It remains outside the lazy product package to preserve that package's
+frozen byte budget. The checked C2 query returns the nonzero coordinate
+`1 mod 2` in native Rust and Wasm. Automatic product invocation and resident
+context handles remain explicitly unsupported.
 
 Run the focused structural qualification with:
 
