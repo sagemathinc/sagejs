@@ -21,6 +21,7 @@ use sagejs_pari_class_group_rust_experiment::{
     prepare_cubic_conditional_completion_context, prepare_monic_cubic,
 };
 use serde::{Deserialize, Serialize};
+use serde_json::{Value, json};
 use std::time::Instant;
 
 pub const REQUEST_SCHEMA: &str = "sagejs.rust-class-group/public-cubic-e2e-request-v2";
@@ -245,6 +246,194 @@ pub enum QualificationError {
 pub struct QualifiedCubic {
     pub receipt: Receipt,
     completed: GrhConditionalCompleteCubicClassGroup,
+}
+
+fn integer_strings(values: impl IntoIterator<Item = impl ToString>) -> Vec<String> {
+    values.into_iter().map(|value| value.to_string()).collect()
+}
+
+fn sparse_integer_vector(values: &[Integer]) -> Vec<Value> {
+    values
+        .iter()
+        .enumerate()
+        .filter(|(_, value)| *value != &0)
+        .map(|(index, value)| json!({ "indexZeroBased": index, "value": value.to_string() }))
+        .collect()
+}
+
+fn dyadic_interval(value: &sagejs_pari_class_group_rust_experiment::FlintDyadicInterval) -> Value {
+    json!({
+        "lower": value.lower.to_string(),
+        "upper": value.upper.to_string(),
+        "binaryExponent": value.binary_exponent,
+    })
+}
+
+fn hexadecimal(bytes: &[u8]) -> String {
+    bytes.iter().map(|value| format!("{value:02x}")).collect()
+}
+
+impl QualifiedCubic {
+    /// Return a detached, bounded, lossless publication candidate.
+    ///
+    /// This bundle is deliberately more detailed than the public summary and
+    /// less privileged than the live sealed value. It carries the exact sparse
+    /// relations, ideal lattices, class map, unit combinations, and analytic
+    /// plans needed by an independent Sage.js adapter. Publication as an
+    /// `IdealClassGroup` remains forbidden until that adapter replays it.
+    pub fn publication_bundle(&self) -> Result<Value, QualificationError> {
+        let completed = &self.completed;
+        let prepared = completed.prepared();
+        let field = prepared.field();
+        let field_data = field.data();
+        let certificate = prepared.maximal_order_certificate();
+        let presentation = completed.presentation();
+        let collected = presentation.collected();
+        let factor_base = collected.factor_base();
+        let class_map = presentation.class_map();
+        let coordinate_rows = class_map
+            .presentation()
+            .generator_coordinate_maps()
+            .map_err(|error| QualificationError::IdealQuery(format!("{error:?}")))?;
+        let factor_base_entries = factor_base
+            .catalog
+            .ideals
+            .iter()
+            .zip(&factor_base.exact_ideals)
+            .enumerate()
+            .map(|(index, (descriptor, ideal))| {
+                json!({
+                    "indexZeroBased": index,
+                    "prime": descriptor.prime.to_string(),
+                    "ramification": descriptor.ramification,
+                    "residueDegree": descriptor.residue_degree,
+                    "norm": descriptor.norm.to_string(),
+                    "generator": integer_strings(descriptor.generator),
+                    "hnf": integer_strings(descriptor.hnf),
+                    "integralBasisRows": ideal.basis_rows().iter().map(|row|
+                        integer_strings(row.iter())
+                    ).collect::<Vec<_>>(),
+                    "classCoordinates": integer_strings(
+                        coordinate_rows[index].values().iter()
+                    ),
+                })
+            })
+            .collect::<Vec<_>>();
+        let principal_relations = presentation
+            .principal_relations()
+            .iter()
+            .enumerate()
+            .map(|(index, witness)| {
+                json!({
+                    "relationIndexZeroBased": index,
+                    "principalElementIntegralBasisCoordinates": integer_strings(
+                        witness.principal_element.iter()
+                    ),
+                    "primeIdealFactors": witness.exponents.iter().enumerate()
+                        .filter(|(_, exponent)| **exponent != 0)
+                        .map(|(factor_base_index_zero_based, exponent)| json!({
+                            "factorBaseIndexZeroBased": factor_base_index_zero_based,
+                            "exponent": exponent.to_string(),
+                        })).collect::<Vec<_>>(),
+                })
+            })
+            .collect::<Vec<_>>();
+        let generator_orders = presentation
+            .generator_orders()
+            .iter()
+            .map(|evidence| {
+                json!({
+                    "coordinateZeroBased": evidence.smith_position,
+                    "invariantFactor": evidence.invariant_factor.to_string(),
+                    "factorBaseLift": sparse_integer_vector(&evidence.factor_base_exponents),
+                    "orderRelationCombination": sparse_integer_vector(
+                        &evidence.relation_coefficients
+                    ),
+                })
+            })
+            .collect::<Vec<_>>();
+        let units = completed.units();
+        let analytic = completed.analytic();
+        let bf_enclosure = analytic.bf_enclosure();
+        Ok(json!({
+            "schema": "sagejs.rust-class-group/public-cubic-publication-candidate-v1",
+            "status": "detached-replay-required-before-publication",
+            "proofMode": "conditional-grh",
+            "field": {
+                "polynomialAscending": integer_strings(
+                    field_data.polynomial_ascending.iter()
+                ),
+                "irreducibilityPrime": field_data.irreducibility_prime,
+                "integralBasisNumerators": integer_strings(
+                    field_data.integral_basis_numerators.iter()
+                ),
+                "basisDenominator": field_data.basis_denominator.to_string(),
+                "multiplicationTable": integer_strings(
+                    field_data.multiplication_table.iter()
+                ),
+                "discriminant": field_data.discriminant.to_string(),
+                "signature": [field_data.signature.0, field_data.signature.1],
+                "equationOrderIndex": field.equation_order_index().to_string(),
+            },
+            "maximalOrderCertificate": {
+                "equationDiscriminant": certificate.equation_discriminant().to_string(),
+                "factorization": certificate.factorization().iter().map(|(prime, exponent)|
+                    json!({ "prime": prime.to_string(), "exponent": exponent })
+                ).collect::<Vec<_>>(),
+                "localCertificates": certificate.local_certificates().iter().map(|item| json!({
+                    "prime": item.prime.to_string(),
+                    "maximumIndexExponent": item.maximum_index_exponent,
+                    "selectedIndexExponent": item.selected_index_exponent,
+                    "enumeratedSuperlattices": item.enumerated_superlattices.to_string(),
+                })).collect::<Vec<_>>(),
+            },
+            "presentation": {
+                "invariantFactors": integer_strings(completed.invariant_factors().iter()),
+                "classNumber": completed.class_number().to_string(),
+                "bindingSha256": hexadecimal(
+                    &class_map.presentation().binding_sha256()
+                ),
+                "principalWitnessesSha256": hexadecimal(
+                    class_map.principal_witnesses_sha256()
+                ),
+                "factorBase": factor_base_entries,
+                "principalRelations": principal_relations,
+                "generatorOrders": generator_orders,
+                "relationDependencies": completed.dependency_lattice().iter().map(|row|
+                    sparse_integer_vector(row)
+                ).collect::<Vec<_>>(),
+            },
+            "units": {
+                "rootsOfUnityOrder": "2",
+                "fundamentalUnits": units.fundamental_units().iter().map(|unit| json!({
+                    "relationExponents": sparse_integer_vector(unit.relation_exponents()),
+                })).collect::<Vec<_>>(),
+                "selectedBasisIndex": units.selected_basis_index().to_string(),
+                "commonDenominator": units.common_denominator().to_string(),
+                "regulator": dyadic_interval(units.regulator()),
+            },
+            "analyticCompletion": {
+                "classUnitHypothesis": CubicAnalyticEvidence::CLASS_UNIT_HYPOTHESIS,
+                "factorBaseHypothesis": CubicAnalyticEvidence::FACTOR_BASE_HYPOTHESIS,
+                "bfPlan": {
+                    "threshold": analytic.bf_plan().threshold.to_string(),
+                    "rawTerms": analytic.bf_plan().raw_terms,
+                    "terms": analytic.bf_plan().terms,
+                },
+                "bfEnclosure": {
+                    "zetaLogResidue": dyadic_interval(&bf_enclosure.zeta_log_residue),
+                    "tailBound": dyadic_interval(&bf_enclosure.tail_bound),
+                    "index": dyadic_interval(&bf_enclosure.index),
+                },
+                "bdfPlan": {
+                    "bound": analytic.bdf_plan().bound.to_string(),
+                    "rawTerms": analytic.bdf_plan().raw_terms,
+                    "terms": analytic.bdf_plan().terms,
+                },
+                "bdfMargin": dyadic_interval(analytic.bdf_margin()),
+            },
+        }))
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -958,6 +1147,31 @@ mod tests {
             ["-29".into(), "-30".into(), "-8".into(), "1".into()];
         let qualified = qualify_with_state(completion_request.clone()).unwrap();
         assert_eq!(qualified.completed.invariant_factors(), &[Integer::from(2)]);
+        let publication = qualified.publication_bundle().unwrap();
+        assert_eq!(
+            publication["schema"],
+            "sagejs.rust-class-group/public-cubic-publication-candidate-v1"
+        );
+        assert_eq!(
+            publication["status"],
+            "detached-replay-required-before-publication"
+        );
+        assert_eq!(
+            publication["presentation"]["invariantFactors"],
+            json!(["2"])
+        );
+        assert_eq!(
+            publication["units"]["fundamentalUnits"]
+                .as_array()
+                .unwrap()
+                .len(),
+            1
+        );
+        assert!(
+            publication["presentation"]["principalRelations"]
+                .as_array()
+                .is_some_and(|relations| !relations.is_empty())
+        );
         let factor_base = qualified.completed.presentation().collected().factor_base();
         let nontrivial = factor_base
             .exact_ideals

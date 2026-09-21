@@ -56,6 +56,11 @@ function fakeWorkers() {
         result = { outcome: "open", handle: 7, maximumResidentSessions: 4 };
       } else if (message.request?.schema?.endsWith("cubic-session-query-v1")) {
         result = { outcome: "complete-conditional-grh-ideal-class", handle: 7 };
+      } else if (message.request?.schema?.endsWith("cubic-session-publication-v1")) {
+        result = {
+          schema: "sagejs.rust-class-group/public-cubic-publication-candidate-v1",
+          status: "detached-replay-required-before-publication",
+        };
       } else if (message.request?.schema?.endsWith("cubic-session-close-v1")) {
         result = { outcome: "closed", handle: 7 };
       }
@@ -112,6 +117,10 @@ test("abort terminates the synchronous worker and invalidates resident handles",
     assert.equal(
       (await session.query([["1"]], { factorBase: [] })).outcome,
       "complete-conditional-grh-ideal-class",
+    );
+    assert.equal(
+      (await session.publication()).status,
+      "detached-replay-required-before-publication",
     );
 
     const controller = new AbortController();

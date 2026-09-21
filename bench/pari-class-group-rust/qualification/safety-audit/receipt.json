@@ -1148,13 +1148,13 @@
       "kind": "unsafe_attribute",
       "scope": "qualification-only",
       "file": "qualification/wasm-public-cubic-e2e/src/lib.rs",
-      "line": 262,
+      "line": 296,
       "column": 3,
       "snippet": "#[unsafe(no_mangle)]",
       "safetyRationale": {
         "present": true,
         "classification": "explicit-safety-rationale",
-        "line": 260,
+        "line": 294,
         "text": "// FFI-SAFETY: this version query uses the C ABI and exchanges only an `i32`;"
       }
     },
@@ -1162,13 +1162,13 @@
       "kind": "unsafe_attribute",
       "scope": "qualification-only",
       "file": "qualification/wasm-public-cubic-e2e/src/lib.rs",
-      "line": 270,
+      "line": 304,
       "column": 3,
       "snippet": "#[unsafe(no_mangle)]",
       "safetyRationale": {
         "present": true,
         "classification": "explicit-safety-rationale",
-        "line": 267,
+        "line": 301,
         "text": "// FFI-SAFETY: the exported allocator accepts a Wasm `usize`, rejects zero and"
       }
     },
@@ -1176,13 +1176,13 @@
       "kind": "unsafe_block",
       "scope": "qualification-only",
       "file": "qualification/wasm-public-cubic-e2e/src/lib.rs",
-      "line": 279,
+      "line": 313,
       "column": 5,
       "snippet": "unsafe { alloc(layout) }",
       "safetyRationale": {
         "present": true,
         "classification": "explicit-safety-rationale",
-        "line": 278,
+        "line": 312,
         "text": "// SAFETY: the matching ABI deallocator receives the same byte length."
       }
     },
@@ -1190,13 +1190,13 @@
       "kind": "unsafe_attribute",
       "scope": "qualification-only",
       "file": "qualification/wasm-public-cubic-e2e/src/lib.rs",
-      "line": 285,
+      "line": 319,
       "column": 3,
       "snippet": "#[unsafe(no_mangle)]",
       "safetyRationale": {
         "present": true,
         "classification": "explicit-safety-rationale",
-        "line": 282,
+        "line": 316,
         "text": "// FFI-SAFETY: callers may pass only a non-null pointer returned by this ABI"
       }
     },
@@ -1204,13 +1204,13 @@
       "kind": "unsafe_block",
       "scope": "qualification-only",
       "file": "qualification/wasm-public-cubic-e2e/src/lib.rs",
-      "line": 293,
+      "line": 327,
       "column": 9,
       "snippet": "unsafe { dealloc(pointer, layout) };",
       "safetyRationale": {
         "present": true,
         "classification": "explicit-safety-rationale",
-        "line": 291,
+        "line": 325,
         "text": "// SAFETY: the host returns only pointers allocated by this ABI with the"
       }
     },
@@ -1218,13 +1218,13 @@
       "kind": "unsafe_attribute",
       "scope": "qualification-only",
       "file": "qualification/wasm-public-cubic-e2e/src/lib.rs",
-      "line": 300,
+      "line": 334,
       "column": 3,
       "snippet": "#[unsafe(no_mangle)]",
       "safetyRationale": {
         "present": true,
         "classification": "explicit-safety-rationale",
-        "line": 297,
+        "line": 331,
         "text": "// FFI-SAFETY: callers must pass a readable, initialized guest allocation from"
       }
     },
@@ -1232,13 +1232,13 @@
       "kind": "unsafe_block",
       "scope": "qualification-only",
       "file": "qualification/wasm-public-cubic-e2e/src/lib.rs",
-      "line": 306,
+      "line": 340,
       "column": 17,
       "snippet": "let bytes = unsafe { std::slice::from_raw_parts(pointer, length) };",
       "safetyRationale": {
         "present": true,
         "classification": "explicit-safety-rationale",
-        "line": 305,
+        "line": 339,
         "text": "// SAFETY: the checked host ABI allocates and initializes this guest range."
       }
     },
@@ -2608,13 +2608,13 @@
       "kind": "rust_ffi_export",
       "scope": "qualification-only",
       "file": "qualification/wasm-public-cubic-e2e/src/lib.rs",
-      "line": 263,
+      "line": 297,
       "column": 1,
       "snippet": "pub extern \"C\" fn sagejs_class_group_abi_version() -> i32 {",
       "safetyRationale": {
         "present": true,
         "classification": "explicit-safety-rationale",
-        "line": 260,
+        "line": 294,
         "text": "// FFI-SAFETY: this version query uses the C ABI and exchanges only an `i32`;"
       },
       "name": "sagejs_class_group_abi_version"
@@ -2623,13 +2623,13 @@
       "kind": "rust_ffi_export",
       "scope": "qualification-only",
       "file": "qualification/wasm-public-cubic-e2e/src/lib.rs",
-      "line": 271,
+      "line": 305,
       "column": 1,
       "snippet": "pub extern \"C\" fn sagejs_class_group_alloc(length: usize) -> *mut u8 {",
       "safetyRationale": {
         "present": true,
         "classification": "explicit-safety-rationale",
-        "line": 267,
+        "line": 301,
         "text": "// FFI-SAFETY: the exported allocator accepts a Wasm `usize`, rejects zero and"
       },
       "name": "sagejs_class_group_alloc"
@@ -2638,13 +2638,13 @@
       "kind": "rust_ffi_export",
       "scope": "qualification-only",
       "file": "qualification/wasm-public-cubic-e2e/src/lib.rs",
-      "line": 286,
+      "line": 320,
       "column": 1,
       "snippet": "pub extern \"C\" fn sagejs_class_group_dealloc(pointer: *mut u8, length: usize) {",
       "safetyRationale": {
         "present": true,
         "classification": "explicit-safety-rationale",
-        "line": 282,
+        "line": 316,
         "text": "// FFI-SAFETY: callers may pass only a non-null pointer returned by this ABI"
       },
       "name": "sagejs_class_group_dealloc"
@@ -2653,13 +2653,13 @@
       "kind": "rust_ffi_export",
       "scope": "qualification-only",
       "file": "qualification/wasm-public-cubic-e2e/src/lib.rs",
-      "line": 301,
+      "line": 335,
       "column": 1,
       "snippet": "pub extern \"C\" fn sagejs_class_group_run_json(pointer: *const u8, length: usize) -> u64 {",
       "safetyRationale": {
         "present": true,
         "classification": "explicit-safety-rationale",
-        "line": 297,
+        "line": 331,
         "text": "// FFI-SAFETY: callers must pass a readable, initialized guest allocation from"
       },
       "name": "sagejs_class_group_run_json"
@@ -3255,8 +3255,8 @@
     {
       "file": "qualification/public-cubic-e2e/src/lib.rs",
       "scope": "qualification-only",
-      "sha256": "05d4947a3a745632e0678b4374cfb459d9b8b0ff598605849424adc78bac427d",
-      "bytes": 56930,
+      "sha256": "ac1324c0037c3d36e7dec2682ead85ce98527ada8bcdd2c2fed04dd22dee440c",
+      "bytes": 66647,
       "copyrightNotices": [
         "Copyright (C) Sage.js contributors."
       ],
@@ -3547,8 +3547,8 @@
     {
       "file": "qualification/wasm-public-cubic-e2e/src/lib.rs",
       "scope": "qualification-only",
-      "sha256": "647a08e1a927566bfe58f8d9b2b4b64f67da09abf4e66364cf30f6b6a5c76106",
-      "bytes": 11888,
+      "sha256": "aae19f715a6c4ee350fd3032101fd865e81835d17bb2ecb834fcfb89f51b498c",
+      "bytes": 13346,
       "copyrightNotices": [
         "Copyright (C) Sage.js contributors."
       ],
@@ -4442,5 +4442,5 @@
     "miriCoverageEstablished": false,
     "productionQualified": false
   },
-  "inventorySha256": "9d98daab2851ed59ff7d646c18ddd5f0f754015c1d44076dc043284973198d90"
+  "inventorySha256": "1ff9b21d824fa96ca15110b16a4e0b8ed33f6f8e9d1fbe06982697f97131ab69"
 }

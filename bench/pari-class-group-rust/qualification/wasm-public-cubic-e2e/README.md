@@ -27,6 +27,7 @@ From this directory:
 node run-node.mjs
 node run-query-node.mjs
 node run-browsers.mjs
+node run-product-worker-publication-node.mjs
 ```
 
 The build script accepts only the content-addressed Sage.js Wasm toolchain
@@ -47,8 +48,12 @@ cargo test --release --all-targets
 
 ## Current complete result
 
-The current qualified reactor is 5,867,215 bytes (2,357,581 bytes gzip). Its
-stable row-6 projection passed in Node, Chromium, Firefox, and WebKit after the
+The current qualification reactor is 5,913,579 bytes (2,371,300 bytes gzip),
+with SHA-256
+`213627330407a0552c23b27a5620b7793329c4b641e756aa01246aa9fe7400f9`.
+Its stable row-6 projection passed in Node and Chromium after adding the
+detached publication-candidate bundle. The preceding 5,867,215-byte artifact
+passed the same projection in Node, Chromium, Firefox, and WebKit after the
 general mixed-invariant remediation. The result has 1,144 authenticated
 relations and records both requested precision and the exact two-attempt
 4,096/2,048- then 8,192/4,096-bit schedule. Each runtime grew from 256 to 2,166
@@ -97,7 +102,7 @@ the complete class number, nonzero class coordinate, echoed input lattice, and
 nonempty exact quotient witness. The same harness now opens a bounded resident
 completed-field session, repeats that query byte-for-byte, closes it, and proves that
 stale queries, double closes, and a fifth concurrent session fail closed. The
-current artifact is 5,867,215 bytes with SHA-256
+artifact used for that resident-query receipt is 5,867,215 bytes with SHA-256
 `0b94eeaddaa40984b223968384d8a4db4842e9728c71f6e58572481a92603bd6`.
 The direct-shared-source Node run took 88.96 ms to open and complete the field,
 10.75 ms for the first query, 7.93 ms for the repeated query, and 0.42 ms to close it.

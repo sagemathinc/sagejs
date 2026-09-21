@@ -10,11 +10,13 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 
 const ABI_VERSION: i32 = 1;
-const MAX_TRANSFER_BYTES: usize = 1 << 20;
+const MAX_INPUT_BYTES: usize = 1 << 20;
+const MAX_OUTPUT_BYTES: usize = 16 << 20;
 const MAX_RESIDENT_SESSIONS: usize = 4;
 const SESSION_OPEN_SCHEMA: &str = "sagejs.rust-class-group/cubic-session-open-v1";
 const SESSION_QUERY_SCHEMA: &str = "sagejs.rust-class-group/cubic-session-query-v1";
 const SESSION_CLOSE_SCHEMA: &str = "sagejs.rust-class-group/cubic-session-close-v1";
+const SESSION_PUBLICATION_SCHEMA: &str = "sagejs.rust-class-group/cubic-session-publication-v1";
 
 struct ResidentSession {
     polynomial_ascending: [String; 4],
@@ -84,6 +86,13 @@ struct SessionQueryRequest {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct SessionCloseRequest {
+    schema: String,
+    handle: u32,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct SessionPublicationRequest {
     schema: String,
     handle: u32,
 }
@@ -217,6 +226,27 @@ fn execute_session_close(value: serde_json::Value) -> Vec<u8> {
     })
 }
 
+fn execute_session_publication(value: serde_json::Value) -> Vec<u8> {
+    let request = match serde_json::from_value::<SessionPublicationRequest>(value) {
+        Ok(request) if request.schema == SESSION_PUBLICATION_SCHEMA => request,
+        Ok(_) => return error_receipt("unsupported session-publication schema"),
+        Err(error) => {
+            return error_receipt(format!("invalid session-publication request: {error}"));
+        }
+    };
+    SESSIONS.with(|sessions| {
+        let sessions = sessions.borrow();
+        let Some(session) = sessions.sessions.get(&request.handle) else {
+            return error_receipt("unknown or closed resident session handle");
+        };
+        match session.qualified.publication_bundle() {
+            Ok(bundle) => serde_json::to_vec(&bundle)
+                .expect("the detached publication candidate is serializable"),
+            Err(error) => error_receipt(format!("{error:?}")),
+        }
+    })
+}
+
 fn execute(bytes: &[u8]) -> Vec<u8> {
     let value = match serde_json::from_slice::<serde_json::Value>(bytes) {
         Ok(value) => value,
@@ -225,6 +255,7 @@ fn execute(bytes: &[u8]) -> Vec<u8> {
     match value.get("schema").and_then(serde_json::Value::as_str) {
         Some(SESSION_OPEN_SCHEMA) => return execute_session_open(value),
         Some(SESSION_QUERY_SCHEMA) => return execute_session_query(value),
+        Some(SESSION_PUBLICATION_SCHEMA) => return execute_session_publication(value),
         Some(SESSION_CLOSE_SCHEMA) => return execute_session_close(value),
         _ => {}
     }
@@ -251,6 +282,9 @@ fn execute(bytes: &[u8]) -> Vec<u8> {
 }
 
 fn into_output(bytes: Vec<u8>) -> u64 {
+    if bytes.len() > MAX_OUTPUT_BYTES {
+        return into_output(error_receipt("class-group result exceeds the output limit"));
+    }
     let bytes = bytes.into_boxed_slice();
     let length = bytes.len();
     let pointer = Box::into_raw(bytes) as *mut u8 as usize;
@@ -265,11 +299,11 @@ pub extern "C" fn sagejs_class_group_abi_version() -> i32 {
 }
 
 // FFI-SAFETY: the exported allocator accepts a Wasm `usize`, rejects zero and
-// oversized transfers, and returns either null or a guest pointer allocated
+// oversized inputs, and returns either null or a guest pointer allocated
 // with the exact byte layout required by `sagejs_class_group_dealloc`.
 #[unsafe(no_mangle)]
 pub extern "C" fn sagejs_class_group_alloc(length: usize) -> *mut u8 {
-    if length == 0 || length > MAX_TRANSFER_BYTES {
+    if length == 0 || length > MAX_INPUT_BYTES {
         return std::ptr::null_mut();
     }
     let Ok(layout) = Layout::array::<u8>(length) else {
@@ -284,7 +318,7 @@ pub extern "C" fn sagejs_class_group_alloc(length: usize) -> *mut u8 {
 // transfer lengths before reconstructing the allocation layout.
 #[unsafe(no_mangle)]
 pub extern "C" fn sagejs_class_group_dealloc(pointer: *mut u8, length: usize) {
-    if pointer.is_null() || length == 0 || length > MAX_TRANSFER_BYTES {
+    if pointer.is_null() || length == 0 || length > MAX_OUTPUT_BYTES {
         return;
     }
     if let Ok(layout) = Layout::array::<u8>(length) {
@@ -299,7 +333,7 @@ pub extern "C" fn sagejs_class_group_dealloc(pointer: *mut u8, length: usize) {
 // and the borrowed input is used only for the duration of this call.
 #[unsafe(no_mangle)]
 pub extern "C" fn sagejs_class_group_run_json(pointer: *const u8, length: usize) -> u64 {
-    if pointer.is_null() || length == 0 || length > MAX_TRANSFER_BYTES {
+    if pointer.is_null() || length == 0 || length > MAX_INPUT_BYTES {
         return into_output(error_receipt("invalid input memory range"));
     }
     // SAFETY: the checked host ABI allocates and initializes this guest range.

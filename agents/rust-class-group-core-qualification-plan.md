@@ -607,6 +607,26 @@ Wasm pages. This passes the small-call count and observed linear-memory-growth
 part of the gate; mixed-medium calls, native leak tooling, retained-session
 cycling, and browser repetition are not yet qualified.
 
+Publication-candidate checkpoint (2026-09-21): the resident worker can now
+detach a bounded, lossless candidate bundle instead of exposing Rust objects or
+pointers. The bundle contains decimal-string field and maximal-order data,
+exact factor-base ideal lattices and class coordinates, sparse authenticated
+principal relations, generator-order lifts, dependency rows, compact unit
+combinations, and directed analytic intervals and replay plans. The rebuilt
+5,913,579-byte artifact
+(`213627330407a0552c23b27a5620b7793329c4b641e756aa01246aa9fe7400f9`)
+produced a 21,859-byte bundle for the small `C6` field and a 2,913,749-byte
+bundle for row 6. The final-artifact resident publication calls took 3.92 ms and
+178.74 ms in the Node qualification run; complete session opening took
+123.85 ms and 30.44 s. Structural checks matched the sealed receipts exactly:
+row 6 exported 1,130 factor-base ideals, 1,144 principal relations, 14
+dependency rows, two order witnesses, and two compact units. Both bundles fit
+the explicit 16 MiB transfer ceiling. This is intentionally labelled
+`detached-replay-required-before-publication`: an independent Sage.js adapter
+has not yet replayed these witnesses or constructed the public
+`IdealClassGroup` and unit objects, so this checkpoint does not authorize
+production dispatch or make the result public-complete at the Sage boundary.
+
 Run the released browser module in a Web Worker through Sage.js's public API.
 The default path must work without SharedArrayBuffer, special cross-origin
 isolation, threads, a server, a native helper or runtime compilation. Optional

@@ -229,6 +229,17 @@ export class ClassGroupCoreSession {
     }, options);
   }
 
+  publication(options) {
+    this.ensureLive();
+    return this.service.invoke(
+      {
+        schema: "sagejs.rust-class-group/cubic-session-publication-v1",
+        handle: this.handle,
+      },
+      options,
+    );
+  }
+
   async close(options) {
     if (this.closed) return;
     this.closed = true;

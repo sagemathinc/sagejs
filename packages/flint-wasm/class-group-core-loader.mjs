@@ -1,18 +1,19 @@
 import { createWasiHost } from "./src/wasi-runtime.mjs";
 
 const ABI_VERSION = 1;
-const MAX_TRANSFER_BYTES = 1024 * 1024;
+const MAX_INPUT_BYTES = 1024 * 1024;
+const MAX_OUTPUT_BYTES = 16 * 1024 * 1024;
 const encoder = new TextEncoder();
 const decoder = new TextDecoder("utf-8", { fatal: true });
 
-function checkedSlice(memory, pointer, length, label) {
+function checkedSlice(memory, pointer, length, maximumBytes, label) {
   const end = pointer + length;
   if (
     !Number.isInteger(pointer) ||
     pointer <= 0 ||
     !Number.isInteger(length) ||
     length <= 0 ||
-    length > MAX_TRANSFER_BYTES ||
+    length > maximumBytes ||
     !Number.isSafeInteger(end) ||
     end > memory.buffer.byteLength
   ) {
@@ -111,7 +112,7 @@ export async function instantiateClassGroupCore(bytes) {
   function invoke(request) {
     if (closed) throw new Error("class-group core is closed");
     const input = encoder.encode(JSON.stringify(request));
-    if (input.byteLength === 0 || input.byteLength > MAX_TRANSFER_BYTES) {
+    if (input.byteLength === 0 || input.byteLength > MAX_INPUT_BYTES) {
       throw new RangeError("class-group request exceeds the transfer limit");
     }
     const inputPointer = alloc(input.byteLength) >>> 0;
@@ -119,7 +120,13 @@ export async function instantiateClassGroupCore(bytes) {
     let outputPointer = 0;
     let outputLength = 0;
     try {
-      checkedSlice(exports.memory, inputPointer, input.byteLength, "input").set(input);
+      checkedSlice(
+        exports.memory,
+        inputPointer,
+        input.byteLength,
+        MAX_INPUT_BYTES,
+        "input",
+      ).set(input);
       const packed = BigInt.asUintN(64, runJson(inputPointer, input.byteLength));
       outputPointer = Number(packed & 0xffff_ffffn);
       outputLength = Number(packed >> 32n);
@@ -132,6 +139,7 @@ export async function instantiateClassGroupCore(bytes) {
         exports.memory,
         outputPointer,
         outputLength,
+        MAX_OUTPUT_BYTES,
         "output",
       ).slice();
       return JSON.parse(decoder.decode(output));
@@ -164,5 +172,6 @@ export async function instantiateClassGroupCore(bytes) {
 
 export const classGroupCoreAbi = Object.freeze({
   version: ABI_VERSION,
-  maximumTransferBytes: MAX_TRANSFER_BYTES,
+  maximumInputBytes: MAX_INPUT_BYTES,
+  maximumOutputBytes: MAX_OUTPUT_BYTES,
 });
