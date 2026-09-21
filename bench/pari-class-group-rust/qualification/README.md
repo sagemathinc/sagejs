@@ -48,18 +48,18 @@ not pass the frozen performance target. After starting answer-blind
 continuation at fourteen surplus rows when the caller's budget permits it, the
 current clean 15-sample alternating campaign on the original twelve
 regressions matched every exact result and measured summed per-field medians of
-1.914 seconds for Rust and 0.610 seconds for PARI 2.17.4: 3.13x weighted, 4.41x
-by geometric mean, 7.74x at p90, and 8.65x maximum. The source commit is
-`a795448cc`. Precision-specific relation logarithms are reused only after an
+1.898 seconds for Rust and 0.609 seconds for PARI 2.17.4: 3.12x weighted, 4.15x
+by geometric mean, 6.54x at p90, and 6.86x maximum. The source commit is
+`85967e615`. Precision-specific relation logarithms are reused only after an
 exact generator-prefix check. Checked fixed-width relation replay restarts in
 GMP on any overflow. Exact back substitution removes unit pivots from the
 modular HNF before the Smith map is computed and lifts the verified residual
 map back to every original generator. Relation refinement lazily retains at
 most 64 exact powers per encountered factor-base ideal and fails closed on a
 cache/prime mismatch; higher powers remain exact but are not retained. Rust's
-summed stage medians are 0.617 seconds relation collection, 0.543 seconds
-candidate authentication, 0.591 seconds unit and analytic completion, and
-0.078 seconds public preparation. Batching exact dependency replay reduced the
+summed stage medians are 0.630 seconds relation collection, 0.547 seconds
+candidate authentication, 0.581 seconds unit and analytic completion, and
+0.080 seconds public preparation. Batching exact dependency replay reduced the
 Rust absolute sum from 2.129 to 2.045 seconds. Exact continuation now reuses a
 FLINT fraction-free square factorization only after matching the selected
 square block and complete prior surplus prefix, then recomputes and verifies
@@ -107,7 +107,10 @@ presentation from 0.76 to 0.61 ms, but forcing compact at 11,926 work increased
 authentication from 0.41 to 0.47 ms and the complete call from 16.68 to 18.20
 ms. The checked selector therefore retains dense Smith through 20,000 estimated
 verification multiply-adds and otherwise chooses compact only when its
-small-surplus resource contract is satisfied.
+small-surplus resource contract is satisfied. The clean follow-up campaign
+reduced summed authentication from 0.569 to 0.547 seconds and total Rust time
+from 1.914 to 1.898 seconds while PARI moved from 0.610 to 0.609 seconds. The
+former 8.65x maximum is now 6.86x.
 Relation collection was 1.063 seconds before the exact ideal-power cache. See
 `public-cubic-heldout-performance/receipt.json`. The fresh confirmation set
 remains correctness-only; its contextual diagnostic timings are not a formal

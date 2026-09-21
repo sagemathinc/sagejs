@@ -29,12 +29,12 @@ expected post-run change within that closure.
 
 ## Current result
 
-The receipt generated from source commit `a795448cc` records exact agreement
-in all 180 alternating pairs. Summed per-field medians are 1.914 seconds for
-Rust and 0.610 seconds for PARI 2.17.4, or a 3.13x weighted gap. The geometric
-mean is 4.41x, p90 is 7.74x, and the maximum is 8.65x. Rust's summed stage
-medians are 0.630 seconds for relation collection, 0.569 seconds for candidate
-authentication, 0.577 seconds for unit and analytic completion, and 0.080
+The receipt generated from source commit `85967e615` records exact agreement
+in all 180 alternating pairs. Summed per-field medians are 1.898 seconds for
+Rust and 0.609 seconds for PARI 2.17.4, or a 3.12x weighted gap. The geometric
+mean is 4.15x, p90 is 6.54x, and the maximum is 6.86x. Rust's summed stage
+medians are 0.630 seconds for relation collection, 0.547 seconds for candidate
+authentication, 0.581 seconds for unit and analytic completion, and 0.080
 seconds for public preparation. Exact continuation retains the FLINT
 fraction-free factorization only when the selected square relation block is
 identical and the previous surplus is an exact prefix; it recomputes and
@@ -79,3 +79,10 @@ from 107.91 to 101.35 ms. Whole-panel Rust time varied upward by 29 ms while
 PARI varied upward by 25 ms, so the absolute aggregate is not claimed as a
 speedup; the deterministic removed work and focused paired campaign establish
 the optimization, while this clean receipt establishes the improved tail.
+The current campaign also moves the dense/compact authentication crossover
+from its conservative one-million-work ceiling to the measured 20,000-work
+boundary. The formerly worst tiny field's authentication fell from 15.80 to
+4.82 ms and its complete call from 41.69 to 30.72 ms. Fields 0019, 0020, and
+0022 similarly fell from 26.95 to 24.77 ms, 26.36 to 22.40 ms, and 43.94 to
+35.54 ms. Across the panel, authentication fell by 21.67 ms and total Rust
+time by 15.44 ms; the maximum ratio fell from 8.65x to 6.86x.
