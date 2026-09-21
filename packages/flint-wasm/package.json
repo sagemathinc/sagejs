@@ -17,6 +17,11 @@
       "import": "./curve-backend.mjs",
       "default": "./curve-backend.mjs"
     },
+    "./class-group-core": {
+      "types": "./class-group-core.d.ts",
+      "import": "./class-group-core.mjs",
+      "default": "./class-group-core.mjs"
+    },
     "./dirichlet-group": "./dirichlet-group.mjs",
     "./evaluator": "./evaluator.mjs",
     "./m4ri": "./m4ri.mjs",
@@ -94,6 +99,10 @@
     "dynamic-compiler.mjs",
     "curve-backend.d.ts",
     "curve-backend.mjs",
+    "class-group-core.d.ts",
+    "class-group-core-loader.mjs",
+    "class-group-core-worker.mjs",
+    "class-group-core.mjs",
     "dirichlet-group.mjs",
     "evaluator.mjs",
     "extension-multivariate.mjs",

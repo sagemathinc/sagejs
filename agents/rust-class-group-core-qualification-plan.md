@@ -582,6 +582,25 @@ CI cache hits, peak compiler RAM and compressed artifacts separately.
 
 ## 7. Browser and native product integration
 
+Implementation checkpoint (2026-09-21): the exact complete cubic artifact is
+now consumed by the package-level experimental `class-group-core` export rather
+than only by the qualification page loader. The package authenticates the lazy
+artifact by byte count and SHA-256, compiles and owns it in a dedicated worker,
+validates all Wasm transfer ranges, exposes the bounded four-handle resident
+session ABI, and invalidates every handle on reset or worker replacement. The
+same 5,867,215-byte artifact
+(`0b94eeaddaa40984b223968384d8a4db4842e9728c71f6e58572481a92603bd6`)
+returned the exact sealed row-6 projection through that route in Node,
+Chromium, Firefox, and WebKit. Observed complete-call times were about 30.82 s,
+31.64 s, 235.97 s, and 32.47 s respectively; browser memory grew from 256 to
+2,109 pages. This establishes a real isolated package route, not production
+promotion: the core still has no resumable complete-computation ABI, so current
+cancellation terminates and recreates the worker and therefore retires all
+resident handles. A real in-flight second row-6 call was rejected and its
+worker replaced in about 1.91 ms in both Node and Chromium, with replacement
+memory returning to 256 pages. The lifecycle repetition, public Sage object
+conversion, general corpus, performance, and platform gates below remain open.
+
 Run the released browser module in a Web Worker through Sage.js's public API.
 The default path must work without SharedArrayBuffer, special cross-origin
 isolation, threads, a server, a native helper or runtime compilation. Optional

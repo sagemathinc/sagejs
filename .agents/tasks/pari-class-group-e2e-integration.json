@@ -27,6 +27,12 @@
     "bench/pari-class-group-rust/",
     "docs/optimizer-opportunities.md",
     "packages/flint-wasm/numerical/release/production-manifest.json",
+    "packages/flint-wasm/class-group-core.d.ts",
+    "packages/flint-wasm/class-group-core-loader.mjs",
+    "packages/flint-wasm/class-group-core-worker.mjs",
+    "packages/flint-wasm/class-group-core.mjs",
+    "packages/flint-wasm/package.json",
+    "packages/flint-wasm/test/class-group-core.test.mjs",
     "packages/flint-wasm/release/production-capabilities.json",
     "packages/flint-wasm/release/production-kernel-coverage.json",
     "pyrightconfig.json",
@@ -82,16 +88,16 @@
   ],
   "runs": [],
   "handoff": {
-    "summary": "R0/W0 foundations and R1--R3 cubic work now include strict contracts, pinned PARI controls, validated arbitrary-precision prepared inputs, complete GRH-conditional relation/class-map/unit/regulator evidence for the open cubic panel, a fail-closed Sage.js qualification-receipt adapter, and exact full-row-6 execution in Node, Chromium, Firefox, and WebKit through a qualification-only GMP/MPFR/FLINT Wasm reactor. These remain qualification components rather than a production class-group backend.",
+    "summary": "R0/W0 foundations and R1--R3 cubic work now include strict contracts, pinned PARI controls, validated arbitrary-precision prepared inputs, complete GRH-conditional relation/class-map/unit/regulator evidence for the open cubic panel, a fail-closed Sage.js qualification-receipt adapter, and exact full-row-6 execution in Node, Chromium, Firefox, and WebKit through an authenticated package-level experimental worker route over the shared GMP/MPFR/FLINT Wasm reactor. This is still receipt-gated qualification rather than automatic production dispatch.",
     "risks": [
       "The complete Rust prepared-field engine has not yet been integrated behind the Sage.js public result types or lifecycle API.",
-      "The complete browser path currently uses a synchronous qualification route rather than the Sage.js Web Worker product API and lacks cancellation, retained map handles, lifecycle qualification, and competitive Firefox performance.",
+      "The package-level browser route isolates synchronous complete computation in a worker and supports termination/recreation cancellation, but the Rust core lacks resumable checkpoints; cancellation retires resident handles, lifecycle stress qualification remains open, and Firefox performance is not competitive.",
       "The certified preparation and receipt adapters currently cover cubic conditional-GRH requests only; the first blind held-out cubic campaign completed 3 of 12 cases, and the untouched confirmation set must remain unexecuted until general fixes are ready."
     ],
     "next_steps": [
       "Finish the balanced private 60-open plus 60-held-out corpus without committing held-out answers.",
       "Define and implement the Rust reactor/result ABI so the complete prepared-field result becomes an ordinary Sage.js class-group object without JSON phase round trips.",
-      "Integrate the complete class-and-unit reactor through the actual Sage.js Web Worker route, then qualify cancellation, lifecycle, retained maps, cold start, and browser performance before broader-degree expansion."
+      "Add resumable checkpoints to the complete class-and-unit reactor, integrate result conversion through the ordinary public Sage object route, then qualify lifecycle, retained maps, cold start, and browser performance before broader-degree expansion."
     ]
   }
 }
