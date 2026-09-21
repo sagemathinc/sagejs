@@ -29,10 +29,10 @@ expected post-run change within that closure.
 
 ## Current result
 
-The receipt generated from source commit `3575c2313` records exact agreement
-in all 180 alternating pairs. Summed per-field medians are 2.526 seconds for
-Rust and 0.601 seconds for PARI 2.17.4, or a 4.20x weighted gap. The geometric
-mean is 5.72x, p90 is 8.93x, and the maximum is 13.26x. Rust's summed stage
-medians are 1.063 seconds for relation collection, 0.608 seconds for candidate
-authentication, 0.715 seconds for unit and analytic completion, and 0.078
+The receipt generated from source commit `7c1be261c` records exact agreement
+in all 180 alternating pairs. Summed per-field medians are 2.129 seconds for
+Rust and 0.612 seconds for PARI 2.17.4, or a 3.48x weighted gap. The geometric
+mean is 4.90x, p90 is 8.03x, and the maximum is 12.20x. Rust's summed stage
+medians are 0.632 seconds for relation collection, 0.628 seconds for candidate
+authentication, 0.724 seconds for unit and analytic completion, and 0.080
 seconds for public preparation.

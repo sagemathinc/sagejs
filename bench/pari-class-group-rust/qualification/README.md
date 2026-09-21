@@ -48,16 +48,19 @@ not pass the frozen performance target. After starting answer-blind
 continuation at fourteen surplus rows when the caller's budget permits it, the
 replacement clean 15-sample alternating campaign on the original twelve
 regressions matched every exact result and measured summed per-field medians of
-2.526 seconds for Rust and 0.601 seconds for PARI 2.17.4: 4.20x weighted, 5.72x
-by geometric mean, 8.93x at p90, and 13.26x maximum. The source commit is
-`3575c2313`. Precision-specific relation logarithms are reused only after an
+2.129 seconds for Rust and 0.612 seconds for PARI 2.17.4: 3.48x weighted, 4.90x
+by geometric mean, 8.03x at p90, and 12.20x maximum. The source commit is
+`7c1be261c`. Precision-specific relation logarithms are reused only after an
 exact generator-prefix check. Checked fixed-width relation replay restarts in
-GMP on any overflow. Exact back substitution now removes unit pivots from the
+GMP on any overflow. Exact back substitution removes unit pivots from the
 modular HNF before the Smith map is computed and lifts the verified residual
-map back to every original generator. Rust's summed stage medians are 1.063
-seconds relation collection, 0.608 seconds candidate authentication, 0.715
-seconds unit and analytic completion, and 0.078 seconds public preparation.
-Candidate authentication was 0.849 seconds in the preceding receipt. See
+map back to every original generator. Relation refinement lazily retains at
+most 64 exact powers per encountered factor-base ideal and fails closed on a
+cache/prime mismatch; higher powers remain exact but are not retained. Rust's
+summed stage medians are 0.632 seconds relation collection, 0.628 seconds
+candidate authentication, 0.724 seconds unit and analytic completion, and
+0.080 seconds public preparation. Relation collection was 1.063 seconds in the
+preceding receipt. See
 `public-cubic-heldout-performance/receipt.json`. The fresh confirmation set
 remains correctness-only; its contextual diagnostic timings are not a formal
 comparative receipt.
