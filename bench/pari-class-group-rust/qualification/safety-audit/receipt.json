@@ -3685,8 +3685,8 @@
     {
       "file": "src/cubic_completion.rs",
       "scope": "product-candidate",
-      "sha256": "814b859588f0bc7a7db566ca6d94936e0ca3f75f090416239f9e8f04027cca6b",
-      "bytes": 58281,
+      "sha256": "f2f6f9545cbb458f35a7841c6f66dbc72338c473064ed01b17d256d01a95af23",
+      "bytes": 58242,
       "copyrightNotices": [
         "Copyright (C) Sage.js contributors."
       ],
@@ -4490,5 +4490,5 @@
     "miriCoverageEstablished": false,
     "productionQualified": false
   },
-  "inventorySha256": "07e658308c4499f0f7deb3e65f3e605cd68d9f0a4b79dba65c5397b9e0f42e11"
+  "inventorySha256": "4ffa5a5a83fc743dac03b2bf7e486a4213d58946a632a98ddde89d299f5bb49e"
 }

@@ -413,27 +413,28 @@ impl GrhConditionalCompleteCubicClassGroup {
             return false;
         }
         let rows = collected.relations.len() / columns;
-        let annihilates = |coefficients: &[Integer]| {
-            coefficients.len() == rows
-                && (0..columns).all(|column| {
-                    (0..rows).fold(Integer::from(0), |sum, row| {
-                        sum + &coefficients[row] * collected.relations[row * columns + column]
-                    }) == 0
-                })
-        };
+        let dependencies_annihilate = first_non_annihilating_i64_row(
+            self.presentation.dependency_lattice(),
+            &collected.relations,
+            rows,
+            columns,
+        )
+        .is_none();
+        let units_annihilate = self.units.fundamental_units.iter().all(|unit| {
+            first_non_annihilating_i64_row(
+                std::slice::from_ref(&unit.relation_exponents),
+                &collected.relations,
+                rows,
+                columns,
+            )
+            .is_none()
+        });
         let unit_rank = usize::from(self.prepared.field().data().signature.0)
             + usize::from(self.prepared.field().data().signature.1)
             - 1;
-        self.presentation
-            .dependency_lattice()
-            .iter()
-            .all(|row| annihilates(row))
+        dependencies_annihilate
             && self.units.fundamental_units.len() == unit_rank
-            && self
-                .units
-                .fundamental_units
-                .iter()
-                .all(|unit| annihilates(&unit.relation_exponents))
+            && units_annihilate
             && interval_upper_lt(
                 &self.analytic.bf_enclosure.tail_bound,
                 Rational::from((1, 4)),
