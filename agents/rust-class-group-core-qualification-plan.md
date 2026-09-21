@@ -34,17 +34,20 @@ pathological compact-HNF presentations. It does not complete this plan: degrees
 the frozen native/browser performance gates remain open. Moving the
 dense/compact authentication crossover to its measured range and using a
 geometric answer-free continuation schedule and reusing exact analytic plans
-reduced the untouched confirmation campaign from 3.046 to about 1.5--1.8
-seconds. A separately versioned qualification profile now admits the compact
+reduced the untouched confirmation campaign from 3.046 to 1.373 seconds. A
+separately versioned qualification profile now admits the compact
 route through 64 surplus rows while preserving its independent storage, exact
 work, saturation, and coefficient ceilings. On the original twelve cubic
 regressions this removed an artificial dense-transform fallback and reduced a
-single clean diagnostic campaign from 11.731 to 3.893 seconds; the sum of the
-previously collected PARI medians is 0.509 seconds, for a contextual 7.65x
-weighted and 8.84x geometric-mean gap. This is not yet the required 15-sample
+single clean diagnostic campaign from 11.731 to 3.486 seconds; the sum of the
+previously collected PARI medians is 0.509 seconds, for a contextual 6.85x
+weighted and 8.60x geometric-mean gap. This is not yet the required 15-sample
 alternating performance receipt. Relation collection, authentication, and
-unit/analytic completion now contribute 1.261, 1.373, and 1.110 seconds
-respectively, so no single phase explains the remaining gap.
+unit/analytic completion all remain material, so no single phase explains the
+remaining gap. Per-attempt telemetry now reconciles exactly with those stage
+totals; on the hardest original regression it showed that repeated exact
+authentication/completion, not incremental relation collection, dominated, so
+the answer-blind continuation schedule now doubles between attempts.
 
 ## Evidence we actually have
 
