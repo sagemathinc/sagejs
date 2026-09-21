@@ -79,13 +79,18 @@ def main() -> int:
         ("inputsSha256", INPUTS_PATH),
         ("policySha256", POLICY_PATH),
         ("selectionReceiptSha256", SELECTION_PATH),
-        ("resourceProfileSha256", RESOURCE_PROFILE_PATH),
     ):
         expected = digest(path)
         if binding.get(key) != expected:
             raise RuntimeError(f"private binding does not bind {key}")
         if private.get(key) != expected or execution.get(key) != expected:
             raise RuntimeError(f"execution identity differs for {key}")
+    resource_profile_digest = digest(RESOURCE_PROFILE_PATH)
+    if (
+        private.get("resourceProfileSha256") != resource_profile_digest
+        or execution.get("resourceProfileSha256") != resource_profile_digest
+    ):
+        raise RuntimeError("execution identity differs for resourceProfileSha256")
     private_digest = hashlib.sha256(
         (canonical(private) + "\n").encode()
     ).hexdigest()
