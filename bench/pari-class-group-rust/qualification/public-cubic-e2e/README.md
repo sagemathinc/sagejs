@@ -52,12 +52,18 @@ coefficient size by `maximumCompactTargetCoefficientBits`, and general Smith
 transform work by `maximumNormalFormOperations`. Thus the new verifier has no
 implicit resource defaults and old V2 request bytes retain their exact meaning.
 When the analytic index alone is not isolated, one stateful collector advances
-through the fixed answer-free supplementary targets `7, 8, 9, 10, 12, 16`,
-bounded by the request's cumulative relation, dependency, ideal, and candidate
-ceilings. Only that analytic outcome permits another target; authentication,
-resource, programming, or proof failures stop immediately. Successful
-multi-target receipts include redacted continuation counters but never failed
-class numbers or invariant factors.
+through a fixed answer-free geometric supplementary schedule: it starts at 14
+relations when the request permits that target (and otherwise at 7), then
+doubles within the request's cumulative relation, dependency, ideal, and
+candidate ceilings. Only that analytic outcome permits another target;
+authentication, resource, programming, or proof failures stop immediately.
+If a rigorous Belabas--Friedman enclosure has tail below `1/4` and its entire
+positive-integer index interval is already strictly above one, completion
+returns that analytic outcome immediately instead of evaluating larger Euler
+prefixes that cannot certify the unchanged candidate. Publication still
+requires the unchanged unique-positive-one enclosure. Successful multi-target
+receipts include redacted continuation counters but never failed class numbers
+or invariant factors.
 The sealed result
 retains its authenticated presentation map for subsequent arbitrary-ideal operations.
 The receipt's stage clocks end when the sealed mathematical result is

@@ -87,6 +87,16 @@ sealed result exposes that single authenticated owner rather than storing the
 lattice twice. Its 2.6 ms whole-run change and 3.3 ms upward completion-stage
 change are below campaign noise; this is currently a storage/ownership result,
 not a claimed stage-speed gain.
+The analytic continuation boundary now rejects an unchanged incomplete
+candidate as soon as a rigorous Belabas--Friedman enclosure has tail below
+`1/4` and places the entire positive-integer index strictly above one. This
+cannot accept a candidate and leaves the unique-positive-one publication test
+unchanged; it only avoids larger Euler prefixes before exact relation
+continuation. A CPU-pinned 31-pair before/after diagnostic reduced the
+retrying 27-column field from 56.08 to 41.71 ms and its completion stage from
+29.50 to 15.02 ms. The retry-heavy 187-column field moved from 372.87 to
+362.02 ms, with completion moving from 111.50 to 102.21 ms. The next clean
+full alternating campaign must determine the aggregate gate effect.
 Simultaneous PARI variation on the smallest fields keeps the geometric and tail
 ratios noisy.
 This remains substantially ahead of the earlier pre-power-cache receipt at

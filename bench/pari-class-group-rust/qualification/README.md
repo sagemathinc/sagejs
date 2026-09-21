@@ -89,6 +89,15 @@ basis, and the sealed result no longer stores a duplicate. The 2.6 ms total
 change and 3.3 ms upward completion-stage change are within campaign noise, so
 this is recorded as a storage/ownership improvement rather than a stage-speed
 claim.
+Incomplete continuation candidates now stop at the first rigorous
+Belabas--Friedman enclosure whose tail is below `1/4` and whose complete index
+interval lies strictly above one. This rejection-only shortcut cannot publish
+a result; it merely returns to exact relation collection without evaluating
+larger Euler prefixes for the unchanged nonunit index. In a CPU-pinned
+31-pair before/after diagnostic, the retrying 27-column field fell from 56.08
+to 41.71 ms (completion 29.50 to 15.02 ms), while the retry-heavy 187-column
+field fell from 372.87 to 362.02 ms (completion 111.50 to 102.21 ms). A clean
+full Rust/PARI campaign remains the authoritative comparative gate.
 Relation collection was 1.063 seconds before the exact ideal-power cache. See
 `public-cubic-heldout-performance/receipt.json`. The fresh confirmation set
 remains correctness-only; its contextual diagnostic timings are not a formal

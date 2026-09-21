@@ -270,3 +270,29 @@ fn retains_the_final_failed_analytic_interval_without_publishing_it() {
         "AnalyticIndexFailureDiagnostic(<redacted>)"
     );
 }
+
+#[test]
+fn rejects_a_rigorously_nonunit_index_before_the_analytic_ceiling() {
+    // The first relation lattice for this field has class/unit index greater
+    // than one.  Once the rigorous tail is below 1/4 and the entire index
+    // enclosure is above one, larger Euler prefixes cannot make this exact
+    // candidate complete; public continuation must collect more relations.
+    let prepared = prepare([-295, 304, -13, 1]);
+    let candidate = candidate(&prepared);
+    let options = CubicConditionalCompletionOptions {
+        logarithm_precision_bits: 4_096,
+        replay_precision_bits: 2_048,
+        maximum_analytic_threshold: 23_994,
+        analytic_precision_bits: 512,
+        ..CubicConditionalCompletionOptions::default()
+    };
+    let error = complete_cubic_class_group_conditionally(prepared, candidate, options).unwrap_err();
+    let CubicConditionalCompletionError::AnalyticIndexNotIsolated {
+        final_attempt: Some(diagnostic),
+    } = error
+    else {
+        panic!("the nonunit index must retain its rejecting enclosure")
+    };
+    assert_eq!(diagnostic.threshold, 4_608);
+    assert!(diagnostic.tail_bound_below_quarter);
+}

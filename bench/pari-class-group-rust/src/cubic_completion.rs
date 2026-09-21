@@ -714,6 +714,9 @@ fn dyadic_endpoint(mantissa: &Integer, exponent: i64) -> Option<Rational> {
 fn interval_lower_gt_zero(interval: &FlintDyadicInterval) -> bool {
     interval.lower > 0
 }
+fn interval_lower_gt(interval: &FlintDyadicInterval, bound: Rational) -> bool {
+    dyadic_endpoint(&interval.lower, interval.binary_exponent).is_some_and(|value| value > bound)
+}
 fn interval_upper_lt(interval: &FlintDyadicInterval, bound: Rational) -> bool {
     dyadic_endpoint(&interval.upper, interval.binary_exponent).is_some_and(|value| value < bound)
 }
@@ -1293,11 +1296,25 @@ fn complete_cubic_class_group_at_precision(
             accepted = Some((threshold, plan, enclosure));
             break;
         }
-        final_failed_attempt = Some(AnalyticIndexFailureDiagnostic {
+        let diagnostic = AnalyticIndexFailureDiagnostic {
             threshold,
             enclosure,
             tail_bound_below_quarter,
-        });
+        };
+        // Once the rigorous residue tail is below the theorem's quarter
+        // threshold and the complete index enclosure lies strictly above one,
+        // this candidate cannot become complete by evaluating more Euler
+        // terms.  Return immediately so the caller can collect more exact
+        // relations.  This is a rejection-only shortcut: publication still
+        // requires the unchanged unique-positive-one test above.
+        if tail_bound_below_quarter
+            && interval_lower_gt(&diagnostic.enclosure.index, Rational::from(1))
+        {
+            return Err(CubicConditionalCompletionError::AnalyticIndexNotIsolated {
+                final_attempt: Some(diagnostic),
+            });
+        }
+        final_failed_attempt = Some(diagnostic);
     }
     let Some((bf_threshold, bf_plan, bf_enclosure)) = accepted else {
         return Err(CubicConditionalCompletionError::AnalyticIndexNotIsolated {
