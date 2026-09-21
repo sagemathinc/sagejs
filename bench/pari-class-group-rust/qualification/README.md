@@ -48,16 +48,16 @@ not pass the frozen performance target. After starting answer-blind
 continuation at fourteen surplus rows when the caller's budget permits it, the
 current clean 15-sample alternating campaign on the original twelve
 regressions matched every exact result and measured summed per-field medians of
-1.621 seconds for Rust and 0.585 seconds for PARI 2.17.4: 2.77x weighted, 3.92x
-by geometric mean, 6.43x at p90, and 7.54x maximum. The source commit is
-`334b9fabe`. Precision-specific relation logarithms are reused only after an
+1.597 seconds for Rust and 0.582 seconds for PARI 2.17.4: 2.75x weighted, 3.93x
+by geometric mean, 6.56x at p90, and 7.47x maximum. The source commit is
+`8f9954d61`. Precision-specific relation logarithms are reused only after an
 exact generator-prefix check. Checked fixed-width relation replay restarts in
 GMP on any overflow. Exact back substitution removes unit pivots from the
 modular HNF before the Smith map is computed and lifts the verified residual
 map back to every original generator. Relation refinement lazily retains at
 most 64 exact powers per encountered factor-base ideal and fails closed on a
 cache/prime mismatch; higher powers remain exact but are not retained. Rust's
-summed stage medians are 0.616 seconds relation collection, 0.411 seconds
+summed stage medians are 0.614 seconds relation collection, 0.392 seconds
 candidate authentication, 0.501 seconds unit and analytic completion, and
 0.078 seconds public preparation. Batching exact dependency replay reduced the
 Rust absolute sum from 2.129 to 2.045 seconds. Exact continuation now reuses a
@@ -133,6 +133,13 @@ seconds, unit/analytic completion from 0.552 to 0.501 seconds, total Rust time
 from 1.749 to 1.621 seconds, and field 0012 from 314.29 to 276.34 ms. PARI
 simultaneously varied from 0.606 to 0.585 seconds, taking the weighted gap from
 2.89x to 2.77x.
+The compact continuation cache also retains a previously verified quotient map
+as producer data. Reuse requires an exact relation prefix and independently
+recomputed unchanged class order; complete current-map, dependency,
+saturation, and generator-order verification still reruns. The next clean
+receipt reduced summed authentication from 0.411 to 0.392 seconds, total Rust
+time from 1.621 to 1.597 seconds, and field 0012 from 276.34 to 261.63 ms. PARI
+varied from 0.585 to 0.582 seconds, taking the weighted gap from 2.77x to 2.75x.
 Relation collection was 1.063 seconds before the exact ideal-power cache. See
 `public-cubic-heldout-performance/receipt.json`. The fresh confirmation set
 remains correctness-only; its contextual diagnostic timings are not a formal

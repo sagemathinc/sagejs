@@ -51,9 +51,9 @@ the residual nonunit presentation and lifting its independently verified map
 back to the full factor base. Relation refinement now also retains a bounded,
 lazy cache of exact factor-base ideal powers. On its profiled field this reduced
 repeated ideal multiplications from 1,384 to 74 while preserving all 15,619
-exact valuation calls. At source `334b9fabe`, summed per-field medians are
-1.621 seconds for Rust and 0.585 seconds for PARI 2.17.4: a 2.77x weighted gap,
-with a 3.92x geometric mean, 6.43x p90, and 7.54x maximum. Batching the
+exact valuation calls. At source `8f9954d61`, summed per-field medians are
+1.597 seconds for Rust and 0.582 seconds for PARI 2.17.4: a 2.75x weighted gap,
+with a 3.93x geometric mean, 6.56x p90, and 7.47x maximum. Batching the
 independent exact dependency replay across every relation column first reduced
 Rust's absolute sum from 2.129 to 2.045 seconds. Exact answer-free continuation
 now also retains the FLINT fraction-free factorization only for an identical
@@ -143,10 +143,19 @@ to 0.411 seconds, completion from 0.552 to 0.501 seconds, and field 0012 from
 314.29 to 276.34 ms. PARI simultaneously varied from 0.606 to 0.585 seconds,
 so the weighted gap fell from 2.89x to 2.77x while the few-millisecond tail
 remained noisy.
+The compact continuation cache now retains a previously verified quotient map
+as producer data. It can avoid regenerating the map only after matching the
+exact relation prefix and independently recomputing the same class order; all
+current relations, inverse identities, dependencies, saturation evidence, and
+new generator-order witnesses are still authenticated. The subsequent clean
+campaign reduced authentication from 0.411 to 0.392 seconds, total Rust time
+from 1.621 to 1.597 seconds, and field 0012 from 276.34 to 261.63 ms. PARI
+simultaneously varied from 0.585 to 0.582 seconds, taking the weighted gap from
+2.77x to 2.75x.
 This remains substantially ahead of the earlier pre-power-cache receipt at
 4.20x weighted and 5.72x geometric mean, but still fails the frozen native
 performance gate. Rust's summed stage
-medians are 0.616 seconds relation collection, 0.411 seconds candidate
+medians are 0.614 seconds relation collection, 0.392 seconds candidate
 authentication, 0.501 seconds unit and analytic completion, and 0.078 seconds
 public preparation. Relation collection fell from 1.063 seconds before the
 exact ideal-power cache; the three principal mathematical phases are now
