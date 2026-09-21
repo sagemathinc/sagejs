@@ -269,7 +269,10 @@ impl PresentationClassMap {
     }
 
     /// Construct a compact coordinate map and verify every supplied relation
-    /// maps to zero. A separate authority must authenticate principal ideals.
+    /// maps to zero. The empty invariant-factor list is the unique
+    /// zero-dimensional map for a trivial quotient, so its flattened
+    /// generator-coordinate table must also be empty. A separate authority
+    /// must authenticate principal ideals and the claimed quotient.
     pub fn from_verified_generator_coordinates(
         invariant_factors: Vec<Integer>,
         generator_coordinates: Vec<Integer>,
@@ -277,8 +280,7 @@ impl PresentationClassMap {
     ) -> Result<Self, ClassMapError> {
         let generators = relations.rows();
         let expected = generators.saturating_mul(invariant_factors.len());
-        if invariant_factors.is_empty()
-            || invariant_factors.iter().any(|value| value <= &1)
+        if invariant_factors.iter().any(|value| value <= &1)
             || invariant_factors
                 .windows(2)
                 .any(|pair| Integer::from(&pair[1] % &pair[0]) != 0)

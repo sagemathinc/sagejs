@@ -111,6 +111,55 @@ fn noncyclic_two_by_two_maps_generators_and_relations() {
 }
 
 #[test]
+fn compact_trivial_quotient_has_the_unique_zero_dimensional_map() {
+    // An independently authenticated class-number-one presentation has no
+    // nontrivial invariant factors and therefore no coordinate-table entries,
+    // regardless of how many factor-base generators it has.
+    let relations = matrix(2, 3, &[1, -2, 7, 3, 0, -5]);
+    let class_map = PresentationClassMap::from_verified_generator_coordinates(
+        Vec::new(),
+        Vec::new(),
+        relations,
+    )
+    .unwrap();
+
+    assert!(class_map.invariant_factors().is_empty());
+    assert_eq!(class_map.generator_count(), 2);
+    assert_eq!(class_map.relation_count(), 3);
+    assert!(class_map.zero().values().is_empty());
+    assert_eq!(
+        class_map
+            .coordinates(&[Integer::from(19), Integer::from(-23)])
+            .unwrap(),
+        class_map.zero()
+    );
+    assert!(
+        class_map
+            .generator_coordinate_maps()
+            .unwrap()
+            .iter()
+            .all(|coordinates| coordinates.is_zero())
+    );
+    class_map.verify_all_relations_map_to_zero().unwrap();
+}
+
+#[test]
+fn compact_trivial_quotient_rejects_nonempty_coordinate_storage() {
+    let relations = matrix(2, 1, &[1, 0]);
+    assert_eq!(
+        PresentationClassMap::from_verified_generator_coordinates(
+            Vec::new(),
+            vec![Integer::from(0)],
+            relations,
+        ),
+        Err(ClassMapError::CoordinateDimension {
+            expected: 0,
+            actual: 1,
+        })
+    );
+}
+
+#[test]
 fn cyclic_six_has_homomorphic_addition_and_principality_state() {
     let (relations, smith) = identity_smith(&[Integer::from(6)]);
     let class_map = PresentationClassMap::from_verified_smith(relations, smith).unwrap();
