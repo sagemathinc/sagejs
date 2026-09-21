@@ -2,10 +2,10 @@
   "schema": "sagejs.rust-class-group/wasm-public-cubic-node-smoke-v1",
   "outcome": "pass",
   "artifact": {
-    "bytes": 5679772,
-    "sha256": "62a04ab9573f09fd8533c613e5ce60321975bb3aa49910fecb9e0d23451b5121",
-    "gzipBytes": 2290695,
-    "gzipSha256": "79df17b5512d2d4803c5383f3ea673dc457f96de437f6a12309b0f09d641af3e",
+    "bytes": 5771254,
+    "sha256": "eb2c4a79d59cb90be9af6f0248e1acf2e88d0ae29c26dc9b091b3ed1b41a4e18",
+    "gzipBytes": 2324095,
+    "gzipSha256": "48b1fa66b1954a32b44600ab356dc56160af3e84953eb41578b6e13d69042070",
     "imports": [
       {
         "module": "wasi_snapshot_preview1",
@@ -106,7 +106,7 @@
       }
     ]
   },
-  "vectorSha256": "c52c44662ed7e1e1db8b203094258164d17b9f0868c22c5bb777a49034df431c",
+  "vectorSha256": "42441762ac52865120c54e21c1bd34b64e84ce1aa00bd3e84085492e10734b5d",
   "toolchain": {
     "identity": "37d8d819fd533570e0b707d3101ab2944f6488c4b4452b2b0a1a9ea04366452c",
     "receiptSha256": "e0d16b87271b855dd0b045860c841014b3a5d69fa7e96e45752e299823533978",
@@ -2264,9 +2264,9 @@
     "wasmLd": "LLD 22.1.0 (https://github.com/llvm/llvm-project 4434dabb69916856b824f68a64b029c67175e532)"
   },
   "sourceClosure": {
-    "gitHead": "de093549cc4dcfa89a5817a8dff8c82726304e0a",
+    "gitHead": "64e6ba729fc8daf6e1369ba93c988413748ff313",
     "fileCount": 63,
-    "sha256": "484b31ed77bf8f02ff60173da1257ef93c9c4f070c14ca3a859e7d0130530f2b",
+    "sha256": "63d997a5123babb8a87691527addb007a1ed044166a2f37f2f0f64fdc740032c",
     "files": [
       {
         "path": "bench/pari-class-group-rust/Cargo.lock",
@@ -2302,7 +2302,7 @@
       },
       {
         "path": "bench/pari-class-group-rust/qualification/public-cubic-e2e/src/lib.rs",
-        "sha256": "52ff08443229224a3a66e22f87318e020e50086a7f97e864828f691e7feb9527"
+        "sha256": "7e51e9f81c957571de58eaab028ac20b01b3811e348f9757d9ff638e9f8e4e62"
       },
       {
         "path": "bench/pari-class-group-rust/qualification/public-cubic-e2e/src/main.rs",
@@ -2322,7 +2322,7 @@
       },
       {
         "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/README.md",
-        "sha256": "ee0acc2c3699020f0d666c247b0ee86088864cc4128dea937e17c721d346cd3a"
+        "sha256": "337646e544f1aad8910fd87294b6294a7ff29df3d1a8b37cb0b1cd958bf30ff8"
       },
       {
         "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/ROOT-INTEGRATION.md",
@@ -2362,7 +2362,7 @@
       },
       {
         "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/row6.vector.json",
-        "sha256": "c52c44662ed7e1e1db8b203094258164d17b9f0868c22c5bb777a49034df431c"
+        "sha256": "42441762ac52865120c54e21c1bd34b64e84ce1aa00bd3e84085492e10734b5d"
       },
       {
         "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/run-browsers.mjs",
@@ -2374,7 +2374,7 @@
       },
       {
         "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/src/lib.rs",
-        "sha256": "d5fbc2dcb6f30fbe47ddc2b668fb71caae1c479d1d3b3a33918bd7c2ed42be85"
+        "sha256": "7fdb19372a0208745815e42029106e29f7f0f9c6b473aa06b1a08f4053261344"
       },
       {
         "path": "bench/pari-class-group-rust/src/analytic_completion.rs",
@@ -2394,11 +2394,11 @@
       },
       {
         "path": "bench/pari-class-group-rust/src/class_group.rs",
-        "sha256": "75b28b18f9b5492e62d0e62429aa692c5648a85f528440d728206a9cb89ea6d2"
+        "sha256": "6781f72eb0275693c30d2fdcadb829a4a0e4d91f66dadaedef424b6bfed874a2"
       },
       {
         "path": "bench/pari-class-group-rust/src/class_maps.rs",
-        "sha256": "2c70447f73becb8ccb164b909e2f0afe6a208937e4cc4d7c647ba2c5373a158a"
+        "sha256": "fbb7dea79b0943b2ba87e40b0a4c1b161830acf788769dc46fd10d6f6e919fcb"
       },
       {
         "path": "bench/pari-class-group-rust/src/collector_schedule.rs",
@@ -2406,15 +2406,15 @@
       },
       {
         "path": "bench/pari-class-group-rust/src/compact_cubic_presentation.rs",
-        "sha256": "277fa4f420ff82a65b28424abc554cb173ca987d83356c933ff7e6d525ea1d7b"
+        "sha256": "47453a2935ced4ed6b4e2093509197e1296bf0a2fe4f6f3bbc65f6ac5800fa6d"
       },
       {
         "path": "bench/pari-class-group-rust/src/cubic_completion.rs",
-        "sha256": "b15aa5def92cb91149ea1dc9381d2376a4799ed39bbdb72a17d72ec871d3a746"
+        "sha256": "f6189b3a6cd8bbd89135c044631765fdcadeca0c96343618ac0aa85fa9699db1"
       },
       {
         "path": "bench/pari-class-group-rust/src/cubic_presentation.rs",
-        "sha256": "85032c7bab810cd99a20d970efe3c95531c6bbfc2ddca89a88fa73d79f378b4c"
+        "sha256": "974adc6b6bc9a0dfd56c9e2c16ea0198fc01add7b0869cbb554ccc6a00a76ade"
       },
       {
         "path": "bench/pari-class-group-rust/src/enumeration.rs",
@@ -2426,11 +2426,11 @@
       },
       {
         "path": "bench/pari-class-group-rust/src/flint_normal_form.c",
-        "sha256": "eaf32df2d801b9c42eadea069d650dda9d770e9eb56d479baecadb146761a267"
+        "sha256": "9bff5e701c828f27641c447672871562188871cc4311c9b54e2978aa3ec408cf"
       },
       {
         "path": "bench/pari-class-group-rust/src/flint_normal_form.rs",
-        "sha256": "03993c4e7a2a3d38d1a8f0002e5302a9ed9145b539a0376f688941e5cffe412d"
+        "sha256": "eb92649e4157ae9401e5772048fdfb91a042a45c401988dc12adfc5eeb506a19"
       },
       {
         "path": "bench/pari-class-group-rust/src/gmp_smith.rs",
@@ -2446,7 +2446,7 @@
       },
       {
         "path": "bench/pari-class-group-rust/src/lib.rs",
-        "sha256": "f6c8589cb31b6a0c1657774d92a2eccebdbbb4e360e7669d5729405d04c04488"
+        "sha256": "06a21e0c0bd8f07424574f0e78f24f12d85883ceb4eba623165cea5db27ac596"
       },
       {
         "path": "bench/pari-class-group-rust/src/main.rs",
@@ -2454,7 +2454,7 @@
       },
       {
         "path": "bench/pari-class-group-rust/src/numerical_preparation.rs",
-        "sha256": "d966d2805b83a255ac42111cc09cc69498b30fba92aba610c0fa7b46d2e6b343"
+        "sha256": "760cb3dce5ac14e96c1032918a13999e661922a8225a27a5f4b1397154074d8b"
       },
       {
         "path": "bench/pari-class-group-rust/src/pari_random.rs",
@@ -2470,11 +2470,11 @@
       },
       {
         "path": "bench/pari-class-group-rust/src/prepared_factor_base.rs",
-        "sha256": "2a1bb6e572cdced8786b5a9024cd6741b09b73f5e1b9e43b007a27a6616d09ac"
+        "sha256": "4623901ad8c4c7d31cc78eb5373c57303f097ee11ff01f022cb2fd701ef31721"
       },
       {
         "path": "bench/pari-class-group-rust/src/prepared_ideal.rs",
-        "sha256": "261059e71fef692939ed1f09ad44b4fdae376b8c123c47604b2743036453d5b0"
+        "sha256": "9ff91511cf4533c172c270f54a2098537f1618fcf3f83dbde0f0cda12c7fba5f"
       },
       {
         "path": "bench/pari-class-group-rust/src/prepared_input.rs",
@@ -2494,7 +2494,7 @@
       },
       {
         "path": "bench/pari-class-group-rust/src/smooth_admission.rs",
-        "sha256": "4936644436d471b91e11f8690f9abbbf03d4450b81a6f6483b9f237c6b982573"
+        "sha256": "b0931be1a8a9298594a69892637cb4d1bfeb051e0231101875ef0115c08cc00e"
       },
       {
         "path": "bench/pari-class-group-rust/src/unit_lattice.rs",
@@ -2522,26 +2522,26 @@
       }
     ]
   },
-  "elapsedMs": 22240.600782,
+  "elapsedMs": 31021.853683,
   "memoryPagesBefore": 256,
-  "memoryPagesAfter": 1865,
+  "memoryPagesAfter": 2166,
   "processResourceUsage": {
-    "userCPUTime": 22960897,
-    "systemCPUTime": 155066,
-    "maxRSS": 199576,
+    "userCPUTime": 31798764,
+    "systemCPUTime": 186033,
+    "maxRSS": 469884,
     "sharedMemorySize": 0,
     "unsharedDataSize": 0,
     "unsharedStackSize": 0,
-    "minorPageFault": 54339,
+    "minorPageFault": 60028,
     "majorPageFault": 0,
     "swappedOut": 0,
     "fsRead": 0,
-    "fsWrite": 160,
+    "fsWrite": 0,
     "ipcSent": 0,
     "ipcReceived": 0,
     "signalsCount": 0,
-    "voluntaryContextSwitches": 1038,
-    "involuntaryContextSwitches": 142
+    "voluntaryContextSwitches": 1047,
+    "involuntaryContextSwitches": 271
   },
   "guestResult": {
     "schema": "sagejs.rust-class-group/public-cubic-e2e-receipt-v2",
@@ -2567,7 +2567,7 @@
     },
     "relations": {
       "factorBaseSize": 1130,
-      "relationCount": 1137,
+      "relationCount": 1144,
       "completeRankAndSurplus": true,
       "missingRank": 0
     },
@@ -2577,9 +2577,9 @@
         "2"
       ],
       "classNumber": "4",
-      "authenticatedPrincipalRelations": 1137,
+      "authenticatedPrincipalRelations": 1144,
       "generatorOrderWitnesses": 2,
-      "authority": "authenticated-collector-sealed-compact-elementary-two-presentation"
+      "authority": "authenticated-collector-sealed-compact-mixed-invariant-presentation"
     },
     "completion": {
       "proof": "conditional-grh",
@@ -2592,15 +2592,27 @@
       "bfThreshold": 23994,
       "classUnitHypothesis": "GRH for the Dedekind-zeta residue bound",
       "factorBaseHypothesis": "GRH for all unramified Hecke L-functions of class-group characters",
+      "requestedLogarithmPrecisionBits": 8192,
+      "requestedReplayPrecisionBits": 4096,
+      "attemptedPrecisionLevels": [
+        {
+          "logarithmPrecisionBits": 4096,
+          "replayPrecisionBits": 2048
+        },
+        {
+          "logarithmPrecisionBits": 8192,
+          "replayPrecisionBits": 4096
+        }
+      ],
       "sealedEvidenceVerified": true,
       "arbitraryIdealClassMapRetained": true
     },
     "stageTimingsNanoseconds": {
-      "publicInputAndPreparation": 166018508,
-      "relationCollection": 8616767936,
-      "candidateAuthentication": 4783607090,
-      "unitAndAnalyticCompletion": 8566393652,
-      "totalToSealedResult": 22133241256
+      "publicInputAndPreparation": 164979197,
+      "relationCollection": 9389347394,
+      "candidateAuthentication": 4633405797,
+      "unitAndAnalyticCompletion": 16665973599,
+      "totalToSealedResult": 31011662656
     }
   },
   "stableProjection": {
@@ -2627,7 +2639,7 @@
     },
     "relations": {
       "factorBaseSize": 1130,
-      "relationCount": 1137,
+      "relationCount": 1144,
       "completeRankAndSurplus": true,
       "missingRank": 0
     },
@@ -2637,9 +2649,9 @@
         "2"
       ],
       "classNumber": "4",
-      "authenticatedPrincipalRelations": 1137,
+      "authenticatedPrincipalRelations": 1144,
       "generatorOrderWitnesses": 2,
-      "authority": "authenticated-collector-sealed-compact-elementary-two-presentation"
+      "authority": "authenticated-collector-sealed-compact-mixed-invariant-presentation"
     },
     "completion": {
       "proof": "conditional-grh",
@@ -2652,6 +2664,18 @@
       "bfThreshold": 23994,
       "classUnitHypothesis": "GRH for the Dedekind-zeta residue bound",
       "factorBaseHypothesis": "GRH for all unramified Hecke L-functions of class-group characters",
+      "requestedLogarithmPrecisionBits": 8192,
+      "requestedReplayPrecisionBits": 4096,
+      "attemptedPrecisionLevels": [
+        {
+          "logarithmPrecisionBits": 4096,
+          "replayPrecisionBits": 2048
+        },
+        {
+          "logarithmPrecisionBits": 8192,
+          "replayPrecisionBits": 4096
+        }
+      ],
       "sealedEvidenceVerified": true,
       "arbitraryIdealClassMapRetained": true
     },
