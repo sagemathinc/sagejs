@@ -171,13 +171,13 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/class_maps.rs",
-      "sha256": "2a8059c3552589cb558e0b6076f45d63f38ffca476d1e86cf2ecde019594458e",
+      "sha256": "0508c05ba0504c09d068b23c962fcc1dd6731ce4ae2140b2a5de1a97e9757102",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
       "mappings": [],
       "missing_mapping_explanation": null,
-      "notes": "Original exact quotient/map evidence built from a supplied verified Smith decomposition."
+      "notes": "Original exact quotient/map evidence built from a supplied verified Smith decomposition, with a versioned injective binary binding for its immutable representation."
     },
     {
       "path": "bench/pari-class-group-rust/src/collector_schedule.rs",

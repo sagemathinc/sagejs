@@ -30,7 +30,7 @@
 //! exact division), preserve the common embedding/order, and account for the
 //! harmless unit ambiguity.  No such field elements are manufactured here.
 
-use rug::Integer;
+use rug::{Integer, integer::Order};
 use sha2::{Digest, Sha256};
 
 use crate::hnf::{BigIntMatrix, NormalFormError, SmithDecomposition};
@@ -369,9 +369,17 @@ impl PresentationClassMap {
 
     fn compute_binding_sha256(&self) -> [u8; 32] {
         fn integer(hasher: &mut Sha256, value: &Integer) {
-            let bytes = value.to_string();
-            hasher.update((bytes.len() as u64).to_le_bytes());
-            hasher.update(bytes.as_bytes());
+            if let Some(value) = value.to_i64() {
+                let mut encoded = [0_u8; 9];
+                encoded[1..].copy_from_slice(&value.to_le_bytes());
+                hasher.update(encoded);
+                return;
+            }
+            let mut magnitude = vec![0_u8; value.significant_digits::<u8>()];
+            value.write_digits(&mut magnitude, Order::Lsf);
+            hasher.update([if value < &0 { 1 } else { 2 }]);
+            hasher.update((magnitude.len() as u64).to_le_bytes());
+            hasher.update(magnitude);
         }
         fn matrix(hasher: &mut Sha256, value: &BigIntMatrix) {
             hasher.update((value.rows() as u64).to_le_bytes());
@@ -387,7 +395,7 @@ impl PresentationClassMap {
         }
 
         let mut hasher = Sha256::new();
-        hasher.update(b"sagejs.presentation-class-map/v1\0");
+        hasher.update(b"sagejs.presentation-class-map/v2\0");
         match (
             &self.relations,
             &self.compact_generator_to_smith,

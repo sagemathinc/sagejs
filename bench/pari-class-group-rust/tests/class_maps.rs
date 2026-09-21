@@ -331,6 +331,35 @@ fn coefficients_larger_than_machine_words_remain_exact() {
 }
 
 #[test]
+fn binding_hash_binary_encoding_distinguishes_large_integer_signs() {
+    let magnitude = Integer::from(1) << 200_u32;
+    let positive_relations = BigIntMatrix::try_new(1, 1, vec![magnitude.clone()]).unwrap();
+    let negative_relations =
+        BigIntMatrix::try_new(1, 1, vec![Integer::from(-magnitude.clone())]).unwrap();
+    let positive = PresentationClassMap::from_verified_generator_coordinates(
+        vec![Integer::from(2)],
+        vec![Integer::from(1)],
+        positive_relations.clone(),
+    )
+    .unwrap();
+    let positive_again = PresentationClassMap::from_verified_generator_coordinates(
+        vec![Integer::from(2)],
+        vec![Integer::from(1)],
+        positive_relations,
+    )
+    .unwrap();
+    let negative = PresentationClassMap::from_verified_generator_coordinates(
+        vec![Integer::from(2)],
+        vec![Integer::from(1)],
+        negative_relations,
+    )
+    .unwrap();
+
+    assert_eq!(positive.binding_sha256(), positive_again.binding_sha256());
+    assert_ne!(positive.binding_sha256(), negative.binding_sha256());
+}
+
+#[test]
 fn compact_diagonal_map_matches_dense_verified_smith_and_binds_order() {
     let (relations, smith) = identity_smith(&[1.into(), 1.into(), 3.into()]);
     let dense = PresentationClassMap::from_verified_smith(relations, smith).unwrap();
