@@ -154,11 +154,12 @@ test("v2 replay proves principal rows and exposes live factor-base ideals", asyn
     "    answer.class_group()",
     "except ValueError as error:",
     "    class_error = str(error)",
-    "[answer.complete, answer.proof_status, answer.tentative_invariants, context.verify(), context.factor_base_class_coordinates(0), context.class_coordinates((4,)), context.lift_class_coordinates((1,)), context.factor_base_ideal(0) == K.maximal_order().ideal(2, a), answer.diagnostics['relationPresentationReplay'], answer.diagnostics['relationIdealReplay']['allPrincipalIdealEqualitiesReplayed'], answer.diagnostics['arbitraryIdealClassMap'], answer.diagnostics['automaticDispatch'], len(answer.diagnostics['acceptedEvidenceJoins']), len(answer.diagnostics['remainingEvidenceGaps']), [(stage.name, stage.state) for stage in answer.stages], class_error]",
+    "prime = context.factor_base_ideal(0)",
+    "[answer.complete, answer.proof_status, answer.tentative_invariants, context.verify(), context.factor_base_class_coordinates(0), context.class_coordinates((4,)), context.lift_class_coordinates((1,)), prime == K.maximal_order().ideal(2, a), context.smooth_ideal_class_coordinates(prime), context.smooth_ideal_class_coordinates(prime^3), context.class_generator_ideal(0) == prime, context.representative_ideal((2,)) == prime^2, answer.diagnostics['relationPresentationReplay'], answer.diagnostics['relationIdealReplay']['allPrincipalIdealEqualitiesReplayed'], answer.diagnostics['arbitraryIdealClassMap'], answer.diagnostics['automaticDispatch'], len(answer.diagnostics['acceptedEvidenceJoins']), len(answer.diagnostics['remainingEvidenceGaps']), [(stage.name, stage.state) for stage in answer.stages], class_error]",
   ]);
   assert.equal(
     answer.repr,
-    "[False, 'incomplete-resource-limit', (3,), True, (1,), (1,), (1,), True, 'exact-principal-ideal-and-integer-lattice', True, 'unavailable', False, 7, 5, [('rust-compact-relation-presentation-replay', 'complete'), ('sagejs-public-class-unit-certification', 'incomplete')], 'an incomplete class/unit computation has no proved class group']",
+    "[False, 'incomplete-resource-limit', (3,), True, (1,), (1,), (1,), True, (1,), (0,), True, True, 'exact-principal-ideal-and-integer-lattice', True, 'unavailable', False, 7, 5, [('rust-compact-relation-presentation-replay', 'complete'), ('sagejs-public-class-unit-certification', 'incomplete')], 'an incomplete class/unit computation has no proved class group']",
   );
 });
 

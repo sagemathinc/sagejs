@@ -281,6 +281,7 @@ class RustCompactPresentationReplay:
     def __init__(
         self,
         presentation: CompactRelationPresentation,
+        order: Any,
         factor_base_ideals: Sequence[Any],
         *,
         producer_input_id: str,
@@ -293,6 +294,14 @@ class RustCompactPresentationReplay:
             raise RelationMatrixError("the live factor base has the wrong length")
         self._presentation = presentation
         self._factor_base_ideals = tuple(factor_base_ideals)
+        relations = __import__(
+            "sagejs.number_fields.class_group_relations",
+            fromlist=["class_group_relations"],
+        )
+        self._ideal_reconstructor = relations.FactorBaseIdealReconstructor(
+            order, factor_base_ideals
+        )
+        self._factor_ideal_over_base = relations.factor_ideal_over_base
         self.producer_input_id = producer_input_id
         self.prepared_result_identity = prepared_result_identity
         self.certificate_identity = certificate_identity
@@ -333,6 +342,26 @@ class RustCompactPresentationReplay:
         if position >= self.factor_base_size:
             raise RelationMatrixError("factor-base index is out of bounds")
         return self._factor_base_ideals[position]
+
+    def smooth_ideal_class_coordinates(self, ideal: Any) -> tuple[int, ...]:
+        """Map an ideal whose complete support lies in the live factor base."""
+        row = self._factor_ideal_over_base(ideal, self._factor_base_ideals)
+        return self.class_coordinates(row)
+
+    def representative_ideal(self, coordinates: Sequence[int]) -> Any:
+        """Construct a live ideal representing verified class coordinates."""
+        return self._ideal_reconstructor.reconstruct(
+            self.lift_class_coordinates(coordinates)
+        )
+
+    def class_generator_ideal(self, index: int) -> Any:
+        """Return the live representative of one invariant-factor generator."""
+        position = _natural(index, "class-generator index")
+        coordinates = [0] * len(self.invariants)
+        if position >= len(coordinates):
+            raise RelationMatrixError("class-generator index is out of bounds")
+        coordinates[position] = 1
+        return self.representative_ideal(coordinates)
 
     def lift_class_coordinates(self, coordinates: Sequence[int]) -> tuple[int, ...]:
         """Return the certified standard lift into the factor-base lattice."""
@@ -744,6 +773,7 @@ def adapt_rust_prepared_cubic_v2_presentation(
     certificate_identity = _identity(compact_certificate)
     context = RustCompactPresentationReplay(
         presentation,
+        field.maximal_order(),
         factor_base_ideals,
         producer_input_id=producer_input_id,
         prepared_result_identity=prepared_identity,
@@ -765,6 +795,8 @@ def adapt_rust_prepared_cubic_v2_presentation(
         "relationIdealReplay": ideal_replay,
         "liveFactorBaseIdeals": "available-through-context",
         "factorBaseCoordinateMap": "available",
+        "smoothFactorBaseIdealClassMap": "available-through-context",
+        "classGeneratorIdeals": "available-through-context",
         "arbitraryIdealClassMap": "unavailable",
         "requestResourceBinding": "not-present-in-evidence",
         "artifactIdentity": None,

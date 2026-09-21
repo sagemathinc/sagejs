@@ -262,6 +262,11 @@ relation-principality and live-factor-base ownership gap for the bounded
 compact adapter, but does not yet provide arbitrary-ideal discrete logarithms,
 live unit/saturation objects, analytic completion-proof replay, request/resource
 binding, artifact identity, or automatic public dispatch.
+The retained context now also reconstructs live ideal representatives for the
+certified invariant-factor generators and maps ideals that are already exactly
+smooth over the authenticated factor base. This supplies the exact lower layer
+needed by the Rust arbitrary-ideal reducer without misrepresenting that bounded
+smooth map as the still-missing arbitrary-ideal query boundary.
 
 ## Evidence we actually have
 

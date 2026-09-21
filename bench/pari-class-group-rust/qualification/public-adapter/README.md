@@ -22,6 +22,11 @@ complete quotient lattice. This closes relation principality and live
 factor-base ownership, but still returns an incomplete `ClassUnitComputation`:
 arbitrary-ideal maps, live units and saturation, completion-proof replay,
 request/resource binding, and executable identity remain absent.
+The retained context does expose live invariant-factor generator ideals,
+representative ideals from certified coordinates, and exact coordinates for
+ideals already smooth over the authenticated factor base. Arbitrary ideals
+still require the Rust reduction certificate/query boundary and remain
+explicitly unsupported here.
 
 Run the focused structural qualification with:
 
