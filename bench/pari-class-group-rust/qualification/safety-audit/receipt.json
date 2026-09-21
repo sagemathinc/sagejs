@@ -2878,7 +2878,7 @@
       "kind": "c_ffi_export",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.c",
-      "line": 2574,
+      "line": 2580,
       "column": 5,
       "snippet": "int sagejs_rust_flint_bdf_factor_base_margin(",
       "safetyRationale": {
@@ -2893,7 +2893,7 @@
       "kind": "c_ffi_export",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.c",
-      "line": 2707,
+      "line": 2713,
       "column": 5,
       "snippet": "int sagejs_rust_flint_bf_index_enclosure(",
       "safetyRationale": {
@@ -3733,8 +3733,8 @@
     {
       "file": "src/flint_normal_form.c",
       "scope": "product-candidate",
-      "sha256": "353bdff6a190e012f21deb98dd9a67ff3ab456de5f69634392d219c617224785",
-      "bytes": 113620,
+      "sha256": "9bff5e701c828f27641c447672871562188871cc4311c9b54e2978aa3ec408cf",
+      "bytes": 114009,
       "copyrightNotices": [
         "Copyright (C) Sage.js contributors."
       ],
@@ -3745,8 +3745,8 @@
     {
       "file": "src/flint_normal_form.rs",
       "scope": "product-candidate",
-      "sha256": "6f3102c24a3090dee8ab3b102417cd7e57f305988525579dc9a5af131dec347c",
-      "bytes": 84833,
+      "sha256": "eb92649e4157ae9401e5772048fdfb91a042a45c401988dc12adfc5eeb506a19",
+      "bytes": 85767,
       "copyrightNotices": [
         "Copyright (C) Sage.js contributors."
       ],
@@ -4490,5 +4490,5 @@
     "miriCoverageEstablished": false,
     "productionQualified": false
   },
-  "inventorySha256": "8250f1dbcc5822ce2bd242fe604aa4d7a8e59bf966364a0eefb86a9fa305a2d0"
+  "inventorySha256": "3f2c41d7679c31297de641eed48d609ab847712121e247fd04d3a756950e96e5"
 }

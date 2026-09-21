@@ -2154,6 +2154,34 @@ mod tests {
     }
 
     #[test]
+    fn arb_regulator_skips_relations_unused_by_every_unit() {
+        // The first compact generator is deliberately zero and would make a
+        // logarithm enclosure fail. Its exact exponent is zero, so it has no
+        // mathematical contribution and must not be evaluated.
+        let with_unused = flint_compact_cubic_regulator(
+            [1, -1, 0, 1],
+            [1, 0, 0, 0, 1, 0, 0, 0, 1],
+            1,
+            (1, 1),
+            &[0.into(), 0.into(), 0.into(), 0.into(), 1.into(), 0.into()],
+            &[0.into(), 1.into()],
+            256,
+        )
+        .unwrap();
+        let used_only = flint_compact_cubic_regulator(
+            [1, -1, 0, 1],
+            [1, 0, 0, 0, 1, 0, 0, 0, 1],
+            1,
+            (1, 1),
+            &[0.into(), 1.into(), 0.into()],
+            &[1.into()],
+            256,
+        )
+        .unwrap();
+        assert_eq!(with_unused, used_only);
+    }
+
+    #[test]
     fn arb_regulator_accepts_full_width_polynomial_coefficients() {
         let generators = [0.into(), 1.into(), 0.into()];
         let exponents = [1.into()];

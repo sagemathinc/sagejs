@@ -283,7 +283,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/flint_normal_form.c",
-      "sha256": "353bdff6a190e012f21deb98dd9a67ff3ab456de5f69634392d219c617224785",
+      "sha256": "9bff5e701c828f27641c447672871562188871cc4311c9b54e2978aa3ec408cf",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
@@ -293,7 +293,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/flint_normal_form.rs",
-      "sha256": "6f3102c24a3090dee8ab3b102417cd7e57f305988525579dc9a5af131dec347c",
+      "sha256": "eb92649e4157ae9401e5772048fdfb91a042a45c401988dc12adfc5eeb506a19",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",

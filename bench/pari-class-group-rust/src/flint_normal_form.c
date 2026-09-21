@@ -2343,7 +2343,7 @@ int sagejs_rust_flint_compact_cubic_regulator(
     slong precision, mpz_ptr lower, mpz_ptr upper, int64_t *binary_exponent)
 {
     if (polynomial == NULL || basis_numerators == NULL ||
-        basis_denominator == 0 || relations == 0 ||
+        basis_denominator == 0 || relations == 0 || relations > SIZE_MAX / 3 ||
         polynomial[3] != 1 ||
         !((real_places == 3 && unit_rank == 2) ||
           (real_places == 1 && unit_rank == 1)) ||
@@ -2421,29 +2421,43 @@ int sagejs_rust_flint_compact_cubic_regulator(
             arb_init(unit_logs[unit][root]);
             arb_zero(unit_logs[unit][root]);
         }
-    fmpz_t coordinates[3], coefficients[3], exponent;
+    fmpz_t coordinates[3], coefficients[3], exponents[2];
     for (size_t index = 0; index < 3; index++)
     {
         fmpz_init(coordinates[index]);
         fmpz_init(coefficients[index]);
     }
-    fmpz_init(exponent);
+    for (size_t unit = 0; unit < 2; unit++)
+        fmpz_init(exponents[unit]);
     arb_t value, logarithm;
     arb_init(value);
     arb_init(logarithm);
     if (status == 0)
         for (size_t relation = 0; relation < relations && status == 0; relation++)
         {
-            for (size_t coordinate = 0; coordinate < 3; coordinate++)
+            int used = 0;
+            for (size_t unit = 0; unit < unit_rank; unit++)
             {
-                mpz_srcptr input = generator_coordinates[3 * relation + coordinate];
+                mpz_srcptr input = unit_exponents[unit * relations + relation];
                 if (input == NULL)
                 {
                     status = -1;
                     break;
                 }
-                fmpz_set_mpz(coordinates[coordinate], input);
+                fmpz_set_mpz(exponents[unit], input);
+                used |= !fmpz_is_zero(exponents[unit]);
             }
+            for (size_t coordinate = 0; coordinate < 3; coordinate++)
+                if (generator_coordinates[3 * relation + coordinate] == NULL)
+                {
+                    status = -1;
+                    break;
+                }
+            if (status != 0 || !used)
+                continue;
+            for (size_t coordinate = 0; coordinate < 3; coordinate++)
+                fmpz_set_mpz(coordinates[coordinate],
+                    generator_coordinates[3 * relation + coordinate]);
             for (size_t power = 0; power < 3 && status == 0; power++)
             {
                 fmpz_zero(coefficients[power]);
@@ -2467,17 +2481,8 @@ int sagejs_rust_flint_compact_cubic_regulator(
                 }
                 arb_log(logarithm, value, precision);
                 for (size_t unit = 0; unit < unit_rank; unit++)
-                {
-                    mpz_srcptr input = unit_exponents[unit * relations + relation];
-                    if (input == NULL)
-                    {
-                        status = -1;
-                        break;
-                    }
-                    fmpz_set_mpz(exponent, input);
                     arb_addmul_fmpz(unit_logs[unit][root], logarithm,
-                        exponent, precision);
-                }
+                        exponents[unit], precision);
             }
         }
 
@@ -2522,7 +2527,8 @@ int sagejs_rust_flint_compact_cubic_regulator(
     arb_clear(determinant);
     arb_clear(logarithm);
     arb_clear(value);
-    fmpz_clear(exponent);
+    for (size_t unit = 0; unit < 2; unit++)
+        fmpz_clear(exponents[unit]);
     for (size_t index = 0; index < 3; index++)
     {
         fmpz_clear(coefficients[index]);
