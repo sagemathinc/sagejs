@@ -15,7 +15,8 @@ use crate::analytic_completion::{
     IncrementalCubicBelabasFriedmanPlan, build_cubic_bdf_factor_base_plan,
 };
 use crate::compact_cubic_presentation::{
-    exact_integer_i64_row_annihilates, modular_basis_columns_in_order, saturation_minor_certificate,
+    exact_integer_i64_row_annihilates, first_non_annihilating_i64_row,
+    modular_basis_columns_in_order, saturation_minor_certificate,
 };
 use crate::cubic_presentation::AuthenticatedCubicPresentationCandidate;
 use crate::flint_normal_form::{
@@ -1098,9 +1099,9 @@ fn complete_cubic_class_group_at_precision(
             ));
         }
     }
-    if dependencies.iter().any(|dependency| {
-        !exact_integer_i64_row_annihilates(dependency, &collected.relations, rows, columns)
-    }) {
+    if first_non_annihilating_i64_row(dependencies.as_ref(), &collected.relations, rows, columns)
+        .is_some()
+    {
         return Err(CubicConditionalCompletionError::KernelReplayMismatch);
     }
 

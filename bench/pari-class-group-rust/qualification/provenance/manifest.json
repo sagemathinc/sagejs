@@ -204,7 +204,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/compact_cubic_presentation.rs",
-      "sha256": "47453a2935ced4ed6b4e2093509197e1296bf0a2fe4f6f3bbc65f6ac5800fa6d",
+      "sha256": "71d5d672f797906df7919effa09660a80dcb5aa4ab18c7ae2df07c964a95ff92",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
@@ -214,7 +214,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/cubic_completion.rs",
-      "sha256": "202482f01bb57752c7ac82dd36bcc8a912927b694d6edd4f4adbe5b2d204d060",
+      "sha256": "814b859588f0bc7a7db566ca6d94936e0ca3f75f090416239f9e8f04027cca6b",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",

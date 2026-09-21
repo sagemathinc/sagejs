@@ -1005,6 +1005,14 @@ pub(crate) fn exact_integer_i64_row_annihilates(
         return fixed.into_iter().all(|sum| sum == 0);
     }
 
+    exact_integer_i64_row_annihilates_gmp(coefficients, matrix, columns)
+}
+
+fn exact_integer_i64_row_annihilates_gmp(
+    coefficients: &[Integer],
+    matrix: &[i64],
+    columns: usize,
+) -> bool {
     let mut exact = vec![Integer::from(0); columns];
     for (row, coefficient) in coefficients.iter().enumerate() {
         if coefficient == &0 {
@@ -1019,6 +1027,85 @@ pub(crate) fn exact_integer_i64_row_annihilates(
         }
     }
     exact.into_iter().all(|sum| sum == 0)
+}
+
+/// Return the first exact dependency that does not annihilate `matrix`.
+///
+/// Matrix row maxima are computed once for the entire dependency batch. For
+/// each dependency, an unsigned absolute-sum bound proves whether every
+/// product and partial sum fits in `i128`. The proved machine-word path has no
+/// overflow branches in its inner loop; an unproved row is replayed from the
+/// beginning with GMP exactly as in [`exact_integer_i64_row_annihilates`].
+pub(crate) fn first_non_annihilating_i64_row(
+    coefficient_rows: &[Vec<Integer>],
+    matrix: &[i64],
+    rows: usize,
+    columns: usize,
+) -> Option<usize> {
+    if matrix.len() != rows.saturating_mul(columns)
+        || coefficient_rows
+            .iter()
+            .any(|coefficients| coefficients.len() != rows)
+    {
+        return Some(0);
+    }
+    if columns == 0 {
+        return None;
+    }
+    let row_maxima = matrix
+        .chunks_exact(columns)
+        .map(|row| {
+            row.iter()
+                .map(|entry| i128::from(*entry).unsigned_abs())
+                .max()
+                .unwrap_or(0)
+        })
+        .collect::<Vec<_>>();
+    let mut machine_coefficients = Vec::<i128>::with_capacity(rows);
+    let mut products = vec![0_i128; columns];
+    for (dependency, coefficients) in coefficient_rows.iter().enumerate() {
+        machine_coefficients.clear();
+        let mut absolute_bound = 0_u128;
+        let machine_proved =
+            coefficients
+                .iter()
+                .zip(&row_maxima)
+                .all(|(coefficient, row_maximum)| {
+                    let Some(coefficient) = coefficient.to_i128() else {
+                        return false;
+                    };
+                    machine_coefficients.push(coefficient);
+                    let Some(term) = coefficient.unsigned_abs().checked_mul(*row_maximum) else {
+                        return false;
+                    };
+                    let Some(next) = absolute_bound.checked_add(term) else {
+                        return false;
+                    };
+                    absolute_bound = next;
+                    absolute_bound <= i128::MAX as u128
+                });
+        let annihilates = if machine_proved && machine_coefficients.len() == rows {
+            products.fill(0);
+            for (row, coefficient) in machine_coefficients.iter().copied().enumerate() {
+                if coefficient == 0 {
+                    continue;
+                }
+                let offset = row * columns;
+                for column in 0..columns {
+                    // The absolute-sum proof above bounds every possible
+                    // partial sum, so neither operation can overflow.
+                    products[column] += coefficient * i128::from(matrix[offset + column]);
+                }
+            }
+            products.iter().all(|sum| *sum == 0)
+        } else {
+            exact_integer_i64_row_annihilates_gmp(coefficients, matrix, columns)
+        };
+        if !annihilates {
+            return Some(dependency);
+        }
+    }
+    None
 }
 
 fn reorder_and_verify_dependencies(
@@ -1041,28 +1128,25 @@ fn reorder_and_verify_dependencies(
             reordered[solver_to_original_rows[solver_row]] =
                 solver_dependencies[dependency * relation_count + solver_row].clone();
         }
-        if !exact_integer_i64_row_annihilates(
-            &reordered,
-            original_relations,
-            relation_count,
-            columns,
-        ) {
-            return Err(CompactPresentationError::DependencyDoesNotAnnihilate {
-                dependency,
-                column: (0..columns)
-                    .find(|&column| {
-                        !exact_integer_i64_dot_is_zero(
-                            &reordered,
-                            original_relations,
-                            relation_count,
-                            columns,
-                            column,
-                        )
-                    })
-                    .unwrap_or(0),
-            });
-        }
         answer.push(reordered);
+    }
+    if let Some(dependency) =
+        first_non_annihilating_i64_row(&answer, original_relations, relation_count, columns)
+    {
+        return Err(CompactPresentationError::DependencyDoesNotAnnihilate {
+            dependency,
+            column: (0..columns)
+                .find(|&column| {
+                    !exact_integer_i64_dot_is_zero(
+                        &answer[dependency],
+                        original_relations,
+                        relation_count,
+                        columns,
+                        column,
+                    )
+                })
+                .unwrap_or(0),
+        });
     }
     Ok(answer)
 }
@@ -1615,6 +1699,38 @@ mod tests {
         let corrupt = [2_i64, 3, -2, -4];
         assert!(!exact_integer_i64_row_annihilates(&large, &corrupt, 2, 2));
         assert!(!exact_integer_i64_row_annihilates(&large, &matrix, 1, 2));
+
+        let dependencies = vec![small.to_vec(), large.to_vec()];
+        assert_eq!(
+            first_non_annihilating_i64_row(&dependencies, &matrix, 2, 2),
+            None
+        );
+        let second_is_corrupt = vec![small.to_vec(), vec![Integer::from(2), Integer::from(1)]];
+        assert_eq!(
+            first_non_annihilating_i64_row(&second_is_corrupt, &matrix, 2, 2),
+            Some(1)
+        );
+
+        // These coefficients fit in `i128`, but their rigorous absolute-sum
+        // bound does not. The batch verifier must replay this row with GMP.
+        let maximum = Integer::from(i128::MAX);
+        let cancellation = vec![vec![maximum.clone(), maximum]];
+        assert_eq!(
+            first_non_annihilating_i64_row(&cancellation, &[1, -1], 2, 1),
+            None
+        );
+        assert_eq!(
+            first_non_annihilating_i64_row(&cancellation, &[1, 1], 2, 1),
+            Some(0)
+        );
+        assert_eq!(
+            first_non_annihilating_i64_row(&dependencies, &[], 2, 0),
+            None
+        );
+        assert_eq!(
+            first_non_annihilating_i64_row(&dependencies, &matrix[..3], 2, 2),
+            Some(0)
+        );
     }
 
     #[test]
