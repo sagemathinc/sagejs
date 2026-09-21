@@ -176,26 +176,41 @@ geometric mean, 6.33x p90, and 7.18x maximum. Rust authentication fell another
 6.83 ms, but variation in the other stages raised the Rust sum by 16.17 ms
 while PARI rose by 16.56 ms; the aggregate ratio movement is not attributed to
 the encoding change.
+The collector factor-base authority, collected relation/principal-generator
+transcript, and final principal-witness binding now use the same binary exact-
+integer encoding under independently bumped domains. The compact consumer
+still hashes every live value before accepting collector provenance. A
+CPU-pinned 31-pair field-0012 comparison reduced authentication by 1.26 ms and
+the complete call by 1.62 ms; Callgrind fell another 23.81 million instructions
+to 2.861 billion. The clean campaign matched all 180 pairs and measured 1.579
+seconds for Rust versus 0.591 seconds for PARI, a 2.673x weighted gap, 3.832x
+geometric mean, 6.42x p90, and 7.17x maximum. Summed authentication fell 19.31
+ms. Other Rust stages and PARI also varied downward, so only the focused and
+instruction-count reductions are attributed to the encoding.
 This remains substantially ahead of the earlier pre-power-cache receipt at
 4.20x weighted and 5.72x geometric mean, but still fails the frozen native
 performance gate. Rust's summed stage
-medians are 0.628 seconds relation collection, 0.385 seconds candidate
-authentication, 0.513 seconds unit and analytic completion, and 0.079 seconds
+medians are 0.615 seconds relation collection, 0.366 seconds candidate
+authentication, 0.506 seconds unit and analytic completion, and 0.078 seconds
 public preparation. Relation collection fell from 1.063 seconds before the
 exact ideal-power cache; the three principal mathematical phases are now
 nearly balanced.
 
 The current shared source also completes row 6 from coefficients through the
 qualification Wasm reactor in Node, Chromium, Firefox, and WebKit with the same
-sealed projection. The 5,771,254-byte artifact is 2,324,094 bytes gzip and
+sealed projection. The 5,779,673-byte artifact is 2,327,383 bytes gzip and
 finishes with 2,166 linear-memory pages (135.38 MiB), inside the plan's 256-MiB
-worker ceiling. One-shot calls are 32.81, 33.29, 244.44, and 33.94 seconds,
+worker ceiling. One-shot calls are 31.27, 31.58, 237.67, and 32.81 seconds,
 respectively. The receipts bind the current 1,144-relation mixed-invariant
 presentation and explicitly expose the failed 4,096/2,048-bit attempt followed
 by the successful 8,192/4,096-bit attempt. This passes current-source browser
 feasibility and memory, not the browser performance or product gates: the route
 is still a synchronous qualification harness rather than the Sage.js worker
 API, and Firefox remains the dominant target-specific performance failure.
+The compatibility adapter now declares the shared Rust source directory as a
+Cargo rebuild input. A clean build produced the current artifact, and touching
+a shared core module forced all three adapter crates to rebuild, closing the
+previous stale-generated-source risk.
 The fail-closed Sage.js receipt adapter now accepts this current
 mixed-invariant result and validates its complete precision-attempt transcript
 against the caller's resource request. It still returns an explicitly

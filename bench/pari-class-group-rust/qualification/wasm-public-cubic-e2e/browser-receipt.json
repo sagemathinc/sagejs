@@ -3,10 +3,10 @@
   "outcome": "pass",
   "artifact": {
     "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/build/public-cubic-e2e.wasm",
-    "bytes": 5771254,
-    "sha256": "8942eb281d0fbb3a18caec50d28f4650f3ee387b24857bfa35a2f784231a52cf",
-    "gzipBytes": 2324094,
-    "gzipSha256": "a4031b877ec39c76f70cc6bfd0a517de7e0714b6223904adeb597d0e84cbd2ae"
+    "bytes": 5779673,
+    "sha256": "95bd77560e40dd2b9c6f11a1f0b71006394a57e44c2686790ff839ab30c1be1e",
+    "gzipBytes": 2327383,
+    "gzipSha256": "ee19f7513a8149882c2eddb44290ff940ba201c7b3cb1cbd59881eef92082680"
   },
   "vector": {
     "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/row6.vector.json",
@@ -2169,9 +2169,9 @@
     "wasmLd": "LLD 22.1.0 (https://github.com/llvm/llvm-project 4434dabb69916856b824f68a64b029c67175e532)"
   },
   "sourceClosure": {
-    "gitHead": "38cba69fcbb8a32c68f1dcbee93b0284fc09462f",
+    "gitHead": "c223dc332409ac95d82b80f431d51beac77a7aa0",
     "fileCount": 63,
-    "sha256": "6893320d5710002af21b448d50e37d36d84db06d7ea0a011b19595047fdc6baa",
+    "sha256": "acbbd0e144f5931b875dba3d038544240f2275a333f49c2822b87bf0cc0a284d",
     "files": [
       {
         "path": "bench/pari-class-group-rust/Cargo.lock",
@@ -2227,7 +2227,7 @@
       },
       {
         "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/README.md",
-        "sha256": "337646e544f1aad8910fd87294b6294a7ff29df3d1a8b37cb0b1cd958bf30ff8"
+        "sha256": "22013fdb39e309790864d72c6a3e22b2b1778124ca6101950c081c7817b2b52a"
       },
       {
         "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/ROOT-INTEGRATION.md",
@@ -2243,7 +2243,7 @@
       },
       {
         "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/core-wasm/build.rs",
-        "sha256": "a7dfd2056b11089fc4ab6c298194c9544d7d382343e39e4e302fb62cc87b95c4"
+        "sha256": "629c45241889edab6e4d39812f7363677052fe23baaf12982bd32026b716a687"
       },
       {
         "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/core-wasm/src/lib.rs",
@@ -2291,7 +2291,7 @@
       },
       {
         "path": "bench/pari-class-group-rust/src/arbitrary_ideal_reduction.rs",
-        "sha256": "8424c7f23b907caf3431989bf4a3d296e27ad3b053c1692d0d3e5fa783632fd7"
+        "sha256": "4f1e5433f798671844dff77234549b15fa0b2aa423dd8daed979fcc1369df4bb"
       },
       {
         "path": "bench/pari-class-group-rust/src/bruteforce_collector.rs",
@@ -2299,11 +2299,11 @@
       },
       {
         "path": "bench/pari-class-group-rust/src/class_group.rs",
-        "sha256": "6781f72eb0275693c30d2fdcadb829a4a0e4d91f66dadaedef424b6bfed874a2"
+        "sha256": "9106019e25b3469a18192bec235f53fc8bb661d047ba48affcea1a298fb27432"
       },
       {
         "path": "bench/pari-class-group-rust/src/class_maps.rs",
-        "sha256": "0508c05ba0504c09d068b23c962fcc1dd6731ce4ae2140b2a5de1a97e9757102"
+        "sha256": "45b6b64e389e56c01e13e24e771da2959c21f1082288f3eda036b63ce88706d2"
       },
       {
         "path": "bench/pari-class-group-rust/src/collector_schedule.rs",
@@ -2500,10 +2500,10 @@
       "browserVersion": "151.0.7922.34",
       "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36",
       "timingsMs": {
-        "fetch": 63.60000002384186,
-        "compile": 11.5,
+        "fetch": 59.59999996423721,
+        "compile": 10.5,
         "instantiate": 1,
-        "call": 33288.30000001192
+        "call": 31580.799999952316
       },
       "memoryPages": {
         "before_call": 256,
@@ -2516,10 +2516,10 @@
       "browserVersion": "153.0",
       "userAgent": "Mozilla/5.0 (X11; Linux x86_64; rv:153.0) Gecko/20100101 Firefox/153.0",
       "timingsMs": {
-        "fetch": 61,
-        "compile": 115,
-        "instantiate": 1,
-        "call": 244435
+        "fetch": 163,
+        "compile": 124,
+        "instantiate": 0,
+        "call": 237670
       },
       "memoryPages": {
         "before_call": 256,
@@ -2532,10 +2532,10 @@
       "browserVersion": "26.5",
       "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Safari/605.1.15",
       "timingsMs": {
-        "fetch": 70,
-        "compile": 19,
-        "instantiate": 2,
-        "call": 33935
+        "fetch": 55,
+        "compile": 20,
+        "instantiate": 1,
+        "call": 32807
       },
       "memoryPages": {
         "before_call": 256,

@@ -29,12 +29,12 @@ expected post-run change within that closure.
 
 ## Current result
 
-The receipt generated from source commit `38cba69fc` records exact agreement
-in all 180 alternating pairs. Summed per-field medians are 1.623 seconds for
-Rust and 0.601 seconds for PARI 2.17.4, or a 2.699x weighted gap. The geometric
-mean is 3.839x, p90 is 6.33x, and the maximum is 7.18x. Rust's summed stage
-medians are 0.628 seconds for relation collection, 0.385 seconds for candidate
-authentication, 0.513 seconds for unit and analytic completion, and 0.079
+The receipt generated from source commit `c223dc332` records exact agreement
+in all 180 alternating pairs. Summed per-field medians are 1.579 seconds for
+Rust and 0.591 seconds for PARI 2.17.4, or a 2.673x weighted gap. The geometric
+mean is 3.832x, p90 is 6.42x, and the maximum is 7.17x. Rust's summed stage
+medians are 0.615 seconds for relation collection, 0.366 seconds for candidate
+authentication, 0.506 seconds for unit and analytic completion, and 0.078
 seconds for public preparation. Exact continuation retains the FLINT
 fraction-free factorization only when the selected square relation block is
 identical and the previous surplus is an exact prefix; it recomputes and
@@ -158,3 +158,16 @@ million instructions. The two raw profiles have SHA-256 digests
 and `dc78ed296a1fe47b657b81113a5430e48a1ed9401f619d664ffb31e3b360a0c4`,
 respectively. They were collected on the same optimization VM with Valgrind
 3.22.0, one public coefficient-only request, and identical Callgrind options.
+
+The collector factor-base authority, complete relation/principal-generator
+transcript, and final principal-witness binding now use the same binary exact-
+integer representation. Their independent domain separators were bumped, and
+the consumer still hashes every live value before entering the trusted compact
+path. A CPU-pinned 31-pair field-0012 A/B comparison reduced authentication by
+1.26 ms and the complete call by 1.62 ms. Callgrind fell from 2,884,489,129 to
+2,860,684,127 instructions, a deterministic reduction of 23,805,002 (0.83%).
+In the clean panel, summed authentication fell by 19.31 ms and Rust total time
+fell by 44.12 ms; PARI simultaneously fell by 10.67 ms, and the other Rust
+stages also varied downward. The focused comparison and instruction count
+establish the authority-encoding gain; the complete aggregate reduction is
+not attributed solely to it.
