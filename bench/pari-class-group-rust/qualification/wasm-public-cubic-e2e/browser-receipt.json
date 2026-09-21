@@ -3,10 +3,10 @@
   "outcome": "pass",
   "artifact": {
     "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/build/public-cubic-e2e.wasm",
-    "bytes": 5779673,
-    "sha256": "95bd77560e40dd2b9c6f11a1f0b71006394a57e44c2686790ff839ab30c1be1e",
-    "gzipBytes": 2327383,
-    "gzipSha256": "ee19f7513a8149882c2eddb44290ff940ba201c7b3cb1cbd59881eef92082680"
+    "bytes": 5776914,
+    "sha256": "ee446c2256512e59aa2132df099decef7efab25919533dfeda8217baba6f90ec",
+    "gzipBytes": 2326379,
+    "gzipSha256": "33d00e658f6e735998081bec6114dbb06a53c9a127a0a7bf107178614065092b"
   },
   "vector": {
     "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/row6.vector.json",
@@ -2169,9 +2169,9 @@
     "wasmLd": "LLD 22.1.0 (https://github.com/llvm/llvm-project 4434dabb69916856b824f68a64b029c67175e532)"
   },
   "sourceClosure": {
-    "gitHead": "c223dc332409ac95d82b80f431d51beac77a7aa0",
+    "gitHead": "3fc10f59bb59cb806e5d9430ed13d4997c7231dc",
     "fileCount": 63,
-    "sha256": "acbbd0e144f5931b875dba3d038544240f2275a333f49c2822b87bf0cc0a284d",
+    "sha256": "c6ebfc4a096d35cffc9ebad760dd5856aad7413e2935d90773f976ee25b5c997",
     "files": [
       {
         "path": "bench/pari-class-group-rust/Cargo.lock",
@@ -2207,7 +2207,7 @@
       },
       {
         "path": "bench/pari-class-group-rust/qualification/public-cubic-e2e/src/lib.rs",
-        "sha256": "767281757ef0a4b7856ec93e6197a480c322d8cc826359cd37b323693ccccdba"
+        "sha256": "2b1df22ee692353e14a84faa300819c1db93b9806697ce67405777c80c4ed617"
       },
       {
         "path": "bench/pari-class-group-rust/qualification/public-cubic-e2e/src/main.rs",
@@ -2227,7 +2227,7 @@
       },
       {
         "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/README.md",
-        "sha256": "22013fdb39e309790864d72c6a3e22b2b1778124ca6101950c081c7817b2b52a"
+        "sha256": "02b760b9bcb5612b7c24ea4761742fab62d479e088cb3b0e46321a79b50a2094"
       },
       {
         "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/ROOT-INTEGRATION.md",
@@ -2291,7 +2291,7 @@
       },
       {
         "path": "bench/pari-class-group-rust/src/arbitrary_ideal_reduction.rs",
-        "sha256": "4f1e5433f798671844dff77234549b15fa0b2aa423dd8daed979fcc1369df4bb"
+        "sha256": "891c846fe01af65024eec377625fa41a52bf453266a3beb3492456157efb1f6b"
       },
       {
         "path": "bench/pari-class-group-rust/src/bruteforce_collector.rs",
@@ -2299,7 +2299,7 @@
       },
       {
         "path": "bench/pari-class-group-rust/src/class_group.rs",
-        "sha256": "9106019e25b3469a18192bec235f53fc8bb661d047ba48affcea1a298fb27432"
+        "sha256": "3f17024e198131fdf311d93ef20664c98d9c09ab12cc196198a14fea557cb9ed"
       },
       {
         "path": "bench/pari-class-group-rust/src/class_maps.rs",
@@ -2500,10 +2500,10 @@
       "browserVersion": "151.0.7922.34",
       "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36",
       "timingsMs": {
-        "fetch": 59.59999996423721,
-        "compile": 10.5,
+        "fetch": 58.19999998807907,
+        "compile": 10.399999976158142,
         "instantiate": 1,
-        "call": 31580.799999952316
+        "call": 31983.400000035763
       },
       "memoryPages": {
         "before_call": 256,
@@ -2516,10 +2516,10 @@
       "browserVersion": "153.0",
       "userAgent": "Mozilla/5.0 (X11; Linux x86_64; rv:153.0) Gecko/20100101 Firefox/153.0",
       "timingsMs": {
-        "fetch": 163,
-        "compile": 124,
-        "instantiate": 0,
-        "call": 237670
+        "fetch": 186,
+        "compile": 133,
+        "instantiate": 2,
+        "call": 238067
       },
       "memoryPages": {
         "before_call": 256,
@@ -2532,10 +2532,10 @@
       "browserVersion": "26.5",
       "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Safari/605.1.15",
       "timingsMs": {
-        "fetch": 55,
-        "compile": 20,
-        "instantiate": 1,
-        "call": 32807
+        "fetch": 57,
+        "compile": 21,
+        "instantiate": 2,
+        "call": 33597
       },
       "memoryPages": {
         "before_call": 256,

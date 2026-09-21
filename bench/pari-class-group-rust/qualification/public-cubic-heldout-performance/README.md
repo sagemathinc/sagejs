@@ -171,3 +171,18 @@ fell by 44.12 ms; PARI simultaneously fell by 10.67 ms, and the other Rust
 stages also varied downward. The focused comparison and instruction count
 establish the authority-encoding gain; the complete aggregate reduction is
 not attributed solely to it.
+
+The collector presentation now makes its factor base and complete relation/
+principal-generator transcript externally read-only. Detached callers retain
+full replay, while the private collector-to-authenticator path propagates a
+field-bound origin capability without hashing the same protected vectors at
+both boundaries. In a CPU-pinned 31-pair field-0012 A/B, collection fell from
+61.879 to 60.513 ms, authentication from 118.080 to 117.401 ms, and total time
+from 258.919 to 256.621 ms. The clean campaign at `3fc10f59b` matched all 180
+pairs and measured 1.600 seconds for Rust versus 0.603 seconds for PARI: 2.653x
+weighted, 3.771x geometric mean, 6.25x p90, and 7.04x maximum. Rust's summed
+stage medians were 0.080 seconds preparation, 0.619 seconds collection, 0.373
+seconds authentication, and 0.511 seconds completion. All aggregate Rust stages
+varied upward relative to the prior clean run, so the focused alternating A/B
+is the speed evidence; the improved clean ratio is not presented as an
+absolute Rust speedup.

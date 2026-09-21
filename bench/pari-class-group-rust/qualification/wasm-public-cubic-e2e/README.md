@@ -46,22 +46,22 @@ cargo test --release --all-targets
 
 ## Current complete result
 
-The current qualified reactor is 5,779,673 bytes (2,327,383 bytes gzip). Its
+The current qualified reactor is 5,776,914 bytes (2,326,379 bytes gzip). Its
 stable row-6 projection passed in Node, Chromium, Firefox, and WebKit after the
 general mixed-invariant remediation. The result has 1,144 authenticated
 relations and records both requested precision and the exact two-attempt
 4,096/2,048- then 8,192/4,096-bit schedule. Each runtime grew from 256 to 2,166
-Wasm pages (16.0 to 135.4 MiB). Representative one-shot calls were 31.27
-seconds in Node, 31.58 seconds in Chromium, 237.67 seconds in Firefox, and
-32.81 seconds in WebKit. These are smoke measurements, not warmed benchmark
+Wasm pages (16.0 to 135.4 MiB). Representative one-shot calls were 31.91
+seconds in Node, 32.25 seconds in Chromium, 238.61 seconds in Firefox, and
+33.12 seconds in WebKit. These are smoke measurements, not warmed benchmark
 medians. The native frozen public benchmark for the same field is 5.826 seconds
 (PARI 3.960 seconds), so Wasm is working end to end and remains within the
 256-MiB worker memory ceiling, but is not yet competitive. Firefox remains the
 largest target-specific problem.
 
-The Node guest's stage times localize its 31.25-second sealed computation to
-0.17 seconds of public preparation, 9.67 seconds of relation collection, 4.67
-seconds of candidate authentication, and 16.68 seconds of unit/analytic
+The Node guest's stage times localize its 31.90-second sealed computation to
+0.17 seconds of public preparation, 9.93 seconds of relation collection, 4.93
+seconds of candidate authentication, and 16.81 seconds of unit/analytic
 completion. This is actionable evidence: the full computation does not fail at
 an incomplete boundary, and the dominant Wasm work is known. The historical
 5,679,772-byte, 1,137-relation result remains useful as a pre-remediation
@@ -95,9 +95,9 @@ compiled only for 32-bit targets, and the exact row-6 browser receipts exercise
 the wasm32 bridge in Node and all three browser engines.
 
 The adapter build script now declares the complete shared Rust source directory
-as a Cargo input. A clean rebuild after the authority-encoding change produced
-artifact SHA-256
-`95bd77560e40dd2b9c6f11a1f0b71006394a57e44c2686790ff839ab30c1be1e`;
+as a Cargo input. A clean rebuild after sealing the collector-owned relation
+storage produced artifact SHA-256
+`ee446c2256512e59aa2132df099decef7efab25919533dfeda8217baba6f90ec`;
 touching a shared core module then caused Cargo to rebuild `core-wasm`,
 `public-wasm`, and the final reactor. This closes the previously observed risk
 that an incremental build could silently reuse stale compatibility-generated
