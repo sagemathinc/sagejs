@@ -4,7 +4,7 @@ Copyright (C) The PARI group. GPL-2.0-or-later, without warranty.
 
 This is a deliberately field-specific composition of the already translated
 PARI 2.17.4 routines.  Its only mathematical inputs are authenticated
-`nfinit` data and neutral prime tables.  In particular no factor-base
+``nfinit`` data and neutral prime tables.  In particular no factor-base
 selection, prime descriptor, relation, analytic degree catalog, or terminal
 answer enters this boundary.
 """
