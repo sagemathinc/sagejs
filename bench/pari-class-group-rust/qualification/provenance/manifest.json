@@ -204,13 +204,13 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/compact_cubic_presentation.rs",
-      "sha256": "8cec05f49f5148463020d5c2c0f5f9e4f57f097a913cfd0ea616a968521b5916",
+      "sha256": "17d4b641e16556b2c0ae501e858fee6075858efbf7fa88504d953d4a39cc1ac7",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
       "mappings": [],
       "missing_mapping_explanation": null,
-      "notes": "Original exact compact authentication for full-rank small-surplus relation matrices, including mixed invariant factors and unit-pivot HNF compression."
+      "notes": "Original exact compact authentication for full-rank small-surplus relation matrices, including mixed invariant factors, unit-pivot HNF compression, and continuation caches whose retained witnesses are replayed against every enlarged presentation."
     },
     {
       "path": "bench/pari-class-group-rust/src/cubic_completion.rs",

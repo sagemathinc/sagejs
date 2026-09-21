@@ -3673,8 +3673,8 @@
     {
       "file": "src/compact_cubic_presentation.rs",
       "scope": "product-candidate",
-      "sha256": "8cec05f49f5148463020d5c2c0f5f9e4f57f097a913cfd0ea616a968521b5916",
-      "bytes": 77639,
+      "sha256": "17d4b641e16556b2c0ae501e858fee6075858efbf7fa88504d953d4a39cc1ac7",
+      "bytes": 83669,
       "copyrightNotices": [
         "Copyright (C) Sage.js contributors."
       ],
@@ -4019,8 +4019,8 @@
     {
       "file": "tests/compact_cubic_presentation.rs",
       "scope": "product-candidate-test",
-      "sha256": "4db04b9a72288365f96b4a05935ab6b128ea306925a1c4e30fe031c798aeff95",
-      "bytes": 15468,
+      "sha256": "a225254b3ec9626ad9ffece0d2833be137aa9a0301e90537fefa55c386864a23",
+      "bytes": 16025,
       "copyrightNotices": [
         "Copyright (C) Sage.js contributors."
       ],
@@ -4490,5 +4490,5 @@
     "miriCoverageEstablished": false,
     "productionQualified": false
   },
-  "inventorySha256": "722e21673d366cdbae2c8e4e935446defc99fd23711d6246b5b23b27cc31a2a5"
+  "inventorySha256": "9b69c28a43b7fc747dec4015dee81a4cc4337858c04d36b194e97f1f55f84c22"
 }

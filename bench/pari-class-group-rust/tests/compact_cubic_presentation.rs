@@ -219,6 +219,7 @@ fn continuation_cache_matches_fresh_authentication_of_enlarged_relations() {
     .unwrap();
     let first_class_number = first.class_number().clone();
     let first_invariant_factors = first.invariant_factors().to_vec();
+    let first_generator_orders = first.generator_orders().to_vec();
     let cache = first.into_continuation_cache();
     let enlarged = collector.advance_to_supplementary(14).unwrap();
     let reused = authenticate_compact_presentation_with_cache(
@@ -236,6 +237,18 @@ fn continuation_cache_matches_fresh_authentication_of_enlarged_relations() {
     // independent oracle.
     assert_eq!(reused.class_number(), &first_class_number);
     assert_eq!(reused.invariant_factors(), first_invariant_factors);
+    for (first_order, reused_order) in first_generator_orders.iter().zip(reused.generator_orders())
+    {
+        assert_eq!(
+            &reused_order.relation_coefficients[..first_order.relation_coefficients.len()],
+            first_order.relation_coefficients.as_slice(),
+        );
+        assert!(
+            reused_order.relation_coefficients[first_order.relation_coefficients.len()..]
+                .iter()
+                .all(|coefficient| coefficient == &0)
+        );
+    }
     assert_eq!(reused.invariant_factors(), fresh.invariant_factors());
     assert_eq!(reused.class_number(), fresh.class_number());
     assert_eq!(

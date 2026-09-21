@@ -116,7 +116,8 @@ pub struct CompactPresentationSolverData {
 /// reused solely when the exact class order is unchanged, and every enlarged
 /// presentation independently replays all dependencies, relations, inverse
 /// identities, saturation evidence, and generator-order witnesses before
-/// publication.
+/// publication. An unchanged generator-order witness is extended only with
+/// zero coefficients for appended relations and replayed exactly.
 #[derive(Debug)]
 pub struct CompactPresentationContinuationCache {
     workspace: FlintSmallSurplusWorkspace,
@@ -127,13 +128,15 @@ pub struct CompactPresentationContinuationCache {
 /// A previously verified quotient map retained only as a continuation
 /// producer. It carries no authority into the enlarged presentation: the
 /// current class order must be identical and the complete map, right inverse,
-/// and every enlarged relation are verified again before publication.
+/// every enlarged relation, and any zero-extended order witness are verified
+/// again before publication.
 #[derive(Debug)]
 struct CompactPresentationMapCache {
     class_number: Integer,
     invariant_factors: Vec<Integer>,
     generator_coordinates: Vec<Integer>,
     generator_preimages: Vec<Integer>,
+    generator_orders: Vec<CompactGeneratorOrderEvidence>,
 }
 
 impl CompactPresentationSolverData {
@@ -299,6 +302,7 @@ impl VerifiedCompactPresentation {
                 invariant_factors: self.invariant_factors,
                 generator_coordinates: self.generator_coordinates,
                 generator_preimages,
+                generator_orders: self.generator_orders,
             },
         }
     }
@@ -579,15 +583,17 @@ pub fn authenticate_compact_presentation_with_cache(
     // the map, its mixed-modulus right inverse, and the invariant-factor
     // product before accepting it.
     let elementary_order = Integer::from(1) << compact.two_rank;
-    let (invariant_factors, generator_coordinates, generator_preimages): (
+    let (invariant_factors, generator_coordinates, generator_preimages, cached_generator_orders): (
         Vec<Integer>,
         Vec<Integer>,
         Vec<Integer>,
+        Option<Vec<CompactGeneratorOrderEvidence>>,
     ) = if let Some(cached) = cached_map.filter(|cached| cached.class_number == class_number) {
         (
             cached.invariant_factors,
             cached.generator_coordinates,
             cached.generator_preimages,
+            Some(cached.generator_orders),
         )
     } else if class_number == elementary_order {
         preflight_retained_map(generators, compact.two_rank, limits)?;
@@ -601,6 +607,7 @@ pub fn authenticate_compact_presentation_with_cache(
             vec![Integer::from(2); compact.two_rank],
             normalized.into_iter().map(Integer::from).collect(),
             preimages,
+            None,
         )
     } else {
         preflight_general_smith(generators, surplus, limits)?;
@@ -632,6 +639,7 @@ pub fn authenticate_compact_presentation_with_cache(
                 .into_iter()
                 .map(Integer::from)
                 .collect(),
+            None,
         )
     };
     let invariant_count = invariant_factors.len();
@@ -668,6 +676,27 @@ pub fn authenticate_compact_presentation_with_cache(
     };
     let generator_orders = if invariant_count == 0 {
         Vec::new()
+    } else if let Some(mut cached_orders) = cached_generator_orders {
+        if cached_orders.len() != invariant_count
+            || cached_orders
+                .iter()
+                .any(|evidence| evidence.relation_coefficients.len() > relation_count)
+        {
+            return Err(CompactPresentationError::TargetWitnessMismatch { target: usize::MAX });
+        }
+        for evidence in &mut cached_orders {
+            evidence
+                .relation_coefficients
+                .resize(relation_count, Integer::from(0));
+        }
+        verify_generator_order_evidence(
+            &cached_orders,
+            &invariant_factors,
+            &collected.relations,
+            relation_count,
+            generators,
+        )?;
+        cached_orders
     } else {
         let mut targets = vec![Integer::from(0); invariant_count * generators];
         for coordinate in 0..invariant_count {
@@ -705,6 +734,43 @@ pub fn authenticate_compact_presentation_with_cache(
         generator_orders,
         solver_data,
     })
+}
+
+fn verify_generator_order_evidence(
+    evidence: &[CompactGeneratorOrderEvidence],
+    invariant_factors: &[Integer],
+    relations: &[i64],
+    relation_count: usize,
+    generators: usize,
+) -> Result<(), CompactPresentationError> {
+    if relations.len() != relation_count.saturating_mul(generators)
+        || evidence.len() != invariant_factors.len()
+    {
+        return Err(CompactPresentationError::TargetWitnessMismatch { target: usize::MAX });
+    }
+    for (coordinate, order) in evidence.iter().enumerate() {
+        if order.coordinate != coordinate
+            || order.factor_base_exponents.len() != generators
+            || order.relation_coefficients.len() != relation_count
+        {
+            return Err(CompactPresentationError::TargetWitnessMismatch { target: coordinate });
+        }
+        let expected = order
+            .factor_base_exponents
+            .iter()
+            .map(|exponent| Integer::from(&invariant_factors[coordinate] * exponent))
+            .collect::<Vec<_>>();
+        if !exact_integer_i64_row_matches(
+            &order.relation_coefficients,
+            relations,
+            relation_count,
+            generators,
+            &expected,
+        ) {
+            return Err(CompactPresentationError::TargetWitnessMismatch { target: coordinate });
+        }
+    }
+    Ok(())
 }
 
 fn preflight_retained_map(
@@ -1064,6 +1130,88 @@ fn exact_integer_i64_row_annihilates_gmp(
         }
     }
     exact.into_iter().all(|sum| sum == 0)
+}
+
+/// Test an exact integer row against a complete nonzero target vector.
+///
+/// The fixed-width route is entered only after one absolute-sum proof bounds
+/// every product and partial sum in `i128`; otherwise the whole row restarts in
+/// GMP. This is the nonzero-target counterpart of
+/// [`exact_integer_i64_row_annihilates`].
+fn exact_integer_i64_row_matches(
+    coefficients: &[Integer],
+    matrix: &[i64],
+    rows: usize,
+    columns: usize,
+    expected: &[Integer],
+) -> bool {
+    if coefficients.len() != rows
+        || matrix.len() != rows.saturating_mul(columns)
+        || expected.len() != columns
+    {
+        return false;
+    }
+    if columns == 0 {
+        return true;
+    }
+    let row_maxima = matrix.chunks_exact(columns).map(|row| {
+        row.iter()
+            .map(|entry| i128::from(*entry).unsigned_abs())
+            .max()
+            .unwrap_or(0)
+    });
+    let mut machine_coefficients = Vec::<i128>::with_capacity(rows);
+    let mut absolute_bound = 0_u128;
+    let machine_proved = coefficients
+        .iter()
+        .zip(row_maxima)
+        .all(|(coefficient, row_maximum)| {
+            let Some(coefficient) = coefficient.to_i128() else {
+                return false;
+            };
+            machine_coefficients.push(coefficient);
+            let Some(term) = coefficient.unsigned_abs().checked_mul(row_maximum) else {
+                return false;
+            };
+            let Some(next) = absolute_bound.checked_add(term) else {
+                return false;
+            };
+            absolute_bound = next;
+            absolute_bound <= i128::MAX as u128
+        });
+    let machine_expected = expected
+        .iter()
+        .map(Integer::to_i128)
+        .collect::<Option<Vec<_>>>();
+    if machine_proved && machine_coefficients.len() == rows {
+        if let Some(machine_expected) = machine_expected {
+            let mut products = vec![0_i128; columns];
+            for (row, coefficient) in machine_coefficients.iter().copied().enumerate() {
+                if coefficient == 0 {
+                    continue;
+                }
+                let offset = row * columns;
+                for column in 0..columns {
+                    products[column] += coefficient * i128::from(matrix[offset + column]);
+                }
+            }
+            return products == machine_expected;
+        }
+    }
+    let mut exact = vec![Integer::from(0); columns];
+    for (row, coefficient) in coefficients.iter().enumerate() {
+        if coefficient == &0 {
+            continue;
+        }
+        let offset = row * columns;
+        for column in 0..columns {
+            let entry = matrix[offset + column];
+            if entry != 0 {
+                exact[column] += coefficient * entry;
+            }
+        }
+    }
+    exact == expected
 }
 
 /// Return the first exact dependency that does not annihilate `matrix`.
@@ -1768,6 +1916,30 @@ mod tests {
             first_non_annihilating_i64_row(&dependencies, &matrix[..3], 2, 2),
             Some(0)
         );
+
+        let nonzero = [Integer::from(1), Integer::from(2)];
+        assert!(exact_integer_i64_row_matches(
+            &nonzero,
+            &matrix,
+            2,
+            2,
+            &[Integer::from(-2), Integer::from(-3)],
+        ));
+        assert!(!exact_integer_i64_row_matches(
+            &nonzero,
+            &matrix,
+            2,
+            2,
+            &[Integer::from(-2), Integer::from(-2)],
+        ));
+        let wide = Integer::from(1) << 200_u32;
+        assert!(exact_integer_i64_row_matches(
+            &[wide.clone(), Integer::from(0)],
+            &[1, 0, 0, 0],
+            2,
+            2,
+            &[wide, Integer::from(0)],
+        ));
     }
 
     #[test]
