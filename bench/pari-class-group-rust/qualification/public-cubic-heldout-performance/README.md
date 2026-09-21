@@ -29,12 +29,12 @@ expected post-run change within that closure.
 
 ## Current result
 
-The receipt generated from source commit `85967e615` records exact agreement
-in all 180 alternating pairs. Summed per-field medians are 1.898 seconds for
-Rust and 0.609 seconds for PARI 2.17.4, or a 3.12x weighted gap. The geometric
-mean is 4.15x, p90 is 6.54x, and the maximum is 6.86x. Rust's summed stage
-medians are 0.630 seconds for relation collection, 0.547 seconds for candidate
-authentication, 0.581 seconds for unit and analytic completion, and 0.080
+The receipt generated from source commit `66ef3b3ae` records exact agreement
+in all 180 alternating pairs. Summed per-field medians are 1.834 seconds for
+Rust and 0.601 seconds for PARI 2.17.4, or a 3.05x weighted gap. The geometric
+mean is 4.15x, p90 is 6.51x, and the maximum is 7.21x. Rust's summed stage
+medians are 0.633 seconds for relation collection, 0.514 seconds for candidate
+authentication, 0.552 seconds for unit and analytic completion, and 0.080
 seconds for public preparation. Exact continuation retains the FLINT
 fraction-free factorization only when the selected square relation block is
 identical and the previous surplus is an exact prefix; it recomputes and
@@ -86,3 +86,12 @@ boundary. The formerly worst tiny field's authentication fell from 15.80 to
 0022 similarly fell from 26.95 to 24.77 ms, 26.36 to 22.40 ms, and 43.94 to
 35.54 ms. Across the panel, authentication fell by 21.67 ms and total Rust
 time by 15.44 ms; the maximum ratio fell from 8.65x to 6.86x.
+The current campaign replaces a checked-overflow branch on every dependency
+multiply-add with one rigorous absolute-sum proof per dependency. Proven rows
+use branch-free `i128` accumulation; unproved rows restart exactly in GMP.
+The same verifier covers both candidate authentication and final completion
+replay. Relative to the preceding clean receipt, summed Rust time fell by
+64.23 ms, authentication by 33.36 ms, and completion by 28.95 ms. Field 0012
+fell from 364.76 to 337.28 ms. PARI's simultaneous sum fell by 7.54 ms, and
+its smallest field varied enough to move the maximum ratio upward; the
+absolute Rust stage reductions and weighted ratio are the useful comparison.
