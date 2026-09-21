@@ -160,6 +160,34 @@ fn compact_trivial_quotient_rejects_nonempty_coordinate_storage() {
 }
 
 #[test]
+fn compact_relation_columns_compare_without_materializing_gmp_vectors() {
+    let relations = matrix(2, 2, &[2, 0, 0, 4]);
+    let class_map = PresentationClassMap::from_verified_generator_coordinates(
+        vec![Integer::from(2), Integer::from(4)],
+        vec![
+            Integer::from(1),
+            Integer::from(0),
+            Integer::from(0),
+            Integer::from(1),
+        ],
+        relations,
+    )
+    .unwrap();
+
+    assert!(class_map.relation_matches_i64_column(0, &[2, 0]).unwrap());
+    assert!(class_map.relation_matches_u32_column(1, &[0, 4]).unwrap());
+    assert!(!class_map.relation_matches_i64_column(0, &[2, 1]).unwrap());
+    assert!(!class_map.relation_matches_u32_column(1, &[0]).unwrap());
+    assert_eq!(
+        class_map.relation_matches_i64_column(2, &[0, 4]),
+        Err(ClassMapError::RelationIndexOutOfBounds {
+            index: 2,
+            relations: 2,
+        })
+    );
+}
+
+#[test]
 fn cyclic_six_has_homomorphic_addition_and_principality_state() {
     let (relations, smith) = identity_smith(&[Integer::from(6)]);
     let class_map = PresentationClassMap::from_verified_smith(relations, smith).unwrap();

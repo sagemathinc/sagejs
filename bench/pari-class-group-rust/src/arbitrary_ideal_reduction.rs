@@ -730,13 +730,7 @@ fn authenticate_presentation_with_context(
     // its principal-ideal facts were proved at collection time.
     let mut power_cache = BTreeMap::<(usize, u32), CubicIdeal>::new();
     for (index, witness) in witnesses.iter().enumerate() {
-        let relation = presentation.relation_vector(index)?;
-        if witness.exponents.len() != relation.len()
-            || witness
-                .exponents
-                .iter()
-                .zip(&relation)
-                .any(|(expected, actual)| actual != expected)
+        if !presentation.relation_matches_u32_column(index, &witness.exponents)?
             || witness.principal_element.iter().all(|value| value == &0)
         {
             return Err(ArbitraryIdealReductionError::PrincipalRelationWitnessMismatch { index });

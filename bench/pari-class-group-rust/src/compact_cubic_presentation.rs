@@ -297,15 +297,9 @@ impl VerifiedCompactPresentation {
             if solver_row == usize::MAX {
                 return Err(ClassMapError::CoordinatePresentationMismatch);
             }
-            let actual = presentation.relation_vector(original_row)?;
             let expected = &self.solver_data.solver_relations
                 [solver_row * self.generator_count()..(solver_row + 1) * self.generator_count()];
-            if actual.len() != expected.len()
-                || actual
-                    .iter()
-                    .zip(expected)
-                    .any(|(actual, expected)| actual != expected)
-            {
+            if !presentation.relation_matches_i64_column(original_row, expected)? {
                 return Err(ClassMapError::CoordinatePresentationMismatch);
             }
         }

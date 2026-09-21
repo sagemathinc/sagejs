@@ -3613,8 +3613,8 @@
     {
       "file": "src/arbitrary_ideal_reduction.rs",
       "scope": "product-candidate",
-      "sha256": "3814e5029f1bfc53c81c90872eeeb6c10a5da2e9e2e00a2c74f1017bb69412af",
-      "bytes": 48656,
+      "sha256": "8424c7f23b907caf3431989bf4a3d296e27ad3b053c1692d0d3e5fa783632fd7",
+      "bytes": 48455,
       "copyrightNotices": [
         "Copyright (C) Sage.js contributors."
       ],
@@ -3649,8 +3649,8 @@
     {
       "file": "src/class_maps.rs",
       "scope": "product-candidate",
-      "sha256": "fbb7dea79b0943b2ba87e40b0a4c1b161830acf788769dc46fd10d6f6e919fcb",
-      "bytes": 27824,
+      "sha256": "2a8059c3552589cb558e0b6076f45d63f38ffca476d1e86cf2ecde019594458e",
+      "bytes": 30934,
       "copyrightNotices": [
         "Copyright (C) Sage.js contributors."
       ],
@@ -3673,8 +3673,8 @@
     {
       "file": "src/compact_cubic_presentation.rs",
       "scope": "product-candidate",
-      "sha256": "71d5d672f797906df7919effa09660a80dcb5aa4ab18c7ae2df07c964a95ff92",
-      "bytes": 75980,
+      "sha256": "46f04a4e57fcc9a5586c64462474010039b88a18428864c1806bfa47c084c8d3",
+      "bytes": 75779,
       "copyrightNotices": [
         "Copyright (C) Sage.js contributors."
       ],
@@ -3983,8 +3983,8 @@
     {
       "file": "tests/class_maps.rs",
       "scope": "product-candidate-test",
-      "sha256": "381ded822890f9e143545db91387bcf15e9ce16b6324de752f562f1ad38c2cce",
-      "bytes": 16102,
+      "sha256": "ab9441466dbbcb10654f2d50a3e8ce7756fbbac456cbe9b9b42dd4a920f872f8",
+      "bytes": 17037,
       "copyrightNotices": [
         "Copyright (C) Sage.js contributors."
       ],
@@ -4490,5 +4490,5 @@
     "miriCoverageEstablished": false,
     "productionQualified": false
   },
-  "inventorySha256": "0902c1855e706610ffacef9bc476f6d7573a61d64d08edd42ce94e227b3fb67e"
+  "inventorySha256": "07e658308c4499f0f7deb3e65f3e605cd68d9f0a4b79dba65c5397b9e0f42e11"
 }

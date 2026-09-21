@@ -124,7 +124,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/arbitrary_ideal_reduction.rs",
-      "sha256": "3814e5029f1bfc53c81c90872eeeb6c10a5da2e9e2e00a2c74f1017bb69412af",
+      "sha256": "8424c7f23b907caf3431989bf4a3d296e27ad3b053c1692d0d3e5fa783632fd7",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
@@ -171,7 +171,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/class_maps.rs",
-      "sha256": "fbb7dea79b0943b2ba87e40b0a4c1b161830acf788769dc46fd10d6f6e919fcb",
+      "sha256": "2a8059c3552589cb558e0b6076f45d63f38ffca476d1e86cf2ecde019594458e",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
@@ -204,7 +204,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/compact_cubic_presentation.rs",
-      "sha256": "71d5d672f797906df7919effa09660a80dcb5aa4ab18c7ae2df07c964a95ff92",
+      "sha256": "46f04a4e57fcc9a5586c64462474010039b88a18428864c1806bfa47c084c8d3",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",

@@ -538,6 +538,31 @@ impl PresentationClassMap {
                 relations: self.relation_count(),
             });
         }
+        if let (Some(relations), Some(generator_coordinates)) =
+            (&self.relations, &self.generator_coordinates)
+        {
+            let width = self.invariant_factors.len();
+            let mut values = vec![Integer::new(); width];
+            for generator in 0..self.generator_count() {
+                let coefficient = relations.get(generator, index)?;
+                if coefficient == &0 {
+                    continue;
+                }
+                for coordinate in 0..width {
+                    values[coordinate] += Integer::from(
+                        coefficient * &generator_coordinates[generator * width + coordinate],
+                    );
+                }
+            }
+            if values
+                .iter()
+                .zip(&self.invariant_factors)
+                .any(|(value, modulus)| !value.is_divisible(modulus))
+            {
+                return Err(ClassMapError::RelationDoesNotMapToZero { index });
+            }
+            return Ok(());
+        }
         let relation = self.relation_vector(index)?;
         if self
             .coordinate_values(&relation)?
@@ -547,6 +572,68 @@ impl PresentationClassMap {
             return Err(ClassMapError::RelationDoesNotMapToZero { index });
         }
         Ok(())
+    }
+
+    /// Compare one retained relation column with a machine-word transcript
+    /// without allocating and cloning a GMP vector.
+    pub(crate) fn relation_matches_i64_column(
+        &self,
+        index: usize,
+        expected: &[i64],
+    ) -> Result<bool, ClassMapError> {
+        if index >= self.relation_count() {
+            return Err(ClassMapError::RelationIndexOutOfBounds {
+                index,
+                relations: self.relation_count(),
+            });
+        }
+        if expected.len() != self.generator_count() {
+            return Ok(false);
+        }
+        if let Some(relations) = &self.relations {
+            for (generator, value) in expected.iter().copied().enumerate() {
+                if *relations.get(generator, index)? != value {
+                    return Ok(false);
+                }
+            }
+            return Ok(true);
+        }
+        Ok(self
+            .relation_vector(index)?
+            .iter()
+            .zip(expected)
+            .all(|(actual, expected)| actual == expected))
+    }
+
+    /// Compare one retained relation column with bounded valuation witnesses
+    /// without allocating and cloning a GMP vector.
+    pub(crate) fn relation_matches_u32_column(
+        &self,
+        index: usize,
+        expected: &[u32],
+    ) -> Result<bool, ClassMapError> {
+        if index >= self.relation_count() {
+            return Err(ClassMapError::RelationIndexOutOfBounds {
+                index,
+                relations: self.relation_count(),
+            });
+        }
+        if expected.len() != self.generator_count() {
+            return Ok(false);
+        }
+        if let Some(relations) = &self.relations {
+            for (generator, value) in expected.iter().copied().enumerate() {
+                if *relations.get(generator, index)? != value {
+                    return Ok(false);
+                }
+            }
+            return Ok(true);
+        }
+        Ok(self
+            .relation_vector(index)?
+            .iter()
+            .zip(expected)
+            .all(|(actual, expected)| actual == expected))
     }
 
     pub(crate) fn relation_vector(&self, index: usize) -> Result<Vec<Integer>, ClassMapError> {
