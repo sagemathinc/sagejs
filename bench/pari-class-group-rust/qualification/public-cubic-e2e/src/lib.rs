@@ -140,10 +140,14 @@ pub struct StageTimingsNanoseconds {
 pub struct ContinuationAttemptEvidence {
     pub supplementary_target: usize,
     pub relation_count: usize,
+    pub candidate_authentication_route: &'static str,
     pub visited_ideals: usize,
     pub cursor_trials: usize,
     pub primitive_nonscalar_candidates: usize,
     pub smooth_candidates: usize,
+    pub relation_collection_nanoseconds: u128,
+    pub candidate_authentication_nanoseconds: u128,
+    pub unit_and_analytic_completion_nanoseconds: u128,
     pub outcome_category: &'static str,
 }
 
@@ -268,14 +272,7 @@ fn next_supplementary_target(current: usize) -> Option<usize> {
     // state makes modest over-collection much cheaper than repeating those
     // stages one or two relations later, so grow geometrically from the
     // mandatory seven-row surplus. This schedule is field- and answer-free.
-    let increment = if current < 10 {
-        3
-    } else if current < 16 {
-        6
-    } else {
-        current / 2
-    };
-    current.checked_add(increment)
+    current.checked_mul(2)
 }
 
 fn candidate_authentication_route_fits(
@@ -374,7 +371,8 @@ pub fn qualify(request: Request) -> Result<Receipt, QualificationError> {
         },
     )
     .map_err(|error| QualificationError::RelationCollection(format!("{error:?}")))?;
-    let mut relation_collection_ns = collection_start.elapsed().as_nanos();
+    let collector_initialization_ns = collection_start.elapsed().as_nanos();
+    let mut relation_collection_ns = collector_initialization_ns;
     let candidate_limits = CubicPresentationCandidateLimits {
         normal_form: NormalFormLimits {
             max_entries: request.resources.maximum_normal_form_entries,
@@ -418,7 +416,14 @@ pub fn qualify(request: Request) -> Result<Receipt, QualificationError> {
         let collected = collector
             .advance_to_supplementary(supplementary_target)
             .map_err(|error| QualificationError::RelationCollection(format!("{error:?}")))?;
-        relation_collection_ns += started.elapsed().as_nanos();
+        let advance_ns = started.elapsed().as_nanos();
+        relation_collection_ns += advance_ns;
+        let attempt_relation_collection_ns = advance_ns
+            + if attempts.is_empty() {
+                collector_initialization_ns
+            } else {
+                0
+            };
         let factor_base_size = collected.factor_base.catalog.ideals.len();
         let relation_count = if factor_base_size == 0 {
             0
@@ -500,7 +505,8 @@ pub fn qualify(request: Request) -> Result<Receipt, QualificationError> {
                     "authenticated-supplied-principal-relations-candidate-only",
                 )
             };
-        candidate_authentication_ns += started.elapsed().as_nanos();
+        let attempt_candidate_authentication_ns = started.elapsed().as_nanos();
+        candidate_authentication_ns += attempt_candidate_authentication_ns;
         let candidate_evidence = CandidateEvidence {
             invariant_factors: authenticated
                 .invariant_factors()
@@ -542,7 +548,12 @@ pub fn qualify(request: Request) -> Result<Receipt, QualificationError> {
                 Err(error) => Err(error),
             }
         };
-        completion_ns += started.elapsed().as_nanos();
+        let attempt_completion_ns = started.elapsed().as_nanos();
+        completion_ns += attempt_completion_ns;
+        let authentication_route = match route {
+            CandidateAuthenticationRoute::DenseSmith => "dense-smith",
+            CandidateAuthenticationRoute::CompactSmallSurplus => "compact-small-surplus",
+        };
         match completion_result {
             Ok(completed) => {
                 let sealed_evidence_verified = completed.verify_sealed_evidence();
@@ -554,10 +565,14 @@ pub fn qualify(request: Request) -> Result<Receipt, QualificationError> {
                 attempts.push(ContinuationAttemptEvidence {
                     supplementary_target,
                     relation_count,
+                    candidate_authentication_route: authentication_route,
                     visited_ideals: counters.visited_ideals,
                     cursor_trials: counters.cursor_trials,
                     primitive_nonscalar_candidates: counters.primitive_nonscalar_candidates,
                     smooth_candidates: counters.smooth_candidates,
+                    relation_collection_nanoseconds: attempt_relation_collection_ns,
+                    candidate_authentication_nanoseconds: attempt_candidate_authentication_ns,
+                    unit_and_analytic_completion_nanoseconds: attempt_completion_ns,
                     outcome_category: "sealed",
                 });
                 let completion = CompletionEvidence {
@@ -599,10 +614,14 @@ pub fn qualify(request: Request) -> Result<Receipt, QualificationError> {
                 attempts.push(ContinuationAttemptEvidence {
                     supplementary_target,
                     relation_count,
+                    candidate_authentication_route: authentication_route,
                     visited_ideals: counters.visited_ideals,
                     cursor_trials: counters.cursor_trials,
                     primitive_nonscalar_candidates: counters.primitive_nonscalar_candidates,
                     smooth_candidates: counters.smooth_candidates,
+                    relation_collection_nanoseconds: attempt_relation_collection_ns,
+                    candidate_authentication_nanoseconds: attempt_candidate_authentication_ns,
+                    unit_and_analytic_completion_nanoseconds: attempt_completion_ns,
                     outcome_category: "analytic-index-not-isolated",
                 });
             }
@@ -767,7 +786,7 @@ mod tests {
         while targets.len() < 7 {
             targets.push(next_supplementary_target(*targets.last().unwrap()).unwrap());
         }
-        assert_eq!(targets, vec![7, 10, 16, 24, 36, 54, 81]);
+        assert_eq!(targets, vec![7, 14, 28, 56, 112, 224, 448]);
     }
 
     #[test]
@@ -831,14 +850,14 @@ mod tests {
         input.resources.analytic_precision_bits = 512;
         let receipt = qualify(input).unwrap();
         assert!(receipt.public_complete);
-        assert_eq!(receipt.relations.relation_count, 43);
+        assert_eq!(receipt.relations.relation_count, 55);
         let attempts = receipt.continuation_attempts.unwrap();
         assert_eq!(
             attempts
                 .iter()
                 .map(|attempt| attempt.supplementary_target)
                 .collect::<Vec<_>>(),
-            [7, 10, 16]
+            [7, 14, 28]
         );
         assert!(
             attempts[..attempts.len() - 1]
@@ -846,6 +865,33 @@ mod tests {
                 .all(|attempt| attempt.outcome_category == "analytic-index-not-isolated")
         );
         assert_eq!(attempts.last().unwrap().outcome_category, "sealed");
+        assert_eq!(
+            attempts
+                .iter()
+                .map(|attempt| attempt.relation_collection_nanoseconds)
+                .sum::<u128>(),
+            receipt.stage_timings_nanoseconds.relation_collection,
+        );
+        assert_eq!(
+            attempts
+                .iter()
+                .map(|attempt| attempt.candidate_authentication_nanoseconds)
+                .sum::<u128>(),
+            receipt.stage_timings_nanoseconds.candidate_authentication,
+        );
+        assert_eq!(
+            attempts
+                .iter()
+                .map(|attempt| attempt.unit_and_analytic_completion_nanoseconds)
+                .sum::<u128>(),
+            receipt
+                .stage_timings_nanoseconds
+                .unit_and_analytic_completion,
+        );
+        assert!(attempts.iter().all(|attempt| matches!(
+            attempt.candidate_authentication_route,
+            "dense-smith" | "compact-small-surplus"
+        )));
         for pair in attempts.windows(2) {
             assert!(pair[1].relation_count > pair[0].relation_count);
             assert!(pair[1].visited_ideals >= pair[0].visited_ideals);
