@@ -918,6 +918,65 @@ pub(crate) fn exact_integer_i64_dot_is_zero(
     }) == 0
 }
 
+/// Prove that one exact integer row annihilates every column of an `i64`
+/// matrix.
+///
+/// This is the row-major counterpart of [`exact_integer_i64_dot_is_zero`].
+/// The checked word path converts each exact coefficient once and visits the
+/// relation matrix in storage order. If any conversion, product, or partial
+/// sum overflows, the complete matrix product is replayed from the beginning
+/// with GMP integers. Thus batching changes only traversal and allocation; it
+/// does not weaken the independent exact replay of a produced dependency.
+pub(crate) fn exact_integer_i64_row_annihilates(
+    coefficients: &[Integer],
+    matrix: &[i64],
+    rows: usize,
+    columns: usize,
+) -> bool {
+    if coefficients.len() != rows || matrix.len() != rows.saturating_mul(columns) {
+        return false;
+    }
+
+    let mut fixed = vec![0_i128; columns];
+    let mut overflow = false;
+    'rows: for (row, coefficient) in coefficients.iter().enumerate() {
+        let Some(coefficient) = coefficient.to_i128() else {
+            overflow = true;
+            break;
+        };
+        let offset = row * columns;
+        for column in 0..columns {
+            let Some(product) = coefficient.checked_mul(i128::from(matrix[offset + column])) else {
+                overflow = true;
+                break 'rows;
+            };
+            let Some(sum) = fixed[column].checked_add(product) else {
+                overflow = true;
+                break 'rows;
+            };
+            fixed[column] = sum;
+        }
+    }
+    if !overflow {
+        return fixed.into_iter().all(|sum| sum == 0);
+    }
+
+    let mut exact = vec![Integer::from(0); columns];
+    for (row, coefficient) in coefficients.iter().enumerate() {
+        if coefficient == &0 {
+            continue;
+        }
+        let offset = row * columns;
+        for column in 0..columns {
+            let entry = matrix[offset + column];
+            if entry != 0 {
+                exact[column] += coefficient * entry;
+            }
+        }
+    }
+    exact.into_iter().all(|sum| sum == 0)
+}
+
 fn reorder_and_verify_dependencies(
     solver_dependencies: &[Integer],
     rank: usize,
@@ -938,19 +997,26 @@ fn reorder_and_verify_dependencies(
             reordered[solver_to_original_rows[solver_row]] =
                 solver_dependencies[dependency * relation_count + solver_row].clone();
         }
-        for column in 0..columns {
-            if !exact_integer_i64_dot_is_zero(
-                &reordered,
-                original_relations,
-                relation_count,
-                columns,
-                column,
-            ) {
-                return Err(CompactPresentationError::DependencyDoesNotAnnihilate {
-                    dependency,
-                    column,
-                });
-            }
+        if !exact_integer_i64_row_annihilates(
+            &reordered,
+            original_relations,
+            relation_count,
+            columns,
+        ) {
+            return Err(CompactPresentationError::DependencyDoesNotAnnihilate {
+                dependency,
+                column: (0..columns)
+                    .find(|&column| {
+                        !exact_integer_i64_dot_is_zero(
+                            &reordered,
+                            original_relations,
+                            relation_count,
+                            columns,
+                            column,
+                        )
+                    })
+                    .unwrap_or(0),
+            });
         }
         answer.push(reordered);
     }
@@ -1483,6 +1549,28 @@ mod tests {
             2,
             0,
         ));
+    }
+
+    #[test]
+    fn exact_batched_dependency_replay_matches_column_replay() {
+        let matrix = [2_i64, 3, -2, -3];
+        let small = [Integer::from(1), Integer::from(1)];
+        assert!(exact_integer_i64_row_annihilates(&small, &matrix, 2, 2));
+        assert!(
+            (0..2).all(|column| { exact_integer_i64_dot_is_zero(&small, &matrix, 2, 2, column) })
+        );
+
+        let mut huge = Integer::from(1);
+        huge <<= 200_u32;
+        let large = [huge.clone(), huge];
+        assert!(exact_integer_i64_row_annihilates(&large, &matrix, 2, 2));
+        assert!(
+            (0..2).all(|column| { exact_integer_i64_dot_is_zero(&large, &matrix, 2, 2, column) })
+        );
+
+        let corrupt = [2_i64, 3, -2, -4];
+        assert!(!exact_integer_i64_row_annihilates(&large, &corrupt, 2, 2));
+        assert!(!exact_integer_i64_row_annihilates(&large, &matrix, 1, 2));
     }
 
     #[test]
