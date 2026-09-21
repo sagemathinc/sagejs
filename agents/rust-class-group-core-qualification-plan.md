@@ -37,15 +37,17 @@ geometric answer-free continuation schedule and reusing exact analytic plans
 reduced the untouched confirmation campaign from 3.046 to 1.373 seconds. A
 separately versioned qualification profile now admits the compact
 route through 64 surplus rows while preserving its independent storage, exact
-work, saturation, and coefficient ceilings. On the original twelve cubic
-regressions this removed an artificial dense-transform fallback and reduced a
-single clean diagnostic campaign from 11.731 to 3.486 seconds; the sum of the
-previously collected PARI medians is 0.509 seconds, for a contextual 6.85x
-weighted and 8.60x geometric-mean gap. This is not yet the required 15-sample
-alternating performance receipt. Relation collection, authentication, and
-unit/analytic completion all remain material, so no single phase explains the
-remaining gap. Per-attempt telemetry now reconciles exactly with those stage
-totals; on the hardest original regression it showed that repeated exact
+work, saturation, and coefficient ceilings. The clean committed 15-sample
+alternating campaign on the original twelve cubic regressions records exact
+agreement in every measured pair. Summed per-field medians are 3.027 seconds
+for Rust and 0.578 seconds for PARI 2.17.4: a 5.24x weighted gap, with a 7.24x
+geometric mean, 12.79x p90, and 19.16x maximum. This improves materially on the
+earlier contextual 6.85x weighted estimate but still fails the frozen native
+performance gate. Rust's summed stage medians are 1.043 seconds relation
+collection, 0.954 seconds candidate authentication, 0.906 seconds unit and
+analytic completion, and 0.077 seconds public preparation, so no single phase
+explains the remaining gap. Per-attempt telemetry reconciles exactly with those
+stage totals; on the hardest original regression it showed that repeated exact
 authentication/completion, not incremental relation collection, dominated, so
 the answer-blind continuation schedule now doubles between attempts.
 

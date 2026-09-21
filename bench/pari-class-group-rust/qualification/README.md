@@ -44,17 +44,16 @@ source `5a09f7407`; see
 This qualifies the current native cubic correctness boundary, not R4 as a
 degree-2-through-6 product milestone. The engine remains cubic-specific,
 conditional-GRH only, and outside the live Sage.js dispatch path. It also does
-not pass the frozen performance target: contextual PARI medians for the fresh
-confirmation set imply roughly a 10--12x geometric-mean gap on diagnostic
-reruns, improved from about 15.4x but still concentrated in candidate
-authentication and unit/analytic completion. A matched alternating campaign is
-still required before that ratio becomes a formal performance receipt. On the
-original twelve regressions, a clean one-sample compact-64 diagnostic with the
-new doubling schedule totaled 3.486 seconds of Rust sealed-result time versus
-0.509 seconds summed from the previous PARI medians: 6.85x weighted and 8.60x
-by geometric mean. That is a
-substantial reduction from the prior 11.731-second Rust campaign, but remains
-context rather than the frozen alternating performance gate.
+not pass the frozen performance target. The clean committed 15-sample
+alternating campaign on the original twelve regressions matched every exact
+result and measured summed per-field medians of 3.027 seconds for Rust and
+0.578 seconds for PARI 2.17.4: 5.24x weighted, 7.24x by geometric mean, 12.79x
+at p90, and 19.16x maximum. Rust's summed stage medians are 1.043 seconds
+relation collection, 0.954 seconds candidate authentication, 0.906 seconds
+unit and analytic completion, and 0.077 seconds public preparation. See
+`public-cubic-heldout-performance/receipt.json`. The fresh confirmation set
+remains correctness-only; its contextual diagnostic timings are not a formal
+comparative receipt.
 
 ## Layout
 
@@ -88,6 +87,8 @@ context rather than the frozen alternating performance gate.
   comparison of the open-cubic receipt against private qualification evidence.
 - `public-cubic-heldout-corpus/`: the answer-free executor and redacted receipt
   for the first frozen held-out degree-three campaign.
+- `public-cubic-heldout-performance/`: the redacted 15-sample alternating
+  Rust/PARI performance receipt for those twelve remediated regressions.
 - `public-cubic-heldout-oracle/`: the post-execution restricted comparison of
   completed held-out results and the frozen fresh-confirmation policy.
 - `wasm-public-cubic-e2e/`: the qualification-only full row-6 Wasm build and
