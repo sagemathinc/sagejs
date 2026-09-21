@@ -71,6 +71,7 @@ impl From<PreparedIdealError> for PreparedFactorBaseError {
 pub struct PreparedFactorBase {
     pub catalog: FactorBase,
     pub exact_ideals: Vec<CubicIdeal>,
+    valuation_powers: Vec<Vec<CubicIdeal>>,
 }
 
 impl PreparedFactorBase {
@@ -83,7 +84,7 @@ impl PreparedFactorBase {
     /// PARI instead factors the quotient norm and carries the divisor
     /// exponents separately; this is the exact maximal-order equivalent.
     pub fn refine_quotient_factorization(
-        &self,
+        &mut self,
         field: &ValidatedPreparedCubic,
         element: &[Integer; 3],
         rational_factors: &[(i64, usize)],
@@ -124,11 +125,12 @@ impl PreparedFactorBase {
                 let cap = known
                     .checked_add(additional_cap)
                     .ok_or(PreparedFactorBaseError::ValuationOutsideI64)?;
-                let full = workspace.valuation_capped_by_norm(
+                let full = workspace.valuation_capped_by_norm_with_power_cache(
                     field,
                     &self.exact_ideals[index],
                     element,
                     u32::try_from(cap).map_err(|_| PreparedFactorBaseError::ValuationOutsideI64)?,
+                    &mut self.valuation_powers[index],
                 )? as usize;
                 let quotient = full.checked_sub(known).ok_or(
                     PreparedFactorBaseError::NormValuationMismatch {
@@ -408,6 +410,9 @@ pub fn prepared_maximal_cubic_factor_base(
             exact_ideals.push(ideal);
         }
     }
+    // Populate a slot only if relation refinement actually encounters its
+    // rational prime. Large factor bases therefore pay no eager clone cost.
+    let valuation_powers = vec![Vec::new(); exact_ideals.len()];
     Ok(PreparedFactorBase {
         catalog: FactorBase {
             relation_bound,
@@ -419,6 +424,7 @@ pub fn prepared_maximal_cubic_factor_base(
             complete_groups,
         },
         exact_ideals,
+        valuation_powers,
     })
 }
 
@@ -896,7 +902,7 @@ mod tests {
 
     #[test]
     fn row6_maximal_factor_base_has_the_predeclared_dimensions() {
-        let base = prepared_maximal_cubic_factor_base(&row6_field()).unwrap();
+        let mut base = prepared_maximal_cubic_factor_base(&row6_field()).unwrap();
         assert_eq!(base.catalog.ideals.len(), 1_130);
         assert_eq!(base.exact_ideals.len(), base.catalog.ideals.len());
         let group = base

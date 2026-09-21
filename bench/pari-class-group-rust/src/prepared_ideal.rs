@@ -15,6 +15,7 @@ use crate::hnf::{BigIntMatrix, ExactNormalFormWorkspace, NormalFormError, Normal
 use crate::prepared::ValidatedPreparedCubic;
 
 const DEGREE: usize = 3;
+const MAX_CACHED_VALUATION_POWER: usize = 64;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum PreparedIdealError {
@@ -24,6 +25,7 @@ pub enum PreparedIdealError {
     SingularIdeal,
     ZeroElementHasUnboundedValuation,
     ValuationLimitExceeded { limit: u32 },
+    ValuationPowerCacheMismatch,
     NormalForm(NormalFormError),
 }
 
@@ -335,6 +337,64 @@ impl PreparedIdealWorkspace {
         }
         unreachable!("positive cap loop returns at or before its last iteration")
     }
+
+    /// Return `min(v_P(element), cap)` while retaining bounded exact powers of
+    /// one authenticated factor-base prime.
+    ///
+    /// `cached_powers[k]` is `P^(k + 1)`. The owner binds one cache to one
+    /// exact factor-base ideal; a mismatched first power fails closed. Powers
+    /// beyond the fixed retention ceiling are still computed exactly but are
+    /// not kept after this call.
+    pub(crate) fn valuation_capped_by_norm_with_power_cache(
+        &mut self,
+        field: &ValidatedPreparedCubic,
+        prime: &CubicIdeal,
+        element: &[Integer; DEGREE],
+        cap: u32,
+        cached_powers: &mut Vec<CubicIdeal>,
+    ) -> Result<u32, PreparedIdealError> {
+        if element.iter().all(|value| value == &0) {
+            return Err(PreparedIdealError::ZeroElementHasUnboundedValuation);
+        }
+        if cap == 0 {
+            return Ok(0);
+        }
+        if cached_powers.is_empty() {
+            cached_powers.push(prime.clone());
+        } else if &cached_powers[0] != prime {
+            return Err(PreparedIdealError::ValuationPowerCacheMismatch);
+        }
+        let cap = cap as usize;
+        let mut uncached_power = None;
+        for valuation in 0..cap {
+            let contains = if valuation < cached_powers.len() {
+                cached_powers[valuation].contains(element)?
+            } else {
+                let previous = uncached_power
+                    .as_ref()
+                    .or_else(|| cached_powers.last())
+                    .expect("the prime is always the first cached power");
+                let power = self.multiply(field, previous, prime)?;
+                if cached_powers.len() < MAX_CACHED_VALUATION_POWER {
+                    cached_powers.push(power);
+                    cached_powers[valuation].contains(element)?
+                } else {
+                    uncached_power = Some(power);
+                    uncached_power
+                        .as_ref()
+                        .expect("the uncached power was just installed")
+                        .contains(element)?
+                }
+            };
+            if !contains {
+                return Ok(valuation as u32);
+            }
+            if valuation + 1 == cap {
+                return Ok(cap as u32);
+            }
+        }
+        unreachable!("positive cap loop returns at or before its last iteration")
+    }
 }
 
 fn residue_u32(value: &Integer, modulus: u32) -> u32 {
@@ -472,6 +532,40 @@ mod tests {
         assert_eq!(cube.norm(), 27);
         assert!(square.contains(&x_minus_one).expect("membership"));
         assert!(!cube.contains(&x_minus_one).expect("membership"));
+
+        let mut powers = Vec::new();
+        assert_eq!(
+            workspace.valuation_capped_by_norm_with_power_cache(
+                &field,
+                &prime,
+                &x_minus_one,
+                3,
+                &mut powers,
+            ),
+            Ok(2)
+        );
+        assert_eq!(powers, [prime.clone(), square, cube]);
+        assert_eq!(
+            workspace.valuation_capped_by_norm_with_power_cache(
+                &field,
+                &prime,
+                &x_minus_one,
+                3,
+                &mut powers,
+            ),
+            Ok(2)
+        );
+        assert_eq!(powers.len(), 3, "the second valuation reuses exact powers");
+        assert_eq!(
+            workspace.valuation_capped_by_norm_with_power_cache(
+                &field,
+                &CubicIdeal::unit(),
+                &x_minus_one,
+                1,
+                &mut powers,
+            ),
+            Err(PreparedIdealError::ValuationPowerCacheMismatch)
+        );
     }
 
     #[test]

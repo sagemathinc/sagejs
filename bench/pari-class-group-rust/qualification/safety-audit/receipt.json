@@ -3865,8 +3865,8 @@
     {
       "file": "src/prepared_factor_base.rs",
       "scope": "product-candidate",
-      "sha256": "2a1bb6e572cdced8786b5a9024cd6741b09b73f5e1b9e43b007a27a6616d09ac",
-      "bytes": 35706,
+      "sha256": "4623901ad8c4c7d31cc78eb5373c57303f097ee11ff01f022cb2fd701ef31721",
+      "bytes": 36073,
       "copyrightNotices": [
         "Copyright (C) Sage.js contributors."
       ],
@@ -3877,8 +3877,8 @@
     {
       "file": "src/prepared_ideal.rs",
       "scope": "product-candidate",
-      "sha256": "261059e71fef692939ed1f09ad44b4fdae376b8c123c47604b2743036453d5b0",
-      "bytes": 16283,
+      "sha256": "9ff91511cf4533c172c270f54a2098537f1618fcf3f83dbde0f0cda12c7fba5f",
+      "bytes": 19744,
       "copyrightNotices": [
         "Copyright (C) Sage.js contributors."
       ],
@@ -4490,5 +4490,5 @@
     "miriCoverageEstablished": false,
     "productionQualified": false
   },
-  "inventorySha256": "56baf875a29be1e68a84153ae2ad61d5a02f521eea31b3555af9a79a27e2b6f7"
+  "inventorySha256": "3da228e4a079448653071fd75e53ea8dd274226adc85b1a611a19dcb3f65be79"
 }

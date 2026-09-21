@@ -450,23 +450,23 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/prepared_factor_base.rs",
-      "sha256": "2a1bb6e572cdced8786b5a9024cd6741b09b73f5e1b9e43b007a27a6616d09ac",
+      "sha256": "4623901ad8c4c7d31cc78eb5373c57303f097ee11ff01f022cb2fd701ef31721",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
       "mappings": [],
       "missing_mapping_explanation": null,
-      "notes": "Original exact rational-integral cubic factor-base construction; it interoperates with PARI-style descriptors but no source translation is claimed."
+      "notes": "Original exact rational-integral cubic factor-base construction with bounded per-prime ideal-power reuse; it interoperates with PARI-style descriptors but no source translation is claimed."
     },
     {
       "path": "bench/pari-class-group-rust/src/prepared_ideal.rs",
-      "sha256": "261059e71fef692939ed1f09ad44b4fdae376b8c123c47604b2743036453d5b0",
+      "sha256": "9ff91511cf4533c172c270f54a2098537f1618fcf3f83dbde0f0cda12c7fba5f",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
       "mappings": [],
       "missing_mapping_explanation": null,
-      "notes": "Original conservative arbitrary-precision ideal path using the crate's verified HNF."
+      "notes": "Original conservative arbitrary-precision ideal path using the crate's verified HNF, including bounded reuse of exact prime-ideal powers."
     },
     {
       "path": "bench/pari-class-group-rust/src/prepared_input.rs",
