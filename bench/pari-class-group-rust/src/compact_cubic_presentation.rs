@@ -19,7 +19,7 @@ use crate::class_group::{
 };
 use crate::class_maps::{ClassMapError, PresentationClassMap};
 use crate::flint_normal_form::{
-    FlintNormalFormError, FlintSmallSurplusWorkspace, flint_hnf_basis,
+    FlintNormalFormError, FlintSmallSurplusWorkspace, flint_hnf_basis_modular,
     flint_small_surplus_class_order_with_workspace, flint_smith_class_map,
 };
 
@@ -525,7 +525,8 @@ pub fn authenticate_compact_presentation(
         // the selected square sublattice. Rust below still verifies every
         // original relation, the mixed-modulus right inverse, and the exact
         // invariant-factor product before accepting the map.
-        let reduced_basis = flint_hnf_basis(&solver_relations, relation_count, generators)?;
+        let reduced_basis =
+            flint_hnf_basis_modular(&solver_relations, relation_count, generators, &class_number)?;
         let smith_map = flint_smith_class_map(&reduced_basis, generators)?;
         (
             smith_map

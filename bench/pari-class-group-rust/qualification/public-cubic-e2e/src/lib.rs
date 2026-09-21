@@ -217,8 +217,11 @@ fn select_candidate_authentication_route(
         && generators
             .checked_mul(relations)
             .is_some_and(|entries| entries <= resources.maximum_normal_form_entries);
+    let dense_work_limit = resources
+        .maximum_verification_multiply_adds
+        .min(resources.maximum_normal_form_operations);
     let dense_verification_fits = dense_verification_multiply_adds(generators, relations)
-        .is_some_and(|work| work <= resources.maximum_verification_multiply_adds);
+        .is_some_and(|work| work <= dense_work_limit);
     if dense_entries_fit && dense_verification_fits {
         return CandidateAuthenticationRoute::DenseSmith;
     }
@@ -266,8 +269,11 @@ fn candidate_authentication_route_fits(
     let dense_fits = generators
         .checked_mul(relations)
         .is_some_and(|entries| entries <= resources.maximum_normal_form_entries)
-        && dense_verification_multiply_adds(generators, relations)
-            .is_some_and(|work| work <= resources.maximum_verification_multiply_adds);
+        && dense_verification_multiply_adds(generators, relations).is_some_and(|work| {
+            work <= resources
+                .maximum_verification_multiply_adds
+                .min(resources.maximum_normal_form_operations)
+        });
     let compact_limits_are_nonzero = resources.maximum_compact_generators > 0
         && resources.maximum_compact_surplus_rows > 0
         && resources.maximum_compact_saturation_minor_trials > 0
@@ -697,6 +703,11 @@ mod tests {
     #[test]
     fn route_selector_uses_compact_for_the_opened_failure_shape() {
         let input = request(10_000);
+        assert_eq!(dense_verification_multiply_adds(217, 224), Some(85_447_474),);
+        assert_eq!(
+            select_candidate_authentication_route(217, 224, &input.resources),
+            CandidateAuthenticationRoute::CompactSmallSurplus,
+        );
         assert_eq!(
             dense_verification_multiply_adds(230, 237),
             Some(101_488_876),

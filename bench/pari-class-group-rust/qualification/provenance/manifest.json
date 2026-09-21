@@ -204,7 +204,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/compact_cubic_presentation.rs",
-      "sha256": "e9e0289eb997a391c4e0a183e714e65fd085e40d3485bfedc1ccf213926a7239",
+      "sha256": "6c5964a71eb4536e0071b608168119a16cd6c8a128c06c949820030082a026b3",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
@@ -283,7 +283,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/flint_normal_form.c",
-      "sha256": "2c13ea6afd8272744a9b555197d67b8b6160ba35eb0be6c12d9bbb5fc1e818d0",
+      "sha256": "a9f8a43c19aee12fa9092d0a5f7fb663ba6ca3f3a68ba032fca1c4d088580b1a",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
@@ -293,7 +293,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/flint_normal_form.rs",
-      "sha256": "62a7fac57582f0acacab3a2780908179dd2332f7706056418d654fbb652f22d7",
+      "sha256": "837242cc2fa881ff836adba675399ef86a1563e8cbb814ea6f08eb794229700a",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",

@@ -282,6 +282,13 @@ unsafe extern "C" {
         entries: *const c_longlong,
         basis: *mut c_longlong,
     ) -> c_int;
+    fn sagejs_rust_flint_hnf_basis_modular_i64(
+        rows: usize,
+        columns: usize,
+        entries: *const c_longlong,
+        elementary_divisor_multiple: *const c_void,
+        basis: *mut c_longlong,
+    ) -> c_int;
     fn sagejs_rust_flint_hnf_profile_i64(
         size: usize,
         entries: *const c_longlong,
@@ -1408,6 +1415,44 @@ pub fn flint_hnf_basis(
     }
 }
 
+/// Produce a row-HNF basis using a proved positive multiple of the largest
+/// elementary divisor, without retaining a transform of the input rows.
+pub fn flint_hnf_basis_modular(
+    entries: &[i64],
+    rows: usize,
+    columns: usize,
+    elementary_divisor_multiple: &Integer,
+) -> Result<Vec<i64>, FlintNormalFormError> {
+    if rows < columns || columns == 0 || elementary_divisor_multiple <= &0 {
+        return Err(FlintNormalFormError::InvalidDimensions);
+    }
+    if rows.checked_mul(columns) != Some(entries.len()) {
+        return Err(FlintNormalFormError::DimensionMismatch);
+    }
+    let basis_length = columns
+        .checked_mul(columns)
+        .ok_or(FlintNormalFormError::InvalidDimensions)?;
+    let mut basis = vec![0_i64; basis_length];
+    // The bridge copies the borrowed GMP divisor and matrix entries before
+    // computing. All inputs outlive the call and no Rust pointer is retained.
+    let status = unsafe {
+        sagejs_rust_flint_hnf_basis_modular_i64(
+            rows,
+            columns,
+            entries.as_ptr().cast(),
+            elementary_divisor_multiple.as_raw().cast(),
+            basis.as_mut_ptr().cast(),
+        )
+    };
+    match status {
+        0 => Ok(basis),
+        -1 => Err(FlintNormalFormError::InvalidDimensions),
+        -2 => Err(FlintNormalFormError::DiagonalOutsideI64),
+        -3 => Err(FlintNormalFormError::RankDeficient),
+        code => Err(FlintNormalFormError::ForeignFailure(code)),
+    }
+}
+
 pub fn flint_smith_candidate(
     entries: &[i64],
     rows: usize,
@@ -1476,6 +1521,18 @@ mod tests {
         let direct = flint_smith_candidate(&source, 3, 2).unwrap();
         let reduced = flint_smith_candidate(&basis, 2, 2).unwrap();
         assert_eq!(reduced, direct);
+    }
+
+    #[test]
+    fn modular_hnf_uses_a_proved_elementary_divisor_multiple() {
+        let source = [2, 0, 0, 6, 0, 4];
+        let basis = flint_hnf_basis_modular(&source, 3, 2, &Integer::from(4)).unwrap();
+        let reduced = flint_smith_candidate(&basis, 2, 2).unwrap();
+        assert_eq!(reduced.invariant_factors, [2, 2]);
+        assert_eq!(
+            flint_hnf_basis_modular(&source, 3, 2, &Integer::from(0)),
+            Err(FlintNormalFormError::InvalidDimensions)
+        );
     }
 
     #[test]

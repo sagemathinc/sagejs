@@ -236,6 +236,69 @@ int sagejs_rust_flint_hnf_basis_i64(
     return status;
 }
 
+int sagejs_rust_flint_hnf_basis_modular_i64(
+    size_t rows, size_t columns, const int64_t *entries,
+    mpz_srcptr elementary_divisor_multiple, int64_t *basis)
+{
+    if (rows < columns || columns == 0 || entries == NULL ||
+        elementary_divisor_multiple == NULL || basis == NULL ||
+        rows > LONG_MAX || columns > LONG_MAX ||
+        rows > SIZE_MAX / columns || mpz_sgn(elementary_divisor_multiple) <= 0)
+        return -1;
+    fmpz_mat_t hermite;
+    if (!sagejs_rust_flint_set_i64_matrix(
+            hermite, rows, columns, entries))
+        return -1;
+    fmpz_t divisor;
+    fmpz_init(divisor);
+    fmpz_set_mpz(divisor, elementary_divisor_multiple);
+    /* The caller supplies a proved multiple of the largest elementary
+     * divisor. This route intentionally avoids constructing a transformation
+     * matrix for the large-index input presentation. */
+    fmpz_mat_hnf_modular_eldiv(hermite, divisor);
+    size_t output_row = 0;
+    int status = 0;
+    for (size_t row = 0; row < rows; row++)
+    {
+        int nonzero = 0;
+        for (size_t column = 0; column < columns; column++)
+            if (!fmpz_is_zero(fmpz_mat_entry(
+                    hermite, (slong) row, (slong) column)))
+            {
+                nonzero = 1;
+                break;
+            }
+        if (!nonzero)
+            continue;
+        if (output_row == columns)
+        {
+            status = -3;
+            break;
+        }
+        for (size_t column = 0; column < columns; column++)
+        {
+            const fmpz *entry = fmpz_mat_entry(
+                hermite, (slong) row, (slong) column);
+            if (!fmpz_fits_si(entry))
+            {
+                status = -2;
+                break;
+            }
+            basis[output_row * columns + column] =
+                (int64_t) fmpz_get_si(entry);
+        }
+        if (status != 0)
+            break;
+        output_row++;
+    }
+    if (status == 0 && output_row != columns)
+        status = -3;
+    fmpz_clear(divisor);
+    fmpz_mat_clear(hermite);
+    flint_cleanup();
+    return status;
+}
+
 int sagejs_rust_flint_hnf_profile_i64(
     size_t size, const int64_t *entries, size_t *maximum_entry_bits,
     size_t *determinant_bits)
