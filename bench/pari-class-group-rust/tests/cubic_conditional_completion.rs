@@ -142,28 +142,6 @@ fn rejects_resource_exhaustion_before_unit_or_analytic_work() {
 }
 
 #[test]
-fn counterfeit_relation_generator_never_reaches_completion() {
-    let prepared = prepare([-1, -1, 0, 1]);
-    let mut collected = collect_prepared_cubic_relations(
-        prepared.field(),
-        PreparedCollectorLimits {
-            maximum_visited_ideals: 10_000,
-            maximum_candidates: 100_000,
-        },
-    )
-    .unwrap();
-    collected.generators[0] += 1;
-    assert!(
-        authenticate_cubic_presentation_candidate(
-            &prepared,
-            collected,
-            CubicPresentationCandidateLimits::default(),
-        )
-        .is_err()
-    );
-}
-
-#[test]
 fn completes_an_index_prime_field_using_maximal_order_splitting() {
     let prepared = prepare([20_018, -20_010, 0, 1]);
     assert!(!prepared.field().data().index_primes.is_empty());

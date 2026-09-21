@@ -61,7 +61,7 @@ fn compact_proof_reaches_the_authenticated_public_candidate_boundary() {
     assert_eq!(
         candidate.dependency_lattice().len(),
         candidate.principal_relations().len()
-            - candidate.collected().factor_base.exact_ideals.len()
+            - candidate.collected().factor_base().exact_ideals.len()
     );
     candidate
         .class_map()
@@ -100,7 +100,10 @@ fn row6_reaches_the_compact_authenticated_candidate_boundary_from_coefficients()
 
     assert_eq!(candidate.invariant_factors(), &[2, 2]);
     assert_eq!(candidate.class_number_candidate(), &Integer::from(4));
-    assert_eq!(candidate.collected().factor_base.exact_ideals.len(), 1_130);
+    assert_eq!(
+        candidate.collected().factor_base().exact_ideals.len(),
+        1_130
+    );
     assert_eq!(candidate.generator_orders().len(), 2);
 }
 
@@ -371,7 +374,7 @@ fn compact_candidate_enforces_storage_limits_before_rank_work() {
 }
 
 #[test]
-fn compact_candidate_rejects_cross_field_and_corrupt_base_authority() {
+fn compact_candidate_rejects_cross_field_collector_authority() {
     let first = prepare_monic_cubic(
         [-37, -30, -8, 1].map(Integer::from),
         PublicCubicPreparationLimits::default(),
@@ -402,49 +405,6 @@ fn compact_candidate_rejects_cross_field_and_corrupt_base_authority() {
         ),
         Err(CubicPresentationCandidateError::Authentication(
             ArbitraryIdealReductionError::FactorBaseShape
-        ))
-    ));
-
-    let mut corrupted = collect_first();
-    corrupted.factor_base.catalog.complete_groups[0] =
-        !corrupted.factor_base.catalog.complete_groups[0];
-    assert!(matches!(
-        authenticate_compact_cubic_presentation_candidate(
-            &first,
-            corrupted,
-            CubicPresentationCandidateLimits::default(),
-            compact_limits,
-        ),
-        Err(CubicPresentationCandidateError::Authentication(
-            ArbitraryIdealReductionError::FactorBaseShape
-        ))
-    ));
-
-    let mut corrupted_relation = collect_first();
-    corrupted_relation.relations[0] += 1;
-    assert!(matches!(
-        authenticate_compact_cubic_presentation_candidate(
-            &first,
-            corrupted_relation,
-            CubicPresentationCandidateLimits::default(),
-            compact_limits,
-        ),
-        Err(CubicPresentationCandidateError::Authentication(
-            ArbitraryIdealReductionError::PrincipalRelationWitnessMismatch { .. }
-        ))
-    ));
-
-    let mut corrupted_generator = collect_first();
-    corrupted_generator.generators[0] += 1;
-    assert!(matches!(
-        authenticate_compact_cubic_presentation_candidate(
-            &first,
-            corrupted_generator,
-            CubicPresentationCandidateLimits::default(),
-            compact_limits,
-        ),
-        Err(CubicPresentationCandidateError::Authentication(
-            ArbitraryIdealReductionError::PrincipalRelationWitnessMismatch { .. }
         ))
     ));
 }

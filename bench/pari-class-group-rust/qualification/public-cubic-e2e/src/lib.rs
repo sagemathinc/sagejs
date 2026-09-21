@@ -440,11 +440,11 @@ pub fn qualify(request: Request) -> Result<Receipt, QualificationError> {
             } else {
                 0
             };
-        let factor_base_size = collected.factor_base.catalog.ideals.len();
+        let factor_base_size = collected.factor_base().catalog.ideals.len();
         let relation_count = if factor_base_size == 0 {
             0
         } else {
-            collected.relations.len() / factor_base_size
+            collected.relations().len() / factor_base_size
         };
         let relations = RelationEvidence {
             factor_base_size,

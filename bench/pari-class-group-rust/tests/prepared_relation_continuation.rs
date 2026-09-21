@@ -37,22 +37,22 @@ fn resumable_collector_appends_a_strict_prefix_and_enforces_cumulative_budgets()
     let first = collector.advance_to_supplementary(7).unwrap();
     let second = collector.advance_to_supplementary(8).unwrap();
     let third = collector.advance_to_supplementary(9).unwrap();
-    let width = first.factor_base.exact_ideals.len();
+    let width = first.factor_base().exact_ideals.len();
 
     let mut direct_collector =
         PreparedCubicRelationCollector::new(prepared.field(), limits).unwrap();
     let direct = direct_collector.advance_to_supplementary(9).unwrap();
 
-    assert_eq!(second.relations.len(), first.relations.len() + width);
-    assert_eq!(third.relations.len(), second.relations.len() + width);
-    assert!(second.relations.starts_with(&first.relations));
-    assert!(third.relations.starts_with(&second.relations));
-    assert!(second.generators.starts_with(&first.generators));
-    assert!(third.generators.starts_with(&second.generators));
+    assert_eq!(second.relations().len(), first.relations().len() + width);
+    assert_eq!(third.relations().len(), second.relations().len() + width);
+    assert!(second.relations().starts_with(first.relations()));
+    assert!(third.relations().starts_with(second.relations()));
+    assert!(second.generators().starts_with(first.generators()));
+    assert!(third.generators().starts_with(second.generators()));
     assert_counters_monotone(&first.counters, &second.counters);
     assert_counters_monotone(&second.counters, &third.counters);
-    assert_eq!(direct.relations, third.relations);
-    assert_eq!(direct.generators, third.generators);
+    assert_eq!(direct.relations(), third.relations());
+    assert_eq!(direct.generators(), third.generators());
     assert_eq!(direct.first_nonzero_hints, third.first_nonzero_hints);
     assert_eq!(direct.metadata, third.metadata);
     assert_eq!(direct.counters, third.counters);

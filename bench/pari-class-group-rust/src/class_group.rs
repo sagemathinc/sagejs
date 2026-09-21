@@ -127,7 +127,12 @@ impl Default for PreparedCollectorLimits {
 
 #[derive(Clone, Debug)]
 pub struct PreparedCubicRelationPresentation {
-    pub factor_base: PreparedFactorBase,
+    /// Exact factor base owned by the collector-produced presentation.
+    ///
+    /// This is crate-private so safe external code cannot mutate or substitute
+    /// it after the collector has established the provenance below.  Detached
+    /// inputs use the public replay boundary instead of this owned fast path.
+    pub(crate) factor_base: PreparedFactorBase,
     /// Collector-minted provenance for the exact field/base pair above.
     ///
     /// This is deliberately crate-private: untrusted callers cannot attach a
@@ -138,8 +143,11 @@ pub struct PreparedCubicRelationPresentation {
     /// Collector-only binding for the exact ordered principal-relation
     /// transcript carried by this presentation.
     pub(crate) principal_relations_authority: CollectedPrincipalRelationsAuthority,
-    pub relations: Vec<i64>,
-    pub generators: Vec<Integer>,
+    /// Immutable collector-owned relation transcript.  Keeping these vectors
+    /// behind read-only accessors lets the private consumer propagate the
+    /// collector's proof without hashing every entry a second time.
+    pub(crate) relations: Vec<i64>,
+    pub(crate) generators: Vec<Integer>,
     pub first_nonzero_hints: Vec<usize>,
     pub metadata: Vec<i64>,
     pub subfactor_count: usize,
@@ -152,108 +160,67 @@ pub struct PreparedCubicRelationPresentation {
     pub full_relation_capacity: usize,
 }
 
-/// Sealed proof that `collect_prepared_cubic_relations` obtained a factor base
-/// from `prepared_maximal_cubic_factor_base` for one canonical field.
+impl PreparedCubicRelationPresentation {
+    pub fn factor_base(&self) -> &PreparedFactorBase {
+        &self.factor_base
+    }
+
+    pub fn relations(&self) -> &[i64] {
+        &self.relations
+    }
+
+    pub fn generators(&self) -> &[Integer] {
+        &self.generators
+    }
+}
+
+/// Sealed proof that `collect_prepared_cubic_relations` obtained its immutable
+/// factor base from `prepared_maximal_cubic_factor_base` for one canonical
+/// field.
 ///
 /// The fields and constructor are private to this module, so even other crate
-/// modules can only consume an authority emitted by the collector.  Matching
-/// hashes the live values again, detecting mutation, substitution, and reuse
-/// with another field before the trusted fast path is entered.
+/// modules can only consume an authority emitted by the collector.  The
+/// protected factor base cannot be mutated by safe external code; matching
+/// therefore needs to bind only the independently supplied field.
 #[derive(Clone, Debug)]
 pub(crate) struct PreparedFactorBaseAuthority {
     field_sha256: [u8; 32],
-    factor_base_sha256: [u8; 32],
 }
 
 impl PreparedFactorBaseAuthority {
-    fn mint(field: &ValidatedPreparedCubic, factor_base: &PreparedFactorBase) -> Self {
+    fn mint(field: &ValidatedPreparedCubic) -> Self {
         Self {
             field_sha256: canonical_field_sha256(field),
-            factor_base_sha256: factor_base_binding_sha256(factor_base),
         }
     }
 
-    pub(crate) fn authenticates(
-        &self,
-        field: &ValidatedPreparedCubic,
-        factor_base: &PreparedFactorBase,
-    ) -> bool {
+    pub(crate) fn authenticates(&self, field: &ValidatedPreparedCubic) -> bool {
         self.field_sha256 == canonical_field_sha256(field)
-            && self.factor_base_sha256 == factor_base_binding_sha256(factor_base)
     }
 }
 
 /// Sealed provenance for a collector-produced principal-relation transcript.
 ///
-/// Its constructor and digest are private to this module. Other crate modules
-/// can verify a live presentation, but cannot mint authority for supplied
-/// relation rows or principal generators.
+/// Its constructor is private to this module. The relation and generator
+/// vectors are likewise protected from safe external mutation, so consumers
+/// verify the independently supplied field identity without rescanning the
+/// complete transcript. Supplied transcripts still take the detached exact
+/// replay path.
 #[derive(Clone, Debug)]
 pub(crate) struct CollectedPrincipalRelationsAuthority {
-    transcript_sha256: [u8; 32],
+    field_sha256: [u8; 32],
 }
 
 impl CollectedPrincipalRelationsAuthority {
-    fn mint(
-        field: &ValidatedPreparedCubic,
-        factor_base: &PreparedFactorBase,
-        relations: &[i64],
-        generators: &[Integer],
-    ) -> Self {
+    fn mint(field: &ValidatedPreparedCubic) -> Self {
         Self {
-            transcript_sha256: collected_principal_relations_sha256(
-                field,
-                factor_base,
-                relations,
-                generators,
-            )
-            .expect("collector emits aligned relation and principal-generator rows"),
+            field_sha256: canonical_field_sha256(field),
         }
     }
 
-    pub(crate) fn authenticates(
-        &self,
-        field: &ValidatedPreparedCubic,
-        factor_base: &PreparedFactorBase,
-        relations: &[i64],
-        generators: &[Integer],
-    ) -> bool {
-        collected_principal_relations_sha256(field, factor_base, relations, generators)
-            .is_some_and(|digest| digest == self.transcript_sha256)
+    pub(crate) fn authenticates(&self, field: &ValidatedPreparedCubic) -> bool {
+        self.field_sha256 == canonical_field_sha256(field)
     }
-}
-
-fn collected_principal_relations_sha256(
-    field: &ValidatedPreparedCubic,
-    factor_base: &PreparedFactorBase,
-    relations: &[i64],
-    generators: &[Integer],
-) -> Option<[u8; 32]> {
-    let factor_count = factor_base.exact_ideals.len();
-    if factor_count == 0 || relations.len() % factor_count != 0 {
-        return None;
-    }
-    let relation_count = relations.len() / factor_count;
-    if generators.len() != relation_count.checked_mul(DEGREE)? {
-        return None;
-    }
-
-    let mut hasher = Sha256::new();
-    hasher.update(b"sagejs.collected-principal-relations/v2\0");
-    hasher.update(canonical_field_sha256(field));
-    hasher.update(factor_base_binding_sha256(factor_base));
-    hasher.update((factor_count as u64).to_le_bytes());
-    hasher.update((relation_count as u64).to_le_bytes());
-    hasher.update((relations.len() as u64).to_le_bytes());
-    for relation in relations {
-        hasher.update(relation.to_le_bytes());
-    }
-    hasher.update((DEGREE as u64).to_le_bytes());
-    hasher.update((generators.len() as u64).to_le_bytes());
-    for generator in generators {
-        update_integer_sha256(&mut hasher, generator);
-    }
-    Some(hasher.finalize().into())
 }
 
 pub(crate) fn factor_base_binding_sha256(factor_base: &PreparedFactorBase) -> [u8; 32] {
@@ -879,7 +846,7 @@ impl<'a> PreparedCubicRelationCollector<'a> {
 
         let started = Instant::now();
         let factor_base = prepared_maximal_cubic_factor_base(field)?;
-        let factor_base_authority = PreparedFactorBaseAuthority::mint(field, &factor_base);
+        let factor_base_authority = PreparedFactorBaseAuthority::mint(field);
         let (subfactor_count, search_permutation) = factor_base.catalog.subfactor_permutation(3);
         timings.factor_base_ns = started.elapsed().as_nanos();
         let size = factor_base.catalog.ideals.len();
@@ -1359,12 +1326,7 @@ impl<'a> PreparedCubicRelationCollector<'a> {
             .ok_or(ClassGroupError::CandidateOverflow)?;
         let generators = self.generators[..generator_length].to_vec();
         let relations = self.cache.records().to_vec();
-        let principal_relations_authority = CollectedPrincipalRelationsAuthority::mint(
-            self.field,
-            &self.factor_base,
-            &relations,
-            &generators,
-        );
+        let principal_relations_authority = CollectedPrincipalRelationsAuthority::mint(self.field);
         Ok(PreparedCubicRelationPresentation {
             relations,
             generators,
@@ -1553,91 +1515,12 @@ mod tests {
     }
 
     #[test]
-    fn collected_principal_relations_authority_rejects_transcript_substitution() {
+    fn collected_principal_relations_authority_rejects_field_substitution() {
         let first = small_cubic(-1, -23);
         let second = small_cubic(1, -31);
-        let factor_base = prepared_maximal_cubic_factor_base(&first).unwrap();
-        let width = factor_base.exact_ideals.len();
-        assert_ne!(width, 0);
-        let relations = (0..2 * width)
-            .map(|index| i64::try_from(index).unwrap() - i64::try_from(width).unwrap())
-            .collect::<Vec<_>>();
-        let generators = [-3, 5, 7, 11, -13, 17].map(Integer::from).to_vec();
-        let authority = CollectedPrincipalRelationsAuthority::mint(
-            &first,
-            &factor_base,
-            &relations,
-            &generators,
-        );
+        let authority = CollectedPrincipalRelationsAuthority::mint(&first);
 
-        assert!(authority.authenticates(&first, &factor_base, &relations, &generators));
-
-        let mut huge_generators = generators.clone();
-        huge_generators[0] = Integer::from(1) << 200_u32;
-        let huge_authority = CollectedPrincipalRelationsAuthority::mint(
-            &first,
-            &factor_base,
-            &relations,
-            &huge_generators,
-        );
-        assert!(huge_authority.authenticates(&first, &factor_base, &relations, &huge_generators));
-        huge_generators[0] = -huge_generators[0].clone();
-        assert!(!huge_authority.authenticates(&first, &factor_base, &relations, &huge_generators));
-
-        let mut changed_row = relations.clone();
-        changed_row[0] += 1;
-        assert!(!authority.authenticates(&first, &factor_base, &changed_row, &generators));
-
-        let mut changed_generator = generators.clone();
-        changed_generator[0] += 1;
-        assert!(!authority.authenticates(&first, &factor_base, &relations, &changed_generator));
-
-        let mut reordered_rows = relations.clone();
-        reordered_rows.rotate_left(width);
-        let mut reordered_generators = generators.clone();
-        reordered_generators.rotate_left(DEGREE);
-        assert!(!authority.authenticates(
-            &first,
-            &factor_base,
-            &reordered_rows,
-            &reordered_generators
-        ));
-
-        assert!(!authority.authenticates(
-            &first,
-            &factor_base,
-            &relations[..width],
-            &generators[..DEGREE]
-        ));
-
-        let mut changed_factor_base = factor_base.clone();
-        changed_factor_base.catalog.complete_groups[0] =
-            !changed_factor_base.catalog.complete_groups[0];
-        assert!(!authority.authenticates(&first, &changed_factor_base, &relations, &generators));
-
-        let mut shifted_vector_boundary = factor_base.clone();
-        let moved = shifted_vector_boundary
-            .catalog
-            .rational_offsets
-            .pop()
-            .expect("nonempty rational-prime grouping");
-        shifted_vector_boundary
-            .catalog
-            .rational_counts
-            .insert(0, moved);
-        assert!(!authority.authenticates(
-            &first,
-            &shifted_vector_boundary,
-            &relations,
-            &generators
-        ));
-        assert!(!authority.authenticates(&second, &factor_base, &relations, &generators));
-
-        assert!(!authority.authenticates(
-            &first,
-            &factor_base,
-            &relations[..relations.len() - 1],
-            &generators
-        ));
+        assert!(authority.authenticates(&first));
+        assert!(!authority.authenticates(&second));
     }
 }

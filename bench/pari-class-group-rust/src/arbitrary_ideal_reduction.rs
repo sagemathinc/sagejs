@@ -490,15 +490,10 @@ pub(crate) fn validate_collected_factor_base_for_compact_presentation<'a>(
     relations: &'a [i64],
     generators: &'a [Integer],
 ) -> Result<ValidatedCollectedFactorBase<'a>, ArbitraryIdealReductionError> {
-    if !factor_base_authority.authenticates(order.field(), factor_base) {
+    if !factor_base_authority.authenticates(order.field()) {
         return Err(ArbitraryIdealReductionError::FactorBaseShape);
     }
-    if !principal_relations_authority.authenticates(
-        order.field(),
-        factor_base,
-        relations,
-        generators,
-    ) {
+    if !principal_relations_authority.authenticates(order.field()) {
         return Err(ArbitraryIdealReductionError::PrincipalRelationWitnessMismatch { index: 0 });
     }
     Ok(ValidatedCollectedFactorBase {
@@ -676,7 +671,7 @@ fn authenticate_presentation_with_context(
             validate_factor_base(field, factor_base, workspace)?;
         }
         FactorBaseAuthentication::Collector(authority) => {
-            if !authority.authenticates(field, factor_base) {
+            if !authority.authenticates(field) {
                 return Err(ArbitraryIdealReductionError::FactorBaseShape);
             }
         }
@@ -699,7 +694,7 @@ fn authenticate_presentation_with_context(
             relations,
             generators,
         } => {
-            if !authority.authenticates(field, factor_base, relations, generators) {
+            if !authority.authenticates(field) {
                 return Err(
                     ArbitraryIdealReductionError::PrincipalRelationWitnessMismatch { index: 0 },
                 );

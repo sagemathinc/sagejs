@@ -124,7 +124,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/arbitrary_ideal_reduction.rs",
-      "sha256": "4f1e5433f798671844dff77234549b15fa0b2aa423dd8daed979fcc1369df4bb",
+      "sha256": "891c846fe01af65024eec377625fa41a52bf453266a3beb3492456157efb1f6b",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
@@ -144,7 +144,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/class_group.rs",
-      "sha256": "9106019e25b3469a18192bec235f53fc8bb661d047ba48affcea1a298fb27432",
+      "sha256": "3f17024e198131fdf311d93ef20664c98d9c09ab12cc196198a14fea557cb9ed",
       "classification": "behavioral_reimplementation",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "partial",
