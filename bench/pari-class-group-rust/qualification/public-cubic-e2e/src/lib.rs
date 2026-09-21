@@ -263,12 +263,17 @@ fn select_candidate_authentication_route(
 }
 
 fn next_supplementary_target(current: usize) -> Option<usize> {
+    // Every failed analytic-isolation attempt already performs complete exact
+    // candidate authentication and unit reconstruction. Retained collection
+    // state makes modest over-collection much cheaper than repeating those
+    // stages one or two relations later, so grow geometrically from the
+    // mandatory seven-row surplus. This schedule is field- and answer-free.
     let increment = if current < 10 {
-        1
+        3
     } else if current < 16 {
-        2
+        6
     } else {
-        (current / 2).max(8)
+        current / 2
     };
     current.checked_add(increment)
 }
@@ -746,6 +751,15 @@ mod tests {
     }
 
     #[test]
+    fn continuation_schedule_grows_geometrically_without_field_feedback() {
+        let mut targets = vec![7];
+        while targets.len() < 7 {
+            targets.push(next_supplementary_target(*targets.last().unwrap()).unwrap());
+        }
+        assert_eq!(targets, vec![7, 10, 16, 24, 36, 54, 81]);
+    }
+
+    #[test]
     fn continuation_preflight_requires_a_complete_compact_resource_contract() {
         let mut input = request(10_000);
         input.resources.maximum_verification_multiply_adds = 1;
@@ -813,7 +827,7 @@ mod tests {
                 .iter()
                 .map(|attempt| attempt.supplementary_target)
                 .collect::<Vec<_>>(),
-            [7, 8, 9, 10, 12, 14, 16]
+            [7, 10, 16]
         );
         assert!(
             attempts[..attempts.len() - 1]
