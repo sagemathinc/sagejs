@@ -872,12 +872,12 @@ pub fn prepare_cubic_conditional_completion_context(
     })
 }
 
-fn cached_relation_logs(
+fn ensure_cached_relation_logs(
     prepared: &PreparedPublicCubic,
     collected: &crate::class_group::PreparedCubicRelationPresentation,
     precision_bits: u32,
     context: &mut CubicConditionalCompletionContext,
-) -> Result<Vec<[Float; DEGREE]>, CubicConditionalCompletionError> {
+) -> Result<usize, CubicConditionalCompletionError> {
     if !collected.generators.len().is_multiple_of(DEGREE) {
         return Err(CubicConditionalCompletionError::InvalidPresentationShape);
     }
@@ -918,7 +918,7 @@ fn cached_relation_logs(
     cache
         .generator_coordinates
         .extend_from_slice(&collected.generators[first_new_entry..]);
-    Ok(cache.logarithms.clone())
+    Ok(cache_index)
 }
 
 /// Complete a cubic candidate using previously authenticated field-level
@@ -1073,12 +1073,13 @@ fn complete_cubic_class_group_at_precision(
         return Err(CubicConditionalCompletionError::KernelReplayMismatch);
     }
 
-    let relation_logs = cached_relation_logs(
+    let relation_log_cache_index = ensure_cached_relation_logs(
         &prepared,
         collected,
         options.logarithm_precision_bits,
         context,
     )?;
+    let relation_logs = &context.relation_log_prefixes[relation_log_cache_index].logarithms;
     if relation_logs.len() != rows {
         return Err(CubicConditionalCompletionError::InvalidPresentationShape);
     }
@@ -1172,7 +1173,7 @@ fn complete_cubic_class_group_at_precision(
     for unit in &fundamental_units {
         let mut logs: [Float; 3] =
             std::array::from_fn(|_| Float::with_val(options.logarithm_precision_bits, 0));
-        for (coefficient, relation) in unit.relation_exponents.iter().zip(&relation_logs) {
+        for (coefficient, relation) in unit.relation_exponents.iter().zip(relation_logs) {
             for index in 0..DEGREE {
                 let mut term = relation[index].clone();
                 term *= coefficient;
