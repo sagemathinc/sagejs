@@ -98,6 +98,18 @@ public preparation. Relation collection fell from 1.063 seconds before the
 exact ideal-power cache; the three principal mathematical phases are now
 nearly balanced.
 
+The current shared source also completes row 6 from coefficients through the
+qualification Wasm reactor in Node, Chromium, Firefox, and WebKit with the same
+sealed projection. The 5,771,254-byte artifact is 2,324,095 bytes gzip and
+finishes with 2,166 linear-memory pages (135.38 MiB), inside the plan's 256-MiB
+worker ceiling. One-shot calls are 31.32, 31.82, 239.47, and 32.93 seconds,
+respectively. The receipts bind the current 1,144-relation mixed-invariant
+presentation and explicitly expose the failed 4,096/2,048-bit attempt followed
+by the successful 8,192/4,096-bit attempt. This passes current-source browser
+feasibility and memory, not the browser performance or product gates: the route
+is still a synchronous qualification harness rather than the Sage.js worker
+API, and Firefox remains the dominant target-specific performance failure.
+
 ## Evidence we actually have
 
 Starting evidence is commit `e88f6ee00` on

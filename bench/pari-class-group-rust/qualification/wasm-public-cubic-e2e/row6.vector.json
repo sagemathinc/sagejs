@@ -20,8 +20,8 @@
       "maximumCompactSaturationMinorTrials": 32768,
       "maximumCompactDependencyEntries": 1000000,
       "maximumCompactTargetCoefficientBits": 1000000,
-      "logarithmPrecisionBits": 4096,
-      "replayPrecisionBits": 2048,
+      "logarithmPrecisionBits": 8192,
+      "replayPrecisionBits": 4096,
       "analyticPrecisionBits": 512,
       "maximumRelations": 10000,
       "maximumDependencies": 1000,
@@ -48,16 +48,16 @@
     },
     "relations": {
       "factorBaseSize": 1130,
-      "relationCount": 1137,
+      "relationCount": 1144,
       "completeRankAndSurplus": true,
       "missingRank": 0
     },
     "candidate": {
       "invariantFactors": ["2", "2"],
       "classNumber": "4",
-      "authenticatedPrincipalRelations": 1137,
+      "authenticatedPrincipalRelations": 1144,
       "generatorOrderWitnesses": 2,
-      "authority": "authenticated-collector-sealed-compact-elementary-two-presentation"
+      "authority": "authenticated-collector-sealed-compact-mixed-invariant-presentation"
     },
     "completion": {
       "proof": "conditional-grh",
@@ -67,6 +67,18 @@
       "bfThreshold": 23994,
       "classUnitHypothesis": "GRH for the Dedekind-zeta residue bound",
       "factorBaseHypothesis": "GRH for all unramified Hecke L-functions of class-group characters",
+      "requestedLogarithmPrecisionBits": 8192,
+      "requestedReplayPrecisionBits": 4096,
+      "attemptedPrecisionLevels": [
+        {
+          "logarithmPrecisionBits": 4096,
+          "replayPrecisionBits": 2048
+        },
+        {
+          "logarithmPrecisionBits": 8192,
+          "replayPrecisionBits": 4096
+        }
+      ],
       "sealedEvidenceVerified": true,
       "arbitraryIdealClassMapRetained": true
     },

@@ -13,7 +13,7 @@ analytic completion, and sealed-result verification. The checked JSON ABI has
 no representation for prepared fields, relations, or expected answers.
 
 The stable projection requires class number `4`, invariant factors `[2, 2]`,
-equation-order index `3`, 1,130 factor-base ideals, 1,137 authenticated
+equation-order index `3`, 1,130 factor-base ideals, 1,144 authenticated
 relations, rank-two unit evidence, and a sealed conditional-GRH result. Both
 the Node and browser harnesses compare this projection exactly and exclude only
 the runtime-dependent stage timers.
@@ -44,22 +44,28 @@ LD_LIBRARY_PATH="$native_prefix/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
 cargo test --release --all-targets
 ```
 
-## First complete result
+## Current complete result
 
-The final qualified reactor is 5,679,772 bytes. Its stable row-6 projection
-passed in Node, Chromium, Firefox, and WebKit. Each runtime grew from 256 to
-1,865 Wasm pages (16.0 to 116.6 MiB). Representative one-shot calls were about
-22.2 seconds in Node, 22.6 seconds in Chromium, 162.3 seconds in Firefox, and
-23.4 seconds in WebKit. These are smoke measurements, not warmed benchmark
+The current qualified reactor is 5,771,254 bytes (2,324,095 bytes gzip). Its
+stable row-6 projection passed in Node, Chromium, Firefox, and WebKit after the
+general mixed-invariant remediation. The result has 1,144 authenticated
+relations and records both requested precision and the exact two-attempt
+4,096/2,048- then 8,192/4,096-bit schedule. Each runtime grew from 256 to 2,166
+Wasm pages (16.0 to 135.4 MiB). Representative one-shot calls were 31.32
+seconds in Node, 31.82 seconds in Chromium, 239.47 seconds in Firefox, and
+32.93 seconds in WebKit. These are smoke measurements, not warmed benchmark
 medians. The native frozen public benchmark for the same field is 5.826 seconds
-(PARI 3.960 seconds), so Wasm is working end to end but is not yet competitive:
-Firefox is the largest target-specific problem.
+(PARI 3.960 seconds), so Wasm is working end to end and remains within the
+256-MiB worker memory ceiling, but is not yet competitive. Firefox remains the
+largest target-specific problem.
 
-The Node guest's stage times localize its roughly 22-second call to 0.17 seconds
-of public preparation, 8.61 seconds of relation collection, 4.63 seconds of
-candidate authentication, and 8.58 seconds of unit/analytic completion. This
-is actionable evidence: the full computation does not fail at an incomplete
-boundary, and the dominant Wasm work is known.
+The Node guest's stage times localize its 31.31-second sealed computation to
+0.17 seconds of public preparation, 9.50 seconds of relation collection, 4.74
+seconds of candidate authentication, and 16.73 seconds of unit/analytic
+completion. This is actionable evidence: the full computation does not fail at
+an incomplete boundary, and the dominant Wasm work is known. The historical
+5,679,772-byte, 1,137-relation result remains useful as a pre-remediation
+baseline but is no longer the current source closure.
 
 ## Why there are two manifest adapters
 
