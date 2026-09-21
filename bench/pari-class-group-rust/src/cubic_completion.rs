@@ -15,7 +15,7 @@ use crate::analytic_completion::{
     IncrementalCubicBelabasFriedmanPlan, build_cubic_bdf_factor_base_plan,
 };
 use crate::compact_cubic_presentation::{
-    modular_basis_columns_in_order, saturation_minor_certificate,
+    exact_integer_i64_dot_is_zero, modular_basis_columns_in_order, saturation_minor_certificate,
 };
 use crate::cubic_presentation::AuthenticatedCubicPresentationCandidate;
 use crate::flint_normal_form::{
@@ -1069,9 +1069,7 @@ fn complete_cubic_class_group_at_precision(
     }
     if dependencies.iter().any(|dependency| {
         (0..columns).any(|column| {
-            (0..rows).fold(Integer::from(0), |sum, row| {
-                sum + &dependency[row] * collected.relations[row * columns + column]
-            }) != 0
+            !exact_integer_i64_dot_is_zero(dependency, &collected.relations, rows, columns, column)
         })
     }) {
         return Err(CubicConditionalCompletionError::KernelReplayMismatch);
@@ -1132,9 +1130,7 @@ fn complete_cubic_class_group_at_precision(
             }
         }
         if (0..columns).any(|column| {
-            (0..rows).fold(Integer::from(0), |sum, row| {
-                sum + &exponents[row] * collected.relations[row * columns + column]
-            }) != 0
+            !exact_integer_i64_dot_is_zero(&exponents, &collected.relations, rows, columns, column)
         }) {
             return Err(CubicConditionalCompletionError::UnitReplayMismatch);
         }

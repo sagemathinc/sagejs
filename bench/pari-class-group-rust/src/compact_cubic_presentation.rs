@@ -771,6 +771,40 @@ pub(crate) fn compact_verification_multiply_adds(
     dense.checked_add(right_inverse)
 }
 
+/// Prove that one exact integer row annihilates a column of an `i64` matrix.
+///
+/// Checked `i128` is only a fast producer for the exact result. If any
+/// coefficient conversion, product, or partial sum does not fit, the complete
+/// dot product restarts in GMP rather than continuing from a truncated value.
+pub(crate) fn exact_integer_i64_dot_is_zero(
+    coefficients: &[Integer],
+    matrix: &[i64],
+    rows: usize,
+    columns: usize,
+    column: usize,
+) -> bool {
+    if coefficients.len() != rows
+        || matrix.len() != rows.saturating_mul(columns)
+        || column >= columns
+    {
+        return false;
+    }
+    let fixed = coefficients
+        .iter()
+        .enumerate()
+        .try_fold(0_i128, |sum, (row, coefficient)| {
+            let coefficient = coefficient.to_i128()?;
+            let product = coefficient.checked_mul(i128::from(matrix[row * columns + column]))?;
+            sum.checked_add(product)
+        });
+    if let Some(sum) = fixed {
+        return sum == 0;
+    }
+    (0..rows).fold(Integer::from(0), |sum, row| {
+        sum + &coefficients[row] * matrix[row * columns + column]
+    }) == 0
+}
+
 fn reorder_and_verify_dependencies(
     solver_dependencies: &[Integer],
     rank: usize,
@@ -792,10 +826,13 @@ fn reorder_and_verify_dependencies(
                 solver_dependencies[dependency * relation_count + solver_row].clone();
         }
         for column in 0..columns {
-            let replay = (0..relation_count).fold(Integer::from(0), |sum, row| {
-                sum + &reordered[row] * original_relations[row * columns + column]
-            });
-            if replay != 0 {
+            if !exact_integer_i64_dot_is_zero(
+                &reordered,
+                original_relations,
+                relation_count,
+                columns,
+                column,
+            ) {
                 return Err(CompactPresentationError::DependencyDoesNotAnnihilate {
                     dependency,
                     column,
@@ -1306,6 +1343,34 @@ fn normalize_gf2_map(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn exact_dot_product_uses_checked_words_and_gmp_fallback() {
+        let matrix = [2_i64, 3, -2, -3];
+        assert!(exact_integer_i64_dot_is_zero(
+            &[Integer::from(1), Integer::from(1)],
+            &matrix,
+            2,
+            2,
+            0,
+        ));
+        assert!(!exact_integer_i64_dot_is_zero(
+            &[Integer::from(1), Integer::from(2)],
+            &matrix,
+            2,
+            2,
+            1,
+        ));
+        let mut huge = Integer::from(1);
+        huge <<= 200_u32;
+        assert!(exact_integer_i64_dot_is_zero(
+            &[huge.clone(), huge],
+            &matrix,
+            2,
+            2,
+            0,
+        ));
+    }
 
     #[test]
     fn retained_map_preflight_counts_coordinates_and_preimages() {
