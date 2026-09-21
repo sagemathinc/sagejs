@@ -12,11 +12,31 @@ the independent irreducibility boolean. Selection does not inspect expected
 answers, signature, timing, traits, construction evidence, or runtime output.
 Every identity and polynomial in the original 120-case panel is excluded.
 
-`inputs.json` contains public polynomials but no expected values. It is frozen
-and intentionally unexecuted. After a failure-motivated fix, the original
-twelve cases are regression evidence; qualification additionally requires this
-untouched set. If this set motivates another fix, a new policy version and seed
-are required.
+`inputs.json` contains public polynomials but no expected values. It was frozen
+and intentionally unexecuted until the original twelve-case regression set
+passed after the failure-motivated fixes. The original twelve cases remain
+regression evidence; qualification additionally requires this untouched set.
+If this set motivates another fix, a new policy version and seed are required.
+
+Execute the answer-free confirmation set, writing answer-bearing process output
+only outside the repository:
+
+```bash
+private_dir=$(mktemp -d /tmp/sagejs-cubic-confirmation.XXXXXX)
+python3 bench/pari-class-group-rust/qualification/public-cubic-heldout-confirmation/run.py \
+  --private-results "$private_dir/rust-results.json"
+```
+
+Only after the executor terminates, compare against the externally held private
+candidate pool. The checked-in comparison receipt contains case identities and
+named pass/fail information, never expected or actual mathematical answers:
+
+```bash
+python3 bench/pari-class-group-rust/qualification/public-cubic-heldout-confirmation/verify.py \
+  --private-results "$private_dir/rust-results.json" \
+  --candidate-pool /secure/qualified-candidate-pool-v1.json \
+  --private-binding /secure/heldout-cubic-confirmation-binding-v1.json
+```
 
 Regenerate from the repository root without printing selected values:
 
