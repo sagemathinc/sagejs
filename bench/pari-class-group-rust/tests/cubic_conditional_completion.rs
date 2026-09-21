@@ -8,7 +8,9 @@ use sagejs_pari_class_group_rust_experiment::{
     CubicCompletionProofMode, CubicConditionalCompletionError, CubicConditionalCompletionOptions,
     CubicPresentationCandidateLimits, PreparedCollectorLimits, PublicCubicPreparationLimits,
     authenticate_cubic_presentation_candidate, collect_prepared_cubic_relations,
-    complete_cubic_class_group_conditionally, prepare_monic_cubic,
+    complete_cubic_class_group_conditionally,
+    complete_cubic_class_group_conditionally_with_context,
+    prepare_cubic_conditional_completion_context, prepare_monic_cubic,
 };
 
 fn prepare(coefficients: [i64; 4]) -> sagejs_pari_class_group_rust_experiment::PreparedPublicCubic {
@@ -88,6 +90,40 @@ fn rejects_cross_field_authority_and_unsupported_proof_mode() {
     assert_eq!(
         complete_cubic_class_group_conditionally(first, candidate, options).unwrap_err(),
         CubicConditionalCompletionError::UnsupportedProofMode
+    );
+}
+
+#[test]
+fn shared_completion_context_rejects_cross_field_and_option_drift() {
+    let first = prepare([-1, -1, 0, 1]);
+    let second = prepare([1, -1, -2, 1]);
+    let first_candidate = candidate(&first);
+    let options = CubicConditionalCompletionOptions::default();
+    let context =
+        prepare_cubic_conditional_completion_context(&first, &first_candidate, options).unwrap();
+
+    assert_eq!(
+        complete_cubic_class_group_conditionally_with_context(
+            second,
+            first_candidate.clone(),
+            options,
+            &context,
+        )
+        .unwrap_err(),
+        CubicConditionalCompletionError::PreparedAuthorityMismatch
+    );
+
+    let mut changed_options = options;
+    changed_options.analytic_precision_bits *= 2;
+    assert_eq!(
+        complete_cubic_class_group_conditionally_with_context(
+            first,
+            first_candidate,
+            changed_options,
+            &context,
+        )
+        .unwrap_err(),
+        CubicConditionalCompletionError::InvalidOptions
     );
 }
 

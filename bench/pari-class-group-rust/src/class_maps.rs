@@ -168,6 +168,21 @@ impl PresentationClassMap {
         smith: SmithDecomposition,
     ) -> Result<Self, ClassMapError> {
         smith.verify(&relations)?;
+        Self::from_preverified_smith(relations, smith)
+    }
+
+    /// Construct a class map from the result of
+    /// [`ExactNormalFormWorkspace::smith`](crate::hnf::ExactNormalFormWorkspace::smith).
+    ///
+    /// That producer verifies the full transform identity, both inverse pairs,
+    /// and canonical Smith form before returning. Keeping this boundary
+    /// crate-private prevents external callers from bypassing the defensive
+    /// public constructor while avoiding a duplicate cubic-time replay in the
+    /// authenticated candidate pipeline.
+    pub(crate) fn from_preverified_smith(
+        relations: BigIntMatrix,
+        smith: SmithDecomposition,
+    ) -> Result<Self, ClassMapError> {
         let generators = relations.rows();
         if smith.rank != generators {
             return Err(ClassMapError::NotFullRowRank {

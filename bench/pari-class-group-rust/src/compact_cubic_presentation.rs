@@ -862,11 +862,26 @@ fn dependency_minor(
     )
 }
 
-fn modular_basis_columns(dependencies: &[Vec<Integer>], prime: u32) -> Option<Vec<usize>> {
+pub(crate) fn modular_basis_columns(
+    dependencies: &[Vec<Integer>],
+    prime: u32,
+) -> Option<Vec<usize>> {
+    let columns = dependencies.first()?.len();
+    modular_basis_columns_in_order(dependencies, prime, &(0..columns).collect::<Vec<_>>())
+}
+
+pub(crate) fn modular_basis_columns_in_order(
+    dependencies: &[Vec<Integer>],
+    prime: u32,
+    column_order: &[usize],
+) -> Option<Vec<usize>> {
     let rank = dependencies.len();
     let columns = dependencies.first()?.len();
+    if column_order.len() != columns || column_order.iter().any(|&column| column >= columns) {
+        return None;
+    }
     let mut basis = Vec::<(usize, Vec<u32>, usize)>::with_capacity(rank);
-    for column in 0..columns {
+    for &column in column_order {
         let mut vector = dependencies
             .iter()
             .map(|dependency| {
@@ -905,7 +920,7 @@ fn modular_basis_columns(dependencies: &[Vec<Integer>], prime: u32) -> Option<Ve
     None
 }
 
-fn saturation_minor_certificate(
+pub(crate) fn saturation_minor_certificate(
     dependencies: &[Vec<Integer>],
     preferred_columns: &[usize],
     maximum_trials: usize,
@@ -931,6 +946,50 @@ fn saturation_minor_certificate(
     )? {
         return Ok(selected);
     }
+    // A single maximal minor often leaves only a small residual index.  When
+    // that residual fits a word, factor it exactly and select one full-rank
+    // minor modulo each prime divisor.  Such a minor is not divisible by that
+    // prime, so the accumulated determinant gcd loses the factor without a
+    // broad combinatorial minor search.
+    if let Some(residual) = gcd.to_u32() {
+        for prime in distinct_prime_factors_u32(residual) {
+            if let Some(candidate) = modular_basis_columns(dependencies, prime)
+                && consider_saturation_minor(
+                    dependencies,
+                    candidate,
+                    maximum_trials,
+                    &mut trials,
+                    &mut seen,
+                    &mut gcd,
+                    &mut selected,
+                )?
+            {
+                return Ok(selected);
+            }
+        }
+    }
+    // Independent modular bases diversify all columns at once and typically
+    // make the determinant gcd one in only a few exact minors. Try them before
+    // local single-column substitutions so a budget comparable to the rank is
+    // not consumed exploring one narrow neighborhood of the preferred minor.
+    for prime in [65_519_u32, 65_513, 65_497, 65_483, 2, 3, 5, 7, 11, 13, 17] {
+        if let Some(candidate) = modular_basis_columns(dependencies, prime)
+            && consider_saturation_minor(
+                dependencies,
+                candidate,
+                maximum_trials,
+                &mut trials,
+                &mut seen,
+                &mut gcd,
+                &mut selected,
+            )?
+        {
+            return Ok(selected);
+        }
+        if trials == maximum_trials {
+            return Err(CompactPresentationError::SaturationNotProved { trials, gcd });
+        }
+    }
     for replacement in 0..columns {
         for position in 0..rank {
             let mut candidate = preferred_columns.to_vec();
@@ -949,24 +1008,6 @@ fn saturation_minor_certificate(
             if trials == maximum_trials {
                 return Err(CompactPresentationError::SaturationNotProved { trials, gcd });
             }
-        }
-    }
-    for prime in [2_u32, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31] {
-        if let Some(candidate) = modular_basis_columns(dependencies, prime)
-            && consider_saturation_minor(
-                dependencies,
-                candidate,
-                maximum_trials,
-                &mut trials,
-                &mut seen,
-                &mut gcd,
-                &mut selected,
-            )?
-        {
-            return Ok(selected);
-        }
-        if trials == maximum_trials {
-            return Err(CompactPresentationError::SaturationNotProved { trials, gcd });
         }
     }
     let mut state = 0x9e37_79b9_7f4a_7c15_u64
@@ -1000,6 +1041,24 @@ fn saturation_minor_certificate(
         }
     }
     Err(CompactPresentationError::SaturationNotProved { trials, gcd })
+}
+
+fn distinct_prime_factors_u32(mut value: u32) -> Vec<u32> {
+    let mut factors = Vec::new();
+    let mut divisor = 2_u32;
+    while u64::from(divisor) * u64::from(divisor) <= u64::from(value) {
+        if value.is_multiple_of(divisor) {
+            factors.push(divisor);
+            while value.is_multiple_of(divisor) {
+                value /= divisor;
+            }
+        }
+        divisor += if divisor == 2 { 1 } else { 2 };
+    }
+    if value > 1 {
+        factors.push(value);
+    }
+    factors
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1256,6 +1315,19 @@ mod tests {
         assert_eq!(evidence.len(), 2);
         assert_eq!(evidence[0].determinant, 2);
         assert_eq!(evidence[1].determinant, 3);
+    }
+
+    #[test]
+    fn saturation_uses_diverse_modular_bases_with_a_rank_sized_budget() {
+        let dependencies = vec![
+            vec![0, 1, 0, 0].into_iter().map(Integer::from).collect(),
+            vec![6, 0, 3, 2].into_iter().map(Integer::from).collect(),
+        ];
+        let evidence = saturation_minor_certificate(&dependencies, &[0, 1], 3).unwrap();
+        assert_eq!(evidence.len(), 3);
+        assert_eq!(evidence[0].determinant.clone().abs(), 6);
+        assert_eq!(evidence[1].determinant.clone().abs(), 3);
+        assert_eq!(evidence[2].determinant.clone().abs(), 2);
     }
 
     #[test]

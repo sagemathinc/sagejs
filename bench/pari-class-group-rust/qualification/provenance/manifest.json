@@ -171,7 +171,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/class_maps.rs",
-      "sha256": "28517f4bbeb8d724b23fb94ad3ce014b057106155dbadb4f3d76b997a380bcab",
+      "sha256": "26c3306e46715ed7f439f643313e76c1bafa6d5b83a9d2a7e4efe1a28d633db4",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
@@ -204,7 +204,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/compact_cubic_presentation.rs",
-      "sha256": "a25678586b99def2c50427a3d84ec20b431fdcd8efa0ac23adb2ffa5f069cc28",
+      "sha256": "e6fc447ddc957cec579b9726d56aa77bf4b33236149418a6424099558b6d83e6",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
@@ -214,7 +214,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/cubic_completion.rs",
-      "sha256": "d0b63bf67efe39d90b224c9a6a49dbb75933d96aa7082b2d5edbddfc5815aba8",
+      "sha256": "05bb395876cfa3feb78114b8d62d9a93eca0e6b66d99fd5264f2f05ad3ce9e40",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
@@ -224,7 +224,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/cubic_presentation.rs",
-      "sha256": "f4851a8d4444e4c521af9dbb38b9ecbbb77952194c1b768bee27b4eba7895dd9",
+      "sha256": "0acebb9b32b6cefadc2428e778d6ee87b2d7bd1e158d5bd875d52db322c76ade",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
@@ -362,7 +362,7 @@
     },
     {
       "path": "bench/pari-class-group-rust/src/lib.rs",
-      "sha256": "056896fb2fae9d9f75944c7833c301c27cc6254e290f87dc2c8a65f7779a3988",
+      "sha256": "c636b0178b65e2841050dc883a366127deb07a8809ce5dafac1056a655a1be9b",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",

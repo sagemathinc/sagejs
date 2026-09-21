@@ -14,10 +14,13 @@ use crate::analytic_completion::{
     BdfFactorBasePlan, BelabasFriedmanPlan, BelabasFriedmanPlanError,
     IncrementalCubicBelabasFriedmanPlan, build_cubic_bdf_factor_base_plan,
 };
+use crate::compact_cubic_presentation::{
+    modular_basis_columns_in_order, saturation_minor_certificate,
+};
 use crate::cubic_presentation::AuthenticatedCubicPresentationCandidate;
 use crate::flint_normal_form::{
     FlintBfIndexEnclosure, FlintDyadicInterval, FlintNormalFormError, flint_bdf_factor_base_margin,
-    flint_bf_index_enclosure, flint_compact_cubic_regulator,
+    flint_bf_index_enclosure, flint_compact_cubic_regulator, flint_left_kernel,
 };
 use crate::hnf::{BigIntMatrix, ExactNormalFormWorkspace, NormalFormError, NormalFormLimits};
 use crate::numerical_preparation::{NumericalPreparationError, PreparedCubicEmbedding};
@@ -34,7 +37,8 @@ const DEGREE: usize = 3;
 const ROOTS_OF_UNITY_IN_CUBIC_FIELD: u64 = 2;
 const MAXIMUM_COMPLETION_PRECISION_BITS: u32 = 16_384;
 const MAXIMUM_DYADIC_SHIFT: u32 = 1_000_000;
-const MAXIMUM_DEPENDENCY_REDUCTION_OPERATIONS: u64 = 1_000_000;
+const MAXIMUM_DEPENDENCY_REDUCTION_OPERATIONS: u64 = 50_000_000;
+const MAXIMUM_DEPENDENCY_REDUCTION_INPUT_BYTES: u64 = 128 * 1024 * 1024;
 
 /// The proof contract requested by the caller.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -76,6 +80,23 @@ impl Default for CubicConditionalCompletionOptions {
             maximum_analytic_threshold: 23_994,
         }
     }
+}
+
+/// Field-level analytic data shared by continuation and numerical-precision
+/// retries for one authenticated factor base.
+///
+/// Construction performs the complete splitting prefix and rigorous BDF
+/// margin enclosure once. Completion still checks that the prepared field,
+/// factor-base bound, analytic precision, and resource ceiling agree before
+/// using the retained evidence.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CubicConditionalCompletionContext {
+    prepared: PreparedPublicCubic,
+    factor_base_bound: u64,
+    analytic_precision_bits: u32,
+    maximum_analytic_threshold: u64,
+    bdf_plan: BdfFactorBasePlan,
+    bdf_margin: FlintDyadicInterval,
 }
 
 /// Exact final BF enclosure retained only when analytic completion declines.
@@ -427,16 +448,10 @@ fn reduce_dependency_basis_exact(
     relations: &[i64],
 ) -> Result<Vec<Vec<Integer>>, CubicConditionalCompletionError> {
     let dependency_count = dependencies.len();
-    let entry_count = dependency_count
-        .checked_mul(relation_count)
-        .ok_or(CubicConditionalCompletionError::MachineRepresentationLimit)?;
-    let transform_entries = dependency_count
-        .checked_mul(dependency_count)
-        .ok_or(CubicConditionalCompletionError::MachineRepresentationLimit)?;
-    // Charge the exact certificate replay before constructing the HNF.  The
-    // workspace separately interrupts its reduction operations; this bound
-    // covers H = U*D, both U/U^-1 products, and replaying every reduced
-    // dependency against every original relation column.
+    // Charge the exact certificate before invoking FLINT. The retained proof
+    // independently replays every kernel row, selects modular full-rank
+    // projections, and evaluates at most 16 exact maximal minors. No dense
+    // transform or inverse is constructed on this path.
     let dependency_count_u64 = u64::try_from(dependency_count)
         .map_err(|_| CubicConditionalCompletionError::MachineRepresentationLimit)?;
     let relation_count_u64 = u64::try_from(relation_count)
@@ -446,61 +461,64 @@ fn reduce_dependency_basis_exact(
     let square = dependency_count_u64
         .checked_mul(dependency_count_u64)
         .ok_or(CubicConditionalCompletionError::MachineRepresentationLimit)?;
-    let transform_replay = square
+    let modular_basis_work = square
         .checked_mul(relation_count_u64)
-        .and_then(|work| {
-            square
-                .checked_mul(dependency_count_u64)
-                .and_then(|cube| cube.checked_mul(2))
-                .and_then(|identities| work.checked_add(identities))
-        })
+        // Four preferred-prime attempts, at most nine distinct prime factors
+        // of a u32 residual, and eleven deterministic fallback primes.
+        .and_then(|work| work.checked_mul(24))
+        .ok_or(CubicConditionalCompletionError::MachineRepresentationLimit)?;
+    let determinant_work = square
+        .checked_mul(dependency_count_u64)
+        .and_then(|work| work.checked_mul(16))
         .ok_or(CubicConditionalCompletionError::MachineRepresentationLimit)?;
     let relation_replay = dependency_count_u64
         .checked_mul(relation_count_u64)
         .and_then(|work| work.checked_mul(relation_columns_u64))
         .ok_or(CubicConditionalCompletionError::MachineRepresentationLimit)?;
-    let certificate_work = transform_replay
-        .checked_add(relation_replay)
+    let certificate_work = modular_basis_work
+        .checked_add(determinant_work)
+        .and_then(|work| work.checked_add(relation_replay))
         .ok_or(CubicConditionalCompletionError::MachineRepresentationLimit)?;
     if certificate_work > MAXIMUM_DEPENDENCY_REDUCTION_OPERATIONS {
         return Err(CubicConditionalCompletionError::ResourceLimit(
             "dependency basis reduction certificate",
         ));
     }
-    let source = BigIntMatrix::try_new(
-        dependency_count,
-        relation_count,
-        dependencies.iter().flatten().cloned().collect(),
-    )
-    .map_err(|_| CubicConditionalCompletionError::InvalidPresentationShape)?;
-    let mut workspace = ExactNormalFormWorkspace::new(NormalFormLimits {
-        max_entries: entry_count.max(transform_entries),
-        max_operations: MAXIMUM_DEPENDENCY_REDUCTION_OPERATIONS,
-    });
-    let reduction = workspace.row_hnf(&source).map_err(|error| match error {
-        NormalFormError::CapacityExceeded { .. }
-        | NormalFormError::OperationLimitExceeded { .. } => {
-            CubicConditionalCompletionError::ResourceLimit("dependency basis reduction")
-        }
-        _ => CubicConditionalCompletionError::KernelReplayMismatch,
-    })?;
-    // `verify` proves both H = U*D and that U and U^-1 are mutual inverses,
-    // hence the reduced rows span exactly the authenticated saturated kernel.
-    reduction
-        .verify(&source)
+    let input_bits = dependencies
+        .iter()
+        .flatten()
+        .try_fold(0_u64, |total, value| {
+            total.checked_add(u64::from(value.significant_bits()).max(1))
+        })
+        .ok_or(CubicConditionalCompletionError::MachineRepresentationLimit)?;
+    let input_bytes = input_bits
+        .checked_add(7)
+        .ok_or(CubicConditionalCompletionError::MachineRepresentationLimit)?
+        / 8;
+    if input_bytes > MAXIMUM_DEPENDENCY_REDUCTION_INPUT_BYTES {
+        return Err(CubicConditionalCompletionError::ResourceLimit(
+            "dependency basis reduction input bytes",
+        ));
+    }
+    let produced = flint_left_kernel(relations, relation_count, relation_columns)
         .map_err(|_| CubicConditionalCompletionError::KernelReplayMismatch)?;
-    if reduction.rank() != dependency_count {
+    if produced.rank != dependency_count || produced.relation_count != relation_count {
         return Err(CubicConditionalCompletionError::KernelRankMismatch {
             expected: dependency_count,
-            actual: reduction.rank(),
+            actual: produced.rank,
         });
     }
-    let reduced = reduction
-        .hnf
-        .values()
+    let reduced = produced
+        .coefficients
         .chunks_exact(relation_count)
         .map(<[Integer]>::to_vec)
         .collect::<Vec<_>>();
+    // FLINT is only the fast kernel producer. Independently prove that its
+    // rows form the complete integral kernel: they have the exact rational
+    // nullity, replay to zero against every relation column, and their maximal
+    // minors have gcd one. The final condition makes the row lattice primitive
+    // in Z^relation_count, hence it is the unique saturated lattice in this
+    // rational kernel.
     if reduced.len() != dependency_count
         || reduced.iter().any(|dependency| {
             (0..relation_columns).any(|column| {
@@ -512,6 +530,20 @@ fn reduce_dependency_basis_exact(
     {
         return Err(CubicConditionalCompletionError::KernelReplayMismatch);
     }
+    let mut column_order = (0..relation_count).collect::<Vec<_>>();
+    column_order.sort_by_key(|&column| {
+        reduced
+            .iter()
+            .map(|row| row[column].significant_bits())
+            .max()
+            .unwrap_or(0)
+    });
+    let projection_columns = [65_521_u32, 65_519, 65_513, 65_499]
+        .into_iter()
+        .find_map(|prime| modular_basis_columns_in_order(&reduced, prime, &column_order))
+        .ok_or(CubicConditionalCompletionError::KernelReplayMismatch)?;
+    saturation_minor_certificate(&reduced, &projection_columns, 16)
+        .map_err(|_| CubicConditionalCompletionError::KernelReplayMismatch)?;
     Ok(reduced)
 }
 
@@ -708,19 +740,121 @@ fn retryable_precision_error(error: &CubicConditionalCompletionError) -> bool {
     )
 }
 
-/// Complete a cubic candidate under the two explicitly recorded GRH
-/// hypotheses. No fixture identifier, expected answer, relation transcript,
-/// or external oracle enters this boundary.
-pub fn complete_cubic_class_group_conditionally(
-    prepared: PreparedPublicCubic,
-    presentation: AuthenticatedCubicPresentationCandidate,
+fn preflight_completion_presentation(
+    prepared: &PreparedPublicCubic,
+    presentation: &AuthenticatedCubicPresentationCandidate,
     options: CubicConditionalCompletionOptions,
-) -> Result<GrhConditionalCompleteCubicClassGroup, CubicConditionalCompletionError> {
+) -> Result<(usize, usize, usize), CubicConditionalCompletionError> {
+    if presentation.prepared() != prepared {
+        return Err(CubicConditionalCompletionError::PreparedAuthorityMismatch);
+    }
+    if options.maximum_relations == 0
+        || options.maximum_dependencies == 0
+        || options.maximum_kernel_coefficient_bits == 0
+        || options.maximum_unit_exponent_bits == 0
+        || options.maximum_reconstruction_denominator_bits == 0
+    {
+        return Err(CubicConditionalCompletionError::InvalidOptions);
+    }
+    let collected = presentation.collected();
+    let columns = collected.factor_base.exact_ideals.len();
+    if columns == 0 || !collected.relations.len().is_multiple_of(columns) {
+        return Err(CubicConditionalCompletionError::InvalidPresentationShape);
+    }
+    let rows = collected.relations.len() / columns;
+    if rows > options.maximum_relations {
+        return Err(CubicConditionalCompletionError::ResourceLimit("relations"));
+    }
+    let expected_dependencies = rows
+        .checked_sub(columns)
+        .ok_or(CubicConditionalCompletionError::InvalidPresentationShape)?;
+    if expected_dependencies == 0 || expected_dependencies > options.maximum_dependencies {
+        return Err(CubicConditionalCompletionError::ResourceLimit(
+            "dependencies",
+        ));
+    }
+    Ok((columns, rows, expected_dependencies))
+}
+
+/// Build the field-level completion evidence shared by every continuation and
+/// precision attempt for one factor base.
+pub fn prepare_cubic_conditional_completion_context(
+    prepared: &PreparedPublicCubic,
+    presentation: &AuthenticatedCubicPresentationCandidate,
+    options: CubicConditionalCompletionOptions,
+) -> Result<CubicConditionalCompletionContext, CubicConditionalCompletionError> {
+    if options.proof_mode != CubicCompletionProofMode::GrhConditional {
+        return Err(CubicConditionalCompletionError::UnsupportedProofMode);
+    }
     if options.logarithm_precision_bits < 64
         || options.replay_precision_bits < 64
         || options.replay_precision_bits >= options.logarithm_precision_bits
+        || options.analytic_precision_bits < 64
         || options.logarithm_precision_bits > MAXIMUM_COMPLETION_PRECISION_BITS
         || options.replay_precision_bits > MAXIMUM_COMPLETION_PRECISION_BITS
+        || options.analytic_precision_bits > MAXIMUM_COMPLETION_PRECISION_BITS
+        || options.maximum_analytic_threshold < 72
+    {
+        return Err(CubicConditionalCompletionError::InvalidOptions);
+    }
+    // Reject malformed or over-budget presentation evidence before computing
+    // any field-level analytic data for the reusable context.
+    preflight_completion_presentation(prepared, presentation, options)?;
+    let bdf_bound = u64::try_from(presentation.collected().factor_base.catalog.relation_bound)
+        .map_err(|_| CubicConditionalCompletionError::MachineRepresentationLimit)?
+        + 1;
+    if bdf_bound > options.maximum_analytic_threshold {
+        return Err(CubicConditionalCompletionError::ResourceLimit(
+            "factor-base analytic bound",
+        ));
+    }
+    let bdf_bound_usize = usize::try_from(bdf_bound)
+        .map_err(|_| CubicConditionalCompletionError::MachineRepresentationLimit)?;
+    let bdf_splitting =
+        prepared_cubic_splitting_records_range(prepared.field(), 2, bdf_bound_usize)?;
+    let bdf_plan = build_cubic_bdf_factor_base_plan(bdf_bound, &bdf_splitting)?;
+    let bdf_margin = flint_bdf_factor_base_margin(
+        &bdf_plan.terms,
+        bdf_plan.bound,
+        &prepared.field().data().discriminant,
+        3,
+        u64::from(prepared.field().data().signature.0),
+        options.analytic_precision_bits,
+    )?;
+    if !interval_lower_gt_zero(&bdf_margin) {
+        return Err(CubicConditionalCompletionError::FactorBaseNotCertified);
+    }
+    Ok(CubicConditionalCompletionContext {
+        prepared: prepared.clone(),
+        factor_base_bound: bdf_bound,
+        analytic_precision_bits: options.analytic_precision_bits,
+        maximum_analytic_threshold: options.maximum_analytic_threshold,
+        bdf_plan,
+        bdf_margin,
+    })
+}
+
+/// Complete a cubic candidate using previously authenticated field-level
+/// analytic data. The context is rejected if any part of its authority or
+/// analytic resource contract differs from this attempt.
+pub fn complete_cubic_class_group_conditionally_with_context(
+    prepared: PreparedPublicCubic,
+    presentation: AuthenticatedCubicPresentationCandidate,
+    options: CubicConditionalCompletionOptions,
+    context: &CubicConditionalCompletionContext,
+) -> Result<GrhConditionalCompleteCubicClassGroup, CubicConditionalCompletionError> {
+    let factor_base_bound =
+        u64::try_from(presentation.collected().factor_base.catalog.relation_bound)
+            .map_err(|_| CubicConditionalCompletionError::MachineRepresentationLimit)?
+            + 1;
+    if context.prepared != prepared
+        || presentation.prepared() != &prepared
+        || context.factor_base_bound != factor_base_bound
+    {
+        return Err(CubicConditionalCompletionError::PreparedAuthorityMismatch);
+    }
+    if context.analytic_precision_bits != options.analytic_precision_bits
+        || context.maximum_analytic_threshold != options.maximum_analytic_threshold
     {
         return Err(CubicConditionalCompletionError::InvalidOptions);
     }
@@ -744,6 +878,8 @@ pub fn complete_cubic_class_group_conditionally(
             presentation.clone(),
             attempt_options,
             precision,
+            &context.bdf_plan,
+            &context.bdf_margin,
         ) {
             Ok(completed) => {
                 debug_assert!(completed.verify_sealed_evidence());
@@ -756,11 +892,25 @@ pub fn complete_cubic_class_group_conditionally(
     unreachable!("a nonempty precision schedule always returns from its final level")
 }
 
+/// Complete a cubic candidate under the two explicitly recorded GRH
+/// hypotheses. No fixture identifier, expected answer, relation transcript,
+/// or external oracle enters this boundary.
+pub fn complete_cubic_class_group_conditionally(
+    prepared: PreparedPublicCubic,
+    presentation: AuthenticatedCubicPresentationCandidate,
+    options: CubicConditionalCompletionOptions,
+) -> Result<GrhConditionalCompleteCubicClassGroup, CubicConditionalCompletionError> {
+    let context = prepare_cubic_conditional_completion_context(&prepared, &presentation, options)?;
+    complete_cubic_class_group_conditionally_with_context(prepared, presentation, options, &context)
+}
+
 fn complete_cubic_class_group_at_precision(
     prepared: PreparedPublicCubic,
     presentation: AuthenticatedCubicPresentationCandidate,
     options: CubicConditionalCompletionOptions,
     precision: CubicCompletionPrecisionEvidence,
+    bdf_plan: &BdfFactorBasePlan,
+    bdf_margin: &FlintDyadicInterval,
 ) -> Result<GrhConditionalCompleteCubicClassGroup, CubicConditionalCompletionError> {
     if options.proof_mode != CubicCompletionProofMode::GrhConditional {
         return Err(CubicConditionalCompletionError::UnsupportedProofMode);
@@ -785,23 +935,9 @@ fn complete_cubic_class_group_at_precision(
         return Err(CubicConditionalCompletionError::PreparedAuthorityMismatch);
     }
     let collected = presentation.collected();
-    let columns = collected.factor_base.exact_ideals.len();
-    if columns == 0 || !collected.relations.len().is_multiple_of(columns) {
-        return Err(CubicConditionalCompletionError::InvalidPresentationShape);
-    }
-    let rows = collected.relations.len() / columns;
-    if rows > options.maximum_relations {
-        return Err(CubicConditionalCompletionError::ResourceLimit("relations"));
-    }
-    let expected_dependencies = rows
-        .checked_sub(columns)
-        .ok_or(CubicConditionalCompletionError::InvalidPresentationShape)?;
-    if expected_dependencies == 0 || expected_dependencies > options.maximum_dependencies {
-        return Err(CubicConditionalCompletionError::ResourceLimit(
-            "dependencies",
-        ));
-    }
-    let dependencies = presentation.dependency_lattice().to_vec();
+    let (columns, rows, expected_dependencies) =
+        preflight_completion_presentation(&prepared, &presentation, options)?;
+    let mut dependencies = presentation.dependency_lattice().to_vec();
     if dependencies.len() != expected_dependencies {
         return Err(CubicConditionalCompletionError::KernelRankMismatch {
             expected: expected_dependencies,
@@ -814,16 +950,31 @@ fn complete_cubic_class_group_at_precision(
     {
         return Err(CubicConditionalCompletionError::InvalidPresentationShape);
     }
-    let maximum_coefficient_bits = dependencies
+    let mut maximum_coefficient_bits = dependencies
         .iter()
         .flatten()
         .map(Integer::significant_bits)
         .max()
         .unwrap_or(0) as usize;
+    // A valid kernel basis can contain enormous incidental coefficients even
+    // when the same saturated lattice has a small canonical basis. Reduce it
+    // exactly before rejecting on the public coefficient ceiling. FLINT
+    // produces a fresh integral left kernel from the original relation
+    // matrix; Rust then replays it and proves saturation independently.
     if maximum_coefficient_bits > options.maximum_kernel_coefficient_bits {
-        return Err(CubicConditionalCompletionError::ResourceLimit(
-            "kernel coefficient bits",
-        ));
+        dependencies =
+            reduce_dependency_basis_exact(&dependencies, rows, columns, &collected.relations)?;
+        maximum_coefficient_bits = dependencies
+            .iter()
+            .flatten()
+            .map(Integer::significant_bits)
+            .max()
+            .unwrap_or(0) as usize;
+        if maximum_coefficient_bits > options.maximum_kernel_coefficient_bits {
+            return Err(CubicConditionalCompletionError::ResourceLimit(
+                "kernel coefficient bits",
+            ));
+        }
     }
     if dependencies.iter().any(|dependency| {
         (0..columns).any(|column| {
@@ -1036,36 +1187,6 @@ fn complete_cubic_class_group_at_precision(
             final_attempt: final_failed_attempt,
         });
     };
-    let bdf_bound = u64::try_from(collected.factor_base.catalog.relation_bound)
-        .map_err(|_| CubicConditionalCompletionError::MachineRepresentationLimit)?
-        + 1;
-    if bdf_bound > options.maximum_analytic_threshold {
-        return Err(CubicConditionalCompletionError::ResourceLimit(
-            "factor-base analytic bound",
-        ));
-    }
-    let bdf_bound_usize = usize::try_from(bdf_bound)
-        .map_err(|_| CubicConditionalCompletionError::MachineRepresentationLimit)?;
-    if bdf_bound_usize > splitting_bound {
-        splitting.extend(prepared_cubic_splitting_records_range(
-            prepared.field(),
-            splitting_bound,
-            bdf_bound_usize,
-        )?);
-    }
-    let bdf_plan = build_cubic_bdf_factor_base_plan(bdf_bound, &splitting)?;
-    let bdf_margin = flint_bdf_factor_base_margin(
-        &bdf_plan.terms,
-        bdf_bound,
-        &prepared.field().data().discriminant,
-        3,
-        u64::from(prepared.field().data().signature.0),
-        options.analytic_precision_bits,
-    )?;
-    if !interval_lower_gt_zero(&bdf_margin) {
-        return Err(CubicConditionalCompletionError::FactorBaseNotCertified);
-    }
-
     let result = GrhConditionalCompleteCubicClassGroup {
         prepared,
         presentation,
@@ -1080,8 +1201,8 @@ fn complete_cubic_class_group_at_precision(
             bf_threshold,
             bf_plan,
             bf_enclosure,
-            bdf_plan,
-            bdf_margin,
+            bdf_plan: bdf_plan.clone(),
+            bdf_margin: bdf_margin.clone(),
         },
         precision,
     };

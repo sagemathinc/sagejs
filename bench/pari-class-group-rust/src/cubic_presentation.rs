@@ -441,7 +441,7 @@ pub fn authenticate_cubic_presentation_candidate(
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    let presentation = PresentationClassMap::from_verified_smith(relations, smith)?;
+    let presentation = PresentationClassMap::from_preverified_smith(relations, smith)?;
     let class_number_candidate = presentation
         .invariant_factors()
         .iter()
@@ -691,12 +691,12 @@ fn smith_verification_multiply_adds(generators: usize, relations: usize) -> Opti
     let r3 = cube(r)?;
     let g2r = g.checked_mul(g)?.checked_mul(r)?;
     let gr2 = g.checked_mul(r)?.checked_mul(r)?;
-    // Smith verification runs once in the reducer and once when constructing
-    // the class map. Each pass checks L*A*R, both inverse pairs, and the
-    // candidate map subsequently replays generator-order and relation images.
+    // The reducer checks L*A*R, both inverse pairs, and canonical Smith form
+    // before returning. The crate-private class-map boundary consumes that
+    // verified result without repeating the cubic replay; generator-order and
+    // relation images are still independently checked below.
     g2r.checked_add(gr2)
         .and_then(|value| value.checked_add(g3.checked_mul(2)?))
         .and_then(|value| value.checked_add(r3.checked_mul(2)?))
-        .and_then(|value| value.checked_mul(2))
         .and_then(|value| value.checked_add(g2r.checked_mul(2)?))
 }

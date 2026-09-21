@@ -14,7 +14,8 @@ use sagejs_pari_class_group_rust_experiment::{
     CubicPresentationCandidateLimits, NormalFormLimits, PreparedContinuationLimits,
     PreparedCubicRelationCollector, PublicCubicPreparationLimits,
     authenticate_compact_cubic_presentation_candidate, authenticate_cubic_presentation_candidate,
-    complete_cubic_class_group_conditionally, prepare_monic_cubic,
+    complete_cubic_class_group_conditionally_with_context,
+    prepare_cubic_conditional_completion_context, prepare_monic_cubic,
 };
 use serde::{Deserialize, Serialize};
 use std::time::Instant;
@@ -198,12 +199,12 @@ fn dense_verification_multiply_adds(generators: usize, relations: usize) -> Opti
     let g2r = g.checked_mul(g)?.checked_mul(r)?;
     let gr2 = g.checked_mul(r)?.checked_mul(r)?;
     // This is the same conservative work bound enforced by the dense
-    // authenticator: two Smith verification passes, inverse checks,
-    // generator-order replay, and relation-image replay.
+    // authenticator: one complete Smith verification, generator-order replay,
+    // and relation-image replay. The class-map constructor consumes the
+    // reducer's verified result instead of repeating the cubic matrix proof.
     g2r.checked_add(gr2)
         .and_then(|value| value.checked_add(g3.checked_mul(2)?))
         .and_then(|value| value.checked_add(r3.checked_mul(2)?))
-        .and_then(|value| value.checked_mul(2))
         .and_then(|value| value.checked_add(g2r.checked_mul(2)?))
 }
 
@@ -244,6 +245,44 @@ fn select_candidate_authentication_route(
         // unavailable, so shape alone never changes group semantics.
         CandidateAuthenticationRoute::DenseSmith
     }
+}
+
+fn next_supplementary_target(current: usize) -> Option<usize> {
+    let increment = if current < 10 {
+        1
+    } else if current < 16 {
+        2
+    } else {
+        (current / 2).max(8)
+    };
+    current.checked_add(increment)
+}
+
+fn candidate_authentication_route_fits(
+    generators: usize,
+    relations: usize,
+    resources: &Resources,
+) -> bool {
+    let dense_fits = generators
+        .checked_mul(relations)
+        .is_some_and(|entries| entries <= resources.maximum_normal_form_entries)
+        && dense_verification_multiply_adds(generators, relations)
+            .is_some_and(|work| work <= resources.maximum_verification_multiply_adds);
+    let compact_limits_are_nonzero = resources.maximum_compact_generators > 0
+        && resources.maximum_compact_surplus_rows > 0
+        && resources.maximum_compact_saturation_minor_trials > 0
+        && resources.maximum_compact_dependency_entries > 0
+        && resources.maximum_compact_target_coefficient_bits > 0;
+    let compact_fits = compact_limits_are_nonzero
+        && relations
+            .checked_sub(generators)
+            .filter(|surplus| *surplus > 0 && *surplus <= resources.maximum_compact_surplus_rows)
+            .and_then(|surplus| surplus.checked_mul(relations))
+            .is_some_and(|dependency_entries| {
+                generators <= resources.maximum_compact_generators
+                    && dependency_entries <= resources.maximum_compact_dependency_entries
+            });
+    dense_fits || compact_fits
 }
 
 /// Exercise the coefficient-only route through conditional completion.
@@ -348,8 +387,9 @@ pub fn qualify(request: Request) -> Result<Receipt, QualificationError> {
     let mut final_completion = None;
     let mut candidate_authentication_ns = 0_u128;
     let mut completion_ns = 0_u128;
-    const SUPPLEMENTARY_TARGETS: [usize; 6] = [7, 8, 9, 10, 12, 16];
-    for supplementary_target in SUPPLEMENTARY_TARGETS {
+    let mut completion_context = None;
+    let mut supplementary_target = 7_usize;
+    loop {
         if supplementary_target > request.resources.maximum_dependencies {
             break;
         }
@@ -453,11 +493,34 @@ pub fn qualify(request: Request) -> Result<Receipt, QualificationError> {
         };
 
         let started = Instant::now();
-        let completion_result = complete_cubic_class_group_conditionally(
-            attempt_prepared,
-            authenticated,
-            completion_options(),
-        );
+        let options = completion_options();
+        let completion_result = if let Some(context) = completion_context.as_ref() {
+            complete_cubic_class_group_conditionally_with_context(
+                attempt_prepared,
+                authenticated,
+                options,
+                context,
+            )
+        } else {
+            match prepare_cubic_conditional_completion_context(
+                &attempt_prepared,
+                &authenticated,
+                options,
+            ) {
+                Ok(context) => {
+                    completion_context = Some(context);
+                    complete_cubic_class_group_conditionally_with_context(
+                        attempt_prepared,
+                        authenticated,
+                        options,
+                        completion_context
+                            .as_ref()
+                            .expect("context was just stored"),
+                    )
+                }
+                Err(error) => Err(error),
+            }
+        };
         completion_ns += started.elapsed().as_nanos();
         match completion_result {
             Ok(completed) => {
@@ -526,11 +589,29 @@ pub fn qualify(request: Request) -> Result<Receipt, QualificationError> {
                 return Err(QualificationError::Completion(format!("{error:?}")));
             }
         }
+        let Some(next_target) = next_supplementary_target(supplementary_target) else {
+            break;
+        };
+        let Some(next_relation_count) = factor_base_size.checked_add(next_target) else {
+            break;
+        };
+        if next_target > request.resources.maximum_dependencies
+            || next_relation_count > request.resources.maximum_relations
+            || !candidate_authentication_route_fits(
+                factor_base_size,
+                next_relation_count,
+                &request.resources,
+            )
+        {
+            break;
+        }
+        supplementary_target = next_target;
     }
 
     let relations = final_relations.ok_or_else(|| {
         QualificationError::Completion(
-            "analytic index remained nontrivial within the fixed continuation schedule".to_owned(),
+            "analytic index remained nontrivial within the authenticated continuation resources"
+                .to_owned(),
         )
     })?;
     let candidate_evidence = final_candidate;
@@ -617,11 +698,11 @@ mod tests {
     fn route_selector_uses_compact_for_the_opened_failure_shape() {
         let input = request(10_000);
         assert_eq!(
-            dense_verification_multiply_adds(217, 224),
-            Some(149_799_076),
+            dense_verification_multiply_adds(230, 237),
+            Some(101_488_876),
         );
         assert_eq!(
-            select_candidate_authentication_route(217, 224, &input.resources),
+            select_candidate_authentication_route(230, 237, &input.resources),
             CandidateAuthenticationRoute::CompactSmallSurplus,
         );
     }
@@ -633,6 +714,23 @@ mod tests {
             select_candidate_authentication_route(192, 225, &input.resources),
             CandidateAuthenticationRoute::DenseSmith,
         );
+    }
+
+    #[test]
+    fn continuation_preflight_requires_a_complete_compact_resource_contract() {
+        let mut input = request(10_000);
+        input.resources.maximum_verification_multiply_adds = 1;
+        assert!(candidate_authentication_route_fits(
+            230,
+            237,
+            &input.resources
+        ));
+        input.resources.maximum_compact_saturation_minor_trials = 0;
+        assert!(!candidate_authentication_route_fits(
+            230,
+            237,
+            &input.resources
+        ));
     }
 
     #[test]
@@ -686,7 +784,7 @@ mod tests {
                 .iter()
                 .map(|attempt| attempt.supplementary_target)
                 .collect::<Vec<_>>(),
-            [7, 8, 9, 10, 12, 16]
+            [7, 8, 9, 10, 12, 14, 16]
         );
         assert!(
             attempts[..attempts.len() - 1]
@@ -716,7 +814,7 @@ mod tests {
         assert!(matches!(
             qualify(input),
             Err(QualificationError::Completion(message))
-                if message.contains("fixed continuation schedule")
+                if message.contains("authenticated continuation resources")
         ));
     }
 

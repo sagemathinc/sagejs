@@ -96,8 +96,11 @@ pub use compact_cubic_presentation::{
 pub use cubic_completion::{
     AnalyticIndexFailureDiagnostic, CompactCubicUnit, CubicAnalyticEvidence,
     CubicCompletionPrecisionEvidence, CubicCompletionPrecisionLevel, CubicCompletionProofMode,
-    CubicConditionalCompletionError, CubicConditionalCompletionOptions, CubicUnitLatticeEvidence,
+    CubicConditionalCompletionContext, CubicConditionalCompletionError,
+    CubicConditionalCompletionOptions, CubicUnitLatticeEvidence,
     GrhConditionalCompleteCubicClassGroup, complete_cubic_class_group_conditionally,
+    complete_cubic_class_group_conditionally_with_context,
+    prepare_cubic_conditional_completion_context,
 };
 #[cfg(feature = "flint-normal-form")]
 pub use cubic_presentation::authenticate_compact_cubic_presentation_candidate;
