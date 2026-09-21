@@ -600,6 +600,12 @@ resident handles. A real in-flight second row-6 call was rejected and its
 worker replaced in about 1.91 ms in both Node and Chromium, with replacement
 memory returning to 256 pages. The lifecycle repetition, public Sage object
 conversion, general corpus, performance, and platform gates below remain open.
+The first exact lifecycle run completed 1,000 independent full class/unit calls
+for `x^3 - 8*x^2 - 30*x - 34` (class group `C6`) in one resident Node worker.
+Mean time was 47.31 ms and every 100-call checkpoint remained at exactly 256
+Wasm pages. This passes the small-call count and observed linear-memory-growth
+part of the gate; mixed-medium calls, native leak tooling, retained-session
+cycling, and browser repetition are not yet qualified.
 
 Run the released browser module in a Web Worker through Sage.js's public API.
 The default path must work without SharedArrayBuffer, special cross-origin
