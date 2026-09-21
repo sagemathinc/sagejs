@@ -48,19 +48,21 @@ not pass the frozen performance target. After starting answer-blind
 continuation at fourteen surplus rows when the caller's budget permits it, the
 replacement clean 15-sample alternating campaign on the original twelve
 regressions matched every exact result and measured summed per-field medians of
-2.129 seconds for Rust and 0.612 seconds for PARI 2.17.4: 3.48x weighted, 4.90x
-by geometric mean, 8.03x at p90, and 12.20x maximum. The source commit is
-`7c1be261c`. Precision-specific relation logarithms are reused only after an
+2.045 seconds for Rust and 0.586 seconds for PARI 2.17.4: 3.49x weighted, 5.01x
+by geometric mean, 8.56x at p90, and 12.50x maximum. The source commit is
+`5c4db55da`. Precision-specific relation logarithms are reused only after an
 exact generator-prefix check. Checked fixed-width relation replay restarts in
 GMP on any overflow. Exact back substitution removes unit pivots from the
 modular HNF before the Smith map is computed and lifts the verified residual
 map back to every original generator. Relation refinement lazily retains at
 most 64 exact powers per encountered factor-base ideal and fails closed on a
 cache/prime mismatch; higher powers remain exact but are not retained. Rust's
-summed stage medians are 0.632 seconds relation collection, 0.628 seconds
-candidate authentication, 0.724 seconds unit and analytic completion, and
-0.080 seconds public preparation. Relation collection was 1.063 seconds in the
-preceding receipt. See
+summed stage medians are 0.619 seconds relation collection, 0.593 seconds
+candidate authentication, 0.696 seconds unit and analytic completion, and
+0.078 seconds public preparation. Batching exact dependency replay reduced the
+Rust absolute sum from 2.129 seconds in the preceding receipt while PARI varied
+from 0.612 to 0.586 seconds, leaving the weighted ratio statistically flat.
+Relation collection was 1.063 seconds before the exact ideal-power cache. See
 `public-cubic-heldout-performance/receipt.json`. The fresh confirmation set
 remains correctness-only; its contextual diagnostic timings are not a formal
 comparative receipt.
