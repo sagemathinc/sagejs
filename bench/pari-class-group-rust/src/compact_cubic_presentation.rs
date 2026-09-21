@@ -19,8 +19,8 @@ use crate::class_group::{
 };
 use crate::class_maps::{ClassMapError, PresentationClassMap};
 use crate::flint_normal_form::{
-    FlintNormalFormError, FlintSmallSurplusWorkspace,
-    flint_small_surplus_class_order_with_workspace, flint_small_surplus_smith_class_map,
+    FlintNormalFormError, FlintSmallSurplusWorkspace, flint_hnf_basis,
+    flint_small_surplus_class_order_with_workspace, flint_smith_class_map,
 };
 
 const DEGREE: usize = 3;
@@ -45,8 +45,9 @@ pub struct CompactPresentationLimits {
     /// Maximum bytes in the dense factor/coordinate/preimage buffers of the
     /// general Smith producer. A zero limit deliberately disables that route.
     pub maximum_general_smith_bytes: usize,
-    /// Conservative cubic work cap for the general square-Smith and reduced
-    /// quotient transforms. A zero limit deliberately disables that route.
+    /// Conservative cubic work cap for transform-free HNF followed by Smith
+    /// coordinates on the reduced full relation lattice. A zero limit
+    /// deliberately disables that route.
     pub maximum_general_smith_transform_work: u64,
     /// Exact Rust verification/replay multiply-add budget.
     pub maximum_verification_multiply_adds: u64,
@@ -518,8 +519,14 @@ pub fn authenticate_compact_presentation(
         )
     } else {
         preflight_general_smith(generators, surplus, limits)?;
-        let smith_map =
-            flint_small_surplus_smith_class_map(&square, &surplus_relations, generators)?;
+        // Reduce the complete relation lattice before asking for any Smith
+        // transforms. The resulting HNF basis has determinant equal to the
+        // final class order, avoiding the enormous incidental transforms of
+        // the selected square sublattice. Rust below still verifies every
+        // original relation, the mixed-modulus right inverse, and the exact
+        // invariant-factor product before accepting the map.
+        let reduced_basis = flint_hnf_basis(&solver_relations, relation_count, generators)?;
+        let smith_map = flint_smith_class_map(&reduced_basis, generators)?;
         (
             smith_map
                 .invariant_factors
@@ -715,11 +722,13 @@ fn preflight_general_smith(
             limit: limits.maximum_general_smith_transform_work,
         },
     )?;
-    // Initial square Smith, worst-case reduced HNF and Smith, plus both map
-    // compositions: 5*m^3 + surplus*m^2.
+    // Transform-free rectangular HNF plus transform-bearing Smith on its
+    // reduced square basis: 2*m^3 + surplus*m^2. Unlike the previous route,
+    // no Smith transform or map composition is performed on the large-index
+    // selected square sublattice.
     let work = square
         .checked_mul(dimension)
-        .and_then(|cube| cube.checked_mul(5))
+        .and_then(|cube| cube.checked_mul(2))
         .and_then(|base| {
             surplus
                 .checked_mul(square)
@@ -1441,7 +1450,9 @@ mod tests {
         )
         .unwrap();
 
-        let general = flint_small_surplus_smith_class_map(&square, &surplus, 2).unwrap();
+        let general =
+            crate::flint_normal_form::flint_small_surplus_smith_class_map(&square, &surplus, 2)
+                .unwrap();
         let general_factors = general
             .invariant_factors
             .iter()

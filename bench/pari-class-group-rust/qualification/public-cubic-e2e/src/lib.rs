@@ -452,7 +452,7 @@ pub fn qualify(request: Request) -> Result<Receipt, QualificationError> {
                                 .unwrap_or(usize::MAX),
                             maximum_general_smith_transform_work: request
                                 .resources
-                                .maximum_normal_form_operations,
+                                .maximum_verification_multiply_adds,
                             maximum_verification_multiply_adds: request
                                 .resources
                                 .maximum_verification_multiply_adds,
