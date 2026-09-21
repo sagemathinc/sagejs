@@ -196,8 +196,11 @@ enum CandidateAuthenticationRoute {
 // well before the hard normal-form resource ceiling. This is a route-choice
 // threshold, not an execution limit: dense authentication may still consume
 // the caller's full bounded budget when compact authentication is structurally
-// unavailable (notably during large-surplus analytic continuation).
-const DENSE_SMITH_PREFERRED_MULTIPLY_ADDS: u64 = 1_000_000;
+// unavailable (notably during large-surplus analytic continuation). Alternating
+// CPU-pinned measurements bracket the crossover: compact authentication is
+// faster for a 7-by-21 presentation (25,382 estimated multiply-adds), while it
+// is slower for a 4-by-17 presentation (11,926 estimated multiply-adds).
+const DENSE_SMITH_PREFERRED_MULTIPLY_ADDS: u64 = 20_000;
 
 fn dense_verification_multiply_adds(generators: usize, relations: usize) -> Option<u64> {
     let g = u64::try_from(generators).ok()?;
@@ -744,18 +747,16 @@ mod tests {
     }
 
     #[test]
-    fn route_selector_keeps_only_low_work_presentations_dense() {
+    fn route_selector_brackets_the_measured_dense_compact_crossover() {
         let input = request(10_000);
+        assert_eq!(dense_verification_multiply_adds(4, 17), Some(11_926));
         assert_eq!(
-            select_candidate_authentication_route(16, 23, &input.resources),
+            select_candidate_authentication_route(4, 17, &input.resources),
             CandidateAuthenticationRoute::DenseSmith,
         );
-        assert!(
-            dense_verification_multiply_adds(64, 71)
-                .is_some_and(|work| work > DENSE_SMITH_PREFERRED_MULTIPLY_ADDS)
-        );
+        assert_eq!(dense_verification_multiply_adds(7, 21), Some(25_382));
         assert_eq!(
-            select_candidate_authentication_route(64, 71, &input.resources),
+            select_candidate_authentication_route(7, 21, &input.resources),
             CandidateAuthenticationRoute::CompactSmallSurplus,
         );
     }

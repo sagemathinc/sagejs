@@ -102,6 +102,16 @@ varied upward by 25 ms, so this is a tail improvement rather than a claim that
 the absolute aggregate fell.
 Simultaneous PARI variation on the smallest fields keeps the geometric and tail
 ratios noisy.
+The exact-authentication route selector is now calibrated against alternating
+CPU-pinned measurements rather than the former conservative one-million-work
+cutoff. Compact small-surplus authentication was faster at 25,382 estimated
+verification multiply-adds (0.76 to 0.61 ms), whereas forcing it at 11,926
+was slower (0.41 to 0.47 ms and 16.68 to 18.20 ms end to end). The selector
+therefore keeps dense Smith through 20,000 and uses the independently verified
+compact route above that boundary whenever its explicit shape and resource
+contract fits. Intermediate measurements also reduced authentication from
+1.54 to 0.88 ms at 57,952 work and from 15.79 to 4.85 ms on the formerly
+worst tiny held-out continuation case.
 This remains substantially ahead of the earlier pre-power-cache receipt at
 4.20x weighted and 5.72x geometric mean, but still fails the frozen native
 performance gate. Rust's summed stage

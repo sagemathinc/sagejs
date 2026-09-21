@@ -100,6 +100,14 @@ field fell from 372.87 to 362.02 ms (completion 111.50 to 102.21 ms). A clean
 clean full Rust/PARI campaign records the same exact results in all 180 pairs;
 it improves the former 12.13x maximum to 8.65x, while whole-panel absolute
 times moved within host variation.
+The exact-authentication selector no longer treats dense Smith as preferred up
+to its old one-million-work ceiling. Alternating CPU-pinned comparisons bracket
+the measured crossover: compact authentication improved a 25,382-work
+presentation from 0.76 to 0.61 ms, but forcing compact at 11,926 work increased
+authentication from 0.41 to 0.47 ms and the complete call from 16.68 to 18.20
+ms. The checked selector therefore retains dense Smith through 20,000 estimated
+verification multiply-adds and otherwise chooses compact only when its
+small-surplus resource contract is satisfied.
 Relation collection was 1.063 seconds before the exact ideal-power cache. See
 `public-cubic-heldout-performance/receipt.json`. The fresh confirmation set
 remains correctness-only; its contextual diagnostic timings are not a formal
