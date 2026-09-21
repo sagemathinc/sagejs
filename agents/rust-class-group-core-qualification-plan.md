@@ -25,6 +25,17 @@ Smith invariants of an unverified relation lattice.
 The live milestone ledger and reproduction entry points are in the
 [qualification evidence directory](../bench/pari-class-group-rust/qualification/README.md).
 
+Current checkpoint: the native coefficient-only cubic boundary now completes
+and independently matches all twelve original held-out regressions and all
+twelve inputs in the untouched post-fix confirmation set. This establishes the
+current conditional-GRH cubic correctness boundary, including the formerly
+pathological compact-HNF presentations. It does not complete this plan: degrees
+4--6, unconditional completion, product dispatch, platform qualification, and
+the frozen native/browser performance gates remain open. On the untouched
+confirmation fields, contextual PARI medians still show about a 15.4x
+geometric-mean native gap, with candidate authentication and unit/analytic
+completion dominant.
+
 ## Evidence we actually have
 
 Starting evidence is commit `e88f6ee00` on

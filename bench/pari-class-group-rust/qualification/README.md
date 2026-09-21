@@ -27,6 +27,27 @@ No file in this directory authorizes production dispatch. Candidate and
 upstream-assumed outputs must remain visibly distinct from publicly complete
 results.
 
+### Cubic held-out remediation checkpoint
+
+The stale R4 table row above records the historical 3/12 blind campaign. The
+general remediation has now crossed both required post-fix correctness gates:
+the original twelve frozen cubics reran 12/12 to self-sealed conditional-GRH
+results and matched every available private exact check, and the separate
+untouched confirmation set then ran 12/12 and passed all 108 private exact
+comparisons. The committed confirmation executor recorded 3.046 seconds total
+at source `96ab3a00d`; see
+`public-cubic-heldout-confirmation/execution-receipt.json` and
+`public-cubic-heldout-confirmation/comparison-receipt.json`.
+
+This qualifies the current native cubic correctness boundary, not R4 as a
+degree-2-through-6 product milestone. The engine remains cubic-specific,
+conditional-GRH only, and outside the live Sage.js dispatch path. It also does
+not pass the frozen performance target: contextual PARI medians for the fresh
+confirmation set imply roughly a 15.4x geometric-mean gap, concentrated in
+candidate authentication and unit/analytic completion. A matched alternating
+campaign is still required before that ratio becomes a formal performance
+receipt.
+
 ## Layout
 
 - `schemas/`: closed JSON contracts for neutral inputs, evidence, benchmarks,

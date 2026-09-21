@@ -38,6 +38,21 @@ python3 bench/pari-class-group-rust/qualification/public-cubic-heldout-confirmat
   --private-binding /secure/heldout-cubic-confirmation-binding-v1.json
 ```
 
+## Current confirmation result
+
+The first execution after the original twelve-case regression set passed was
+made from committed source `96ab3a00d`. All twelve fresh processes reached a
+self-sealed conditional-GRH result in 3.046 seconds total under the frozen
+per-case limits. The restricted post-execution comparison passed all nine exact
+checks for every field: polynomial identity, signature, equation-order index,
+field discriminant, candidate and completed class number and invariant factors,
+and unit rank. See `execution-receipt.json` and `comparison-receipt.json`.
+
+This is a correctness and generalization gate, not a performance pass. The
+private qualification pool's previously collected PARI public-call medians put
+the Rust/PARI geometric-mean ratio near 15.4 on these fields. A clean alternating
+campaign remains required for a publishable performance receipt.
+
 Regenerate from the repository root without printing selected values:
 
 ```bash
