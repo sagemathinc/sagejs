@@ -91,21 +91,28 @@ def main() -> int:
         or execution.get("resourceProfileSha256") != resource_profile_digest
     ):
         raise RuntimeError("execution identity differs for resourceProfileSha256")
-    private_digest = hashlib.sha256((canonical(private) + "\n").encode()).hexdigest()
+    private_digest = hashlib.sha256(
+        (canonical(private) + "\n").encode()
+    ).hexdigest()
     if execution.get("privateResults", {}).get("sha256") != private_digest:
         raise RuntimeError("execution receipt does not bind private results")
 
     inputs = json.loads(INPUTS_PATH.read_text())
     expected_ids = {case["fieldId"] for case in inputs["cases"]}
     result_by_id = {case["fieldId"]: case for case in private.get("cases", [])}
-    execution_by_id = {case["fieldId"]: case for case in execution.get("cases", [])}
+    execution_by_id = {
+        case["fieldId"]: case for case in execution.get("cases", [])
+    }
     expected_by_id = {
         case["id"]: case
         for case in pool.get("candidates", [])
         if case.get("id") in expected_ids
     }
     if not (
-        set(result_by_id) == set(execution_by_id) == set(expected_by_id) == expected_ids
+        set(result_by_id)
+        == set(execution_by_id)
+        == set(expected_by_id)
+        == expected_ids
     ):
         raise RuntimeError("confirmation identities differ")
 

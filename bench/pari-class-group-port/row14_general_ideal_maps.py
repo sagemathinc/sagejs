@@ -3,14 +3,14 @@
 The public factor boundary accepts an arbitrary integral quartic ideal in
 column-major HNF form.  It succeeds exactly when every prime-ideal factor is
 one of the 799 primes retained by the fresh row-14 transaction.  The prepared
-local `tau` matrices come from the authenticated initial factor descriptors,
+local ``tau`` matrices come from the authenticated initial factor descriptors,
 not from a class-group answer fixture.  Fractional ideals are represented by
 an integral numerator HNF and a positive rational denominator.
 
-The complete raw Smith identity `U R V = D` supplies quotient coordinates
+The complete raw Smith identity ``U R V = D`` supplies quotient coordinates
 and signed combinations of the 806 retained principal relations.  Reduction
 uses two retained factor-base primes whose Smith coordinates are respectively
-`(1, -2)` and `(0, 1)`; consequently every class has an explicit supported
+``(1, -2)`` and ``(0, 1)``; consequently every class has an explicit supported
 integral representative.
 
 PARI 2.17.4 valuation algorithm, copyright (C) The PARI group;

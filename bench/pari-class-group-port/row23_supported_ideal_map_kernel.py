@@ -24,9 +24,9 @@ def pari_row23_supported_ideal_map(
     replay: IntegerBuffer,
     state: Int64Buffer,
 ) -> int:
-    """Reduce one signed factor tape through `U W V = D`.
+    """Reduce one signed factor tape through ``U W V = D``.
 
-    Matrices use the proof's row-major layout.  `state` is status, public
+    Matrices use the proof's row-major layout.  ``state`` is status, public
     coordinate, nonzero relation coefficients, and replayed cells.
     """
     if (

@@ -24,7 +24,9 @@ PUBLIC_CRATE = QUALIFICATION / "public-cubic-e2e"
 HELDOUT = QUALIFICATION / "public-cubic-heldout-corpus"
 HELDOUT_CONFIG = HELDOUT / "config.json"
 HELDOUT_RUNNER = HELDOUT / "run.py"
-RESOURCE_PROFILE = PUBLIC_CRATE / "resource-profiles" / "conditional-grh-cubic-v2.json"
+RESOURCE_PROFILE = (
+    PUBLIC_CRATE / "resource-profiles" / "conditional-grh-cubic-v2.json"
+)
 PARI_RUN = QUALIFICATION / "pari-control" / "run.py"
 PARI_BUILD_IDENTITY = QUALIFICATION / "pari-control" / "build" / "build-identity.json"
 PARI_PIN = QUALIFICATION / "pari-control" / "pinned-identity.json"
@@ -154,27 +156,17 @@ def selected_cases() -> tuple[list[dict[str, Any]], Path, Path]:
     config = SUPPORT.load_json(HELDOUT_CONFIG)
     SUPPORT.validate_config(config)
     selected, _, panel_path, selection_path = SUPPORT.validate_selection(config)
-    return (
-        sorted(selected, key=lambda case: case["fieldId"]),
-        panel_path,
-        selection_path,
-    )
+    return sorted(selected, key=lambda case: case["fieldId"]), panel_path, selection_path
 
 
 def validate_profile() -> dict[str, Any]:
     profile = SUPPORT.load_json(RESOURCE_PROFILE)
-    if (
-        profile.get("schema")
-        != "sagejs.rust-class-group/public-cubic-resource-profile-v2"
-    ):
+    if profile.get("schema") != "sagejs.rust-class-group/public-cubic-resource-profile-v2":
         raise RuntimeError("unexpected resource-profile schema")
     if profile.get("profileId") != "conditional-grh-cubic-compact-64-v2":
         raise RuntimeError("unexpected resource profile")
     resources = profile.get("publicResources")
-    if (
-        not isinstance(resources, dict)
-        or resources.get("maximumCompactSurplusRows") != 64
-    ):
+    if not isinstance(resources, dict) or resources.get("maximumCompactSurplusRows") != 64:
         raise RuntimeError("resource profile does not admit compact-64")
     return resources
 
@@ -208,9 +200,7 @@ def build_binary(repository: Path) -> tuple[Path, dict[str, Any]]:
     }
 
 
-def rust_sample(
-    binary: Path, request: str
-) -> tuple[int, dict[str, int], dict[str, Any]]:
+def rust_sample(binary: Path, request: str) -> tuple[int, dict[str, int], dict[str, Any]]:
     sample = json.loads(command([binary], cwd=PUBLIC_CRATE, input_text=request).stdout)
     if (
         sample.get("schema") != "sagejs.rust-class-group/public-cubic-e2e-receipt-v2"
@@ -281,10 +271,7 @@ def stage_medians(samples: list[dict[str, int]]) -> dict[str, float]:
     keys = set(samples[0])
     if any(set(sample) != keys for sample in samples):
         raise RuntimeError("stage-timing shape changed during campaign")
-    return {
-        key: statistics.median(sample[key] for sample in samples)
-        for key in sorted(keys)
-    }
+    return {key: statistics.median(sample[key] for sample in samples) for key in sorted(keys)}
 
 
 def main() -> int:
@@ -293,9 +280,7 @@ def main() -> int:
     resources = validate_profile()
     if len(cases) != 12:
         raise RuntimeError("held-out performance panel is not twelve fields")
-    affinity = (
-        sorted(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else []
-    )
+    affinity = sorted(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else []
     if affinity:
         os.sched_setaffinity(0, {affinity[0]})
     source = source_closure(repository)
@@ -305,17 +290,14 @@ def main() -> int:
     pari_identity: dict[str, Any] | None = None
     fields = []
     raw_samples = []
-    with tempfile.TemporaryDirectory(
-        prefix="sagejs-heldout-cubic-performance-"
-    ) as temp:
+    with tempfile.TemporaryDirectory(prefix="sagejs-heldout-cubic-performance-") as temp:
         temporary = Path(temp)
         for field_index, case in enumerate(cases):
             field_id = case["fieldId"]
             coefficients = case["field"]["coefficientsAscending"]
             field_path = temporary / f"field-{field_index}.json"
             field_path.write_text(
-                canonical({"fieldId": field_id, "polynomialAscending": coefficients})
-                + "\n"
+                canonical({"fieldId": field_id, "polynomialAscending": coefficients}) + "\n"
             )
             request = canonical(
                 {
@@ -349,19 +331,12 @@ def main() -> int:
                             field_id,
                             f"heldout-performance-{field_index}-{pair}",
                         )
-                        if (
-                            pari_identity is not None
-                            and sample["controlIdentity"] != pari_identity
-                        ):
-                            raise RuntimeError(
-                                "PARI control identity changed during campaign"
-                            )
+                        if pari_identity is not None and sample["controlIdentity"] != pari_identity:
+                            raise RuntimeError("PARI control identity changed during campaign")
                         pari_identity = sample["controlIdentity"]
                     external = time.monotonic_ns() - external_started
                     totals[arm].append(total)
-                    stages[arm].append(
-                        {key: int(value) for key, value in stage.items()}
-                    )
+                    stages[arm].append({key: int(value) for key, value in stage.items()})
                     pending.setdefault(pair, {})[arm] = sample
                     raw_samples.append(
                         {
@@ -423,9 +398,7 @@ def main() -> int:
             "pari": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
             "processStartupAndSerialization": "excluded-by-in-process-kernel-clocks",
         },
-        "gitCommit": command(
-            ["git", "rev-parse", "HEAD"], cwd=repository
-        ).stdout.strip(),
+        "gitCommit": command(["git", "rev-parse", "HEAD"], cwd=repository).stdout.strip(),
         "sourceClosure": source,
         "panelSha256": digest(panel_path),
         "selectionReceiptSha256": digest(selection_path),
