@@ -217,14 +217,11 @@ fn select_candidate_authentication_route(
         && generators
             .checked_mul(relations)
             .is_some_and(|entries| entries <= resources.maximum_normal_form_entries);
-    let dense_work_limit = resources
-        .maximum_verification_multiply_adds
-        .min(resources.maximum_normal_form_operations);
-    let dense_verification_fits = dense_verification_multiply_adds(generators, relations)
-        .is_some_and(|work| work <= dense_work_limit);
-    if dense_entries_fit && dense_verification_fits {
-        return CandidateAuthenticationRoute::DenseSmith;
-    }
+    let dense_work = dense_verification_multiply_adds(generators, relations);
+    let dense_verification_fits =
+        dense_work.is_some_and(|work| work <= resources.maximum_verification_multiply_adds);
+    let dense_is_preferred = dense_entries_fit
+        && dense_work.is_some_and(|work| work <= resources.maximum_normal_form_operations);
 
     let compact_limits_are_nonzero = resources.maximum_compact_generators > 0
         && resources.maximum_compact_surplus_rows > 0
@@ -240,7 +237,11 @@ fn select_candidate_authentication_route(
                 generators <= resources.maximum_compact_generators
                     && dependency_entries <= resources.maximum_compact_dependency_entries
             });
-    if compact_shape_fits {
+    if compact_shape_fits && !dense_is_preferred {
+        CandidateAuthenticationRoute::CompactSmallSurplus
+    } else if dense_entries_fit && dense_verification_fits {
+        CandidateAuthenticationRoute::DenseSmith
+    } else if compact_shape_fits {
         CandidateAuthenticationRoute::CompactSmallSurplus
     } else {
         // Both authenticators fail closed before expensive work. Retain the
@@ -268,12 +269,10 @@ fn candidate_authentication_route_fits(
 ) -> bool {
     let dense_fits = generators
         .checked_mul(relations)
+        .filter(|_| resources.maximum_normal_form_operations > 0)
         .is_some_and(|entries| entries <= resources.maximum_normal_form_entries)
-        && dense_verification_multiply_adds(generators, relations).is_some_and(|work| {
-            work <= resources
-                .maximum_verification_multiply_adds
-                .min(resources.maximum_normal_form_operations)
-        });
+        && dense_verification_multiply_adds(generators, relations)
+            .is_some_and(|work| work <= resources.maximum_verification_multiply_adds);
     let compact_limits_are_nonzero = resources.maximum_compact_generators > 0
         && resources.maximum_compact_surplus_rows > 0
         && resources.maximum_compact_saturation_minor_trials > 0
