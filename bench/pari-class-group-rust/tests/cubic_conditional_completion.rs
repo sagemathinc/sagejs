@@ -5,8 +5,10 @@
 
 use rug::Integer;
 use sagejs_pari_class_group_rust_experiment::{
-    CubicCompletionProofMode, CubicConditionalCompletionError, CubicConditionalCompletionOptions,
-    CubicPresentationCandidateLimits, PreparedCollectorLimits, PublicCubicPreparationLimits,
+    ArbitraryIdealReductionError, ArbitraryIdealReductionLimits, CubicCompletionProofMode,
+    CubicConditionalCompletionError, CubicConditionalCompletionOptions,
+    CubicPresentationCandidateLimits, PreparedCollectorLimits, PreparedIdealWorkspace,
+    PublicCubicPreparationLimits,
     authenticate_cubic_presentation_candidate, collect_prepared_cubic_relations,
     complete_cubic_class_group_conditionally,
     complete_cubic_class_group_conditionally_with_context,
@@ -68,6 +70,65 @@ fn completes_coefficient_only_trivial_cubics_of_both_signatures() {
         );
         assert!(completed.analytic().bf_threshold() >= 72);
     }
+}
+
+#[test]
+fn sealed_result_answers_and_replays_arbitrary_ideal_queries() {
+    let prepared = prepare([-29, -30, -8, 1]);
+    let candidate = candidate(&prepared);
+    let completed = complete_cubic_class_group_conditionally(
+        prepared,
+        candidate,
+        CubicConditionalCompletionOptions::default(),
+    )
+    .unwrap();
+    assert_eq!(completed.invariant_factors(), &[Integer::from(2)]);
+
+    let factor_base = completed.presentation().collected().factor_base();
+    let generator_count = factor_base.exact_ideals.len();
+    let nontrivial_index = (0..generator_count)
+        .find(|index| {
+            let mut exponents = vec![Integer::new(); generator_count];
+            exponents[*index] = Integer::from(1);
+            !completed
+                .presentation()
+                .class_map()
+                .presentation()
+                .coordinates(&exponents)
+                .unwrap()
+                .is_zero()
+        })
+        .expect("a nontrivial class group has a nontrivial factor-base generator");
+    let input = factor_base.exact_ideals[nontrivial_index].clone();
+    let limits = ArbitraryIdealReductionLimits::default();
+    let mut workspace = PreparedIdealWorkspace::new();
+    let certificate = completed
+        .ideal_class_certificate(&input, 320, limits, &mut workspace)
+        .unwrap();
+    completed
+        .replay_ideal_class_certificate(&input, &certificate, limits, &mut workspace)
+        .unwrap();
+    assert_eq!(
+        certificate.class_map.coordinates.values().len(),
+        completed.invariant_factors().len()
+    );
+    assert!(!certificate.class_map.coordinates.is_zero());
+    assert!(matches!(
+        certificate.class_map.presentation_zero_state,
+        sagejs_pari_class_group_rust_experiment::PresentationZeroState::NonzeroInCurrentPresentation { .. }
+    ));
+
+    let mut counterfeit = certificate.clone();
+    counterfeit.reduction.element[0] += 1;
+    assert_eq!(
+        completed.replay_ideal_class_certificate(
+            &input,
+            &counterfeit,
+            limits,
+            &mut workspace,
+        ),
+        Err(ArbitraryIdealReductionError::CertificateMismatch)
+    );
 }
 
 #[test]

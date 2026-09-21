@@ -1,16 +1,7 @@
 # Copyright (C) Sage.js contributors.
 # License: GPL-3.0-only
 
-"""Exact, incomplete replay of Rust compact class-group presentations.
-
-This is an experimental qualification boundary, not a native dispatch path.
-It accepts the lossless relation-lattice part of a prepared-cubic v2 result,
-binds it to a freshly prepared Sage.js field, and independently replays the
-compact integer presentation.  The result deliberately remains incomplete:
-the replay proves every row is the claimed principal ideal over a live ordered
-factor base, but does not provide an arbitrary-ideal map, certify units, bind
-resource limits, or identify the executable artifact.
-"""
+"""Exact, incomplete replay of Rust compact class-group evidence."""
 
 from __future__ import annotations
 
@@ -40,6 +31,7 @@ RELATION_LATTICE_SCHEMA = "sagejs.rust-class-group/prepared-cubic-relation-latti
 COMPACT_CERTIFICATE_SCHEMA = (
     "sagejs.rust-class-group/compact-presentation-certificate-v1"
 )
+ARBITRARY_IDEAL_QUERY_SCHEMA = "sagejs.rust-class-group/arbitrary-ideal-class-query-v1"
 DIAGNOSTICS_SCHEMA = (
     "sagejs.rust-class-group/compact-presentation-adapter-diagnostics-v1"
 )
@@ -58,6 +50,7 @@ _MAX_DEPENDENCY_MINOR_WITNESSES = 256
 _MAX_DEPENDENCY_MINOR_DETERMINANT_WORK = 128
 _MAX_EXACT_INTEGER_BITS = 4_096
 _MAX_EXACT_DECIMAL_DIGITS = 1_234
+_MAX_ARBITRARY_IDEAL_VALUATION = 256
 
 _PREPARED_KEYS = {
     "analyticCompletion",
@@ -104,7 +97,7 @@ _VERIFIED_KEYS = {
     "standardGeneratorLiftsMapToCoordinateBasis",
 }
 _REMAINING_GAPS = (
-    "arbitrary-ideal-class-map-witnesses",
+    "rust-arbitrary-ideal-query-producer-boundary",
     "units-torsion-regulator-and-saturation",
     "conditional-factor-base-and-completion-proof-replay",
     "request-and-resource-binding",
@@ -281,7 +274,9 @@ class RustCompactPresentationReplay:
     def __init__(
         self,
         presentation: CompactRelationPresentation,
+        field: Any,
         order: Any,
+        prepared_basis: Sequence[Any],
         factor_base_ideals: Sequence[Any],
         *,
         producer_input_id: str,
@@ -293,6 +288,9 @@ class RustCompactPresentationReplay:
         if len(factor_base_ideals) != presentation.column_count:
             raise RelationMatrixError("the live factor base has the wrong length")
         self._presentation = presentation
+        self._field = field
+        self._order = order
+        self._prepared_basis = list(prepared_basis)
         self._factor_base_ideals = tuple(factor_base_ideals)
         relations = __import__(
             "sagejs.number_fields.class_group_relations",
@@ -362,6 +360,101 @@ class RustCompactPresentationReplay:
             raise RelationMatrixError("class-generator index is out of bounds")
         coordinates[position] = 1
         return self.representative_ideal(coordinates)
+
+    def replay_arbitrary_ideal_class_certificate(
+        self, ideal: Any, certificate: dict[str, Any]
+    ) -> tuple[int, ...]:
+        """Replay `(alpha) = ideal * product(P_i^e_i)` and derive its class."""
+        if getattr(ideal, "ring", lambda: None)() is not self._order:
+            raise TypeError("the queried ideal belongs to another maximal order")
+        if ideal.is_zero():
+            raise ValueError("the zero ideal has no ideal class")
+        relative = ideal.basis_matrix() * self._order._basis_inverse_matrix()
+        if any(value._denominator != 1 for row in relative.rows() for value in row):
+            raise ValueError(
+                "the Rust arbitrary-ideal boundary requires an integral ideal"
+            )
+
+        keys = {
+            "classCoordinates",
+            "compactCertificateIdentity",
+            "factorBaseSize",
+            "maximalOrderEvidence",
+            "preparedResultIdentity",
+            "presentationZero",
+            "principalElementIntegralBasisCoordinates",
+            "quotientFactorBaseExponents",
+            "schema",
+            "sourceInputId",
+        }
+        certificate = _closed(certificate, keys, "arbitrary-ideal certificate")
+        if certificate["schema"] != ARBITRARY_IDEAL_QUERY_SCHEMA:
+            raise RelationMatrixError("unsupported arbitrary-ideal certificate")
+        if (
+            certificate["sourceInputId"] != self.producer_input_id
+            or certificate["preparedResultIdentity"] != self.prepared_result_identity
+            or certificate["compactCertificateIdentity"] != self.certificate_identity
+        ):
+            raise RelationMatrixError("arbitrary-ideal certificate authority mismatch")
+        if certificate["maximalOrderEvidence"] != "rust-proved-maximal-order":
+            raise RelationMatrixError("unsupported maximal-order evidence")
+        if (
+            _natural(certificate["factorBaseSize"], "factor-base size")
+            != self.factor_base_size
+        ):
+            raise RelationMatrixError("arbitrary-ideal factor-base width mismatch")
+
+        quotient = _sparse_vector(
+            certificate["quotientFactorBaseExponents"],
+            self.factor_base_size,
+            "factorBaseIndexZeroBased",
+            "exponent",
+            "quotient factor-base vector",
+        )
+        if any(
+            exponent < 0 or exponent > _MAX_ARBITRARY_IDEAL_VALUATION
+            for exponent in quotient
+        ):
+            raise RelationMatrixError(
+                "arbitrary-ideal exponent exceeds the verifier limit"
+            )
+        coordinates = certificate["principalElementIntegralBasisCoordinates"]
+        if not isinstance(coordinates, list) or len(coordinates) != 3:
+            raise RelationMatrixError("principal element has the wrong dimension")
+        alpha = _element_from_prepared_coordinates(
+            self._field,
+            self._prepared_basis,
+            tuple(
+                _signed_decimal(value, "principal coordinate") for value in coordinates
+            ),
+        )
+        if alpha.is_zero():
+            raise RelationMatrixError("principal element must be nonzero")
+        quotient_ideal = self._ideal_reconstructor.reconstruct(quotient)
+        if self._order.ideal(alpha) != ideal * quotient_ideal:
+            raise ArithmeticError(
+                "arbitrary-ideal principal equality failed exact replay"
+            )
+
+        derived = self.class_coordinates(tuple(-value for value in quotient))
+        claimed_raw = certificate["classCoordinates"]
+        if not isinstance(claimed_raw, list) or len(claimed_raw) != len(
+            self.invariants
+        ):
+            raise RelationMatrixError("class coordinates have the wrong dimension")
+        claimed = tuple(
+            _signed_decimal(value, "class coordinate") for value in claimed_raw
+        )
+        if any(
+            value < 0 or value >= modulus
+            for value, modulus in zip(claimed, self.invariants, strict=True)
+        ):
+            raise RelationMatrixError("class coordinates are not canonical residues")
+        if claimed != derived:
+            raise RelationMatrixError("arbitrary-ideal class coordinates mismatch")
+        if certificate["presentationZero"] is not all(value == 0 for value in derived):
+            raise RelationMatrixError("arbitrary-ideal principality state mismatch")
+        return derived
 
     def lift_class_coordinates(self, coordinates: Sequence[int]) -> tuple[int, ...]:
         """Return the certified standard lift into the factor-base lattice."""
@@ -773,7 +866,9 @@ def adapt_rust_prepared_cubic_v2_presentation(
     certificate_identity = _identity(compact_certificate)
     context = RustCompactPresentationReplay(
         presentation,
+        field,
         field.maximal_order(),
+        _prepared_basis_elements(field, prepared_input),
         factor_base_ideals,
         producer_input_id=producer_input_id,
         prepared_result_identity=prepared_identity,
@@ -797,7 +892,7 @@ def adapt_rust_prepared_cubic_v2_presentation(
         "factorBaseCoordinateMap": "available",
         "smoothFactorBaseIdealClassMap": "available-through-context",
         "classGeneratorIdeals": "available-through-context",
-        "arbitraryIdealClassMap": "unavailable",
+        "arbitraryIdealClassMap": "certificate-replay-available-through-context",
         "requestResourceBinding": "not-present-in-evidence",
         "artifactIdentity": None,
         "acceptedEvidenceJoins": list(_ACCEPTED_JOINS),
@@ -825,7 +920,7 @@ def adapt_rust_prepared_cubic_v2_presentation(
         field,
         proof_status=groups.INCOMPLETE_RESOURCE_LIMIT,
         complete=False,
-        reason="the exact principal relation quotient lacks arbitrary-ideal maps, unit, completion, resource, and artifact authority",
+        reason="the exact principal relation quotient lacks a connected Rust arbitrary-ideal query producer, unit, completion, resource, and artifact authority",
         algorithm="rust-prepared-cubic-compact-presentation-experimental",
         stages=stages,
         tentative_invariants=presentation.invariants,
@@ -835,6 +930,7 @@ def adapt_rust_prepared_cubic_v2_presentation(
 
 
 __all__ = [
+    "ARBITRARY_IDEAL_QUERY_SCHEMA",
     "RustCompactPresentationReplay",
     "adapt_rust_prepared_cubic_v2_presentation",
 ]

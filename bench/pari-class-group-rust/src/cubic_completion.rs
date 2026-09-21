@@ -14,6 +14,11 @@ use crate::analytic_completion::{
     BdfFactorBasePlan, BelabasFriedmanPlan, BelabasFriedmanPlanError,
     IncrementalCubicBelabasFriedmanPlan, build_cubic_bdf_factor_base_plan,
 };
+use crate::arbitrary_ideal_reduction::{
+    ArbitraryIdealClassQueryCertificate, ArbitraryIdealReductionError,
+    ArbitraryIdealReductionLimits, MaximalCubicOrder, query_arbitrary_cubic_ideal_class,
+    replay_arbitrary_cubic_ideal_class_query,
+};
 use crate::compact_cubic_presentation::{
     exact_integer_i64_row_annihilates, first_non_annihilating_i64_row,
     modular_basis_columns_in_order, saturation_minor_certificate,
@@ -26,6 +31,7 @@ use crate::flint_normal_form::{
 use crate::hnf::{BigIntMatrix, ExactNormalFormWorkspace, NormalFormError, NormalFormLimits};
 use crate::numerical_preparation::{NumericalPreparationError, PreparedCubicEmbedding};
 use crate::polynomial_preparation::PreparedPublicCubic;
+use crate::prepared_ideal::{CubicIdeal, PreparedIdealWorkspace};
 use crate::prepared_factor_base::{
     PreparedFactorBaseError, prepared_cubic_splitting_records_range,
 };
@@ -396,6 +402,56 @@ impl GrhConditionalCompleteCubicClassGroup {
     }
     pub fn invariant_factors(&self) -> &[Integer] {
         self.presentation.invariant_factors()
+    }
+
+    /// Compute an exact, independently replayable class-map certificate for
+    /// one arbitrary nonzero integral ideal.
+    ///
+    /// This is the product-shaped query boundary retained by the sealed
+    /// result.  It deliberately accepts explicit search resources and
+    /// embedding precision; exhaustion fails without publishing coordinates.
+    pub fn ideal_class_certificate(
+        &self,
+        input: &CubicIdeal,
+        embedding_precision_bits: u32,
+        limits: ArbitraryIdealReductionLimits,
+        workspace: &mut PreparedIdealWorkspace,
+    ) -> Result<ArbitraryIdealClassQueryCertificate, ArbitraryIdealReductionError> {
+        let embedding = PreparedCubicEmbedding::from_validated(
+            self.prepared.field(),
+            embedding_precision_bits,
+        )?;
+        let collected = self.presentation.collected();
+        query_arbitrary_cubic_ideal_class(
+            MaximalCubicOrder::from_public_prepared(&self.prepared),
+            input,
+            collected.factor_base(),
+            &embedding,
+            self.presentation.class_map(),
+            limits,
+            workspace,
+        )
+    }
+
+    /// Replay a certificate previously returned by
+    /// [`Self::ideal_class_certificate`] against this exact sealed result.
+    pub fn replay_ideal_class_certificate(
+        &self,
+        input: &CubicIdeal,
+        claimed: &ArbitraryIdealClassQueryCertificate,
+        limits: ArbitraryIdealReductionLimits,
+        workspace: &mut PreparedIdealWorkspace,
+    ) -> Result<(), ArbitraryIdealReductionError> {
+        let collected = self.presentation.collected();
+        replay_arbitrary_cubic_ideal_class_query(
+            MaximalCubicOrder::from_public_prepared(&self.prepared),
+            input,
+            collected.factor_base(),
+            self.presentation.class_map(),
+            claimed,
+            limits,
+            workspace,
+        )
     }
 
     /// Check mutation-sensitive invariants of this sealed value.

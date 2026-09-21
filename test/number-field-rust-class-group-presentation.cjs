@@ -155,11 +155,38 @@ test("v2 replay proves principal rows and exposes live factor-base ideals", asyn
     "except ValueError as error:",
     "    class_error = str(error)",
     "prime = context.factor_base_ideal(0)",
-    "[answer.complete, answer.proof_status, answer.tentative_invariants, context.verify(), context.factor_base_class_coordinates(0), context.class_coordinates((4,)), context.lift_class_coordinates((1,)), prime == K.maximal_order().ideal(2, a), context.smooth_ideal_class_coordinates(prime), context.smooth_ideal_class_coordinates(prime^3), context.class_generator_ideal(0) == prime, context.representative_ideal((2,)) == prime^2, answer.diagnostics['relationPresentationReplay'], answer.diagnostics['relationIdealReplay']['allPrincipalIdealEqualitiesReplayed'], answer.diagnostics['arbitraryIdealClassMap'], answer.diagnostics['automaticDispatch'], len(answer.diagnostics['acceptedEvidenceJoins']), len(answer.diagnostics['remainingEvidenceGaps']), [(stage.name, stage.state) for stage in answer.stages], class_error]",
+    "query = {'schema': 'sagejs.rust-class-group/arbitrary-ideal-class-query-v1', 'sourceInputId': context.producer_input_id, 'preparedResultIdentity': context.prepared_result_identity, 'compactCertificateIdentity': context.certificate_identity, 'maximalOrderEvidence': 'rust-proved-maximal-order', 'factorBaseSize': 1, 'principalElementIntegralBasisCoordinates': ['2', '0', '0'], 'quotientFactorBaseExponents': [{'factorBaseIndexZeroBased': 0, 'exponent': '2'}], 'classCoordinates': ['1'], 'presentationZero': False}",
+    "[answer.complete, answer.proof_status, answer.tentative_invariants, context.verify(), context.factor_base_class_coordinates(0), context.class_coordinates((4,)), context.lift_class_coordinates((1,)), prime == K.maximal_order().ideal(2, a), context.smooth_ideal_class_coordinates(prime), context.smooth_ideal_class_coordinates(prime^3), context.class_generator_ideal(0) == prime, context.representative_ideal((2,)) == prime^2, context.replay_arbitrary_ideal_class_certificate(prime, query), answer.diagnostics['relationPresentationReplay'], answer.diagnostics['relationIdealReplay']['allPrincipalIdealEqualitiesReplayed'], answer.diagnostics['arbitraryIdealClassMap'], answer.diagnostics['automaticDispatch'], len(answer.diagnostics['acceptedEvidenceJoins']), len(answer.diagnostics['remainingEvidenceGaps']), [(stage.name, stage.state) for stage in answer.stages], class_error]",
   ]);
   assert.equal(
     answer.repr,
-    "[False, 'incomplete-resource-limit', (3,), True, (1,), (1,), (1,), True, (1,), (0,), True, True, 'exact-principal-ideal-and-integer-lattice', True, 'unavailable', False, 7, 5, [('rust-compact-relation-presentation-replay', 'complete'), ('sagejs-public-class-unit-certification', 'incomplete')], 'an incomplete class/unit computation has no proved class group']",
+    "[False, 'incomplete-resource-limit', (3,), True, (1,), (1,), (1,), True, (1,), (0,), True, True, (1,), 'exact-principal-ideal-and-integer-lattice', True, 'certificate-replay-available-through-context', False, 7, 5, [('rust-compact-relation-presentation-replay', 'complete'), ('sagejs-public-class-unit-certification', 'incomplete')], 'an incomplete class/unit computation has no proved class group']",
+  );
+});
+
+test("arbitrary-ideal certificates fail closed under witness and authority mutation", async () => {
+  const answer = await evaluate([
+    "answer = adapt_rust_prepared_cubic_v2_presentation(K, prepared, result, certificate)",
+    "context = answer.context",
+    "prime = context.factor_base_ideal(0)",
+    "query = {'schema': 'sagejs.rust-class-group/arbitrary-ideal-class-query-v1', 'sourceInputId': context.producer_input_id, 'preparedResultIdentity': context.prepared_result_identity, 'compactCertificateIdentity': context.certificate_identity, 'maximalOrderEvidence': 'rust-proved-maximal-order', 'factorBaseSize': 1, 'principalElementIntegralBasisCoordinates': ['2', '0', '0'], 'quotientFactorBaseExponents': [{'factorBaseIndexZeroBased': 0, 'exponent': '2'}], 'classCoordinates': ['1'], 'presentationZero': False}",
+    "messages = []",
+    "for mutate in ('element', 'exponent', 'coordinate', 'authority', 'zero'):",
+    "    candidate = deepcopy(query)",
+    "    if mutate == 'element': candidate['principalElementIntegralBasisCoordinates'][0] = '3'",
+    "    if mutate == 'exponent': candidate['quotientFactorBaseExponents'][0]['exponent'] = '1'",
+    "    if mutate == 'coordinate': candidate['classCoordinates'][0] = '2'",
+    "    if mutate == 'authority': candidate['preparedResultIdentity'] = 'sha256:' + '3' * 64",
+    "    if mutate == 'zero': candidate['presentationZero'] = True",
+    "    try:",
+    "        context.replay_arbitrary_ideal_class_certificate(prime, candidate)",
+    "    except (ArithmeticError, ValueError) as error:",
+    "        messages.append(str(error))",
+    "messages",
+  ]);
+  assert.equal(
+    answer.repr,
+    "['arbitrary-ideal principal equality failed exact replay', 'arbitrary-ideal principal equality failed exact replay', 'arbitrary-ideal class coordinates mismatch', 'arbitrary-ideal certificate authority mismatch', 'arbitrary-ideal principality state mismatch']",
   );
 });
 

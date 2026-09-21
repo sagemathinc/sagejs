@@ -20,13 +20,19 @@ proves every exported relation by exact equality between the generated
 principal ideal and the reconstructed factor-base product. It then replays the
 complete quotient lattice. This closes relation principality and live
 factor-base ownership, but still returns an incomplete `ClassUnitComputation`:
-arbitrary-ideal maps, live units and saturation, completion-proof replay,
-request/resource binding, and executable identity remain absent.
+the Rust arbitrary-ideal query producer is not yet connected, and live units
+and saturation, completion-proof replay, request/resource binding, and
+executable identity remain absent.
 The retained context does expose live invariant-factor generator ideals,
 representative ideals from certified coordinates, and exact coordinates for
 ideals already smooth over the authenticated factor base. Arbitrary ideals
-still require the Rust reduction certificate/query boundary and remain
-explicitly unsupported here.
+now have a closed, bounded certificate-replay method. It independently checks
+`(alpha) = I * product(P_i^e_i)`, derives the signed quotient vector and class
+coordinates, and rejects field/presentation substitution. The sealed Rust
+result likewise now owns a single query method which performs reduction,
+mapping, and independent replay against its retained authenticated state. The
+remaining integration gap is serialization and transport between those two
+implemented ends; automatic public queries remain explicitly unsupported.
 
 Run the focused structural qualification with:
 

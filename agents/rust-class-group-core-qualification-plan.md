@@ -267,6 +267,17 @@ certified invariant-factor generators and maps ideals that are already exactly
 smooth over the authenticated factor base. This supplies the exact lower layer
 needed by the Rust arbitrary-ideal reducer without misrepresenting that bounded
 smooth map as the still-missing arbitrary-ideal query boundary.
+The sealed conditional Rust result now exposes that query boundary directly:
+one call performs bounded arbitrary-ideal reduction, maps the signed quotient
+through the retained authenticated presentation, and returns both exact
+certificates; a second method independently replays the pair. A nontrivial C2
+test selects a genuinely nonzero factor-base class and rejects a mutated
+principal element. The Sage.js compact context now implements the matching
+closed-schema consumer replay, proving the same principal-ideal equality and
+deriving the signed coordinates itself; it rejects mutated elements,
+exponents, coordinates, principality state, and authority identities. The
+remaining map gap is therefore the native/Wasm serialization and transport
+that connects these two real ends, not missing mathematical query logic.
 
 ## Evidence we actually have
 

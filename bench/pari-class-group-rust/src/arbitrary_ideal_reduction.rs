@@ -134,6 +134,20 @@ pub struct ArbitraryIdealClassMapCertificate {
     pub presentation_zero_state: PresentationZeroState,
 }
 
+/// One bounded arbitrary-ideal query together with every exact witness needed
+/// to replay it independently.
+///
+/// The reduction proves `(alpha) = input * product P_j^e_j`; the class-map
+/// certificate then proves that the signed vector `-e` has the published
+/// coordinates in the authenticated relation quotient.  Keeping both pieces
+/// together prevents a host adapter from accidentally publishing coordinates
+/// without the exact principal-ideal bridge that justifies them.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ArbitraryIdealClassQueryCertificate {
+    pub reduction: ArbitraryIdealReductionCertificate,
+    pub class_map: ArbitraryIdealClassMapCertificate,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PrincipalRelationWitness {
     pub exponents: Vec<u32>,
@@ -810,6 +824,70 @@ pub fn map_arbitrary_cubic_ideal_class(
         factor_base,
         reduction,
         authority,
+        limits,
+        workspace,
+    )
+}
+
+/// Reduce and map one arbitrary integral ideal through the authenticated
+/// complete-presentation state.
+pub fn query_arbitrary_cubic_ideal_class(
+    order: MaximalCubicOrder<'_>,
+    input: &CubicIdeal,
+    factor_base: &PreparedFactorBase,
+    embedding: &PreparedCubicEmbedding,
+    authority: &AuthenticatedPresentationClassMap,
+    limits: ArbitraryIdealReductionLimits,
+    workspace: &mut PreparedIdealWorkspace,
+) -> Result<ArbitraryIdealClassQueryCertificate, ArbitraryIdealReductionError> {
+    let reduction = reduce_arbitrary_cubic_ideal(
+        order,
+        input,
+        factor_base,
+        embedding,
+        limits,
+        workspace,
+    )?;
+    let class_map = map_arbitrary_cubic_ideal_class(
+        order,
+        input,
+        factor_base,
+        &reduction,
+        authority,
+        limits,
+        workspace,
+    )?;
+    Ok(ArbitraryIdealClassQueryCertificate {
+        reduction,
+        class_map,
+    })
+}
+
+/// Independently replay both halves of a completed arbitrary-ideal query.
+pub fn replay_arbitrary_cubic_ideal_class_query(
+    order: MaximalCubicOrder<'_>,
+    input: &CubicIdeal,
+    factor_base: &PreparedFactorBase,
+    authority: &AuthenticatedPresentationClassMap,
+    claimed: &ArbitraryIdealClassQueryCertificate,
+    limits: ArbitraryIdealReductionLimits,
+    workspace: &mut PreparedIdealWorkspace,
+) -> Result<(), ArbitraryIdealReductionError> {
+    replay_arbitrary_ideal_reduction(
+        order,
+        input,
+        factor_base,
+        &claimed.reduction,
+        limits,
+        workspace,
+    )?;
+    replay_arbitrary_cubic_ideal_class_map(
+        order,
+        input,
+        factor_base,
+        &claimed.reduction,
+        authority,
+        &claimed.class_map,
         limits,
         workspace,
     )
