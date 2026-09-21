@@ -7,9 +7,9 @@ This is an experimental qualification boundary, not a native dispatch path.
 It accepts the lossless relation-lattice part of a prepared-cubic v2 result,
 binds it to a freshly prepared Sage.js field, and independently replays the
 compact integer presentation.  The result deliberately remains incomplete:
-the current documents do not prove that the rows are principal ideal
-relations, provide an arbitrary-ideal map, certify units, bind resource
-limits, or identify the executable artifact.
+the replay proves every row is the claimed principal ideal over a live ordered
+factor base, but does not provide an arbitrary-ideal map, certify units, bind
+resource limits, or identify the executable artifact.
 """
 
 from __future__ import annotations
@@ -26,7 +26,12 @@ from sagejs.number_fields.compact_relation_presentation import (
     CompactRelationPresentation,
 )
 from sagejs.number_fields.rust_class_group_preparation import (
+    _element_from_prepared_coordinates,
+    _ideal_from_prepared_descriptor,
+    _input_integer,
+    _prepared_basis_elements,
     _prepared_input_matches_authoritative,
+    _validate_prime_hnf_lattice,
     prepare_cubic_for_rust,
 )
 
@@ -99,7 +104,6 @@ _VERIFIED_KEYS = {
     "standardGeneratorLiftsMapToCoordinateBasis",
 }
 _REMAINING_GAPS = (
-    "relation-principality-and-live-ideal-generators",
     "arbitrary-ideal-class-map-witnesses",
     "units-torsion-regulator-and-saturation",
     "conditional-factor-base-and-completion-proof-replay",
@@ -111,6 +115,7 @@ _ACCEPTED_JOINS = (
     "producer-polynomial-and-input-identity",
     "complete-relation-matrix-shape",
     "exact-compact-relation-lattice-index",
+    "live-factor-base-primes-and-principal-relation-equalities",
     "standard-factor-base-coordinate-map",
     "standard-generator-lifts-and-order-combinations",
 )
@@ -276,6 +281,7 @@ class RustCompactPresentationReplay:
     def __init__(
         self,
         presentation: CompactRelationPresentation,
+        factor_base_ideals: Sequence[Any],
         *,
         producer_input_id: str,
         prepared_result_identity: str,
@@ -283,7 +289,10 @@ class RustCompactPresentationReplay:
     ) -> None:
         if not presentation.verify():
             raise RelationMatrixError("the compact relation presentation is invalid")
+        if len(factor_base_ideals) != presentation.column_count:
+            raise RelationMatrixError("the live factor base has the wrong length")
         self._presentation = presentation
+        self._factor_base_ideals = tuple(factor_base_ideals)
         self.producer_input_id = producer_input_id
         self.prepared_result_identity = prepared_result_identity
         self.certificate_identity = certificate_identity
@@ -317,6 +326,13 @@ class RustCompactPresentationReplay:
         vector = [0] * self.factor_base_size
         vector[position] = 1
         return self.class_coordinates(vector)
+
+    def factor_base_ideal(self, index: int) -> Any:
+        """Return one independently reconstructed live maximal-order prime."""
+        position = _natural(index, "factor-base index")
+        if position >= self.factor_base_size:
+            raise RelationMatrixError("factor-base index is out of bounds")
+        return self._factor_base_ideals[position]
 
     def lift_class_coordinates(self, coordinates: Sequence[int]) -> tuple[int, ...]:
         """Return the certified standard lift into the factor-base lattice."""
@@ -398,14 +414,19 @@ def _replay_compact_presentation(
             raise RelationMatrixError("factor-base indices are not contiguous")
         for key in ("norm", "prime", "ramification", "residueDegree"):
             _positive_natural(entry[key], "factor-base " + key)
+        generator = entry["generator"]
         if (
-            not isinstance(entry["generator"], list)
-            or len(entry["generator"]) != 3
-            or any(
-                isinstance(value, bool) or not isinstance(value, int)
-                for value in entry["generator"]
+            generator is not None
+            and (
+                not isinstance(generator, list)
+                or len(generator) != 3
+                or any(
+                    isinstance(value, bool) or not isinstance(value, int)
+                    for value in generator
+                )
             )
-            or not isinstance(entry["hnf"], list)
+        ) or (
+            not isinstance(entry["hnf"], list)
             or len(entry["hnf"]) != 9
             or any(
                 isinstance(value, bool) or not isinstance(value, int)
@@ -413,7 +434,7 @@ def _replay_compact_presentation(
             )
         ):
             raise RelationMatrixError("factor-base entry has malformed coordinates")
-        for value in entry["generator"] + entry["hnf"]:
+        for value in (generator or []) + entry["hnf"]:
             _bounded_integer(value, "factor-base coordinate")
 
     records = lattice["relationRecords"]
@@ -622,6 +643,77 @@ def _replay_compact_presentation(
     return answer
 
 
+def _replay_relation_ideals(
+    field: Any,
+    prepared: dict[str, Any],
+    result: dict[str, Any],
+    presentation: CompactRelationPresentation,
+) -> tuple[tuple[Any, ...], dict[str, Any]]:
+    """Match the validated catalog and rows to live maximal-order ideals."""
+    order = field.maximal_order()
+    basis = _prepared_basis_elements(field, prepared)
+    table = [
+        [
+            [
+                _input_integer(entry["numerator"])
+                // _input_integer(entry["denominator"])
+                for entry in product
+            ]
+            for product in left
+        ]
+        for left in prepared["preparation"]["multiplicationTable"]
+    ]
+    lattice = result["relationLatticeEvidence"]
+    ideals = []
+    factorizations: dict[int, tuple[tuple[Any, int], ...]] = {}
+    validated_primes: set[int] = set()
+    for descriptor in lattice["factorBaseCatalog"]:
+        _validate_prime_hnf_lattice(descriptor, table, validated_primes)
+        exported = _ideal_from_prepared_descriptor(field, order, basis, descriptor)
+        prime = int(descriptor["prime"])
+        if prime not in factorizations:
+            factorizations[prime] = tuple(
+                (candidate, int(ramification))
+                for candidate, ramification in order.ideal(prime).factor()
+            )
+        ramification = int(descriptor["ramification"])
+        live = next(
+            (
+                candidate
+                for candidate, exponent in factorizations[prime]
+                if candidate == exported and exponent == ramification
+            ),
+            None,
+        )
+        if live is None:
+            raise ArithmeticError("factor-base entry is not the claimed prime ideal")
+        ideals.append(live)
+    relations = __import__(
+        "sagejs.number_fields.class_group_relations",
+        fromlist=["class_group_relations"],
+    )
+    reconstruct = relations.FactorBaseIdealReconstructor(order, ideals).reconstruct
+    records = lattice["relationRecords"]
+    for record, row in zip(records, presentation.relation_rows, strict=True):
+        element = _element_from_prepared_coordinates(
+            field, basis, record["integralBasisCoordinates"]
+        )
+        if order.ideal(element) != reconstruct(row.dense()):
+            raise ArithmeticError("relation is not the claimed principal ideal")
+    return tuple(ideals), {
+        "schema": "sagejs.rust-class-group/relation-ideal-replay-v1",
+        "inputId": prepared["inputId"],
+        "authority": "independent-sagejs-maximal-order-ideal-arithmetic",
+        "factorBasePrimeCount": len(ideals),
+        "principalRelationCount": len(records),
+        "verifiedFactorTermCount": sum(
+            len(record["primeIdealFactors"]) for record in records
+        ),
+        "allFactorBasePrimesReplayed": True,
+        "allPrincipalIdealEqualitiesReplayed": True,
+    }
+
+
 def adapt_rust_prepared_cubic_v2_presentation(
     field: Any,
     prepared_input: dict[str, Any],
@@ -645,10 +737,14 @@ def adapt_rust_prepared_cubic_v2_presentation(
         raise RelationMatrixError("prepared result polynomial mismatch")
 
     presentation = _replay_compact_presentation(prepared_result, compact_certificate)
+    factor_base_ideals, ideal_replay = _replay_relation_ideals(
+        field, prepared_input, prepared_result, presentation
+    )
     prepared_identity = _identity(prepared_result)
     certificate_identity = _identity(compact_certificate)
     context = RustCompactPresentationReplay(
         presentation,
+        factor_base_ideals,
         producer_input_id=producer_input_id,
         prepared_result_identity=prepared_identity,
         certificate_identity=certificate_identity,
@@ -665,7 +761,9 @@ def adapt_rust_prepared_cubic_v2_presentation(
         "polynomialBinding": "exact",
         "preparedResultIdentity": prepared_identity,
         "compactCertificateIdentity": certificate_identity,
-        "relationPresentationReplay": "exact-integer-lattice-only",
+        "relationPresentationReplay": "exact-principal-ideal-and-integer-lattice",
+        "relationIdealReplay": ideal_replay,
+        "liveFactorBaseIdeals": "available-through-context",
         "factorBaseCoordinateMap": "available",
         "arbitraryIdealClassMap": "unavailable",
         "requestResourceBinding": "not-present-in-evidence",
@@ -682,6 +780,7 @@ def adapt_rust_prepared_cubic_v2_presentation(
                 "compactCertificateIdentity": certificate_identity,
                 "factorBaseSize": context.factor_base_size,
                 "relationCount": context.relation_count,
+                "principalRelationCount": ideal_replay["principalRelationCount"],
             },
         ),
         groups.ClassUnitStage(
@@ -694,7 +793,7 @@ def adapt_rust_prepared_cubic_v2_presentation(
         field,
         proof_status=groups.INCOMPLETE_RESOURCE_LIMIT,
         complete=False,
-        reason="the exact quotient lattice lacks ideal, unit, completion, resource, and artifact authority",
+        reason="the exact principal relation quotient lacks arbitrary-ideal maps, unit, completion, resource, and artifact authority",
         algorithm="rust-prepared-cubic-compact-presentation-experimental",
         stages=stages,
         tentative_invariants=presentation.invariants,

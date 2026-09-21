@@ -445,10 +445,6 @@ def _ideal_from_prepared_descriptor(
     descriptor: dict[str, Any],
 ) -> Any:
     prime = _input_integer(descriptor["prime"])
-    generator = _element_from_prepared_coordinates(
-        field, basis, descriptor["generator"]
-    )
-    prime_ideal = order.ideal(prime, generator)
     hnf = descriptor["hnf"]
     if len(hnf) != 9:
         raise ValueError("a prime ideal HNF must have nine entries")
@@ -461,18 +457,23 @@ def _ideal_from_prepared_descriptor(
                 hnf[3 * row : 3 * row + 3],
             )
         )
-    if order.ideal(hnf_generators) != prime_ideal:
-        raise ArithmeticError("a prime ideal HNF does not replay")
+    prime_ideal = order.ideal(hnf_generators)
+    raw_generator = descriptor.get("generator")
+    if raw_generator is not None:
+        generator = _element_from_prepared_coordinates(field, basis, raw_generator)
+        if order.ideal(prime, generator) != prime_ideal:
+            raise ArithmeticError("a prime ideal HNF does not replay")
     if prime_ideal.norm() != _input_integer(descriptor["norm"]):
         raise ArithmeticError("a prime ideal norm does not replay")
     return prime_ideal
 
 
 def _prime_descriptor_identity(descriptor: dict[str, Any]) -> tuple[Any, ...]:
+    generator = descriptor["generator"]
     return (
         str(descriptor["prime"]),
         str(descriptor["norm"]),
-        tuple(str(value) for value in descriptor["generator"]),
+        None if generator is None else tuple(str(value) for value in generator),
         tuple(str(value) for value in descriptor["hnf"]),
     )
 
@@ -635,12 +636,15 @@ def _validate_prime_hnf_lattice(
             ]
             if sum(product[i] * character[i] for i in range(3)) % modulus != 0:
                 raise ArithmeticError("a prime ideal HNF is not an ideal")
-    exported_generator = [_input_integer(value) for value in descriptor["generator"]]
-    if (
-        sum(int(str(exported_generator[i])) * character[i] for i in range(3)) % modulus
-        != 0
-    ):
-        raise ArithmeticError("a prime ideal generator is not in its HNF")
+    raw_generator = descriptor.get("generator")
+    if raw_generator is not None:
+        exported_generator = [_input_integer(value) for value in raw_generator]
+        if (
+            sum(int(str(exported_generator[i])) * character[i] for i in range(3))
+            % modulus
+            != 0
+        ):
+            raise ArithmeticError("a prime ideal generator is not in its HNF")
     return hnf, character
 
 

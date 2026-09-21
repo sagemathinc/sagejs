@@ -13,8 +13,15 @@ New diagnostic output uses producer schema
 atomic `relationLatticeEvidence` object containing the complete factor-base
 catalog and every collected integral principal relation. Its records are
 construction evidence only. The public adapter deliberately does not accept
-version 2 yet; it must independently replay the complete catalog before this
-version can close even the first public-result evidence gap.
+version 2 by itself. The experimental compact-presentation adapter first
+reconstructs every catalog entry as a live maximal-order prime, checks its
+ramification identity against an independent rational-prime factorization, and
+proves every exported relation by exact equality between the generated
+principal ideal and the reconstructed factor-base product. It then replays the
+complete quotient lattice. This closes relation principality and live
+factor-base ownership, but still returns an incomplete `ClassUnitComputation`:
+arbitrary-ideal maps, live units and saturation, completion-proof replay,
+request/resource binding, and executable identity remain absent.
 
 Run the focused structural qualification with:
 

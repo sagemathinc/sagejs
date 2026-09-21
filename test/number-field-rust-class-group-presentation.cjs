@@ -27,38 +27,31 @@ function preparedResult() {
     usesClassGroupAnswersAsInput: false,
     usesOracleAsInput: false,
     polynomialAscending: [],
-    relations: { rows: 3, columns: 2 },
+    relations: { rows: 2, columns: 1 },
     relationLatticeEvidence: {
       schema: "sagejs.rust-class-group/prepared-cubic-relation-lattice-v1",
-      factorBaseCatalog: [0, 1].map((index) => ({
-        factorBaseIndexZeroBased: index,
-        generator: [0, 1, index],
-        hnf: [1, 0, 0, 0, 1, 0, 0, 0, 1],
-        norm: index + 2,
-        prime: index + 2,
-        ramification: 1,
+      factorBaseCatalog: [{
+        factorBaseIndexZeroBased: 0,
+        generator: null,
+        hnf: [2, 0, 0, 0, 1, 0, 0, 0, 1],
+        norm: 2,
+        prime: 2,
+        ramification: 3,
         residueDegree: 1,
-      })),
+      }],
       relationRecords: [
         {
           relationIndexZeroBased: 0,
-          integralBasisCoordinates: ["1", "0", "0"],
+          integralBasisCoordinates: ["2", "0", "0"],
           primeIdealFactors: [
-            { factorBaseIndexZeroBased: 0, exponent: 2 },
+            { factorBaseIndexZeroBased: 0, exponent: 3 },
           ],
         },
         {
           relationIndexZeroBased: 1,
-          integralBasisCoordinates: ["0", "1", "0"],
+          integralBasisCoordinates: ["2", "0", "0"],
           primeIdealFactors: [
-            { factorBaseIndexZeroBased: 1, exponent: 1 },
-          ],
-        },
-        {
-          relationIndexZeroBased: 2,
-          integralBasisCoordinates: ["0", "1", "0"],
-          primeIdealFactors: [
-            { factorBaseIndexZeroBased: 1, exponent: 1 },
+            { factorBaseIndexZeroBased: 0, exponent: 3 },
           ],
         },
       ],
@@ -79,20 +72,19 @@ function certificate() {
     schema: "sagejs.rust-class-group/compact-presentation-certificate-v1",
     sourceInputId: `sha256:${"0".repeat(64)}`,
     qualificationStatus: "closed-exact-lattice-index-certificate",
-    relationShape: { rows: 3, columns: 2 },
-    invariantFactors: ["2"],
-    groupOrder: "2",
+    relationShape: { rows: 2, columns: 1 },
+    invariantFactors: ["3"],
+    groupOrder: "3",
     modularClassMap: {
-      moduli: ["2"],
+      moduli: ["3"],
       rows: [
         { factorBaseIndexZeroBased: 0, residues: [1] },
-        { factorBaseIndexZeroBased: 1, residues: [0] },
       ],
     },
     standardGeneratorLifts: [
       {
         coordinateZeroBased: 0,
-        modulus: "2",
+        modulus: "3",
         factorBaseLift: [
           { factorBaseIndexZeroBased: 0, coefficient: "1" },
         ],
@@ -105,24 +97,24 @@ function certificate() {
       {
         dependencyIndexZeroBased: 0,
         terms: [
-          { relationIndexZeroBased: 1, coefficient: "1" },
-          { relationIndexZeroBased: 2, coefficient: "-1" },
+          { relationIndexZeroBased: 0, coefficient: "1" },
+          { relationIndexZeroBased: 1, coefficient: "-1" },
         ],
       },
     ],
     latticeIndexEvidence: {
-      squareRowIndicesZeroBased: [0, 1],
-      surplusRowIndicesZeroBased: [2],
-      squareDeterminant: "2",
+      squareRowIndicesZeroBased: [0],
+      surplusRowIndicesZeroBased: [1],
+      squareDeterminant: "3",
       projectedDependencyDeterminant: "1",
       dependencySaturation: {
         criterion: "gcd-of-exhibited-maximal-dependency-minors-is-one",
         selectedMinors: [
-          { relationRowIndicesZeroBased: [1], determinant: "1" },
+          { relationRowIndicesZeroBased: [0], determinant: "1" },
         ],
         gcd: "1",
       },
-      fullRelationLatticeIndex: "2",
+      fullRelationLatticeIndex: "3",
     },
     verified: Object.fromEntries(verifiedClaims.map((name) => [name, true])),
   };
@@ -140,7 +132,7 @@ async function evaluate(lines, resultDocument = preparedResult(), certDocument =
         `result = json.loads(${JSON.stringify(JSON.stringify(resultDocument))})`,
         `certificate = json.loads(${JSON.stringify(JSON.stringify(certDocument))})`,
         "R.<x> = QQ[]",
-        "K.<a> = NumberField(x^3-x-1)",
+        "K.<a> = NumberField(x^3-2)",
         "prepared = prepare_cubic_for_rust(K)",
         "result['inputId'] = prepared['inputId']",
         "result['polynomialAscending'] = prepared['field']['coefficientsAscending']",
@@ -153,7 +145,7 @@ async function evaluate(lines, resultDocument = preparedResult(), certDocument =
   }
 }
 
-test("v2 exact lattice replay exposes only a factor-base coordinate map", async () => {
+test("v2 replay proves principal rows and exposes live factor-base ideals", async () => {
   const answer = await evaluate([
     "answer = adapt_rust_prepared_cubic_v2_presentation(K, prepared, result, certificate)",
     "context = answer.context",
@@ -162,11 +154,11 @@ test("v2 exact lattice replay exposes only a factor-base coordinate map", async 
     "    answer.class_group()",
     "except ValueError as error:",
     "    class_error = str(error)",
-    "[answer.complete, answer.proof_status, answer.tentative_invariants, context.verify(), context.factor_base_class_coordinates(0), context.factor_base_class_coordinates(1), context.class_coordinates((3, 8)), context.lift_class_coordinates((1,)), answer.diagnostics['relationPresentationReplay'], answer.diagnostics['arbitraryIdealClassMap'], answer.diagnostics['automaticDispatch'], len(answer.diagnostics['acceptedEvidenceJoins']), len(answer.diagnostics['remainingEvidenceGaps']), [(stage.name, stage.state) for stage in answer.stages], class_error]",
+    "[answer.complete, answer.proof_status, answer.tentative_invariants, context.verify(), context.factor_base_class_coordinates(0), context.class_coordinates((4,)), context.lift_class_coordinates((1,)), context.factor_base_ideal(0) == K.maximal_order().ideal(2, a), answer.diagnostics['relationPresentationReplay'], answer.diagnostics['relationIdealReplay']['allPrincipalIdealEqualitiesReplayed'], answer.diagnostics['arbitraryIdealClassMap'], answer.diagnostics['automaticDispatch'], len(answer.diagnostics['acceptedEvidenceJoins']), len(answer.diagnostics['remainingEvidenceGaps']), [(stage.name, stage.state) for stage in answer.stages], class_error]",
   ]);
   assert.equal(
     answer.repr,
-    "[False, 'incomplete-resource-limit', (2,), True, (1,), (0,), (1,), (1, 0), 'exact-integer-lattice-only', 'unavailable', False, 6, 6, [('rust-compact-relation-presentation-replay', 'complete'), ('sagejs-public-class-unit-certification', 'incomplete')], 'an incomplete class/unit computation has no proved class group']",
+    "[False, 'incomplete-resource-limit', (3,), True, (1,), (1,), (1,), True, 'exact-principal-ideal-and-integer-lattice', True, 'unavailable', False, 7, 5, [('rust-compact-relation-presentation-replay', 'complete'), ('sagejs-public-class-unit-certification', 'incomplete')], 'an incomplete class/unit computation has no proved class group']",
   );
 });
 
@@ -176,7 +168,7 @@ test("the adapter rejects identity, polynomial, and schema substitution", async 
     "bad_identity = deepcopy(result)",
     "bad_identity['inputId'] = 'sha256:' + '1' * 64",
     "bad_polynomial = deepcopy(result)",
-    "bad_polynomial['polynomialAscending'][0] = '-2'",
+    "bad_polynomial['polynomialAscending'][0] = '-3'",
     "bad_oracle = deepcopy(result)",
     "bad_oracle['usesOracleAsInput'] = True",
     "bad_extra = deepcopy(certificate)",
@@ -217,6 +209,28 @@ test("producer booleans cannot bless counterfeit exact evidence", async () => {
   assert.equal(
     answer.repr,
     "[5, ['Rust compact certificate failed Sage.js replay', 'standard-generator order combination does not replay exactly', 'Rust compact certificate failed Sage.js replay', 'producer verification claims are incomplete', 'relation coefficient is invalid']]",
+  );
+});
+
+test("the adapter rejects counterfeit prime and principal-ideal evidence", async () => {
+  const answer = await evaluate([
+    "messages = []",
+    "bad_relation = deepcopy(result)",
+    "bad_relation['relationLatticeEvidence']['relationRecords'][0]['integralBasisCoordinates'] = ['1', '0', '0']",
+    "bad_ramification = deepcopy(result)",
+    "bad_ramification['relationLatticeEvidence']['factorBaseCatalog'][0]['ramification'] = 2",
+    "bad_hnf = deepcopy(result)",
+    "bad_hnf['relationLatticeEvidence']['factorBaseCatalog'][0]['hnf'][0] = 4",
+    "for candidate in (bad_relation, bad_ramification, bad_hnf):",
+    "    try:",
+    "        adapt_rust_prepared_cubic_v2_presentation(K, prepared, candidate, certificate)",
+    "    except (ArithmeticError, ValueError) as error:",
+    "        messages.append(str(error))",
+    "messages",
+  ]);
+  assert.equal(
+    answer.repr,
+    "['relation is not the claimed principal ideal', 'factor-base entry is not the claimed prime ideal', 'a prime ideal HNF has the wrong index']",
   );
 });
 

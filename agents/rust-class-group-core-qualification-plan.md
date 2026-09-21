@@ -252,6 +252,16 @@ against the caller's resource request. It still returns an explicitly
 incomplete Sage.js computation and cannot dispatch or claim a public proof;
 replayable maps, units, regulator, saturation, request binding, and artifact
 identity remain required before promotion.
+The separate v2 compact-presentation adapter now independently reconstructs
+every exported factor-base entry as a live Sage.js maximal-order prime, checks
+its ramification identity against a fresh rational-prime factorization, and
+proves every exported relation by exact ideal equality between its live
+principal generator and factor-base product. Those live prime objects are
+retained behind the independently verified quotient map. This closes the
+relation-principality and live-factor-base ownership gap for the bounded
+compact adapter, but does not yet provide arbitrary-ideal discrete logarithms,
+live unit/saturation objects, analytic completion-proof replay, request/resource
+binding, artifact identity, or automatic public dispatch.
 
 ## Evidence we actually have
 
