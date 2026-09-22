@@ -1,0 +1,77 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "class-group-public-objects",
+  "title": "Rust class-group public object adapter",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Produce complete ordinary Sage.js conditional-GRH cubic class/unit objects from authenticated Rust publications, including exact arbitrary and fractional ideal witnesses",
+  "base_commit": "ab85769a9ab00e2d3d466aaa64410671f098d9ff",
+  "claims": [
+    "src/lib/sagejs/number_fields/rust_class_group_presentation.py",
+    "bench/pari-class-group-rust/qualification/public-cubic-e2e/src/lib.rs",
+    "test/number-field-rust-class-group-presentation.cjs",
+    "test/number-field-rust-class-group-public.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "mixed",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Existing ClassUnitComputation and IdealClassGroup proof contracts",
+      "Sage/PARI fixture corpus"
+    ],
+    "exceptions": [
+      "ADR 0006 permits a qualified handwritten Rust mathematical core while ordinary Python owns public semantics and independent replay"
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 10.592,
+      "started_at": "2026-09-22T06:20:58.192Z",
+      "commit": "ab85769a9ab00e2d3d466aaa64410671f098d9ff",
+      "workspace_fingerprint": "45769371f18dc54c13e60d02a1e6d9e4bb47240e4d4f44f1d01797ea61d97ea3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 873.175,
+      "started_at": "2026-09-22T06:21:16.320Z",
+      "commit": "ab85769a9ab00e2d3d466aaa64410671f098d9ff",
+      "workspace_fingerprint": "03545b2783b42692161e88f4fa76354d66cbf52b5b22977869860a417eedcc83",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Rust resident cubic ideal queries now publish a compact exact I/R principal witness, using authenticated Smith lifts plus dense or cached compact relation solves. The Python replay verifies the v1 receipt, exact ideal equalities, relation factors, canonical coordinates, and fractional-ideal denominator normalization, then promotes authenticated publications with an injected resident callback to ordinary complete conditional-GRH IdealClassGroup, UnitGroupComputation, and ClassUnitComputation objects. Analytic replay reuses its exact splitting map, verifies the published BDF bound directly at adaptive rigorous precision, and no longer repeats the expensive minimal-bound search. Focused Python public/presentation tests pass 13/13 and the Rust crate passes 15 library tests, 3 CLI tests, and doctests.",
+    "risks": [
+      "The shared runtime still must wrap its frozen backend.call generation/handle session as the adapter's out-of-band synchronous query_callback; without it the adapter intentionally returns an incomplete computation.",
+      "pnpm test:changed stops at the shared number-field-global-arithmetic lazy byte budget (1836688 exceeds 1830000); the integration lane must update the shared package budget or split ownership.",
+      "pnpm test:baselib:strict is blocked by pre-existing doubled-backtick docstrings in unclaimed benchmark files on the base branch.",
+      "pnpm test:native rebuilt through stage 7/8, then failed because the existing numerical production manifest toolchain identity differs; no lane source failure was reported.",
+      "Native validation in this lane was Linux x64 only; integration still owns macOS arm64 and Windows fallback qualification."
+    ],
+    "next_steps": [
+      "Integration lane: construct query_callback around backend.call('query', {generation, handle, ...}) and close the resident handle with the frozen capability/open/publication/query/close protocol.",
+      "Integration lane: resolve the shared lazy-byte budget and base formatting/toolchain-receipt failures, then rerun test:changed, test:baselib:strict, and test:native.",
+      "Run the public row-6 end-to-end path through the actual resident host and exercise arbitrary integral and fractional ideals before release dispatch is enabled."
+    ]
+  }
+}

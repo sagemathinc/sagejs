@@ -33,6 +33,9 @@ COMPACT_CERTIFICATE_SCHEMA = (
     "sagejs.rust-class-group/compact-presentation-certificate-v1"
 )
 ARBITRARY_IDEAL_QUERY_SCHEMA = "sagejs.rust-class-group/arbitrary-ideal-class-query-v1"
+PUBLIC_ARBITRARY_IDEAL_QUERY_SCHEMA = (
+    "sagejs.rust-class-group/public-cubic-arbitrary-ideal-query-receipt-v1"
+)
 PUBLICATION_CANDIDATE_SCHEMA = (
     "sagejs.rust-class-group/public-cubic-publication-candidate-v2"
 )
@@ -316,6 +319,10 @@ class RustCompactPresentationReplay:
         certificate_identity: str,
         factored_units: Sequence[Any] = (),
         unit_certificates: Sequence[Any] = (),
+        relation_elements: Sequence[Any] = (),
+        query_callback: Any = None,
+        query_resources: Any = None,
+        polynomial_ascending: Any = None,
     ) -> None:
         if not presentation.verify():
             raise RelationMatrixError("the compact relation presentation is invalid")
@@ -339,6 +346,21 @@ class RustCompactPresentationReplay:
         self.certificate_identity = certificate_identity
         self._factored_units = tuple(factored_units)
         self._unit_certificates = tuple(unit_certificates)
+        self._relation_elements = tuple(relation_elements)
+        if (
+            self._relation_elements
+            and len(self._relation_elements) != self.relation_count
+        ):
+            raise RelationMatrixError("relation-element count mismatch")
+        if query_callback is not None and not callable(query_callback):
+            raise TypeError("the resident ideal query interface must be callable")
+        self._query_callback = query_callback
+        self._query_resources = query_resources
+        self._polynomial_ascending = (
+            _canonical_json(polynomial_ascending, "query polynomial")
+            if polynomial_ascending is not None
+            else None
+        )
 
     @property
     def invariants(self) -> tuple[int, ...]:
@@ -507,6 +529,282 @@ class RustCompactPresentationReplay:
         if certificate["presentationZero"] is not all(value == 0 for value in derived):
             raise RelationMatrixError("arbitrary-ideal principality state mismatch")
         return derived
+
+    def _integral_query_rows(self, ideal: Any) -> tuple[Any, int, list[list[str]]]:
+        """Clear denominators and encode the resulting integral ideal."""
+        if getattr(ideal, "ring", lambda: None)() is not self._order:
+            raise TypeError("the queried ideal belongs to another maximal order")
+        if ideal.is_zero():
+            raise ValueError("the zero ideal has no ideal class")
+        arithmetic = __import__(
+            "sagejs.number_fields.ideal_arithmetic", fromlist=["ideal_arithmetic"]
+        )
+        denominator = int(arithmetic.integrality_denominator(ideal))
+        if denominator <= 0:
+            raise ArithmeticError("ideal denominator normalization is not positive")
+        integral = arithmetic.scalar_translate(ideal, denominator)
+        relative = integral.basis_matrix() * self._order._basis_inverse_matrix()
+        rows = []
+        for row in relative.rows():
+            encoded = []
+            for value in row:
+                if value._denominator != 1:
+                    raise ArithmeticError(
+                        "denominator clearing did not produce an integral ideal"
+                    )
+                encoded.append(str(int(value._numerator)))
+            rows.append(encoded)
+        return integral, denominator, rows
+
+    def replay_public_arbitrary_ideal_query(
+        self, integral_ideal: Any, integral_rows: list[list[str]], receipt: Any
+    ) -> tuple[tuple[int, ...], Any]:
+        """Replay a quotient witness returned by the resident Rust session.
+
+        If `(alpha) = J*P^q` and the signed relation powers satisfy
+        `q + lift(c) + sum p_i*r_i = 0`, then
+        `alpha*product(beta_i^p_i)` generates `J/representative(c)`.
+        """
+        wrapper = _closed(
+            _canonical_json(receipt, "public ideal query"),
+            {
+                "certificate",
+                "completion",
+                "outcome",
+                "polynomialAscending",
+                "queriedIdealIntegralBasisRows",
+                "schema",
+            },
+            "public ideal query receipt",
+        )
+        if (
+            wrapper["schema"] != PUBLIC_ARBITRARY_IDEAL_QUERY_SCHEMA
+            or wrapper["outcome"] != "complete-conditional-grh-ideal-class"
+            or wrapper["polynomialAscending"] != self._polynomial_ascending
+        ):
+            raise RelationMatrixError(
+                "unsupported public arbitrary-ideal query receipt"
+            )
+        if wrapper["queriedIdealIntegralBasisRows"] != integral_rows:
+            raise RelationMatrixError("arbitrary-ideal query is bound to another ideal")
+        completion = wrapper["completion"]
+        if (
+            not isinstance(completion, dict)
+            or completion.get("schema")
+            != "sagejs.rust-class-group/public-cubic-e2e-receipt-v2"
+            or completion.get("outcome") != "complete-conditional-grh"
+            or completion.get("publicComplete") is not True
+            or completion.get("usesPariInput") is not False
+            or completion.get("usesPreparedFixture") is not False
+            or completion.get("usesFieldAnswersAsInput") is not False
+            or tuple(
+                _positive_decimal(value, "query completion invariant")
+                for value in completion.get("completion", {}).get(
+                    "invariantFactors", ()
+                )
+            )
+            != self.invariants
+        ):
+            raise RelationMatrixError("arbitrary-ideal completion authority mismatch")
+        data = _closed(
+            wrapper["certificate"],
+            {
+                "canonicalRepresentativeFactorBaseExponents",
+                "classCoordinates",
+                "cursorTrials",
+                "factorBaseSize",
+                "maximalOrderEvidence",
+                "presentationZero",
+                "primitiveCandidates",
+                "principalElementIntegralBasisCoordinates",
+                "principalWitnessRelationFactors",
+                "quotientFactorBaseExponents",
+                "smoothQuotientNorms",
+            },
+            "public ideal query certificate",
+        )
+        for name in ("cursorTrials", "primitiveCandidates", "smoothQuotientNorms"):
+            _natural(data[name], "query statistic")
+        if (
+            data["maximalOrderEvidence"]
+            not in (
+                "rust-proved-maximal-order",
+                "upstream-assumed-allowlisted-row6",
+            )
+            or _natural(data["factorBaseSize"], "factor-base size")
+            != self.factor_base_size
+        ):
+            raise RelationMatrixError("arbitrary-ideal query authority mismatch")
+        quotient = _sparse_vector(
+            data["quotientFactorBaseExponents"],
+            self.factor_base_size,
+            "factorBaseIndexZeroBased",
+            "exponent",
+            "query quotient vector",
+        )
+        claimed_raw = data["classCoordinates"]
+        if not isinstance(claimed_raw, list) or len(claimed_raw) != len(
+            self.invariants
+        ):
+            raise RelationMatrixError("class coordinates have the wrong dimension")
+        claimed = tuple(
+            _signed_decimal(value, "class coordinate") for value in claimed_raw
+        )
+        derived = self.class_coordinates(tuple(-value for value in quotient))
+        if claimed != derived or any(
+            value < 0 or value >= modulus
+            for value, modulus in zip(claimed, self.invariants, strict=True)
+        ):
+            raise RelationMatrixError("arbitrary-ideal class coordinates mismatch")
+        if data["presentationZero"] is not all(value == 0 for value in claimed):
+            raise RelationMatrixError("arbitrary-ideal principality state mismatch")
+        canonical_lift = _sparse_vector(
+            data["canonicalRepresentativeFactorBaseExponents"],
+            self.factor_base_size,
+            "indexZeroBased",
+            "exponent",
+            "canonical representative vector",
+        )
+        lift = self.lift_class_coordinates(claimed)
+        if canonical_lift != lift:
+            raise RelationMatrixError(
+                "query canonical representative does not match the presentation lift"
+            )
+        raw_factors = data["principalWitnessRelationFactors"]
+        if not isinstance(raw_factors, list):
+            raise RelationMatrixError("query principal-witness factors must be a list")
+        relation_powers = [0] * self.relation_count
+        relation_elements = []
+        previous = -1
+        for factor in raw_factors:
+            factor = _closed(
+                factor,
+                {
+                    "exponent",
+                    "principalElementIntegralBasisCoordinates",
+                    "relationIndexZeroBased",
+                },
+                "query principal-witness relation factor",
+            )
+            index = _natural(
+                factor["relationIndexZeroBased"], "query relation-factor index"
+            )
+            if not previous < index < self.relation_count:
+                raise RelationMatrixError(
+                    "query relation-factor indices are not ordered"
+                )
+            previous = index
+            power = _signed_decimal(
+                factor["exponent"], "query relation-factor exponent", nonzero=True
+            )
+            coordinates = factor["principalElementIntegralBasisCoordinates"]
+            if not isinstance(coordinates, list) or len(coordinates) != len(
+                self._prepared_basis
+            ):
+                raise RelationMatrixError(
+                    "query relation factor has the wrong dimension"
+                )
+            element = _element_from_prepared_coordinates(
+                self._field,
+                self._prepared_basis,
+                tuple(
+                    _signed_decimal(value, "query relation-factor coordinate")
+                    for value in coordinates
+                ),
+            )
+            row = self._presentation.relation_rows[index]
+            if self._order.ideal(element) != self._ideal_reconstructor.reconstruct(
+                row.dense()
+            ):
+                raise ArithmeticError(
+                    "query relation factor is not the authenticated principal relation"
+                )
+            relation_powers[index] = power
+            relation_elements.append((element, power))
+        target = [quotient[index] for index in range(self.factor_base_size)]
+        for index, value in enumerate(lift):
+            target[index] += value
+        for power, row in zip(
+            relation_powers, self._presentation.relation_rows, strict=True
+        ):
+            for column, value in row.entries:
+                target[column] += power * value
+        if any(target):
+            raise RelationMatrixError("query quotient relation does not replay")
+        raw_alpha = data["principalElementIntegralBasisCoordinates"]
+        if not isinstance(raw_alpha, list) or len(raw_alpha) != len(
+            self._prepared_basis
+        ):
+            raise RelationMatrixError("query principal element has the wrong dimension")
+        alpha = _element_from_prepared_coordinates(
+            self._field,
+            self._prepared_basis,
+            tuple(
+                _signed_decimal(value, "query principal coordinate")
+                for value in raw_alpha
+            ),
+        )
+        quotient_ideal = self._ideal_reconstructor.reconstruct(quotient)
+        if self._order.ideal(alpha) != integral_ideal * quotient_ideal:
+            raise ArithmeticError("query reduction equality failed exact replay")
+        factored = __import__(
+            "sagejs.number_fields.factored_elements", fromlist=["factored_elements"]
+        )
+        generator = factored.FactoredNumberFieldElement(
+            self._field,
+            [(alpha, 1)] + [(element, power) for element, power in relation_elements],
+        )
+        representative = self.representative_ideal(claimed)
+        arithmetic = __import__(
+            "sagejs.number_fields.ideal_arithmetic", fromlist=["ideal_arithmetic"]
+        )
+        expected = arithmetic.ideal_quotient(integral_ideal, representative)
+        if generator.principal_ideal(self._order) != expected:
+            raise ArithmeticError("query quotient witness failed exact replay")
+        return claimed, generator
+
+    def public_ideal_log(self, ideal: Any) -> tuple[tuple[int, ...], Any]:
+        """Return canonical coordinates and an exact quotient witness."""
+        maps = __import__(
+            "sagejs.number_fields.class_group_maps", fromlist=["class_group_maps"]
+        )
+        for position in range(len(self.invariants)):
+            coordinates = tuple(
+                1 if index == position else 0 for index in range(len(self.invariants))
+            )
+            if ideal == self.representative_ideal(coordinates):
+                one = self._order.ideal(1)
+                return coordinates, maps.PrincipalIdealWitness(
+                    one, self._field.one(), source="canonical Rust class representative"
+                )
+        if self._query_callback is None:
+            raise RuntimeError(
+                "the Rust publication has no resident ideal query session"
+            )
+        integral, denominator, rows = self._integral_query_rows(ideal)
+        certificate = self._query_callback(rows, self._query_resources)
+        coordinates, generator = self.replay_public_arbitrary_ideal_query(
+            integral, rows, certificate
+        )
+        if denominator != 1:
+            factored = __import__(
+                "sagejs.number_fields.factored_elements", fromlist=["factored_elements"]
+            )
+            scalar = factored.FactoredNumberFieldElement.from_element(
+                self._field, self._field(denominator)
+            )
+            generator = generator / scalar
+        representative = self.representative_ideal(coordinates)
+        arithmetic = __import__(
+            "sagejs.number_fields.ideal_arithmetic", fromlist=["ideal_arithmetic"]
+        )
+        quotient = arithmetic.ideal_quotient(ideal, representative)
+        witness = maps.PrincipalIdealWitness(
+            quotient, generator, source="authenticated resident Rust ideal query"
+        )
+        if not witness.verify(self._order):
+            raise ArithmeticError("fractional ideal query witness failed exact replay")
+        return coordinates, witness
 
     def lift_class_coordinates(self, coordinates: Sequence[int]) -> tuple[int, ...]:
         """Return the certified standard lift into the factor-base lattice."""
@@ -976,6 +1274,15 @@ def adapt_rust_prepared_cubic_v2_presentation(
         producer_input_id=producer_input_id,
         prepared_result_identity=prepared_identity,
         certificate_identity=certificate_identity,
+        relation_elements=tuple(
+            _element_from_prepared_coordinates(
+                field,
+                _prepared_basis_elements(field, prepared_input),
+                record["integralBasisCoordinates"],
+            )
+            for record in prepared_result["relationLatticeEvidence"]["relationRecords"]
+        ),
+        polynomial_ascending=prepared_result["polynomialAscending"],
     )
     groups = __import__(
         "sagejs.number_fields.class_unit_groups", fromlist=["class_unit_groups"]
@@ -1659,50 +1966,57 @@ def _replay_publication_analytic_completion(
         or published_bdf_terms != bdf_terms
     ):
         raise ArithmeticError("BDF prime-power plan failed independent replay")
-    bdf = factor_base.bdf_bound(
-        field.maximal_order(),
-        max_bound=bdf_bound,
-        _compact_index_primes=True,
-    )
-    if int(bdf.bound) > bdf_bound:
-        raise ArithmeticError("published BDF bound precedes the independent bound")
     evaluator = factor_base._BDFEvaluator(
         field.maximal_order(), bdf_bound, compact_index_primes=True
     )
-    counted_terms, right_side, left_side = evaluator.inequality(
-        bdf_bound,
-        int(field.degree()),
-        signature[0],
-        abs(int(field.maximal_order().discriminant())),
-        512,
-    )
-    if counted_terms != raw_bdf_terms or not right_side.lower > left_side.upper:
-        raise ArithmeticError("independent BDF inequality is not strictly positive")
-    independent_margin = right_side - left_side
+    # The exact splitting map above already covers every prime needed by the
+    # published BDF parameter.  Reuse it instead of scanning the number field
+    # a second time, and verify the published parameter directly: publication
+    # needs a strict valid bound, not an independent proof that it is minimal.
+    evaluator.records = dict(splitting)
+    evaluator.scanned_stop = bdf_bound
     published_margin = _publication_dyadic_ball(
         analytic, data["bdfMargin"], "BDF margin"
     )
     if not analytic.RationalEndpoint(0) < published_margin.lower:
         raise ArithmeticError("published BDF margin is not strictly positive")
-    bdf_interval = analytic.RealBall(
-        analytic.RationalEndpoint(
-            independent_margin.lower.numerator,
-            independent_margin.lower.denominator,
-        ),
-        analytic.RationalEndpoint(
-            independent_margin.upper.numerator,
-            independent_margin.upper.denominator,
-        ),
-        precision_bits=512,
-        rigorous=True,
-        source="independent Sage.js BDF inequality",
-    )
-    try:
-        published_margin.intersection(bdf_interval)
-    except ValueError as error:
-        raise ArithmeticError(
-            "published BDF margin is disjoint from independent replay"
-        ) from error
+    replay_precision = None
+    for bits in (64, 96, 128, 192, 256, 384, 512):
+        counted_terms, right_side, left_side = evaluator.inequality(
+            bdf_bound,
+            int(field.degree()),
+            signature[0],
+            abs(int(field.maximal_order().discriminant())),
+            bits,
+        )
+        if counted_terms != raw_bdf_terms:
+            raise ArithmeticError("independent BDF term count changed during replay")
+        if not right_side.lower > left_side.upper:
+            continue
+        independent_margin = right_side - left_side
+        bdf_interval = analytic.RealBall(
+            analytic.RationalEndpoint(
+                independent_margin.lower.numerator,
+                independent_margin.lower.denominator,
+            ),
+            analytic.RationalEndpoint(
+                independent_margin.upper.numerator,
+                independent_margin.upper.denominator,
+            ),
+            precision_bits=bits,
+            rigorous=True,
+            source="independent Sage.js BDF inequality",
+        )
+        try:
+            published_margin.intersection(bdf_interval)
+        except ValueError as error:
+            raise ArithmeticError(
+                "published BDF margin is disjoint from independent replay"
+            ) from error
+        replay_precision = bits
+        break
+    if replay_precision is None:
+        raise ArithmeticError("independent BDF inequality is not strictly positive")
     return {
         "schema": "sagejs.rust-class-group/analytic-completion-replay-v1",
         "authority": "independent-sagejs-bf-and-bdf-directed-interval-replay",
@@ -1712,7 +2026,7 @@ def _replay_publication_analytic_completion(
         "bfIndex": 1,
         "bfTailBelowOneQuarter": True,
         "bdfBound": bdf_bound,
-        "bdfSmallestIndependentBound": int(bdf.bound),
+        "bdfReplayPrecisionBits": replay_precision,
         "bdfRawTerms": raw_bdf_terms,
         "bdfAggregatedTerms": len(bdf_terms),
         "bdfStrictMargin": True,
@@ -1720,10 +2034,248 @@ def _replay_publication_analytic_completion(
     }
 
 
+class _RustPublicationCompletionEvidence:
+    """Small immutable bridge from detached replay to public proof contracts."""
+
+    def __init__(
+        self,
+        context: Any,
+        units: Sequence[Any],
+        candidate_identity: str,
+        analytic_replay: dict[str, Any],
+    ) -> None:
+        self.units = tuple(units)
+        self.unit_rank = len(self.units)
+        self._context = context
+        self._candidate_identity = candidate_identity
+        self._analytic_replay = _canonical_json(analytic_replay, "analytic replay")
+        self.completion_certificate = {
+            "schema": "sagejs.rust-class-group/public-unit-completion-v1",
+            "publicationCandidateIdentity": candidate_identity,
+            "hypothesis": "conditional-grh",
+        }
+
+    def verify_completion(self) -> bool:
+        return bool(
+            self._context.prepared_result_identity == self._candidate_identity
+            and self._context.verify_factored_units()
+            and self._analytic_replay.get("bfIndex") == 1
+            and self._analytic_replay.get("bdfStrictMargin") is True
+            and self._analytic_replay.get("hypothesis") == "conditional-grh"
+        )
+
+
+class _RustPublicationProofContext:
+    """Replay context for a conditional public class-group proof record."""
+
+    def __init__(
+        self,
+        presentation: Any,
+        candidate_identity: str,
+        artifact_sha256: str,
+        theorem: str,
+        bound: int,
+        relation_count: int,
+        assumption: str,
+        analytic_replay: dict[str, Any],
+    ) -> None:
+        self._presentation = presentation
+        self._candidate_identity = candidate_identity
+        self._artifact_sha256 = artifact_sha256
+        self._theorem = theorem
+        self._bound = int(bound)
+        self._relation_count = int(relation_count)
+        self._assumption = assumption
+        self._analytic_identity = _identity(analytic_replay)
+        self._saturation_evidence = {
+            "schema": "sagejs.rust-class-group/public-saturation-replay-v1",
+            "publicationCandidateIdentity": candidate_identity,
+            "analyticReplayIdentity": self._analytic_identity,
+            "index": 1,
+        }
+
+    def verify_saturation_record(self, record: Any) -> bool:
+        return bool(
+            record.complete
+            and record.index_bound == 1
+            and record.evidence == self._saturation_evidence
+        )
+
+    def verify_conditional_grh_record(self, record: Any, presentation: Any) -> bool:
+        return bool(
+            presentation is not None
+            and tuple(presentation.invariants()) == tuple(self._presentation.invariants)
+            and self._presentation.verify()
+            and record.theorem == self._theorem
+            and record.bound == (self._bound, 1)
+            and record.relation_count == self._relation_count
+            and record.assumption == self._assumption
+            and self.verify_saturation_record(record.saturation)
+        )
+
+    def conditional_evidence_payload(self) -> dict[str, Any]:
+        return {
+            "schema": "sagejs.rust-class-group/public-conditional-proof-evidence-v1",
+            "publicationCandidateIdentity": self._candidate_identity,
+            "artifactSha256": self._artifact_sha256,
+            "analyticReplayIdentity": self._analytic_identity,
+        }
+
+    def verify_conditional_evidence_payload(
+        self, payload: Any, record: Any, group: Any, *, cancelled: Any = None
+    ) -> bool:
+        del cancelled
+        try:
+            return bool(
+                payload.get("conditional_evidence")
+                == self.conditional_evidence_payload()
+                and self.verify_conditional_grh_record(record, group)
+            )
+        except (AttributeError, TypeError, ValueError, ArithmeticError):
+            return False
+
+
+def _promote_replayed_publication(
+    field: Any,
+    presentation: Any,
+    context: RustCompactPresentationReplay,
+    unit_group: Any,
+    relation_elements: Sequence[Any],
+    order_combinations: Sequence[Sequence[int]],
+    factor_base_policy: dict[str, Any],
+    analytic_replay: dict[str, Any],
+    candidate_identity: str,
+    artifact_sha256: str,
+) -> tuple[Any, Any, Any]:
+    """Construct ordinary public objects from already authenticated pieces."""
+    maps = __import__(
+        "sagejs.number_fields.class_group_maps", fromlist=["class_group_maps"]
+    )
+    proof = __import__(
+        "sagejs.number_fields.class_group_proof", fromlist=["class_group_proof"]
+    )
+    groups = __import__(
+        "sagejs.number_fields.class_unit_groups", fromlist=["class_unit_groups"]
+    )
+    factored = __import__(
+        "sagejs.number_fields.factored_elements", fromlist=["factored_elements"]
+    )
+    policy = _closed(
+        factor_base_policy,
+        {"checkingBound", "hypothesis", "relationBound"},
+        "publication factor-base policy",
+    )
+    bound = _positive_natural(policy["checkingBound"], "factor-base checking bound")
+    _positive_natural(policy["relationBound"], "factor-base relation bound")
+    if (
+        not isinstance(policy["hypothesis"], str)
+        or "GRH" not in policy["hypothesis"].upper()
+    ):
+        raise RelationMatrixError(
+            "publication factor-base policy lost its GRH hypothesis"
+        )
+    theorem = "Belabas--Diaz y Diaz--Friedman strict factor-base inequality"
+    assumption = (
+        "GRH for all unramified Hecke L-functions of class-group characters AND "
+        "GRH for the Dedekind-zeta residue bound"
+    )
+    generator_ideals = tuple(
+        context.class_generator_ideal(index)
+        for index in range(len(presentation.invariants))
+    )
+    witnesses = []
+    for invariant, ideal, combination in zip(
+        presentation.invariants, generator_ideals, order_combinations, strict=True
+    ):
+        generator = factored.FactoredNumberFieldElement(
+            field,
+            (
+                (element, coefficient)
+                for element, coefficient in zip(
+                    relation_elements, combination, strict=True
+                )
+                if coefficient
+            ),
+        )
+        relation_ideal = ideal**invariant
+        witness = maps.PrincipalIdealWitness(
+            relation_ideal,
+            generator,
+            source="authenticated Rust generator-order relation combination",
+        )
+        if not witness.verify(field.maximal_order()):
+            raise ArithmeticError(
+                "Rust generator-order witness failed exact ideal replay"
+            )
+        witnesses.append(witness)
+    proof_context = _RustPublicationProofContext(
+        presentation,
+        candidate_identity,
+        artifact_sha256,
+        theorem,
+        bound,
+        context.relation_count,
+        assumption,
+        analytic_replay,
+    )
+    saturation = proof.SaturationProofRecord(
+        (),
+        (),
+        index_bound=1,
+        complete=True,
+        evidence=proof_context._saturation_evidence,
+    )
+    proof_record = proof.ConditionalGRHProofRecord(
+        theorem,
+        (bound, 1),
+        relation_count=context.relation_count,
+        assumption=assumption,
+        saturation=saturation,
+        analytic_index_one=True,
+    )
+    class_group = maps.IdealClassGroup(
+        field.maximal_order(),
+        presentation.invariants,
+        generator_ideals,
+        witnesses,
+        context.public_ideal_log,
+        proof_status=groups.EXACT_RELATIONS_CONDITIONAL_GRH,
+        algorithm="rust-public-cubic",
+        factor_base_theorem=theorem,
+        factor_base_bound=(bound, 1),
+        presentation_evidence=presentation,
+        proof_record=proof_record,
+        proof_context=proof_context,
+        relation_count=context.relation_count,
+    )
+    unit_evidence = _RustPublicationCompletionEvidence(
+        context, unit_group.generators, candidate_identity, analytic_replay
+    )
+    complete_units = groups.UnitGroupComputation(
+        unit_group.torsion,
+        unit_group.generators,
+        unit_group.unit_rank,
+        complete=True,
+        regulator=unit_group.regulator_enclosure,
+        reason="exact compact units with independently replayed conditional index one",
+        proof_status=groups.EXACT_RELATIONS_CONDITIONAL_GRH,
+        completion_evidence=unit_evidence,
+    )
+    if (
+        class_group.verify() is not True
+        or complete_units.verify_completion() is not True
+    ):
+        raise ArithmeticError("promoted Rust public objects failed final proof replay")
+    return class_group, complete_units, proof_context
+
+
 def adapt_rust_public_cubic_publication_candidate(
     field: Any,
     publication_candidate: dict[str, Any],
     artifact_sha256: str,
+    *,
+    query_callback: Any = None,
+    query_resources: Any = None,
 ) -> Any:
     """Independently replay the detached quotient and principal relations.
 
@@ -2069,6 +2621,17 @@ def adapt_rust_public_cubic_publication_candidate(
         field, expected_class_number, unit_group, top["analyticCompletion"]
     )
     candidate_identity = _identity(candidate)
+    relation_elements = tuple(
+        _element_from_prepared_coordinates(
+            field,
+            publication_basis,
+            tuple(
+                _signed_decimal(value, "principal coordinate")
+                for value in record["integralBasisCoordinates"]
+            ),
+        )
+        for record in old_records
+    )
     context = RustCompactPresentationReplay(
         presentation,
         field,
@@ -2080,15 +2643,23 @@ def adapt_rust_public_cubic_publication_candidate(
         certificate_identity="sha256:" + artifact_sha256,
         factored_units=unit_group.generators,
         unit_certificates=unit_certificates,
+        relation_elements=relation_elements,
+        query_callback=query_callback,
+        query_resources=query_resources,
+        polynomial_ascending=top["field"]["polynomialAscending"],
     )
     groups = __import__(
         "sagejs.number_fields.class_unit_groups", fromlist=["class_unit_groups"]
     )
-    remaining = ("public-ideal-class-group-and-unit-group-construction",)
+    remaining = (
+        ()
+        if query_callback is not None
+        else ("resident-arbitrary-ideal-query-session",)
+    )
     diagnostics = {
         "schema": "sagejs.rust-class-group/publication-candidate-replay-v1",
         "automaticDispatch": False,
-        "publicResultSupported": False,
+        "publicResultSupported": query_callback is not None,
         "artifactSha256": artifact_sha256,
         "publicationCandidateIdentity": candidate_identity,
         "fieldReplay": field_replay,
@@ -2099,36 +2670,70 @@ def adapt_rust_public_cubic_publication_candidate(
         "analyticCompletionReplay": analytic_replay,
         "remainingEvidenceGaps": list(remaining),
     }
+    common_stages = (
+        groups.ClassUnitStage(
+            "rust-detached-publication-class-quotient-replay",
+            "complete",
+            {
+                "factorBaseSize": columns,
+                "relationCount": row_count,
+                "classNumber": expected_class_number,
+                "artifactSha256": artifact_sha256,
+            },
+        ),
+        groups.ClassUnitStage(
+            "sagejs-detached-compact-unit-replay", "complete", unit_replay
+        ),
+        groups.ClassUnitStage(
+            "sagejs-detached-regulator-replay", "complete", regulator_replay
+        ),
+        groups.ClassUnitStage(
+            "sagejs-detached-analytic-replay", "complete", analytic_replay
+        ),
+    )
+    if query_callback is not None:
+        class_group, complete_units, proof_context = _promote_replayed_publication(
+            field,
+            presentation,
+            context,
+            unit_group,
+            relation_elements,
+            order_combinations,
+            presentation_data["factorBasePolicy"],
+            analytic_replay,
+            candidate_identity,
+            artifact_sha256,
+        )
+        diagnostics["automaticDispatch"] = True
+        diagnostics["remainingEvidenceGaps"] = []
+        return groups.ClassUnitComputation(
+            field,
+            proof_status=groups.EXACT_RELATIONS_CONDITIONAL_GRH,
+            complete=True,
+            reason="complete conditional-GRH Rust cubic class and unit computation",
+            algorithm="rust-public-cubic",
+            stages=common_stages
+            + (
+                groups.ClassUnitStage(
+                    "sagejs-public-class-unit-construction",
+                    "complete",
+                    {"residentIdealQuery": True, "proofPayloadReplay": True},
+                ),
+            ),
+            class_group=class_group,
+            unit_group=complete_units,
+            tentative_invariants=invariants,
+            context=context,
+            diagnostics=diagnostics,
+        )
     return groups.ClassUnitComputation(
         field,
         proof_status=groups.INCOMPLETE_RESOURCE_LIMIT,
         complete=False,
         reason="the detached class/unit mathematics is independently replayed, but public group construction and arbitrary-ideal dispatch remain unfinished",
         algorithm="rust-public-cubic-publication-candidate-experimental",
-        stages=(
-            groups.ClassUnitStage(
-                "rust-detached-publication-class-quotient-replay",
-                "complete",
-                {
-                    "factorBaseSize": columns,
-                    "relationCount": row_count,
-                    "classNumber": expected_class_number,
-                    "artifactSha256": artifact_sha256,
-                },
-            ),
-            groups.ClassUnitStage(
-                "sagejs-detached-compact-unit-replay",
-                "complete",
-                unit_replay,
-            ),
-            groups.ClassUnitStage(
-                "sagejs-detached-regulator-replay",
-                "complete",
-                regulator_replay,
-            ),
-            groups.ClassUnitStage(
-                "sagejs-detached-analytic-replay", "complete", analytic_replay
-            ),
+        stages=common_stages
+        + (
             groups.ClassUnitStage(
                 "sagejs-public-class-unit-construction",
                 "incomplete",
@@ -2144,6 +2749,7 @@ def adapt_rust_public_cubic_publication_candidate(
 
 __all__ = [
     "ARBITRARY_IDEAL_QUERY_SCHEMA",
+    "PUBLIC_ARBITRARY_IDEAL_QUERY_SCHEMA",
     "PUBLICATION_CANDIDATE_SCHEMA",
     "RustCompactPresentationReplay",
     "adapt_rust_public_cubic_publication_candidate",

@@ -14,14 +14,15 @@ use sagejs_pari_class_group_rust_experiment::{
     CubicConditionalCompletionOptions, CubicPresentationCandidateLimits,
     GrhConditionalCompleteCubicClassGroup, MaximalOrderEvidenceStatus, NormalFormLimits,
     PreparedContinuationLimits, PreparedCubicRelationCollector, PreparedIdealWorkspace,
-    PresentationZeroState, PublicCubicPreparationLimits,
-    authenticate_compact_cubic_presentation_candidate_with_cache,
-    authenticate_cubic_presentation_candidate,
+    PresentationZeroState, PrincipalElementWitnessState, PublicCubicPreparationLimits,
+    VerifiedCompactPresentation, authenticate_compact_cubic_presentation_candidate_with_cache,
+    authenticate_compact_presentation, authenticate_cubic_presentation_candidate,
     complete_cubic_class_group_conditionally_with_context,
     prepare_cubic_conditional_completion_context, prepare_monic_cubic,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
+use std::sync::OnceLock;
 use std::time::Instant;
 
 pub const REQUEST_SCHEMA: &str = "sagejs.rust-class-group/public-cubic-e2e-request-v2";
@@ -103,12 +104,35 @@ pub struct SparseQuotientExponent {
 
 #[derive(Clone, Debug, Serialize, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
+pub struct SparseSignedExponent {
+    pub index_zero_based: usize,
+    pub exponent: String,
+}
+
+#[derive(Clone, Debug, Serialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct CompactPrincipalRelationFactor {
+    pub relation_index_zero_based: usize,
+    pub exponent: String,
+    pub principal_element_integral_basis_coordinates: [String; 3],
+}
+
+#[derive(Clone, Debug, Serialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct IdealQueryCertificateReceipt {
     pub maximal_order_evidence: &'static str,
     pub factor_base_size: usize,
     pub principal_element_integral_basis_coordinates: [String; 3],
     pub quotient_factor_base_exponents: Vec<SparseQuotientExponent>,
     pub class_coordinates: Vec<String>,
+    /// The canonical representative is the product of the published class
+    /// generator lifts to these powers. Its class coordinates are exactly
+    /// `class_coordinates`.
+    pub canonical_representative_factor_base_exponents: Vec<SparseSignedExponent>,
+    /// Compact exact generator for `input / canonical_representative`.
+    /// If relation `j` has authenticated principal generator `beta_j`, then
+    /// this represents `reduction_element * product beta_j^exponent[j]`.
+    pub principal_witness_relation_factors: Vec<CompactPrincipalRelationFactor>,
     pub presentation_zero: bool,
     pub cursor_trials: usize,
     pub primitive_candidates: usize,
@@ -246,6 +270,8 @@ pub enum QualificationError {
 pub struct QualifiedCubic {
     pub receipt: Receipt,
     completed: GrhConditionalCompleteCubicClassGroup,
+    compact_replay_limits: CompactPresentationLimits,
+    compact_replay: OnceLock<VerifiedCompactPresentation>,
 }
 
 fn integer_strings(values: impl IntoIterator<Item = impl ToString>) -> Vec<String> {
@@ -493,6 +519,25 @@ enum CandidateAuthenticationRoute {
 // faster for a 7-by-21 presentation (25,382 estimated multiply-adds), while it
 // is slower for a 4-by-17 presentation (11,926 estimated multiply-adds).
 const DENSE_SMITH_PREFERRED_MULTIPLY_ADDS: u64 = 20_000;
+
+fn compact_limits(resources: &Resources) -> CompactPresentationLimits {
+    CompactPresentationLimits {
+        maximum_generators: resources.maximum_compact_generators,
+        maximum_surplus_rows: resources.maximum_compact_surplus_rows,
+        maximum_saturation_minor_trials: resources.maximum_compact_saturation_minor_trials,
+        maximum_dependency_entries: resources.maximum_compact_dependency_entries,
+        maximum_invariant_factors: resources.maximum_compact_generators,
+        maximum_map_entries: resources.maximum_normal_form_entries,
+        maximum_map_coefficient_bits: resources.maximum_compact_target_coefficient_bits,
+        maximum_general_smith_bytes: resources
+            .maximum_normal_form_entries
+            .checked_mul(std::mem::size_of::<i64>())
+            .unwrap_or(usize::MAX),
+        maximum_general_smith_transform_work: resources.maximum_verification_multiply_adds,
+        maximum_verification_multiply_adds: resources.maximum_verification_multiply_adds,
+        maximum_target_coefficient_bits: resources.maximum_compact_target_coefficient_bits,
+    }
+}
 
 fn dense_verification_multiply_adds(generators: usize, relations: usize) -> Option<u64> {
     let g = u64::try_from(generators).ok()?;
@@ -766,35 +811,7 @@ pub fn qualify_with_state(request: Request) -> Result<QualifiedCubic, Qualificat
                         &attempt_prepared,
                         collected,
                         candidate_limits,
-                        CompactPresentationLimits {
-                            maximum_generators: request.resources.maximum_compact_generators,
-                            maximum_surplus_rows: request.resources.maximum_compact_surplus_rows,
-                            maximum_saturation_minor_trials: request
-                                .resources
-                                .maximum_compact_saturation_minor_trials,
-                            maximum_dependency_entries: request
-                                .resources
-                                .maximum_compact_dependency_entries,
-                            maximum_invariant_factors: request.resources.maximum_compact_generators,
-                            maximum_map_entries: request.resources.maximum_normal_form_entries,
-                            maximum_map_coefficient_bits: request
-                                .resources
-                                .maximum_compact_target_coefficient_bits,
-                            maximum_general_smith_bytes: request
-                                .resources
-                                .maximum_normal_form_entries
-                                .checked_mul(std::mem::size_of::<i64>())
-                                .unwrap_or(usize::MAX),
-                            maximum_general_smith_transform_work: request
-                                .resources
-                                .maximum_verification_multiply_adds,
-                            maximum_verification_multiply_adds: request
-                                .resources
-                                .maximum_verification_multiply_adds,
-                            maximum_target_coefficient_bits: request
-                                .resources
-                                .maximum_compact_target_coefficient_bits,
-                        },
+                        compact_limits(&request.resources),
                         compact_continuation_cache.take(),
                     )
                     .map_err(|error| {
@@ -1000,9 +1017,12 @@ pub fn qualify_with_state(request: Request) -> Result<QualifiedCubic, Qualificat
             total_to_sealed_result,
         },
     };
+    let compact_replay_limits = compact_limits(&request.resources);
     Ok(QualifiedCubic {
         receipt,
         completed: final_completed.expect("a final receipt retains its sealed result"),
+        compact_replay_limits,
+        compact_replay: OnceLock::new(),
     })
 }
 
@@ -1059,8 +1079,130 @@ impl QualifiedCubic {
         self.completed
             .replay_ideal_class_certificate(&ideal, &certificate, limits, &mut workspace)
             .map_err(|error| QualificationError::IdealQuery(format!("{error:?}")))?;
-
         let factor_base_size = certificate.reduction.quotient_exponents.len();
+
+        // Choose the canonical representative attached to the published Smith
+        // generators: coordinate c_i is lifted by the authenticated preimage
+        // of the i-th nontrivial invariant-factor generator.  Since
+        // (alpha) = input * P^q, the vector q + lift(c) is a verified relation
+        // combination.  Thus
+        //
+        // input / P^lift(c) = (alpha * product beta_j^(-a_j)),
+        //
+        // where A*a = q + lift(c) and (beta_j) is relation column j.
+        let presentation = self.completed.presentation();
+        let coordinates = certificate.class_map.coordinates.values();
+        let generator_orders = presentation.generator_orders();
+        if generator_orders.len() != coordinates.len()
+            || generator_orders
+                .iter()
+                .zip(self.completed.invariant_factors())
+                .any(|(order, invariant)| &order.invariant_factor != invariant)
+        {
+            return Err(QualificationError::IdealQuery(
+                "canonical class-generator lifts do not match the sealed invariants".to_owned(),
+            ));
+        }
+        let mut representative = vec![Integer::new(); factor_base_size];
+        for (coordinate, order) in coordinates.iter().zip(generator_orders) {
+            if order.factor_base_exponents.len() != factor_base_size {
+                return Err(QualificationError::IdealQuery(
+                    "canonical class-generator lift has the wrong factor-base width".to_owned(),
+                ));
+            }
+            for (target, lift) in representative.iter_mut().zip(&order.factor_base_exponents) {
+                *target += Integer::from(coordinate * lift);
+            }
+        }
+        let relation_target = certificate
+            .reduction
+            .quotient_exponents
+            .iter()
+            .zip(&representative)
+            .map(|(quotient, lift)| Integer::from(Integer::from(*quotient) + lift))
+            .collect::<Vec<_>>();
+        let relation_coefficients = match presentation
+            .class_map()
+            .presentation()
+            .presentation_zero_state(&relation_target)
+        {
+            Ok(PresentationZeroState::ZeroByVerifiedRelations {
+                relation_combination,
+                principal_element:
+                    PrincipalElementWitnessState::Identity
+                    | PrincipalElementWitnessState::NeedsRelationPrincipalElements { .. },
+            }) => relation_combination.coefficients().to_vec(),
+            Err(sagejs_pari_class_group_rust_experiment::ClassMapError::RelationCombinationUnavailable) => {
+                // Compact maps intentionally discard their live solver. Lazily
+                // rebuild it once per resident field from the sealed transcript
+                // under the original explicit bounds. Every solve still
+                // independently replays its answer before returning it.
+                if self.compact_replay.get().is_none() {
+                    let compact = authenticate_compact_presentation(
+                        presentation.collected(),
+                        self.compact_replay_limits,
+                    )
+                    .map_err(|error| QualificationError::IdealQuery(format!("{error:?}")))?;
+                    let _ = self.compact_replay.set(compact);
+                }
+                self.compact_replay
+                    .get()
+                    .expect("the compact replay solver was initialized")
+                    .solver_data()
+                    .solve_targets(&relation_target)
+                .map_err(|error| QualificationError::IdealQuery(format!("{error:?}")))?
+            }
+            Ok(_) => {
+                return Err(QualificationError::IdealQuery(
+                    "canonical representative does not match the queried class".to_owned(),
+                ));
+            }
+            Err(error) => return Err(QualificationError::IdealQuery(format!("{error:?}"))),
+        };
+        if relation_coefficients.len() != presentation.principal_relations().len() {
+            return Err(QualificationError::IdealQuery(
+                "principal witness has the wrong relation width".to_owned(),
+            ));
+        }
+        let coefficient_bit_limit = self.compact_replay_limits.maximum_target_coefficient_bits;
+        if representative
+            .iter()
+            .chain(&relation_coefficients)
+            .any(|value| {
+                usize::try_from(value.significant_bits()).unwrap_or(usize::MAX)
+                    > coefficient_bit_limit
+            })
+        {
+            return Err(QualificationError::IdealQuery(
+                "principal witness exceeds the configured coefficient bit limit".to_owned(),
+            ));
+        }
+        let canonical_representative_factor_base_exponents = representative
+            .iter()
+            .enumerate()
+            .filter(|(_, exponent)| *exponent != &0)
+            .map(|(index_zero_based, exponent)| SparseSignedExponent {
+                index_zero_based,
+                exponent: exponent.to_string(),
+            })
+            .collect();
+        let principal_witness_relation_factors = relation_coefficients
+            .iter()
+            .enumerate()
+            .filter(|(_, coefficient)| *coefficient != &0)
+            .map(
+                |(relation_index_zero_based, coefficient)| CompactPrincipalRelationFactor {
+                    relation_index_zero_based,
+                    exponent: Integer::from(-coefficient).to_string(),
+                    principal_element_integral_basis_coordinates: presentation
+                        .principal_relations()[relation_index_zero_based]
+                        .principal_element
+                        .clone()
+                        .map(|coordinate| coordinate.to_string()),
+                },
+            )
+            .collect();
+
         let quotient_factor_base_exponents = certificate
             .reduction
             .quotient_exponents
@@ -1107,6 +1249,8 @@ impl QualifiedCubic {
                     .iter()
                     .map(Integer::to_string)
                     .collect(),
+                canonical_representative_factor_base_exponents,
+                principal_witness_relation_factors,
                 presentation_zero,
                 cursor_trials: statistics.cursor_trials,
                 primitive_candidates: statistics.primitive_candidates,
@@ -1247,6 +1391,50 @@ mod tests {
             )
             .unwrap();
         assert_eq!(resident_certificate.class_coordinates, ["1"]);
+        let replays_principal_witness = |certificate: &IdealQueryCertificateReceipt| {
+            let presentation = qualified.completed.presentation();
+            let width = presentation.collected().factor_base().exact_ideals.len();
+            let mut relation_target = vec![Integer::new(); width];
+            for term in &certificate.quotient_factor_base_exponents {
+                relation_target[term.factor_base_index_zero_based] +=
+                    term.exponent.parse::<Integer>().unwrap();
+            }
+            for term in &certificate.canonical_representative_factor_base_exponents {
+                relation_target[term.index_zero_based] += term.exponent.parse::<Integer>().unwrap();
+            }
+            for term in &certificate.principal_witness_relation_factors {
+                let power = term.exponent.parse::<Integer>().unwrap();
+                let relation = &presentation.principal_relations()[term.relation_index_zero_based];
+                assert_eq!(
+                    term.principal_element_integral_basis_coordinates,
+                    relation
+                        .principal_element
+                        .clone()
+                        .map(|coordinate| coordinate.to_string())
+                );
+                for (target, exponent) in relation_target.iter_mut().zip(&relation.exponents) {
+                    *target += Integer::from(&power * *exponent);
+                }
+            }
+            relation_target.iter().all(|value| value == &0)
+        };
+        assert!(replays_principal_witness(&resident_certificate));
+        let mut mutated_witness = resident_certificate.clone();
+        if let Some(term) = mutated_witness
+            .canonical_representative_factor_base_exponents
+            .first_mut()
+        {
+            term.exponent =
+                Integer::from(term.exponent.parse::<Integer>().unwrap() + 1).to_string();
+        } else {
+            mutated_witness
+                .canonical_representative_factor_base_exponents
+                .push(SparseSignedExponent {
+                    index_zero_based: 0,
+                    exponent: "1".to_owned(),
+                });
+        }
+        assert!(!replays_principal_witness(&mutated_witness));
         let receipt = qualify_ideal_query(IdealQueryRequest {
             schema: IDEAL_QUERY_REQUEST_SCHEMA.to_owned(),
             completion_request,
@@ -1498,8 +1686,8 @@ mod tests {
         input.polynomial_ascending = ["-29".into(), "-30".into(), "-8".into(), "1".into()];
         let receipt = qualify(input).unwrap();
         assert!(receipt.public_complete);
-        let candidate = receipt.candidate.unwrap();
-        let completion = receipt.completion.unwrap();
+        let candidate = receipt.candidate.as_ref().unwrap();
+        let completion = receipt.completion.as_ref().unwrap();
         assert_eq!(candidate.class_number, "2");
         assert_eq!(candidate.invariant_factors, ["2"]);
         assert_eq!(candidate.generator_order_witnesses, 1);
@@ -1545,20 +1733,21 @@ mod tests {
         input.resources.logarithm_precision_bits = 8_192;
         input.resources.replay_precision_bits = 4_096;
         input.resources.analytic_precision_bits = 512;
-        let receipt = qualify(input).unwrap();
+        let qualified = qualify_with_state(input).unwrap();
+        let receipt = &qualified.receipt;
         assert!(receipt.public_complete);
         assert_eq!(receipt.continuation_attempts, None);
         assert_eq!(receipt.preparation.equation_order_index, "3");
         assert_eq!(receipt.relations.factor_base_size, 1_130);
         assert_eq!(receipt.relations.relation_count, 1_144);
-        let candidate = receipt.candidate.unwrap();
+        let candidate = receipt.candidate.as_ref().unwrap();
         assert_eq!(candidate.invariant_factors, ["2", "2"]);
         assert_eq!(candidate.class_number, "4");
         assert_eq!(
             candidate.authority,
             "authenticated-collector-sealed-compact-mixed-invariant-presentation"
         );
-        let completion = receipt.completion.unwrap();
+        let completion = receipt.completion.as_ref().unwrap();
         assert_eq!(completion.class_number, "4");
         assert_eq!(completion.attempted_precision_levels.len(), 2);
         assert_eq!(
@@ -1570,5 +1759,42 @@ mod tests {
         );
         assert_eq!(completion.unit_rank, 2);
         assert!(completion.sealed_evidence_verified);
+
+        let factor_base = qualified.completed.presentation().collected().factor_base();
+        let queried = factor_base
+            .exact_ideals
+            .iter()
+            .enumerate()
+            .find(|(index, _)| {
+                let mut exponents = vec![Integer::new(); factor_base.exact_ideals.len()];
+                exponents[*index] = Integer::from(1);
+                !qualified
+                    .completed
+                    .presentation()
+                    .class_map()
+                    .presentation()
+                    .coordinates(&exponents)
+                    .unwrap()
+                    .is_zero()
+            })
+            .map(|(_, ideal)| {
+                ideal
+                    .basis_rows()
+                    .clone()
+                    .map(|row| row.map(|entry| entry.to_string()))
+            })
+            .unwrap();
+        let (_, witness) = qualified
+            .query_integral_ideal(
+                &queried,
+                IdealQueryResources {
+                    embedding_precision_bits: 320,
+                    maximum_candidates: 2_000,
+                    maximum_valuation: 64,
+                },
+            )
+            .unwrap();
+        assert!(!witness.class_coordinates.iter().all(|value| value == "0"));
+        assert!(qualified.compact_replay.get().is_some());
     }
 }

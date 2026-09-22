@@ -2,6 +2,8 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 const test = require("node:test");
 const { createSage } = require("../dist/tools/kernel.js");
 
@@ -18,6 +20,25 @@ const verifiedClaims = [
   "projectedDependencyIndexDividesSquareDeterminant",
   "standardGeneratorLiftsMapToCoordinateBasis",
 ];
+
+test("publication analytic replay reuses splitting and records adaptive precision", () => {
+  const source = fs.readFileSync(
+    path.join(
+      __dirname,
+      "../src/lib/sagejs/number_fields/rust_class_group_presentation.py",
+    ),
+    "utf8",
+  );
+  const start = source.indexOf("def _replay_publication_analytic_completion(");
+  const stop = source.indexOf("\n\nclass _RustPublicationCompletionEvidence", start);
+  assert.notEqual(start, -1);
+  assert.notEqual(stop, -1);
+  const replay = source.slice(start, stop);
+  assert.equal(replay.includes("factor_base.bdf_bound("), false);
+  assert.equal(replay.includes("evaluator.records = dict(splitting)"), true);
+  assert.match(replay, /for bits in \(64, 96, 128, 192, 256, 384, 512\):/);
+  assert.equal(replay.includes('"bdfReplayPrecisionBits": replay_precision'), true);
+});
 
 function preparedResult() {
   return {
