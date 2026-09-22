@@ -14,7 +14,7 @@
     },
     "build_rs": {
       "path": "packages/class-groups/build.rs",
-      "sha256": "070d17fbdfc7c14e7e242aa5e41e958cdc638d1e4777c3e9f6424ccf691d8f34"
+      "sha256": "be9c98e3463bb3e67c181fd994bd30ac3a0bb8875eae46fcd56943b6eaba85c3"
     },
     "native_dependency_declarations": [
       {
@@ -269,7 +269,7 @@
     },
     {
       "path": "packages/class-groups/src/flint_normal_form.c",
-      "sha256": "9bff5e701c828f27641c447672871562188871cc4311c9b54e2978aa3ec408cf",
+      "sha256": "c17ccfb1fa3453005afcdb76e2bf321582ac13b9cf8f26908719d7e275d41ad3",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
@@ -279,7 +279,7 @@
     },
     {
       "path": "packages/class-groups/src/flint_normal_form.rs",
-      "sha256": "e34eda1552e637ed5f06b66caca9ef18a69ccee21e455cee6de293a57154c6a6",
+      "sha256": "27438bff029c9e538bd616544a8034d98e7551775e78d2df69e2eb27b449495e",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",

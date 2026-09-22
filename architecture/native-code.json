@@ -3369,6 +3369,20 @@
       "provenance_mapping_status": "not-applicable"
     },
     {
+      "path": "packages/class-groups/tests/ffi_safety.rs",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "distribution",
+      "rationale": "Production-package qualification tests for malformed-input rejection, repeated FFI lifecycle cleanup, and the single GMP/MPFR allocator-domain invariant.",
+      "rust_role": "qualification-harness",
+      "qualification_status": "experimental-qualification",
+      "provenance_class": "qualification-harness",
+      "distribution_status": "qualification-only",
+      "safety_review": "not-applicable",
+      "safety_rationale": "The harness contains no unsafe block or ABI declaration; it exercises the separately audited production bridge only through its safe public Rust API.",
+      "provenance_mapping_status": "not-applicable"
+    },
+    {
       "path": "packages/class-groups/tests/index_prime_decomposition.rs",
       "category": "benchmark-reference",
       "review_status": "experimental-pending-review",
