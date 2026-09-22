@@ -1,0 +1,110 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "class-group-wasm-product",
+  "title": "Production class-group Wasm artifact",
+  "lane": "distribution",
+  "status": "review",
+  "owner": "user",
+  "objective": "Package the qualified class-group Wasm reactor as an authenticated lazy Sage.js specialist artifact with a default factory, 256 MiB bound, and real package/browser lifecycle tests",
+  "base_commit": "ab85769a9ab00e2d3d466aaa64410671f098d9ff",
+  "claims": [
+    "packages/flint-wasm/class-group-core.mjs",
+    "packages/flint-wasm/class-group-core-loader.mjs",
+    "packages/flint-wasm/class-group-core-worker.mjs",
+    "packages/flint-wasm/class-group-core.d.ts",
+    "packages/flint-wasm/scripts/build.cjs",
+    "packages/flint-wasm/release/production-layout.json",
+    "packages/flint-wasm/release/production-capabilities.json",
+    "packages/flint-wasm/test/class-group-core.test.mjs",
+    "packages/flint-wasm/test/class-group-core-product.test.mjs"
+  ],
+  "dependencies": [
+    "class-group-rust-core"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Qualified Node, Chromium, Firefox, and WebKit row-6 receipts"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea"
+  ],
+  "runs": [
+    {
+      "command": "node --test packages/flint-wasm/test/class-group-core.test.mjs packages/flint-wasm/test/class-group-core-product.test.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.132,
+      "started_at": "2026-09-22T06:11:55.723Z",
+      "commit": "ab85769a9ab00e2d3d466aaa64410671f098d9ff",
+      "workspace_fingerprint": "3c1c4877622464951d3a0d5600be71309db48c3ccf42c99f29b0e8697181238b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.726,
+      "started_at": "2026-09-22T06:11:56.661Z",
+      "commit": "ab85769a9ab00e2d3d466aaa64410671f098d9ff",
+      "workspace_fingerprint": "3c1c4877622464951d3a0d5600be71309db48c3ccf42c99f29b0e8697181238b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.495,
+      "started_at": "2026-09-22T06:12:07.115Z",
+      "commit": "ab85769a9ab00e2d3d466aaa64410671f098d9ff",
+      "workspace_fingerprint": "3c1c4877622464951d3a0d5600be71309db48c3ccf42c99f29b0e8697181238b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 125.112,
+      "started_at": "2026-09-22T06:13:30.232Z",
+      "commit": "ab85769a9ab00e2d3d466aaa64410671f098d9ff",
+      "workspace_fingerprint": "3c1c4877622464951d3a0d5600be71309db48c3ccf42c99f29b0e8697181238b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test packages/flint-wasm/test/class-group-core.test.mjs packages/flint-wasm/test/class-group-core-product.test.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.135,
+      "started_at": "2026-09-22T06:17:20.102Z",
+      "commit": "ab85769a9ab00e2d3d466aaa64410671f098d9ff",
+      "workspace_fingerprint": "3891ed456d072946e4efe2e7c0eb6fccc80ed84e89aef4adb28d06cb351ad3b5",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Packages a discoverable class-group reactor as a lazy authenticated flint-wasm specialist, generates its receipt in the normal build, enforces a 256-page initial/4096-page maximum memory contract in both build and runtime loaders, provides default packaged artifact URLs, and hardens initialization abort, worker crash recovery, session invalidation, and lifecycle tests.",
+    "risks": [
+      "The dependent class-group-rust-core lane does not yet emit packages/class-groups/dist/class-group-core.wasm, so the real product-worker test is intentionally skipped and the full flint-wasm build fails closed until that reactor lands.",
+      "The architecture-owned Wasm capability registry must classify the new conditional-cubic specialist before production-capabilities can advertise it; this lane leaves the module capability list empty rather than bypassing the reject-unclassified gate.",
+      "pnpm test:changed reached pnpm build and stopped on a pre-existing numerical production-manifest toolchain identity mismatch. pnpm test:portable ran 205 of 229 files successfully, then stopped on the base branch's stale modular q-expansion freeze for architecture/package-graph.json. These are outside this lane's claims."
+    ],
+    "next_steps": [
+      "After class-group-rust-core lands, build the reactor at packages/class-groups/dist/class-group-core.wasm with ABI v1 and memory initial=256/max=4096 pages, then rerun class-group-core-product.test.mjs without a skip.",
+      "The integration lane must add and review the conditional-cubic specialist capability in architecture/wasm-capabilities.json and then advertise that accepted ID from production-capabilities.json.",
+      "Rerun pnpm test:changed and the distribution lane's portable/native/SEA gates after the integration branch reconciles its existing numerical manifest and modular q-expansion source-freeze drift."
+    ]
+  }
+}

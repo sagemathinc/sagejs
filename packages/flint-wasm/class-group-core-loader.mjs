@@ -1,10 +1,101 @@
-import { createWasiHost } from "./src/wasi-runtime.mjs";
-
 const ABI_VERSION = 1;
 const MAX_INPUT_BYTES = 1024 * 1024;
 const MAX_OUTPUT_BYTES = 16 * 1024 * 1024;
+const INITIAL_MEMORY_PAGES = 256;
+const MAXIMUM_MEMORY_PAGES = 4096;
 const encoder = new TextEncoder();
 const decoder = new TextDecoder("utf-8", { fatal: true });
+
+function wasmMemories(bytes) {
+  if (
+    bytes.byteLength < 8 ||
+    bytes[0] !== 0 || bytes[1] !== 97 || bytes[2] !== 115 || bytes[3] !== 109
+  ) {
+    throw new TypeError("class-group artifact has an invalid WebAssembly header");
+  }
+  let offset = 8;
+  const readUleb = () => {
+    let answer = 0;
+    let shift = 0;
+    for (;;) {
+      if (offset >= bytes.byteLength || shift > 35) {
+        throw new TypeError("class-group artifact has malformed WebAssembly limits");
+      }
+      const byte = bytes[offset++];
+      answer += (byte & 127) * 2 ** shift;
+      if ((byte & 128) === 0) return answer;
+      shift += 7;
+    }
+  };
+  const readName = () => {
+    const length = readUleb();
+    if (offset + length > bytes.byteLength) {
+      throw new TypeError("class-group artifact has a truncated WebAssembly name");
+    }
+    offset += length;
+  };
+  const readLimits = (imported) => {
+    const flags = readUleb();
+    const initialPages = readUleb();
+    const maximumPages = (flags & 1) === 1 ? readUleb() : null;
+    if ((flags & ~3) !== 0) {
+      throw new TypeError(`class-group artifact has unsupported memory flags ${flags}`);
+    }
+    return { imported, shared: (flags & 2) === 2, initialPages, maximumPages };
+  };
+  const memories = [];
+  while (offset < bytes.byteLength) {
+    const section = bytes[offset++];
+    const length = readUleb();
+    const end = offset + length;
+    if (end > bytes.byteLength) {
+      throw new TypeError("class-group artifact has a truncated WebAssembly section");
+    }
+    if (section === 2) {
+      const count = readUleb();
+      for (let index = 0; index < count; index += 1) {
+        readName();
+        readName();
+        const kind = bytes[offset++];
+        if (kind === 0) readUleb();
+        else if (kind === 1) {
+          offset += 1;
+          readLimits(false);
+        } else if (kind === 2) memories.push(readLimits(true));
+        else if (kind === 3) offset += 2;
+        else if (kind === 4) {
+          readUleb();
+          readUleb();
+        } else {
+          throw new TypeError(`class-group artifact has unsupported import kind ${kind}`);
+        }
+      }
+    } else if (section === 5) {
+      const count = readUleb();
+      for (let index = 0; index < count; index += 1) {
+        memories.push(readLimits(false));
+      }
+    }
+    offset = end;
+  }
+  return memories;
+}
+
+function validateMemoryContract(bytes) {
+  const memories = wasmMemories(bytes);
+  if (
+    memories.length !== 1 ||
+    memories[0].imported ||
+    memories[0].shared ||
+    memories[0].initialPages !== INITIAL_MEMORY_PAGES ||
+    memories[0].maximumPages !== MAXIMUM_MEMORY_PAGES
+  ) {
+    throw new TypeError(
+      "class-group core must define one non-shared 256-page memory with a 4096-page maximum",
+    );
+  }
+  return memories[0];
+}
 
 function checkedSlice(memory, pointer, length, maximumBytes, label) {
   const end = pointer + length;
@@ -63,6 +154,7 @@ export async function instantiateClassGroupCore(bytes) {
   if (!(bytes instanceof Uint8Array) || bytes.byteLength === 0) {
     throw new TypeError("class-group artifact must be nonempty bytes");
   }
+  const memoryContract = validateMemoryContract(bytes);
   const compileStarted = performance.now();
   const module = await WebAssembly.compile(bytes);
   const compileMilliseconds = performance.now() - compileStarted;
@@ -71,6 +163,16 @@ export async function instantiateClassGroupCore(bytes) {
     throw new TypeError("class-group core has an unsupported import namespace");
   }
 
+  let runtime;
+  try {
+    runtime = await import(new URL("./dist/wasi-runtime.mjs", import.meta.url));
+  } catch (error) {
+    // Source-tree qualification can run before the package dist exists. The
+    // published package and deployed runtime always take the first path.
+    if (error?.code !== "ERR_MODULE_NOT_FOUND") throw error;
+    runtime = await import(new URL("./src/wasi-runtime.mjs", import.meta.url));
+  }
+  const { createWasiHost } = runtime;
   let instance;
   const wasi = createWasiHost({ stdout() {}, stderr() {} });
   const wasiImports = {
@@ -159,6 +261,9 @@ export async function instantiateClassGroupCore(bytes) {
         compileMilliseconds,
         instantiateMilliseconds,
         memoryPages: exports.memory.buffer.byteLength / 65_536,
+        initialMemoryPages: memoryContract.initialPages,
+        maximumMemoryPages: memoryContract.maximumPages,
+        maximumMemoryBytes: memoryContract.maximumPages * 65_536,
         cancellation: "worker-termination",
       });
     },
@@ -174,4 +279,7 @@ export const classGroupCoreAbi = Object.freeze({
   version: ABI_VERSION,
   maximumInputBytes: MAX_INPUT_BYTES,
   maximumOutputBytes: MAX_OUTPUT_BYTES,
+  initialMemoryPages: INITIAL_MEMORY_PAGES,
+  maximumMemoryPages: MAXIMUM_MEMORY_PAGES,
+  maximumMemoryBytes: MAXIMUM_MEMORY_PAGES * 65_536,
 });

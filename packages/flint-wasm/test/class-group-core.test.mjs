@@ -9,7 +9,7 @@ import {
 
 const receipt = Object.freeze({ bytes: 8, sha256: "a".repeat(64) });
 
-function fakeWorkers() {
+function fakeWorkers({ initialize = true } = {}) {
   const workers = [];
   class FakeWorker {
     constructor() {
@@ -21,6 +21,7 @@ function fakeWorkers() {
     postMessage(message) {
       if (message.type === "initialize") {
         this.initialization = message;
+        if (!initialize) return;
         queueMicrotask(() => this.onmessage?.({
           data: {
             type: "ready",
@@ -76,7 +77,7 @@ function fakeWorkers() {
   return { FakeWorker, workers };
 }
 
-test("the experimental service authenticates configuration and exposes diagnostics", async () => {
+test("the service authenticates configuration and exposes diagnostics", async () => {
   const { FakeWorker, workers } = fakeWorkers();
   const service = new ClassGroupCoreService({
     artifact: "https://example.invalid/class-group.wasm",
@@ -88,7 +89,7 @@ test("the experimental service authenticates configuration and exposes diagnosti
     assert.deepEqual(workers[0].initialization.receipt, receipt);
     assert.equal((await service.invoke({ value: 3 })).echo.value, 3);
     assert.deepEqual(await service.diagnostics(), {
-      route: "experimental-rust-class-group-worker",
+      route: "rust-class-group-worker",
       generation: 1,
       artifact: {
         url: "https://example.invalid/class-group.wasm",
@@ -164,4 +165,57 @@ test("invalid artifact receipts fail before a worker is created", () => {
     /invalid bounded specialist byte receipt/,
   );
   assert.equal(workers.length, 0);
+});
+
+test("abort while the artifact initializes retires that worker generation", async () => {
+  const { FakeWorker, workers } = fakeWorkers({ initialize: false });
+  const service = new ClassGroupCoreService({
+    artifact: "https://example.invalid/class-group.wasm",
+    receipt,
+    WorkerConstructor: FakeWorker,
+  });
+  const controller = new AbortController();
+  const request = service.invoke({ value: 1 }, { signal: controller.signal });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  controller.abort();
+  await assert.rejects(request, (error) => error.name === "AbortError");
+  assert.equal(workers[0].terminated, true);
+  assert.equal(workers.length, 2);
+  await service.close();
+});
+
+test("a post-ready worker crash rejects work and starts a fresh generation", async () => {
+  const { FakeWorker, workers } = fakeWorkers();
+  const service = new ClassGroupCoreService({
+    artifact: "https://example.invalid/class-group.wasm",
+    receipt,
+    WorkerConstructor: FakeWorker,
+  });
+  await service.ready();
+  const pending = service.invoke({ hang: true });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  workers[0].onerror({ error: new Error("worker crashed") });
+  await assert.rejects(pending, /worker crashed/);
+  await service.ready();
+  assert.equal(service.generation, 2);
+  assert.equal(workers[0].terminated, true);
+  assert.equal((await service.invoke({ value: 9 })).echo.value, 9);
+  await service.close();
+});
+
+test("the factory defaults to packaged authenticated artifact URLs", async () => {
+  const { FakeWorker, workers } = fakeWorkers();
+  const service = new ClassGroupCoreService({ WorkerConstructor: FakeWorker });
+  try {
+    await service.ready();
+    assert.match(workers[0].initialization.artifact, /\/dist\/class-group-core\.wasm$/);
+    assert.match(
+      workers[0].initialization.receipt,
+      /\/dist\/class-group-core-receipt\.json$/,
+    );
+    const diagnostics = await service.diagnostics();
+    assert.match(diagnostics.artifact.receiptUrl, /class-group-core-receipt\.json$/);
+  } finally {
+    await service.close();
+  }
 });

@@ -4,10 +4,11 @@ export interface ClassGroupArtifactReceipt {
 }
 
 export interface ClassGroupCoreOptions {
-  artifact: string | URL;
-  receipt: ClassGroupArtifactReceipt;
+  artifact?: string | URL;
+  receipt?: ClassGroupArtifactReceipt | string | URL;
   worker?: string | URL;
   WorkerConstructor?: typeof Worker;
+  signal?: AbortSignal;
 }
 
 export class ClassGroupCoreInterruptedError extends Error {}
@@ -24,7 +25,7 @@ export class ClassGroupCoreSession {
 export class ClassGroupCoreService {
   constructor(options: ClassGroupCoreOptions);
   readonly generation: number;
-  ready(): Promise<this>;
+  ready(options?: { signal?: AbortSignal }): Promise<this>;
   invoke(request: unknown, options?: { signal?: AbortSignal }): Promise<unknown>;
   open(completionRequest: unknown, options?: { signal?: AbortSignal }): Promise<ClassGroupCoreSession | unknown>;
   diagnostics(): Promise<unknown>;
@@ -33,4 +34,6 @@ export class ClassGroupCoreService {
   close(): Promise<void>;
 }
 
-export function createClassGroupCore(options: ClassGroupCoreOptions): Promise<ClassGroupCoreService>;
+export function createClassGroupCore(options?: ClassGroupCoreOptions): Promise<ClassGroupCoreService>;
+export const defaultClassGroupCoreArtifact: URL;
+export const defaultClassGroupCoreReceipt: URL;
