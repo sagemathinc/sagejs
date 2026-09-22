@@ -1,0 +1,126 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "class-group-ffi-safety",
+  "title": "Class-group FLINT bridge safety",
+  "lane": "distribution",
+  "status": "review",
+  "owner": "user",
+  "objective": "Document and qualify every unsafe Rust and C FFI boundary in the production class-group FLINT bridge, with sanitizer lifecycle evidence and a reproducible safety receipt",
+  "base_commit": "a3836d25a834b839bf22bfaa5b1a40770fd62ad5",
+  "claims": [
+    "packages/class-groups/src/flint_normal_form.rs",
+    "packages/class-groups/src/flint_normal_form.c",
+    "packages/class-groups/build.rs",
+    "packages/class-groups/safety-audit-receipt.json",
+    "packages/class-groups/tests/ffi_safety.rs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "FLINT exact normal-form and Arb interval differential tests",
+      "ASan UBSan and leak lifecycle harness"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea"
+  ],
+  "runs": [
+    {
+      "command": "python3 bench/pari-class-group-rust/qualification/safety-audit/audit.py --root packages/class-groups --check packages/class-groups/safety-audit-receipt.json",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 2.298,
+      "started_at": "2026-09-22T06:40:53.932Z",
+      "commit": "a3836d25a834b839bf22bfaa5b1a40770fd62ad5",
+      "workspace_fingerprint": "2d936ad94884c5d1beb30699a542d21fe16e55fc47f8ac721324ee2a7a619305",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 bench/pari-class-group-rust/qualification/safety-audit/audit.py --root packages/class-groups --check packages/class-groups/safety-audit-receipt.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.296,
+      "started_at": "2026-09-22T06:41:03.925Z",
+      "commit": "a3836d25a834b839bf22bfaa5b1a40770fd62ad5",
+      "workspace_fingerprint": "312a69dd39798df34b7cbf364163e177478a2af21375fad294a4a748e67b1eb9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_FLINT_PREFIX=/home/user/sagejs-worktrees/pari-class-group-e2e-integration/packages/flint/.native/prefix SAGEJS_GMP_PREFIX=/home/user/sagejs-worktrees/pari-class-group-e2e-integration/packages/flint/.native/prefix SAGEJS_MPFR_PREFIX=/home/user/sagejs-worktrees/pari-class-group-e2e-integration/packages/flint/.native/prefix cargo test --manifest-path packages/class-groups/Cargo.toml --test ffi_safety",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.461,
+      "started_at": "2026-09-22T06:41:12.327Z",
+      "commit": "a3836d25a834b839bf22bfaa5b1a40770fd62ad5",
+      "workspace_fingerprint": "2f241e3d5843b491630f0aed31f9fd6afff9165d0570091e669cb586966ccd3e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env LD_PRELOAD=/usr/lib/gcc/x86_64-linux-gnu/15/libasan.so:/usr/lib/gcc/x86_64-linux-gnu/15/libubsan.so ASAN_OPTIONS=detect_leaks=1:halt_on_error=1:strict_string_checks=1 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 /tmp/sagejs-class-groups-sanitized2/debug/deps/ffi_safety-4d5dac23901373c5 --nocapture",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.252,
+      "started_at": "2026-09-22T06:41:40.046Z",
+      "commit": "a3836d25a834b839bf22bfaa5b1a40770fd62ad5",
+      "workspace_fingerprint": "2f241e3d5843b491630f0aed31f9fd6afff9165d0570091e669cb586966ccd3e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env LD_PRELOAD=/usr/lib/gcc/x86_64-linux-gnu/15/libasan.so:/usr/lib/gcc/x86_64-linux-gnu/15/libubsan.so ASAN_OPTIONS=detect_leaks=1:halt_on_error=1:strict_string_checks=1 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 /tmp/sagejs-class-groups-sanitized2/debug/deps/sagejs_class_groups-74465581ed87cbe9 retained_workspace_repeatedly_allocates_borrows_and_drops --nocapture",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.063,
+      "started_at": "2026-09-22T06:41:50.591Z",
+      "commit": "a3836d25a834b839bf22bfaa5b1a40770fd62ad5",
+      "workspace_fingerprint": "2f241e3d5843b491630f0aed31f9fd6afff9165d0570091e669cb586966ccd3e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 0.883,
+      "started_at": "2026-09-22T06:42:21.273Z",
+      "commit": "a3836d25a834b839bf22bfaa5b1a40770fd62ad5",
+      "workspace_fingerprint": "312a69dd39798df34b7cbf364163e177478a2af21375fad294a4a748e67b1eb9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 88.479,
+      "started_at": "2026-09-22T06:50:36.543Z",
+      "commit": "a3836d25a834b839bf22bfaa5b1a40770fd62ad5",
+      "workspace_fingerprint": "312a69dd39798df34b7cbf364163e177478a2af21375fad294a4a748e67b1eb9",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Documented all 18 Rust unsafe items and all 35 Rust/C FFI boundaries with adjacent contracts; added a fail-closed linked GMP/MPFR version and 64-bit-limb ABI probe; required native GMP and MPFR prefixes to resolve to the exact FLINT dependency archives; added malformed-input, repeated complete-call, and 128-cycle retained-workspace lifecycle tests; regenerated a reproducible receipt with zero documentation gaps. Standard native tests and bridge-instrumented ASan, UBSan, and leak runs pass.",
+    "risks": [
+      "The sanitizer run instruments the first-party C bridge and test executable, but the prebuilt static FLINT, GMP, MPFR, and OpenBLAS archives are not themselves sanitizer-instrumented.",
+      "The safety receipt intentionally leaves generated-source, dependency-license, source-provenance, Miri, and overall production qualification claims false.",
+      "The receipt generator retains its legacy sourceRoot label even when invoked with --root packages/class-groups; inventory paths and hashes are package-relative and reproducible.",
+      "pnpm test:changed reaches merge:check but correctly rejects stale packages/class-groups/provenance.json hashes; that manifest is outside this lane's claim."
+    ],
+    "next_steps": [
+      "Refresh packages/class-groups/provenance.json hashes in the provenance lane after integration.",
+      "Integrate the product-service Cargo change that makes rug/gmp-mpfr-sys use the same system GMP/MPFR domain selected for FLINT, then rerun the ABI and sanitizer tests.",
+      "Repeat the native lifecycle and ABI checks on Linux arm64 and macOS arm64; retain the declared Windows fallback until its native dependency route is qualified."
+    ]
+  }
+}

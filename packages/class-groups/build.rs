@@ -1,3 +1,6 @@
+// Copyright (C) Sage.js contributors.
+// GPL-2.0-or-later, without warranty.
+
 use std::env;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -31,6 +34,11 @@ fn compile_bridge(
     for include in includes {
         command.arg(format!("-I{}", include.display()));
     }
+    if let Some(flags) = env::var_os("SAGEJS_CLASS_GROUP_CFLAGS") {
+        for flag in flags.to_string_lossy().split_ascii_whitespace() {
+            command.arg(flag);
+        }
+    }
     run(&mut command, "compile FLINT class-group bridge");
     run(
         Command::new(archiver).arg("crs").arg(archive).arg(object),
@@ -48,6 +56,7 @@ fn main() {
         "SAGEJS_MPFR_PREFIX",
         "SAGEJS_WASI_SYSROOT",
         "SAGEJS_WASI_STUBS",
+        "SAGEJS_CLASS_GROUP_CFLAGS",
     ] {
         println!("cargo:rerun-if-env-changed={name}");
     }
@@ -119,17 +128,47 @@ fn main() {
         let prefix = env::var_os("SAGEJS_FLINT_PREFIX")
             .map(PathBuf::from)
             .unwrap_or_else(|| manifest.join("../flint/.native/prefix"));
+        let gmp = env::var_os("SAGEJS_GMP_PREFIX")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| prefix.clone());
+        let mpfr = env::var_os("SAGEJS_MPFR_PREFIX")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| prefix.clone());
         assert!(
             prefix.join("lib/libflint.a").is_file(),
             "build @sagemath/sagejs-flint or set SAGEJS_FLINT_PREFIX"
         );
+        for (name, dependency, archive) in [("GMP", &gmp, "libgmp.a"), ("MPFR", &mpfr, "libmpfr.a")]
+        {
+            let selected = dependency.join("lib").join(archive);
+            let flint_domain = prefix.join("lib").join(archive);
+            assert!(
+                selected.is_file(),
+                "{name} archive is missing at {}",
+                selected.display()
+            );
+            assert!(
+                flint_domain.is_file(),
+                "FLINT dependency domain is missing {name} at {}",
+                flint_domain.display()
+            );
+            assert_eq!(
+                selected.canonicalize().unwrap(),
+                flint_domain.canonicalize().unwrap(),
+                "{name} must use the exact same archive as FLINT; raw GMP objects cannot cross allocator domains"
+            );
+        }
         compile_bridge(
             Path::new("cc"),
             Path::new("ar"),
             &source,
             &object,
             &archive,
-            &[prefix.join("include")],
+            &[
+                prefix.join("include"),
+                gmp.join("include"),
+                mpfr.join("include"),
+            ],
         );
         println!("cargo:rustc-link-search=native={}", output.display());
         println!(
