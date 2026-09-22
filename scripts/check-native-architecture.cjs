@@ -634,10 +634,16 @@ function validateNativeCode(manifest, options = {}) {
           `${path} has unknown provenance mapping state ${entry.provenance_mapping_status}`,
         );
       }
-      const candidateSource = path.startsWith(`${rustPolicy.candidate_root}/src/`);
+      const candidateSource = [rustPolicy.candidate_root].some((root) =>
+        path.startsWith(`${root}/src/`)
+      );
+      const legacyCandidateSource = (rustPolicy.legacy_candidate_roots || []).some(
+        (root) => path.startsWith(`${root}/src/`),
+      );
       const qualificationHarness = entry.rust_role === "qualification-harness";
       if (entry.rust_role === "mathematical-core" && (
-        entry.category !== "mathematical-algorithm" || !candidateSource
+        entry.category !== "mathematical-algorithm" ||
+        (!candidateSource && !legacyCandidateSource)
       )) {
         throw new Error(`${path} mathematical Rust core has an incompatible category or path`);
       }
@@ -681,7 +687,10 @@ function validateNativeCode(manifest, options = {}) {
         } else if (entry.provenance_mapping_status !== "not-applicable") {
           throw new Error(`${path} has a mapping state inconsistent with its provenance class`);
         }
-      } else if (entry.provenance_mapping_status !== "not-applicable") {
+      } else if (
+        !legacyCandidateSource &&
+        entry.provenance_mapping_status !== "not-applicable"
+      ) {
         throw new Error(`${path} has an unsupported provenance mapping claim`);
       }
       if (entry.distribution_status === "reviewed-for-distribution") {

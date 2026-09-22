@@ -1,0 +1,893 @@
+{
+  "schema": "sagejs.rust-class-group.provenance/v1",
+  "scope": "Production-candidate Sage.js cubic class-group Rust package sources, locked Rust dependencies, PARI 2.17.4 correspondence evidence, and directly applicable arithmetic-library routes.",
+  "project_license_expression": "The standalone Rust package declares GPL-2.0-or-later; Sage.js distributes the combined work under GPL-3.0-only while retaining upstream notices and corresponding-source obligations.",
+  "legal_conclusion": false,
+  "inputs": {
+    "cargo_toml": {
+      "path": "packages/class-groups/Cargo.toml",
+      "sha256": "4ce02c2af90301ffdb0d67c3db83c1435ca5e5aad37298da3a495fc1a4a4bc97"
+    },
+    "cargo_lock": {
+      "path": "packages/class-groups/Cargo.lock",
+      "sha256": "6157c8ea9a89631969193354e2fd9a997ca6aa76f2f1ee0e9d66d0ec1d243db5"
+    },
+    "build_rs": {
+      "path": "packages/class-groups/build.rs",
+      "sha256": "070d17fbdfc7c14e7e242aa5e41e958cdc638d1e4777c3e9f6424ccf691d8f34"
+    },
+    "native_dependency_declarations": [
+      {
+        "path": "packages/flint/scripts/build-deps.cjs",
+        "sha256": "df706e633a8ffe17b70afa9f792945107d3103d49cfb211d4f3adabcc6f5b1e0"
+      },
+      {
+        "path": "scripts/native-math-profile.cjs",
+        "sha256": "fd28e8f51d39a2ce6710c0d182c46851e73524006f0b8a8b050792a46ff6b8d7"
+      }
+    ]
+  },
+  "upstream_sources": [
+    {
+      "id": "pari-license",
+      "project": "PARI/GP",
+      "version": "2.17.4",
+      "relative_path": "LICENSE",
+      "sha256": "2c0002e6bceab662de82967e48e77a9753c7810ffb8c026c3e32fe1bb84d0d2e",
+      "license_expression": "GPL-2.0-or-later",
+      "license_evidence": "Pinned PARI 2.17.4 LICENSE/COPYING and per-source headers."
+    },
+    {
+      "id": "pari-copying",
+      "project": "PARI/GP",
+      "version": "2.17.4",
+      "relative_path": "COPYING",
+      "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+      "license_expression": "GPL-2.0-or-later",
+      "license_evidence": "Pinned PARI 2.17.4 LICENSE/COPYING and per-source headers."
+    },
+    {
+      "id": "pari-buch2",
+      "project": "PARI/GP",
+      "version": "2.17.4",
+      "relative_path": "src/basemath/buch2.c",
+      "sha256": "904ced8034732c7fcfe1da393e23950aac0862b085150fdc24ce1e31beb7d1ac",
+      "license_expression": "GPL-2.0-or-later",
+      "license_evidence": "Pinned PARI 2.17.4 LICENSE/COPYING and per-source headers."
+    },
+    {
+      "id": "pari-random",
+      "project": "PARI/GP",
+      "version": "2.17.4",
+      "relative_path": "src/basemath/random.c",
+      "sha256": "dd3e0e61c6d6d9576ff07ec5490aeb82838a3d77ae947c503f5600e34e6aaa6a",
+      "license_expression": "GPL-2.0-or-later",
+      "license_evidence": "Pinned PARI 2.17.4 LICENSE/COPYING and per-source headers."
+    },
+    {
+      "id": "pari-base3",
+      "project": "PARI/GP",
+      "version": "2.17.4",
+      "relative_path": "src/basemath/base3.c",
+      "sha256": "5cbf4ebd6c70deb06cfd83f94b8d86368e60cd084f318a003a8ee14821e1cbea",
+      "license_expression": "GPL-2.0-or-later",
+      "license_evidence": "Pinned PARI 2.17.4 LICENSE/COPYING and per-source headers."
+    },
+    {
+      "id": "pari-base4",
+      "project": "PARI/GP",
+      "version": "2.17.4",
+      "relative_path": "src/basemath/base4.c",
+      "sha256": "46301497631028a5978266bb4a27c2bdf0a13aab8fb60335e3f359438b76d5e7",
+      "license_expression": "GPL-2.0-or-later",
+      "license_evidence": "Pinned PARI 2.17.4 LICENSE/COPYING and per-source headers."
+    },
+    {
+      "id": "pari-hnf-snf",
+      "project": "PARI/GP",
+      "version": "2.17.4",
+      "relative_path": "src/basemath/hnf_snf.c",
+      "sha256": "264aef9c86b4454b2761d8424571f74c8ecc5ed38f12aa806800c0bef5f6cdbf",
+      "license_expression": "GPL-2.0-or-later",
+      "license_evidence": "Pinned PARI 2.17.4 LICENSE/COPYING and per-source headers."
+    },
+    {
+      "id": "pari-lll",
+      "project": "PARI/GP",
+      "version": "2.17.4",
+      "relative_path": "src/basemath/lll.c",
+      "sha256": "ba42f21e52b09873ba5bf2817edd8f0a8b69d4e0ff779419cc5390941aa7404b",
+      "license_expression": "GPL-2.0-or-later",
+      "license_evidence": "Pinned PARI 2.17.4 LICENSE/COPYING and per-source headers."
+    }
+  ],
+  "modules": [
+    {
+      "path": "packages/class-groups/src/analytic_completion.rs",
+      "sha256": "9221e78a1664d17cf2d2d18267e5e0ef8f23736626abd3761b4e4e679b97f6ee",
+      "classification": "original",
+      "declared_license_expression": "GPL-2.0-or-later",
+      "mapping_status": "not_applicable",
+      "mappings": [],
+      "missing_mapping_explanation": null,
+      "notes": "Original exact schedule aggregation for a Belabas--Friedman enclosure; it calls no translated PARI body."
+    },
+    {
+      "path": "packages/class-groups/src/arbitrary_ideal_reduction.rs",
+      "sha256": "718d994186f0172829931f44e7c82718cf814e03d7fbbdc8f4fce504e6b41020",
+      "classification": "original",
+      "declared_license_expression": "GPL-2.0-or-later",
+      "mapping_status": "not_applicable",
+      "mappings": [],
+      "missing_mapping_explanation": null,
+      "notes": "Original bounded arbitrary-ideal reduction and exact replay certificate; no direct upstream source derivation is claimed."
+    },
+    {
+      "path": "packages/class-groups/src/class_group.rs",
+      "sha256": "382059d537f7e3d60529f0461fe6a8b113f98a30b63c969613c6c99e9803ab77",
+      "classification": "behavioral_reimplementation",
+      "declared_license_expression": "GPL-2.0-or-later",
+      "mapping_status": "partial",
+      "mappings": [
+        {
+          "source_id": "pari-buch2",
+          "symbols": [
+            "small_norm",
+            "Fincke_Pohst_ideal",
+            "factorgen",
+            "set_fact",
+            "add_rel_i",
+            "rnd_rel"
+          ],
+          "line_ranges": [
+            "2411-2678"
+          ],
+          "evidence": "Module documentation and matched stage/counter differential tests identify the pipeline order; substantial glue and retry behavior are Sage.js-owned.",
+          "confidence": "documented"
+        }
+      ],
+      "missing_mapping_explanation": "The broad Rust orchestration, error/state ownership, exact retry coverage, and callees outside the listed buch2.c collector cut do not yet have a source-level derivation map.",
+      "notes": "Broad collector composition follows PARI's first small_norm pass but is not asserted instruction-for-instruction."
+    },
+    {
+      "path": "packages/class-groups/src/class_maps.rs",
+      "sha256": "45b6b64e389e56c01e13e24e771da2959c21f1082288f3eda036b63ce88706d2",
+      "classification": "original",
+      "declared_license_expression": "GPL-2.0-or-later",
+      "mapping_status": "not_applicable",
+      "mappings": [],
+      "missing_mapping_explanation": null,
+      "notes": "Original exact quotient/map evidence built from a supplied verified Smith decomposition, with a versioned injective binary binding for its immutable representation."
+    },
+    {
+      "path": "packages/class-groups/src/collector_schedule.rs",
+      "sha256": "f5f4d65a68465fc29d5dd216763abb45ce8465ea8485334786e5cd3e7b45c783",
+      "classification": "behavioral_reimplementation",
+      "declared_license_expression": "GPL-2.0-or-later",
+      "mapping_status": "partial",
+      "mappings": [
+        {
+          "source_id": "pari-buch2",
+          "symbols": [
+            "small_norm",
+            "Fincke_Pohst_ideal"
+          ],
+          "line_ranges": [
+            "2574-2617"
+          ],
+          "evidence": "The reverse traversal of the live ideal list, one-based ideal identifiers, distinguished-prime trivial-relation exclusion, and per-ideal handoff correspond directly to the pinned small_norm loop. Differential schedule tests cover resumed and terminal state transitions.",
+          "confidence": "documented"
+        }
+      ],
+      "missing_mapping_explanation": "Rust-owned resumable state arrays, explicit checked-error behavior, and original serialized-packet lookup/copy helpers have no direct PARI source body and remain outside this source map.",
+      "notes": "The Rust-owned resumable state machine reproduces the pinned small_norm schedule behavior but is not asserted to be a direct source translation; the serialized-packet adapter is also Sage.js-owned."
+    },
+    {
+      "path": "packages/class-groups/src/compact_cubic_presentation.rs",
+      "sha256": "17d4b641e16556b2c0ae501e858fee6075858efbf7fa88504d953d4a39cc1ac7",
+      "classification": "original",
+      "declared_license_expression": "GPL-2.0-or-later",
+      "mapping_status": "not_applicable",
+      "mappings": [],
+      "missing_mapping_explanation": null,
+      "notes": "Original exact compact authentication for full-rank small-surplus relation matrices, including mixed invariant factors, unit-pivot HNF compression, and continuation caches whose retained witnesses are replayed against every enlarged presentation."
+    },
+    {
+      "path": "packages/class-groups/src/cubic_completion.rs",
+      "sha256": "caea351795f0f9ac61eaf275b2c4bb809711bae78e53c507b272d4aeeb3f11ed",
+      "classification": "original",
+      "declared_license_expression": "GPL-2.0-or-later",
+      "mapping_status": "not_applicable",
+      "mappings": [],
+      "missing_mapping_explanation": null,
+      "notes": "Original typed GRH-conditional cubic completion boundary combining exact unit-lattice replay with directed FLINT/Arb analytic evidence."
+    },
+    {
+      "path": "packages/class-groups/src/cubic_presentation.rs",
+      "sha256": "27f17a8afc174025a72c451aefcfaa6b3e6d10e4cab2e8b234a9f3849ffb135d",
+      "classification": "original",
+      "declared_license_expression": "GPL-2.0-or-later",
+      "mapping_status": "not_applicable",
+      "mappings": [],
+      "missing_mapping_explanation": null,
+      "notes": "Original typed authentication boundary for exact Smith candidate presentations, principal-relation replay, and generator-order evidence; it explicitly makes no completion claim."
+    },
+    {
+      "path": "packages/class-groups/src/enumeration.rs",
+      "sha256": "0ea9216253e830e099fd0c9d2cbdb162b141309346729900e431896d65568b38",
+      "classification": "source_translation_adaptation",
+      "declared_license_expression": "GPL-2.0-or-later",
+      "mapping_status": "complete",
+      "mappings": [
+        {
+          "source_id": "pari-buch2",
+          "symbols": [
+            "step",
+            "Fincke_Pohst_ideal"
+          ],
+          "line_ranges": [
+            "2411-2572"
+          ],
+          "evidence": "The module names the source routine and deliberately preserves its one-based branch structure; compiled differential harnesses exercise the same cursor.",
+          "confidence": "authenticated"
+        }
+      ],
+      "missing_mapping_explanation": null,
+      "notes": "Direct fixed-dimension adaptation of the Fincke--Pohst cursor."
+    },
+    {
+      "path": "packages/class-groups/src/factor_base.rs",
+      "sha256": "b8682e13cb701dfbbea13fe22ef3d85fc16d42c7b764f13efd9d5bb985cfa6a2",
+      "classification": "behavioral_reimplementation",
+      "declared_license_expression": "GPL-2.0-or-later",
+      "mapping_status": "partial",
+      "mappings": [
+        {
+          "source_id": "pari-buch2",
+          "symbols": [
+            "init_GRHcheck",
+            "compute_invres",
+            "get_fs",
+            "FBgen",
+            "subFBgen"
+          ],
+          "line_ranges": [
+            "357-761"
+          ],
+          "evidence": "Bounds, stable ideal ordering, and factor-base behavior are tested against the pinned implementation; the Rust data model and cubic construction are independent.",
+          "confidence": "documented"
+        }
+      ],
+      "missing_mapping_explanation": "Cubic-specific polynomial factorization, descriptor construction, and helper-by-helper correspondence outside the named FBgen boundary have not been source-mapped.",
+      "notes": "Useful correspondence exists, but there is no function-by-function derivation ledger for the entire file."
+    },
+    {
+      "path": "packages/class-groups/src/flint_normal_form.c",
+      "sha256": "9bff5e701c828f27641c447672871562188871cc4311c9b54e2978aa3ec408cf",
+      "classification": "original",
+      "declared_license_expression": "GPL-2.0-or-later",
+      "mapping_status": "not_applicable",
+      "mappings": [],
+      "missing_mapping_explanation": null,
+      "notes": "Original portable fixed-width FFI bridge calling public FLINT APIs, including exact i64/u64 conversion on 32- and 64-bit FLINT word targets; FLINT is inventoried as a foreign dependency, not as translated source."
+    },
+    {
+      "path": "packages/class-groups/src/flint_normal_form.rs",
+      "sha256": "e34eda1552e637ed5f06b66caca9ef18a69ccee21e455cee6de293a57154c6a6",
+      "classification": "original",
+      "declared_license_expression": "GPL-2.0-or-later",
+      "mapping_status": "not_applicable",
+      "mappings": [],
+      "missing_mapping_explanation": null,
+      "notes": "Original safe Rust wrapper and qualification evidence around the portable fixed-width C/FLINT boundary."
+    },
+    {
+      "path": "packages/class-groups/src/hnf.rs",
+      "sha256": "d35bf3f4d154e3425f95a365f09b5147eaaf7353ae2ab1f67bb5321b470a87e6",
+      "classification": "original",
+      "declared_license_expression": "GPL-2.0-or-later",
+      "mapping_status": "not_applicable",
+      "mappings": [],
+      "missing_mapping_explanation": null,
+      "notes": "Original exact normal-form code retaining operation witnesses; mathematical similarity to other HNF/SNF implementations is not source evidence."
+    },
+    {
+      "path": "packages/class-groups/src/ideal_arithmetic.rs",
+      "sha256": "4e18797b8b645b761c58b82d73af0a7c30eef0ddd4659f57624f9c3d5b4a9a52",
+      "classification": "behavioral_reimplementation",
+      "declared_license_expression": "GPL-2.0-or-later",
+      "mapping_status": "partial",
+      "mappings": [
+        {
+          "source_id": "pari-base4",
+          "symbols": [
+            "idealhnf",
+            "idealHNF_mul",
+            "idealmul"
+          ],
+          "line_ranges": [
+            "126-274",
+            "1161-1194",
+            "1890-1943"
+          ],
+          "evidence": "The representation and operations target the same degree-three ideal semantics, while storage and algorithms are independently expressed with rug integers.",
+          "confidence": "documented"
+        },
+        {
+          "source_id": "pari-buch2",
+          "symbols": [
+            "ZM_lll",
+            "RgM_mul",
+            "Fincke_Pohst_ideal"
+          ],
+          "line_ranges": [
+            "2441-2572"
+          ],
+          "evidence": "The prepared collector calls the corresponding ideal/reduction boundary; exact instruction correspondence is not claimed.",
+          "confidence": "documented"
+        }
+      ],
+      "missing_mapping_explanation": "Only the high-level ideal operations and collector call boundary are mapped; the Rust matrix kernels and LLL implementation have no authenticated source-derivation ledger.",
+      "notes": "Allocation-bounded degree-three lattice arithmetic with partial source correspondence only."
+    },
+    {
+      "path": "packages/class-groups/src/lib.rs",
+      "sha256": "ee75e7c6ad5f4bdcfe856c52833abaf863c7352557c788696fd83f43274b7601",
+      "classification": "original",
+      "declared_license_expression": "GPL-2.0-or-later",
+      "mapping_status": "not_applicable",
+      "mappings": [],
+      "missing_mapping_explanation": null,
+      "notes": "Original Rust module/export boundary."
+    },
+    {
+      "path": "packages/class-groups/src/numerical_preparation.rs",
+      "sha256": "760cb3dce5ac14e96c1032918a13999e661922a8225a27a5f4b1397154074d8b",
+      "classification": "behavioral_reimplementation",
+      "declared_license_expression": "GPL-2.0-or-later",
+      "mapping_status": "partial",
+      "mappings": [
+        {
+          "source_id": "pari-buch2",
+          "symbols": [
+            "Fincke_Pohst_bound",
+            "Fincke_Pohst_ideal"
+          ],
+          "line_ranges": [
+            "2424-2572"
+          ],
+          "evidence": "The same mathematical preparation boundary is reproduced, but rug Gram--Schmidt intentionally differs from PARI packed-real Householder operations.",
+          "confidence": "documented"
+        },
+        {
+          "source_id": "pari-lll",
+          "symbols": [
+            "ZM_lll"
+          ],
+          "line_ranges": [
+            "2600-2720"
+          ],
+          "evidence": "Exact LLL basis-change semantics are targeted; the Rust implementation is not a translation of the general PARI LLL source.",
+          "confidence": "tentative"
+        }
+      ],
+      "missing_mapping_explanation": "PARI's packed-real QR/Householder and conversion dependencies are intentionally not reproduced, and the replacement rug numerical kernels are not mapped to an upstream source body.",
+      "notes": "Explicitly non-bit-identical behavioral implementation; exact full dependency map remains incomplete."
+    },
+    {
+      "path": "packages/class-groups/src/pari_random.rs",
+      "sha256": "7bed82f9c8d1cd27b753e0f39e5cf37ef49ae90e9c236ff9f9a397382d83e269",
+      "classification": "source_translation_adaptation",
+      "declared_license_expression": "GPL-2.0-or-later",
+      "mapping_status": "complete",
+      "mappings": [
+        {
+          "source_id": "pari-random",
+          "symbols": [
+            "block",
+            "init_xor4096i",
+            "rand64"
+          ],
+          "line_ranges": [
+            "20-145"
+          ],
+          "evidence": "Module documentation calls this a direct fixed-width translation and its seed-one stream is checked against PARI 2.17.4.",
+          "confidence": "authenticated"
+        }
+      ],
+      "missing_mapping_explanation": null,
+      "notes": "Direct fixed-width translation with deliberate wrapping arithmetic."
+    },
+    {
+      "path": "packages/class-groups/src/polynomial_preparation.rs",
+      "sha256": "7d18effdf0affe5e8e7de8105578103a5ac87ead4c195c07bc71b208bddf59b6",
+      "classification": "original",
+      "declared_license_expression": "GPL-2.0-or-later",
+      "mapping_status": "not_applicable",
+      "mappings": [],
+      "missing_mapping_explanation": null,
+      "notes": "Original bounded public cubic preparation based on standard exact arguments."
+    },
+    {
+      "path": "packages/class-groups/src/prepared_factor_base.rs",
+      "sha256": "588b86af0748e91d2472ada9759df226be07e4684e63be4f368ce44e9259d266",
+      "classification": "original",
+      "declared_license_expression": "GPL-2.0-or-later",
+      "mapping_status": "not_applicable",
+      "mappings": [],
+      "missing_mapping_explanation": null,
+      "notes": "Original exact rational-integral cubic factor-base construction with bounded per-prime ideal-power reuse; it interoperates with PARI-style descriptors but no source translation is claimed."
+    },
+    {
+      "path": "packages/class-groups/src/prepared_ideal.rs",
+      "sha256": "7e783a4296a7a800fe86b62ed25c82459d68b6b6a7125d7d457fbf5d4537540c",
+      "classification": "original",
+      "declared_license_expression": "GPL-2.0-or-later",
+      "mapping_status": "not_applicable",
+      "mappings": [],
+      "missing_mapping_explanation": null,
+      "notes": "Original conservative arbitrary-precision ideal path using the crate's verified HNF, including bounded reuse of exact prime-ideal powers."
+    },
+    {
+      "path": "packages/class-groups/src/prepared_input.rs",
+      "sha256": "8b3fd0a71b33c5335dbff6ae89c153fd90f51d5c8fc74c273a89a182f8f3088e",
+      "classification": "original",
+      "declared_license_expression": "GPL-2.0-or-later",
+      "mapping_status": "not_applicable",
+      "mappings": [],
+      "missing_mapping_explanation": null,
+      "notes": "Original strict JSON ingress and answer-exclusion checks."
+    },
+    {
+      "path": "packages/class-groups/src/prepared.rs",
+      "sha256": "80b7ce8f953b2df50fb88ac4d1d068f1ac8148e1b335aa01f0d322e6c8feada5",
+      "classification": "original",
+      "declared_license_expression": "GPL-2.0-or-later",
+      "mapping_status": "not_applicable",
+      "mappings": [],
+      "missing_mapping_explanation": null,
+      "notes": "Original neutral prepared-field representation and invariant replay."
+    },
+    {
+      "path": "packages/class-groups/src/prime_valuation.rs",
+      "sha256": "5b533a94a1eed76a1fa09b97d6e43071678babc88910133c32f561423d770a9e",
+      "classification": "behavioral_reimplementation",
+      "declared_license_expression": "GPL-2.0-or-later",
+      "mapping_status": "partial",
+      "mappings": [
+        {
+          "source_id": "pari-buch2",
+          "symbols": [
+            "divide_p_elt",
+            "divide_p_id",
+            "divide_p_quo",
+            "factorgen"
+          ],
+          "line_ranges": [
+            "763-872"
+          ],
+          "evidence": "Module and differential tests identify the exact valuation/refinement corridor.",
+          "confidence": "authenticated"
+        },
+        {
+          "source_id": "pari-base3",
+          "symbols": [
+            "ZC_nfval"
+          ],
+          "line_ranges": [
+            "953-979"
+          ],
+          "evidence": "The Rust tau/divisibility loop reproduces specialized prepared semantics, not the full upstream routine.",
+          "confidence": "documented"
+        }
+      ],
+      "missing_mapping_explanation": "The mapping covers the specialized prepared tau/divisibility corridor but not every general ZC_nfval representation or PARI's periodic rational-prime stripping acceleration.",
+      "notes": "Exact arithmetic half of the source corridor; long-run acceleration and general representations differ."
+    },
+    {
+      "path": "packages/class-groups/src/relation_cache.rs",
+      "sha256": "d474991bbfc02e842bb563d109b946bf1d88285ef667e82e1a40f0f605be619b",
+      "classification": "source_translation_adaptation",
+      "declared_license_expression": "GPL-2.0-or-later",
+      "mapping_status": "complete",
+      "mappings": [
+        {
+          "source_id": "pari-buch2",
+          "symbols": [
+            "RELCACHE_t",
+            "add_rel_i"
+          ],
+          "line_ranges": [
+            "45-112",
+            "2194-2410"
+          ],
+          "evidence": "Module declares an allocation-free port, preserves modulus 27449 and return semantics, and focused controls compare resident transitions.",
+          "confidence": "authenticated"
+        }
+      ],
+      "missing_mapping_explanation": null,
+      "notes": "Direct machine-word cache adaptation; surrounding algebraic ownership is outside this file."
+    },
+    {
+      "path": "packages/class-groups/src/smooth_admission.rs",
+      "sha256": "b0931be1a8a9298594a69892637cb4d1bfeb051e0231101875ef0115c08cc00e",
+      "classification": "behavioral_reimplementation",
+      "declared_license_expression": "GPL-2.0-or-later",
+      "mapping_status": "partial",
+      "mappings": [
+        {
+          "source_id": "pari-buch2",
+          "symbols": [
+            "can_factor",
+            "factorgen"
+          ],
+          "line_ranges": [
+            "788-887"
+          ],
+          "evidence": "The module targets PARI rational smoothness admission and prepared prime-product behavior, with separate valuation refinement.",
+          "confidence": "documented"
+        }
+      ],
+      "missing_mapping_explanation": "Only can_factor/factorgen behavior is mapped; the Rust cubic norm-form implementation, factor helpers, and GMP prime-product loop lack an authenticated source-derivation map.",
+      "notes": "Behavioral exact rational-admission implementation rather than a direct source translation."
+    },
+    {
+      "path": "packages/class-groups/src/unit_lattice.rs",
+      "sha256": "47c958f225d7a7ccda5f2b62d6ca062ad2bd8a092f05627c05e97ac447f8fb56",
+      "classification": "original",
+      "declared_license_expression": "GPL-2.0-or-later",
+      "mapping_status": "not_applicable",
+      "mappings": [],
+      "missing_mapping_explanation": null,
+      "notes": "Original compact rank-one/rank-two lattice reconstruction; no direct getfu translation is claimed."
+    }
+  ],
+  "cargo_packages": [
+    {
+      "name": "az",
+      "version": "1.3.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "be5eb007b7cacc6c660343e96f650fedf4b5a77512399eb952ca6642cf8d13f7",
+      "license_expression": "MIT/Apache-2.0",
+      "license_evidence": "cargo_package_manifest",
+      "repository": "https://gitlab.com/tspiteri/az"
+    },
+    {
+      "name": "block-buffer",
+      "version": "0.10.4",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "3078c7629b62d3f0439517fa394996acacc5cbc91c5a20d8c658e77abd503a71",
+      "license_expression": "MIT OR Apache-2.0",
+      "license_evidence": "cargo_package_manifest",
+      "repository": "https://github.com/RustCrypto/utils"
+    },
+    {
+      "name": "cfg-if",
+      "version": "1.0.5",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "4e7648175b45a9a48536d676f68d918270699102aa8dab5496df06904c914600",
+      "license_expression": "MIT OR Apache-2.0",
+      "license_evidence": "cargo_package_manifest",
+      "repository": "https://github.com/rust-lang/cfg-if"
+    },
+    {
+      "name": "cpufeatures",
+      "version": "0.2.17",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "59ed5838eebb26a2bb2e58f6d5b5316989ae9d08bab10e0e6d103e656d1b0280",
+      "license_expression": "MIT OR Apache-2.0",
+      "license_evidence": "cargo_package_manifest",
+      "repository": "https://github.com/RustCrypto/utils"
+    },
+    {
+      "name": "crypto-common",
+      "version": "0.1.7",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "78c8292055d1c1df0cce5d180393dc8cce0abec0a7102adb6c7b1eef6016d60a",
+      "license_expression": "MIT OR Apache-2.0",
+      "license_evidence": "cargo_package_manifest",
+      "repository": "https://github.com/RustCrypto/traits"
+    },
+    {
+      "name": "digest",
+      "version": "0.10.7",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "9ed9a281f7bc9b7576e61468ba615a66a5c8cfdff42420a70aa82701a3b1e292",
+      "license_expression": "MIT OR Apache-2.0",
+      "license_evidence": "cargo_package_manifest",
+      "repository": "https://github.com/RustCrypto/traits"
+    },
+    {
+      "name": "generic-array",
+      "version": "0.14.7",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "85649ca51fd72272d7821adaf274ad91c288277713d9c18820d8499a7ff69e9a",
+      "license_expression": "MIT",
+      "license_evidence": "cargo_package_manifest",
+      "repository": "https://github.com/fizyk20/generic-array.git"
+    },
+    {
+      "name": "gmp-mpfr-sys",
+      "version": "1.7.1",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "7db155b537cb791b133341f99f68371d86ee7fa4c79aacfbc376d72d23c70531",
+      "license_expression": "LGPL-3.0+",
+      "license_evidence": "cargo_package_manifest",
+      "repository": "https://gitlab.com/tspiteri/gmp-mpfr-sys"
+    },
+    {
+      "name": "itoa",
+      "version": "1.0.18",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682",
+      "license_expression": "MIT OR Apache-2.0",
+      "license_evidence": "cargo_package_manifest",
+      "repository": "https://github.com/dtolnay/itoa"
+    },
+    {
+      "name": "libc",
+      "version": "0.2.189",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "3eaf3ede3fee6db1a4c2ee091bf8a8b4dccdc6d17f656fb07896ee72867612f2",
+      "license_expression": "MIT OR Apache-2.0",
+      "license_evidence": "cargo_package_manifest",
+      "repository": "https://github.com/rust-lang/libc"
+    },
+    {
+      "name": "libm",
+      "version": "0.2.16",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "b6d2cec3eae94f9f509c767b45932f1ada8350c4bdb85af2fcab4a3c14807981",
+      "license_expression": "MIT",
+      "license_evidence": "cargo_package_manifest",
+      "repository": "https://github.com/rust-lang/compiler-builtins"
+    },
+    {
+      "name": "memchr",
+      "version": "2.8.3",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "cf8baf1c55e62ffcace7a9f06f4bd9cd3f0c4beb022d3b367256b91b87513d98",
+      "license_expression": "Unlicense OR MIT",
+      "license_evidence": "cargo_package_manifest",
+      "repository": "https://github.com/BurntSushi/memchr"
+    },
+    {
+      "name": "proc-macro2",
+      "version": "1.0.107",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "985e7ec9bb745e6ce6535b544d84d6cd6f7ad8bd711c398938ae983b91a766d9",
+      "license_expression": "MIT OR Apache-2.0",
+      "license_evidence": "cargo_package_manifest",
+      "repository": "https://github.com/dtolnay/proc-macro2"
+    },
+    {
+      "name": "quote",
+      "version": "1.0.47",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "1fbf4db142a473a8d80c26bbf18454ed458bf8d26c8219c331daecfdbd079001",
+      "license_expression": "MIT OR Apache-2.0",
+      "license_evidence": "cargo_package_manifest",
+      "repository": "https://github.com/dtolnay/quote"
+    },
+    {
+      "name": "rug",
+      "version": "1.30.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "07a8857882aec59d27254b02481c709327c13de6fad1da60bfc4f9783eaaa61e",
+      "license_expression": "LGPL-3.0+",
+      "license_evidence": "cargo_package_manifest",
+      "repository": "https://gitlab.com/tspiteri/rug"
+    },
+    {
+      "name": "serde",
+      "version": "1.0.229",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "4148590afebada386688f18773da617792bf2ef03ffc1e4cbd2b1d45b023e0ba",
+      "license_expression": "MIT OR Apache-2.0",
+      "license_evidence": "cargo_package_manifest",
+      "repository": "https://github.com/serde-rs/serde"
+    },
+    {
+      "name": "serde_core",
+      "version": "1.0.229",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "67dca2c9c51e58a4791a4b1ed58308b39c64224d349a935ab5039aa360942a48",
+      "license_expression": "MIT OR Apache-2.0",
+      "license_evidence": "cargo_package_manifest",
+      "repository": "https://github.com/serde-rs/serde"
+    },
+    {
+      "name": "serde_derive",
+      "version": "1.0.229",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "e7a5d71263a5a7d47b41f6b3f06ba256b10cc18b0931f1799f710578e2309348",
+      "license_expression": "MIT OR Apache-2.0",
+      "license_evidence": "cargo_package_manifest",
+      "repository": "https://github.com/serde-rs/serde"
+    },
+    {
+      "name": "serde_json",
+      "version": "1.0.151",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "c841b55ecdae098c80dcae9cf767f6f8a0c2cdb3416bbef72181df4d0fe73f14",
+      "license_expression": "MIT OR Apache-2.0",
+      "license_evidence": "cargo_package_manifest",
+      "repository": "https://github.com/serde-rs/json"
+    },
+    {
+      "name": "sha2",
+      "version": "0.10.9",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "a7507d819769d01a365ab707794a4084392c824f54a7a6a7862f8c3d0892b283",
+      "license_expression": "MIT OR Apache-2.0",
+      "license_evidence": "cargo_package_manifest",
+      "repository": "https://github.com/RustCrypto/hashes"
+    },
+    {
+      "name": "syn",
+      "version": "3.0.6",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "8593e8e72159ed2257d083c7a454a85cbf854f37a0966d8d483aff8c8a3ebcee",
+      "license_expression": "MIT OR Apache-2.0",
+      "license_evidence": "cargo_package_manifest",
+      "repository": "https://github.com/dtolnay/syn"
+    },
+    {
+      "name": "typenum",
+      "version": "1.20.1",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "b6f5e870be6c3b371b77fe0ee0bafb859fa4964b4402c27de1d380043c4dda20",
+      "license_expression": "MIT OR Apache-2.0",
+      "license_evidence": "cargo_package_manifest",
+      "repository": "https://github.com/paholg/typenum"
+    },
+    {
+      "name": "unicode-ident",
+      "version": "1.0.26",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "d245f478577f809a851594d02313b640fb437e0bb33866753cff937863096954",
+      "license_expression": "(MIT OR Apache-2.0) AND Unicode-3.0",
+      "license_evidence": "cargo_package_manifest",
+      "repository": "https://github.com/dtolnay/unicode-ident"
+    },
+    {
+      "name": "version_check",
+      "version": "0.9.5",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a",
+      "license_expression": "MIT/Apache-2.0",
+      "license_evidence": "cargo_package_manifest",
+      "repository": "https://github.com/SergioBenitez/version_check"
+    },
+    {
+      "name": "windows-link",
+      "version": "0.2.1",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "f0805222e57f7521d6a62e36fa9163bc891acd422f971defe97d64e70d0a4fe5",
+      "license_expression": "MIT OR Apache-2.0",
+      "license_evidence": "cargo_package_manifest",
+      "repository": "https://github.com/microsoft/windows-rs"
+    },
+    {
+      "name": "windows-sys",
+      "version": "0.61.2",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "ae137229bcbd6cdf0f7b80a31df61766145077ddf49416a728b02cb3921ff3fc",
+      "license_expression": "MIT OR Apache-2.0",
+      "license_evidence": "cargo_package_manifest",
+      "repository": "https://github.com/microsoft/windows-rs"
+    },
+    {
+      "name": "zmij",
+      "version": "1.0.23",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "29666d0abbfad1e3dc4dcf6144730dd3a3ab225bbbdac83319345b1b44ccfc1b",
+      "license_expression": "MIT",
+      "license_evidence": "cargo_package_manifest",
+      "repository": "https://github.com/dtolnay/zmij"
+    },
+    {
+      "name": "sagejs-pari-class-group-rust-experiment",
+      "version": "0.1.0",
+      "source": null,
+      "checksum": null,
+      "license_expression": "GPL-2.0-or-later",
+      "license_evidence": "crate_source_headers",
+      "repository": null
+    }
+  ],
+  "foreign_dependencies": [
+    {
+      "name": "GMP",
+      "version": "6.3.0",
+      "route": "cargo_default",
+      "link_name": "gmp",
+      "source_url": "bundled:gmp-mpfr-sys-1.7.1/gmp-6.3.0-c",
+      "source_sha256": null,
+      "license_expression": "LGPL-3.0-or-later OR GPL-2.0-or-later",
+      "license_evidence": "crate_bundle",
+      "applicability": "Enabled transitively by rug integer/rational/float features in the ordinary Cargo build.",
+      "notes": "The Cargo crate checksum authenticates the whole bundle; this inventory does not assert a separate upstream archive digest for the embedded modified source tree."
+    },
+    {
+      "name": "MPFR",
+      "version": "4.2.2",
+      "route": "cargo_default",
+      "link_name": "mpfr",
+      "source_url": "bundled:gmp-mpfr-sys-1.7.1/mpfr-4.2.2-c",
+      "source_sha256": null,
+      "license_expression": "LGPL-3.0-or-later",
+      "license_evidence": "crate_bundle",
+      "applicability": "Enabled transitively by rug's float feature.",
+      "notes": "The Cargo crate checksum authenticates the bundle; this is distinct from the repository native-math archive route."
+    },
+    {
+      "name": "GMP",
+      "version": "6.3.0",
+      "route": "flint_normal_form_feature",
+      "link_name": "gmp",
+      "source_url": "https://github.com/sagemathinc/sagejs/releases/download/native-sources-1/gmp-6.3.0.tar.xz",
+      "source_sha256": "a3c2b80201b89e68616f4ad30bc66aee4927c3ce50e33929ca819d5c43538898",
+      "license_expression": "LGPL-3.0-or-later OR GPL-2.0-or-later",
+      "license_evidence": "upstream_archive_declaration",
+      "applicability": "Statically linked by build.rs when flint-normal-form is enabled.",
+      "notes": "Archive URL and digest are pinned by packages/flint/scripts/build-deps.cjs; obligations require separate human review."
+    },
+    {
+      "name": "MPFR",
+      "version": "4.2.2",
+      "route": "flint_normal_form_feature",
+      "link_name": "mpfr",
+      "source_url": "https://github.com/sagemathinc/sagejs/releases/download/native-sources-1/mpfr-4.2.2.tar.xz",
+      "source_sha256": "b67ba0383ef7e8a8563734e2e889ef5ec3c3b898a01d00fa0a6869ad81c6ce01",
+      "license_expression": "LGPL-3.0-or-later",
+      "license_evidence": "upstream_archive_declaration",
+      "applicability": "Statically linked by build.rs when flint-normal-form is enabled.",
+      "notes": "Archive URL and digest are pinned by the repository dependency builder."
+    },
+    {
+      "name": "FLINT",
+      "version": "3.6.0",
+      "route": "flint_normal_form_feature",
+      "link_name": "flint",
+      "source_url": "https://flintlib.org/download/flint-3.6.0.tar.gz",
+      "source_sha256": "b95e2c7792f5eea4a1c8d2d42c4098434756832e57a094b295eb5dfdc9b4c36b",
+      "license_expression": "LGPL-3.0-or-later",
+      "license_evidence": "upstream_archive_declaration",
+      "applicability": "Statically linked by build.rs when flint-normal-form is enabled.",
+      "notes": "The handwritten bridge calls public FLINT, fmpz, nmod, and integrated Arb APIs."
+    },
+    {
+      "name": "OpenBLAS",
+      "version": "0.3.33",
+      "route": "flint_normal_form_feature",
+      "link_name": "openblas",
+      "source_url": "https://github.com/OpenMathLib/OpenBLAS/releases/download/v0.3.33/OpenBLAS-0.3.33.tar.gz",
+      "source_sha256": "6761af1d9f5d353ab4f0b7497be2643313b36c8f31caec0144bfef198e71e6ab",
+      "license_expression": "BSD-3-Clause",
+      "license_evidence": "upstream_archive_declaration",
+      "applicability": "Statically linked by build.rs for the repository FLINT configuration.",
+      "notes": "The bridge does not call OpenBLAS directly; it is part of the FLINT native link closure."
+    },
+    {
+      "name": "Arb",
+      "version": "integrated in FLINT 3.6.0",
+      "route": "incorporated_component",
+      "link_name": null,
+      "source_url": "https://flintlib.org/download/flint-3.6.0.tar.gz",
+      "source_sha256": "b95e2c7792f5eea4a1c8d2d42c4098434756832e57a094b295eb5dfdc9b4c36b",
+      "license_expression": null,
+      "license_evidence": "inherited_distribution",
+      "applicability": "flint_normal_form.c includes flint/arb.h and flint/arb_calc.h; build.rs has no separate libarb link.",
+      "notes": "Recorded as an incorporated component rather than inventing a standalone Arb artifact or independent archive identity."
+    }
+  ],
+  "known_gaps": [
+    "collector_schedule.rs is classified as a source translation/adaptation but lacks an authenticated exact source map.",
+    "Broad behavioral modules have only partial PARI correspondence maps; no function-by-function derivation ledger exists.",
+    "The declared foreign-library license expressions have not been turned into a reviewed product notice/obligation bundle; the incorporated Arb component intentionally has no separately asserted expression pending review of the pinned FLINT archive notices.",
+    "The ordinary rug/gmp-mpfr-sys route and optional repository FLINT route may introduce distinct arithmetic-library instances; ABI, ownership, and distribution review remains required.",
+    "No Windows artifact, Wasm artifact, or final product package has been scanned to prove the actual linked closure matches these prospective routes.",
+    "This inventory covers the root crate only; separate qualification subcrates require their own provenance inventories before promotion."
+  ]
+}

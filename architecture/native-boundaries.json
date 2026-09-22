@@ -14,13 +14,13 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 339,
+    "classified-native-file": 372,
     "declared-ffi": 480,
     "declared-ffi-resource": 37,
     "napi-export": 358,
     "runtime-intrinsic": 148,
     "rust-abi-export": 34,
-    "rust-abi-import": 57,
+    "rust-abi-import": 73,
     "wasm-export": 74
   },
   "boundaries": [
@@ -10313,6 +10313,270 @@
       "lane": "hyperelliptic-curves"
     },
     {
+      "id": "native-file:packages/class-groups/build.rs",
+      "kind": "classified-native-file",
+      "path": "packages/class-groups/build.rs",
+      "disposition": "external-library-bridge",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/class-groups/src/analytic_completion.rs",
+      "kind": "classified-native-file",
+      "path": "packages/class-groups/src/analytic_completion.rs",
+      "disposition": "mathematical-algorithm",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/class-groups/src/arbitrary_ideal_reduction.rs",
+      "kind": "classified-native-file",
+      "path": "packages/class-groups/src/arbitrary_ideal_reduction.rs",
+      "disposition": "mathematical-algorithm",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/class-groups/src/class_group.rs",
+      "kind": "classified-native-file",
+      "path": "packages/class-groups/src/class_group.rs",
+      "disposition": "mathematical-algorithm",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/class-groups/src/class_maps.rs",
+      "kind": "classified-native-file",
+      "path": "packages/class-groups/src/class_maps.rs",
+      "disposition": "mathematical-algorithm",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/class-groups/src/collector_schedule.rs",
+      "kind": "classified-native-file",
+      "path": "packages/class-groups/src/collector_schedule.rs",
+      "disposition": "mathematical-algorithm",
+      "review_status": "experimental-pending-review",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/class-groups/src/compact_cubic_presentation.rs",
+      "kind": "classified-native-file",
+      "path": "packages/class-groups/src/compact_cubic_presentation.rs",
+      "disposition": "mathematical-algorithm",
+      "review_status": "experimental-pending-review",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/class-groups/src/cubic_completion.rs",
+      "kind": "classified-native-file",
+      "path": "packages/class-groups/src/cubic_completion.rs",
+      "disposition": "mathematical-algorithm",
+      "review_status": "experimental-pending-review",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/class-groups/src/cubic_presentation.rs",
+      "kind": "classified-native-file",
+      "path": "packages/class-groups/src/cubic_presentation.rs",
+      "disposition": "mathematical-algorithm",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/class-groups/src/enumeration.rs",
+      "kind": "classified-native-file",
+      "path": "packages/class-groups/src/enumeration.rs",
+      "disposition": "mathematical-algorithm",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/class-groups/src/factor_base.rs",
+      "kind": "classified-native-file",
+      "path": "packages/class-groups/src/factor_base.rs",
+      "disposition": "mathematical-algorithm",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/class-groups/src/flint_normal_form.c",
+      "kind": "classified-native-file",
+      "path": "packages/class-groups/src/flint_normal_form.c",
+      "disposition": "external-library-bridge",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/class-groups/src/flint_normal_form.rs",
+      "kind": "classified-native-file",
+      "path": "packages/class-groups/src/flint_normal_form.rs",
+      "disposition": "external-library-bridge",
+      "review_status": "experimental-pending-review",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/class-groups/src/hnf.rs",
+      "kind": "classified-native-file",
+      "path": "packages/class-groups/src/hnf.rs",
+      "disposition": "mathematical-algorithm",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/class-groups/src/ideal_arithmetic.rs",
+      "kind": "classified-native-file",
+      "path": "packages/class-groups/src/ideal_arithmetic.rs",
+      "disposition": "mathematical-algorithm",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/class-groups/src/lib.rs",
+      "kind": "classified-native-file",
+      "path": "packages/class-groups/src/lib.rs",
+      "disposition": "mathematical-algorithm",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/class-groups/src/numerical_preparation.rs",
+      "kind": "classified-native-file",
+      "path": "packages/class-groups/src/numerical_preparation.rs",
+      "disposition": "mathematical-algorithm",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/class-groups/src/pari_random.rs",
+      "kind": "classified-native-file",
+      "path": "packages/class-groups/src/pari_random.rs",
+      "disposition": "mathematical-algorithm",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/class-groups/src/polynomial_preparation.rs",
+      "kind": "classified-native-file",
+      "path": "packages/class-groups/src/polynomial_preparation.rs",
+      "disposition": "mathematical-algorithm",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/class-groups/src/prepared_factor_base.rs",
+      "kind": "classified-native-file",
+      "path": "packages/class-groups/src/prepared_factor_base.rs",
+      "disposition": "mathematical-algorithm",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/class-groups/src/prepared_ideal.rs",
+      "kind": "classified-native-file",
+      "path": "packages/class-groups/src/prepared_ideal.rs",
+      "disposition": "mathematical-algorithm",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/class-groups/src/prepared_input.rs",
+      "kind": "classified-native-file",
+      "path": "packages/class-groups/src/prepared_input.rs",
+      "disposition": "mathematical-algorithm",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/class-groups/src/prepared.rs",
+      "kind": "classified-native-file",
+      "path": "packages/class-groups/src/prepared.rs",
+      "disposition": "mathematical-algorithm",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/class-groups/src/prime_valuation.rs",
+      "kind": "classified-native-file",
+      "path": "packages/class-groups/src/prime_valuation.rs",
+      "disposition": "mathematical-algorithm",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/class-groups/src/relation_cache.rs",
+      "kind": "classified-native-file",
+      "path": "packages/class-groups/src/relation_cache.rs",
+      "disposition": "mathematical-algorithm",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/class-groups/src/smooth_admission.rs",
+      "kind": "classified-native-file",
+      "path": "packages/class-groups/src/smooth_admission.rs",
+      "disposition": "mathematical-algorithm",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/class-groups/src/unit_lattice.rs",
+      "kind": "classified-native-file",
+      "path": "packages/class-groups/src/unit_lattice.rs",
+      "disposition": "mathematical-algorithm",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/class-groups/tests/compact_cubic_presentation.rs",
+      "kind": "classified-native-file",
+      "path": "packages/class-groups/tests/compact_cubic_presentation.rs",
+      "disposition": "benchmark-reference",
+      "review_status": "experimental-pending-review",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/class-groups/tests/cubic_conditional_completion.rs",
+      "kind": "classified-native-file",
+      "path": "packages/class-groups/tests/cubic_conditional_completion.rs",
+      "disposition": "benchmark-reference",
+      "review_status": "experimental-pending-review",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/class-groups/tests/cubic_presentation_candidate.rs",
+      "kind": "classified-native-file",
+      "path": "packages/class-groups/tests/cubic_presentation_candidate.rs",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/class-groups/tests/index_prime_decomposition.rs",
+      "kind": "classified-native-file",
+      "path": "packages/class-groups/tests/index_prime_decomposition.rs",
+      "disposition": "benchmark-reference",
+      "review_status": "experimental-pending-review",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/class-groups/tests/prepared_relation_continuation.rs",
+      "kind": "classified-native-file",
+      "path": "packages/class-groups/tests/prepared_relation_continuation.rs",
+      "disposition": "benchmark-reference",
+      "review_status": "experimental-pending-review",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/class-groups/tests/public_polynomial_preparation.rs",
+      "kind": "classified-native-file",
+      "path": "packages/class-groups/tests/public_polynomial_preparation.rs",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
       "id": "native-file:packages/fflas/include/sagejs/fflas_matrix_ffi.h",
       "kind": "classified-native-file",
       "path": "packages/fflas/include/sagejs/fflas_matrix_ffi.h",
@@ -14256,6 +14520,182 @@
       "id": "rust-abi-import:bench/pari-class-group-rust/src/flint_normal_form.rs:sagejs_rust_flint_staged_relation_witnesses_i64",
       "kind": "rust-abi-import",
       "path": "bench/pari-class-group-rust/src/flint_normal_form.rs",
+      "package": "@sagemath/sagejs",
+      "abi": "C",
+      "import_kind": "function",
+      "symbol": "sagejs_rust_flint_staged_relation_witnesses_i64",
+      "linked_symbol": "sagejs_rust_flint_staged_relation_witnesses_i64",
+      "disposition": "experimental-rust-qualification-abi"
+    },
+    {
+      "id": "rust-abi-import:packages/class-groups/src/flint_normal_form.rs:sagejs_rust_flint_bdf_factor_base_margin",
+      "kind": "rust-abi-import",
+      "path": "packages/class-groups/src/flint_normal_form.rs",
+      "package": "@sagemath/sagejs",
+      "abi": "C",
+      "import_kind": "function",
+      "symbol": "sagejs_rust_flint_bdf_factor_base_margin",
+      "linked_symbol": "sagejs_rust_flint_bdf_factor_base_margin",
+      "disposition": "experimental-rust-qualification-abi"
+    },
+    {
+      "id": "rust-abi-import:packages/class-groups/src/flint_normal_form.rs:sagejs_rust_flint_bf_index_enclosure",
+      "kind": "rust-abi-import",
+      "path": "packages/class-groups/src/flint_normal_form.rs",
+      "package": "@sagemath/sagejs",
+      "abi": "C",
+      "import_kind": "function",
+      "symbol": "sagejs_rust_flint_bf_index_enclosure",
+      "linked_symbol": "sagejs_rust_flint_bf_index_enclosure",
+      "disposition": "experimental-rust-qualification-abi"
+    },
+    {
+      "id": "rust-abi-import:packages/class-groups/src/flint_normal_form.rs:sagejs_rust_flint_compact_cubic_regulator",
+      "kind": "rust-abi-import",
+      "path": "packages/class-groups/src/flint_normal_form.rs",
+      "package": "@sagemath/sagejs",
+      "abi": "C",
+      "import_kind": "function",
+      "symbol": "sagejs_rust_flint_compact_cubic_regulator",
+      "linked_symbol": "sagejs_rust_flint_compact_cubic_regulator",
+      "disposition": "experimental-rust-qualification-abi"
+    },
+    {
+      "id": "rust-abi-import:packages/class-groups/src/flint_normal_form.rs:sagejs_rust_flint_hnf_basis_i64",
+      "kind": "rust-abi-import",
+      "path": "packages/class-groups/src/flint_normal_form.rs",
+      "package": "@sagemath/sagejs",
+      "abi": "C",
+      "import_kind": "function",
+      "symbol": "sagejs_rust_flint_hnf_basis_i64",
+      "linked_symbol": "sagejs_rust_flint_hnf_basis_i64",
+      "disposition": "experimental-rust-qualification-abi"
+    },
+    {
+      "id": "rust-abi-import:packages/class-groups/src/flint_normal_form.rs:sagejs_rust_flint_hnf_basis_modular_i64",
+      "kind": "rust-abi-import",
+      "path": "packages/class-groups/src/flint_normal_form.rs",
+      "package": "@sagemath/sagejs",
+      "abi": "C",
+      "import_kind": "function",
+      "symbol": "sagejs_rust_flint_hnf_basis_modular_i64",
+      "linked_symbol": "sagejs_rust_flint_hnf_basis_modular_i64",
+      "disposition": "experimental-rust-qualification-abi"
+    },
+    {
+      "id": "rust-abi-import:packages/class-groups/src/flint_normal_form.rs:sagejs_rust_flint_hnf_profile_i64",
+      "kind": "rust-abi-import",
+      "path": "packages/class-groups/src/flint_normal_form.rs",
+      "package": "@sagemath/sagejs",
+      "abi": "C",
+      "import_kind": "function",
+      "symbol": "sagejs_rust_flint_hnf_profile_i64",
+      "linked_symbol": "sagejs_rust_flint_hnf_profile_i64",
+      "disposition": "experimental-rust-qualification-abi"
+    },
+    {
+      "id": "rust-abi-import:packages/class-groups/src/flint_normal_form.rs:sagejs_rust_flint_incremental_hnf_i64",
+      "kind": "rust-abi-import",
+      "path": "packages/class-groups/src/flint_normal_form.rs",
+      "package": "@sagemath/sagejs",
+      "abi": "C",
+      "import_kind": "function",
+      "symbol": "sagejs_rust_flint_incremental_hnf_i64",
+      "linked_symbol": "sagejs_rust_flint_incremental_hnf_i64",
+      "disposition": "experimental-rust-qualification-abi"
+    },
+    {
+      "id": "rust-abi-import:packages/class-groups/src/flint_normal_form.rs:sagejs_rust_flint_left_kernel_i64",
+      "kind": "rust-abi-import",
+      "path": "packages/class-groups/src/flint_normal_form.rs",
+      "package": "@sagemath/sagejs",
+      "abi": "C",
+      "import_kind": "function",
+      "symbol": "sagejs_rust_flint_left_kernel_i64",
+      "linked_symbol": "sagejs_rust_flint_left_kernel_i64",
+      "disposition": "experimental-rust-qualification-abi"
+    },
+    {
+      "id": "rust-abi-import:packages/class-groups/src/flint_normal_form.rs:sagejs_rust_flint_lll_columns_mpz",
+      "kind": "rust-abi-import",
+      "path": "packages/class-groups/src/flint_normal_form.rs",
+      "package": "@sagemath/sagejs",
+      "abi": "C",
+      "import_kind": "function",
+      "symbol": "sagejs_rust_flint_lll_columns_mpz",
+      "linked_symbol": "sagejs_rust_flint_lll_columns_mpz",
+      "disposition": "experimental-rust-qualification-abi"
+    },
+    {
+      "id": "rust-abi-import:packages/class-groups/src/flint_normal_form.rs:sagejs_rust_flint_relation_witnesses_i64",
+      "kind": "rust-abi-import",
+      "path": "packages/class-groups/src/flint_normal_form.rs",
+      "package": "@sagemath/sagejs",
+      "abi": "C",
+      "import_kind": "function",
+      "symbol": "sagejs_rust_flint_relation_witnesses_i64",
+      "linked_symbol": "sagejs_rust_flint_relation_witnesses_i64",
+      "disposition": "experimental-rust-qualification-abi"
+    },
+    {
+      "id": "rust-abi-import:packages/class-groups/src/flint_normal_form.rs:sagejs_rust_flint_small_surplus_class_order_i64",
+      "kind": "rust-abi-import",
+      "path": "packages/class-groups/src/flint_normal_form.rs",
+      "package": "@sagemath/sagejs",
+      "abi": "C",
+      "import_kind": "function",
+      "symbol": "sagejs_rust_flint_small_surplus_class_order_i64",
+      "linked_symbol": "sagejs_rust_flint_small_surplus_class_order_i64",
+      "disposition": "experimental-rust-qualification-abi"
+    },
+    {
+      "id": "rust-abi-import:packages/class-groups/src/flint_normal_form.rs:sagejs_rust_flint_small_surplus_relation_witnesses_mpz",
+      "kind": "rust-abi-import",
+      "path": "packages/class-groups/src/flint_normal_form.rs",
+      "package": "@sagemath/sagejs",
+      "abi": "C",
+      "import_kind": "function",
+      "symbol": "sagejs_rust_flint_small_surplus_relation_witnesses_mpz",
+      "linked_symbol": "sagejs_rust_flint_small_surplus_relation_witnesses_mpz",
+      "disposition": "experimental-rust-qualification-abi"
+    },
+    {
+      "id": "rust-abi-import:packages/class-groups/src/flint_normal_form.rs:sagejs_rust_flint_small_surplus_workspace_free",
+      "kind": "rust-abi-import",
+      "path": "packages/class-groups/src/flint_normal_form.rs",
+      "package": "@sagemath/sagejs",
+      "abi": "C",
+      "import_kind": "function",
+      "symbol": "sagejs_rust_flint_small_surplus_workspace_free",
+      "linked_symbol": "sagejs_rust_flint_small_surplus_workspace_free",
+      "disposition": "experimental-rust-qualification-abi"
+    },
+    {
+      "id": "rust-abi-import:packages/class-groups/src/flint_normal_form.rs:sagejs_rust_flint_snf_class_map_i64",
+      "kind": "rust-abi-import",
+      "path": "packages/class-groups/src/flint_normal_form.rs",
+      "package": "@sagemath/sagejs",
+      "abi": "C",
+      "import_kind": "function",
+      "symbol": "sagejs_rust_flint_snf_class_map_i64",
+      "linked_symbol": "sagejs_rust_flint_snf_class_map_i64",
+      "disposition": "experimental-rust-qualification-abi"
+    },
+    {
+      "id": "rust-abi-import:packages/class-groups/src/flint_normal_form.rs:sagejs_rust_flint_snf_i64",
+      "kind": "rust-abi-import",
+      "path": "packages/class-groups/src/flint_normal_form.rs",
+      "package": "@sagemath/sagejs",
+      "abi": "C",
+      "import_kind": "function",
+      "symbol": "sagejs_rust_flint_snf_i64",
+      "linked_symbol": "sagejs_rust_flint_snf_i64",
+      "disposition": "experimental-rust-qualification-abi"
+    },
+    {
+      "id": "rust-abi-import:packages/class-groups/src/flint_normal_form.rs:sagejs_rust_flint_staged_relation_witnesses_i64",
+      "kind": "rust-abi-import",
+      "path": "packages/class-groups/src/flint_normal_form.rs",
       "package": "@sagemath/sagejs",
       "abi": "C",
       "import_kind": "function",

@@ -305,7 +305,8 @@ test("Rust cross-field classifications fail closed", () => {
   );
 
   const mathematical = codeManifest.files.find((entry) =>
-    entry.rust_role === "mathematical-core"
+    entry.rust_role === "mathematical-core" &&
+    entry.path.startsWith(`${rustPolicyManifest.candidate_root}/src/`)
   );
   const disguised = structuredClone(codeManifest);
   disguised.files.find((entry) => entry.path === mathematical.path).category =
@@ -324,7 +325,8 @@ test("Rust cross-field classifications fail closed", () => {
   );
 
   const translated = codeManifest.files.find((entry) =>
-    entry.provenance_class === "source-translation"
+    entry.provenance_class === "source-translation" &&
+    entry.path.startsWith(`${rustPolicyManifest.candidate_root}/src/`)
   );
   const missingMapping = structuredClone(codeManifest);
   missingMapping.files.find((entry) => entry.path === translated.path)
