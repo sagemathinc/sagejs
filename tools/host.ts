@@ -16,7 +16,11 @@ import { Worker } from "node:worker_threads";
 
 import type { SageLanguageMode } from "./kernel-evaluator";
 import { NodeMultiprocessingAdapter } from "./multiprocessing-host";
-import { hasPrecompiledTaskModule } from "./resources";
+import {
+  classGroupServiceResource,
+  hasPrecompiledTaskModule,
+  type ClassGroupServiceResource,
+} from "./resources";
 
 interface HostFailure {
   code?: string;
@@ -151,6 +155,539 @@ socket.on("end", done);
 socket.on("error", fail);
 socket.setTimeout(workerData.timeout, () => { const error = new Error("socket timed out"); error.code = "ETIMEDOUT"; socket.destroy(error); });
 `;
+
+const CLASS_GROUP_REQUEST_BYTES = 1024 * 1024;
+const CLASS_GROUP_RESPONSE_BYTES = 32 * 1024 * 1024;
+const CLASS_GROUP_CONTROL_BYTES = 16;
+const CLASS_GROUP_OPERATIONS = new Set([
+  "capability",
+  "open",
+  "publication",
+  "query",
+  "close",
+]);
+
+const classGroupServiceWorkerSource = String.raw`
+const { workerData } = require("node:worker_threads");
+const { spawn } = require("node:child_process");
+const readline = require("node:readline");
+const control = new Int32Array(workerData.shared, 0, 4);
+const input = new Uint8Array(
+  workerData.shared,
+  workerData.controlBytes,
+  workerData.requestBytes,
+);
+const output = new Uint8Array(
+  workerData.shared,
+  workerData.controlBytes + workerData.requestBytes,
+  workerData.responseBytes,
+);
+const decoder = new TextDecoder("utf-8", { fatal: true });
+const encoder = new TextEncoder();
+let child;
+let nextId = 0;
+let stderr = "";
+let protocolError;
+const pending = new Map();
+
+function recordError(error) {
+  return {
+    code: typeof error?.code === "string" ? error.code : "ECLASSGROUP",
+    name: typeof error?.name === "string" ? error.name : "Error",
+    message: typeof error?.message === "string" ? error.message : String(error),
+  };
+}
+
+function plainRecord(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function corrupt(message) {
+  const error = new Error(message);
+  error.code = "EBADMSG";
+  return error;
+}
+
+function failProtocol(error) {
+  protocolError = error;
+  for (const item of pending.values()) item.reject(error);
+  pending.clear();
+  child?.kill();
+}
+
+function validateServiceResponse(value, id) {
+  if (!plainRecord(value) ||
+      value.schema !== "sagejs.class-groups/service-response-v1" ||
+      value.abi !== 1 || value.id !== id || typeof value.ok !== "boolean") {
+    throw corrupt("class-group service returned a corrupt response envelope");
+  }
+  if (value.ok) {
+    if (!plainRecord(value.result) || Object.hasOwn(value, "error")) {
+      throw corrupt("class-group service returned a corrupt success result");
+    }
+    return value.result;
+  }
+  if (!plainRecord(value.error) ||
+      value.error.schema !== "sagejs.class-groups/service-response-v1" ||
+      value.error.outcome !== "error" || typeof value.error.category !== "string" ||
+      typeof value.error.operation !== "string" || typeof value.error.message !== "string" ||
+      Object.hasOwn(value, "result")) {
+    throw corrupt("class-group service returned a corrupt failure result");
+  }
+  const error = new Error(value.error.message);
+  error.code = value.error.category;
+  error.name = typeof value.error.name === "string"
+    ? value.error.name
+    : "ClassGroupServiceError";
+  throw error;
+}
+
+function startService() {
+  child = spawn(workerData.filename, [], {
+    stdio: ["pipe", "pipe", "pipe"],
+    detached: true,
+    windowsHide: true,
+  });
+  if (typeof child.pid !== "number" || child.pid <= 0) {
+    throw new Error("class-group service did not publish a process id");
+  }
+  Atomics.store(control, 3, child.pid);
+  child.stderr.on("data", chunk => {
+    stderr = (stderr + chunk.toString("utf8")).slice(-4096);
+  });
+  let lineBytes = 0;
+  child.stdout.on("data", chunk => {
+    let start = 0;
+    for (;;) {
+      const newline = chunk.indexOf(10, start);
+      if (newline < 0) break;
+      lineBytes += newline - start;
+      if (lineBytes > workerData.responseBytes) {
+        failProtocol(corrupt("class-group service response exceeds the byte limit"));
+        return;
+      }
+      lineBytes = 0;
+      start = newline + 1;
+    }
+    lineBytes += chunk.length - start;
+    if (lineBytes > workerData.responseBytes) {
+      failProtocol(corrupt("class-group service response exceeds the byte limit"));
+    }
+  });
+  const lines = readline.createInterface({ input: child.stdout, crlfDelay: Infinity });
+  lines.on("line", line => {
+    if (protocolError !== undefined) return;
+    let value;
+    try { value = JSON.parse(line); }
+    catch { value = corrupt("class-group service wrote non-JSON output"); }
+    const id = plainRecord(value) && typeof value.id === "string" ? value.id : undefined;
+    const slot = id === undefined ? undefined : pending.get(id);
+    if (slot === undefined) {
+      failProtocol(corrupt("class-group service response id mismatch"));
+      return;
+    }
+    pending.delete(id);
+    try { slot.resolve(validateServiceResponse(value, id)); }
+    catch (error) { slot.reject(error); }
+  });
+  child.on("error", error => {
+    for (const slot of pending.values()) slot.reject(error);
+    pending.clear();
+  });
+  child.on("exit", (code, signal) => {
+    if (Atomics.load(control, 3) === child.pid) Atomics.store(control, 3, 0);
+    const detail = stderr.trim();
+    const error = new Error(
+      "class-group service exited" +
+      (code === null ? "" : " with status " + code) +
+      (signal === null ? "" : " after " + signal) +
+      (detail.length === 0 ? "" : ": " + detail),
+    );
+    error.code = "EPIPE";
+    for (const slot of pending.values()) slot.reject(error);
+    pending.clear();
+  });
+}
+
+function serviceCall(operation, request) {
+  if (!plainRecord(request)) throw new TypeError("class-group request must be a plain object");
+  if (protocolError !== undefined) return Promise.reject(protocolError);
+  const id = "host-" + (++nextId);
+  if (id.length > 64) throw new RangeError("class-group request id space exhausted");
+  const message = {
+    ...request,
+    schema: "sagejs.class-groups/service-request-v1",
+    abi: 1,
+    id,
+    operation,
+  };
+  return new Promise((resolve, reject) => {
+    pending.set(id, { resolve, reject });
+    child.stdin.write(JSON.stringify(message) + "\n", error => {
+      if (!error) return;
+      pending.delete(id);
+      reject(error);
+    });
+  });
+}
+
+function finish(value) {
+  let bytes;
+  try { bytes = encoder.encode(JSON.stringify({ ok: true, value })); }
+  catch (error) { bytes = encoder.encode(JSON.stringify({ ok: false, error: recordError(error) })); }
+  if (bytes.length > output.length) {
+    bytes = encoder.encode(JSON.stringify({
+      ok: false,
+      error: { code: "ENOBUFS", name: "RangeError", message: "class-group response exceeds the shared buffer" },
+    }));
+  }
+  output.fill(0, 0, Math.min(64, output.length));
+  output.set(bytes);
+  Atomics.store(control, 2, bytes.length);
+  Atomics.store(control, 0, 2);
+  Atomics.notify(control, 0);
+}
+
+async function waitUntilChanged(expected) {
+  while (Atomics.load(control, 0) === expected) {
+    const waiter = Atomics.waitAsync(control, 0, expected);
+    if (waiter.async) await waiter.value;
+  }
+}
+
+async function main() {
+  startService();
+  for (;;) {
+    await waitUntilChanged(0);
+    const state = Atomics.load(control, 0);
+    if (state === 3) break;
+    if (state !== 1) {
+      await waitUntilChanged(state);
+      continue;
+    }
+    try {
+      const length = Atomics.load(control, 1);
+      if (length <= 0 || length > input.length) throw new RangeError("invalid class-group request length");
+      const envelope = JSON.parse(decoder.decode(input.slice(0, length)));
+      if (!plainRecord(envelope) || typeof envelope.operation !== "string" ||
+          !plainRecord(envelope.request)) {
+        throw new TypeError("invalid class-group host request");
+      }
+      const result = await serviceCall(envelope.operation, envelope.request);
+      finish(result);
+    } catch (error) {
+      let bytes = encoder.encode(JSON.stringify({ ok: false, error: recordError(error) }));
+      if (bytes.length > output.length) bytes = encoder.encode('{"ok":false,"error":{"code":"ENOBUFS","message":"class-group error exceeds the shared buffer"}}');
+      output.set(bytes);
+      Atomics.store(control, 2, bytes.length);
+      Atomics.store(control, 0, 2);
+      Atomics.notify(control, 0);
+    }
+    await waitUntilChanged(2);
+  }
+  child?.stdin.end();
+  child?.kill();
+}
+
+process.on("exit", () => child?.kill());
+main().catch(error => {
+  finish({ __sagejs_worker_error__: recordError(error) });
+  child?.kill();
+});
+`;
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+function classGroupHostError(
+  code: string,
+  message: string,
+  name = "ClassGroupHostError",
+): Error & { code: string } {
+  const error = new Error(message) as Error & { code: string };
+  error.name = name;
+  error.code = code;
+  return error;
+}
+
+/** Lazy synchronous facade over the resident asynchronous native service. */
+export class NodeClassGroupBackend {
+  private worker: Worker | undefined;
+  private shared: SharedArrayBuffer | undefined;
+  private control: Int32Array | undefined;
+  private input: Uint8Array | undefined;
+  private output: Uint8Array | undefined;
+  private resource: ClassGroupServiceResource | undefined;
+  private generation = 0n;
+  private readonly sessions = new Map<
+    string,
+    { generation: string; handle: string }
+  >();
+  private closed = false;
+
+  private capabilityDeclined(
+    message: string,
+    code = "capability-declined",
+    route?: string,
+  ): Record<string, unknown> {
+    return {
+      schema: "sagejs.class-groups/service-response-v1",
+      outcome: "error",
+      category: "capability-declined",
+      operation: "capability",
+      message,
+      code,
+      ...(route === undefined ? {} : { route }),
+    };
+  }
+
+  private capability(): Record<string, unknown> {
+    if (this.closed) {
+      return this.capabilityDeclined("class-group backend is closed", "ECLOSED");
+    }
+    if (process.platform === "win32") {
+      return this.capabilityDeclined(
+        "native class groups are unavailable on Windows; use the Wasm worker fallback",
+        "ENOSYS",
+        "wasm-fallback",
+      );
+    }
+    try {
+      this.resource ??= classGroupServiceResource();
+      if (this.resource === undefined) {
+        return this.capabilityDeclined(
+          "the optional native class-group service is not installed",
+          "ENOENT",
+        );
+      }
+      return {
+        schema: "sagejs.class-groups/service-response-v1",
+        outcome: "available",
+        operation: "capability",
+        abi: 1,
+        mathematicalScope: "absolute-monic-cubic-conditional-grh",
+        maximumResidentSessions: 4,
+        proofModes: ["conditional-grh"],
+        operations: ["capability", "open", "query", "publication", "close"],
+        route: "native-resident-worker",
+        artifactSha256: this.resource.artifactSha256,
+        artifactBytes: this.resource.bytes,
+      };
+    } catch (error) {
+      const failure = error as NodeJS.ErrnoException;
+      return this.capabilityDeclined(
+        failure.message,
+        failure.code ?? "ECLASSGROUP",
+      );
+    }
+  }
+
+  private ensureWorker(): void {
+    if (this.closed) throw classGroupHostError("ECLOSED", "class-group backend is closed");
+    const capability = this.capability();
+    if (capability.outcome !== "available" || this.resource === undefined) {
+      throw classGroupHostError(
+        String(capability.code ?? "ENOSYS"),
+        String(capability.message ?? "native class groups are unavailable"),
+        "ClassGroupUnavailableError",
+      );
+    }
+    if (this.worker !== undefined) return;
+    const shared = new SharedArrayBuffer(
+      CLASS_GROUP_CONTROL_BYTES + CLASS_GROUP_REQUEST_BYTES + CLASS_GROUP_RESPONSE_BYTES,
+    );
+    this.shared = shared;
+    this.control = new Int32Array(shared, 0, 4);
+    this.input = new Uint8Array(shared, CLASS_GROUP_CONTROL_BYTES, CLASS_GROUP_REQUEST_BYTES);
+    this.output = new Uint8Array(
+      shared,
+      CLASS_GROUP_CONTROL_BYTES + CLASS_GROUP_REQUEST_BYTES,
+      CLASS_GROUP_RESPONSE_BYTES,
+    );
+    this.worker = new Worker(classGroupServiceWorkerSource, {
+      eval: true,
+      workerData: {
+        shared,
+        controlBytes: CLASS_GROUP_CONTROL_BYTES,
+        requestBytes: CLASS_GROUP_REQUEST_BYTES,
+        responseBytes: CLASS_GROUP_RESPONSE_BYTES,
+        filename: this.resource.filename,
+      },
+    });
+    this.generation += 1n;
+  }
+
+  private retireWorker(): void {
+    const worker = this.worker;
+    const servicePid = this.control === undefined ? 0 : Atomics.load(this.control, 3);
+    if (this.control !== undefined) {
+      Atomics.store(this.control, 0, 3);
+      Atomics.notify(this.control, 0);
+    }
+    this.worker = undefined;
+    this.shared = undefined;
+    this.control = undefined;
+    this.input = undefined;
+    this.output = undefined;
+    this.sessions.clear();
+    if (servicePid > 0 && process.platform !== "win32") {
+      try {
+        // The worker creates a dedicated service process group so abrupt
+        // worker termination cannot orphan the service or its descendants.
+        process.kill(-servicePid, "SIGKILL");
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ESRCH") {
+          try {
+            process.kill(servicePid, "SIGKILL");
+          } catch {
+            // Worker termination remains the final cleanup boundary.
+          }
+        }
+      }
+    }
+    if (worker !== undefined) {
+      const termination = setTimeout(() => void worker.terminate(), 250);
+      termination.unref();
+      worker.once("exit", () => clearTimeout(termination));
+    }
+  }
+
+  call(operation: string, request: Record<string, unknown>): Record<string, unknown> {
+    if (!CLASS_GROUP_OPERATIONS.has(operation)) {
+      throw classGroupHostError("EINVAL", `unknown class-group operation: ${operation}`);
+    }
+    if (!isPlainRecord(request)) {
+      throw new TypeError("class-group request must be a plain object");
+    }
+    if (operation === "capability") return this.capability();
+    let serviceRequest = request;
+    let sessionKey: string | undefined;
+    if (operation !== "open") {
+      if (typeof request.generation !== "string" ||
+          !/^(0|[1-9][0-9]*)$/.test(request.generation) ||
+          typeof request.handle !== "string" ||
+          !/^(0|[1-9][0-9]*)$/.test(request.handle)) {
+        throw classGroupHostError(
+          "stale-handle",
+          "class-group request has an invalid or stale session binding",
+          "ClassGroupServiceError",
+        );
+      }
+      sessionKey = `${request.generation}:${request.handle}`;
+      const native = this.sessions.get(sessionKey);
+      if (native === undefined) {
+        throw classGroupHostError(
+          "stale-handle",
+          "class-group request has an invalid or stale session binding",
+          "ClassGroupServiceError",
+        );
+      }
+      serviceRequest = {
+        ...request,
+        generation: native.generation,
+        handle: native.handle,
+      };
+    }
+    this.ensureWorker();
+    const control = this.control as Int32Array;
+    const input = this.input as Uint8Array;
+    const output = this.output as Uint8Array;
+    const encoded = Buffer.from(JSON.stringify({ operation, request: serviceRequest }));
+    if (encoded.length === 0 || encoded.length > input.length) {
+      throw classGroupHostError("E2BIG", "class-group request exceeds the shared buffer", "RangeError");
+    }
+    if (Atomics.load(control, 0) !== 0) {
+      this.retireWorker();
+      throw classGroupHostError("EBUSY", "class-group worker protocol is not idle");
+    }
+    input.set(encoded);
+    Atomics.store(control, 1, encoded.length);
+    Atomics.store(control, 2, 0);
+    Atomics.store(control, 0, 1);
+    Atomics.notify(control, 0);
+    const timeout = operation === "open" ? 120_000 : 30_000;
+    const waited = Atomics.wait(control, 0, 1, timeout);
+    if (waited === "timed-out") {
+      this.retireWorker();
+      throw classGroupHostError(
+        "ETIMEDOUT",
+        `class-group ${operation} operation timed out`,
+        "ClassGroupTimeoutError",
+      );
+    }
+    const length = Atomics.load(control, 2);
+    if (Atomics.load(control, 0) !== 2 || length <= 0 || length > output.length) {
+      this.retireWorker();
+      throw classGroupHostError("EBADMSG", "class-group worker returned a corrupt response");
+    }
+    let payload: unknown;
+    try {
+      payload = JSON.parse(Buffer.from(output.slice(0, length)).toString("utf8"));
+    } catch {
+      this.retireWorker();
+      throw classGroupHostError("EBADMSG", "class-group worker returned invalid JSON");
+    } finally {
+      if (this.control !== undefined) {
+        Atomics.store(control, 0, 0);
+        Atomics.notify(control, 0);
+      }
+    }
+    if (!isPlainRecord(payload) || typeof payload.ok !== "boolean") {
+      this.retireWorker();
+      throw classGroupHostError("EBADMSG", "class-group worker returned an invalid envelope");
+    }
+    if (!payload.ok) {
+      const error = isPlainRecord(payload.error) ? payload.error : {};
+      if (typeof error.code !== "string" || typeof error.message !== "string") {
+        this.retireWorker();
+        throw classGroupHostError("EBADMSG", "class-group worker returned an invalid error");
+      }
+      if (error.code === "EBADMSG") this.retireWorker();
+      throw classGroupHostError(
+        error.code,
+        error.message,
+        typeof error.name === "string" ? error.name : "ClassGroupServiceError",
+      );
+    }
+    if (!isPlainRecord(payload.value)) {
+      this.retireWorker();
+      throw classGroupHostError("EBADMSG", "class-group worker returned a non-object result");
+    }
+    const value = payload.value;
+    if (isPlainRecord(value.__sagejs_worker_error__)) {
+      this.retireWorker();
+      throw classGroupHostError("EPIPE", "class-group worker failed");
+    }
+    if (operation === "open") {
+      if (typeof value.generation !== "string" || !/^(0|[1-9][0-9]*)$/.test(value.generation) ||
+          typeof value.handle !== "string" || !/^(0|[1-9][0-9]*)$/.test(value.handle) ||
+          !isPlainRecord(value.completion)) {
+        this.retireWorker();
+        throw classGroupHostError("EBADMSG", "class-group service returned an invalid open result");
+      }
+      value.artifactSha256 = this.resource?.artifactSha256;
+      const nativeGeneration = value.generation;
+      const nativeHandle = value.handle;
+      value.generation = this.generation.toString();
+      this.sessions.set(`${value.generation}:${nativeHandle}`, {
+        generation: nativeGeneration,
+        handle: nativeHandle,
+      });
+    } else if (operation === "close" && sessionKey !== undefined) {
+      this.sessions.delete(sessionKey);
+    }
+    return value;
+  }
+
+  close(): void {
+    if (this.closed) return;
+    this.closed = true;
+    this.retireWorker();
+  }
+}
 
 /*
  * Optional WebGPU twist screening lives in an isolated worker because Dawn's
@@ -366,6 +903,7 @@ export class NodeHostAdapter {
   private currentDirectory = process.cwd();
   private readonly environment: Record<string, string> = Object.create(null);
   private readonly multiprocessing: NodeMultiprocessingAdapter;
+  private readonly classGroups = new NodeClassGroupBackend();
 
   constructor(mode: SageLanguageMode = "sage") {
     this.multiprocessing = new NodeMultiprocessingAdapter(mode);
@@ -820,6 +1358,14 @@ export class NodeHostAdapter {
             : Reflect.get(Object(args[0]), "_values") ?? args[0];
           return { ok: true, value: serializer.unpack(source as number[]) };
         }
+        case "classGroup":
+          return {
+            ok: true,
+            value: this.classGroups.call(
+              String(args[0]),
+              args[1] as Record<string, unknown>,
+            ),
+          };
         case "multiprocessingCreatePool":
           return {
             ok: true,
@@ -939,6 +1485,9 @@ export class NodeHostAdapter {
         case "multiprocessingCloseAllPools":
           this.multiprocessing.close();
           return { ok: true, value: null };
+        case "classGroupCloseHost":
+          this.classGroups.close();
+          return { ok: true, value: null };
         default:
           return {
             ok: false,
@@ -966,6 +1515,7 @@ export function installNodeHost(
   Reflect.set(target, property, adapter);
   return () => {
     adapter.call("multiprocessingCloseAllPools");
+    adapter.call("classGroupCloseHost");
     if (hadPrevious) Reflect.set(target, property, previous);
     else Reflect.deleteProperty(target, property);
   };

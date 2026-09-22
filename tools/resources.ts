@@ -9,7 +9,9 @@ import {
   mkdtempSync,
   renameSync,
   readFileSync,
+  realpathSync,
   rmSync,
+  statSync,
   unlinkSync,
   writeFileSync,
 } from "fs";
@@ -59,6 +61,8 @@ const NATIVE_KERNEL_ASSET_PREFIX = "native-kernels/";
 const NATIVE_KERNEL_PACK_ASSET =
   "native-kernels/pack/sagejs_native_kernel_pack.node";
 const NATIVE_KERNEL_PACK_MANIFEST_ASSET = "native-kernels/pack/index.json";
+const CLASS_GROUP_SERVICE_ASSET = "native/class-group-service";
+const CLASS_GROUP_SERVICE_MAXIMUM_BYTES = 24 * 1024 * 1024;
 const NATIVE_KERNEL_PACK_ABI_VERSION = 1;
 // This is the embedded-asset half of `NATIVE_ABI_VERSION` in
 // `tools/native-kernel/c-backend.cjs`. Production-kernel tests ratchet it to
@@ -86,6 +90,12 @@ let kernelWorkerFilename: string | undefined;
 let multiprocessingWorkerFilename: string | undefined;
 const nativeKernelModules = new Map<string, unknown>();
 let seaAssetKeys: Set<string> | undefined;
+
+export interface ClassGroupServiceResource {
+  filename: string;
+  artifactSha256: string;
+  bytes: number;
+}
 
 function hasAsset(key: string): boolean {
   if (!isSea()) return false;
@@ -145,6 +155,112 @@ function publishEmbeddedFile(
 /** Return the parent-owned directory shared by this SEA's worker isolates. */
 export function singleExecutableNativeResourceDirectory(): string | undefined {
   return isSea() ? ensureNativeTemporaryDirectory() : undefined;
+}
+
+function checkedClassGroupService(
+  filename: string,
+): ClassGroupServiceResource | undefined {
+  if (!existsSync(filename)) return;
+  const stat = statSync(filename);
+  if (!stat.isFile()) {
+    throw new Error("class-group service is not a regular file");
+  }
+  if (stat.size <= 0 || stat.size > CLASS_GROUP_SERVICE_MAXIMUM_BYTES) {
+    throw new Error("class-group service has an invalid artifact size");
+  }
+  const bytes = readFileSync(filename);
+  if (bytes.length !== stat.size) {
+    throw new Error("class-group service has an invalid artifact size");
+  }
+  return {
+    filename,
+    artifactSha256: createHash("sha256").update(bytes).digest("hex"),
+    bytes: bytes.length,
+  };
+}
+
+function packagedClassGroupService(
+  packageDirectory: string,
+  target: string,
+): ClassGroupServiceResource | undefined {
+  const packageRoot = realpathSync(packageDirectory);
+  const receiptFilename = join(packageRoot, "native", "class-group-service.json");
+  const executableFilename = join(packageRoot, "libexec", "class-group-service");
+  if (!existsSync(receiptFilename) || !existsSync(executableFilename)) return;
+  const receiptRealpath = realpathSync(receiptFilename);
+  const executableRealpath = realpathSync(executableFilename);
+  const prefix = `${packageRoot}${process.platform === "win32" ? "\\" : "/"}`;
+  if (!receiptRealpath.startsWith(prefix) || !executableRealpath.startsWith(prefix)) {
+    throw new Error("class-group platform resource escapes its package");
+  }
+  if (!statSync(receiptRealpath).isFile() || !statSync(executableRealpath).isFile()) {
+    throw new Error("class-group platform resource is not a regular file");
+  }
+  const receipt = JSON.parse(readFileSync(receiptRealpath, "utf8"));
+  const resource = checkedClassGroupService(executableRealpath);
+  if (
+    resource === undefined ||
+    receipt?.schema !== "sagejs.class-groups/native-artifact-v1" ||
+    receipt?.abi !== 1 ||
+    receipt?.target !== target ||
+    receipt?.executable !== "libexec/class-group-service" ||
+    receipt?.bytes !== resource.bytes ||
+    receipt?.sha256 !== resource.artifactSha256 ||
+    !/^[a-f0-9]{64}$/.test(receipt?.sha256 ?? "")
+  ) {
+    throw new Error("class-group platform artifact receipt is invalid");
+  }
+  return resource;
+}
+
+/** Resolve the optional Unix class-group service without starting it. */
+export function classGroupServiceResource(): ClassGroupServiceResource | undefined {
+  // The initial native service deliberately has no MSVC qualification. The
+  // browser/Wasm worker is the supported Windows fallback.
+  if (process.platform === "win32") return;
+
+  const override = process.env.SAGEJS_CLASS_GROUP_SERVICE;
+  if (override !== undefined) {
+    if (!isAbsolute(override)) {
+      throw new TypeError("SAGEJS_CLASS_GROUP_SERVICE must be an absolute path");
+    }
+    const resource = checkedClassGroupService(normalize(override));
+    if (resource === undefined) {
+      throw new Error("SAGEJS_CLASS_GROUP_SERVICE does not exist");
+    }
+    return resource;
+  }
+
+  if (isSea() && hasAsset(CLASS_GROUP_SERVICE_ASSET)) {
+    const filename = join(
+      ensureNativeTemporaryDirectory(),
+      CLASS_GROUP_SERVICE_ASSET,
+    );
+    publishEmbeddedFile(
+      filename,
+      Buffer.from(getAsset(CLASS_GROUP_SERVICE_ASSET)),
+    );
+    return checkedClassGroupService(filename);
+  }
+
+  const target = `${process.platform}-${process.arch}`;
+  const platformPackage = `@sagemath/sagejs-${target}`;
+  let manifest: string | undefined;
+  try {
+    manifest = createRequire(__filename).resolve(`${platformPackage}/package.json`);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "MODULE_NOT_FOUND") throw error;
+  }
+  if (manifest !== undefined) {
+    const packaged = packagedClassGroupService(dirname(manifest), target);
+    if (packaged !== undefined) return packaged;
+  }
+
+  // Source checkouts may use the locked production Rust build directly.
+  const executable = "class-group-service";
+  return checkedClassGroupService(
+    join(__dirname, "..", "packages", "class-groups", "target", "release", executable),
+  );
 }
 
 /** Make a SEA worker borrow, but never remove, its parent's extraction root. */
