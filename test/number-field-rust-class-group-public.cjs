@@ -98,7 +98,8 @@ test("compact authenticated summaries construct ordinary class groups", async ()
     "from sagejs.number_fields.rust_class_group_preparation import prepare_cubic_for_rust",
     "relative = P.basis_matrix() * O._basis_inverse_matrix()",
     "generator_rows = [[str(int(value._numerator)) for value in row] for row in relative.rows()]",
-    "summary = {'schema': 'sagejs.rust-class-group/authenticated-service-class-group-summary-v1', 'artifactSha256': 'a'*64, 'polynomialAscending': prepare_cubic_for_rust(K)['field']['coefficientsAscending'], 'invariants': ['3'], 'classNumber': '3', 'generatorIdeals': [{'coordinateZeroBased': 0, 'invariantFactor': '3', 'integralBasisRows': generator_rows}], 'factorBaseBound': '17', 'relationCount': 2, 'proofWitnessesSha256': 'b'*64}",
+    "prepared_service = prepare_cubic_for_rust(K)",
+    "summary = {'schema': 'sagejs.class-groups/compact-summary-v1', 'outcome': 'complete-conditional-grh', 'proofMode': 'conditional-grh', 'artifactSha256': 'a'*64, 'polynomialAscending': prepared_service['field']['coefficientsAscending'], 'discriminant': str(O.discriminant()), 'signature': [prepared_service['preparation']['signature']['realPlaces'], prepared_service['preparation']['signature']['complexPairs']], 'invariants': ['3'], 'classNumber': '3', 'generatorIdeals': [{'coordinateZeroBased': 0, 'invariantFactor': '3', 'integralBasisRows': generator_rows, 'constructionEvidence': {'method': 'authenticated-smith-lift-with-minimal-rational-principal-shifts', 'classCoordinates': ['1'], 'principalShifts': []}}], 'factorBaseBound': 17, 'relationCount': 2, 'proofWitnessesSha256': 'b'*64, 'fieldBindingSha256': 'c'*64, 'presentationBindingSha256': 'd'*64, 'authority': {'completionSchema': 'sagejs.rust-class-group/public-cubic-e2e-receipt-v2', 'completionOutcome': 'complete-conditional-grh', 'sealedEvidenceVerified': True, 'artifactAuthentication': 'host-must-bind-authenticated-artifact-sha256'}}",
     "attestations = []",
     "def attest(payload):",
     "    attestations.append(deepcopy(payload))",
@@ -106,7 +107,9 @@ test("compact authenticated summaries construct ordinary class groups", async ()
     "compact_queries = []",
     "def compact_query(rows, resources):",
     "    compact_queries.append((deepcopy(rows), resources))",
-    "    return {'schema': 'sagejs.rust-class-group/authenticated-service-ideal-query-receipt-v1', 'artifactSha256': 'a'*64, 'queriedIdealIntegralBasisRows': deepcopy(rows), 'classCoordinates': ['1'], 'principalElementIntegralBasisCoordinates': ['2', '0', '0'], 'principalWitnessRelationFactors': [{'exponent': '-1', 'principalElementIntegralBasisCoordinates': ['2', '0', '0']}]}",
+    "    answer = query(rows, resources)",
+    "    answer['polynomialAscending'] = deepcopy(summary['polynomialAscending'])",
+    "    return answer",
     "C = adapt_rust_authenticated_service_class_group(K, summary, attestation_callback=attest, query_callback=compact_query, query_resources={'maximumTrials': 7})",
     "I = ideal_arithmetic.scalar_translate(P, QQ(1, 2))",
     "log = C.discrete_log(I)",
@@ -115,7 +118,7 @@ test("compact authenticated summaries construct ordinary class groups", async ()
   ]);
   assert.equal(
     answer.repr,
-    "['IdealClassGroup', (3,), 3, (1,), True, True, True, 1, {'maximumTrials': 7}, ['class-group-summary', 'conditional-class-group-proof', 'generator-order-witness']]",
+    "['IdealClassGroup', (3,), 3, (1,), True, True, True, 1, {'maximumTrials': 7}, ['class-group-summary', 'conditional-class-group-proof', 'generator-order-witness', 'ideal-query']]",
   );
 });
 
@@ -124,7 +127,8 @@ test("compact service summaries and queries fail closed under mutation", async (
     "from sagejs.number_fields.rust_class_group_preparation import prepare_cubic_for_rust",
     "relative = P.basis_matrix() * O._basis_inverse_matrix()",
     "generator_rows = [[str(int(value._numerator)) for value in row] for row in relative.rows()]",
-    "base = {'schema': 'sagejs.rust-class-group/authenticated-service-class-group-summary-v1', 'artifactSha256': 'a'*64, 'polynomialAscending': prepare_cubic_for_rust(K)['field']['coefficientsAscending'], 'invariants': ['3'], 'classNumber': '3', 'generatorIdeals': [{'coordinateZeroBased': 0, 'invariantFactor': '3', 'integralBasisRows': generator_rows}], 'factorBaseBound': '17', 'relationCount': 2, 'proofWitnessesSha256': 'b'*64}",
+    "prepared_service = prepare_cubic_for_rust(K)",
+    "base = {'schema': 'sagejs.class-groups/compact-summary-v1', 'outcome': 'complete-conditional-grh', 'proofMode': 'conditional-grh', 'artifactSha256': 'a'*64, 'polynomialAscending': prepared_service['field']['coefficientsAscending'], 'discriminant': str(O.discriminant()), 'signature': [prepared_service['preparation']['signature']['realPlaces'], prepared_service['preparation']['signature']['complexPairs']], 'invariants': ['3'], 'classNumber': '3', 'generatorIdeals': [{'coordinateZeroBased': 0, 'invariantFactor': '3', 'integralBasisRows': generator_rows, 'constructionEvidence': {'method': 'authenticated-smith-lift-with-minimal-rational-principal-shifts', 'classCoordinates': ['1'], 'principalShifts': []}}], 'factorBaseBound': 17, 'relationCount': 2, 'proofWitnessesSha256': 'b'*64, 'fieldBindingSha256': 'c'*64, 'presentationBindingSha256': 'd'*64, 'authority': {'completionSchema': 'sagejs.rust-class-group/public-cubic-e2e-receipt-v2', 'completionOutcome': 'complete-conditional-grh', 'sealedEvidenceVerified': True, 'artifactAuthentication': 'host-must-bind-authenticated-artifact-sha256'}}",
     "def reject(payload): return False",
     "messages = []",
     "try:",
@@ -137,7 +141,9 @@ test("compact service summaries and queries fail closed under mutation", async (
     "except (ValueError, ArithmeticError) as error:",
     "    messages.append(str(error))",
     "def bad_query(rows, resources):",
-    "    return {'schema': 'sagejs.rust-class-group/authenticated-service-ideal-query-receipt-v1', 'artifactSha256': 'c'*64, 'queriedIdealIntegralBasisRows': deepcopy(rows), 'classCoordinates': ['1'], 'principalElementIntegralBasisCoordinates': ['2', '0', '0'], 'principalWitnessRelationFactors': [{'exponent': '-1', 'principalElementIntegralBasisCoordinates': ['2', '0', '0']}]}",
+    "    answer = query(rows, resources)",
+    "    answer['schema'] = 'mutated-query-schema'",
+    "    return answer",
     "C = adapt_rust_authenticated_service_class_group(K, base, attestation_callback=lambda payload: True, query_callback=bad_query)",
     "try:",
     "    C.discrete_log(ideal_arithmetic.scalar_translate(P, QQ(1, 2)))",

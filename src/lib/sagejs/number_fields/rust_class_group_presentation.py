@@ -40,12 +40,8 @@ ARBITRARY_IDEAL_QUERY_SCHEMA = "sagejs.rust-class-group/arbitrary-ideal-class-qu
 PUBLIC_ARBITRARY_IDEAL_QUERY_SCHEMA = (
     "sagejs.rust-class-group/public-cubic-arbitrary-ideal-query-receipt-v1"
 )
-AUTHENTICATED_SERVICE_CLASS_GROUP_SCHEMA = (
-    "sagejs.rust-class-group/authenticated-service-class-group-summary-v1"
-)
-AUTHENTICATED_SERVICE_IDEAL_QUERY_SCHEMA = (
-    "sagejs.rust-class-group/authenticated-service-ideal-query-receipt-v1"
-)
+AUTHENTICATED_SERVICE_CLASS_GROUP_SCHEMA = "sagejs.class-groups/compact-summary-v1"
+AUTHENTICATED_SERVICE_IDEAL_QUERY_SCHEMA = PUBLIC_ARBITRARY_IDEAL_QUERY_SCHEMA
 PUBLICATION_CANDIDATE_SCHEMA = (
     "sagejs.rust-class-group/public-cubic-publication-candidate-v2"
 )
@@ -1601,6 +1597,7 @@ class _AuthenticatedServiceClassGroupContext:
         artifact_sha256: str,
         summary_identity: str,
         proof_witnesses_sha256: str,
+        polynomial_ascending: Sequence[str],
         factor_base_bound: int,
         relation_count: int,
         attestation_callback: Any,
@@ -1614,6 +1611,7 @@ class _AuthenticatedServiceClassGroupContext:
         self.artifact_sha256 = artifact_sha256
         self.summary_identity = summary_identity
         self.proof_witnesses_sha256 = proof_witnesses_sha256
+        self.polynomial_ascending = list(polynomial_ascending)
         self.factor_base_bound = factor_base_bound
         self.relation_count = relation_count
         self._attestation_callback = attestation_callback
@@ -1684,24 +1682,70 @@ class _AuthenticatedServiceClassGroupContext:
         return integral, denominator, rows
 
     def _query_generator(self, integral: Any, rows: Any, receipt: Any) -> Any:
-        data = _closed(
+        wrapper = _closed(
             _canonical_json(receipt, "authenticated service ideal query"),
             {
-                "artifactSha256",
-                "classCoordinates",
-                "principalElementIntegralBasisCoordinates",
-                "principalWitnessRelationFactors",
+                "certificate",
+                "completion",
+                "outcome",
+                "polynomialAscending",
                 "queriedIdealIntegralBasisRows",
                 "schema",
             },
             "authenticated service ideal query",
         )
         if (
-            data["schema"] != AUTHENTICATED_SERVICE_IDEAL_QUERY_SCHEMA
-            or data["artifactSha256"] != self.artifact_sha256
-            or data["queriedIdealIntegralBasisRows"] != rows
+            wrapper["schema"] != AUTHENTICATED_SERVICE_IDEAL_QUERY_SCHEMA
+            or wrapper["outcome"] != "complete-conditional-grh-ideal-class"
+            or wrapper["polynomialAscending"] != self.polynomial_ascending
+            or wrapper["queriedIdealIntegralBasisRows"] != rows
+            or not self.attest("ideal-query")
         ):
             raise RelationMatrixError("ideal query is not bound to this artifact")
+        completion = wrapper["completion"]
+        if (
+            not isinstance(completion, dict)
+            or completion.get("schema")
+            != "sagejs.rust-class-group/public-cubic-e2e-receipt-v2"
+            or completion.get("outcome") != "complete-conditional-grh"
+            or completion.get("publicComplete") is not True
+            or completion.get("usesPariInput") is not False
+            or completion.get("usesPreparedFixture") is not False
+            or completion.get("usesFieldAnswersAsInput") is not False
+            or tuple(
+                _positive_decimal(value, "query completion invariant")
+                for value in completion.get("completion", {}).get(
+                    "invariantFactors", ()
+                )
+            )
+            != self.invariants
+        ):
+            raise RelationMatrixError("ideal query completion authority mismatch")
+        data = _closed(
+            wrapper["certificate"],
+            {
+                "canonicalRepresentativeFactorBaseExponents",
+                "classCoordinates",
+                "cursorTrials",
+                "factorBaseSize",
+                "maximalOrderEvidence",
+                "presentationZero",
+                "primitiveCandidates",
+                "principalElementIntegralBasisCoordinates",
+                "principalWitnessRelationFactors",
+                "quotientFactorBaseExponents",
+                "smoothQuotientNorms",
+            },
+            "authenticated service ideal-query certificate",
+        )
+        if data["maximalOrderEvidence"] not in (
+            "rust-proved-maximal-order",
+            "upstream-assumed-allowlisted-row6",
+        ):
+            raise RelationMatrixError("ideal query has unsupported order evidence")
+        _natural(data["factorBaseSize"], "query factor-base size")
+        for statistic in ("cursorTrials", "primitiveCandidates", "smoothQuotientNorms"):
+            _natural(data[statistic], "query statistic")
         raw_coordinates = data["classCoordinates"]
         if not isinstance(raw_coordinates, list) or len(raw_coordinates) != len(
             self.invariants
@@ -1710,6 +1754,8 @@ class _AuthenticatedServiceClassGroupContext:
         coordinates = tuple(
             _signed_decimal(value, "class coordinate") for value in raw_coordinates
         )
+        if data["presentationZero"] is not all(value == 0 for value in coordinates):
+            raise RelationMatrixError("ideal query principality state mismatch")
         representative = self.representative_ideal(coordinates)
         raw_alpha = data["principalElementIntegralBasisCoordinates"]
         if not isinstance(raw_alpha, list) or len(raw_alpha) != len(self._basis):
@@ -1725,12 +1771,21 @@ class _AuthenticatedServiceClassGroupContext:
         if not isinstance(factors, list) or len(factors) > _MAX_PUBLICATION_RELATIONS:
             raise RelationMatrixError("query relation factors exceed the replay cap")
         decoded = []
+        previous = -1
         for factor in factors:
             factor = _closed(
                 factor,
-                {"exponent", "principalElementIntegralBasisCoordinates"},
+                {
+                    "exponent",
+                    "principalElementIntegralBasisCoordinates",
+                    "relationIndexZeroBased",
+                },
                 "authenticated service relation factor",
             )
+            index = _natural(factor["relationIndexZeroBased"], "relation index")
+            if not previous < index < self.relation_count:
+                raise RelationMatrixError("query relation indices are not canonical")
+            previous = index
             raw_element = factor["principalElementIntegralBasisCoordinates"]
             if not isinstance(raw_element, list) or len(raw_element) != len(
                 self._basis
@@ -1898,24 +1953,37 @@ def adapt_rust_authenticated_service_class_group(
         _canonical_json(summary, "authenticated service class-group summary"),
         {
             "artifactSha256",
+            "authority",
             "classNumber",
+            "discriminant",
             "factorBaseBound",
+            "fieldBindingSha256",
             "generatorIdeals",
             "invariants",
+            "outcome",
             "polynomialAscending",
+            "presentationBindingSha256",
+            "proofMode",
             "proofWitnessesSha256",
             "relationCount",
             "schema",
+            "signature",
         },
         "authenticated service class-group summary",
     )
-    if data["schema"] != AUTHENTICATED_SERVICE_CLASS_GROUP_SCHEMA:
+    if (
+        data["schema"] != AUTHENTICATED_SERVICE_CLASS_GROUP_SCHEMA
+        or data["outcome"] != "complete-conditional-grh"
+        or data["proofMode"] != "conditional-grh"
+    ):
         raise RelationMatrixError("unsupported authenticated service summary")
     artifact = data["artifactSha256"]
     witness_digest = data["proofWitnessesSha256"]
     for value, label in (
         (artifact, "artifact SHA-256"),
         (witness_digest, "proof-witness SHA-256"),
+        (data["fieldBindingSha256"], "field-binding SHA-256"),
+        (data["presentationBindingSha256"], "presentation-binding SHA-256"),
     ):
         if (
             not isinstance(value, str)
@@ -1926,6 +1994,32 @@ def adapt_rust_authenticated_service_class_group(
     prepared = prepare_cubic_for_rust(field)
     if data["polynomialAscending"] != prepared["field"]["coefficientsAscending"]:
         raise RelationMatrixError("service summary belongs to another number field")
+    if _signed_decimal(data["discriminant"], "summary discriminant") != int(
+        field.maximal_order().discriminant()
+    ) or data["signature"] != [
+        prepared["preparation"]["signature"]["realPlaces"],
+        prepared["preparation"]["signature"]["complexPairs"],
+    ]:
+        raise RelationMatrixError("service summary changed the maximal-order field")
+    authority = _closed(
+        data["authority"],
+        {
+            "artifactAuthentication",
+            "completionOutcome",
+            "completionSchema",
+            "sealedEvidenceVerified",
+        },
+        "service summary authority",
+    )
+    if (
+        authority["completionSchema"]
+        != "sagejs.rust-class-group/public-cubic-e2e-receipt-v2"
+        or authority["completionOutcome"] != "complete-conditional-grh"
+        or authority["sealedEvidenceVerified"] is not True
+        or authority["artifactAuthentication"]
+        != "host-must-bind-authenticated-artifact-sha256"
+    ):
+        raise RelationMatrixError("service summary has unsupported authority")
     raw_invariants = data["invariants"]
     if not isinstance(raw_invariants, list) or len(raw_invariants) > _MAX_INVARIANTS:
         raise RelationMatrixError("service invariants are malformed")
@@ -1949,7 +2043,12 @@ def adapt_rust_authenticated_service_class_group(
     for position, descriptor in enumerate(raw_generators):
         descriptor = _closed(
             descriptor,
-            {"coordinateZeroBased", "integralBasisRows", "invariantFactor"},
+            {
+                "constructionEvidence",
+                "coordinateZeroBased",
+                "integralBasisRows",
+                "invariantFactor",
+            },
             "service class generator",
         )
         if (
@@ -1959,6 +2058,31 @@ def adapt_rust_authenticated_service_class_group(
             != invariants[position]
         ):
             raise RelationMatrixError("service class generator is not canonical")
+        construction = _closed(
+            descriptor["constructionEvidence"],
+            {"classCoordinates", "method", "principalShifts"},
+            "service generator construction",
+        )
+        expected_coordinates = [
+            "1" if index == position else "0" for index in range(len(invariants))
+        ]
+        shifts = construction["principalShifts"]
+        if (
+            construction["method"]
+            != "authenticated-smith-lift-with-minimal-rational-principal-shifts"
+            or construction["classCoordinates"] != expected_coordinates
+            or not isinstance(shifts, list)
+            or len(shifts) > _MAX_PUBLICATION_COLUMNS
+        ):
+            raise RelationMatrixError("service generator construction is malformed")
+        for shift in shifts:
+            shift = _closed(
+                shift,
+                {"exponent", "rationalPrime"},
+                "service generator principal shift",
+            )
+            _positive_decimal(shift["rationalPrime"], "principal-shift prime")
+            _positive_decimal(shift["exponent"], "principal-shift exponent")
         generators.append(
             _authenticated_service_ideal(
                 field,
@@ -1974,7 +2098,8 @@ def adapt_rust_authenticated_service_class_group(
         artifact,
         _identity(data),
         witness_digest,
-        _positive_decimal(data["factorBaseBound"], "factor-base bound"),
+        data["polynomialAscending"],
+        _positive_natural(data["factorBaseBound"], "factor-base bound"),
         _natural(data["relationCount"], "relation count"),
         attestation_callback,
         query_callback,
