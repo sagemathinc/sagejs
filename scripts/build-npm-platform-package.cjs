@@ -11,6 +11,7 @@ const {
   rmSync,
   writeFileSync,
 } = require("node:fs");
+const { createHash } = require("node:crypto");
 const { join, resolve } = require("node:path");
 
 const { runPnpm } = require("./pnpm-invocation.cjs");
@@ -48,12 +49,13 @@ const platforms = {
 function usage() {
   console.error(
     "Usage: node scripts/build-npm-platform-package.cjs " +
-      "PLATFORM SAGEJS SAGEPYTHON",
+      "PLATFORM SAGEJS SAGEPYTHON [CLASS_GROUP_SERVICE]",
   );
   process.exit(2);
 }
 
-const [platformName, sagejsInput, sagepythonInput] = process.argv.slice(2);
+const [platformName, sagejsInput, sagepythonInput, classGroupServiceInput] =
+  process.argv.slice(2);
 if (!platformName || !sagejsInput || !sagepythonInput) usage();
 const platform = platforms[platformName];
 if (!platform) {
@@ -61,6 +63,12 @@ if (!platform) {
 }
 for (const filename of [sagejsInput, sagepythonInput]) {
   if (!existsSync(filename)) throw new Error(`missing executable ${filename}`);
+}
+if (classGroupServiceInput && !existsSync(classGroupServiceInput)) {
+  throw new Error(`missing class-group service ${classGroupServiceInput}`);
+}
+if (classGroupServiceInput && platform.os === "win32") {
+  throw new Error("the native class-group service is not qualified for Windows");
 }
 
 const rootPackage = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
@@ -89,8 +97,16 @@ const manifest = {
     [`sagejs-${platformName}`]: `bin/sagejs${platform.extension}`,
     [`sagepython-${platformName}`]: `bin/sagepython${platform.extension}`,
   },
-  files: ["bin", "licenses", "LICENSE", "README.md"],
+  files: classGroupServiceInput
+    ? ["bin", "libexec", "native", "licenses", "LICENSE", "README.md"]
+    : ["bin", "licenses", "LICENSE", "README.md"],
 };
+if (classGroupServiceInput) {
+  manifest.exports = {
+    "./class-groups": "./native/class-group-service.cjs",
+    "./package.json": "./package.json",
+  };
+}
 if (platform.libc) manifest.libc = [platform.libc];
 writeFileSync(
   join(packageDirectory, "package.json"),
@@ -113,6 +129,34 @@ for (const [name, input] of [
   const output = join(packageDirectory, "bin", `${name}${platform.extension}`);
   copyFileSync(input, output);
   chmodSync(output, 0o755);
+}
+
+if (classGroupServiceInput) {
+  const serviceDirectory = join(packageDirectory, "libexec");
+  const metadataDirectory = join(packageDirectory, "native");
+  mkdirSync(serviceDirectory, { recursive: true });
+  mkdirSync(metadataDirectory, { recursive: true });
+  const executableName = `class-group-service${platform.extension}`;
+  const executable = join(serviceDirectory, executableName);
+  copyFileSync(classGroupServiceInput, executable);
+  chmodSync(executable, 0o755);
+  const contents = readFileSync(executable);
+  const artifact = {
+    schema: "sagejs.class-groups/native-artifact-v1",
+    abi: 1,
+    target: `${platform.os}-${platform.cpu}`,
+    executable: `libexec/${executableName}`,
+    bytes: contents.byteLength,
+    sha256: createHash("sha256").update(contents).digest("hex"),
+  };
+  writeFileSync(
+    join(metadataDirectory, "class-group-service.json"),
+    `${JSON.stringify(artifact, null, 2)}\n`,
+  );
+  copyFileSync(
+    join(root, "packages", "class-groups", "js", "native-service.cjs"),
+    join(metadataDirectory, "class-group-service.cjs"),
+  );
 }
 
 runPnpm(["pack", "--out", archive], {
