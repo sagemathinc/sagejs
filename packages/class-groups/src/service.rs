@@ -31,6 +31,7 @@ pub const IDEAL_QUERY_REQUEST_SCHEMA: &str =
     "sagejs.rust-class-group/public-cubic-arbitrary-ideal-query-request-v1";
 pub const IDEAL_QUERY_RECEIPT_SCHEMA: &str =
     "sagejs.rust-class-group/public-cubic-arbitrary-ideal-query-receipt-v1";
+pub const COMPACT_SUMMARY_SCHEMA: &str = "sagejs.class-groups/compact-summary-v1";
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case")]
@@ -396,6 +397,148 @@ fn hexadecimal(bytes: &[u8]) -> String {
 }
 
 impl QualifiedCubic {
+    /// Return the small public class-group boundary without detaching the
+    /// relation graph.  Generator ideals are the authenticated Smith lifts,
+    /// made integral by multiplying each rational-prime component by the
+    /// smallest nonnegative power of the principal ideal `(p)`.
+    pub fn compact_summary(&self) -> Result<Value, QualificationError> {
+        let completed = &self.completed;
+        let presentation = completed.presentation();
+        let class_map = presentation.class_map();
+        let factor_base = presentation.collected().factor_base();
+        let field = completed.prepared().field();
+        let field_data = field.data();
+        let invariants = completed.invariant_factors();
+        let orders = presentation.generator_orders();
+        if orders.len() != invariants.len() {
+            return Err(QualificationError::IdealQuery(
+                "sealed Smith generators do not match invariant factors".to_owned(),
+            ));
+        }
+        let mut workspace = PreparedIdealWorkspace::new();
+        let mut generators = Vec::with_capacity(orders.len());
+        for (coordinate, (order, invariant)) in orders.iter().zip(invariants).enumerate() {
+            if &order.invariant_factor != invariant
+                || order.factor_base_exponents.len() != factor_base.exact_ideals.len()
+            {
+                return Err(QualificationError::IdealQuery(
+                    "sealed Smith generator lift has inconsistent dimensions".to_owned(),
+                ));
+            }
+            let mut exponents = order.factor_base_exponents.clone();
+            let mut principal_shifts = Vec::new();
+            let mut covered = 0_usize;
+            for group in 0..factor_base.catalog.rational_primes.len() {
+                let offset = factor_base.catalog.rational_offsets[group];
+                let count = factor_base.catalog.rational_counts[group];
+                if offset != covered
+                    || offset
+                        .checked_add(count)
+                        .is_none_or(|end| end > exponents.len())
+                {
+                    return Err(QualificationError::IdealQuery(
+                        "canonical generator requires a complete rational-prime factor group"
+                            .to_owned(),
+                    ));
+                }
+                covered += count;
+                let mut shift = Integer::new();
+                for index in offset..offset + count {
+                    if exponents[index] < 0 {
+                        let ramification = factor_base.catalog.ideals[index].ramification;
+                        if ramification == 0 {
+                            return Err(QualificationError::IdealQuery(
+                                "factor-base ramification is zero".to_owned(),
+                            ));
+                        }
+                        let mut required = Integer::from(-&exponents[index]);
+                        required += ramification - 1;
+                        required /= ramification;
+                        if required > shift {
+                            shift = required;
+                        }
+                    }
+                }
+                if shift != 0 {
+                    if !factor_base.catalog.complete_groups[group] {
+                        return Err(QualificationError::IdealQuery(
+                            "a negative Smith lift requires a complete rational-prime factor group"
+                                .to_owned(),
+                        ));
+                    }
+                    principal_shifts.push(json!({
+                        "rationalPrime": factor_base.catalog.rational_primes[group].to_string(),
+                        "exponent": shift.to_string(),
+                    }));
+                    for index in offset..offset + count {
+                        let ramification = factor_base.catalog.ideals[index].ramification;
+                        exponents[index] += Integer::from(&shift * ramification);
+                    }
+                }
+            }
+            if covered != exponents.len() {
+                return Err(QualificationError::IdealQuery(
+                    "factor-base rational-prime groups do not cover the Smith lift".to_owned(),
+                ));
+            }
+            let mut ideal = crate::CubicIdeal::unit();
+            for (prime_ideal, exponent) in factor_base.exact_ideals.iter().zip(&exponents) {
+                let Some(exponent) = exponent.to_u32() else {
+                    return Err(QualificationError::IdealQuery(
+                        "canonical generator integral exponent exceeds the product bound"
+                            .to_owned(),
+                    ));
+                };
+                if exponent != 0 {
+                    let power = exact_ideal_power(field, prime_ideal, exponent, &mut workspace)
+                        .map_err(|error| QualificationError::IdealQuery(format!("{error:?}")))?;
+                    ideal = workspace
+                        .multiply(field, &ideal, &power)
+                        .map_err(|error| QualificationError::IdealQuery(format!("{error:?}")))?;
+                }
+            }
+            generators.push(json!({
+                "coordinateZeroBased": coordinate,
+                "invariantFactor": invariant.to_string(),
+                "integralBasisRows": ideal.basis_rows().iter().map(|row|
+                    integer_strings(row.iter())
+                ).collect::<Vec<_>>(),
+                "constructionEvidence": {
+                    "method": "authenticated-smith-lift-with-minimal-rational-principal-shifts",
+                    "classCoordinates": (0..invariants.len()).map(|index|
+                        if index == coordinate { "1" } else { "0" }
+                    ).collect::<Vec<_>>(),
+                    "principalShifts": principal_shifts,
+                },
+            }));
+        }
+        Ok(json!({
+            "schema": COMPACT_SUMMARY_SCHEMA,
+            "outcome": "complete-conditional-grh",
+            "proofMode": "conditional-grh",
+            "polynomialAscending": integer_strings(field_data.polynomial_ascending.iter()),
+            "discriminant": field_data.discriminant.to_string(),
+            "signature": [field_data.signature.0, field_data.signature.1],
+            "invariants": integer_strings(invariants.iter()),
+            "classNumber": completed.class_number().to_string(),
+            "generatorIdeals": generators,
+            "factorBaseBound": factor_base.catalog.relation_bound,
+            "relationCount": presentation.principal_relations().len(),
+            "proofWitnessesSha256": hexadecimal(class_map.principal_witnesses_sha256()),
+            "fieldBindingSha256": hexadecimal(class_map.field_sha256()),
+            "presentationBindingSha256": hexadecimal(
+                &class_map.presentation().binding_sha256()
+            ),
+            "authority": {
+                "completionSchema": self.receipt.schema,
+                "completionOutcome": self.receipt.outcome,
+                "sealedEvidenceVerified": self.receipt.completion.as_ref()
+                    .is_some_and(|completion| completion.sealed_evidence_verified),
+                "artifactAuthentication": "host-must-bind-authenticated-artifact-sha256",
+            },
+        }))
+    }
+
     /// Return a detached, bounded, lossless publication candidate.
     ///
     /// This bundle is deliberately more detailed than the public summary and
@@ -597,6 +740,26 @@ impl QualifiedCubic {
             },
         }))
     }
+}
+
+fn exact_ideal_power(
+    field: &crate::ValidatedPreparedCubic,
+    ideal: &crate::CubicIdeal,
+    mut exponent: u32,
+    workspace: &mut PreparedIdealWorkspace,
+) -> Result<crate::CubicIdeal, crate::PreparedIdealError> {
+    let mut answer = crate::CubicIdeal::unit();
+    let mut power = ideal.clone();
+    while exponent != 0 {
+        if exponent & 1 != 0 {
+            answer = workspace.multiply(field, &answer, &power)?;
+        }
+        exponent >>= 1;
+        if exponent != 0 {
+            power = workspace.multiply(field, &power, &power)?;
+        }
+    }
+    Ok(answer)
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -1680,6 +1843,18 @@ impl ProductService {
         }))
     }
 
+    fn summary(&self, generation_text: &str, handle_text: &str) -> Result<Value, ServiceError> {
+        let handle = Self::parse_handle("summary", handle_text)?;
+        let generation = Self::parse_generation("summary", generation_text)?;
+        let slot = self.resolve_handle("summary", generation, handle)?;
+        self.slots[slot]
+            .as_ref()
+            .expect("resolved live slot")
+            .qualified
+            .compact_summary()
+            .map_err(|error| Self::qualify_error("summary", error))
+    }
+
     fn close(&mut self, generation_text: &str, handle_text: &str) -> Result<Value, ServiceError> {
         let handle = Self::parse_handle("close", handle_text)?;
         let generation = Self::parse_generation("close", generation_text)?;
@@ -1709,7 +1884,7 @@ impl ProductService {
             "mathematicalScope": "absolute-monic-cubic-conditional-grh",
             "maximumResidentSessions": MAXIMUM_RESIDENT_SESSIONS as u32,
             "proofModes": ["conditional-grh"],
-            "operations": ["capability", "open", "query", "publication", "close"],
+            "operations": ["capability", "open", "summary", "query", "publication", "close"],
         })
     }
 
@@ -1798,7 +1973,7 @@ impl ProductService {
                     request.resources,
                 )
             }
-            "publication" | "close" => {
+            "summary" | "publication" | "close" => {
                 let request: HandleServiceRequest =
                     serde_json::from_value(value).map_err(|error| {
                         ServiceError::new(
@@ -1811,7 +1986,9 @@ impl ProductService {
                 debug_assert_eq!(request.abi, SERVICE_ABI_VERSION);
                 debug_assert_eq!(request.id, id);
                 debug_assert_eq!(request.operation, operation);
-                if operation == "publication" {
+                if operation == "summary" {
+                    self.summary(&request.generation, &request.handle)
+                } else if operation == "publication" {
                     self.publication(&request.generation, &request.handle)
                 } else {
                     self.close(&request.generation, &request.handle)
@@ -1959,6 +2136,23 @@ mod tests {
             publication["presentation"]["invariantFactors"],
             json!(["2"])
         );
+        let summary = qualified.compact_summary().unwrap();
+        assert_eq!(summary["schema"], COMPACT_SUMMARY_SCHEMA);
+        assert_eq!(summary["classNumber"], "2");
+        assert_eq!(summary["invariants"], json!(["2"]));
+        assert_eq!(summary["generatorIdeals"].as_array().unwrap().len(), 1);
+        assert_eq!(
+            summary["generatorIdeals"][0]["constructionEvidence"]["classCoordinates"],
+            json!(["1"])
+        );
+        assert_eq!(
+            summary["generatorIdeals"][0]["integralBasisRows"]
+                .as_array()
+                .unwrap()
+                .len(),
+            3
+        );
+        assert!(serde_json::to_vec(&summary).unwrap().len() < 16_384);
         assert_eq!(
             publication["units"]["fundamentalUnits"]
                 .as_array()
@@ -2373,6 +2567,11 @@ mod tests {
         );
         assert_eq!(completion.unit_rank, 2);
         assert!(completion.sealed_evidence_verified);
+
+        let summary = qualified.compact_summary().unwrap();
+        assert_eq!(summary["invariants"], json!(["2", "2"]));
+        assert_eq!(summary["generatorIdeals"].as_array().unwrap().len(), 2);
+        assert!(serde_json::to_vec(&summary).unwrap().len() < 32_768);
 
         let factor_base = qualified.completed.presentation().collected().factor_base();
         let queried = factor_base

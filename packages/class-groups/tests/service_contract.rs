@@ -93,6 +93,21 @@ fn resident_completion_publication_query_and_close_are_generation_bound() {
             .is_none()
     );
 
+    let summary = call(
+        &mut service,
+        "summary-1",
+        "summary",
+        json!({"generation": generation, "handle": handle}),
+    );
+    assert_eq!(summary["ok"], true, "{summary}");
+    assert_eq!(
+        summary["result"]["schema"],
+        "sagejs.class-groups/compact-summary-v1"
+    );
+    assert_eq!(summary["result"]["classNumber"], "1");
+    assert!(summary["result"].get("factorBase").is_none());
+    assert!(serde_json::to_vec(&summary).unwrap().len() < 16_384);
+
     let publication = call(
         &mut service,
         "publication-1",
