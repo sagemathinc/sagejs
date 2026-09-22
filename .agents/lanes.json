@@ -189,7 +189,7 @@
     {
       "id": "distribution",
       "description": "Native dependencies, WASM, SEA, installers, CI, and supported platforms",
-      "allowed_claims": ["apps/sagejs-mobile/", "packages/class-groups/", "packages/flint/", "packages/flint-wasm/", "scripts/bootstrap.cjs", "scripts/build-sea.cjs", "scripts/release-macos.sh", "scripts/macos-entitlements.plist", ".github/", "DISTRIBUTION.md", "WINDOWS.md"],
+      "allowed_claims": ["apps/sagejs-mobile/", "packages/class-groups/", "packages/flint/", "packages/flint-wasm/", "packages/native-darwin-arm64/", "packages/native-linux-arm64/", "packages/native-linux-x64/", "packages/native-win32-x64/", "scripts/bootstrap.cjs", "scripts/build-npm-platform-package.cjs", "scripts/build-sea.cjs", "scripts/package-qualification/", "scripts/release-macos.sh", "scripts/macos-entitlements.plist", ".github/", "DISTRIBUTION.md", "WINDOWS.md"],
       "required_checks": ["pnpm test:portable", "pnpm test:native", "pnpm test:sea"]
     },
     {
