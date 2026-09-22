@@ -60,9 +60,10 @@
     }
   ],
   "handoff": {
-    "summary": "Rust resident cubic ideal queries now publish a compact exact I/R principal witness, using authenticated Smith lifts plus dense or cached compact relation solves. The Python replay verifies the v1 receipt, exact ideal equalities, relation factors, canonical coordinates, and fractional-ideal denominator normalization, then promotes authenticated publications with an injected resident callback to ordinary complete conditional-GRH IdealClassGroup, UnitGroupComputation, and ClassUnitComputation objects. Analytic replay reuses its exact splitting map, verifies the published BDF bound directly at adaptive rigorous precision, and no longer repeats the expensive minimal-bound search. Focused Python public/presentation tests pass 13/13 and the Rust crate passes 15 library tests, 3 CLI tests, and doctests.",
+    "summary": "Rust resident cubic ideal queries now publish a compact exact I/R principal witness, using authenticated Smith lifts plus dense or cached compact relation solves. The Python replay verifies the v1 receipt, exact ideal equalities, relation factors, canonical coordinates, and fractional-ideal denominator normalization, then promotes authenticated publications with an injected resident callback to ordinary complete conditional-GRH IdealClassGroup, UnitGroupComputation, and ClassUnitComputation objects. A second fast adapter constructs an ordinary IdealClassGroup directly from an artifact-sealed compact service summary containing only invariants and canonical generator-ideal rows; generator-order and completeness evidence remain live-service attestations, while every arbitrary and fractional ideal answer is replayed by exact principal-ideal equality. Analytic replay reuses its exact splitting map, verifies the published BDF bound directly at adaptive rigorous precision, and no longer repeats the expensive minimal-bound search. Focused Python public/presentation tests pass 15/15 and the Rust crate passes 15 library tests, 3 CLI tests, and doctests.",
     "risks": [
       "The shared runtime still must wrap its frozen backend.call generation/handle session as the adapter's out-of-band synchronous query_callback; without it the adapter intentionally returns an incomplete computation.",
+      "The compact fast path additionally requires the service publication operation to emit the documented summary v1 and its query operation to project resident answers to compact query receipt v1; both callbacks must stay bound to the same live generation, handle, and artifact digest.",
       "pnpm test:changed stops at the shared number-field-global-arithmetic lazy byte budget (1836688 exceeds 1830000); the integration lane must update the shared package budget or split ownership.",
       "pnpm test:baselib:strict is blocked by pre-existing doubled-backtick docstrings in unclaimed benchmark files on the base branch.",
       "pnpm test:native rebuilt through stage 7/8, then failed because the existing numerical production manifest toolchain identity differs; no lane source failure was reported.",
@@ -70,6 +71,7 @@
     ],
     "next_steps": [
       "Integration lane: construct query_callback around backend.call('query', {generation, handle, ...}) and close the resident handle with the frozen capability/open/publication/query/close protocol.",
+      "Integration lane: route K.class_group(proof=False) through adapt_rust_authenticated_service_class_group using the compact publication summary and out-of-band attestation/query wrappers; retain the existing unit continuation independently.",
       "Integration lane: resolve the shared lazy-byte budget and base formatting/toolchain-receipt failures, then rerun test:changed, test:baselib:strict, and test:native.",
       "Run the public row-6 end-to-end path through the actual resident host and exercise arbitrary integral and fractional ideals before release dispatch is enabled."
     ]
