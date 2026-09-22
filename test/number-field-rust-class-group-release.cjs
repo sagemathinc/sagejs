@@ -22,6 +22,19 @@ const wasmArtifact = process.env.SAGEJS_CLASS_GROUP_WASM_ARTIFACT ?? resolve(
   repository,
   "packages/class-groups/dist/class-group-core.wasm",
 );
+const serviceSchema = "sagejs.class-groups/service-request-v1";
+let serviceRequestId = 0;
+
+function serviceRequest(operation, payload = {}) {
+  serviceRequestId += 1;
+  return {
+    schema: serviceSchema,
+    abi: 1,
+    id: `release-${serviceRequestId}`,
+    operation,
+    ...payload,
+  };
+}
 
 function requestFor(record, overrides = {}) {
   return {
@@ -63,10 +76,11 @@ function assertCompleteReceipt(receipt, record) {
 }
 
 function runNative(request) {
+  const envelope = serviceRequest("open", { request });
   const result = spawnSync(nativeExecutable, [], {
     cwd: repository,
     encoding: "utf8",
-    input: JSON.stringify(request),
+    input: `${JSON.stringify(envelope)}\n`,
     maxBuffer: 32 * 1024 * 1024,
     timeout: profile === "heavy" ? 120_000 : 30_000,
   });
@@ -75,7 +89,16 @@ function runNative(request) {
   assert.doesNotThrow(() => {
     document = JSON.parse(result.stdout);
   }, `producer emitted non-JSON stdout: ${result.stdout}\nstderr: ${result.stderr}`);
-  return { ...result, document };
+  assert.equal(document.schema, "sagejs.class-groups/service-response-v1");
+  assert.equal(document.id, envelope.id);
+  return {
+    ...result,
+    status: document.ok ? 0 : 1,
+    response: document,
+    document: document.ok
+      ? document.result.completion
+      : { outcome: "rejected", error: document.error.message },
+  };
 }
 
 test("the committed class-group corpus is bounded, representative, and honestly labeled", () => {
@@ -168,8 +191,18 @@ test(
     const reactor = await instantiateClassGroupCore(bytes);
     try {
       for (const record of corpus.routine) {
-        const receipt = reactor.invoke(requestFor(record));
+        const opened = serviceRequest("open", { request: requestFor(record) });
+        const response = reactor.invoke(opened);
+        assert.equal(response.schema, "sagejs.class-groups/service-response-v1");
+        assert.equal(response.id, opened.id);
+        assert.equal(response.ok, true, JSON.stringify(response));
+        const receipt = response.result.completion;
         assertCompleteReceipt(receipt, record);
+        const closed = reactor.invoke(serviceRequest("close", {
+          generation: response.result.generation,
+          handle: response.result.handle,
+        }));
+        assert.equal(closed.ok, true, JSON.stringify(closed));
         if (nativeExecutable) {
           const native = runNative(requestFor(record));
           assert.equal(native.status, 0);

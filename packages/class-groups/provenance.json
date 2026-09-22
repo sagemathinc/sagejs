@@ -6,7 +6,7 @@
   "inputs": {
     "cargo_toml": {
       "path": "packages/class-groups/Cargo.toml",
-      "sha256": "4ce02c2af90301ffdb0d67c3db83c1435ca5e5aad37298da3a495fc1a4a4bc97"
+      "sha256": "0f1c21e48831183a883972cf71679014e4013651d04e6ebbf7e05be2471d8737"
     },
     "cargo_lock": {
       "path": "packages/class-groups/Cargo.lock",
@@ -121,6 +121,16 @@
       "mappings": [],
       "missing_mapping_explanation": null,
       "notes": "Original bounded arbitrary-ideal reduction and exact replay certificate; no direct upstream source derivation is claimed."
+    },
+    {
+      "path": "packages/class-groups/src/bin/class-group-service.rs",
+      "sha256": "62615b9e7ca2d794f355230aecbea55f6e754d99934d80cf3e780b35b75d77f5",
+      "classification": "original",
+      "declared_license_expression": "GPL-2.0-or-later",
+      "mapping_status": "not_applicable",
+      "mappings": [],
+      "missing_mapping_explanation": null,
+      "notes": "Original native JSON-lines process adapter for the class-group service protocol."
     },
     {
       "path": "packages/class-groups/src/class_group.rs",
@@ -269,7 +279,7 @@
     },
     {
       "path": "packages/class-groups/src/flint_normal_form.c",
-      "sha256": "c17ccfb1fa3453005afcdb76e2bf321582ac13b9cf8f26908719d7e275d41ad3",
+      "sha256": "4fdbeb2c43b6aebf87181161fb52bf26f4f1fcf1ce10a0c11c8149eaa3f88c6a",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
@@ -335,7 +345,7 @@
     },
     {
       "path": "packages/class-groups/src/lib.rs",
-      "sha256": "ee75e7c6ad5f4bdcfe856c52833abaf863c7352557c788696fd83f43274b7601",
+      "sha256": "b06f5b1f53d9e18b5a071197cddaf7002529f2bbd979a365d9431bf1a88f9bc4",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
@@ -489,6 +499,16 @@
       "notes": "All implemented behavioral correspondence is covered. `RationalPrimePower::new`, `Default`, and `sparse_relation` are Sage.js-owned construction/transport helpers. General `ZC_nfval` representations and PARI's periodic stripping acceleration are outside this module's claimed implementation, not unmapped implemented behavior."
     },
     {
+      "path": "packages/class-groups/src/reactor.rs",
+      "sha256": "a283e3ceb9dcd884444d3549a6ae64f76c3cfed8507adae2b1fd5d14cd15a711",
+      "classification": "original",
+      "declared_license_expression": "GPL-2.0-or-later",
+      "mapping_status": "not_applicable",
+      "mappings": [],
+      "missing_mapping_explanation": null,
+      "notes": "Original narrow Wasm reactor ABI over the shared class-group service protocol."
+    },
+    {
       "path": "packages/class-groups/src/relation_cache.rs",
       "sha256": "d474991bbfc02e842bb563d109b946bf1d88285ef667e82e1a40f0f605be619b",
       "classification": "source_translation_adaptation",
@@ -511,6 +531,16 @@
       ],
       "missing_mapping_explanation": null,
       "notes": "Direct machine-word cache adaptation; surrounding algebraic ownership is outside this file."
+    },
+    {
+      "path": "packages/class-groups/src/service.rs",
+      "sha256": "1571b2f61c9e7d064fb8d3e40b054a976979d6b817675fd643e450aba42e7914",
+      "classification": "original",
+      "declared_license_expression": "GPL-2.0-or-later",
+      "mapping_status": "not_applicable",
+      "mappings": [],
+      "missing_mapping_explanation": null,
+      "notes": "Original bounded resident-session protocol, serialization, and exact public receipt adapter."
     },
     {
       "path": "packages/class-groups/src/smooth_admission.rs",

@@ -30,6 +30,11 @@
  * retains nothing, and returns a status only. */
 int sagejs_rust_flint_abi_compatible(void)
 {
+#if defined(__wasm32__)
+    const int expected_limb_bits = 32;
+#else
+    const int expected_limb_bits = 64;
+#endif
     char compile_gmp_version[64];
     int length = snprintf(
         compile_gmp_version, sizeof(compile_gmp_version), "%d.%d.%d",
@@ -37,7 +42,8 @@ int sagejs_rust_flint_abi_compatible(void)
     if (length <= 0 || (size_t) length >= sizeof(compile_gmp_version) ||
         strcmp(compile_gmp_version, gmp_version) != 0 ||
         strcmp(MPFR_VERSION_STRING, mpfr_get_version()) != 0 ||
-        GMP_NUMB_BITS != 64 || sizeof(mp_limb_t) != sizeof(uint64_t))
+        GMP_NUMB_BITS != expected_limb_bits ||
+        sizeof(mp_limb_t) * CHAR_BIT != (size_t) expected_limb_bits)
         return -9;
     return 0;
 }

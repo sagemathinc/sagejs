@@ -14532,6 +14532,7 @@
         "bench/class-unit-groups/complex-cubic-frontier-holdout.cjs",
         "bench/class-unit-groups/run-complex-cubic-frontier.cjs",
         "bench/hyperelliptic/cross-platform/run.cjs",
+        "packages/flint-wasm/evaluator.mjs",
         "packages/flint-wasm/lazy-modules.mjs",
         "packages/flint-wasm/numerical/qualification/run.mjs",
         "packages/flint-wasm/test/node-kernel.test.mjs",

@@ -2995,6 +2995,20 @@
       "provenance_mapping_status": "not-applicable"
     },
     {
+      "path": "packages/class-groups/src/bin/class-group-service.rs",
+      "category": "host-adapter",
+      "review_status": "accepted",
+      "lane": "distribution",
+      "rationale": "Native process adapter that exposes the bounded class-group service as deterministic JSON lines without implementing mathematics.",
+      "rust_role": "host-adapter",
+      "qualification_status": "experimental-qualification",
+      "provenance_class": "original-sagejs",
+      "distribution_status": "review-required-before-distribution",
+      "safety_review": "not-applicable",
+      "safety_rationale": "The adapter contains no unsafe block or ABI declaration and delegates only to the audited service layer.",
+      "provenance_mapping_status": "not-applicable"
+    },
+    {
       "path": "packages/class-groups/src/class_group.rs",
       "category": "mathematical-algorithm",
       "review_status": "accepted",
@@ -3284,6 +3298,24 @@
       "provenance_mapping_status": "not-applicable"
     },
     {
+      "path": "packages/class-groups/src/reactor.rs",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "distribution",
+      "rationale": "Narrow Wasm allocation and synchronous JSON reactor ABI over the shared bounded class-group service.",
+      "rust_role": "host-adapter",
+      "qualification_status": "experimental-qualification",
+      "provenance_class": "original-sagejs",
+      "distribution_status": "review-required-before-distribution",
+      "safety_review": "reviewed",
+      "safety_rationale": "Pointer and allocation preconditions are documented at every exported boundary and covered by the exact safety audit receipt.",
+      "safety_receipt": {
+        "path": "packages/class-groups/safety-audit-receipt.json",
+        "sha256": "3ae6de6c5850ae8d4a301036206d4c463beef20e353d670112a84156c65075bb"
+      },
+      "provenance_mapping_status": "not-applicable"
+    },
+    {
       "path": "packages/class-groups/src/relation_cache.rs",
       "category": "mathematical-algorithm",
       "review_status": "accepted",
@@ -3297,6 +3329,20 @@
       "safety_rationale": "The architecture scanner finds no unsafe or Rust ABI boundary in this source; any future boundary changes this classification and fails validation.",
       "provenance_mapping_status": "complete",
       "provenance_reference": "bench/pari-class-group-rust/qualification/provenance/manifest.json#modules"
+    },
+    {
+      "path": "packages/class-groups/src/service.rs",
+      "category": "host-adapter",
+      "review_status": "accepted",
+      "lane": "distribution",
+      "rationale": "Bounded resident-session state machine and exact serialization adapter shared by native and Wasm hosts.",
+      "rust_role": "host-adapter",
+      "qualification_status": "experimental-qualification",
+      "provenance_class": "original-sagejs",
+      "distribution_status": "review-required-before-distribution",
+      "safety_review": "not-applicable",
+      "safety_rationale": "The service layer contains no unsafe block or ABI declaration and calls the mathematical core through safe Rust APIs.",
+      "provenance_mapping_status": "not-applicable"
     },
     {
       "path": "packages/class-groups/src/smooth_admission.rs",
@@ -3380,6 +3426,34 @@
       "distribution_status": "qualification-only",
       "safety_review": "not-applicable",
       "safety_rationale": "The harness contains no unsafe block or ABI declaration; it exercises the separately audited production bridge only through its safe public Rust API.",
+      "provenance_mapping_status": "not-applicable"
+    },
+    {
+      "path": "packages/class-groups/tests/reactor_contract.rs",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "distribution",
+      "rationale": "Qualification coverage for exact request/response behavior at the Wasm reactor boundary.",
+      "rust_role": "qualification-harness",
+      "qualification_status": "experimental-qualification",
+      "provenance_class": "qualification-harness",
+      "distribution_status": "qualification-only",
+      "safety_review": "not-applicable",
+      "safety_rationale": "The harness contains no unsafe block or ABI declaration and exercises the safe in-process reactor entry point.",
+      "provenance_mapping_status": "not-applicable"
+    },
+    {
+      "path": "packages/class-groups/tests/service_contract.rs",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "distribution",
+      "rationale": "Qualification coverage for bounded native service sessions, canonical receipts, typed failures, and lifecycle cleanup.",
+      "rust_role": "qualification-harness",
+      "qualification_status": "experimental-qualification",
+      "provenance_class": "qualification-harness",
+      "distribution_status": "qualification-only",
+      "safety_review": "not-applicable",
+      "safety_rationale": "The harness contains no unsafe block or ABI declaration and exercises the service through safe Rust APIs.",
       "provenance_mapping_status": "not-applicable"
     },
     {

@@ -14,12 +14,12 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 373,
+    "classified-native-file": 378,
     "declared-ffi": 480,
     "declared-ffi-resource": 37,
     "napi-export": 358,
     "runtime-intrinsic": 148,
-    "rust-abi-export": 34,
+    "rust-abi-export": 38,
     "rust-abi-import": 74,
     "wasm-export": 74
   },
@@ -10337,6 +10337,14 @@
       "lane": "distribution"
     },
     {
+      "id": "native-file:packages/class-groups/src/bin/class-group-service.rs",
+      "kind": "classified-native-file",
+      "path": "packages/class-groups/src/bin/class-group-service.rs",
+      "disposition": "host-adapter",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
       "id": "native-file:packages/class-groups/src/class_group.rs",
       "kind": "classified-native-file",
       "path": "packages/class-groups/src/class_group.rs",
@@ -10505,10 +10513,26 @@
       "lane": "distribution"
     },
     {
+      "id": "native-file:packages/class-groups/src/reactor.rs",
+      "kind": "classified-native-file",
+      "path": "packages/class-groups/src/reactor.rs",
+      "disposition": "public-abi",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
       "id": "native-file:packages/class-groups/src/relation_cache.rs",
       "kind": "classified-native-file",
       "path": "packages/class-groups/src/relation_cache.rs",
       "disposition": "mathematical-algorithm",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/class-groups/src/service.rs",
+      "kind": "classified-native-file",
+      "path": "packages/class-groups/src/service.rs",
+      "disposition": "host-adapter",
       "review_status": "accepted",
       "lane": "distribution"
     },
@@ -10580,6 +10604,22 @@
       "id": "native-file:packages/class-groups/tests/public_polynomial_preparation.rs",
       "kind": "classified-native-file",
       "path": "packages/class-groups/tests/public_polynomial_preparation.rs",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/class-groups/tests/reactor_contract.rs",
+      "kind": "classified-native-file",
+      "path": "packages/class-groups/tests/reactor_contract.rs",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/class-groups/tests/service_contract.rs",
+      "kind": "classified-native-file",
+      "path": "packages/class-groups/tests/service_contract.rs",
       "disposition": "benchmark-reference",
       "review_status": "accepted",
       "lane": "distribution"
@@ -13902,6 +13942,46 @@
       "id": "rust-abi-export:bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/src/lib.rs:sagejs_class_group_run_json",
       "kind": "rust-abi-export",
       "path": "bench/pari-class-group-rust/qualification/wasm-public-cubic-e2e/src/lib.rs",
+      "package": "@sagemath/sagejs",
+      "abi": "C",
+      "export": "sagejs_class_group_run_json",
+      "symbol": "sagejs_class_group_run_json",
+      "disposition": "experimental-rust-qualification-abi"
+    },
+    {
+      "id": "rust-abi-export:packages/class-groups/src/reactor.rs:sagejs_class_group_abi_version",
+      "kind": "rust-abi-export",
+      "path": "packages/class-groups/src/reactor.rs",
+      "package": "@sagemath/sagejs",
+      "abi": "C",
+      "export": "sagejs_class_group_abi_version",
+      "symbol": "sagejs_class_group_abi_version",
+      "disposition": "experimental-rust-qualification-abi"
+    },
+    {
+      "id": "rust-abi-export:packages/class-groups/src/reactor.rs:sagejs_class_group_alloc",
+      "kind": "rust-abi-export",
+      "path": "packages/class-groups/src/reactor.rs",
+      "package": "@sagemath/sagejs",
+      "abi": "C",
+      "export": "sagejs_class_group_alloc",
+      "symbol": "sagejs_class_group_alloc",
+      "disposition": "experimental-rust-qualification-abi"
+    },
+    {
+      "id": "rust-abi-export:packages/class-groups/src/reactor.rs:sagejs_class_group_dealloc",
+      "kind": "rust-abi-export",
+      "path": "packages/class-groups/src/reactor.rs",
+      "package": "@sagemath/sagejs",
+      "abi": "C",
+      "export": "sagejs_class_group_dealloc",
+      "symbol": "sagejs_class_group_dealloc",
+      "disposition": "experimental-rust-qualification-abi"
+    },
+    {
+      "id": "rust-abi-export:packages/class-groups/src/reactor.rs:sagejs_class_group_run_json",
+      "kind": "rust-abi-export",
+      "path": "packages/class-groups/src/reactor.rs",
       "package": "@sagemath/sagejs",
       "abi": "C",
       "export": "sagejs_class_group_run_json",
