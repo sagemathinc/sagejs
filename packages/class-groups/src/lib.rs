@@ -35,7 +35,9 @@ mod prepared_ideal;
 // interleaved with arbitrary_ideal_reduction. It is not a production input.
 mod prepared_input;
 mod prime_valuation;
+pub mod reactor;
 mod relation_cache;
+pub mod service;
 mod smooth_admission;
 mod unit_lattice;
 
