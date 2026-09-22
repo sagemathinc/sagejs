@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.rust-class-group.provenance/v1",
   "scope": "Production-candidate Sage.js cubic class-group Rust package sources, locked Rust dependencies, PARI 2.17.4 correspondence evidence, and directly applicable arithmetic-library routes.",
-  "project_license_expression": "The standalone Rust package declares GPL-2.0-or-later; Sage.js distributes the combined work under GPL-3.0-only while retaining upstream notices and corresponding-source obligations.",
+  "project_license_expression": "The Rust package manifest declares GPL-2.0-or-later and the Sage.js repository declares GPL-3.0-only. Compatibility, final artifact licensing, notice sufficiency, and conveyance obligations remain subject to the explicitly pending human/legal and artifact-SBOM reviews; this inventory does not state a legal conclusion.",
   "legal_conclusion": false,
   "inputs": {
     "cargo_toml": {
@@ -127,7 +127,7 @@
       "sha256": "382059d537f7e3d60529f0461fe6a8b113f98a30b63c969613c6c99e9803ab77",
       "classification": "behavioral_reimplementation",
       "declared_license_expression": "GPL-2.0-or-later",
-      "mapping_status": "partial",
+      "mapping_status": "complete",
       "mappings": [
         {
           "source_id": "pari-buch2",
@@ -140,14 +140,17 @@
             "rnd_rel"
           ],
           "line_ranges": [
-            "2411-2678"
+            "2247-2263",
+            "2284-2409",
+            "2450-2630",
+            "2648-2678"
           ],
-          "evidence": "Module documentation and matched stage/counter differential tests identify the pipeline order; substantial glue and retry behavior are Sage.js-owned.",
+          "evidence": "Rust `collect_h1_class_group`, `PreparedCubicCollector::start_active`, `advance_active`, `start_next_scheduled`, `start_random_batch`, `start_next_random_search`, `advance_to_supplementary`, `presentation`, `collect_prepared_cubic_relations`, and `collect_prepared_cubic_relations_with_supplementary` compose the corresponding relation-vector construction, modular admission, small-norm ideal traversal, and random/supplementary search stages. The exact Rust candidates, checked budgets, resumable ownership, provenance bindings, timing, and error propagation are Sage.js-owned adaptations rather than translations of PARI storage or control objects.",
           "confidence": "documented"
         }
       ],
-      "missing_mapping_explanation": "The broad Rust orchestration, error/state ownership, exact retry coverage, and callees outside the listed buch2.c collector cut do not yet have a source-level derivation map.",
-      "notes": "Broad collector composition follows PARI's first small_norm pass but is not asserted instruction-for-instruction."
+      "missing_mapping_explanation": null,
+      "notes": "Complete function-level correspondence means that every PARI-derived behavior in this module is named above. The remaining functions (`update_integer_sha256`, authority/hash encoders, capacity and row-selection helpers, candidate conversion, error conversions, arithmetic helpers, constructors, accessors, and tests) are Sage.js-owned representation, proof, resource, or test code. This does not assert instruction-for-instruction identity."
     },
     {
       "path": "packages/class-groups/src/class_maps.rs",
@@ -164,7 +167,7 @@
       "sha256": "f5f4d65a68465fc29d5dd216763abb45ce8465ea8485334786e5cd3e7b45c783",
       "classification": "behavioral_reimplementation",
       "declared_license_expression": "GPL-2.0-or-later",
-      "mapping_status": "partial",
+      "mapping_status": "complete",
       "mappings": [
         {
           "source_id": "pari-buch2",
@@ -173,14 +176,14 @@
             "Fincke_Pohst_ideal"
           ],
           "line_ranges": [
-            "2574-2617"
+            "2574-2630"
           ],
-          "evidence": "The reverse traversal of the live ideal list, one-based ideal identifiers, distinguished-prime trivial-relation exclusion, and per-ideal handoff correspond directly to the pinned small_norm loop. Differential schedule tests cover resumed and terminal state transitions.",
+          "evidence": "Rust `next_small_norm_ideal` implements the reverse traversal of the live ideal list, one-based ideal identifiers, distinguished-prime trivial-relation exclusion, per-ideal reset, and terminal propagation from `small_norm`. Differential schedule tests cover resumed and terminal state transitions. Rust `original_packet_index` and `copy_original_packet` are Sage.js-owned checked transport helpers for the frozen prepared-packet representation and have no PARI source body.",
           "confidence": "documented"
         }
       ],
-      "missing_mapping_explanation": "Rust-owned resumable state arrays, explicit checked-error behavior, and original serialized-packet lookup/copy helpers have no direct PARI source body and remain outside this source map.",
-      "notes": "The Rust-owned resumable state machine reproduces the pinned small_norm schedule behavior but is not asserted to be a direct source translation; the serialized-packet adapter is also Sage.js-owned."
+      "missing_mapping_explanation": null,
+      "notes": "All three public functions are accounted for: `next_small_norm_ideal` is the behavioral correspondence, while `original_packet_index` and `copy_original_packet` are original boundary code. The Rust state arrays and checked failure semantics are adaptations, not claims about PARI object layout."
     },
     {
       "path": "packages/class-groups/src/compact_cubic_presentation.rs",
@@ -240,7 +243,7 @@
       "sha256": "b8682e13cb701dfbbea13fe22ef3d85fc16d42c7b764f13efd9d5bb985cfa6a2",
       "classification": "behavioral_reimplementation",
       "declared_license_expression": "GPL-2.0-or-later",
-      "mapping_status": "partial",
+      "mapping_status": "complete",
       "mappings": [
         {
           "source_id": "pari-buch2",
@@ -252,14 +255,17 @@
             "subFBgen"
           ],
           "line_ranges": [
-            "357-761"
+            "250-299",
+            "357-453",
+            "603-639",
+            "650-761"
           ],
-          "evidence": "Bounds, stable ideal ordering, and factor-base behavior are tested against the pinned implementation; the Rust data model and cubic construction are independent.",
+          "evidence": "Rust `FactorBase::subfactor_permutation` corresponds to the stable norm-first portion of `subFBgen`; `grh_check` corresponds to `init_GRHcheck`/`GRHok`/`GRHchk`; `nth_ideal_bound` corresponds to `nthideal`; `grh_bound` and `prepared_cubic_bounds` implement the same bound-selection policy around that check; and `prepared_cubic_factor_base` corresponds to `FBgen`'s noninert norm-bounded ordering. `factor_pattern_cubic*`, `corrected_generator`, and the polynomial/basis/HNF helpers replace `get_fs` and `idealprimedec_limit_f` with a bounded cubic-specific exact construction and are not source translations.",
           "confidence": "documented"
         }
       ],
-      "missing_mapping_explanation": "Cubic-specific polynomial factorization, descriptor construction, and helper-by-helper correspondence outside the named FBgen boundary have not been source-mapped.",
-      "notes": "Useful correspondence exists, but there is no function-by-function derivation ledger for the entire file."
+      "missing_mapping_explanation": null,
+      "notes": "Every PARI-derived policy function is identified above. `primes_through`, modular polynomial arithmetic, cubic factorization, determinant/resultant and basis conversion, corrected-generator construction, multiplication-table construction, prime-modulus HNF, and discriminant helpers are Sage.js-owned bounded degree-three implementations of standard operations."
     },
     {
       "path": "packages/class-groups/src/flint_normal_form.c",
@@ -296,21 +302,18 @@
       "sha256": "4e18797b8b645b761c58b82d73af0a7c30eef0ddd4659f57624f9c3d5b4a9a52",
       "classification": "behavioral_reimplementation",
       "declared_license_expression": "GPL-2.0-or-later",
-      "mapping_status": "partial",
+      "mapping_status": "complete",
       "mappings": [
         {
-          "source_id": "pari-base4",
+          "source_id": "pari-buch2",
           "symbols": [
-            "idealhnf",
-            "idealHNF_mul",
-            "idealmul"
+            "Fincke_Pohst_ideal",
+            "ZM_mul"
           ],
           "line_ranges": [
-            "126-274",
-            "1161-1194",
-            "1890-1943"
+            "2450-2476"
           ],
-          "evidence": "The representation and operations target the same degree-three ideal semantics, while storage and algorithms are independently expressed with rug integers.",
+          "evidence": "Rust `Matrix3::change_basis` is the exact degree-three matrix operation used for PARI's `ZM_mul(I,u)` basis change at the prepared-ideal boundary. `Matrix3::multiply`, `pow`, and `determinant` plus the row/column constructors are Sage.js-owned exact matrix representation helpers and are not mapped to PARI ideal arithmetic routines.",
           "confidence": "documented"
         },
         {
@@ -321,14 +324,14 @@
             "Fincke_Pohst_ideal"
           ],
           "line_ranges": [
-            "2441-2572"
+            "2450-2476"
           ],
-          "evidence": "The prepared collector calls the corresponding ideal/reduction boundary; exact instruction correspondence is not claimed.",
+          "evidence": "Rust `lll_reduce_columns` and `verify_lll_reduction` provide the exact unimodular degree-three reduction semantics required where `Fincke_Pohst_ideal` calls `ZM_lll`; they are an independent exact Gram--Schmidt/nearest-integer implementation, not a translation of PARI's general LLL kernel.",
           "confidence": "documented"
         }
       ],
-      "missing_mapping_explanation": "Only the high-level ideal operations and collector call boundary are mapped; the Rust matrix kernels and LLL implementation have no authenticated source-derivation ledger.",
-      "notes": "Allocation-bounded degree-three lattice arithmetic with partial source correspondence only."
+      "missing_mapping_explanation": null,
+      "notes": "The earlier `idealhnf`/`idealHNF_mul`/`idealmul` attribution was overbroad: those PARI bodies are not implemented in this module. All other functions are Sage.js-owned exact matrix, rational, Gram--Schmidt, validation, indexing, or test helpers based on standard algorithms."
     },
     {
       "path": "packages/class-groups/src/lib.rs",
@@ -345,7 +348,7 @@
       "sha256": "760cb3dce5ac14e96c1032918a13999e661922a8225a27a5f4b1397154074d8b",
       "classification": "behavioral_reimplementation",
       "declared_license_expression": "GPL-2.0-or-later",
-      "mapping_status": "partial",
+      "mapping_status": "complete",
       "mappings": [
         {
           "source_id": "pari-buch2",
@@ -354,9 +357,10 @@
             "Fincke_Pohst_ideal"
           ],
           "line_ranges": [
-            "2424-2572"
+            "2424-2439",
+            "2450-2476"
           ],
-          "evidence": "The same mathematical preparation boundary is reproduced, but rug Gram--Schmidt intentionally differs from PARI packed-real Householder operations.",
+          "evidence": "Rust `fincke_pohst_bound` corresponds to `Fincke_Pohst_bound`; `prepare_h1_ideal`, `prepare_cubic_ideal`, and `prepare_with_embedding` correspond to the embedding, LLL basis-change, Gram--Schmidt, and bound preparation at the start of `Fincke_Pohst_ideal`. Rust `embedded_ideal` and `gram_schmidt` are explicit rug-based replacements for PARI's `RgM_mul`/`gaussred_from_QR` route.",
           "confidence": "documented"
         },
         {
@@ -367,12 +371,12 @@
           "line_ranges": [
             "2600-2720"
           ],
-          "evidence": "Exact LLL basis-change semantics are targeted; the Rust implementation is not a translation of the general PARI LLL source.",
-          "confidence": "tentative"
+          "evidence": "The `prepare_with_embedding` LLL call targets the exact unimodular basis-change contract of `ZM_lll`; the implementation is independently supplied by `ideal_arithmetic::lll_reduce_columns` or the reviewed FLINT adapter and is not a translation of the general PARI LLL source.",
+          "confidence": "documented"
         }
       ],
-      "missing_mapping_explanation": "PARI's packed-real QR/Householder and conversion dependencies are intentionally not reproduced, and the replacement rug numerical kernels are not mapped to an upstream source body.",
-      "notes": "Explicitly non-bit-identical behavioral implementation; exact full dependency map remains incomplete."
+      "missing_mapping_explanation": null,
+      "notes": "`h1_small_norm_scale`, validated embedding/logarithm methods, root isolation/refinement, complex/real Minkowski matrices, float conversion, and small matrix constructors are Sage.js-owned numerical preparation. The route is explicitly non-bit-identical to PARI packed-real QR/Householder arithmetic."
     },
     {
       "path": "packages/class-groups/src/pari_random.rs",
@@ -453,7 +457,7 @@
       "sha256": "5b533a94a1eed76a1fa09b97d6e43071678babc88910133c32f561423d770a9e",
       "classification": "behavioral_reimplementation",
       "declared_license_expression": "GPL-2.0-or-later",
-      "mapping_status": "partial",
+      "mapping_status": "complete",
       "mappings": [
         {
           "source_id": "pari-buch2",
@@ -466,7 +470,7 @@
           "line_ranges": [
             "763-872"
           ],
-          "evidence": "Module and differential tests identify the exact valuation/refinement corridor.",
+          "evidence": "Rust `PrimeValuationWorkspace::valuation`, `rational_group`, `refine_element_factorization`, and `refine_quotient_factorization` implement the prepared tau-divisibility and rational-prime-group refinement corresponding to `divide_p_elt`, `divide_p_id`, `divide_p_quo`, and `factorgen`. The Rust API separates element and quotient inputs and uses checked caller-owned storage.",
           "confidence": "authenticated"
         },
         {
@@ -477,12 +481,12 @@
           "line_ranges": [
             "953-979"
           ],
-          "evidence": "The Rust tau/divisibility loop reproduces specialized prepared semantics, not the full upstream routine.",
+          "evidence": "Rust `PrimeValuationWorkspace::valuation` corresponds only to the prepared tau/divisibility loop of `ZC_nfval`; it deliberately does not reproduce the general PARI representation or dispatch surface.",
           "confidence": "documented"
         }
       ],
-      "missing_mapping_explanation": "The mapping covers the specialized prepared tau/divisibility corridor but not every general ZC_nfval representation or PARI's periodic rational-prime stripping acceleration.",
-      "notes": "Exact arithmetic half of the source corridor; long-run acceleration and general representations differ."
+      "missing_mapping_explanation": null,
+      "notes": "All implemented behavioral correspondence is covered. `RationalPrimePower::new`, `Default`, and `sparse_relation` are Sage.js-owned construction/transport helpers. General `ZC_nfval` representations and PARI's periodic stripping acceleration are outside this module's claimed implementation, not unmapped implemented behavior."
     },
     {
       "path": "packages/class-groups/src/relation_cache.rs",
@@ -513,7 +517,7 @@
       "sha256": "b0931be1a8a9298594a69892637cb4d1bfeb051e0231101875ef0115c08cc00e",
       "classification": "behavioral_reimplementation",
       "declared_license_expression": "GPL-2.0-or-later",
-      "mapping_status": "partial",
+      "mapping_status": "complete",
       "mappings": [
         {
           "source_id": "pari-buch2",
@@ -522,14 +526,14 @@
             "factorgen"
           ],
           "line_ranges": [
-            "788-887"
+            "763-887"
           ],
-          "evidence": "The module targets PARI rational smoothness admission and prepared prime-product behavior, with separate valuation refinement.",
+          "evidence": "Rust `cumulative_prime_products`, `prime_to_part`, `factor_from_catalog`, `complete_word_from_catalog`, `word_factor_front_inner`, `word_factor_front`, `factor_norm`, and `factor_integer_norm` implement the rational smoothness front end, cumulative prime-product stripping, factor-list construction, and admission decision corresponding to `can_factor`/`factorgen`; local ideal valuations are intentionally delegated to `prime_valuation.rs`.",
           "confidence": "documented"
         }
       ],
-      "missing_mapping_explanation": "Only can_factor/factorgen behavior is mapped; the Rust cubic norm-form implementation, factor helpers, and GMP prime-product loop lack an authenticated source-derivation map.",
-      "notes": "Behavioral exact rational-admission implementation rather than a direct source translation."
+      "missing_mapping_explanation": null,
+      "notes": "The checked cubic norm form (`determinant3`, `direct_cubic_norm`, `CubicNormForm` methods), prime generation, deterministic word-primality/Lucas helpers, integer square root, modular arithmetic, gcd, checked arithmetic, cache ownership, and tests are Sage.js-owned bounded implementations. The mapping is behavioral and does not claim a translation of PARI's generic integer-factorization engine."
     },
     {
       "path": "packages/class-groups/src/unit_lattice.rs",
@@ -787,7 +791,7 @@
       "repository": "https://github.com/dtolnay/zmij"
     },
     {
-      "name": "sagejs-pari-class-group-rust-experiment",
+      "name": "sagejs-class-groups",
       "version": "0.1.0",
       "source": null,
       "checksum": null,
@@ -883,11 +887,13 @@
     }
   ],
   "known_gaps": [
-    "collector_schedule.rs is classified as a source translation/adaptation but lacks an authenticated exact source map.",
-    "Broad behavioral modules have only partial PARI correspondence maps; no function-by-function derivation ledger exists.",
-    "The declared foreign-library license expressions have not been turned into a reviewed product notice/obligation bundle; the incorporated Arb component intentionally has no separately asserted expression pending review of the pinned FLINT archive notices.",
+    "No lawyer or designated release reviewer has approved the license analysis, notices, compatibility conclusion, source-delivery procedure, or proposed relink-material procedure; legal_conclusion therefore remains false.",
+    "The checked-in NOTICE and LICENSES documentation is a review draft. A release process must copy the applicable complete license texts and copyright notices into each actual distribution and verify them against the shipped source and binary closure.",
+    "Integrated Arb is recorded as part of the pinned FLINT 3.6.0 distribution rather than assigned a fabricated separate artifact identity or unreviewed standalone license expression; a human reviewer must confirm the FLINT archive's applicable Arb notices.",
     "The ordinary rug/gmp-mpfr-sys route and optional repository FLINT route may introduce distinct arithmetic-library instances; ABI, ownership, and distribution review remains required.",
-    "No Windows artifact, Wasm artifact, or final product package has been scanned to prove the actual linked closure matches these prospective routes.",
+    "No Windows artifact, Wasm artifact, native release artifact, or final product package has an artifact-derived SBOM proving that its actual linked and embedded closure matches these prospective source routes.",
+    "Static LGPL relink compliance has not been implemented or tested for any release artifact. The release owner must decide and validate a compliant mechanism, including the exact corresponding object files, archives, scripts, flags, and installation information needed to relink a modified LGPL component.",
+    "The complete corresponding-source bundle, durable source-download publication, written-offer policy if any, and source-retention period have not been approved or exercised by release automation.",
     "This inventory covers the root crate only; separate qualification subcrates require their own provenance inventories before promotion."
   ]
 }

@@ -1,0 +1,88 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "class-group-provenance",
+  "title": "Class-group source and license provenance",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "user",
+  "objective": "Complete production-source provenance mappings and distribution notice/source-obligation documentation for the Rust cubic class-group package without asserting unreviewed legal conclusions",
+  "base_commit": "a3836d25a834b839bf22bfaa5b1a40770fd62ad5",
+  "claims": [
+    "packages/class-groups/provenance.json",
+    "packages/class-groups/LICENSES/",
+    "packages/class-groups/NOTICE.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Pinned PARI 2.17.4 source correspondence",
+      "Cargo lock and native link dependency closure"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm merge:check",
+    "cargo metadata --locked --format-version 1 --manifest-path packages/class-groups/Cargo.toml",
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 127.575,
+      "started_at": "2026-09-22T06:35:21.079Z",
+      "commit": "a3836d25a834b839bf22bfaa5b1a40770fd62ad5",
+      "workspace_fingerprint": "87e3b3100bdc32be7655be1d9a4292543464df23e39bfc1d46ee300fc777d730",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.641,
+      "started_at": "2026-09-22T06:37:50.236Z",
+      "commit": "a3836d25a834b839bf22bfaa5b1a40770fd62ad5",
+      "workspace_fingerprint": "87e3b3100bdc32be7655be1d9a4292543464df23e39bfc1d46ee300fc777d730",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "cargo metadata --locked --format-version 1 --manifest-path packages/class-groups/Cargo.toml",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.092,
+      "started_at": "2026-09-22T06:38:06.753Z",
+      "commit": "a3836d25a834b839bf22bfaa5b1a40770fd62ad5",
+      "workspace_fingerprint": "87e3b3100bdc32be7655be1d9a4292543464df23e39bfc1d46ee300fc777d730",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Completed function-level PARI 2.17.4 correspondence for all seven formerly partial behavioral production modules, explicitly separating mapped behavior from Sage.js-owned representation, proof, resource, and standard-arithmetic helpers. Corrected the stale root Cargo package identity and removed an unsupported combined-distribution licensing conclusion while preserving legal_conclusion=false. Added a package NOTICE and focused LICENSES review bundle covering PARI, the locked Rust registry closure, rug/gmp-mpfr-sys, GMP, MPFR, FLINT with integrated Arb, OpenBLAS, corresponding-source assembly, and target-specific static-LGPL relinking materials.",
+    "risks": [
+      "No human lawyer or designated release reviewer has approved license compatibility, notice sufficiency, corresponding-source scope, or a relink mechanism; the manifest deliberately retains legal_conclusion=false.",
+      "No native, Windows, or Wasm release artifact has an artifact-derived SBOM proving which Cargo/native copies were actually linked or whether duplicate GMP/MPFR runtimes are present.",
+      "The notice bundle is a review draft and points release assembly to upstream complete license/notice files; it is not itself a complete release source or license bundle.",
+      "pnpm test:changed passed merge and architecture checks but the inherited full build failed on unrelated numerical Wasm production-manifest toolchain drift.",
+      "pnpm test:portable passed 204 files before stopping on unrelated pre-existing modular q-expansion source-freeze drift in architecture/package-graph.json."
+    ],
+    "next_steps": [
+      "Have a human/legal reviewer approve or correct the package and combined-artifact license analysis without changing legal_conclusion until that review is recorded.",
+      "Generate an artifact-derived SBOM for each native, Windows, and Wasm artifact and reconcile it with Cargo.lock, native build receipts, and the prospective foreign-dependency routes.",
+      "Assemble and independently test the complete corresponding-source bundle and an artifact-specific LGPL relink procedure, including object files, archives, scripts, flags, sysroots, linker inputs, and installation information.",
+      "Resolve the integration branch's unrelated numerical toolchain and modular q-expansion freeze drift, then rerun pnpm test:changed and portable release validation."
+    ]
+  }
+}
