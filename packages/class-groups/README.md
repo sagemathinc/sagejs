@@ -57,6 +57,9 @@ revalidates those limits before instantiation.
 
 The service protocol is ABI 1 and uses one JSON document per native line or
 Wasm call. Requests and responses carry bounded caller IDs. The operations are
-`capability`, `open`, `query`, `publication`, and `close`; all operations after
-`open` bind both its generation and opaque decimal handle. An invalid, closed,
-or stale handle fails with the typed `unknown-handle` category.
+`capability`, `open`, `summary`, `query`, `publication`, and `close`; all
+operations after `open` bind both its generation and opaque decimal handle.
+`summary` returns only the sealed field/class-group binding, invariants, and
+canonical exact generator-ideal lattices, avoiding the detached relation graph
+carried by `publication`. An invalid, closed, or stale handle fails with the
+typed `unknown-handle` category.
