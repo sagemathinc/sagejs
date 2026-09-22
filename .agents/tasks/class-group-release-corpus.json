@@ -1,0 +1,111 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "class-group-release-corpus",
+  "title": "Class-group production release corpus",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "user",
+  "objective": "Promote a bounded representative cubic class-group corpus into routine CI and add deterministic correctness, mutation, resource, and native/Wasm parity release gates against production sources",
+  "base_commit": "8d8992a82c82a5c379545d8ee921915161f91a4e",
+  "claims": [
+    "test/number-field-rust-class-group-release.cjs",
+    "test/fixtures/number-field-rust-class-group-release.json",
+    ".github/workflows/class-group-qualification.yml"
+  ],
+  "dependencies": [
+    "class-group-product-service"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Committed Sage/PARI corpus records where an exact record identity is available",
+      "Production-source sealed-evidence replay plus ideal-certificate and projection mutation rejection"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea",
+    "env SAGEJS_CLASS_GROUP_CORPUS_EXECUTABLE=/home/user/sagejs-worktrees/pari-class-group-e2e-integration-worktrees/class-group-release-corpus/bench/pari-class-group-rust/qualification/public-cubic-e2e/target/release/sagejs-public-cubic-class-group-e2e-qualification node --test test/number-field-rust-class-group-release.cjs",
+    "env SAGEJS_CLASS_GROUP_CORPUS_EXECUTABLE=/home/user/sagejs-worktrees/pari-class-group-e2e-integration-worktrees/class-group-release-corpus/bench/pari-class-group-rust/qualification/public-cubic-e2e/target/release/sagejs-public-cubic-class-group-e2e-qualification SAGEJS_CLASS_GROUP_CORPUS_PROFILE=heavy node --test test/number-field-rust-class-group-release.cjs",
+    "env SAGEJS_FLINT_PREFIX=/home/user/sagejs-worktrees/pari-class-group-e2e-integration/packages/flint/.native/prefix cargo test --release --locked --manifest-path packages/class-groups/Cargo.toml --test cubic_conditional_completion sealed_result_answers_and_replays_arbitrary_ideal_queries"
+  ],
+  "runs": [
+    {
+      "command": "env SAGEJS_CLASS_GROUP_CORPUS_EXECUTABLE=/home/user/sagejs-worktrees/pari-class-group-e2e-integration-worktrees/class-group-release-corpus/bench/pari-class-group-rust/qualification/public-cubic-e2e/target/release/sagejs-public-cubic-class-group-e2e-qualification node --test test/number-field-rust-class-group-release.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.54,
+      "started_at": "2026-09-22T06:36:29.246Z",
+      "commit": "8d8992a82c82a5c379545d8ee921915161f91a4e",
+      "workspace_fingerprint": "2d23b6483747bcfaa5088c2c7dcdefc42c1a6e4dec1af08d82b30be7d552606b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_CLASS_GROUP_CORPUS_EXECUTABLE=/home/user/sagejs-worktrees/pari-class-group-e2e-integration-worktrees/class-group-release-corpus/bench/pari-class-group-rust/qualification/public-cubic-e2e/target/release/sagejs-public-cubic-class-group-e2e-qualification SAGEJS_CLASS_GROUP_CORPUS_PROFILE=heavy node --test test/number-field-rust-class-group-release.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.967,
+      "started_at": "2026-09-22T06:36:31.037Z",
+      "commit": "8d8992a82c82a5c379545d8ee921915161f91a4e",
+      "workspace_fingerprint": "2d23b6483747bcfaa5088c2c7dcdefc42c1a6e4dec1af08d82b30be7d552606b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_FLINT_PREFIX=/home/user/sagejs-worktrees/pari-class-group-e2e-integration/packages/flint/.native/prefix cargo test --release --locked --manifest-path packages/class-groups/Cargo.toml --test cubic_conditional_completion sealed_result_answers_and_replays_arbitrary_ideal_queries",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.121,
+      "started_at": "2026-09-22T06:36:39.277Z",
+      "commit": "8d8992a82c82a5c379545d8ee921915161f91a4e",
+      "workspace_fingerprint": "2d23b6483747bcfaa5088c2c7dcdefc42c1a6e4dec1af08d82b30be7d552606b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1.069,
+      "started_at": "2026-09-22T06:38:03.092Z",
+      "commit": "8d8992a82c82a5c379545d8ee921915161f91a4e",
+      "workspace_fingerprint": "22ec9f47a092543ef85f64d3035a3059c3a843b951cfea312a00f15d70625ab5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 134.879,
+      "started_at": "2026-09-22T06:46:20.232Z",
+      "commit": "8d8992a82c82a5c379545d8ee921915161f91a4e",
+      "workspace_fingerprint": "22ec9f47a092543ef85f64d3035a3059c3a843b951cfea312a00f15d70625ab5",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a closed, versioned public-regression corpus and a dedicated qualification workflow. Pull requests replay five small cubics spanning trivial, cyclic, noncyclic, index-prime/nonmonogenic, and large-unit/regulator paths against exact discriminant, signature, equation-order index, class group, and unit-rank outputs. The test also checks conditional proof labeling, unconditional rejection, bounded relation exhaustion, recovery in a fresh process, authority-projection mutation rejection, and the existing exact ideal-certificate mutation replay. Row-6 is isolated in the scheduled/manual heavy profile and passed locally in 6.97 seconds. Optional native/Wasm parity runs automatically when the production reactor is present; absence is an explicit skip. The fixture states that all committed records are public regression data, not unseen evidence.",
+    "risks": [
+      "The class-group product-service dependency is not yet complete, so the workflow currently builds the public qualification executable against packages/class-groups rather than invoking the final installed native service.",
+      "No production class-group Wasm reactor existed in this workspace, so the parity gate was inspected and explicitly skipped; it will become mandatory in the workflow once that artifact is built.",
+      "Only Linux x64 was executed in this lane. Linux arm64, macOS arm64, and the Windows Wasm fallback remain integration/release gates.",
+      "pnpm test:changed compared this long-lived integration branch with origin/main and selected thousands of unrelated files; it was stopped after merge:check passed rather than misrepresenting a repository-wide validation as lane-local evidence.",
+      "The branch-wide build reached its final numerical-Wasm stage but failed because the pre-existing numerical production manifest has a stale toolchain identity. After refreshing the runtime, pnpm test:portable passed 203 files including this corpus and then failed on the pre-existing modular q-expansion source freeze because architecture/package-graph.json changed elsewhere on the integration branch. Native and SEA lane gates were not run after those unrelated integration blockers, so the task remains active rather than falsely marked review-ready."
+    ],
+    "next_steps": [
+      "Point SAGEJS_CLASS_GROUP_CORPUS_EXECUTABLE at the shipped product-service binary once class-group-product-service lands, without changing the corpus contract.",
+      "Build the production reactor before this test in the Wasm qualification job so the existing parity branch runs rather than skips.",
+      "Refresh the numerical production-manifest toolchain identity and the modular q-expansion source-freeze digest for the integration branch, then run pnpm test:portable, pnpm test:native, and pnpm test:sea and move this task to review.",
+      "Run the required cross-platform release matrix and sample genuinely unseen fields only after the candidate commit is frozen."
+    ]
+  }
+}
