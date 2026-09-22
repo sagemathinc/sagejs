@@ -127,7 +127,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "sagejs-pari-class-group-rust-experiment"
+name = "sagejs-class-groups"
 version = "0.1.0"
 dependencies = [
  "gmp-mpfr-sys",
@@ -142,7 +142,7 @@ name = "sagejs-public-cubic-class-group-e2e-qualification"
 version = "0.1.0"
 dependencies = [
  "rug",
- "sagejs-pari-class-group-rust-experiment",
+ "sagejs-class-groups",
  "serde",
  "serde_json",
 ]
