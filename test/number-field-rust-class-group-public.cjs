@@ -12,7 +12,7 @@ async function evaluate(lines) {
       "from copy import deepcopy",
       "from sagejs.number_fields.class_group_matrix import SparseRelationRow",
       "from sagejs.number_fields.compact_relation_presentation import CompactRelationPresentation",
-      "from sagejs.number_fields.rust_class_group_presentation import RustCompactPresentationReplay, _RustPublicationProofContext",
+      "from sagejs.number_fields.rust_class_group_presentation import RustCompactPresentationReplay, _RustPublicationProofContext, adapt_rust_authenticated_service_class_group",
       "from sagejs.number_fields.class_group_maps import IdealClassGroup, PrincipalIdealWitness",
       "from sagejs.number_fields.class_group_proof import ConditionalGRHProofRecord, SaturationProofRecord",
       "from sagejs.number_fields.class_unit_groups import EXACT_RELATIONS_CONDITIONAL_GRH",
@@ -91,4 +91,61 @@ test("missing resident query session never fabricates a public ideal map", async
     "message",
   ]);
   assert.equal(answer.repr, "'the Rust publication has no resident ideal query session'");
+});
+
+test("compact authenticated summaries construct ordinary class groups", async () => {
+  const answer = await evaluate([
+    "from sagejs.number_fields.rust_class_group_preparation import prepare_cubic_for_rust",
+    "relative = P.basis_matrix() * O._basis_inverse_matrix()",
+    "generator_rows = [[str(int(value._numerator)) for value in row] for row in relative.rows()]",
+    "summary = {'schema': 'sagejs.rust-class-group/authenticated-service-class-group-summary-v1', 'artifactSha256': 'a'*64, 'polynomialAscending': prepare_cubic_for_rust(K)['field']['coefficientsAscending'], 'invariants': ['3'], 'classNumber': '3', 'generatorIdeals': [{'coordinateZeroBased': 0, 'invariantFactor': '3', 'integralBasisRows': generator_rows}], 'factorBaseBound': '17', 'relationCount': 2, 'proofWitnessesSha256': 'b'*64}",
+    "attestations = []",
+    "def attest(payload):",
+    "    attestations.append(deepcopy(payload))",
+    "    return payload['artifactSha256'] == 'a'*64 and payload['proofWitnessesSha256'] == 'b'*64",
+    "compact_queries = []",
+    "def compact_query(rows, resources):",
+    "    compact_queries.append((deepcopy(rows), resources))",
+    "    return {'schema': 'sagejs.rust-class-group/authenticated-service-ideal-query-receipt-v1', 'artifactSha256': 'a'*64, 'queriedIdealIntegralBasisRows': deepcopy(rows), 'classCoordinates': ['1'], 'principalElementIntegralBasisCoordinates': ['2', '0', '0'], 'principalWitnessRelationFactors': [{'exponent': '-1', 'principalElementIntegralBasisCoordinates': ['2', '0', '0']}]}",
+    "C = adapt_rust_authenticated_service_class_group(K, summary, attestation_callback=attest, query_callback=compact_query, query_resources={'maximumTrials': 7})",
+    "I = ideal_arithmetic.scalar_translate(P, QQ(1, 2))",
+    "log = C.discrete_log(I)",
+    "payload = C.proof_payload()",
+    "[type(C).__name__, C.invariants(), C.order(), log.coordinates, log.principal_witness.verify(O), C.verify(), C.verify_proof_payload(payload), len(compact_queries), compact_queries[0][1], sorted(set(item['purpose'] for item in attestations))]",
+  ]);
+  assert.equal(
+    answer.repr,
+    "['IdealClassGroup', (3,), 3, (1,), True, True, True, 1, {'maximumTrials': 7}, ['class-group-summary', 'conditional-class-group-proof', 'generator-order-witness']]",
+  );
+});
+
+test("compact service summaries and queries fail closed under mutation", async () => {
+  const answer = await evaluate([
+    "from sagejs.number_fields.rust_class_group_preparation import prepare_cubic_for_rust",
+    "relative = P.basis_matrix() * O._basis_inverse_matrix()",
+    "generator_rows = [[str(int(value._numerator)) for value in row] for row in relative.rows()]",
+    "base = {'schema': 'sagejs.rust-class-group/authenticated-service-class-group-summary-v1', 'artifactSha256': 'a'*64, 'polynomialAscending': prepare_cubic_for_rust(K)['field']['coefficientsAscending'], 'invariants': ['3'], 'classNumber': '3', 'generatorIdeals': [{'coordinateZeroBased': 0, 'invariantFactor': '3', 'integralBasisRows': generator_rows}], 'factorBaseBound': '17', 'relationCount': 2, 'proofWitnessesSha256': 'b'*64}",
+    "def reject(payload): return False",
+    "messages = []",
+    "try:",
+    "    adapt_rust_authenticated_service_class_group(K, base, attestation_callback=reject, query_callback=lambda rows, resources: {})",
+    "except ArithmeticError as error:",
+    "    messages.append(str(error))",
+    "bad = deepcopy(base); bad['generatorIdeals'][0]['integralBasisRows'][0][0] = '99'",
+    "try:",
+    "    adapt_rust_authenticated_service_class_group(K, bad, attestation_callback=lambda payload: True, query_callback=lambda rows, resources: {})",
+    "except (ValueError, ArithmeticError) as error:",
+    "    messages.append(str(error))",
+    "def bad_query(rows, resources):",
+    "    return {'schema': 'sagejs.rust-class-group/authenticated-service-ideal-query-receipt-v1', 'artifactSha256': 'c'*64, 'queriedIdealIntegralBasisRows': deepcopy(rows), 'classCoordinates': ['1'], 'principalElementIntegralBasisCoordinates': ['2', '0', '0'], 'principalWitnessRelationFactors': [{'exponent': '-1', 'principalElementIntegralBasisCoordinates': ['2', '0', '0']}]}",
+    "C = adapt_rust_authenticated_service_class_group(K, base, attestation_callback=lambda payload: True, query_callback=bad_query)",
+    "try:",
+    "    C.discrete_log(ideal_arithmetic.scalar_translate(P, QQ(1, 2)))",
+    "except (ValueError, ArithmeticError) as error:",
+    "    messages.append(str(error))",
+    "messages",
+  ]);
+  assert.equal(answer.repr.includes("resident service did not attest"), true);
+  assert.equal(answer.repr.includes("canonical full ideal basis"), true);
+  assert.equal(answer.repr.includes("not bound to this artifact"), true);
 });

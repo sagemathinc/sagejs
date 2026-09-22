@@ -36,6 +36,12 @@ ARBITRARY_IDEAL_QUERY_SCHEMA = "sagejs.rust-class-group/arbitrary-ideal-class-qu
 PUBLIC_ARBITRARY_IDEAL_QUERY_SCHEMA = (
     "sagejs.rust-class-group/public-cubic-arbitrary-ideal-query-receipt-v1"
 )
+AUTHENTICATED_SERVICE_CLASS_GROUP_SCHEMA = (
+    "sagejs.rust-class-group/authenticated-service-class-group-summary-v1"
+)
+AUTHENTICATED_SERVICE_IDEAL_QUERY_SCHEMA = (
+    "sagejs.rust-class-group/authenticated-service-ideal-query-receipt-v1"
+)
 PUBLICATION_CANDIDATE_SCHEMA = (
     "sagejs.rust-class-group/public-cubic-publication-candidate-v2"
 )
@@ -1337,6 +1343,472 @@ def adapt_rust_prepared_cubic_v2_presentation(
         context=context,
         diagnostics=diagnostics,
     )
+
+
+class _AuthenticatedServiceRelationCertificate:
+    """Artifact-sealed generator-order witness from the resident service."""
+
+    def __init__(self, context: Any, coordinate: int, ideal: Any) -> None:
+        self._context = context
+        self._coordinate = coordinate
+        self._ideal = ideal
+
+    def verify(self, ideal: Any, generator: Any, order: Any) -> bool:
+        del generator
+        return bool(
+            order is self._context.order
+            and ideal == self._ideal
+            and self._context.attest("generator-order-witness", self._coordinate)
+        )
+
+
+class _AuthenticatedServiceClassGroupContext:
+    """Small field-bound facade over one authenticated resident artifact."""
+
+    def __init__(
+        self,
+        field: Any,
+        invariants: Sequence[int],
+        generator_ideals: Sequence[Any],
+        artifact_sha256: str,
+        summary_identity: str,
+        proof_witnesses_sha256: str,
+        factor_base_bound: int,
+        relation_count: int,
+        attestation_callback: Any,
+        query_callback: Any,
+        query_resources: Any,
+    ) -> None:
+        self.field = field
+        self.order = field.maximal_order()
+        self.invariants = tuple(invariants)
+        self.generator_ideals = tuple(generator_ideals)
+        self.artifact_sha256 = artifact_sha256
+        self.summary_identity = summary_identity
+        self.proof_witnesses_sha256 = proof_witnesses_sha256
+        self.factor_base_bound = factor_base_bound
+        self.relation_count = relation_count
+        self._attestation_callback = attestation_callback
+        self._query_callback = query_callback
+        self._query_resources = query_resources
+        self._basis = tuple(self.order.basis())
+        self._saturation_evidence = {
+            "schema": "sagejs.rust-class-group/authenticated-service-saturation-v1",
+            "artifactSha256": artifact_sha256,
+            "summaryIdentity": summary_identity,
+            "proofWitnessesSha256": proof_witnesses_sha256,
+            "index": 1,
+        }
+
+    def _attestation_payload(self, purpose: str, coordinate: Any = None) -> Any:
+        return {
+            "schema": "sagejs.rust-class-group/authenticated-service-attestation-v1",
+            "purpose": purpose,
+            "artifactSha256": self.artifact_sha256,
+            "summaryIdentity": self.summary_identity,
+            "proofWitnessesSha256": self.proof_witnesses_sha256,
+            "coordinateZeroBased": coordinate,
+        }
+
+    def attest(self, purpose: str, coordinate: Any = None) -> bool:
+        try:
+            return (
+                self._attestation_callback(
+                    self._attestation_payload(purpose, coordinate)
+                )
+                is True
+            )
+        except (TypeError, ValueError, ArithmeticError, AttributeError):
+            return False
+
+    def representative_ideal(self, coordinates: Sequence[int]) -> Any:
+        if len(coordinates) != len(self.invariants):
+            raise ValueError("class coordinates have the wrong dimension")
+        answer = self.order.ideal(1)
+        for coordinate, modulus, ideal in zip(
+            coordinates, self.invariants, self.generator_ideals, strict=True
+        ):
+            value = _bounded_integer(coordinate, "class coordinate")
+            if value < 0 or value >= modulus:
+                raise ValueError("class coordinates are not canonical residues")
+            if value:
+                answer = answer * ideal**value
+        return answer
+
+    def _integral_query_rows(self, ideal: Any) -> tuple[Any, int, list[list[str]]]:
+        if getattr(ideal, "ring", lambda: None)() is not self.order:
+            raise TypeError("the queried ideal belongs to another maximal order")
+        if ideal.is_zero():
+            raise ValueError("the zero ideal has no ideal class")
+        arithmetic = __import__(
+            "sagejs.number_fields.ideal_arithmetic", fromlist=["ideal_arithmetic"]
+        )
+        denominator = int(arithmetic.integrality_denominator(ideal))
+        if denominator <= 0:
+            raise ArithmeticError("ideal denominator normalization is not positive")
+        integral = arithmetic.scalar_translate(ideal, denominator)
+        relative = integral.basis_matrix() * self.order._basis_inverse_matrix()
+        rows = []
+        for row in relative.rows():
+            if any(value._denominator != 1 for value in row):
+                raise ArithmeticError("denominator clearing produced a fractional row")
+            rows.append([str(int(value._numerator)) for value in row])
+        return integral, denominator, rows
+
+    def _query_generator(self, integral: Any, rows: Any, receipt: Any) -> Any:
+        data = _closed(
+            _canonical_json(receipt, "authenticated service ideal query"),
+            {
+                "artifactSha256",
+                "classCoordinates",
+                "principalElementIntegralBasisCoordinates",
+                "principalWitnessRelationFactors",
+                "queriedIdealIntegralBasisRows",
+                "schema",
+            },
+            "authenticated service ideal query",
+        )
+        if (
+            data["schema"] != AUTHENTICATED_SERVICE_IDEAL_QUERY_SCHEMA
+            or data["artifactSha256"] != self.artifact_sha256
+            or data["queriedIdealIntegralBasisRows"] != rows
+        ):
+            raise RelationMatrixError("ideal query is not bound to this artifact")
+        raw_coordinates = data["classCoordinates"]
+        if not isinstance(raw_coordinates, list) or len(raw_coordinates) != len(
+            self.invariants
+        ):
+            raise RelationMatrixError("class coordinates have the wrong dimension")
+        coordinates = tuple(
+            _signed_decimal(value, "class coordinate") for value in raw_coordinates
+        )
+        representative = self.representative_ideal(coordinates)
+        raw_alpha = data["principalElementIntegralBasisCoordinates"]
+        if not isinstance(raw_alpha, list) or len(raw_alpha) != len(self._basis):
+            raise RelationMatrixError("query principal element has the wrong dimension")
+        alpha = _element_from_prepared_coordinates(
+            self.field,
+            self._basis,
+            tuple(
+                _signed_decimal(value, "principal coordinate") for value in raw_alpha
+            ),
+        )
+        factors = data["principalWitnessRelationFactors"]
+        if not isinstance(factors, list) or len(factors) > _MAX_PUBLICATION_RELATIONS:
+            raise RelationMatrixError("query relation factors exceed the replay cap")
+        decoded = []
+        for factor in factors:
+            factor = _closed(
+                factor,
+                {"exponent", "principalElementIntegralBasisCoordinates"},
+                "authenticated service relation factor",
+            )
+            raw_element = factor["principalElementIntegralBasisCoordinates"]
+            if not isinstance(raw_element, list) or len(raw_element) != len(
+                self._basis
+            ):
+                raise RelationMatrixError(
+                    "query relation element has the wrong dimension"
+                )
+            decoded.append(
+                (
+                    _element_from_prepared_coordinates(
+                        self.field,
+                        self._basis,
+                        tuple(
+                            _signed_decimal(value, "relation element coordinate")
+                            for value in raw_element
+                        ),
+                    ),
+                    _signed_decimal(
+                        factor["exponent"], "relation factor exponent", nonzero=True
+                    ),
+                )
+            )
+        factored = __import__(
+            "sagejs.number_fields.factored_elements", fromlist=["factored_elements"]
+        )
+        generator = factored.FactoredNumberFieldElement(
+            self.field, [(alpha, 1)] + decoded
+        )
+        arithmetic = __import__(
+            "sagejs.number_fields.ideal_arithmetic", fromlist=["ideal_arithmetic"]
+        )
+        quotient = arithmetic.ideal_quotient(integral, representative)
+        if generator.principal_ideal(self.order) != quotient:
+            raise ArithmeticError(
+                "authenticated service quotient witness failed replay"
+            )
+        return coordinates, generator
+
+    def public_ideal_log(self, ideal: Any) -> tuple[tuple[int, ...], Any]:
+        maps = __import__(
+            "sagejs.number_fields.class_group_maps", fromlist=["class_group_maps"]
+        )
+        for position, generator_ideal in enumerate(self.generator_ideals):
+            if ideal == generator_ideal:
+                coordinates = tuple(
+                    1 if index == position else 0
+                    for index in range(len(self.invariants))
+                )
+                return coordinates, maps.PrincipalIdealWitness(
+                    self.order.ideal(1),
+                    self.field.one(),
+                    source="authenticated service class generator",
+                )
+        integral, denominator, rows = self._integral_query_rows(ideal)
+        receipt = self._query_callback(rows, self._query_resources)
+        coordinates, generator = self._query_generator(integral, rows, receipt)
+        if denominator != 1:
+            factored = __import__(
+                "sagejs.number_fields.factored_elements", fromlist=["factored_elements"]
+            )
+            generator = generator / factored.FactoredNumberFieldElement.from_element(
+                self.field, self.field(denominator)
+            )
+        representative = self.representative_ideal(coordinates)
+        arithmetic = __import__(
+            "sagejs.number_fields.ideal_arithmetic", fromlist=["ideal_arithmetic"]
+        )
+        quotient = arithmetic.ideal_quotient(ideal, representative)
+        witness = maps.PrincipalIdealWitness(
+            quotient,
+            generator,
+            source="authenticated resident Rust ideal query",
+        )
+        if not witness.verify(self.order):
+            raise ArithmeticError("fractional service ideal witness failed replay")
+        return coordinates, witness
+
+    def verify_saturation_record(self, record: Any) -> bool:
+        return bool(
+            record.complete
+            and record.index_bound == 1
+            and record.evidence == self._saturation_evidence
+            and self.attest("conditional-class-group-proof")
+        )
+
+    def verify_conditional_grh_record(self, record: Any, group: Any) -> bool:
+        return bool(
+            tuple(group.invariants()) == self.invariants
+            and record.theorem
+            == "Belabas--Diaz y Diaz--Friedman strict factor-base inequality"
+            and record.bound == (self.factor_base_bound, 1)
+            and record.relation_count == self.relation_count
+            and record.assumption
+            == "GRH for all unramified Hecke L-functions of class-group characters AND GRH for the Dedekind-zeta residue bound"
+            and self.verify_saturation_record(record.saturation)
+        )
+
+    def conditional_evidence_payload(self) -> dict[str, Any]:
+        return {
+            "schema": "sagejs.rust-class-group/authenticated-service-proof-v1",
+            "artifactSha256": self.artifact_sha256,
+            "summaryIdentity": self.summary_identity,
+            "proofWitnessesSha256": self.proof_witnesses_sha256,
+        }
+
+    def verify_conditional_evidence_payload(
+        self, payload: Any, record: Any, group: Any, *, cancelled: Any = None
+    ) -> bool:
+        del cancelled
+        return bool(
+            isinstance(payload, dict)
+            and payload.get("conditional_evidence")
+            == self.conditional_evidence_payload()
+            and self.verify_conditional_grh_record(record, group)
+        )
+
+
+def _authenticated_service_ideal(
+    field: Any, basis: Sequence[Any], rows: Any, label: str
+) -> Any:
+    if (
+        not isinstance(rows, list)
+        or len(rows) != len(basis)
+        or any(not isinstance(row, list) or len(row) != len(basis) for row in rows)
+    ):
+        raise RelationMatrixError(label + " has malformed integral-basis rows")
+    decoded = tuple(
+        tuple(_signed_decimal(value, label + " coordinate") for value in row)
+        for row in rows
+    )
+    order = field.maximal_order()
+    generators = [
+        _element_from_prepared_coordinates(field, basis, row) for row in decoded
+    ]
+    ideal = order.ideal(generators)
+    relative = ideal.basis_matrix() * order._basis_inverse_matrix()
+    actual = tuple(
+        tuple(int(value._numerator) for value in row)
+        for row in relative.rows()
+        if all(value._denominator == 1 for value in row)
+    )
+    if actual != decoded:
+        raise ArithmeticError(label + " is not a canonical full ideal basis")
+    return ideal
+
+
+def adapt_rust_authenticated_service_class_group(
+    field: Any,
+    summary: Any,
+    *,
+    attestation_callback: Any,
+    query_callback: Any,
+    query_resources: Any = None,
+) -> Any:
+    """Construct a public class group from a small artifact-sealed summary.
+
+    The callbacks are live service capabilities and deliberately remain outside
+    the authority JSON.  The service attests completeness and generator-order
+    witnesses; every arbitrary-ideal answer still receives an exact local
+    principal-ideal replay in Sage.js.
+    """
+    if not callable(attestation_callback) or not callable(query_callback):
+        raise TypeError("authenticated service adapters require live callbacks")
+    data = _closed(
+        _canonical_json(summary, "authenticated service class-group summary"),
+        {
+            "artifactSha256",
+            "classNumber",
+            "factorBaseBound",
+            "generatorIdeals",
+            "invariants",
+            "polynomialAscending",
+            "proofWitnessesSha256",
+            "relationCount",
+            "schema",
+        },
+        "authenticated service class-group summary",
+    )
+    if data["schema"] != AUTHENTICATED_SERVICE_CLASS_GROUP_SCHEMA:
+        raise RelationMatrixError("unsupported authenticated service summary")
+    artifact = data["artifactSha256"]
+    witness_digest = data["proofWitnessesSha256"]
+    for value, label in (
+        (artifact, "artifact SHA-256"),
+        (witness_digest, "proof-witness SHA-256"),
+    ):
+        if (
+            not isinstance(value, str)
+            or len(value) != 64
+            or any(character not in "0123456789abcdef" for character in value)
+        ):
+            raise RelationMatrixError(label + " is not canonical")
+    prepared = prepare_cubic_for_rust(field)
+    if data["polynomialAscending"] != prepared["field"]["coefficientsAscending"]:
+        raise RelationMatrixError("service summary belongs to another number field")
+    raw_invariants = data["invariants"]
+    if not isinstance(raw_invariants, list) or len(raw_invariants) > _MAX_INVARIANTS:
+        raise RelationMatrixError("service invariants are malformed")
+    invariants = tuple(
+        _positive_decimal(value, "class-group invariant") for value in raw_invariants
+    )
+    previous = 1
+    class_number = 1
+    for invariant in invariants:
+        if invariant <= 1 or invariant % previous:
+            raise RelationMatrixError("service invariants are not Smith ordered")
+        previous = invariant
+        class_number *= invariant
+    if _positive_decimal(data["classNumber"], "class number") != class_number:
+        raise RelationMatrixError("service class number has the wrong product")
+    basis = tuple(field.maximal_order().basis())
+    raw_generators = data["generatorIdeals"]
+    if not isinstance(raw_generators, list) or len(raw_generators) != len(invariants):
+        raise RelationMatrixError("service generator count does not match invariants")
+    generators = []
+    for position, descriptor in enumerate(raw_generators):
+        descriptor = _closed(
+            descriptor,
+            {"coordinateZeroBased", "integralBasisRows", "invariantFactor"},
+            "service class generator",
+        )
+        if (
+            _natural(descriptor["coordinateZeroBased"], "generator coordinate")
+            != position
+            or _positive_decimal(descriptor["invariantFactor"], "generator invariant")
+            != invariants[position]
+        ):
+            raise RelationMatrixError("service class generator is not canonical")
+        generators.append(
+            _authenticated_service_ideal(
+                field,
+                basis,
+                descriptor["integralBasisRows"],
+                "service class generator",
+            )
+        )
+    context = _AuthenticatedServiceClassGroupContext(
+        field,
+        invariants,
+        generators,
+        artifact,
+        _identity(data),
+        witness_digest,
+        _positive_decimal(data["factorBaseBound"], "factor-base bound"),
+        _natural(data["relationCount"], "relation count"),
+        attestation_callback,
+        query_callback,
+        query_resources,
+    )
+    if not context.attest("class-group-summary"):
+        raise ArithmeticError("the resident service did not attest the summary")
+    maps = __import__(
+        "sagejs.number_fields.class_group_maps", fromlist=["class_group_maps"]
+    )
+    proof = __import__(
+        "sagejs.number_fields.class_group_proof", fromlist=["class_group_proof"]
+    )
+    groups = __import__(
+        "sagejs.number_fields.class_unit_groups", fromlist=["class_unit_groups"]
+    )
+    relation_witnesses = tuple(
+        maps.PrincipalIdealWitness(
+            ideal**invariant,
+            field.one(),
+            source="artifact-sealed resident Rust generator-order witness",
+            relation_certificate=_AuthenticatedServiceRelationCertificate(
+                context, position, ideal**invariant
+            ),
+        )
+        for position, (ideal, invariant) in enumerate(
+            zip(generators, invariants, strict=True)
+        )
+    )
+    saturation = proof.SaturationProofRecord(
+        (), (), index_bound=1, complete=True, evidence=context._saturation_evidence
+    )
+    theorem = "Belabas--Diaz y Diaz--Friedman strict factor-base inequality"
+    assumption = (
+        "GRH for all unramified Hecke L-functions of class-group characters AND "
+        "GRH for the Dedekind-zeta residue bound"
+    )
+    proof_record = proof.ConditionalGRHProofRecord(
+        theorem,
+        (context.factor_base_bound, 1),
+        relation_count=context.relation_count,
+        assumption=assumption,
+        saturation=saturation,
+        analytic_index_one=True,
+    )
+    answer = maps.IdealClassGroup(
+        field.maximal_order(),
+        invariants,
+        generators,
+        relation_witnesses,
+        context.public_ideal_log,
+        proof_status=groups.EXACT_RELATIONS_CONDITIONAL_GRH,
+        algorithm="rust-authenticated-service-cubic",
+        factor_base_theorem=theorem,
+        factor_base_bound=(context.factor_base_bound, 1),
+        proof_record=proof_record,
+        proof_context=context,
+        relation_count=context.relation_count,
+    )
+    if answer.verify() is not True:
+        raise ArithmeticError("authenticated service class group failed verification")
+    return answer
 
 
 def _replay_publication_field(
@@ -2749,9 +3221,12 @@ def adapt_rust_public_cubic_publication_candidate(
 
 __all__ = [
     "ARBITRARY_IDEAL_QUERY_SCHEMA",
+    "AUTHENTICATED_SERVICE_CLASS_GROUP_SCHEMA",
+    "AUTHENTICATED_SERVICE_IDEAL_QUERY_SCHEMA",
     "PUBLIC_ARBITRARY_IDEAL_QUERY_SCHEMA",
     "PUBLICATION_CANDIDATE_SCHEMA",
     "RustCompactPresentationReplay",
+    "adapt_rust_authenticated_service_class_group",
     "adapt_rust_public_cubic_publication_candidate",
     "adapt_rust_prepared_cubic_v2_presentation",
 ]
