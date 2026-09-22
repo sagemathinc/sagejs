@@ -1176,13 +1176,15 @@ export async function instantiateSageEvaluator({
       try {
         if (operation === "classGroup") {
           if (classGroupResource === undefined) {
-            return {
-              ok: false,
-              error: {
-                code: "ENOSYS",
-                message: "the class-group reactor is unavailable in this evaluator",
-              },
-            };
+            const requestedOperation = Array.isArray(args) &&
+                typeof args[0] === "string" ? args[0] : "unknown";
+            return { ok: true, value: {
+              schema: CLASS_GROUP_RESPONSE_SCHEMA,
+              outcome: "error",
+              category: "capability-declined",
+              operation: requestedOperation,
+              message: "the class-group reactor is unavailable in this evaluator",
+            } };
           }
           if (!Array.isArray(args) || args.length !== 2) {
             throw new TypeError("classGroup expects operation and request arguments");
