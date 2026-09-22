@@ -1,0 +1,104 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "class-group-product-service",
+  "title": "Production class-group service and reactor",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "user",
+  "objective": "Promote the qualified public cubic completion and resident query protocol into packages/class-groups, produce a native resident service and bounded Wasm reactor from the same source, and add exact protocol/lifecycle tests",
+  "base_commit": "8d8992a82c82a5c379545d8ee921915161f91a4e",
+  "claims": [
+    "packages/class-groups/Cargo.toml",
+    "packages/class-groups/Cargo.lock",
+    "packages/class-groups/src/lib.rs",
+    "packages/class-groups/src/service.rs",
+    "packages/class-groups/src/reactor.rs",
+    "packages/class-groups/src/bin/class-group-service.rs",
+    "packages/class-groups/tests/service_contract.rs",
+    "packages/class-groups/tests/reactor_contract.rs",
+    "packages/class-groups/scripts/",
+    "packages/class-groups/README.md"
+  ],
+  "dependencies": [
+    "class-group-rust-core"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "same-source",
+    "oracles": [
+      "Existing public-cubic-e2e and Wasm resident-session qualification suites"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea",
+    "env SAGEJS_FLINT_PREFIX=/home/user/sagejs-worktrees/pari-class-group-e2e-integration-worktrees/class-group-ffi-safety/packages/flint/.native/prefix packages/class-groups/scripts/cargo-native.sh test --locked --manifest-path packages/class-groups/Cargo.toml --test service_contract --test reactor_contract",
+    "sh -c packages/class-groups/scripts/build-wasm.sh && node packages/class-groups/scripts/verify-wasm.mjs packages/class-groups/dist/class-group-core.wasm",
+    "sh -c cargo fmt --manifest-path packages/class-groups/Cargo.toml -- --check"
+  ],
+  "runs": [
+    {
+      "command": "packages/class-groups/scripts/cargo-native.sh test --locked --manifest-path packages/class-groups/Cargo.toml --test service_contract --test reactor_contract",
+      "result": "fail",
+      "exit_code": 2,
+      "seconds": 0.011,
+      "started_at": "2026-09-22T06:55:07.603Z",
+      "commit": "8d8992a82c82a5c379545d8ee921915161f91a4e",
+      "workspace_fingerprint": "18dce39ea269430f6cdac9b317022ee3ff797763e6fc9836b834b90576bf4b9c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_FLINT_PREFIX=/home/user/sagejs-worktrees/pari-class-group-e2e-integration-worktrees/class-group-ffi-safety/packages/flint/.native/prefix packages/class-groups/scripts/cargo-native.sh test --locked --manifest-path packages/class-groups/Cargo.toml --test service_contract --test reactor_contract",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.786,
+      "started_at": "2026-09-22T06:55:50.775Z",
+      "commit": "8d8992a82c82a5c379545d8ee921915161f91a4e",
+      "workspace_fingerprint": "0708c4ce5fedc834b1fbfb8ef0adccfd2c4d499fb721afaf6da85e8d58e3afa8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "sh -c packages/class-groups/scripts/build-wasm.sh && node packages/class-groups/scripts/verify-wasm.mjs packages/class-groups/dist/class-group-core.wasm",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 22.412,
+      "started_at": "2026-09-22T06:56:11.083Z",
+      "commit": "8d8992a82c82a5c379545d8ee921915161f91a4e",
+      "workspace_fingerprint": "5b3c6f5b800b4dab106b165d9349f3691c9a22e37b35f9cf006672c0ddc8da45",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "sh -c cargo fmt --manifest-path packages/class-groups/Cargo.toml -- --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.337,
+      "started_at": "2026-09-22T06:56:49.969Z",
+      "commit": "8d8992a82c82a5c379545d8ee921915161f91a4e",
+      "workspace_fingerprint": "5b3c6f5b800b4dab106b165d9349f3691c9a22e37b35f9cf006672c0ddc8da45",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Promoted the qualified exact public-cubic completion and arbitrary-ideal witness route into the production class-groups package. Added one bounded generation-aware protocol shared by a resident native JSON-lines service and Wasm reactor, deterministic authority receipts, typed errors, fixed-width wire resource counters, one authenticated GMP/MPFR allocator domain, and exact lifecycle tests. The final Wasm reactor is 6,302,427 bytes, has one internal memory with a 16 MiB initial size and 256 MiB maximum, and has SHA-256 bc5bdafe872dc21bcd15e5185073a14fbefec599735dca36aa01e4f5491047e8.",
+    "risks": [
+      "The generated dist artifact is intentionally ignored and must be rebuilt and authenticated by the packaging lane rather than committed.",
+      "The new Rust boundary files must be registered in architecture/native-code.json by the integration lane because that shared inventory is outside this task's claims.",
+      "macOS qualification must occur only after the product Cargo changes and the safety lane's exact FLINT/GMP/MPFR archive identity enforcement are integrated; the prior branch configuration could build a second private GMP."
+    ],
+    "next_steps": [
+      "Integrate this commit with the provenance/safety bridge changes, then register the new service and reactor in the shared native-code inventory.",
+      "Package and authenticate class-group-service and class-group-core.wasm, wiring the host adapter to add artifactSha256 at its trusted boundary.",
+      "Run the frozen lifecycle and row-6 product tests through Node and browser workers on Linux and macOS, then complete native Windows capability/fallback qualification."
+    ]
+  }
+}

@@ -16,11 +16,13 @@ The current supported mathematical boundary is deliberately narrow:
   completed result.
 
 FLINT 3.6, its integrated Arb implementation, GMP, and MPFR are required
-capabilities. The production API is host-independent and contains no worker,
-Node, Python, or filesystem boundary. Product request schemas, resident
-handles, artifact authentication, cancellation, and workers belong in separate
-host adapters. A private legacy qualification parser is temporarily retained
-for source identity; it is not exported by this package.
+capabilities. The mathematical API is host-independent and contains no Node,
+Python, or filesystem dependency. `service.rs` adds the shared bounded product
+protocol; the `class-group-service` binary provides newline-delimited native
+transport, and `reactor.rs` exposes the same protocol to a checked Wasm host.
+Artifact authentication, cancellation by worker termination, and public Sage
+objects remain host responsibilities. A private legacy qualification parser is
+temporarily retained for source identity; it is not exported by this package.
 
 This extraction does not promote benchmark fixtures, PARI controls, corpus
 receipts, experiment CLIs, brute-force contrast collectors, or prototype Wasm
@@ -35,11 +37,26 @@ The linked arithmetic libraries retain their own licenses and distribution
 obligations.
 
 For a repository-native Unix build, first build `@sagemath/sagejs-flint`, or
-set `SAGEJS_FLINT_PREFIX` to a compatible static installation, then run:
+set `SAGEJS_FLINT_PREFIX` to the authenticated installation, then run:
 
 ```bash
-cargo test --manifest-path packages/class-groups/Cargo.toml
+packages/class-groups/scripts/cargo-native.sh test --locked \
+  --manifest-path packages/class-groups/Cargo.toml
 ```
 
-The Wasm build additionally requires the explicit `SAGEJS_WASI_*` toolchain
-and library-prefix variables used by the Sage.js FLINT Wasm build.
+The wrapper deliberately places that installation's headers and libraries on
+the GMP/MPFR system-library probe path. This makes Rug and FLINT resolve to the
+same allocator domain; direct Cargo builds that accidentally select another
+GMP are not a supported product build. `scripts/build-native.sh` additionally
+performs a link-closure sentinel check.
+
+`scripts/build-wasm.sh` consumes the authenticated Sage.js WASI toolchain and
+emits `dist/class-group-core.wasm`. Its link flags enforce one non-shared memory
+with an initial 16 MiB and maximum 256 MiB; the product loader independently
+revalidates those limits before instantiation.
+
+The service protocol is ABI 1 and uses one JSON document per native line or
+Wasm call. Requests and responses carry bounded caller IDs. The operations are
+`capability`, `open`, `query`, `publication`, and `close`; all operations after
+`open` bind both its generation and opaque decimal handle. An invalid, closed,
+or stale handle fails with the typed `unknown-handle` category.
