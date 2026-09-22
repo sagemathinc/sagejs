@@ -4,7 +4,7 @@
   "id": "class-group-rust-core",
   "title": "Production Rust class-group core extraction",
   "lane": "distribution",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Extract the qualified complex-cubic Rust mathematical core into a production Cargo workspace without changing algorithms, with focused unit tests and a deliberately narrow internal API",
   "base_commit": "ab85769a9ab00e2d3d466aaa64410671f098d9ff",
