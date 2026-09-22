@@ -39,15 +39,15 @@
     ]
   },
   "summary": {
-    "sourceFiles": 33,
-    "unsafeItems": 17,
-    "unsafeItemsMissingRationale": 17,
-    "ffiBoundaries": 33,
-    "ffiBoundariesMissingRationale": 33,
+    "sourceFiles": 34,
+    "unsafeItems": 18,
+    "unsafeItemsMissingRationale": 0,
+    "ffiBoundaries": 35,
+    "ffiBoundariesMissingRationale": 0,
     "unclassifiedSafetyTokens": 0,
     "unclassifiedFfiTokens": 0,
     "unclassifiedSourceScopes": 0,
-    "sourceFilesMissingProvenanceHeader": 1,
+    "sourceFilesMissingProvenanceHeader": 0,
     "byScope": {
       "product-build-support": {
         "sourceFiles": 1,
@@ -55,18 +55,18 @@
         "unsafeItemsMissingRationale": 0,
         "ffiBoundaries": 0,
         "ffiBoundariesMissingRationale": 0,
-        "sourceFilesMissingProvenanceHeader": 1
+        "sourceFilesMissingProvenanceHeader": 0
       },
       "product-candidate": {
         "sourceFiles": 26,
-        "unsafeItems": 17,
-        "unsafeItemsMissingRationale": 17,
-        "ffiBoundaries": 33,
-        "ffiBoundariesMissingRationale": 33,
+        "unsafeItems": 18,
+        "unsafeItemsMissingRationale": 0,
+        "ffiBoundaries": 35,
+        "ffiBoundariesMissingRationale": 0,
         "sourceFilesMissingProvenanceHeader": 0
       },
       "product-candidate-test": {
-        "sourceFiles": 6,
+        "sourceFiles": 7,
         "unsafeItems": 0,
         "unsafeItemsMissingRationale": 0,
         "ffiBoundaries": 0,
@@ -74,7 +74,7 @@
         "sourceFilesMissingProvenanceHeader": 0
       }
     },
-    "documentationGatePassed": false,
+    "documentationGatePassed": true,
     "promotionGatePassed": false
   },
   "unsafeItems": [
@@ -82,238 +82,252 @@
       "kind": "unsafe_block",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
-      "line": 103,
+      "line": 109,
       "column": 13,
       "snippet": "unsafe { sagejs_rust_flint_small_surplus_workspace_free(self.pointer) };",
       "safetyRationale": {
-        "present": false,
-        "classification": "missing",
-        "line": null,
-        "text": null
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 103,
+        "text": "// SAFETY: `pointer` is either null or the unique live allocation returned by"
       }
     },
     {
       "kind": "unsafe_extern_block",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
-      "line": 307,
+      "line": 324,
       "column": 1,
       "snippet": "unsafe extern \"C\" {",
       "safetyRationale": {
-        "present": false,
-        "classification": "missing",
-        "line": null,
-        "text": null
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 313,
+        "text": "// FFI-SAFETY: Every declaration below is implemented by the statically linked"
       }
     },
     {
       "kind": "unsafe_block",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
-      "line": 619,
+      "line": 571,
       "column": 18,
-      "snippet": "let status = unsafe {",
+      "snippet": "let status = unsafe { sagejs_rust_flint_abi_compatible() };",
       "safetyRationale": {
-        "present": false,
-        "classification": "missing",
-        "line": null,
-        "text": null
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 569,
+        "text": "// SAFETY: The probe accepts no pointers, allocates nothing, and returns a"
       }
     },
     {
       "kind": "unsafe_block",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
-      "line": 750,
+      "line": 717,
       "column": 18,
       "snippet": "let status = unsafe {",
       "safetyRationale": {
-        "present": false,
-        "classification": "missing",
-        "line": null,
-        "text": null
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 712,
+        "text": "// SAFETY: Checked products prove the two input matrix spans and every"
       }
     },
     {
       "kind": "unsafe_block",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
-      "line": 799,
+      "line": 853,
       "column": 18,
       "snippet": "let status = unsafe {",
       "safetyRationale": {
-        "present": false,
-        "classification": "missing",
-        "line": null,
-        "text": null
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 849,
+        "text": "// SAFETY: Shape checks establish every matrix and pointer-array length."
       }
     },
     {
       "kind": "unsafe_block",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
-      "line": 859,
+      "line": 907,
       "column": 18,
       "snippet": "let status = unsafe {",
       "safetyRationale": {
-        "present": false,
-        "classification": "missing",
-        "line": null,
-        "text": null
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 903,
+        "text": "// SAFETY: `flattened` contains exactly three i64 values per term;"
       }
     },
     {
       "kind": "unsafe_block",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
-      "line": 946,
+      "line": 972,
       "column": 18,
       "snippet": "let status = unsafe {",
       "safetyRationale": {
-        "present": false,
-        "classification": "adjacent-comment-without-explicit-rationale",
-        "line": 945,
-        "text": "// integers without retaining any Rust allocation."
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 968,
+        "text": "// SAFETY: The safe preconditions validate the signature, regulator order,"
       }
     },
     {
       "kind": "unsafe_block",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
-      "line": 994,
+      "line": 1061,
       "column": 18,
       "snippet": "let status = unsafe {",
       "safetyRationale": {
-        "present": false,
-        "classification": "missing",
-        "line": null,
-        "text": null
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 1057,
+        "text": "// SAFETY: Every GMP pointer is borrowed for this call only. The validated"
       }
     },
     {
       "kind": "unsafe_block",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
-      "line": 1055,
+      "line": 1114,
       "column": 18,
       "snippet": "let status = unsafe {",
       "safetyRationale": {
-        "present": false,
-        "classification": "missing",
-        "line": null,
-        "text": null
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 1110,
+        "text": "// SAFETY: Checked multiplication establishes the input and maximum output"
       }
     },
     {
       "kind": "unsafe_block",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
-      "line": 1120,
+      "line": 1180,
       "column": 18,
       "snippet": "let status = unsafe {",
       "safetyRationale": {
-        "present": false,
-        "classification": "missing",
-        "line": null,
-        "text": null
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 1176,
+        "text": "// SAFETY: The relation and target shapes were checked without overflow."
       }
     },
     {
       "kind": "unsafe_block",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
-      "line": 1175,
+      "line": 1250,
       "column": 18,
       "snippet": "let status = unsafe {",
       "safetyRationale": {
-        "present": false,
-        "classification": "missing",
-        "line": null,
-        "text": null
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 1246,
+        "text": "// SAFETY: Shape checks prove the square, remaining, target, and witness"
       }
     },
     {
       "kind": "unsafe_block",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
-      "line": 1225,
+      "line": 1309,
       "column": 18,
       "snippet": "let status = unsafe {",
       "safetyRationale": {
-        "present": false,
-        "classification": "adjacent-comment-without-explicit-rationale",
-        "line": 1224,
-        "text": "// HNF, avoiding a lossy conversion of the intermediate basis."
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 1305,
+        "text": "// SAFETY: Checked dimensions establish both input spans and the square"
       }
     },
     {
       "kind": "unsafe_block",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
-      "line": 1257,
+      "line": 1360,
       "column": 18,
       "snippet": "let status = unsafe {",
       "safetyRationale": {
-        "present": false,
-        "classification": "adjacent-comment-without-explicit-rationale",
-        "line": 1256,
-        "text": "// invariant factors. The bridge writes the actual count before returning."
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 1356,
+        "text": "// SAFETY: The input is a complete checked square i64 matrix and the two"
       }
     },
     {
       "kind": "unsafe_block",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
-      "line": 1414,
+      "line": 1394,
       "column": 18,
       "snippet": "let status = unsafe {",
       "safetyRationale": {
-        "present": false,
-        "classification": "adjacent-comment-without-explicit-rationale",
-        "line": 1413,
-        "text": "// and retains no Rust-owned pointer."
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 1390,
+        "text": "// SAFETY: Buffers are disjoint and checked for the full `size * size`"
       }
     },
     {
       "kind": "unsafe_block",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
-      "line": 1444,
+      "line": 1553,
       "column": 18,
       "snippet": "let status = unsafe {",
       "safetyRationale": {
-        "present": false,
-        "classification": "adjacent-comment-without-explicit-rationale",
-        "line": 1443,
-        "text": "// pointer. FLINT owns and clears all arbitrary-precision temporaries."
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 1549,
+        "text": "// SAFETY: Every borrowed GMP integer and the nine-entry pointer array"
       }
     },
     {
       "kind": "unsafe_block",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
-      "line": 1481,
+      "line": 1586,
       "column": 18,
       "snippet": "let status = unsafe {",
       "safetyRationale": {
-        "present": false,
-        "classification": "adjacent-comment-without-explicit-rationale",
-        "line": 1480,
-        "text": "// computing. All inputs outlive the call and no Rust pointer is retained."
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 1582,
+        "text": "// SAFETY: Checked dimensions prove the input `rows * columns` span and the"
       }
     },
     {
       "kind": "unsafe_block",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
-      "line": 1513,
+      "line": 1626,
       "column": 18,
       "snippet": "let status = unsafe {",
       "safetyRationale": {
-        "present": false,
-        "classification": "adjacent-comment-without-explicit-rationale",
-        "line": 1512,
-        "text": "// buffers, and does not retain either pointer."
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 1622,
+        "text": "// SAFETY: Checked dimensions prove both matrix spans. The positive divisor"
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.rs",
+      "line": 1660,
+      "column": 18,
+      "snippet": "let status = unsafe {",
+      "safetyRationale": {
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 1656,
+        "text": "// SAFETY: Rust checked nonzero dimensions, the `rows * columns` product,"
       }
     }
   ],
@@ -322,14 +336,29 @@
       "kind": "c_ffi_export",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.c",
-      "line": 154,
+      "line": 31,
+      "column": 5,
+      "snippet": "int sagejs_rust_flint_abi_compatible(void)",
+      "safetyRationale": {
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 26,
+        "text": "/* FFI-SAFETY: This function dereferences no caller pointer. It compares the"
+      },
+      "name": "sagejs_rust_flint_abi_compatible"
+    },
+    {
+      "kind": "c_ffi_export",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.c",
+      "line": 188,
       "column": 5,
       "snippet": "int sagejs_rust_flint_snf_i64(",
       "safetyRationale": {
-        "present": false,
-        "classification": "missing",
-        "line": null,
-        "text": null
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 183,
+        "text": "/* FFI-SAFETY: entries addresses rows*columns readable int64_t values and"
       },
       "name": "sagejs_rust_flint_snf_i64"
     },
@@ -337,14 +366,14 @@
       "kind": "c_ffi_export",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.c",
-      "line": 185,
+      "line": 223,
       "column": 5,
       "snippet": "int sagejs_rust_flint_hnf_basis_i64(",
       "safetyRationale": {
-        "present": false,
-        "classification": "missing",
-        "line": null,
-        "text": null
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 219,
+        "text": "/* FFI-SAFETY: entries is a readable rows*columns span and basis is a disjoint"
       },
       "name": "sagejs_rust_flint_hnf_basis_i64"
     },
@@ -352,14 +381,14 @@
       "kind": "c_ffi_export",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.c",
-      "line": 239,
+      "line": 281,
       "column": 5,
       "snippet": "int sagejs_rust_flint_hnf_basis_modular_i64(",
       "safetyRationale": {
-        "present": false,
-        "classification": "missing",
-        "line": null,
-        "text": null
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 277,
+        "text": "/* FFI-SAFETY: Matrix spans satisfy the HNF contract; divisor points to one"
       },
       "name": "sagejs_rust_flint_hnf_basis_modular_i64"
     },
@@ -367,14 +396,14 @@
       "kind": "c_ffi_export",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.c",
-      "line": 302,
+      "line": 348,
       "column": 5,
       "snippet": "int sagejs_rust_flint_hnf_profile_i64(",
       "safetyRationale": {
-        "present": false,
-        "classification": "missing",
-        "line": null,
-        "text": null
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 344,
+        "text": "/* FFI-SAFETY: entries is a readable size*size span and both metadata outputs"
       },
       "name": "sagejs_rust_flint_hnf_profile_i64"
     },
@@ -382,14 +411,14 @@
       "kind": "c_ffi_export",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.c",
-      "line": 339,
+      "line": 389,
       "column": 5,
       "snippet": "int sagejs_rust_flint_incremental_hnf_i64(",
       "safetyRationale": {
-        "present": false,
-        "classification": "missing",
-        "line": null,
-        "text": null
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 385,
+        "text": "/* FFI-SAFETY: square_entries and remaining_entries contain size*size and"
       },
       "name": "sagejs_rust_flint_incremental_hnf_i64"
     },
@@ -397,14 +426,14 @@
       "kind": "c_ffi_export",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.c",
-      "line": 678,
+      "line": 732,
       "column": 6,
       "snippet": "void sagejs_rust_flint_small_surplus_workspace_free(void *opaque)",
       "safetyRationale": {
-        "present": false,
-        "classification": "missing",
-        "line": null,
-        "text": null
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 728,
+        "text": "/* FFI-SAFETY: opaque is NULL or the unique live workspace allocated by"
       },
       "name": "sagejs_rust_flint_small_surplus_workspace_free"
     },
@@ -412,14 +441,14 @@
       "kind": "c_ffi_export",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.c",
-      "line": 692,
+      "line": 752,
       "column": 5,
       "snippet": "int sagejs_rust_flint_small_surplus_class_order_i64(",
       "safetyRationale": {
-        "present": false,
-        "classification": "missing",
-        "line": null,
-        "text": null
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 746,
+        "text": "/* FFI-SAFETY: Matrix spans, coordinate capacity, and dependency capacity are"
       },
       "name": "sagejs_rust_flint_small_surplus_class_order_i64"
     },
@@ -427,14 +456,14 @@
       "kind": "c_ffi_export",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.c",
-      "line": 1087,
+      "line": 1152,
       "column": 5,
       "snippet": "int sagejs_rust_flint_small_surplus_relation_witnesses_mpz(",
       "safetyRationale": {
-        "present": false,
-        "classification": "missing",
-        "line": null,
-        "text": null
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 1147,
+        "text": "/* FFI-SAFETY: Matrix spans and target_count are shape-checked; targets names"
       },
       "name": "sagejs_rust_flint_small_surplus_relation_witnesses_mpz"
     },
@@ -442,14 +471,14 @@
       "kind": "c_ffi_export",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.c",
-      "line": 1445,
+      "line": 1514,
       "column": 5,
       "snippet": "int sagejs_rust_flint_lll_columns_mpz(",
       "safetyRationale": {
-        "present": false,
-        "classification": "missing",
-        "line": null,
-        "text": null
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 1510,
+        "text": "/* FFI-SAFETY: entries addresses exactly nine readable pointers to initialized"
       },
       "name": "sagejs_rust_flint_lll_columns_mpz"
     },
@@ -457,14 +486,14 @@
       "kind": "c_ffi_export",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.c",
-      "line": 1494,
+      "line": 1567,
       "column": 5,
       "snippet": "int sagejs_rust_flint_snf_class_map_i64(",
       "safetyRationale": {
-        "present": false,
-        "classification": "missing",
-        "line": null,
-        "text": null
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 1563,
+        "text": "/* FFI-SAFETY: entries, generator_coordinates, and generator_preimages each"
       },
       "name": "sagejs_rust_flint_snf_class_map_i64"
     },
@@ -472,14 +501,14 @@
       "kind": "c_ffi_export",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.c",
-      "line": 1589,
+      "line": 1666,
       "column": 5,
       "snippet": "int sagejs_rust_flint_relation_witnesses_i64(",
       "safetyRationale": {
-        "present": false,
-        "classification": "missing",
-        "line": null,
-        "text": null
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 1662,
+        "text": "/* FFI-SAFETY: entries and targets have rows*columns and target_count*columns"
       },
       "name": "sagejs_rust_flint_relation_witnesses_i64"
     },
@@ -487,14 +516,14 @@
       "kind": "c_ffi_export",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.c",
-      "line": 1763,
+      "line": 1844,
       "column": 5,
       "snippet": "int sagejs_rust_flint_staged_relation_witnesses_i64(",
       "safetyRationale": {
-        "present": false,
-        "classification": "missing",
-        "line": null,
-        "text": null
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 1840,
+        "text": "/* FFI-SAFETY: The square, remaining, and target spans have caller-checked"
       },
       "name": "sagejs_rust_flint_staged_relation_witnesses_i64"
     },
@@ -502,14 +531,14 @@
       "kind": "c_ffi_export",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.c",
-      "line": 2029,
+      "line": 2114,
       "column": 5,
       "snippet": "int sagejs_rust_flint_left_kernel_i64(",
       "safetyRationale": {
-        "present": false,
-        "classification": "missing",
-        "line": null,
-        "text": null
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 2110,
+        "text": "/* FFI-SAFETY: entries spans rows*columns readable values. kernel_entries names"
       },
       "name": "sagejs_rust_flint_left_kernel_i64"
     },
@@ -517,14 +546,14 @@
       "kind": "c_ffi_export",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.c",
-      "line": 2338,
+      "line": 2428,
       "column": 5,
       "snippet": "int sagejs_rust_flint_compact_cubic_regulator(",
       "safetyRationale": {
-        "present": false,
-        "classification": "missing",
-        "line": null,
-        "text": null
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 2423,
+        "text": "/* FFI-SAFETY: polynomial and basis_numerators have fixed lengths four and"
       },
       "name": "sagejs_rust_flint_compact_cubic_regulator"
     },
@@ -532,14 +561,14 @@
       "kind": "c_ffi_export",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.c",
-      "line": 2580,
+      "line": 2674,
       "column": 5,
       "snippet": "int sagejs_rust_flint_bdf_factor_base_margin(",
       "safetyRationale": {
-        "present": false,
-        "classification": "missing",
-        "line": null,
-        "text": null
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 2670,
+        "text": "/* FFI-SAFETY: terms spans term_count*3 readable int64_t values; discriminant"
       },
       "name": "sagejs_rust_flint_bdf_factor_base_margin"
     },
@@ -547,14 +576,14 @@
       "kind": "c_ffi_export",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.c",
-      "line": 2713,
+      "line": 2812,
       "column": 5,
       "snippet": "int sagejs_rust_flint_bf_index_enclosure(",
       "safetyRationale": {
-        "present": false,
-        "classification": "missing",
-        "line": null,
-        "text": null
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 2807,
+        "text": "/* FFI-SAFETY: terms spans term_count*4 readable values. Discriminant and both"
       },
       "name": "sagejs_rust_flint_bf_index_enclosure"
     },
@@ -562,28 +591,43 @@
       "kind": "rust_ffi_import_block",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
-      "line": 307,
+      "line": 324,
       "column": 1,
       "snippet": "unsafe extern \"C\" {",
       "safetyRationale": {
-        "present": false,
-        "classification": "missing",
-        "line": null,
-        "text": null
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 313,
+        "text": "// FFI-SAFETY: Every declaration below is implemented by the statically linked"
       }
     },
     {
       "kind": "rust_ffi_import",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
-      "line": 308,
+      "line": 328,
+      "column": 5,
+      "snippet": "fn sagejs_rust_flint_abi_compatible() -> c_int;",
+      "safetyRationale": {
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 325,
+        "text": "// FFI-SAFETY: This no-argument probe touches no Rust memory. It checks that"
+      },
+      "name": "sagejs_rust_flint_abi_compatible"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.rs",
+      "line": 332,
       "column": 5,
       "snippet": "fn sagejs_rust_flint_snf_i64(",
       "safetyRationale": {
-        "present": false,
-        "classification": "missing",
-        "line": null,
-        "text": null
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 329,
+        "text": "// FFI-SAFETY: `entries` spans `rows * columns` initialized i64 values and"
       },
       "name": "sagejs_rust_flint_snf_i64"
     },
@@ -591,14 +635,14 @@
       "kind": "rust_ffi_import",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
-      "line": 314,
+      "line": 341,
       "column": 5,
       "snippet": "fn sagejs_rust_flint_hnf_basis_i64(",
       "safetyRationale": {
-        "present": false,
-        "classification": "missing",
-        "line": null,
-        "text": null
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 338,
+        "text": "// FFI-SAFETY: `entries` spans `rows * columns` initialized i64 values and"
       },
       "name": "sagejs_rust_flint_hnf_basis_i64"
     },
@@ -606,14 +650,14 @@
       "kind": "rust_ffi_import",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
-      "line": 320,
+      "line": 350,
       "column": 5,
       "snippet": "fn sagejs_rust_flint_hnf_basis_modular_i64(",
       "safetyRationale": {
-        "present": false,
-        "classification": "missing",
-        "line": null,
-        "text": null
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 347,
+        "text": "// FFI-SAFETY: Matrix spans match the HNF contract above. The divisor points"
       },
       "name": "sagejs_rust_flint_hnf_basis_modular_i64"
     },
@@ -621,14 +665,14 @@
       "kind": "rust_ffi_import",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
-      "line": 327,
+      "line": 360,
       "column": 5,
       "snippet": "fn sagejs_rust_flint_hnf_profile_i64(",
       "safetyRationale": {
-        "present": false,
-        "classification": "missing",
-        "line": null,
-        "text": null
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 357,
+        "text": "// FFI-SAFETY: `entries` spans `size * size` initialized i64 values. Both"
       },
       "name": "sagejs_rust_flint_hnf_profile_i64"
     },
@@ -636,14 +680,14 @@
       "kind": "rust_ffi_import",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
-      "line": 333,
+      "line": 370,
       "column": 5,
       "snippet": "fn sagejs_rust_flint_incremental_hnf_i64(",
       "safetyRationale": {
-        "present": false,
-        "classification": "missing",
-        "line": null,
-        "text": null
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 366,
+        "text": "// FFI-SAFETY: The square and remaining spans contain respectively"
       },
       "name": "sagejs_rust_flint_incremental_hnf_i64"
     },
@@ -651,14 +695,14 @@
       "kind": "rust_ffi_import",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
-      "line": 347,
+      "line": 390,
       "column": 5,
       "snippet": "fn sagejs_rust_flint_small_surplus_class_order_i64(",
       "safetyRationale": {
-        "present": false,
-        "classification": "missing",
-        "line": null,
-        "text": null
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 384,
+        "text": "// FFI-SAFETY: Matrix spans and every output capacity are validated by the"
       },
       "name": "sagejs_rust_flint_small_surplus_class_order_i64"
     },
@@ -666,14 +710,14 @@
       "kind": "rust_ffi_import",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
-      "line": 370,
+      "line": 417,
       "column": 5,
       "snippet": "fn sagejs_rust_flint_small_surplus_workspace_free(workspace: *mut c_void);",
       "safetyRationale": {
-        "present": false,
-        "classification": "missing",
-        "line": null,
-        "text": null
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 413,
+        "text": "// FFI-SAFETY: `workspace` is null or a unique live allocation produced by"
       },
       "name": "sagejs_rust_flint_small_surplus_workspace_free"
     },
@@ -681,14 +725,14 @@
       "kind": "rust_ffi_import",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
-      "line": 371,
+      "line": 422,
       "column": 5,
       "snippet": "fn sagejs_rust_flint_small_surplus_relation_witnesses_mpz(",
       "safetyRationale": {
-        "present": false,
-        "classification": "missing",
-        "line": null,
-        "text": null
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 418,
+        "text": "// FFI-SAFETY: Matrix and target spans are validated and initialized. Each"
       },
       "name": "sagejs_rust_flint_small_surplus_relation_witnesses_mpz"
     },
@@ -696,14 +740,14 @@
       "kind": "rust_ffi_import",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
-      "line": 385,
+      "line": 439,
       "column": 5,
       "snippet": "fn sagejs_rust_flint_lll_columns_mpz(",
       "safetyRationale": {
-        "present": false,
-        "classification": "missing",
-        "line": null,
-        "text": null
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 436,
+        "text": "// FFI-SAFETY: `entries` points to exactly nine pointers to live initialized"
       },
       "name": "sagejs_rust_flint_lll_columns_mpz"
     },
@@ -711,14 +755,14 @@
       "kind": "rust_ffi_import",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
-      "line": 389,
+      "line": 447,
       "column": 5,
       "snippet": "fn sagejs_rust_flint_snf_class_map_i64(",
       "safetyRationale": {
-        "present": false,
-        "classification": "missing",
-        "line": null,
-        "text": null
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 443,
+        "text": "// FFI-SAFETY: `entries`, coordinate, and preimage spans each have"
       },
       "name": "sagejs_rust_flint_snf_class_map_i64"
     },
@@ -726,14 +770,14 @@
       "kind": "rust_ffi_import",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
-      "line": 397,
+      "line": 459,
       "column": 5,
       "snippet": "fn sagejs_rust_flint_relation_witnesses_i64(",
       "safetyRationale": {
-        "present": false,
-        "classification": "missing",
-        "line": null,
-        "text": null
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 455,
+        "text": "// FFI-SAFETY: Relation and target spans have checked matrix lengths. The"
       },
       "name": "sagejs_rust_flint_relation_witnesses_i64"
     },
@@ -741,14 +785,14 @@
       "kind": "rust_ffi_import",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
-      "line": 409,
+      "line": 475,
       "column": 5,
       "snippet": "fn sagejs_rust_flint_staged_relation_witnesses_i64(",
       "safetyRationale": {
-        "present": false,
-        "classification": "missing",
-        "line": null,
-        "text": null
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 471,
+        "text": "// FFI-SAFETY: Square, remaining, and target spans have checked products;"
       },
       "name": "sagejs_rust_flint_staged_relation_witnesses_i64"
     },
@@ -756,14 +800,14 @@
       "kind": "rust_ffi_import",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
-      "line": 424,
+      "line": 494,
       "column": 5,
       "snippet": "fn sagejs_rust_flint_left_kernel_i64(",
       "safetyRationale": {
-        "present": false,
-        "classification": "missing",
-        "line": null,
-        "text": null
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 490,
+        "text": "// FFI-SAFETY: `entries` has `rows * columns` initialized values. The output"
       },
       "name": "sagejs_rust_flint_left_kernel_i64"
     },
@@ -771,14 +815,14 @@
       "kind": "rust_ffi_import",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
-      "line": 435,
+      "line": 509,
       "column": 5,
       "snippet": "fn sagejs_rust_flint_compact_cubic_regulator(",
       "safetyRationale": {
-        "present": false,
-        "classification": "missing",
-        "line": null,
-        "text": null
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 505,
+        "text": "// FFI-SAFETY: Polynomial and basis spans have fixed lengths four and nine;"
       },
       "name": "sagejs_rust_flint_compact_cubic_regulator"
     },
@@ -786,14 +830,14 @@
       "kind": "rust_ffi_import",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
-      "line": 449,
+      "line": 527,
       "column": 5,
       "snippet": "fn sagejs_rust_flint_bf_index_enclosure(",
       "safetyRationale": {
-        "present": false,
-        "classification": "missing",
-        "line": null,
-        "text": null
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 523,
+        "text": "// FFI-SAFETY: `terms` spans `term_count * 4` initialized i64 values. Every"
       },
       "name": "sagejs_rust_flint_bf_index_enclosure"
     },
@@ -801,14 +845,14 @@
       "kind": "rust_ffi_import",
       "scope": "product-candidate",
       "file": "src/flint_normal_form.rs",
-      "line": 472,
+      "line": 554,
       "column": 5,
       "snippet": "fn sagejs_rust_flint_bdf_factor_base_margin(",
       "safetyRationale": {
-        "present": false,
-        "classification": "missing",
-        "line": null,
-        "text": null
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 550,
+        "text": "// FFI-SAFETY: `terms` spans `term_count * 3` initialized i64 values;"
       },
       "name": "sagejs_rust_flint_bdf_factor_base_margin"
     }
@@ -819,12 +863,14 @@
     {
       "file": "build.rs",
       "scope": "product-build-support",
-      "sha256": "070d17fbdfc7c14e7e242aa5e41e958cdc638d1e4777c3e9f6424ccf691d8f34",
-      "bytes": 4951,
-      "copyrightNotices": [],
-      "licenseExpression": null,
+      "sha256": "be9c98e3463bb3e67c181fd994bd30ac3a0bb8875eae46fcd56943b6eaba85c3",
+      "bytes": 6471,
+      "copyrightNotices": [
+        "Copyright (C) Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
       "originClassification": "sagejs-original-or-unspecified",
-      "headerComplete": false
+      "headerComplete": true
     },
     {
       "file": "src/analytic_completion.rs",
@@ -949,8 +995,8 @@
     {
       "file": "src/flint_normal_form.c",
       "scope": "product-candidate",
-      "sha256": "9bff5e701c828f27641c447672871562188871cc4311c9b54e2978aa3ec408cf",
-      "bytes": 114009,
+      "sha256": "c17ccfb1fa3453005afcdb76e2bf321582ac13b9cf8f26908719d7e275d41ad3",
+      "bytes": 120705,
       "copyrightNotices": [
         "Copyright (C) Sage.js contributors."
       ],
@@ -961,8 +1007,8 @@
     {
       "file": "src/flint_normal_form.rs",
       "scope": "product-candidate",
-      "sha256": "e34eda1552e637ed5f06b66caca9ef18a69ccee21e455cee6de293a57154c6a6",
-      "bytes": 85897,
+      "sha256": "27438bff029c9e538bd616544a8034d98e7551775e78d2df69e2eb27b449495e",
+      "bytes": 98550,
       "copyrightNotices": [
         "Copyright (C) Sage.js contributors."
       ],
@@ -1175,6 +1221,18 @@
       "headerComplete": true
     },
     {
+      "file": "tests/ffi_safety.rs",
+      "scope": "product-candidate-test",
+      "sha256": "600c3aee8dccc50114a80c7c392e00b2e11259e0dc4f08b28cc788aacb3e98cd",
+      "bytes": 2303,
+      "copyrightNotices": [
+        "Copyright (C) Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": true
+    },
+    {
       "file": "tests/index_prime_decomposition.rs",
       "scope": "product-candidate-test",
       "sha256": "524073c115377e945efe004533c6a7c9709e1d16f373eb5723acce7d5e5e997c",
@@ -1244,5 +1302,5 @@
     "miriCoverageEstablished": false,
     "productionQualified": false
   },
-  "inventorySha256": "9c09bb1d5ab96f645db6d3fdf6b63b4ecc0563a5b26fd85ac48fcb62b7da9969"
+  "inventorySha256": "386d44a0054301114707aff1923000d4b3ef8b52643e321d06aba5e216c3f15f"
 }

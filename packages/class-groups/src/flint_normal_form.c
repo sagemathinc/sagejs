@@ -2,6 +2,7 @@
 // GPL-2.0-or-later, without warranty.
 
 #include <gmp.h>
+#include <mpfr.h>
 #include <flint/fmpz.h>
 #include <flint/fmpz_lll.h>
 #include <flint/fmpz_mat.h>
@@ -9,9 +10,37 @@
 #include <flint/arb.h>
 #include <flint/arb_calc.h>
 #include <limits.h>
+#include <stdio.h>
 #include <stdint.h>
 #include <string.h>
 #include <time.h>
+
+/* All exported functions below are synchronous and retain no caller pointer
+ * unless a function's FFI-SAFETY contract explicitly transfers an opaque
+ * workspace. Fixed-width spans are naturally aligned by Rust Vec storage and
+ * mpz pointers name aligned initialized GMP objects. Independent calls use
+ * disjoint FLINT objects and may run on separate threads; a retained workspace
+ * is never shared concurrently. C has no unwinding path, and every failure is
+ * reported as a status after clearing locally initialized state. */
+
+/* FFI-SAFETY: This function dereferences no caller pointer. It compares the
+ * GMP/MPFR headers used to compile FLINT and this bridge with the actual
+ * symbols selected by the final link, and verifies the 64-bit limb contract
+ * required by the raw rug/FLINT object crossings. It allocates nothing,
+ * retains nothing, and returns a status only. */
+int sagejs_rust_flint_abi_compatible(void)
+{
+    char compile_gmp_version[64];
+    int length = snprintf(
+        compile_gmp_version, sizeof(compile_gmp_version), "%d.%d.%d",
+        __GNU_MP_VERSION, __GNU_MP_VERSION_MINOR, __GNU_MP_VERSION_PATCHLEVEL);
+    if (length <= 0 || (size_t) length >= sizeof(compile_gmp_version) ||
+        strcmp(compile_gmp_version, gmp_version) != 0 ||
+        strcmp(MPFR_VERSION_STRING, mpfr_get_version()) != 0 ||
+        GMP_NUMB_BITS != 64 || sizeof(mp_limb_t) != sizeof(uint64_t))
+        return -9;
+    return 0;
+}
 
 static uint64_t sagejs_rust_monotonic_ns(void)
 {
@@ -151,6 +180,11 @@ static int sagejs_rust_flint_set_i64_matrix(
     return 1;
 }
 
+/* FFI-SAFETY: entries addresses rows*columns readable int64_t values and
+ * diagonal addresses min(rows,columns) writable values. The caller proves the
+ * products fit size_t and the spans do not overlap. This function retains no
+ * pointer, clears every FLINT allocation, and returns -1/-2 on invalid shape
+ * or an unrepresentable output rather than writing beyond either span. */
 int sagejs_rust_flint_snf_i64(
     size_t rows, size_t columns, const int64_t *entries, int64_t *diagonal)
 {
@@ -182,6 +216,10 @@ int sagejs_rust_flint_snf_i64(
     return status;
 }
 
+/* FFI-SAFETY: entries is a readable rows*columns span and basis is a disjoint
+ * writable columns*columns span with rows>=columns>0. All element conversion
+ * is exact, all FLINT matrices are cleared on every exit, and no address is
+ * retained after the status return. */
 int sagejs_rust_flint_hnf_basis_i64(
     size_t rows, size_t columns, const int64_t *entries, int64_t *basis)
 {
@@ -236,6 +274,10 @@ int sagejs_rust_flint_hnf_basis_i64(
     return status;
 }
 
+/* FFI-SAFETY: Matrix spans satisfy the HNF contract; divisor points to one
+ * initialized read-only GMP integer whose allocator/limb ABI is shared with
+ * FLINT. The function copies it before use, writes only the complete basis,
+ * clears every temporary, and retains no caller-owned pointer. */
 int sagejs_rust_flint_hnf_basis_modular_i64(
     size_t rows, size_t columns, const int64_t *entries,
     mpz_srcptr elementary_divisor_multiple, int64_t *basis)
@@ -299,6 +341,10 @@ int sagejs_rust_flint_hnf_basis_modular_i64(
     return status;
 }
 
+/* FFI-SAFETY: entries is a readable size*size span and both metadata outputs
+ * are distinct writable size_t objects. The caller excludes size zero and
+ * overflow. No caller pointer is retained; all FLINT state is local and
+ * cleared before returning a status. */
 int sagejs_rust_flint_hnf_profile_i64(
     size_t size, const int64_t *entries, size_t *maximum_entry_bits,
     size_t *determinant_bits)
@@ -336,6 +382,10 @@ int sagejs_rust_flint_hnf_profile_i64(
     return status;
 }
 
+/* FFI-SAFETY: square_entries and remaining_entries contain size*size and
+ * remaining_rows*size values; basis has size*size writable slots. The seven
+ * scalar outputs are live and nonaliasing. Dimension products are caller-
+ * checked, all allocations remain in FLINT's domain, and no pointer escapes. */
 int sagejs_rust_flint_incremental_hnf_i64(
     size_t size, size_t remaining_rows, const int64_t *square_entries,
     const int64_t *remaining_entries, int64_t *basis,
@@ -675,6 +725,10 @@ typedef struct
     int determinant_sign;
 } sagejs_rust_small_surplus_workspace;
 
+/* FFI-SAFETY: opaque is NULL or the unique live workspace allocated by
+ * sagejs_rust_flint_small_surplus_class_order_i64 in this same linked FLINT
+ * allocator domain. The call consumes that allocation exactly once, clears
+ * all embedded FLINT objects, and does not access it after flint_free. */
 void sagejs_rust_flint_small_surplus_workspace_free(void *opaque)
 {
     if (opaque == NULL)
@@ -689,6 +743,12 @@ void sagejs_rust_flint_small_surplus_workspace_free(void *opaque)
     flint_cleanup();
 }
 
+/* FFI-SAFETY: Matrix spans, coordinate capacity, and dependency capacity are
+ * validated by the Rust caller. class_order, square_determinant, and every
+ * dependency entry are initialized writable GMP integers sharing FLINT's GMP
+ * ABI. workspace_input is NULL or a matching live workspace; workspace_output
+ * is NULL or receives sole ownership of a new allocation. No other pointer is
+ * retained, and every failure cleans newly allocated state transactionally. */
 int sagejs_rust_flint_small_surplus_class_order_i64(
     size_t size, size_t surplus_rows, const int64_t *square_entries,
     const int64_t *surplus_entries, mpz_ptr class_order,
@@ -1084,6 +1144,11 @@ int sagejs_rust_flint_small_surplus_class_order_i64(
     return status;
 }
 
+/* FFI-SAFETY: Matrix spans and target_count are shape-checked; targets names
+ * target_count*size readable initialized GMP integers and witnesses names
+ * target_count*(size+surplus_rows) unique writable GMP integers. workspace is
+ * NULL or a live matching borrowed allocation. No pointer is retained or
+ * freed, and all local FLINT objects are cleared on every exit. */
 int sagejs_rust_flint_small_surplus_relation_witnesses_mpz(
     size_t size, size_t surplus_rows, const int64_t *square_entries,
     const int64_t *surplus_entries, size_t target_count,
@@ -1442,6 +1507,10 @@ int sagejs_rust_flint_small_surplus_relation_witnesses_mpz(
     return status;
 }
 
+/* FFI-SAFETY: entries addresses exactly nine readable pointers to initialized
+ * GMP integers and transform addresses nine writable int64_t values. Inputs
+ * are copied before LLL, conversion failure returns -2, all FLINT matrices are
+ * cleared, and caller-owned addresses are never retained. */
 int sagejs_rust_flint_lll_columns_mpz(
     mpz_srcptr const *entries, int64_t *transform)
 {
@@ -1491,6 +1560,10 @@ int sagejs_rust_flint_lll_columns_mpz(
     return status;
 }
 
+/* FFI-SAFETY: entries, generator_coordinates, and generator_preimages each
+ * span size*size elements; invariant_factors spans size and invariant_count is
+ * one distinct writable size_t. The caller checks products and disjointness.
+ * This function bounds every write, clears FLINT state, and retains nothing. */
 int sagejs_rust_flint_snf_class_map_i64(
     size_t size, const int64_t *entries, int64_t *invariant_factors,
     int64_t *generator_coordinates, int64_t *generator_preimages,
@@ -1586,6 +1659,10 @@ int sagejs_rust_flint_snf_class_map_i64(
     return status;
 }
 
+/* FFI-SAFETY: entries and targets have rows*columns and target_count*columns
+ * readable values. witnesses names target_count*rows unique initialized GMP
+ * outputs; nonzero_counts has target_count elements and scalar outputs are
+ * distinct. All writes are capacity-bounded and no caller pointer escapes. */
 int sagejs_rust_flint_relation_witnesses_i64(
     size_t rows, size_t columns, const int64_t *entries,
     size_t target_count, const int64_t *targets, mpz_ptr const *witnesses,
@@ -1760,6 +1837,10 @@ int sagejs_rust_flint_relation_witnesses_i64(
     return status;
 }
 
+/* FFI-SAFETY: The square, remaining, and target spans have caller-checked
+ * products. witnesses names target_count*(size+remaining_rows) unique writable
+ * GMP integers; all timing/metadata outputs are distinct live scalars. Local
+ * FLINT storage is cleared and no caller allocation is retained or freed. */
 int sagejs_rust_flint_staged_relation_witnesses_i64(
     size_t size, size_t remaining_rows, const int64_t *square_entries,
     const int64_t *remaining_entries, size_t target_count,
@@ -2026,6 +2107,10 @@ int sagejs_rust_flint_staged_relation_witnesses_i64(
     return status;
 }
 
+/* FFI-SAFETY: entries spans rows*columns readable values. kernel_entries names
+ * kernel_capacity*rows unique initialized writable GMP integers, while
+ * nonzero_counts has kernel_capacity slots and scalar outputs are distinct.
+ * rank is bounded by capacity before export; no pointer is retained. */
 int sagejs_rust_flint_left_kernel_i64(
     size_t rows, size_t columns, const int64_t *entries,
     size_t kernel_capacity, mpz_ptr const *kernel_entries,
@@ -2335,6 +2420,11 @@ static int sagejs_rust_refine_cubic_root(
     return status;
 }
 
+/* FFI-SAFETY: polynomial and basis_numerators have fixed lengths four and
+ * nine. The coordinate and exponent pointer arrays contain the caller-checked
+ * relation/rank counts and point to initialized read-only GMP integers. lower
+ * and upper are distinct writable GMP integers; all borrows are synchronous,
+ * ABI-compatible with FLINT, and never retained. */
 int sagejs_rust_flint_compact_cubic_regulator(
     const int64_t *polynomial, const int64_t *basis_numerators,
     uint64_t basis_denominator, uint64_t real_places, uint64_t unit_rank,
@@ -2577,6 +2667,10 @@ static int sagejs_rust_export_arb_interval(
     return status;
 }
 
+/* FFI-SAFETY: terms spans term_count*3 readable int64_t values; discriminant
+ * is one initialized read-only GMP integer. lower and upper are distinct
+ * writable GMP integers and exponent is a writable scalar. The function
+ * retains no pointer and clears all Arb/FLINT temporaries on every exit. */
 int sagejs_rust_flint_bdf_factor_base_margin(
     size_t term_count, const int64_t *terms, uint64_t bound,
     mpz_srcptr discriminant, uint64_t degree, uint64_t real_places,
@@ -2710,6 +2804,11 @@ int sagejs_rust_flint_bdf_factor_base_margin(
     return status;
 }
 
+/* FFI-SAFETY: terms spans term_count*4 readable values. Discriminant and both
+ * regulator endpoints are initialized read-only GMP integers; six interval
+ * endpoints and three exponents are distinct writable outputs. All objects
+ * share FLINT's GMP ABI, no pointer is retained, and every temporary is cleared
+ * before returning status. */
 int sagejs_rust_flint_bf_index_enclosure(
     size_t term_count, const int64_t *terms, uint64_t threshold,
     mpz_srcptr discriminant, uint64_t class_number, uint64_t roots_of_unity,

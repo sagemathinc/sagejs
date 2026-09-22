@@ -100,6 +100,12 @@ pub struct FlintSmallSurplusWorkspace {
 impl Drop for FlintSmallSurplusWorkspace {
     fn drop(&mut self) {
         if !self.pointer.is_null() {
+            // SAFETY: `pointer` is either null or the unique live allocation returned by
+            // `sagejs_rust_flint_small_surplus_class_order_i64`. The workspace is not
+            // `Clone`, every method borrows it for one synchronous call, and Drop runs
+            // only after those borrows end. The C destructor accepts exactly this
+            // allocation domain, retains nothing, and is called at most once because we
+            // null the field immediately afterward. No Rust panic crosses the C boundary.
             unsafe { sagejs_rust_flint_small_surplus_workspace_free(self.pointer) };
             self.pointer = ptr::null_mut();
         }
@@ -304,19 +310,43 @@ impl FlintSmithClassMap {
     }
 }
 
+// FFI-SAFETY: Every declaration below is implemented by the statically linked
+// `flint_normal_form.c` built from this package. All calls are synchronous and C
+// retains no borrowed Rust pointer except the explicitly returned opaque
+// small-surplus workspace. Individual declarations state their complete span,
+// initialization, aliasing, allocator, and lifetime contracts. Rust slices and
+// scalars provide their native alignment; pointer arrays contain aligned GMP
+// objects. Concurrent calls own disjoint state, while the raw-pointer workspace
+// is neither `Send` nor `Sync` and is borrowed for each use. The build-time
+// archive check and runtime ABI probe establish the shared GMP/MPFR domain. The
+// C bridge uses status returns and makes no callback into Rust or the host, so
+// neither Rust panics nor foreign unwinding cross this boundary.
 unsafe extern "C" {
+    // FFI-SAFETY: This no-argument probe touches no Rust memory. It checks that
+    // the GMP/MPFR headers used by FLINT and the bridge match the symbols chosen
+    // by the final link and that the required 64-bit GMP limb ABI is active.
+    fn sagejs_rust_flint_abi_compatible() -> c_int;
+    // FFI-SAFETY: `entries` spans `rows * columns` initialized i64 values and
+    // `diagonal` spans `min(rows, columns)` writable i64 values. The spans are
+    // disjoint, dimensions have been checked for overflow, and neither is retained.
     fn sagejs_rust_flint_snf_i64(
         rows: usize,
         columns: usize,
         entries: *const c_longlong,
         diagonal: *mut c_longlong,
     ) -> c_int;
+    // FFI-SAFETY: `entries` spans `rows * columns` initialized i64 values and
+    // `basis` spans `columns * columns` writable i64 values. Rust validates
+    // `rows >= columns > 0`, overflow, and disjoint ownership; C retains neither.
     fn sagejs_rust_flint_hnf_basis_i64(
         rows: usize,
         columns: usize,
         entries: *const c_longlong,
         basis: *mut c_longlong,
     ) -> c_int;
+    // FFI-SAFETY: Matrix spans match the HNF contract above. The divisor points
+    // to one live initialized GMP integer owned by `rug`, is positive, is only
+    // read/copied during the call, and is never freed or retained by C.
     fn sagejs_rust_flint_hnf_basis_modular_i64(
         rows: usize,
         columns: usize,
@@ -324,12 +354,19 @@ unsafe extern "C" {
         elementary_divisor_multiple: *const c_void,
         basis: *mut c_longlong,
     ) -> c_int;
+    // FFI-SAFETY: `entries` spans `size * size` initialized i64 values. Both
+    // metadata pointers are distinct initialized Rust locals writable for the
+    // call. C writes scalar results only and retains no address.
     fn sagejs_rust_flint_hnf_profile_i64(
         size: usize,
         entries: *const c_longlong,
         maximum_entry_bits: *mut usize,
         determinant_bits: *mut usize,
     ) -> c_int;
+    // FFI-SAFETY: The square and remaining spans contain respectively
+    // `size * size` and `remaining_rows * size` initialized i64 values; `basis`
+    // is a disjoint `size * size` output. Every scalar output points to a distinct
+    // live Rust local. All products are checked before the call and C retains none.
     fn sagejs_rust_flint_incremental_hnf_i64(
         size: usize,
         remaining_rows: usize,
@@ -344,6 +381,12 @@ unsafe extern "C" {
         initial_hnf_ns: *mut u64,
         saturation_ns: *mut u64,
     ) -> c_int;
+    // FFI-SAFETY: Matrix spans and every output capacity are validated by the
+    // safe wrapper. GMP pointers refer to live uniquely borrowed `rug::Integer`
+    // values, and dependency entries are a pointer array of exactly
+    // `dependency_capacity` writable GMP integers. `workspace_input`, when
+    // non-null, is the unique matching C allocation; `workspace_output`, when
+    // non-null, receives a new allocation owned by the Rust workspace wrapper.
     fn sagejs_rust_flint_small_surplus_class_order_i64(
         size: usize,
         surplus_rows: usize,
@@ -367,7 +410,15 @@ unsafe extern "C" {
         workspace_input: *mut c_void,
         workspace_output: *mut *mut c_void,
     ) -> c_int;
+    // FFI-SAFETY: `workspace` is null or a unique live allocation produced by
+    // the immediately preceding class-order constructor in the same linked
+    // allocator domain. The call consumes it, may be made at most once, and
+    // returns no borrowed state.
     fn sagejs_rust_flint_small_surplus_workspace_free(workspace: *mut c_void);
+    // FFI-SAFETY: Matrix and target spans are validated and initialized. Each
+    // input/output pointer-array entry refers to a live GMP integer for the full
+    // synchronous call; output entries are unique and writable. `workspace` is
+    // null or a live matching retained workspace and is borrowed, not consumed.
     fn sagejs_rust_flint_small_surplus_relation_witnesses_mpz(
         size: usize,
         surplus_rows: usize,
@@ -382,10 +433,17 @@ unsafe extern "C" {
         affine_kernel_ns: *mut u64,
         workspace: *mut c_void,
     ) -> c_int;
+    // FFI-SAFETY: `entries` points to exactly nine pointers to live initialized
+    // GMP integers and `transform` points to nine writable disjoint i64 values.
+    // C copies inputs, writes only the fixed output, and retains no pointer.
     fn sagejs_rust_flint_lll_columns_mpz(
         entries: *const *const c_void,
         transform: *mut c_longlong,
     ) -> c_int;
+    // FFI-SAFETY: `entries`, coordinate, and preimage spans each have
+    // `size * size` elements, factors has `size`, and count is a distinct scalar
+    // output. Products are checked, outputs are initialized/disjoint, and no
+    // address escapes the call.
     fn sagejs_rust_flint_snf_class_map_i64(
         size: usize,
         entries: *const c_longlong,
@@ -394,6 +452,10 @@ unsafe extern "C" {
         generator_preimages: *mut c_longlong,
         invariant_count: *mut usize,
     ) -> c_int;
+    // FFI-SAFETY: Relation and target spans have checked matrix lengths. The
+    // witness pointer array contains exactly `target_count * rows` unique live
+    // GMP output integers; metadata spans are correctly sized and disjoint.
+    // C retains no pointer and reports rank/dimension failure by status.
     fn sagejs_rust_flint_relation_witnesses_i64(
         rows: usize,
         columns: usize,
@@ -406,6 +468,10 @@ unsafe extern "C" {
         hnf_ns: *mut u64,
         solve_ns: *mut u64,
     ) -> c_int;
+    // FFI-SAFETY: Square, remaining, and target spans have checked products;
+    // the witness pointer array names `target_count * (size + remaining_rows)`
+    // unique writable GMP integers. Scalar outputs are distinct and live, and
+    // C neither retains addresses nor unwinds.
     fn sagejs_rust_flint_staged_relation_witnesses_i64(
         size: usize,
         remaining_rows: usize,
@@ -421,6 +487,10 @@ unsafe extern "C" {
         target_solve_ns: *mut u64,
         square_solve_ns: *mut u64,
     ) -> c_int;
+    // FFI-SAFETY: `entries` has `rows * columns` initialized values. The output
+    // pointer array contains `kernel_capacity * rows` unique writable GMP
+    // integers and metadata spans have `kernel_capacity`; all lengths are
+    // checked and no pointer is retained.
     fn sagejs_rust_flint_left_kernel_i64(
         rows: usize,
         columns: usize,
@@ -432,6 +502,10 @@ unsafe extern "C" {
         nonzero_counts: *mut usize,
         kernel_ns: *mut u64,
     ) -> c_int;
+    // FFI-SAFETY: Polynomial and basis spans have fixed lengths four and nine;
+    // coordinate/exponent pointer arrays contain the validated relation/rank
+    // counts and point to live read-only GMP integers. Lower and upper are
+    // unique writable GMP integers, scalar output is live, and C retains none.
     fn sagejs_rust_flint_compact_cubic_regulator(
         polynomial: *const c_longlong,
         basis_numerators: *const c_longlong,
@@ -446,6 +520,10 @@ unsafe extern "C" {
         upper: *mut c_void,
         binary_exponent: *mut c_longlong,
     ) -> c_int;
+    // FFI-SAFETY: `terms` spans `term_count * 4` initialized i64 values. Every
+    // GMP input is live/read-only and every GMP/scalar output is live, unique,
+    // writable, and allocator-compatible with FLINT's GMP ABI. C copies or
+    // writes synchronously and retains no address.
     fn sagejs_rust_flint_bf_index_enclosure(
         term_count: usize,
         terms: *const c_longlong,
@@ -469,6 +547,10 @@ unsafe extern "C" {
         index_upper: *mut c_void,
         index_exponent: *mut c_longlong,
     ) -> c_int;
+    // FFI-SAFETY: `terms` spans `term_count * 3` initialized i64 values;
+    // discriminant is a live read-only GMP integer, lower/upper are unique live
+    // writable GMP integers, and exponent is a distinct scalar output. C
+    // retains no pointer and reports invalid arithmetic through its status.
     fn sagejs_rust_flint_bdf_factor_base_margin(
         term_count: usize,
         terms: *const c_longlong,
@@ -481,6 +563,16 @@ unsafe extern "C" {
         upper: *mut c_void,
         exponent: *mut c_longlong,
     ) -> c_int;
+}
+
+fn ensure_flint_abi_compatible() -> Result<(), FlintNormalFormError> {
+    // SAFETY: The probe accepts no pointers, allocates nothing, and returns a
+    // status derived only from linked GMP/MPFR version and limb metadata.
+    let status = unsafe { sagejs_rust_flint_abi_compatible() };
+    match status {
+        0 => Ok(()),
+        code => Err(FlintNormalFormError::ForeignFailure(code)),
+    }
 }
 
 pub fn flint_small_surplus_class_order(
@@ -595,6 +687,7 @@ fn flint_small_surplus_class_order_impl(
     {
         return Err(FlintNormalFormError::DimensionMismatch);
     }
+    ensure_flint_abi_compatible()?;
     let surplus_rows = surplus_entries.len() / size;
     let mut class_order = Integer::new();
     let mut square_determinant = Integer::new();
@@ -616,6 +709,11 @@ fn flint_small_surplus_class_order_impl(
     let mut solve_ns = 0_u64;
     let mut kernel_ns = 0_u64;
     let mut workspace_pointer = ptr::null_mut();
+    // SAFETY: Checked products prove the two input matrix spans and every
+    // output capacity. All Rust vectors and GMP integers stay pinned and live
+    // for this synchronous call. Output buffers are disjoint. A non-null input
+    // workspace is uniquely borrowed from `self`; a returned allocation is
+    // transferred exactly once into `FlintSmallSurplusWorkspace`.
     let status = unsafe {
         sagejs_rust_flint_small_surplus_class_order_i64(
             size,
@@ -726,6 +824,7 @@ fn flint_small_surplus_relation_witnesses_impl(
     {
         return Err(FlintNormalFormError::DimensionMismatch);
     }
+    ensure_flint_abi_compatible()?;
     let surplus_rows = surplus_relations.len() / size;
     let relation_count = size
         .checked_add(surplus_rows)
@@ -747,6 +846,10 @@ fn flint_small_surplus_relation_witnesses_impl(
     let mut nonzero_counts = vec![0_usize; target_count];
     let mut solve_ns = 0_u64;
     let mut affine_kernel_ns = 0_u64;
+    // SAFETY: Shape checks establish every matrix and pointer-array length.
+    // Each pointer names a live GMP integer; output integers are uniquely
+    // borrowed and inputs are read-only. The optional workspace is a live
+    // matching allocation borrowed for this call, and C retains no address.
     let status = unsafe {
         sagejs_rust_flint_small_surplus_relation_witnesses_mpz(
             size,
@@ -792,10 +895,15 @@ pub fn flint_bdf_factor_base_margin(
     if bound < 2 || discriminant == &0 || degree < 2 || real_places > degree || precision < 64 {
         return Err(FlintNormalFormError::InvalidDimensions);
     }
+    ensure_flint_abi_compatible()?;
     let flattened = terms.iter().flatten().copied().collect::<Vec<_>>();
     let mut lower = Integer::new();
     let mut upper = Integer::new();
     let mut binary_exponent = 0_i64;
+    // SAFETY: `flattened` contains exactly three i64 values per term;
+    // discriminant is a live read-only GMP integer and lower/upper are unique
+    // writable GMP integers in the same allocator domain. Every borrow outlives
+    // the synchronous call and the C function retains no pointer.
     let status = unsafe {
         sagejs_rust_flint_bdf_factor_base_margin(
             terms.len(),
@@ -846,6 +954,7 @@ pub fn flint_bf_index_enclosure(
     {
         return Err(FlintNormalFormError::InvalidDimensions);
     }
+    ensure_flint_abi_compatible()?;
     let flattened = terms.iter().flatten().copied().collect::<Vec<_>>();
     let mut zeta_lower = Integer::new();
     let mut zeta_upper = Integer::new();
@@ -856,6 +965,10 @@ pub fn flint_bf_index_enclosure(
     let mut index_lower = Integer::new();
     let mut index_upper = Integer::new();
     let mut index_exponent = 0_i64;
+    // SAFETY: The safe preconditions validate the signature, regulator order,
+    // precision and four-i64 term layout. All GMP inputs remain live/read-only;
+    // the six GMP outputs and scalar exponents are distinct writable locals.
+    // FLINT uses the shared GMP ABI and retains no Rust-owned address.
     let status = unsafe {
         sagejs_rust_flint_bf_index_enclosure(
             terms.len(),
@@ -929,6 +1042,7 @@ pub fn flint_compact_cubic_regulator(
     if unit_exponents.len() != unit_rank as usize * relations {
         return Err(FlintNormalFormError::DimensionMismatch);
     }
+    ensure_flint_abi_compatible()?;
     let coordinate_pointers = generator_coordinates
         .iter()
         .map(|value| value.as_raw().cast::<c_void>())
@@ -940,9 +1054,10 @@ pub fn flint_compact_cubic_regulator(
     let mut lower = Integer::new();
     let mut upper = Integer::new();
     let mut binary_exponent = 0_i64;
-    // Every GMP pointer is borrowed for this call only. The bridge copies
-    // exact inputs into FLINT-owned temporaries and writes the two output GMP
-    // integers without retaining any Rust allocation.
+    // SAFETY: Every GMP pointer is borrowed for this call only. The validated
+    // relation/rank counts exactly size both pointer arrays. The bridge copies
+    // exact inputs into FLINT-owned temporaries, writes distinct initialized
+    // output GMP integers, and retains no Rust allocation.
     let status = unsafe {
         sagejs_rust_flint_compact_cubic_regulator(
             polynomial.as_ptr().cast(),
@@ -978,6 +1093,7 @@ pub fn flint_left_kernel(
     if rows <= columns || columns == 0 || rows.checked_mul(columns) != Some(relations.len()) {
         return Err(FlintNormalFormError::DimensionMismatch);
     }
+    ensure_flint_abi_compatible()?;
     let capacity = rows - columns;
     let coefficient_count = capacity
         .checked_mul(rows)
@@ -991,6 +1107,10 @@ pub fn flint_left_kernel(
     let mut maximum_coefficient_bits = 0_usize;
     let mut nonzero_counts = vec![0_usize; capacity];
     let mut kernel_ns = 0_u64;
+    // SAFETY: Checked multiplication establishes the input and maximum output
+    // spans. Every output pointer names a different live GMP integer and the
+    // metadata arrays have `capacity` entries. C writes at most that capacity,
+    // reports actual rank separately, and retains no pointer.
     let status = unsafe {
         sagejs_rust_flint_left_kernel_i64(
             rows,
@@ -1039,6 +1159,7 @@ pub fn flint_relation_witnesses(
     {
         return Err(FlintNormalFormError::DimensionMismatch);
     }
+    ensure_flint_abi_compatible()?;
     let target_count = targets.len() / columns;
     let coefficient_count = target_count
         .checked_mul(rows)
@@ -1052,6 +1173,10 @@ pub fn flint_relation_witnesses(
     let mut nonzero_counts = vec![0_usize; target_count];
     let mut hnf_ns = 0_u64;
     let mut solve_ns = 0_u64;
+    // SAFETY: The relation and target shapes were checked without overflow.
+    // The witness pointer array contains exactly `target_count * rows` unique
+    // live GMP outputs, all metadata outputs are disjoint, and the synchronous
+    // C bridge neither retains pointers nor unwinds.
     let status = unsafe {
         sagejs_rust_flint_relation_witnesses_i64(
             rows,
@@ -1098,6 +1223,7 @@ pub fn flint_staged_relation_witnesses(
     {
         return Err(FlintNormalFormError::DimensionMismatch);
     }
+    ensure_flint_abi_compatible()?;
     let remaining_rows = remaining_relations.len() / size;
     let relation_count = size
         .checked_add(remaining_rows)
@@ -1117,6 +1243,10 @@ pub fn flint_staged_relation_witnesses(
     let mut hnf_ns = 0_u64;
     let mut solve_ns = 0_u64;
     let mut square_solve_ns = 0_u64;
+    // SAFETY: Shape checks prove the square, remaining, target, and witness
+    // lengths. Witness entries are unique live GMP outputs and scalar/array
+    // outputs do not alias. All borrowed storage outlives this synchronous call
+    // and C retains no address.
     let status = unsafe {
         sagejs_rust_flint_staged_relation_witnesses_i64(
             size,
@@ -1172,6 +1302,10 @@ pub fn flint_incremental_hnf(
     let mut determinant_ns = 0_u64;
     let mut initial_hnf_ns = 0_u64;
     let mut saturation_ns = 0_u64;
+    // SAFETY: Checked dimensions establish both input spans and the square
+    // writable basis span. All scalar outputs are distinct live locals. The C
+    // bridge initializes FLINT temporaries internally, writes only these
+    // outputs, clears its allocations, and retains no Rust pointer.
     let status = unsafe {
         sagejs_rust_flint_incremental_hnf_i64(
             size,
@@ -1219,9 +1353,10 @@ pub fn flint_hnf_profile(
     }
     let mut maximum_entry_bits = 0_usize;
     let mut determinant_bits = 0_usize;
-    // The input is a complete square i64 matrix. The adapter retains no
-    // pointer and returns only bounded metadata about its arbitrary-precision
-    // HNF, avoiding a lossy conversion of the intermediate basis.
+    // SAFETY: The input is a complete checked square i64 matrix and the two
+    // output pointers name distinct initialized Rust locals. The adapter
+    // retains no pointer and returns only bounded metadata about its
+    // arbitrary-precision HNF.
     let status = unsafe {
         sagejs_rust_flint_hnf_profile_i64(
             size,
@@ -1252,8 +1387,10 @@ pub fn flint_smith_class_map(
     let mut unpacked_coordinates = vec![0_i64; basis.len()];
     let mut unpacked_preimages = vec![0_i64; basis.len()];
     let mut invariant_count = 0_usize;
-    // Buffers are disjoint and fully sized for the maximum possible number of
-    // invariant factors. The bridge writes the actual count before returning.
+    // SAFETY: Buffers are disjoint and checked for the full `size * size`
+    // maximum; factors has `size` elements and the count is a separate live
+    // scalar. The bridge retains no pointer and writes the actual count before
+    // returning, which Rust validates before slicing.
     let status = unsafe {
         sagejs_rust_flint_snf_class_map_i64(
             size,
@@ -1402,15 +1539,17 @@ pub fn flint_small_surplus_smith_class_map(
 }
 
 pub fn flint_lll_column_transform(input: &Matrix3) -> Result<Matrix3, FlintNormalFormError> {
+    ensure_flint_abi_compatible()?;
     let pointers: [*const c_void; 9] = from_fn(|index| {
         let row = index / 3;
         let column = index % 3;
         input[(row, column)].as_raw().cast()
     });
     let mut transform = [0_i64; 9];
-    // Every borrowed GMP integer and the pointer array remain alive across the
-    // call. The adapter copies each value immediately into FLINT-owned storage
-    // and retains no Rust-owned pointer.
+    // SAFETY: Every borrowed GMP integer and the nine-entry pointer array
+    // remain alive across the call; the nine-entry i64 transform is disjoint
+    // writable storage. The adapter copies values into FLINT-owned temporaries,
+    // clears them, and retains no Rust-owned pointer.
     let status = unsafe {
         sagejs_rust_flint_lll_columns_mpz(pointers.as_ptr(), transform.as_mut_ptr().cast())
     };
@@ -1435,12 +1574,15 @@ pub fn flint_hnf_basis(
     if rows.checked_mul(columns) != Some(entries.len()) {
         return Err(FlintNormalFormError::DimensionMismatch);
     }
+    ensure_flint_abi_compatible()?;
     let basis_length = columns
         .checked_mul(columns)
         .ok_or(FlintNormalFormError::InvalidDimensions)?;
     let mut basis = vec![0_i64; basis_length];
-    // The bridge receives disjoint, correctly sized buffers and retains no
-    // pointer. FLINT owns and clears all arbitrary-precision temporaries.
+    // SAFETY: Checked dimensions prove the input `rows * columns` span and the
+    // disjoint output `columns * columns` span. Both allocations remain live
+    // and stable for the call; FLINT clears all temporaries and retains neither
+    // pointer.
     let status = unsafe {
         sagejs_rust_flint_hnf_basis_i64(
             rows,
@@ -1472,12 +1614,15 @@ pub fn flint_hnf_basis_modular(
     if rows.checked_mul(columns) != Some(entries.len()) {
         return Err(FlintNormalFormError::DimensionMismatch);
     }
+    ensure_flint_abi_compatible()?;
     let basis_length = columns
         .checked_mul(columns)
         .ok_or(FlintNormalFormError::InvalidDimensions)?;
     let mut basis = vec![0_i64; basis_length];
-    // The bridge copies the borrowed GMP divisor and matrix entries before
-    // computing. All inputs outlive the call and no Rust pointer is retained.
+    // SAFETY: Checked dimensions prove both matrix spans. The positive divisor
+    // is one live read-only GMP integer with an ABI compatible with FLINT, and
+    // the output is disjoint writable storage. The bridge copies inputs before
+    // computing and retains no Rust pointer.
     let status = unsafe {
         sagejs_rust_flint_hnf_basis_modular_i64(
             rows,
@@ -1508,8 +1653,10 @@ pub fn flint_smith_candidate(
         return Err(FlintNormalFormError::DimensionMismatch);
     }
     let mut diagonal = vec![0_i64; rows.min(columns)];
-    // The bridge validates dimensions before indexing, receives disjoint
-    // buffers, and does not retain either pointer.
+    // SAFETY: Rust checked nonzero dimensions, the `rows * columns` product,
+    // and the `min(rows, columns)` output length. Input and output allocations
+    // are disjoint and live for the synchronous call; the bridge retains
+    // neither pointer and reports conversion overflow by status.
     let status = unsafe {
         sagejs_rust_flint_snf_i64(
             rows,
@@ -1547,6 +1694,68 @@ mod tests {
     use super::*;
     use crate::ideal_arithmetic::{LllReduction, verify_lll_reduction};
     use rug::Complete;
+
+    #[test]
+    fn malformed_shapes_fail_before_crossing_the_ffi_boundary() {
+        assert_eq!(
+            flint_smith_candidate(&[], 0, 1),
+            Err(FlintNormalFormError::InvalidDimensions)
+        );
+        assert_eq!(
+            flint_hnf_basis(&[1], usize::MAX, 2),
+            Err(FlintNormalFormError::DimensionMismatch)
+        );
+        assert_eq!(
+            flint_hnf_profile(&[1, 0, 0], 2),
+            Err(FlintNormalFormError::DimensionMismatch)
+        );
+        assert_eq!(
+            flint_left_kernel(&[1, 0], 1, 2),
+            Err(FlintNormalFormError::DimensionMismatch)
+        );
+        assert_eq!(
+            flint_relation_witnesses(&[1], 1, 1, &[]),
+            Err(FlintNormalFormError::DimensionMismatch)
+        );
+        assert_eq!(
+            flint_staged_relation_witnesses(&[1, 0, 0, 1], &[1], 2, &[1, 0]),
+            Err(FlintNormalFormError::DimensionMismatch)
+        );
+        assert_eq!(
+            flint_small_surplus_class_order(&[1, 0, 0, 1], &[], 2),
+            Err(FlintNormalFormError::DimensionMismatch)
+        );
+        assert_eq!(
+            flint_bdf_factor_base_margin(&[], 1, &Integer::from(1), 3, 3, 128),
+            Err(FlintNormalFormError::InvalidDimensions)
+        );
+    }
+
+    #[test]
+    fn retained_workspace_repeatedly_allocates_borrows_and_drops() {
+        let square = [2, 0, 0, 6];
+        let surplus = [0, 3];
+        let targets = [2, 0, 0, 3];
+        for _ in 0..128 {
+            let (answer, workspace) =
+                flint_small_surplus_class_order_with_workspace(&square, &surplus, 2).unwrap();
+            assert_eq!(answer.class_order, 6);
+            let witnesses = workspace.relation_witnesses(&targets).unwrap();
+            assert_eq!(witnesses.target_count, 2);
+            let relations = [2, 0, 0, 6, 0, 3];
+            for target in 0..2 {
+                for column in 0..2 {
+                    let actual = (0..3).fold(Integer::from(0), |sum, relation| {
+                        sum + &witnesses.coefficients[target * 3 + relation]
+                            * relations[relation * 2 + column]
+                    });
+                    assert_eq!(actual, targets[target * 2 + column]);
+                }
+            }
+            // `workspace` drops here, exercising the matching FLINT allocator
+            // and destructor before the next allocation.
+        }
+    }
 
     #[test]
     fn rectangular_candidate_matches_known_smith_factors() {
