@@ -162,6 +162,7 @@ const CLASS_GROUP_CONTROL_BYTES = 16;
 const CLASS_GROUP_OPERATIONS = new Set([
   "capability",
   "open",
+  "summary",
   "publication",
   "query",
   "close",
@@ -471,7 +472,7 @@ export class NodeClassGroupBackend {
         mathematicalScope: "absolute-monic-cubic-conditional-grh",
         maximumResidentSessions: 4,
         proofModes: ["conditional-grh"],
-        operations: ["capability", "open", "query", "publication", "close"],
+        operations: ["capability", "open", "summary", "query", "publication", "close"],
         route: "native-resident-worker",
         artifactSha256: this.resource.artifactSha256,
         artifactBytes: this.resource.bytes,
@@ -676,6 +677,8 @@ export class NodeClassGroupBackend {
         generation: nativeGeneration,
         handle: nativeHandle,
       });
+    } else if (operation === "summary") {
+      value.artifactSha256 = this.resource?.artifactSha256;
     } else if (operation === "close" && sessionKey !== undefined) {
       this.sessions.delete(sessionKey);
     }

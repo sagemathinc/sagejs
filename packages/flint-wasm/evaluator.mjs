@@ -100,7 +100,8 @@ function classGroupEnvelope(operation, request, id) {
     return common;
   }
   if (operation === "open") return { ...common, request };
-  if (operation === "query" || operation === "publication" || operation === "close") {
+  if (operation === "summary" || operation === "query" ||
+      operation === "publication" || operation === "close") {
     return { ...request, ...common };
   }
   return { ...request, ...common };
@@ -193,6 +194,12 @@ export async function createClassGroupEvaluatorBackend({
         generation: response.generation,
         handle: response.handle,
       });
+      return Object.freeze({
+        ...response,
+        artifactSha256: authenticatedReceipt.sha256,
+      });
+    }
+    if (operation === "summary") {
       return Object.freeze({
         ...response,
         artifactSha256: authenticatedReceipt.sha256,

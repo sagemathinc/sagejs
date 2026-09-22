@@ -22,6 +22,7 @@ MATHEMATICAL_REQUEST_SCHEMA = "sagejs.rust-class-group/public-cubic-e2e-request-
 IDEAL_QUERY_RECEIPT_SCHEMA = (
     "sagejs.rust-class-group/public-cubic-arbitrary-ideal-query-receipt-v1"
 )
+COMPACT_SUMMARY_SCHEMA = "sagejs.class-groups/compact-summary-v1"
 
 EXACT_UNCONDITIONAL = "exact-unconditional"
 EXACT_RELATIONS_CONDITIONAL_GRH = "exact-relations-conditional-grh"
@@ -111,8 +112,10 @@ def _response(value: Any, operation: str) -> dict[str, Any]:
             "the Rust class-group " + operation + " response is not a dictionary"
         )
     schema = value.get("schema")
-    if schema != HOST_RESPONSE_SCHEMA and not (
-        operation == "query" and schema == IDEAL_QUERY_RECEIPT_SCHEMA
+    if (
+        schema != HOST_RESPONSE_SCHEMA
+        and not (operation == "query" and schema == IDEAL_QUERY_RECEIPT_SCHEMA)
+        and not (operation == "summary" and schema == COMPACT_SUMMARY_SCHEMA)
     ):
         raise RustClassGroupPublicationError(
             "the Rust class-group " + operation + " response has the wrong schema"
@@ -229,6 +232,21 @@ class RustClassGroupSession:
                 "the Rust publication response omitted its candidate"
             )
         return publication
+
+    def summary(self) -> dict[str, Any]:
+        answer = _call(self._backend, "summary", self._request())
+        if answer.get("outcome") != "complete-conditional-grh":
+            raise RustClassGroupPublicationError(
+                "the Rust compact summary did not claim conditional completion"
+            )
+        artifact = _canonical_sha256(
+            answer.get("artifactSha256"), "summary artifact identity"
+        )
+        if artifact != self.artifact_sha256:
+            raise RustClassGroupPublicationError(
+                "the Rust compact summary changed resident identity"
+            )
+        return answer
 
     def query(
         self,

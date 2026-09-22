@@ -57,6 +57,10 @@ rl.on("line", (line) => {
   if (request.operation === "publication") return response(request, {
     generation: request.generation, handle: request.handle, published: true,
   });
+  if (request.operation === "summary") return response(request, {
+    schema: "sagejs.class-groups/compact-summary-v1",
+    outcome: "complete-conditional-grh",
+  });
   if (request.operation === "query") return response(request, {
     generation: request.generation, handle: request.handle,
     idealIntegralBasisRows: request.idealIntegralBasisRows,
@@ -111,6 +115,11 @@ test("authenticates a relocated native artifact and runs the resident protocol",
     generation: "41",
     handle: "7",
     published: true,
+  });
+  assert.deepEqual(await session.summary(), {
+    schema: "sagejs.class-groups/compact-summary-v1",
+    outcome: "complete-conditional-grh",
+    artifactSha256: capability.manifest.sha256,
   });
   const rows = [["1", "0", "0"], ["0", "1", "0"], ["0", "0", "1"]];
   assert.deepEqual((await session.query(rows, {})).idealIntegralBasisRows, rows);

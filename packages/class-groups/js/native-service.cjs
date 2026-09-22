@@ -349,6 +349,18 @@ class NativeClassGroupSession {
     }, options);
   }
 
+  async summary(options) {
+    this.ensureLive();
+    const result = await this.service.invoke("summary", {
+      generation: this.serviceGeneration,
+      handle: this.handle,
+    }, options);
+    return Object.freeze({
+      ...result,
+      artifactSha256: this.service.artifactCapability.manifest.sha256,
+    });
+  }
+
   publication(options) {
     this.ensureLive();
     return this.service.invoke("publication", {

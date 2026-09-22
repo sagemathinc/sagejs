@@ -316,6 +316,23 @@ export class ClassGroupCoreSession {
     }, options);
   }
 
+  async summary(options) {
+    this.ensureLive();
+    const result = await this.service.call(
+      "summary",
+      {
+        generation: this.remoteGeneration,
+        handle: this.handle,
+      },
+      options,
+    );
+    const artifactSha256 = this.service.workerDiagnostics?.artifactReceipt?.sha256 ??
+      (typeof this.service.configuration.receipt === "object"
+        ? this.service.configuration.receipt.sha256
+        : undefined);
+    return Object.freeze({ ...result, ...(artifactSha256 ? { artifactSha256 } : {}) });
+  }
+
   publication(options) {
     this.ensureLive();
     return this.service.call(

@@ -39,6 +39,8 @@ lines.on("line", (input) => {
     return;
   } else if (request.operation === "publication") {
     result = { schema: "fixture-publication-v1", servicePid: process.pid };
+  } else if (request.operation === "summary") {
+    result = { schema: "fixture-summary-v1", servicePid: process.pid };
   } else if (request.operation === "query") {
     result = { schema: "fixture-query-v1", classCoordinates: ["1"], servicePid: process.pid };
   } else if (request.operation === "close") {
@@ -107,7 +109,7 @@ async function main() {
       mathematicalScope: "absolute-monic-cubic-conditional-grh",
       maximumResidentSessions: 4,
       proofModes: ["conditional-grh"],
-      operations: ["capability", "open", "query", "publication", "close"],
+      operations: ["capability", "open", "summary", "query", "publication", "close"],
       route: "native-resident-worker",
       artifactSha256: crypto.createHash("sha256").update(fs.readFileSync(fixture.filename)).digest("hex"),
       artifactBytes: fs.statSync(fixture.filename).size,
@@ -121,12 +123,15 @@ async function main() {
     assert.equal(fs.existsSync(fixture.startup), true);
     const binding = { generation: opened.generation, handle: opened.handle };
     const publication = backend.call("publication", binding);
+    const summary = backend.call("summary", binding);
     const query = backend.call("query", {
       ...binding,
       idealIntegralBasisRows: [["1", "0", "0"], ["0", "1", "0"], ["0", "0", "1"]],
       resources: { maximumCandidates: 10 },
     });
     assert.equal(publication.servicePid, opened.servicePid);
+    assert.equal(summary.servicePid, opened.servicePid);
+    assert.equal(summary.artifactSha256, capability.artifactSha256);
     assert.equal(query.servicePid, opened.servicePid);
     assert.deepEqual(query.classCoordinates, ["1"]);
     assert.equal(backend.call("close", binding).outcome, "closed");

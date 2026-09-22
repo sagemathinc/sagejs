@@ -18,6 +18,7 @@ export class ClassGroupCoreSession {
   readonly handle: string;
   readonly openReceipt: unknown;
   query(idealIntegralBasisRows: unknown, resources: unknown, options?: { signal?: AbortSignal }): Promise<unknown>;
+  summary(options?: { signal?: AbortSignal }): Promise<unknown>;
   publication(options?: { signal?: AbortSignal }): Promise<unknown>;
   close(options?: { signal?: AbortSignal }): Promise<void>;
 }

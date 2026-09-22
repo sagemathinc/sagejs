@@ -59,6 +59,11 @@ function fakeWorkers({ initialize = true } = {}) {
         result = { outcome: "open", generation: "1", handle: "7", maximumResidentSessions: 4 };
       } else if (serviceRequest && message.request.operation === "query") {
         result = { outcome: "complete-conditional-grh-ideal-class", handle: "7" };
+      } else if (serviceRequest && message.request.operation === "summary") {
+        result = {
+          schema: "sagejs.class-groups/compact-summary-v1",
+          outcome: "complete-conditional-grh",
+        };
       } else if (serviceRequest && message.request.operation === "publication") {
         result = {
           schema: "sagejs.rust-class-group/public-cubic-publication-candidate-v2",
@@ -134,6 +139,9 @@ test("abort terminates the synchronous worker and invalidates resident handles",
       (await session.publication()).status,
       "detached-replay-required-before-publication",
     );
+    const summary = await session.summary();
+    assert.equal(summary.schema, "sagejs.class-groups/compact-summary-v1");
+    assert.equal(summary.artifactSha256, receipt.sha256);
 
     const controller = new AbortController();
     const computation = service.invoke({ hang: true }, { signal: controller.signal });

@@ -116,6 +116,13 @@ test("evaluator class-group backend is synchronous, receipt-bound, and session-s
   });
   assert.equal(publication.operation, "publication");
   assert.equal(publication instanceof Promise, false);
+  const summary = backend.call("summary", {
+    generation: opened.generation,
+    handle: opened.handle,
+  });
+  assert.equal(summary.operation, "summary");
+  assert.equal(summary.artifactSha256, sha256);
+  assert.equal(summary instanceof Promise, false);
   backend.call("close", { generation: opened.generation, handle: opened.handle });
   assert.equal(backend.diagnostics().residentSessions, 0);
 
