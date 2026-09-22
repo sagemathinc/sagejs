@@ -128,6 +128,10 @@ function fileDigest(filename) {
   return hash.digest("hex");
 }
 
+function fileDigestBuffer(value) {
+  return createHash("sha256").update(value).digest("hex");
+}
+
 function assertArchiveDigests(archives, expected) {
   for (const archive of archives) {
     assert.equal(
@@ -191,7 +195,13 @@ function expectedPublishedRootManifest() {
   return expected;
 }
 
-function assertManifestPolicy(rootManifest, platformManifest, targetName, target) {
+function assertManifestPolicy(
+  rootManifest,
+  platformManifest,
+  targetName,
+  target,
+  hasClassGroupService = false,
+) {
   // Pin the complete manifest to the source checkout trust anchor, including
   // every dependency reference and execution-affecting field. The only pack
   // transformations allowed are pnpm's documented workspace-version rewrite
@@ -215,8 +225,16 @@ function assertManifestPolicy(rootManifest, platformManifest, targetName, target
       [`sagejs-${targetName}`]: `bin/sagejs${target.executableSuffix}`,
       [`sagepython-${targetName}`]: `bin/sagepython${target.executableSuffix}`,
     },
-    files: ["bin", "licenses", "LICENSE", "README.md"],
+    files: hasClassGroupService
+      ? ["bin", "libexec", "native", "licenses", "LICENSE", "README.md"]
+      : ["bin", "licenses", "LICENSE", "README.md"],
   };
+  if (hasClassGroupService) {
+    expectedPlatform.exports = {
+      "./class-groups": "./native/class-group-service.cjs",
+      "./package.json": "./package.json",
+    };
+  }
   if (target.libc) expectedPlatform.libc = [target.libc];
   assert.deepEqual(
     platformManifest,
@@ -276,8 +294,51 @@ function assertArchiveLayout(rootArchive, platformArchive, targetName) {
     [`sagejs-${targetName}`]: `bin/sagejs${target.executableSuffix}`,
     [`sagepython-${targetName}`]: `bin/sagepython${target.executableSuffix}`,
   });
-  assertManifestPolicy(rootManifest, platformManifest, targetName, target);
-  return { rootManifest, rootValidation, platformManifest, platformValidation };
+  const servicePath = "package/libexec/class-group-service";
+  const serviceManifestPath = "package/native/class-group-service.json";
+  const serviceClientPath = "package/native/class-group-service.cjs";
+  const hasService = platformMembers.has(servicePath);
+  const hasServiceManifest = platformMembers.has(serviceManifestPath);
+  const hasServiceClient = platformMembers.has(serviceClientPath);
+  assert.equal(
+    hasService,
+    hasServiceManifest,
+    "native class-group executable and manifest must be packaged together",
+  );
+  assert.equal(
+    hasService,
+    hasServiceClient,
+    "native class-group executable and client must be packaged together",
+  );
+  let classGroupArtifact;
+  if (hasService) {
+    assert.notEqual(target.os, "win32", "native class groups are not qualified on Windows");
+    requireRegularMember(platformMembers, servicePath);
+    requireRegularMember(platformMembers, serviceManifestPath);
+    requireRegularMember(platformMembers, serviceClientPath);
+    classGroupArtifact = archiveJson(platformArchive, "native/class-group-service.json");
+    assert.deepEqual(Object.keys(classGroupArtifact).sort(), [
+      "abi", "bytes", "executable", "schema", "sha256", "target",
+    ]);
+    assert.equal(classGroupArtifact.schema, "sagejs.class-groups/native-artifact-v1");
+    assert.equal(classGroupArtifact.abi, 1);
+    assert.equal(classGroupArtifact.target, `${target.os}-${target.arch}`);
+    assert.equal(classGroupArtifact.executable, "libexec/class-group-service");
+    assert.match(classGroupArtifact.sha256, /^[0-9a-f]{64}$/);
+    const service = execFileSync("tar", ["-xOzf", platformArchive, servicePath], {
+      maxBuffer: 64 * 1024 * 1024,
+    });
+    assert.equal(service.byteLength, classGroupArtifact.bytes);
+    assert.equal(fileDigestBuffer(service), classGroupArtifact.sha256);
+  }
+  assertManifestPolicy(rootManifest, platformManifest, targetName, target, hasService);
+  return {
+    classGroupArtifact,
+    rootManifest,
+    rootValidation,
+    platformManifest,
+    platformValidation,
+  };
 }
 
 function runProcess(executable, args, options = {}) {
