@@ -682,6 +682,129 @@ def numerical_backend(name="cminpack"):
     return _numerical_backends[name]
 
 
+class _ClassGroupRuntimeBackend:
+    """Canonical-data adapter for the host-owned class-group service."""
+
+    def __init__(self, backend):
+        self._backend = backend
+
+    def _validate_safe_integers(self, value, depth=0):
+        if depth > 256:
+            raise ValueError("class-group request nesting is too deep")
+        if value is None or isinstance(value, (bool, str)):
+            return
+        if isinstance(value, int):
+            if value < -9007199254740991 or value > 9007199254740991:
+                raise OverflowError(
+                    "class-group request integers must fit the JavaScript safe range; "
+                    "encode mathematical integers as decimal strings"
+                )
+            return
+        if isinstance(value, (list, tuple)):
+            for item in value:
+                self._validate_safe_integers(item, depth + 1)
+            return
+        if isinstance(value, dict):
+            for key, item in value.items():
+                if not isinstance(key, str):
+                    raise TypeError("class-group request keys must be strings")
+                self._validate_safe_integers(item, depth + 1)
+
+    def _validate_encoded_integers(self, encoded):
+        index = 0
+        quoted = False
+        escaped = False
+        while index < len(encoded):
+            character = encoded[index]
+            if quoted:
+                if escaped:
+                    escaped = False
+                elif character == "\\":
+                    escaped = True
+                elif character == '"':
+                    quoted = False
+                index += 1
+                continue
+            if character == '"':
+                quoted = True
+                index += 1
+                continue
+            start = index
+            if character == "-":
+                index += 1
+            if index < len(encoded) and "0" <= encoded[index] <= "9":
+                while index < len(encoded) and "0" <= encoded[index] <= "9":
+                    index += 1
+                digits = encoded[start:index]
+                magnitude = digits[1:] if digits.startswith("-") else digits
+                if len(magnitude) > 16 or (
+                    len(magnitude) == 16 and magnitude > "9007199254740991"
+                ):
+                    raise OverflowError(
+                        "class-group request integers must fit the JavaScript safe range; "
+                        "encode mathematical integers as decimal strings"
+                    )
+                continue
+            index = start + 1
+
+    def call(self, operation, request):
+        """Call one coarse service operation with plain dictionary data."""
+        self._validate_safe_integers(request)
+        encoded = canonical_json_exact(request)
+        if encoded is None or not encoded.startswith("{"):
+            raise TypeError("class-group request must be an exact-data dictionary")
+        self._validate_encoded_integers(encoded)
+        plain_request = JSON.parse(encoded)
+        envelope = reflect.apply(
+            reflect.get(self._backend, "call"),
+            self._backend,
+            ["classGroup", [operation, plain_request]],
+        )
+        if not reflect.get(envelope, "ok"):
+            error = reflect.get(envelope, "error")
+            message = reflect.get(error, "message")
+            exception = RuntimeError(message)
+            exception.code = reflect.get(error, "code")
+            raise exception
+        result = reflect.get(envelope, "value")
+        if result is None or jstype(result) != "object":
+            raise RuntimeError("the class-group runtime returned a corrupt result")
+        result_text = JSON.stringify(result)
+        if jstype(result_text) != "string":
+            raise RuntimeError(
+                "the class-group runtime returned an unserializable result"
+            )
+        decoder = __import__("json", fromlist=["loads"])
+        decoded = decoder.loads(result_text)
+        if not isinstance(decoded, dict):
+            raise RuntimeError(
+                "the class-group runtime returned a non-dictionary result"
+            )
+        return decoded
+
+
+_class_group_backend_state = {"host": None, "adapter": None}
+
+
+def class_group_backend():
+    """Return the coarse synchronous class-group service, or `None`.
+
+    The backend has one deliberately small method:
+    `call(operation: str, request: dict) -> dict`. Mathematical modules own
+    all public objects and pass only plain exact-data documents across this
+    runtime boundary.
+    """
+    backend = reflect.get(global_object, "__sagejs_host__")
+    if backend is undefined:
+        return None
+    if jstype(reflect.get(backend, "call")) != "function":
+        raise RuntimeError("the class-group runtime backend is corrupt")
+    if _class_group_backend_state["host"] is not backend:
+        _class_group_backend_state["host"] = backend
+        _class_group_backend_state["adapter"] = _ClassGroupRuntimeBackend(backend)
+    return _class_group_backend_state["adapter"]
+
+
 array = Array
 arraylike = ρσ_arraylike
 bigint = BigInt
