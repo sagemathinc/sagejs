@@ -1,0 +1,184 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/rust-class-group-build-metrics-v1.json",
+  "title": "Rust class-group build metrics receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "scope",
+    "startedUtc",
+    "finishedUtc",
+    "repository",
+    "host",
+    "configuration",
+    "dependencies",
+    "builds",
+    "nativeArtifacts",
+    "wasmArtifacts",
+    "limitations"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "scope": { "type": "string" },
+    "startedUtc": { "type": "string" },
+    "finishedUtc": { "type": "string" },
+    "repository": { "$ref": "#/$defs/repository" },
+    "host": { "$ref": "#/$defs/host" },
+    "configuration": { "$ref": "#/$defs/configuration" },
+    "dependencies": { "$ref": "#/$defs/dependencies" },
+    "builds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cleanTargetRelease", "warmNoOpRelease", "oneModuleIncrementalRelease"],
+      "properties": {
+        "cleanTargetRelease": { "$ref": "#/$defs/build" },
+        "warmNoOpRelease": { "$ref": "#/$defs/build" },
+        "oneModuleIncrementalRelease": {
+          "allOf": [
+            { "$ref": "#/$defs/build" },
+            {
+              "type": "object",
+              "required": ["changedModule", "changeKind"],
+              "properties": {
+                "changedModule": { "type": "string" },
+                "changeKind": { "type": "string" }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "nativeArtifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["unstripped", "stripped"],
+      "properties": {
+        "unstripped": { "$ref": "#/$defs/artifact" },
+        "stripped": {
+          "allOf": [
+            { "$ref": "#/$defs/artifact" },
+            {
+              "type": "object",
+              "required": ["command"],
+              "properties": { "command": { "type": "string" } }
+            }
+          ]
+        }
+      }
+    },
+    "wasmArtifacts": { "$ref": "#/$defs/wasmEvidence" },
+    "limitations": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+  },
+  "$defs": {
+    "repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gitHead", "coreSourceSha256", "coreSourceFiles", "cargoLockSha256", "sourceSnapshotWasDisposable", "liveAlgorithmSourcesMutated"],
+      "properties": {
+        "gitHead": { "$ref": "#/$defs/sha" },
+        "coreSourceSha256": { "$ref": "#/$defs/sha" },
+        "coreSourceFiles": { "type": "array", "items": { "type": "string" } },
+        "cargoLockSha256": { "$ref": "#/$defs/sha" },
+        "sourceSnapshotWasDisposable": { "const": true },
+        "liveAlgorithmSourcesMutated": { "const": false }
+      }
+    },
+    "host": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["platform", "machine", "kernel", "osPrettyName", "logicalCpuCount", "cpuModel", "rustcVerbose", "cargoVersion", "activeToolchain", "stripVersion"],
+      "properties": {
+        "platform": { "type": "string" }, "machine": { "type": "string" }, "kernel": { "type": "string" },
+        "osPrettyName": { "type": "string" }, "logicalCpuCount": { "type": "integer", "minimum": 1 }, "cpuModel": { "type": "string" },
+        "rustcVerbose": { "type": "string" }, "cargoVersion": { "type": "string" }, "activeToolchain": { "type": "string" }, "stripVersion": { "type": "string" }
+      }
+    },
+    "configuration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["package", "profile", "features", "cargoBuildJobs", "cargoIncremental", "globalCargoRegistryCacheWasWarm", "targetDirectoryWasInitiallyAbsent", "nativeLibraries", "nativeLibraryArchives"],
+      "properties": {
+        "package": { "type": "string" }, "profile": { "type": "string" }, "features": { "type": "array", "items": { "type": "string" } },
+        "cargoBuildJobs": { "type": "integer", "minimum": 1 }, "cargoIncremental": { "type": "boolean" },
+        "globalCargoRegistryCacheWasWarm": { "type": "boolean" }, "targetDirectoryWasInitiallyAbsent": { "type": "boolean" },
+        "nativeLibraries": { "type": "array", "items": { "type": "string" } },
+        "nativeLibraryArchives": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "bytes", "sha256", "symlinkTarget"],
+            "properties": {
+              "path": { "type": "string" },
+              "bytes": { "type": "integer", "minimum": 1 },
+              "sha256": { "$ref": "#/$defs/sha" },
+              "symlinkTarget": { "type": ["string", "null"] }
+            }
+          }
+        }
+      }
+    },
+    "dependencies": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["packageCount", "packages", "normalAndBuildTreeSha256", "featureTreeSha256", "normalAndBuildTree", "featureTree"],
+      "properties": {
+        "packageCount": { "type": "integer", "minimum": 1 },
+        "packages": { "type": "array", "items": { "$ref": "#/$defs/dependency" } },
+        "normalAndBuildTreeSha256": { "$ref": "#/$defs/sha" }, "featureTreeSha256": { "$ref": "#/$defs/sha" },
+        "normalAndBuildTree": { "type": "string" }, "featureTree": { "type": "string" }
+      }
+    },
+    "dependency": {
+      "type": "object", "additionalProperties": false, "required": ["name", "version", "source", "enabledFeatures"],
+      "properties": { "name": { "type": "string" }, "version": { "type": "string" }, "source": { "type": "string" }, "enabledFeatures": { "type": "array", "items": { "type": "string" } } }
+    },
+    "disk": {
+      "type": "object", "additionalProperties": false, "required": ["logicalBytes", "allocatedBytes", "files"],
+      "properties": { "logicalBytes": { "type": "integer", "minimum": 0 }, "allocatedBytes": { "type": "integer", "minimum": 0 }, "files": { "type": "integer", "minimum": 0 } }
+    },
+    "build": {
+      "type": "object", "additionalProperties": false,
+      "required": ["command", "wallSeconds", "peakProcessTreeRssBytes", "rssSampleIntervalMilliseconds", "rssSamples", "exitCode", "outputTail", "targetDisk"],
+      "properties": {
+        "command": { "type": "string" }, "wallSeconds": { "type": "number", "minimum": 0 }, "peakProcessTreeRssBytes": { "type": "integer", "minimum": 0 },
+        "rssSampleIntervalMilliseconds": { "type": "integer", "minimum": 1 }, "rssSamples": { "type": "integer", "minimum": 0 }, "exitCode": { "const": 0 },
+        "outputTail": { "type": "string" }, "targetDisk": { "$ref": "#/$defs/disk" }, "changedModule": { "type": "string" }, "changeKind": { "type": "string" }
+      }
+    },
+    "artifact": {
+      "type": "object", "additionalProperties": false, "required": ["bytes", "sha256"],
+      "properties": { "bytes": { "type": "integer", "minimum": 1 }, "sha256": { "$ref": "#/$defs/sha" }, "command": { "type": "string" } }
+    },
+    "wasmEvidence": {
+      "type": "object", "additionalProperties": false, "required": ["artifacts", "standaloneClosure", "duplicationIndicators"],
+      "properties": {
+        "artifacts": { "type": "array", "items": { "$ref": "#/$defs/wasmArtifact" } },
+        "standaloneClosure": {
+          "type": "object", "additionalProperties": false, "required": ["rawBytes", "gzip9Bytes"],
+          "properties": { "rawBytes": { "type": "integer", "minimum": 1 }, "gzip9Bytes": { "type": "integer", "minimum": 1 } }
+        },
+        "duplicationIndicators": {
+          "type": "object", "additionalProperties": false,
+          "required": ["identicalArtifactGroups", "modulesDeclaringStaticGmp", "modulesDeclaringStaticMpfr", "allModulesExportPrivateMemory", "dynamicArithmeticImportsObserved", "interpretation"],
+          "properties": {
+            "identicalArtifactGroups": { "type": "array", "items": { "type": "array", "items": { "type": "string" } } },
+            "modulesDeclaringStaticGmp": { "type": "integer", "minimum": 0 }, "modulesDeclaringStaticMpfr": { "type": "integer", "minimum": 0 },
+            "allModulesExportPrivateMemory": { "type": "boolean" }, "dynamicArithmeticImportsObserved": { "type": "boolean" }, "interpretation": { "type": "string" }
+          }
+        }
+      }
+    },
+    "wasmArtifact": {
+      "type": "object", "additionalProperties": false,
+      "required": ["name", "path", "declaredStaticArithmeticLibraries", "bytes", "gzip9Bytes", "sha256", "gzip9Sha256", "imports", "exportsMemory", "importsArithmeticSymbols"],
+      "properties": {
+        "name": { "type": "string" }, "path": { "type": "string" }, "declaredStaticArithmeticLibraries": { "type": "array", "items": { "type": "string" } },
+        "bytes": { "type": "integer", "minimum": 1 }, "gzip9Bytes": { "type": "integer", "minimum": 1 }, "sha256": { "$ref": "#/$defs/sha" }, "gzip9Sha256": { "$ref": "#/$defs/sha" },
+        "imports": { "type": "array", "items": { "type": "string" } }, "exportsMemory": { "type": "boolean" }, "importsArithmeticSymbols": { "type": "boolean" }
+      }
+    },
+    "sha": { "type": "string", "pattern": "^[0-9a-f]{40,64}$" }
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "schema": "sagejs.public-quadratic/optimization-profile-v1",
+  "baseline": {
+    "receiptCommit": "b1e79e91d",
+    "instrumentation": "Instant stage clocks in an otherwise unchanged release engine; seven fresh-process samples per field; values are medians in milliseconds",
+    "fields": [
+      { "discriminant": -9013587, "preparation": 0.045, "enumeration": 11.895, "structureAndCoordinates": 8.618, "resultMap": 0.053, "verification": 20.993, "total": 41.553 },
+      { "discriminant": -9999991, "preparation": 0.053, "enumeration": 13.226, "structureAndCoordinates": 9.409, "resultMap": 0.223, "verification": 23.540, "total": 46.433 },
+      { "discriminant": -8173415, "preparation": 0.048, "enumeration": 11.075, "structureAndCoordinates": 23.472, "resultMap": 0.469, "verification": 36.527, "total": 71.607 }
+    ],
+    "attribution": "The verifier repeated enumeration and structure construction. Enumeration scanned every (a,b) pair under the reduction bound; cyclic coordinates recomputed powers from scratch. Ideal-map materialization itself was below 0.5 ms."
+  },
+  "optimizedBeforeFinalRedundancyRemoval": {
+    "instrumentation": "Same stage clocks and sampling after divisor enumeration, fast coordinate traversal, trusted-internal composition, and algebraic verifier closure",
+    "fields": [
+      { "discriminant": -9013587, "preparation": 0.040, "enumeration": 0.766, "structureAndCoordinates": 3.068, "resultMap": 0.047, "verification": 1.313, "total": 5.231 },
+      { "discriminant": -9999991, "preparation": 0.046, "enumeration": 0.904, "structureAndCoordinates": 1.467, "resultMap": 0.216, "verification": 2.054, "total": 4.701 },
+      { "discriminant": -8173415, "preparation": 0.041, "enumeration": 1.178, "structureAndCoordinates": 3.273, "resultMap": 0.416, "verification": 3.917, "total": 8.819 }
+    ]
+  },
+  "finalFullBoundary": {
+    "instrumentation": "Fifteen fresh-process release samples in an isolated worktree at the baseline commit with only optimization-source.patch applied; raw matched-panel samples are in optimization-receipt.json",
+    "baseCommit": "b1e79e91d",
+    "sourcePatchSha256": "d0a296d6fedab890b5216e51eba79a1368183455d60292a483776f2616f1413f",
+    "sourceClosureSha256": "236a9211dcac234f2f0c8a093ec72b32e67e8a0a62c84045beacc5e61221b8e3",
+    "medianMilliseconds": { "-9013587": 4.685139, "-9999991": 3.622039, "-8173415": 6.583059 }
+  },
+  "oracleValidation": {
+    "pariVersion": "2.17.4",
+    "exhaustiveNegativeFundamentalDiscriminantsThrough10000": 3043,
+    "frozenDeterministicAndRandomCasesThrough9999991": 314,
+    "failures": 0,
+    "test": "cargo test --release --test pari_broad_differential -- --ignored"
+  }
+}

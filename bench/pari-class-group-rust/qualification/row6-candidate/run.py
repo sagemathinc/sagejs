@@ -55,7 +55,9 @@ def main() -> int:
                 except subprocess.TimeoutExpired:
                     process.kill()
             time.sleep(0.01)
-        stderr = process.stderr.read().decode(errors="replace") if process.stderr else ""
+        stderr = (
+            process.stderr.read().decode(errors="replace") if process.stderr else ""
+        )
     elapsed_ns = time.monotonic_ns() - started_ns
     usage = resource.getrusage(resource.RUSAGE_CHILDREN)
     receipt = {
@@ -67,10 +69,12 @@ def main() -> int:
         "elapsedNanoseconds": elapsed_ns,
         "kernelMaximumResidentSetKiB": usage.ru_maxrss,
         "sampledMaximumResidentSetKiB": max(
-            (item.get("VmHWM", item.get("VmRSS", 0)) for item in observations), default=0
+            (item.get("VmHWM", item.get("VmRSS", 0)) for item in observations),
+            default=0,
         ),
         "sampledMaximumVirtualSizeKiB": max(
-            (item.get("VmPeak", item.get("VmSize", 0)) for item in observations), default=0
+            (item.get("VmPeak", item.get("VmSize", 0)) for item in observations),
+            default=0,
         ),
         "memorySampleCount": len(observations),
         "stderr": stderr,
@@ -78,7 +82,10 @@ def main() -> int:
     resource_path.write_text(json.dumps(receipt, indent=2) + "\n")
     status_path.write_text(f"{process.returncode}\n")
     if timed_out:
-        print(f"radius {radius} reached the {timeout_seconds:g}s checkpoint", file=sys.stderr)
+        print(
+            f"radius {radius} reached the {timeout_seconds:g}s checkpoint",
+            file=sys.stderr,
+        )
         return 0
     if process.returncode:
         print(stderr, file=sys.stderr)

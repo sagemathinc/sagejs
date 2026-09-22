@@ -3,7 +3,7 @@
 The public factor operation accepts an arbitrary integral degree-five ideal
 HNF.  It fails closed unless prepared prime-ideal valuations prove that every
 prime divisor belongs to the 31-prime retained base.  Reduction and combine
-use the independently replayed rectangular Smith identity ``U W V = D``.
+use the independently replayed rectangular Smith identity `U W V = D`.
 
 PARI 2.17.4 valuation algorithm, copyright (C) The PARI group;
 GPL-2.0-or-later.
@@ -302,7 +302,7 @@ def factor_supported_fractional_ideal(
     numerator_hnf: Sequence[Any],
     denominator: Any,
 ) -> dict[str, Any]:
-    """Factor ``numerator_hnf / denominator`` when all support is retained."""
+    """Factor `numerator_hnf / denominator` when all support is retained."""
     divisor = int(denominator)
     if (
         isinstance(denominator, bool)

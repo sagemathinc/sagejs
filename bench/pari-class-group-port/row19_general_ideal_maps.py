@@ -1,10 +1,10 @@
 """Exact row-19 class maps for integral ideals supported on the factor base.
 
-The public input to ``factor_supported_ideal`` is an arbitrary integral cubic
+The public input to `factor_supported_ideal` is an arbitrary integral cubic
 ideal HNF.  It is accepted only when its complete prime-ideal factorization is
 contained in the 424 retained factor-base primes.  Prepared prime-ideal
 valuations authenticate that factorization.  The raw Smith identity
-``U R V = D`` then supplies class coordinates and exact signed combinations of
+`U R V = D` then supplies class coordinates and exact signed combinations of
 the 430 retained principal relations.
 
 This is intentionally not a factorization algorithm for ideals containing a
@@ -296,7 +296,7 @@ def factor_supported_fractional_ideal(
     numerator_hnf: Sequence[Any],
     denominator: Any,
 ) -> dict[str, Any]:
-    """Factor ``numerator_hnf / denominator`` on the retained prime base."""
+    """Factor `numerator_hnf / denominator` on the retained prime base."""
     if isinstance(denominator, bool) or not isinstance(denominator, (str, int)):
         raise Row19GeneralMapFailure("fractional-ideal denominator is not an integer")
     divisor = int(denominator)

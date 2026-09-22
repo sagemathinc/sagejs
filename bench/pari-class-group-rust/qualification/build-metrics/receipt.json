@@ -1,0 +1,487 @@
+{
+  "schemaVersion": 1,
+  "scope": "Linux x86_64 development-host build and existing-artifact evidence only",
+  "startedUtc": "2026-09-20T18:03:26Z",
+  "finishedUtc": "2026-09-20T18:03:48Z",
+  "repository": {
+    "gitHead": "4874f916025e4c3e66724d4d6ef2166535c462e2",
+    "coreSourceSha256": "db2680598ac0a80dab9e998b84152bc25bd88ba0d57a1c8cf1029d66bd7ef51d",
+    "coreSourceFiles": [
+      "Cargo.toml",
+      "Cargo.lock",
+      "build.rs",
+      "src/analytic_completion.rs",
+      "src/api.rs",
+      "src/bruteforce_collector.rs",
+      "src/class_group.rs",
+      "src/class_maps.rs",
+      "src/collector_schedule.rs",
+      "src/enumeration.rs",
+      "src/factor_base.rs",
+      "src/flint_normal_form.c",
+      "src/flint_normal_form.rs",
+      "src/gmp_smith.rs",
+      "src/hnf.rs",
+      "src/ideal_arithmetic.rs",
+      "src/lib.rs",
+      "src/main.rs",
+      "src/numerical_preparation.rs",
+      "src/pari_random.rs",
+      "src/polynomial_preparation.rs",
+      "src/prepared.rs",
+      "src/prepared_factor_base.rs",
+      "src/prepared_ideal.rs",
+      "src/prepared_input.rs",
+      "src/prime_valuation.rs",
+      "src/relation_cache.rs",
+      "src/smith.rs",
+      "src/smooth_admission.rs",
+      "src/unit_lattice.rs"
+    ],
+    "cargoLockSha256": "139ba4b68ac92e06b6c9b7d5c4fbc9526a9948b90eb313e3ae0d12c913ac252f",
+    "sourceSnapshotWasDisposable": true,
+    "liveAlgorithmSourcesMutated": false
+  },
+  "host": {
+    "platform": "Linux-7.0.0-1011-gcp-x86_64-with-glibc2.43",
+    "machine": "x86_64",
+    "kernel": "7.0.0-1011-gcp",
+    "osPrettyName": "Ubuntu 26.04 LTS",
+    "logicalCpuCount": 16,
+    "cpuModel": "AMD EPYC 7B13",
+    "rustcVerbose": "rustc 1.98.1 (48a229cea 2026-09-01)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: x86_64-unknown-linux-gnu\nrelease: 1.98.1\nLLVM version: 22.1.8",
+    "cargoVersion": "cargo 1.98.1 (797e8a9bc 2026-08-05)",
+    "activeToolchain": "stable-x86_64-unknown-linux-gnu (default)",
+    "stripVersion": "GNU strip (GNU Binutils for Ubuntu) 2.46"
+  },
+  "configuration": {
+    "package": "sagejs-pari-class-group-rust-experiment",
+    "profile": "release",
+    "features": [
+      "flint-normal-form"
+    ],
+    "cargoBuildJobs": 8,
+    "cargoIncremental": true,
+    "globalCargoRegistryCacheWasWarm": true,
+    "targetDirectoryWasInitiallyAbsent": true,
+    "nativeLibraries": [
+      "flint",
+      "openblas",
+      "mpfr",
+      "gmp"
+    ],
+    "nativeLibraryArchives": [
+      {
+        "path": "packages/flint/.native/prefix/lib/libflint.a",
+        "bytes": 126908448,
+        "sha256": "7332b1114d58fe28ee8e7cc3ef6bf6622ce6bb26e61cc200f185f451b2e8977a",
+        "symlinkTarget": null
+      },
+      {
+        "path": "packages/flint/.native/prefix/lib/libopenblas.a",
+        "bytes": 15844792,
+        "sha256": "f9fcc3771c2235eef662c3c429cb360e129e99ee0370b8dc1b054be790de2871",
+        "symlinkTarget": "libopenblasp-r0.3.33.a"
+      },
+      {
+        "path": "packages/flint/.native/prefix/lib/libmpfr.a",
+        "bytes": 1368150,
+        "sha256": "13c65d7a445f478af156ac365d27c382f35e8aed8caec792979bd9576d4d6ccb",
+        "symlinkTarget": null
+      },
+      {
+        "path": "packages/flint/.native/prefix/lib/libgmp.a",
+        "bytes": 1714928,
+        "sha256": "7871768aa510fb8b902044bf007dde2a7398b5faa0f8543d697a72f245f6befa",
+        "symlinkTarget": null
+      }
+    ]
+  },
+  "dependencies": {
+    "packageCount": 28,
+    "packages": [
+      {
+        "name": "az",
+        "version": "1.3.0",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "enabledFeatures": []
+      },
+      {
+        "name": "block-buffer",
+        "version": "0.10.4",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "enabledFeatures": []
+      },
+      {
+        "name": "cfg-if",
+        "version": "1.0.5",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "enabledFeatures": []
+      },
+      {
+        "name": "cpufeatures",
+        "version": "0.2.17",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "enabledFeatures": []
+      },
+      {
+        "name": "crypto-common",
+        "version": "0.1.7",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "enabledFeatures": [
+          "std"
+        ]
+      },
+      {
+        "name": "digest",
+        "version": "0.10.7",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "enabledFeatures": [
+          "alloc",
+          "block-buffer",
+          "core-api",
+          "default",
+          "std"
+        ]
+      },
+      {
+        "name": "generic-array",
+        "version": "0.14.7",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "enabledFeatures": [
+          "more_lengths"
+        ]
+      },
+      {
+        "name": "gmp-mpfr-sys",
+        "version": "1.7.1",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "enabledFeatures": [
+          "mpfr"
+        ]
+      },
+      {
+        "name": "itoa",
+        "version": "1.0.18",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "enabledFeatures": []
+      },
+      {
+        "name": "libc",
+        "version": "0.2.189",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "enabledFeatures": []
+      },
+      {
+        "name": "libm",
+        "version": "0.2.16",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "enabledFeatures": [
+          "arch",
+          "default"
+        ]
+      },
+      {
+        "name": "memchr",
+        "version": "2.8.3",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "enabledFeatures": [
+          "alloc",
+          "std"
+        ]
+      },
+      {
+        "name": "proc-macro2",
+        "version": "1.0.107",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "enabledFeatures": [
+          "proc-macro"
+        ]
+      },
+      {
+        "name": "quote",
+        "version": "1.0.47",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "enabledFeatures": [
+          "proc-macro"
+        ]
+      },
+      {
+        "name": "rug",
+        "version": "1.30.0",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "enabledFeatures": [
+          "float",
+          "gmp-mpfr-sys",
+          "integer",
+          "rational"
+        ]
+      },
+      {
+        "name": "sagejs-pari-class-group-rust-experiment",
+        "version": "0.1.0",
+        "source": "workspace",
+        "enabledFeatures": [
+          "flint-normal-form"
+        ]
+      },
+      {
+        "name": "serde",
+        "version": "1.0.229",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "enabledFeatures": [
+          "default",
+          "derive",
+          "serde_derive",
+          "std"
+        ]
+      },
+      {
+        "name": "serde_core",
+        "version": "1.0.229",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "enabledFeatures": [
+          "result",
+          "std"
+        ]
+      },
+      {
+        "name": "serde_derive",
+        "version": "1.0.229",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "enabledFeatures": [
+          "default"
+        ]
+      },
+      {
+        "name": "serde_json",
+        "version": "1.0.151",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "enabledFeatures": [
+          "default",
+          "std"
+        ]
+      },
+      {
+        "name": "sha2",
+        "version": "0.10.9",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "enabledFeatures": [
+          "default",
+          "std"
+        ]
+      },
+      {
+        "name": "syn",
+        "version": "3.0.6",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "enabledFeatures": [
+          "clone-impls",
+          "derive",
+          "parsing",
+          "printing",
+          "proc-macro"
+        ]
+      },
+      {
+        "name": "typenum",
+        "version": "1.20.1",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "enabledFeatures": []
+      },
+      {
+        "name": "unicode-ident",
+        "version": "1.0.26",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "enabledFeatures": []
+      },
+      {
+        "name": "version_check",
+        "version": "0.9.5",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "enabledFeatures": []
+      },
+      {
+        "name": "windows-link",
+        "version": "0.2.1",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "enabledFeatures": []
+      },
+      {
+        "name": "windows-sys",
+        "version": "0.61.2",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "enabledFeatures": [
+          "Win32",
+          "Win32_Foundation",
+          "Win32_Globalization",
+          "Win32_System",
+          "Win32_System_Com",
+          "Win32_UI",
+          "Win32_UI_Shell",
+          "default"
+        ]
+      },
+      {
+        "name": "zmij",
+        "version": "1.0.23",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "enabledFeatures": []
+      }
+    ],
+    "normalAndBuildTreeSha256": "5f163f7cdfb32f95131633edfbe9b86ae2bb6ad3475cf681590728057b5d2d37",
+    "featureTreeSha256": "c4a05aa50fdd9d74769951c8ac6707249343670ce374f9631824ba490c81f7cc",
+    "normalAndBuildTree": "Blocking waiting for file lock on package cache\n    Blocking waiting for file lock on package cache\nsagejs-pari-class-group-rust-experiment v0.1.0 (/tmp/sagejs-rust-build-metrics-1smv02be/sagejs/bench/pari-class-group-rust)\n\u251c\u2500\u2500 rug v1.30.0\n\u2502   \u251c\u2500\u2500 az v1.3.0\n\u2502   \u251c\u2500\u2500 gmp-mpfr-sys v1.7.1\n\u2502   \u2502   \u2514\u2500\u2500 libc v0.2.189\n\u2502   \u251c\u2500\u2500 libc v0.2.189\n\u2502   \u2514\u2500\u2500 libm v0.2.16\n\u251c\u2500\u2500 serde v1.0.229\n\u2502   \u251c\u2500\u2500 serde_core v1.0.229\n\u2502   \u2514\u2500\u2500 serde_derive v1.0.229 (proc-macro)\n\u2502       \u251c\u2500\u2500 proc-macro2 v1.0.107\n\u2502       \u2502   \u2514\u2500\u2500 unicode-ident v1.0.26\n\u2502       \u251c\u2500\u2500 quote v1.0.47\n\u2502       \u2502   \u2514\u2500\u2500 proc-macro2 v1.0.107 (*)\n\u2502       \u2514\u2500\u2500 syn v3.0.6\n\u2502           \u251c\u2500\u2500 proc-macro2 v1.0.107 (*)\n\u2502           \u251c\u2500\u2500 quote v1.0.47 (*)\n\u2502           \u2514\u2500\u2500 unicode-ident v1.0.26\n\u251c\u2500\u2500 serde_json v1.0.151\n\u2502   \u251c\u2500\u2500 itoa v1.0.18\n\u2502   \u251c\u2500\u2500 memchr v2.8.3\n\u2502   \u251c\u2500\u2500 serde_core v1.0.229\n\u2502   \u2514\u2500\u2500 zmij v1.0.23\n\u2514\u2500\u2500 sha2 v0.10.9\n    \u251c\u2500\u2500 cfg-if v1.0.5\n    \u251c\u2500\u2500 cpufeatures v0.2.17\n    \u2514\u2500\u2500 digest v0.10.7\n        \u251c\u2500\u2500 block-buffer v0.10.4\n        \u2502   \u2514\u2500\u2500 generic-array v0.14.7\n        \u2502       \u2514\u2500\u2500 typenum v1.20.1\n        \u2502       [build-dependencies]\n        \u2502       \u2514\u2500\u2500 version_check v0.9.5\n        \u2514\u2500\u2500 crypto-common v0.1.7\n            \u251c\u2500\u2500 generic-array v0.14.7 (*)\n            \u2514\u2500\u2500 typenum v1.20.1",
+    "featureTree": "sagejs-pari-class-group-rust-experiment v0.1.0 (/tmp/sagejs-rust-build-metrics-1smv02be/sagejs/bench/pari-class-group-rust)\n\u251c\u2500\u2500 rug feature \"float\"\n\u2502   \u251c\u2500\u2500 rug v1.30.0\n\u2502   \u2502   \u251c\u2500\u2500 gmp-mpfr-sys v1.7.1\n\u2502   \u2502   \u2502   \u2514\u2500\u2500 libc v0.2.189\n\u2502   \u2502   \u251c\u2500\u2500 libc v0.2.189\n\u2502   \u2502   \u251c\u2500\u2500 az feature \"default\"\n\u2502   \u2502   \u2502   \u2514\u2500\u2500 az v1.3.0\n\u2502   \u2502   \u2514\u2500\u2500 libm feature \"default\"\n\u2502   \u2502       \u251c\u2500\u2500 libm v0.2.16\n\u2502   \u2502       \u2514\u2500\u2500 libm feature \"arch\"\n\u2502   \u2502           \u2514\u2500\u2500 libm v0.2.16\n\u2502   \u251c\u2500\u2500 rug feature \"gmp-mpfr-sys\"\n\u2502   \u2502   \u2514\u2500\u2500 rug v1.30.0 (*)\n\u2502   \u2514\u2500\u2500 gmp-mpfr-sys feature \"mpfr\"\n\u2502       \u2514\u2500\u2500 gmp-mpfr-sys v1.7.1 (*)\n\u251c\u2500\u2500 rug feature \"integer\"\n\u2502   \u251c\u2500\u2500 rug v1.30.0 (*)\n\u2502   \u2514\u2500\u2500 rug feature \"gmp-mpfr-sys\" (*)\n\u251c\u2500\u2500 rug feature \"rational\"\n\u2502   \u251c\u2500\u2500 rug v1.30.0 (*)\n\u2502   \u2514\u2500\u2500 rug feature \"integer\" (*)\n\u251c\u2500\u2500 serde feature \"default\"\n\u2502   \u251c\u2500\u2500 serde v1.0.229\n\u2502   \u2502   \u251c\u2500\u2500 serde_core feature \"result\"\n\u2502   \u2502   \u2502   \u2514\u2500\u2500 serde_core v1.0.229\n\u2502   \u2502   \u2514\u2500\u2500 serde_derive feature \"default\"\n\u2502   \u2502       \u2514\u2500\u2500 serde_derive v1.0.229 (proc-macro)\n\u2502   \u2502           \u251c\u2500\u2500 proc-macro2 feature \"proc-macro\"\n\u2502   \u2502           \u2502   \u2514\u2500\u2500 proc-macro2 v1.0.107\n\u2502   \u2502           \u2502       \u2514\u2500\u2500 unicode-ident feature \"default\"\n\u2502   \u2502           \u2502           \u2514\u2500\u2500 unicode-ident v1.0.26\n\u2502   \u2502           \u251c\u2500\u2500 quote feature \"proc-macro\"\n\u2502   \u2502           \u2502   \u251c\u2500\u2500 quote v1.0.47\n\u2502   \u2502           \u2502   \u2502   \u2514\u2500\u2500 proc-macro2 v1.0.107 (*)\n\u2502   \u2502           \u2502   \u2514\u2500\u2500 proc-macro2 feature \"proc-macro\" (*)\n\u2502   \u2502           \u251c\u2500\u2500 syn feature \"clone-impls\"\n\u2502   \u2502           \u2502   \u2514\u2500\u2500 syn v3.0.6\n\u2502   \u2502           \u2502       \u251c\u2500\u2500 proc-macro2 v1.0.107 (*)\n\u2502   \u2502           \u2502       \u251c\u2500\u2500 quote v1.0.47 (*)\n\u2502   \u2502           \u2502       \u2514\u2500\u2500 unicode-ident feature \"default\" (*)\n\u2502   \u2502           \u251c\u2500\u2500 syn feature \"derive\"\n\u2502   \u2502           \u2502   \u2514\u2500\u2500 syn v3.0.6 (*)\n\u2502   \u2502           \u251c\u2500\u2500 syn feature \"parsing\"\n\u2502   \u2502           \u2502   \u2514\u2500\u2500 syn v3.0.6 (*)\n\u2502   \u2502           \u251c\u2500\u2500 syn feature \"printing\"\n\u2502   \u2502           \u2502   \u2514\u2500\u2500 syn v3.0.6 (*)\n\u2502   \u2502           \u2514\u2500\u2500 syn feature \"proc-macro\"\n\u2502   \u2502               \u251c\u2500\u2500 syn v3.0.6 (*)\n\u2502   \u2502               \u251c\u2500\u2500 proc-macro2 feature \"proc-macro\" (*)\n\u2502   \u2502               \u2514\u2500\u2500 quote feature \"proc-macro\" (*)\n\u2502   \u2514\u2500\u2500 serde feature \"std\"\n\u2502       \u251c\u2500\u2500 serde v1.0.229 (*)\n\u2502       \u2514\u2500\u2500 serde_core feature \"std\"\n\u2502           \u2514\u2500\u2500 serde_core v1.0.229\n\u251c\u2500\u2500 serde feature \"derive\"\n\u2502   \u251c\u2500\u2500 serde v1.0.229 (*)\n\u2502   \u2514\u2500\u2500 serde feature \"serde_derive\"\n\u2502       \u2514\u2500\u2500 serde v1.0.229 (*)\n\u251c\u2500\u2500 serde_json feature \"default\"\n\u2502   \u251c\u2500\u2500 serde_json v1.0.151\n\u2502   \u2502   \u251c\u2500\u2500 memchr v2.8.3\n\u2502   \u2502   \u251c\u2500\u2500 serde_core v1.0.229\n\u2502   \u2502   \u251c\u2500\u2500 itoa feature \"default\"\n\u2502   \u2502   \u2502   \u2514\u2500\u2500 itoa v1.0.18\n\u2502   \u2502   \u2514\u2500\u2500 zmij feature \"default\"\n\u2502   \u2502       \u2514\u2500\u2500 zmij v1.0.23\n\u2502   \u2514\u2500\u2500 serde_json feature \"std\"\n\u2502       \u251c\u2500\u2500 serde_json v1.0.151 (*)\n\u2502       \u251c\u2500\u2500 serde_core feature \"std\" (*)\n\u2502       \u2514\u2500\u2500 memchr feature \"std\"\n\u2502           \u251c\u2500\u2500 memchr v2.8.3\n\u2502           \u2514\u2500\u2500 memchr feature \"alloc\"\n\u2502               \u2514\u2500\u2500 memchr v2.8.3\n\u2514\u2500\u2500 sha2 feature \"default\"\n    \u251c\u2500\u2500 sha2 v0.10.9\n    \u2502   \u251c\u2500\u2500 cfg-if feature \"default\"\n    \u2502   \u2502   \u2514\u2500\u2500 cfg-if v1.0.5\n    \u2502   \u251c\u2500\u2500 cpufeatures feature \"default\"\n    \u2502   \u2502   \u2514\u2500\u2500 cpufeatures v0.2.17\n    \u2502   \u2514\u2500\u2500 digest feature \"default\"\n    \u2502       \u251c\u2500\u2500 digest v0.10.7\n    \u2502       \u2502   \u251c\u2500\u2500 block-buffer feature \"default\"\n    \u2502       \u2502   \u2502   \u2514\u2500\u2500 block-buffer v0.10.4\n    \u2502       \u2502   \u2502       \u2514\u2500\u2500 generic-array feature \"default\"\n    \u2502       \u2502   \u2502           \u2514\u2500\u2500 generic-array v0.14.7\n    \u2502       \u2502   \u2502               \u2514\u2500\u2500 typenum feature \"default\"\n    \u2502       \u2502   \u2502                   \u2514\u2500\u2500 typenum v1.20.1\n    \u2502       \u2502   \u2502               [build-dependencies]\n    \u2502       \u2502   \u2502               \u2514\u2500\u2500 version_check feature \"default\"\n    \u2502       \u2502   \u2502                   \u2514\u2500\u2500 version_check v0.9.5\n    \u2502       \u2502   \u2514\u2500\u2500 crypto-common feature \"default\"\n    \u2502       \u2502       \u2514\u2500\u2500 crypto-common v0.1.7\n    \u2502       \u2502           \u251c\u2500\u2500 generic-array feature \"default\" (*)\n    \u2502       \u2502           \u251c\u2500\u2500 generic-array feature \"more_lengths\"\n    \u2502       \u2502           \u2502   \u2514\u2500\u2500 generic-array v0.14.7 (*)\n    \u2502       \u2502           \u2514\u2500\u2500 typenum feature \"default\" (*)\n    \u2502       \u2514\u2500\u2500 digest feature \"core-api\"\n    \u2502           \u251c\u2500\u2500 digest v0.10.7 (*)\n    \u2502           \u2514\u2500\u2500 digest feature \"block-buffer\"\n    \u2502               \u2514\u2500\u2500 digest v0.10.7 (*)\n    \u2514\u2500\u2500 sha2 feature \"std\"\n        \u251c\u2500\u2500 sha2 v0.10.9 (*)\n        \u2514\u2500\u2500 digest feature \"std\"\n            \u251c\u2500\u2500 digest v0.10.7 (*)\n            \u251c\u2500\u2500 digest feature \"alloc\"\n            \u2502   \u2514\u2500\u2500 digest v0.10.7 (*)\n            \u2514\u2500\u2500 crypto-common feature \"std\"\n                \u2514\u2500\u2500 crypto-common v0.1.7 (*)"
+  },
+  "builds": {
+    "cleanTargetRelease": {
+      "command": "cargo build --release --locked --features flint-normal-form",
+      "wallSeconds": 18.395777,
+      "peakProcessTreeRssBytes": 1244667904,
+      "rssSampleIntervalMilliseconds": 20,
+      "rssSamples": 868,
+      "exitCode": 0,
+      "outputTail": "   Compiling version_check v0.9.5\n   Compiling proc-macro2 v1.0.107\n   Compiling typenum v1.20.1\n   Compiling unicode-ident v1.0.26\n   Compiling quote v1.0.47\n   Compiling gmp-mpfr-sys v1.7.1\n   Compiling libc v0.2.189\n   Compiling serde_core v1.0.229\n   Compiling libm v0.2.16\n   Compiling zmij v1.0.23\n   Compiling generic-array v0.14.7\n   Compiling serde_json v1.0.151\n   Compiling rug v1.30.0\n   Compiling serde v1.0.229\n   Compiling itoa v1.0.18\n   Compiling cpufeatures v0.2.17\n   Compiling memchr v2.8.3\n   Compiling az v1.3.0\n   Compiling syn v3.0.6\n   Compiling sagejs-pari-class-group-rust-experiment v0.1.0 (/tmp/sagejs-rust-build-metrics-1smv02be/sagejs/bench/pari-class-group-rust)\n   Compiling cfg-if v1.0.5\n   Compiling crypto-common v0.1.7\n   Compiling block-buffer v0.10.4\n   Compiling digest v0.10.7\n   Compiling sha2 v0.10.9\n   Compiling serde_derive v1.0.229\nwarning: constant `DEFAULT_SUPPLEMENTARY_RELATIONS` is never used\n  --> src/bruteforce_collector.rs:27:7\n   |\n27 | const DEFAULT_SUPPLEMENTARY_RELATIONS: usize = 7;\n   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n   |\n   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default\n\nwarning: function `collect_primitive_box` is never used\n   --> src/bruteforce_collector.rs:148:8\n    |\n148 | pub fn collect_primitive_box(\n    |        ^^^^^^^^^^^^^^^^^^^^^\n\nwarning: function `original_packet_index` is never used\n   --> src/collector_schedule.rs:144:8\n    |\n144 | pub fn original_packet_index(packet_ids: &[i64], selected: i64) -> Result<usize, ScheduleError> {\n    |        ^^^^^^^^^^^^^^^^^^^^^\n\nwarning: function `copy_original_packet` is never used\n   --> src/collector_schedule.rs:156:8\n    |\n156 | pub fn copy_original_packet<T: Clone>(\n    |        ^^^^^^^^^^^^^^^^^^^^\n\nwarning: method `at_most_half_in_absolute_value` is never used\n   --> src/ideal_arithmetic.rs:285:8\n    |\n191 | impl Fraction {\n    | ------------- method in this implementation\n...\n285 |     fn at_most_half_in_absolute_value(&self) -> bool {\n    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nwarning: function `verify_lll_reduction` is never used\n   --> src/ideal_arithmetic.rs:422:8\n    |\n422 | pub fn verify_lll_reduction(\n    |        ^^^^^^^^^^^^^^^^^^^^\n\nwarning: fields `transform`, `bound_root_degree`, `lll_swaps`, and `lll_size_reductions` are never read\n   --> src/numerical_preparation.rs:457:9\n    |\n455 | pub struct H1NumericalPreparation {\n    |            ---------------------- fields in this struct\n456 |     /// Exact unimodular basis change selected from `G0 * original_ideal`.\n457 |     pub transform: Matrix3,\n    |         ^^^^^^^^^\n...\n465 |     pub bound_root_degree: usize,\n    |         ^^^^^^^^^^^^^^^^^\n466 |     pub skip_first: bool,\n467 |     pub lll_swaps: usize,\n    |         ^^^^^^^^^\n468 |     pub lll_size_reductions: usize,\n    |         ^^^^^^^^^^^^^^^^^^^\n    |\n    = note: `H1NumericalPreparation` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis\n\nwarning: function `sparse_relation` is never used\n   --> src/prime_valuation.rs:291:8\n    |\n291 | pub fn sparse_relation(relation: &[i64]) -> Vec<(usize, i64)> {\n    |        ^^^^^^^^^^^^^^^\n\nwarning: method `coefficients` is never used\n   --> src/smooth_admission.rs:185:12\n    |\n120 | impl CubicNormForm {\n    | ------------------ method in this implementation\n...\n185 |     pub fn coefficients(&self) -> &[i128; 9] {\n    |            ^^^^^^^^^^^^\n\nwarning: `sagejs-pari-class-group-rust-experiment` (lib) generated 9 warnings\n    Finished `release` profile [optimized] target(s) in 18.38s\n",
+      "targetDisk": {
+        "logicalBytes": 509536477,
+        "allocatedBytes": 510873600,
+        "files": 451
+      }
+    },
+    "warmNoOpRelease": {
+      "command": "cargo build --release --locked --features flint-normal-form",
+      "wallSeconds": 0.039732,
+      "peakProcessTreeRssBytes": 28614656,
+      "rssSampleIntervalMilliseconds": 20,
+      "rssSamples": 2,
+      "exitCode": 0,
+      "outputTail": "warning: constant `DEFAULT_SUPPLEMENTARY_RELATIONS` is never used\n  --> src/bruteforce_collector.rs:27:7\n   |\n27 | const DEFAULT_SUPPLEMENTARY_RELATIONS: usize = 7;\n   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n   |\n   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default\n\nwarning: function `collect_primitive_box` is never used\n   --> src/bruteforce_collector.rs:148:8\n    |\n148 | pub fn collect_primitive_box(\n    |        ^^^^^^^^^^^^^^^^^^^^^\n\nwarning: function `original_packet_index` is never used\n   --> src/collector_schedule.rs:144:8\n    |\n144 | pub fn original_packet_index(packet_ids: &[i64], selected: i64) -> Result<usize, ScheduleError> {\n    |        ^^^^^^^^^^^^^^^^^^^^^\n\nwarning: function `copy_original_packet` is never used\n   --> src/collector_schedule.rs:156:8\n    |\n156 | pub fn copy_original_packet<T: Clone>(\n    |        ^^^^^^^^^^^^^^^^^^^^\n\nwarning: method `at_most_half_in_absolute_value` is never used\n   --> src/ideal_arithmetic.rs:285:8\n    |\n191 | impl Fraction {\n    | ------------- method in this implementation\n...\n285 |     fn at_most_half_in_absolute_value(&self) -> bool {\n    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nwarning: function `verify_lll_reduction` is never used\n   --> src/ideal_arithmetic.rs:422:8\n    |\n422 | pub fn verify_lll_reduction(\n    |        ^^^^^^^^^^^^^^^^^^^^\n\nwarning: fields `transform`, `bound_root_degree`, `lll_swaps`, and `lll_size_reductions` are never read\n   --> src/numerical_preparation.rs:457:9\n    |\n455 | pub struct H1NumericalPreparation {\n    |            ---------------------- fields in this struct\n456 |     /// Exact unimodular basis change selected from `G0 * original_ideal`.\n457 |     pub transform: Matrix3,\n    |         ^^^^^^^^^\n...\n465 |     pub bound_root_degree: usize,\n    |         ^^^^^^^^^^^^^^^^^\n466 |     pub skip_first: bool,\n467 |     pub lll_swaps: usize,\n    |         ^^^^^^^^^\n468 |     pub lll_size_reductions: usize,\n    |         ^^^^^^^^^^^^^^^^^^^\n    |\n    = note: `H1NumericalPreparation` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis\n\nwarning: function `sparse_relation` is never used\n   --> src/prime_valuation.rs:291:8\n    |\n291 | pub fn sparse_relation(relation: &[i64]) -> Vec<(usize, i64)> {\n    |        ^^^^^^^^^^^^^^^\n\nwarning: method `coefficients` is never used\n   --> src/smooth_admission.rs:185:12\n    |\n120 | impl CubicNormForm {\n    | ------------------ method in this implementation\n...\n185 |     pub fn coefficients(&self) -> &[i128; 9] {\n    |            ^^^^^^^^^^^^\n\nwarning: `sagejs-pari-class-group-rust-experiment` (lib) generated 9 warnings\n    Finished `release` profile [optimized] target(s) in 0.02s\n",
+      "targetDisk": {
+        "logicalBytes": 509536477,
+        "allocatedBytes": 510873600,
+        "files": 451
+      }
+    },
+    "oneModuleIncrementalRelease": {
+      "command": "cargo build --release --locked --features flint-normal-form",
+      "wallSeconds": 3.750494,
+      "peakProcessTreeRssBytes": 343838720,
+      "rssSampleIntervalMilliseconds": 20,
+      "rssSamples": 178,
+      "exitCode": 0,
+      "outputTail": "   Compiling sagejs-pari-class-group-rust-experiment v0.1.0 (/tmp/sagejs-rust-build-metrics-1smv02be/sagejs/bench/pari-class-group-rust)\nwarning: constant `DEFAULT_SUPPLEMENTARY_RELATIONS` is never used\n  --> src/bruteforce_collector.rs:27:7\n   |\n27 | const DEFAULT_SUPPLEMENTARY_RELATIONS: usize = 7;\n   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n   |\n   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default\n\nwarning: function `collect_primitive_box` is never used\n   --> src/bruteforce_collector.rs:148:8\n    |\n148 | pub fn collect_primitive_box(\n    |        ^^^^^^^^^^^^^^^^^^^^^\n\nwarning: function `original_packet_index` is never used\n   --> src/collector_schedule.rs:144:8\n    |\n144 | pub fn original_packet_index(packet_ids: &[i64], selected: i64) -> Result<usize, ScheduleError> {\n    |        ^^^^^^^^^^^^^^^^^^^^^\n\nwarning: function `copy_original_packet` is never used\n   --> src/collector_schedule.rs:156:8\n    |\n156 | pub fn copy_original_packet<T: Clone>(\n    |        ^^^^^^^^^^^^^^^^^^^^\n\nwarning: method `at_most_half_in_absolute_value` is never used\n   --> src/ideal_arithmetic.rs:285:8\n    |\n191 | impl Fraction {\n    | ------------- method in this implementation\n...\n285 |     fn at_most_half_in_absolute_value(&self) -> bool {\n    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nwarning: function `verify_lll_reduction` is never used\n   --> src/ideal_arithmetic.rs:422:8\n    |\n422 | pub fn verify_lll_reduction(\n    |        ^^^^^^^^^^^^^^^^^^^^\n\nwarning: fields `transform`, `bound_root_degree`, `lll_swaps`, and `lll_size_reductions` are never read\n   --> src/numerical_preparation.rs:457:9\n    |\n455 | pub struct H1NumericalPreparation {\n    |            ---------------------- fields in this struct\n456 |     /// Exact unimodular basis change selected from `G0 * original_ideal`.\n457 |     pub transform: Matrix3,\n    |         ^^^^^^^^^\n...\n465 |     pub bound_root_degree: usize,\n    |         ^^^^^^^^^^^^^^^^^\n466 |     pub skip_first: bool,\n467 |     pub lll_swaps: usize,\n    |         ^^^^^^^^^\n468 |     pub lll_size_reductions: usize,\n    |         ^^^^^^^^^^^^^^^^^^^\n    |\n    = note: `H1NumericalPreparation` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis\n\nwarning: function `sparse_relation` is never used\n   --> src/prime_valuation.rs:291:8\n    |\n291 | pub fn sparse_relation(relation: &[i64]) -> Vec<(usize, i64)> {\n    |        ^^^^^^^^^^^^^^^\n\nwarning: method `coefficients` is never used\n   --> src/smooth_admission.rs:185:12\n    |\n120 | impl CubicNormForm {\n    | ------------------ method in this implementation\n...\n185 |     pub fn coefficients(&self) -> &[i128; 9] {\n    |            ^^^^^^^^^^^^\n\nwarning: `sagejs-pari-class-group-rust-experiment` (lib) generated 9 warnings\n    Finished `release` profile [optimized] target(s) in 3.73s\n",
+      "targetDisk": {
+        "logicalBytes": 557394576,
+        "allocatedBytes": 558870528,
+        "files": 503
+      },
+      "changedModule": "src/api.rs",
+      "changeKind": "isolated comment append in disposable source snapshot"
+    }
+  },
+  "nativeArtifacts": {
+    "unstripped": {
+      "bytes": 21011208,
+      "sha256": "c08dcb89725c143ee20424eda46633b2b4d3c4cd1d49a280edb01f7b074653aa"
+    },
+    "stripped": {
+      "bytes": 19528536,
+      "sha256": "ef80c5e454859f0ea49f8163370ea4145b13db4b3387e1d220dafe42af61f4fa",
+      "command": "strip --strip-unneeded"
+    }
+  },
+  "wasmArtifacts": {
+    "artifacts": [
+      {
+        "name": "first-class-candidate",
+        "path": "bench/pari-class-group-rust/qualification/wasm-class-group-candidate/target/wasm32-wasip1/release/sagejs_rust_wasm_class_group_candidate.wasm",
+        "declaredStaticArithmeticLibraries": [],
+        "bytes": 218491,
+        "gzip9Bytes": 96192,
+        "sha256": "9f27b7283160a944e016b5701429fddd923b6aab069e9c01881c871b4776bab8",
+        "gzip9Sha256": "36f125f7229ccb3631ae4f606d812a1dec0cc006867a12acdf5089ac841a6837",
+        "imports": [
+          "wasi_snapshot_preview1.environ_get",
+          "wasi_snapshot_preview1.environ_sizes_get",
+          "wasi_snapshot_preview1.fd_write",
+          "wasi_snapshot_preview1.proc_exit"
+        ],
+        "exportsMemory": true,
+        "importsArithmeticSymbols": false
+      },
+      {
+        "name": "prepared-factor-base",
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-factor-base/build/prepared-factor-base.wasm",
+        "declaredStaticArithmeticLibraries": [
+          "gmp"
+        ],
+        "bytes": 484212,
+        "gzip9Bytes": 190619,
+        "sha256": "8c1b168b6fee3e492da4001546efcbbe9b75d4084ad6c82ed2f7e15f7dfb158e",
+        "gzip9Sha256": "afda73e9fea892cd80adc33bc6d8c872ffc427b5e2016d973753b3e31d529379",
+        "imports": [
+          "wasi_snapshot_preview1.environ_get",
+          "wasi_snapshot_preview1.environ_sizes_get",
+          "wasi_snapshot_preview1.fd_close",
+          "wasi_snapshot_preview1.fd_prestat_dir_name",
+          "wasi_snapshot_preview1.fd_prestat_get",
+          "wasi_snapshot_preview1.fd_seek",
+          "wasi_snapshot_preview1.fd_write",
+          "wasi_snapshot_preview1.proc_exit"
+        ],
+        "exportsMemory": true,
+        "importsArithmeticSymbols": false
+      },
+      {
+        "name": "prepared-relation-prefix",
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-relation-prefix/build/prepared-relation-prefix.wasm",
+        "declaredStaticArithmeticLibraries": [
+          "gmp",
+          "mpfr"
+        ],
+        "bytes": 692337,
+        "gzip9Bytes": 264246,
+        "sha256": "3cfb4b057e28d42cb33cf894e30534df21f4a054f6c84cd52bbff814b60a976c",
+        "gzip9Sha256": "075ec8dd1fd04949e2c2970a2f4c39e1b327a31ef162e9dcb481e46242046a31",
+        "imports": [
+          "wasi_snapshot_preview1.clock_time_get",
+          "wasi_snapshot_preview1.environ_get",
+          "wasi_snapshot_preview1.environ_sizes_get",
+          "wasi_snapshot_preview1.fd_close",
+          "wasi_snapshot_preview1.fd_prestat_dir_name",
+          "wasi_snapshot_preview1.fd_prestat_get",
+          "wasi_snapshot_preview1.fd_seek",
+          "wasi_snapshot_preview1.fd_write",
+          "wasi_snapshot_preview1.proc_exit"
+        ],
+        "exportsMemory": true,
+        "importsArithmeticSymbols": false
+      }
+    ],
+    "standaloneClosure": {
+      "rawBytes": 1395040,
+      "gzip9Bytes": 551057
+    },
+    "duplicationIndicators": {
+      "identicalArtifactGroups": [],
+      "modulesDeclaringStaticGmp": 2,
+      "modulesDeclaringStaticMpfr": 1,
+      "allModulesExportPrivateMemory": true,
+      "dynamicArithmeticImportsObserved": false,
+      "interpretation": "The two prepared-stage modules each declare statically linked GMP, and the relation-prefix module also declares MPFR. Each artifact exports its own linear memory and none imports GMP/MPFR/FLINT symbols. This is strong linkage-level evidence of duplicate arithmetic runtimes across separately loaded modules, but it does not identify an exact byte overlap."
+    }
+  },
+  "limitations": [
+    "This receipt qualifies only the named Linux x86_64 development host; it says nothing about Windows, macOS, Linux ARM64, or CI hosts.",
+    "The clean build starts from an absent target directory but reuses the user's downloaded Cargo registry and git caches; it is not a fresh dependency download.",
+    "CARGO_INCREMENTAL=1 models a developer release-build loop. The shipping release recipe may disable incremental compilation.",
+    "Peak RSS is sampled every 20 ms from the Linux /proc process tree; very short peaks can be missed and shared pages are summed across processes.",
+    "The single-module change recompiles at Rust crate granularity; it does not imply that rustc independently compiles one source module.",
+    "Wasm gzip sizes use deterministic gzip level 9, not Brotli or the final npm/package compression pipeline.",
+    "Static-library duplication is inferred from manifests/build scripts, private exported memories, and absent dynamic arithmetic imports; exact duplicate byte attribution requires linker maps or componentization experiments.",
+    "Only artifacts present at the recorded paths are measured. Cleaned historical arithmetic/enclosure artifacts are excluded.",
+    "Build activity from other project agents and shared-host load was not controlled, so these are reproducible diagnostics rather than quiet-host acceptance medians.",
+    "Native archive identities record the repository prefix named by build.rs; without a linker map they do not prove which duplicate GMP/MPFR archive supplied every final symbol."
+  ]
+}

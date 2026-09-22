@@ -1,11 +1,11 @@
 """Fail-closed adapter for the canonical Rust class-group result schema.
 
 Portable JSON is producer evidence, never live Sage.js authority. This module
-binds the existing ``result-evidence-v1`` envelope to a caller-supplied live
+binds the existing `result-evidence-v1` envelope to a caller-supplied live
 field, canonical prepared-input identity, and the digest of the artifact that
 was actually loaded. Public completion additionally requires fresh,
-process-local replay objects and an exact ``ClassUnitComputation`` containing
-an exact ``IdealClassGroup`` built from those same objects.
+process-local replay objects and an exact `ClassUnitComputation` containing
+an exact `IdealClassGroup` built from those same objects.
 """
 
 from __future__ import annotations
@@ -492,7 +492,7 @@ def _validate_units(value: Any) -> None:
 
 
 class PortableResultEvidence(_Sealed):
-    """Frozen canonical ``result-evidence-v1`` plus detached components."""
+    """Frozen canonical `result-evidence-v1` plus detached components."""
 
     __slots__ = (
         "boundary",
@@ -1265,7 +1265,7 @@ def adapt_public_result(
     *,
     builder: Callable[[VerifiedPublicMaterial], BuiltPublicResult] | None = None,
 ) -> Any:
-    """Return an existing ``ClassUnitComputation`` contract, never a parallel group."""
+    """Return an existing `ClassUnitComputation` contract, never a parallel group."""
     if type(evidence) is not PortableResultEvidence:
         raise TypeError("the adapter requires exact PortableResultEvidence")
     evidence.verify_integrity()

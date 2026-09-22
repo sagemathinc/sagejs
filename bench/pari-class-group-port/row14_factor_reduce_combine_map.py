@@ -5,14 +5,14 @@ class map.  It proves that the retained row-14 owners already suffice for all
 three mathematical operations on one nontrivial, explicitly described domain:
 
 * factor one retained active factor-base ideal by exact HNF identity;
-* reduce ``P * (beta)`` by a deterministic search over the active class primes
+* reduce `P * (beta)` by a deterministic search over the active class primes
   and a small canonical coefficient box; and
 * combine retained principal relations as a factored principal witness.
 
-The reduction receipt uses the convention of ``_EngineClassGroup``:
-``(beta) = I * Q``.  Hence ``Q`` has exponent ``-1`` at the recovered prime and
+The reduction receipt uses the convention of `_EngineClassGroup`:
+`(beta) = I * Q`.  Hence `Q` has exponent `-1` at the recovered prime and
 the ambient class row is its negation.  Exact cancellation is justified by the
-checked equality ``I = P * (beta)`` in the group of invertible ideals.
+checked equality `I = P * (beta)` in the group of invertible ideals.
 
 The input is only the neutral result payload produced by the fresh prepared
 transaction.  No PARI process, frozen answer, or reserve artifact is consulted.

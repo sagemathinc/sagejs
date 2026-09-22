@@ -22,18 +22,26 @@ def main() -> None:
         root = stage["root"]
         complex_log = stage["complexLog"]
         assert number(root["lower"]) <= alpha <= number(root["upper"])
-        assert number(complex_log["realLower"]) <= expected.real <= number(
-            complex_log["realUpper"]
+        assert (
+            number(complex_log["realLower"])
+            <= expected.real
+            <= number(complex_log["realUpper"])
         )
-        assert number(complex_log["imagLower"]) <= expected.imag <= number(
-            complex_log["imagUpper"]
+        assert (
+            number(complex_log["imagLower"])
+            <= expected.imag
+            <= number(complex_log["imagUpper"])
         )
-        assert number(complex_log["realLower"]) <= number(
-            complex_log["mpcReal"]
-        ) <= number(complex_log["realUpper"])
-        assert number(complex_log["imagLower"]) <= number(
-            complex_log["mpcImag"]
-        ) <= number(complex_log["imagUpper"])
+        assert (
+            number(complex_log["realLower"])
+            <= number(complex_log["mpcReal"])
+            <= number(complex_log["realUpper"])
+        )
+        assert (
+            number(complex_log["imagLower"])
+            <= number(complex_log["mpcImag"])
+            <= number(complex_log["imagUpper"])
+        )
         width = number(root["upper"]) - number(root["lower"])
         assert width > 0
         if previous_width is not None:

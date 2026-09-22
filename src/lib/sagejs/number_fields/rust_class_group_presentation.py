@@ -1533,6 +1533,7 @@ def _replay_publication_units(
     payload: Any,
 ) -> tuple[Any, tuple[RustCompactUnitReplayCertificate, ...], dict[str, Any]]:
     """Reconstruct exact factored units without expanding their huge values."""
+    publication_basis_list = list(publication_basis)
     units_data = _closed(
         payload,
         {
@@ -1557,7 +1558,7 @@ def _replay_publication_units(
     relation_elements = tuple(
         _element_from_prepared_coordinates(
             field,
-            publication_basis,
+            publication_basis_list,
             tuple(
                 _signed_decimal(value, "principal coordinate")
                 for value in record["integralBasisCoordinates"]
@@ -1621,7 +1622,7 @@ def _replay_publication_units(
         raise RelationMatrixError("roots-of-unity generator has the wrong dimension")
     published_root = _element_from_prepared_coordinates(
         field,
-        publication_basis,
+        publication_basis_list,
         tuple(_signed_decimal(value, "torsion coordinate") for value in raw_root),
     )
     units_module = __import__("sagejs.number_fields.units", fromlist=["units"])
@@ -2692,7 +2693,7 @@ def adapt_rust_public_cubic_publication_candidate(
         ),
     )
     if query_callback is not None:
-        class_group, complete_units, proof_context = _promote_replayed_publication(
+        class_group, complete_units, _proof_context = _promote_replayed_publication(
             field,
             presentation,
             context,

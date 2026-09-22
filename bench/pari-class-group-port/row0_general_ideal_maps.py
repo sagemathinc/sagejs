@@ -8,7 +8,7 @@ The complete raw Smith identity supplies a signed principal-relation witness.
 
 The accepted domain is an arbitrary canonical integral/fractional cubic ideal
 whose numerator and denominator factor completely over the 66 retained prime
-ideals and whose intermediate cubic HNF modulus is below ``2**64``.  Inputs
+ideals and whose intermediate cubic HNF modulus is below `2**64`.  Inputs
 outside that explicit native corridor fail closed.
 
 PARI 2.17.4 ideal-HNF and Smith algorithms, copyright (C) The PARI group;
@@ -103,7 +103,7 @@ def _prime_power(norm: int) -> tuple[int, int]:
 
 
 def _contains(outer: Sequence[int], inner: Sequence[int]) -> bool:
-    """Return whether the column lattice ``inner`` lies in ``outer``."""
+    """Return whether the column lattice `inner` lies in `outer`."""
     for column in range(3):
         vector = [inner[3 * row + column] for row in range(3)]
         coordinates = [0, 0, 0]
@@ -348,7 +348,7 @@ def factor_supported_fractional_ideal(
     numerator_hnf: Sequence[Any],
     denominator: Any,
 ) -> dict[str, Any]:
-    """Factor ``numerator_hnf / denominator`` over the retained prime base."""
+    """Factor `numerator_hnf / denominator` over the retained prime base."""
     if isinstance(denominator, bool) or not isinstance(denominator, (str, int)):
         raise Row0GeneralMapFailure("fractional denominator is not integer data")
     divisor = int(denominator)
