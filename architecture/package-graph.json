@@ -295,7 +295,7 @@
       "id": "number-field-algorithms",
       "layer": 5,
       "startup": "lazy",
-      "max_source_bytes": 1275000,
+      "max_source_bytes": 1310000,
       "depends_on": [
         "core-runtime",
         "native-integration",
@@ -472,7 +472,7 @@
       "id": "rust-class-group-public-replay",
       "layer": 8,
       "startup": "lazy",
-      "max_source_bytes": 120000,
+      "max_source_bytes": 175000,
       "depends_on": [
         "core-runtime",
         "arithmetic",

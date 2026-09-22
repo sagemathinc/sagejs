@@ -63,6 +63,22 @@ the maximal-order, Minkowski, relation-lattice, unit-index, interval, and
 Belabas--Friedman steps; the precise GRH boundary; the current trusted
 computing base; and a staged Lean certificate-checker plan.
 
+Absolute cubic fields also have an authenticated Rust implementation shared by
+the native and browser WebAssembly products. In the alpha release channel,
+`K.class_group(proof=False, algorithm='auto')` selects this implementation when
+the platform package or Wasm evaluator advertises the exact capability.
+`algorithm='rust'` requires it explicitly. The returned value is the ordinary
+`IdealClassGroup`, including exact generator ideals and resident arbitrary-ideal
+class queries; the backend is not exposed as a second mathematical API.
+
+This route publishes `exact-relations-conditional-grh` authority. The default
+and `proof=True` still require the independently authenticated unconditional
+Minkowski suffix. Automatic fallback is allowed only when capability discovery
+declines before a result is published; resource exhaustion, corrupt evidence,
+and failures after publication remain visible. Native Windows currently
+declines this optional service, with the portable Wasm or ordinary exact route
+remaining available.
+
 If resource limits or cancellation prevent certification, `result.complete`
 is false and the status is `incomplete-resource-limit`. The result may expose
 diagnostics or tentative invariants, but `result.class_group()` deliberately

@@ -3,13 +3,24 @@
   "decision": "architecture/decisions/0006-rust-math-core.md",
   "qualification_plan": "agents/rust-class-group-core-qualification-plan.md",
   "backend_id": "handwritten-rust-math-core",
-  "status": "experimental-qualification",
+  "status": "alpha-automatic-dispatch",
   "source_model": "separate-handwritten-implementation",
   "candidate_root": "packages/class-groups",
   "legacy_candidate_roots": [
     "bench/pari-class-group-rust"
   ],
-  "automatic_dispatch": "prohibited-until-exact-promotion-receipt",
+  "automatic_dispatch": "enabled-for-admitted-cubic-alpha",
+  "automatic_dispatch_contract": {
+    "release_channel": "alpha",
+    "admitted_domain": "absolute-irreducible-cubic-number-fields-accepted-by-public-preparation",
+    "proof_false_authority": "exact-relations-conditional-grh",
+    "proof_true_authority": "exact-unconditional-after-authenticated-minkowski-suffix",
+    "fallback_boundary": "typed-capability-decline-before-publication-only",
+    "artifact_binding": "authenticated-host-artifact-sha256",
+    "distribution_gate": "existing-release-provenance-safety-and-license-review",
+    "production_promotion_receipt_required": true,
+    "authorization": "explicit-project-owner-alpha-landing-2026-09-22"
+  },
   "public_contract": {
     "semantic_owner": "ordinary-python",
     "dynamic_fallback": "required-when-correct-for-request",

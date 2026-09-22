@@ -8,7 +8,7 @@ from __future__ import annotations
 import hashlib
 import itertools
 import json
-from typing import Any, Sequence
+from typing import Any, Sequence, cast
 
 import sagejs as sage
 from sagejs.number_fields.class_group_matrix import (
@@ -338,7 +338,10 @@ class _TrustedServiceFactorBase:
             return cached
         descriptor = self._descriptors[position]
         exported = _ideal_from_prepared_descriptor(
-            self._field, self._order, self._basis, descriptor
+            self._field,
+            self._order,
+            cast(list[Any], self._basis),
+            descriptor,
         )
         prime_ideals = __import__(
             "sagejs.number_fields.prime_ideals", fromlist=["prime_ideals"]
@@ -478,7 +481,7 @@ class _LazyRelationElements:
             raise RelationMatrixError("publication principal element is malformed")
         answer = _element_from_prepared_coordinates(
             self._field,
-            self._basis,
+            cast(list[Any], self._basis),
             tuple(
                 _signed_decimal(value, "principal coordinate") for value in coordinates
             ),
@@ -496,14 +499,14 @@ class RustCompactPresentationReplay:
         field: Any,
         order: Any,
         prepared_basis: Sequence[Any],
-        factor_base_ideals: Sequence[Any],
+        factor_base_ideals: Any,
         *,
         producer_input_id: str,
         prepared_result_identity: str,
         certificate_identity: str,
         factored_units: Sequence[Any] = (),
         unit_certificates: Sequence[Any] = (),
-        relation_elements: Sequence[Any] = (),
+        relation_elements: Any = (),
         query_callback: Any = None,
         query_resources: Any = None,
         polynomial_ascending: Any = None,
@@ -1318,11 +1321,11 @@ def _replay_relation_ideals(
     result: dict[str, Any],
     presentation: CompactRelationPresentation,
     *,
-    basis_override: list[Any] | None = None,
+    basis_override: Sequence[Any] | None = None,
     table_override: list[list[list[Any]]] | None = None,
     verify_principal_relations: bool = True,
     trusted_authenticated_service: bool = False,
-) -> tuple[tuple[Any, ...], dict[str, Any]]:
+) -> tuple[Any, dict[str, Any]]:
     """Match the validated catalog and rows to live maximal-order ideals."""
     order = field.maximal_order()
     basis = (
@@ -1372,7 +1375,9 @@ def _replay_relation_ideals(
     for descriptor in lattice["factorBaseCatalog"]:
         if not trusted_authenticated_service:
             _validate_prime_hnf_lattice(descriptor, table, validated_primes)
-        exported = _ideal_from_prepared_descriptor(field, order, basis, descriptor)
+        exported = _ideal_from_prepared_descriptor(
+            field, order, cast(list[Any], basis), descriptor
+        )
         integral_rows = descriptor.get("integralBasisRows")
         if integral_rows is not None and not trusted_authenticated_service:
             if (
@@ -1384,7 +1389,7 @@ def _replay_relation_ideals(
             ):
                 raise ArithmeticError("an exported ideal basis is malformed")
             integral_generators = [
-                _element_from_prepared_coordinates(field, basis, row)
+                _element_from_prepared_coordinates(field, cast(list[Any], basis), row)
                 for row in integral_rows
             ]
             if order.ideal(integral_generators) != exported:
@@ -1437,7 +1442,9 @@ def _replay_relation_ideals(
     if verify_principal_relations:
         for record, row in zip(records, presentation.relation_rows, strict=True):
             element = _element_from_prepared_coordinates(
-                field, basis, record["integralBasisCoordinates"]
+                field,
+                cast(list[Any], basis),
+                record["integralBasisCoordinates"],
             )
             if order.ideal(element) != reconstruct(row.dense()):
                 raise ArithmeticError("relation is not the claimed principal ideal")
@@ -1603,6 +1610,7 @@ class _AuthenticatedServiceClassGroupContext:
         attestation_callback: Any,
         query_callback: Any,
         query_resources: Any,
+        prepared_basis: Sequence[Any],
     ) -> None:
         self.field = field
         self.order = field.maximal_order()
@@ -1617,7 +1625,7 @@ class _AuthenticatedServiceClassGroupContext:
         self._attestation_callback = attestation_callback
         self._query_callback = query_callback
         self._query_resources = query_resources
-        self._basis = tuple(self.order.basis())
+        self._basis = tuple(prepared_basis)
         self._saturation_evidence = {
             "schema": "sagejs.rust-class-group/authenticated-service-saturation-v1",
             "artifactSha256": artifact_sha256,
@@ -1673,12 +1681,15 @@ class _AuthenticatedServiceClassGroupContext:
         if denominator <= 0:
             raise ArithmeticError("ideal denominator normalization is not positive")
         integral = arithmetic.scalar_translate(ideal, denominator)
-        relative = integral.basis_matrix() * self.order._basis_inverse_matrix()
-        rows = []
-        for row in relative.rows():
-            if any(value._denominator != 1 for value in row):
-                raise ArithmeticError("denominator clearing produced a fractional row")
-            rows.append([str(int(value._numerator)) for value in row])
+        rows = [
+            [str(value) for value in row]
+            for row in _ideal_prepared_basis_rows(
+                self.field,
+                self._basis,
+                integral,
+                "denominator-cleared query ideal",
+            )
+        ]
         return integral, denominator, rows
 
     def _query_generator(self, integral: Any, rows: Any, receipt: Any) -> Any:
@@ -1762,7 +1773,7 @@ class _AuthenticatedServiceClassGroupContext:
             raise RelationMatrixError("query principal element has the wrong dimension")
         alpha = _element_from_prepared_coordinates(
             self.field,
-            self._basis,
+            cast(list[Any], self._basis),
             tuple(
                 _signed_decimal(value, "principal coordinate") for value in raw_alpha
             ),
@@ -1797,7 +1808,7 @@ class _AuthenticatedServiceClassGroupContext:
                 (
                     _element_from_prepared_coordinates(
                         self.field,
-                        self._basis,
+                        cast(list[Any], self._basis),
                         tuple(
                             _signed_decimal(value, "relation element coordinate")
                             for value in raw_element
@@ -1903,6 +1914,85 @@ class _AuthenticatedServiceClassGroupContext:
         )
 
 
+def _ideal_prepared_basis_rows(
+    field: Any,
+    basis: Sequence[Any],
+    ideal: Any,
+    label: str,
+) -> tuple[tuple[int, ...], ...]:
+    """Return the canonical row HNF of an ideal in the exported Rust basis."""
+    maximal = __import__(
+        "sagejs.number_fields.maximal_order", fromlist=["maximal_order"]
+    )
+    matrix = maximal._nf_global("matrix")
+    prepared_matrix = matrix(sage.QQ, [element.list() for element in basis])
+    coordinates = ideal.basis_matrix() * prepared_matrix.inverse()
+    rows = []
+    for row in coordinates.rows():
+        if any(value._denominator != 1 for value in row):
+            raise ArithmeticError(label + " is not integral in the prepared basis")
+        rows.append([int(value._numerator) for value in row])
+    buchmann = __import__(
+        "sagejs.number_fields.buchmann_lenstra", fromlist=["buchmann_lenstra"]
+    )
+    canonical = buchmann._row_hnf(rows)
+    return tuple(tuple(value for value in row) for row in canonical)
+
+
+def _authenticated_service_basis(
+    field: Any, raw_numerators: Any, raw_denominator: Any
+) -> tuple[Any, ...]:
+    """Replay the service's integral basis as a full maximal-order basis."""
+    if not isinstance(raw_numerators, list) or len(raw_numerators) != 9:
+        raise RelationMatrixError("service integral basis is malformed")
+    numerators = [
+        _signed_decimal(value, "service integral-basis numerator")
+        for value in raw_numerators
+    ]
+    denominator = _positive_decimal(
+        raw_denominator, "service integral-basis denominator"
+    )
+    scale = int(field._integral_equation_scale_cache)
+    rows = []
+    basis = []
+    for row_index in range(3):
+        row = []
+        element = field(0)
+        power = 1
+        for column in range(3):
+            coefficient = _untyped(sage.QQ)(
+                _input_integer(numerators[3 * row_index + column]) * power,
+                _input_integer(denominator),
+            )
+            row.append(coefficient)
+            element += coefficient * field.gen() ** column
+            power *= scale
+        rows.append(row)
+        basis.append(element)
+
+    maximal = __import__(
+        "sagejs.number_fields.maximal_order", fromlist=["maximal_order"]
+    )
+    order = field.maximal_order()
+    matrix = maximal._nf_global("matrix")
+    published_matrix = matrix(sage.QQ, rows)
+    if published_matrix.determinant() == 0 or any(
+        element not in order for element in basis
+    ):
+        raise RelationMatrixError(
+            "service integral basis is not integral and full rank"
+        )
+    change = published_matrix * order._basis_inverse_matrix()
+    if any(value._denominator != 1 for row in change.rows() for value in row):
+        raise RelationMatrixError("service integral basis is not contained integrally")
+    determinant = change.determinant()
+    if determinant._denominator != 1 or abs(int(determinant._numerator)) != 1:
+        raise RelationMatrixError(
+            "service integral basis is not the full maximal order"
+        )
+    return tuple(basis)
+
+
 def _authenticated_service_ideal(
     field: Any, basis: Sequence[Any], rows: Any, label: str
 ) -> Any:
@@ -1918,15 +2008,11 @@ def _authenticated_service_ideal(
     )
     order = field.maximal_order()
     generators = [
-        _element_from_prepared_coordinates(field, basis, row) for row in decoded
+        _element_from_prepared_coordinates(field, cast(list[Any], basis), row)
+        for row in decoded
     ]
     ideal = order.ideal(generators)
-    relative = ideal.basis_matrix() * order._basis_inverse_matrix()
-    actual = tuple(
-        tuple(int(value._numerator) for value in row)
-        for row in relative.rows()
-        if all(value._denominator == 1 for value in row)
-    )
+    actual = _ideal_prepared_basis_rows(field, basis, ideal, label)
     if actual != decoded:
         raise ArithmeticError(label + " is not a canonical full ideal basis")
     return ideal
@@ -1954,11 +2040,13 @@ def adapt_rust_authenticated_service_class_group(
         {
             "artifactSha256",
             "authority",
+            "basisDenominator",
             "classNumber",
             "discriminant",
             "factorBaseBound",
             "fieldBindingSha256",
             "generatorIdeals",
+            "integralBasisNumerators",
             "invariants",
             "outcome",
             "polynomialAscending",
@@ -2035,7 +2123,11 @@ def adapt_rust_authenticated_service_class_group(
         class_number *= invariant
     if _positive_decimal(data["classNumber"], "class number") != class_number:
         raise RelationMatrixError("service class number has the wrong product")
-    basis = tuple(field.maximal_order().basis())
+    basis = _authenticated_service_basis(
+        field,
+        data["integralBasisNumerators"],
+        data["basisDenominator"],
+    )
     raw_generators = data["generatorIdeals"]
     if not isinstance(raw_generators, list) or len(raw_generators) != len(invariants):
         raise RelationMatrixError("service generator count does not match invariants")
@@ -2104,6 +2196,7 @@ def adapt_rust_authenticated_service_class_group(
         attestation_callback,
         query_callback,
         query_resources,
+        basis,
     )
     if not context.attest("class-group-summary"):
         raise ArithmeticError("the resident service did not attest the summary")
@@ -3171,7 +3264,7 @@ def _promote_replayed_publication(
     presentation: Any,
     context: RustCompactPresentationReplay,
     unit_group: Any,
-    relation_elements: Sequence[Any],
+    relation_elements: Any,
     order_combinations: Sequence[Sequence[int]],
     factor_base_policy: dict[str, Any],
     analytic_replay: dict[str, Any],
@@ -3780,6 +3873,7 @@ def adapt_rust_public_cubic_publication_candidate(
         if any(replayed):
             raise RelationMatrixError("publication dependency failed exact replay")
     raw_lattice_evidence = presentation_data["latticeIndexEvidence"]
+    presentation: Any = None
     if raw_lattice_evidence == {"method": "detached-dense-recompute"}:
         presentation = _replay_dense_publication_presentation(
             columns,

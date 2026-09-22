@@ -95,11 +95,15 @@ test("missing resident query session never fabricates a public ideal map", async
 
 test("compact authenticated summaries construct ordinary class groups", async () => {
   const answer = await evaluate([
-    "from sagejs.number_fields.rust_class_group_preparation import prepare_cubic_for_rust",
-    "relative = P.basis_matrix() * O._basis_inverse_matrix()",
-    "generator_rows = [[str(int(value._numerator)) for value in row] for row in relative.rows()]",
+    "from sagejs.number_fields.rust_class_group_preparation import prepare_cubic_for_rust, _prepared_basis_elements",
     "prepared_service = prepare_cubic_for_rust(K)",
+    "service_basis = _prepared_basis_elements(K, prepared_service)",
+    "service_matrix = matrix(QQ, [element.list() for element in service_basis])",
+    "relative = P.basis_matrix() * service_matrix.inverse()",
+    "generator_rows = [[str(int(value._numerator)) for value in row] for row in relative.rows()]",
     "summary = {'schema': 'sagejs.class-groups/compact-summary-v1', 'outcome': 'complete-conditional-grh', 'proofMode': 'conditional-grh', 'artifactSha256': 'a'*64, 'polynomialAscending': prepared_service['field']['coefficientsAscending'], 'discriminant': str(O.discriminant()), 'signature': [prepared_service['preparation']['signature']['realPlaces'], prepared_service['preparation']['signature']['complexPairs']], 'invariants': ['3'], 'classNumber': '3', 'generatorIdeals': [{'coordinateZeroBased': 0, 'invariantFactor': '3', 'integralBasisRows': generator_rows, 'constructionEvidence': {'method': 'authenticated-smith-lift-with-minimal-rational-principal-shifts', 'classCoordinates': ['1'], 'principalShifts': []}}], 'factorBaseBound': 17, 'relationCount': 2, 'proofWitnessesSha256': 'b'*64, 'fieldBindingSha256': 'c'*64, 'presentationBindingSha256': 'd'*64, 'authority': {'completionSchema': 'sagejs.rust-class-group/public-cubic-e2e-receipt-v2', 'completionOutcome': 'complete-conditional-grh', 'sealedEvidenceVerified': True, 'artifactAuthentication': 'host-must-bind-authenticated-artifact-sha256'}}",
+    "summary['integralBasisNumerators'] = deepcopy(prepared_service['preparation']['basisNumeratorsRowMajor'])",
+    "summary['basisDenominator'] = prepared_service['preparation']['basisDenominator']",
     "attestations = []",
     "def attest(payload):",
     "    attestations.append(deepcopy(payload))",
@@ -124,11 +128,15 @@ test("compact authenticated summaries construct ordinary class groups", async ()
 
 test("compact service summaries and queries fail closed under mutation", async () => {
   const answer = await evaluate([
-    "from sagejs.number_fields.rust_class_group_preparation import prepare_cubic_for_rust",
-    "relative = P.basis_matrix() * O._basis_inverse_matrix()",
-    "generator_rows = [[str(int(value._numerator)) for value in row] for row in relative.rows()]",
+    "from sagejs.number_fields.rust_class_group_preparation import prepare_cubic_for_rust, _prepared_basis_elements",
     "prepared_service = prepare_cubic_for_rust(K)",
+    "service_basis = _prepared_basis_elements(K, prepared_service)",
+    "service_matrix = matrix(QQ, [element.list() for element in service_basis])",
+    "relative = P.basis_matrix() * service_matrix.inverse()",
+    "generator_rows = [[str(int(value._numerator)) for value in row] for row in relative.rows()]",
     "base = {'schema': 'sagejs.class-groups/compact-summary-v1', 'outcome': 'complete-conditional-grh', 'proofMode': 'conditional-grh', 'artifactSha256': 'a'*64, 'polynomialAscending': prepared_service['field']['coefficientsAscending'], 'discriminant': str(O.discriminant()), 'signature': [prepared_service['preparation']['signature']['realPlaces'], prepared_service['preparation']['signature']['complexPairs']], 'invariants': ['3'], 'classNumber': '3', 'generatorIdeals': [{'coordinateZeroBased': 0, 'invariantFactor': '3', 'integralBasisRows': generator_rows, 'constructionEvidence': {'method': 'authenticated-smith-lift-with-minimal-rational-principal-shifts', 'classCoordinates': ['1'], 'principalShifts': []}}], 'factorBaseBound': 17, 'relationCount': 2, 'proofWitnessesSha256': 'b'*64, 'fieldBindingSha256': 'c'*64, 'presentationBindingSha256': 'd'*64, 'authority': {'completionSchema': 'sagejs.rust-class-group/public-cubic-e2e-receipt-v2', 'completionOutcome': 'complete-conditional-grh', 'sealedEvidenceVerified': True, 'artifactAuthentication': 'host-must-bind-authenticated-artifact-sha256'}}",
+    "base['integralBasisNumerators'] = deepcopy(prepared_service['preparation']['basisNumeratorsRowMajor'])",
+    "base['basisDenominator'] = prepared_service['preparation']['basisDenominator']",
     "def reject(payload): return False",
     "messages = []",
     "try:",

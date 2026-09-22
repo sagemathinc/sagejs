@@ -515,6 +515,11 @@
         "source": "packages/flint-wasm/evaluator.mjs"
       },
       {
+        "id": "specialist:cubic-class-groups-rust",
+        "family": "algebraic-number-theory",
+        "source": "packages/class-groups/src/service.rs"
+      },
+      {
         "id": "specialist:integer-factorization-wasm",
         "family": "exact-arithmetic",
         "source": "packages/flint-wasm/index.mjs"
@@ -1105,7 +1110,7 @@
       ],
       "review_note": "The same bounded Rust service passes exact native/Wasm corpus parity, resident lifecycle and mutation tests, and Chromium, Firefox, and WebKit evaluator execution with a 256 MiB maximum memory contract.",
       "reviewed": true,
-      "shared_core": "packages/class-groups",
+      "shared_core": "packages/class-groups/src/service.rs",
       "availability_evidence": {
         "path": "test/number-field-rust-class-group-release.cjs"
       },

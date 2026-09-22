@@ -519,6 +519,10 @@ impl QualifiedCubic {
             "polynomialAscending": integer_strings(field_data.polynomial_ascending.iter()),
             "discriminant": field_data.discriminant.to_string(),
             "signature": [field_data.signature.0, field_data.signature.1],
+            "integralBasisNumerators": integer_strings(
+                field_data.integral_basis_numerators.iter()
+            ),
+            "basisDenominator": field_data.basis_denominator.to_string(),
             "invariants": integer_strings(invariants.iter()),
             "classNumber": completed.class_number().to_string(),
             "generatorIdeals": generators,
@@ -1754,16 +1758,24 @@ impl ProductService {
     }
 
     fn qualify_error(operation: &str, error: QualificationError) -> ServiceError {
+        fn reports_resource_exhaustion(message: &str) -> bool {
+            let message = message.to_ascii_lowercase();
+            ["limit", "exhaust", "budget", "capacity", "maximum"]
+                .iter()
+                .any(|keyword| message.contains(keyword))
+        }
         let category = match error {
             QualificationError::UnsupportedSchema => ServiceErrorCategory::UnsupportedSchema,
             QualificationError::InvalidCoefficient { .. } => ServiceErrorCategory::InvalidRequest,
             QualificationError::RelationCollection(ref message)
-                if message.contains("limit") || message.contains("exhaust") =>
+                if reports_resource_exhaustion(message) =>
             {
                 ServiceErrorCategory::ResourceExhausted
             }
-            QualificationError::Completion(ref message)
-                if message.contains("limit") || message.contains("exhaust") =>
+            QualificationError::CandidateAuthentication(ref message)
+            | QualificationError::Completion(ref message)
+            | QualificationError::IdealQuery(ref message)
+                if reports_resource_exhaustion(message) =>
             {
                 ServiceErrorCategory::ResourceExhausted
             }

@@ -210,6 +210,25 @@ function packagedClassGroupService(
   ) {
     throw new Error("class-group platform artifact receipt is invalid");
   }
+  // npm intentionally normalizes non-`bin` package members to mode 0644.
+  // Keep the service out of the public command namespace, and materialize an
+  // authenticated private executable when installation stripped its mode.
+  if ((statSync(executableRealpath).mode & 0o111) === 0) {
+    const executableCopy = join(
+      ensureNativeTemporaryDirectory(),
+      "native",
+      `class-group-service-${resource.artifactSha256}`,
+    );
+    publishEmbeddedFile(executableCopy, readFileSync(executableRealpath));
+    const executableResource = checkedClassGroupService(executableCopy);
+    if (
+      executableResource === undefined ||
+      executableResource.artifactSha256 !== resource.artifactSha256
+    ) {
+      throw new Error("class-group executable copy failed authentication");
+    }
+    return executableResource;
+  }
   return resource;
 }
 
@@ -259,7 +278,16 @@ export function classGroupServiceResource(): ClassGroupServiceResource | undefin
   // Source checkouts may use the locked production Rust build directly.
   const executable = "class-group-service";
   return checkedClassGroupService(
-    join(__dirname, "..", "packages", "class-groups", "target", "release", executable),
+    join(
+      __dirname,
+      "..",
+      "..",
+      "packages",
+      "class-groups",
+      "target",
+      "release",
+      executable,
+    ),
   );
 }
 

@@ -22,6 +22,7 @@ const fixture = [
   "R.<x> = QQ[]",
   "HOST_SCHEMA = rust_runtime.HOST_RESPONSE_SCHEMA",
   "QUERY_SCHEMA = rust_runtime.IDEAL_QUERY_RECEIPT_SCHEMA",
+  "SUMMARY_SCHEMA = rust_runtime.COMPACT_SUMMARY_SCHEMA",
   "ARTIFACT = 'a' * 64",
   "class FakeRegulator:",
   "    precision_bits = 512",
@@ -74,6 +75,32 @@ const fixture = [
   "            return {'schema': HOST_SCHEMA, 'outcome': 'open', 'artifactSha256': ARTIFACT, 'generation': '7', 'handle': '4294967297', 'completion': {'schema': 'sagejs.rust-class-group/public-cubic-e2e-receipt-v2', 'outcome': 'complete-conditional-grh', 'publicComplete': True, 'requestedProof': 'conditional-grh'}}",
   "        if operation == 'publication':",
   "            return {'schema': HOST_SCHEMA, 'outcome': 'complete', 'artifactSha256': ARTIFACT, 'generation': request['generation'], 'handle': request['handle'], 'publication': {'schema': 'sagejs.rust-class-group/public-cubic-publication-candidate-v2', 'status': 'detached-replay-required-before-publication', 'proofMode': 'conditional-grh'}}",
+  "        if operation == 'summary':",
+  "            return {",
+  "                'schema': SUMMARY_SCHEMA,",
+  "                'outcome': 'complete-conditional-grh',",
+  "                'proofMode': 'conditional-grh',",
+  "                'polynomialAscending': ['-1', '-1', '0', '1'],",
+  "                'discriminant': '-23',",
+  "                'signature': [1, 1],",
+  "                'integralBasisNumerators': ['1', '0', '0', '0', '1', '0', '0', '0', '1'],",
+  "                'basisDenominator': '1',",
+  "                'invariants': [],",
+  "                'classNumber': '1',",
+  "                'generatorIdeals': [],",
+  "                'factorBaseBound': 100,",
+  "                'relationCount': 0,",
+  "                'proofWitnessesSha256': 'b' * 64,",
+  "                'fieldBindingSha256': 'c' * 64,",
+  "                'presentationBindingSha256': 'd' * 64,",
+  "                'artifactSha256': ARTIFACT,",
+  "                'authority': {",
+  "                    'completionSchema': 'sagejs.rust-class-group/public-cubic-e2e-receipt-v2',",
+  "                    'completionOutcome': 'complete-conditional-grh',",
+  "                    'sealedEvidenceVerified': True,",
+  "                    'artifactAuthentication': 'host-must-bind-authenticated-artifact-sha256',",
+  "                },",
+  "            }",
   "        if operation == 'query':",
   "            assert request['generation'] == '7'",
   "            assert request['resources']['maximumValuation'] == 256",
@@ -83,7 +110,24 @@ const fixture = [
   "        raise AssertionError('unexpected operation ' + operation)",
 ];
 
-test("conditional Rust dispatch is coarse, cached, and shared by public projections", async () => {
+test("compact Rust class-group dispatch authenticates and caches the real adapter", async () => {
+  const result = await evaluate([
+    ...fixture,
+    "backend = Backend()",
+    "setattr(runtime, 'class_group_backend', lambda: backend)",
+    "K.<a> = NumberField(x^3 - x - 1)",
+    "G = K.class_group(proof=False, algorithm='rust')",
+    "again = K.class_group(proof=False, algorithm='rust')",
+    "answer = [G.order(), G.invariants(), G.proof_status, G.algorithm, G.verify(), G is again, [name for name, request in backend.calls]]",
+    "answer",
+  ]);
+  assert.equal(
+    result.repr,
+    "[1, (), 'exact-relations-conditional-grh', 'rust-authenticated-service-cubic', True, True, ['capability', 'open', 'summary']]",
+  );
+});
+
+test("compact class groups and class-unit projections retain separate coarse caches", async () => {
   const result = await evaluate([
     ...fixture,
     "backend = Backend()",
@@ -99,7 +143,7 @@ test("conditional Rust dispatch is coarse, cached, and shared by public projecti
   ]);
   assert.equal(
     result.repr,
-    "[(3,), 3, 1, 'exact-relations-conditional-grh', '11', ['capability', 'open', 'publication', 'query'], True]",
+    "[(), 3, 1, 'exact-relations-conditional-grh', '11', ['capability', 'open', 'summary', 'capability', 'open', 'publication', 'query'], True]",
   );
 });
 
@@ -137,11 +181,11 @@ test("a missing unconditional suffix and corrupt successes fail closed", async (
     "    K.class_group(algorithm='rust')",
     "except Exception as error:",
     "    messages.append((type(error).__name__, str(error)))",
-    "class CorruptBackend(Backend):",
-    "    def call(self, operation, request):",
-    "        answer = super().call(operation, request)",
-    "        if operation == 'publication':",
-    "            answer['artifactSha256'] = 'b' * 64",
+  "class CorruptBackend(Backend):",
+  "    def call(self, operation, request):",
+  "        answer = super().call(operation, request)",
+  "        if operation == 'summary':",
+  "            answer['artifactSha256'] = 'b' * 64",
     "        return answer",
     "corrupt = CorruptBackend()",
     "setattr(runtime, 'class_group_backend', lambda: corrupt)",
@@ -150,10 +194,10 @@ test("a missing unconditional suffix and corrupt successes fail closed", async (
     "    L.class_group(proof=False, algorithm='auto')",
     "except Exception as error:",
     "    messages.append((type(error).__name__, str(error)))",
-    "class LateDeclineBackend(Backend):",
-    "    def call(self, operation, request):",
-    "        if operation == 'publication':",
-    "            self.calls.append((operation, request))",
+  "class LateDeclineBackend(Backend):",
+  "    def call(self, operation, request):",
+  "        if operation == 'summary':",
+  "            self.calls.append((operation, request))",
     "            return {'schema': HOST_SCHEMA, 'outcome': 'error', 'category': 'capability-declined', 'message': 'too late to fall back'}",
     "        return super().call(operation, request)",
     "late = LateDeclineBackend()",

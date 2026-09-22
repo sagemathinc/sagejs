@@ -76,6 +76,37 @@ fn capability_and_errors_have_stable_typed_envelopes() {
 }
 
 #[test]
+fn resource_rejection_does_not_poison_the_resident_service() {
+    let mut service = ProductService::new();
+    let mut starved = tiny_request();
+    starved["resources"]["maximumRelations"] = json!(1);
+    let rejected = call(
+        &mut service,
+        "starved-open",
+        "open",
+        json!({"request": starved}),
+    );
+    assert_eq!(rejected["ok"], false, "{rejected}");
+    assert_eq!(rejected["error"]["category"], "resource-exhausted");
+    assert!(
+        rejected["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("ContinuationBudgetExceeded")
+    );
+
+    let recovered = call(
+        &mut service,
+        "valid-open",
+        "open",
+        json!({"request": tiny_request()}),
+    );
+    assert_eq!(recovered["ok"], true, "{recovered}");
+    assert_eq!(recovered["result"]["generation"], "1");
+    assert_eq!(recovered["result"]["handle"], "4294967297");
+}
+
+#[test]
 fn resident_completion_publication_query_and_close_are_generation_bound() {
     let mut service = ProductService::new();
     let opened = call(
@@ -105,6 +136,11 @@ fn resident_completion_publication_query_and_close_are_generation_bound() {
         "sagejs.class-groups/compact-summary-v1"
     );
     assert_eq!(summary["result"]["classNumber"], "1");
+    assert_eq!(summary["result"]["basisDenominator"], "1");
+    assert_eq!(
+        summary["result"]["integralBasisNumerators"],
+        json!(["1", "0", "0", "0", "1", "0", "0", "0", "1"])
+    );
     assert!(summary["result"].get("factorBase").is_none());
     assert!(serde_json::to_vec(&summary).unwrap().len() < 16_384);
 

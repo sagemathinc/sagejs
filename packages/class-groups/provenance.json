@@ -534,7 +534,7 @@
     },
     {
       "path": "packages/class-groups/src/service.rs",
-      "sha256": "1571b2f61c9e7d064fb8d3e40b054a976979d6b817675fd643e450aba42e7914",
+      "sha256": "e06bf34b6cad483d8075829595e7e24c1dd4ef2652888d67384ed2ccbd90d450",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",

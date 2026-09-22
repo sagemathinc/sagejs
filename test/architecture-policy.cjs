@@ -100,12 +100,25 @@ test("unclassified and stale native files fail closed", () => {
   assert.throws(() => validateNativeCode(stale), /native-code file is missing/);
 });
 
-test("the handwritten Rust backend remains experimental and receipt-gated", () => {
+test("the handwritten Rust backend has scoped alpha dispatch and remains production-receipt-gated", () => {
   const policy = validateRustMathCorePolicy(rustPolicyManifest);
-  assert.equal(policy.status, "experimental-qualification");
+  assert.equal(policy.status, "alpha-automatic-dispatch");
   assert.equal(
     policy.automatic_dispatch,
-    "prohibited-until-exact-promotion-receipt",
+    "enabled-for-admitted-cubic-alpha",
+  );
+  assert.equal(policy.automatic_dispatch_contract.release_channel, "alpha");
+  assert.equal(
+    policy.automatic_dispatch_contract.fallback_boundary,
+    "typed-capability-decline-before-publication-only",
+  );
+  assert.equal(
+    policy.automatic_dispatch_contract.production_promotion_receipt_required,
+    true,
+  );
+  assert.equal(
+    policy.automatic_dispatch_contract.distribution_gate,
+    "existing-release-provenance-safety-and-license-review",
   );
   assert.deepEqual(policy.implementation.required_adapters, ["native", "wasm"]);
   assert.ok(policy.required_diagnostics.includes("proof-mode"));
@@ -115,7 +128,14 @@ test("the handwritten Rust backend remains experimental and receipt-gated", () =
   promotedWithoutReceipt.status = "production";
   assert.throws(
     () => validateRustMathCorePolicy(promotedWithoutReceipt),
-    /separate experimental, receipt-gated backend/,
+    /separate alpha, production-receipt-gated backend/,
+  );
+
+  const widenedAlpha = structuredClone(rustPolicyManifest);
+  widenedAlpha.automatic_dispatch_contract.admitted_domain = "all-number-fields";
+  assert.throws(
+    () => validateRustMathCorePolicy(widenedAlpha),
+    /alpha dispatch must retain its admitted domain/,
   );
 
   const missingWasm = structuredClone(rustPolicyManifest);

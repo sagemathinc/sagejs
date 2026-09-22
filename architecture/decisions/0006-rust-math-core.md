@@ -1,7 +1,8 @@
-# ADR 0006: Qualification path for a Rust mathematical core
+# ADR 0006: Qualification and alpha dispatch for a Rust mathematical core
 
-- Status: accepted for experimental qualification; not approved for production
+- Status: accepted for scoped alpha automatic dispatch; production promotion remains receipt-gated
 - Date: 2026-09-20
+- Alpha dispatch amendment: 2026-09-22
 
 ## Context
 
@@ -22,18 +23,22 @@ therefore treats complete class-group computation as the trial domain and
 requires native and browser evidence before Rust becomes a production
 mathematical backend.
 
-This decision defines the architectural contract for that trial. It does not
-declare the experimental implementation production-ready, select it
-automatically, or weaken any existing correctness, proof, platform, or WebAssembly
-requirement.
+This decision defines the architectural contract for that trial. The project
+owner subsequently authorized automatic use in Sage.js's explicitly alpha
+release channel for admitted absolute irreducible cubic fields. That
+authorization does not declare the implementation production-qualified or
+weaken proof semantics: `proof=False` may publish the named conditional-GRH
+authority, while `proof=True` and the default require the authenticated
+unconditional Minkowski suffix.
 
 The fail-closed executable form of this decision is
 [`architecture/rust-math-core-policy.json`](../rust-math-core-policy.json).
 That policy and the Rust entries in
 [`architecture/native-code.json`](../native-code.json) deliberately label the
-current sources `experimental-qualification`. Changing that label or enabling
-automatic dispatch requires the exact promotion receipt described below; an
-architecture-document edit by itself is insufficient.
+current Rust sources `experimental-qualification`, while the backend policy
+records the narrower `alpha-automatic-dispatch` state. Production promotion
+still requires the exact promotion receipt described below; an architecture
+document edit by itself remains insufficient for a production claim.
 
 ## Decision
 
@@ -206,13 +211,22 @@ availability, input domain, proof mode, resource limits, and qualification
 status. It must not infer support from a successful dynamic import or from the
 name of a public Python function.
 
-The Rust route remains opt-in and diagnostic until its frozen candidate passes
-the applicable qualification gates. Production automatic selection requires a
-receipt authenticating the exact artifact and admitted workload. A correct
+The Rust route may be selected automatically in the alpha release channel for
+the admitted cubic domain recorded in the executable policy. The host must
+authenticate the exact artifact, and automatic fallback is allowed only for a
+typed capability decline before publication. Resource exhaustion,
+cancellation, corrupt success, and any decline after resident publication are
+reported rather than silently changing backends. Production qualification and
+any widening beyond that alpha domain require a receipt authenticating the
+exact artifact and admitted workload. A correct
 Python, generated native, mature-library, or qualified WebAssembly path may be
 declared as fallback when it satisfies the same public request. Fallback is
 chosen before computation or from an authenticated retry checkpoint; there is
 no mid-computation semantic mixture across backends.
+
+Alpha automatic selection is a dispatch decision, not a distribution review.
+It does not waive the existing safety, provenance, license, notice, source
+delivery, relinking, or artifact-SBOM gates for anything included in a release.
 
 Diagnostics report selected backend, artifact identity, proof mode, completion
 status, fallback reason, resource limits, and whether the result came from a
@@ -281,7 +295,9 @@ surplus of relations cannot independently assert completeness. Native success
 does not waive W0 or browser R5.
 
 Only an artifact that passes all applicable gates may be registered as an
-automatic production backend for the qualified class-group domain. Partial
+automatic production-qualified backend for the class-group domain. The scoped
+alpha dispatch authorization is not such a registration and cannot satisfy or
+replace a missing promotion receipt. Partial
 outcomes are recorded precisely: experimental, prepared-field only,
 native-qualified with unresolved browser/platform work, or unqualified with a
 named limiting stage. Thresholds are not relaxed after seeing results to create
@@ -289,7 +305,7 @@ a passing label.
 
 ## Required architecture integration before promotion
 
-The integration lane must, before production selection:
+The integration lane must, before production-qualified selection:
 
 - update the project architecture policy to name handwritten Rust as this
   explicit receipt-gated exception;

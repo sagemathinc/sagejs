@@ -340,6 +340,66 @@ def _bind_session(result: Any, session: RustClassGroupSession) -> None:
         context._rust_class_group_session = session
 
 
+def _adapt_compact_summary(field: Any, session: RustClassGroupSession) -> Any:
+    presentation = __import__(
+        "sagejs.number_fields.rust_class_group_presentation",
+        fromlist=["rust_class_group_presentation"],
+    )
+    summary = session.summary()
+    summary_identity = presentation._identity(summary)
+    witness_identity = summary.get("proofWitnessesSha256")
+    generator_count = len(summary.get("invariants", ()))
+
+    def attest(payload: Any) -> bool:
+        if session.closed or not isinstance(payload, dict):
+            return False
+        purpose = payload.get("purpose")
+        coordinate = payload.get("coordinateZeroBased")
+        if purpose == "generator-order-witness":
+            if (
+                isinstance(coordinate, bool)
+                or not isinstance(coordinate, int)
+                or coordinate < 0
+                or coordinate >= generator_count
+            ):
+                return False
+        elif purpose in (
+            "class-group-summary",
+            "conditional-class-group-proof",
+            "ideal-query",
+        ):
+            if coordinate is not None:
+                return False
+        else:
+            return False
+        return bool(
+            payload.get("schema")
+            == "sagejs.rust-class-group/authenticated-service-attestation-v1"
+            and payload.get("artifactSha256") == session.artifact_sha256
+            and payload.get("summaryIdentity") == summary_identity
+            and payload.get("proofWitnessesSha256") == witness_identity
+        )
+
+    group = presentation.adapt_rust_authenticated_service_class_group(
+        field,
+        summary,
+        attestation_callback=attest,
+        query_callback=session.query,
+        query_resources=dict(_DEFAULT_QUERY_RESOURCES),
+    )
+    if group.ideal_order() is not field.maximal_order():
+        raise RustClassGroupPublicationError(
+            "the Rust compact summary changed maximal orders"
+        )
+    if group.proof_status != EXACT_RELATIONS_CONDITIONAL_GRH:
+        raise RustClassGroupPublicationError(
+            "the Rust compact summary changed proof authority"
+        )
+    group._rust_class_group_session = session
+    group._rust_class_group_summary_identity = summary_identity
+    return group
+
+
 def _adapt_session(field: Any, session: RustClassGroupSession) -> Any:
     presentation = __import__(
         "sagejs.number_fields.rust_class_group_presentation",
@@ -502,11 +562,73 @@ def rust_class_unit_context(
         raise
 
 
+def rust_class_group(
+    field: Any,
+    *,
+    proof: bool | None = None,
+    algorithm: str = "auto",
+    options: dict[str, Any] | None = None,
+    backend: Any = None,
+) -> Any | None:
+    """Return the compact resident cubic class group when policy permits it."""
+    if algorithm not in ("auto", "rust"):
+        return None
+    if int(field.degree()) != 3:
+        return None
+    supplied = {} if options is None else dict(options)
+    if supplied:
+        if algorithm == "rust":
+            raise RustClassGroupCapabilityDecline(
+                "algorithm='rust' does not yet support public execution-control overrides"
+            )
+        return None
+    # The compact resident summary proves the class group under GRH. The
+    # existing class/unit continuation remains responsible for the independent
+    # unconditional Minkowski suffix.
+    if proof is None or bool(proof):
+        return None
+    cache = getattr(field, "_rust_direct_class_group_cache", None)
+    if cache is not None:
+        if (
+            getattr(cache, "ideal_order", lambda: None)() is field.maximal_order()
+            and getattr(cache, "proof_status", None) == EXACT_RELATIONS_CONDITIONAL_GRH
+        ):
+            return cache
+        raise RustClassGroupPublicationError(
+            "the compact Rust class-group cache is corrupt"
+        )
+    try:
+        session = _open_session(field, backend)
+    except RustClassGroupCapabilityDecline:
+        if algorithm == "auto":
+            return None
+        raise
+    try:
+        group = _adapt_compact_summary(field, session)
+    except RustClassGroupCapabilityDecline as error:
+        try:
+            session.close()
+        except BaseException:
+            pass
+        raise RustClassGroupPublicationError(
+            "the Rust service declined after publishing a resident result"
+        ) from error
+    except BaseException:
+        try:
+            session.close()
+        except BaseException:
+            pass
+        raise
+    field._rust_direct_class_group_cache = group
+    return group
+
+
 __all__ = [
     "HOST_RESPONSE_SCHEMA",
     "RustClassGroupCapabilityDecline",
     "RustClassGroupPublicationError",
     "RustClassGroupServiceError",
     "RustClassGroupSession",
+    "rust_class_group",
     "rust_class_unit_context",
 ]

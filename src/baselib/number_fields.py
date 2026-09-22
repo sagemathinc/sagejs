@@ -2877,6 +2877,14 @@ class NumberFieldParent(sage.Parent):
         **limits: Any,
     ) -> Any:
         del names
+        rust_group = _nf_rust_class_group_runtime_module().rust_class_group(
+            self,
+            proof=proof,
+            algorithm=algorithm,
+            options=limits,
+        )
+        if rust_group is not None:
+            return rust_group
         rust_context = _nf_rust_class_group_runtime_module().rust_class_unit_context(
             self,
             proof=proof,

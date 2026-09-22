@@ -518,6 +518,10 @@ export class NodeClassGroupBackend {
         filename: this.resource.filename,
       },
     });
+    // A warm resident service is an optimization, not process ownership. The
+    // command-line runtime must be allowed to finish without an explicit
+    // backend close; the process exit hook still tears down the service group.
+    this.worker.unref();
     this.generation += 1n;
   }
 
