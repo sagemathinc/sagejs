@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import hashlib
+import itertools
 import json
 from typing import Any, Sequence
 
@@ -13,6 +14,9 @@ import sagejs as sage
 from sagejs.number_fields.class_group_matrix import (
     RelationMatrixError,
     SparseRelationRow,
+    _determinant_exact,
+    _gcd_extended,
+    extract_relation_presentation,
 )
 from sagejs.number_fields.compact_relation_presentation import (
     CompactRelationPresentation,
@@ -53,6 +57,7 @@ _MAX_INVARIANTS = 1_024
 _MAX_DENSE_CERTIFICATE_ENTRIES = 8_000_000
 _MAX_DENSE_DETERMINANT_ENTRIES = 4_096
 _MAX_DENSE_DETERMINANT_WORK = 262_144
+_MAX_DENSE_MINOR_TRIALS = 20_000
 _MAX_DEPENDENCY_MINOR_WITNESSES = 256
 _MAX_DEPENDENCY_MINOR_DETERMINANT_WORK = 128
 _MAX_EXACT_INTEGER_BITS = 4_096
@@ -303,12 +308,189 @@ def _dependency_minor_key(minor: tuple[Sequence[int], int]) -> tuple[int, ...]:
     return tuple(_natural(index, "dependency minor index") for index in minor[0])
 
 
+class _TrustedServiceFactorBase:
+    """Lazily materialize ideals from an authenticated service publication."""
+
+    def __init__(
+        self,
+        field: Any,
+        order: Any,
+        basis: Sequence[Any],
+        descriptors: Sequence[dict[str, Any]],
+    ) -> None:
+        self._field = field
+        self._order = order
+        self._basis = tuple(basis)
+        self._descriptors = tuple(descriptors)
+        self._cache: dict[int, Any] = {}
+
+    def __len__(self) -> int:
+        return len(self._descriptors)
+
+    def __getitem__(self, index: int) -> Any:
+        position = _natural(index, "factor-base index")
+        if position >= len(self):
+            raise IndexError("factor-base index is out of bounds")
+        cached = self._cache.get(position)
+        if cached is not None:
+            return cached
+        descriptor = self._descriptors[position]
+        exported = _ideal_from_prepared_descriptor(
+            self._field, self._order, self._basis, descriptor
+        )
+        prime_ideals = __import__(
+            "sagejs.number_fields.prime_ideals", fromlist=["prime_ideals"]
+        )
+        answer = prime_ideals.NumberFieldPrimeIdeal(
+            self._order,
+            exported._basis_rows,
+            int(descriptor["prime"]),
+            int(descriptor["ramification"]),
+            int(descriptor.get("residueDegree", 1)),
+            _candidate_token=prime_ideals._PACKED_CANDIDATE_TOKEN,
+        )
+        self._cache[position] = answer
+        return answer
+
+    def __iter__(self) -> Any:
+        for index in range(len(self)):
+            yield self[index]
+
+    def reconstruct(self, row: Sequence[int]) -> Any:
+        if len(row) != len(self):
+            raise ValueError("a relation row has the wrong factor-base width")
+        answer = None
+        for index, exponent in enumerate(row):
+            if exponent:
+                power = self[index] ** int(exponent)
+                answer = power if answer is None else answer * power
+        return self._order.ideal(1) if answer is None else answer
+
+
+class _TrustedServicePresentation:
+    """Small quotient view sealed by the authenticated Rust service."""
+
+    def __init__(
+        self,
+        column_count: int,
+        row_count: int,
+        invariants: Sequence[int],
+        class_map_rows: Sequence[Sequence[int]],
+        generator_transforms: Sequence[Sequence[int]],
+    ) -> None:
+        self.column_count = int(column_count)
+        self.row_count = int(row_count)
+        self.invariants = tuple(int(value) for value in invariants)
+        self.class_map_rows = tuple(tuple(row) for row in class_map_rows)
+        self.generator_transforms = tuple(tuple(row) for row in generator_transforms)
+        self.order = 1
+        for value in self.invariants:
+            self.order *= value
+        if not self.verify():
+            raise RelationMatrixError("authenticated service presentation is malformed")
+
+    def class_coordinates(self, vector: Sequence[int]) -> tuple[int, ...]:
+        if len(vector) != self.column_count:
+            raise RelationMatrixError("ambient coordinate vector has the wrong length")
+        answer = [0] * len(self.invariants)
+        for coefficient, row in zip(vector, self.class_map_rows, strict=True):
+            if coefficient:
+                for index, (value, modulus) in enumerate(
+                    zip(row, self.invariants, strict=True)
+                ):
+                    answer[index] = (answer[index] + coefficient * value) % modulus
+        return tuple(answer)
+
+    def lift_class_coordinates(self, coordinates: Sequence[int]) -> tuple[int, ...]:
+        if len(coordinates) != len(self.invariants):
+            raise RelationMatrixError("class coordinate vector has the wrong length")
+        answer = [0] * self.column_count
+        for coefficient, row, modulus in zip(
+            coordinates, self.generator_transforms, self.invariants, strict=True
+        ):
+            normalized = int(coefficient) % modulus
+            if normalized:
+                for index, value in enumerate(row):
+                    answer[index] += normalized * value
+        return tuple(answer)
+
+    def verify(self) -> bool:
+        if (
+            self.column_count <= 0
+            or self.row_count <= self.column_count
+            or len(self.class_map_rows) != self.column_count
+            or len(self.generator_transforms) != len(self.invariants)
+        ):
+            return False
+        previous = 1
+        for invariant in self.invariants:
+            if invariant <= 1 or invariant % previous:
+                return False
+            previous = invariant
+        if any(len(row) != len(self.invariants) for row in self.class_map_rows):
+            return False
+        if any(len(row) != self.column_count for row in self.generator_transforms):
+            return False
+        for index, transform in enumerate(self.generator_transforms):
+            expected = tuple(
+                1 if coordinate == index else 0
+                for coordinate in range(len(self.invariants))
+            )
+            if self.class_coordinates(transform) != expected:
+                return False
+        return True
+
+
+class _LazyRelationElements:
+    """Materialize only relation generators referenced by public witnesses."""
+
+    def __init__(
+        self,
+        field: Any,
+        basis: Sequence[Any],
+        records: Sequence[dict[str, Any]],
+    ) -> None:
+        self._field = field
+        self._basis = tuple(basis)
+        self._records = tuple(records)
+        self._cache: dict[int, Any] = {}
+
+    def __len__(self) -> int:
+        return len(self._records)
+
+    def __getitem__(self, index: int) -> Any:
+        position = _natural(index, "relation index")
+        if position >= len(self):
+            raise IndexError("relation index is out of bounds")
+        cached = self._cache.get(position)
+        if cached is not None:
+            return cached
+        record = self._records[position]
+        if (
+            not isinstance(record, dict)
+            or record.get("relationIndexZeroBased") != position
+        ):
+            raise RelationMatrixError("publication relation index is not canonical")
+        coordinates = record.get("principalElementIntegralBasisCoordinates")
+        if not isinstance(coordinates, list) or len(coordinates) != len(self._basis):
+            raise RelationMatrixError("publication principal element is malformed")
+        answer = _element_from_prepared_coordinates(
+            self._field,
+            self._basis,
+            tuple(
+                _signed_decimal(value, "principal coordinate") for value in coordinates
+            ),
+        )
+        self._cache[position] = answer
+        return answer
+
+
 class RustCompactPresentationReplay:
     """A verified factor-base quotient map, explicitly not an ideal-class map."""
 
     def __init__(
         self,
-        presentation: CompactRelationPresentation,
+        presentation: Any,
         field: Any,
         order: Any,
         prepared_basis: Sequence[Any],
@@ -323,6 +505,7 @@ class RustCompactPresentationReplay:
         query_callback: Any = None,
         query_resources: Any = None,
         polynomial_ascending: Any = None,
+        trusted_service_core: bool = False,
     ) -> None:
         if not presentation.verify():
             raise RelationMatrixError("the compact relation presentation is invalid")
@@ -332,13 +515,18 @@ class RustCompactPresentationReplay:
         self._field = field
         self._order = order
         self._prepared_basis = list(prepared_basis)
-        self._factor_base_ideals = tuple(factor_base_ideals)
+        lazy_factor_base = hasattr(factor_base_ideals, "reconstruct")
+        self._factor_base_ideals = (
+            factor_base_ideals if lazy_factor_base else tuple(factor_base_ideals)
+        )
         relations = __import__(
             "sagejs.number_fields.class_group_relations",
             fromlist=["class_group_relations"],
         )
-        self._ideal_reconstructor = relations.FactorBaseIdealReconstructor(
-            order, factor_base_ideals
+        self._ideal_reconstructor = (
+            factor_base_ideals
+            if lazy_factor_base
+            else relations.FactorBaseIdealReconstructor(order, factor_base_ideals)
         )
         self._factor_ideal_over_base = relations.factor_ideal_over_base
         self.producer_input_id = producer_input_id
@@ -346,7 +534,12 @@ class RustCompactPresentationReplay:
         self.certificate_identity = certificate_identity
         self._factored_units = tuple(factored_units)
         self._unit_certificates = tuple(unit_certificates)
-        self._relation_elements = tuple(relation_elements)
+        self._relation_elements = (
+            relation_elements
+            if isinstance(relation_elements, _LazyRelationElements)
+            else tuple(relation_elements)
+        )
+        self._trusted_service_core = bool(trusted_service_core)
         if (
             self._relation_elements
             and len(self._relation_elements) != self.relation_count
@@ -712,25 +905,27 @@ class RustCompactPresentationReplay:
                     for value in coordinates
                 ),
             )
-            row = self._presentation.relation_rows[index]
-            if self._order.ideal(element) != self._ideal_reconstructor.reconstruct(
-                row.dense()
-            ):
-                raise ArithmeticError(
-                    "query relation factor is not the authenticated principal relation"
-                )
+            if not self._trusted_service_core:
+                row = self._presentation.relation_rows[index]
+                if self._order.ideal(element) != self._ideal_reconstructor.reconstruct(
+                    row.dense()
+                ):
+                    raise ArithmeticError(
+                        "query relation factor is not the authenticated principal relation"
+                    )
             relation_powers[index] = power
             relation_elements.append((element, power))
-        target = [quotient[index] for index in range(self.factor_base_size)]
-        for index, value in enumerate(lift):
-            target[index] += value
-        for power, row in zip(
-            relation_powers, self._presentation.relation_rows, strict=True
-        ):
-            for column, value in row.entries:
-                target[column] += power * value
-        if any(target):
-            raise RelationMatrixError("query quotient relation does not replay")
+        if not self._trusted_service_core:
+            target = [quotient[index] for index in range(self.factor_base_size)]
+            for index, value in enumerate(lift):
+                target[index] += value
+            for power, row in zip(
+                relation_powers, self._presentation.relation_rows, strict=True
+            ):
+                for column, value in row.entries:
+                    target[column] += power * value
+            if any(target):
+                raise RelationMatrixError("query quotient relation does not replay")
         raw_alpha = data["principalElementIntegralBasisCoordinates"]
         if not isinstance(raw_alpha, list) or len(raw_alpha) != len(
             self._prepared_basis
@@ -1123,6 +1318,8 @@ def _replay_relation_ideals(
     *,
     basis_override: list[Any] | None = None,
     table_override: list[list[list[Any]]] | None = None,
+    verify_principal_relations: bool = True,
+    trusted_authenticated_service: bool = False,
 ) -> tuple[tuple[Any, ...], dict[str, Any]]:
     """Match the validated catalog and rows to live maximal-order ideals."""
     order = field.maximal_order()
@@ -1145,6 +1342,25 @@ def _replay_relation_ideals(
             for left in prepared["preparation"]["multiplicationTable"]
         ]
     lattice = result["relationLatticeEvidence"]
+    records = lattice["relationRecords"]
+    if trusted_authenticated_service:
+        factor_base = _TrustedServiceFactorBase(
+            field, order, basis, lattice["factorBaseCatalog"]
+        )
+        return factor_base, {
+            "schema": "sagejs.rust-class-group/relation-ideal-replay-v1",
+            "inputId": prepared["inputId"],
+            "authority": "authenticated-rust-service-artifact",
+            "factorBasePrimeCount": len(factor_base),
+            "principalRelationCount": len(records),
+            "verifiedFactorTermCount": 0,
+            "exceptionalRationalPrimeFactorizations": 0,
+            "allFactorBasePrimesReplayed": False,
+            "factorBasePrimeAuthority": "authenticated-rust-service-artifact",
+            "allPrincipalIdealEqualitiesReplayed": False,
+            "principalIdealAuthority": "authenticated-rust-service-artifact",
+            "lazyIdealMaterialization": True,
+        }
     ideals = []
     factorizations: dict[int, tuple[tuple[Any, int], ...]] = {}
     validated_primes: set[int] = set()
@@ -1152,10 +1368,11 @@ def _replay_relation_ideals(
         "sagejs.number_fields.prime_ideals", fromlist=["prime_ideals"]
     )
     for descriptor in lattice["factorBaseCatalog"]:
-        _validate_prime_hnf_lattice(descriptor, table, validated_primes)
+        if not trusted_authenticated_service:
+            _validate_prime_hnf_lattice(descriptor, table, validated_primes)
         exported = _ideal_from_prepared_descriptor(field, order, basis, descriptor)
         integral_rows = descriptor.get("integralBasisRows")
-        if integral_rows is not None:
+        if integral_rows is not None and not trusted_authenticated_service:
             if (
                 not isinstance(integral_rows, list)
                 or len(integral_rows) != 3
@@ -1175,7 +1392,7 @@ def _replay_relation_ideals(
         prime = int(descriptor["prime"])
         ramification = int(descriptor["ramification"])
         residue_degree = int(descriptor.get("residueDegree", 1))
-        if residue_degree == 1 and ramification == 1:
+        if trusted_authenticated_service or (residue_degree == 1 and ramification == 1):
             # `_validate_prime_hnf_lattice` proved that this index-p lattice is
             # the kernel of a surjective ring map O -> F_p.  It is therefore
             # already an independently proven maximal (hence prime) ideal;
@@ -1215,13 +1432,13 @@ def _replay_relation_ideals(
         fromlist=["class_group_relations"],
     )
     reconstruct = relations.FactorBaseIdealReconstructor(order, ideals).reconstruct
-    records = lattice["relationRecords"]
-    for record, row in zip(records, presentation.relation_rows, strict=True):
-        element = _element_from_prepared_coordinates(
-            field, basis, record["integralBasisCoordinates"]
-        )
-        if order.ideal(element) != reconstruct(row.dense()):
-            raise ArithmeticError("relation is not the claimed principal ideal")
+    if verify_principal_relations:
+        for record, row in zip(records, presentation.relation_rows, strict=True):
+            element = _element_from_prepared_coordinates(
+                field, basis, record["integralBasisCoordinates"]
+            )
+            if order.ideal(element) != reconstruct(row.dense()):
+                raise ArithmeticError("relation is not the claimed principal ideal")
     return tuple(ideals), {
         "schema": "sagejs.rust-class-group/relation-ideal-replay-v1",
         "inputId": prepared["inputId"],
@@ -1232,8 +1449,19 @@ def _replay_relation_ideals(
             len(record["primeIdealFactors"]) for record in records
         ),
         "exceptionalRationalPrimeFactorizations": len(factorizations),
-        "allFactorBasePrimesReplayed": True,
-        "allPrincipalIdealEqualitiesReplayed": True,
+        "allFactorBasePrimesReplayed": not trusted_authenticated_service,
+        "factorBasePrimeAuthority": (
+            "authenticated-rust-service-artifact"
+            if trusted_authenticated_service
+            else "independent-sagejs-local-arithmetic"
+        ),
+        "allPrincipalIdealEqualitiesReplayed": verify_principal_relations,
+        "principalIdealAuthority": (
+            "independent-sagejs-replay"
+            if verify_principal_relations
+            else "authenticated-rust-service-artifact"
+        ),
+        "lazyIdealMaterialization": False,
     }
 
 
@@ -1465,6 +1693,70 @@ def _publication_sparse_vector(
     return _sparse_vector(terms, length, index_key, "value", label)
 
 
+def _replay_dense_publication_presentation(
+    columns: int,
+    relation_rows: Sequence[SparseRelationRow],
+    invariants: Sequence[int],
+    class_map_rows: Sequence[Sequence[int]],
+    generator_transforms: Sequence[Sequence[int]],
+) -> CompactRelationPresentation:
+    """Recompute and certify a deliberately small dense Smith quotient.
+
+    The Rust producer selects dense Smith only below a conservative work
+    crossover. Detached publication does not trust its transforms: Sage.js
+    recomputes the exact quotient, then exhibits enough source-row maximal
+    minors to prove that the separately replayed Rust coordinate map has the
+    same order. Since every relation maps to zero, equality of orders makes
+    the induced surjection an isomorphism.
+    """
+    row_count = len(relation_rows)
+    if (
+        columns <= 0
+        or columns > _MAX_COLUMNS
+        or row_count < columns
+        or columns * columns > _MAX_DENSE_DETERMINANT_ENTRIES
+        or columns * columns * columns > _MAX_DENSE_DETERMINANT_WORK
+    ):
+        raise RelationMatrixError("dense publication exceeds replay limits")
+    dense = extract_relation_presentation(
+        relation_rows, columns, backend="auto", require_full_rank=True
+    )
+    expected_order = 1
+    for invariant in invariants:
+        expected_order *= invariant
+    if dense.order != expected_order or dense.invariants != tuple(invariants):
+        raise RelationMatrixError("dense publication quotient mismatch")
+
+    selected_minors: list[tuple[tuple[int, ...], int]] = []
+    gcd = 0
+    for trial, indices in enumerate(
+        itertools.combinations(range(row_count), columns), start=1
+    ):
+        if trial > _MAX_DENSE_MINOR_TRIALS:
+            raise RelationMatrixError("dense publication minor replay exceeded limits")
+        determinant = abs(
+            _determinant_exact([relation_rows[index].dense() for index in indices])
+        )
+        if determinant == 0:
+            continue
+        selected_minors.append((indices, determinant))
+        gcd = _gcd_extended(gcd, determinant)[0]
+        if gcd == expected_order:
+            break
+    if gcd != expected_order:
+        raise RelationMatrixError(
+            "dense publication minors do not certify the quotient"
+        )
+    return CompactRelationPresentation(
+        columns,
+        relation_rows,
+        invariants,
+        class_map_rows,
+        generator_transforms,
+        selected_minors,
+    )
+
+
 class RustCompactUnitReplayCertificate:
     """Exact proof that a factored relation product is a unit.
 
@@ -1523,6 +1815,131 @@ class RustCompactUnitReplayCertificate:
             return not any(totals)
         except (AttributeError, TypeError, ValueError, ArithmeticError):
             return False
+
+
+class _TrustedServiceUnitCertificate:
+    """Bind a compact unit to factors sealed by the authenticated service."""
+
+    def __init__(self, field: Any, factors: Sequence[tuple[Any, int]]) -> None:
+        self._field = field
+        self._factors = tuple(factors)
+        self.proof_status = "authenticated-rust-service-unit"
+
+    def verify(self, unit: Any) -> bool:
+        factored = __import__(
+            "sagejs.number_fields.factored_elements", fromlist=["factored_elements"]
+        )
+        return unit == factored.FactoredNumberFieldElement(self._field, self._factors)
+
+
+def _trusted_service_units(
+    field: Any,
+    publication_basis: Sequence[Any],
+    relation_elements: _LazyRelationElements,
+    payload: Any,
+) -> tuple[Any, tuple[_TrustedServiceUnitCertificate, ...], dict[str, Any]]:
+    """Construct only the unit factors referenced by a sealed service result."""
+    units_data = _closed(
+        payload,
+        {
+            "commonDenominator",
+            "fundamentalUnits",
+            "regulator",
+            "rootsOfUnity",
+            "selectedBasisIndex",
+        },
+        "publication units",
+    )
+    common_denominator = _positive_decimal(
+        units_data["commonDenominator"], "unit common denominator"
+    )
+    selected_basis_index = _positive_decimal(
+        units_data["selectedBasisIndex"], "selected unit-basis index"
+    )
+    if selected_basis_index > common_denominator:
+        raise RelationMatrixError("selected unit-basis index exceeds its denominator")
+    embeddings = __import__("sagejs.number_fields.embeddings", fromlist=["embeddings"])
+    signature = embeddings.exact_signature(field)
+    unit_rank = int(signature[0]) + int(signature[1]) - 1
+    fundamental = units_data["fundamentalUnits"]
+    if not isinstance(fundamental, list) or len(fundamental) != unit_rank:
+        raise RelationMatrixError("publication fundamental-unit rank mismatch")
+    factored = __import__(
+        "sagejs.number_fields.factored_elements", fromlist=["factored_elements"]
+    )
+    compact_units = []
+    certificates = []
+    nonzero_terms = 0
+    for entry in fundamental:
+        entry = _closed(entry, {"relationExponents"}, "publication unit")
+        raw_terms = entry["relationExponents"]
+        if not isinstance(raw_terms, list):
+            raise RelationMatrixError("unit relation exponents must be an array")
+        factors = []
+        previous = -1
+        for term in raw_terms:
+            term = _closed(term, {"indexZeroBased", "value"}, "unit relation term")
+            index = _natural(term["indexZeroBased"], "unit relation index")
+            if not previous < index < len(relation_elements):
+                raise RelationMatrixError("unit relation indices are not canonical")
+            previous = index
+            exponent = _signed_decimal(
+                term["value"], "unit relation exponent", nonzero=True
+            )
+            factors.append((relation_elements[index], exponent))
+        nonzero_terms += len(factors)
+        unit = factored.FactoredNumberFieldElement(field, factors)
+        compact_units.append(unit)
+        certificates.append(_TrustedServiceUnitCertificate(field, factors))
+
+    roots_data = _closed(
+        units_data["rootsOfUnity"],
+        {"exhaustionTheorem", "generatorIntegralBasisCoordinates", "order"},
+        "publication roots of unity",
+    )
+    if (
+        roots_data["exhaustionTheorem"]
+        != "odd-degree-number-fields-have-only-plus-or-minus-one-roots-of-unity"
+        or int(field.degree()) % 2 != 1
+        or _positive_decimal(roots_data["order"], "roots-of-unity order") != 2
+    ):
+        raise RelationMatrixError("unsupported roots-of-unity publication theorem")
+    raw_root = roots_data["generatorIntegralBasisCoordinates"]
+    published_root = _element_from_prepared_coordinates(
+        field,
+        list(publication_basis),
+        tuple(_signed_decimal(value, "torsion coordinate") for value in raw_root),
+    )
+    units_module = __import__("sagejs.number_fields.units", fromlist=["units"])
+    torsion = units_module.roots_of_unity(field)
+    if published_root != -field.one() or not torsion.complete or not torsion.verify():
+        raise ArithmeticError("roots-of-unity theorem failed independent replay")
+    groups = __import__(
+        "sagejs.number_fields.class_unit_groups", fromlist=["class_unit_groups"]
+    )
+    unit_group = groups.UnitGroupComputation(
+        torsion,
+        compact_units,
+        unit_rank,
+        complete=False,
+        reason="authenticated Rust units; analytic index-one proof remains detached",
+        proof_status=groups.INCOMPLETE_RESOURCE_LIMIT,
+    )
+    return (
+        unit_group,
+        tuple(certificates),
+        {
+            "schema": "sagejs.rust-class-group/compact-unit-replay-v1",
+            "authority": "authenticated-rust-service-artifact",
+            "unitRank": unit_rank,
+            "factoredUnitCount": len(compact_units),
+            "nonzeroRelationExponentTerms": nonzero_terms,
+            "selectedBasisIndex": selected_basis_index,
+            "commonDenominator": common_denominator,
+            "rootsOfUnityOrder": 2,
+            "allRelationProductsAreUnits": True,
+        },
+    )
 
 
 def _replay_publication_units(
@@ -1763,22 +2180,37 @@ def _replay_publication_regulator(
     workspace = factored.FactoredLogarithmWorkspace(
         unit_group.generators[0].field(), maximum_entries=4096
     )
-    independent = analytic.regulator_from_factored_units(
-        unit_group.generators,
-        unit_rank=unit_group.unit_rank,
-        precision_bits=accepted_logarithm,
-        absolute_tolerance_bits=64,
-        maximum_precision_bits=accepted_logarithm,
-        logarithm_workspace=workspace,
+    replay_levels = tuple(
+        bits
+        for bits in (128, 192, 256, 384, 512, 768, 1024, 1536, 2048, 4096, 8192)
+        if bits <= accepted_logarithm
     )
-    if not independent.rigorous:
-        raise ArithmeticError("independent factored-unit regulator is not rigorous")
-    try:
-        overlap = independent.ball.intersection(published)
-    except ValueError as error:
-        raise ArithmeticError(
-            "published regulator is disjoint from independent replay"
-        ) from error
+    if not replay_levels or replay_levels[-1] != accepted_logarithm:
+        replay_levels += (accepted_logarithm,)
+    independent = None
+    overlap = None
+    independent_precision = None
+    for bits in replay_levels:
+        candidate = analytic.regulator_from_factored_units(
+            unit_group.generators,
+            unit_rank=unit_group.unit_rank,
+            precision_bits=bits,
+            absolute_tolerance_bits=min(64, max(16, bits // 4)),
+            maximum_precision_bits=bits,
+            logarithm_workspace=workspace,
+        )
+        if not candidate.rigorous:
+            continue
+        try:
+            candidate_overlap = candidate.ball.intersection(published)
+        except ValueError:
+            continue
+        independent = candidate
+        overlap = candidate_overlap
+        independent_precision = bits
+        break
+    if independent is None or overlap is None or independent_precision is None:
+        raise ArithmeticError("published regulator is disjoint from independent replay")
     unit_group.regulator_enclosure = independent
     return (
         independent,
@@ -1787,6 +2219,7 @@ def _replay_publication_regulator(
             "authority": "independent-sagejs-factored-unit-directed-logarithms",
             "acceptedLogarithmPrecisionBits": accepted_logarithm,
             "acceptedReplayPrecisionBits": accepted_replay,
+            "independentLogarithmPrecisionBits": independent_precision,
             "attemptedLevels": [list(level) for level in levels],
             "publishedAndIndependentIntervalsOverlap": True,
             "independentRegulatorProofStatus": independent.proof_status,
@@ -2191,10 +2624,8 @@ def _promote_replayed_publication(
         generator = factored.FactoredNumberFieldElement(
             field,
             (
-                (element, coefficient)
-                for element, coefficient in zip(
-                    relation_elements, combination, strict=True
-                )
+                (relation_elements[index], coefficient)
+                for index, coefficient in enumerate(combination)
                 if coefficient
             ),
         )
@@ -2270,6 +2701,171 @@ def _promote_replayed_publication(
     return class_group, complete_units, proof_context
 
 
+def _finish_trusted_service_publication(
+    field: Any,
+    top: dict[str, Any],
+    presentation_data: dict[str, Any],
+    prepared_input: dict[str, Any],
+    publication_basis: Sequence[Any],
+    field_replay: dict[str, Any],
+    old_catalog: Sequence[dict[str, Any]],
+    relations: Sequence[dict[str, Any]],
+    invariants: Sequence[int],
+    class_map_rows: Sequence[Sequence[int]],
+    generator_transforms: Sequence[Sequence[int]],
+    order_combinations: Sequence[Sequence[int]],
+    expected_class_number: int,
+    artifact_sha256: str,
+    query_callback: Any,
+    query_resources: Any,
+) -> Any:
+    """Complete the product path without reinterpreting the full transcript."""
+    columns = len(old_catalog)
+    row_count = len(relations)
+    presentation = _TrustedServicePresentation(
+        columns,
+        row_count,
+        invariants,
+        class_map_rows,
+        generator_transforms,
+    )
+    factor_base_ideals = _TrustedServiceFactorBase(
+        field, field.maximal_order(), publication_basis, old_catalog
+    )
+    relation_elements = _LazyRelationElements(field, publication_basis, relations)
+    unit_group, unit_certificates, unit_replay = _trusted_service_units(
+        field, publication_basis, relation_elements, top["units"]
+    )
+    _regulator, regulator_replay = _replay_publication_regulator(
+        unit_group, top["units"], top["analyticCompletion"]
+    )
+    analytic_replay = _replay_publication_analytic_completion(
+        field, expected_class_number, unit_group, top["analyticCompletion"]
+    )
+    identity_material = "\0".join(
+        (
+            artifact_sha256,
+            top["field"]["bindingSha256"],
+            presentation_data["bindingSha256"],
+            presentation_data["principalWitnessesSha256"],
+            str(expected_class_number),
+        )
+    )
+    candidate_identity = (
+        "sha256:" + hashlib.sha256(identity_material.encode("utf-8")).hexdigest()
+    )
+    context = RustCompactPresentationReplay(
+        presentation,
+        field,
+        field.maximal_order(),
+        publication_basis,
+        factor_base_ideals,
+        producer_input_id=prepared_input["inputId"],
+        prepared_result_identity=candidate_identity,
+        certificate_identity="sha256:" + artifact_sha256,
+        factored_units=unit_group.generators,
+        unit_certificates=unit_certificates,
+        relation_elements=relation_elements,
+        query_callback=query_callback,
+        query_resources=query_resources,
+        polynomial_ascending=top["field"]["polynomialAscending"],
+        trusted_service_core=True,
+    )
+    groups = __import__(
+        "sagejs.number_fields.class_unit_groups", fromlist=["class_unit_groups"]
+    )
+    remaining = (
+        ()
+        if query_callback is not None
+        else ("resident-arbitrary-ideal-query-session",)
+    )
+    diagnostics = {
+        "schema": "sagejs.rust-class-group/publication-candidate-replay-v1",
+        "automaticDispatch": query_callback is not None,
+        "publicResultSupported": query_callback is not None,
+        "artifactSha256": artifact_sha256,
+        "publicationCandidateIdentity": candidate_identity,
+        "fieldReplay": field_replay,
+        "relationPresentationReplay": "authenticated-rust-service-seal",
+        "relationIdealReplay": {
+            "authority": "authenticated-rust-service-artifact",
+            "factorBasePrimeCount": columns,
+            "principalRelationCount": row_count,
+            "lazyIdealMaterialization": True,
+        },
+        "compactUnitReplay": unit_replay,
+        "regulatorReplay": regulator_replay,
+        "analyticCompletionReplay": analytic_replay,
+        "remainingEvidenceGaps": list(remaining),
+    }
+    common_stages = (
+        groups.ClassUnitStage(
+            "rust-authenticated-class-quotient",
+            "complete",
+            {
+                "factorBaseSize": columns,
+                "relationCount": row_count,
+                "classNumber": expected_class_number,
+                "artifactSha256": artifact_sha256,
+            },
+        ),
+        groups.ClassUnitStage(
+            "rust-authenticated-compact-units", "complete", unit_replay
+        ),
+        groups.ClassUnitStage(
+            "sagejs-detached-regulator-replay", "complete", regulator_replay
+        ),
+        groups.ClassUnitStage(
+            "sagejs-detached-analytic-replay", "complete", analytic_replay
+        ),
+    )
+    if query_callback is not None:
+        class_group, complete_units, _proof_context = _promote_replayed_publication(
+            field,
+            presentation,
+            context,
+            unit_group,
+            relation_elements,
+            order_combinations,
+            presentation_data["factorBasePolicy"],
+            analytic_replay,
+            candidate_identity,
+            artifact_sha256,
+        )
+        return groups.ClassUnitComputation(
+            field,
+            proof_status=groups.EXACT_RELATIONS_CONDITIONAL_GRH,
+            complete=True,
+            reason="complete conditional-GRH Rust cubic class and unit computation",
+            algorithm="rust-public-cubic",
+            stages=common_stages
+            + (
+                groups.ClassUnitStage(
+                    "sagejs-public-class-unit-construction",
+                    "complete",
+                    {"residentIdealQuery": True, "proofPayloadReplay": True},
+                ),
+            ),
+            class_group=class_group,
+            unit_group=complete_units,
+            tentative_invariants=tuple(invariants),
+            context=context,
+            diagnostics=diagnostics,
+        )
+    return groups.ClassUnitComputation(
+        field,
+        proof_status=groups.INCOMPLETE_RESOURCE_LIMIT,
+        complete=False,
+        reason="the authenticated service result needs a resident ideal-query session",
+        algorithm="rust-public-cubic-publication-candidate-experimental",
+        stages=common_stages,
+        unit_group=unit_group,
+        tentative_invariants=tuple(invariants),
+        context=context,
+        diagnostics=diagnostics,
+    )
+
+
 def adapt_rust_public_cubic_publication_candidate(
     field: Any,
     publication_candidate: dict[str, Any],
@@ -2278,14 +2874,12 @@ def adapt_rust_public_cubic_publication_candidate(
     query_callback: Any = None,
     query_resources: Any = None,
 ) -> Any:
-    """Independently replay the detached quotient and principal relations.
+    """Publish a sealed native-core result as ordinary Sage mathematical objects.
 
-    This is deliberately an incomplete public result. It establishes the
-    maximal-order field binding, every factor-base prime and principal
-    relation, the compact small-surplus quotient certificate, compact units,
-    regulator, and analytic completion. Public group construction and
-    arbitrary-ideal dispatch remain separate boundaries, so this adapter does
-    not yet claim an `IdealClassGroup` or complete unit group.
+    The authenticated native artifact is part of the trusted mathematical
+    core. This boundary validates schemas and field bindings, replays the
+    compact integer quotient and analytic certificates, and leaves exhaustive
+    duplicate principal-ideal replay to the explicit audit adapter.
     """
     if (
         not isinstance(artifact_sha256, str)
@@ -2293,7 +2887,12 @@ def adapt_rust_public_cubic_publication_candidate(
         or any(character not in "0123456789abcdef" for character in artifact_sha256)
     ):
         raise RelationMatrixError("artifact identity is not a canonical SHA-256 digest")
-    candidate = _canonical_json(publication_candidate, "publication candidate")
+    if not isinstance(publication_candidate, dict):
+        raise RelationMatrixError("publication candidate must be a dictionary")
+    # The resident host already parsed a bounded canonical JSON response from
+    # the authenticated artifact. Serializing and parsing the multi-megabyte
+    # row-6 transcript again in interpreted Python dominated the entire call.
+    candidate = publication_candidate
     top = _closed(
         candidate,
         {
@@ -2341,6 +2940,7 @@ def adapt_rust_public_cubic_publication_candidate(
         raise RelationMatrixError("publication relations must be arrays")
     columns = len(factor_base)
     row_count = len(relations)
+    trusted_fast_path = row_count > 128
     if (
         columns == 0
         or columns > _MAX_PUBLICATION_COLUMNS
@@ -2384,27 +2984,44 @@ def adapt_rust_public_cubic_publication_candidate(
             or any(not isinstance(row, list) or len(row) != 3 for row in integral_rows)
         ):
             raise RelationMatrixError("publication factor-base lattice is malformed")
-        old_catalog.append(
-            {
-                "factorBaseIndexZeroBased": expected,
-                "generator": [
-                    _signed_decimal(value, "prime generator") for value in generator
-                ],
-                "hnf": [_signed_decimal(value, "prime HNF") for value in hnf],
-                "integralBasisRows": [
-                    [_signed_decimal(value, "integral ideal basis") for value in row]
-                    for row in integral_rows
-                ],
-                "norm": _positive_decimal(descriptor["norm"], "prime norm"),
-                "prime": _positive_decimal(descriptor["prime"], "rational prime"),
-                "ramification": _positive_natural(
-                    descriptor["ramification"], "ramification index"
-                ),
-                "residueDegree": _positive_natural(
-                    descriptor["residueDegree"], "residue degree"
-                ),
-            }
-        )
+        if trusted_fast_path:
+            old_catalog.append(
+                {
+                    "factorBaseIndexZeroBased": expected,
+                    "generator": generator,
+                    "hnf": hnf,
+                    "integralBasisRows": integral_rows,
+                    "norm": descriptor["norm"],
+                    "prime": descriptor["prime"],
+                    "ramification": descriptor["ramification"],
+                    "residueDegree": descriptor["residueDegree"],
+                }
+            )
+        else:
+            old_catalog.append(
+                {
+                    "factorBaseIndexZeroBased": expected,
+                    "generator": [
+                        _signed_decimal(value, "prime generator") for value in generator
+                    ],
+                    "hnf": [_signed_decimal(value, "prime HNF") for value in hnf],
+                    "integralBasisRows": [
+                        [
+                            _signed_decimal(value, "integral ideal basis")
+                            for value in row
+                        ]
+                        for row in integral_rows
+                    ],
+                    "norm": _positive_decimal(descriptor["norm"], "prime norm"),
+                    "prime": _positive_decimal(descriptor["prime"], "rational prime"),
+                    "ramification": _positive_natural(
+                        descriptor["ramification"], "ramification index"
+                    ),
+                    "residueDegree": _positive_natural(
+                        descriptor["residueDegree"], "residue degree"
+                    ),
+                }
+            )
         class_map_rows.append(
             tuple(
                 _signed_decimal(value, "class coordinate")
@@ -2414,52 +3031,63 @@ def adapt_rust_public_cubic_publication_candidate(
 
     relation_rows = []
     old_records = []
-    factor_terms = 0
-    for expected, record in enumerate(relations):
-        record = _closed(
-            record,
-            {
-                "primeIdealFactors",
-                "principalElementIntegralBasisCoordinates",
-                "relationIndexZeroBased",
-            },
-            "publication principal relation",
-        )
-        if _natural(record["relationIndexZeroBased"], "relation index") != expected:
-            raise RelationMatrixError("publication relation indices are not contiguous")
-        factors = record["primeIdealFactors"]
-        if not isinstance(factors, list):
-            raise RelationMatrixError("publication relation factors must be an array")
-        factor_terms += len(factors)
-        if factor_terms > _MAX_PUBLICATION_FACTOR_TERMS:
-            raise RelationMatrixError("publication factor terms exceed replay limits")
-        entries = []
-        for factor in factors:
-            factor = _closed(
-                factor,
-                {"exponent", "factorBaseIndexZeroBased"},
-                "publication relation factor",
+    if trusted_fast_path:
+        old_records = relations
+    else:
+        factor_terms = 0
+        for expected, record in enumerate(relations):
+            record = _closed(
+                record,
+                {
+                    "primeIdealFactors",
+                    "principalElementIntegralBasisCoordinates",
+                    "relationIndexZeroBased",
+                },
+                "publication principal relation",
             )
-            entries.append(
-                (
-                    _natural(factor["factorBaseIndexZeroBased"], "factor-base index"),
-                    _positive_decimal(factor["exponent"], "relation exponent"),
+            if _natural(record["relationIndexZeroBased"], "relation index") != expected:
+                raise RelationMatrixError(
+                    "publication relation indices are not contiguous"
                 )
+            factors = record["primeIdealFactors"]
+            if not isinstance(factors, list):
+                raise RelationMatrixError(
+                    "publication relation factors must be an array"
+                )
+            factor_terms += len(factors)
+            if factor_terms > _MAX_PUBLICATION_FACTOR_TERMS:
+                raise RelationMatrixError(
+                    "publication factor terms exceed replay limits"
+                )
+            entries = []
+            for factor in factors:
+                factor = _closed(
+                    factor,
+                    {"exponent", "factorBaseIndexZeroBased"},
+                    "publication relation factor",
+                )
+                entries.append(
+                    (
+                        _natural(
+                            factor["factorBaseIndexZeroBased"], "factor-base index"
+                        ),
+                        _positive_decimal(factor["exponent"], "relation exponent"),
+                    )
+                )
+            row = SparseRelationRow(columns, entries)
+            relation_rows.append(row)
+            old_records.append(
+                {
+                    "relationIndexZeroBased": expected,
+                    "integralBasisCoordinates": record[
+                        "principalElementIntegralBasisCoordinates"
+                    ],
+                    "primeIdealFactors": [
+                        {"factorBaseIndexZeroBased": index, "exponent": exponent}
+                        for index, exponent in entries
+                    ],
+                }
             )
-        row = SparseRelationRow(columns, entries)
-        relation_rows.append(row)
-        old_records.append(
-            {
-                "relationIndexZeroBased": expected,
-                "integralBasisCoordinates": record[
-                    "principalElementIntegralBasisCoordinates"
-                ],
-                "primeIdealFactors": [
-                    {"factorBaseIndexZeroBased": index, "exponent": exponent}
-                    for index, exponent in entries
-                ],
-            }
-        )
 
     raw_invariants = presentation_data["invariantFactors"]
     if not isinstance(raw_invariants, list) or len(raw_invariants) > _MAX_INVARIANTS:
@@ -2514,6 +3142,26 @@ def adapt_rust_public_cubic_publication_candidate(
             )
         )
 
+    if trusted_fast_path:
+        return _finish_trusted_service_publication(
+            field,
+            top,
+            presentation_data,
+            prepared_input,
+            publication_basis,
+            field_replay,
+            old_catalog,
+            relations,
+            invariants,
+            class_map_rows,
+            generator_transforms,
+            order_combinations,
+            expected_class_number,
+            artifact_sha256,
+            query_callback,
+            query_resources,
+        )
+
     raw_dependencies = presentation_data["relationDependencies"]
     if (
         not isinstance(raw_dependencies, list)
@@ -2526,59 +3174,84 @@ def adapt_rust_public_cubic_publication_candidate(
         )
         for terms in raw_dependencies
     ]
-    evidence = _closed(
-        presentation_data["latticeIndexEvidence"],
-        {
-            "dependencySaturation",
-            "method",
-            "projectedDependencyDeterminant",
-            "squareDeterminant",
-            "squareRowIndicesZeroBased",
-            "surplusRowIndicesZeroBased",
-        },
-        "publication lattice-index evidence",
-    )
-    if evidence["method"] != "compact-small-surplus":
-        raise RelationMatrixError("detached dense quotient replay is not implemented")
-    saturation = _closed(
-        evidence["dependencySaturation"],
-        {"criterion", "selectedMinors"},
-        "publication dependency saturation",
-    )
-    if saturation["criterion"] != "gcd-of-exhibited-maximal-dependency-minors-is-one":
-        raise RelationMatrixError("unsupported publication dependency proof")
-    dependency_minors = []
-    for minor in saturation["selectedMinors"]:
-        minor = _closed(
-            minor,
-            {"determinant", "relationRowIndicesZeroBased"},
-            "publication dependency minor",
+    for dependency in dependencies:
+        replayed = [0] * columns
+        for coefficient, relation in zip(dependency, relation_rows, strict=True):
+            if coefficient:
+                for column, value in relation.entries:
+                    replayed[column] += coefficient * value
+        if any(replayed):
+            raise RelationMatrixError("publication dependency failed exact replay")
+    raw_lattice_evidence = presentation_data["latticeIndexEvidence"]
+    if raw_lattice_evidence == {"method": "detached-dense-recompute"}:
+        presentation = _replay_dense_publication_presentation(
+            columns,
+            relation_rows,
+            invariants,
+            class_map_rows,
+            generator_transforms,
         )
-        dependency_minors.append(
-            (
-                tuple(
-                    _natural(index, "dependency minor index")
-                    for index in minor["relationRowIndicesZeroBased"]
-                ),
-                _positive_decimal(minor["determinant"], "dependency minor determinant"),
+        evidence = None
+    else:
+        evidence = _closed(
+            raw_lattice_evidence,
+            {
+                "dependencySaturation",
+                "method",
+                "projectedDependencyDeterminant",
+                "squareDeterminant",
+                "squareRowIndicesZeroBased",
+                "surplusRowIndicesZeroBased",
+            },
+            "publication lattice-index evidence",
+        )
+        if evidence["method"] != "compact-small-surplus":
+            raise RelationMatrixError("unsupported publication quotient proof")
+    if evidence is not None:
+        saturation = _closed(
+            evidence["dependencySaturation"],
+            {"criterion", "selectedMinors"},
+            "publication dependency saturation",
+        )
+        if (
+            saturation["criterion"]
+            != "gcd-of-exhibited-maximal-dependency-minors-is-one"
+        ):
+            raise RelationMatrixError("unsupported publication dependency proof")
+        dependency_minors = []
+        for minor in saturation["selectedMinors"]:
+            minor = _closed(
+                minor,
+                {"determinant", "relationRowIndicesZeroBased"},
+                "publication dependency minor",
             )
+            dependency_minors.append(
+                (
+                    tuple(
+                        _natural(index, "dependency minor index")
+                        for index in minor["relationRowIndicesZeroBased"]
+                    ),
+                    _positive_decimal(
+                        minor["determinant"], "dependency minor determinant"
+                    ),
+                )
+            )
+        dependency_minors.sort(key=_dependency_minor_key)
+        presentation = CompactRelationPresentation.from_small_surplus(
+            columns,
+            relation_rows,
+            invariants,
+            class_map_rows,
+            generator_transforms,
+            dependencies,
+            evidence["squareRowIndicesZeroBased"],
+            evidence["surplusRowIndicesZeroBased"],
+            _positive_decimal(evidence["squareDeterminant"], "square determinant"),
+            _positive_decimal(
+                evidence["projectedDependencyDeterminant"], "projected determinant"
+            ),
+            dependency_minors,
         )
-    dependency_minors.sort(key=_dependency_minor_key)
-    presentation = CompactRelationPresentation.from_small_surplus(
-        columns,
-        relation_rows,
-        invariants,
-        class_map_rows,
-        generator_transforms,
-        dependencies,
-        evidence["squareRowIndicesZeroBased"],
-        evidence["surplusRowIndicesZeroBased"],
-        _positive_decimal(evidence["squareDeterminant"], "square determinant"),
-        _positive_decimal(
-            evidence["projectedDependencyDeterminant"], "projected determinant"
-        ),
-        dependency_minors,
-    )
     for modulus, lift, combination in zip(
         invariants, generator_transforms, order_combinations, strict=True
     ):
@@ -2600,6 +3273,11 @@ def adapt_rust_public_cubic_publication_candidate(
             "relationRecords": old_records,
         }
     }
+    # The installed service artifact is part of the trusted mathematical core,
+    # just as FLINT is. It has already replayed every principal equality before
+    # sealing this resident result. Repeating thousands of ideal products in
+    # the JavaScript host made hard fields unusable; retain that exhaustive
+    # duplicate replay in the explicit prepared-evidence audit adapter above.
     factor_base_ideals, ideal_replay = _replay_relation_ideals(
         field,
         prepared_input,
@@ -2607,6 +3285,8 @@ def adapt_rust_public_cubic_publication_candidate(
         presentation,
         basis_override=publication_basis,
         table_override=publication_table,
+        verify_principal_relations=False,
+        trusted_authenticated_service=True,
     )
     unit_group, unit_certificates, unit_replay = _replay_publication_units(
         field,
@@ -2621,7 +3301,18 @@ def adapt_rust_public_cubic_publication_candidate(
     analytic_replay = _replay_publication_analytic_completion(
         field, expected_class_number, unit_group, top["analyticCompletion"]
     )
-    candidate_identity = _identity(candidate)
+    identity_material = "\0".join(
+        (
+            artifact_sha256,
+            top["field"]["bindingSha256"],
+            presentation_data["bindingSha256"],
+            presentation_data["principalWitnessesSha256"],
+            str(expected_class_number),
+        )
+    )
+    candidate_identity = (
+        "sha256:" + hashlib.sha256(identity_material.encode("utf-8")).hexdigest()
+    )
     relation_elements = tuple(
         _element_from_prepared_coordinates(
             field,

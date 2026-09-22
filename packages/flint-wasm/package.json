@@ -52,6 +52,8 @@
     "dist/extension-resource-manifest.json",
     "dist/extension-resource-receipt.json",
     "dist/flint-algebraic.wasm",
+    "dist/class-group-core.wasm",
+    "dist/class-group-core-receipt.json",
     "dist/native-kernels/",
     "dist/wasm-pack-loader.mjs",
     "dist/ffi-production-closure.json",

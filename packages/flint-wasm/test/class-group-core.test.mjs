@@ -53,17 +53,28 @@ function fakeWorkers({ initialize = true } = {}) {
       }
       if (message.request?.hang) return;
       let result = { echo: message.request, generation: this.generation };
-      if (message.request?.schema?.endsWith("cubic-session-open-v1")) {
-        result = { outcome: "open", handle: 7, maximumResidentSessions: 4 };
-      } else if (message.request?.schema?.endsWith("cubic-session-query-v1")) {
-        result = { outcome: "complete-conditional-grh-ideal-class", handle: 7 };
-      } else if (message.request?.schema?.endsWith("cubic-session-publication-v1")) {
+      const serviceRequest = message.request?.schema ===
+        "sagejs.class-groups/service-request-v1";
+      if (serviceRequest && message.request.operation === "open") {
+        result = { outcome: "open", generation: "1", handle: "7", maximumResidentSessions: 4 };
+      } else if (serviceRequest && message.request.operation === "query") {
+        result = { outcome: "complete-conditional-grh-ideal-class", handle: "7" };
+      } else if (serviceRequest && message.request.operation === "publication") {
         result = {
           schema: "sagejs.rust-class-group/public-cubic-publication-candidate-v2",
           status: "detached-replay-required-before-publication",
         };
-      } else if (message.request?.schema?.endsWith("cubic-session-close-v1")) {
-        result = { outcome: "closed", handle: 7 };
+      } else if (serviceRequest && message.request.operation === "close") {
+        result = { outcome: "closed", handle: "7" };
+      }
+      if (serviceRequest) {
+        result = {
+          schema: "sagejs.class-groups/service-response-v1",
+          abi: 1,
+          id: message.request.id,
+          ok: true,
+          result,
+        };
       }
       queueMicrotask(() => this.onmessage?.({
         data: { type: "result", id: message.id, ok: true, result },
@@ -114,7 +125,7 @@ test("abort terminates the synchronous worker and invalidates resident handles",
   });
   try {
     const session = await service.open({ field: "cubic" });
-    assert.equal(session.handle, 7);
+    assert.equal(session.handle, "7");
     assert.equal(
       (await session.query([["1"]], { factorBase: [] })).outcome,
       "complete-conditional-grh-ideal-class",

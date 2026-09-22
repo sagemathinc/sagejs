@@ -26,6 +26,14 @@
       "specialist-capability"
     ],
     "test_evidence": {
+      "rust-cubic-class-group-product": {
+        "differential": true,
+        "paths": [
+          "test/number-field-rust-class-group-release.cjs",
+          "packages/flint-wasm/test/class-group-core-product.test.mjs",
+          "packages/flint-wasm/test/browser-class-group-evaluator.mjs"
+        ]
+      },
       "finite-extension-multivariate-boundary": {
         "differential": true,
         "paths": [
@@ -1077,6 +1085,31 @@
         "status": "included"
       },
       "public_explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
+    },
+    {
+      "id": "specialist:cubic-class-groups-rust",
+      "kind": "specialist-capability",
+      "family": "algebraic-number-theory",
+      "source": "packages/class-groups/src/service.rs",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "native-resident-service-or-ordinary-exact-cubic",
+      "wasm_module": "class-group",
+      "public_consumers": [
+        "NumberField.class_group",
+        "NumberField.class_number",
+        "NumberField.unit_group"
+      ],
+      "tests": [
+        "rust-cubic-class-group-product"
+      ],
+      "review_note": "The same bounded Rust service passes exact native/Wasm corpus parity, resident lifecycle and mutation tests, and Chromium, Firefox, and WebKit evaluator execution with a 256 MiB maximum memory contract.",
+      "reviewed": true,
+      "shared_core": "packages/class-groups",
+      "availability_evidence": {
+        "path": "test/number-field-rust-class-group-release.cjs"
+      },
+      "public_explanation": "Absolute monic cubic class groups and units can execute through the receipt-authenticated Rust class-group specialist in browser WebAssembly. Conditional-GRH and unconditional proof authority remain explicit at the public API."
     },
     {
       "id": "specialist:capability-report-api",

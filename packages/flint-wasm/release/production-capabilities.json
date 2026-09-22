@@ -4,7 +4,9 @@
     "class-group": {
       "artifact": "class-group-core.wasm",
       "capabilities": [],
-      "additionalCapabilities": []
+      "additionalCapabilities": [
+        "specialist:cubic-class-groups-rust"
+      ]
     },
     "flint-extension-multivariate": {
       "artifact": "flint-extension-multivariate.wasm",

@@ -15,7 +15,7 @@ export class ClassGroupCoreInterruptedError extends Error {}
 export class ClassGroupCoreClosedError extends Error {}
 
 export class ClassGroupCoreSession {
-  readonly handle: number;
+  readonly handle: string;
   readonly openReceipt: unknown;
   query(idealIntegralBasisRows: unknown, resources: unknown, options?: { signal?: AbortSignal }): Promise<unknown>;
   publication(options?: { signal?: AbortSignal }): Promise<unknown>;
@@ -27,6 +27,7 @@ export class ClassGroupCoreService {
   readonly generation: number;
   ready(options?: { signal?: AbortSignal }): Promise<this>;
   invoke(request: unknown, options?: { signal?: AbortSignal }): Promise<unknown>;
+  call(operation: string, payload?: Record<string, unknown>, options?: { signal?: AbortSignal }): Promise<unknown>;
   open(completionRequest: unknown, options?: { signal?: AbortSignal }): Promise<ClassGroupCoreSession | unknown>;
   diagnostics(): Promise<unknown>;
   interrupt(): Promise<void>;

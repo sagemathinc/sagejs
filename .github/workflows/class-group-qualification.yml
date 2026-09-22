@@ -44,7 +44,7 @@ jobs:
     env:
       CI: "true"
       SAGEJS_CLASS_GROUP_CORPUS_PROFILE: routine
-      SAGEJS_CLASS_GROUP_CORPUS_EXECUTABLE: ${{ github.workspace }}/bench/pari-class-group-rust/qualification/public-cubic-e2e/target/release/sagejs-public-cubic-class-group-e2e-qualification
+      SAGEJS_CLASS_GROUP_CORPUS_EXECUTABLE: ${{ github.workspace }}/packages/class-groups/target/release/class-group-service
     steps:
       - uses: actions/checkout@v7
         with:
@@ -62,10 +62,14 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Build the pinned FLINT dependency
         run: node packages/flint/scripts/build-deps.cjs
-      - name: Build the production-source qualification executable
+      - name: Build the production native service
         env:
           SAGEJS_FLINT_PREFIX: ${{ github.workspace }}/packages/flint/.native/prefix
-        run: cargo build --release --locked --manifest-path bench/pari-class-group-rust/qualification/public-cubic-e2e/Cargo.toml
+        run: packages/class-groups/scripts/build-native.sh
+      - name: Prepare the pinned Wasm toolchain
+        run: node packages/wasm-toolchain/scripts/toolchain.cjs prepare
+      - name: Build the production Wasm reactor
+        run: packages/class-groups/scripts/build-wasm.sh
       - name: Replay exact outputs, proof semantics, limits, mutation, cleanup, and available parity
         run: node --test test/number-field-rust-class-group-release.cjs
       - name: Replay the Rust certificate-mutation regression
@@ -81,7 +85,7 @@ jobs:
     env:
       CI: "true"
       SAGEJS_CLASS_GROUP_CORPUS_PROFILE: heavy
-      SAGEJS_CLASS_GROUP_CORPUS_EXECUTABLE: ${{ github.workspace }}/bench/pari-class-group-rust/qualification/public-cubic-e2e/target/release/sagejs-public-cubic-class-group-e2e-qualification
+      SAGEJS_CLASS_GROUP_CORPUS_EXECUTABLE: ${{ github.workspace }}/packages/class-groups/target/release/class-group-service
     steps:
       - uses: actions/checkout@v7
         with:
@@ -99,9 +103,13 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Build the pinned FLINT dependency
         run: node packages/flint/scripts/build-deps.cjs
-      - name: Build the production-source qualification executable
+      - name: Build the production native service
         env:
           SAGEJS_FLINT_PREFIX: ${{ github.workspace }}/packages/flint/.native/prefix
-        run: cargo build --release --locked --manifest-path bench/pari-class-group-rust/qualification/public-cubic-e2e/Cargo.toml
+        run: packages/class-groups/scripts/build-native.sh
+      - name: Prepare the pinned Wasm toolchain
+        run: node packages/wasm-toolchain/scripts/toolchain.cjs prepare
+      - name: Build the production Wasm reactor
+        run: packages/class-groups/scripts/build-wasm.sh
       - name: Run row-6 outside pull-request CI
         run: node --test test/number-field-rust-class-group-release.cjs

@@ -42,8 +42,12 @@ _DEFAULT_RESOURCES = {
     "maximumCompactSaturationMinorTrials": 32_768,
     "maximumCompactDependencyEntries": 1_000_000,
     "maximumCompactTargetCoefficientBits": 1_000_000,
-    "logarithmPrecisionBits": 4_096,
-    "replayPrecisionBits": 2_048,
+    # These are ceilings, not eager working precisions. The service starts at
+    # its lower adaptive levels, while hard real cubic fields such as row-6
+    # need the higher ceiling to make the independently replayed regulator
+    # enclosure overlap rigorously.
+    "logarithmPrecisionBits": 8_192,
+    "replayPrecisionBits": 4_096,
     "analyticPrecisionBits": 512,
     "maximumRelations": 10_000,
     "maximumDependencies": 1_000,

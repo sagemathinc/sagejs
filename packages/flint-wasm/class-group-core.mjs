@@ -1,5 +1,8 @@
 import { validateSpecialistReceipt } from "./specialist-bytes.mjs";
 
+const serviceRequestSchema = "sagejs.class-groups/service-request-v1";
+const serviceResponseSchema = "sagejs.class-groups/service-response-v1";
+
 export const defaultClassGroupCoreArtifact = new URL(
   "./dist/class-group-core.wasm",
   import.meta.url,
@@ -74,6 +77,7 @@ export class ClassGroupCoreService {
     });
     this.pending = new Map();
     this.nextId = 0;
+    this.nextServiceId = 0;
     this.generation = 0;
     this.closed = false;
     this.spawn();
@@ -203,12 +207,35 @@ export class ClassGroupCoreService {
     return this.request("invoke", { request }, options);
   }
 
-  async open(completionRequest, options) {
-    const receipt = await this.invoke({
-      schema: "sagejs.rust-class-group/cubic-session-open-v1",
-      completionRequest,
+  async call(operation, payload = {}, options) {
+    const id = `worker-${this.generation}-${++this.nextServiceId}`;
+    const response = await this.invoke({
+      schema: serviceRequestSchema,
+      abi: 1,
+      id,
+      operation,
+      ...payload,
     }, options);
-    if (receipt?.outcome !== "open") return receipt;
+    if (response?.schema !== serviceResponseSchema || response?.abi !== 1 ||
+        response?.id !== id || typeof response?.ok !== "boolean") {
+      throw new Error("class-group service returned a malformed response envelope");
+    }
+    if (!response.ok) {
+      const error = new Error(String(response.error?.message ?? "class-group service failed"));
+      error.name = "ClassGroupCoreServiceError";
+      error.category = String(response.error?.category ?? "invalid-response");
+      error.operation = String(response.error?.operation ?? operation);
+      throw error;
+    }
+    return response.result;
+  }
+
+  async open(completionRequest, options) {
+    const receipt = await this.call("open", { request: completionRequest }, options);
+    if (receipt?.outcome !== "open" || !/^[0-9]+$/.test(receipt.handle) ||
+        !/^[0-9]+$/.test(receipt.generation)) {
+      throw new Error("class-group service returned a malformed open receipt");
+    }
     return new ClassGroupCoreSession(this, receipt, this.generation);
   }
 
@@ -267,6 +294,7 @@ export class ClassGroupCoreSession {
     this.service = service;
     this.openReceipt = openReceipt;
     this.handle = openReceipt.handle;
+    this.remoteGeneration = openReceipt.generation;
     this.generation = generation;
     this.closed = false;
   }
@@ -280,8 +308,8 @@ export class ClassGroupCoreSession {
 
   query(idealIntegralBasisRows, resources, options) {
     this.ensureLive();
-    return this.service.invoke({
-      schema: "sagejs.rust-class-group/cubic-session-query-v1",
+    return this.service.call("query", {
+      generation: this.remoteGeneration,
       handle: this.handle,
       idealIntegralBasisRows,
       resources,
@@ -290,9 +318,10 @@ export class ClassGroupCoreSession {
 
   publication(options) {
     this.ensureLive();
-    return this.service.invoke(
+    return this.service.call(
+      "publication",
       {
-        schema: "sagejs.rust-class-group/cubic-session-publication-v1",
+        generation: this.remoteGeneration,
         handle: this.handle,
       },
       options,
@@ -303,8 +332,8 @@ export class ClassGroupCoreSession {
     if (this.closed) return;
     this.closed = true;
     if (this.generation !== this.service.generation || this.service.closed) return;
-    const result = await this.service.invoke({
-      schema: "sagejs.rust-class-group/cubic-session-close-v1",
+    const result = await this.service.call("close", {
+      generation: this.remoteGeneration,
       handle: this.handle,
     }, options);
     if (result?.outcome !== "closed") {

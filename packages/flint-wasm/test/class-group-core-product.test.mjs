@@ -45,9 +45,9 @@ test("the class-group specialist has a lazy 256 MiB production contract", () => 
   assert.ok(group.assets.includes("class-group-core.wasm"));
   assert.ok(group.assets.includes("runtime/class-group-core-worker.mjs"));
   assert.ok(group.maximumCompressedDelta.gzipBytes <= 5_000_000);
-  // Capability promotion is integration-owned: architecture/wasm-capabilities.json
-  // rejects new product IDs until their fallback and public consumer are reviewed.
-  assert.deepEqual(capabilities.modules["class-group"].additionalCapabilities, []);
+  assert.deepEqual(capabilities.modules["class-group"].additionalCapabilities, [
+    "specialist:cubic-class-groups-rust",
+  ]);
 });
 
 const artifact = productionArtifact();
@@ -86,11 +86,13 @@ test(
       },
     });
     try {
-      const result = await service.invoke(request);
+      const session = await service.open(request);
+      const result = session.openReceipt.completion;
       assert.equal(result.outcome, "complete-conditional-grh");
       assert.equal(result.completion.classNumber, "6");
       assert.deepEqual(result.completion.invariantFactors, ["6"]);
       assert.equal((await service.diagnostics()).maximumMemoryPages, 4096);
+      await session.close();
     } finally {
       await service.close();
     }

@@ -215,3 +215,21 @@ test("unsupported execution controls are never ignored", async () => {
   ]);
   assert.equal(result.repr, "[None, 'RustClassGroupCapabilityDecline', []]");
 });
+
+test(
+  "the production service publishes a detached dense result through the ordinary Sage API",
+  {
+    skip: process.env.SAGEJS_CLASS_GROUP_SERVICE
+      ? false
+      : "production class-group service is absent",
+  },
+  async () => {
+    const result = await evaluate([
+      "R.<x> = QQ[]",
+      "K.<a> = NumberField(x^3 - x - 1)",
+      "G = K.class_group(proof=False, algorithm='rust')",
+      "[G.order(), G.invariants(), G.proof_status]",
+    ]);
+    assert.equal(result.repr, "[1, (), 'exact-relations-conditional-grh']");
+  },
+);
