@@ -1,0 +1,90 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "class-group-rust-core",
+  "title": "Production Rust class-group core extraction",
+  "lane": "distribution",
+  "status": "review",
+  "owner": "user",
+  "objective": "Extract the qualified complex-cubic Rust mathematical core into a production Cargo workspace without changing algorithms, with focused unit tests and a deliberately narrow internal API",
+  "base_commit": "ab85769a9ab00e2d3d466aaa64410671f098d9ff",
+  "claims": [
+    "packages/class-groups/"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Existing Rust qualification corpus and differential PARI receipts",
+      "Existing Sage.js class-unit fixture corpus"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea",
+    "env SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix cargo test --manifest-path packages/class-groups/Cargo.toml"
+  ],
+  "runs": [
+    {
+      "command": "pnpm parallel:check",
+      "result": "pass",
+      "exit_code": 0,
+      "platform": "linux-x64"
+    },
+    {
+      "command": "SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix cargo test --manifest-path packages/class-groups/Cargo.toml",
+      "result": "pass",
+      "exit_code": 0,
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed",
+      "result": "fail",
+      "exit_code": 1,
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check",
+      "result": "fail",
+      "exit_code": 1,
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix cargo test --manifest-path packages/class-groups/Cargo.toml",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 38.526,
+      "started_at": "2026-09-22T06:01:13.591Z",
+      "commit": "ab85769a9ab00e2d3d466aaa64410671f098d9ff",
+      "workspace_fingerprint": "3c0898e29b0eb46e3fdaf92a6de728560ee61edbbd236cf55af00a69b1b337f0",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Extracted the qualified cubic class/unit mathematical implementation into one host-independent `sagejs-class-groups` Cargo package. FLINT normal-form and Arb completion are mandatory, the public exports are limited to preparation, bounded collection, authenticated presentations, conditional completion, sealed result evidence, and arbitrary-ideal queries, and six focused integration suites plus 109 module tests pass against the qualified FLINT build.",
+    "risks": [
+      "Historical H1 and allowlisted Row-6 qualification helpers remain interleaved in general production modules; they are private at the crate root but produce inherited dead-code warnings.",
+      "The private `prepared_input` JSON parser is retained solely because the Row-6 helpers depend on it; a later source split should remove serde and serde_json from the mathematical core.",
+      "Only Linux x64 was executed in this lane. macOS, Linux arm64, WASI, and the Windows capability-gated fallback still require integration qualification.",
+      "`pnpm test:changed` stops at the expected unclassified-native failure because this lane cannot edit `architecture/native-code.json`; generated Cargo target files were cleaned afterward.",
+      "The final `pnpm parallel:check` correctly refuses review handoff until the integration lane classifies the new native files and records the distribution lane's mandatory portable/native/SEA receipts."
+    ],
+    "next_steps": [
+      "Classify every new Rust/C/test/build file in `architecture/native-code.json` and move the corresponding provenance records from experimental bench paths to production package paths.",
+      "Point `bench/pari-class-group-rust` and its public-cubic qualification crates at this package so there is one authoritative source, then remove duplicate benchmark sources.",
+      "Extract the bounded public-cubic orchestration into a production service layer and make the existing Wasm reactor depend on this package.",
+      "Split H1 and allowlisted Row-6 compatibility helpers from `class_group`, `numerical_preparation`, and `arbitrary_ideal_reduction`, then remove the private prepared-input parser and serde dependencies.",
+      "Add the package to root packaging/build scripts and qualify the explicit FLINT prefix on macOS, Linux arm64, WASI, and Windows fallback routes."
+    ]
+  }
+}
