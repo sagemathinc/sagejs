@@ -1,8 +1,30 @@
-import { fetchSpecialistBytes } from "./specialist-bytes.mjs";
+import {
+  fetchSpecialistBytes,
+  validateSpecialistReceipt,
+} from "./specialist-bytes.mjs";
 import { instantiateClassGroupCore } from "./class-group-core-loader.mjs";
 
 let core = null;
 let initialized = false;
+let closing = false;
+let initializationController = null;
+
+async function resolveReceipt(value, signal) {
+  if (typeof value !== "string") return validateSpecialistReceipt(value);
+  const response = await fetch(value, { signal });
+  if (!response.ok) {
+    throw new Error(`class-group receipt download failed (${response.status})`);
+  }
+  const length = Number(response.headers.get("content-length"));
+  if (Number.isFinite(length) && length > 4096) {
+    throw new RangeError("class-group receipt exceeds its transfer limit");
+  }
+  const source = await response.text();
+  if (source.length > 4096) {
+    throw new RangeError("class-group receipt exceeds its transfer limit");
+  }
+  return validateSpecialistReceipt(JSON.parse(source));
+}
 
 function serializedError(error) {
   return {
@@ -16,16 +38,32 @@ self.onmessage = ({ data }) => {
   if (!data || typeof data !== "object") return;
   if (data.type === "initialize" && !initialized) {
     initialized = true;
+    initializationController = new AbortController();
     void (async () => {
-      const bytes = await fetchSpecialistBytes(data.artifact, data.receipt);
-      core = await instantiateClassGroupCore(bytes);
+      const receipt = await resolveReceipt(
+        data.receipt,
+        initializationController.signal,
+      );
+      const bytes = await fetchSpecialistBytes(data.artifact, receipt, {
+        signal: initializationController.signal,
+      });
+      const instance = await instantiateClassGroupCore(bytes);
+      if (closing) {
+        instance.close();
+        return;
+      }
+      core = instance;
       self.postMessage({
         type: "ready",
         protocol: 1,
-        diagnostics: core.diagnostics(),
+        diagnostics: { ...core.diagnostics(), artifactReceipt: receipt },
       });
     })().catch((error) => {
-      self.postMessage({ type: "initialization-error", error: serializedError(error) });
+      if (!closing) {
+        self.postMessage({ type: "initialization-error", error: serializedError(error) });
+      }
+    }).finally(() => {
+      initializationController = null;
     });
     return;
   }
@@ -53,6 +91,8 @@ self.onmessage = ({ data }) => {
     return;
   }
   if (data.type === "close") {
+    closing = true;
+    initializationController?.abort();
     core?.close();
     core = null;
     self.postMessage({ type: "closed" });

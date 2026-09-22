@@ -1,5 +1,14 @@
 import { validateSpecialistReceipt } from "./specialist-bytes.mjs";
 
+export const defaultClassGroupCoreArtifact = new URL(
+  "./dist/class-group-core.wasm",
+  import.meta.url,
+);
+export const defaultClassGroupCoreReceipt = new URL(
+  "./dist/class-group-core-receipt.json",
+  import.meta.url,
+);
+
 export class ClassGroupCoreInterruptedError extends Error {
   constructor(message = "class-group computation was interrupted") {
     super(message);
@@ -30,8 +39,15 @@ function abortError() {
   return error;
 }
 
+function normalizedReceipt(receipt) {
+  if (typeof receipt === "string" || receipt instanceof URL) {
+    return String(receipt);
+  }
+  return validateSpecialistReceipt(receipt);
+}
+
 /**
- * Experimental receipt-gated Rust class-group service.
+ * Receipt-gated Rust class-group service.
  *
  * The artifact is fetched, authenticated, compiled and retained only inside a
  * dedicated worker. Until the mathematical core exposes bounded resumable
@@ -39,8 +55,8 @@ function abortError() {
  */
 export class ClassGroupCoreService {
   constructor({
-    artifact,
-    receipt,
+    artifact = defaultClassGroupCoreArtifact,
+    receipt = defaultClassGroupCoreReceipt,
     worker = new URL("./class-group-core-worker.mjs", import.meta.url),
     WorkerConstructor = globalThis.Worker,
   }) {
@@ -52,7 +68,7 @@ export class ClassGroupCoreService {
     }
     this.configuration = Object.freeze({
       artifact: String(artifact),
-      receipt: validateSpecialistReceipt(receipt),
+      receipt: normalizedReceipt(receipt),
       worker: String(worker),
       WorkerConstructor,
     });
@@ -69,10 +85,14 @@ export class ClassGroupCoreService {
       type: "module",
     });
     this.worker = worker;
+    this.workerState = "starting";
     this.readyPromise = new Promise((resolve, reject) => {
       this.readyResolve = resolve;
       this.readyReject = reject;
     });
+    // A service can be closed or replaced before a caller awaits readiness.
+    // Retain the rejection for callers without creating an unhandled promise.
+    void this.readyPromise.catch(() => {});
     worker.onmessage = ({ data }) => {
       if (worker !== this.worker || generation !== this.generation) return;
       if (data?.type === "ready") {
@@ -81,6 +101,7 @@ export class ClassGroupCoreService {
           return;
         }
         this.workerDiagnostics = data.diagnostics;
+        this.workerState = "ready";
         this.readyResolve(this);
         return;
       }
@@ -88,6 +109,8 @@ export class ClassGroupCoreService {
         const error = deserializeError(data.error);
         this.readyReject(error);
         this.rejectPending(error);
+        this.workerState = "failed";
+        this.worker = undefined;
         worker.terminate();
         return;
       }
@@ -102,8 +125,13 @@ export class ClassGroupCoreService {
     worker.onerror = (event) => {
       if (worker !== this.worker || generation !== this.generation) return;
       const error = event?.error ?? new Error(event?.message || "class-group worker failed");
+      const replace = this.workerState === "ready" && !this.closed;
       this.readyReject(error);
       this.rejectPending(error);
+      this.workerState = "failed";
+      this.worker = undefined;
+      worker.terminate();
+      if (replace) this.spawn();
     };
     worker.postMessage({
       type: "initialize",
@@ -121,16 +149,42 @@ export class ClassGroupCoreService {
     this.pending.clear();
   }
 
-  async ready() {
+  async ready({ signal } = {}) {
     if (this.closed) throw new ClassGroupCoreClosedError();
-    await this.readyPromise;
+    if (signal?.aborted) throw abortError();
+    const generation = this.generation;
+    if (signal === undefined) {
+      await this.readyPromise;
+    } else {
+      await new Promise((resolve, reject) => {
+        const onAbort = () => {
+          signal.removeEventListener("abort", onAbort);
+          if (!this.closed && generation === this.generation) {
+            void this.replaceWorker(abortError(), false);
+          }
+          reject(abortError());
+        };
+        signal.addEventListener("abort", onAbort, { once: true });
+        this.readyPromise.then(
+          (value) => {
+            signal.removeEventListener("abort", onAbort);
+            resolve(value);
+          },
+          (error) => {
+            signal.removeEventListener("abort", onAbort);
+            reject(error);
+          },
+        );
+      });
+    }
+    if (this.closed) throw new ClassGroupCoreClosedError();
     return this;
   }
 
   async request(type, fields, { signal } = {}) {
     if (this.closed) throw new ClassGroupCoreClosedError();
     if (signal?.aborted) throw abortError();
-    await this.ready();
+    await this.ready({ signal });
     if (signal?.aborted) throw abortError();
     const id = ++this.nextId;
     const generation = this.generation;
@@ -161,11 +215,14 @@ export class ClassGroupCoreService {
   async diagnostics() {
     const current = await this.request("diagnostics", {});
     return Object.freeze({
-      route: "experimental-rust-class-group-worker",
+      route: "rust-class-group-worker",
       generation: this.generation,
       artifact: {
         url: this.configuration.artifact,
-        ...this.configuration.receipt,
+        ...(this.workerDiagnostics?.artifactReceipt ??
+          (typeof this.configuration.receipt === "object"
+            ? this.configuration.receipt
+            : { receiptUrl: this.configuration.receipt })),
       },
       ...current,
     });
@@ -175,6 +232,7 @@ export class ClassGroupCoreService {
     if (this.closed) throw new ClassGroupCoreClosedError();
     const worker = this.worker;
     this.worker = undefined;
+    this.workerState = "retired";
     this.readyReject(error);
     this.rejectPending(error);
     worker?.terminate();
@@ -193,6 +251,7 @@ export class ClassGroupCoreService {
   async close() {
     if (this.closed) return;
     this.closed = true;
+    this.workerState = "closed";
     const error = new ClassGroupCoreClosedError();
     this.readyReject(error);
     this.rejectPending(error);
@@ -254,8 +313,13 @@ export class ClassGroupCoreSession {
   }
 }
 
-export async function createClassGroupCore(options) {
+export async function createClassGroupCore(options = {}) {
   const service = new ClassGroupCoreService(options);
-  await service.ready();
-  return service;
+  try {
+    await service.ready({ signal: options.signal });
+    return service;
+  } catch (error) {
+    await service.close();
+    throw error;
+  }
 }
