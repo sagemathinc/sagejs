@@ -281,6 +281,34 @@ test("the class-group build resolves the authenticated host toolchain", () => {
   assert.doesNotMatch(script, /SAGEJS_CLASS_GROUP_WASI_TOOLCHAIN/);
 });
 
+test("the GMP cross probe is portable across BSD and GNU userlands", () => {
+  const root = mkdtempSync(join(tmpdir(), "sagejs-gmp-cross-probe-test-"));
+  const adapter = join(
+    __dirname,
+    "..",
+    "..",
+    "class-groups",
+    "scripts",
+    "gmp-mpfr-cross-cc.sh",
+  );
+  const source = join(root, "system_gmp.c");
+  const probe = join(root, "system_gmp.exe");
+  try {
+    writeFileSync(source, "/* gmp-mpfr-sys probe fixture */\n");
+    execFileSync(adapter, ["-fPIC", source, "-lgmp", "-o", probe], {
+      env: { ...process.env, SAGEJS_GMP_LIMB_BITS: "64" },
+    });
+    execFileSync(probe, { cwd: root });
+    assert.match(
+      readFileSync(join(root, "system_gmp.out"), "utf8"),
+      /^#define GMP_LIMB_BITS 64$/m,
+    );
+    assert.doesNotMatch(readFileSync(adapter, "utf8"), /sed\s+-i/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("unsupported local compiler hosts are unavailable without throwing", () => {
   const status = inspectToolchain({
     platform: "win32-x64",
