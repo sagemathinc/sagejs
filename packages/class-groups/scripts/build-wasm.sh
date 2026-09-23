@@ -3,17 +3,13 @@ set -eu
 
 package=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 root=$(CDPATH= cd -- "$package/../.." && pwd)
-git_common=$(git -C "$root" rev-parse --git-common-dir)
-case "$git_common" in /*) ;; *) git_common="$root/$git_common" ;; esac
-
-toolchain_digest=1e306620de0571d34f6fc1bf0010aaf164e9b328d304bcd3cfd0d86f945634ba
-toolchain=${SAGEJS_CLASS_GROUP_WASI_TOOLCHAIN:-"$git_common/sagejs-wasm-toolchains/v2/$toolchain_digest"}
+resolver="$root/packages/wasm-toolchain/scripts/toolchain.cjs"
+toolchain=$(node "$resolver" path)
 receipt="$toolchain/receipt.json"
-test -f "$receipt" || {
-  echo "class-group WASI toolchain receipt not found: $receipt" >&2
-  exit 2
-}
-test "$(jq -r .lockDigest "$receipt")" = "$toolchain_digest"
+# `toolchain.cjs path` has already authenticated the receipt, host-specific
+# SDK, libraries, headers, and archives. Keep these package-level requirements
+# explicit as an independent guard against accidentally weakening the class-
+# group arithmetic closure in the shared lock.
 test "$(jq -r .libraries.gmp.version "$receipt")" = 6.3.0
 test "$(jq -r .libraries.mpfr.version "$receipt")" = 4.2.2
 test "$(jq -r .libraries.flint.version "$receipt")" = 3.6.0

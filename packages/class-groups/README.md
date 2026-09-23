@@ -50,9 +50,12 @@ same allocator domain; direct Cargo builds that accidentally select another
 GMP are not a supported product build. `scripts/build-native.sh` additionally
 performs a link-closure sentinel check.
 
-`scripts/build-wasm.sh` consumes the authenticated Sage.js WASI toolchain and
-emits `dist/class-group-core.wasm`. Its link flags enforce one non-shared memory
-with an initial 16 MiB and maximum 256 MiB; the product loader independently
+`scripts/build-wasm.sh` resolves and authenticates the host-specific Sage.js
+WASI toolchain through `packages/wasm-toolchain`; it does not duplicate a
+host-specific cache identity. Set the shared `SAGEJS_WASM_TOOLCHAIN_ROOT`
+override when an explicit prepared root is required. The script emits
+`dist/class-group-core.wasm`. Its link flags enforce one non-shared memory with
+an initial 16 MiB and maximum 256 MiB; the product loader independently
 revalidates those limits before instantiation.
 
 The service protocol is ABI 1 and uses one JSON document per native line or

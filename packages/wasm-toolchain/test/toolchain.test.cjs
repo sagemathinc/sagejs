@@ -1,7 +1,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { execFileSync } = require("node:child_process");
+const { execFileSync, spawnSync } = require("node:child_process");
 const {
   mkdtempSync,
   mkdirSync,
@@ -245,6 +245,40 @@ test("only the new explicit root is recognized and incomplete roots fail closed"
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+test("the path command rejects an incomplete restored cache before consumers run", () => {
+  const root = mkdtempSync(join(tmpdir(), "sagejs-wasm-toolchain-path-test-"));
+  try {
+    const result = spawnSync(
+      process.execPath,
+      [join(__dirname, "..", "scripts", "toolchain.cjs"), "path"],
+      {
+        encoding: "utf8",
+        env: { ...process.env, SAGEJS_WASM_TOOLCHAIN_ROOT: root },
+      },
+    );
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /prepared toolchain receipt is missing or differs/);
+    assert.match(result.stderr, /toolchain:prepare/);
+    assert.equal(result.stdout, "");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("the class-group build resolves the authenticated host toolchain", () => {
+  const script = readFileSync(join(
+    __dirname,
+    "..",
+    "..",
+    "class-groups",
+    "scripts",
+    "build-wasm.sh",
+  ), "utf8");
+  assert.match(script, /toolchain=\$\(node "\$resolver" path\)/);
+  assert.doesNotMatch(script, /toolchain_digest|sagejs-wasm-toolchains\/v2/);
+  assert.doesNotMatch(script, /SAGEJS_CLASS_GROUP_WASI_TOOLCHAIN/);
 });
 
 test("unsupported local compiler hosts are unavailable without throwing", () => {
