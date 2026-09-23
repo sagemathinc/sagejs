@@ -29,25 +29,13 @@ function productionArtifact() {
   return candidates.find((filename) => existsSync(filename));
 }
 
-test("the class-group specialist has a lazy 256 MiB production contract", () => {
-  const module = layout.modules.find(({ id }) => id === "class-group");
-  assert.deepEqual(module, {
-    id: "class-group",
-    ownershipDomain: "rust-class-group-flint-gmp-mpfr-arb",
-    artifact: "class-group-core.wasm",
-    eager: false,
-    memory: { pageBytes: 65536, initialPages: 256, maximumPages: 4096 },
-  });
-  const group = layout.artifactTopology.groups.find(({ id }) => id === "class-group");
-  assert.equal(group.kind, "specialist");
-  assert.deepEqual(group.dependencies, ["eager-core"]);
-  assert.ok(group.assets.includes("class-group-core-receipt.json"));
-  assert.ok(group.assets.includes("class-group-core.wasm"));
-  assert.ok(group.assets.includes("runtime/class-group-core-worker.mjs"));
-  assert.ok(group.maximumCompressedDelta.gzipBytes <= 5_000_000);
-  assert.deepEqual(capabilities.modules["class-group"].additionalCapabilities, [
-    "specialist:cubic-class-groups-rust",
-  ]);
+test("the development class-group reactor is excluded from the production layout", () => {
+  assert.equal(layout.modules.find(({ id }) => id === "class-group"), undefined);
+  assert.equal(layout.artifactTopology.groups.find(({ id }) => id === "class-group"), undefined);
+  assert.equal(capabilities.modules["class-group"], undefined);
+  assert.ok(layout.artifactTopology.groups.every(({ assets }) =>
+    assets.every((asset) => !asset.includes("class-group-core.wasm") &&
+      !asset.includes("class-group-core-receipt.json"))));
 });
 
 const artifact = productionArtifact();

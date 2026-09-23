@@ -224,7 +224,6 @@ jobs:
         run: |
           node packages/wasm-toolchain/scripts/toolchain.cjs prepare
           pnpm build
-          packages/class-groups/scripts/build-wasm.sh
           pnpm --dir packages/flint-wasm build
           node scripts/numerical-product.cjs validate-installed
           node packages/flint-wasm/scripts/production-receipt.cjs validate

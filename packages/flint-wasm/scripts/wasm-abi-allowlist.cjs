@@ -56,7 +56,13 @@ async function validateWasiInventory(value) {
     imports.filter(({ module, kind }) =>
       module === "wasi_snapshot_preview1" && kind === "function")
       .map(({ name }) => name)))].sort();
-  const implemented = [...runtime.WASI_IMPLEMENTED_IMPORTS].sort();
+  // The development-only Rust reactor uses the two environment calls. Keep
+  // their host implementation for direct qualification, but do not claim they
+  // occur in a public build that excludes that reactor.
+  const dormant = value.modules["class-group-core.wasm"]
+    ? [] : ["environ_get", "environ_sizes_get"];
+  const implemented = runtime.WASI_IMPLEMENTED_IMPORTS
+    .filter((name) => !dormant.includes(name)).sort();
   if (JSON.stringify(observed) !== JSON.stringify(implemented)) {
     throw new Error(
       `production WASI imports differ: observed=[${observed.join(", ")}], ` +

@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "264e106b00cb557a80c8fd7e589b3f1feacac8a3699d26fe5f4af60e6cbfcbc8",
+  "source_sha256": "163a908eeec762a4c8b8fadbcbc82ed54ec081713de2ea21b172b397f1daa8a7",
   "counts": {
     "total": 1107,
     "by_kind": {
@@ -20,9 +20,10 @@
       "shared-core": 51
     },
     "by_status": {
-      "available": 627,
+      "available": 626,
       "desktop-only": 47,
-      "fallback": 433
+      "fallback": 433,
+      "planned": 1
     }
   },
   "workflow_aliases": {
@@ -13360,7 +13361,7 @@
       "id": "specialist:cubic-class-groups-rust",
       "family": "algebraic-number-theory",
       "disposition": "shared-core",
-      "status": "available",
+      "status": "planned",
       "fallback": "native-resident-service-or-ordinary-exact-cubic",
       "wasm_module": "class-group",
       "public_consumers": [
@@ -13368,7 +13369,7 @@
         "NumberField.class_number",
         "NumberField.unit_group"
       ],
-      "explanation": "Absolute monic cubic class groups and units can execute through the receipt-authenticated Rust class-group specialist in browser WebAssembly. Conditional-GRH and unconditional proof authority remain explicit at the public API."
+      "explanation": "The Rust cubic class-group specialist remains development-only and is not included in the 0.9.0 public WebAssembly package. Ordinary exact fallbacks remain available where supported."
     },
     {
       "id": "specialist:eclib",

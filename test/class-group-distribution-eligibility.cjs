@@ -17,7 +17,12 @@ function fixture(t, { legalConclusion = false, distributionStatus = "review-requ
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-class-group-distribution-"));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.mkdirSync(path.join(root, "packages/class-groups/src"), { recursive: true });
+  fs.mkdirSync(path.join(root, "packages/flint-wasm/release"), { recursive: true });
   fs.mkdirSync(path.join(root, "architecture"), { recursive: true });
+  fs.writeFileSync(
+    path.join(root, "packages/flint-wasm/release/production-layout.json"),
+    JSON.stringify({ modules: [{ id: "class-group" }] }),
+  );
   fs.writeFileSync(path.join(root, "packages/class-groups/Cargo.toml"), "[package]\nname='fixture'\n");
   fs.writeFileSync(
     path.join(root, "packages/class-groups/provenance.json"),
@@ -57,6 +62,24 @@ test("an absent class-group backend does not affect older source releases", (t) 
     passed: true,
     failures: [],
   });
+});
+
+test("source-only class-group development is eligible only without staged reactor bytes", (t) => {
+  const root = fixture(t);
+  const layoutPath = path.join(root, "packages/flint-wasm/release/production-layout.json");
+  fs.writeFileSync(layoutPath, JSON.stringify({ modules: [] }));
+  assert.deepEqual(inspectClassGroupDistributionEligibility(root), {
+    schema: "sagejs.class-groups/distribution-eligibility/v1",
+    applicable: false,
+    passed: true,
+    failures: [],
+  });
+  const artifactPath = path.join(root, "packages/flint-wasm/dist/class-group-core.wasm");
+  fs.mkdirSync(path.dirname(artifactPath), { recursive: true });
+  fs.writeFileSync(artifactPath, "stale reactor");
+  const report = inspectClassGroupDistributionEligibility(root);
+  assert.equal(report.passed, false);
+  assert.match(report.failures[0], /remains staged/);
 });
 
 test("unreviewed class-group source fails closed before release packaging", (t) => {

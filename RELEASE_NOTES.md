@@ -11,11 +11,10 @@ Highlights:
 - Python execution gains optimized paths for exact integer arithmetic,
   attribute access and assignment, argument binding, and object construction.
   These paths retain explicit semantic checks and dynamic fallback behavior.
-- Complex cubic number fields gain an experimental Rust-backed class-group
-  capability with bounded computations, exact replayable certificates, and
-  independent PARI/GP and reference-data comparisons. Its performance and
-  supported envelope remain deliberately limited; requests outside that
-  envelope do not claim a result.
+- The source tree contains experimental Rust-backed cubic class-group work,
+  but 0.9.0 packages do not include its native service or WebAssembly reactor.
+  This capability remains in development pending corresponding-source and
+  relinking evidence for distributable artifacts.
 
 Sage.js remains early alpha software. APIs and coverage continue to evolve, and
 the release includes only capabilities that pass the platform and distribution

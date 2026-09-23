@@ -21,6 +21,21 @@ function inspectClassGroupDistributionEligibility(root = process.cwd()) {
     };
   }
 
+  // Source-only development is not a distribution. If the public layout does
+  // not convey the reactor, reject any stale staged bytes before publication.
+  const layout = readJson(path.join(root, "packages/flint-wasm/release/production-layout.json"));
+  const distributed = layout.modules.some(({ id }) => id === "class-group");
+  if (!distributed) {
+    const staged = ["class-group-core.wasm", "class-group-core-receipt.json"]
+      .filter((name) => fs.existsSync(path.join(root, "packages/flint-wasm/dist", name)));
+    return {
+      schema: "sagejs.class-groups/distribution-eligibility/v1",
+      applicable: false,
+      passed: staged.length === 0,
+      failures: staged.map((name) => `excluded class-group artifact remains staged: ${name}`),
+    };
+  }
+
   const failures = [];
   let provenance;
   let architecture;
