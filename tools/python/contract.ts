@@ -50,6 +50,7 @@ export const SAGEJS_RUNTIME_INTRINSICS: Record<string, string> = {
   blocking_sleep: "ρσ_blocking_sleep",
   bool_builtin: "ρσ_bool",
   check_interrupt: "ρσ_check_interrupt",
+  class_group_backend: 'ρσ_modules["sagejs.runtime"].class_group_backend',
   callable_instance_class: "ρσ_callable_instance_class",
   canonical_json_exact: "ρσ_canonical_json_exact",
   console_object: "console",

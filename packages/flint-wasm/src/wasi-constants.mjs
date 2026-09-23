@@ -121,6 +121,8 @@ export const WASI_DIRECTORY_RIGHTS =
 
 export const WASI_IMPLEMENTED_IMPORTS = Object.freeze([
   "clock_time_get",
+  "environ_get",
+  "environ_sizes_get",
   "fd_close",
   "fd_fdstat_get",
   "fd_fdstat_set_flags",
