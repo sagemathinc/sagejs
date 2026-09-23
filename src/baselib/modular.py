@@ -7340,6 +7340,12 @@ runtime.register_doc(
             "status": "partial",
             "notes": "Complete Hom over QQ for the supported weight-two Gamma0 varieties.",
         },
+        "provenance": [
+            {
+                "kind": "sagejs-original",
+                "source": "Integral Hom lattice from exact newform decomposition and saturation",
+            }
+        ],
         "limitations": [
             "Only supported modular abelian varieties over QQ; not a generic categorical Hom constructor."
         ],
@@ -7358,6 +7364,12 @@ runtime.register_doc(
             "status": "partial",
             "notes": "Full endomorphism order over QQ, including repeated factors and integral gluing.",
         },
+        "provenance": [
+            {
+                "kind": "sagejs-original",
+                "source": "Integral endomorphism order from the complete Hom lattice",
+            }
+        ],
         "limitations": [
             "Does not compute geometric endomorphisms over an algebraic closure."
         ],

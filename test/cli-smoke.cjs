@@ -838,7 +838,7 @@ assert.equal(
     "    An example class.",
     "",
     "Methods:",
-    "    value(n: int=2) -> int",
+    "    value(self, n: int=2) -> int",
     "        Return an example value.",
   ].join("\n"),
 );

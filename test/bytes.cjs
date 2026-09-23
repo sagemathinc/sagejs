@@ -155,7 +155,18 @@ test("raw Punycode codec and error handling agree with CPython without stderr", 
       [resolve(root, "bin", "sagejs"), "--python", filename],
       "",
     );
-    assert.equal(sagejs, cpython);
+    // CPython 3.13 and 3.14 differ only in this error-message punctuation.
+    // Keep the codec, exception type, and unsupported handler comparison exact.
+    assert.equal(
+      sagejs.replaceAll(
+        "Unsupported error handling: not-a-handler",
+        "Unsupported error handling not-a-handler",
+      ),
+      cpython.replaceAll(
+        "Unsupported error handling: not-a-handler",
+        "Unsupported error handling not-a-handler",
+      ),
+    );
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

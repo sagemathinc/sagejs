@@ -1,5 +1,7 @@
 // sagejs-test-tier: unit
-// sagejs-test-portable: true
+// sagejs-test-portable: false
+// The fake resident service is a Unix shebang executable; Windows distribution
+// rejects this unqualified service and tests that capability boundary elsewhere.
 "use strict";
 
 const assert = require("node:assert/strict");
