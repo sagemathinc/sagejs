@@ -59,6 +59,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: 1.98.1
+          targets: wasm32-wasip1
       - run: pnpm install --frozen-lockfile
       - name: Build the pinned FLINT dependency
         run: node packages/flint/scripts/build-deps.cjs
@@ -100,6 +101,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: 1.98.1
+          targets: wasm32-wasip1
       - run: pnpm install --frozen-lockfile
       - name: Build the pinned FLINT dependency
         run: node packages/flint/scripts/build-deps.cjs
