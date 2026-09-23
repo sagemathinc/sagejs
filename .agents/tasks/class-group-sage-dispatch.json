@@ -1,0 +1,67 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "class-group-sage-dispatch",
+  "title": "Sage class-group Rust dispatch",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Connect admitted cubic number fields to the production Rust class-group service through an injectable coarse synchronous callback, preserving Sage proof semantics, cache separation, exact public class/unit objects, fractional-ideal maps, typed fallback, and unconditional upgrade",
+  "base_commit": "f7b30487c931448659f3e8c496e5b349395b9233",
+  "claims": [
+    "src/baselib/number_fields.py",
+    "src/lib/sagejs/number_fields/rust_class_group_runtime.py",
+    "src/lib/sagejs/number_fields/__init__.py",
+    "test/number-field-rust-class-group-dispatch.cjs"
+  ],
+  "dependencies": [
+    "class-group-public-objects",
+    "class-group-product-service",
+    "class-group-runtime-host"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Existing Minkowski unconditional path, detached Rust replay, and public ideal-map differentials"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 11.113,
+      "started_at": "2026-09-22T06:55:44.927Z",
+      "commit": "f7b30487c931448659f3e8c496e5b349395b9233",
+      "workspace_fingerprint": "fa2787bad302125eb9de3fed62f654366c8bc3c97521a3bfccbe9072115b5bac",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added proof-aware automatic/forced Rust dispatch for admitted cubic class groups and class/unit projections. The Python session uses the frozen runtime.class_group_backend().call operation boundary, validates artifact and resident identities, injects exact arbitrary-ideal queries into public objects, caches conditional and unconditional authority separately, and permits auto fallback only for a typed pre-publication capability decline. proof=False may return the canonical conditional-GRH result; proof=True and proof=None authenticate that prefix and require the existing unconditional Minkowski suffix.",
+    "risks": [
+      "This lane depends on class-group-product-service, class-group-runtime-host, and class-group-public-objects; focused end-to-end execution must be repeated after those commits merge.",
+      "The focused Node test could not execute in this isolated lane while dist was being rebuilt: first the optional FLINT addon was absent, then the self-hosted compiler/runtime outputs were temporarily inconsistent.",
+      "Repository-wide strict validation is blocked before claimed files are checked by pre-existing doubled-backtick docstrings in unclaimed benchmark files.",
+      "The full build reaches the final numerical-reactor stage and then fails on the inherited numerical production-manifest toolchain identity mismatch."
+    ],
+    "next_steps": [
+      "Merge dependency lanes, rebuild once, and run test/number-field-rust-class-group-dispatch.cjs plus the real resident service end-to-end corpus.",
+      "Confirm Node and Wasm hosts return the frozen service-shaped capability result and authenticated artifactSha256 on open.",
+      "Rerun pnpm test:baselib:strict and pnpm test:native after the unrelated formatting and numerical-manifest baseline failures are resolved."
+    ]
+  }
+}

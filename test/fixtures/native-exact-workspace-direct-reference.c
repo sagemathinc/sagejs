@@ -53,7 +53,7 @@ int sagejs_direct_accumulate_relation_workspace(
     borrow_initialized = 1;
     if (arena.temporary_limit > (uint64_t) SIZE_MAX ||
         !sagejs_native_gmp_checkpoint_begin(
-            &arena.checkpoint, (size_t) arena.temporary_limit))
+            &arena.checkpoint, (size_t) arena.temporary_limit, 0))
         goto cleanup;
     if (!sagejs_native_exact_workspace_borrow_set_mpz(borrow, 0, first) ||
         !sagejs_native_exact_workspace_borrow_set_mpz(borrow, 1, second))

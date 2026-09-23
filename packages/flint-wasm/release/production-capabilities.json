@@ -1,6 +1,13 @@
 {
   "schema": "sagejs.wasm-production-capabilities/v1",
   "modules": {
+    "class-group": {
+      "artifact": "class-group-core.wasm",
+      "capabilities": [],
+      "additionalCapabilities": [
+        "specialist:cubic-class-groups-rust"
+      ]
+    },
     "flint-extension-multivariate": {
       "artifact": "flint-extension-multivariate.wasm",
       "capabilities": [
@@ -469,6 +476,7 @@
       "additionalCapabilities": [
         "kernel:arbitrary-prime-polynomial-resource-production",
         "kernel:class-group-resident-hnf-production",
+        "kernel:complex-cubic-class-group-production",
         "kernel:dense-integer-flint-production",
         "kernel:dense-prime-flint-production",
         "kernel:dense-prime-production",

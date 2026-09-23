@@ -1,0 +1,33 @@
+{
+  "schema": "sagejs.rust-class-group/public-cubic-resource-profile-v2",
+  "profileId": "conditional-grh-cubic-compact-64-v2",
+  "status": "qualification-only-not-production-dispatch",
+  "proofMode": "conditional-grh",
+  "rationale": "Admit compact authentication through 64 surplus rows while retaining the existing exact dependency-storage, saturation, replay, coefficient, time, and memory ceilings. The previous 32-row ceiling forced a substantially slower dense transform on a verified 54-surplus presentation.",
+  "publicResources": {
+    "maximumTrialDivisor": 10000,
+    "maximumIrreducibilityPrime": 257,
+    "embeddingPrecisionBits": 192,
+    "maximumVisitedIdeals": 1000000,
+    "maximumCandidates": 1000000,
+    "maximumNormalFormEntries": 10000000,
+    "maximumNormalFormOperations": 50000000,
+    "maximumRelationExponent": 256,
+    "maximumVerificationMultiplyAdds": 100000000,
+    "maximumPrincipalFactorTerms": 10000000,
+    "maximumCompactGenerators": 16384,
+    "maximumCompactSurplusRows": 64,
+    "maximumCompactSaturationMinorTrials": 32768,
+    "maximumCompactDependencyEntries": 1000000,
+    "maximumCompactTargetCoefficientBits": 1000000,
+    "logarithmPrecisionBits": 4096,
+    "replayPrecisionBits": 2048,
+    "analyticPrecisionBits": 512,
+    "maximumRelations": 10000,
+    "maximumDependencies": 1000,
+    "maximumKernelCoefficientBits": 4080,
+    "maximumUnitExponentBits": 8192,
+    "maximumReconstructionDenominatorBits": 4096,
+    "maximumAnalyticThreshold": 23994
+  }
+}

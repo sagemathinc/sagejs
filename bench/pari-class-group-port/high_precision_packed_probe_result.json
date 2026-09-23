@@ -1,0 +1,59 @@
+{
+  "schema": "sagejs-high-precision-packed-probe-v1",
+  "pariVersion": "2.17.4",
+  "targetBits": 153088,
+  "neutralInputs": [
+    "pi",
+    "log(2)",
+    "exp(log(2))",
+    "exp(log(2)+i)"
+  ],
+  "results": [
+    {
+      "stage": "real",
+      "targetBits": 153088,
+      "backend": "gmp",
+      "exactPackedTriples": 3,
+      "outputSha256": "783a797ca9bd7f2bd1b521678c476f749473fdc81801fc653eed71be486bc4b4",
+      "oracleTraceSha256": "35e694571e3b369834b511f1877f3f1382d8f37eaeb23c21330fc29d6e2cf2d2",
+      "buildMilliseconds": 23963.556641,
+      "runMilliseconds": 186853.433929,
+      "coreBytes": 5563198,
+      "addonBytes": 1272480,
+      "cacheKey": "e3d48465ae8cb407867bc078c291e833fad562fec74beea8fcfe70bf5b9f0862",
+      "transactionalUndersizeRejection": true,
+      "rejectedNonTargetPrecision": 153024,
+      "peakAggregateRssKiB": 1189244,
+      "wallMilliseconds": 211997,
+      "resourcePolicy": {
+        "abortGiB": 3.5,
+        "hardGiB": 4,
+        "timeoutSeconds": 600,
+        "oneBackendAtATime": true
+      }
+    },
+    {
+      "stage": "complex",
+      "targetBits": 153088,
+      "backend": "gmp",
+      "exactPackedTriples": 5,
+      "outputSha256": "a977a8197a3a4ca5f24a6158c81ff3f7385bd764a212e99b80523a6580317ebc",
+      "oracleTraceSha256": "ffa2439bfa57731635c2413b2a6b43b1741d12f1109a09cded0d6dce7361b07a",
+      "buildMilliseconds": 22964.575148,
+      "runMilliseconds": 380346.444543,
+      "coreBytes": 5569766,
+      "addonBytes": 1272480,
+      "cacheKey": "32ba795ac8a3492483cb347b287cfe488b8d93aeb02bf6eb93c70498e87b3deb",
+      "transactionalUndersizeRejection": true,
+      "rejectedNonTargetPrecision": 153024,
+      "peakAggregateRssKiB": 1249252,
+      "wallMilliseconds": 404537,
+      "resourcePolicy": {
+        "abortGiB": 3.5,
+        "hardGiB": 4,
+        "timeoutSeconds": 600,
+        "oneBackendAtATime": true
+      }
+    }
+  ]
+}

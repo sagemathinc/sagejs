@@ -1,0 +1,34 @@
+{
+  "schema": "sagejs-high-precision-real-agm-log-v1",
+  "pariVersion": "2.17.4",
+  "targetBits": 153088,
+  "neutralCases": 4,
+  "cutoffCases": 2,
+  "pariDispatch": {
+    "agmCases": 6,
+    "seriesCases": 1
+  },
+  "authenticField3Cases": 1,
+  "authenticField3OwnerSha256": "e515b1795d3973f3cebf1e195993fdf1941891ab07670a182488f38c38788b17",
+  "authenticField3RunIdentity": "pari-2.17.4:nfinit192->nfnewprec153088:field3",
+  "packedTriplesBitExact": 7,
+  "oracleTraceSha256": "19bf90fc207b4ad69c85ae8656e029cff1c56503557fe3d0607c84a0efef5f73",
+  "outputSha256": "b74dc66b5ccc47f289fed53279067a1e1e4ee36219d0d8f3d0034cfa33436e29",
+  "runMilliseconds": 94426.604894,
+  "coreBytes": 6401510,
+  "addonBytes": 1252000,
+  "cacheKey": "58ef684ca6516428bd5082adedd190c39645442a11046b51882f2823f46d9bdf",
+  "generatedOperations": ["mpz_mul", "mpz_sqrt", "mpz_fdiv_qr"],
+  "dynamicOracles": {
+    "cpythonPackedTriples": 1,
+    "javascriptPackedTriples": 1
+  },
+  "transactionalRejections": 2,
+  "peakAggregateRssKiB": 1304476,
+  "wallMilliseconds": 121781,
+  "resourcePolicy": {
+    "abortGiB": 3.5,
+    "hardGiB": 4,
+    "timeoutSeconds": 600
+  }
+}

@@ -1,0 +1,89 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-e2e-native-any",
+  "title": "Native prepared-buffer annotation repair",
+  "lane": "native-compiler",
+  "status": "active",
+  "owner": "user",
+  "objective": "Remove the runtime Any dependency from native RealNumberBuffer and ComplexNumberBuffer aliases with a focused regression",
+  "base_commit": "e683e802afb6798e64f49594cd9546e1ee334fd9",
+  "claims": [
+    "src/lib/sagejs/native.py",
+    "test/module-cache.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "CPython parsing, module-cache regression, and native strict typing"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/module-cache.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 16.134,
+      "started_at": "2026-09-16T22:32:14.930Z",
+      "commit": "7cf780b6f79eb8c4fbc8298d6b18724d4da6bfb8",
+      "workspace_fingerprint": "a1358ed3c04cdb66cc8a411ffa6b0fba64253d8afc005b084f81e34666caf0ed",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 57.629,
+      "started_at": "2026-09-16T22:32:31.694Z",
+      "commit": "7cf780b6f79eb8c4fbc8298d6b18724d4da6bfb8",
+      "workspace_fingerprint": "a1358ed3c04cdb66cc8a411ffa6b0fba64253d8afc005b084f81e34666caf0ed",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_FLINT_PREFIX=/home/user/sagejs-worktrees/pari-e2e-native-any/packages/flint/.native/prefix node --test tools/native-kernel/test/prepared-field-inputs.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.604,
+      "started_at": "2026-09-16T22:33:29.978Z",
+      "commit": "7cf780b6f79eb8c4fbc8298d6b18724d4da6bfb8",
+      "workspace_fingerprint": "a1358ed3c04cdb66cc8a411ffa6b0fba64253d8afc005b084f81e34666caf0ed",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 323.072,
+      "started_at": "2026-09-16T22:33:42.157Z",
+      "commit": "7cf780b6f79eb8c4fbc8298d6b18724d4da6bfb8",
+      "workspace_fingerprint": "a1358ed3c04cdb66cc8a411ffa6b0fba64253d8afc005b084f81e34666caf0ed",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Expressed the `Any` element type in `RealNumberBuffer` and `ComplexNumberBuffer` as a forward reference. Static analysis still resolves both aliases as `list[Any]`, while rendered module-cache variants no longer evaluate an unavailable typing-only `$ρσ$py$Any` symbol. The regression rejects that live generated reference in every shipped `sagejs.native` cache variant and imports both aliases twice through a custom module cache. Strict baselib, the prepared-field native buffer test, and the complete native correctness/performance gate pass.",
+    "risks": [
+      "The runtime generic-alias argument is now the forward-reference string `Any`; these two aliases are annotation-only native ABI markers and no supported runtime behavior inspects that argument.",
+      "`pnpm architecture:check` reached optimizer artifact verification and then reported the inherited stale optimizer-opportunity manifest. Regenerating that shared integration artifact is outside this lane's claims."
+    ],
+    "next_steps": [
+      "Cherry-pick implementation commit 7cf780b6f79eb8c4fbc8298d6b18724d4da6bfb8 onto the integration spine.",
+      "Regenerate the optimizer opportunity manifest from the final combined integration source, then rerun `pnpm architecture:check`."
+    ]
+  }
+}

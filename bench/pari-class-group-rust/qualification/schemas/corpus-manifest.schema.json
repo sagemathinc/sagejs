@@ -1,0 +1,229 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/rust-class-group-qualification/corpus-manifest-v1.json",
+  "title": "Frozen Rust class-group qualification corpus manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "manifestId", "frozenAt", "selectionProcedureSha256", "selectionSeed",
+    "pariReference", "counts", "qualificationCases", "extensionCases",
+    "randomCampaign", "exhaustiveCampaigns", "holdoutPolicy", "expectedEvidencePolicy"
+  ],
+  "properties": {
+    "schema": { "const": "sagejs.rust-class-group.corpus-manifest/v1" },
+    "manifestId": { "$ref": "common.schema.json#/$defs/contentId" },
+    "frozenAt": { "type": "string", "format": "date-time" },
+    "selectionProcedureSha256": { "$ref": "common.schema.json#/$defs/sha256" },
+    "selectionSeed": { "$ref": "common.schema.json#/$defs/sha256" },
+    "pariReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "sourceSha256", "buildConfigurationSha256"],
+      "properties": {
+        "version": { "const": "2.17.4" },
+        "sourceSha256": { "$ref": "common.schema.json#/$defs/sha256" },
+        "buildConfigurationSha256": { "$ref": "common.schema.json#/$defs/sha256" }
+      }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["qualification", "development", "heldOut", "minimumRandom"],
+      "properties": {
+        "qualification": { "const": 120 },
+        "development": { "const": 60 },
+        "heldOut": { "const": 60 },
+        "minimumRandom": { "const": 1000 }
+      }
+    },
+    "qualificationCases": {
+      "type": "array",
+      "minItems": 120,
+      "maxItems": 120,
+      "items": { "$ref": "#/$defs/qualificationCase" }
+    },
+    "extensionCases": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/extensionCase" }
+    },
+    "randomCampaign": { "$ref": "#/$defs/randomCampaign" },
+    "exhaustiveCampaigns": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/exhaustiveCampaign" }
+    },
+    "holdoutPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sealedBeforeTuning", "answersUnavailableToRuntime", "fixRequiresFreshConfirmation",
+        "removalRequiresManifestVersion"
+      ],
+      "properties": {
+        "sealedBeforeTuning": { "const": true },
+        "answersUnavailableToRuntime": { "const": true },
+        "fixRequiresFreshConfirmation": { "const": true },
+        "removalRequiresManifestVersion": { "const": true }
+      }
+    },
+    "expectedEvidencePolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runtimeReceivesAnswers", "independentOracleRequired", "semanticGeneratorComparison",
+        "exactTraceOnlyWhenMatched"
+      ],
+      "properties": {
+        "runtimeReceivesAnswers": { "const": false },
+        "independentOracleRequired": { "const": true },
+        "semanticGeneratorComparison": { "const": true },
+        "exactTraceOnlyWhenMatched": { "const": true }
+      }
+    }
+  },
+  "$defs": {
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["realPlaces", "complexPairs"],
+      "properties": {
+        "realPlaces": { "type": "integer", "minimum": 0, "maximum": 8 },
+        "complexPairs": { "type": "integer", "minimum": 0, "maximum": 4 }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authority", "recordId", "recordSha256"],
+      "properties": {
+        "authority": { "$ref": "common.schema.json#/$defs/nonempty" },
+        "recordId": { "$ref": "common.schema.json#/$defs/nonempty" },
+        "recordSha256": { "$ref": "common.schema.json#/$defs/sha256" }
+      }
+    },
+    "expectedEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["oracleSha256", "independentCheckKind", "independentCheckSha256"],
+      "properties": {
+        "oracleSha256": { "$ref": "common.schema.json#/$defs/sha256" },
+        "independentCheckKind": {
+          "enum": ["exact-enumeration", "certificate-replay", "independent-cas", "theorem-fixture"]
+        },
+        "independentCheckSha256": { "$ref": "common.schema.json#/$defs/sha256" }
+      }
+    },
+    "caseBase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "caseId", "role", "degree", "signature", "inputSha256", "source",
+        "features", "timingStratum", "proofModes", "expectedEvidence",
+        "resourceLimitExpected"
+      ],
+      "properties": {
+        "caseId": { "$ref": "common.schema.json#/$defs/nonempty" },
+        "role": { "enum": ["development", "held-out", "extension"] },
+        "degree": { "type": "integer", "minimum": 2, "maximum": 8 },
+        "signature": { "$ref": "#/$defs/signature" },
+        "inputSha256": { "$ref": "common.schema.json#/$defs/sha256" },
+        "source": { "$ref": "#/$defs/source" },
+        "features": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "trivial-class-group", "noncyclic-class-group", "large-class-number",
+              "ramification", "index-prime", "nontrivial-basis-denominator",
+              "awkward-integral-basis", "large-intermediates", "nontrivial-units",
+              "precision-escalation", "continuation", "resource-limit"
+            ]
+          }
+        },
+        "timingStratum": { "enum": ["under-5ms", "5ms-to-100ms", "100ms-to-2s", "2s-to-30s", "stress"] },
+        "proofModes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/proofRequest" }
+        },
+        "expectedEvidence": { "$ref": "#/$defs/expectedEvidence" },
+        "resourceLimitExpected": { "type": "boolean" }
+      }
+    },
+    "qualificationCase": {
+      "allOf": [
+        { "$ref": "#/$defs/caseBase" },
+        {
+          "type": "object",
+          "properties": {
+            "role": { "enum": ["development", "held-out"] },
+            "degree": { "type": "integer", "minimum": 2, "maximum": 6 }
+          }
+        }
+      ]
+    },
+    "extensionCase": {
+      "allOf": [
+        { "$ref": "#/$defs/caseBase" },
+        {
+          "type": "object",
+          "properties": {
+            "role": { "const": "extension" },
+            "degree": { "enum": [7, 8] }
+          }
+        }
+      ]
+    },
+    "randomCampaign": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["generator", "generatorSha256", "seed", "caseCount", "degreeRange", "coefficientBounds"],
+      "properties": {
+        "generator": { "$ref": "common.schema.json#/$defs/nonempty" },
+        "generatorSha256": { "$ref": "common.schema.json#/$defs/sha256" },
+        "seed": { "$ref": "common.schema.json#/$defs/sha256" },
+        "caseCount": { "type": "integer", "minimum": 1000 },
+        "degreeRange": {
+          "type": "array",
+          "prefixItems": [{ "const": 2 }, { "const": 6 }],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "coefficientBounds": {
+          "type": "array",
+          "prefixItems": [
+            { "$ref": "common.schema.json#/$defs/integerDecimal" },
+            { "$ref": "common.schema.json#/$defs/integerDecimal" }
+          ],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2
+        }
+      }
+    },
+    "exhaustiveCampaign": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["campaignId", "generatorSha256", "degree", "coefficientBounds", "expectedCaseCount"],
+      "properties": {
+        "campaignId": { "$ref": "common.schema.json#/$defs/nonempty" },
+        "generatorSha256": { "$ref": "common.schema.json#/$defs/sha256" },
+        "degree": { "type": "integer", "minimum": 2, "maximum": 6 },
+        "coefficientBounds": {
+          "type": "array",
+          "prefixItems": [
+            { "$ref": "common.schema.json#/$defs/integerDecimal" },
+            { "$ref": "common.schema.json#/$defs/integerDecimal" }
+          ],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "expectedCaseCount": { "$ref": "common.schema.json#/$defs/positiveInteger" }
+      }
+    }
+  }
+}

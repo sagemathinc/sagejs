@@ -104,6 +104,56 @@ test("only same-source lexical private helpers receive authenticated fallback", 
   }
 });
 
+test("native_inline preserves fallback semantics and forces a private C helper inline", async () => {
+  const temporary = mkdtempSync(join(tmpdir(), "sagejs-native-inline-helper-"));
+  const sourcePath = join(temporary, "inline_helper_program.py");
+  const cacheRoot = join(temporary, "cache");
+  const source = String.raw`
+from sagejs.native import is_native, native, native_inline
+
+
+@native_inline
+def inline_leaf(value: int) -> int:
+    return value * value + 1
+
+
+@native
+def inline_entry(value: int) -> int:
+    return inline_leaf(value) + 2
+
+
+assert is_native(inline_leaf)
+assert inline_leaf(5) == 26
+assert inline_entry(5) == 28
+print("NATIVE_INLINE_OK")
+`;
+  try {
+    writeFileSync(sourcePath, source);
+    const compiled = await compileKernel({
+      sourcePath,
+      cacheRoot,
+      functions: ["inline_entry"],
+      integerBackends: ["gmp"],
+    });
+    const functions = new Map(compiled.ir.functions.map((fn) => [fn.name, fn]));
+    assert.equal(functions.get("inline_leaf").lexicallyNative, true);
+    assert.equal(functions.get("inline_leaf").forceInline, true);
+    assert.equal(functions.get("inline_leaf").hostCallable, false);
+    assert.deepEqual(compiled.privateFunctions, ["inline_leaf"]);
+    assert.match(
+      readFileSync(compiled.coreSourcePath, "utf8"),
+      /SAGEJS_EXACT_FORCE_INLINE int native_inline_leaf\(/,
+    );
+    assert.equal(require(compiled.modulePath).inline_entry.gmp(5n), 28n);
+
+    const executed = execute(sourcePath, cacheRoot);
+    assert.equal(executed.status, 0, executed.stdout + executed.stderr);
+    assert.equal(executed.stdout.trim(), "NATIVE_INLINE_OK");
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
 test("missing, invalid, and mismatched private metadata fail closed", async () => {
   for (const mutation of [
     (record) => delete record.privateFunctions,

@@ -1,0 +1,36 @@
+{
+  "schema": "sagejs.rust-class-group.neutral-input/v1",
+  "inputId": "sha256:2d0fa668fad6c929a71eabdee7ebfb7acc1938307a41d4c1b49847cc99c7964d",
+  "fieldId": "h1-real-cubic",
+  "field": {
+    "variable": "x",
+    "coefficientsAscending": ["20034", "-20018", "0", "1"],
+    "degree": 3,
+    "monic": true,
+    "irreducible": true
+  },
+  "preparation": {
+    "kind": "neutral-prepared-field",
+    "authority": "independent-oracle",
+    "maximalOrderCertified": true,
+    "basisNumeratorsRowMajor": ["1", "0", "0", "0", "1", "0", "-13345", "2", "1"],
+    "basisDenominator": "1",
+    "discriminant": "32075641032116",
+    "signature": { "realPlaces": 3, "complexPairs": 0 },
+    "multiplicationTable": [
+      [[{"numerator":"1","denominator":"1"},{"numerator":"0","denominator":"1"},{"numerator":"0","denominator":"1"}],[{"numerator":"0","denominator":"1"},{"numerator":"1","denominator":"1"},{"numerator":"0","denominator":"1"}],[{"numerator":"0","denominator":"1"},{"numerator":"0","denominator":"1"},{"numerator":"1","denominator":"1"}]],
+      [[{"numerator":"0","denominator":"1"},{"numerator":"1","denominator":"1"},{"numerator":"0","denominator":"1"}],[{"numerator":"13345","denominator":"1"},{"numerator":"-2","denominator":"1"},{"numerator":"1","denominator":"1"}],[{"numerator":"6656","denominator":"1"},{"numerator":"6669","denominator":"1"},{"numerator":"2","denominator":"1"}]],
+      [[{"numerator":"0","denominator":"1"},{"numerator":"0","denominator":"1"},{"numerator":"1","denominator":"1"}],[{"numerator":"6656","denominator":"1"},{"numerator":"6669","denominator":"1"},{"numerator":"2","denominator":"1"}],[{"numerator":"89024429","denominator":"1"},{"numerator":"19994","denominator":"1"},{"numerator":"-6668","denominator":"1"}]]
+    ],
+    "irreducibilityPrime": 5,
+    "indexPrimes": [],
+    "sourceSha256": "915f8085d7eace9f9778edcbc657083a234cdea657dfcc677a26003fde4232c4"
+  },
+  "request": {
+    "proof": "conditional-grh", "output": "class-and-unit-group",
+    "mapPolicy": "construct-eagerly", "unitPolicy": "compact-complete",
+    "limits": {"wallMilliseconds":"60000","memoryBytes":"1073741824","relationCandidates":"1000000","precisionBits":192,"continuationPasses":8}
+  },
+  "randomness": { "algorithm": "none", "seed": null },
+  "containsOracleAnswers": false
+}

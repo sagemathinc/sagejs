@@ -16,6 +16,7 @@ import { standardLibraryCacheDirectory } from "./resources";
 import {
   BASELIB_STANDALONE_MODULES,
   BUILTINS_STANDALONE_MODULES,
+  EXTENSION_STANDALONE_MODULES,
   GROEBNER_STANDALONE_MODULES,
   POLYNOMIAL_STANDALONE_MODULES,
   baselibStandaloneImportPrelude,
@@ -80,8 +81,14 @@ export async function createCompilerTestHarness(
       fixture.startsWith("groebner-")
       || fixture === "groebner.py"
       || fixture === "polynomial.py";
+    const extensionFixture = fixture === "polynomial.py";
     const standaloneModules = fixture === "matrix.py"
       ? BASELIB_STANDALONE_MODULES
+      : extensionFixture
+        ? [...new Set([
+          ...BUILTINS_STANDALONE_MODULES,
+          ...EXTENSION_STANDALONE_MODULES,
+        ])]
       : groebnerFixture
         ? [...new Set([
           ...BUILTINS_STANDALONE_MODULES,

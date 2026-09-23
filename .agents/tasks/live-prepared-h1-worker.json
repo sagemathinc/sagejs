@@ -1,0 +1,74 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "live-prepared-h1-worker",
+  "title": "Compose live prepared h1 worker",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Execute the prepared h1 resident candidate and all final live class, compact-unit, torsion, honesty, and correspondence authorities in one worker without serialized or oracle intermediates",
+  "base_commit": "79418f8c41d5ce3e0aa195fb26629e1d361128eb",
+  "claims": [
+    "bench/pari-class-group-port/live_prepared_h1_worker.cjs",
+    "bench/pari-class-group-port/live_prepared_h1_native.py",
+    "bench/pari-class-group-port/check_live_prepared_h1_worker.cjs",
+    "bench/pari-class-group-port/live_prepared_h1_worker_audit.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "authenticated-live-owners"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "env SAGEJS_REPLAY_RUNTIME_ROOT=/home/user/sagejs-worktrees/pari-class-group-e2e-integration node bench/pari-class-group-port/check_live_prepared_h1_worker.cjs /tmp/sagejs-resident-generated-class-3qtnS5/inputs.json"
+  ],
+  "runs": [
+    {
+      "command": "env SAGEJS_REPLAY_RUNTIME_ROOT=/home/user/sagejs-worktrees/pari-class-group-e2e-integration node bench/pari-class-group-port/check_live_prepared_h1_worker.cjs /tmp/sagejs-resident-generated-class-3qtnS5/inputs.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.145,
+      "started_at": "2026-09-17T04:39:44.009Z",
+      "commit": "79418f8c41d5ce3e0aa195fb26629e1d361128eb",
+      "workspace_fingerprint": "2578c6b6ae1419886038d6c96c0f6685df188aee77aa20df7e19b529c68a0a6d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_REPLAY_RUNTIME_ROOT=/home/user/sagejs-worktrees/pari-class-group-e2e-integration node bench/pari-class-group-port/check_live_prepared_h1_worker.cjs /tmp/sagejs-resident-generated-class-3qtnS5/inputs.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.74,
+      "started_at": "2026-09-17T04:40:21.425Z",
+      "commit": "79418f8c41d5ce3e0aa195fb26629e1d361128eb",
+      "workspace_fingerprint": "2578c6b6ae1419886038d6c96c0f6685df188aee77aa20df7e19b529c68a0a6d",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Unified the resident candidate and live owner bridge into one compiled ownership domain, then exercised exact relation-derived units, a frozen p2176 embedding/log replay, diagnostic regulator comparison, class, honesty, compact provenance, and torsion. The worker is deliberately terminal-incomplete and does not claim correspondence completion.",
+    "risks": [
+      "The p2176 precision, 73/15/7 logical dimensions, and four-ulp regulator corridor are result-derived controls for this qualified field, not live authorities or general regulator certification.",
+      "The p2176 replay kernels remain separate addon calls after the unified candidate/bridge call; their inputs are copied in memory because addon buffer ownership is local."
+    ],
+    "next_steps": [
+      "Replace frozen logical dimensions with live authenticated lengths and implement the live precision-retry policy.",
+      "Supply a rigorous regulator enclosure authority before setting correspondenceComplete or publishing Outcome C.",
+      "Generalize the unified ownership-domain compiler mechanism so callers do not need a mechanical wrapper signature."
+    ]
+  }
+}

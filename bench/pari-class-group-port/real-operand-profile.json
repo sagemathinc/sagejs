@@ -1,0 +1,378 @@
+{
+  "qualifiedTiming": false,
+  "collectorCalls": 64,
+  "explanation": "16 scenarios, three warmups plus one call each; outputs checked by the driver",
+  "counts": [
+    {
+      "function": "pari_positive_real_sum",
+      "px": "0",
+      "py": "0",
+      "zero": true,
+      "calls": 16
+    },
+    {
+      "function": "pari_positive_real_sum",
+      "px": "0",
+      "py": "128",
+      "zero": true,
+      "calls": 64
+    },
+    {
+      "function": "pari_positive_real_sum",
+      "px": "0",
+      "py": "64",
+      "zero": true,
+      "calls": 64
+    },
+    {
+      "function": "pari_positive_real_sum",
+      "px": "128",
+      "py": "0",
+      "zero": true,
+      "calls": 32
+    },
+    {
+      "function": "pari_positive_real_sum",
+      "px": "128",
+      "py": "128",
+      "zero": false,
+      "calls": 3152
+    },
+    {
+      "function": "pari_positive_real_sum",
+      "px": "192",
+      "py": "192",
+      "zero": false,
+      "calls": 416
+    },
+    {
+      "function": "pari_positive_real_sum",
+      "px": "192",
+      "py": "256",
+      "zero": false,
+      "calls": 104
+    },
+    {
+      "function": "pari_positive_real_sum",
+      "px": "256",
+      "py": "192",
+      "zero": false,
+      "calls": 480
+    },
+    {
+      "function": "pari_positive_real_sum",
+      "px": "256",
+      "py": "256",
+      "zero": false,
+      "calls": 5020
+    },
+    {
+      "function": "pari_positive_real_sum",
+      "px": "256",
+      "py": "320",
+      "zero": false,
+      "calls": 24
+    },
+    {
+      "function": "pari_positive_real_sum",
+      "px": "320",
+      "py": "192",
+      "zero": false,
+      "calls": 32
+    },
+    {
+      "function": "pari_positive_real_sum",
+      "px": "320",
+      "py": "256",
+      "zero": false,
+      "calls": 1616
+    },
+    {
+      "function": "pari_positive_real_sum",
+      "px": "64",
+      "py": "0",
+      "zero": true,
+      "calls": 16
+    },
+    {
+      "function": "pari_positive_real_sum",
+      "px": "64",
+      "py": "64",
+      "zero": false,
+      "calls": 4296
+    },
+    {
+      "function": "pari_short_product",
+      "px": "0",
+      "py": "128",
+      "zero": true,
+      "calls": 48
+    },
+    {
+      "function": "pari_short_product",
+      "px": "128",
+      "py": "0",
+      "zero": true,
+      "calls": 64
+    },
+    {
+      "function": "pari_short_product",
+      "px": "128",
+      "py": "128",
+      "zero": false,
+      "calls": 7640
+    },
+    {
+      "function": "pari_short_product",
+      "px": "128",
+      "py": "64",
+      "zero": false,
+      "calls": 16
+    },
+    {
+      "function": "pari_short_product",
+      "px": "192",
+      "py": "0",
+      "zero": true,
+      "calls": 56
+    },
+    {
+      "function": "pari_short_product",
+      "px": "192",
+      "py": "192",
+      "zero": false,
+      "calls": 1096
+    },
+    {
+      "function": "pari_short_product",
+      "px": "192",
+      "py": "256",
+      "zero": false,
+      "calls": 480
+    },
+    {
+      "function": "pari_short_product",
+      "px": "192",
+      "py": "320",
+      "zero": false,
+      "calls": 48
+    },
+    {
+      "function": "pari_short_product",
+      "px": "192",
+      "py": "64",
+      "zero": false,
+      "calls": 32
+    },
+    {
+      "function": "pari_short_product",
+      "px": "256",
+      "py": "192",
+      "zero": false,
+      "calls": 304
+    },
+    {
+      "function": "pari_short_product",
+      "px": "256",
+      "py": "256",
+      "zero": false,
+      "calls": 8216
+    },
+    {
+      "function": "pari_short_product",
+      "px": "256",
+      "py": "320",
+      "zero": false,
+      "calls": 404
+    },
+    {
+      "function": "pari_short_product",
+      "px": "320",
+      "py": "256",
+      "zero": false,
+      "calls": 1468
+    },
+    {
+      "function": "pari_short_product",
+      "px": "64",
+      "py": "0",
+      "zero": true,
+      "calls": 40
+    },
+    {
+      "function": "pari_short_product",
+      "px": "64",
+      "py": "128",
+      "zero": false,
+      "calls": 24
+    },
+    {
+      "function": "pari_short_product",
+      "px": "64",
+      "py": "192",
+      "zero": false,
+      "calls": 40
+    },
+    {
+      "function": "pari_short_product",
+      "px": "64",
+      "py": "256",
+      "zero": false,
+      "calls": 40
+    },
+    {
+      "function": "pari_short_product",
+      "px": "64",
+      "py": "64",
+      "zero": false,
+      "calls": 9464
+    },
+    {
+      "function": "pari_short_square",
+      "px": "128",
+      "py": "square",
+      "zero": false,
+      "calls": 1344
+    },
+    {
+      "function": "pari_short_square",
+      "px": "192",
+      "py": "square",
+      "zero": false,
+      "calls": 200
+    },
+    {
+      "function": "pari_short_square",
+      "px": "256",
+      "py": "square",
+      "zero": false,
+      "calls": 4360
+    },
+    {
+      "function": "pari_short_square",
+      "px": "64",
+      "py": "square",
+      "zero": false,
+      "calls": 1944
+    },
+    {
+      "function": "pari_signed_real_sum",
+      "px": "0",
+      "py": "0",
+      "zero": true,
+      "calls": 16
+    },
+    {
+      "function": "pari_signed_real_sum",
+      "px": "0",
+      "py": "128",
+      "zero": true,
+      "calls": 64
+    },
+    {
+      "function": "pari_signed_real_sum",
+      "px": "0",
+      "py": "64",
+      "zero": true,
+      "calls": 64
+    },
+    {
+      "function": "pari_signed_real_sum",
+      "px": "128",
+      "py": "0",
+      "zero": true,
+      "calls": 32
+    },
+    {
+      "function": "pari_signed_real_sum",
+      "px": "128",
+      "py": "128",
+      "zero": false,
+      "calls": 5664
+    },
+    {
+      "function": "pari_signed_real_sum",
+      "px": "128",
+      "py": "64",
+      "zero": false,
+      "calls": 16
+    },
+    {
+      "function": "pari_signed_real_sum",
+      "px": "192",
+      "py": "192",
+      "zero": false,
+      "calls": 712
+    },
+    {
+      "function": "pari_signed_real_sum",
+      "px": "192",
+      "py": "256",
+      "zero": false,
+      "calls": 384
+    },
+    {
+      "function": "pari_signed_real_sum",
+      "px": "192",
+      "py": "320",
+      "zero": false,
+      "calls": 32
+    },
+    {
+      "function": "pari_signed_real_sum",
+      "px": "256",
+      "py": "192",
+      "zero": false,
+      "calls": 840
+    },
+    {
+      "function": "pari_signed_real_sum",
+      "px": "256",
+      "py": "256",
+      "zero": false,
+      "calls": 5740
+    },
+    {
+      "function": "pari_signed_real_sum",
+      "px": "256",
+      "py": "320",
+      "zero": false,
+      "calls": 56
+    },
+    {
+      "function": "pari_signed_real_sum",
+      "px": "320",
+      "py": "192",
+      "zero": false,
+      "calls": 80
+    },
+    {
+      "function": "pari_signed_real_sum",
+      "px": "320",
+      "py": "256",
+      "zero": false,
+      "calls": 3216
+    },
+    {
+      "function": "pari_signed_real_sum",
+      "px": "320",
+      "py": "320",
+      "zero": false,
+      "calls": 24
+    },
+    {
+      "function": "pari_signed_real_sum",
+      "px": "64",
+      "py": "0",
+      "zero": true,
+      "calls": 16
+    },
+    {
+      "function": "pari_signed_real_sum",
+      "px": "64",
+      "py": "64",
+      "zero": false,
+      "calls": 7384
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "schema": "sagejs.rust-class-group/row6-maximal-order-candidate-diagnostic-v1",
+  "qualificationStatus": "diagnostic-candidate-only",
+  "mathematicalBoundary": "validated-maximal-order-prepared-field",
+  "usesOracleAsInput": false,
+  "linksPari": false,
+  "polynomialAscending": ["2000000000018", "-2000000000010", "0", "1"],
+  "basis": {
+    "numeratorRows": ["3", "0", "0", "0", "3", "0", "-1333333333340", "1", "1"],
+    "denominator": "3",
+    "equationOrderIndex": "3"
+  },
+  "controls": { "maximumRadius": 64, "supplementaryRelations": 7 },
+  "factorBase": {
+    "relationBound": 9196,
+    "checkingBound": 9196,
+    "idealCount": 1130,
+    "rationalPrimeCount": 740
+  },
+  "relations": {
+    "rows": 213,
+    "generatorCount": 1130,
+    "missingRank": 918,
+    "fullRankObserved": false
+  },
+  "statistics": {
+    "visited": 2146560,
+    "primitiveNonscalar": 890208,
+    "smoothNorms": 10,
+    "factorBaseSmooth": 10,
+    "appended": 10,
+    "independent": 212,
+    "duplicate": 0,
+    "maximumRadiusReached": 64
+  },
+  "timingsNanoseconds": {
+    "standaloneFactorBase": 227504482,
+    "collectionIncludingRepeatedFactorBase": 3015112088
+  }
+}

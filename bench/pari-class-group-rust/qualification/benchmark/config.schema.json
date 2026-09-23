@@ -1,0 +1,177 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/rust-class-group-benchmark-config-v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "benchmarkId",
+    "boundary",
+    "schedule",
+    "warmupsPerArm",
+    "samplesPerArm",
+    "fields",
+    "arms"
+  ],
+  "properties": {
+    "schema": { "const": "sagejs.rust-class-group/benchmark-config-v1" },
+    "benchmarkId": { "$ref": "#/$defs/nonemptyString" },
+    "boundary": { "$ref": "#/$defs/boundary" },
+    "schedule": { "const": "alternating-pairs-v1" },
+    "warmupsPerArm": { "type": "integer", "minimum": 1 },
+    "samplesPerArm": { "type": "integer", "minimum": 15 },
+    "timeoutMilliseconds": { "type": "integer", "minimum": 1 },
+    "seedPrefix": { "$ref": "#/$defs/nonemptyString" },
+    "receiptPath": { "$ref": "#/$defs/nonemptyString" },
+    "evidenceDirectory": { "$ref": "#/$defs/nonemptyString" },
+    "environmentIdentityVariables": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/nonemptyString" }
+    },
+    "identityCommands": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/identityCommand" }
+    },
+    "fields": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/field" }
+    },
+    "arms": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": { "$ref": "#/$defs/arm" }
+    }
+  },
+  "$defs": {
+    "nonemptyString": { "type": "string", "minLength": 1 },
+    "stringArray": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/nonemptyString" }
+    },
+    "command": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/nonemptyString" }
+    },
+    "boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "label",
+        "includedWork",
+        "excludedWork",
+        "proofMode",
+        "outputPolicy"
+      ],
+      "properties": {
+        "kind": { "enum": ["algorithm-stage", "prepared-field", "public-call"] },
+        "label": { "$ref": "#/$defs/nonemptyString" },
+        "includedWork": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/nonemptyString" }
+        },
+        "excludedWork": { "$ref": "#/$defs/stringArray" },
+        "proofMode": { "$ref": "#/$defs/nonemptyString" },
+        "outputPolicy": { "$ref": "#/$defs/nonemptyString" },
+        "stageName": { "$ref": "#/$defs/nonemptyString" },
+        "publicMode": {
+          "enum": [
+            "fresh-process",
+            "fresh-field",
+            "warmed-code-fresh-field",
+            "cached-result-lookup"
+          ]
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "kind": { "const": "algorithm-stage" },
+            "stageName": true,
+            "publicMode": false
+          },
+          "required": ["stageName"]
+        },
+        {
+          "properties": {
+            "kind": { "const": "prepared-field" },
+            "stageName": false,
+            "publicMode": false
+          }
+        },
+        {
+          "properties": {
+            "kind": { "const": "public-call" },
+            "stageName": false,
+            "publicMode": true
+          },
+          "required": ["publicMode"]
+        }
+      ]
+    },
+    "field": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id"],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonemptyString" },
+        "input": { "$ref": "#/$defs/nonemptyString" }
+      }
+    },
+    "identityCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "command"],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonemptyString" },
+        "command": { "$ref": "#/$defs/command" },
+        "cwd": { "$ref": "#/$defs/nonemptyString" },
+        "timeoutMilliseconds": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "arm": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "implementation",
+        "boundaryLabel",
+        "command",
+        "resultProjection"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonemptyString" },
+        "implementation": { "$ref": "#/$defs/nonemptyString" },
+        "boundaryLabel": { "$ref": "#/$defs/nonemptyString" },
+        "command": { "$ref": "#/$defs/command" },
+        "cwd": { "$ref": "#/$defs/nonemptyString" },
+        "environment": {
+          "type": "object",
+          "propertyNames": { "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" },
+          "additionalProperties": { "type": "string" }
+        },
+        "timeoutMilliseconds": { "type": "integer", "minimum": 1 },
+        "jsonLinePrefix": { "$ref": "#/$defs/nonemptyString" },
+        "artifactPaths": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/nonemptyString" }
+        },
+        "durationPointer": { "$ref": "#/$defs/nonemptyString" },
+        "stageTimingsPointer": { "$ref": "#/$defs/nonemptyString" },
+        "peakRssKiBPointer": { "$ref": "#/$defs/nonemptyString" },
+        "resultProjection": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": { "minLength": 1 },
+          "additionalProperties": { "$ref": "#/$defs/nonemptyString" }
+        }
+      }
+    }
+  }
+}

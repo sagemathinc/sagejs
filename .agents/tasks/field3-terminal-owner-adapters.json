@@ -1,0 +1,136 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "field3-terminal-owner-adapters",
+  "title": "Field3 Terminal Owner Adapters",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement authenticated C5/C6 unit and live-final owner adapters required by field3 C7 without answer fixtures",
+  "base_commit": "679c510266c7925f046f3354671a2ff7a41f6cef",
+  "claims": [
+    "bench/pari-class-group-port/field3_terminal_owner_adapters.cjs",
+    "bench/pari-class-group-port/check_field3_terminal_owner_adapters.cjs",
+    "bench/pari-class-group-port/field3_terminal_owner_adapters_audit.md",
+    "bench/pari-class-group-port/field3_c7_final_assembly.py",
+    "bench/pari-class-group-port/field3_c7_final_assembly_coordinator.cjs",
+    "bench/pari-class-group-port/check_field3_c7_final_assembly.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Existing authenticated C4 projection, C5, C6, and exact factorback owners"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_field3_terminal_owner_adapters.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.317,
+      "started_at": "2026-09-17T15:49:16.988Z",
+      "commit": "679c510266c7925f046f3354671a2ff7a41f6cef",
+      "workspace_fingerprint": "9e6f5ae202f8295612bd43f529d5869661756898491b3086e5e55108023135c5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_field3_terminal_owner_adapters.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.398,
+      "started_at": "2026-09-17T15:50:10.112Z",
+      "commit": "679c510266c7925f046f3354671a2ff7a41f6cef",
+      "workspace_fingerprint": "eb8acf3bf0f3a425ac085c994b66c288e7b540bdaf68bc453ccf3eb4231e4f0e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_field3_terminal_owner_adapters.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.359,
+      "started_at": "2026-09-17T16:03:45.961Z",
+      "commit": "2d290bb86b1bbe76ac18f62f1f9bd54826b0f574",
+      "workspace_fingerprint": "22c3484a47cbd5dc827c9c3f0cc3ab630eca8826153c30b5d8cc24445630cc5a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env FIELD3_C7_SKIP_NATIVE=1 node bench/pari-class-group-port/check_field3_c7_final_assembly.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.584,
+      "started_at": "2026-09-17T16:03:49.070Z",
+      "commit": "2d290bb86b1bbe76ac18f62f1f9bd54826b0f574",
+      "workspace_fingerprint": "22c3484a47cbd5dc827c9c3f0cc3ab630eca8826153c30b5d8cc24445630cc5a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_field3_terminal_owner_adapters.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.275,
+      "started_at": "2026-09-17T16:16:46.442Z",
+      "commit": "2d290bb86b1bbe76ac18f62f1f9bd54826b0f574",
+      "workspace_fingerprint": "dba3d33cde4058b5da77a67951176c809a986f22eb7d39a8b737e935128b6394",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env FIELD3_C7_SKIP_NATIVE=1 node bench/pari-class-group-port/check_field3_c7_final_assembly.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.788,
+      "started_at": "2026-09-17T16:16:49.482Z",
+      "commit": "2d290bb86b1bbe76ac18f62f1f9bd54826b0f574",
+      "workspace_fingerprint": "dba3d33cde4058b5da77a67951176c809a986f22eb7d39a8b737e935128b6394",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_field3_terminal_owner_adapters.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.698,
+      "started_at": "2026-09-17T16:29:51.245Z",
+      "commit": "73176723670e324b218f2bb91e77180895dcac5e",
+      "workspace_fingerprint": "2d4002ea1978bde8fea4babf5e6fd248db327d876a503fe21d6735c110a70d92",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env FIELD3_C7_SKIP_NATIVE=1 node bench/pari-class-group-port/check_field3_c7_final_assembly.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.196,
+      "started_at": "2026-09-17T16:29:56.660Z",
+      "commit": "73176723670e324b218f2bb91e77180895dcac5e",
+      "workspace_fingerprint": "2d4002ea1978bde8fea4babf5e6fd248db327d876a503fe21d6735c110a70d92",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Adds a strict immutable C7 unit producer that authenticates C5, C6, the exact factorback source, and its replay receipt, including exact C6/embedding/relation ancestry; validates all terminal state words; and preserves C6 not_given honestly. C7 now cross-links the accepted C4, C3, full15, unit, relation, and live ancestry; validates fixed run identity, torsion, complete unit/proof provenance, and all 301 exact principal records. Live publication explicitly fails closed until real immutable relation/class serializers exist.",
+    "risks": [
+      "The authentic 153088-bit owners were intentionally not run in this lane.",
+      "The real relation and class serialization producers do not exist yet, so live-final publication intentionally remains unavailable.",
+      "The authentic 153088-bit factorback replay was intentionally not run in this lane; its producer is qualified separately."
+    ],
+    "next_steps": [
+      "Integrate after the C6 factorback verifier commit so the exact factorback schema is present.",
+      "Implement immutable serializers directly from the existing live relation and class authorities, then enable and qualify live-final publication.",
+      "Integrate the factorback verifier's separately qualified 153088-bit replay before attempting authentic unit publication.",
+      "Run broad repository gates in the integration lane after all active field3 work lands."
+    ]
+  }
+}

@@ -1,0 +1,157 @@
+{
+  "diagnosticOnly": true,
+  "qualifiedTiming": false,
+  "boundary": "Existing prepared PARI reference: cache initialization through invariant-only SNF; excludes preparation, reporting and cache teardown. Warmup reported separately.",
+  "referencePath": "/tmp/sagejs-prepared-attempt-reference-r6W2XO/fixtures.json",
+  "referenceHash": "5ad629a9e428c2f7ce715d2216a1cc4454c558fdda1a468da83109081abcce34",
+  "interposer": "/tmp/sagejs-alloc-count-f9EbBw/libsagejs_alloc_count.so",
+  "interposerHash": "bb34851e1dc798b774088f416cefadbcd78848018ffe24f1949e2ddc11734ff8",
+  "originalSourceHash": "58c6903f28d1194049950e52b05b01f02b05f2ba56921c24ec7298d479e3fefe",
+  "instrumentedSourceHash": "66b1b1344e411da535c334cdd3632c6cc448271f28d6bb8f5ec0c7ed82a21da5",
+  "pariLibraryPath": "/scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4/Olinux-x86_64/libpari-gmp.so.2.17.4",
+  "pariLibraryHash": "c1a41ed3a65f65762bd9ee718397b439592185c3f1d3f52fb9d19f8bb980064a",
+  "executableHash": "60ec09498ae49a9eafe45b015abea0460baa7856e193d092f81a289d875b2431",
+  "timingCaveat": "Allocator instrumentation and report serialization perturb the original clock; unqualifiedSecondsTotal is retained only as raw diagnostic output, never as a speed comparison.",
+  "replacements": [
+    {
+      "before": "#include <time.h>",
+      "after": "#include <time.h>\n#include <stdint.h>\nextern int sagejs_alloc_begin(void);\nextern void sagejs_alloc_end(void);\nextern uint64_t sagejs_alloc_count(unsigned);\nstatic void report_allocations(long field,long rep) {\n  fprintf(stderr,\"{\\\"field\\\":%ld,\\\"rep\\\":%ld,\\\"counts\\\":[\",field,rep);\n  for(unsigned i=0;i<11;i++) fprintf(stderr,\"%s%llu\",i?\",\":\"\",(unsigned long long)sagejs_alloc_count(i));\n  fputs(\"]}\\n\",stderr);\n}"
+    },
+    {
+      "before": "cache.basis=zero_Flm_copy(F.KC,F.KC);",
+      "after": "if(!sagejs_alloc_begin())return 90;cache.basis=zero_Flm_copy(F.KC,F.KC);"
+    },
+    {
+      "before": "GEN cyc=ZM_snf(W);if(rep>=0)",
+      "after": "GEN cyc=ZM_snf(W);sagejs_alloc_end();report_allocations(field,rep);if(rep>=0)"
+    }
+  ],
+  "buildArguments": [
+    "-O3",
+    "-I/scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4/src/headers",
+    "-I/scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4/Olinux-x86_64",
+    "/tmp/sagejs-pari-allocations-DbWqC3/oracle.c",
+    "-L/scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4/Olinux-x86_64",
+    "-Wl,-rpath,/scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4/Olinux-x86_64",
+    "-lpari",
+    "-lm",
+    "/tmp/sagejs-alloc-count-f9EbBw/libsagejs_alloc_count.so",
+    "-o",
+    "/tmp/sagejs-pari-allocations-DbWqC3/oracle"
+  ],
+  "directory": "/tmp/sagejs-pari-allocations-DbWqC3",
+  "outputs": [
+    {
+      "field": 1,
+      "precision": 192,
+      "C1": 259,
+      "C2": 259,
+      "KC": 51,
+      "initialRelations": 11,
+      "target": 58,
+      "relations": 58,
+      "ideals": 12,
+      "smallElements": 491,
+      "factorAttempts": 54,
+      "hnfRows": 1,
+      "bColumns": 50,
+      "unitColumns": 7,
+      "multipleBits": 180,
+      "action": 0,
+      "classNumber": "3",
+      "invariants": [
+        "3"
+      ],
+      "regulator": [
+        "3895441961913051012156655978319959870688113589397982850906",
+        "192",
+        "17"
+      ],
+      "repetitions": 3,
+      "unqualifiedSecondsTotal": 0.009421348
+    }
+  ],
+  "samples": [
+    {
+      "field": 1,
+      "rep": -1,
+      "counts": [
+        677,
+        0,
+        0,
+        559,
+        301496,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "field": 1,
+      "rep": 0,
+      "counts": [
+        670,
+        0,
+        0,
+        553,
+        300704,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "field": 1,
+      "rep": 1,
+      "counts": [
+        670,
+        0,
+        0,
+        553,
+        300704,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "field": 1,
+      "rep": 2,
+      "counts": [
+        670,
+        0,
+        0,
+        553,
+        300704,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "counterNames": [
+    "mallocCalls",
+    "callocCalls",
+    "reallocCalls",
+    "freeCalls",
+    "mallocRequestedBytes",
+    "callocRequestedBytes",
+    "reallocRequestedBytes",
+    "freeNullCalls",
+    "reallocNullCalls",
+    "callocSizeOverflowCalls",
+    "counterOverflow"
+  ]
+}

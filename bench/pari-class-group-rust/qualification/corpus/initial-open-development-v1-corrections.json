@@ -1,0 +1,35 @@
+{
+  "schema": "sagejs.rust-class-group/open-development-panel-corrections-v1",
+  "appliesTo": "initial-open-development-v1.json",
+  "policy": "The frozen source is retained byte-for-byte; consumers apply this explicit correction overlay.",
+  "signatureCorrections": [
+    {
+      "id": "small-class-number-2",
+      "originalSignature": [3, 0],
+      "correctedSignature": [1, 1],
+      "polynomialDiscriminant": "-41779"
+    },
+    {
+      "id": "small-class-number-3",
+      "originalSignature": [3, 0],
+      "correctedSignature": [1, 1],
+      "polynomialDiscriminant": "-18220"
+    },
+    {
+      "id": "small-class-number-4",
+      "originalSignature": [3, 0],
+      "correctedSignature": [1, 1],
+      "polynomialDiscriminant": "-106979"
+    },
+    {
+      "id": "small-class-number-6",
+      "originalSignature": [3, 0],
+      "correctedSignature": [1, 1],
+      "polynomialDiscriminant": "-82124"
+    }
+  ],
+  "verification": {
+    "sagejs": "The certified maximal-order adapter computes signature (1,1), basis denominator one, and the stated negative discriminant for each field.",
+    "independent": "SymPy exact polynomial discriminants and numerical root counts independently give one real root and one complex pair for all four polynomials."
+  }
+}

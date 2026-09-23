@@ -1,0 +1,84 @@
+{
+  "schema": "sagejs.rust-class-group/benchmark-config-v1",
+  "benchmarkId": "rust-pari-2174-prepared-field-open-cubics",
+  "boundary": {
+    "kind": "prepared-field",
+    "label": "prepared-field/pari-bnfinit0-flag-zero-v1",
+    "includedWork": [
+      "complete class-group, unit, and regulator kernel from an already prepared number field"
+    ],
+    "excludedWork": [
+      "polynomial decoding and field preparation",
+      "result projection and JSON serialization"
+    ],
+    "proofMode": "complete-prepared-field",
+    "outputPolicy": "exact class number and canonical invariant factors"
+  },
+  "schedule": "alternating-pairs-v1",
+  "warmupsPerArm": 2,
+  "samplesPerArm": 15,
+  "timeoutMilliseconds": 120000,
+  "seedPrefix": "rust-pari-2174-prepared-field-v1",
+  "receiptPath": "../pari-control/campaign.receipt.json",
+  "evidenceDirectory": "../pari-control/campaign.evidence",
+  "identityCommands": [
+    {
+      "id": "pari-2.17.4",
+      "command": ["/home/user/upstream/pari-2.17.4/gp", "--version"]
+    },
+    {
+      "id": "pari-control-build",
+      "command": ["python3", "../pari-control/identity.py"]
+    }
+  ],
+  "fields": [
+    {"id": "small-x3-x-1", "input": "../corpus/initial-open-development-v1.json"},
+    {"id": "small-discriminant-49", "input": "../corpus/initial-open-development-v1.json"},
+    {"id": "small-class-number-2", "input": "../corpus/initial-open-development-v1.json"},
+    {"id": "small-class-number-3", "input": "../corpus/initial-open-development-v1.json"},
+    {"id": "small-class-number-4", "input": "../corpus/initial-open-development-v1.json"},
+    {"id": "small-class-number-6", "input": "../corpus/initial-open-development-v1.json"},
+    {"id": "h1-real-cubic", "input": "../corpus/initial-open-development-v1.json"},
+    {"id": "row1-index-3-cubic", "input": "../corpus/initial-open-development-v1.json"},
+    {"id": "row6-continuation-cubic", "input": "../corpus/initial-open-development-v1.json"}
+  ],
+  "arms": [
+    {
+      "id": "rust",
+      "implementation": "REPLACE_WITH_REVIEWED_MATCHED_RUST_PREPARED_FIELD_ADAPTER",
+      "boundaryLabel": "prepared-field/pari-bnfinit0-flag-zero-v1",
+      "command": [
+        "REPLACE_WITH_REVIEWED_MATCHED_RUST_PREPARED_FIELD_ADAPTER",
+        "{input}",
+        "{fieldId}",
+        "{seed}"
+      ],
+      "durationPointer": "/kernelNanoseconds",
+      "resultProjection": {
+        "classNumber": "/result/classNumber",
+        "invariantFactors": "/result/invariantFactors"
+      }
+    },
+    {
+      "id": "pari",
+      "implementation": "Authenticated pristine PARI 2.17.4 prepared-field completion",
+      "boundaryLabel": "prepared-field/pari-bnfinit0-flag-zero-v1",
+      "command": [
+        "../pari-control/run.py",
+        "--input",
+        "../corpus/initial-open-development-v1.json",
+        "--field-id",
+        "{fieldId}",
+        "--boundary",
+        "prepared-field",
+        "--seed",
+        "{seed}"
+      ],
+      "durationPointer": "/kernelNanoseconds",
+      "resultProjection": {
+        "classNumber": "/result/classNumber",
+        "invariantFactors": "/result/invariantFactors"
+      }
+    }
+  ]
+}

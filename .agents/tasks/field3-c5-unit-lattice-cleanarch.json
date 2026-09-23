@@ -1,0 +1,68 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "field3-c5-unit-lattice-cleanarch",
+  "title": "Field3 C5 unit lattice and cleanarch",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement and qualify the authenticated fail-atomic field3 C5 unit-lattice and cleanarch coordinator from full15/C3 and analytically accepted C4 owners, retaining Ufinal and Wraw without old suffix fixtures",
+  "base_commit": "e550dfd12fea6f8554d45ef4b30f71937179c6ab",
+  "claims": [
+    "bench/pari-class-group-port/field3_c5_unit_lattice_cleanarch.py",
+    "bench/pari-class-group-port/field3_c5_unit_lattice_cleanarch_coordinator.cjs",
+    "bench/pari-class-group-port/check_field3_c5_unit_lattice_cleanarch.cjs",
+    "bench/pari-class-group-port/field3_c5_unit_lattice_cleanarch_audit.md",
+    "bench/pari-class-group-port/field3_mixed_unit_suffix.py"
+  ],
+  "dependencies": [],
+  "references": [
+    "/scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4/src/basemath/buch2.c:4142-4177"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "gmp"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "fallback",
+    "windows-x64": "fallback",
+    "macos-arm64": "fallback"
+  },
+  "validation": [
+    "node bench/pari-class-group-port/check_field3_c5_unit_lattice_cleanarch.cjs",
+    "pnpm parallel:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_field3_c5_unit_lattice_cleanarch.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.661,
+      "started_at": "2026-09-17T15:06:48.664Z",
+      "commit": "e550dfd12fea6f8554d45ef4b30f71937179c6ab",
+      "workspace_fingerprint": "bc1e9f376b6f6b355ce71b2ec2986c8c0db31fcbd0a50c7842b9a2d47b4ac589",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added the authenticated fail-atomic C5 unit-lattice/cleanarch coordinator. It binds full15, C3 high-precision A, and analytically accepted C4 owners; runs U1/U2, cleanarch, getfu's second LLL factor, and exact Ufinal/Wraw composition; and publishes an immutable content-addressed owner. The cleanarch precision admission now covers the 153088 field target.",
+    "risks": [
+      "Only the synthetic 64-bit arithmetic path was run end to end; the authentic 153088-bit field3 execution is intentionally deferred.",
+      "The native root was compiled and its JavaScript preflight exercised, but broad native, baselib strict, non-Linux, and full high-precision gates are deferred to integration."
+    ],
+    "next_steps": [
+      "Merge with the real field-derived analytic C4 promotion owner and run the authentic high-precision path.",
+      "Pass cleanPacked, getfuFactor, prepared arrays, and rawUnitTransform to C6 getfu reconstruction.",
+      "Run broad architecture/native/baselib and platform gates from the integration lane."
+    ]
+  }
+}

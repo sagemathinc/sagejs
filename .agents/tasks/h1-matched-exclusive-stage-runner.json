@@ -1,0 +1,51 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "h1-matched-exclusive-stage-runner",
+  "title": "H1 Matched Exclusive Stage Runner",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Run honest matched H1 Sage.js/PARI implementation-local duration diagnostics with independent actual result/replay/RNG/work authorities, frozen-input provenance, and exact duration conservation",
+  "base_commit": "2c686f2625965d39bef0ebf0295b7be94cb09fb4",
+  "claims": [
+    "bench/pari-class-group-port/h1_matched_exclusive_stage_runner.cjs",
+    "bench/pari-class-group-port/check_h1_matched_exclusive_stage_runner.cjs",
+    "bench/pari-class-group-port/h1-matched-exclusive-stage-development-receipt.json",
+    "bench/pari-class-group-port/h1_matched_exclusive_stage_runner.md",
+    "bench/pari-class-group-port/h1_unified_complete_adapter.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "pristine PARI 2.17.4 exact result/work/RNG cold replay",
+      "same-source native H1 final-owner replay authority and ordered diagnostic duration trace",
+      "independent common mathematical-result normalizers"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "not-applicable",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "not-applicable"
+  },
+  "validation": [
+    "node bench/pari-class-group-port/check_h1_matched_exclusive_stage_runner.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "pnpm parallel:check",
+    "pnpm merge:check"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

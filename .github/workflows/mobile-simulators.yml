@@ -6,12 +6,14 @@ on:
     paths:
       - "apps/sagejs-mobile/**"
       - "packages/flint-wasm/**"
+      - "packages/class-groups/**"
       - ".github/workflows/mobile-simulators.yml"
   push:
     branches: [main]
     paths:
       - "apps/sagejs-mobile/**"
       - "packages/flint-wasm/**"
+      - "packages/class-groups/**"
       - ".github/workflows/mobile-simulators.yml"
 
 permissions:
@@ -83,6 +85,10 @@ jobs:
         with:
           node-version: 26.5.1
           cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.98.1
+          targets: wasm32-wasip1
       - run: pnpm install --frozen-lockfile
       - name: Restore the canonical authenticated numerical runtime
         uses: actions/download-artifact@v8
@@ -105,6 +111,7 @@ jobs:
           node packages/wasm-toolchain/scripts/toolchain.cjs prepare
           node packages/wasm-toolchain/scripts/probe.cjs
           pnpm build
+          packages/class-groups/scripts/build-wasm.sh
           pnpm --dir packages/flint-wasm build
           node packages/flint-wasm/scripts/production-receipt.cjs validate
       - name: Preserve the exact portable runtime for independent qualification

@@ -1,0 +1,41 @@
+{
+  "counters": {
+    "appendedRelations": 934,
+    "cursorTrials": 551845,
+    "positiveCacheStatuses": 934,
+    "primitiveNonscalarCandidates": 542465,
+    "randomIdeals": 18,
+    "randomSearchIdeals": 37,
+    "smoothCandidates": 3691,
+    "visitedIdeals": 1167
+  },
+  "factorBase": {
+    "idealCount": 1130,
+    "relationBound": 9196
+  },
+  "limits": {
+    "maximumCandidates": 5500000,
+    "maximumVisitedIdeals": 12000
+  },
+  "qualificationStatus": "diagnostic-candidate-only",
+  "relations": {
+    "completeRankAndSurplus": true,
+    "missingRank": 0,
+    "rows": 1137
+  },
+  "schema": "sagejs.rust-class-group/row6-maximal-small-norm-prefix-v1",
+  "timingsNanoseconds": {
+    "archimedeanPreparation": 14368436,
+    "catalogSetup": 3480800,
+    "enumerationAndNorm": 61039415,
+    "factorBase": 254200632,
+    "initialCache": 8571888,
+    "lll": 541383617,
+    "numericalPreparation": 560069693,
+    "primeValuationAndCache": 5414326707,
+    "rationalFactorization": 508054431,
+    "totalExternal": 7681265113,
+    "totalInternal": 7672684695
+  },
+  "usesOracleAsInput": false
+}

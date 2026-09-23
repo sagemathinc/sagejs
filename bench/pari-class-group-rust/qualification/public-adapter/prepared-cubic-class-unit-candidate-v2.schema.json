@@ -1,0 +1,168 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/rust-class-group-qualification/prepared-cubic-class-unit-candidate-v2.json",
+  "title": "Prepared cubic class/unit candidate evidence v2",
+  "description": "Closed structural contract for Rust prepared-cubic candidate evidence with a complete relation-lattice catalog. Validation remains candidate-only and never authorizes a complete Sage.js class group, unit group, proof status, or public result.",
+  "$comment": "Version 2 adds complete factor-base and principal-relation evidence for independent RelationPresentation qualification. It remains incomplete at the public Sage.js boundary.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "inputId",
+    "polynomialAscending",
+    "qualificationStatus",
+    "usesOracleAsInput",
+    "usesClassGroupAnswersAsInput",
+    "mathematicalBoundary",
+    "relations",
+    "presentationIndexEvidence",
+    "relationLatticeEvidence",
+    "relationCollectionProfile",
+    "classMap",
+    "kernel",
+    "reconstructedUnitLattice",
+    "analyticCompletion",
+    "timingsNanoseconds"
+  ],
+  "properties": {
+    "schema": { "const": "sagejs.rust-class-group/prepared-cubic-class-unit-v2" },
+    "inputId": {
+      "$ref": "https://sagejs.org/schemas/rust-class-group-qualification/prepared-cubic-class-unit-candidate-v1.json#/$defs/contentId"
+    },
+    "polynomialAscending": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "$ref": "https://sagejs.org/schemas/rust-class-group-qualification/prepared-cubic-class-unit-candidate-v1.json#/$defs/integerString"
+      }
+    },
+    "qualificationStatus": { "const": "grh-conditional-class-unit-index-one" },
+    "usesOracleAsInput": { "const": false },
+    "usesClassGroupAnswersAsInput": { "const": false },
+    "mathematicalBoundary": {
+      "const": "replay-validated-prepared-cubic-to-complete-class-and-unit-result"
+    },
+    "relations": {
+      "$ref": "https://sagejs.org/schemas/rust-class-group-qualification/prepared-cubic-class-unit-candidate-v1.json#/$defs/relationShape"
+    },
+    "presentationIndexEvidence": { "$ref": "#/$defs/presentationIndexEvidence" },
+    "relationLatticeEvidence": { "$ref": "#/$defs/relationLatticeEvidence" },
+    "relationCollectionProfile": {
+      "$ref": "https://sagejs.org/schemas/rust-class-group-qualification/prepared-cubic-class-unit-candidate-v1.json#/$defs/collectionProfile"
+    },
+    "classMap": {
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "https://sagejs.org/schemas/rust-class-group-qualification/prepared-cubic-class-unit-candidate-v1.json#/$defs/classMap"
+        }
+      ],
+      "required": [
+        "generatorOrderWitnessStatus",
+        "maximumEagerGeneratorWitnessRelations",
+        "generatorOrderFactorBaseCatalog",
+        "generatorOrderPrimePowerHnfs",
+        "generatorOrderRelations"
+      ],
+      "properties": {
+        "generatorOrderWitnessStatus": {},
+        "maximumEagerGeneratorWitnessRelations": {},
+        "generatorOrderFactorBaseCatalog": {},
+        "generatorOrderPrimePowerHnfs": {},
+        "generatorOrderRelations": {}
+      },
+      "unevaluatedProperties": false
+    },
+    "kernel": {
+      "$ref": "https://sagejs.org/schemas/rust-class-group-qualification/prepared-cubic-class-unit-candidate-v1.json#/$defs/kernel"
+    },
+    "reconstructedUnitLattice": {
+      "$ref": "https://sagejs.org/schemas/rust-class-group-qualification/prepared-cubic-class-unit-candidate-v1.json#/$defs/unitLattice"
+    },
+    "analyticCompletion": {
+      "$ref": "https://sagejs.org/schemas/rust-class-group-qualification/prepared-cubic-class-unit-candidate-v1.json#/$defs/analyticCompletion"
+    },
+    "timingsNanoseconds": {
+      "$ref": "https://sagejs.org/schemas/rust-class-group-qualification/prepared-cubic-class-unit-candidate-v1.json#/$defs/externalTimings"
+    }
+  },
+  "$defs": {
+    "presentationIndexEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "squareRowIndicesZeroBased",
+        "surplusRowIndicesZeroBased",
+        "squareDeterminant"
+      ],
+      "properties": {
+        "squareRowIndicesZeroBased": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "integer", "minimum": 0 },
+          "uniqueItems": true
+        },
+        "surplusRowIndicesZeroBased": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "integer", "minimum": 0 },
+          "uniqueItems": true
+        },
+        "squareDeterminant": {
+          "$ref": "https://sagejs.org/schemas/rust-class-group-qualification/prepared-cubic-class-unit-candidate-v1.json#/$defs/positiveIntegerString"
+        }
+      }
+    },
+    "relationLatticeEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "factorBaseCatalog", "relationRecords"],
+      "properties": {
+        "schema": {
+          "const": "sagejs.rust-class-group/prepared-cubic-relation-lattice-v1"
+        },
+        "factorBaseCatalog": {
+          "type": "array",
+          "items": {
+            "$ref": "https://sagejs.org/schemas/rust-class-group-qualification/prepared-cubic-class-unit-candidate-v1.json#/$defs/factorBasePrimeIdeal"
+          }
+        },
+        "relationRecords": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/relationRecord" }
+        }
+      }
+    },
+    "relationRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "relationIndexZeroBased",
+        "integralBasisCoordinates",
+        "primeIdealFactors"
+      ],
+      "properties": {
+        "relationIndexZeroBased": {
+          "$ref": "https://sagejs.org/schemas/rust-class-group-qualification/prepared-cubic-class-unit-candidate-v1.json#/$defs/nonnegativeInteger"
+        },
+        "integralBasisCoordinates": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "$ref": "https://sagejs.org/schemas/rust-class-group-qualification/prepared-cubic-class-unit-candidate-v1.json#/$defs/integerString"
+          },
+          "not": { "const": ["0", "0", "0"] }
+        },
+        "primeIdealFactors": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "https://sagejs.org/schemas/rust-class-group-qualification/prepared-cubic-class-unit-candidate-v1.json#/$defs/primeIdealFactor"
+          }
+        }
+      }
+    }
+  }
+}

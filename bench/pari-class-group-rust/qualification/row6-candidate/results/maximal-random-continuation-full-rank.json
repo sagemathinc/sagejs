@@ -1,0 +1,45 @@
+{
+  "schema": "sagejs.rust-class-group/row6-maximal-random-continuation-v1",
+  "qualificationStatus": "completed-relation-lattice-not-a-class-group",
+  "usesOracleAsInput": false,
+  "randomStream": {
+    "algorithm": "PARI-2.17.4-XORGEN4096-64-bit",
+    "seed": "1"
+  },
+  "limits": {
+    "maximumVisitedIdeals": 12000,
+    "maximumCandidates": 5500000
+  },
+  "factorBase": {
+    "idealCount": 1130,
+    "relationBound": 9196
+  },
+  "relations": {
+    "rows": 1526,
+    "missingModularRank": 0,
+    "completeRankAndSurplus": true,
+    "exactHnfAndSmithPending": true,
+    "publicCompletenessPending": true
+  },
+  "counters": {
+    "visitedIdeals": 6388,
+    "cursorTrials": 3951151,
+    "primitiveNonscalarCandidates": 3061974,
+    "smoothCandidates": 4477,
+    "appendedRelations": 1323,
+    "positiveCacheStatuses": 934,
+    "randomIdeals": 25,
+    "randomSearchIdeals": 5258
+  },
+  "timingsNanoseconds": {
+    "factorBase": 228725950,
+    "initialCache": 8052229,
+    "catalogSetup": 3460409,
+    "numericalPreparation": 88357510296,
+    "enumerationAndNorm": 616404051,
+    "rationalFactorization": 2936674535,
+    "primeValuationAndCache": 7901568115,
+    "totalInternal": 111942058868,
+    "totalExternal": 111952913097
+  }
+}

@@ -1,3 +1,4 @@
+# DISABLED: full-runtime lazy-package fixture, run by extension-geometry.cjs
 """Exact nilpotents, inverse Frobenius, and nonsplit residue fields."""
 
 from sagejs.polynomial_algorithms import zero_dimensional as zd

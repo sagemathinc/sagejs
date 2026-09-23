@@ -1,0 +1,58 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-compact-unit-result",
+  "title": "Immutable compact cubic unit result",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Publish and cold-replay an immutable compact/factored unit result for the authentic cubic getfu fixture without eager expansion in the matched flag-zero workload",
+  "base_commit": "c38d42cd94db20a44d77a8c25453ad5808897ce1",
+  "claims": [
+    "bench/pari-class-group-port/compact_unit_result.py",
+    "bench/pari-class-group-port/check_compact_unit_result.cjs",
+    "bench/pari-class-group-port/compact_unit_result_fixture.json",
+    "bench/pari-class-group-port/compact_unit_result_audit.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "PARI 2.17.4 src/basemath/buch2.c getfu/makeunits flag-zero/flag-one behavior"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Frozen authentic cubic relation, transform, getfu factor, exact units, norms, and packed-log provenance",
+      "CPython immutable publication, cold replay, and exact materialization mutation suite"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node bench/pari-class-group-port/check_compact_unit_result.cjs",
+    "pnpm exec pyright bench/pari-class-group-port/compact_unit_result.py",
+    "pnpm exec ruff check bench/pari-class-group-port/compact_unit_result.py",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Adds an immutable usable-compact-unit v1 boundary for the authentic totally real cubic. The 6,259-byte publication retains the genuine 7-factor by 2-unit transformation, composed exponent matrix, norm signs, high-precision logs, phases, regulator, and source authority while containing neither algebraic factor coordinates nor expanded units. Expansion is a separate exact cubic replay against a hash-authorized factor pool and matches both pristine-PARI units. The focused checker rejects 24 independently rehashed semantic mutations and four factor-pool/arithmetic mutations.",
+    "risks": [
+      "The current timed driver does not yet retain the original seven algebraic relation-generator values. The frozen replay pool is explicitly answer-derived from pristine PARI units to test this boundary and must not be used as timed algorithm input.",
+      "This boundary is specialized to the authentic cubic multiplication tensor; generic degree and fractional-factor materialization remain later work.",
+      "The result is upstream-assumed correspondence evidence, not a rigorous unit-saturation or public-completeness certificate.",
+      "Full baselib/native suites are intentionally deferred to the integration gate because unrelated agents are running heavy builds; focused CPython, Pyright, Ruff, and contract checks pass."
+    ],
+    "next_steps": [
+      "Retain and hash the genuine relation-generator factor pool in the timed relation/getfu owner.",
+      "Construct this compact payload from the successful high-precision UnitComponentOutput without changing the matched flag-zero path.",
+      "Qualify and time the separate compact tier on the predeclared 12-field unit panel."
+    ]
+  }
+}

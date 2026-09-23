@@ -1,0 +1,31 @@
+{
+  "identity": {
+    "pariVersion": "2.17.4",
+    "polynomial": "x^4-2000022*x-2000042",
+    "forcedBranch": "first post-HNF collection uses literal rnd_rel"
+  },
+  "initialFixtureSha256": "75b072b72ea9d66995fe0196c267b6de5bb00a2d2d298a500fa18d17a41bc984",
+  "pariArchiveSha256": "02651d99c391007d384b3fadbc20abc6916b77036f9e496c99e9ce8688ca4b53",
+  "buch2Sha256": "904ced8034732c7fcfe1da393e23950aac0862b085150fdc24ce1e31beb7d1ac",
+  "hashes": {
+    "before": "141083893c9e14ab1bf41b5d6ce940d197c7e313d4c7d7eba6e47f42641d00d7",
+    "ideal": "10b67523e23c36a6278fb095b43c15b1d56b6b5927224b5278d24a0850751f0b",
+    "input": "dc8da0f64d5debaa1b583ca4048fb6f769f51618cd55214aebf4569bc95d1aa2",
+    "output": "175c31ceb0988bd7bbb104789f58eba93e5a9d118ad456394164b64aac9ba752",
+    "result": "76ae83e545270505bab06d3047a3d08f43255333ae17ada592b383edd8b9ef6f"
+  },
+  "counts": {
+    "old": 293,
+    "last": 295,
+    "newColumns": 2,
+    "hRowsBefore": 4,
+    "hRowsAfter": 5,
+    "bColumnsBefore": 282,
+    "bColumnsAfter": 283
+  },
+  "scheduler": {
+    "search": [2, 11],
+    "subfactor": [4, 6, 2, 8],
+    "exponents": [3, 5, 5, 7]
+  }
+}

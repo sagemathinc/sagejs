@@ -109,6 +109,29 @@ function moduleClosure(roots) {
   return [...found].sort();
 }
 
+// Static imports are followed by the compiler's normal module resolver.  Lazy
+// imports are not visible at the call site, so standalone entry points must
+// name every literal dynamic import reachable through that static graph.
+function runtimeSelectedModuleClosure(roots) {
+  const explicit = new Set(roots);
+  const found = new Set();
+  const pending = [...roots];
+  while (pending.length > 0) {
+    const name = pending.shift();
+    if (found.has(name)) continue;
+    const filename = sourceFilenameForModule(name);
+    if (!filename) continue;
+    found.add(name);
+    const source = readFileSync(filename, "utf8");
+    const dynamic = pythonDynamicImports(source, name);
+    for (const dependency of dynamic) {
+      if (sourceFilenameForModule(dependency)) explicit.add(dependency);
+    }
+    pending.push(...pythonImports(source, name));
+  }
+  return [...explicit].sort();
+}
+
 function baselibLazyModules(filename) {
   const source = readFileSync(join(ROOT, "src", "baselib", filename), "utf8");
   return pythonDynamicImports(
@@ -157,6 +180,19 @@ const GROEBNER_STANDALONE_MODULES = Object.freeze([
   "sagejs.polynomial_algorithms.zero_dimensional",
 ]);
 
+// Finite-extension polynomial fixtures exercise lazy baselib dispatch that is
+// deliberately invisible to the static source-import closure.  Keep those
+// runtime-selected implementations explicit without loading them for ordinary
+// polynomial and Groebner standalone programs.
+const EXTENSION_STANDALONE_MODULES = Object.freeze(
+  runtimeSelectedModuleClosure([
+    ...GROEBNER_STANDALONE_MODULES,
+    "sagejs.linear_algebra.exact_vector_public",
+    ...baselibLazyModules("polynomial.py"),
+    ...baselibLazyModules("schemes.py"),
+  ]),
+);
+
 const BASELIB_STANDALONE_MODULES = Object.freeze([
   ...new Set([
     ...BUILTINS_STANDALONE_MODULES,
@@ -200,10 +236,12 @@ module.exports = {
   BASELIB_STANDALONE_MODULES,
   BUILTINS_STANDALONE_MODULES,
   CORE_STANDALONE_MODULES,
+  EXTENSION_STANDALONE_MODULES,
   GROEBNER_STANDALONE_MODULES,
   MATRIX_STANDALONE_MODULES,
   POLYNOMIAL_STANDALONE_MODULES,
   baselibStandaloneImportPrelude,
   moduleClosure,
+  runtimeSelectedModuleClosure,
   standaloneRuntimeRequirePrelude,
 };

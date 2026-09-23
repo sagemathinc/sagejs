@@ -22,25 +22,61 @@ function integerNames(values, types) {
 
 function operationInputs(operation) {
   switch (operation.kind) {
+    case "float64.copysign":
+      return [operation.left, operation.right];
+    case "loop.continue":
+      return operation.range ? [operation.range.iterator, operation.range.step, operation.range.stop] : [];
     case "integer.copy":
     case "integer.neg":
     case "integer.abs":
+    case "integer.from_int64":
+    case "int64.copy":
+    case "int64.neg":
+    case "int64.abs":
+    case "integer.bit_length":
+    case "integer.isqrt":
     case "integer.truth":
     case "integer.round_sqrt":
     case "uint64.from_integer_checked":
+    case "uint64.from_int64_checked":
+    case "int64.from_integer_checked":
+    case "int64.from_uint64_checked":
+    case "float64.from_integer_checked":
+    case "float64.from_integer":
+    case "float64.log":
+    case "float64.log2":
+    case "float64.atan":
+    case "float64.exp":
+    case "float64.sqrt":
+    case "float64.frexp":
+    case "float64.abs":
+    case "integer.from_float64":
+    case "integer.round_float64":
     case "bool.not":
     case "uint64.truth":
+    case "int64.truth":
     case "value.discard":
       return [operation.source];
+    case "float64.ldexp":
+      return [operation.source, operation.exponent];
     case "integer.pow_uint":
       return [operation.base];
     case "integer.mod_uint64":
       return [operation.left, operation.right];
+    case "integer.mul_int64":
+      return [operation.integer, operation.scalar];
     case "integer.binary":
+    case "integer.gcd":
+    case "integer.shift":
+    case "float64.binary":
+    case "float64.pow":
     case "uint64.binary":
+    case "int64.binary":
     case "integer.divmod":
     case "integer.compare":
     case "uint64.compare":
+    case "int64.compare":
+    case "float64.compare":
     case "bool.compare":
     case "bool.binary":
       return [operation.left, operation.right];
@@ -51,11 +87,21 @@ function operationInputs(operation) {
     case "int64.buffer.length":
       return [operation.buffer];
     case "int64.record.view":
+    case "integer.buffer.view":
+    case "uint64.buffer.view":
       return [operation.buffer, operation.start, operation.length];
     case "int64.buffer.get":
       return [operation.buffer, operation.index];
     case "int64.buffer.set":
       return [operation.buffer, operation.index, operation.value];
+    case "int64.buffer.addmul_range":
+      return [
+        operation.buffer,
+        operation.destination,
+        operation.source,
+        operation.length,
+        operation.multiplier,
+      ];
     case "integer.buffer.copy":
       return [operation.source];
     case "integer.buffer.length":
@@ -64,6 +110,68 @@ function operationInputs(operation) {
       return [operation.buffer, operation.index];
     case "integer.buffer.set":
       return [operation.buffer, operation.index, operation.value];
+    case "integer.buffer.slot_copy":
+      return [
+        operation.buffer,
+        operation.index,
+        operation.sourceBuffer,
+        operation.sourceIndex,
+      ];
+    case "integer.buffer.addmul":
+      return [
+        operation.buffer,
+        operation.destination,
+        operation.source,
+        operation.multiplier,
+      ];
+    case "integer.buffer.addmul_from":
+      return [
+        operation.buffer,
+        operation.destination,
+        operation.sourceBuffer,
+        operation.source,
+        operation.multiplier,
+      ];
+    case "integer.buffer.addmul_range":
+      return [
+        operation.buffer,
+        operation.destination,
+        operation.source,
+        operation.length,
+        operation.multiplier,
+      ];
+    case "integer.buffer.addmul_range_from":
+      return [
+        operation.buffer,
+        operation.destination,
+        operation.sourceBuffer,
+        operation.source,
+        operation.length,
+        operation.multiplier,
+      ];
+    case "integer.buffer.mod_addmul_range_from":
+      return [
+        operation.buffer,
+        operation.destination,
+        operation.sourceBuffer,
+        operation.source,
+        operation.length,
+        operation.multiplier,
+        operation.modulus,
+      ];
+    case "integer.buffer.swap_range":
+      return [
+        operation.buffer,
+        operation.left,
+        operation.right,
+        operation.length,
+      ];
+    case "integer.buffer.negate_range":
+      return [operation.buffer, operation.start, operation.length];
+    case "integer.buffer.get_int64":
+      return [operation.buffer, operation.index];
+    case "integer.buffer.sign":
+      return [operation.buffer, operation.index];
     case "uint64.buffer.copy":
       return [operation.source];
     case "uint64.buffer.length":
@@ -71,6 +179,17 @@ function operationInputs(operation) {
     case "uint64.buffer.get":
       return [operation.buffer, operation.index];
     case "uint64.buffer.set":
+      return [operation.buffer, operation.index, operation.value];
+    case "float64.copy":
+    case "float64.negate":
+      return [operation.source];
+    case "float64.buffer.copy":
+      return [operation.source];
+    case "float64.buffer.length":
+      return [operation.buffer];
+    case "float64.buffer.get":
+      return [operation.buffer, operation.index];
+    case "float64.buffer.set":
       return [operation.buffer, operation.index, operation.value];
     case "integer.vector.scope":
       return [operation.capacity, operation.memoryLimit];
@@ -118,6 +237,10 @@ function operationInputs(operation) {
       return [operation.matrix, operation.left, operation.right];
     case "integer.arena.scope":
       return [operation.memoryLimit, operation.temporaryLimit];
+    case "workspace.arena.scope":
+      return [operation.memoryLimit];
+    case "workspace.arena.integer_buffer.allocate":
+      return [operation.arena, operation.length];
     case "integer.arena.vector.allocate":
       return [operation.arena, operation.capacity, operation.maximumBits];
     case "integer.arena.matrix.allocate":
@@ -217,6 +340,7 @@ function walkStatements(statements, handlers) {
       continue;
     }
     if (statement.kind === "loop.range" ||
+        statement.kind === "loop.range_int64" ||
         statement.kind === "loop.range_exact") {
       handlers.loop("range", statement);
       handlers.enterLoop?.("range");
@@ -247,7 +371,8 @@ function walkStatements(statements, handlers) {
     }
     if (statement.kind === "integer.vector.scope" ||
         statement.kind === "integer.matrix.scope" ||
-        statement.kind === "integer.arena.scope") {
+        statement.kind === "integer.arena.scope" ||
+        statement.kind === "workspace.arena.scope") {
       handlers.operation(statement);
       walkStatements(statement.setup, handlers);
       walkStatements(statement.body, handlers);
@@ -289,13 +414,15 @@ function introduceResidentBorrows(fn) {
         rewrite(statement.body);
       } else if (
         statement.kind === "loop.range" ||
+        statement.kind === "loop.range_int64" ||
         statement.kind === "loop.range_exact"
       ) {
         rewrite(statement.body);
       } else if (
         statement.kind === "integer.vector.scope" ||
         statement.kind === "integer.matrix.scope" ||
-        statement.kind === "integer.arena.scope"
+        statement.kind === "integer.arena.scope" ||
+        statement.kind === "workspace.arena.scope"
       ) {
         rewrite(statement.setup);
         rewrite(statement.body);
@@ -460,6 +587,77 @@ function storageAnalysis(fn) {
   };
 }
 
+/*
+ * A private exact call is allowed to borrow its caller's scratch only when the
+ * compiler can reserve a disjoint, bounded suffix for the complete acyclic
+ * call chain.  The layout is a stack discipline rather than a sum over the
+ * whole module: a caller keeps its liveness-coloured locals in the prefix and
+ * every (sequential) child reuses the same suffix.  Recursive graphs and exact
+ * arena bodies retain the existing per-function init/clear path.  In
+ * particular, we do not let a scratch value outlive an arena checkpoint that
+ * may have supplied its GMP limbs.
+ */
+const MAX_RESIDENT_EXACT_SCRATCH_SLOTS = 1 << 16;
+
+function residentExactScratchAnalyses(functions, recursive) {
+  const exact = new Map(functions
+    .filter((fn) => fn.kernelKind === "integer")
+    .map((fn) => [fn.name, fn]));
+  const memo = new Map();
+  const visiting = new Set();
+  const analyze = (fn) => {
+    if (memo.has(fn.name)) return memo.get(fn.name);
+    if (recursive.has(fn.name) || visiting.has(fn.name) ||
+        fn.analysis?.liveExactWorkspace !== undefined) {
+      memo.set(fn.name, undefined);
+      return undefined;
+    }
+    visiting.add(fn.name);
+    let childSlots = 0;
+    const qualifiedChildren = [];
+    for (const name of fn.dependencies || []) {
+      const child = exact.get(name);
+      if (child === undefined) continue;
+      const analysis = analyze(child);
+      // Zero-slot functions are deliberately left unannotated below: they do
+      // not need the hidden frame ABI.  Exclude them from the authenticated
+      // child closure as well so analysis and emission describe the same
+      // private call graph.
+      if (analysis === undefined || analysis.frameSlots === 0) continue;
+      childSlots = Math.max(childSlots, analysis.frameSlots);
+      qualifiedChildren.push(name);
+    }
+    visiting.delete(fn.name);
+    const localSlots = fn.analysis?.storage?.scratchSlots;
+    if (!Number.isSafeInteger(localSlots) || localSlots < 0 ||
+        !Number.isSafeInteger(childSlots) || childSlots < 0 ||
+        localSlots > MAX_RESIDENT_EXACT_SCRATCH_SLOTS - childSlots) {
+      memo.set(fn.name, undefined);
+      return undefined;
+    }
+    const frameSlots = localSlots + childSlots;
+    const result = {
+      authority: "closed-acyclic-exact-scratch-frame-v1",
+      localSlots,
+      childBaseOffset: localSlots,
+      frameSlots,
+      maximumFrameSlots: MAX_RESIDENT_EXACT_SCRATCH_SLOTS,
+      qualifiedChildren: qualifiedChildren.sort(),
+      ownership: "root-initialized-private-call-graph-or-local-fallback",
+      cleanup: "owning-root-only-on-success-and-error",
+    };
+    memo.set(fn.name, result);
+    return result;
+  };
+  for (const fn of exact.values()) analyze(fn);
+  for (const fn of exact.values()) {
+    const analysis = memo.get(fn.name);
+    if (analysis !== undefined && analysis.frameSlots > 0) {
+      fn.analysis.residentExactScratch = analysis;
+    }
+  }
+}
+
 function constantBits(value) {
   const integer = BigInt(value);
   const magnitude = integer < 0n ? -integer : integer;
@@ -493,16 +691,22 @@ function executionProfile(fn) {
     operation(operation) {
       if (
         operation.kind === "integer.binary" ||
+        operation.kind === "integer.mul_int64" ||
+        operation.kind === "integer.gcd" ||
+        operation.kind === "integer.isqrt" ||
         operation.kind === "integer.pow_uint" ||
         operation.kind === "integer.divmod" ||
         operation.kind === "integer.mod_uint64" ||
-        operation.kind === "integer.round_sqrt"
+        operation.kind === "integer.round_sqrt" ||
+        operation.kind === "integer.bit_length" ||
+        operation.kind === "integer.shift"
       ) {
         profile.arithmeticOperations += 1;
       }
       if (
         (operation.kind === "integer.binary" &&
           ["mul", "floordiv", "mod"].includes(operation.operation)) ||
+        operation.kind === "integer.mul_int64" ||
         operation.kind === "integer.pow_uint" ||
         operation.kind === "integer.divmod" ||
         operation.kind === "integer.mod_uint64" ||
@@ -511,6 +715,90 @@ function executionProfile(fn) {
         profile.integerGrowthOperations += 1;
       }
       if (operation.kind === "integer.buffer.get") {
+        profile.integerBufferLoads += 1;
+        if (integerBufferParameters.has(operation.buffer)) {
+          integerBufferLoadParameters.add(operation.buffer);
+        }
+      }
+      if (operation.kind === "integer.buffer.slot_copy") {
+        profile.integerBufferLoads += 1;
+        if (integerBufferParameters.has(operation.sourceBuffer)) {
+          integerBufferLoadParameters.add(operation.sourceBuffer);
+        }
+      }
+      if (operation.kind === "integer.buffer.addmul") {
+        profile.arithmeticOperations += 2;
+        profile.integerGrowthOperations += 1;
+        profile.integerBufferLoads += 2;
+        if (integerBufferParameters.has(operation.buffer)) {
+          integerBufferLoadParameters.add(operation.buffer);
+        }
+      }
+      if (operation.kind === "integer.buffer.addmul_from") {
+        profile.arithmeticOperations += 2;
+        profile.integerGrowthOperations += 1;
+        profile.integerBufferLoads += 2;
+        for (const buffer of [operation.buffer, operation.sourceBuffer]) {
+          if (integerBufferParameters.has(buffer)) {
+            integerBufferLoadParameters.add(buffer);
+          }
+        }
+      }
+      if (operation.kind === "integer.buffer.addmul_range") {
+        profile.arithmeticOperations += 2;
+        profile.integerGrowthOperations += 1;
+        profile.integerBufferLoads += 2;
+        profile.rangeLoops += 1;
+        if (integerBufferParameters.has(operation.buffer)) {
+          integerBufferLoadParameters.add(operation.buffer);
+        }
+      }
+      if (operation.kind === "integer.buffer.addmul_range_from") {
+        profile.arithmeticOperations += 2;
+        profile.integerGrowthOperations += 1;
+        profile.integerBufferLoads += 2;
+        profile.rangeLoops += 1;
+        for (const buffer of [operation.buffer, operation.sourceBuffer]) {
+          if (integerBufferParameters.has(buffer)) {
+            integerBufferLoadParameters.add(buffer);
+          }
+        }
+      }
+      if (operation.kind === "integer.buffer.mod_addmul_range_from") {
+        profile.arithmeticOperations += 3;
+        profile.integerBufferLoads += 2;
+        profile.rangeLoops += 1;
+        for (const buffer of [operation.buffer, operation.sourceBuffer]) {
+          if (integerBufferParameters.has(buffer)) {
+            integerBufferLoadParameters.add(buffer);
+          }
+        }
+      }
+      if (operation.kind === "integer.buffer.swap_range") {
+        profile.integerBufferLoads += 2;
+        profile.rangeLoops += 1;
+        if (integerBufferParameters.has(operation.buffer)) {
+          integerBufferLoadParameters.add(operation.buffer);
+        }
+      }
+      if (operation.kind === "integer.buffer.negate_range") {
+        profile.integerBufferLoads += 1;
+        profile.rangeLoops += 1;
+        if (integerBufferParameters.has(operation.buffer)) {
+          integerBufferLoadParameters.add(operation.buffer);
+        }
+      }
+      if (operation.kind === "int64.buffer.addmul_range") {
+        profile.arithmeticOperations += 2;
+        profile.rangeLoops += 1;
+      }
+      if (operation.kind === "integer.buffer.get_int64") {
+        profile.integerBufferLoads += 1;
+        if (integerBufferParameters.has(operation.buffer)) {
+          integerBufferLoadParameters.add(operation.buffer);
+        }
+      }
+      if (operation.kind === "integer.buffer.sign") {
         profile.integerBufferLoads += 1;
         if (integerBufferParameters.has(operation.buffer)) {
           integerBufferLoadParameters.add(operation.buffer);
@@ -531,7 +819,8 @@ function executionProfile(fn) {
       }
       if (operation.kind === "integer.vector.scope" ||
           operation.kind === "integer.matrix.scope" ||
-          operation.kind === "integer.arena.scope") {
+          operation.kind === "integer.arena.scope" ||
+          operation.kind === "workspace.arena.scope") {
         profile.liveExactScopes += 1;
       }
       if (operation.kind === "integer.constant") {
@@ -604,10 +893,29 @@ function localEffects(fn) {
       if (operation.kind === "uint64.from_integer_checked") {
         mayRaise.add("OverflowError");
       }
+      if (operation.kind === "uint64.from_int64_checked") {
+        mayRaise.add("OverflowError");
+      }
+      if (operation.kind === "float64.from_integer_checked") {
+        mayRaise.add("OverflowError");
+      }
+      if (operation.kind === "float64.ldexp") mayRaise.add("OverflowError");
+      if (operation.kind === "float64.exp") mayRaise.add("OverflowError");
+      if (operation.kind === "float64.sqrt") mayRaise.add("ValueError");
+      if (operation.kind === "float64.from_integer") mayRaise.add("OverflowError");
+      if (operation.kind === "integer.from_float64" || operation.kind === "integer.round_float64") {
+        mayRaise.add("ValueError");
+        mayRaise.add("OverflowError");
+      }
+      if (operation.kind === "float64.binary" &&
+          operation.operation === "div") {
+        mayRaise.add("ZeroDivisionError");
+      }
       if (operation.kind === "integer.round_sqrt") {
         mayRaise.add("ValueError");
         mayRaise.add("OverflowError");
       }
+      if (operation.kind === "integer.isqrt") mayRaise.add("ValueError");
       if (operation.kind === "range.validate_step") {
         mayRaise.add("ValueError");
       }
@@ -617,17 +925,25 @@ function localEffects(fn) {
       if (
         operation.kind === "int64.buffer.get" ||
         operation.kind === "int64.buffer.set" ||
+        operation.kind === "int64.buffer.addmul_range" ||
         operation.kind === "int64.record.view" ||
+        operation.kind === "integer.buffer.view" ||
+        operation.kind === "uint64.buffer.view" ||
         operation.kind === "integer.buffer.get" ||
         operation.kind === "integer.buffer.set" ||
+        operation.kind === "integer.buffer.slot_copy" ||
         operation.kind === "uint64.buffer.get" ||
-        operation.kind === "uint64.buffer.set"
+        operation.kind === "uint64.buffer.set" ||
+        operation.kind === "float64.buffer.get" ||
+        operation.kind === "float64.buffer.set"
       ) {
         mayRaise.add("IndexError");
       }
       if (operation.kind === "integer.vector.scope" ||
           operation.kind === "integer.matrix.scope" ||
           operation.kind === "integer.arena.scope" ||
+          operation.kind === "workspace.arena.scope" ||
+          operation.kind === "workspace.arena.integer_buffer.allocate" ||
           operation.kind === "integer.arena.vector.allocate" ||
           operation.kind === "integer.arena.matrix.allocate" ||
           operation.kind === "record.arena.vector.allocate" ||
@@ -679,10 +995,12 @@ function localEffects(fn) {
         mayRaise.add("MemoryError");
       }
       if (operation.kind === "int64.buffer.set" ||
-          operation.kind === "integer.buffer.set") {
+          operation.kind === "int64.buffer.addmul_range" ||
+          operation.kind === "integer.buffer.set" ||
+          operation.kind === "integer.buffer.slot_copy") {
         mayRaise.add("OverflowError");
       }
-      if (operation.kind === "raise") mayRaise.add(operation.errorType);
+      if (operation.kind === "raise") mayRaise.add(operation.exception);
       if (operation.kind === "ffi.call" ||
           operation.kind === "ffi.arena.resource.allocate") {
         const effects = operation.foreign.function.effects;
@@ -723,7 +1041,7 @@ function localEffects(fn) {
 function bufferWrites(fn, dependencyEffects) {
   const bufferTypes = new Set([
     "IntegerBuffer", "Int64Buffer", "Int64Record", "UInt64Buffer",
-    "NativeIntegerVector",
+    "Float64Buffer", "NativeIntegerVector",
   ]);
   const aliases = new Map(
     fn.params
@@ -746,13 +1064,25 @@ function bufferWrites(fn, dependencyEffects) {
     for (const statement of statements) {
       if (statement.kind === "int64.buffer.copy" ||
           statement.kind === "integer.buffer.copy" ||
-          statement.kind === "uint64.buffer.copy") {
+          statement.kind === "uint64.buffer.copy" ||
+          statement.kind === "float64.buffer.copy") {
         changed = addAlias(statement.target, roots(statement.source)) || changed;
-      } else if (statement.kind === "int64.record.view") {
+      } else if (statement.kind === "int64.record.view" ||
+          statement.kind === "integer.buffer.view" ||
+          statement.kind === "uint64.buffer.view") {
         changed = addAlias(statement.target, roots(statement.buffer)) || changed;
       } else if (statement.kind === "int64.buffer.set" ||
+          statement.kind === "int64.buffer.addmul_range" ||
           statement.kind === "integer.buffer.set" ||
-          statement.kind === "uint64.buffer.set") {
+          statement.kind === "integer.buffer.slot_copy" ||
+          statement.kind === "integer.buffer.addmul_from" ||
+          statement.kind === "integer.buffer.addmul_range" ||
+          statement.kind === "integer.buffer.addmul_range_from" ||
+          statement.kind === "integer.buffer.mod_addmul_range_from" ||
+          statement.kind === "integer.buffer.swap_range" ||
+          statement.kind === "integer.buffer.negate_range" ||
+          statement.kind === "uint64.buffer.set" ||
+          statement.kind === "float64.buffer.set") {
         for (const root of roots(statement.buffer)) writes.add(root);
       } else if (statement.kind === "integer.vector.set" ||
           statement.kind === "integer.vector.addmul" ||
@@ -787,10 +1117,12 @@ function bufferWrites(fn, dependencyEffects) {
         changed = visit(statement.alternative) || changed;
       } else if (statement.kind === "while" ||
           statement.kind === "loop.range" ||
+          statement.kind === "loop.range_int64" ||
           statement.kind === "loop.range_exact" ||
           statement.kind === "integer.vector.scope" ||
           statement.kind === "integer.matrix.scope" ||
-          statement.kind === "integer.arena.scope") {
+          statement.kind === "integer.arena.scope" ||
+          statement.kind === "workspace.arena.scope") {
         if (statement.setup) {
           changed = visit(statement.setup) || changed;
         }
@@ -1030,6 +1362,13 @@ function effectAnalyses(functions) {
   return effects;
 }
 
+function exactArenaRetryable(fn) {
+  return fn.analysis?.liveExactWorkspace?.scopes?.some((scope) =>
+    scope.storage === "shared-budget-lexical-exact-arena"
+  ) && fn.analysis?.effects?.replaySafe === true &&
+    (fn.analysis.effects.externalWrites || []).length === 0;
+}
+
 function taggedIntegerProof(fn, effects) {
   const operations = new Set();
   walkStatements(fn.body, {
@@ -1203,6 +1542,21 @@ function liveExactWorkspaceAnalysis(fn, backend) {
             ? {}
             : { checkpointLifetime: earlyCheckpoint }),
         });
+      } else if (operation.kind === "workspace.arena.scope") {
+        scopes.push({
+          owner: operation.owner,
+          memoryLimit: operation.memoryLimit,
+          storage: "budgeted-packed-integer-buffer-arena",
+          children: operation.children.map((child) => ({
+            owner: child.owner,
+            storage: "packed-signed-magnitude-integer-buffer",
+            length: child.length,
+            wordCapacity: child.wordCapacity,
+            cleanup: "reverse-owner-order-all-exit-idempotent",
+          })),
+          cleanup: "reverse-child-order-all-exit-idempotent",
+          canonicalAuthority: false,
+        });
       }
     },
     read() {},
@@ -1240,12 +1594,15 @@ const FMPZ_OPERATION_KINDS = new Set([
   "integer.buffer.get",
   "integer.buffer.length",
   "integer.buffer.set",
+  "integer.buffer.slot_copy",
   "integer.compare",
   "integer.constant",
   "integer.copy",
   "integer.divmod",
   "integer.from_uint64",
+  "integer.from_int64",
   "integer.mod_uint64",
+  "integer.mul_int64",
   "integer.neg",
   "integer.pow_uint",
   "integer.truth",
@@ -1267,11 +1624,22 @@ const FMPZ_OPERATION_KINDS = new Set([
   "uint64.buffer.get",
   "uint64.buffer.length",
   "uint64.buffer.set",
+  "uint64.buffer.view",
   "uint64.compare",
   "uint64.constant",
   "uint64.copy",
   "uint64.from_integer_checked",
+  "uint64.from_int64_checked",
   "uint64.truth",
+  "int64.abs",
+  "int64.binary",
+  "int64.compare",
+  "int64.constant",
+  "int64.copy",
+  "int64.from_integer_checked",
+  "int64.from_uint64_checked",
+  "int64.neg",
+  "int64.truth",
   "value.discard",
 ]);
 
@@ -1304,6 +1672,115 @@ const FMPZ_RESOURCE_IDS = new Set([
   "fmpz_polynomial",
   "number_field_analysis_resource",
 ]);
+
+const INT64_MINIMUM = -(1n << 63n);
+const INT64_MAXIMUM = (1n << 63n) - 1n;
+
+function constantInt64RangeProof(start, stop, step) {
+  if (step === 0n) return undefined;
+  let count = 0n;
+  if (step > 0n && start < stop) {
+    count = (stop - start + step - 1n) / step;
+  } else if (step < 0n && start > stop) {
+    const magnitude = -step;
+    count = (start - stop + magnitude - 1n) / magnitude;
+  }
+  if (count === 0n) {
+    return {
+      authority: "constant-int64-range-v1",
+      start: start.toString(),
+      stop: stop.toString(),
+      step: step.toString(),
+      iterations: "0",
+    };
+  }
+  const last = start + (count - 1n) * step;
+  const next = last + step;
+  if (next < INT64_MINIMUM || next > INT64_MAXIMUM) return undefined;
+  return {
+    authority: "constant-int64-range-v1",
+    start: start.toString(),
+    stop: stop.toString(),
+    step: step.toString(),
+    iterations: count.toString(),
+    last: last.toString(),
+    next: next.toString(),
+  };
+}
+
+function assignedOperationNames(statements, assigned = new Set()) {
+  for (const statement of statements || []) {
+    for (const target of operationTargets(statement)) assigned.add(target);
+    if (statement.kind?.startsWith("loop.")) {
+      if (typeof statement.index === "string") assigned.add(statement.index);
+      if (typeof statement.iterator === "string") {
+        assigned.add(statement.iterator);
+      }
+    }
+    assignedOperationNames(statement.condition?.operations, assigned);
+    assignedOperationNames(statement.body, assigned);
+    assignedOperationNames(statement.alternative, assigned);
+    assignedOperationNames(statement.right?.operations, assigned);
+  }
+  return assigned;
+}
+
+function annotateConstantInt64Ranges(fn) {
+  function visit(statements, inherited = new Map(), activeRangeProof) {
+    const constants = new Map(inherited);
+    for (const statement of statements || []) {
+      // This analysis may be rerun over already annotated or externally
+      // mutated IR. Never let authority from an earlier shape survive.
+      delete statement.incrementProof;
+      if (statement.range !== null && typeof statement.range === "object") {
+        delete statement.range.incrementProof;
+      }
+      if (statement.kind === "int64.constant") {
+        constants.set(statement.target, BigInt(statement.value));
+        continue;
+      }
+      if (statement.kind === "int64.copy" && constants.has(statement.source)) {
+        constants.set(statement.target, constants.get(statement.source));
+        continue;
+      }
+      if (statement.kind === "loop.continue" &&
+          statement.range?.kind === "loop.range_int64" &&
+          activeRangeProof !== undefined) {
+        statement.range.incrementProof = activeRangeProof;
+      }
+      if (statement.kind === "loop.range_int64") {
+        const start = constants.get(statement.start);
+        const stop = constants.get(statement.stop);
+        const step = constants.get(statement.step);
+        const proof = start === undefined || stop === undefined || step === undefined
+          ? undefined : constantInt64RangeProof(start, stop, step);
+        if (proof !== undefined) statement.incrementProof = proof;
+        visit(statement.body, constants, proof);
+      } else if (statement.kind === "if") {
+        visit(statement.condition.operations, constants, activeRangeProof);
+        visit(statement.body, constants, activeRangeProof);
+        visit(statement.alternative, constants, activeRangeProof);
+      } else if (statement.kind === "while") {
+        visit(statement.condition.operations, constants, activeRangeProof);
+        visit(statement.body, constants, activeRangeProof);
+      } else if (statement.kind === "loop.range" ||
+          statement.kind === "loop.range_exact") {
+        visit(statement.body, constants, undefined);
+      } else if (statement.kind === "bool.short_circuit") {
+        visit(statement.right.operations, constants, activeRangeProof);
+      }
+      // Recursive visits intentionally use a copy so they can prove ranges
+      // inside the nested control structure. On return, however, every value
+      // assigned on any nested path is unknown. Keeping the pre-structure
+      // constant would be unsound for subsequent ranges, especially after a
+      // while loop that executes at least once.
+      for (const target of assignedOperationNames([statement])) {
+        constants.delete(target);
+      }
+    }
+  }
+  visit(fn.body);
+}
 
 /**
  * Preserve the ownership proof needed to move the fmpz allocation checkpoint.
@@ -1340,6 +1817,7 @@ function fmpzEarlyCheckpointLifetime(scope, backend) {
         visit(statement.body);
       } else if (
         statement.kind === "loop.range" ||
+        statement.kind === "loop.range_int64" ||
         statement.kind === "loop.range_exact"
       ) {
         visit(statement.body);
@@ -1381,7 +1859,7 @@ function fmpzEarlyCheckpointLifetime(scope, backend) {
  */
 function fmpzReturnTypeSupported(type) {
   return (tupleElementTypes(type) || [type]).every((element) =>
-    ["Integer", "uint64", "bool"].includes(element)
+    ["Integer", "uint64", "int64", "bool"].includes(element)
   );
 }
 
@@ -1393,7 +1871,7 @@ function inspectFmpzFunction(fn) {
       .map((resource) => resource.compiler_type || resource.python_name),
   );
   const scalarParameter = (param) =>
-    ["Integer", "uint64", "bool", "IntegerBuffer", "UInt64Buffer"]
+    ["Integer", "uint64", "int64", "bool", "IntegerBuffer", "UInt64Buffer"]
       .includes(param.type);
   const borrowedAggregateParameter = (param) =>
     param.type === "IntegerBuffer" ||
@@ -1404,7 +1882,7 @@ function inspectFmpzFunction(fn) {
   )) return null;
   if (!fn.locals.every((local) =>
     [
-      "Integer", "uint64", "bool", "UInt64Buffer", "NativeExactArena",
+      "Integer", "uint64", "int64", "bool", "UInt64Buffer", "NativeExactArena",
       "NativeIntegerVector",
     ].includes(local.type) ||
     (fn.foreignResources || []).some((resource) =>
@@ -1431,6 +1909,7 @@ function inspectFmpzFunction(fn) {
         continue;
       }
       if (statement.kind === "loop.range" ||
+          statement.kind === "loop.range_int64" ||
           statement.kind === "loop.range_exact") {
         visit(statement.body);
         continue;
@@ -1471,7 +1950,8 @@ function inspectFmpzFunction(fn) {
       }
       if (statement.kind.startsWith("uint64.buffer.")) {
         if (statement.bufferType !== "UInt64Buffer" &&
-            statement.kind !== "uint64.buffer.copy") eligible = false;
+            statement.kind !== "uint64.buffer.copy" &&
+            statement.kind !== "uint64.buffer.view") eligible = false;
         if (["uint64.buffer.get", "uint64.buffer.set"].includes(statement.kind) &&
             !["Integer", "uint64"].includes(statement.indexType)) {
           eligible = false;
@@ -1510,11 +1990,11 @@ function inspectFmpzFunction(fn) {
   if (
     arenas === 0 && vectors === 0 &&
     fn.params.every((param) =>
-      ["Integer", "uint64", "bool"].includes(param.type) ||
+      ["Integer", "uint64", "int64", "bool"].includes(param.type) ||
       borrowedAggregateParameter(param)
     ) &&
     fn.locals.every((local) =>
-      ["Integer", "uint64", "bool", "UInt64Buffer"].includes(local.type) ||
+      ["Integer", "uint64", "int64", "bool", "UInt64Buffer"].includes(local.type) ||
       (fmpzResourceTypes.has(local.type) && fn.params.some((param) =>
         param.type === local.type &&
         param.name === (fn.resourceAliases || {})[local.name]
@@ -1836,6 +2316,7 @@ function backendPolicy(fn, profile, recursive, fmpzPolicies = new Map()) {
 function analyzeExactModule(functions) {
   for (const fn of functions) {
     if (fn.kernelKind === "integer") introduceResidentBorrows(fn);
+    annotateConstantInt64Ranges(fn);
   }
   const recursive = recursiveFunctions(functions);
   const fmpzPolicies = fmpzClosedCallGraphPolicies(functions, recursive);
@@ -1857,18 +2338,62 @@ function analyzeExactModule(functions) {
       ),
     );
   };
+  const mixedFloat64 = new Set(functions.filter(fn =>
+    fn.kernelKind === "float64" || [...fn.params, ...fn.locals].some(value =>
+      value.type === "Float64" || value.type === "Float64Buffer"
+    )).map(fn => fn.name));
+  let mixedChanged = true;
+  while (mixedChanged) {
+    mixedChanged = false;
+    for (const fn of functions) {
+      if (!mixedFloat64.has(fn.name) && (fn.dependencies || []).some(name => mixedFloat64.has(name))) {
+        mixedFloat64.add(fn.name);
+        mixedChanged = true;
+      }
+    }
+  }
+  // A lexical workspace has one owning GMP representation.  Every exact
+  // caller in its private call graph must stay in that representation too;
+  // otherwise tagged emission would reference a callee variant that cannot
+  // exist without converting or escaping the workspace.
+  const exactWorkspace = new Set(functions.filter((fn) =>
+    fn.kernelKind === "integer" &&
+    fn.locals.some((local) => local.type === "NativeWorkspaceArena")
+  ).map((fn) => fn.name));
+  let workspaceChanged = true;
+  while (workspaceChanged) {
+    workspaceChanged = false;
+    for (const fn of functions) {
+      if (fn.kernelKind !== "integer" || exactWorkspace.has(fn.name)) continue;
+      if ((fn.dependencies || []).some((name) => exactWorkspace.has(name))) {
+        exactWorkspace.add(fn.name);
+        workspaceChanged = true;
+      }
+    }
+  }
   for (const fn of functions) {
     if (fn.kernelKind !== "integer") continue;
     const profile = {
       ...executionProfile(fn),
       dependencyDepth: dependencyDepth(fn.name),
     };
-    let backend = backendPolicy(
-      fn,
-      profile,
-      recursive.has(fn.name),
-      fmpzPolicies,
-    );
+    let backend = backendPolicy(fn, profile, recursive.has(fn.name), fmpzPolicies);
+    if (exactWorkspace.has(fn.name)) {
+      backend = {
+        kind: "gmp",
+        reason: fn.locals.some((local) => local.type === "NativeWorkspaceArena")
+          ? "a lexical live-exact workspace has one GMP ownership backend"
+          : "a private workspace-owning dependency requires the GMP call graph",
+        requiresExactWorkspace: true,
+      };
+    }
+    if (mixedFloat64.has(fn.name)) {
+      backend = {
+        kind: "gmp",
+        reason: "mixed exact and Float64 scheduling requires the exact core",
+        ...(backend.requiresExactWorkspace ? { requiresExactWorkspace: true } : {}),
+      };
+    }
     if (
       profile.rangeLoops > 0 &&
       !["fmpz", "gmp", "integer-buffer-values"].includes(backend.kind)
@@ -1890,6 +2415,7 @@ function analyzeExactModule(functions) {
       )
     );
     fn.analysis = {
+      mixedFloat64: mixedFloat64.has(fn.name),
       storage: storageAnalysis(fn),
       execution: { ...profile, recursive: recursive.has(fn.name) },
       backend,
@@ -1934,6 +2460,7 @@ function analyzeExactModule(functions) {
       fn.hostCallable = false;
     }
   }
+  residentExactScratchAnalyses(functions, recursive);
   const primeSourceEffects = primeSourceEffectAnalyses(functions);
   for (const fn of functions) {
     const effects = primeSourceEffects.get(fn.name);
@@ -1945,6 +2472,8 @@ function analyzeExactModule(functions) {
 }
 
 module.exports = {
+  annotateConstantInt64Ranges,
+  exactArenaRetryable,
   analyzeExactModule,
   backendPolicy,
   effectAnalyses,
@@ -1955,4 +2484,6 @@ module.exports = {
   taggedIntegerProof,
   fmpzBackendPolicy,
   residentCodeQualityAnalysis,
+  operationTargets,
+  walkStatements,
 };

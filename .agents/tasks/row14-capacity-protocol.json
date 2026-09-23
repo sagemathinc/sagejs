@@ -1,0 +1,73 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "row14-capacity-protocol",
+  "title": "Transactional row-14 owner capacity protocol",
+  "lane": "arithmetic-algebra",
+  "status": "review",
+  "owner": "user",
+  "objective": "Replace the resumable class-group root owner-growth stop with field-neutral transactional required-capacity reporting, qualify undersized and bounded prefix progression for the frozen row-14 quartic sentinel, and proceed toward exact completion only below 4 GiB.",
+  "base_commit": "f50c44e0799b4d48a17be23a31a3eb9e1fc6cdd8",
+  "claims": [
+    "bench/pari-class-group-port/prepared_class_group_resumable.py",
+    "bench/pari-class-group-port/relation_owner_capacity.py",
+    "bench/pari-class-group-port/check_row14_capacity_protocol.cjs",
+    "bench/pari-class-group-port/row14_capacity_protocol_audit.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "PARI 2.17.4 src/basemath/buch2.c init_rel and pre_allocate"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Frozen row-14 oracle payload/prepared/event/terminal hashes supplied by the integration audit",
+      "GMP/tagged differential replay with one-slot-short no-mutation checks"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "not-applicable",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "not-applicable"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "pnpm format:python",
+    "python3 -m py_compile bench/pari-class-group-port/relation_owner_capacity.py bench/pari-class-group-port/prepared_class_group_resumable.py",
+    "node --check bench/pari-class-group-port/check_row14_capacity_protocol.cjs",
+    "NODE_OPTIONS=--max-old-space-size=1536 prlimit --as=4294967296 node bench/pari-class-group-port/check_row14_capacity_protocol.cjs",
+    "pnpm parallel:check"
+  ],
+  "runs": [
+    {
+      "command": "env NODE_OPTIONS=--max-old-space-size=1536 prlimit --as=4294967296 node bench/pari-class-group-port/check_row14_capacity_protocol.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.017,
+      "started_at": "2026-09-17T11:35:56.792Z",
+      "commit": "f50c44e0799b4d48a17be23a31a3eb9e1fc6cdd8",
+      "workspace_fingerprint": "788b35618da4935f12dfd26dbb6badfe464da66980c96ea6022b1d7c59d689df",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a source-transparent 32-slot relation-owner capacity report, entry preflight, and derived reports at every later -204 frontier. Frozen row 14 authenticates all supplied hashes and passes exact/one-slot-short/no-write qualification on CPython, JavaScript, GMP, and tagged backends under a 4 GiB address-space ceiling. The initial report derives 799 rows, target 806, PARI init_rel reserve 8110, and 7,207,387 scalar cells without fixture constants.",
+    "risks": [
+      "The root ABI gains one trailing capacity_state buffer, so integration adapters that construct the old positional ABI must append it.",
+      "Only an entry miss is byte-for-byte transactional for all retained owners. Later misses occur after private scratch mutation; callers must discard those owners and restart from authenticated prepared nfinit.",
+      "This lane qualifies the capacity gate, not the final 806-relation/HNF [24, 8]/class-number-192 result. Integer word-capacity requirements for the full integrated root remain to be measured below 4 GiB.",
+      "The focused 4 GiB checker is recorded. Broad pnpm test:baselib:strict and pnpm test:native validation is intentionally deferred to the integration lane."
+    ],
+    "next_steps": [
+      "Teach the integration adapter to allocate every owner from capacity_state and restart the root from prepared nfinit after any later capacity miss.",
+      "Run the authentic row-14 root with measured per-owner limb capacities; if it approaches 4 GiB, pack or reuse relation-record storage instead of increasing the acceptance ceiling.",
+      "Compare the resulting relation progression, HNF/SNF, compact units, regulator, maps, and sealed envelope to the frozen oracle only after computation completes."
+    ]
+  }
+}

@@ -57,10 +57,19 @@ from typing import Any, TypeAlias
 # Annotation-only marker understood by the source-transparent prime-field
 # compiler experiment.  At runtime its values are ordinary Python lists.
 uint64: TypeAlias = int
+int64: TypeAlias = int
 UInt64Buffer = list[int]
 IntegerBuffer = list[int]
 Int64Buffer = list[int]
 Float64Buffer = list[float]
+# Borrowed, read-only field-element arrays for legacy field kernels. Values
+# remain ordinary lists in dynamic execution; the native boundary checks every
+# element's field and precision before constructing a temporary pointer view.
+# Keep ``Any`` as a forward reference here.  These aliases are executable
+# module-level values as well as type-checker input, and cached modules must not
+# require the typing-only ``Any`` name when they reconstruct the aliases.
+RealNumberBuffer = list["Any"]
+ComplexNumberBuffer = list["Any"]
 # Legacy annotation-only witness for an opaque dense matrix over ``GF(p)``.
 # Production kernels instead use UInt64Buffer plus PrimeFieldModulus so their
 # public ABI is independent of a host matrix object.
@@ -70,18 +79,238 @@ PrimeFieldModulus: TypeAlias = int
 _warned_fallback_sources: set[str] = set()
 
 
-def checked_uint64(value: int) -> uint64:
-    """Return `value` as an unsigned 64-bit integer.
+def _checked_word(value: int, lower: int, upper: int) -> int:
+    exact = int(value)
+    if exact < lower or exact >= upper:
+        raise OverflowError("integer is outside requested 64-bit range")
+    return exact
 
-    This explicit conversion is useful in source-transparent native programs
-    when an exact computation determines a resident shape or loop bound.  The
-    dynamic fallback and compiled program both raise `OverflowError` unless
-    `value` is in `0 <= value < 2^64`.
+
+def checked_uint64(value: int) -> uint64:
+    """Checked unsigned 64-bit conversion."""
+    return _checked_word(value, 0, 1 << 64)
+
+
+def checked_int64(value: int) -> int64:
+    """Checked signed 64-bit conversion."""
+    return _checked_word(value, -(1 << 63), 1 << 63)
+
+
+def checked_float64(value: int) -> float:
+    """Return an exactly represented binary64 integer.
+
+    This is the explicit bridge from exact arithmetic into an approximate
+    scheduling sidecar.  The dynamic fallback and compiled program both raise
+    `OverflowError` unless `abs(value) <= 2^53`, the consecutive-integer range
+    in which IEEE-754 binary64 represents every integer exactly.
+
+    The result is suitable for heuristics and scheduling.  It must not replace
+    exact state used to authenticate a mathematical result.
     """
     exact = int(value)
-    if exact < 0 or exact >= (1 << 64):
-        raise OverflowError("integer is outside unsigned 64-bit")
-    return exact
+    if abs(exact) > (1 << 53):
+        raise OverflowError("integer is outside exact binary64 range")
+    return float(exact)
+
+
+def int64_buffer_addmul_range(
+    buffer: Int64Buffer,
+    destination_start: int64,
+    source_start: int64,
+    length: int64,
+    multiplier: int64,
+) -> int:
+    """Add a scaled signed-word range with checked `int64` arithmetic.
+
+    Both dynamic Python and native compilation process increasing offsets and
+    reject the first multiplication or addition outside the signed 64-bit
+    domain. Native compilation validates both complete ranges once.
+    """
+    for offset in range(length):
+        destination = destination_start + offset
+        source = source_start + offset
+        product = checked_int64(multiplier * buffer[source])
+        buffer[destination] = checked_int64(buffer[destination] + product)
+    return 0
+
+
+def diagnostic_stage_switch(stage: int) -> int:
+    """Mark a benchmark-only native timing stage and return `stage`.
+
+    Ordinary Python execution deliberately does nothing.  Normal native builds
+    lower this call to the same no-op.  Only an explicit Native Kernel
+    `diagnosticStageClock` compilation option enables the monotonic clock and
+    its private UInt64 timing sidecar.  Mathematical code can therefore retain
+    source-visible stage boundaries without changing its behavior or public
+    call signature.
+    """
+    return int(stage)
+
+
+def integer_buffer_addmul(
+    buffer: IntegerBuffer,
+    destination: int,
+    source: int,
+    multiplier: int,
+) -> int:
+    """Add `multiplier * buffer[source]` to `buffer[destination]`.
+
+    Dynamic Python uses ordinary exact list arithmetic. Native compilation may
+    mutate a capacity-checked packed integer slot directly, avoiding a pair of
+    temporary imports and an export at this explicit low-level boundary.
+    """
+    buffer[destination] += int(multiplier) * buffer[source]
+    return 0
+
+
+def integer_buffer_addmul_from(
+    destination_buffer: IntegerBuffer,
+    destination: int,
+    source_buffer: IntegerBuffer,
+    source: int,
+    multiplier: int,
+) -> int:
+    """Add a scaled exact source slot to a destination buffer slot.
+
+    Dynamic Python uses ordinary exact list arithmetic. Native compilation may
+    operate on the two capacity-checked packed slots directly.
+    """
+    destination_buffer[destination] += int(multiplier) * source_buffer[source]
+    return 0
+
+
+def integer_buffer_addmul_range(
+    buffer: IntegerBuffer,
+    destination_start: int64,
+    source_start: int64,
+    length: int64,
+    multiplier: int,
+) -> int:
+    """Add one scaled exact buffer range to another range.
+
+    Dynamic Python applies the updates in decreasing offset order. Native
+    compilation checks both complete ranges once, then mutates their packed
+    slots directly. Overlapping ranges retain that same sequential meaning.
+    """
+    for offset in range(length - 1, -1, -1):
+        destination = destination_start + offset
+        source = source_start + offset
+        buffer[destination] += int(multiplier) * buffer[source]
+    return 0
+
+
+def integer_buffer_addmul_range_from(
+    destination_buffer: IntegerBuffer,
+    destination_start: int64,
+    source_buffer: IntegerBuffer,
+    source_start: int64,
+    length: int64,
+    multiplier: int,
+) -> int:
+    """Add a scaled exact source range to a destination range.
+
+    Dynamic Python applies increasing-offset updates. Native compilation
+    checks both complete ranges once and then works directly on packed slots.
+    """
+    for offset in range(length):
+        destination = destination_start + offset
+        source = source_start + offset
+        destination_buffer[destination] += int(multiplier) * source_buffer[source]
+    return 0
+
+
+def integer_buffer_mod_addmul_range_from(
+    destination_buffer: IntegerBuffer,
+    destination_start: int64,
+    source_buffer: IntegerBuffer,
+    source_start: int64,
+    length: int64,
+    multiplier: int64,
+    modulus: int64,
+) -> int:
+    """Add a scaled source range modulo a positive signed-word modulus.
+
+    Every source and destination slot, product, and sum must fit `int64`.
+    Dynamic Python checks the same bounded contract as native compilation.
+    Updates proceed in increasing-offset order, so overlapping ranges retain
+    ordinary sequential Python semantics.
+    """
+    if modulus <= 0:
+        raise ValueError("modulus must be positive")
+    for offset in range(length):
+        destination = destination_start + offset
+        source = source_start + offset
+        product = checked_int64(
+            multiplier * integer_buffer_get_int64(source_buffer, source)
+        )
+        total = checked_int64(
+            integer_buffer_get_int64(destination_buffer, destination) + product
+        )
+        destination_buffer[destination] = total % modulus
+    return 0
+
+
+def integer_buffer_swap_range(
+    buffer: IntegerBuffer,
+    left_start: int64,
+    right_start: int64,
+    length: int64,
+) -> int:
+    """Swap two exact buffer ranges in increasing offset order.
+
+    Dynamic Python performs ordinary element swaps. Native compilation checks
+    both complete ranges once, then exchanges packed slots without importing
+    them into temporary arbitrary-precision values. Overlapping ranges retain
+    the same sequential meaning.
+    """
+    for offset in range(length):
+        left = left_start + offset
+        right = right_start + offset
+        temporary = buffer[left]
+        buffer[left] = buffer[right]
+        buffer[right] = temporary
+    return 0
+
+
+def integer_buffer_negate_range(
+    buffer: IntegerBuffer,
+    start: int64,
+    length: int64,
+) -> int:
+    """Negate a complete exact buffer range in place.
+
+    Native packed sign-magnitude storage can perform this operation by
+    changing signed-size metadata alone. The ordinary Python fallback retains
+    the same increasing-offset mutation order.
+    """
+    for offset in range(length):
+        position = start + offset
+        buffer[position] = -buffer[position]
+    return 0
+
+
+def integer_buffer_get_int64(buffer: IntegerBuffer, index: int) -> int64:
+    """Return one exact buffer slot after a checked signed-word conversion.
+
+    Native compilation reads the packed signed size and first limb directly;
+    values outside the signed 64-bit domain raise `OverflowError`.
+    """
+    return checked_int64(buffer[index])
+
+
+def integer_buffer_sign(buffer: IntegerBuffer, index: int) -> int64:
+    """Return `-1`, `0`, or `1` from one exact buffer slot.
+
+    Native packed storage answers this from signed-size metadata without
+    importing the arbitrary-precision magnitude. Dynamic Python uses ordinary
+    integer comparisons.
+    """
+    value = buffer[index]
+    if value < 0:
+        return -1
+    if value > 0:
+        return 1
+    return 0
 
 
 class _NativeExactBudget:
@@ -1138,6 +1367,88 @@ class NativeExactArena:
         self._open = False
 
 
+class NativeWorkspaceArena:
+    """Lexically own bounded packed workspaces used by native call graphs.
+
+    The ordinary-Python implementation allocates zero-filled lists. Native
+    compilation instead owns the existing packed `IntegerBuffer`
+    representation on the heap, charges its complete sizes-and-limbs storage
+    against `memory_limit`, and releases every child on all exits. Children
+    may be borrowed by private native helpers but cannot escape the `with`
+    statement.
+
+    Unlike `NativeExactArena`, this arena does not install a GMP allocator or
+    reserve a temporary checkpoint. It only controls explicitly declared
+    packed workspaces.
+    """
+
+    _UINT64_MAX = (1 << 64) - 1
+
+    def __init__(self, memory_limit: int) -> None:
+        exact_limit = int(memory_limit)
+        if exact_limit < 0 or exact_limit > self._UINT64_MAX:
+            raise OverflowError("NativeWorkspaceArena memory limit is outside uint64")
+        self._budget = _NativeExactBudget(
+            exact_limit,
+            "NativeWorkspaceArena memory limit exceeded",
+        )
+        self._children: list[tuple[IntegerBuffer, int]] = []
+        self._open = True
+        self._entered = False
+
+    def _require_open(self) -> None:
+        if not self._open:
+            raise ValueError("NativeWorkspaceArena is closed")
+
+    def __enter__(self) -> NativeWorkspaceArena:
+        if self._entered or not self._open:
+            raise ValueError("NativeWorkspaceArena cannot be re-entered")
+        self._entered = True
+        return self
+
+    def __exit__(self, _type: Any, _value: Any, _traceback: Any) -> bool:
+        self.close()
+        return False
+
+    def integer_buffer(
+        self,
+        length: int,
+        word_capacity: int,
+    ) -> IntegerBuffer:
+        """Create a zero-filled packed exact buffer within this arena."""
+        self._require_open()
+        exact_length = int(length)
+        exact_capacity = int(word_capacity)
+        if exact_length < 0 or exact_length > self._UINT64_MAX:
+            raise OverflowError("workspace IntegerBuffer length is outside uint64")
+        if exact_capacity <= 0 or exact_capacity > self._UINT64_MAX:
+            raise OverflowError(
+                "workspace IntegerBuffer word capacity is outside uint64"
+            )
+        charge = exact_length * (4 + 8 * exact_capacity)
+        if charge > self._UINT64_MAX:
+            raise OverflowError("workspace IntegerBuffer storage is outside uint64")
+        self._budget.reserve(0, charge)
+        try:
+            child = [0 for _index in range(exact_length)]
+        except BaseException:
+            self._budget.release(charge)
+            raise
+        self._children.append((child, charge))
+        return child
+
+    def close(self) -> None:
+        """Release every packed child in reverse creation order."""
+        if not self._open:
+            return
+        for child, charge in reversed(self._children):
+            child.clear()
+            self._budget.release(charge)
+        self._children.clear()
+        self._budget.close()
+        self._open = False
+
+
 class RationalBuffer:
     """Owned normalized exact-rational storage for fallback execution.
 
@@ -1349,6 +1660,44 @@ def int64_record(
     return Int64Record(buffer, start, length)
 
 
+class _IntegerBufferView:
+    """A non-resizing borrowed exact span retaining its backing owner."""
+
+    def __init__(self, buffer: Any, start: int, length: int) -> None:
+        if start < 0 or length < 0 or start > len(buffer) - length:
+            raise IndexError("IntegerBuffer view is outside its buffer")
+        self._buffer = buffer
+        self._start = start
+        self._length = length
+
+    def __len__(self) -> int:
+        return self._length
+
+    def __getitem__(self, index: int) -> int:
+        if index < 0:
+            index += self._length
+        if index < 0 or index >= self._length:
+            raise IndexError("IntegerBuffer index out of range")
+        return self._buffer[self._start + index]
+
+    def __setitem__(self, index: int, value: int) -> None:
+        if index < 0:
+            index += self._length
+        if index < 0 or index >= self._length:
+            raise IndexError("IntegerBuffer index out of range")
+        self._buffer[self._start + index] = int(value)
+
+
+def integer_buffer_view(buffer: IntegerBuffer, start: int, length: int) -> Any:
+    """Borrow a bounded, mutable exact span without copying or resizing.
+
+    Nonnegative bounds must fit the owner. Nested views alias storage and may
+    pass to `IntegerBuffer` helpers, but cannot escape native kernel results.
+    Do not resize the owner while borrowed.
+    """
+    return _IntegerBufferView(buffer, start, length)
+
+
 def integer_buffer(source: Any) -> IntegerBuffer:
     """Copy an iterable into an arbitrary-precision exact buffer fallback."""
     return [int(value) for value in source]
@@ -1357,6 +1706,40 @@ def integer_buffer(source: Any) -> IntegerBuffer:
 def integer_zeros(length: int) -> IntegerBuffer:
     """Allocate a zero-filled arbitrary-precision exact buffer fallback."""
     return [0 for _index in range(length)]
+
+
+def integer_workspace(length: int, word_capacity: int) -> IntegerBuffer:
+    """Create a fixed local exact workspace for a compiled call graph.
+
+    Ordinary Python receives a fresh zero-filled list. Native compilation uses
+    fixed automatic storage whose per-entry magnitude is bounded by
+    `word_capacity` 64-bit words; exhausting that explicit bound fails the
+    native call instead of allocating. The workspace may be passed to private
+    native helpers but must not escape the call which creates it.
+    """
+    exact_length = int(length)
+    exact_capacity = int(word_capacity)
+    if exact_length < 0:
+        raise ValueError("integer workspace length must be nonnegative")
+    if exact_capacity <= 0:
+        raise ValueError("integer workspace word capacity must be positive")
+    return [0 for _index in range(exact_length)]
+
+
+def int64_workspace(length: int) -> Int64Buffer:
+    """Create a fixed local signed-64-bit workspace for a compiled call graph."""
+    exact_length = int(length)
+    if exact_length < 0:
+        raise ValueError("int64 workspace length must be nonnegative")
+    return [0 for _index in range(exact_length)]
+
+
+def float64_workspace(length: int) -> Float64Buffer:
+    """Create a fixed local binary64 workspace for a compiled call graph."""
+    exact_length = int(length)
+    if exact_length < 0:
+        raise ValueError("float64 workspace length must be nonnegative")
+    return [0.0 for _index in range(exact_length)]
 
 
 def kernel_int64_buffer(kernel: Any, source: Any) -> Any:
@@ -1410,6 +1793,43 @@ def uint64_buffer(source: Any) -> UInt64Buffer:
             raise OverflowError("UInt64Buffer value is outside unsigned 64-bit")
         answer.append(exact)
     return answer
+
+
+class _UInt64BufferView:
+    """A non-resizing checked view into an unsigned-64-bit buffer."""
+
+    def __init__(self, buffer: Any, start: int, length: int) -> None:
+        if start < 0 or length < 0 or start > len(buffer) - length:
+            raise IndexError("UInt64Buffer view is outside its buffer")
+        self._buffer = buffer
+        self._start = start
+        self._length = length
+
+    def __len__(self) -> int:
+        return self._length
+
+    def __getitem__(self, index: int) -> int:
+        if index < 0:
+            index += self._length
+        if index < 0 or index >= self._length:
+            raise IndexError("UInt64Buffer index out of range")
+        return self._buffer[self._start + index]
+
+    def __setitem__(self, index: int, value: int) -> None:
+        if index < 0:
+            index += self._length
+        if index < 0 or index >= self._length:
+            raise IndexError("UInt64Buffer index out of range")
+        self._buffer[self._start + index] = int(value) & ((1 << 64) - 1)
+
+
+def uint64_buffer_view(
+    buffer: UInt64Buffer,
+    start: int,
+    length: int,
+) -> Any:
+    """Borrow a checked mutable unsigned-word span without copying."""
+    return _UInt64BufferView(buffer, start, length)
 
 
 def uint64_zeros(length: int) -> UInt64Buffer:
@@ -1654,6 +2074,16 @@ def native(function: Any) -> Any:
     return replacement
 
 
+def native_inline(function: Any) -> Any:
+    """Mark a small private native helper for required C-level inlining.
+
+    This has exactly the same dynamic semantics as `native`. The compiler only
+    honors the stronger code-generation hint when the function is a private
+    member of a compiled call graph; a public entry retains its ordinary ABI.
+    """
+    return native(function)
+
+
 def is_native(function: Any) -> bool:
     """Return whether `function` carries the :func:`native` marker."""
     return bool(getattr(function, "__sagejs_native__", False))
@@ -1695,6 +2125,7 @@ __all__ = [
     "Int64Buffer",
     "Int64Record",
     "NativeExactArena",
+    "NativeWorkspaceArena",
     "NativeBoundedMap",
     "NativeBoundedSet",
     "NativeSparseIntegerRows",
@@ -1707,17 +2138,23 @@ __all__ = [
     "PrimeFieldModulus",
     "RationalBuffer",
     "UInt64Buffer",
+    "int64",
     "uint64",
+    "checked_int64",
+    "checked_float64",
     "checked_uint64",
     "float64_buffer",
     "float64_record",
     "float64_zeros",
     "int64_buffer",
     "int64_record",
+    "int64_workspace",
+    "integer_buffer_view",
     "int64_zeros",
     "integer_buffer",
     "integer_buffer_values",
     "integer_zeros",
+    "integer_workspace",
     "execution_mode",
     "is_compiled",
     "is_native",
@@ -1729,7 +2166,9 @@ __all__ = [
     "kernel_float64_zeros",
     "kernel_uint64_buffer",
     "kernel_uint64_zeros",
+    "float64_workspace",
     "native",
+    "native_inline",
     "prime_add",
     "prime_buffer",
     "prime_columns",
@@ -1741,5 +2180,6 @@ __all__ = [
     "prime_sub",
     "prime_zeros",
     "uint64_buffer",
+    "uint64_buffer_view",
     "uint64_zeros",
 ]

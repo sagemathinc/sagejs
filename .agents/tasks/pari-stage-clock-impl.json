@@ -1,0 +1,166 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-stage-clock-impl",
+  "title": "PARI 2.17.4 exclusive stage clock derivative",
+  "lane": "arithmetic-algebra",
+  "status": "review",
+  "owner": "user",
+  "objective": "Build a separately hashed benchmark-only PARI 2.17.4 derivative with mutually exclusive monotonic stage timing, exact result/work/RNG equivalence, reproducible scratch build/run scripts, and a <=2% perturbation gate design without modifying the pristine authority build",
+  "base_commit": "a998fc1bd2ae554af0fa21a287344446f217ff69",
+  "claims": [
+    "bench/pari-class-group-port/pari-stage-clock/",
+    "bench/pari-class-group-port/pari_stage_clock_derivative.cjs",
+    "bench/pari-class-group-port/check_pari_stage_clock_derivative.cjs",
+    "bench/pari-class-group-port/pari_stage_clock_derivative.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "PARI 2.17.4 src/basemath/buch2.c"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Pristine PARI 2.17.4 exact result/work/RNG digests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "not-applicable",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "not-applicable"
+  },
+  "validation": [
+    "node bench/pari-class-group-port/check_pari_stage_clock_derivative.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "pnpm parallel:check",
+    "pnpm merge:check"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_pari_stage_clock_derivative.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.707,
+      "started_at": "2026-09-17T06:43:37.112Z",
+      "commit": "a998fc1bd2ae554af0fa21a287344446f217ff69",
+      "workspace_fingerprint": "92c3b021450e7d404cdcec9aaf52dcb641fc88a29b46c9ccfdda54f45b974048",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 56.453,
+      "started_at": "2026-09-17T06:44:25.985Z",
+      "commit": "a998fc1bd2ae554af0fa21a287344446f217ff69",
+      "workspace_fingerprint": "92c3b021450e7d404cdcec9aaf52dcb641fc88a29b46c9ccfdda54f45b974048",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_pari_stage_clock_derivative.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 83.617,
+      "started_at": "2026-09-17T07:09:30.618Z",
+      "commit": "a998fc1bd2ae554af0fa21a287344446f217ff69",
+      "workspace_fingerprint": "28a458f088211dd8b5280ff77ded789bb48f4901b9148c5f4c3cd07f89ff3c80",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_pari_stage_clock_derivative.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.746,
+      "started_at": "2026-09-17T07:11:30.167Z",
+      "commit": "a998fc1bd2ae554af0fa21a287344446f217ff69",
+      "workspace_fingerprint": "7746bb5df13ff408f195b6e82e0d46a46379a9744743e3ec67cda067c3657774",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 58.329,
+      "started_at": "2026-09-17T07:11:38.754Z",
+      "commit": "a998fc1bd2ae554af0fa21a287344446f217ff69",
+      "workspace_fingerprint": "7746bb5df13ff408f195b6e82e0d46a46379a9744743e3ec67cda067c3657774",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1174.613,
+      "started_at": "2026-09-17T07:12:41.216Z",
+      "commit": "a998fc1bd2ae554af0fa21a287344446f217ff69",
+      "workspace_fingerprint": "ebe8c274d986a571ec643f3f389d5bc7b625ba6b711936c36ce64b6e1faad3ab",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_pari_stage_clock_derivative.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.759,
+      "started_at": "2026-09-17T07:32:39.195Z",
+      "commit": "a998fc1bd2ae554af0fa21a287344446f217ff69",
+      "workspace_fingerprint": "3107c000e6a9ac2ace3a79fa1b1053fa2542cf86e62d6b1e5ddf0a831cca828b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 59.751,
+      "started_at": "2026-09-17T07:32:49.397Z",
+      "commit": "a998fc1bd2ae554af0fa21a287344446f217ff69",
+      "workspace_fingerprint": "3107c000e6a9ac2ace3a79fa1b1053fa2542cf86e62d6b1e5ddf0a831cca828b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 796.101,
+      "started_at": "2026-09-17T07:33:53.516Z",
+      "commit": "a998fc1bd2ae554af0fa21a287344446f217ff69",
+      "workspace_fingerprint": "3107c000e6a9ac2ace3a79fa1b1053fa2542cf86e62d6b1e5ddf0a831cca828b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.641,
+      "started_at": "2026-09-17T07:47:16.027Z",
+      "commit": "a998fc1bd2ae554af0fa21a287344446f217ff69",
+      "workspace_fingerprint": "3107c000e6a9ac2ace3a79fa1b1053fa2542cf86e62d6b1e5ddf0a831cca828b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.976,
+      "started_at": "2026-09-17T07:47:17.321Z",
+      "commit": "a998fc1bd2ae554af0fa21a287344446f217ff69",
+      "workspace_fingerprint": "3107c000e6a9ac2ace3a79fa1b1053fa2542cf86e62d6b1e5ddf0a831cca828b",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a reproducible, separately hashed PARI 2.17.4 benchmark derivative whose monotonic stage latch exclusively attributes the complete prepared bnfinit0 kernel to relation/retry, sparse HNF/SNF, unit/regulator, honesty/generators/final, and residual stages. Every sample preserves the gap-free ordered segment sequence as well as aggregate totals; the checker reconstructs every total and visit count from those segments. A same-source driver linked to the pristine library supplies the total perturbation control. The focused checker verifies pristine source immutability, exact result/work/all-66-RNG-word equivalence, exact stage conservation, monotonicity, repeated transitions, stable manifest paths, and independently hashed derivative/control artifacts.",
+    "risks": [
+      "The committed shared-host diagnostic is explicitly unqualified; the enforced 11-pair, one-second-per-mode, <=2% perturbation gate still requires the campaign timing coordinator's quiet pinned Linux host.",
+      "Stage names describe source-boundary attribution and are diagnostic labels, not an assertion that every instruction in an interval has a single mathematical purpose.",
+      "This benchmark derivative is Linux x86-64 only and must never replace or modify the pristine mathematical authority."
+    ],
+    "next_steps": [
+      "Run the strict perturbation gate on the designated quiet host while preserving the frozen manifest and raw receipt.",
+      "Use the exclusive stage record in the end-to-end comparison runner without promoting local timing evidence to an authority claim."
+    ]
+  }
+}

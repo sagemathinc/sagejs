@@ -1,0 +1,91 @@
+{
+  "schema": "sagejs.rust-class-group/sagejs-certified-preparation-boundary-v1",
+  "status": "qualification-only",
+  "sourceBoundary": "public-sagejs-number-field-to-answer-free-neutral-prepared-field",
+  "consumerBoundary": "independent-rust-replay-to-complete-grh-conditional-class-unit-result",
+  "usesClassGroupAnswersAsInput": false,
+  "preparationFunction": "sagejs.number_fields.rust_class_group_preparation.prepare_cubic_for_rust",
+  "rustCommandTemplate": "bench/pari-class-group-rust/qualification/row6-candidate/target/release/sagejs-row6-rust-candidate-diagnostic small-norm-unit-kernel-prepared INPUT 2000 5000000",
+  "basisPolicy": "exact-unimodular-normalization-with-one-as-first-basis-element",
+  "cases": [
+    {
+      "name": "complex-discriminant-minus-23",
+      "polynomialAscending": ["1", "-1", "0", "1"],
+      "inputId": "sha256:063bdea75eb78ce3e41048a78bedb0cef1f9415051621044ff9743aa2e535698",
+      "serializedInputSha256": "38570d3836b9bb62245ba314a329acd4c920e3f109041945a54ea0fb708230a5",
+      "serializedResultSha256": "b8cc1bc73fec8b14609a18988fa7f2143578d704a933d09600e20ac3fc0c0388",
+      "basisNumeratorsRowMajor": ["1", "0", "0", "0", "1", "0", "0", "0", "1"],
+      "basisDenominator": "1",
+      "classGroup": "trivial",
+      "relationShape": [15, 3],
+      "classUnitIndex": 1,
+      "timingsNanoseconds": {
+        "totalExternal": "51322707",
+        "collection": "9737277",
+        "unitLatticeReconstructionAndReplay": "31230873",
+        "analyticCompletion": "7628009"
+      }
+    },
+    {
+      "name": "h1-real-cubic",
+      "polynomialAscending": ["20034", "-20018", "0", "1"],
+      "inputId": "sha256:7d40f63322c2d59b1d4aa459766465e6127fca7a0b1d3b591372862e1adbda66",
+      "serializedInputSha256": "cd501aa43cd4b9ef5e221bc8698496f04bcea9f6b0dbf42710b57dab7d10f569",
+      "serializedResultSha256": "461eb6cde470eb5ebe68f5ae664dba12e5c92d74cc96ce9f81e9fe7f6884443b",
+      "basisNumeratorsRowMajor": ["1", "0", "0", "0", "1", "0", "0", "0", "1"],
+      "basisDenominator": "1",
+      "classGroup": "trivial",
+      "relationShape": [73, 66],
+      "classUnitIndex": 1,
+      "timingsNanoseconds": {
+        "totalExternal": "281857493",
+        "collection": "54222064",
+        "unitLatticeReconstructionAndReplay": "175315836",
+        "analyticCompletion": "134241569"
+      }
+    },
+    {
+      "name": "row1-index-three-cubic",
+      "polynomialAscending": ["20018", "-20010", "0", "1"],
+      "inputId": "sha256:bb65168729f9287611b8aebb2efa9958559286bb9b4e20bfeaec9b03f79f5183",
+      "serializedInputSha256": "88c31ed3c253f14096f7a0633384b533036da814dfb7c62cb540f75fb05544da",
+      "serializedResultSha256": "c451388768d683ddbaaab67ed09c66846feca5a8efc48caaaec4c1913f2f9377",
+      "basisNumeratorsRowMajor": ["3", "0", "0", "1", "1", "1", "3", "0", "3"],
+      "basisDenominator": "3",
+      "classGroup": "C3",
+      "relationShape": [58, 51],
+      "classUnitIndex": 1,
+      "timingsNanoseconds": {
+        "totalExternal": "228901749",
+        "collection": "14632676",
+        "unitLatticeReconstructionAndReplay": "198919409",
+        "analyticCompletion": "159979481"
+      }
+    },
+    {
+      "name": "row6-index-three-cubic",
+      "polynomialAscending": ["2000000000018", "-2000000000010", "0", "1"],
+      "inputId": "sha256:c902b10e344226fe31336f3ff0fb3164e291f51b914c34e707f1de32bad76e81",
+      "serializedInputSha256": "a57853bb650cf73e01847d6f4581be9eb373cbec494ff7fda8f47b7901ba8753",
+      "serializedResultSha256": "b10f1f76e9abede8589472c155a0972a08cd0f2e47596278f4e5493048ecb9eb",
+      "basisNumeratorsRowMajor": ["3", "0", "0", "1", "1", "1", "3", "0", "3"],
+      "basisDenominator": "3",
+      "classGroup": "C2 x C2",
+      "relationShape": [1137, 1130],
+      "classUnitIndex": 1,
+      "timingsNanoseconds": {
+        "totalExternal": "7748572828",
+        "collection": "2944864348",
+        "unitLatticeReconstructionAndReplay": "789339028",
+        "analyticCompletion": "587595160"
+      }
+    }
+  ],
+  "limitations": [
+    "The Rust consumer remains a qualification diagnostic rather than a Sage.js public result adapter.",
+    "These are single observational runs and are not headline benchmark samples.",
+    "The public preparation boundary currently supports cubic fields and conditional-GRH requests only.",
+    "Browser execution of the complete prepared-field consumer remains open."
+  ],
+  "conclusion": "Fresh public Sage.js cubic fields can now produce certified, answer-free neutral prepared inputs that the independent Rust engine replays into complete GRH-conditional class-and-unit results for four structurally distinct fields."
+}

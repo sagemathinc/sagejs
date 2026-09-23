@@ -1,0 +1,90 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "field3-live-class-join",
+  "title": "Live field-3 class generator join",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Feed authentic same-run field-3 H, C, outer permutation, and packet descriptors into the existing Smith and quartic assembly leaves while preserving exact order and principal witnesses",
+  "base_commit": "f756591a0c4dfb5f22ce230d810b05d5a6ca1613",
+  "claims": [
+    "bench/pari-class-group-port/field3_live_class_suffix.py",
+    "bench/pari-class-group-port/check_field3_live_class_suffix.cjs",
+    "bench/pari-class-group-port/field3_live_class_suffix_audit.md",
+    ".agents/tasks/field3-live-class-join.json"
+  ],
+  "dependencies": [],
+  "references": [
+    "PARI 2.17.4 src/basemath/buch2.c class_group_gen and buchall_end"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "native compiled differential execution",
+      "existing Smith transform, quartic class assembly, and generator-order witness leaves"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm build",
+    "pnpm test:baselib:strict",
+    "node bench/pari-class-group-port/check_field3_live_class_suffix.cjs /tmp/sagejs-actual-initial-collector-4CUNyo/fixtures.json /tmp/sagejs-analytic-invhr-jIeusU/fixtures.json /tmp/sagejs-default-driver-Bpi4kv/trace.json"
+  ],
+  "runs": [
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 468.442,
+      "started_at": "2026-09-17T07:39:48.968Z",
+      "commit": "f756591a0c4dfb5f22ce230d810b05d5a6ca1613",
+      "workspace_fingerprint": "894b6d96f3451410627337570071f0d5602e89ac4d40c56c392abd61cf274284",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 58.03,
+      "started_at": "2026-09-17T07:47:45.152Z",
+      "commit": "f756591a0c4dfb5f22ce230d810b05d5a6ca1613",
+      "workspace_fingerprint": "894b6d96f3451410627337570071f0d5602e89ac4d40c56c392abd61cf274284",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_field3_live_class_suffix.cjs /tmp/sagejs-actual-initial-collector-4CUNyo/fixtures.json /tmp/sagejs-analytic-invhr-jIeusU/fixtures.json /tmp/sagejs-default-driver-Bpi4kv/trace.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 35.369,
+      "started_at": "2026-09-17T07:48:50.265Z",
+      "commit": "f756591a0c4dfb5f22ce230d810b05d5a6ca1613",
+      "workspace_fingerprint": "894b6d96f3451410627337570071f0d5602e89ac4d40c56c392abd61cf274284",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Joins the authentic same-run field-3 resident H, C, final factor-base permutation, and prepared packet descriptors to the established Smith and mixed-quartic class assembly. The leaf derives packet indices 11 and 2, reconstructs their tau matrices from packet generators and the prepared basis table, and transactionally retains descriptor provenance, exact Uir/M1 order identities, and ordered principal corrections. CPython, JavaScript, GMP, and tagged execution agree on class group [2,2], class number 4, both generator ideals, and all retained witnesses.",
+    "risks": [
+      "The established mixed-quartic assembly intentionally admits only this authentic Uir=-I scalar-principal branch; general signed quartic genback remains outside the lane.",
+      "The focused checker regenerates large prepared inputs in temporary directories before its recorded command; the paths in the receipt identify this run's authenticated artifacts rather than checked-in answer fixtures.",
+      "pnpm architecture:check passed through native and Wasm policy, then reached the pre-existing stale optimizer-opportunity manifest on base f756591a0; this narrow lane does not claim or regenerate shared optimizer artifacts."
+    ],
+    "next_steps": [
+      "Integrate this disjoint suffix before a final-composer lane consumes its retained class-generator evidence.",
+      "Extend a separately claimed quartic genback lane when a live field requires nontrivial signed prime products or nonscalar principal factors.",
+      "Regenerate the optimizer-opportunity manifest in the integration lane and rerun the complete architecture gate there."
+    ]
+  }
+}

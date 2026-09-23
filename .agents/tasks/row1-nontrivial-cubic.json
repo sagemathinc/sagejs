@@ -1,0 +1,85 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "row1-nontrivial-cubic",
+  "title": "Row1 Nontrivial Cubic",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Connect frozen panel row 1 through a live nontrivial cubic class-group path, deriving Smith transforms, class generators, orders, and replay witnesses from authenticated retained relations while preserving row 0",
+  "base_commit": "c3247cc4609093a3daf0c3b86773a3be1b3947d4",
+  "claims": [
+    "bench/pari-class-group-port/row1_nontrivial_cubic.py",
+    "bench/pari-class-group-port/check_row1_nontrivial_cubic.cjs",
+    "bench/pari-class-group-port/row1_nontrivial_cubic_replay.cjs",
+    "bench/pari-class-group-port/README-row1-nontrivial-cubic.md",
+    "bench/pari-class-group-port/resident_generated_class_attempt.py"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "PARI 2.17.4"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "not-applicable",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "not-applicable"
+  },
+  "validation": [
+    "node bench/pari-class-group-port/check_row1_nontrivial_cubic.cjs",
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_row1_nontrivial_cubic.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.641,
+      "started_at": "2026-09-17T07:28:26.433Z",
+      "commit": "c3247cc4609093a3daf0c3b86773a3be1b3947d4",
+      "workspace_fingerprint": "2a67b5d1bc686edefbfd63e2de707a289a574aa9c0ef2a7f15693d87d3ffd784",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.771,
+      "started_at": "2026-09-17T07:28:34.813Z",
+      "commit": "c3247cc4609093a3daf0c3b86773a3be1b3947d4",
+      "workspace_fingerprint": "2a67b5d1bc686edefbfd63e2de707a289a574aa9c0ef2a7f15693d87d3ffd784",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 62.103,
+      "started_at": "2026-09-17T07:29:00.790Z",
+      "commit": "c3247cc4609093a3daf0c3b86773a3be1b3947d4",
+      "workspace_fingerprint": "2a67b5d1bc686edefbfd63e2de707a289a574aa9c0ef2a7f15693d87d3ffd784",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Authenticated frozen panel row 1 against the compact development manifest, bound its class-group presentation to the retained 58-relation HNF, and added an ordinary Python/native leaf that derives Smith transforms, class number 3, invariant [3], the exact prime-ideal generator, and an order-3 replay witness without answer inputs. The existing resident entry now accepts prepared real cubics using the exact polynomial-discriminant = field-discriminant * index^2 identity rather than row-0 constants.",
+    "risks": [
+      "This is the predeclared one-dimensional row-1 presentation path, not a generic higher-rank class-group adapter.",
+      "The upstream resident degree catalog still deliberately rejects the equation-index divisor prime 3; regenerating row 1 from its polynomial requires the full idealprimedec index-prime branch."
+    ],
+    "next_steps": [
+      "Integrate the authenticated downstream row-1 leaf while retaining the explicit index-prime collector obstruction.",
+      "Run the full pnpm test:native suite in the integration lane; this lane used its single heavy-build allowance on the focused native graph."
+    ]
+  }
+}

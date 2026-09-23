@@ -1,0 +1,79 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-e2e-tagged-quartic",
+  "title": "Tagged quartic Phase-0 replay",
+  "lane": "native-compiler",
+  "status": "active",
+  "owner": "user",
+  "objective": "Qualify the current-source prepared quartic retry path in tagged execution without weakening existing CPython, JavaScript, or GMP checks",
+  "base_commit": "e683e802afb6798e64f49594cd9546e1ee334fd9",
+  "claims": [
+    "bench/pari-class-group-port/check_prepared_class_group_resumable.cjs",
+    "bench/pari-class-group-port/prepared_class_group_resumable.py"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Current GMP prepared retry output"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_prepared_class_group_resumable.cjs /tmp/sagejs-actual-collector-continuation-XJbiC7/fixtures.json /tmp/sagejs-analytic-invhr-d88QqB/fixtures.json /tmp/sagejs-default-driver-eot7pJ/trace.json /tmp/sagejs-actual-initial-collector-TUdJKI/fixtures.json --source-only",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 0.077,
+      "started_at": "2026-09-16T22:24:54.311Z",
+      "commit": "e683e802afb6798e64f49594cd9546e1ee334fd9",
+      "workspace_fingerprint": "1cb490c23fed2552736199f739d6ca3f3f1d18899b0b02a40615fbf426e4bfde",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "bash -lc NODE_OPTIONS=--max-old-space-size=1536 prlimit --as=4294967296 -- node bench/pari-class-group-port/check_prepared_class_group_resumable.cjs /tmp/sagejs-actual-collector-continuation-XJbiC7/fixtures.json /tmp/sagejs-analytic-invhr-d88QqB/fixtures.json /tmp/sagejs-default-driver-eot7pJ/trace.json /tmp/sagejs-actual-initial-collector-TUdJKI/fixtures.json --source-only",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.494,
+      "started_at": "2026-09-16T22:25:18.963Z",
+      "commit": "e683e802afb6798e64f49594cd9546e1ee334fd9",
+      "workspace_fingerprint": "1cb490c23fed2552736199f739d6ca3f3f1d18899b0b02a40615fbf426e4bfde",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check bench/pari-class-group-port/check_prepared_class_group_resumable.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.027,
+      "started_at": "2026-09-16T22:25:49.901Z",
+      "commit": "e683e802afb6798e64f49594cd9546e1ee334fd9",
+      "workspace_fingerprint": "1cb490c23fed2552736199f739d6ca3f3f1d18899b0b02a40615fbf426e4bfde",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "The prepared quartic retry checker now accepts the tagged backend, constructs the same packed owners used by GMP, and records tagged execution honestly as a native packed-owner run. CPython source replay still matches the exact one-, two-, and three-pass states, including h=1 and the 192-bit regulator. Current native qualification is blocked before execution by a separately owned compiler regression that emits set_mpz_int64 for Int64Buffer destinations in the composed graph.",
+    "risks": [
+      "Tagged/GMP/JavaScript execution could not be rerun on this integrated revision because generated C does not compile: prepared_class_group_resumable.py driver_trace, enumeration.py inc, and hnfadd.py state writes pass int64_t destinations to set_mpz_int64."
+    ],
+    "next_steps": [
+      "Merge the compiler Int64Buffer-set fix, then rerun this checker with --backend tagged, gmp, and javascript for pass limits 1, 2, and 3 under the declared 4 GiB cap."
+    ]
+  }
+}

@@ -1,0 +1,87 @@
+{
+  "schema": "sagejs.rust-class-group/wasm-public-cubic-vector-v1",
+  "request": {
+    "schema": "sagejs.rust-class-group/public-cubic-e2e-request-v2",
+    "polynomialAscending": ["2000000000018", "-2000000000010", "0", "1"],
+    "proofMode": "conditional-grh",
+    "resources": {
+      "maximumTrialDivisor": 10000,
+      "maximumIrreducibilityPrime": 257,
+      "embeddingPrecisionBits": 192,
+      "maximumVisitedIdeals": 1000000,
+      "maximumCandidates": 1000000,
+      "maximumNormalFormEntries": 10000000,
+      "maximumNormalFormOperations": 50000000,
+      "maximumRelationExponent": 256,
+      "maximumVerificationMultiplyAdds": 100000000,
+      "maximumPrincipalFactorTerms": 10000000,
+      "maximumCompactGenerators": 16384,
+      "maximumCompactSurplusRows": 32,
+      "maximumCompactSaturationMinorTrials": 32768,
+      "maximumCompactDependencyEntries": 1000000,
+      "maximumCompactTargetCoefficientBits": 1000000,
+      "logarithmPrecisionBits": 8192,
+      "replayPrecisionBits": 4096,
+      "analyticPrecisionBits": 512,
+      "maximumRelations": 10000,
+      "maximumDependencies": 1000,
+      "maximumKernelCoefficientBits": 4080,
+      "maximumUnitExponentBits": 8192,
+      "maximumReconstructionDenominatorBits": 4096,
+      "maximumAnalyticThreshold": 23994
+    }
+  },
+  "expectedStableProjection": {
+    "schema": "sagejs.rust-class-group/public-cubic-e2e-receipt-v2",
+    "outcome": "complete-conditional-grh",
+    "publicComplete": true,
+    "requestedProof": "conditional-grh",
+    "usesPariInput": false,
+    "usesPreparedFixture": false,
+    "usesFieldAnswersAsInput": false,
+    "preparation": {
+      "discriminant": "3555555555596888888888939555555555028",
+      "signature": [3, 0],
+      "equationOrderIndex": "3",
+      "discriminantPrimeFactors": ["2", "3", "32921810699971193415638329218106991"],
+      "certificateVerified": true
+    },
+    "relations": {
+      "factorBaseSize": 1130,
+      "relationCount": 1144,
+      "completeRankAndSurplus": true,
+      "missingRank": 0
+    },
+    "candidate": {
+      "invariantFactors": ["2", "2"],
+      "classNumber": "4",
+      "authenticatedPrincipalRelations": 1144,
+      "generatorOrderWitnesses": 2,
+      "authority": "authenticated-collector-sealed-compact-mixed-invariant-presentation"
+    },
+    "completion": {
+      "proof": "conditional-grh",
+      "classNumber": "4",
+      "invariantFactors": ["2", "2"],
+      "unitRank": 2,
+      "bfThreshold": 23994,
+      "classUnitHypothesis": "GRH for the Dedekind-zeta residue bound",
+      "factorBaseHypothesis": "GRH for all unramified Hecke L-functions of class-group characters",
+      "requestedLogarithmPrecisionBits": 8192,
+      "requestedReplayPrecisionBits": 4096,
+      "attemptedPrecisionLevels": [
+        {
+          "logarithmPrecisionBits": 4096,
+          "replayPrecisionBits": 2048
+        },
+        {
+          "logarithmPrecisionBits": 8192,
+          "replayPrecisionBits": 4096
+        }
+      ],
+      "sealedEvidenceVerified": true,
+      "arbitraryIdealClassMapRetained": true
+    },
+    "firstUnavailableBoundary": null
+  }
+}

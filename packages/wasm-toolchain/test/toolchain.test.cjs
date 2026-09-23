@@ -1,6 +1,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const { execFileSync, spawnSync } = require("node:child_process");
 const {
   mkdtempSync,
   mkdirSync,
@@ -36,6 +37,7 @@ const {
 } = require("../recipes/smalljac.cjs");
 const {
   compilerEnvironment,
+  normalizeFlintFmpzObjects,
   normalizeGeneratedMacro,
   subprocessEnvironment,
 } = require("../recipes/libraries.cjs");
@@ -91,10 +93,10 @@ test("the selected toolchain contains only the SDK and mathematical sources", ()
   assert.deepEqual(Object.keys(sources), [
     "ffpoly",
     "flint",
-    "gmp-wasm",
     "m4ri",
     "mpc",
     "mpfr",
+    "native-gmp",
     "smalljac",
     "wasi-sdk-linux-x64",
   ]);
@@ -161,6 +163,43 @@ test("generated compiler metadata is canonical and fails closed", () => {
   }
 });
 
+test("the FLINT recipe deduplicates its generated fmpz object", () => {
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-wasm-flint-fmpz-test-"));
+  const filename = join(directory, "Makefile");
+  const rewrite = [
+    "ifeq ($(IS_OUT_OF_TREE),1)",
+    "fmpz_OBJS := $(subst $(SRC_DIR)/fmpz/fmpz.c,$(BUILD_DIR)/fmpz/fmpz.o,$(fmpz_OBJS))",
+    "endif",
+  ].join("\n");
+  try {
+    writeFileSync(filename, [
+      "fmpz_OBJS := build/fmpz/fmpz.o build/fmpz/add.o build/fmpz/fmpz.o",
+      rewrite,
+      "print:",
+      "\t@printf '%s\\n' $(fmpz_OBJS)",
+      "",
+    ].join("\n"));
+    normalizeFlintFmpzObjects(filename);
+    const normalized = readFileSync(filename, "utf8");
+    assert.match(normalized, /fmpz_OBJS := \$\(sort \$\(fmpz_OBJS\)\)/);
+    assert.equal(normalized.split("$(sort $(fmpz_OBJS))").length - 1, 1);
+    assert.equal(
+      execFileSync("make", ["--no-print-directory", "-s", "-f", filename, "print"], {
+        encoding: "utf8",
+      }),
+      "build/fmpz/add.o\nbuild/fmpz/fmpz.o\n",
+    );
+
+    writeFileSync(filename, "unexpected upstream Makefile\n");
+    assert.throws(
+      () => normalizeFlintFmpzObjects(filename),
+      /fmpz object rewrite exactly once/,
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test("library recipes do not inherit ambient compiler or configure policy", () => {
   const environment = subprocessEnvironment({ CC: "/sdk/bin/clang" });
   assert.equal(environment.CC, "/sdk/bin/clang");
@@ -203,6 +242,68 @@ test("only the new explicit root is recognized and incomplete roots fail closed"
     assert.equal(status.source, "explicit-override");
     assert.ok(status.problems.some((problem) => problem.includes("sdk/bin/clang")));
     assert.ok(status.problems.some((problem) => problem.includes("receipt")));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("the path command rejects an incomplete restored cache before consumers run", () => {
+  const root = mkdtempSync(join(tmpdir(), "sagejs-wasm-toolchain-path-test-"));
+  try {
+    const result = spawnSync(
+      process.execPath,
+      [join(__dirname, "..", "scripts", "toolchain.cjs"), "path"],
+      {
+        encoding: "utf8",
+        env: { ...process.env, SAGEJS_WASM_TOOLCHAIN_ROOT: root },
+      },
+    );
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /prepared toolchain receipt is missing or differs/);
+    assert.match(result.stderr, /toolchain:prepare/);
+    assert.equal(result.stdout, "");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("the class-group build resolves the authenticated host toolchain", () => {
+  const script = readFileSync(join(
+    __dirname,
+    "..",
+    "..",
+    "class-groups",
+    "scripts",
+    "build-wasm.sh",
+  ), "utf8");
+  assert.match(script, /toolchain=\$\(node "\$resolver" path\)/);
+  assert.doesNotMatch(script, /toolchain_digest|sagejs-wasm-toolchains\/v2/);
+  assert.doesNotMatch(script, /SAGEJS_CLASS_GROUP_WASI_TOOLCHAIN/);
+});
+
+test("the GMP cross probe is portable across BSD and GNU userlands", () => {
+  const root = mkdtempSync(join(tmpdir(), "sagejs-gmp-cross-probe-test-"));
+  const adapter = join(
+    __dirname,
+    "..",
+    "..",
+    "class-groups",
+    "scripts",
+    "gmp-mpfr-cross-cc.sh",
+  );
+  const source = join(root, "system_gmp.c");
+  const probe = join(root, "system_gmp.exe");
+  try {
+    writeFileSync(source, "/* gmp-mpfr-sys probe fixture */\n");
+    execFileSync(adapter, ["-fPIC", source, "-lgmp", "-o", probe], {
+      env: { ...process.env, SAGEJS_GMP_LIMB_BITS: "64" },
+    });
+    execFileSync(probe, { cwd: root });
+    assert.match(
+      readFileSync(join(root, "system_gmp.out"), "utf8"),
+      /^#define GMP_LIMB_BITS 64$/m,
+    );
+    assert.doesNotMatch(readFileSync(adapter, "utf8"), /sed\s+-i/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

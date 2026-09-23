@@ -1,0 +1,482 @@
+{
+  "schema": "sagejs.rust-class-group/prepared-multifield-wasm-evidence-v1",
+  "status": "pass",
+  "observedAt": "2026-09-20T19:43:15.228Z",
+  "artifactRevision": "c4d07156194765506d137792732ba5109cd8c87e",
+  "claims": {
+    "inputPolicy": "answer-free neutral prepared fields only",
+    "expectedOutputPolicy": "native output is stored only in the out-of-band browser vector expected member, never in the candidate request",
+    "crossTarget": [
+      "native-linux",
+      "chromium",
+      "firefox",
+      "webkit"
+    ],
+    "scope": "prepared factor-base and bounded relation-prefix stages only; not W0/R5 or an end-to-end class-group result",
+    "revisionPolicy": "all measured source and Wasm artifacts are frozen at artifactRevision; the later checkout HEAD is excluded",
+    "artifactRetention": "both gitignored Wasm artifacts are retained locally and their exact bytes are required by verify.mjs"
+  },
+  "fixedRow6Assumptions": {
+    "productionRuntime": [],
+    "remainingHarnessOnly": [
+      "the older wasm-prepared-factor-base/prepare-vector.mjs selects row6",
+      "the older wasm-prepared-relation-prefix/prepare-vector.mjs selects row6",
+      "row6 constants remain in cfg(test) regression modules"
+    ]
+  },
+  "evidence": [
+    {
+      "fieldId": "h1-real-cubic",
+      "role": "required-h1",
+      "stage": "factor-base",
+      "input": {
+        "path": "bench/pari-class-group-rust/qualification/row6-candidate/inputs/h1-neutral-prepared-field.json",
+        "sha256": "6ef97f99f3fb676e9c8d59cedaf696409916ea485f356244efc60f0b14d0e54d",
+        "bytes": 2294
+      },
+      "native": {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-multifield/h1-real-cubic.factor-base.native-receipt.json",
+        "sha256": "2858b3b1f3e9a85bfca021d6610e84fd09c8818909bb6780a482262033486cb0",
+        "bytes": 2465
+      },
+      "vector": {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-multifield/vectors/h1-real-cubic.factor-base.vector.json",
+        "sha256": "9e7cb9c2258cc1f8f93b2437ade95b5696c26c9d8c34d30772cc3a96075f6400",
+        "bytes": 5039
+      },
+      "browser": {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-multifield/h1-real-cubic.factor-base.browser-receipt.json",
+        "sha256": "86b540a2d473a5560b26affb5504bbe852cee7fb5fe00799dd4b6cf054b05919",
+        "bytes": 15518
+      },
+      "artifact": {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-factor-base/build/prepared-factor-base.wasm",
+        "sha256": "1bc6515472a34c559664840afa6f459432b58b8ea14025e5a82bc2188baecdec",
+        "bytes": 484386,
+        "retained": true,
+        "revision": "c4d07156194765506d137792732ba5109cd8c87e"
+      },
+      "nativeMedianMs": 5.032967,
+      "browserMedianMs": {
+        "chromium": 10,
+        "firefox": 58,
+        "webkit": 10
+      },
+      "browserMemoryPages": {
+        "chromium": {
+          "before_call": 17,
+          "after_call": 20
+        },
+        "firefox": {
+          "before_call": 17,
+          "after_call": 20
+        },
+        "webkit": {
+          "before_call": 17,
+          "after_call": 20
+        }
+      },
+      "result": {
+        "checkingBound": 333,
+        "completeGroupCount": 12,
+        "descriptorSha256": "b40ee33a620f457928ec82573a3b1f5eafc4f0b7e983f7d8c37eba8e91bb8554",
+        "equationOrderIndex": "1",
+        "fieldId": "h1-real-cubic",
+        "idealCount": 66,
+        "inputId": "sha256:2d0fa668fad6c929a71eabdee7ebfb7acc1938307a41d4c1b49847cc99c7964d",
+        "rationalPrimeCount": 48,
+        "relationBound": 333,
+        "schema": "sagejs.rust-class-group/prepared-factor-base-v1",
+        "stage": "prepared-maximal-cubic-factor-base",
+        "status": "bounded-stage"
+      }
+    },
+    {
+      "fieldId": "h1-real-cubic",
+      "role": "required-h1",
+      "stage": "relation-prefix",
+      "input": {
+        "path": "bench/pari-class-group-rust/qualification/row6-candidate/inputs/h1-neutral-prepared-field.json",
+        "sha256": "6ef97f99f3fb676e9c8d59cedaf696409916ea485f356244efc60f0b14d0e54d",
+        "bytes": 2294
+      },
+      "native": {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-multifield/h1-real-cubic.relation-prefix.native-receipt.json",
+        "sha256": "1f82d13d6e46d92eb7059ddba2df078233cc1dce98b1ec6188fc33f128003c23",
+        "bytes": 2970
+      },
+      "vector": {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-multifield/vectors/h1-real-cubic.relation-prefix.vector.json",
+        "sha256": "37d035e0df5b644bf49a0d94771852a91280ae77c108871a16beaa33846fafb0",
+        "bytes": 6094
+      },
+      "browser": {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-multifield/h1-real-cubic.relation-prefix.browser-receipt.json",
+        "sha256": "1d9b3a685cb20270e6ce48333ef8342281a58d1a787b84628f7aac2bdb5f61c1",
+        "bytes": 18860
+      },
+      "artifact": {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-relation-prefix/build/prepared-relation-prefix.wasm",
+        "sha256": "385e830caeb981ef1035b8c93b37c9ee76244dd1bedafd73bb0dea4e30309c43",
+        "bytes": 698053,
+        "retained": true,
+        "revision": "c4d07156194765506d137792732ba5109cd8c87e"
+      },
+      "nativeMedianMs": 9.129274,
+      "browserMedianMs": {
+        "chromium": 36.900000005960464,
+        "firefox": 264,
+        "webkit": 36
+      },
+      "browserMemoryPages": {
+        "chromium": {
+          "before_call": 18,
+          "after_call": 22
+        },
+        "firefox": {
+          "before_call": 18,
+          "after_call": 22
+        },
+        "webkit": {
+          "before_call": 18,
+          "after_call": 22
+        }
+      },
+      "result": {
+        "completeRankAndSurplus": false,
+        "counters": {
+          "appendedRelations": 4,
+          "cursorTrials": 97,
+          "positiveCacheStatuses": 4,
+          "primitiveNonscalarCandidates": 57,
+          "randomIdeals": 0,
+          "randomSearchIdeals": 0,
+          "smoothCandidates": 4,
+          "visitedIdeals": 1
+        },
+        "factorBaseIdeals": 66,
+        "fieldId": "h1-real-cubic",
+        "inputId": "sha256:2d0fa668fad6c929a71eabdee7ebfb7acc1938307a41d4c1b49847cc99c7964d",
+        "limits": {
+          "maximumCandidates": 64,
+          "maximumVisitedIdeals": 1
+        },
+        "missingRank": 50,
+        "prefixSha256": "2e5106eac99f59078876bd629c66a02cf35e11e10127d3cd2e285b5c41a6bb55",
+        "relationBound": 333,
+        "residentRelationRows": 16,
+        "schema": "sagejs.rust-class-group/prepared-relation-prefix-v1",
+        "stage": "prepared-cubic-relation-prefix",
+        "status": "bounded-stage",
+        "storage": {
+          "denseRecordsBytes": 40128,
+          "fullDenseRecordsBytes": 411840,
+          "fullRelationCacheCapacity": 780,
+          "relationCacheCapacity": 76
+        }
+      }
+    },
+    {
+      "fieldId": "row1-index-3-cubic",
+      "role": "unseen-by-wasm-pipeline-nontrivial-index-prime",
+      "stage": "factor-base",
+      "input": {
+        "path": "bench/pari-class-group-rust/qualification/row6-candidate/inputs/row1-neutral-prepared-field.json",
+        "sha256": "849adefc199151b221c08f9c573e12534176439a4b354f6b7631ece5cff54c70",
+        "bytes": 2299
+      },
+      "native": {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-multifield/row1-index-3-cubic.factor-base.native-receipt.json",
+        "sha256": "25bfd3bf7199d975ce34c8f781bb5abb6c9418ae6832290eabfefc92a8d2b69e",
+        "bytes": 2511
+      },
+      "vector": {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-multifield/vectors/row1-index-3-cubic.factor-base.vector.json",
+        "sha256": "f7eac83d0883275e4799330b7827daa5d997178193f0ebd235af81b58fe1f45a",
+        "bytes": 5070
+      },
+      "browser": {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-multifield/row1-index-3-cubic.factor-base.browser-receipt.json",
+        "sha256": "975ee4cc09eff942de51957a267ff28c2b6d4d110fd7e98339c29b288508b4c3",
+        "bytes": 15614
+      },
+      "artifact": {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-factor-base/build/prepared-factor-base.wasm",
+        "sha256": "1bc6515472a34c559664840afa6f459432b58b8ea14025e5a82bc2188baecdec",
+        "bytes": 484386,
+        "retained": true,
+        "revision": "c4d07156194765506d137792732ba5109cd8c87e"
+      },
+      "nativeMedianMs": 4.0460069999999995,
+      "browserMedianMs": {
+        "chromium": 8.199999988079071,
+        "firefox": 47,
+        "webkit": 8
+      },
+      "browserMemoryPages": {
+        "chromium": {
+          "before_call": 17,
+          "after_call": 19
+        },
+        "firefox": {
+          "before_call": 17,
+          "after_call": 19
+        },
+        "webkit": {
+          "before_call": 17,
+          "after_call": 19
+        }
+      },
+      "result": {
+        "checkingBound": 259,
+        "completeGroupCount": 11,
+        "descriptorSha256": "f1b3ae29c7e957f80273d7726873eeea271c3a339eab96ffecb31e30d2661086",
+        "equationOrderIndex": "3",
+        "fieldId": "row1-index-3-cubic",
+        "idealCount": 51,
+        "inputId": "sha256:394cce5d99f0e9f8ba49a12e1542ff41f36c98b535a4535071414a575ded95ba",
+        "rationalPrimeCount": 36,
+        "relationBound": 259,
+        "schema": "sagejs.rust-class-group/prepared-factor-base-v1",
+        "stage": "prepared-maximal-cubic-factor-base",
+        "status": "bounded-stage"
+      }
+    },
+    {
+      "fieldId": "row1-index-3-cubic",
+      "role": "unseen-by-wasm-pipeline-nontrivial-index-prime",
+      "stage": "relation-prefix",
+      "input": {
+        "path": "bench/pari-class-group-rust/qualification/row6-candidate/inputs/row1-neutral-prepared-field.json",
+        "sha256": "849adefc199151b221c08f9c573e12534176439a4b354f6b7631ece5cff54c70",
+        "bytes": 2299
+      },
+      "native": {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-multifield/row1-index-3-cubic.relation-prefix.native-receipt.json",
+        "sha256": "424a1f9d5b856c79b33ece2fae3e8038880875513843c6b97f6661f2e2b0ef82",
+        "bytes": 3005
+      },
+      "vector": {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-multifield/vectors/row1-index-3-cubic.relation-prefix.vector.json",
+        "sha256": "f5c8677953db809a84c7861b4a31fe72c922e7e4d2bcb011f84fd775853420e2",
+        "bytes": 6129
+      },
+      "browser": {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-multifield/row1-index-3-cubic.relation-prefix.browser-receipt.json",
+        "sha256": "d7478a8a8a7da19e882bdc6407a844f78e87cd89a976ec513d3d5379b039227e",
+        "bytes": 18879
+      },
+      "artifact": {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-relation-prefix/build/prepared-relation-prefix.wasm",
+        "sha256": "385e830caeb981ef1035b8c93b37c9ee76244dd1bedafd73bb0dea4e30309c43",
+        "bytes": 698053,
+        "retained": true,
+        "revision": "c4d07156194765506d137792732ba5109cd8c87e"
+      },
+      "nativeMedianMs": 8.212975,
+      "browserMedianMs": {
+        "chromium": 35,
+        "firefox": 255,
+        "webkit": 35
+      },
+      "browserMemoryPages": {
+        "chromium": {
+          "before_call": 18,
+          "after_call": 21
+        },
+        "firefox": {
+          "before_call": 18,
+          "after_call": 21
+        },
+        "webkit": {
+          "before_call": 18,
+          "after_call": 21
+        }
+      },
+      "result": {
+        "completeRankAndSurplus": false,
+        "counters": {
+          "appendedRelations": 4,
+          "cursorTrials": 41,
+          "positiveCacheStatuses": 4,
+          "primitiveNonscalarCandidates": 11,
+          "randomIdeals": 0,
+          "randomSearchIdeals": 0,
+          "smoothCandidates": 4,
+          "visitedIdeals": 1
+        },
+        "factorBaseIdeals": 51,
+        "fieldId": "row1-index-3-cubic",
+        "inputId": "sha256:394cce5d99f0e9f8ba49a12e1542ff41f36c98b535a4535071414a575ded95ba",
+        "limits": {
+          "maximumCandidates": 64,
+          "maximumVisitedIdeals": 1
+        },
+        "missingRank": 36,
+        "prefixSha256": "e7b4b5c409db95aa3c4469d3725476a117e92cc96029b4cbf38d511dd7ee3f3f",
+        "relationBound": 259,
+        "residentRelationRows": 15,
+        "schema": "sagejs.rust-class-group/prepared-relation-prefix-v1",
+        "stage": "prepared-cubic-relation-prefix",
+        "status": "bounded-stage",
+        "storage": {
+          "denseRecordsBytes": 30600,
+          "fullDenseRecordsBytes": 257040,
+          "fullRelationCacheCapacity": 630,
+          "relationCacheCapacity": 75
+        }
+      }
+    },
+    {
+      "fieldId": "complex-cubic-discriminant-minus-23",
+      "role": "additional-complex-signature",
+      "stage": "factor-base",
+      "input": {
+        "path": "bench/pari-class-group-rust/qualification/row6-candidate/inputs/complex-cubic-minus-23-neutral-prepared-field.json",
+        "sha256": "2ce9ca5683f4577fefb5c672458f87818ef657ce221efdc469a8c3682593c2db",
+        "bytes": 2273
+      },
+      "native": {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-multifield/complex-cubic-discriminant-minus-23.factor-base.native-receipt.json",
+        "sha256": "dd253ff3f14fd642bd8726fa32efe32cd401a1f53273e99a659ab44c30fdf260",
+        "bytes": 2528
+      },
+      "vector": {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-multifield/vectors/complex-cubic-discriminant-minus-23.factor-base.vector.json",
+        "sha256": "3d0ce6c24e107dda084126b9f014d35a5e0415a47cfb0e7f0378434b03a9cc76",
+        "bytes": 5057
+      },
+      "browser": {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-multifield/complex-cubic-discriminant-minus-23.factor-base.browser-receipt.json",
+        "sha256": "e1c849f4445858eb1aa4760cc399078b0ebdc64c3903210793705cc8783003e4",
+        "bytes": 15675
+      },
+      "artifact": {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-factor-base/build/prepared-factor-base.wasm",
+        "sha256": "1bc6515472a34c559664840afa6f459432b58b8ea14025e5a82bc2188baecdec",
+        "bytes": 484386,
+        "retained": true,
+        "revision": "c4d07156194765506d137792732ba5109cd8c87e"
+      },
+      "nativeMedianMs": 0.18787,
+      "browserMedianMs": {
+        "chromium": 0.7000000178813934,
+        "firefox": 2,
+        "webkit": 1
+      },
+      "browserMemoryPages": {
+        "chromium": {
+          "before_call": 17,
+          "after_call": 18
+        },
+        "firefox": {
+          "before_call": 17,
+          "after_call": 18
+        },
+        "webkit": {
+          "before_call": 17,
+          "after_call": 18
+        }
+      },
+      "result": {
+        "checkingBound": 11,
+        "completeGroupCount": 0,
+        "descriptorSha256": "66713946f21272a5da62be5393d89c63d1dc3f25ba9c39748291903583f1c170",
+        "equationOrderIndex": "1",
+        "fieldId": "complex-cubic-discriminant-minus-23",
+        "idealCount": 3,
+        "inputId": "sha256:af787e387ea785421e0359005124e26496fb91ef159524a6962d693fbd43dd81",
+        "rationalPrimeCount": 3,
+        "relationBound": 11,
+        "schema": "sagejs.rust-class-group/prepared-factor-base-v1",
+        "stage": "prepared-maximal-cubic-factor-base",
+        "status": "bounded-stage"
+      }
+    },
+    {
+      "fieldId": "complex-cubic-discriminant-minus-23",
+      "role": "additional-complex-signature",
+      "stage": "relation-prefix",
+      "input": {
+        "path": "bench/pari-class-group-rust/qualification/row6-candidate/inputs/complex-cubic-minus-23-neutral-prepared-field.json",
+        "sha256": "2ce9ca5683f4577fefb5c672458f87818ef657ce221efdc469a8c3682593c2db",
+        "bytes": 2273
+      },
+      "native": {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-multifield/complex-cubic-discriminant-minus-23.relation-prefix.native-receipt.json",
+        "sha256": "239539525130425ede72f54405167eeb53a13cfb0460dac2bc460e78288be257",
+        "bytes": 3016
+      },
+      "vector": {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-multifield/vectors/complex-cubic-discriminant-minus-23.relation-prefix.vector.json",
+        "sha256": "bc29fc8b9cff071dde5698def43909570163192bda62c6231ef49e676c83e79e",
+        "bytes": 6109
+      },
+      "browser": {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-multifield/complex-cubic-discriminant-minus-23.relation-prefix.browser-receipt.json",
+        "sha256": "79dc893ddbc55145d119bb206ceb05f1f6a61d035750d808e24ee40e431c14eb",
+        "bytes": 18908
+      },
+      "artifact": {
+        "path": "bench/pari-class-group-rust/qualification/wasm-prepared-relation-prefix/build/prepared-relation-prefix.wasm",
+        "sha256": "385e830caeb981ef1035b8c93b37c9ee76244dd1bedafd73bb0dea4e30309c43",
+        "bytes": 698053,
+        "retained": true,
+        "revision": "c4d07156194765506d137792732ba5109cd8c87e"
+      },
+      "nativeMedianMs": 3.822058,
+      "browserMedianMs": {
+        "chromium": 26.30000001192093,
+        "firefox": 200,
+        "webkit": 26
+      },
+      "browserMemoryPages": {
+        "chromium": {
+          "before_call": 18,
+          "after_call": 20
+        },
+        "firefox": {
+          "before_call": 18,
+          "after_call": 20
+        },
+        "webkit": {
+          "before_call": 18,
+          "after_call": 20
+        }
+      },
+      "result": {
+        "completeRankAndSurplus": false,
+        "counters": {
+          "appendedRelations": 4,
+          "cursorTrials": 18,
+          "positiveCacheStatuses": 4,
+          "primitiveNonscalarCandidates": 8,
+          "randomIdeals": 0,
+          "randomSearchIdeals": 0,
+          "smoothCandidates": 7,
+          "visitedIdeals": 1
+        },
+        "factorBaseIdeals": 3,
+        "fieldId": "complex-cubic-discriminant-minus-23",
+        "inputId": "sha256:af787e387ea785421e0359005124e26496fb91ef159524a6962d693fbd43dd81",
+        "limits": {
+          "maximumCandidates": 64,
+          "maximumVisitedIdeals": 1
+        },
+        "missingRank": 0,
+        "prefixSha256": "47aaf81e633183eb331b730136e4860f371f6162775b8b0607efb56d85a0697f",
+        "relationBound": 11,
+        "residentRelationRows": 4,
+        "schema": "sagejs.rust-class-group/prepared-relation-prefix-v1",
+        "stage": "prepared-cubic-relation-prefix",
+        "status": "bounded-stage",
+        "storage": {
+          "denseRecordsBytes": 1536,
+          "fullDenseRecordsBytes": 3600,
+          "fullRelationCacheCapacity": 150,
+          "relationCacheCapacity": 64
+        }
+      }
+    }
+  ]
+}

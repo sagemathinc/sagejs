@@ -1,0 +1,57 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-no-oracle-live-boundary",
+  "title": "Remove fixture and resident-root boundaries",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Feed no-oracle regulator completion from the live unit bridge 2x7 transform and exact-polynomial embedding rebuild, retaining fixture data only as an external differential oracle",
+  "base_commit": "2ce229e508e80c68e3a85a3fad13fb17ea872b6e",
+  "claims": [
+    "bench/pari-class-group-port/no_oracle_unit_regulator_completion.py",
+    "bench/pari-class-group-port/check_no_oracle_unit_regulator_completion.cjs",
+    "bench/pari-class-group-port/no_oracle_unit_regulator_completion_audit.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Live resident owners and exact polynomial embedding; compact fixture only as external differential oracle"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "env SAGEJS_REPLAY_RUNTIME_ROOT=/home/user/sagejs-worktrees/pari-class-group-e2e-integration node bench/pari-class-group-port/check_no_oracle_unit_regulator_completion.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.31,
+      "started_at": "2026-09-17T03:41:31.511Z",
+      "commit": "2ce229e508e80c68e3a85a3fad13fb17ea872b6e",
+      "workspace_fingerprint": "2fb345a8195746770f9843297603b9e4a2c980aa831a7f9c94b4246157f97774",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Removes the compact fixture and resident-root inputs from authority construction: the 2x7 map now comes from live unit bridge prepare/getfu provenance, exact units come from live resident owners, and the embedding is rebuilt from the exact polynomial and integral basis. The compact fixture is used only for an out-of-band differential assertion.",
+    "risks": [
+      "Internal correspondence still assumes the pinned PARI heuristic/acceptance policy and does not certify unit saturation."
+    ],
+    "next_steps": [
+      "Integrate this follow-up before treating the no-oracle completion as a durable terminal stage."
+    ]
+  }
+}

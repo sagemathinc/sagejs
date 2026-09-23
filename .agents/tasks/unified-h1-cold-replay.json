@@ -1,0 +1,49 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "unified-h1-cold-replay",
+  "title": "Unified H1 terminal cold replay",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Capture the actual unified complete H1 native 811-cell publication once, seal it immutably, and independently replay all class, unit, regulator, torsion, assumption, and terminal authorities with coordinated mutation rejection",
+  "base_commit": "a998fc1bd2ae554af0fa21a287344446f217ff69",
+  "claims": [
+    "bench/pari-class-group-port/h1_terminal_owner_snapshot.py",
+    "bench/pari-class-group-port/check_h1_terminal_owner_snapshot.cjs",
+    "bench/pari-class-group-port/h1_terminal_owner_snapshot_audit.md",
+    "bench/pari-class-group-port/check_unified_h1_terminal_snapshot.cjs",
+    "bench/pari-class-group-port/check_unified_h1_terminal_snapshot.py"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/pari-class-group-end-to-end-native-plan.md"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "PARI 2.17.4 correspondence",
+      "actual 811-cell native publication"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

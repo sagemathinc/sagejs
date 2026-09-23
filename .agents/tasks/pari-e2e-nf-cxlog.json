@@ -1,0 +1,127 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-e2e-nf-cxlog",
+  "title": "Prepared famat nf_cxlog",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "nf_cxlog_inventory",
+  "objective": "Implement and qualify the smallest faithful PARI 2.17.4 prepared famat nf_cxlog cut for totally real cubics, with atomic Ga publication and all dynamic/native differential oracles",
+  "base_commit": "6a43c61902dd7169c0345b089d3785ae520f8eff",
+  "claims": [
+    "bench/pari-class-group-port/nf_cxlog.py",
+    "bench/pari-class-group-port/check_nf_cxlog.cjs",
+    "bench/pari-class-group-port/nf_cxlog_results.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "PARI 2.17.4 src/basemath/base3.c:1502-1586"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Pinned pristine PARI 2.17.4",
+      "native GMP and tagged differential replay"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_nf_cxlog.cjs /home/user/upstream/pari-2.17.4 /home/user/upstream/pari-2.17.4.tar.gz",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.476,
+      "started_at": "2026-09-16T23:18:17.286Z",
+      "commit": "6a43c61902dd7169c0345b089d3785ae520f8eff",
+      "workspace_fingerprint": "83939851432c0d4df9d88526180827ff0bf461983b5f45fc56adc19b6772d2f0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 10.023,
+      "started_at": "2026-09-16T23:18:54.126Z",
+      "commit": "6a43c61902dd7169c0345b089d3785ae520f8eff",
+      "workspace_fingerprint": "83939851432c0d4df9d88526180827ff0bf461983b5f45fc56adc19b6772d2f0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 8.475,
+      "started_at": "2026-09-16T23:19:22.273Z",
+      "commit": "6a43c61902dd7169c0345b089d3785ae520f8eff",
+      "workspace_fingerprint": "6fdc5bca54d7ac0b0e53cfe76ccb9f269644b2345bbcfa32eaccf8fb3a2ef152",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 76.056,
+      "started_at": "2026-09-16T23:19:35.890Z",
+      "commit": "6a43c61902dd7169c0345b089d3785ae520f8eff",
+      "workspace_fingerprint": "6fdc5bca54d7ac0b0e53cfe76ccb9f269644b2345bbcfa32eaccf8fb3a2ef152",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 3.756,
+      "started_at": "2026-09-16T23:20:58.747Z",
+      "commit": "6a43c61902dd7169c0345b089d3785ae520f8eff",
+      "workspace_fingerprint": "6fdc5bca54d7ac0b0e53cfe76ccb9f269644b2345bbcfa32eaccf8fb3a2ef152",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1528.834,
+      "started_at": "2026-09-16T23:21:18.918Z",
+      "commit": "6a43c61902dd7169c0345b089d3785ae520f8eff",
+      "workspace_fingerprint": "6fdc5bca54d7ac0b0e53cfe76ccb9f269644b2345bbcfa32eaccf8fb3a2ef152",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_nf_cxlog.cjs /home/user/upstream/pari-2.17.4 /home/user/upstream/pari-2.17.4.tar.gz",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 35.626,
+      "started_at": "2026-09-16T23:47:08.443Z",
+      "commit": "6a43c61902dd7169c0345b089d3785ae520f8eff",
+      "workspace_fingerprint": "6fdc5bca54d7ac0b0e53cfe76ccb9f269644b2345bbcfa32eaccf8fb3a2ef152",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added an ordinary CPython-parseable, source-transparent native translation of PARI 2.17.4 famat nf_cxlog for totally real cubics. The packed entry preserves primitive normalization, scalar parity dispatch, source-order accumulation, the 64-bit low-precision frontier, and atomic Ga-column publication. A pinned source oracle gives exact agreement across PARI, CPython, generated JavaScript, GMP, and tagged backends.",
+    "risks": [
+      "This first cut intentionally supports only degree-three signature (3,0) and integral basis factors; mixed quartic complex-norm preflight and arbitrary rational basis columns remain outside its contract.",
+      "The receipt uses synthetic famats on the actual tuning cubic, not yet Ge multipliers captured from a completed genback/class_group_gen trace.",
+      "Windows uses the documented dynamic same-source fallback until this kernel enters a broader cross-platform native qualification matrix.",
+      "The full native correctness/lifecycle suite passed, but the final unrelated dense-ZZ performance gate measured multiply_150 at 31.76 ms normalized against a 30 ms budget while concurrent project builds were active; no second full build was started during coordinated resource contention."
+    ],
+    "next_steps": [
+      "Connect the packed factors emitted by genback to this entry and replay actual Ge-to-Ga columns for the class-number-three tuning cubic.",
+      "Generalize the same source body to signature (2,1), adding PARI's low_prec(gnorm(z)) complex-place preflight and 2*i*pi scalar weighting.",
+      "Feed Ga into the existing exact log-matrix transform for act_arch(Ur,Ga), diagact_arch(cyc,Ga), GD, and ga."
+    ]
+  }
+}

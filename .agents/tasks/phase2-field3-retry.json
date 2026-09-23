@@ -1,0 +1,67 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "phase2-field3-retry",
+  "title": "Field-3 resident retry loop",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Generalize the prepared resident class-group relation loop to replay PARI 2.17.4 field 3 through initial dimension deficiency, empty append, nonempty HNF state changes, and acceptance actions 3/4/5 with exact CPython and native evidence",
+  "base_commit": "6a43c61902dd7169c0345b089d3785ae520f8eff",
+  "claims": [
+    "bench/pari-class-group-port/prepared_class_group_resumable.py",
+    "bench/pari-class-group-port/check_prepared_class_group_resumable_field3.cjs",
+    "bench/pari-class-group-port/field3_resident_retry_audit.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "/home/user/upstream/pari-2.17.4/src/basemath/buch2.c:3887-4131"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "native GMP",
+      "PARI 2.17.4 instrumented field-3 trace"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node bench/pari-class-group-port/check_prepared_class_group_resumable_field3.cjs /tmp/sagejs-actual-initial-collector-Askt7e/fixtures.json /tmp/sagejs-analytic-invhr-d88QqB/fixtures.json /tmp/sagejs-default-driver-28z32Q/trace.json --source-only"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_prepared_class_group_resumable_field3.cjs /tmp/sagejs-actual-initial-collector-Askt7e/fixtures.json /tmp/sagejs-analytic-invhr-d88QqB/fixtures.json /tmp/sagejs-default-driver-28z32Q/trace.json --source-only",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 18.04,
+      "started_at": "2026-09-16T23:46:45.563Z",
+      "commit": "6a43c61902dd7169c0345b089d3785ae520f8eff",
+      "workspace_fingerprint": "e2c84ede1d6a6657311fe503ac0563f9a02b7ebcc0c0167eec1f651cf6795fbf",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "The prepared resident driver now consumes initial dimension deficiency and an empty collection, publishes complete changed H/dep/B/C states across four nonempty appends, and loops through acceptance actions 3/4/5. Field 3 exactly matches PARI 2.17.4 in CPython and packed GMP native execution, ending with invariants [2,2], class number 4, and the exact regulator.",
+    "risks": [
+      "This remains a prepared-boundary result; owner growth, factor-base enlargement/honesty, rnd_rel, precision restart, units, and public maps remain explicit frontiers.",
+      "pnpm architecture:check reached the pre-existing stale optimizer-opportunity artifact manifest on the integration base; all preceding architecture checks, including native architecture, passed.",
+      "pnpm test:changed selects 647 integration-base files against origin/main and was stopped after merge-check began; focused exact replay is the relevant lane validation."
+    ],
+    "next_steps": [
+      "Integrate this lane before adding owner-growth/factor-base retry policy.",
+      "Use the same complete resident HNF publication transaction for rnd_rel and factor-base enlargement cuts.",
+      "Retain the field-3 trace as the nonempty-W/changing-H/B regression fixture."
+    ]
+  }
+}

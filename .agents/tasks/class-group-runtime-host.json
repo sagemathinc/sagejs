@@ -1,0 +1,85 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "class-group-runtime-host",
+  "title": "Synchronous class-group runtime host",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Expose one coarse synchronous class-group service boundary to ordinary compiled Python, install a lazy authenticated native Node host with bounded lifecycle, and preserve typed unavailable/resource/cancellation/corrupt-result failures",
+  "base_commit": "f7b30487c931448659f3e8c496e5b349395b9233",
+  "claims": [
+    "src/baselib/sagejs/runtime.py",
+    "src/baselib/sagejs/runtime.pyi",
+    "tools/host.ts",
+    "tools/resources.ts",
+    "test/class-group-runtime-host.cjs"
+  ],
+  "dependencies": [
+    "class-group-native-product",
+    "class-group-product-service"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Production service protocol and injectable runtime-host differential tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [
+    {
+      "command": "node test/class-group-runtime-host.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.787,
+      "started_at": "2026-09-22T06:55:58.352Z",
+      "commit": "f7b30487c931448659f3e8c496e5b349395b9233",
+      "workspace_fingerprint": "9d86474ad426c656f086c4e6d35a9c279dc36b475adf69d44916fb171cb63e0e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 172.635,
+      "started_at": "2026-09-22T06:56:05.855Z",
+      "commit": "f7b30487c931448659f3e8c496e5b349395b9233",
+      "workspace_fingerprint": "9d86474ad426c656f086c4e6d35a9c279dc36b475adf69d44916fb171cb63e0e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/class-group-runtime-host.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.949,
+      "started_at": "2026-09-22T07:13:36.573Z",
+      "commit": "f7b30487c931448659f3e8c496e5b349395b9233",
+      "workspace_fingerprint": "3b9203269ae0eca0066b1b76fd09ca360dbb4f1c15657ddad17bdf558fd545b2",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added the CPython-parseable runtime.class_group_backend().call boundary and a lazy synchronous Node facade over the canonical resident JSONL service. The host authenticates packaged artifacts, bounds files/requests/responses/timeouts, validates canonical envelopes and decimal bindings, owns restart-safe generations, kills native process groups on retirement, rejects unsafe Python integers, and reports a typed Windows Wasm fallback. Focused tests cover lazy startup, resident reuse, compiled-Python calls, teardown, corrupt output, missing service, restart-stale bindings, and exactness rejection.",
+    "risks": [
+      "The full build reaches and publishes the updated compiler/runtime caches but fails in the unrelated numerical reactor stage because the checked production manifest has a different toolchain identity.",
+      "The broad compiler suite cannot load the optional packages/flint/build/Release/sagejs_flint.node in this worktree; all nine failures have that same missing-addon cause."
+    ],
+    "next_steps": [
+      "Re-run pnpm build, pnpm test:compiler, and pnpm test:integration in the integration worktree after its native FLINT and numerical reactor artifacts are reconciled.",
+      "Exercise the authenticated platform-package receipt path once the packaging lane is merged."
+    ]
+  }
+}

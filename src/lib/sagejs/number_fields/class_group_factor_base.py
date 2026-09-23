@@ -837,6 +837,80 @@ def _dyadic_interval_mantissas(value: _Interval, scale: int) -> tuple[int, int] 
     )
 
 
+def _fixed_dyadic_bdf_interval(
+    terms: list[tuple[_Interval, _Interval, int]],
+    *,
+    log_x: _Interval,
+    pi: _Interval,
+    catalan: _Interval,
+    gamma: _Interval,
+    log_eight: _Interval,
+    log_pi: _Interval,
+    log_discriminant: _Interval,
+    degree: int,
+    real_places: int,
+    primitive_bits: int,
+) -> tuple[_Interval, _Interval] | None:
+    """Assemble BDF terms with one bounded outward-rounded dyadic scale.
+
+    Adding each exact rational term directly makes the common denominator grow
+    multiplicatively with the number of prime powers.  That is mathematically
+    unnecessary for an interval decision.  Round every positive term outward
+    to the already guarded primitive scale, add integer mantissas, and retain
+    a rigorous enclosure whose integer sizes do not grow with the term count.
+    """
+    if len(terms) > 1_000_000:
+        return None
+    scale = 1 << primitive_bits
+    log_x_endpoints = _dyadic_interval_mantissas(log_x, scale)
+    if log_x_endpoints is None:
+        return None
+    log_x_lower, log_x_upper = log_x_endpoints
+    total_lower = 0
+    total_upper = 0
+    for logarithm, root, exponent in terms:
+        log_endpoints = _dyadic_interval_mantissas(logarithm, scale)
+        root_endpoints = _dyadic_interval_mantissas(root, scale)
+        if log_endpoints is None or root_endpoints is None:
+            return None
+        log_lower, log_upper = log_endpoints
+        root_lower, root_upper = root_endpoints
+        taper_lower = log_x_lower - exponent * log_upper
+        taper_upper = log_x_upper - exponent * log_lower
+        if (
+            log_lower <= 0
+            or log_lower > log_upper
+            or root_lower <= 0
+            or root_lower > root_upper
+            or taper_lower <= 0
+            or taper_upper <= 0
+        ):
+            return None
+        lower_numerator = log_lower * taper_lower
+        lower_denominator = root_upper * log_x_lower
+        upper_numerator = log_upper * taper_upper
+        upper_denominator = root_lower * log_x_upper
+        total_lower += (lower_numerator * scale) // lower_denominator
+        total_upper += (
+            upper_numerator * scale + upper_denominator - 1
+        ) // upper_denominator
+    total = _Interval(
+        _Rational(total_lower, scale),
+        _Rational(total_upper, scale),
+    )
+    archimedean = (
+        pi.power(2).scale(degree) / _Interval.exact(TWO)
+        + catalan.scale(4 * real_places)
+    ) / log_x
+    right_side = total.scale(2) - archimedean
+    left_side = (
+        log_discriminant
+        - (gamma + log_eight + log_pi).scale(degree)
+        - pi.scale(real_places) / _Interval.exact(TWO)
+    )
+    return right_side, left_side
+
+
 def _packed_bdf_interval(
     terms: list[tuple[_Interval, _Interval, int]],
     *,
@@ -852,7 +926,24 @@ def _packed_bdf_interval(
     primitive_bits: int,
 ) -> tuple[_Interval, _Interval] | None:
     """Run the exact packed BDF assembly, retaining the scalar fallback."""
-    if _bdf_interval_kernel_override is False or len(terms) > 4096:
+    fixed = _fixed_dyadic_bdf_interval(
+        terms,
+        log_x=log_x,
+        pi=pi,
+        catalan=catalan,
+        gamma=gamma,
+        log_eight=log_eight,
+        log_pi=log_pi,
+        log_discriminant=log_discriminant,
+        degree=degree,
+        real_places=real_places,
+        primitive_bits=primitive_bits,
+    )
+    if fixed is not None:
+        return fixed
+    # The compiled exact-rational kernel remains a fallback when an input
+    # interval cannot be represented at the common dyadic scale.
+    if _bdf_interval_kernel_override is False or len(terms) > 1_000_000:
         return None
     try:
         kernel_module = __import__(

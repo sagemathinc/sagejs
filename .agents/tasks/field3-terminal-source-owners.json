@@ -1,0 +1,163 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "field3-terminal-source-owners",
+  "title": "Authenticate field3 terminal relation and class source owners",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Publish strict transactional serializers for the authentic field3 full relation owner and full15-bound class suffix owner, with exact replay, ancestry, mutation, atomicity, and idempotency qualification",
+  "base_commit": "a011e749bbbdbc8dd8dcc3c80b92fb6872777e0b",
+  "claims": [
+    "bench/pari-class-group-port/field3_terminal_source_owners.cjs",
+    "bench/pari-class-group-port/field3_terminal_source_replay.py",
+    "bench/pari-class-group-port/check_field3_terminal_source_owners.cjs",
+    "bench/pari-class-group-port/field3_terminal_source_owners_audit.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Frozen resident authority plus exact Python relation/class replay"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_field3_terminal_source_owners.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.677,
+      "started_at": "2026-09-17T16:35:03.452Z",
+      "commit": "a011e749bbbdbc8dd8dcc3c80b92fb6872777e0b",
+      "workspace_fingerprint": "1459a9bade526402a1e6ccaf10f9f91beddc915d68c966d6423878f176ef1654",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright bench/pari-class-group-port/field3_terminal_source_replay.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.691,
+      "started_at": "2026-09-17T16:35:24.840Z",
+      "commit": "a011e749bbbdbc8dd8dcc3c80b92fb6872777e0b",
+      "workspace_fingerprint": "1459a9bade526402a1e6ccaf10f9f91beddc915d68c966d6423878f176ef1654",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.837,
+      "started_at": "2026-09-17T16:36:18.452Z",
+      "commit": "a011e749bbbdbc8dd8dcc3c80b92fb6872777e0b",
+      "workspace_fingerprint": "1459a9bade526402a1e6ccaf10f9f91beddc915d68c966d6423878f176ef1654",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 118.747,
+      "started_at": "2026-09-17T16:36:39.052Z",
+      "commit": "a011e749bbbdbc8dd8dcc3c80b92fb6872777e0b",
+      "workspace_fingerprint": "1459a9bade526402a1e6ccaf10f9f91beddc915d68c966d6423878f176ef1654",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 64.563,
+      "started_at": "2026-09-17T16:39:25.510Z",
+      "commit": "a011e749bbbdbc8dd8dcc3c80b92fb6872777e0b",
+      "workspace_fingerprint": "1459a9bade526402a1e6ccaf10f9f91beddc915d68c966d6423878f176ef1654",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_field3_terminal_source_owners.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.306,
+      "started_at": "2026-09-17T17:04:31.536Z",
+      "commit": "49e1b4fb757042ad108971b79e2f7ea7b6514092",
+      "workspace_fingerprint": "27712f03757b8cbb45a36f735e2e5855fe763f5b38647125d0a10c9ffa8ea3d9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright bench/pari-class-group-port/field3_terminal_source_replay.py",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1.665,
+      "started_at": "2026-09-17T17:04:55.911Z",
+      "commit": "49e1b4fb757042ad108971b79e2f7ea7b6514092",
+      "workspace_fingerprint": "27712f03757b8cbb45a36f735e2e5855fe763f5b38647125d0a10c9ffa8ea3d9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright bench/pari-class-group-port/field3_terminal_source_replay.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.616,
+      "started_at": "2026-09-17T17:07:26.030Z",
+      "commit": "49e1b4fb757042ad108971b79e2f7ea7b6514092",
+      "workspace_fingerprint": "a96dd24901dfd3f0eb16a87f6c9f53eac2d242587770e4de13affd9314e3cca2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.118,
+      "started_at": "2026-09-17T17:07:28.348Z",
+      "commit": "49e1b4fb757042ad108971b79e2f7ea7b6514092",
+      "workspace_fingerprint": "a96dd24901dfd3f0eb16a87f6c9f53eac2d242587770e4de13affd9314e3cca2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 60.355,
+      "started_at": "2026-09-17T17:07:53.126Z",
+      "commit": "49e1b4fb757042ad108971b79e2f7ea7b6514092",
+      "workspace_fingerprint": "a96dd24901dfd3f0eb16a87f6c9f53eac2d242587770e4de13affd9314e3cca2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 113.935,
+      "started_at": "2026-09-17T17:09:00.620Z",
+      "commit": "49e1b4fb757042ad108971b79e2f7ea7b6514092",
+      "workspace_fingerprint": "a96dd24901dfd3f0eb16a87f6c9f53eac2d242587770e4de13affd9314e3cca2",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Adds strict transactional producers for field3-full-owner-authority-v1 and field3-live-class-suffix-owner-v1. The first reruns the complete frozen resident authority and all 301 exact principal relations. The second independently regenerates the relation and full15 owners from authenticated raw/protocol inputs, replays terminal B, derives selection without fixtures, recomputes antiuniformizer tau, and proves the generated ideals, Smith order, and principal factors by exact ideal arithmetic.",
+    "risks": [
+      "The focused class qualification uses a sparse synthetic 153088-bit raw-log owner and authentic exact HNF protocol; every full15 cell is replayed, but it is not the authentic production raw-log owner.",
+      "Exact order principality is retained as the complete factored alpha column plus all 301 independently proved principal-relation equations and R*T=H; directly expanding alpha in the quartic algebra is intentionally avoided because authentic transform exponents reach 34 bits and naive expansion did not finish within a bounded 15-second probe.",
+      "The integration base differs from origin/main by 1287 files, so pnpm test:changed would select the repository-wide build/compiler/integration/docs suite. The requested bounded lane instead ran pnpm build, pnpm architecture:check, the exact focused checker, and targeted Pyright."
+    ],
+    "next_steps": [
+      "Merge this commit into the integration spine and make field3_terminal_owner_adapters.cjs admit only these exact replayed schemas.",
+      "After authentic raw/full15 publication, run the documented relation and class commands once under the campaign resource guard, then feed their immutable digests to the live-final adapter.",
+      "Keep the unit relationOwnerSha256 crosslink and C7 torsion semantic validation in the terminal adapter/C7 hardening lane."
+    ]
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "field3-real-log-columns",
+  "title": "Field3 Real Log Columns",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Regenerate the two real-embedding logarithm components for the exact field3 301-column principal-generator owner at 153088 bits, prove packed equality against pristine PARI 2.17.4 with independent provenance checks, and retain a bounded fail-atomic owner",
+  "base_commit": "1c9f4eeba8dda26d890aed659b6e5682b20cd073",
+  "claims": [
+    "bench/pari-class-group-port/field3_real_log_columns.py",
+    "bench/pari-class-group-port/check_field3_real_log_columns.cjs",
+    "bench/pari-class-group-port/field3-real-log-columns-audit.md",
+    "bench/pari-class-group-port/field3_real_log_columns_result.json"
+  ],
+  "dependencies": [],
+  "references": [
+    "PARI 2.17.4 src/basemath/buch2.c:get_log_embed",
+    "PARI 2.17.4 src/basemath/trans1.c:logr_abs/logagmr_abs"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "pristine PARI 2.17.4 exact packed triples",
+      "exact prepared-basis and principal-generator provenance identities"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 59.512,
+      "started_at": "2026-09-17T11:59:08.334Z",
+      "commit": "1c9f4eeba8dda26d890aed659b6e5682b20cd073",
+      "workspace_fingerprint": "1a3d5f07a99082510f0a18fae3e4683d1ad89bb6fd7bd8664847f4f33f55e077",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Regenerated a deterministic 28-column raw real-log prefix at the authentic retry boundary: all 26 scalar columns plus two nonscalar columns, both real places, 56 packed triples exactly equal to pristine PARI. Preserved the observed 153088/153152/153216 precision corridor, proved all 301 exact principal-generator norms against relation packet norms, and retained the translated output as a hash-named read-only capsule for later 3x301 assembly.",
+    "risks": [
+      "The resource-bounded receipt covers 28 of 301 columns; the measured linear estimate for all real columns is about 63.5 minutes.",
+      "The third weighted complex component remains absent, so the raw 3x301 owner and its 301x13 transform cannot yet be assembled.",
+      "The complete native suite was not rerun in this lane; the focused six-minute replay and strict Python suite passed."
+    ],
+    "next_steps": [
+      "Generalize the bounded entry point from prefix count to deterministic start/count batches and run the remaining 273 columns in sub-ten-minute chunks under the same owner contract.",
+      "Regenerate the weighted complex component in identical source order, then join all three raw places before applying the retained 301x13 transform.",
+      "Run the broader native suite in the integration lane after cherry-picking."
+    ]
+  }
+}

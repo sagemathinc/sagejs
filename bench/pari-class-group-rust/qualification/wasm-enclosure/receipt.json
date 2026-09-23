@@ -1,0 +1,113 @@
+{
+  "schema": "sagejs.rust-wasm-enclosure-qualification/v1",
+  "status": "qualified-current-final-recipe-with-known-host-shims",
+  "toolchain": {
+    "qualifiedPreparedIdentity": "37d8d819fd533570e0b707d3101ab2944f6488c4b4452b2b0a1a9ea04366452c",
+    "qualifiedPreparedIdentityMatchesReceiptLockDigest": true,
+    "currentToolchainStatusReady": true,
+    "currentFinalRecipeSha256": "11c313a33db4c306ea12cdef0113de3a1b18290a8b361d7398404d059689666d",
+    "preparedReceiptSha256": "e0d16b87271b855dd0b045860c841014b3a5d69fa7e96e45752e299823533978",
+    "rustc": "1.98.1 (48a229cea 2026-09-01)",
+    "wasiSdk": "33.0",
+    "gmp": {
+      "version": "6.2.1",
+      "archiveSha256": "66eb596677c3acd0e87f3118b69316dcba31695d569b5fe1020a9ff1ee0d12a4"
+    },
+    "mpfr": {
+      "version": "4.2.2",
+      "archiveSha256": "7a072da2bff34576648422e0c83ad7cf82c8ea99f0898902cf1653de3654998a"
+    },
+    "mpc": {
+      "version": "1.4.1",
+      "archiveSha256": "2fb5399428f3aeda8f9bed9ab10df35495ee2fc3f5355f73c40640b02825ba91"
+    },
+    "nativeRuntimePackages": {
+      "gmp": "2:6.3.0+dfsg-5ubuntu2",
+      "mpfr": "4.2.2-3",
+      "mpc": "1.3.1-3"
+    }
+  },
+  "artifacts": {
+    "nativeBytes": 317984,
+    "wasmBytes": 265132,
+    "wasmSha256": "f8eb09c7e31af34088e3423aff1ffbb698642d81db3b38dc7bfc0a37e926ad0f",
+    "resultBytes": 1759,
+    "resultSha256": "44a9db537f76b92c6b1db5058ae0714f6f68bf00a27d78f197923281bf9f1849"
+  },
+  "correctness": {
+    "nativeNodeAndThreeBrowserResultsByteIdentical": true,
+    "oracle": "mpmath 1.3.0 polyroots+log at 180 decimal digits",
+    "verifiedPrecisionBits": [96, 192],
+    "targetWidthBits": 160,
+    "directedEnclosuresVerified": true,
+    "rigorAuthority": "directed MPFR endpoint arithmetic",
+    "mpcRole": "midpoint consistency check only",
+    "mpcMidpointInsideEnclosures": true
+  },
+  "nativeFreshProcess": {
+    "sampleCount": 15,
+    "elapsedNs": [
+      2431640, 2369550, 2379640, 2102910, 2423309,
+      2581410, 2102220, 2253940, 2109560, 2020280,
+      2019430, 2059250, 1826540, 2213220, 1941840
+    ],
+    "medianMs": 2.10956,
+    "cumulativeChildrenMaxRssKiB": 17732
+  },
+  "browsers": [
+    {
+      "engine": "chromium",
+      "version": "151.0.7922.34",
+      "compileMs": 6.199999988079071,
+      "instantiateMs": [
+        0.10000002384185791, 0.10000002384185791, 0.10000002384185791,
+        0.20000001788139343, 0.09999999403953552, 0.19999998807907104,
+        0.09999999403953552, 0.30000001192092896, 0.09999999403953552,
+        0, 0.09999999403953552, 0.09999999403953552,
+        0.10000002384185791, 0.09999999403953552, 0
+      ],
+      "computeMs": [
+        6.699999988079071, 1.399999976158142, 1.2999999821186066,
+        1.2999999821186066,
+        1.2000000178813934, 1.0999999940395355, 1.0999999940395355,
+        1.0999999940395355, 1.100000023841858, 1.0999999940395355,
+        1.0999999940395355, 1.0999999940395355, 0.7999999821186066,
+        0.800000011920929, 0.800000011920929
+      ],
+      "computeMedianMs": 1.0999999940395355,
+      "memoryPagesBefore": 17,
+      "memoryPagesAfter": 17
+    },
+    {
+      "engine": "firefox",
+      "version": "153.0",
+      "compileMs": 17,
+      "instantiateMs": [0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      "computeMs": [5, 5, 6, 5, 6, 5, 5, 5, 5, 5, 6, 4, 4, 5, 5],
+      "computeMedianMs": 5,
+      "memoryPagesBefore": 17,
+      "memoryPagesAfter": 17
+    },
+    {
+      "engine": "webkit",
+      "version": "26.5",
+      "compileMs": 9,
+      "instantiateMs": [1, 0, 1, 1, 1, 1, 1, 0, 0, 2, 0, 0, 2, 0, 0],
+      "computeMs": [11, 2, 1, 2, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1],
+      "computeMedianMs": 1,
+      "memoryPagesBefore": 17,
+      "memoryPagesAfter": 17
+    }
+  ],
+  "imports": [
+    "wasi_snapshot_preview1.environ_get",
+    "wasi_snapshot_preview1.environ_sizes_get",
+    "wasi_snapshot_preview1.fd_close",
+    "wasi_snapshot_preview1.fd_prestat_get",
+    "wasi_snapshot_preview1.fd_prestat_dir_name",
+    "wasi_snapshot_preview1.fd_seek",
+    "wasi_snapshot_preview1.fd_write",
+    "wasi_snapshot_preview1.proc_exit"
+  ],
+  "knownLimitation": "Rust std requires zero-environment shims for the two environ imports; direct MPFR/MPC does not add unsupported imports"
+}

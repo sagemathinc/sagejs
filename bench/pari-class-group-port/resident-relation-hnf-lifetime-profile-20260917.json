@@ -1,0 +1,292 @@
+{
+  "diagnosticOnly": true,
+  "integrationCommit": "944a1291113a51b366d293e00c7979c754eeee03",
+  "boundary": "Static sites in the generated arbitrary-precision native call graph reachable from pari_connected_relation_hnf; counts are sites, not dynamic executions.",
+  "sourceSha256": "9ac0b2c37f8e9ab6008e97c4cb4be7bc796ced478cd128e0fcb1fb625e0f47ef",
+  "coreSha256": "222dcb772e6a75873045c256caa7e1deb7ac637165047d31b2c9b2b4d4b8afd3",
+  "cacheKey": "3c920ee2de92b2282ec0afd2e2c790af15832a96e6fe17ff19ce0c0c61eb3ffa",
+  "generatedCode": {
+    "wholeCoreBytes": 45610040,
+    "reachableFunctionBytes": 11042421,
+    "totalNativeDefinitions": 199,
+    "reachableFunctions": 199,
+    "internalCallSites": 635,
+    "uniqueInternalEdges": 365,
+    "hostNativeEntriesPerAttempt": 1,
+    "largestFunctions": [
+      {
+        "name": "native_pari_hnfspec_sparse_prefix",
+        "bytes": 403537,
+        "mpzInitSites": 36,
+        "mpzClearSites": 72,
+        "internalCallSites": 16
+      },
+      {
+        "name": "native_pari_hnffinal_nonempty",
+        "bytes": 281476,
+        "mpzInitSites": 71,
+        "mpzClearSites": 142,
+        "internalCallSites": 6
+      },
+      {
+        "name": "native__pari_flm_cup_frame",
+        "bytes": 251145,
+        "mpzInitSites": 39,
+        "mpzClearSites": 78,
+        "internalCallSites": 2
+      },
+      {
+        "name": "native_pari_flm_lsolve_upper",
+        "bytes": 246266,
+        "mpzInitSites": 28,
+        "mpzClearSites": 56,
+        "internalCallSites": 2
+      },
+      {
+        "name": "native_pari_composite_modulus_hnf",
+        "bytes": 231790,
+        "mpzInitSites": 28,
+        "mpzClearSites": 56,
+        "internalCallSites": 10
+      },
+      {
+        "name": "native_pari_collect_unreduced_ideals",
+        "bytes": 229691,
+        "mpzInitSites": 16,
+        "mpzClearSites": 32,
+        "internalCallSites": 15
+      },
+      {
+        "name": "native_pari_small_real_division",
+        "bytes": 203220,
+        "mpzInitSites": 37,
+        "mpzClearSites": 74,
+        "internalCallSites": 38
+      },
+      {
+        "name": "native_pari_hnfspec_assemble_blocks",
+        "bytes": 201648,
+        "mpzInitSites": 34,
+        "mpzClearSites": 68,
+        "internalCallSites": 0
+      },
+      {
+        "name": "native_pari_flatter",
+        "bytes": 193663,
+        "mpzInitSites": 30,
+        "mpzClearSites": 60,
+        "internalCallSites": 26
+      },
+      {
+        "name": "native_pari_babai_fast",
+        "bytes": 193543,
+        "mpzInitSites": 30,
+        "mpzClearSites": 56,
+        "internalCallSites": 10
+      },
+      {
+        "name": "native_pari_prepared_add_relation",
+        "bytes": 191377,
+        "mpzInitSites": 22,
+        "mpzClearSites": 44,
+        "internalCallSites": 1
+      },
+      {
+        "name": "native_pari_integer_matrix_product",
+        "bytes": 189978,
+        "mpzInitSites": 23,
+        "mpzClearSites": 46,
+        "internalCallSites": 0
+      },
+      {
+        "name": "native_pari_babai_dpe",
+        "bytes": 179870,
+        "mpzInitSites": 38,
+        "mpzClearSites": 74,
+        "internalCallSites": 8
+      },
+      {
+        "name": "native_pari_lll_dpe",
+        "bytes": 165134,
+        "mpzInitSites": 24,
+        "mpzClearSites": 48,
+        "internalCallSites": 17
+      },
+      {
+        "name": "native_pari_hnfspec_complete",
+        "bytes": 164673,
+        "mpzInitSites": 14,
+        "mpzClearSites": 28,
+        "internalCallSites": 6
+      },
+      {
+        "name": "native_pari_hnfspec_cleanup",
+        "bytes": 153536,
+        "mpzInitSites": 31,
+        "mpzClearSites": 62,
+        "internalCallSites": 1
+      },
+      {
+        "name": "native_pari_prepared_qr",
+        "bytes": 150548,
+        "mpzInitSites": 37,
+        "mpzClearSites": 74,
+        "internalCallSites": 38
+      },
+      {
+        "name": "native_pari_real_arctangent",
+        "bytes": 143793,
+        "mpzInitSites": 28,
+        "mpzClearSites": 56,
+        "internalCallSites": 26
+      },
+      {
+        "name": "native_pari_prime_modulus_hnf",
+        "bytes": 140885,
+        "mpzInitSites": 29,
+        "mpzClearSites": 58,
+        "internalCallSites": 1
+      },
+      {
+        "name": "native_pari_abpq_sum",
+        "bytes": 139984,
+        "mpzInitSites": 16,
+        "mpzClearSites": 32,
+        "internalCallSites": 0
+      }
+    ]
+  },
+  "lifecycle": {
+    "fmpzInitSites": 0,
+    "fmpzClearSites": 0,
+    "mpzInitSites": 2470,
+    "mpzClearSites": 4934
+  },
+  "conversions": {
+    "integerBufferGetMpzSites": 825,
+    "integerBufferSetMpzSites": 547,
+    "mpzSetMachineSites": 4800,
+    "mpzGetMachineSites": 57,
+    "mpzSetCopySites": 6854
+  },
+  "owners": {
+    "inputSha256": "8d3b97b1320e31f9091fceb46e2167eb0dc0614cc697cf56ff6475e9547ac8f0",
+    "cases": [
+      {
+        "degree": 3,
+        "bufferOwners": 202,
+        "slots": 1386792,
+        "logicalLiveBytes": 15195936,
+        "fixedCapacityLiveBytes": 452177864,
+        "byKind": {
+          "IntegerBuffer": {
+            "owners": 165,
+            "slots": 1019486,
+            "logicalLiveBytes": 12257488,
+            "fixedCapacityLiveBytes": 449239416
+          },
+          "Float64Buffer": {
+            "owners": 12,
+            "slots": 72,
+            "logicalLiveBytes": 576,
+            "fixedCapacityLiveBytes": 576
+          },
+          "Int64Buffer": {
+            "owners": 25,
+            "slots": 367234,
+            "logicalLiveBytes": 2937872,
+            "fixedCapacityLiveBytes": 2937872
+          }
+        }
+      },
+      {
+        "degree": 3,
+        "bufferOwners": 202,
+        "slots": 1418002,
+        "logicalLiveBytes": 15530896,
+        "fixedCapacityLiveBytes": 463258104,
+        "byKind": {
+          "IntegerBuffer": {
+            "owners": 165,
+            "slots": 1040806,
+            "logicalLiveBytes": 12513328,
+            "fixedCapacityLiveBytes": 460240536
+          },
+          "Float64Buffer": {
+            "owners": 12,
+            "slots": 72,
+            "logicalLiveBytes": 576,
+            "fixedCapacityLiveBytes": 576
+          },
+          "Int64Buffer": {
+            "owners": 25,
+            "slots": 377124,
+            "logicalLiveBytes": 3016992,
+            "fixedCapacityLiveBytes": 3016992
+          }
+        }
+      },
+      {
+        "degree": 4,
+        "bufferOwners": 202,
+        "slots": 1467428,
+        "logicalLiveBytes": 16063516,
+        "fixedCapacityLiveBytes": 481042860,
+        "byKind": {
+          "IntegerBuffer": {
+            "owners": 165,
+            "slots": 1075037,
+            "logicalLiveBytes": 12924388,
+            "fixedCapacityLiveBytes": 477903732
+          },
+          "Float64Buffer": {
+            "owners": 12,
+            "slots": 114,
+            "logicalLiveBytes": 912,
+            "fixedCapacityLiveBytes": 912
+          },
+          "Int64Buffer": {
+            "owners": 25,
+            "slots": 392277,
+            "logicalLiveBytes": 3138216,
+            "fixedCapacityLiveBytes": 3138216
+          }
+        }
+      },
+      {
+        "degree": 4,
+        "bufferOwners": 202,
+        "slots": 1435474,
+        "logicalLiveBytes": 15720636,
+        "fixedCapacityLiveBytes": 469706732,
+        "byKind": {
+          "IntegerBuffer": {
+            "owners": 165,
+            "slots": 1053225,
+            "logicalLiveBytes": 12662644,
+            "fixedCapacityLiveBytes": 466648740
+          },
+          "Float64Buffer": {
+            "owners": 12,
+            "slots": 114,
+            "logicalLiveBytes": 912,
+            "fixedCapacityLiveBytes": 912
+          },
+          "Int64Buffer": {
+            "owners": 25,
+            "slots": 382135,
+            "logicalLiveBytes": 3057080,
+            "fixedCapacityLiveBytes": 3057080
+          }
+        }
+      }
+    ],
+    "fixedCapacityPolicy": "64 limbs per IntegerBuffer slot; 4 for hnf_cup_*; 8 bytes per machine slot"
+  },
+  "decision": {
+    "campaignJustified": true,
+    "qualification": "The requested fmpz counts are zero because this graph is emitted through the mpz_t native backend. The same lifetime concern exists as repeated mpz local initialization/clear and owner conversion sites.",
+    "proposal": "Authenticate one root-owned mpz scratch frame and replace per-callee exact temporaries only inside this reachable graph.",
+    "falsification": "Reject the campaign unless a generated-C A/B on the frozen input removes at least 75% of reachable mpz init/clear dynamic executions and improves relation-to-HNF kernel CPU time by at least 3x, with identical owner state and output after every frozen prefix."
+  }
+}

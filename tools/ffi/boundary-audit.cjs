@@ -95,6 +95,134 @@ function wasmExports(root, files) {
   return result;
 }
 
+function rustWithoutComments(source) {
+  const output = [...source];
+  let index = 0;
+  let depth = 0;
+  const blank = (start, end) => {
+    for (let position = start; position < end; position += 1) {
+      if (source[position] !== "\n") output[position] = " ";
+    }
+  };
+  while (index < source.length) {
+    if (depth > 0) {
+      if (source.startsWith("/*", index)) {
+        blank(index, index + 2);
+        depth += 1;
+        index += 2;
+      } else if (source.startsWith("*/", index)) {
+        blank(index, index + 2);
+        depth -= 1;
+        index += 2;
+      } else {
+        blank(index, index + 1);
+        index += 1;
+      }
+      continue;
+    }
+    if (source.startsWith("//", index)) {
+      const end = source.indexOf("\n", index);
+      blank(index, end < 0 ? source.length : end);
+      index = end < 0 ? source.length : end;
+      continue;
+    }
+    if (source.startsWith("/*", index)) {
+      blank(index, index + 2);
+      depth = 1;
+      index += 2;
+      continue;
+    }
+    const raw = source.slice(index).match(/^(?:b)?r(#{0,16})"/);
+    if (raw) {
+      const delimiter = `"${raw[1]}`;
+      const found = source.indexOf(delimiter, index + raw[0].length);
+      const end = found < 0 ? source.length : found + delimiter.length;
+      blank(index, end);
+      index = end;
+      continue;
+    }
+    const stringPrefix = source.startsWith('b"', index) ? 2 :
+      source[index] === '"' ? 1 : 0;
+    if (stringPrefix > 0) {
+      let end = index + stringPrefix;
+      let escaped = false;
+      while (end < source.length) {
+        const character = source[end];
+        end += 1;
+        if (escaped) escaped = false;
+        else if (character === "\\") escaped = true;
+        else if (character === '"') break;
+      }
+      const prefix = output.slice(0, index).join("");
+      const structural = stringPrefix === 1 && (
+        /\bextern\s*$/.test(prefix) ||
+        /\b(?:export_name|link_name)\s*=\s*$/.test(prefix)
+      );
+      if (!structural) blank(index, end);
+      index = end;
+      continue;
+    }
+    const character = source.slice(index).match(/^(?:b)?'(?:\\.|[^\\'\n])'/);
+    if (character) {
+      blank(index, index + character[0].length);
+      index += character[0].length;
+      continue;
+    }
+    index += 1;
+  }
+  return output.join("");
+}
+
+function rustAbiBoundaries(root, files) {
+  const result = [];
+  for (const path of files.filter((value) => value.endsWith(".rs"))) {
+    const source = rustWithoutComments(readFileSync(join(root, path), "utf8"));
+    const packageId = packageName(root, path);
+    const exportPattern = /((?:#\s*\[[^\]]+\]\s*)+)(?:pub(?:\([^)]*\))?\s+)?(?:unsafe\s+)?extern\s*"([^"]+)"\s+fn\s+([A-Za-z_][A-Za-z0-9_]*)/g;
+    for (const match of source.matchAll(exportPattern)) {
+      const attributes = match[1];
+      const exportName = attributes.match(
+        /export_name\s*=\s*"([^"]+)"/,
+      )?.[1];
+      const noMangle = /\bno_mangle\b/.test(attributes);
+      if (!noMangle && exportName === undefined) continue;
+      result.push({
+        id: `rust-abi-export:${path}:${exportName || match[3]}`,
+        kind: "rust-abi-export",
+        path,
+        package: packageId,
+        abi: match[2],
+        export: exportName || match[3],
+        symbol: match[3],
+        disposition: "experimental-rust-qualification-abi",
+      });
+    }
+
+    const blockPattern = /\b(?:unsafe\s+)?extern\s*"([^"]+)"\s*\{([\s\S]*?)\}/g;
+    for (const block of source.matchAll(blockPattern)) {
+      const abi = block[1];
+      const body = block[2];
+      const itemPattern = /(?:#\s*\[\s*link_name\s*=\s*"([^"]+)"\s*\]\s*)?(?:pub(?:\([^)]*\))?\s+)?(?:safe\s+)?(fn|static(?:\s+mut)?)\s+([A-Za-z_][A-Za-z0-9_]*)/g;
+      for (const item of body.matchAll(itemPattern)) {
+        const linkedSymbol = item[1] || item[3];
+        const itemKind = item[2].startsWith("static") ? "static" : "function";
+        result.push({
+          id: `rust-abi-import:${path}:${linkedSymbol}`,
+          kind: "rust-abi-import",
+          path,
+          package: packageId,
+          abi,
+          import_kind: itemKind,
+          symbol: item[3],
+          linked_symbol: linkedSymbol,
+          disposition: "experimental-rust-qualification-abi",
+        });
+      }
+    }
+  }
+  return result;
+}
+
 function runtimeIntrinsics(root) {
   const path = "tools/python/contract.ts";
   const source = readFileSync(join(root, path), "utf8");
@@ -226,6 +354,7 @@ function createBoundarySnapshot(options = {}) {
     ...classifiedNativeFiles(root),
     ...nativeExports,
     ...wasmExports(root, files),
+    ...rustAbiBoundaries(root, files),
     ...runtimeIntrinsics(root),
     ...declaredFunctions(registry),
     ...declaredResources(registry),
@@ -250,6 +379,7 @@ function createBoundarySnapshot(options = {}) {
         "declared-ffi-resources",
         "napi-exports",
         "runtime-intrinsics",
+        "rust-abi",
         "wasm-exports",
       ],
       new_boundaries_require: "explicit-regeneration-and-review",
@@ -289,6 +419,7 @@ module.exports = {
   napiExports,
   portablePath,
   repositoryRoot,
+  rustAbiBoundaries,
   snapshotPath,
   trackedFiles,
   validateBoundarySnapshot,

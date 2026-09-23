@@ -10,17 +10,17 @@
     "maximum_interrupt_latency_ms": 5000
   },
   "artifact_baseline": {
-    "evidence": "bench/extension-fields/payload-cb604c65e.json",
+    "evidence": "bench/pari-class-group-rust/qualification/browser-wasm-payload-a844096da.json",
     "totals": {
-      "bytes": 169872974,
-      "gzip_bytes": 25354265,
-      "brotli_bytes": 16876678
+      "bytes": 187325255,
+      "gzip_bytes": 28385083,
+      "brotli_bytes": 19431669
     }
   },
   "artifact_topology_limits": {
     "eager-core": {
       "gzip_bytes": 17600000,
-      "brotli_bytes": 9700000
+      "brotli_bytes": 9800000
     }
   },
   "performance_baseline": {

@@ -30,13 +30,19 @@ static void set_mpz_int64(mpz_t target, int64_t value)
 static int mpz_to_int64(const mpz_t value, int64_t *result)
 {
     const int sign = mpz_sgn(value);
-    size_t count = 0;
     uint64_t magnitude = 0;
     if (sign == 0)
     {
         *result = 0;
         return 1;
     }
+#if GMP_NUMB_BITS == 64
+    /* Public limb access preserves LLP64: mp_limb_t need not be ulong. */
+    if (mpz_size(value) > 1)
+        return 0;
+    magnitude = (uint64_t) mpz_getlimbn(value, 0);
+#else
+    size_t count = 0;
     /* mpz_export writes every requested word to its destination.  Reject a
        multiword magnitude before exporting into this single-word scalar. */
     if (mpz_sizeinbase(value, 2) > 64)
@@ -44,6 +50,7 @@ static int mpz_to_int64(const mpz_t value, int64_t *result)
     mpz_export(&magnitude, &count, -1, sizeof(magnitude), 0, 0, value);
     if (count > 1)
         return 0;
+#endif
     if (sign > 0)
     {
         if (magnitude > (uint64_t) INT64_MAX)
@@ -62,18 +69,27 @@ static int mpz_to_int64(const mpz_t value, int64_t *result)
 
 static int mpz_to_uint64(const mpz_t value, uint64_t *result)
 {
-    size_t count = 0;
+    const int sign = mpz_sgn(value);
     uint64_t magnitude = 0;
-    if (mpz_sgn(value) < 0 || mpz_sizeinbase(value, 2) > 64)
+    if (sign < 0)
         return 0;
-    if (mpz_sgn(value) == 0)
+    if (sign == 0)
     {
         *result = UINT64_C(0);
         return 1;
     }
+#if GMP_NUMB_BITS == 64
+    if (mpz_size(value) > 1)
+        return 0;
+    magnitude = (uint64_t) mpz_getlimbn(value, 0);
+#else
+    size_t count = 0;
+    if (mpz_sizeinbase(value, 2) > 64)
+        return 0;
     mpz_export(&magnitude, &count, -1, sizeof(magnitude), 0, 0, value);
     if (count > 1)
         return 0;
+#endif
     *result = magnitude;
     return 1;
 }
@@ -918,6 +934,40 @@ static int sagejs_word_mul_int64(int64_t left, int64_t right, int64_t *result)
 #endif
 }
 
+static void sagejs_mpz_mul_int64(
+    mpz_t target, const mpz_t integer, int64_t scalar)
+{
+#if LONG_MAX >= INT64_MAX
+    mpz_mul_si(target, integer, (long) scalar);
+#else
+    /* GMP's signed-long entry point is only 32 bits on LLP64 hosts. */
+    mpz_t exact_scalar;
+    mpz_init(exact_scalar);
+    set_mpz_int64(exact_scalar, scalar);
+    mpz_mul(target, integer, exact_scalar);
+    mpz_clear(exact_scalar);
+#endif
+}
+
+/* Restoring base-four square root: entirely integer, including the seed.
+   Each iteration removes the next root bit; no overflowing square is formed. */
+static uint64_t sagejs_word_isqrt_uint64(uint64_t value)
+{
+    uint64_t root = 0, bit = UINT64_C(1) << 62;
+    while (bit > value) bit >>= 2;
+    while (bit)
+    {
+        if (value >= root + bit)
+        {
+            value -= root + bit;
+            root = (root >> 1) + bit;
+        }
+        else root >>= 1;
+        bit >>= 2;
+    }
+    return root;
+}
+
 static int sagejs_word_pow_int64(
     int64_t base, uint64_t exponent, int64_t *result)
 {
@@ -1085,6 +1135,22 @@ static double sagejs_tagged_get_double(sagejs_tagged_int *value)
     return value->is_big ? mpz_get_d(value->big) : (double) value->small;
 }
 
+static void sagejs_tagged_and(
+    sagejs_tagged_int *target,
+    sagejs_tagged_int *left,
+    sagejs_tagged_int *right)
+{
+    if (!left->is_big && !right->is_big)
+    {
+        sagejs_tagged_set_small(target, left->small & right->small);
+        return;
+    }
+    sagejs_tagged_make_big(left);
+    sagejs_tagged_make_big(right);
+    sagejs_tagged_make_big(target);
+    mpz_and(target->big, left->big, right->big);
+}
+
 static void sagejs_tagged_add(
     sagejs_tagged_int *target,
     sagejs_tagged_int *left,
@@ -1139,6 +1205,23 @@ static void sagejs_tagged_mul(
     mpz_mul(target->big, left->big, right->big);
 }
 
+static void sagejs_tagged_mul_int64(
+    sagejs_tagged_int *target,
+    sagejs_tagged_int *integer,
+    int64_t scalar)
+{
+    int64_t result;
+    if (!integer->is_big &&
+        sagejs_word_mul_int64(integer->small, scalar, &result))
+    {
+        sagejs_tagged_set_small(target, result);
+        return;
+    }
+    sagejs_tagged_make_big(integer);
+    sagejs_tagged_make_big(target);
+    sagejs_mpz_mul_int64(target->big, integer->big, scalar);
+}
+
 static void sagejs_tagged_neg(
     sagejs_tagged_int *target, sagejs_tagged_int *source)
 {
@@ -1164,6 +1247,172 @@ static void sagejs_tagged_abs(
     sagejs_tagged_make_big(source);
     sagejs_tagged_make_big(target);
     mpz_abs(target->big, source->big);
+}
+
+/* A shift may request enormous storage with a tiny count operand. This new
+ * operation has an explicit 1-Mibit result allocation cap; it never truncates.
+ * Existing zero/count-zero values and saturating right shifts need no growth. */
+static int sagejs_mpz_shift_uint64(sagejs_native_status *status, mpz_t target,
+    const mpz_t left, uint64_t count, int shift_left)
+{
+    if (mpz_sgn(left) == 0 || count == 0) { mpz_set(target,left);return 1; }
+    if (!shift_left) {
+        if (count > ULONG_MAX || count >= mpz_sizeinbase(left,2)) {
+            mpz_set_si(target,mpz_sgn(left)<0?-1:0);return 1;
+        }
+        mpz_fdiv_q_2exp(target,left,(unsigned long)count);return 1;
+    }
+    if (count > 1048576UL || mpz_sizeinbase(left,2) > 1048576UL-count) {
+        sagejs_native_status_set(status,SAGEJS_NATIVE_RANGE_ERROR,"integer shift allocation limit exceeded");return 0;
+    }
+    mpz_mul_2exp(target,left,(unsigned long)count);return 1;
+}
+
+static int sagejs_mpz_shift(sagejs_native_status *status, mpz_t target,
+    const mpz_t left, const mpz_t right, int shift_left)
+{
+    if (mpz_sgn(right) < 0) {
+        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, "negative shift count");
+        return 0;
+    }
+    if (mpz_sgn(left) == 0 || mpz_sgn(right) == 0) { mpz_set(target, left); return 1; }
+    if (!shift_left) {
+        if (!mpz_fits_ulong_p(right) || mpz_get_ui(right) >= mpz_sizeinbase(left,2)) {
+            mpz_set_si(target, mpz_sgn(left) < 0 ? -1 : 0); return 1;
+        }
+        mpz_fdiv_q_2exp(target,left,mpz_get_ui(right)); return 1;
+    }
+    if (!mpz_fits_ulong_p(right) || mpz_cmp_ui(right,1048576UL) > 0) {
+        sagejs_native_status_set(status,SAGEJS_NATIVE_RANGE_ERROR,"integer shift allocation limit exceeded");return 0;
+    }
+    unsigned long count=mpz_get_ui(right);
+    if (mpz_sizeinbase(left,2) > 1048576UL-count) {
+        sagejs_native_status_set(status,SAGEJS_NATIVE_RANGE_ERROR,"integer shift allocation limit exceeded");return 0;
+    }
+    mpz_mul_2exp(target,left,count);return 1;
+}
+
+static int sagejs_tagged_shift(sagejs_native_status *status,
+    sagejs_tagged_int *target,sagejs_tagged_int *left,sagejs_tagged_int *right,int direction)
+{
+    /* Keep ordinary counts small. Promoting a read-only count here makes
+     * subsequent loop/index arithmetic allocate even when only the shifted
+     * mantissa needs GMP. Save it before writes: target may alias right. */
+    if (!right->is_big) {
+        int64_t signed_count = right->small;
+        if (signed_count < 0) {
+            sagejs_native_status_set(status,SAGEJS_NATIVE_RANGE_ERROR,"negative shift count");return 0;
+        }
+        uint64_t count = (uint64_t)signed_count;
+        if (sagejs_tagged_sgn(left) == 0 || count == 0) {
+            sagejs_tagged_copy(target,left);return 1;
+        }
+        if (!left->is_big) {
+            int64_t value = left->small;
+            if (!direction) {
+                /* Python floor division, without implementation-defined
+                 * signed shifts or negating INT64_MIN. */
+                int64_t result = count >= 64 ? (value < 0 ? -1 : 0) :
+                    value < 0 ? -1 - (int64_t)((uint64_t)(-(value+1)) >> count) :
+                    (int64_t)((uint64_t)value >> count);
+                sagejs_tagged_set_small(target,result);return 1;
+            }
+            uint64_t magnitude = value < 0 ? UINT64_C(0)-(uint64_t)value : (uint64_t)value;
+            uint64_t limit = value < 0 ? (UINT64_C(1)<<63) : (uint64_t)INT64_MAX;
+            if (count < 64 && magnitude <= (limit >> count)) {
+                magnitude <<= count;
+                int64_t result = magnitude == (UINT64_C(1)<<63) ? INT64_MIN :
+                    value < 0 ? -(int64_t)magnitude : (int64_t)magnitude;
+                sagejs_tagged_set_small(target,result);return 1;
+            }
+        }
+        sagejs_tagged_make_big(left);
+        if (!direction) {
+            if (count > ULONG_MAX || count >= mpz_sizeinbase(left->big,2)) {
+                int64_t result = mpz_sgn(left->big) < 0 ? -1 : 0;
+                sagejs_tagged_set_small(target,result);return 1;
+            }
+            sagejs_tagged_make_big(target);
+            mpz_fdiv_q_2exp(target->big,left->big,(unsigned long)count);return 1;
+        }
+        if (count > 1048576UL || mpz_sizeinbase(left->big,2) > 1048576UL-count) {
+            sagejs_native_status_set(status,SAGEJS_NATIVE_RANGE_ERROR,"integer shift allocation limit exceeded");return 0;
+        }
+        sagejs_tagged_make_big(target);
+        mpz_mul_2exp(target->big,left->big,(unsigned long)count);return 1;
+    }
+    sagejs_tagged_make_big(left);sagejs_tagged_make_big(right);sagejs_tagged_make_big(target);
+    return sagejs_mpz_shift(status,target->big,left->big,right->big,direction);
+}
+
+static int sagejs_tagged_shift_uint64(sagejs_native_status *status,
+    sagejs_tagged_int *target,sagejs_tagged_int *left,uint64_t count,int direction)
+{
+    if (count <= INT64_MAX) {
+        sagejs_tagged_int right;
+        sagejs_tagged_init(&right);
+        sagejs_tagged_set_small(&right,(int64_t)count);
+        int ok=sagejs_tagged_shift(status,target,left,&right,direction);
+        sagejs_tagged_clear(&right);return ok;
+    }
+    sagejs_tagged_make_big(left);sagejs_tagged_make_big(target);
+    return sagejs_mpz_shift_uint64(status,target->big,left->big,count,direction);
+}
+
+static void sagejs_tagged_bit_length(
+    sagejs_tagged_int *target, sagejs_tagged_int *source)
+{
+    uint64_t bits = 0;
+    if (source->is_big)
+        bits = mpz_sgn(source->big) == 0 ? 0 : (uint64_t)mpz_sizeinbase(source->big, 2);
+    else
+    {
+        uint64_t magnitude = source->small < 0
+            ? UINT64_C(0) - (uint64_t)source->small : (uint64_t)source->small;
+        while (magnitude) { bits++; magnitude >>= 1; }
+    }
+    sagejs_tagged_set_uint64(target, bits);
+}
+
+static int sagejs_tagged_isqrt(sagejs_native_status *status,
+    sagejs_tagged_int *target, sagejs_tagged_int *source)
+{
+    if (source->is_big ? mpz_sgn(source->big) < 0 : source->small < 0)
+    {
+        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,
+            "isqrt() argument must be nonnegative");
+        return 0;
+    }
+    if (!source->is_big)
+    {
+        uint64_t result = sagejs_word_isqrt_uint64((uint64_t)source->small);
+        sagejs_tagged_set_small(target, (int64_t)result);
+    }
+    else
+    {
+        int64_t small;
+        sagejs_tagged_make_big(target);
+        mpz_sqrt(target->big, source->big);
+        if (mpz_to_int64(target->big, &small)) sagejs_tagged_set_small(target, small);
+    }
+    return 1;
+}
+
+static void sagejs_tagged_gcd(sagejs_tagged_int *target,
+    sagejs_tagged_int *left, sagejs_tagged_int *right)
+{
+    if (!left->is_big && !right->is_big)
+    {
+        uint64_t a = left->small < 0 ? UINT64_C(0) - (uint64_t)left->small : (uint64_t)left->small;
+        uint64_t b = right->small < 0 ? UINT64_C(0) - (uint64_t)right->small : (uint64_t)right->small;
+        while (b) { uint64_t r = a % b; a = b; b = r; }
+        sagejs_tagged_set_uint64(target, a);
+        return;
+    }
+    sagejs_tagged_make_big(left);
+    sagejs_tagged_make_big(right);
+    sagejs_tagged_make_big(target);
+    mpz_gcd(target->big, left->big, right->big);
 }
 
 static void sagejs_tagged_pow_ui(
@@ -1367,6 +1616,43 @@ static int get_uint64(
         return 0;
     }
     *result = (uint64_t) number;
+    return 1;
+}
+
+static int get_int64(
+    napi_env env, napi_value value, int64_t *result)
+{
+    napi_valuetype type;
+    bool lossless;
+    double number;
+    if (!sagejs_native_check_napi(env, napi_typeof(env, value, &type)))
+        return 0;
+    if (type == napi_bigint)
+    {
+        if (!sagejs_native_check_napi(env,
+            napi_get_value_bigint_int64(env, value, result, &lossless)))
+            return 0;
+        if (!lossless)
+        {
+            napi_throw_range_error(env, NULL, "int64 argument is too large");
+            return 0;
+        }
+        return 1;
+    }
+    if (type != napi_number ||
+        !sagejs_native_check_napi(
+            env, napi_get_value_double(env, value, &number)))
+    {
+        napi_throw_type_error(env, NULL, "expected an int64 argument");
+        return 0;
+    }
+    if (!isfinite(number) || number < -9007199254740991.0 ||
+        number > 9007199254740991.0 || floor(number) != number)
+    {
+        napi_throw_range_error(env, NULL, "invalid int64 argument");
+        return 0;
+    }
+    *result = (int64_t) number;
     return 1;
 }
 

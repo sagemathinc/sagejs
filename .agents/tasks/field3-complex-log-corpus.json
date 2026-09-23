@@ -1,0 +1,105 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "field3-complex-log-corpus",
+  "title": "Authenticate resumable field3 complex log corpus",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Define a deterministic resumable hash-named capsule protocol for all 301 field3 complex log columns, with ordered authenticated merge into the complete weighted complex owner",
+  "base_commit": "56324f09872e235b20207f46aa83e4cadebde898",
+  "claims": [
+    "bench/pari-class-group-port/field3_complex_log_corpus_protocol.cjs",
+    "bench/pari-class-group-port/field3_complex_log_corpus_protocol_audit.md",
+    "bench/pari-class-group-port/field3_complex_log_corpus_protocol_result.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Qualified selected-prefix field3 complex log owner",
+      "Exact immutable capsule and ordered merge checks"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node --check bench/pari-class-group-port/field3_complex_log_corpus_protocol.cjs",
+    "node bench/pari-class-group-port/field3_complex_log_corpus_protocol.cjs --self-test"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/field3_complex_log_corpus_protocol.cjs --self-test",
+      "status": "passed",
+      "summary": "Built and merged 76 synthetic immutable capsules into 2107 cells, preserved 32 authentic selected-prefix columns byte-identically, and passed seven negative controls"
+    },
+    {
+      "command": "node bench/pari-class-group-port/field3_complex_log_corpus_protocol.cjs --self-test",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.471,
+      "started_at": "2026-09-17T12:50:00.678Z",
+      "commit": "56324f09872e235b20207f46aa83e4cadebde898",
+      "workspace_fingerprint": "ba2706b27cdc910722bf0c57ede389a60cf8de56e2ae4517c67590cddbd01601",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/field3_complex_log_corpus_protocol.cjs --source-start 0 --count 4",
+      "status": "passed",
+      "summary": "Published the authentic mode-0444 batch 0:4 capsule and receipt; native 176388.715505 ms, wall 213171 ms, peak aggregate RSS 1422968 KiB"
+    },
+    {
+      "command": "serial deterministic batches 4:4 through 84:4",
+      "status": "passed",
+      "summary": "Qualified 21 further immutable capsule/receipt pairs; resume state is 22 complete, 54 missing, zero capsule-only"
+    },
+    {
+      "command": "node bench/pari-class-group-port/field3_complex_log_corpus_protocol.cjs --source-start 88 --count 4",
+      "status": "failed",
+      "summary": "Stopped fail-atomically at the fixed 600-second timeout with SIGKILL and 443944 KiB last sampled RSS; published no capsule or receipt and launched no later batch"
+    },
+    {
+      "command": "node --check bench/pari-class-group-port/field3_complex_log_corpus_protocol.cjs && node bench/pari-class-group-port/field3_complex_log_corpus_protocol.cjs --self-test",
+      "status": "passed",
+      "summary": "Proved four immutable one-column fragments publish no ordinary batch before ordered assembly, reproduce the canonical v1 88:4 capsule bytes, and pass 14 protocol negative controls including omitted-digest repair"
+    },
+    {
+      "command": "node bench/pari-class-group-port/field3_complex_log_corpus_protocol.cjs --fragment-parent-start 88 --fragment-parent-count 4 --column 88",
+      "status": "passed-after-receipt-repair",
+      "summary": "Qualified authentic column 88 without recomputing arithmetic: native 94019.560459 ms, wall 102620 ms, peak 1354600 KiB; retained the rejected receipt and authenticated its corrected replacement through an immutable supersession"
+    },
+    {
+      "command": "authenticated fragments 89, 90, and 91; ordered assembly of parent 88:4",
+      "status": "passed",
+      "summary": "Qualified all four independent fragments and assembled exactly one canonical ordinary v1 88:4 capsule; global planner reports 23 complete, 53 missing, zero capsule-only"
+    },
+    {
+      "command": "ordinary batches 92:4 through 120:4; authenticated current-cache fragments 124 through 127; ordered assembly of parent 124:4",
+      "status": "passed-after-timeout-and-cache-provenance-recovery",
+      "summary": "Qualified eight ordinary batches, fail-stopped timed-out 124:4, preserved and superseded three pre-transition fragment receipts after byte-identical recomputation under the frozen current cache identity, and assembled one canonical ordinary 124:4 capsule; global planner reports 32 complete, 44 missing, zero capsule-only"
+    }
+  ],
+  "handoff": {
+    "summary": "Qualified authentic deterministic batches through 124:4, recovering timed-out batches 88:4 and 124:4 from independently supervised authenticated column fragments. Cache-provenance supersession preserved three older immutable receipts while selecting byte-identical recomputations under one frozen cache identity. Global resume state is 32 complete, 44 missing, zero capsule-only.",
+    "risks": [
+      "The killed four-column v1 worker emits native timing only after return; its >591-second native attribution is inferred from measured setup overhead, while the four isolated fragments total only 379679 ms of native time",
+      "Two ordinary four-column ranges have reached the fixed timeout; later ranges may require the authenticated one-column recovery protocol"
+    ],
+    "next_steps": [
+      "After explicit resource authorization, resume the ordinary deterministic campaign at 128:4 with the unchanged fail-stop controller",
+      "If a later ordinary batch reaches the fixed timeout, use the same authenticated fragment protocol rather than relaxing resource limits",
+      "Integration owns broad native and strict suites"
+    ]
+  }
+}

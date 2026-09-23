@@ -1,0 +1,63 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "phase2-post-rnd-lie-iteration",
+  "title": "Phase2 Post Rnd Lie Iteration",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Publish authentic column 296 through resident HNF and acceptance, preserve done_small 291, and reproduce the genuine following PARI LIE iteration with exact resident provenance",
+  "base_commit": "493f3468ababd9c9d977f90b43d26c40550ba938",
+  "claims": [
+    "bench/pari-class-group-port/post_rnd_lie_iteration.py",
+    "bench/pari-class-group-port/check_post_rnd_lie_iteration.cjs",
+    "bench/pari-class-group-port/post_rnd_lie_iteration_fixture.json",
+    "bench/pari-class-group-port/post_rnd_lie_iteration_audit.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "/home/user/upstream/pari-2.17.4/src/basemath/buch2.c:3870-4083"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "gmp",
+      "PARI 2.17.4 pristine forced-rnd trace"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_post_rnd_lie_iteration.cjs /home/user/upstream/pari-2.17.4 /home/user/upstream/pari-2.17.4.tar.gz /tmp/sagejs-actual-initial-collector-Askt7e/fixtures.json /tmp/sagejs-analytic-invhr-d88QqB/fixtures.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 18.236,
+      "started_at": "2026-09-17T02:06:40.614Z",
+      "commit": "493f3468ababd9c9d977f90b43d26c40550ba938",
+      "workspace_fingerprint": "67b332b755d9f26f7719998e4017126259914a6120454970f631249d16a76dbd",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Published authentic column 296 through exact resident HNF/acceptance action 5, preserved done_small 291, and reproduced PARI's five-row changing-FACT LIE pass through exact terminal H/D/B/C and action 0. CPython plus JavaScript/GMP boundary replay and transactional capacity retry pass.",
+    "risks": [
+      "The checker composes existing narrow kernels rather than changing the shared public driver; integration must retain the same resident owners and absolute counter."
+    ],
+    "next_steps": [
+      "Carry the terminal candidate's resident H/D/B/C, regulator/unit state, and acceptance result into final class/unit result construction and independent witness replay."
+    ]
+  }
+}

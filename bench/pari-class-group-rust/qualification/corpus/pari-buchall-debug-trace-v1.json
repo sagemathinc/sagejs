@@ -1,0 +1,40 @@
+{
+  "schema": "sagejs.rust-class-group/pari-buchall-debug-trace-contract-v1",
+  "pariVersion": "2.17.4",
+  "source": {
+    "path": "src/basemath/buch2.c",
+    "sha256": "904ced8034732c7fcfe1da393e23950aac0862b085150fdc24ce1e31beb7d1ac"
+  },
+  "invocation": {
+    "debugLevel": 1,
+    "timedRepetition": "last",
+    "samePublicCall": "bnfinit(P)",
+    "stdoutCarriesAnswer": true,
+    "stderrCarriesTrace": true
+  },
+  "counters": {
+    "relationSearchBatches": {
+      "sourceLinesAtPinnedHash": [2586, 2658],
+      "pattern": "#### Look for [0-9]+ relations in [0-9]+ ideals ((small_norm|rnd_rel))",
+      "meaning": "number of source-emitted small_norm or rnd_rel relation-search batches"
+    },
+    "relationContinuationCount": {
+      "formula": "max(0, relationSearchBatches - 1)",
+      "traitRule": "relationContinuationCount > 0",
+      "meaning": "additional source-emitted relation-search batches after the initial batch"
+    },
+    "precisionRestartCount": {
+      "sourceLinesAtPinnedHash": [3969, 3993],
+      "primaryPattern": "increasing accuracy",
+      "crossCheckPattern": "Buchall_param (",
+      "requiredCrossCheck": "counts are equal",
+      "traitRule": "precisionRestartCount > 0",
+      "meaning": "executions of the Buchall_param precpb branch which rebuilds at increased precision"
+    }
+  },
+  "failClosed": [
+    "source hash differs",
+    "precision primary and cross-check counts differ",
+    "instrumented repetition answer differs from the other timed repetitions"
+  ]
+}

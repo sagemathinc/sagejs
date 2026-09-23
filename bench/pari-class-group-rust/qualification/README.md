@@ -1,0 +1,254 @@
+# Rust class-group qualification evidence
+
+This directory contains the executable contracts and receipts for the
+[Rust class-group qualification campaign](../../../agents/rust-class-group-core-qualification-plan.md).
+It is deliberately stricter than the historical Rust benchmark: a relation
+matrix and its Smith factors are a candidate, not a completed public class
+group.
+
+## Current milestone state
+
+| Milestone | State | Evidence and remaining work |
+| --- | --- | --- |
+| R0 contracts | Frozen for the campaign | The answer-free panel now contains 60 open and 60 held-out fields, exactly 12 per degree from 2 through 6. It was selected by the frozen deficit-greedy procedure from a private PARI 2.17.4 pool with 15 raw samples per candidate; all signature, timing, and trait quotas pass. Closed schemas, deterministic regeneration, content hashes, and 32 adversarial mutations protect the public panel and receipt. Private answers remain outside the repository. See `corpus/qualification-selection-receipt-v1.json`. |
+| W0 exact-integer route | Passed on the development route | One Rust/GMP source pipeline gives an identical 3,300-byte result in native Rust, Node Wasm, Chromium, Firefox, WebKit, and an independent CPython oracle. See `wasm-arithmetic/receipt.json`. |
+| W0 high-precision route | Passed on the development route | Direct Rust FFI to GMP/MPFR/MPC produces byte-identical directed enclosures in native Rust and all three actual browsers, with an independent high-precision oracle. See `wasm-enclosure/receipt.json`. |
+| W0 release arithmetic choice | Passed for qualification; product host pending | The repaired repository toolchain (`37d8d819…66452c`) reproducibly rebuilds the exact-integer, high-precision enclosure, and first class-candidate artifacts. Their only extra imports are a documented empty-environment WASI shim; replacing or promoting that shim belongs to the product route. |
+| W0 row-6 factor-base stage | Passed as a bounded development stage | The bounded-residue implementation constructs and HNF-canonicalizes all 1,130 maximal-order prime ideals with exact cross-target digests. Fifteen-sample medians improved from 216.7 to 111.6 ms native, 530.8 to 160.3 ms Chromium, 3,401 to 950 ms Firefox, and 419 to 163 ms WebKit. Memory ends at 33 pages. This is still a prepared factor-base stage, not a complete class group. See `wasm-prepared-factor-base/optimized-receipt.json`. |
+| W0 row-6 relation prefix | Passed as a bounded development stage | The same optimization reduced the exact relation-prefix medians from 223.9 to 121.2 ms native, 526.4 to 201.2 ms Chromium, 3,724 to 1,297 ms Firefox, and 462 to 206 ms WebKit. The optimized route ends at 258 pages instead of the historical 3,357-page high-water. It remains deliberately bounded and does not establish full relation rank, completion, or public integration. See `wasm-prepared-relation-prefix/factor-pattern-optimized-receipt.json`. |
+| W0 multifield prepared stages | Passed for bounded cubic stages, not full W0 | Exact factor-base and one-ideal/64-candidate relation-prefix results agree across native Rust, Chromium, Firefox, and WebKit for H1, an unseen index-3 real cubic, and a complex discriminant -23 cubic. The c4 artifact/source closure contains no production row-6 specialization. This evidence explicitly excludes a complete relation lattice, units, class group, public input, and the full W0/R5 gate. See `wasm-prepared-multifield/receipt.json`. |
+| R1 prepared cubics | In progress | Neutral arbitrary-precision cubic preparation validates rational bases, index primes, multiplication tables, discriminants, signatures, irreducibility evidence, and precision state. The public Rust route now factors the cubic discriminant and exhausts every `p`-power superlattice through the exact discriminant-valuation bound, with a replayable transcript, exact preflighted resource counts, and no index-`p` fixed-point assumption. Both known direct-`p^2` counterexamples pass, and a pinned PARI 2.17.4 differential accepted 1,996 of 1,997 irreducible cubics from the frozen 2,000-input panel with zero wrong accepts and one explicit resource-limit refusal. This exhaustive route is a sound bounded qualification implementation; proof-carrying Round 2 remains the intended scalable implementation. The internal prepared-field representation accepts degrees 2 through 6, but hot arithmetic and all class-group algorithms remain cubic-only. Complete browser execution remains open. |
+| R2 relation/HNF loop | In progress | Exact relation witnesses are independently replayed on detached input; the live collector instead seals its already-proved field, factor base, relation rows, and principal generators, then the consumer rehashes and compares that complete transcript. General maximal-order small-norm plus deterministic continuation completes row 6's 1,130-dimensional rank with fourteen surplus rows and no answer-derived relations. A retained FLINT fraction-free factorization supplies the exact square determinant and rational coordinates; small-nullity congruence intersections, a saturated dependency proof, and a packed GF(2) kernel replace the former dense HNF/Smith. The verifier checks every dependency, exact saturation minors with gcd one, `D/K = 4`, the complete mod-2 map, and generator-order witnesses. The collector now retains its relation cache, enumeration cursor, random state, factor-attempt count, generators, and cumulative resource counters across an answer-free supplementary-relation schedule; staged 7-to-8-to-9 collection is byte- and counter-identical to a direct target of 9. Removing a duplicate scalar-GMP determinant and an accidental whole-matrix digest inside every generator-coordinate check reduced the coefficient-only row-6 path from about 120 s, then 86 s, to about 6.3--6.8 s on the development host. Broader degrees remain open. |
+| R3 completion and maps | In progress | The typed public phase now integrates the row-6 small-surplus representation. It authenticates Rust-proved maximal-order and exact index-prime evidence, collector-sealed principal relations, a presentation-bound compact coordinate table, saturated dependencies, and generator-order witnesses. The compact route now handles mixed invariant factors with a full modular map and canonical preimages; Rust independently verifies relation annihilation, divisibility, joint right inverses, order witnesses, storage bounds, and exact-work bounds, while retaining the elementary-2 fast path. Completion reuses the authenticated dependency lattice, applies an exactly certified row-HNF basis only after unstable reconstruction, compares the reconstructed unit sublattice canonically across requested precisions, replays annihilation exactly, encloses the regulator with directed FLINT/Arb arithmetic, and proves GRH-conditional class/unit index one plus BDF factor-base generation before constructing a sealed complete type. The opened d3-0019 precision case now seals at its original frozen 4096/2048 request rather than silently escalating. Failed analytic isolation retains the final exact enclosure as a redacted internal diagnostic without promoting it to completion authority. Both cubic signatures and groups `1`, `C2`, `C3`, `C2 x C2`, and `C6` succeed; the coefficient-only index-3 row-6 field reaches the same sealed result and retained arbitrary-ideal map without an upstream maximality premise. Unconditional mode and presentations beyond the explicit compact resource limits remain limitations. See `arbitrary-ideal-reduction/`, `public-cubic-e2e/`, and `unit-completeness-replay/results/row6-replay-receipt.json`. |
+| R4 public polynomial input | Passed for the current conditional-GRH cubic domain; broader degrees and product dispatch remain open | The public imaginary-quadratic Rust boundary computes general reduced-form class groups, generators, maps, and coordinates; exhaustive comparison covers all 3,043 negative fundamental discriminants through absolute discriminant 10,000, with another 314 deterministic/random cases through 9,999,991. Public cubics have bounded polynomial-to-maximal-order preparation with complete local superlattice exhaustion, exact index-prime splitting, and replay. The coefficient-only executable reaches sealed GRH-conditional results for both signatures and groups `1`, `C2`, `C3`, `C2 x C2`, and `C6`; row 6 now enters only through its four coefficients and finishes with 1,144 authenticated relations, compact units, analytic certificates, and the retained class map. All 12 frozen open degree-three inputs reach sealed results in fresh processes, and a separate restricted verifier independently matched all 108 available exact checks. After the permanent 3/12 first held-out receipt motivated general remediation, all twelve original regressions and all twelve inputs in the untouched preregistered post-fix confirmation set reached self-sealed results and passed the restricted comparisons. The remediation includes bounded mixed-invariant compact Smith maps, exact dependency-basis reduction, and a single stateful answer-free continuation schedule for analytic isolation. A receipt-only Sage.js adapter independently replays bounded exact evidence and deliberately exposes only an incomplete factor-base quotient view; it cannot set `complete=True` or dispatch production class groups. The prepared representation is degree-generic, but hot field arithmetic and the class-group engine remain cubic-specific. Degrees 4 through 6, unconditional completion, and the live product Sage.js backend remain open. See `public-cubic-open-corpus/receipt.json`, `public-cubic-open-oracle/receipt.json`, `public-cubic-heldout-corpus/receipt.json`, `public-cubic-heldout-confirmation/comparison-receipt.json`, and `public-cubic-heldout-oracle/receipt.json`. |
+| R5 product qualification | In progress; native row 6 and the quadratic tiny-field gate pass, and current full row 6 runs in three browser engines, while product and browser-performance gates remain | The clean frozen cubic campaign at `1f4237449` records 15 exact alternating pairs per arm and field on logical CPU 0, a clean source closure, and byte-identical independent release builds. Row 6 completes from four public coefficients in 5.826 s versus PARI 2.17.4's 3.960 s, or 1.471x, passing the predeclared 2x native row-6 criterion. Its Rust stage medians are 58.2 ms preparation, 2.722 s collection, 2.081 s candidate authentication, and 966.8 ms completion. The two tiny cubics improved to 11.39 ms and 17.65 ms but remain failures at 5.50x and 7.00x PARI; relation collection plus generic unit/analytic completion now dominate. The two independently built unstripped release executables are byte-identical at 21,633,112 bytes. Separately, the clean imaginary-quadratic campaign passes its frozen tiny-field rule, with the three largest cases at 0.91x, 0.92x, and 1.66x PARI. The current 5,776,914-byte qualification Wasm artifact (2,326,379 bytes gzip) completes exact sealed row 6 from coefficients in Node, Chromium, Firefox, and WebKit with identical stable projections and 135.38 MiB final linear memory. It records 1,144 relations and the explicit 4,096/2,048- then 8,192/4,096-bit precision attempts. Call times are 31.91 s, 32.25 s, 238.61 s, and 33.12 s respectively. This is decisive current-source browser-feasibility evidence and remains inside the 256-MiB worker memory ceiling, but Firefox and all three browsers fail or have not yet established the frozen performance/product gates. The qualification reactor now retains the exact class map behind a bounded four-session open/query/close lifecycle; its nontrivial C2 check opens in 89.85 ms and repeats an exact ideal query in 11.05 and 8.07 ms without growing beyond 16 MiB. This is still not the Sage.js Web Worker API and has no cancellation, product lifecycle, cold-start, or packaging qualification. Platform qualification and broad degree/corpus gates also remain open. See `public-cubic-e2e/benchmark/receipt.json`, `public-quadratic-boundary/benchmark/receipt.json`, and `wasm-public-cubic-e2e/`. |
+
+No file in this directory authorizes production dispatch. Candidate and
+upstream-assumed outputs must remain visibly distinct from publicly complete
+results.
+
+### Cubic held-out remediation checkpoint
+
+The stale R4 table row above records the historical 3/12 blind campaign. The
+general remediation has now crossed both required post-fix correctness gates:
+the original twelve frozen cubics reran 12/12 to self-sealed conditional-GRH
+results and matched every available private exact check, and the separate
+untouched confirmation set then ran 12/12 and passed all 108 private exact
+comparisons. After moving the dense/compact crossover to its measured range,
+reusing exact analytic plans, and binding a versioned compact-64 resource
+profile, the committed confirmation executor recorded 1.373 seconds total at
+source `5a09f7407`; see
+`public-cubic-heldout-confirmation/execution-receipt.json` and
+`public-cubic-heldout-confirmation/comparison-receipt.json`.
+
+This qualifies the current native cubic correctness boundary, not R4 as a
+degree-2-through-6 product milestone. The engine remains cubic-specific,
+conditional-GRH only, and outside the live Sage.js dispatch path. It also does
+not pass the frozen performance target. After starting answer-blind
+continuation at fourteen surplus rows when the caller's budget permits it, the
+current clean 15-sample alternating campaign on the original twelve
+regressions matched every exact result and measured summed per-field medians of
+1.597 seconds for Rust and 0.582 seconds for PARI 2.17.4: 2.75x weighted, 3.93x
+by geometric mean, 6.56x at p90, and 7.47x maximum. The source commit is
+`8f9954d61`. Precision-specific relation logarithms are reused only after an
+exact generator-prefix check. Checked fixed-width relation replay restarts in
+GMP on any overflow. Exact back substitution removes unit pivots from the
+modular HNF before the Smith map is computed and lifts the verified residual
+map back to every original generator. Relation refinement lazily retains at
+most 64 exact powers per encountered factor-base ideal and fails closed on a
+cache/prime mismatch; higher powers remain exact but are not retained. Rust's
+summed stage medians are 0.614 seconds relation collection, 0.392 seconds
+candidate authentication, 0.501 seconds unit and analytic completion, and
+0.078 seconds public preparation. Batching exact dependency replay reduced the
+Rust absolute sum from 2.129 to 2.045 seconds. Exact continuation now reuses a
+FLINT fraction-free square factorization only after matching the selected
+square block and complete prior surplus prefix, then recomputes and verifies
+all evidence for the enlarged presentation. This reduced the sum again to
+2.013 seconds; field 0012's authentication fell from 196.1 to 178.7 ms and its
+complete call from 406.1 to 390.2 ms. Minting the immutable class-map binding
+once after exact constructor verification reduced summed authentication from
+0.571 to 0.548 seconds and the total from 2.013 to 1.995 seconds. Field 0012's
+authentication fell again to 169.7 ms and its complete call to 379.9 ms.
+Skipping compact principal generators whose exact exponents are zero across
+every reconstructed unit reduced summed unit/analytic completion from 0.693 to
+0.625 seconds and the total from 1.995 to 1.915 seconds, while retaining the
+same independent Arb regulator enclosure. Field 0012's complete call fell to
+366.0 ms.
+Borrowing the authenticated high-precision relation-log cache instead of
+cloning it reduced summed completion by another 3.4 ms. The Rust total varied
+upward by 3.3 ms because relation collection varied upward by 5.2 ms; the
+weighted ratio also includes a 6.6 ms upward change in the PARI sum.
+The bounded precision driver retains ownership of complete evidence across
+retries and moves it into the final permitted attempt instead of cloning it.
+This reduced summed completion from 0.621 to 0.588 seconds and the Rust total
+from 1.918 to 1.887 seconds while preserving failure atomicity for every
+earlier retryable attempt.
+Copy-on-write dependency reconstruction now borrows the single lattice already
+owned by the authenticated presentation, allocating only for an exact reduced
+basis, and the sealed result no longer stores a duplicate. The 2.6 ms total
+change and 3.3 ms upward completion-stage change are within campaign noise, so
+this is recorded as a storage/ownership improvement rather than a stage-speed
+claim.
+Incomplete continuation candidates now stop at the first rigorous
+Belabas--Friedman enclosure whose tail is below `1/4` and whose complete index
+interval lies strictly above one. This rejection-only shortcut cannot publish
+a result; it merely returns to exact relation collection without evaluating
+larger Euler prefixes for the unchanged nonunit index. In a CPU-pinned
+31-pair before/after diagnostic, the retrying 27-column field fell from 56.08
+to 41.71 ms (completion 29.50 to 15.02 ms), while the retry-heavy 187-column
+field fell from 372.87 to 362.02 ms (completion 111.50 to 102.21 ms). A clean
+clean full Rust/PARI campaign records the same exact results in all 180 pairs;
+it improves the former 12.13x maximum to 8.65x, while whole-panel absolute
+times moved within host variation.
+The exact-authentication selector no longer treats dense Smith as preferred up
+to its old one-million-work ceiling. Alternating CPU-pinned comparisons bracket
+the measured crossover: compact authentication improved a 25,382-work
+presentation from 0.76 to 0.61 ms, but forcing compact at 11,926 work increased
+authentication from 0.41 to 0.47 ms and the complete call from 16.68 to 18.20
+ms. The checked selector therefore retains dense Smith through 20,000 estimated
+verification multiply-adds and otherwise chooses compact only when its
+small-surplus resource contract is satisfied. The clean follow-up campaign
+reduced summed authentication from 0.569 to 0.547 seconds and total Rust time
+from 1.914 to 1.898 seconds while PARI moved from 0.610 to 0.609 seconds. The
+former 8.65x maximum is now 6.86x.
+The latest source proves an absolute `i128` bound once per dependency before
+replaying every relation column, then uses branch-free fixed-width
+multiply-adds or restarts the complete row in GMP. Applying that exact batch
+primitive in both authentication and completion reduced the clean Rust sum
+from 1.898 to 1.834 seconds, authentication from 0.547 to 0.514 seconds, and
+completion from 0.581 to 0.552 seconds. PARI varied from 0.609 to 0.601 seconds
+in the paired campaign; the fastest PARI field also made the maximum ratio
+noisier even though Rust's absolute time improved there.
+The current source verifies retained relation columns in place at the class-map,
+compact-presentation, and principal-witness boundaries. It avoids allocating
+and cloning a full GMP vector for each column while preserving exact quotient
+divisibility and the generic diagonal fallback. All twelve field medians
+improved in the next clean campaign: summed authentication fell from 0.514 to
+0.428 seconds, total Rust time from 1.834 to 1.749 seconds, and the weighted
+gap from 3.05x to 2.89x.
+The final sealed boundary now reuses that same exactly bounded batch verifier
+for both presentation dependencies and fundamental-unit relations. Relative to
+the preceding clean receipt, summed authentication fell from 0.428 to 0.411
+seconds, unit/analytic completion from 0.552 to 0.501 seconds, total Rust time
+from 1.749 to 1.621 seconds, and field 0012 from 314.29 to 276.34 ms. PARI
+simultaneously varied from 0.606 to 0.585 seconds, taking the weighted gap from
+2.89x to 2.77x.
+The compact continuation cache also retains a previously verified quotient map
+as producer data. Reuse requires an exact relation prefix and independently
+recomputed unchanged class order; complete current-map, dependency,
+saturation, and generator-order verification still reruns. The next clean
+receipt reduced summed authentication from 0.411 to 0.392 seconds, total Rust
+time from 1.621 to 1.597 seconds, and field 0012 from 276.34 to 261.63 ms. PARI
+varied from 0.585 to 0.582 seconds, taking the weighted gap from 2.77x to 2.75x.
+The cache subsequently retained exact generator-order witnesses under the same
+strict prefix and independently recomputed class-order conditions. Field 0012
+fell by 3.03 ms in the clean campaign, although unrelated stage variation left
+the panel ratio statistically unchanged at 2.748x. Finally, class-map binding
+switched from decimal text to an injective versioned binary encoding. A
+focused comparison reduced field-0012 authentication by 5.56 ms, and
+Callgrind measured 93.19 million fewer instructions (3.13%). The current clean
+receipt at `38cba69fc` matches all 180 pairs and measures 1.623 seconds for
+Rust versus 0.601 seconds for PARI, a 2.699x weighted gap; aggregate wall-time
+movement is not attributed to the encoding because the other stages and PARI
+varied upward together.
+Collector factor-base, relation/principal-generator, and principal-witness
+authorities now use the same prefix-free binary exact-integer representation
+under independently versioned domains, while continuing to hash every live
+value at the consumer boundary. A focused field-0012 comparison reduced
+authentication by 1.26 ms, and Callgrind measured another 23.81 million fewer
+instructions. The current clean receipt at `c223dc332` matches all 180 pairs
+and measures 1.579 seconds for Rust versus 0.591 seconds for PARI, a 2.673x
+weighted gap. Summed authentication fell by 19.31 ms; the larger 44.12 ms
+whole-panel change also includes downward variation in other Rust stages, and
+PARI fell by 10.67 ms.
+The collector presentation now protects its factor base and exact relation/
+principal-generator transcript behind read-only public accessors. The private
+consumer can therefore propagate the field-bound collector capability without
+rehashing immutable producer storage; detached evidence still takes the full
+replay route. A CPU-pinned 31-pair field-0012 A/B reduced collection by 1.37
+ms, authentication by 0.68 ms, and total time by 2.30 ms. The clean receipt at
+`3fc10f59b` matches all 180 pairs and measures 1.600 seconds for Rust versus
+0.603 seconds for PARI, a 2.653x weighted gap. Since every aggregate Rust stage
+varied upward, only the focused A/B—not the clean ratio movement—is attributed
+to this change.
+The completion constructor now avoids an immediate second replay of exact
+dependency and fundamental-unit equations that its private construction path
+has already proved. The public independent sealed-evidence replay remains and
+is still exercised by the qualification executable. A CPU-pinned 31-pair
+field-0012 comparison reduced the completion stage by 1.15 ms and the complete
+call by 2.17 ms. The first clean panel at source `e45994e5d` matched all 180
+pairs and measured 1.578 seconds for Rust versus 0.595 seconds for PARI;
+completion fell from 0.511 to 0.501 seconds, while simultaneous variation in
+the other stages leaves the weighted ratio essentially unchanged at 2.653x.
+The collector and its continuation snapshots now share one immutable exact
+factor base, while the evolving ideal-power cache remains request-local to the
+collector. A focused field-0012 timing comparison was flat within noise, while
+nine alternating process pairs reduced median peak RSS from 16,984 to 16,788
+KiB. The benefit is phase-lifetime ownership and removal of mutable-cache
+clones, not a claimed speedup.
+Relation collection was 1.063 seconds before the exact ideal-power cache. See
+`public-cubic-heldout-performance/receipt.json`. The fresh confirmation set
+remains correctness-only; its contextual diagnostic timings are not a formal
+comparative receipt.
+
+## Layout
+
+- `schemas/`: closed JSON contracts for neutral inputs, evidence, benchmarks,
+  corpora, and capability status.
+- `corpus/`: deterministic selection rules, 120-slot layout, and initial open
+  development cases.
+- `verify/`: independent PARI-backed replay of emitted ideals and relation
+  witnesses. PARI is a test oracle and is not linked into the Rust product.
+- `benchmark/`: alternating, raw-sample benchmark runner with explicit timing
+  boundaries and exact result fingerprints.
+- `wasm-arithmetic/`: direct linkage to Sage.js's pinned GMP Wasm build and
+  cross-runtime arithmetic receipt.
+- `wasm-enclosure/`: directed MPFR real/complex enclosures and MPC consistency
+  checks across native and browser routes.
+- `wasm-class-group-candidate/`: first answer-free polynomial-to-presentation
+  candidate in all three browsers; it is not a completed public class group.
+- `wasm-prepared-factor-base/`: the real row-6 prepared maximal-order
+  factor-base and ideal-HNF stage in native Rust and all three browsers.
+- `wasm-prepared-relation-prefix/`: a resource-bounded real row-6 relation
+  collection prefix in native Rust and all three browsers.
+- `wasm-prepared-multifield/`: source-frozen native and three-browser evidence
+  for bounded prepared stages on three distinct cubic fields.
+- `public-quadratic-boundary/`: the general imaginary-quadratic public boundary,
+  PARI differential evidence, and clean native performance campaign.
+- `public-cubic-e2e/`: the coefficient-only sealed cubic completion boundary,
+  its open-panel regressions, and an alternating exact PARI benchmark harness.
+- `public-cubic-open-corpus/`: the Rust-only runner and receipt for all 12
+  frozen open degree-three inputs.
+- `public-cubic-open-oracle/`: the restricted, hash-bound independent
+  comparison of the open-cubic receipt against private qualification evidence.
+- `public-cubic-heldout-corpus/`: the answer-free executor and redacted receipt
+  for the first frozen held-out degree-three campaign.
+- `public-cubic-heldout-performance/`: the redacted 15-sample alternating
+  Rust/PARI performance receipt for those twelve remediated regressions.
+- `public-cubic-heldout-oracle/`: the post-execution restricted comparison of
+  completed held-out results and the frozen fresh-confirmation policy.
+- `wasm-public-cubic-e2e/`: the qualification-only full row-6 Wasm build and
+  exact Node, Chromium, Firefox, and WebKit receipts. This is not the product
+  worker route and does not satisfy the browser performance or lifecycle gates.
+- `lifecycle/`: resumable small-candidate context, cancellation, repeated-call,
+  stale-handle, and actual-browser memory evidence.
+- `pari-control/`: authenticated PARI 2.17.4 control with distinct algorithm,
+  prepared-field, and public-call timing boundaries.
+- `candidate/`: independent compact-presentation certificate verifier for the
+  complete row-6 relation lattice, class map, generator lifts, dependencies,
+  and exact lattice index.
+- `row6-candidate/`: bounded, answer-free maximal-order diagnostic on the
+  required row-6 polynomial, retaining the earlier equation-order receipts as
+  historical evidence.
+- `browser/`: fail-closed class-group reactor ABI and actual-browser runner for
+  the first real class-group Wasm artifact.
+- `public-adapter/`: focused fail-closed tests for adapting an untrusted Rust
+  candidate into the existing incomplete Sage.js result contract.
+
+Each subdirectory documents its focused reproduction commands. Run the Rust
+core tests from the repository root with:
+
+```bash
+cargo test --release --all-targets \
+  --manifest-path bench/pari-class-group-rust/Cargo.toml
+```

@@ -1,0 +1,70 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "field3-c6-factorback-verifier",
+  "title": "Field3 C6 Factorback Verifier",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Authenticate exact factorback correspondence between C6 Wraw columns, principal relation generators, and materialized getfu units",
+  "base_commit": "951f5ce850ea26c8f5814c453e38f7fd78563c87",
+  "claims": [
+    "bench/pari-class-group-port/field3_c6_factorback_verifier.py",
+    "bench/pari-class-group-port/check_field3_c6_factorback_verifier.cjs",
+    "bench/pari-class-group-port/field3_c6_factorback_verifier_audit.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "pari"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node bench/pari-class-group-port/check_field3_c6_factorback_verifier.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_field3_c6_factorback_verifier.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.853,
+      "started_at": "2026-09-17T15:37:01.486Z",
+      "commit": "951f5ce850ea26c8f5814c453e38f7fd78563c87",
+      "workspace_fingerprint": "30d8e2bbe0a0f80c5aba0129233996d00c12358077eb202cf2742fa45723e07a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 67.821,
+      "started_at": "2026-09-17T15:37:09.366Z",
+      "commit": "951f5ce850ea26c8f5814c453e38f7fd78563c87",
+      "workspace_fingerprint": "30d8e2bbe0a0f80c5aba0129233996d00c12358077eb202cf2742fa45723e07a",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added an authenticated cold exact replay from two 301-entry factored principal-generator columns to C6's two materialized quartic units, including relation kernels, norm/inverse proofs, torsion signs, inverse choices, logs, and atomic receipts.",
+    "risks": [
+      "The authentic 153088-bit factorback was deliberately not run.",
+      "The cold materialized-log evaluator is qualified only at 64--384 bits; authentic 153088-bit embedding replay requires a later bounded implementation."
+    ],
+    "next_steps": [
+      "Join the final immutable raw-relation, C5, and C6 owners into the authenticated source schema with explicit embedding and phase-period authority.",
+      "Extend materialized-log evaluation to authentic precision, then run the authentic cold replay outside the timed native core."
+    ]
+  }
+}

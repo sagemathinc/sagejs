@@ -1,0 +1,28 @@
+{
+  "schema": "sagejs.pari-class-group/h1-rust-smith-result-v1",
+  "boundary": "authenticated post-collection 66x73 presentation to Smith invariants",
+  "fullPreparedPrefix": false,
+  "linksPari": false,
+  "fieldId": "pari-2.17.4:x^3-20018*x+20034",
+  "sourcePreparedInputSha256": "22a997866388571cd3c12e1a3ea5c5cc3a7fe89217b253bb0e779007f6fe9b77",
+  "sourcePreparedValueSha256": "03a4ac33c173b65168361f3ff612bc45ed7ff793881a8d5181b1c9a0868fe658",
+  "relationRows": 66,
+  "relationColumns": 73,
+  "smithRank": 66,
+  "classNumber": "1",
+  "invariantFactors": [],
+  "diagonalSha256": "7bcb0e82ddadef1ef649c72bafbfb8b409251348c49a986cccec1ddbe3982226",
+  "unimodularOperations": 1562,
+  "gmp": {
+    "samplesNanoseconds": [6315418, 6318969, 6321509, 6323058, 6327219, 6327949, 6330419, 6333269, 6334618, 6343059, 6344829, 6346809, 6348708, 6354059, 6372379],
+    "medianNanoseconds": 6333269
+  },
+  "checkedInt128": {
+    "samplesNanoseconds": [1216390, 1216560, 1216630, 1216950, 1217460, 1218390, 1218690, 1218990, 1219230, 1219409, 1219410, 1219480, 1219769, 1220410, 1220629, 1222260, 1222390, 1223730, 1224819, 1225229, 1225360, 1225450, 1227290, 1231320, 1231800, 1233729, 1233830, 1234660, 1237039, 1239620, 1268889],
+    "medianNanoseconds": 1222260,
+    "maximumAbsoluteIntermediate": "38497724496350993597661"
+  },
+  "timingExcludes": ["JSON parsing", "column-major conversion", "workspace reset", "verification"],
+  "diagnosticOnly": true,
+  "qualifiedTiming": false
+}

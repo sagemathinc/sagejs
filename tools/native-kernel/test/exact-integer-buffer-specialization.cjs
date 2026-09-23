@@ -173,7 +173,7 @@ print("EXACT_INTEGER_BUFFER_SMALL_OK:" + str(small_checksum))
     assert.ok(compiled.addonPath);
     assert.match(
       readFileSync(compiled.modulePath, "utf8"),
-      /integerBufferFitsSignedInt64\(sagejs_native_rows\)/,
+      /integerBufferFitsSignedInt64\([^)]*rows\)/,
     );
     const native = run(process.execPath, [sagejs, executable], {
       env: {

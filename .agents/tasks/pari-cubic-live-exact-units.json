@@ -1,0 +1,87 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-cubic-live-exact-units",
+  "title": "Live exact cubic unit reconstruction",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Consume live resident cubic relation generators and retained transforms in one call to reconstruct both exact units and provenance without fixture or oracle inputs.",
+  "base_commit": "f0d3cfe24d58e46492635fd20c6a24dd5e0c0772",
+  "claims": [
+    "bench/pari-class-group-port/live_exact_units_cubic.py",
+    "bench/pari-class-group-port/check_live_exact_units_cubic.cjs",
+    "bench/pari-class-group-port/live_exact_units_cubic_audit.md"
+  ],
+  "dependencies": [
+    "pari-e2e-unit-relation-map",
+    "pari-cubic-unit-relation-authority"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "not-applicable",
+    "oracles": [
+      "cpython",
+      "Exact retained relation replay"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node bench/pari-class-group-port/check_live_exact_units_cubic.cjs",
+    "python3 -m py_compile bench/pari-class-group-port/live_exact_units_cubic.py",
+    "node --check bench/pari-class-group-port/check_live_exact_units_cubic.cjs"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_live_exact_units_cubic.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.243,
+      "started_at": "2026-09-17T03:23:35.882Z",
+      "commit": "f0d3cfe24d58e46492635fd20c6a24dd5e0c0772",
+      "workspace_fingerprint": "49b5d5210e81af7a38e7c5618defeef22bab403c49a0b66b8f58663a33a26ff2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -m py_compile bench/pari-class-group-port/live_exact_units_cubic.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.061,
+      "started_at": "2026-09-17T03:23:37.556Z",
+      "commit": "f0d3cfe24d58e46492635fd20c6a24dd5e0c0772",
+      "workspace_fingerprint": "49b5d5210e81af7a38e7c5618defeef22bab403c49a0b66b8f58663a33a26ff2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check bench/pari-class-group-port/check_live_exact_units_cubic.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.029,
+      "started_at": "2026-09-17T03:23:39.043Z",
+      "commit": "f0d3cfe24d58e46492635fd20c6a24dd5e0c0772",
+      "workspace_fingerprint": "49b5d5210e81af7a38e7c5618defeef22bab403c49a0b66b8f58663a33a26ff2",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "A single ordinary-Python call now consumes the 73 live exact principal generators, 73x73 cleanup transform, 15x15 active HNF transform, live 2x7 unit-lattice provenance, and neutral cubic multiplication tensor. It reconstructs seven exact kernel factors and both selected units with no fixture, PARI oracle, logarithm, or expected unit input; direct raw-relation and factored routes must agree before immutable publication.",
+    "risks": [
+      "The component is intentionally fixed to the qualified real cubic dimensions 73/15/7/rank 2.",
+      "Exact expansion is a post-workload authority operation and is not suitable for inclusion in matched flag-zero timing.",
+      "This proves exact relation correspondence and principality, not unit saturation or regulator completeness."
+    ],
+    "next_steps": [
+      "Call reconstruct_live_cubic_units directly from the live h1 root and bind its output/provenance hashes into final state.",
+      "Keep exact expansion outside the matched performance timer."
+    ]
+  }
+}

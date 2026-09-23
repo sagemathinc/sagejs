@@ -45,11 +45,17 @@ function commandText(command, arguments_) {
   return [command, ...arguments_].join(" ");
 }
 
+function buildEnvironment(environment = process.env) {
+  return { ...environment, SAGEJS_USE_SOURCE: "1" };
+}
+
 function run(command, arguments_) {
   return new Promise((resolvePromise, rejectPromise) => {
     const child = spawn(command, arguments_, {
       cwd: root,
-      env: process.env,
+      // Build scripts may invoke the public launcher indirectly. Keep those
+      // descendants on this checkout instead of an installed native runtime.
+      env: buildEnvironment(),
       stdio: ["ignore", "pipe", "pipe"],
     });
     const chunks = [];
@@ -91,13 +97,22 @@ function nonemptyLines(output) {
     .filter(Boolean);
 }
 
+function sourceCliArguments(...args) {
+  return [join(root, "bin", "sagejs-source.cjs"), ...args];
+}
+
 function compilerSummary(output) {
   const lines = nonemptyLines(output);
   const passes = lines.filter((line) => line.startsWith("Compiler built in"));
-  if (
-    passes.length === 0 &&
-    lines.some((line) => line.includes("up-to-date version"))
-  ) {
+  const reachedFixedPoint = lines.includes(
+    "Compiler is built with the up-to-date version of itself",
+  );
+  if (!reachedFixedPoint) {
+    throw new Error(
+      "self-hosted compiler did not report an up-to-date fixed point",
+    );
+  }
+  if (passes.length === 0) {
     return "Self-hosted compiler was already converged.";
   }
   const timings = passes
@@ -109,6 +124,23 @@ function compilerSummary(output) {
     `Self-hosted compiler converged in ${passes.length} pass${passes.length === 1 ? "" : "es"}` +
     `${timings ? ` (${timings})` : ""}.`
   );
+}
+
+function validateSelfHostedCompiler(
+  createCompiler = require(join(dist, "tools", "compiler.js")).default,
+) {
+  if (typeof createCompiler !== "function") {
+    throw new Error("self-hosted compiler wrapper omitted its factory");
+  }
+  const compiler = createCompiler();
+  if (typeof compiler.get_compiler_version !== "function") {
+    throw new Error("self-hosted compiler omitted get_compiler_version");
+  }
+  const version = compiler.get_compiler_version();
+  if (typeof version !== "string" || version.length === 0) {
+    throw new Error("self-hosted compiler has no version");
+  }
+  return version;
 }
 
 function ffiSummary(output) {
@@ -306,11 +338,14 @@ async function main() {
   });
 
   await runStage(2, async () => {
-    const output = await run(process.execPath, [
-      join(root, "bin", "sagejs"),
-      "self",
-      "--complete",
-    ]);
+    // Build orchestration must use this checkout's source runtime. The public
+    // launcher may dispatch to an installed native executable, which cannot
+    // converge the compiler artifact in this workspace.
+    const output = await run(
+      process.execPath,
+      sourceCliArguments("self", "--complete"),
+    );
+    validateSelfHostedCompiler();
     return compilerSummary(output);
   });
 
@@ -318,10 +353,10 @@ async function main() {
   // module caches consume the safe Python wrappers, then reconcile every optional
   // host adapter that is already installed.
   await runStage(3, async () => {
-    const ffi = await run(process.execPath, [
-      join(root, "bin", "sagejs"),
-      "ffi", "generate",
-    ]);
+    const ffi = await run(
+      process.execPath,
+      sourceCliArguments("ffi", "generate"),
+    );
     const task = await run(process.execPath, [
       join(root, "scripts", "build-task-runtime.cjs"),
     ]);
@@ -372,6 +407,7 @@ if (require.main === module) {
 
 module.exports = {
   adapterSummary,
+  buildEnvironment,
   buildLazyNumericalReactors,
   compilerSummary,
   ffiSummary,
@@ -379,5 +415,7 @@ module.exports = {
   main,
   publishProductionNative,
   reconcileInstalledNative,
+  sourceCliArguments,
   stages,
+  validateSelfHostedCompiler,
 };

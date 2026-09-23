@@ -1,0 +1,133 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-e2e-final-state-assembler",
+  "title": "Connected PARI final-state assembler",
+  "lane": "arithmetic-algebra",
+  "status": "review",
+  "owner": "final_result_replay",
+  "objective": "Implement a connected honest internal final-state assembler over the partial immutable result, requiring source outputs from relation, transform, unit, and class-generator stages before transactional idempotent publication",
+  "base_commit": "dc534fa05e68c330871fd3720718bdfa7c03e8db",
+  "claims": [
+    "bench/pari-class-group-port/class_group_final_state.py",
+    "bench/pari-class-group-port/check_class_group_final_state.cjs",
+    "bench/pari-class-group-port/class_group_final_state.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Partial immutable cold replay plus cross-component source provenance and exact connected identities"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node bench/pari-class-group-port/check_class_group_final_state.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm architecture:check",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_class_group_final_state.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.194,
+      "started_at": "2026-09-17T00:28:33.522Z",
+      "commit": "dc534fa05e68c330871fd3720718bdfa7c03e8db",
+      "workspace_fingerprint": "cc54df347378d8a6d1da568d89c9bcd3100aba930af4560f83a6e188fd541d14",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 61.093,
+      "started_at": "2026-09-17T00:28:34.639Z",
+      "commit": "dc534fa05e68c330871fd3720718bdfa7c03e8db",
+      "workspace_fingerprint": "cc54df347378d8a6d1da568d89c9bcd3100aba930af4560f83a6e188fd541d14",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.567,
+      "started_at": "2026-09-17T00:29:36.397Z",
+      "commit": "dc534fa05e68c330871fd3720718bdfa7c03e8db",
+      "workspace_fingerprint": "cc54df347378d8a6d1da568d89c9bcd3100aba930af4560f83a6e188fd541d14",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 997.023,
+      "started_at": "2026-09-17T00:30:24.852Z",
+      "commit": "dc534fa05e68c330871fd3720718bdfa7c03e8db",
+      "workspace_fingerprint": "cc54df347378d8a6d1da568d89c9bcd3100aba930af4560f83a6e188fd541d14",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 943.236,
+      "started_at": "2026-09-17T00:47:26.511Z",
+      "commit": "dc534fa05e68c330871fd3720718bdfa7c03e8db",
+      "workspace_fingerprint": "d93a46ca973880762cf698d761e4a070494fa936edcc01a9da4851152fb33cd4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_class_group_final_state.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.192,
+      "started_at": "2026-09-17T01:03:27.828Z",
+      "commit": "dc534fa05e68c330871fd3720718bdfa7c03e8db",
+      "workspace_fingerprint": "d93a46ca973880762cf698d761e4a070494fa936edcc01a9da4851152fb33cd4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 61.53,
+      "started_at": "2026-09-17T01:03:28.746Z",
+      "commit": "dc534fa05e68c330871fd3720718bdfa7c03e8db",
+      "workspace_fingerprint": "d93a46ca973880762cf698d761e4a070494fa936edcc01a9da4851152fb33cd4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.806,
+      "started_at": "2026-09-17T01:04:30.924Z",
+      "commit": "dc534fa05e68c330871fd3720718bdfa7c03e8db",
+      "workspace_fingerprint": "d93a46ca973880762cf698d761e4a070494fa936edcc01a9da4851152fb33cd4",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Adds the v2 connected internal final-state assembler, joining relation, Smith/HNF, independently linked unit, generator, and final-driver outputs with transactional idempotent publication and publisher-authorized cold replay. Exact replay covers two-way relation/presentation witnesses, U/V inverses, Smith generators, and the empty-generator trivial-class case. It deliberately leaves Phase 5 and public completeness false.",
+    "risks": [
+      "The rational unit enclosure is source-linked to exact packed words but the verifier does not yet decode PARI packed-real words or independently prove the enclosure.",
+      "Final driver arrays are retained source outputs; coordinated detached mutation is prevented by the required out-of-band publication SHA rather than ideal-arithmetic re-derivation.",
+      "No authentic live campaign driver is wired in this lane; tests use connected synthetic owners plus an authentic v1 candidate-only partial substitution."
+    ],
+    "next_steps": [
+      "Integration lane should construct the five component outputs from live terminal owners without weakening their exact status or fingerprint requirements.",
+      "Supply the real equal-bound h=1 rank-two unit bridge, relation/HNF witnesses, and empty generator evidence to obtain the first authentic connected publication.",
+      "Add packed-real decoding or rigorous interval replay, exact ideal arithmetic, and factor-base authentication before changing either completeness flag."
+    ]
+  }
+}

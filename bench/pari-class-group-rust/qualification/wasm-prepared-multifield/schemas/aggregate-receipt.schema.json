@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/rust-class-group/prepared-multifield-wasm-evidence-v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "status", "observedAt", "artifactRevision", "claims", "fixedRow6Assumptions", "evidence"],
+  "properties": {
+    "schema": { "const": "sagejs.rust-class-group/prepared-multifield-wasm-evidence-v1" },
+    "status": { "const": "pass" },
+    "observedAt": { "type": "string", "format": "date-time" },
+    "artifactRevision": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "claims": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["inputPolicy", "expectedOutputPolicy", "crossTarget", "scope", "revisionPolicy", "artifactRetention"],
+      "properties": {
+        "inputPolicy": { "type": "string", "minLength": 1 },
+        "expectedOutputPolicy": { "type": "string", "minLength": 1 },
+        "crossTarget": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "prefixItems": [
+            { "const": "native-linux" }, { "const": "chromium" }, { "const": "firefox" }, { "const": "webkit" }
+          ],
+          "items": false
+        },
+        "scope": { "type": "string", "minLength": 1 },
+        "revisionPolicy": { "type": "string", "minLength": 1 },
+        "artifactRetention": { "type": "string", "minLength": 1 }
+      }
+    },
+    "fixedRow6Assumptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["productionRuntime", "remainingHarnessOnly"],
+      "properties": {
+        "productionRuntime": { "type": "array", "maxItems": 0 },
+        "remainingHarnessOnly": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": { "$ref": "#/$defs/evidence" }
+    }
+  },
+  "$defs": {
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "bytes"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "bytes": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "bytes", "retained", "revision"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "bytes": { "type": "integer", "minimum": 1 },
+        "retained": { "const": true },
+        "revision": { "type": "string", "pattern": "^[0-9a-f]{40}$" }
+      }
+    },
+    "engineMedians": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["chromium", "firefox", "webkit"],
+      "properties": {
+        "chromium": { "type": "number", "minimum": 0 },
+        "firefox": { "type": "number", "minimum": 0 },
+        "webkit": { "type": "number", "minimum": 0 }
+      }
+    },
+    "pages": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["before_call", "after_call"],
+      "properties": {
+        "before_call": { "type": "integer", "minimum": 0 },
+        "after_call": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "enginePages": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["chromium", "firefox", "webkit"],
+      "properties": {
+        "chromium": { "$ref": "#/$defs/pages" },
+        "firefox": { "$ref": "#/$defs/pages" },
+        "webkit": { "$ref": "#/$defs/pages" }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fieldId", "role", "stage", "input", "native", "vector", "browser", "artifact", "nativeMedianMs", "browserMedianMs", "browserMemoryPages", "result"],
+      "properties": {
+        "fieldId": { "type": "string", "minLength": 1 },
+        "role": { "type": "string", "minLength": 1 },
+        "stage": { "enum": ["factor-base", "relation-prefix"] },
+        "input": { "$ref": "#/$defs/identity" },
+        "native": { "$ref": "#/$defs/identity" },
+        "vector": { "$ref": "#/$defs/identity" },
+        "browser": { "$ref": "#/$defs/identity" },
+        "artifact": { "$ref": "#/$defs/artifact" },
+        "nativeMedianMs": { "type": "number", "minimum": 0 },
+        "browserMedianMs": { "$ref": "#/$defs/engineMedians" },
+        "browserMemoryPages": { "$ref": "#/$defs/enginePages" },
+        "result": {
+          "oneOf": [
+            { "$ref": "https://sagejs.org/schemas/rust-class-group/prepared-multifield-vector-v1.json#/$defs/factorResult" },
+            { "$ref": "https://sagejs.org/schemas/rust-class-group/prepared-multifield-vector-v1.json#/$defs/relationResult" }
+          ]
+        }
+      }
+    }
+  }
+}

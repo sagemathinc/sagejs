@@ -1,0 +1,79 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "class-group-wasm-evaluator",
+  "title": "Browser evaluator class-group host",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "user",
+  "objective": "Install the production class-group Wasm reactor lazily inside the Sage evaluator worker as a synchronous coarse Python runtime boundary, with exact session lifecycle, cancellation, memory bounds, and browser-engine qualification",
+  "base_commit": "f7b30487c931448659f3e8c496e5b349395b9233",
+  "claims": [
+    "packages/flint-wasm/evaluator.mjs",
+    "packages/flint-wasm/class-group-core.mjs",
+    "packages/flint-wasm/class-group-core-loader.mjs",
+    "packages/flint-wasm/class-group-core-worker.mjs",
+    "packages/flint-wasm/class-group-core.d.ts",
+    "packages/flint-wasm/test/class-group-evaluator.test.mjs",
+    "packages/flint-wasm/test/browser-class-group-evaluator.mjs"
+  ],
+  "dependencies": [
+    "class-group-wasm-product",
+    "class-group-product-service"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Native service receipts, detached Python replay, and Chromium/Firefox/WebKit exact parity"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea"
+  ],
+  "runs": [
+    {
+      "command": "node --test packages/flint-wasm/test/class-group-evaluator.test.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.198,
+      "started_at": "2026-09-22T07:00:45.103Z",
+      "commit": "f7b30487c931448659f3e8c496e5b349395b9233",
+      "workspace_fingerprint": "0aaa8a1d5618a9080f7a165bebadb3a89a3ae0de44e2d794a565e8f37b24bfa3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node packages/flint-wasm/test/browser-class-group-evaluator.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.919,
+      "started_at": "2026-09-22T07:00:46.042Z",
+      "commit": "f7b30487c931448659f3e8c496e5b349395b9233",
+      "workspace_fingerprint": "0aaa8a1d5618a9080f7a165bebadb3a89a3ae0de44e2d794a565e8f37b24bfa3",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Preloads and receipt-authenticates the production class-group reactor directly inside the existing evaluator worker, exposes only synchronous __sagejs_host__.call(\"classGroup\", [operation, request]), validates and unboxes the canonical service envelope, preserves typed error receipts, binds open results to the artifact SHA-256, tracks decimal-string generation/handle sessions, closes resident sessions on evaluator teardown, and enforces the 4096-page/256 MiB maximum. Focused Node host tests and real-artifact Chromium, Firefox, and WebKit tests pass.",
+    "risks": [
+      "The lane depends on class-group-product-service retaining the canonical service-request-v1/service-response-v1 ABI and decimal-string generation/handle fields.",
+      "Cancellation during a synchronous Rust call remains evaluator-worker termination by design; the reactor has no resumable step ABI.",
+      "The full pnpm build and test:changed matrix is blocked in this worktree by an unrelated stale numerical production-manifest toolchain identity; focused evaluator and all three browser-engine tests pass."
+    ],
+    "next_steps": [
+      "Integrate after class-group-product-service and class-group-wasm-product, then rebuild flint-wasm so the evaluator and reactor receipt are emitted in one production manifest.",
+      "Have the runtime-host lane delegate runtime.class_group_backend().call(op, request) to __sagejs_host__.call(\"classGroup\", [op, request]).",
+      "Run the portable/native/SEA release matrix from the integrated clean build."
+    ]
+  }
+}

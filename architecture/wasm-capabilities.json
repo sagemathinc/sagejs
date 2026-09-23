@@ -26,6 +26,14 @@
       "specialist-capability"
     ],
     "test_evidence": {
+      "rust-cubic-class-group-product": {
+        "differential": true,
+        "paths": [
+          "test/number-field-rust-class-group-release.cjs",
+          "packages/flint-wasm/test/class-group-core-product.test.mjs",
+          "packages/flint-wasm/test/browser-class-group-evaluator.mjs"
+        ]
+      },
       "finite-extension-multivariate-boundary": {
         "differential": true,
         "paths": [
@@ -505,6 +513,11 @@
         "id": "specialist:capability-report-api",
         "family": "runtime",
         "source": "packages/flint-wasm/evaluator.mjs"
+      },
+      {
+        "id": "specialist:cubic-class-groups-rust",
+        "family": "algebraic-number-theory",
+        "source": "packages/class-groups/src/service.rs"
       },
       {
         "id": "specialist:integer-factorization-wasm",
@@ -1077,6 +1090,31 @@
         "status": "included"
       },
       "public_explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
+    },
+    {
+      "id": "specialist:cubic-class-groups-rust",
+      "kind": "specialist-capability",
+      "family": "algebraic-number-theory",
+      "source": "packages/class-groups/src/service.rs",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "native-resident-service-or-ordinary-exact-cubic",
+      "wasm_module": "class-group",
+      "public_consumers": [
+        "NumberField.class_group",
+        "NumberField.class_number",
+        "NumberField.unit_group"
+      ],
+      "tests": [
+        "rust-cubic-class-group-product"
+      ],
+      "review_note": "The same bounded Rust service passes exact native/Wasm corpus parity, resident lifecycle and mutation tests, and Chromium, Firefox, and WebKit evaluator execution with a 256 MiB maximum memory contract.",
+      "reviewed": true,
+      "shared_core": "packages/class-groups/src/service.rs",
+      "availability_evidence": {
+        "path": "test/number-field-rust-class-group-release.cjs"
+      },
+      "public_explanation": "Absolute monic cubic class groups and units can execute through the receipt-authenticated Rust class-group specialist in browser WebAssembly. Conditional-GRH and unconditional proof authority remain explicit at the public API."
     },
     {
       "id": "specialist:capability-report-api",
@@ -11548,18 +11586,16 @@
         "production-kernel-differential",
         "complex-cubic-native-class-group-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The production pack compiles 0 of 1 functions. The remaining 1 functions use their tested same-source dynamic fallback (fmpz-integer-buffer-requires-64-bit-flint-limbs).",
-      "public_explanation": "This family uses compiled WebAssembly for 0 of 1 functions and the same-source fallback for 1 functions.",
+      "review_note": "The receipt-authenticated production pack compiles all 1 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact.",
       "compiled_coverage": {
-        "compiled_functions": 0,
-        "fallback_functions": 1,
+        "compiled_functions": 1,
+        "fallback_functions": 0,
         "total_functions": 1,
         "production_pack": true,
-        "fallback_reasons": [
-          "fmpz-integer-buffer-requires-64-bit-flint-limbs"
-        ]
+        "fallback_reasons": []
       }
     },
     {
@@ -14349,8 +14385,12 @@
       "disposition": "portable-fallback",
       "fallback": "ordinary-sagejs-public-operation",
       "wasm_module": "host-runtime",
-      "public_consumers": ["src/baselib/finite_fields.py"],
-      "tests": ["finite-extension-coordinate-differential"],
+      "public_consumers": [
+        "src/baselib/finite_fields.py"
+      ],
+      "tests": [
+        "finite-extension-coordinate-differential"
+      ],
       "status": "fallback",
       "reviewed": true,
       "review_note": "Native legacy handles export canonical coordinates with fq_default_get_fmpz_poly and reduction modulo p. Wasm public elements use the declared fq_element_coordinate_bytes generated-resource operation instead; the N-API callback is never loaded in a browser.",

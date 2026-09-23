@@ -1,0 +1,73 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "degree5-ranked-lll",
+  "title": "Degree5 Ranked Lll",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Generalize the exact connected ranked-LLL primitive graph for the authenticated quintic honesty collector: degree-5 ideal preparation, integer rank, full-rank selection, and FLATTER, with degree-4 regression and PARI/dynamic/native controls",
+  "base_commit": "eeb2aee651d87a6336a68cb26e7ea185f51cc498",
+  "claims": [
+    "bench/pari-class-group-port/ideal_ranked_preparation.py",
+    "bench/pari-class-group-port/lll_rank.py",
+    "bench/pari-class-group-port/lll_selection.py",
+    "bench/pari-class-group-port/flatter.py",
+    "bench/pari-class-group-port/check_degree5_ranked_lll.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "PARI 2.17.4 authenticated degree-5 collector trace",
+      "cpython",
+      "javascript"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node bench/pari-class-group-port/check_degree5_ranked_lll.cjs /home/user/upstream/pari-2.17.4 /home/user/upstream/pari-2.17.4.tar.gz"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_degree5_ranked_lll.cjs /home/user/upstream/pari-2.17.4 /home/user/upstream/pari-2.17.4.tar.gz",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.331,
+      "started_at": "2026-09-17T02:28:15.528Z",
+      "commit": "eeb2aee651d87a6336a68cb26e7ea185f51cc498",
+      "workspace_fingerprint": "9ee1c8d7903d2295d1d6e0d931f085a459057895563b792e9fa37e109d64e9f8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_degree5_ranked_lll.cjs /home/user/upstream/pari-2.17.4 /home/user/upstream/pari-2.17.4.tar.gz",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.166,
+      "started_at": "2026-09-17T02:29:22.715Z",
+      "commit": "eeb2aee651d87a6336a68cb26e7ea185f51cc498",
+      "workspace_fingerprint": "e07f77c6d1be9ef7311be6bd1c89fed59ac083ad407bd3d4eb1b312d1f7dfeda",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "The connected ranked-preparation graph now accepts degree five, computes PARI's initial modular rank, uses the pinned degree-five selector thresholds, and reproduces PARI's exact LLL transform, prepared ideal, embedding product, QR reduction, and enumeration boundary for all six authenticated honesty ideals across CPython, JavaScript, and native GMP. A pristine PARI-built degree-four control preserves the established path.",
+    "risks": [
+      "General degree-five FLATTER remains deliberately unsupported because it needs a translated 3x3 recursive LLL leaf. All six authenticated quintic collector inputs have PARI useflatter=0, so that branch is not part of this exact connected path."
+    ],
+    "next_steps": [
+      "Integrate this commit with the quintic honesty collector exporter and rerun its six fresh probes; any remaining mismatch is downstream of ranked preparation.",
+      "Translate the 3x3 FLATTER leaf before claiming arbitrary degree-five ranked LLL outside the authenticated no-FLATTER corridor."
+    ]
+  }
+}

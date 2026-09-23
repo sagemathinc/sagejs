@@ -459,6 +459,7 @@ function makeMarshaller(instance, runtime, resourceBridge) {
     if (["uint64", "PrimeModulusValue"].includes(parameter.type)) {
       return [BigInt(argument)];
     }
+    if (parameter.type === "int64") return [BigInt(argument)];
     if (parameter.type === "Float64") {
       return [float64Value(argument)];
     }
@@ -514,9 +515,10 @@ function decodeResults(instance, runtime, resultTypes, resourceBridge) {
         throw error;
       }
     }
-    if (type === "bool" || type === "uint64") {
+    if (type === "bool" || type === "uint64" || type === "int64") {
       const value = instance.exports[runtime.resultU64](index);
-      return type === "bool" ? value !== 0n : value;
+      return type === "bool" ? value !== 0n
+        : type === "int64" ? BigInt.asIntN(64, value) : value;
     }
     if (type === "Float64") {
       const getter = instance.exports[runtime.resultFloat64];

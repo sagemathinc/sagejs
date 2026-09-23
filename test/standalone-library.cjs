@@ -8,6 +8,7 @@ const {
   BASELIB_STANDALONE_CACHE_MODULES,
   BASELIB_STANDALONE_MODULES,
   MATRIX_STANDALONE_MODULES,
+  EXTENSION_STANDALONE_MODULES,
   GROEBNER_STANDALONE_MODULES,
   CORE_STANDALONE_MODULES,
   moduleClosure,
@@ -52,6 +53,19 @@ test("standalone ideal operations include the new lazy geometry helpers", () => 
     assert(GROEBNER_STANDALONE_MODULES.includes(
       `sagejs.polynomial_algorithms.${name}`,
     ));
+  }
+});
+
+test("finite-extension standalone roots include lazy polynomial storage", () => {
+  for (const name of [
+    "sagejs.kernels.polynomial.packed_prime_field",
+    "sagejs.linear_algebra.exact_vector_public",
+    "sagejs.polynomial_algorithms.field_capabilities",
+    "sagejs.polynomial_algorithms.extension_mpoly_backend",
+    "sagejs.polynomial_algorithms.structural_calculus",
+    "sagejs.schemes.enumeration",
+  ]) {
+    assert(EXTENSION_STANDALONE_MODULES.includes(name), name);
   }
 });
 

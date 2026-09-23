@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "status": "promoted-to-ordinary-retained-workspace-api",
+  "selection": {
+    "default": "deterministic-static-minimum-degree-markowitz",
+    "fallback": "natural-order-on-structural-planner-failure-before-workspace-publication",
+    "explicitControls": [
+      "small-norm-unit-kernel-prepared-natural-ordering",
+      "small-norm-unit-kernel-prepared-static-ordering"
+    ]
+  },
+  "neutralPreparedInputReplay": [
+    {
+      "input": "complex-cubic-minus-23-neutral-prepared-field.json",
+      "sha256": "2ce9ca5683f4577fefb5c672458f87818ef657ce221efdc469a8c3682593c2db",
+      "entersRetainedWorkspace": false
+    },
+    {
+      "input": "h1-neutral-prepared-field.json",
+      "sha256": "6ef97f99f3fb676e9c8d59cedaf696409916ea485f356244efc60f0b14d0e54d",
+      "entersRetainedWorkspace": false
+    },
+    {
+      "input": "row1-neutral-prepared-field.json",
+      "sha256": "849adefc199151b221c08f9c573e12534176439a4b354f6b7631ece5cff54c70",
+      "entersRetainedWorkspace": false
+    },
+    {
+      "input": "row6-neutral-prepared-field.json",
+      "sha256": "24551723d43685e5592d9b3f866bf73e3f0bbde69ee5afec1eb2dc2f760314b5",
+      "entersRetainedWorkspace": true,
+      "dimension": 1130,
+      "initialNonzeros": 7090,
+      "symbolicNonzerosAfterFill": 104707
+    }
+  ],
+  "row6AlternatingReplay": {
+    "pairs": 3,
+    "default": {
+      "ordering": "StaticMinimumDegree",
+      "medianWallSeconds": 5.237913939985447,
+      "medianPresentationNanoseconds": 1243534338,
+      "medianDeterminantNanoseconds": 637756581,
+      "medianTotalExternalNanoseconds": 5163260254,
+      "maximumRssKiB": 112948
+    },
+    "naturalControl": {
+      "ordering": "Natural",
+      "medianWallSeconds": 8.087302547006402,
+      "medianPresentationNanoseconds": 4065615590,
+      "medianDeterminantNanoseconds": 3405082532,
+      "medianTotalExternalNanoseconds": 8011797101,
+      "maximumRssKiB": 115116
+    },
+    "compactCertificateSha256": "ce85dcbcfdae9e73f6fe789f8712c463765295c7f41749c0d6950f53127cfaf2",
+    "allSixCompactCertificatesByteIdentical": true,
+    "exactSelectedSquareDeterminant": "80043126994058281385129755894296177567385995865588636777763629949545941304571837861587634736",
+    "exactDependencyProjectionIndex": "20010781748514570346282438973574044391846498966397159194440907487386485326142959465396908684",
+    "exactPresentationIndex": "4"
+  },
+  "failureAtomicity": {
+    "plannerOverflowChecks": true,
+    "completeMatrixOverflowChecks": true,
+    "allocationChecks": true,
+    "downstreamArithmeticSkippedAfterPlannerFailure": true,
+    "deterministicFallbackTested": true,
+    "nonidentityPermutationAndNegativeDeterminantTested": true
+  },
+  "sourceHashes": {
+    "src/flint_normal_form.c": "1fcdb424145d3f0d0909bd387289fdef769686d45d65eb5da9a5067b937685d3",
+    "src/flint_normal_form.rs": "e689e85e3af90ce011492272a7a13fe71941be69f59f7003b25512b83d2da1a7",
+    "qualification/row6-candidate/src/main.rs": "554aebafa198602ef4dd1bc2625e8c95ba2fa02d798c0f0c81bd998d0a1608d1",
+    "priorExperimentReceipt": "49b0c4f12f78501906e7edfebb448e27f74a37b5d284dc6d22aa2ed9a92d5582"
+  },
+  "validation": {
+    "command": "cargo test --release --all-targets --features flint-normal-form",
+    "passed": true
+  }
+}

@@ -1,0 +1,84 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "final-class-unit-completion-composer",
+  "title": "Final Class Unit Completion Composer",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Compose live class assembly and live unit/regulator authorities into an immutable internal completion result with atomic honesty and retry policy",
+  "base_commit": "79418f8c41d5ce3e0aa195fb26629e1d361128eb",
+  "claims": [
+    "bench/pari-class-group-port/final_class_unit_completion_composer.py",
+    "bench/pari-class-group-port/check_final_class_unit_completion_composer.cjs",
+    "bench/pari-class-group-port/final_class_unit_completion_composer_audit.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "not-applicable",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Independent replay of existing live authority payloads"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "node bench/pari-class-group-port/check_final_class_unit_completion_composer.cjs",
+    "pnpm exec ruff check bench/pari-class-group-port/final_class_unit_completion_composer.py",
+    "python3 -m py_compile bench/pari-class-group-port/final_class_unit_completion_composer.py"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_final_class_unit_completion_composer.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.151,
+      "started_at": "2026-09-17T03:58:40.958Z",
+      "commit": "79418f8c41d5ce3e0aa195fb26629e1d361128eb",
+      "workspace_fingerprint": "bb37c934f4746c1eeae1bfdba4e13f5b868f47304c742c787cc70c35f1aa800a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec ruff check bench/pari-class-group-port/final_class_unit_completion_composer.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.484,
+      "started_at": "2026-09-17T03:58:41.759Z",
+      "commit": "79418f8c41d5ce3e0aa195fb26629e1d361128eb",
+      "workspace_fingerprint": "bb37c934f4746c1eeae1bfdba4e13f5b868f47304c742c787cc70c35f1aa800a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -m py_compile bench/pari-class-group-port/final_class_unit_completion_composer.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.06,
+      "started_at": "2026-09-17T03:58:42.883Z",
+      "commit": "79418f8c41d5ce3e0aa195fb26629e1d361128eb",
+      "workspace_fingerprint": "bb37c934f4746c1eeae1bfdba4e13f5b868f47304c742c787cc70c35f1aa800a",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added an immutable final internal composer joining authorized live class, no-oracle unit/regulator, genuine compact-unit, and exact torsion payloads. The focused checker proves atomic idempotent publication and rejects six coordinated reauthorized mutations.",
+    "risks": [
+      "The composer intentionally grants correspondence authority only; independent unit saturation and the standard public proof payload remain absent.",
+      "architecture:check could not start in this fresh worktree because dist/tools/cli has not been built."
+    ],
+    "next_steps": [
+      "Integrate the composer after the durable replay stages and retain public=false until public proof authorities exist."
+    ]
+  }
+}

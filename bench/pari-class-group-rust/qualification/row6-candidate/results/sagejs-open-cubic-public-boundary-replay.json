@@ -1,0 +1,281 @@
+{
+  "schema": "sagejs.rust-class-group/open-cubic-public-boundary-replay-v1",
+  "sourcePanel": "qualification/corpus/initial-open-development-v1.json",
+  "correctionOverlay": "qualification/corpus/initial-open-development-v1-corrections.json",
+  "proofMode": "conditional-grh",
+  "usesClassGroupAnswersAsRuntimeInput": false,
+  "timingPolicy": "single-observational-run-not-a-headline-benchmark",
+  "commandTimeoutMilliseconds": 600000,
+  "cases": [
+    {
+      "id": "small-x3-x-1",
+      "inputId": "sha256:44c791466f23c1d9dc894d319495bcbe70ad0c2be0cd91aea215b5fedeafc497",
+      "declaredSignature": [
+        1,
+        1
+      ],
+      "computedSignature": [
+        1,
+        1
+      ],
+      "signatureCorrectionApplied": false,
+      "basisDenominator": "1",
+      "indexPrimes": [],
+      "relationShape": [
+        15,
+        3
+      ],
+      "classNumber": "1",
+      "invariantFactors": [],
+      "classGroup": "trivial",
+      "generatorOrderWitnessFactorCount": 0,
+      "generatorOrderWitnessStatus": "trivial-group",
+      "independentGeneratorOrderVerification": "passed",
+      "independentlyVerifiedGeneratorOrders": 0,
+      "classUnitIndex": 1,
+      "totalExternalNanoseconds": 74067559
+    },
+    {
+      "id": "small-discriminant-49",
+      "inputId": "sha256:efd0ff4868dae945035d59f4fca2c87e95a0ebc9f44afeec8061fcbbf1ac1123",
+      "declaredSignature": [
+        3,
+        0
+      ],
+      "computedSignature": [
+        3,
+        0
+      ],
+      "signatureCorrectionApplied": false,
+      "basisDenominator": "1",
+      "indexPrimes": [],
+      "relationShape": [
+        17,
+        4
+      ],
+      "classNumber": "1",
+      "invariantFactors": [],
+      "classGroup": "trivial",
+      "generatorOrderWitnessFactorCount": 0,
+      "generatorOrderWitnessStatus": "trivial-group",
+      "independentGeneratorOrderVerification": "passed",
+      "independentlyVerifiedGeneratorOrders": 0,
+      "classUnitIndex": 1,
+      "totalExternalNanoseconds": 53593215
+    },
+    {
+      "id": "small-class-number-2",
+      "inputId": "sha256:b5ed1c785c5b586f6259695781d61a7f5f1c9f9a811c990252dd316df05e4e13",
+      "declaredSignature": [
+        3,
+        0
+      ],
+      "computedSignature": [
+        1,
+        1
+      ],
+      "signatureCorrectionApplied": true,
+      "basisDenominator": "1",
+      "indexPrimes": [],
+      "relationShape": [
+        21,
+        7
+      ],
+      "classNumber": "2",
+      "invariantFactors": [
+        "2"
+      ],
+      "classGroup": "C2",
+      "generatorOrderWitnessFactorCount": 8,
+      "generatorOrderWitnessStatus": "complete",
+      "independentGeneratorOrderVerification": "passed",
+      "independentlyVerifiedGeneratorOrders": 1,
+      "classUnitIndex": 1,
+      "totalExternalNanoseconds": 75057448
+    },
+    {
+      "id": "small-class-number-3",
+      "inputId": "sha256:c77ce6e3660505ab57abaa05058b4faabe6e1ea2d1f4926ffdb3c2aa0927fafb",
+      "declaredSignature": [
+        3,
+        0
+      ],
+      "computedSignature": [
+        1,
+        1
+      ],
+      "signatureCorrectionApplied": true,
+      "basisDenominator": "1",
+      "indexPrimes": [],
+      "relationShape": [
+        23,
+        10
+      ],
+      "classNumber": "3",
+      "invariantFactors": [
+        "3"
+      ],
+      "classGroup": "C3",
+      "generatorOrderWitnessFactorCount": 1,
+      "generatorOrderWitnessStatus": "complete",
+      "independentGeneratorOrderVerification": "passed",
+      "independentlyVerifiedGeneratorOrders": 1,
+      "classUnitIndex": 1,
+      "totalExternalNanoseconds": 38933609
+    },
+    {
+      "id": "small-class-number-4",
+      "inputId": "sha256:77b0d30009941cf123a31895c0dfeb639dfa67658c9b03d55a8ac4968b6a9027",
+      "declaredSignature": [
+        3,
+        0
+      ],
+      "computedSignature": [
+        1,
+        1
+      ],
+      "signatureCorrectionApplied": true,
+      "basisDenominator": "1",
+      "indexPrimes": [],
+      "relationShape": [
+        25,
+        10
+      ],
+      "classNumber": "4",
+      "invariantFactors": [
+        "2",
+        "2"
+      ],
+      "classGroup": "C2 x C2",
+      "generatorOrderWitnessFactorCount": 14,
+      "generatorOrderWitnessStatus": "complete",
+      "independentGeneratorOrderVerification": "passed",
+      "independentlyVerifiedGeneratorOrders": 2,
+      "classUnitIndex": 1,
+      "totalExternalNanoseconds": 76022148
+    },
+    {
+      "id": "small-class-number-6",
+      "inputId": "sha256:ef9647b716023a033f9ef595ac3853b2363ecfa4187f8045f537541a9f0f75cb",
+      "declaredSignature": [
+        3,
+        0
+      ],
+      "computedSignature": [
+        1,
+        1
+      ],
+      "signatureCorrectionApplied": true,
+      "basisDenominator": "1",
+      "indexPrimes": [],
+      "relationShape": [
+        22,
+        8
+      ],
+      "classNumber": "6",
+      "invariantFactors": [
+        "6"
+      ],
+      "classGroup": "C6",
+      "generatorOrderWitnessFactorCount": 4,
+      "generatorOrderWitnessStatus": "complete",
+      "independentGeneratorOrderVerification": "passed",
+      "independentlyVerifiedGeneratorOrders": 1,
+      "classUnitIndex": 1,
+      "totalExternalNanoseconds": 63457582
+    },
+    {
+      "id": "h1-real-cubic",
+      "inputId": "sha256:7d40f63322c2d59b1d4aa459766465e6127fca7a0b1d3b591372862e1adbda66",
+      "declaredSignature": [
+        3,
+        0
+      ],
+      "computedSignature": [
+        3,
+        0
+      ],
+      "signatureCorrectionApplied": false,
+      "basisDenominator": "1",
+      "indexPrimes": [],
+      "relationShape": [
+        73,
+        66
+      ],
+      "classNumber": "1",
+      "invariantFactors": [],
+      "classGroup": "trivial",
+      "generatorOrderWitnessFactorCount": 0,
+      "generatorOrderWitnessStatus": "trivial-group",
+      "independentGeneratorOrderVerification": "passed",
+      "independentlyVerifiedGeneratorOrders": 0,
+      "classUnitIndex": 1,
+      "totalExternalNanoseconds": 216829967
+    },
+    {
+      "id": "row1-index-3-cubic",
+      "inputId": "sha256:bb65168729f9287611b8aebb2efa9958559286bb9b4e20bfeaec9b03f79f5183",
+      "declaredSignature": [
+        3,
+        0
+      ],
+      "computedSignature": [
+        3,
+        0
+      ],
+      "signatureCorrectionApplied": false,
+      "basisDenominator": "3",
+      "indexPrimes": [
+        "3"
+      ],
+      "relationShape": [
+        58,
+        51
+      ],
+      "classNumber": "3",
+      "invariantFactors": [
+        "3"
+      ],
+      "classGroup": "C3",
+      "generatorOrderWitnessFactorCount": 42,
+      "generatorOrderWitnessStatus": "complete",
+      "independentGeneratorOrderVerification": "passed",
+      "independentlyVerifiedGeneratorOrders": 1,
+      "classUnitIndex": 1,
+      "totalExternalNanoseconds": 210206610
+    },
+    {
+      "id": "row6-continuation-cubic",
+      "inputId": "sha256:c902b10e344226fe31336f3ff0fb3164e291f51b914c34e707f1de32bad76e81",
+      "declaredSignature": [
+        3,
+        0
+      ],
+      "computedSignature": [
+        3,
+        0
+      ],
+      "signatureCorrectionApplied": false,
+      "basisDenominator": "3",
+      "indexPrimes": [
+        "3"
+      ],
+      "relationShape": [
+        1137,
+        1130
+      ],
+      "classNumber": "4",
+      "invariantFactors": [
+        "2",
+        "2"
+      ],
+      "classGroup": "C2 x C2",
+      "generatorOrderWitnessFactorCount": 1754,
+      "generatorOrderWitnessStatus": "complete-small-surplus-affine-congruence",
+      "independentGeneratorOrderVerification": "passed",
+      "independentlyVerifiedGeneratorOrders": 2,
+      "classUnitIndex": 1,
+      "totalExternalNanoseconds": 8136755492
+    }
+  ]
+}

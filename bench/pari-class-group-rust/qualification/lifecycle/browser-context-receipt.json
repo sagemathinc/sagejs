@@ -1,0 +1,2053 @@
+{
+  "schema": "sagejs.rust-class-group-context-browser/v1",
+  "status": "pass-small-candidate",
+  "observedAt": "2026-09-20T19:30:30.399Z",
+  "artifact": {
+    "path": "bench/pari-class-group-rust/qualification/wasm-class-group-candidate/target/wasm32-wasip1/release/sagejs_rust_wasm_class_group_candidate.wasm",
+    "bytes": 224173,
+    "sha256": "beb91b4270aae5d2d570889ffa680309c08b2139aca04d414808fe26bff2de52",
+    "sourceInputs": [
+      {
+        "path": "bench/pari-class-group-rust/qualification/wasm-class-group-candidate/Cargo.lock",
+        "bytes": 2695,
+        "sha256": "d29e0e7b1fabea3ac7445f1b0333c708cb91ba468583a7171988939d63019943"
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/wasm-class-group-candidate/Cargo.toml",
+        "bytes": 325,
+        "sha256": "8bfeab5a386fb19e36de2069e8019159d5535327017c21e68aa483cc5fea12a0"
+      },
+      {
+        "path": "bench/pari-class-group-rust/qualification/wasm-class-group-candidate/src/lib.rs",
+        "bytes": 27804,
+        "sha256": "b58a29f11e14ec43446f3e0e2731c30d3801752d5be8dec86886fe4b185c45e4"
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/factor_base.rs",
+        "bytes": 39597,
+        "sha256": "14cf55f72d90c58410edca44a8f17d8907ed93680deb1fd4dbff8b5704e9cf34"
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/relation_cache.rs",
+        "bytes": 14270,
+        "sha256": "4ceda4440a747c151389dc00a1deee06c32cb18845a3e5738345cad8410ecc3e"
+      },
+      {
+        "path": "bench/pari-class-group-rust/src/smith.rs",
+        "bytes": 10463,
+        "sha256": "d367b6bcc7d372bfe886dcb746ab327b4eaafb1cb7ccda26935404d2e7842192"
+      }
+    ]
+  },
+  "hostInputs": [
+    {
+      "path": "bench/pari-class-group-rust/qualification/browser/browser-loader.mjs",
+      "bytes": 12500,
+      "sha256": "d9bbb9eafd4e27dcee1ca450d49537d646178954ff8c1bfe84285d8c7fca9788"
+    },
+    {
+      "path": "bench/pari-class-group-rust/qualification/browser/class-group-route.mjs",
+      "bytes": 6833,
+      "sha256": "f8e2c6513d4bd2bbeaea42b7bdcfab8df8ca731b6f0dd8e5da96754090221aaf"
+    },
+    {
+      "path": "bench/pari-class-group-rust/qualification/lifecycle/run-browser-context.mjs",
+      "bytes": 11408,
+      "sha256": "4d712c25d32c231369cd86eb7ddef01ccd762ccf27d7829c0b2d75f67d0578e7"
+    }
+  ],
+  "boundReceipts": [
+    {
+      "path": "bench/pari-class-group-rust/qualification/lifecycle/receipt.json",
+      "bytes": 8841,
+      "sha256": "1a0496bf6a35902babf2c7304d55eec4282375dbd900b5ce3895cb761edbbf94"
+    },
+    {
+      "path": "bench/pari-class-group-rust/qualification/wasm-class-group-candidate/receipt.json",
+      "bytes": 4358,
+      "sha256": "d9af1f6b90229c24c6e24faa3ea2ea9541373126459438f3d804ba9e3eb31dbf"
+    }
+  ],
+  "finalizerEvidence": {
+    "availabilityObservedAllEngines": true,
+    "registrationPresentInBoundLoaderSource": true,
+    "executionObserved": false,
+    "authoritativeLifecycle": "explicit-close"
+  },
+  "engines": [
+    {
+      "engine": "chromium",
+      "browserVersion": "151.0.7922.34",
+      "status": "pass",
+      "finalization_registry_available": true,
+      "initial_memory_pages": 17,
+      "memory_page_observations": [
+        {
+          "call": 1,
+          "pages": 18
+        },
+        {
+          "call": 2,
+          "pages": 18
+        },
+        {
+          "call": 3,
+          "pages": 18
+        },
+        {
+          "call": 4,
+          "pages": 18
+        },
+        {
+          "call": 5,
+          "pages": 18
+        },
+        {
+          "call": 6,
+          "pages": 18
+        },
+        {
+          "call": 7,
+          "pages": 18
+        },
+        {
+          "call": 8,
+          "pages": 18
+        },
+        {
+          "call": 9,
+          "pages": 18
+        },
+        {
+          "call": 17,
+          "pages": 18
+        },
+        {
+          "call": 33,
+          "pages": 18
+        },
+        {
+          "call": 65,
+          "pages": 18
+        },
+        {
+          "call": 129,
+          "pages": 18
+        },
+        {
+          "call": 257,
+          "pages": 18
+        },
+        {
+          "call": 513,
+          "pages": 18
+        },
+        {
+          "call": 1000,
+          "pages": 18
+        }
+      ],
+      "resumable_completion": {
+        "status": 2,
+        "steps": 130,
+        "maximum_step_ms": 0.10000002384185791,
+        "memory_pages": 18
+      },
+      "mixed_jobs": {
+        "count": 100,
+        "cancelled": 34,
+        "reset": 33,
+        "completed": 33
+      },
+      "mixed_memory_pages": [
+        {
+          "job": 1,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 2,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 3,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 4,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 5,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 6,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 7,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 8,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 9,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 10,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 11,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 12,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 13,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 14,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 15,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 16,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 17,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 18,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 19,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 20,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 21,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 22,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 23,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 24,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 25,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 26,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 27,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 28,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 29,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 30,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 31,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 32,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 33,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 34,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 35,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 36,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 37,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 38,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 39,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 40,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 41,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 42,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 43,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 44,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 45,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 46,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 47,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 48,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 49,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 50,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 51,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 52,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 53,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 54,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 55,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 56,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 57,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 58,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 59,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 60,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 61,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 62,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 63,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 64,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 65,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 66,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 67,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 68,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 69,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 70,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 71,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 72,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 73,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 74,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 75,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 76,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 77,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 78,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 79,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 80,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 81,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 82,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 83,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 84,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 85,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 86,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 87,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 88,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 89,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 90,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 91,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 92,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 93,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 94,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 95,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 96,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 97,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 98,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 99,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 100,
+          "mode": "cancel",
+          "pages": 18
+        }
+      ],
+      "memory_pages_after_mixed": 18,
+      "cancellation_latency_ms": {
+        "maximum": 4.200000017881393,
+        "samples": [
+          4.100000023841858,
+          4.199999988079071,
+          4.0999999940395355,
+          4,
+          4.100000023841858,
+          4.0999999940395355,
+          4.199999988079071,
+          4,
+          4.0999999940395355,
+          4.0999999940395355,
+          4.0999999940395355,
+          4,
+          4.0999999940395355,
+          4.100000023841858,
+          4.100000023841858,
+          4.0999999940395355,
+          4.0999999940395355,
+          4.200000017881393,
+          4.100000023841858,
+          4.0999999940395355,
+          4.0999999940395355,
+          4.199999988079071,
+          4.100000023841858,
+          4.0999999940395355,
+          4.0999999940395355,
+          4.0999999940395355,
+          4.0999999940395355,
+          4.199999988079071,
+          4.200000017881393,
+          4.0999999940395355,
+          4,
+          4.100000023841858,
+          4.0999999940395355,
+          4.0999999940395355
+        ]
+      },
+      "retired_handle_abi": {
+        "first_close": 1,
+        "after_close": {
+          "step": 0,
+          "cancel": 0,
+          "result_error": "State",
+          "reset_zero": true,
+          "close": 0
+        },
+        "invalid_reset_zero": true,
+        "original_live_after_invalid_reset": true,
+        "generation_changed": true,
+        "after_reset": {
+          "step": 0,
+          "cancel": 0,
+          "result_error": "State",
+          "reset_zero": true,
+          "close": 0
+        },
+        "replacement_close": 1,
+        "memory_pages": 19
+      },
+      "live_context_candidate_close": {
+        "live_context_created": true,
+        "api_close_called": true,
+        "context_rejected_after_candidate_close": true,
+        "memory_pages_before_close": 19
+      },
+      "stale_after_host_close_rejected": true
+    },
+    {
+      "engine": "firefox",
+      "browserVersion": "153.0",
+      "status": "pass",
+      "finalization_registry_available": true,
+      "initial_memory_pages": 17,
+      "memory_page_observations": [
+        {
+          "call": 1,
+          "pages": 18
+        },
+        {
+          "call": 2,
+          "pages": 18
+        },
+        {
+          "call": 3,
+          "pages": 18
+        },
+        {
+          "call": 4,
+          "pages": 18
+        },
+        {
+          "call": 5,
+          "pages": 18
+        },
+        {
+          "call": 6,
+          "pages": 18
+        },
+        {
+          "call": 7,
+          "pages": 18
+        },
+        {
+          "call": 8,
+          "pages": 18
+        },
+        {
+          "call": 9,
+          "pages": 18
+        },
+        {
+          "call": 17,
+          "pages": 18
+        },
+        {
+          "call": 33,
+          "pages": 18
+        },
+        {
+          "call": 65,
+          "pages": 18
+        },
+        {
+          "call": 129,
+          "pages": 18
+        },
+        {
+          "call": 257,
+          "pages": 18
+        },
+        {
+          "call": 513,
+          "pages": 18
+        },
+        {
+          "call": 1000,
+          "pages": 18
+        }
+      ],
+      "resumable_completion": {
+        "status": 2,
+        "steps": 130,
+        "maximum_step_ms": 1,
+        "memory_pages": 18
+      },
+      "mixed_jobs": {
+        "count": 100,
+        "cancelled": 34,
+        "reset": 33,
+        "completed": 33
+      },
+      "mixed_memory_pages": [
+        {
+          "job": 1,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 2,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 3,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 4,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 5,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 6,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 7,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 8,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 9,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 10,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 11,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 12,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 13,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 14,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 15,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 16,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 17,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 18,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 19,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 20,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 21,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 22,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 23,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 24,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 25,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 26,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 27,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 28,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 29,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 30,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 31,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 32,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 33,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 34,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 35,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 36,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 37,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 38,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 39,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 40,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 41,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 42,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 43,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 44,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 45,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 46,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 47,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 48,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 49,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 50,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 51,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 52,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 53,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 54,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 55,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 56,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 57,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 58,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 59,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 60,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 61,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 62,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 63,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 64,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 65,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 66,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 67,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 68,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 69,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 70,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 71,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 72,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 73,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 74,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 75,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 76,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 77,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 78,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 79,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 80,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 81,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 82,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 83,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 84,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 85,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 86,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 87,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 88,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 89,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 90,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 91,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 92,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 93,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 94,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 95,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 96,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 97,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 98,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 99,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 100,
+          "mode": "cancel",
+          "pages": 18
+        }
+      ],
+      "memory_pages_after_mixed": 18,
+      "cancellation_latency_ms": {
+        "maximum": 5,
+        "samples": [
+          4,
+          4,
+          5,
+          5,
+          4,
+          3,
+          4,
+          4,
+          4,
+          5,
+          4,
+          4,
+          4,
+          5,
+          4,
+          4,
+          4,
+          4,
+          5,
+          4,
+          4,
+          5,
+          4,
+          3,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          5,
+          4,
+          4
+        ]
+      },
+      "retired_handle_abi": {
+        "first_close": 1,
+        "after_close": {
+          "step": 0,
+          "cancel": 0,
+          "result_error": "State",
+          "reset_zero": true,
+          "close": 0
+        },
+        "invalid_reset_zero": true,
+        "original_live_after_invalid_reset": true,
+        "generation_changed": true,
+        "after_reset": {
+          "step": 0,
+          "cancel": 0,
+          "result_error": "State",
+          "reset_zero": true,
+          "close": 0
+        },
+        "replacement_close": 1,
+        "memory_pages": 19
+      },
+      "live_context_candidate_close": {
+        "live_context_created": true,
+        "api_close_called": true,
+        "context_rejected_after_candidate_close": true,
+        "memory_pages_before_close": 19
+      },
+      "stale_after_host_close_rejected": true
+    },
+    {
+      "engine": "webkit",
+      "browserVersion": "26.5",
+      "status": "pass",
+      "finalization_registry_available": true,
+      "initial_memory_pages": 17,
+      "memory_page_observations": [
+        {
+          "call": 1,
+          "pages": 18
+        },
+        {
+          "call": 2,
+          "pages": 18
+        },
+        {
+          "call": 3,
+          "pages": 18
+        },
+        {
+          "call": 4,
+          "pages": 18
+        },
+        {
+          "call": 5,
+          "pages": 18
+        },
+        {
+          "call": 6,
+          "pages": 18
+        },
+        {
+          "call": 7,
+          "pages": 18
+        },
+        {
+          "call": 8,
+          "pages": 18
+        },
+        {
+          "call": 9,
+          "pages": 18
+        },
+        {
+          "call": 17,
+          "pages": 18
+        },
+        {
+          "call": 33,
+          "pages": 18
+        },
+        {
+          "call": 65,
+          "pages": 18
+        },
+        {
+          "call": 129,
+          "pages": 18
+        },
+        {
+          "call": 257,
+          "pages": 18
+        },
+        {
+          "call": 513,
+          "pages": 18
+        },
+        {
+          "call": 1000,
+          "pages": 18
+        }
+      ],
+      "resumable_completion": {
+        "status": 2,
+        "steps": 130,
+        "maximum_step_ms": 0,
+        "memory_pages": 18
+      },
+      "mixed_jobs": {
+        "count": 100,
+        "cancelled": 34,
+        "reset": 33,
+        "completed": 33
+      },
+      "mixed_memory_pages": [
+        {
+          "job": 1,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 2,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 3,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 4,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 5,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 6,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 7,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 8,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 9,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 10,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 11,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 12,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 13,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 14,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 15,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 16,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 17,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 18,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 19,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 20,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 21,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 22,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 23,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 24,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 25,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 26,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 27,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 28,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 29,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 30,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 31,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 32,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 33,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 34,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 35,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 36,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 37,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 38,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 39,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 40,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 41,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 42,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 43,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 44,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 45,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 46,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 47,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 48,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 49,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 50,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 51,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 52,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 53,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 54,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 55,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 56,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 57,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 58,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 59,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 60,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 61,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 62,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 63,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 64,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 65,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 66,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 67,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 68,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 69,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 70,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 71,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 72,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 73,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 74,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 75,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 76,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 77,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 78,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 79,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 80,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 81,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 82,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 83,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 84,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 85,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 86,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 87,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 88,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 89,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 90,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 91,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 92,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 93,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 94,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 95,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 96,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 97,
+          "mode": "cancel",
+          "pages": 18
+        },
+        {
+          "job": 98,
+          "mode": "reset-complete",
+          "pages": 18
+        },
+        {
+          "job": 99,
+          "mode": "complete",
+          "pages": 18
+        },
+        {
+          "job": 100,
+          "mode": "cancel",
+          "pages": 18
+        }
+      ],
+      "memory_pages_after_mixed": 18,
+      "cancellation_latency_ms": {
+        "maximum": 8,
+        "samples": [
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8
+        ]
+      },
+      "retired_handle_abi": {
+        "first_close": 1,
+        "after_close": {
+          "step": 0,
+          "cancel": 0,
+          "result_error": "State",
+          "reset_zero": true,
+          "close": 0
+        },
+        "invalid_reset_zero": true,
+        "original_live_after_invalid_reset": true,
+        "generation_changed": true,
+        "after_reset": {
+          "step": 0,
+          "cancel": 0,
+          "result_error": "State",
+          "reset_zero": true,
+          "close": 0
+        },
+        "replacement_close": 1,
+        "memory_pages": 19
+      },
+      "live_context_candidate_close": {
+        "live_context_created": true,
+        "api_close_called": true,
+        "context_rejected_after_candidate_close": true,
+        "memory_pages_before_close": 19
+      },
+      "stale_after_host_close_rejected": true
+    }
+  ],
+  "limitations": [
+    "small fixed-width presentation candidate only",
+    "row-6 HNF, units, and certification are not resumable through this ABI",
+    "cancellation is observed only between completed step calls; context creation, one point operation, and final Smith reduction are synchronous and noninterruptible",
+    "FinalizationRegistry availability and loader registration are source-bound, but nondeterministic finalizer callback execution is not observed; explicit close is authoritative"
+  ]
+}

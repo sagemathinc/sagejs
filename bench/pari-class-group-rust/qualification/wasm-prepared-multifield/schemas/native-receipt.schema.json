@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/rust-class-group/prepared-multifield-native-receipt-v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["boundary", "inputPath", "medianMs", "result", "sampleCount", "samplesMs", "schema", "status", "observedAt", "repositoryRevision", "caseRole", "input", "host", "tools", "executable"],
+  "properties": {
+    "boundary": { "enum": ["prepared-maximal-cubic-factor-base", "prepared-cubic-relation-prefix"] },
+    "inputPath": { "type": "string", "minLength": 1 },
+    "medianMs": { "type": "number", "minimum": 0 },
+    "result": {
+      "oneOf": [
+        { "$ref": "https://sagejs.org/schemas/rust-class-group/prepared-multifield-vector-v1.json#/$defs/factorResult" },
+        { "$ref": "https://sagejs.org/schemas/rust-class-group/prepared-multifield-vector-v1.json#/$defs/relationResult" }
+      ]
+    },
+    "sampleCount": { "const": 15 },
+    "samplesMs": {
+      "type": "array",
+      "minItems": 15,
+      "maxItems": 15,
+      "items": { "type": "number", "minimum": 0 }
+    },
+    "schema": { "enum": ["sagejs.rust-class-group/native-prepared-factor-base-benchmark-v1", "sagejs.rust-class-group/native-prepared-relation-prefix-benchmark-v1"] },
+    "status": { "const": "pass" },
+    "observedAt": { "type": "string", "format": "date-time" },
+    "repositoryRevision": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "caseRole": { "type": "string", "minLength": 1 },
+    "input": { "$ref": "#/$defs/identity" },
+    "host": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hostname", "platform", "release", "architecture", "uname"],
+      "properties": {
+        "hostname": { "type": "string", "minLength": 1 },
+        "platform": { "const": "linux" },
+        "release": { "type": "string", "minLength": 1 },
+        "architecture": { "type": "string", "minLength": 1 },
+        "uname": { "type": "string", "minLength": 1 }
+      }
+    },
+    "tools": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rustc", "cargo"],
+      "properties": {
+        "rustc": { "type": "string", "minLength": 1 },
+        "cargo": { "type": "string", "minLength": 1 }
+      }
+    },
+    "executable": {
+      "allOf": [
+        { "$ref": "#/$defs/identity" },
+        {
+          "type": "object",
+          "required": ["retained", "identitySemantics"],
+          "properties": {
+            "retained": { "const": false },
+            "identitySemantics": { "const": "frozen identity of the exact measured clean-worktree binary" }
+          }
+        }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "boundary": { "const": "prepared-maximal-cubic-factor-base" } } },
+      "then": {
+        "properties": {
+          "schema": { "const": "sagejs.rust-class-group/native-prepared-factor-base-benchmark-v1" },
+          "result": { "$ref": "https://sagejs.org/schemas/rust-class-group/prepared-multifield-vector-v1.json#/$defs/factorResult" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "boundary": { "const": "prepared-cubic-relation-prefix" } } },
+      "then": {
+        "properties": {
+          "schema": { "const": "sagejs.rust-class-group/native-prepared-relation-prefix-benchmark-v1" },
+          "result": { "$ref": "https://sagejs.org/schemas/rust-class-group/prepared-multifield-vector-v1.json#/$defs/relationResult" }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "bytes"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "bytes": { "type": "integer", "minimum": 1 },
+        "retained": { "type": "boolean" },
+        "identitySemantics": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

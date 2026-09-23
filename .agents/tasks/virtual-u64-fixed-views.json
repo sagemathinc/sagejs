@@ -1,0 +1,271 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "virtual-u64-fixed-views",
+  "title": "Virtual fixed UInt64 views",
+  "lane": "native-compiler",
+  "status": "active",
+  "owner": "user",
+  "objective": "Prove constant UInt64 arena spans across an authenticated private call graph, eliminate every validation justified by those facts, and retain checked construction for unproved views",
+  "base_commit": "07741b130c8fb55f9c73504441670e8e75a83e33",
+  "claims": [
+    "tools/native-kernel/checked-regions.cjs",
+    "tools/native-kernel/structural-proof-authority.cjs",
+    "tools/native-kernel/tagged-backend.cjs",
+    "tools/native-kernel/test/checked-private-region.cjs",
+    "tools/native-kernel/test/checked_private_region_witness.py",
+    "tools/native-kernel/test/structural-proof-authority.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "compiler proof-authority prototype c33561ab1"
+  ],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "Ordinary checked public UInt64Buffer view behavior",
+      "Generated C retains checked fallback unless compiler authority is reverified"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test tools/native-kernel/test/checked-private-region.cjs tools/native-kernel/test/structural-proof-authority.cjs",
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test tools/native-kernel/test/checked-private-region.cjs tools/native-kernel/test/structural-proof-authority.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.587,
+      "started_at": "2026-09-16T05:25:35.909Z",
+      "commit": "38e223c7021a92c3def92b797712dbc5ac843d31",
+      "workspace_fingerprint": "e4bf0b0ef5a4746afaadfa643bb9b1850892bcb55241c8b7ccc406cfb7aa6e47",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.06,
+      "started_at": "2026-09-16T05:31:24.824Z",
+      "commit": "38e223c7021a92c3def92b797712dbc5ac843d31",
+      "workspace_fingerprint": "e4bf0b0ef5a4746afaadfa643bb9b1850892bcb55241c8b7ccc406cfb7aa6e47",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 54.807,
+      "started_at": "2026-09-16T05:31:43.255Z",
+      "commit": "38e223c7021a92c3def92b797712dbc5ac843d31",
+      "workspace_fingerprint": "e4bf0b0ef5a4746afaadfa643bb9b1850892bcb55241c8b7ccc406cfb7aa6e47",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 779.846,
+      "started_at": "2026-09-16T05:34:37.165Z",
+      "commit": "38e223c7021a92c3def92b797712dbc5ac843d31",
+      "workspace_fingerprint": "e4bf0b0ef5a4746afaadfa643bb9b1850892bcb55241c8b7ccc406cfb7aa6e47",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 564.673,
+      "started_at": "2026-09-16T05:49:04.781Z",
+      "commit": "38e223c7021a92c3def92b797712dbc5ac843d31",
+      "workspace_fingerprint": "11cefbe34f15e0b2e6893959b5f7fb9b499d681db6f26be0fa597f88c2d709ac",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/checked-private-region.cjs tools/native-kernel/test/structural-proof-authority.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.889,
+      "started_at": "2026-09-16T07:43:33.106Z",
+      "commit": "670dda5539173ab937a47dffb5c150466b39aa38",
+      "workspace_fingerprint": "1d6154a2c501624fa7dcaa73d67c34f7941981b5893fa986675e16911bee1865",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.034,
+      "started_at": "2026-09-16T07:43:49.720Z",
+      "commit": "670dda5539173ab937a47dffb5c150466b39aa38",
+      "workspace_fingerprint": "1d6154a2c501624fa7dcaa73d67c34f7941981b5893fa986675e16911bee1865",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 54.142,
+      "started_at": "2026-09-16T07:44:06.912Z",
+      "commit": "670dda5539173ab937a47dffb5c150466b39aa38",
+      "workspace_fingerprint": "1d6154a2c501624fa7dcaa73d67c34f7941981b5893fa986675e16911bee1865",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/checked-private-region.cjs tools/native-kernel/test/structural-proof-authority.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 25.306,
+      "started_at": "2026-09-16T11:10:39.286Z",
+      "commit": "83dc2cd3206837262ed8374ba01b1c069e16cc46",
+      "workspace_fingerprint": "c1ef9d7b9e876ac8f40c5c0b569b7445d935164389398ee19a9e379ee6bca395",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.716,
+      "started_at": "2026-09-16T11:11:09.703Z",
+      "commit": "83dc2cd3206837262ed8374ba01b1c069e16cc46",
+      "workspace_fingerprint": "c1ef9d7b9e876ac8f40c5c0b569b7445d935164389398ee19a9e379ee6bca395",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 58.771,
+      "started_at": "2026-09-16T11:11:30.156Z",
+      "commit": "83dc2cd3206837262ed8374ba01b1c069e16cc46",
+      "workspace_fingerprint": "c1ef9d7b9e876ac8f40c5c0b569b7445d935164389398ee19a9e379ee6bca395",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/checked-private-region.cjs tools/native-kernel/test/structural-proof-authority.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 26.04,
+      "started_at": "2026-09-16T11:16:31.476Z",
+      "commit": "83dc2cd3206837262ed8374ba01b1c069e16cc46",
+      "workspace_fingerprint": "68a3019282f446a834c0289dde93ae16553ab4998765924c6896facb8f96e58c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.932,
+      "started_at": "2026-09-16T11:17:45.848Z",
+      "commit": "83dc2cd3206837262ed8374ba01b1c069e16cc46",
+      "workspace_fingerprint": "68a3019282f446a834c0289dde93ae16553ab4998765924c6896facb8f96e58c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/checked-private-region.cjs tools/native-kernel/test/structural-proof-authority.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 26.066,
+      "started_at": "2026-09-16T12:27:11.335Z",
+      "commit": "83dc2cd3206837262ed8374ba01b1c069e16cc46",
+      "workspace_fingerprint": "174c470e398b6b8d6f4ff3f4c0ecefae7f3e89507061a12b82ec01d10fe256c3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 16.34,
+      "started_at": "2026-09-16T12:27:42.235Z",
+      "commit": "83dc2cd3206837262ed8374ba01b1c069e16cc46",
+      "workspace_fingerprint": "174c470e398b6b8d6f4ff3f4c0ecefae7f3e89507061a12b82ec01d10fe256c3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 59.14,
+      "started_at": "2026-09-16T12:28:03.242Z",
+      "commit": "83dc2cd3206837262ed8374ba01b1c069e16cc46",
+      "workspace_fingerprint": "174c470e398b6b8d6f4ff3f4c0ecefae7f3e89507061a12b82ec01d10fe256c3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 687.294,
+      "started_at": "2026-09-16T12:29:08.803Z",
+      "commit": "83dc2cd3206837262ed8374ba01b1c069e16cc46",
+      "workspace_fingerprint": "174c470e398b6b8d6f4ff3f4c0ecefae7f3e89507061a12b82ec01d10fe256c3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/checked-private-region.cjs tools/native-kernel/test/structural-proof-authority.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 28.185,
+      "started_at": "2026-09-16T13:43:47.631Z",
+      "commit": "0c5fca0551f0f614cde5efbd652c6d78965f097e",
+      "workspace_fingerprint": "4d2daf88908bf911358d804791e6268b0ec17a856f6d973bc9d0c0e00bad7fb4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 17.362,
+      "started_at": "2026-09-16T13:44:19.808Z",
+      "commit": "0c5fca0551f0f614cde5efbd652c6d78965f097e",
+      "workspace_fingerprint": "4d2daf88908bf911358d804791e6268b0ec17a856f6d973bc9d0c0e00bad7fb4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 57.763,
+      "started_at": "2026-09-16T13:44:42.569Z",
+      "commit": "0c5fca0551f0f614cde5efbd652c6d78965f097e",
+      "workspace_fingerprint": "4d2daf88908bf911358d804791e6268b0ec17a856f6d973bc9d0c0e00bad7fb4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 337.721,
+      "started_at": "2026-09-16T13:45:45.835Z",
+      "commit": "0c5fca0551f0f614cde5efbd652c6d78965f097e",
+      "workspace_fingerprint": "4d2daf88908bf911358d804791e6268b0ec17a856f6d973bc9d0c0e00bad7fb4",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a fail-closed local-success theorem for otherwise unsupported while loops. The theorem retains only concrete scalar intervals and buffer minima for names never assigned anywhere in the loop, clears symbolic and relational facts, and analyzes only a contiguous summarized scalar producer, one or more same-typed forwarding copies, and an immediate declared direct-result consumer. No recovered fact crosses a branch, backedge, break, unrelated statement, or loop exit. Structural graph authority binds the caller, chain, producer summary, and transitive summary dependencies. On the frozen splitting-degree catalog this proves exactly four additional long-powu copy edges (eleven total), removes four checked relocations and 16,980 packet-zero checked calls, preserves all 7,081 outputs and nine malformed cases, and improves geometric paired time from 2.197845875 ms to 2.114490837 ms (3.79%, all seven pairs favorable). Combined with the preceding seven-edge slice, the catalog improved about 9.7% from 2.341 ms. An independent soundness audit approved the implementation and focused authority tests, architecture checks, and strict baselib checks pass.",
+    "risks": [
+      "The local-success theorem is intentionally narrower than a loop invariant: it requires an immediate producer/copy/consumer chain in one statement array and exports only the consumer call fact.",
+      "Any assignment anywhere in the loop recursively removes that name from the invariant seed, including assignments in alternatives and nested loops; this is conservative and may leave valid edges checked.",
+      "The three data-dependent post-trim UInt64 views still need a separately authenticated nonnegative-length or canonical-polynomial invariant. Affine base-plus-degree conservation alone is insufficient on hostile zero-filled storage.",
+      "A first full-native attempt was interrupted by the native-cache input-change guard after building FLINT. The clean rerun from the prepared cache completed successfully, so this was infrastructure churn rather than a semantic failure."
+    ],
+    "next_steps": [
+      "Add an atomic closed-private-graph span contract and use the authenticated 393-word entry arena to remove the eight constant-nine view validations while preserving every public and unproved fallback.",
+      "Measure the coherent copy-view pair first: it accounts for 73,138 packet-zero validations and has a disposable optimized-code ceiling near 5.8 KB and 273 jumps.",
+      "Retain the three dynamic post-trim view checks until paired affine updates, swaps, and nonnegative lengths are independently proved and mutation-tested.",
+      "After view validation, reprofile the remaining divrem, square, multiply, bounded tagged-add, and private-call boundaries against the 1.39 ms mechanical-C ceiling."
+    ]
+  }
+}

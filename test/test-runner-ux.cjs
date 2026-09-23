@@ -45,8 +45,64 @@ const {
 } = require("../scripts/build-parallelism.cjs");
 const packageScripts = require("../package.json").scripts;
 const {
+  buildEnvironment,
   buildLazyNumericalReactors,
+  compilerSummary,
+  sourceCliArguments,
+  validateSelfHostedCompiler,
 } = require("../scripts/build.cjs");
+
+test("compiler convergence requires an explicit fixed-point report", () => {
+  assert.equal(
+    compilerSummary("Compiler is built with the up-to-date version of itself\n"),
+    "Self-hosted compiler was already converged.",
+  );
+  assert.match(
+    compilerSummary(
+      "Compiler built in 1.25 seconds\n" +
+        "Compiler is built with the up-to-date version of itself\n",
+    ),
+    /converged in 1 pass \(1.25s\)/,
+  );
+  assert.throws(
+    () => compilerSummary("native launcher returned without building\n"),
+    /did not report an up-to-date fixed point/,
+  );
+  assert.throws(
+    () => compilerSummary("Compiler built in 1.25 seconds\n"),
+    /did not report an up-to-date fixed point/,
+  );
+});
+
+test("workspace build stages bypass installed launcher dispatch", () => {
+  const [launcher, ...args] = sourceCliArguments("self", "--complete");
+  assert.equal(launcher, join(__dirname, "..", "bin", "sagejs-source.cjs"));
+  assert.deepEqual(args, ["self", "--complete"]);
+  assert.deepEqual(buildEnvironment({ KEEP: "yes", SAGEJS_USE_SOURCE: "0" }), {
+    KEEP: "yes",
+    SAGEJS_USE_SOURCE: "1",
+  });
+});
+
+test("workspace builds reject stale self-hosted compiler artifacts", () => {
+  assert.equal(
+    validateSelfHostedCompiler(() => ({
+      get_compiler_version: () => "source-version",
+    })),
+    "source-version",
+  );
+  assert.throws(
+    () => validateSelfHostedCompiler(() => ({})),
+    /omitted get_compiler_version/,
+  );
+  assert.throws(
+    () =>
+      validateSelfHostedCompiler(() => ({
+        get_compiler_version: () => "",
+      })),
+    /has no version/,
+  );
+});
 
 test("test durations are rendered for humans", () => {
   assert.equal(formatDuration(0), "0s");

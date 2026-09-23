@@ -1,0 +1,212 @@
+{
+  "schema": "sagejs.rust-class-group-browser-vector/v1",
+  "id": "complex-cubic-discriminant-minus-23-factor-base",
+  "request": {
+    "schema": "sagejs.rust-class-group.neutral-input/v1",
+    "inputId": "sha256:af787e387ea785421e0359005124e26496fb91ef159524a6962d693fbd43dd81",
+    "fieldId": "complex-cubic-discriminant-minus-23",
+    "field": {
+      "variable": "x",
+      "coefficientsAscending": [
+        "1",
+        "-1",
+        "0",
+        "1"
+      ],
+      "degree": 3,
+      "monic": true,
+      "irreducible": true
+    },
+    "preparation": {
+      "kind": "neutral-prepared-field",
+      "authority": "sagejs-certified-preparation",
+      "maximalOrderCertified": true,
+      "basisNumeratorsRowMajor": [
+        "1",
+        "0",
+        "0",
+        "0",
+        "1",
+        "0",
+        "0",
+        "0",
+        "1"
+      ],
+      "basisDenominator": "1",
+      "discriminant": "-23",
+      "signature": {
+        "realPlaces": 1,
+        "complexPairs": 1
+      },
+      "multiplicationTable": [
+        [
+          [
+            {
+              "numerator": "1",
+              "denominator": "1"
+            },
+            {
+              "numerator": "0",
+              "denominator": "1"
+            },
+            {
+              "numerator": "0",
+              "denominator": "1"
+            }
+          ],
+          [
+            {
+              "numerator": "0",
+              "denominator": "1"
+            },
+            {
+              "numerator": "1",
+              "denominator": "1"
+            },
+            {
+              "numerator": "0",
+              "denominator": "1"
+            }
+          ],
+          [
+            {
+              "numerator": "0",
+              "denominator": "1"
+            },
+            {
+              "numerator": "0",
+              "denominator": "1"
+            },
+            {
+              "numerator": "1",
+              "denominator": "1"
+            }
+          ]
+        ],
+        [
+          [
+            {
+              "numerator": "0",
+              "denominator": "1"
+            },
+            {
+              "numerator": "1",
+              "denominator": "1"
+            },
+            {
+              "numerator": "0",
+              "denominator": "1"
+            }
+          ],
+          [
+            {
+              "numerator": "0",
+              "denominator": "1"
+            },
+            {
+              "numerator": "0",
+              "denominator": "1"
+            },
+            {
+              "numerator": "1",
+              "denominator": "1"
+            }
+          ],
+          [
+            {
+              "numerator": "-1",
+              "denominator": "1"
+            },
+            {
+              "numerator": "1",
+              "denominator": "1"
+            },
+            {
+              "numerator": "0",
+              "denominator": "1"
+            }
+          ]
+        ],
+        [
+          [
+            {
+              "numerator": "0",
+              "denominator": "1"
+            },
+            {
+              "numerator": "0",
+              "denominator": "1"
+            },
+            {
+              "numerator": "1",
+              "denominator": "1"
+            }
+          ],
+          [
+            {
+              "numerator": "-1",
+              "denominator": "1"
+            },
+            {
+              "numerator": "1",
+              "denominator": "1"
+            },
+            {
+              "numerator": "0",
+              "denominator": "1"
+            }
+          ],
+          [
+            {
+              "numerator": "0",
+              "denominator": "1"
+            },
+            {
+              "numerator": "-1",
+              "denominator": "1"
+            },
+            {
+              "numerator": "1",
+              "denominator": "1"
+            }
+          ]
+        ]
+      ],
+      "irreducibilityPrime": 2,
+      "indexPrimes": [],
+      "sourceSha256": "af787e387ea785421e0359005124e26496fb91ef159524a6962d693fbd43dd81"
+    },
+    "request": {
+      "proof": "conditional-grh",
+      "output": "class-and-unit-group",
+      "mapPolicy": "construct-eagerly",
+      "unitPolicy": "compact-complete",
+      "limits": {
+        "wallMilliseconds": "60000",
+        "memoryBytes": "1073741824",
+        "relationCandidates": "1000000",
+        "precisionBits": 192,
+        "continuationPasses": 8
+      }
+    },
+    "randomness": {
+      "algorithm": "none",
+      "seed": null
+    },
+    "containsOracleAnswers": false
+  },
+  "expected": {
+    "checkingBound": 11,
+    "completeGroupCount": 0,
+    "descriptorSha256": "66713946f21272a5da62be5393d89c63d1dc3f25ba9c39748291903583f1c170",
+    "equationOrderIndex": "1",
+    "fieldId": "complex-cubic-discriminant-minus-23",
+    "idealCount": 3,
+    "inputId": "sha256:af787e387ea785421e0359005124e26496fb91ef159524a6962d693fbd43dd81",
+    "rationalPrimeCount": 3,
+    "relationBound": 11,
+    "schema": "sagejs.rust-class-group/prepared-factor-base-v1",
+    "stage": "prepared-maximal-cubic-factor-base",
+    "status": "bounded-stage"
+  }
+}

@@ -1,0 +1,96 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "c4-high-precision-regulator",
+  "title": "Prepare C4 high-precision regulator schedule",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement fail-atomic source-transparent preparation of the field3 candidate regulator and L schedule from an eventual complete 153088-bit C3 A owner, separately recording the 153152-bit embedding guard, explicitly pending analytic acceptance and without consuming frozen 192-bit answers",
+  "base_commit": "39803966479c4fe6fa2ddbd64a23fc321651ca77",
+  "claims": [
+    "bench/pari-class-group-port/field3_high_precision_regulator_schedule.py",
+    "bench/pari-class-group-port/check_field3_high_precision_regulator_schedule.cjs",
+    "bench/pari-class-group-port/field3_high_precision_regulator_schedule_audit.md",
+    "bench/pari-class-group-port/integer_real_sum.py",
+    "bench/pari-class-group-port/log_matrix_transform.py",
+    "bench/pari-class-group-port/regulator_bestappr.py",
+    "bench/pari-class-group-port/regulator_multiple.py",
+    "bench/pari-class-group-port/regulator_pivots.py",
+    "bench/pari-class-group-port/regulator_preparation.py",
+    "bench/pari-class-group-port/regulator_scalar.py"
+  ],
+  "dependencies": [
+    "complete authenticated C3 3x13 logarithm owner at 153088 bits",
+    "field-derived h*invhr and terminal HNF owners for denominator-bound derivation and PARI bad_check acceptance"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "PARI 2.17.4 low-precision differential only"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node bench/pari-class-group-port/check_field3_high_precision_regulator_schedule.cjs",
+    "node scripts/check-strict-baselib.cjs",
+    "pnpm parallel:check"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_field3_high_precision_regulator_schedule.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.391,
+      "started_at": "2026-09-17T14:20:10.277Z",
+      "commit": "39803966479c4fe6fa2ddbd64a23fc321651ca77",
+      "workspace_fingerprint": "e41458754500c51bc44d1421d02b25424e8f7de97fa6f14b4fb8246c80da0afa",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/check-strict-baselib.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 51.373,
+      "started_at": "2026-09-17T14:20:15.148Z",
+      "commit": "39803966479c4fe6fa2ddbd64a23fc321651ca77",
+      "workspace_fingerprint": "e41458754500c51bc44d1421d02b25424e8f7de97fa6f14b4fb8246c80da0afa",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_field3_high_precision_regulator_schedule.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.38,
+      "started_at": "2026-09-17T14:32:40.074Z",
+      "commit": "fef49be924cca72a8053269db8d675b488dc159b",
+      "workspace_fingerprint": "30149d71d169ecf5e2810f1048da9b6995077977f175a949c7f2e599d69207ae",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Prepared a fail-atomic ordinary-Python C4 coordinator that authenticates the eventual 153088-bit C3 owner, preserves source ordering, derives the regulator multiple and candidate L/R, and explicitly leaves analytic acceptance pending. The protocol distinguishes 153152-bit internal embedding guard precision, genuine compute_R myprecdbl retry, and terminal getfu PRECI. Lifted the connected packed-real validation corridor, added a fresh PARI 2.17.4 reconstruction differential, high-precision fallback probes, and authority mutation tests. No real field-3 mathematical owner is published and no heavy native build was run.",
+    "risks": [
+      "The real complete C3 A owner does not yet exist, so only synthetic target-precision execution is exercised.",
+      "The permitted inputs do not contain PARI's field-derived h*invhr factor or terminal HNF; authentic denominator-bound derivation and bad_check(z*R) acceptance remain downstream.",
+      "The full pnpm test:baselib:strict wrapper is blocked by a pre-existing doubled-backtick docstring in field3_high_precision_hnf_transform.py outside this lane; the underlying strict CPython/Ruff/Pyright checker passes with zero errors."
+    ],
+    "next_steps": [
+      "Bind the real complete C3 owner hash/generation/order to this coordinator and replay its 153088-bit scalars, retaining 153152 only as the embedding/root guard precision.",
+      "Add authenticated terminal-HNF and field-derived h*invhr derivations, derive the denominator bound, and replay PARI bad_check before promoting candidate L/R to accepted owners; use 229632 only after a live compute_R PRECI.",
+      "Only then hand the accepted L/R owners to cleanarch/getfu."
+    ]
+  }
+}

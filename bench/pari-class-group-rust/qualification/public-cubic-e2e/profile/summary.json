@@ -1,0 +1,129 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtcDate": "2026-09-20",
+  "subject": {
+    "polynomialAscending": [
+      2000000000018,
+      -2000000000010,
+      0,
+      1
+    ],
+    "gitCommit": "f4199f4da0c0da6bc79d02950e6b5d71b7fb13ad",
+    "binaryPath": "target/release/deps/compact_cubic_presentation-0fe3132291e345f8",
+    "binarySha256": "e98bbb11acda050d4a37dfbf3add727d974e0d96c101234366765c617c8d4c73",
+    "expectedInvariantFactors": [
+      2,
+      2
+    ],
+    "expectedClassNumber": 4
+  },
+  "environment": {
+    "operatingSystem": "Linux 7.0.0-1011-gcp x86_64",
+    "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+    "llvm": "22.1.8",
+    "callgrind": "valgrind-3.25.1",
+    "cpuAffinity": 3,
+    "perfAvailable": false,
+    "perfEventParanoid": 4
+  },
+  "commands": {
+    "native": "taskset -c 3 target/release/deps/compact_cubic_presentation-0fe3132291e345f8 --exact row6_completes_conditionally_end_to_end_from_coefficients --nocapture",
+    "candidateCallgrind": "taskset -c 3 /tmp/valgrind-build.jS6H6t/install/bin/valgrind --tool=callgrind --callgrind-out-file=/tmp/row6-f419-candidate-callgrind.out --collect-jumps=yes --simulate-cache=no --branch-sim=no --separate-threads=no target/release/deps/compact_cubic_presentation-0fe3132291e345f8 --exact row6_reaches_the_compact_authenticated_candidate_boundary_from_coefficients --nocapture",
+    "fullCallgrind": "taskset -c 3 /tmp/valgrind-build.jS6H6t/install/bin/valgrind --tool=callgrind --callgrind-out-file=/tmp/row6-f419-full-callgrind.out --collect-jumps=yes --simulate-cache=no --branch-sim=no --separate-threads=no target/release/deps/compact_cubic_presentation-0fe3132291e345f8 --exact row6_completes_conditionally_end_to_end_from_coefficients --nocapture",
+    "annotation": "/tmp/valgrind-build.jS6H6t/install/bin/callgrind_annotate --inclusive=yes --threshold=99.9 --tree=calling CALLGRIND_OUT"
+  },
+  "nativeStageNanoseconds": {
+    "preparation": 310079621,
+    "relationCollection": 2722034818,
+    "candidateAuthentication": 2098935397,
+    "unitAndAnalyticCompletion": 979604167,
+    "total": 6185608103
+  },
+  "callgrind": {
+    "event": "Ir",
+    "candidateProcessTotal": 47898055897,
+    "fullProcessTotal": 57417142520,
+    "authentication": {
+      "total": 22835924192,
+      "subtrees": {
+        "elementaryTwoPresentation": 14750855871,
+        "flintSmallSurplusClassOrder": 8948522935,
+        "fmpzMatFfluWithinClassOrder": 6989905378,
+        "fmpzMatSolveFfluPrecompWithinClassOrder": 1700122519,
+        "compactTargetSolves": 2518290688,
+        "modularIndependentRows": 1681268175,
+        "saturationMinorCertificate": 1142538889,
+        "dependencyReorderAndVerification": 403253303,
+        "classMapAuthentication": 3429440264,
+        "presentationAuthorization": 2159127331,
+        "duplicateBindingSha256Traversals": 2907911260
+      }
+    },
+    "completion": {
+      "total": 8862854381,
+      "subtrees": {
+        "flintArbRegulator": 5064327937,
+        "arbLogDescendants": 4949039289,
+        "mpfrRelationLogTraversal": 2325942742,
+        "mpfrLogDescendants": 2312334337,
+        "sealedEvidenceReplay": 548512947,
+        "initialDependencyAnnihilationReplay": 435118337,
+        "exactFinalUnitReplay": 129851257,
+        "splittingRecordExtensions": 100420321,
+        "belabasFriedmanIndexEnclosures": 84774090,
+        "finalDependencyLogMapping": 82938895
+      },
+      "arbLogCalls": 6822,
+      "mpfrLogCalls": 3411,
+      "relations": 1137,
+      "realEmbeddings": 3,
+      "arbPasses": 2
+    }
+  },
+  "rawEvidence": [
+    {
+      "path": "/tmp/row6-f419-native-full.log",
+      "sha256": "56d1f8757278ec697871973d031555ddd07cf987ff5a9d9b3e0d83ef0007ae05"
+    },
+    {
+      "path": "/tmp/row6-f419-candidate-callgrind.log",
+      "sha256": "e53860866437669e7aaf6ff099ecddb715f43691cff34f8a9ba86d015339b0f1"
+    },
+    {
+      "path": "/tmp/row6-f419-candidate-callgrind.out",
+      "sha256": "4e39c67a12b4146adee0d91b018b0737452e3d24a8d7a48b399447a928108e8d"
+    },
+    {
+      "path": "/tmp/row6-f419-candidate-tree99.txt",
+      "sha256": "8dddc82db3443a81c83e789ae737b6263b9479ed1357df0e822cf35fb238c94b"
+    },
+    {
+      "path": "/tmp/row6-f419-full-callgrind.log",
+      "sha256": "5ebeb918f5c17cc2e8020a1f1e5620d85bab575f9e8d1ea480432a137bf51922"
+    },
+    {
+      "path": "/tmp/row6-f419-full-callgrind.out",
+      "sha256": "47d3db0f9610e4096633dcc616c12f49087b3c2bedce3a61f2f707f5a07178a5"
+    },
+    {
+      "path": "/tmp/row6-f419-full-tree99.txt",
+      "sha256": "6e0fa2c5c950a935aa01abfbf305ded0df293cd4a8ada35f39366bde8589c77d"
+    }
+  ],
+  "limitations": [
+    "Linux perf was unavailable and kernel perf events were restricted.",
+    "Callgrind wall times are instrumentation-inflated and are not headline benchmark measurements.",
+    "Cache and branch simulation were disabled.",
+    "The binary digest, not the subsequently dirty source tree, binds the profiled executable.",
+    "Raw Callgrind profiles remain outside the repository and are bound here only by path and SHA-256."
+  ],
+  "rankedTargets": [
+    "Replace or reuse the dense FLINT FFLU factorization with exact replayable modular certificates.",
+    "Mint one private class-map binding after exact verification and use canonical signed-limb encoding.",
+    "Batch exact relation-map verification in a reusable FLINT workspace.",
+    "Choose a conservative regulator precision before the first directed Arb call.",
+    "Prefer sparse exact kernel and unit representatives and skip provably zero-support relations.",
+    "Use adaptive MPFR precision while retaining independent replay against the Arb enclosure.",
+    "Batch mutation-sensitive exact replays where a private structural seal cannot replace them."
+  ]
+}

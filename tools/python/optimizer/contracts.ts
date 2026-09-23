@@ -117,7 +117,16 @@ function assignedNames(compiler: any, statement: any): string[] {
     ? statement.body
     : statement;
   if (body instanceof compiler.AST_Assign) targetNames(body.left);
-  if (body instanceof compiler.AST_AnnotatedAssignment) targetNames(body.target);
+  // Older parser backends do not expose an annotated-assignment constructor.
+  // Guard the optional node kind before using `instanceof`; ordinary modules
+  // without annotations must not fail contract collection merely because the
+  // backend omits that constructor.
+  if (
+    compiler.AST_AnnotatedAssignment &&
+    body instanceof compiler.AST_AnnotatedAssignment
+  ) {
+    targetNames(body.target);
+  }
   return result;
 }
 

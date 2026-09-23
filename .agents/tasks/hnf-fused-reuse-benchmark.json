@@ -1,0 +1,117 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "hnf-fused-reuse-benchmark",
+  "title": "Benchmark fused HNF storage reuse",
+  "lane": "arithmetic-algebra",
+  "status": "review",
+  "owner": "user",
+  "objective": "Implement an isolated frozen vector429 128x64 HNF A/B benchmark comparing 32 fresh prefix calls with a fused retained-storage candidate, exact prefix/final oracles, allocation metrics, and pinned alternating timings",
+  "base_commit": "e48766134a040087074c0fd5d8ada0eb31d5aa92",
+  "claims": [
+    "bench/pari-class-group-port/hnf_fused_reuse_benchmark.cjs",
+    "bench/pari-class-group-port/run_hnf_fused_reuse_benchmark.sh",
+    "bench/pari-class-group-port/hnf_fused_reuse_results.md",
+    "bench/pari-class-group-port/vector429_p2_mixed_quotient_matrix.json"
+  ],
+  "dependencies": [],
+  "references": [
+    "src/lib/sagejs/number_fields/om_maxmin.py packed_incremental_row_hnf_in_place",
+    "vector429 p=2 OM mixed-radix quotient lattice"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Exact equality of every two-row prefix HNF and final HNF"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node bench/pari-class-group-port/hnf_fused_reuse_benchmark.cjs --verify-only"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/hnf_fused_reuse_benchmark.cjs --verify-only",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 18.17,
+      "started_at": "2026-09-16T18:23:10.435Z",
+      "commit": "e48766134a040087074c0fd5d8ada0eb31d5aa92",
+      "workspace_fingerprint": "f5448905fcada624dcb6019ce8916e55655d4f8e1d00b616915de53c868e5eaf",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 57.157,
+      "started_at": "2026-09-16T18:23:33.158Z",
+      "commit": "e48766134a040087074c0fd5d8ada0eb31d5aa92",
+      "workspace_fingerprint": "f5448905fcada624dcb6019ce8916e55655d4f8e1d00b616915de53c868e5eaf",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 786.421,
+      "started_at": "2026-09-16T18:24:36.733Z",
+      "commit": "e48766134a040087074c0fd5d8ada0eb31d5aa92",
+      "workspace_fingerprint": "f5448905fcada624dcb6019ce8916e55655d4f8e1d00b616915de53c868e5eaf",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/hnf_fused_reuse_benchmark.cjs --verify-only",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 17.794,
+      "started_at": "2026-09-16T18:41:26.452Z",
+      "commit": "6e68e6e431ad31dd2ccfa271ec78585ccc96693d",
+      "workspace_fingerprint": "efc403483b914b208d75902c378571e5ddf705d01d682e0efa2a0405fab4985e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 55.478,
+      "started_at": "2026-09-16T18:41:44.885Z",
+      "commit": "6e68e6e431ad31dd2ccfa271ec78585ccc96693d",
+      "workspace_fingerprint": "efc403483b914b208d75902c378571e5ddf705d01d682e0efa2a0405fab4985e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 768.468,
+      "started_at": "2026-09-16T18:42:44.569Z",
+      "commit": "6e68e6e431ad31dd2ccfa271ec78585ccc96693d",
+      "workspace_fingerprint": "efc403483b914b208d75902c378571e5ddf705d01d682e0efa2a0405fab4985e",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added an isolated, reproducible A/B benchmark for the authentic vector429 p=2 128x64 mixed-quotient HNF. The benchmark freezes the exact input and final HNF, proves the final lattice equals the independent PARI local lattice, compares every one of 32 two-row prefix HNFs exactly, accounts for logical buffer/materialization traffic, and measures seven pinned alternating pairs. Keeping exact storage resident in one native call reduced mean time from 3.4153 s to 0.5210 s (6.555x), native calls from 32 to 1, and IntegerBuffer constructions from 96 to 3.",
+    "risks": [
+      "This is one deliberately selected authentic degree-64 HNF workload, so the 6.555x ratio must not be generalized to every HNF shape.",
+      "Materialization figures are exact wrapper-level logical counts and requested buffer capacities, not allocator hooks, malloc counts, or peak RSS.",
+      "The production fused kernel already existed at the lane base; this lane adds frozen evidence and no production implementation change."
+    ],
+    "next_steps": [
+      "Use the same validate-once, retain-exact-storage, publish-once structure around the next multi-stage exact class-group workflow.",
+      "If allocator behavior itself becomes the question, add native allocator telemetry separately instead of interpreting logical capacity as physical allocation."
+    ]
+  }
+}

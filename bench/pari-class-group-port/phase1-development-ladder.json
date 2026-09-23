@@ -1,0 +1,170 @@
+{
+  "schema": 1,
+  "experiment": "pari-class-group-end-to-end-native-phase1-ladder-audit",
+  "baseCommit": "1196fd4fdc5fdaa2a3fd1273d32c594bfb299ffa",
+  "sources": {
+    "plan": {"path": "agents/pari-class-group-end-to-end-native-plan.md", "commit": "1196fd4fdc5fdaa2a3fd1273d32c594bfb299ffa", "gitBlob": "19a0e56c38b4af8e3230235495a02fa1796f7a8f", "sha256": "88a47911bcba3007f82e4ff2d426a2760afab136118ed5cb0922104f19303fad"},
+    "panel": {"path": "bench/pari-class-group-port/panel.json", "sha256": "7c6515240940db971cff3bc28819f9e6547adae9305643b0f6274eeafe6ec3a5"},
+    "qualificationManifest": {"path": "bench/pari-class-group-port/class-unit-qualification-manifest.json", "sha256": "fb3b5d16a03ab348b7d8f495dddb6d2716dda45c0486213246298222a9a3cb90"}
+  },
+  "pristinePari": {
+    "version": "2.17.4",
+    "archiveSha256": "02651d99c391007d384b3fadbc20abc6916b77036f9e496c99e9ce8688ca4b53",
+    "buch2Path": "pari-2.17.4/src/basemath/buch2.c",
+    "buch2Sha256": "904ced8034732c7fcfe1da393e23950aac0862b085150fdc24ce1e31beb7d1ac"
+  },
+  "selectionRule": {
+    "kind": "deterministic-pari-only-v1",
+    "steps": [
+      "already-exercised real cubic",
+      "already-exercised mixed quartic",
+      "first remaining tuning row with a known nontrivial class group",
+      "remaining tuning row with maximum known class number, tied by field id"
+    ],
+    "additionalDevelopmentOrder": "remaining tuning rows in frozen panel order"
+  },
+  "fields": [
+    {"panelIndex": 0, "role": "sentinel", "id": "generated-sha256-0e970fdb1b4f043d042bd6093172638086e293ad03749215f71f7510a6622ba0", "polynomialSha256": "2d0fa668fad6c929a71eabdee7ebfb7acc1938307a41d4c1b49847cc99c7964d"},
+    {"panelIndex": 8, "role": "sentinel", "id": "generated-sha256-0857fab7114ab0045f1b91601101549c7b8d854c5c999b91afcb190cd2863363", "polynomialSha256": "4184b3a9e86b3cc2f80a3dcaa593cba175263954c0e914b9cc6feaf68e9b0f52"},
+    {"panelIndex": 1, "role": "sentinel", "id": "generated-sha256-dec56e7e41f5f60071249da2e66871ed837a3c6e65d821c328e7b4c57adaff3f", "polynomialSha256": "394cce5d99f0e9f8ba49a12e1542ff41f36c98b535a4535071414a575ded95ba"},
+    {"panelIndex": 14, "role": "sentinel", "id": "generated-sha256-e1d4643ab62bde9546d63340545e5302c2cef517222d569e634fb5e2093f6413", "polynomialSha256": "aa0aa6152d8cf26cfe21b9f0b2e8c25aadb5cd00161a0ca3cf4d81d92df2ea20"},
+    {"panelIndex": 3, "role": "additional-development", "id": "generated-sha256-11997528676ebeb1c0636be2cb828b5ed5a527ea18eb3a4ace953984da507de9", "polynomialSha256": "aae73048ee765ce38148539a3abf01dac43ab04427126dae8295211d684d4d15"},
+    {"panelIndex": 4, "role": "additional-development", "id": "generated-sha256-806defcf929c9cfff7467b8e7ea7b9f939cdd042bce8c1f5a310f5688904e3b9", "polynomialSha256": "beb19c9584069e8397f9b1d5ddb6d87965aabcc0c788003ea106f3a2f0f566e6"},
+    {"panelIndex": 6, "role": "additional-development", "id": "generated-sha256-55ba15494f03f38bf8f687ff4d2813e81184d71c84dbed9e1adc6af7ba62f0eb", "polynomialSha256": "26fed17015f6479f2de7a3544d8e2ac9ef41ec899b18193d997489a0aeafa416"},
+    {"panelIndex": 10, "role": "additional-development", "id": "generated-sha256-984793770b4a15a79fbc9984fe352fbc867491917733c78bdba3b1856c18e3a7", "polynomialSha256": "205cea0cc9446e959892f4b3cd8dd5e53ff37ae4fd43d335974bffaf3c92ec7a"},
+    {"panelIndex": 11, "role": "additional-development", "id": "generated-sha256-147ddd296edb3764954d6142a499d17edcfecc635aec0181d4beda65d97ad4ab", "polynomialSha256": "ce2bfa61425aa6816f76d5d4f48e7568a7cca85e7ae408e6ec3cb423cf353b07"},
+    {"panelIndex": 13, "role": "additional-development", "id": "generated-sha256-353468f1887e96f5a2f66e3121564636ed8cdbd75bde6571609627bbe8586e33", "polynomialSha256": "a0f7253a51b3045aa02d82f0846e4caa390b93ef159b8c1713245f5793d1e06c"},
+    {"panelIndex": 16, "role": "additional-development", "id": "3.1.1002718428660.2", "polynomialSha256": "aabb93f0d6139f9397586e148a87f5444f7da173ef7d1aabc0c8fae15705cf56"},
+    {"panelIndex": 18, "role": "additional-development", "id": "3.1.1005907102200.3", "polynomialSha256": "d48b43b95d82e5e127e939b4625aedac5bbb1f927c9b92e19c583c51c0901c6e"},
+    {"panelIndex": 19, "role": "additional-development", "id": "3.1.1086061775432017340256300.107", "polynomialSha256": "0aab4dadcd4bc7c70dcb017b9f584154d6fd1d98500e7951c71ace3efa5e81db"},
+    {"panelIndex": 20, "role": "additional-development", "id": "5.1.1000000.1", "polynomialSha256": "36db16a4e174ca1a24dc16439e97c3660cb5135b378dcd3c2e86e438fb3bee11"},
+    {"panelIndex": 21, "role": "additional-development", "id": "5.3.1009349859375.3", "polynomialSha256": "6966124ec38a3af183ec7fa9d6cc4f376ef36aa0ba716eeff92bcba0bf7a64bb"},
+    {"panelIndex": 23, "role": "additional-development", "id": "5.5.1002836007889.1", "polynomialSha256": "c3077e07c31ac7586ee22c1a57ecfab1883699f8061f850ad75a86d46f23ea73"}
+  ],
+  "existingDefaultDriverEvidence": {
+    "checker": {"path": "bench/pari-class-group-port/check_default_driver_trace.cjs", "sha256": "1767daaa24fbfd1633cae0bacd0040a31233112111d9839bc91e0946dee97b5a"},
+    "exporter": {"path": "bench/pari-class-group-port/export_pari_development_panel.cjs", "sha256": "515e391c3d86a3e1e6504058b3d6b7ea8651df864d9c83113afdec4fed93f31b"},
+    "manifest": {"path": "bench/pari-class-group-port/development-default-driver-manifest.json", "sha256": "79e77fbb7b3c8920437ce701a837a05720355cf008dd44705efee6c1e04cd261"},
+    "coveredPanelIndices": [0, 1, 3, 4, 6, 8, 10, 11, 13, 14, 16, 18, 19, 20, 21, 23],
+    "uncoveredPanelIndices": [],
+    "allSixteenTraced": true,
+    "totalPayloadBytes": 608340929,
+    "payloadStorage": "external /scratch artifacts authenticated by the compact manifest"
+  },
+  "coverage": {
+    "nonemptyW": {"performancePopulation": "observed", "panelIndices": [10], "evidence": ["field3_resident_retry_audit.md", "retry_hnf_integration_audit.md"]},
+    "randomRelations": {
+      "performancePopulation": "absent",
+      "panelIndices": [],
+      "evidence": ["retry_hnf_integration_audit.md", "resident_attempt_reference_audit.md"],
+      "correctnessOnly": {
+        "status": "closed-frozen-corridor",
+        "panelIdentityIndex": 10,
+        "defaultPolicy": false,
+        "fixture": "rnd_relation_collector_fixture.json",
+        "fixtureSha256": "d686f79595579b59349483d601d25282f08719d16414ec7303c169784cf9c0e1",
+        "audit": "rnd_relation_collector_audit.md",
+        "auditSha256": "92fbf8f9771c6e2469d46616c1ff6c946871db6d02f5a4295730390da5ae58a7",
+        "checker": "check_rnd_relation_collector.cjs",
+        "checkerSha256": "fb01b7cf9c86c691531258d3b1aa54bc6fe5d08f7c1697855e1565651be3387d",
+        "note": "Pristine PARI executes literal rnd_rel after a declared control forces the first post-HNF collection branch; it is not a natural default-driver observation."
+      }
+    },
+    "rankDeficiency": {"performancePopulation": "observed", "panelIndices": [8, 10], "evidence": ["retry_hnf_integration_audit.md"]},
+    "precisionEscalation": {
+      "performancePopulation": "absent",
+      "panelIndices": [],
+      "evidence": ["retry_hnf_integration_audit.md"],
+      "correctnessOnly": {
+        "status": "closed-bounded-authentic-h1-corridor",
+        "panelIdentityIndex": 0,
+        "defaultPolicy": false,
+        "naturalDefaultDriverObservation": false,
+        "fixture": "phase1-precision-escalation-fixture.json",
+        "fixtureSha256": "433c5965ea518bdcf30ad766b3186724dbd9a5837d398550ec18f1f2596bac76",
+        "audit": "phase1_precision_escalation_fixture_audit.md",
+        "auditSha256": "835414ea0cb6659a9f4d81428ef31e97be2a02929809283ff44ab9f63c31b381",
+        "checker": "check_phase1_precision_escalation_fixture.cjs",
+        "checkerSha256": "af510cebcc0902bd6356bc74e49b79987906c3df753e2c63ec1109124a6d790f",
+        "note": "The authentic H1 correctness corridor observes 192, 384, 768, and 1536 PRECI attempts followed by success at 2304; it does not establish precision escalation in the frozen default-driver performance population."
+      }
+    },
+    "honesty": {
+      "performancePopulation": "absent",
+      "panelIndices": [],
+      "evidence": ["end_to_end_frontier.md"],
+      "correctnessOnly": {
+        "status": "closed-frozen-all-failure-corridor",
+        "genericBranchStatus": "partial",
+        "panelIdentityIndex": 0,
+        "defaultPolicy": false,
+        "fixture": "honesty_branch_fixture.json",
+        "fixtureSha256": "9b34eca4b40c6af731202e0e6d64727af84c0d1610c6f4368c66fb2df22b4b1d",
+        "schedulerFixture": "honesty_scheduler_fixture.json",
+        "schedulerFixtureSha256": "a34b2dee6f1f416563aa65c51febdff9dc732c985062511b95be8f4750c595c0",
+        "audit": "honesty_scheduler_audit.md",
+        "auditSha256": "60bbc5991d7459434e45104287eb597a7054aae6ae9b20b5a0fad45fc1d26d21",
+        "checker": "check_honesty_scheduler.cjs",
+        "checkerSha256": "d56c69872d9f6709694f5d4c5dcba2bfad170e404bd2e4a83a41257ef42e686e",
+        "note": "The scheduler closes the bounded unequal-bound all-failure case. It is not rnd_rel, a natural default-bound observation, or a successful/full generic honesty branch."
+      },
+      "selectedSuccess": {
+        "status": "closed-selected-immediate-success-corridor",
+        "genericBranchStatus": "partial",
+        "panelIdentityIndex": 21,
+        "defaultPolicy": false,
+        "customBounds": {"C1": 5, "C2": 31},
+        "fixture": "honesty_success_fixture.json",
+        "fixtureSha256": "f90ff02e7c0f8e08282d13e3d73193d6a2751420988d502482ce294f7562f35c",
+        "selectionChecker": "check_honesty_success.cjs",
+        "selectionCheckerSha256": "a6ddcd502749f5aa243828e3111dc1d3cfbdd9743e1966ec803215a22d957ff5",
+        "liveChecker": "check_honesty_success_live_first_probe.cjs",
+        "liveCheckerSha256": "897e193d35da129d1a4711595e45f50d7b6badad90826416d39c3a7db23a0a2e",
+        "audit": "honesty_success_audit.md",
+        "auditSha256": "b8cf0a7abee5fdb4b796076ffd4396ae5ec6093c51d380ed404f3647c9c84eed",
+        "liveAudit": "honesty_success_live_first_probe_audit.md",
+        "liveAuditSha256": "1ef6892d96279fff97f6794bb6c67bde4ef7a23f49909d05815d0eb6631e340a",
+        "note": "The selected row-21 path computes and consumes six immediate successful probes, increments KCZ three times, and restores it from six to three. It does not cover automorphism orbits, failure/retry arithmetic, or a general honesty algorithm."
+      }
+    }
+  },
+  "evidenceHashes": {
+    "retry_hnf_integration_audit.md": "43b3f577c866f6b76b0270cebe0f5370f29a5c100aad0e047d5271255a35a421",
+    "field3_resident_retry_audit.md": "083a157268afe114169affe388c8cfacc7b1c5c78659e7191ba4f7fb48a9a226",
+    "end_to_end_frontier.md": "9560541f2864a00ecda9699bc238cef8bfd418ade431e47f33cac9811d1e08d0",
+    "resident_attempt_reference_audit.md": "0341df0d88433352673b1bf7e7e9b056eb5d9b8db4abf1e615dd76dff2d4d918"
+  },
+  "correctnessOnlyRequirements": [
+    {"branch": "random-relations", "status": "closed-frozen-corridor", "requiredObservation": "The forced pristine-PARI rnd_rel corridor records scheduler state, RNG, ideals, inserted relations, logs, and post-append HNF state.", "performanceInput": false},
+    {"branch": "precision-escalation", "status": "closed-bounded-authentic-h1-corridor", "requiredObservation": "The authentic H1 corridor records source-policy precision transitions, rebuilt embeddings and logs, exact-owner preservation, terminal success, and transactional cap failure.", "performanceInput": false},
+    {"branch": "unequal-bound-honesty-all-failure", "status": "closed-frozen-corridor", "requiredObservation": "The bounded scheduler computes all 51 failed collector probes and 50 retry draws and terminates with unchanged KCZ.", "performanceInput": false},
+    {"branch": "successful-honesty-selected-path", "status": "closed-selected-immediate-success-corridor", "requiredObservation": "The selected successful branch computes every live probe, records scheduler state and KCZ mutation/restoration, and records that orbit and ideal-reduction branches are not applicable on this path.", "performanceInput": false}
+  ],
+  "promotionPolicy": {
+    "correctnessFixtureAcceptance": [
+      "Pin pristine PARI 2.17.4 archive and source hashes and an exact frozen input identity.",
+      "Record the complete branch-specific input, output, decision, RNG, and owner-state transcript needed for independent replay.",
+      "Match the translated implementation against the pristine source transcript on every exact observable.",
+      "Exercise malformed input, insufficient capacity, and partial-publication failures transactionally where the corridor mutates state."
+    ],
+    "performanceCoveragePromotion": [
+      "The identity must already be one of the frozen sixteen development fields; a fixture never opens or substitutes a reserve field.",
+      "The branch must arise naturally in an unmodified pristine-PARI default-driver run for the frozen polynomial and preparation policy, without forced control flow, custom bounds, injected resident state, or predeclared answers.",
+      "The Sage.js default public path must take the corresponding branch and match the complete PARI stage transcript and terminal mathematical result.",
+      "Only after trace agreement may the existing field be timed under the locked qualification host and predeclared paired schedule with failures retained in denominators."
+    ],
+    "fixtureCanBecomePerformanceField": false,
+    "samePolynomialIsInsufficient": true
+  },
+  "reservePolicy": {"panelRows": 24, "developmentRows": 16, "finalReserveRows": 8, "reserveOpened": false, "panelModified": false},
+  "verdict": {
+    "sentinelRetryPrecisionOrHonestyRequirementProven": true,
+    "boundedCorrectnessOnlyPrecisionEscalationProven": true,
+    "selectedSuccessfulHonestyProven": true,
+    "generalHonestyProven": false,
+    "closedCorrectnessOnlyCorridors": ["random-relations", "precision-escalation", "unequal-bound-honesty-all-failure", "successful-honesty-selected-path"],
+    "missingCorrectnessOnlyFixtures": [],
+    "openGeneralizationFrontiers": ["honesty-automorphism-orbits", "honesty-failure-retry-arithmetic", "honesty-ideal-reduction-path"],
+    "fieldSubstitutionAllowed": false
+  }
+}

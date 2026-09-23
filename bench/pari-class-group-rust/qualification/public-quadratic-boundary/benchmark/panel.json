@@ -1,0 +1,87 @@
+{
+  "schema": "sagejs.public-quadratic/benchmark-panel-v1",
+  "frozenBeforeTiming": true,
+  "samplesPerArmPerField": 15,
+  "tinyBatchThroughput": {
+    "fieldIds": ["tiny-trivial-d3", "tiny-cyclic-d47", "tiny-noncyclic-d231", "rank4-d15015"],
+    "computationsPerSample": 100,
+    "samplesPerField": 15,
+    "selection": "Frozen structural tiny panel: trivial, cyclic, noncyclic, and rank-four fields; no timing-based exclusions."
+  },
+  "boundary": {
+    "rust": "public-coefficients-to-verified-complete-class-group-v1",
+    "pari": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+    "comparison": "Both arms start from the same public monic polynomial. Rust returns and verifies a complete imaginary class-group certificate; PARI flag zero additionally computes the rank-zero unit/regulator data. Projection and process startup are excluded."
+  },
+  "replacementForUnavailableH4352": {
+    "selectionStatus": "frozen-before-benchmark",
+    "seed": 20260920,
+    "maximumDraws": 50000,
+    "drawRule": "PARI setrand(20260920); d=8000000+random(2000001); increment d until d mod 4 is 0 or 3; D=-d; discard nonfundamental D; select first qfbclassno(D)>=4000",
+    "selectedDrawOneBased": 12,
+    "selectedDiscriminant": -8173415,
+    "selectedClassNumber": 4378,
+    "reason": "No retained h=4352 input existed; this is the first deterministic comparable class-number-above-4000 selection. PARI was used only to freeze the external test panel, never by the Rust runtime."
+  },
+  "prospectiveMediumBandSelection": {
+    "selectionStatus": "frozen-before-benchmark",
+    "seed": 20260922,
+    "maximumOuterDraws": 1000,
+    "drawRule": "Python Random(20260922); draw uniformly in [8000000,10000000], redraw until d mod 4 is 0 or 3, retain fundamental D=-d, make one PARI public-call measurement, and retain the maximum measured candidate",
+    "selectedOuterDrawOneBased": 869,
+    "selectedDiscriminant": -9013587,
+    "discoveryMeasurementNanoseconds": 5234199,
+    "caveat": "This deterministic discovery timing was used only to nominate a prospective band member. The independently alternating 15-sample campaign median determines its actual band and was below 5 ms."
+  },
+  "fields": [
+    {
+      "id": "tiny-trivial-d3",
+      "pariPolynomial": "x^2-x+1",
+      "polynomialAscending": [1, -1, 1],
+      "expected": { "discriminant": -3, "classNumber": 1, "invariantFactors": [] },
+      "traits": ["pari-under-5ms", "trivial"]
+    },
+    {
+      "id": "tiny-cyclic-d47",
+      "pariPolynomial": "x^2-x+12",
+      "polynomialAscending": [12, -1, 1],
+      "expected": { "discriminant": -47, "classNumber": 5, "invariantFactors": [5] },
+      "traits": ["pari-under-5ms", "cyclic"]
+    },
+    {
+      "id": "tiny-noncyclic-d231",
+      "pariPolynomial": "x^2-x+58",
+      "polynomialAscending": [58, -1, 1],
+      "expected": { "discriminant": -231, "classNumber": 12, "invariantFactors": [2, 6] },
+      "traits": ["pari-under-5ms", "noncyclic"]
+    },
+    {
+      "id": "rank4-d15015",
+      "pariPolynomial": "x^2-x+3754",
+      "polynomialAscending": [3754, -1, 1],
+      "expected": { "discriminant": -15015, "classNumber": 96, "invariantFactors": [2, 2, 2, 12] },
+      "traits": ["rank4", "noncyclic"]
+    },
+    {
+      "id": "pari-medium-candidate-d9013587",
+      "pariPolynomial": "x^2-x+2253397",
+      "polynomialAscending": [2253397, -1, 1],
+      "expected": { "discriminant": -9013587, "classNumber": 336, "invariantFactors": [2, 2, 84] },
+      "traits": ["predeclared-pari-5-to-100ms-candidate", "noncyclic"]
+    },
+    {
+      "id": "near-limit-h1715-d9999991",
+      "pariPolynomial": "x^2-x+2499998",
+      "polynomialAscending": [2499998, -1, 1],
+      "expected": { "discriminant": -9999991, "classNumber": 1715, "invariantFactors": [1715] },
+      "traits": ["near-discriminant-limit", "cyclic", "class-number-1715"]
+    },
+    {
+      "id": "near-limit-h4378-d8173415",
+      "pariPolynomial": "x^2-x+2043354",
+      "polynomialAscending": [2043354, -1, 1],
+      "expected": { "discriminant": -8173415, "classNumber": 4378, "invariantFactors": [4378] },
+      "traits": ["near-discriminant-limit", "cyclic", "class-number-over-4000", "deterministic-h4352-replacement"]
+    }
+  ]
+}

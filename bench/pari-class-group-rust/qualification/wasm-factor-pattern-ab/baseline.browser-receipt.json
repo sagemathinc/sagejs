@@ -1,0 +1,320 @@
+{
+  "schema": "sagejs.rust-class-group-browser-route/v1",
+  "status": "pass",
+  "observed_at": "2026-09-20T18:57:56.126Z",
+  "repository_revision": "c4d07156194765506d137792732ba5109cd8c87e",
+  "artifact": {
+    "path": "bench/pari-class-group-rust/qualification/wasm-factor-pattern-ab/build/factor-pattern-ab.wasm",
+    "sha256": "2cfd85ce31695ff9822a9ffebe3f319fa37a7a04d421405d827ed55715923def",
+    "bytes": 156964
+  },
+  "vector": {
+    "path": "bench/pari-class-group-rust/qualification/wasm-factor-pattern-ab/baseline.vector.json",
+    "sha256": "5c628ed789676e10359daf115751ea5411391f012d7758c2c89810904acaf138",
+    "id": "row6-factor-pattern-baseline-i128",
+    "request": {
+      "schema": "sagejs.rust-class-group/factor-pattern-ab-request-v1",
+      "mode": "baseline",
+      "polynomialAscending": [
+        2000000000018,
+        -2000000000010,
+        0,
+        1
+      ],
+      "bound": 9196
+    },
+    "expected": {
+      "schema": "sagejs.rust-class-group/factor-pattern-ab-result-v1",
+      "status": "pass",
+      "mode": "baseline",
+      "bound": 9196,
+      "rationalPrimeCount": 1139,
+      "factorCount": 2066,
+      "digestSha256": "e0b4936ea49e92649808af36cafb8d4820a54cca0d57260d293ce7d696271bbb"
+    }
+  },
+  "requested_engines": [
+    "chromium",
+    "firefox",
+    "webkit"
+  ],
+  "engines": [
+    {
+      "engine": "chromium",
+      "status": "pass",
+      "browser_version": "151.0.7922.34",
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36",
+      "cross_origin_isolated": false,
+      "shared_array_buffer": false,
+      "route": "rust-class-group-wasm-artifact",
+      "artifact_request_count": 1,
+      "imports": [
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "environ_get",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "environ_sizes_get",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_write",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "proc_exit",
+          "kind": "function"
+        }
+      ],
+      "exports": [
+        {
+          "name": "memory",
+          "kind": "memory"
+        },
+        {
+          "name": "sagejs_class_group_abi_version",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_class_group_alloc",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_class_group_dealloc",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_class_group_run_json",
+          "kind": "function"
+        }
+      ],
+      "timings_ms": {
+        "page_load": 64.0767800000001,
+        "fetch": 5.0999999940395355,
+        "compile": 1.199999988079071,
+        "instantiate": 0.19999998807907104,
+        "call": 298.09999999403954,
+        "call_samples": [
+          303.80000001192093,
+          298.80000001192093,
+          298.09999999403954,
+          298.19999998807907,
+          298.09999999403954,
+          297.90000000596046,
+          297.69999998807907,
+          298,
+          298,
+          297.90000000596046,
+          298.09999999403954,
+          297.89999997615814,
+          297.59999999403954,
+          298.69999998807907,
+          298.19999998807907
+        ]
+      },
+      "memory_pages": {
+        "before_call": 17,
+        "after_call": 17
+      },
+      "result": {
+        "schema": "sagejs.rust-class-group/factor-pattern-ab-result-v1",
+        "status": "pass",
+        "mode": "baseline",
+        "bound": 9196,
+        "rationalPrimeCount": 1139,
+        "factorCount": 2066,
+        "digestSha256": "e0b4936ea49e92649808af36cafb8d4820a54cca0d57260d293ce7d696271bbb"
+      },
+      "failure": null
+    },
+    {
+      "engine": "firefox",
+      "status": "pass",
+      "browser_version": "153.0",
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:153.0) Gecko/20100101 Firefox/153.0",
+      "cross_origin_isolated": false,
+      "shared_array_buffer": false,
+      "route": "rust-class-group-wasm-artifact",
+      "artifact_request_count": 1,
+      "imports": [
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "environ_get",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "environ_sizes_get",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_write",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "proc_exit",
+          "kind": "function"
+        }
+      ],
+      "exports": [
+        {
+          "name": "memory",
+          "kind": "memory"
+        },
+        {
+          "name": "sagejs_class_group_abi_version",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_class_group_alloc",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_class_group_dealloc",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_class_group_run_json",
+          "kind": "function"
+        }
+      ],
+      "timings_ms": {
+        "page_load": 428.7455769999997,
+        "fetch": 34,
+        "compile": 6,
+        "instantiate": 0,
+        "call": 1677,
+        "call_samples": [
+          1677,
+          1680,
+          1675,
+          1682,
+          1679,
+          1674,
+          1680,
+          1676,
+          1679,
+          1675,
+          1682,
+          1676,
+          1676,
+          1678,
+          1674
+        ]
+      },
+      "memory_pages": {
+        "before_call": 17,
+        "after_call": 17
+      },
+      "result": {
+        "schema": "sagejs.rust-class-group/factor-pattern-ab-result-v1",
+        "status": "pass",
+        "mode": "baseline",
+        "bound": 9196,
+        "rationalPrimeCount": 1139,
+        "factorCount": 2066,
+        "digestSha256": "e0b4936ea49e92649808af36cafb8d4820a54cca0d57260d293ce7d696271bbb"
+      },
+      "failure": null
+    },
+    {
+      "engine": "webkit",
+      "status": "pass",
+      "browser_version": "26.5",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Safari/605.1.15",
+      "cross_origin_isolated": false,
+      "shared_array_buffer": false,
+      "route": "rust-class-group-wasm-artifact",
+      "artifact_request_count": 1,
+      "imports": [
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "environ_get",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "environ_sizes_get",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_write",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "proc_exit",
+          "kind": "function"
+        }
+      ],
+      "exports": [
+        {
+          "name": "memory",
+          "kind": "memory"
+        },
+        {
+          "name": "sagejs_class_group_abi_version",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_class_group_alloc",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_class_group_dealloc",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_class_group_run_json",
+          "kind": "function"
+        }
+      ],
+      "timings_ms": {
+        "page_load": 43.426705999998376,
+        "fetch": 5,
+        "compile": 3,
+        "instantiate": 1,
+        "call": 194,
+        "call_samples": [
+          200,
+          194,
+          194,
+          193,
+          193,
+          194,
+          193,
+          196,
+          209,
+          194,
+          194,
+          194,
+          193,
+          194,
+          193
+        ]
+      },
+      "memory_pages": {
+        "before_call": 17,
+        "after_call": 17
+      },
+      "result": {
+        "schema": "sagejs.rust-class-group/factor-pattern-ab-result-v1",
+        "status": "pass",
+        "mode": "baseline",
+        "bound": 9196,
+        "rationalPrimeCount": 1139,
+        "factorCount": 2066,
+        "digestSha256": "e0b4936ea49e92649808af36cafb8d4820a54cca0d57260d293ce7d696271bbb"
+      },
+      "failure": null
+    }
+  ],
+  "failures": []
+}

@@ -1,0 +1,213 @@
+{
+  "boundary": "prepared-cubic-relation-prefix",
+  "inputPath": "bench/pari-class-group-rust/qualification/row6-candidate/inputs/row6-neutral-prepared-field.json",
+  "medianMs": 121.14934199999999,
+  "result": {
+    "completeRankAndSurplus": false,
+    "counters": {
+      "appendedRelations": 1,
+      "cursorTrials": 66,
+      "positiveCacheStatuses": 1,
+      "primitiveNonscalarCandidates": 64,
+      "randomIdeals": 0,
+      "randomSearchIdeals": 0,
+      "smoothCandidates": 1,
+      "visitedIdeals": 1
+    },
+    "factorBaseIdeals": 1130,
+    "fieldId": "row6-x3-minus-2000000000010x-plus-2000000000018",
+    "inputId": "sha256:42ecf93a56de4cc7763d33c8b422e7804582278674c1a6fef41a4799a9930bd5",
+    "limits": {
+      "maximumCandidates": 64,
+      "maximumVisitedIdeals": 1
+    },
+    "missingRank": 926,
+    "prefixSha256": "7e4c9242d3fa92c7bc7f8fbb3e9c68cc77f66cbc5838657cf38e610c66ba22b3",
+    "relationBound": 9196,
+    "residentRelationRows": 204,
+    "schema": "sagejs.rust-class-group/prepared-relation-prefix-v1",
+    "stage": "prepared-cubic-relation-prefix",
+    "status": "bounded-stage",
+    "storage": {
+      "denseRecordsBytes": 2413680,
+      "fullDenseRecordsBytes": 103236800,
+      "fullRelationCacheCapacity": 11420,
+      "relationCacheCapacity": 267
+    }
+  },
+  "sampleCount": 15,
+  "samplesMs": [
+    126.11886999999999,
+    122.725341,
+    121.286542,
+    120.630832,
+    121.14934199999999,
+    121.79158199999999,
+    120.743062,
+    120.718452,
+    121.385502,
+    121.49561200000001,
+    120.613353,
+    120.900002,
+    120.653592,
+    120.855693,
+    123.570581
+  ],
+  "schema": "sagejs.rust-class-group/native-prepared-relation-prefix-benchmark-v1",
+  "status": "pass",
+  "observedAt": "2026-09-20T18:57:02.917Z",
+  "repositoryRevision": "c4d07156194765506d137792732ba5109cd8c87e",
+  "host": {
+    "hostname": "project-b6351099-3c72-458c-aa7e-4b7f4a47c0e7",
+    "platform": "linux",
+    "release": "7.0.0-1011-gcp",
+    "architecture": "x64",
+    "uname": "Linux project-b6351099-3c72-458c-aa7e-4b7f4a47c0e7 7.0.0-1011-gcp #11~24.04.1-Ubuntu SMP PREEMPT Tue Aug 11 20:14:48 UTC 2026 x86_64 GNU/Linux"
+  },
+  "tools": {
+    "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: x86_64-unknown-linux-gnu\nrelease: 1.98.1\nLLVM version: 22.1.8",
+    "cargo": "cargo 1.98.1 (797e8a9bc 2026-08-05)",
+    "cc": "gcc (Ubuntu 15.2.0-16ubuntu1) 15.2.0"
+  },
+  "executable": {
+    "path": "bench/pari-class-group-rust/qualification/wasm-prepared-relation-prefix/target/release/native-benchmark",
+    "sha256": "7fdd101bb8f2f14f91139739b36a79a5b1d5a3348b3044fa8fff126e6569a5c0",
+    "bytes": 1291560,
+    "retained": false,
+    "identitySemantics": "frozen SHA-256 and byte count of the exact measured binary; path records its clean-worktree build location and is not a claim that a current file can be reopened there"
+  },
+  "sourceClosure": [
+    {
+      "path": "bench/pari-class-group-rust/qualification/wasm-prepared-relation-prefix/Cargo.toml",
+      "sha256": "f4a46a98edcac4034ea1c7f4a34b10e996d659dfd8b4969633256b2fd64ccb4b",
+      "bytes": 585
+    },
+    {
+      "path": "bench/pari-class-group-rust/qualification/wasm-prepared-relation-prefix/Cargo.lock",
+      "sha256": "1ed81533a3cbbd7dd7d92bc3b468c46a93ec97ad0cd3115b3431ddb4ae274f3f",
+      "bytes": 7424
+    },
+    {
+      "path": "bench/pari-class-group-rust/qualification/wasm-prepared-relation-prefix/build.rs",
+      "sha256": "45eacf4d09631ccab3e774055fa13da9e29364b0d5a9135245b062928e2430f0",
+      "bytes": 1005
+    },
+    {
+      "path": "bench/pari-class-group-rust/qualification/wasm-prepared-relation-prefix/build-wasm.sh",
+      "sha256": "521e3287a7b7f3b6e2720ee9d232f7e00c8b72b5d130a95119cf2e2511edef01",
+      "bytes": 1519
+    },
+    {
+      "path": "bench/pari-class-group-rust/qualification/wasm-prepared-relation-prefix/gmp-mpfr-cross-cc.sh",
+      "sha256": "d65703df3021a30032dbb420f72806a43d6c2e84192ee9f88e08f10fcc4aa1c5",
+      "bytes": 1375
+    },
+    {
+      "path": "bench/pari-class-group-rust/qualification/wasm-prepared-relation-prefix/prepare-vector.mjs",
+      "sha256": "66a8cec79306e9270265cf49236a87d0af098b4d5ff3328a8e1c359da8706b54",
+      "bytes": 1731
+    },
+    {
+      "path": "bench/pari-class-group-rust/qualification/wasm-prepared-relation-prefix/src/lib.rs",
+      "sha256": "92ce5e3db3292191ea55f23c2df14f249ea3ba996d83b11f7cb5a6b22fcdc561",
+      "bytes": 11974
+    },
+    {
+      "path": "bench/pari-class-group-rust/qualification/wasm-prepared-relation-prefix/src/bin/native-benchmark.rs",
+      "sha256": "8e38031c10ae5690e1ab0badad84303d4ad300c5901a4f9971eed96a9914a639",
+      "bytes": 1779
+    },
+    {
+      "path": "bench/pari-class-group-rust/qualification/row6-candidate/inputs/row6-neutral-prepared-field.json",
+      "sha256": "24551723d43685e5592d9b3f866bf73e3f0bbde69ee5afec1eb2dc2f760314b5",
+      "bytes": 2772
+    },
+    {
+      "path": "bench/pari-class-group-rust/src/class_group.rs",
+      "sha256": "0d556a8ef214a496f5387efa959d8dd4983166d1ccd8ad8d5848d5c4354760b7",
+      "bytes": 33827
+    },
+    {
+      "path": "bench/pari-class-group-rust/src/collector_schedule.rs",
+      "sha256": "f5f4d65a68465fc29d5dd216763abb45ce8465ea8485334786e5cd3e7b45c783",
+      "bytes": 6526
+    },
+    {
+      "path": "bench/pari-class-group-rust/src/enumeration.rs",
+      "sha256": "0ea9216253e830e099fd0c9d2cbdb162b141309346729900e431896d65568b38",
+      "bytes": 6295
+    },
+    {
+      "path": "bench/pari-class-group-rust/src/factor_base.rs",
+      "sha256": "14cf55f72d90c58410edca44a8f17d8907ed93680deb1fd4dbff8b5704e9cf34",
+      "bytes": 39597
+    },
+    {
+      "path": "bench/pari-class-group-rust/src/hnf.rs",
+      "sha256": "d35bf3f4d154e3425f95a365f09b5147eaaf7353ae2ab1f67bb5321b470a87e6",
+      "bytes": 28189
+    },
+    {
+      "path": "bench/pari-class-group-rust/src/prepared.rs",
+      "sha256": "80b7ce8f953b2df50fb88ac4d1d068f1ac8148e1b335aa01f0d322e6c8feada5",
+      "bytes": 44766
+    },
+    {
+      "path": "bench/pari-class-group-rust/src/prepared_factor_base.rs",
+      "sha256": "53f24f03d1292190dc3a7705af336db9f1367a9c493b35232e1b9056ff507995",
+      "bytes": 23053
+    },
+    {
+      "path": "bench/pari-class-group-rust/src/prepared_ideal.rs",
+      "sha256": "261059e71fef692939ed1f09ad44b4fdae376b8c123c47604b2743036453d5b0",
+      "bytes": 16283
+    },
+    {
+      "path": "bench/pari-class-group-rust/src/prepared_input.rs",
+      "sha256": "c6e37480711aac91ddcaf796dff18729e427ced6a41d9cbed43b3a6abce11c6c",
+      "bytes": 12198
+    },
+    {
+      "path": "bench/pari-class-group-rust/src/relation_cache.rs",
+      "sha256": "4ceda4440a747c151389dc00a1deee06c32cb18845a3e5738345cad8410ecc3e",
+      "bytes": 14270
+    },
+    {
+      "path": "bench/pari-class-group-rust/src/ideal_arithmetic.rs",
+      "sha256": "4e18797b8b645b761c58b82d73af0a7c30eef0ddd4659f57624f9c3d5b4a9a52",
+      "bytes": 17888
+    },
+    {
+      "path": "bench/pari-class-group-rust/src/numerical_preparation.rs",
+      "sha256": "c8c18b3c8896795cdfd35db6c1eec75fa2af3f827ff64a47a4a21337c2d728bb",
+      "bytes": 31852
+    },
+    {
+      "path": "bench/pari-class-group-rust/src/pari_random.rs",
+      "sha256": "7bed82f9c8d1cd27b753e0f39e5cf37ef49ae90e9c236ff9f9a397382d83e269",
+      "bytes": 2696
+    },
+    {
+      "path": "bench/pari-class-group-rust/src/prime_valuation.rs",
+      "sha256": "5b533a94a1eed76a1fa09b97d6e43071678babc88910133c32f561423d770a9e",
+      "bytes": 11014
+    },
+    {
+      "path": "bench/pari-class-group-rust/src/smooth_admission.rs",
+      "sha256": "4936644436d471b91e11f8690f9abbbf03d4450b81a6f6483b9f237c6b982573",
+      "bytes": 24142
+    }
+  ],
+  "nativeLibraries": [
+    {
+      "path": "packages/flint/.native/prefix/lib/libgmp.a",
+      "sha256": "7871768aa510fb8b902044bf007dde2a7398b5faa0f8543d697a72f245f6befa",
+      "bytes": 1714928
+    },
+    {
+      "path": "packages/flint/.native/prefix/lib/libmpfr.a",
+      "sha256": "13c65d7a445f478af156ac365d27c382f35e8aed8caec792979bd9576d4d6ccb",
+      "bytes": 1368150
+    }
+  ]
+}

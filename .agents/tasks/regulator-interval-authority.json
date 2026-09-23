@@ -1,0 +1,85 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "regulator-interval-authority",
+  "title": "Regulator Interval Authority",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Replace result-derived ULP acceptance in the unified H1 suffix with reusable rigorous regulator-enclosure authority over live computed values and ordered unit/log provenance",
+  "base_commit": "398678093d4e7e3883b2a1addc1b07d75381f9ec",
+  "claims": [
+    "bench/pari-class-group-port/regulator_interval_authority.py",
+    "bench/pari-class-group-port/check_regulator_interval_authority.py",
+    "bench/pari-class-group-port/check_regulator_interval_authority.cjs",
+    "bench/pari-class-group-port/regulator_interval_authority_audit.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "sage"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "python3 bench/pari-class-group-port/check_regulator_interval_authority.py",
+    "node --check bench/pari-class-group-port/check_regulator_interval_authority.cjs",
+    "env SAGEJS_REPLAY_RUNTIME_ROOT=/home/user/sagejs-worktrees/pari-class-group-e2e-integration node bench/pari-class-group-port/check_regulator_interval_authority.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "python3 bench/pari-class-group-port/check_regulator_interval_authority.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.041,
+      "started_at": "2026-09-17T04:54:04.322Z",
+      "commit": "398678093d4e7e3883b2a1addc1b07d75381f9ec",
+      "workspace_fingerprint": "6655d8bbfbd58b2e059547e3eb5c072b8d9c0b7ebbee9925d5e3ffa6cf0a1069",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check bench/pari-class-group-port/check_regulator_interval_authority.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.03,
+      "started_at": "2026-09-17T04:54:05.034Z",
+      "commit": "398678093d4e7e3883b2a1addc1b07d75381f9ec",
+      "workspace_fingerprint": "6655d8bbfbd58b2e059547e3eb5c072b8d9c0b7ebbee9925d5e3ffa6cf0a1069",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_REPLAY_RUNTIME_ROOT=/home/user/sagejs-worktrees/pari-class-group-e2e-integration node bench/pari-class-group-port/check_regulator_interval_authority.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.153,
+      "started_at": "2026-09-17T04:54:05.756Z",
+      "commit": "398678093d4e7e3883b2a1addc1b07d75381f9ec",
+      "workspace_fingerprint": "6655d8bbfbd58b2e059547e3eb5c072b8d9c0b7ebbee9925d5e3ffa6cf0a1069",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added an outside-timing regulator authority composition that regenerates rigorous logarithm and determinant owners from live exact units, binds ordered provenance and packed logs, and accepts a live regulator only by full-rank interval containment. Focused replay accepts a one-ulp in-ball perturbation and rejects the first p192 point beyond each exact endpoint; ULP correspondence is explicitly external diagnostics only.",
+    "risks": [
+      "The integration root must call this verifier only after one terminal copy of live exact units, provenance, logs, and regulator; passing a detached precomputed enclosure into the timed root would violate the authority boundary.",
+      "This proves the regulator of the supplied full-rank unit lattice, not index-one saturation in the complete unit group.",
+      "Broad native and strict-baselib suites remain intentionally deferred while concurrent integration builds settle; only focused no-build replay and formatting were run in this lane."
+    ],
+    "next_steps": [
+      "Compose this verifier after the unified native H1 root and require its authority digest before internal correspondence publication.",
+      "Retain the observed signed four-ulp difference only in the external diagnostic report, never in authority or terminal success logic.",
+      "Run the required broad lane validations after integration build contention clears, then move the contract to review."
+    ]
+  }
+}

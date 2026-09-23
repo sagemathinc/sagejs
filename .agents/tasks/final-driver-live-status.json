@@ -1,0 +1,87 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "final-driver-live-status",
+  "title": "Final Driver Live Status",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Derive authentic h=1 equal-bound honesty and class-relation cleanarch statuses from live authenticated owners and publish a replayable incomplete final-driver adapter",
+  "base_commit": "176ee7b8bab3f86e54d6b32d1ac5a4123c49f776",
+  "claims": [
+    "bench/pari-class-group-port/class_group_final_driver_status.py",
+    "bench/pari-class-group-port/check_class_group_final_driver_status.cjs",
+    "bench/pari-class-group-port/class_group_final_driver_status_audit.md"
+  ],
+  "dependencies": [
+    "cleanarch-retry-impl"
+  ],
+  "references": [
+    "pari-2.17.4/src/basemath/buch2.c:4134-4190"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "pari 2.17.4"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node bench/pari-class-group-port/check_class_group_final_driver_status.cjs"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_class_group_final_driver_status.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.209,
+      "started_at": "2026-09-17T02:59:57.389Z",
+      "commit": "176ee7b8bab3f86e54d6b32d1ac5a4123c49f776",
+      "workspace_fingerprint": "c61371d4f9e71d46e924151f9567edb133f0ea26aa8a1d5eb06403e32ff60cd7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 8.765,
+      "started_at": "2026-09-17T03:00:51.907Z",
+      "commit": "176ee7b8bab3f86e54d6b32d1ac5a4123c49f776",
+      "workspace_fingerprint": "c61371d4f9e71d46e924151f9567edb133f0ea26aa8a1d5eb06403e32ff60cd7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_class_group_final_driver_status.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 29.609,
+      "started_at": "2026-09-17T03:01:42.856Z",
+      "commit": "176ee7b8bab3f86e54d6b32d1ac5a4123c49f776",
+      "workspace_fingerprint": "03582b0223bd3670f0d983da6fca0ad78a7442db24c26da931cd852459de4ba0",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Adds an ordinary-Python/native status leaf and host adapter that derive the authentic h=1 equal-bound honesty skip and transactional cleanarch acceptance from resident owners, construct the existing final-driver component with live hashes, and replay exact detached state across CPython, JavaScript, GMP, and tagged backends.",
+    "risks": [
+      "The adapter is deliberately specialized to the frozen totally real cubic h=1 root and exact native state [0,1,1,48,48,7,7,73,8,0].",
+      "It does not authenticate Phase 5, exact ideal replay, unit principality, or rigorous regulator certification and therefore cannot claim a public-complete result.",
+      "The repository-wide strict Python gate is blocked at the integration base by doubled-backtick docstrings in compact_unit_result.py and generator_order_witness.py, which are outside this lane's claims."
+    ],
+    "next_steps": [
+      "The integration lane may connect build_live_final_driver_status to the authentic-success assembly in place of its fixed honesty and cleanarch strings.",
+      "A later Phase-5 lane must supply the remaining mathematical witnesses before any public result is published."
+    ]
+  }
+}

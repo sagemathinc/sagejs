@@ -1,0 +1,62 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "unified-complete-h1-root",
+  "title": "Unified Complete H1 Root",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Compose the live h1 prefix, exact class witness, live retrying precision suffix, exact torsion, and atomic fixed-shape internal result publication",
+  "base_commit": "82470f3ea9c209386d6f8daa6437f1a303c75b92",
+  "claims": [
+    "bench/pari-class-group-port/pari_unified_complete_h1_root.py",
+    "bench/pari-class-group-port/check_pari_unified_complete_h1_root.cjs",
+    "bench/pari-class-group-port/pari_unified_complete_h1_root_audit.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "gmp"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node bench/pari-class-group-port/check_pari_unified_complete_h1_root.cjs /tmp/sagejs-prepared-class-inputs-MRFSOe/inputs.json /tmp/sagejs-analytic-invhr-d88QqB/fixtures.json /tmp/sagejs-initial-kummer-catalog-Kc48PL/fixtures.json",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_pari_unified_complete_h1_root.cjs /tmp/sagejs-prepared-class-inputs-MRFSOe/inputs.json /tmp/sagejs-analytic-invhr-d88QqB/fixtures.json /tmp/sagejs-initial-kummer-catalog-Kc48PL/fixtures.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 55.693,
+      "started_at": "2026-09-17T05:58:28.890Z",
+      "commit": "82470f3ea9c209386d6f8daa6437f1a303c75b92",
+      "workspace_fingerprint": "257c9534766970cb4129a38adfc548a4b6500eb0c193d255a110a3eb6c726452",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Connects the authentic prepared h1 prefix and exact class witness directly to the live retrying precision suffix, exact real-cubic torsion, and atomic fixed-shape internal result publication.",
+    "risks": [
+      "Public completion remains deliberately false because general saturation is outside this prepared h=1 correspondence experiment.",
+      "The large inherited flat ABI remains an experimental prepared-field boundary."
+    ],
+    "next_steps": [
+      "Extend the root beyond the prepared h=1 sentinel without weakening exact relation-to-unit replay.",
+      "Keep public saturation and theorem-level completion separate from internal PARI correspondence."
+    ]
+  }
+}

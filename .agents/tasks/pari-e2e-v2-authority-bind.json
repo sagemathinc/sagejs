@@ -1,0 +1,49 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-e2e-v2-authority-bind",
+  "title": "Pari E2e V2 Authority Bind",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Bind the integrated exact unit-relation authority into the authentic h1 v2 composition and decide exact equality with rigorous regulator units without overstating internal or public completion",
+  "base_commit": "c826815eede85fa2c5d79a977fc9f7a8191a188d",
+  "claims": [
+    "bench/pari-class-group-port/class_group_authentic_success.py",
+    "bench/pari-class-group-port/check_class_group_authentic_success.cjs",
+    "bench/pari-class-group-port/class_group_authentic_success.md"
+  ],
+  "dependencies": [
+    "pari-e2e-authentic-correspondence-complete"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Cold replay of integrated unit_relation_authority and regulator authorities"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "SAGEJS_REPLAY_RUNTIME_ROOT=/home/user/sagejs node bench/pari-class-group-port/check_class_group_authentic_success.cjs /tmp/sagejs-resident-generated-class-3qtnS5/output.json /tmp/sagejs-unit-bridge-ovVl6Y/oracle"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Binds the integrated unit-relation authority to the presentation and rigorous regulator envelope, and independently composes the live retry factor units through the getfu matrix to the same exact power-basis units. Exact correspondence is closed; internal publication remains blocked by the live PARI oracle.",
+    "risks": [
+      "The unit retry factor coordinates and getfu matrix are still sourced from the live PARI 2.17.4 oracle."
+    ],
+    "next_steps": [
+      "Replace the live oracle record with the resident prepared precision rebuild/root output; public saturation and relation completeness remain separate certificate work."
+    ]
+  }
+}

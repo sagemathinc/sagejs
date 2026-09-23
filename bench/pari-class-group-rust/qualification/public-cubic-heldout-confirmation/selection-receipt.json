@@ -1,0 +1,33 @@
+{
+  "answerDisclosure": "none",
+  "eligibleUnusedCubicCount": 57,
+  "excludedByIdentityAndPolynomial": true,
+  "frozenUtc": "2026-09-21T00:10:57Z",
+  "inputsExecuted": false,
+  "inputsSha256": "6f8166cc84e7ee37b818373a702f113daf18eec116a3bc9f55409d60404e9c53",
+  "originalPanelCaseCount": 120,
+  "originalPanelSha256": "8117302d247e6ded8a6172c2ea43b4b2533c84a20b8c42ba07d49bfe8de38a0e",
+  "policySha256": "23dcb6b3124c4475963194d05c65eded01d592cd538e350be63766c13ff8380f",
+  "preregistrationStatus": "commit-ready-not-preregistered-until-committed",
+  "privateCandidatePoolDigestPublished": false,
+  "schema": "sagejs.rust-class-group/heldout-cubic-confirmation-selection-v1",
+  "selectedCaseCount": 12,
+  "selectionAlgorithm": "seeded-sha256-over-answer-free-projection-v1",
+  "selectionIgnoredFields": [
+    "expected",
+    "constructionEvidence",
+    "signature",
+    "timingStratum",
+    "traits"
+  ],
+  "selectionProjectionFields": [
+    "id",
+    "polynomialAscending",
+    "polynomialSha256",
+    "degree",
+    "irreducible"
+  ],
+  "selectionTiming": "materialized-before-any-heldout-failure-fix",
+  "selectionUsedAnswerOrOutputFields": false,
+  "status": "passed"
+}

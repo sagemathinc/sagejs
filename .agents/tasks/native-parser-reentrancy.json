@@ -1,0 +1,42 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "native-parser-reentrancy",
+  "title": "Make Tree-sitter native compiler frontend lifecycle reentrant",
+  "lane": "polyglot",
+  "status": "active",
+  "owner": "user",
+  "objective": "Reproduce and eliminate repeated or concurrent Tree-sitter parser initialization corruption while preserving source-transparent native compilation and dynamic fallback",
+  "base_commit": "d078f9102a336516d16dc848b2234fe9cc9d4724",
+  "claims": [
+    "tools/foreign/tree-sitter.ts",
+    "test/tree-sitter-parser-lifecycle.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "tested-capability",
+    "oracles": [
+      "web-tree-sitter parser output under sequential, concurrent, close, and fresh-module schedules"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:integration",
+    "pnpm bench:polyglot"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

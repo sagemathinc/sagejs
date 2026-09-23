@@ -1,0 +1,280 @@
+{
+  "schema": "sagejs.rust-class-group/qualification-selection-receipt-v1",
+  "status": "passed",
+  "spec": "qualification-corpus-spec-v1.json",
+  "specSha256": "f443b3cb145ec02a58eb89b90cf004223ce69304256a76d5420885d1aa3883bb",
+  "selectionAlgorithm": "sagejs-rust-class-group-deficit-greedy-v1",
+  "selectionSeeds": {
+    "open": "sagejs-rust-class-group-open-v1-2026-09-20",
+    "heldOut": "sagejs-rust-class-group-heldout-v1-2026-09-20"
+  },
+  "sourcePoolSha256": "fc8e209dabf4caf15e0ebfb5d0af66afcde3831810c85373c4b5a20587724ad6",
+  "oracleIdentity": "pari-2.17.4-oracle-identity.json",
+  "oracleIdentitySha256": "e6eb5e0cbd901791cf232ff03d946b1ee4b4a924659616bd24ddc0c02d14742f",
+  "traceContract": "pari-buchall-debug-trace-v1.json",
+  "traceContractSha256": "2e4f10b85601930c89bf94ef2b92db06b79f4ab11361a9fb4c675d5eab37eafe",
+  "qualifiedNeutralPanel": "qualified-neutral-panel-v1.json",
+  "qualifiedNeutralPanelSha256": "8117302d247e6ded8a6172c2ea43b4b2533c84a20b8c42ba07d49bfe8de38a0e",
+  "privateEvidenceSha256": "585ccd969c2df2fa165138a07ce7247553fa02acd50741c1f76b09c0d30008b6",
+  "answerVisibility": "aggregate-counts-only",
+  "partitions": {
+    "open": {
+      "caseCount": 60,
+      "degreeCounts": {
+        "2": 12,
+        "3": 12,
+        "4": 12,
+        "5": 12,
+        "6": 12
+      },
+      "timingStratumCounts": {
+        "under-5ms": 18,
+        "5ms-to-100ms": 10,
+        "100ms-to-2s": 15,
+        "2s-to-30s": 17
+      },
+      "legalSignaturesCovered": [
+        {
+          "degree": 2,
+          "signature": [
+            0,
+            1
+          ]
+        },
+        {
+          "degree": 2,
+          "signature": [
+            2,
+            0
+          ]
+        },
+        {
+          "degree": 3,
+          "signature": [
+            1,
+            1
+          ]
+        },
+        {
+          "degree": 3,
+          "signature": [
+            3,
+            0
+          ]
+        },
+        {
+          "degree": 4,
+          "signature": [
+            0,
+            2
+          ]
+        },
+        {
+          "degree": 4,
+          "signature": [
+            2,
+            1
+          ]
+        },
+        {
+          "degree": 4,
+          "signature": [
+            4,
+            0
+          ]
+        },
+        {
+          "degree": 5,
+          "signature": [
+            1,
+            2
+          ]
+        },
+        {
+          "degree": 5,
+          "signature": [
+            3,
+            1
+          ]
+        },
+        {
+          "degree": 5,
+          "signature": [
+            5,
+            0
+          ]
+        },
+        {
+          "degree": 6,
+          "signature": [
+            0,
+            3
+          ]
+        },
+        {
+          "degree": 6,
+          "signature": [
+            2,
+            2
+          ]
+        },
+        {
+          "degree": 6,
+          "signature": [
+            4,
+            1
+          ]
+        },
+        {
+          "degree": 6,
+          "signature": [
+            6,
+            0
+          ]
+        }
+      ],
+      "traitCounts": {
+        "trivial-class-group": 18,
+        "nontrivial-class-group": 42,
+        "noncyclic-class-group": 22,
+        "nontrivial-equation-order-index": 31,
+        "ramified-factor-base-prime": 57,
+        "nontrivial-units": 55,
+        "precision-restart": 19,
+        "relation-continuation": 40,
+        "large-exact-intermediates": 12
+      },
+      "minimumTimingSamplesPerCase": 15,
+      "quotaValidation": "passed"
+    },
+    "heldOut": {
+      "caseCount": 60,
+      "degreeCounts": {
+        "2": 12,
+        "3": 12,
+        "4": 12,
+        "5": 12,
+        "6": 12
+      },
+      "timingStratumCounts": {
+        "under-5ms": 12,
+        "5ms-to-100ms": 10,
+        "100ms-to-2s": 19,
+        "2s-to-30s": 19
+      },
+      "legalSignaturesCovered": [
+        {
+          "degree": 2,
+          "signature": [
+            0,
+            1
+          ]
+        },
+        {
+          "degree": 2,
+          "signature": [
+            2,
+            0
+          ]
+        },
+        {
+          "degree": 3,
+          "signature": [
+            1,
+            1
+          ]
+        },
+        {
+          "degree": 3,
+          "signature": [
+            3,
+            0
+          ]
+        },
+        {
+          "degree": 4,
+          "signature": [
+            0,
+            2
+          ]
+        },
+        {
+          "degree": 4,
+          "signature": [
+            2,
+            1
+          ]
+        },
+        {
+          "degree": 4,
+          "signature": [
+            4,
+            0
+          ]
+        },
+        {
+          "degree": 5,
+          "signature": [
+            1,
+            2
+          ]
+        },
+        {
+          "degree": 5,
+          "signature": [
+            3,
+            1
+          ]
+        },
+        {
+          "degree": 5,
+          "signature": [
+            5,
+            0
+          ]
+        },
+        {
+          "degree": 6,
+          "signature": [
+            0,
+            3
+          ]
+        },
+        {
+          "degree": 6,
+          "signature": [
+            2,
+            2
+          ]
+        },
+        {
+          "degree": 6,
+          "signature": [
+            4,
+            1
+          ]
+        },
+        {
+          "degree": 6,
+          "signature": [
+            6,
+            0
+          ]
+        }
+      ],
+      "traitCounts": {
+        "trivial-class-group": 19,
+        "nontrivial-class-group": 41,
+        "noncyclic-class-group": 18,
+        "nontrivial-equation-order-index": 22,
+        "ramified-factor-base-prime": 50,
+        "nontrivial-units": 55,
+        "precision-restart": 20,
+        "relation-continuation": 45,
+        "large-exact-intermediates": 15
+      },
+      "minimumTimingSamplesPerCase": 15,
+      "quotaValidation": "passed"
+    }
+  }
+}

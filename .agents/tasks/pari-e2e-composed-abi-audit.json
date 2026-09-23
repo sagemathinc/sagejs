@@ -1,0 +1,83 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-e2e-composed-abi-audit",
+  "title": "Pari E2e Composed Abi Audit",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Compose the merged PARI class-group Python modules into one native graph, identify demonstrated ABI/type blockers, and add only minimal general fixes with focused regressions",
+  "base_commit": "944a1291113a51b366d293e00c7979c754eeee03",
+  "claims": [
+    "bench/pari-class-group-port/phase0_composed_native_graph.py",
+    "bench/pari-class-group-port/check_phase0_composed_native_graph.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "Existing backend-qualified phase0 kernels and focused composed-graph differential replay"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration",
+    "node bench/pari-class-group-port/check_phase0_composed_native_graph.cjs",
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_phase0_composed_native_graph.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.594,
+      "started_at": "2026-09-17T00:23:19.826Z",
+      "commit": "944a1291113a51b366d293e00c7979c754eeee03",
+      "workspace_fingerprint": "6c00337178c462173e058ee74170eede0c98f160fa0a569d7bb7a3a2757c93bd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.425,
+      "started_at": "2026-09-17T00:23:35.164Z",
+      "commit": "944a1291113a51b366d293e00c7979c754eeee03",
+      "workspace_fingerprint": "6c00337178c462173e058ee74170eede0c98f160fa0a569d7bb7a3a2757c93bd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 59.311,
+      "started_at": "2026-09-17T00:23:49.308Z",
+      "commit": "944a1291113a51b366d293e00c7979c754eeee03",
+      "workspace_fingerprint": "6c00337178c462173e058ee74170eede0c98f160fa0a569d7bb7a3a2757c93bd",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "The merged Phase-0 relation/HNF/unit suffix now compiles as one source-transparent native graph containing 132 functions from 45 unique Python source dependencies. Focused checks preserve the actual IntegerBuffer, Int64Buffer, and Float64Buffer stage ABIs, find no dynamic host calls in generated core code, and execute exact-buffer and binary64 entries from the same addon under JavaScript, GMP, and tagged backends. No additional compiler fix was justified: the imported-definition identity correction already present at the base commit survives this substantially larger real import diamond.",
+    "risks": [
+      "This is a composition and ABI regression, not an end-to-end mathematical oracle: independently qualified stage fixtures remain authoritative until the prepared-field driver supplies all caller-owned storage and handoffs.",
+      "State buffers are intentionally heterogeneous: Smith/getfu state is Int64Buffer, whereas nf_cxlog and rank-two lattice state is IntegerBuffer. The driver must preserve distinct pre-sized owners rather than aliasing them opportunistically.",
+      "The full compiler test command cannot run in this clean lane because the optional FLINT addon is absent; 17 tests passed, 34 skipped, and the 15 failures all report the missing packages/flint/build/Release/sagejs_flint.node. The focused composed graph, full build, architecture check, and strict Python checks pass."
+    ],
+    "next_steps": [
+      "Wire the prepared-field driver to these already-compatible boundaries while retaining caller-owned, pre-sized, disjoint storage.",
+      "Keep class_group_internal_result.py as the cold dynamic replay/result-construction boundary; it is intentionally outside this native graph."
+    ]
+  }
+}

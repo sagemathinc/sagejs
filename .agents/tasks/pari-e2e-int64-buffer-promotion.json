@@ -1,0 +1,98 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-e2e-int64-buffer-promotion",
+  "title": "Pari E2e Int64 Buffer Promotion",
+  "lane": "native-compiler",
+  "status": "review",
+  "owner": "user",
+  "objective": "Fix augmented Int64Buffer exact-arithmetic reads so emitted backends preserve the int64 temporary and explicit exact promotion",
+  "base_commit": "e683e802afb6798e64f49594cd9546e1ee334fd9",
+  "claims": [
+    "tools/native-kernel/integer-ir.cjs",
+    "tools/native-kernel/test/int64-scalar.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "IR shape plus native, dynamic, and CPython agreement"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node --test tools/native-kernel/test/int64-scalar.cjs"
+  ],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.502,
+      "started_at": "2026-09-16T22:28:14.608Z",
+      "commit": "e683e802afb6798e64f49594cd9546e1ee334fd9",
+      "workspace_fingerprint": "c595d3792d6c5461d24b2f0f3ba60876ca42c21a70c02d8e2c81ef0506fc4a50",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 56.967,
+      "started_at": "2026-09-16T22:28:33.970Z",
+      "commit": "e683e802afb6798e64f49594cd9546e1ee334fd9",
+      "workspace_fingerprint": "c595d3792d6c5461d24b2f0f3ba60876ca42c21a70c02d8e2c81ef0506fc4a50",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/int64-scalar.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.662,
+      "started_at": "2026-09-16T22:29:37.867Z",
+      "commit": "e683e802afb6798e64f49594cd9546e1ee334fd9",
+      "workspace_fingerprint": "c595d3792d6c5461d24b2f0f3ba60876ca42c21a70c02d8e2c81ef0506fc4a50",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 2.607,
+      "started_at": "2026-09-16T22:30:05.960Z",
+      "commit": "e683e802afb6798e64f49594cd9546e1ee334fd9",
+      "workspace_fingerprint": "c595d3792d6c5461d24b2f0f3ba60876ca42c21a70c02d8e2c81ef0506fc4a50",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1227.393,
+      "started_at": "2026-09-16T22:30:16.806Z",
+      "commit": "e683e802afb6798e64f49594cd9546e1ee334fd9",
+      "workspace_fingerprint": "c595d3792d6c5461d24b2f0f3ba60876ca42c21a70c02d8e2c81ef0506fc4a50",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Keep augmented Int64Buffer reads in their physical int64 representation even when the right operand promotes the arithmetic to an exact Integer. The IR now records one consistent type for the load operation and its temporary, then performs the existing explicit integer.from_int64 promotion. Regression coverage checks the IR invariant, generated tagged C shape, and native, JavaScript, dynamic, and CPython agreement.",
+    "risks": [
+      "The broader PARI port test now compiles past this defect but exposes a separate unsigned-index check precedence defect in c-backend.cjs; that file is outside this lane's claim."
+    ],
+    "next_steps": [
+      "Integrate this commit before fixing c-backend.cjs unsigned Int64Buffer get/set checks to parenthesize their negated predicates."
+    ]
+  }
+}

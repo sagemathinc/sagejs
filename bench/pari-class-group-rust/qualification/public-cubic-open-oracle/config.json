@@ -1,0 +1,24 @@
+{
+  "schema": "sagejs.rust-class-group/public-cubic-open-oracle-config-v1",
+  "publicReceipt": "../public-cubic-open-corpus/receipt.json",
+  "publicReceiptSha256": "54a94785efe43da991cb79e66f3796156f95cbf8eeaa0f0ac7b876ab42a04411",
+  "publicExecutionCommit": "1f4237449e31ef87a4b5d7ff4c4b57bea1364c9d",
+  "publicSourceClosureSha256": "4f2fd077f81710157170273984f8b35f30397f424317105c8a7afd2c2257749c",
+  "privateEvidenceSha256": "585ccd969c2df2fa165138a07ce7247553fa02acd50741c1f76b09c0d30008b6",
+  "oracleIdentity": "../corpus/pari-2.17.4-oracle-identity.json",
+  "oracleIdentitySha256": "e6eb5e0cbd901791cf232ff03d946b1ee4b4a924659616bd24ddc0c02d14742f",
+  "traceContract": "../corpus/pari-buchall-debug-trace-v1.json",
+  "traceContractSha256": "2e4f10b85601930c89bf94ef2b92db06b79f4ab11361a9fb4c675d5eab37eafe",
+  "partition": "open",
+  "degree": 3,
+  "expectedCaseCount": 12,
+  "comparisonFields": [
+    "polynomialAscending",
+    "signature",
+    "equationOrderIndex",
+    "fieldDiscriminant",
+    "classNumber",
+    "invariantFactors",
+    "unitRank"
+  ]
+}

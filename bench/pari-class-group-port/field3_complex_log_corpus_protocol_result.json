@@ -1,0 +1,192 @@
+{
+  "schema": "sagejs-field3-complex-log-corpus-protocol-result-v1",
+  "status": "batch-124-recovered-awaiting-batch-128",
+  "baseCommit": "56324f09872e235b20207f46aa83e4cadebde898",
+  "schedule": {
+    "batches": 76,
+    "batchWidth": 4,
+    "starts": "0,4,...,296,300",
+    "finalCount": 1,
+    "sourceColumns": 301,
+    "completeOwnerCells": 2107
+  },
+  "identity": {
+    "authoritySha256": "246bfe2af51c8be732308719773fc7d696f7dc1bf21958c91d96cd8fc448954c",
+    "initialOwnerSha256": "81b9d3b237e781a697f0ae170554426b363ec2235297407be1deed38ebbbc6fe",
+    "preparedOwnerSha256": "bc0dfbca45a575a381ba87371fb27906f68b34cedd025435986fad4c7c6287cf",
+    "kernelSourceSha256": "87d2b07569daa31ebf62ce88c971dd0fbdf4e87e898509b9fe9d59d4da1e2007",
+    "normConsequencesSha256": "65e1bbd5c05b89b63d08d91e137c2ac68116db3df66073080d89ca4a55275f53"
+  },
+  "lightweightSelfTest": {
+    "scheduleBatches": 76,
+    "packedCells": 2107,
+    "selectedPrefixColumns": 32,
+    "prefixCompatibilitySha256": "f4899c83bfb797e61a3fbfc539c107db57eb0ea78e20b9ab1697167d75c3b1cd",
+    "immutableCapsules": 76,
+    "immutableReceipts": 1,
+    "immutableMergeArtifacts": 2,
+    "immutableColumnFragments": 4,
+    "fragmentAssemblyCapsuleSha256": "bc4e95ba3970b4350c702f914119e338ead2f0995c76c54c9ee72f1e6a39ecf6",
+    "negativeTests": 15
+  },
+  "estimateFromQualifiedPrefixRun": {
+    "warmBatchSeconds": [190, 230],
+    "coldBatchSeconds": [210, 260],
+    "peakAggregateRssKiB": [1450000, 1600000],
+    "serialCorpusHours": [3.8, 4.8],
+    "qualifiedSourceRunMilliseconds": 303107.764737,
+    "qualifiedSourcePeakAggregateRssKiB": 1489284
+  },
+  "authenticFirstBatch": {
+    "sourceStart": 0,
+    "sourceCount": 4,
+    "sourceStop": 4,
+    "packedCells": 28,
+    "outputSha256": "18eb8edf0301fee15c7d189ef67d62dd909fecbc0ea3c8d7f991d8889bf29f74",
+    "state": ["0", "153088", "0", "4", "4", "0", "0", "4", "297"],
+    "capsule": {
+      "path": "/scratch/sagejs-runtime/pari-class-group-e2e-20260917/field3-authority/complex-log-batch-0-4-c461673e730ff53f81cb1e2cccad7cddfb2a22fd5442534e9c8bc3dc16eebb11.json",
+      "sha256": "c461673e730ff53f81cb1e2cccad7cddfb2a22fd5442534e9c8bc3dc16eebb11",
+      "bytes": 185588,
+      "mode": "0444"
+    },
+    "receipt": {
+      "path": "/scratch/sagejs-runtime/pari-class-group-e2e-20260917/field3-authority/complex-log-batch-receipt-0-4-036f120432b3643764b15338ab7fdb3dbd29290a42da1115f6d5df3d9fd831f0.json",
+      "sha256": "036f120432b3643764b15338ab7fdb3dbd29290a42da1115f6d5df3d9fd831f0",
+      "bytes": 1977,
+      "mode": "0444"
+    },
+    "native": {
+      "runMilliseconds": 176388.715505,
+      "cacheKey": "0373a098aba3964394366c13eea899bf1c927c97123d150bd568a9b679492c0a",
+      "coreBytes": 8801671,
+      "addonBytes": 1669792
+    },
+    "wallMilliseconds": 213171,
+    "peakAggregateRssKiB": 1422968,
+    "resourcePolicy": {
+      "abortGiB": 3.5,
+      "hardGiB": 4,
+      "timeoutSeconds": 600
+    }
+  },
+  "serialCampaignCheckpoint": {
+    "completeThroughSourceStart": 84,
+    "completeBatches": 22,
+    "failedRange": {
+      "sourceStart": 88,
+      "sourceCount": 4,
+      "startedAt": "2026-09-17T13:42:25.566Z",
+      "stoppedAt": "2026-09-17T13:52:25.734Z",
+      "elapsedMilliseconds": 600167,
+      "signal": "SIGKILL",
+      "cause": "600-second supervisor timeout",
+      "peakAggregateRssKiB": 443944,
+      "capsulePublished": false,
+      "receiptPublished": false,
+      "failureLog": {
+        "path": "/scratch/sagejs-runtime/pari-class-group-e2e-20260917/field3-authority/complex-log-run-logs/batch-88-4.log",
+        "sha256": "c94b95c443f70a4a32f9468b5f1bf20543c9404bc6d6d113fafc760daa81049a",
+        "bytes": 415
+      },
+      "nativeAttribution": {
+        "completedTimingAvailable": false,
+        "precedingBatchOverheadMilliseconds": [7955.132462, 8347.885014],
+        "inferredNativeLowerBoundMilliseconds": 591819
+      }
+    }
+  },
+  "columnFragmentRecovery": {
+    "schema": "sagejs.pari-class-group/field3-complex-log-column-fragment-v1",
+    "receiptSchema": "sagejs.pari-class-group/field3-complex-log-column-fragment-receipt-v1",
+    "parentRange": [88, 4],
+    "columns": [88, 89, 90, 91],
+    "kernelSourceChanged": false,
+    "ordinaryBatchPublishedByFragment": false,
+    "assemblyProducesOrdinaryV1Batch": true,
+    "heavyFragmentsExecuted": 4,
+    "fragmentResumeState": {
+      "complete": 4,
+      "missing": 0,
+      "fragmentOnly": 0
+    },
+    "authenticColumn88": {
+      "outputSha256": "ecd1113dea6bbaea032af2b8754aa2ee793880a3b576849d3f4f336c88b3500d",
+      "runMilliseconds": 94019.560459,
+      "wallMilliseconds": 102620,
+      "peakAggregateRssKiB": 1354600,
+      "fragmentSha256": "da8c242a3453e4d5c38e262ad5ee91669fa8a8aad6003c89619814d56f2a67a8",
+      "excludedReceiptSha256": "90b179d79f297aa76c9b174ca1eb85cf9c928df7ff1273c35af155b0ac838986",
+      "replacementReceiptSha256": "1171272bda08e8654ae21bfd308e8823be80d96b632b8c294ef20116f6b5621d",
+      "supersessionSha256": "b6d671e883357f17599fe602a921c32638565a5b1fcbc25553f52b6dddbfb3d0"
+    },
+    "authenticColumns89To91": [
+      {
+        "column": 89,
+        "runMilliseconds": 94057.18663,
+        "wallMilliseconds": 102485,
+        "peakAggregateRssKiB": 1363784,
+        "fragmentSha256": "924eb7d7d2d8a53b898b937b15a9f7e24db5f2944bb778d4e17e4fd3bef47c7d",
+        "receiptSha256": "4e7bdb3ff1b67d96bc071e1ce09e643825c0c582e9816b639b8bf7a1b1d40c37"
+      },
+      {
+        "column": 90,
+        "runMilliseconds": 99294.597872,
+        "wallMilliseconds": 108177,
+        "peakAggregateRssKiB": 1355276,
+        "fragmentSha256": "919cd50796b70b3930a9ba516503a28d4774a3ca421203ef824016c95a994ac8",
+        "receiptSha256": "834a7f48dfc92660daeceda19d084b4d6d28a8b43df82af8e04137f2fe630444"
+      },
+      {
+        "column": 91,
+        "runMilliseconds": 92307.696794,
+        "wallMilliseconds": 101191,
+        "peakAggregateRssKiB": 1380024,
+        "fragmentSha256": "801a596d3cf2cd54ef5aff70af152b9afb2d4530bfcc12e9ce7167f85081b30e",
+        "receiptSha256": "19c41e907c8ec7ff69d9354166d7227a6baa826de8c3c76c298260d66ce491e7"
+      }
+    ],
+    "assembledBatch88": {
+      "outputSha256": "933708bb761b8794ca81dec4a249cd0ba1df16c1b4d29ee74ba3e14d463a6cf5",
+      "packedCells": 28,
+      "state": ["0", "153088", "88", "4", "0", "0", "4", "92", "209"],
+      "runMilliseconds": 379679.041755,
+      "wallMilliseconds": 414473,
+      "peakAggregateRssKiB": 1380024,
+      "capsuleSha256": "5e45a9eb95dad85c59a3a10e51baf3699092c714d2a67942d83946a5ba27208c",
+      "receiptSha256": "88352efde1026b470e20728dabf9f36370571fe5a4f7cecf12d0f5fec18eb5c7"
+    }
+  },
+  "columnFragmentRecovery124": {
+    "parentRange": [124, 4],
+    "timedOutOrdinaryBatchPublished": false,
+    "frozenCacheKey": "3e7e26feddd8d2d9cef851b9a626b018e28aa5cfddb137d6237ba18e454c6643",
+    "receiptSupersessions": 3,
+    "fragmentResumeState": {
+      "complete": 4,
+      "missing": 0,
+      "fragmentOnly": 0
+    },
+    "recomputedColumns": [124, 125, 126],
+    "assembledBatch124": {
+      "outputSha256": "5dfd354ecc7fdfe9c9946317d9d9720954df591f518783488050ae1700c1877b",
+      "packedCells": 28,
+      "state": ["0", "153088", "124", "4", "0", "0", "4", "128", "173"],
+      "runMilliseconds": 372620.0594,
+      "wallMilliseconds": 435070,
+      "peakAggregateRssKiB": 1360984,
+      "capsuleSha256": "97da3a236c082af7609b5b882109cfe08656a8871078fd3f5b7c8b0da79d678e",
+      "receiptSha256": "ac2f619c13fdf4b9e0499a727c27cd6e598a1dc44efbb6c85df9ebe02e991865"
+    }
+  },
+  "resumeState": {
+    "complete": 32,
+    "missing": 44,
+    "capsuleOnly": 0
+  },
+  "heavyBatchesExecuted": 32,
+  "heavyBatchesPassed": 30,
+  "heavyBatchesFailed": 2,
+  "heavyBatchesInterruptedBeforePublication": 2,
+  "completeOwnerPublished": false
+}

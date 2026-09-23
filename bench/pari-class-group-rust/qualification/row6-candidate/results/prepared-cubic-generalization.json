@@ -1,0 +1,46 @@
+{
+  "schema": "sagejs.rust-class-group/prepared-cubic-generalization-v1",
+  "commandTemplate": "./target/release/sagejs-row6-rust-candidate-diagnostic small-norm-unit-kernel-prepared INPUT 2000 600000",
+  "proofMode": "conditional-grh",
+  "usesClassGroupAnswersAsInput": false,
+  "cases": [
+    {
+      "fieldId": "h1-real-cubic",
+      "inputSha256": "6ef97f99f3fb676e9c8d59cedaf696409916ea485f356244efc60f0b14d0e54d",
+      "equationOrderIndex": "1",
+      "relationShape": [73, 66],
+      "classGroup": "trivial",
+      "invariantFactors": [],
+      "mapConstruction": "packed-right-nullspace-modulo-two",
+      "allRelationsMapToZero": true,
+      "classUnitIndex": 1,
+      "totalNanoseconds": "693218116"
+    },
+    {
+      "fieldId": "row1-index-3-cubic",
+      "inputSha256": "849adefc199151b221c08f9c573e12534176439a4b354f6b7631ece5cff54c70",
+      "equationOrderIndex": "3",
+      "relationShape": [58, 51],
+      "classGroup": "C3",
+      "invariantFactors": [3],
+      "mapConstruction": "incremental-hnf-plus-smith-transform",
+      "allRelationsMapToZero": true,
+      "classUnitIndex": 1,
+      "selectedPrimeIdealGeneratorIndicesZeroBased": [0],
+      "totalNanoseconds": "702380143"
+    },
+    {
+      "fieldId": "row6-x3-minus-2000000000010x-plus-2000000000018",
+      "inputSha256": "24551723d43685e5592d9b3f866bf73e3f0bbde69ee5afec1eb2dc2f760314b5",
+      "equationOrderIndex": "3",
+      "relationShape": [1137, 1130],
+      "classGroup": "C2 x C2",
+      "invariantFactors": [2, 2],
+      "mapConstruction": "packed-right-nullspace-modulo-two",
+      "allRelationsMapToZero": true,
+      "classUnitIndex": 1,
+      "totalNanoseconds": "7645710844"
+    }
+  ],
+  "conclusion": "One external prepared-field engine completes distinct trivial, odd cyclic, and noncyclic class groups, including maximal orders of equation-order index one and three. Complex cubic signatures and broader held-out coverage remain open."
+}

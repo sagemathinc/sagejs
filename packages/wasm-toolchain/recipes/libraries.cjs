@@ -138,6 +138,24 @@ function normalizeCompilerMetadata(context, filename, prefix) {
   );
 }
 
+function normalizeFlintFmpzObjects(filename) {
+  const source = readFileSync(filename, "utf8");
+  const anchor = [
+    "ifeq ($(IS_OUT_OF_TREE),1)",
+    "fmpz_OBJS := $(subst $(SRC_DIR)/fmpz/fmpz.c,$(BUILD_DIR)/fmpz/fmpz.o,$(fmpz_OBJS))",
+    "endif",
+  ].join("\n");
+  const occurrences = source.split(anchor).length - 1;
+  if (occurrences !== 1) {
+    throw new Error(`${filename} must define the FLINT fmpz object rewrite exactly once`);
+  }
+  const normalized = `${anchor}\n\n` +
+    "# FLINT's generated fmpz source can enter this list through both its " +
+    "absolute wildcard and relative generated-source path.\n" +
+    "fmpz_OBJS := $(sort $(fmpz_OBJS))";
+  writeFileSync(filename, source.replace(anchor, normalized));
+}
+
 function buildTriplet() {
   const key = `${process.platform}-${process.arch}`;
   const triplets = {
@@ -246,6 +264,7 @@ function buildFlint(context, archive) {
     LDFLAGS: `-L${join(gmp, "lib")} -L${join(mpfr, "lib")} -lwasi-emulated-signal`,
     LD: context.paths.wasmLd,
   });
+  normalizeFlintFmpzObjects(join(source, "Makefile"));
   makeInstall(source, context, env, [`LD=${context.paths.wasmLd}`]);
 }
 
@@ -295,6 +314,7 @@ module.exports = {
   compilerEnvironment,
   extractSource,
   normalizeGeneratedMacro,
+  normalizeFlintFmpzObjects,
   run,
   setCommandObserver,
   subprocessEnvironment,

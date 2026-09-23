@@ -1,0 +1,493 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/rust-class-group-raw-benchmark-receipt-v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "benchmarkId",
+    "configSha256",
+    "status",
+    "boundary",
+    "schedule",
+    "environment",
+    "samples",
+    "failures"
+  ],
+  "properties": {
+    "schema": { "const": "sagejs.rust-class-group/benchmark-receipt-v1" },
+    "benchmarkId": { "$ref": "#/$defs/nonemptyString" },
+    "configSha256": { "$ref": "#/$defs/sha256" },
+    "status": { "enum": ["running", "passed", "failed"] },
+    "boundary": { "$ref": "#/$defs/boundary" },
+    "schedule": { "$ref": "#/$defs/schedule" },
+    "environment": { "$ref": "#/$defs/environmentIdentity" },
+    "samples": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/sample" }
+    },
+    "failures": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/failure" }
+    },
+    "summary": { "$ref": "#/$defs/summary" },
+    "completedAt": { "type": "string", "format": "date-time" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "running" } } },
+      "then": {
+        "properties": {
+          "summary": false,
+          "completedAt": false
+        }
+      }
+    },
+    {
+      "if": { "properties": { "status": { "const": "passed" } } },
+      "then": {
+        "required": ["summary", "completedAt"],
+        "properties": {
+          "summary": true,
+          "completedAt": true,
+          "failures": { "type": "array", "maxItems": 0 }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "status": { "const": "failed" } } },
+      "then": {
+        "required": ["summary", "completedAt"],
+        "properties": {
+          "summary": true,
+          "completedAt": true,
+          "failures": { "type": "array", "minItems": 1 }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "nonemptyString": { "type": "string", "minLength": 1 },
+    "unsigned": { "type": "string", "pattern": "^(0|[1-9][0-9]*)$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "nullableUnsigned": {
+      "oneOf": [
+        { "$ref": "#/$defs/unsigned" },
+        { "type": "null" }
+      ]
+    },
+    "nullableString": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "null" }
+      ]
+    },
+    "command": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/nonemptyString" }
+    },
+    "boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "label",
+        "includedWork",
+        "excludedWork",
+        "proofMode",
+        "outputPolicy"
+      ],
+      "properties": {
+        "kind": { "enum": ["algorithm-stage", "prepared-field", "public-call"] },
+        "label": { "$ref": "#/$defs/nonemptyString" },
+        "includedWork": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/nonemptyString" }
+        },
+        "excludedWork": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/nonemptyString" }
+        },
+        "proofMode": { "$ref": "#/$defs/nonemptyString" },
+        "outputPolicy": { "$ref": "#/$defs/nonemptyString" },
+        "stageName": { "$ref": "#/$defs/nonemptyString" },
+        "publicMode": {
+          "enum": [
+            "fresh-process",
+            "fresh-field",
+            "warmed-code-fresh-field",
+            "cached-result-lookup"
+          ]
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "kind": { "const": "algorithm-stage" },
+            "stageName": true,
+            "publicMode": false
+          },
+          "required": ["stageName"]
+        },
+        {
+          "properties": {
+            "kind": { "const": "prepared-field" },
+            "stageName": false,
+            "publicMode": false
+          }
+        },
+        {
+          "properties": {
+            "kind": { "const": "public-call" },
+            "stageName": false,
+            "publicMode": true
+          },
+          "required": ["publicMode"]
+        }
+      ]
+    },
+    "schedule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "warmupsPerArm", "samplesPerArm"],
+      "properties": {
+        "kind": { "const": "alternating-pairs-v1" },
+        "warmupsPerArm": { "type": "integer", "minimum": 1 },
+        "samplesPerArm": { "type": "integer", "minimum": 15 }
+      }
+    },
+    "hostIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "platform",
+        "architecture",
+        "osRelease",
+        "osType",
+        "cpuCount",
+        "cpuModel",
+        "totalMemoryBytes"
+      ],
+      "properties": {
+        "platform": { "$ref": "#/$defs/nonemptyString" },
+        "architecture": { "$ref": "#/$defs/nonemptyString" },
+        "osRelease": { "$ref": "#/$defs/nonemptyString" },
+        "osType": { "$ref": "#/$defs/nonemptyString" },
+        "cpuCount": { "type": "integer", "minimum": 1 },
+        "cpuModel": { "$ref": "#/$defs/nullableString" },
+        "totalMemoryBytes": { "$ref": "#/$defs/unsigned" }
+      }
+    },
+    "nodeIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "versions"],
+      "properties": {
+        "version": { "$ref": "#/$defs/nonemptyString" },
+        "versions": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": { "minLength": 1 },
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    },
+    "gitIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commit", "statusSha256"],
+      "properties": {
+        "commit": { "$ref": "#/$defs/nonemptyString" },
+        "statusSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "identityCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "command", "status", "stdout", "stderr"],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonemptyString" },
+        "command": { "$ref": "#/$defs/command" },
+        "status": {
+          "oneOf": [
+            { "type": "integer" },
+            { "type": "string", "minLength": 1 },
+            { "type": "null" }
+          ]
+        },
+        "signal": { "$ref": "#/$defs/nullableString" },
+        "stdout": { "type": "string" },
+        "stderr": { "type": "string" }
+      }
+    },
+    "artifactIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["armId", "path"],
+      "properties": {
+        "armId": { "$ref": "#/$defs/nonemptyString" },
+        "path": { "$ref": "#/$defs/nonemptyString" },
+        "bytes": { "$ref": "#/$defs/unsigned" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "error": { "$ref": "#/$defs/nonemptyString" }
+      },
+      "oneOf": [
+        {
+          "required": ["bytes", "sha256"],
+          "properties": {
+            "bytes": true,
+            "sha256": true,
+            "error": false
+          }
+        },
+        {
+          "required": ["error"],
+          "properties": {
+            "error": true,
+            "bytes": false,
+            "sha256": false
+          }
+        }
+      ]
+    },
+    "environmentIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "capturedAt",
+        "node",
+        "host",
+        "environment",
+        "git",
+        "commands",
+        "armExecutableArtifacts"
+      ],
+      "properties": {
+        "capturedAt": { "type": "string", "format": "date-time" },
+        "node": { "$ref": "#/$defs/nodeIdentity" },
+        "host": { "$ref": "#/$defs/hostIdentity" },
+        "environment": {
+          "type": "object",
+          "propertyNames": { "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" },
+          "additionalProperties": { "$ref": "#/$defs/nullableString" }
+        },
+        "git": { "$ref": "#/$defs/gitIdentity" },
+        "commands": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/identityCommand" }
+        },
+        "armExecutableArtifacts": {
+          "type": "array",
+          "minItems": 2,
+          "items": { "$ref": "#/$defs/artifactIdentity" }
+        }
+      }
+    },
+    "processEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["exitStatus", "signal", "timedOut", "spawnError"],
+      "properties": {
+        "exitStatus": {
+          "oneOf": [
+            { "type": "integer" },
+            { "type": "null" }
+          ]
+        },
+        "signal": { "$ref": "#/$defs/nullableString" },
+        "timedOut": { "type": "boolean" },
+        "spawnError": { "$ref": "#/$defs/nullableString" }
+      }
+    },
+    "streamEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "bytes"],
+      "properties": {
+        "path": { "$ref": "#/$defs/nonemptyString" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "bytes": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "jsonValue": {
+      "anyOf": [
+        { "type": "null" },
+        { "type": "boolean" },
+        { "type": "number" },
+        { "type": "string" },
+        {
+          "type": "array",
+          "items": { "$ref": "#/$defs/jsonValue" }
+        },
+        {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/jsonValue" }
+        }
+      ]
+    },
+    "sample": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "executionIndex",
+        "fieldId",
+        "armId",
+        "warmup",
+        "round",
+        "positionInRound",
+        "command",
+        "cwd",
+        "seed",
+        "wallNanoseconds",
+        "process",
+        "stdout",
+        "stderr",
+        "status"
+      ],
+      "properties": {
+        "executionIndex": { "type": "integer", "minimum": 0 },
+        "fieldId": { "$ref": "#/$defs/nonemptyString" },
+        "armId": { "$ref": "#/$defs/nonemptyString" },
+        "warmup": { "type": "boolean" },
+        "round": { "type": "integer", "minimum": 0 },
+        "positionInRound": { "type": "integer", "minimum": 0, "maximum": 1 },
+        "command": { "$ref": "#/$defs/command" },
+        "cwd": { "$ref": "#/$defs/nonemptyString" },
+        "seed": { "$ref": "#/$defs/nonemptyString" },
+        "wallNanoseconds": { "$ref": "#/$defs/unsigned" },
+        "process": { "$ref": "#/$defs/processEvidence" },
+        "stdout": { "$ref": "#/$defs/streamEvidence" },
+        "stderr": { "$ref": "#/$defs/streamEvidence" },
+        "status": { "enum": ["ok", "failed"] },
+        "adapterNanoseconds": { "$ref": "#/$defs/unsigned" },
+        "peakRssKiB": { "$ref": "#/$defs/unsigned" },
+        "result": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": { "$ref": "#/$defs/jsonValue" }
+        },
+        "resultCanonicalJson": { "type": "string" },
+        "resultSha256": { "$ref": "#/$defs/sha256" },
+        "outputSchema": { "$ref": "#/$defs/nullableString" },
+        "stageTimingsNanoseconds": {
+          "type": "object",
+          "propertyNames": { "minLength": 1 },
+          "additionalProperties": { "$ref": "#/$defs/unsigned" }
+        },
+        "error": { "$ref": "#/$defs/nonemptyString" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "ok" } } },
+          "then": {
+            "required": [
+              "adapterNanoseconds",
+              "result",
+              "resultCanonicalJson",
+              "resultSha256",
+              "outputSchema"
+            ],
+            "properties": {
+              "adapterNanoseconds": true,
+              "result": true,
+              "resultCanonicalJson": true,
+              "resultSha256": true,
+              "outputSchema": true,
+              "error": false
+            }
+          }
+        },
+        {
+          "if": { "properties": { "status": { "const": "failed" } } },
+          "then": {
+            "required": ["error"],
+            "properties": {
+              "error": true,
+              "adapterNanoseconds": false,
+              "peakRssKiB": false,
+              "result": false,
+              "resultCanonicalJson": false,
+              "resultSha256": false,
+              "outputSchema": false,
+              "stageTimingsNanoseconds": false
+            }
+          }
+        }
+      ]
+    },
+    "fingerprintMismatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "fieldId", "fingerprints"],
+      "properties": {
+        "kind": { "const": "exact-result-fingerprint-mismatch" },
+        "fieldId": { "$ref": "#/$defs/nonemptyString" },
+        "fingerprints": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/sha256" }
+        }
+      }
+    },
+    "failure": {
+      "oneOf": [
+        {
+          "allOf": [
+            { "$ref": "#/$defs/sample" },
+            {
+              "type": "object",
+              "properties": { "status": { "const": "failed" } }
+            }
+          ]
+        },
+        { "$ref": "#/$defs/fingerprintMismatch" }
+      ]
+    },
+    "armSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "retainedSamples",
+        "failedSamples",
+        "medianAdapterNanoseconds",
+        "medianWallNanoseconds",
+        "exactResultFingerprints",
+        "maximumPeakRssKiB"
+      ],
+      "properties": {
+        "retainedSamples": { "type": "integer", "minimum": 0 },
+        "failedSamples": { "type": "integer", "minimum": 0 },
+        "medianAdapterNanoseconds": { "$ref": "#/$defs/nullableUnsigned" },
+        "medianWallNanoseconds": { "$ref": "#/$defs/nullableUnsigned" },
+        "exactResultFingerprints": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/sha256" }
+        },
+        "maximumPeakRssKiB": { "$ref": "#/$defs/nullableUnsigned" }
+      }
+    },
+    "fieldSummary": {
+      "type": "object",
+      "minProperties": 3,
+      "properties": {
+        "medianRatioArm0OverArm1": {
+          "oneOf": [
+            { "type": "number", "minimum": 0 },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": ["medianRatioArm0OverArm1"],
+      "additionalProperties": { "$ref": "#/$defs/armSummary" }
+    },
+    "summary": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": { "minLength": 1 },
+      "additionalProperties": { "$ref": "#/$defs/fieldSummary" }
+    }
+  }
+}

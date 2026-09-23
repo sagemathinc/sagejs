@@ -1,0 +1,149 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-regulator-acceptance-replay",
+  "title": "Independent cubic regulator acceptance replay",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Cold-replay the authentic h=1 cubic selected unit lattice and packed logarithms with rigorous interval regulator machinery, preserving a strict distinction between PARI correspondence and public certification",
+  "base_commit": "051cc39a1816a4032164000c4a8510c3774b6758",
+  "claims": [
+    "bench/pari-class-group-port/regulator_acceptance_replay.py",
+    "bench/pari-class-group-port/check_regulator_acceptance_replay.py",
+    "bench/pari-class-group-port/check_regulator_acceptance_replay.cjs",
+    "bench/pari-class-group-port/regulator_acceptance_replay_audit.md",
+    "bench/pari-class-group-port/regulator-acceptance-replay-fixture.json"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/pari-class-group-end-to-end-native-plan.md",
+    "PARI 2.17.4 src/basemath/buch2.c"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Authentic cubic unit bridge selected lattice and exact packed logs",
+      "Existing RealBall/RegulatorEnclosure verification"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "python3 bench/pari-class-group-port/check_regulator_acceptance_replay.py",
+    "node --check bench/pari-class-group-port/check_regulator_acceptance_replay.cjs",
+    "env SAGEJS_REPLAY_RUNTIME_ROOT=/home/user/sagejs-worktrees/pari-class-group-e2e-integration node bench/pari-class-group-port/check_regulator_acceptance_replay.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "python3 bench/pari-class-group-port/check_regulator_acceptance_replay.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.049,
+      "started_at": "2026-09-17T02:28:41.926Z",
+      "commit": "051cc39a1816a4032164000c4a8510c3774b6758",
+      "workspace_fingerprint": "6402abbfe8dacc0f4c5c93d8fcf8d0e25d5e34507e5f9d005f05fba9b1109d1f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check bench/pari-class-group-port/check_regulator_acceptance_replay.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.031,
+      "started_at": "2026-09-17T02:28:42.628Z",
+      "commit": "051cc39a1816a4032164000c4a8510c3774b6758",
+      "workspace_fingerprint": "6402abbfe8dacc0f4c5c93d8fcf8d0e25d5e34507e5f9d005f05fba9b1109d1f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_REPLAY_RUNTIME_ROOT=/home/user/sagejs-worktrees/pari-class-group-e2e-integration node bench/pari-class-group-port/check_regulator_acceptance_replay.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.205,
+      "started_at": "2026-09-17T02:28:43.312Z",
+      "commit": "051cc39a1816a4032164000c4a8510c3774b6758",
+      "workspace_fingerprint": "6402abbfe8dacc0f4c5c93d8fcf8d0e25d5e34507e5f9d005f05fba9b1109d1f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 bench/pari-class-group-port/check_regulator_acceptance_replay.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.045,
+      "started_at": "2026-09-17T02:31:03.991Z",
+      "commit": "051cc39a1816a4032164000c4a8510c3774b6758",
+      "workspace_fingerprint": "a680367d1e38869759db22c821be9bb0cc4467a2ca3e5863e7e59174383c0216",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check bench/pari-class-group-port/check_regulator_acceptance_replay.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.03,
+      "started_at": "2026-09-17T02:31:04.687Z",
+      "commit": "051cc39a1816a4032164000c4a8510c3774b6758",
+      "workspace_fingerprint": "a680367d1e38869759db22c821be9bb0cc4467a2ca3e5863e7e59174383c0216",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_REPLAY_RUNTIME_ROOT=/home/user/sagejs-worktrees/pari-class-group-e2e-integration node bench/pari-class-group-port/check_regulator_acceptance_replay.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.332,
+      "started_at": "2026-09-17T02:31:05.366Z",
+      "commit": "051cc39a1816a4032164000c4a8510c3774b6758",
+      "workspace_fingerprint": "a680367d1e38869759db22c821be9bb0cc4467a2ca3e5863e7e59174383c0216",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check bench/pari-class-group-port/check_regulator_acceptance_replay.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.03,
+      "started_at": "2026-09-17T02:31:34.210Z",
+      "commit": "051cc39a1816a4032164000c4a8510c3774b6758",
+      "workspace_fingerprint": "6810e28c05a18837e5cba2b54a3ccfd6bde4cb1b11cc7b01032121b8f3427229",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_REPLAY_RUNTIME_ROOT=/home/user/sagejs-worktrees/pari-class-group-e2e-integration node bench/pari-class-group-port/check_regulator_acceptance_replay.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.226,
+      "started_at": "2026-09-17T02:31:34.929Z",
+      "commit": "051cc39a1816a4032164000c4a8510c3774b6758",
+      "workspace_fingerprint": "6810e28c05a18837e5cba2b54a3ccfd6bde4cb1b11cc7b01032121b8f3427229",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 bench/pari-class-group-port/check_regulator_acceptance_replay.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.054,
+      "started_at": "2026-09-17T02:31:47.929Z",
+      "commit": "051cc39a1816a4032164000c4a8510c3774b6758",
+      "workspace_fingerprint": "6810e28c05a18837e5cba2b54a3ccfd6bde4cb1b11cc7b01032121b8f3427229",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added an independent cold replay for the authentic h=1 cubic selected unit lattice. It reconstructs the exact units, proves norms and rank, encloses resident PARI packed logs and regulator with the production RealBall/RegulatorEnclosure path, seals precision decisions, and rejects six coordinated rehashed mutations while leaving public certification explicitly false.",
+    "risks": [
+      "The successful 2176-bit retry artifact is bound by SHA-256 rather than duplicated; integration must preserve the companion unit-retry artifact with the recorded digest.",
+      "This proves a regulator for the selected rank-two lattice, not saturation or index one in the full unit group.",
+      "The required broad arithmetic-algebra lane checks remain for integration; this handoff deliberately records only the focused replay, syntax, and mutation checks requested by the integration owner."
+    ],
+    "next_steps": [
+      "Integrate after the authentic cubic unit-retry lane and have the final assembler consume this replay without promoting public completion.",
+      "Add independent unit-saturation/index-one evidence before setting UnitGroupComputation.complete or public certification true."
+    ]
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "schema": "sagejs-field3-real-log-columns-result-v1",
+  "field": "x^4-2000022*x-2000042",
+  "targetBits": 153088,
+  "complete": false,
+  "stoppingCut": {
+    "completed": "28 source-order columns, including both real places, all 26 scalars, and 2 nonscalars",
+    "missing": "273 source-order columns; no complex component, HNF transform, regulator, or answer-derived data"
+  },
+  "owner": {
+    "schema": "sagejs.pari-class-group/field3-real-log-column-owner-v1",
+    "runIdentity": "pari-2.17.4:nfinit192->nfnewprec153088:field3",
+    "layout": "source-column-major [real-place-0 triple, real-place-1 triple]; append weighted-complex triple to form 3x301 raw log order",
+    "durablePath": "/scratch/sagejs-runtime/pari-class-group-e2e-20260917/field3-authority/real-log-columns-09b0a20f1f059757ee3ed347f693fed92fb6749c2d46aac872abcffdd244fde8.json",
+    "sha256": "09b0a20f1f059757ee3ed347f693fed92fb6749c2d46aac872abcffdd244fde8",
+    "bytes": 2582301
+  },
+  "result": {
+    "backend": "gmp",
+    "exactPackedTriples": 56,
+    "exactPackedCells": 168,
+    "scalarColumns": 26,
+    "nonscalarColumns": 2,
+    "remainingColumns": 273,
+    "extrapolatedFullRunMinutes": 63.492160263979166,
+    "signsHandledAsLogAbs": true,
+    "agmLogs": 54,
+    "seriesLogs": 2,
+    "exactNormIdentities": 301,
+    "normSha256": "65e1bbd5c05b89b63d08d91e137c2ac68116db3df66073080d89ca4a55275f53",
+    "embeddingPackedTriplesBitExact": 16,
+    "independentEmbedding": {
+      "status": "pass",
+      "tensorCells": 64,
+      "basisProducts": 16,
+      "rootResidualExponents": [-153132, -153126, -153126, -153124],
+      "embeddingIdentityResidualMaximumExponent": -153120
+    },
+    "dynamicOracles": {
+      "cpython": 1,
+      "javascript": 1
+    },
+    "transactionalRejections": 3,
+    "authoritySha256": "246bfe2af51c8be732308719773fc7d696f7dc1bf21958c91d96cd8fc448954c",
+    "initialOwnerSha256": "81b9d3b237e781a697f0ae170554426b363ec2235297407be1deed38ebbbc6fe",
+    "pariTraceSha256": "ea7dd3a1f006744f14e96c0592da7000994912aa30fe2f9d18bb1f56546abe20",
+    "outputSha256": "22aa4664dfc11ac1522787b15476c652066bba6ec146ca42a3b890b871398315",
+    "capsuleSha256": "09b0a20f1f059757ee3ed347f693fed92fb6749c2d46aac872abcffdd244fde8",
+    "runMilliseconds": 354374.847985,
+    "coreBytes": 10747022,
+    "addonBytes": 1731232,
+    "cacheKey": "8979d16be598a33401887d0312030bade1fa2bc0690e3f4470ffe8a2bd206b0a",
+    "peakAggregateRssKiB": 2322260,
+    "wallMilliseconds": 381479,
+    "resourcePolicy": {
+      "abortGiB": 3.5,
+      "hardGiB": 4,
+      "timeoutSeconds": 600
+    }
+  }
+}

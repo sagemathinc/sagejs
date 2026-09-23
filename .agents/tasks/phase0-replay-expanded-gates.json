@@ -1,0 +1,69 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "phase0-replay-expanded-gates",
+  "title": "Durable Phase-0 expanded focused gates",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Extend the durable Phase-0 replay table with field3 retry, Smith transform, nf_cxlog, signed reduction, unit lattice/getfu, honesty, and immutable-result focused checkers, with hash-bound resumable receipts.",
+  "base_commit": "944a1291113a51b366d293e00c7979c754eeee03",
+  "claims": [
+    "bench/pari-class-group-port/run_phase0_integration_replay.cjs",
+    "bench/pari-class-group-port/phase0_integration_replay.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Existing focused checker assertions and pinned PARI 2.17.4 oracles"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "node --check bench/pari-class-group-port/run_phase0_integration_replay.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.034,
+      "started_at": "2026-09-17T00:09:32.911Z",
+      "commit": "944a1291113a51b366d293e00c7979c754eeee03",
+      "workspace_fingerprint": "27b8b4ce41287eec1624abf55dc1b90c4bd5e9567bd43cf189e3a2bfc277d3e3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_class_group_internal_result.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.144,
+      "started_at": "2026-09-17T00:09:33.621Z",
+      "commit": "944a1291113a51b366d293e00c7979c754eeee03",
+      "workspace_fingerprint": "27b8b4ce41287eec1624abf55dc1b90c4bd5e9567bd43cf189e3a2bfc277d3e3",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added resumable durable stages for the field-3 retry, Smith transforms, nf_cxlog, signed reduction, unit lattice selection/reduction and getfu reconstruction, honesty, and immutable result replay. PARI-dependent identities now include the exact archive, libpari, and gp hashes.",
+    "risks": [
+      "The expensive native replay stages were intentionally not executed in this infrastructure lane.",
+      "Full portable, strict-baselib, and architecture suites remain for the integration lane after the focused stages run."
+    ],
+    "next_steps": [
+      "Cherry-pick this lane into integration and run --stage immutable-result against the pristine PARI 2.17.4 build.",
+      "Review the resulting append-only receipts before starting the unrelated full Phase-0 stage sequence."
+    ]
+  }
+}

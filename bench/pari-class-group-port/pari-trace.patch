@@ -1,0 +1,29 @@
+--- a/src/basemath/buch2.c
++++ b/src/basemath/buch2.c
+@@ -2480,6 +2480,14 @@
+     err_printf("BOUND = %.4g\n",BOUND);
+   }
+ 
++  /* Sage.js diagnostic only: bounded trace, excluded from all timings. */
++  if (getenv("SAGEJS_TRACE_FP")) {
++    err_printf("SJFP_BEGIN %ld %ld %.17g\n", N, skipfirst, BOUND);
++    for (k=1; k<=N; k++) {
++      err_printf("SJFP_V %ld %.17g\n", k, fp->v[k]);
++      for (j=k+1; j<=N; j++) err_printf("SJFP_Q %ld %ld %.17g\n", k,j,fp->q[k][j]);
++    }
++  }
+   k = N; fp->y[N] = fp->z[N] = 0; fp->x[N] = 0;
+   for (av = avma;; set_avma(av), step(fp->x,fp->y,inc,k))
+   {
+@@ -2519,6 +2527,11 @@
+     } while (k > 1);
+ 
+     /* element complete */
++    if (getenv("SAGEJS_TRACE_FP") && try_elt <= 200) {
++      err_printf("SJFP_X %ld", try_elt);
++      for (j=1; j<=N; j++) err_printf(" %ld", fp->x[j]);
++      err_printf("\n");
++    }
+     if (zv_content(fp->x) !=1) continue; /* not primitive */
+     gx = ZM_zc_mul(ideal,fp->x);
+     if (ZV_isscalar(gx)) continue;

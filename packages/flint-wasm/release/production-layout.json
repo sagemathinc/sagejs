@@ -2,6 +2,17 @@
   "schema": "sagejs.wasm-production-layout/v1",
   "modules": [
     {
+      "id": "class-group",
+      "ownershipDomain": "rust-class-group-flint-gmp-mpfr-arb",
+      "artifact": "class-group-core.wasm",
+      "eager": false,
+      "memory": {
+        "pageBytes": 65536,
+        "initialPages": 256,
+        "maximumPages": 4096
+      }
+    },
+    {
       "id": "flint-extension-multivariate",
       "ownershipDomain": "flint-extension-multivariate",
       "artifact": "flint-extension-multivariate.wasm",
@@ -90,6 +101,23 @@
     "schema": "sagejs.wasm-artifact-topology/v1",
     "groups": [
       {
+        "id": "class-group",
+        "kind": "specialist",
+        "dependencies": ["eager-core"],
+        "assets": [
+          "class-group-core-receipt.json",
+          "class-group-core.wasm",
+          "runtime/class-group-core-loader.mjs",
+          "runtime/class-group-core-worker.mjs",
+          "runtime/class-group-core.d.ts",
+          "runtime/class-group-core.mjs"
+        ],
+        "maximumCompressedDelta": {
+          "gzipBytes": 2500000,
+          "brotliBytes": 2200000
+        }
+      },
+      {
         "id": "extension-multivariate",
         "kind": "specialist",
         "dependencies": ["eager-core"],
@@ -165,7 +193,7 @@
         ],
         "maximumCompressedDelta": {
           "gzipBytes": 17600000,
-          "brotliBytes": 9700000
+          "brotliBytes": 9800000
         }
       },
       {
@@ -347,6 +375,7 @@
     }
   ],
   "hostAssets": [
+    "class-group-core-receipt.json",
     "conway-polynomials.json",
     "compiler.js",
     "compiler-frontend.mjs",

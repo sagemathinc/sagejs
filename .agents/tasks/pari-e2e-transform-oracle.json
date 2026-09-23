@@ -1,0 +1,62 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-e2e-transform-oracle",
+  "title": "Pari E2e Transform Oracle",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Add a pristine PARI transformation oracle for authentic class matrices and multiword Bezout convention sentinels",
+  "base_commit": "7ef8677e5845981552effeff5da82d6069fed5c7",
+  "claims": [
+    "bench/pari-class-group-port/check_class_group_transformations.cjs",
+    "bench/pari-class-group-port/class_group_transformations_audit.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Pinned PARI 2.17.4 identities and exact D,U,V,Ui,Ur,Y,Uir,X,M1,M2 fixtures"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "not-applicable"
+  },
+  "validation": [
+    "node --check bench/pari-class-group-port/check_class_group_transformations.cjs",
+    "node bench/pari-class-group-port/check_class_group_transformations.cjs --pari-source <pristine-source> --pari-build <pristine-build> --archive <archive> --collector-fixtures <frozen-fixture> --artifact-dir <new-directory>",
+    "pnpm parallel:check",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_class_group_transformations.cjs --pari-source /home/user/upstream/pari-2.17.4 --pari-build /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4/Olinux-x86_64 --archive /home/user/upstream/pari-2.17.4.tar.gz --collector-fixtures /tmp/sagejs-collector-dependencies-0lzwkr/fixtures.json --artifact-dir /tmp/sagejs-class-group-transformations-receipt-20260916-a",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.581,
+      "started_at": "2026-09-16T22:47:12.190Z",
+      "commit": "7ef8677e5845981552effeff5da82d6069fed5c7",
+      "workspace_fingerprint": "ff724c6bfae3f794ea599022896b69bb91e075a35db22c096a7b9c80b348635f",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added an append-only PARI 2.17.4 evidence generator for the exact integral transformation prefix of class_group_gen. It retains full and active Smith transforms, inverse and rounded-HNF reductions, M1/M2, two authentic collector matrices, and both operand orders of a 277-bit Fibonacci Bezout sentinel. The checker independently replays all six defining identities with BigInt and pins source, archive, binary, input, generated-oracle, and output hashes.",
+    "risks": [
+      "The focused development receipt used the existing trace-instrumented PARI binary because no isolated pristine build was yet present locally. The exact routines exercised are unmodified and the binary hash is explicit, but qualification must rerun against the campaign's pristine source-matched build.",
+      "This is an oracle only; no Sage.js transformation implementation, genback, archimedean map, unit, honesty, or completeness boundary is claimed."
+    ],
+    "next_steps": [
+      "Rerun with the frozen durable collector fixture and isolated pristine PARI build, preserving the append-only artifact.",
+      "Implement the same-source transformation kernel and require entry-for-entry D/U/V/Ui/Ur/Y/Uir/X/M1/M2 and Bezout-triple agreement."
+    ]
+  }
+}

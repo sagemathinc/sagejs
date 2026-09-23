@@ -1,0 +1,4327 @@
+{
+  "schema": "sagejs.rust-class-group/neutral-candidate-input-pool-v1",
+  "seed": "sagejs-rust-class-group-candidate-pool-v2-2026-09-20",
+  "answerVisibility": "none",
+  "cases": [
+    {
+      "id": "admissible-v2-d2-0001-f2feda7f551c",
+      "polynomialAscending": [
+        "-6",
+        "-2",
+        "1"
+      ],
+      "polynomialSha256": "f2feda7f551cb12b0a0c969c3f6f99aa2498b79f815d8d9f3dc0dc509b7da502",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0002-e5b36352745d",
+      "polynomialAscending": [
+        "135",
+        "-8",
+        "1"
+      ],
+      "polynomialSha256": "e5b36352745de6b5b70d291ae34e48cd8f6a2d161fc5435d16be76105e43b771",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0003-d4c41bf8e276",
+      "polynomialAscending": [
+        "-25",
+        "3",
+        "1"
+      ],
+      "polynomialSha256": "d4c41bf8e276aca859b16db3926523bc779acb17f5bf55289ae72d0c5db49769",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0004-da90ac306c19",
+      "polynomialAscending": [
+        "370",
+        "-14",
+        "1"
+      ],
+      "polynomialSha256": "da90ac306c19e820584eb391ec236d3679b076655d3fa27b4dea17a331fb005a",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0005-b8494fb48498",
+      "polynomialAscending": [
+        "-45",
+        "0",
+        "1"
+      ],
+      "polynomialSha256": "b8494fb48498ec7f494c2c37683002b1582ee686fbdecb6a91e6c4b37006e4c0",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0006-f2de2d6969dc",
+      "polynomialAscending": [
+        "561",
+        "-12",
+        "1"
+      ],
+      "polynomialSha256": "f2de2d6969dc58a9437f5073c4f587a860c1015c561a5149a011366cecdbd193",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0007-93938bee3818",
+      "polynomialAscending": [
+        "1",
+        "0",
+        "1"
+      ],
+      "polynomialSha256": "93938bee38185b2d356364ad50362f3dcd854fb262be2d458936e9b16ae7f563",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0008-3d49be0357d6",
+      "polynomialAscending": [
+        "148",
+        "-6",
+        "1"
+      ],
+      "polynomialSha256": "3d49be0357d619365aae26c0f8c43f7338fe7f43009a161e6cdeacf36eaa8e2d",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0009-aa3257267fd5",
+      "polynomialAscending": [
+        "-29",
+        "-2",
+        "1"
+      ],
+      "polynomialSha256": "aa3257267fd5c032d49e0b827956355b8ba9afd585e4bda70fa7892d5e245496",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0010-ac98217a1ffb",
+      "polynomialAscending": [
+        "334",
+        "-8",
+        "1"
+      ],
+      "polynomialSha256": "ac98217a1ffbc6d3b1d850fd8d98ac74a4957e9d4db5402abf664da074a021f7",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0011-dfd9fa382f8e",
+      "polynomialAscending": [
+        "-74",
+        "0",
+        "1"
+      ],
+      "polynomialSha256": "dfd9fa382f8e043a35f506822e1f148d7ba48a735e3a4a8fd8f8031171e18dc7",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0012-c7cc592c1e30",
+      "polynomialAscending": [
+        "502",
+        "-10",
+        "1"
+      ],
+      "polynomialSha256": "c7cc592c1e307130574eaa88e26f9f59ca7e97c8a7982ab29b7fe5e33962084f",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0013-eae012bc8925",
+      "polynomialAscending": [
+        "5",
+        "2",
+        "1"
+      ],
+      "polynomialSha256": "eae012bc89259db5d7c85fc2e6559f1c3e5161749131a6f12d0acc36ca987565",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0014-b281bc063ccc",
+      "polynomialAscending": [
+        "140",
+        "-4",
+        "1"
+      ],
+      "polynomialSha256": "b281bc063ccc383c296c8cd6ba9a42e74f7f582d977dfaa3fc41594ca3d3451a",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0015-c7e792688eb8",
+      "polynomialAscending": [
+        "-15",
+        "2",
+        "1"
+      ],
+      "polynomialSha256": "c7e792688eb8719953e2d032afbfd5fb55e23f5b2b7b22d897f3651272a37e9a",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0016-9988218555b4",
+      "polynomialAscending": [
+        "283",
+        "-12",
+        "1"
+      ],
+      "polynomialSha256": "9988218555b4fbb5fc87d64f7ecbd6daeb134a5f5d06c79cb04cd4dda9611702",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0017-77e2193ccb1c",
+      "polynomialAscending": [
+        "-46",
+        "1",
+        "1"
+      ],
+      "polynomialSha256": "77e2193ccb1c7295bb780594c9840032646cebfa38917195f2c73e2ef4dfccdc",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0018-fe08712cc832",
+      "polynomialAscending": [
+        "615",
+        "-14",
+        "1"
+      ],
+      "polynomialSha256": "fe08712cc832dbe270f3d7d62c37b456cb02e05c288db1bc034e47cff0f2bfc3",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0019-75bd6e1bdc12",
+      "polynomialAscending": [
+        "-4",
+        "2",
+        "1"
+      ],
+      "polynomialSha256": "75bd6e1bdc12667506e8fa5d31da8969c45ebd260e103ad9d01236a55efa6c90",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0020-ec75123ba23d",
+      "polynomialAscending": [
+        "134",
+        "-2",
+        "1"
+      ],
+      "polynomialSha256": "ec75123ba23defea90e95486a195d8a2ffcfe326b95a0a10050f15022c4bc7ea",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0021-65e3028f012a",
+      "polynomialAscending": [
+        "-3",
+        "-2",
+        "1"
+      ],
+      "polynomialSha256": "65e3028f012a32f625e85d369556f200790ea620d4c6f48b6e9d5d5987234a46",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0022-b5741706458a",
+      "polynomialAscending": [
+        "348",
+        "-12",
+        "1"
+      ],
+      "polynomialSha256": "b5741706458aeba14d31e77af8f0d82a3fecbf68e7278be03fc13780a516fd93",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0023-7975d9efcefd",
+      "polynomialAscending": [
+        "-35",
+        "2",
+        "1"
+      ],
+      "polynomialSha256": "7975d9efcefddbb49957868c9c5fd9e780d59eefc34a084cda6921f127757cac",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0024-aca00d841747",
+      "polynomialAscending": [
+        "496",
+        "-10",
+        "1"
+      ],
+      "polynomialSha256": "aca00d841747dfc02195904e7f9c500fc415e589977aa68b2b82a54961f9f445",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0025-8a90bd9b3e9d",
+      "polynomialAscending": [
+        "9",
+        "-4",
+        "1"
+      ],
+      "polynomialSha256": "8a90bd9b3e9d0318d4a95ab930f0b223ba77bf9a7ccf95ea99b6845f93e64036",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0026-67d9362ac953",
+      "polynomialAscending": [
+        "131",
+        "-2",
+        "1"
+      ],
+      "polynomialSha256": "67d9362ac953b2f5b753a7a049126bddf8e49430334ec96d97e2dd456d19427e",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0027-a7de6476c6a7",
+      "polynomialAscending": [
+        "-20",
+        "-2",
+        "1"
+      ],
+      "polynomialSha256": "a7de6476c6a7c19550d7306b26ded17dce5f97515dffe53f29607a2992099fca",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0028-93f8f2e61c06",
+      "polynomialAscending": [
+        "277",
+        "-12",
+        "1"
+      ],
+      "polynomialSha256": "93f8f2e61c0659ecf20be5b817512f514bb1d823a88e3aba95d33e5da1afc2ec",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0029-3c1753e95276",
+      "polynomialAscending": [
+        "-32",
+        "-2",
+        "1"
+      ],
+      "polynomialSha256": "3c1753e95276ea9316706c7d42f7ca335ef568e9f762916caacb147b70b531e6",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0030-9e77eab5292b",
+      "polynomialAscending": [
+        "577",
+        "-16",
+        "1"
+      ],
+      "polynomialSha256": "9e77eab5292b2f6827015e280af235d81883a6202c39ee3635a0ac8ce4e7c358",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0031-05872630bd62",
+      "polynomialAscending": [
+        "16",
+        "0",
+        "1"
+      ],
+      "polynomialSha256": "05872630bd626a63bbf4cb9faf66bc7e4922085ee92d5906bcb3cd2656567564",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0032-76b02cb0937c",
+      "polynomialAscending": [
+        "152",
+        "-10",
+        "1"
+      ],
+      "polynomialSha256": "76b02cb0937c9788815b9b986bc2802f817a6a5383f83a896035d2a92870279b",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0033-93b94b545007",
+      "polynomialAscending": [
+        "-10",
+        "-3",
+        "1"
+      ],
+      "polynomialSha256": "93b94b54500724521a4824f1787eebfba08e7e65f3b78caa2643b1bc1b913c3a",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0034-00d558194d96",
+      "polynomialAscending": [
+        "263",
+        "-10",
+        "1"
+      ],
+      "polynomialSha256": "00d558194d965e220f178e2d8612a515f35fbdfb1711e6af10d5ceaf9101fe1a",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0035-1975012e0ab8",
+      "polynomialAscending": [
+        "-21",
+        "-3",
+        "1"
+      ],
+      "polynomialSha256": "1975012e0ab84d6564af4fcd61c4b25288628009dc7802103ddd099d438c74a6",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0036-8017e7210c10",
+      "polynomialAscending": [
+        "574",
+        "-16",
+        "1"
+      ],
+      "polynomialSha256": "8017e7210c10886643bc1209c15f5e36dc76a0b4435916301edb81777bf56c58",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0037-c22f7e61c810",
+      "polynomialAscending": [
+        "0",
+        "1",
+        "1"
+      ],
+      "polynomialSha256": "c22f7e61c81031ea5d7ab769fc6c522c4653936dc0879b063df37cfd123bc41f",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0038-b67f365441d9",
+      "polynomialAscending": [
+        "133",
+        "-6",
+        "1"
+      ],
+      "polynomialSha256": "b67f365441d9f9d97776f75051350e408338aac016ff6758649611f9d3a5b038",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0039-3a3026027e60",
+      "polynomialAscending": [
+        "-14",
+        "2",
+        "1"
+      ],
+      "polynomialSha256": "3a3026027e6035afe1c3f00833da569b5f8e3832cca75d555280d5f4bc21a7a6",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0040-7b4a1f182954",
+      "polynomialAscending": [
+        "251",
+        "-8",
+        "1"
+      ],
+      "polynomialSha256": "7b4a1f182954f247992481d7c0b07eb928ddb1876829dec467d3bbf6440b6cfb",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0041-98d519bc20d6",
+      "polynomialAscending": [
+        "-50",
+        "-1",
+        "1"
+      ],
+      "polynomialSha256": "98d519bc20d6e2ea4d48cef297778eb00240ebe17a1cde1e93a1cf1feb7e92dd",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0042-3eb13241de85",
+      "polynomialAscending": [
+        "571",
+        "-16",
+        "1"
+      ],
+      "polynomialSha256": "3eb13241de8514865f259e68b7348736d786640dc4c2400b9cda3bec766c1d37",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0043-5e1549e8f168",
+      "polynomialAscending": [
+        "-2",
+        "0",
+        "1"
+      ],
+      "polynomialSha256": "5e1549e8f168fe10f202d19f8c846fe50505933c4dd772efb33489f4e482e9d3",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0044-21446dee079f",
+      "polynomialAscending": [
+        "107",
+        "-6",
+        "1"
+      ],
+      "polynomialSha256": "21446dee079f7d9d8402f8a26137755b83c98fae698d7b4ccb7c7a343f1e2f64",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0045-504c60ff594d",
+      "polynomialAscending": [
+        "8",
+        "0",
+        "1"
+      ],
+      "polynomialSha256": "504c60ff594d44b91074dc096a7dc79d6941d66caf9ab2300c1d7ab6de4142f2",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0046-500dc2a21a46",
+      "polynomialAscending": [
+        "314",
+        "-14",
+        "1"
+      ],
+      "polynomialSha256": "500dc2a21a46da7407e27512686bacb660592afee943fa463eaa1b49ac3aff90",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0047-6632d27764d9",
+      "polynomialAscending": [
+        "-5",
+        "-1",
+        "1"
+      ],
+      "polynomialSha256": "6632d27764d97ea7722144a7117faae8ec1767446902c06869486f4bab2c3bb9",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0048-1c29ae46089f",
+      "polynomialAscending": [
+        "585",
+        "-18",
+        "1"
+      ],
+      "polynomialSha256": "1c29ae46089ff9fd0633a2c7f364131fc4b4e4c2314efdd3af32e783b317ae96",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0049-e58fe36e09d1",
+      "polynomialAscending": [
+        "21",
+        "-4",
+        "1"
+      ],
+      "polynomialSha256": "e58fe36e09d1e5c45900c823e96ec9ce2f04472bd8bd2c27b5464e85f445b4a6",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0050-1ddec2185e19",
+      "polynomialAscending": [
+        "127",
+        "-6",
+        "1"
+      ],
+      "polynomialSha256": "1ddec2185e1976dfda2ea919883851e7f3552f380839f2dd86ced2f6f6532745",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0051-209c3018f50f",
+      "polynomialAscending": [
+        "7",
+        "-1",
+        "1"
+      ],
+      "polynomialSha256": "209c3018f50f4472e49b1fa674e8416c6046607cb46f2e0f8539e909d076f65c",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0052-5975eae284aa",
+      "polynomialAscending": [
+        "311",
+        "-14",
+        "1"
+      ],
+      "polynomialSha256": "5975eae284aaed73aedc08763f88cb02d28bbe9e13d194e93e42f8c53e03f93a",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0053-9cebeb012ca0",
+      "polynomialAscending": [
+        "-44",
+        "1",
+        "1"
+      ],
+      "polynomialSha256": "9cebeb012ca08268103e370fc56321cea116dfb260fefabd695463bb522bee03",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0054-bfe21534ca85",
+      "polynomialAscending": [
+        "629",
+        "-18",
+        "1"
+      ],
+      "polynomialSha256": "bfe21534ca85eb1269c594ba65a4a8ea43575ba80538bd6e81feaaf6a5a5808f",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0055-ff206e139eee",
+      "polynomialAscending": [
+        "27",
+        "-1",
+        "1"
+      ],
+      "polynomialSha256": "ff206e139eeea3561cd0a1641b6de1d022dab180a3e14026a71eaf680cad24bd",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0056-2d20da61f884",
+      "polynomialAscending": [
+        "108",
+        "-8",
+        "1"
+      ],
+      "polynomialSha256": "2d20da61f8848b9670d44053cc91a6c06d804c7cf3c8ad4fd73b9634c95fada6",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0057-79299bf2413b",
+      "polynomialAscending": [
+        "0",
+        "-1",
+        "1"
+      ],
+      "polynomialSha256": "79299bf2413b2bcde833305e7183f596ab9c994cb082775bae21d4743ed4f1eb",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0058-67f8505483fa",
+      "polynomialAscending": [
+        "235",
+        "-6",
+        "1"
+      ],
+      "polynomialSha256": "67f8505483fa66b619f7b170bbfcbcfe9b4f7c0d307a1bce5d89c100957e8b37",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0059-cf1e817e3006",
+      "polynomialAscending": [
+        "-50",
+        "0",
+        "1"
+      ],
+      "polynomialSha256": "cf1e817e3006b753e532a2e47f24948d5c26c6a6f7a04169498d94adbb989927",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0060-324e4bbf6690",
+      "polynomialAscending": [
+        "594",
+        "-14",
+        "1"
+      ],
+      "polynomialSha256": "324e4bbf66901243087b393112c51ca4b85d4097e63df153183ed69b180bc7f2",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0061-e01e2df7a2e7",
+      "polynomialAscending": [
+        "26",
+        "-1",
+        "1"
+      ],
+      "polynomialSha256": "e01e2df7a2e75af3c21b9c06ae83e3ec41b597e2b8f96abe22172c023ab935a9",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0062-9dfab2266795",
+      "polynomialAscending": [
+        "114",
+        "-10",
+        "1"
+      ],
+      "polynomialSha256": "9dfab2266795d355005b76a87b982589ddaf1fefdf97ef2049d56fbced1c916f",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0063-066d569d6e8b",
+      "polynomialAscending": [
+        "3",
+        "1",
+        "1"
+      ],
+      "polynomialSha256": "066d569d6e8b9e2819f84e7c5b40e9bb3716aac76375d5f6978ea49effb1fed0",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0064-30dfe3be98c0",
+      "polynomialAscending": [
+        "307",
+        "-8",
+        "1"
+      ],
+      "polynomialSha256": "30dfe3be98c05bd65316a401dfab43ddaa1c8e4ff8f019931b9ec0e5982934f6",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0065-c48f20969d33",
+      "polynomialAscending": [
+        "9",
+        "0",
+        "1"
+      ],
+      "polynomialSha256": "c48f20969d33fc0d5dbf248677ea6320c0d6ccbadcaef9be2780a252c42d3513",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0066-ea2fd611a6ea",
+      "polynomialAscending": [
+        "578",
+        "-12",
+        "1"
+      ],
+      "polynomialSha256": "ea2fd611a6eaf7ef5fcd46c8b4942a53172940eba9fd3e6d3c197725520dbb41",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0067-8c6748022898",
+      "polynomialAscending": [
+        "10",
+        "0",
+        "1"
+      ],
+      "polynomialSha256": "8c674802289820916048860a91545d8b9fd880255453f143c5b85ceb9fbfc4ee",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0068-a42c1ebac11a",
+      "polynomialAscending": [
+        "90",
+        "-10",
+        "1"
+      ],
+      "polynomialSha256": "a42c1ebac11ad4b9fea23ee4bc5eb2ff13d820e002bb5feacb2264c776c49894",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0069-dfbbd7ae0011",
+      "polynomialAscending": [
+        "20",
+        "0",
+        "1"
+      ],
+      "polynomialSha256": "dfbbd7ae0011283b1bce56f9532dc6e0aaf711b93f8d7df699331f20793bf098",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0070-c640d8d14d62",
+      "polynomialAscending": [
+        "245",
+        "-10",
+        "1"
+      ],
+      "polynomialSha256": "c640d8d14d62b912e122558ffbb4b5fc5e1c8afdc99043dedcd08e7e26b9d4f7",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0071-c0c7aaff4e13",
+      "polynomialAscending": [
+        "2",
+        "-2",
+        "1"
+      ],
+      "polynomialSha256": "c0c7aaff4e137053d86a2a3c7f24c929510d2e3c7be322681b441f3493eb5f7c",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d2-0072-26f470d0a456",
+      "polynomialAscending": [
+        "541",
+        "-14",
+        "1"
+      ],
+      "polynomialSha256": "26f470d0a456829423ca6988e20150e77f3c9f7381323c250af395b4eb8747ee",
+      "degree": 2
+    },
+    {
+      "id": "admissible-v2-d3-0001-f2fb722f6f50",
+      "polynomialAscending": [
+        "50",
+        "-46",
+        "-3",
+        "1"
+      ],
+      "polynomialSha256": "f2fb722f6f5054dc70e52452a489b18087caba2958ab5b47e66a8c4a6ea12e8a",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0002-cbd03dfe619c",
+      "polynomialAscending": [
+        "114",
+        "108",
+        "-7",
+        "1"
+      ],
+      "polynomialSha256": "cbd03dfe619ca889256e8fe1388ed2fed2404dfbd7829608f6d07d2b682c03ad",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0003-e23a134ab97a",
+      "polynomialAscending": [
+        "-237",
+        "-116",
+        "4",
+        "1"
+      ],
+      "polynomialSha256": "e23a134ab97a50a67c87be5d78c28f1d4300e494b4ae89047956a300373d1991",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0004-d434e138a2ff",
+      "polynomialAscending": [
+        "-295",
+        "304",
+        "-13",
+        "1"
+      ],
+      "polynomialSha256": "d434e138a2ffb179b5b6854e1433ef99120fd959bd1a412ca4ecf1f653bb0b51",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0005-f2712b1b48a2",
+      "polynomialAscending": [
+        "4",
+        "-225",
+        "0",
+        "1"
+      ],
+      "polynomialSha256": "f2712b1b48a2edb3ccfa289af0cfc29b1f5eeb320b2c3f1a854972a76c50db7d",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0006-210328152e80",
+      "polynomialAscending": [
+        "1014",
+        "489",
+        "-8",
+        "1"
+      ],
+      "polynomialSha256": "210328152e800dada3e16af4a0d8e049552d542de0ffd711abae7ca06f01aeb7",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0007-bbbd9fe73352",
+      "polynomialAscending": [
+        "35",
+        "-29",
+        "-2",
+        "1"
+      ],
+      "polynomialSha256": "bbbd9fe7335260b898fc46157a85ad4e940b5cc42dde5277973c1700df225681",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0008-027daf64058f",
+      "polynomialAscending": [
+        "-5",
+        "160",
+        "-8",
+        "1"
+      ],
+      "polynomialSha256": "027daf64058fe8f2b29119b25db59c42c690f68b36338e58c5a76b1ae4da2dbd",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0009-239169f92d72",
+      "polynomialAscending": [
+        "-84",
+        "-91",
+        "0",
+        "1"
+      ],
+      "polynomialSha256": "239169f92d721ca0db1221fd7398ca2c44201de2d7187121dfda6acde26a7999",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0010-343b845140b2",
+      "polynomialAscending": [
+        "692",
+        "329",
+        "-8",
+        "1"
+      ],
+      "polynomialSha256": "343b845140b211dea97b56d97d1e8ed284593de698f1b6a15a34e61d9102b5af",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0011-878b8161fd73",
+      "polynomialAscending": [
+        "319",
+        "-158",
+        "-1",
+        "1"
+      ],
+      "polynomialSha256": "878b8161fd73f49c96d57070fb7ae35a6195e11a5fba374c5aa55642bd917a17",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0012-bbc6dcc913dd",
+      "polynomialAscending": [
+        "-1257",
+        "653",
+        "-16",
+        "1"
+      ],
+      "polynomialSha256": "bbc6dcc913dd62a5ffd06c9ca70779c9491559d18b9c1d65a5a72b1d47fa4259",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0013-94ee631cb6ab",
+      "polynomialAscending": [
+        "8",
+        "-48",
+        "2",
+        "1"
+      ],
+      "polynomialSha256": "94ee631cb6abaeb0302e43af6d0a7ad5062c8538d932c8fab93a187b3d72fb85",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0014-4962451c563d",
+      "polynomialAscending": [
+        "-161",
+        "159",
+        "-7",
+        "1"
+      ],
+      "polynomialSha256": "4962451c563d40937e6fb195b2868f0c99116121d2b2f9ac5f64fd5e992b328e",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0015-43c4f5de30ee",
+      "polynomialAscending": [
+        "108",
+        "-97",
+        "-3",
+        "1"
+      ],
+      "polynomialSha256": "43c4f5de30eeac0aae4d9695da108dd2a730e7e41b61cd66eebbe99c430ffdd3",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0016-9919febd4677",
+      "polynomialAscending": [
+        "-9",
+        "305",
+        "-14",
+        "1"
+      ],
+      "polynomialSha256": "9919febd4677e290d32175b8177e9323dde9f1684aef71b5d0b240cf0e41b99f",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0017-0f8b22a7f37f",
+      "polynomialAscending": [
+        "10",
+        "-180",
+        "-3",
+        "1"
+      ],
+      "polynomialSha256": "0f8b22a7f37faa18484b66e03aa70bc86f03c92cc713c9a457be58ad696457de",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0018-44f7f11b3d2b",
+      "polynomialAscending": [
+        "538",
+        "532",
+        "-15",
+        "1"
+      ],
+      "polynomialSha256": "44f7f11b3d2bdefc6f6df87ce099d99f28093d12b2b6b2ceaee2c674102e27c6",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0019-45c5e34382cc",
+      "polynomialAscending": [
+        "-19",
+        "-29",
+        "2",
+        "1"
+      ],
+      "polynomialSha256": "45c5e34382ccbeca960659fc1a754255f3100fd5f528d4be7904f7a7bb23c51b",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0020-8b3761f14a04",
+      "polynomialAscending": [
+        "327",
+        "149",
+        "-8",
+        "1"
+      ],
+      "polynomialSha256": "8b3761f14a04c069c8a3b0962957c63ee82f01f09f64f2f3d1b9f3906e4377c5",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0021-e4440ce29e8a",
+      "polynomialAscending": [
+        "84",
+        "-73",
+        "0",
+        "1"
+      ],
+      "polynomialSha256": "e4440ce29e8a358db91888c1294f09f92ddc2ad837be2f47a8822fc845ca7a75",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0022-bdbd872474c4",
+      "polynomialAscending": [
+        "664",
+        "310",
+        "-12",
+        "1"
+      ],
+      "polynomialSha256": "bdbd872474c438abcc858d7f232d4bb18d217e8faee02bab7e395c4ced5da3af",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0023-340d306e9d82",
+      "polynomialAscending": [
+        "373",
+        "-174",
+        "-5",
+        "1"
+      ],
+      "polynomialSha256": "340d306e9d82d7821006c7758fea29800d30c2dde549a90fc673de073409bde1",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0024-4acbbe9ded11",
+      "polynomialAscending": [
+        "1173",
+        "561",
+        "-14",
+        "1"
+      ],
+      "polynomialSha256": "4acbbe9ded111a6605b07de5eb74a11b0b862180a48e54ea662f52153ac2adde",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0025-8e74a6455ea4",
+      "polynomialAscending": [
+        "14",
+        "-35",
+        "-2",
+        "1"
+      ],
+      "polynomialSha256": "8e74a6455ea488fae3a7775c4f14b00156440042201b6b9228ba11ff3d841d9d",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0026-c300f0da9d2e",
+      "polynomialAscending": [
+        "-216",
+        "105",
+        "-4",
+        "1"
+      ],
+      "polynomialSha256": "c300f0da9d2e136769b3b29493e4f9620a9bd1b6f0ce2b180bb1a96fcf374066",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0027-c4d8c2294386",
+      "polynomialAscending": [
+        "-95",
+        "-109",
+        "2",
+        "1"
+      ],
+      "polynomialSha256": "c4d8c2294386cc5091752537743b80c4d2321dc91761b82fc315c4ba5ff2f649",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0028-7ff32cef7b3f",
+      "polynomialAscending": [
+        "310",
+        "313",
+        "-11",
+        "1"
+      ],
+      "polynomialSha256": "7ff32cef7b3fd671f2ac2c8b1bfa8fac7956f5646f585bdf17e69ecf87138d0c",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0029-8bd43f772059",
+      "polynomialAscending": [
+        "224",
+        "-205",
+        "-4",
+        "1"
+      ],
+      "polynomialSha256": "8bd43f772059ad9111e0401d33e04f39197e7bb16fc5870aef45c075d0cece97",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0030-99aa2ef7770d",
+      "polynomialAscending": [
+        "-16",
+        "554",
+        "-10",
+        "1"
+      ],
+      "polynomialSha256": "99aa2ef7770de6ae295bd0c963da2dcb5629f12d36eb7f2ee6eba0ba464f966d",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0031-e9060b2ef32c",
+      "polynomialAscending": [
+        "115",
+        "-49",
+        "-2",
+        "1"
+      ],
+      "polynomialSha256": "e9060b2ef32c761aa15a3ad1b39d4277bfc48f5a19763d026902ae772cd62c8d",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0032-c9d52afc8dfb",
+      "polynomialAscending": [
+        "129",
+        "136",
+        "-9",
+        "1"
+      ],
+      "polynomialSha256": "c9d52afc8dfb99ce27a75c9789de032c5f9138aee362bd5b493dcccbb0106427",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0033-b0534ffe1e30",
+      "polynomialAscending": [
+        "234",
+        "-114",
+        "1",
+        "1"
+      ],
+      "polynomialSha256": "b0534ffe1e30650a8240948bb508476cab4da4c3db0d88abd7e72bc3fb8baa1c",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0034-b95c69a80c9e",
+      "polynomialAscending": [
+        "-628",
+        "333",
+        "-16",
+        "1"
+      ],
+      "polynomialSha256": "b95c69a80c9e9030025f54b6cc8c3eb77b038d35e58d7a27e4d476f4c48e86cb",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0035-c80a98ada4d8",
+      "polynomialAscending": [
+        "19",
+        "-195",
+        "-2",
+        "1"
+      ],
+      "polynomialSha256": "c80a98ada4d87b78346c53410bc244b091ed0f68e976268d367fa5b60203e568",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0036-224ff7603278",
+      "polynomialAscending": [
+        "591",
+        "592",
+        "-17",
+        "1"
+      ],
+      "polynomialSha256": "224ff76032783dd708df83ebbce01ddb970131f0bae43a30d32a041ea7c0e7e9",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0037-6220ae755a9d",
+      "polynomialAscending": [
+        "-10",
+        "-29",
+        "2",
+        "1"
+      ],
+      "polynomialSha256": "6220ae755a9d085cb00b64eddfb4a50a9ed5a3e39b3636bfc425b59b211ec921",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0038-f7570e81181e",
+      "polynomialAscending": [
+        "126",
+        "136",
+        "-9",
+        "1"
+      ],
+      "polynomialSha256": "f7570e81181ea05b5b9ccb5b99d9281eed34de9d6c542b740449a7a85af67f9f",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0039-725ab481866b",
+      "polynomialAscending": [
+        "21",
+        "-88",
+        "-3",
+        "1"
+      ],
+      "polynomialSha256": "725ab481866b96f5eb701194d1defb6d25e5a5e85f783416a0a6d4d5e490d1cd",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0040-7371337d9f01",
+      "polynomialAscending": [
+        "312",
+        "327",
+        "-5",
+        "1"
+      ],
+      "polynomialSha256": "7371337d9f01ee7c45d184df99f31455acc37b5924b19fc3f812ef3525002ccf",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0041-e3b5156bf681",
+      "polynomialAscending": [
+        "204",
+        "-181",
+        "-2",
+        "1"
+      ],
+      "polynomialSha256": "e3b5156bf6811bfe4aba0cd24603dca6b00c578a7b2e8d92625defd89953a272",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0042-0dc00e615c17",
+      "polynomialAscending": [
+        "-632",
+        "628",
+        "-19",
+        "1"
+      ],
+      "polynomialSha256": "0dc00e615c179c3fb9fca6a406ea1ccf3322d98351e747be80401f9ffa9d488b",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0043-56f7fb0f5f0d",
+      "polynomialAscending": [
+        "-73",
+        "-52",
+        "0",
+        "1"
+      ],
+      "polynomialSha256": "56f7fb0f5f0dab7a27b4c4f9015e36c628d9432e36078b0ebd421d67ebe13834",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0044-a4945da1fcf1",
+      "polynomialAscending": [
+        "-23",
+        "116",
+        "-8",
+        "1"
+      ],
+      "polynomialSha256": "a4945da1fcf1e0dbceaf2b7f1ed9923e9753149a42d14f0d1730c0dde829ab9f",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0045-26173cad8a11",
+      "polynomialAscending": [
+        "-218",
+        "-121",
+        "2",
+        "1"
+      ],
+      "polynomialSha256": "26173cad8a113500dce444d59679ef4f4b476be7f1a41518041f24c953bad74b",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0046-b2b1110b3449",
+      "polynomialAscending": [
+        "-690",
+        "345",
+        "-8",
+        "1"
+      ],
+      "polynomialSha256": "b2b1110b34499147f794801bfa218784a72be35aafb7200fdce2fe9bc8585646",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0047-67a7ae95178c",
+      "polynomialAscending": [
+        "-155",
+        "-177",
+        "4",
+        "1"
+      ],
+      "polynomialSha256": "67a7ae95178c18191c0189814a77b46042133e792d416e86a1de77529340add8",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0048-531f0f76c3ff",
+      "polynomialAscending": [
+        "-1227",
+        "621",
+        "-12",
+        "1"
+      ],
+      "polynomialSha256": "531f0f76c3ff37ea1eb670dca7a21ad1d5568472db630b1c455370403da10905",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0049-986f10e10eca",
+      "polynomialAscending": [
+        "26",
+        "-64",
+        "0",
+        "1"
+      ],
+      "polynomialSha256": "986f10e10ecae25b80ed03a8458b01498cd6f1073ddb8da050ae5ee5e1d6842d",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0050-b5c85dc729c0",
+      "polynomialAscending": [
+        "-127",
+        "103",
+        "-3",
+        "1"
+      ],
+      "polynomialSha256": "b5c85dc729c045f7addf0cfab9bd55f9f38bca9b78c4d1ac420ea0eed4420358",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0051-834aab03ed72",
+      "polynomialAscending": [
+        "-63",
+        "-89",
+        "2",
+        "1"
+      ],
+      "polynomialSha256": "834aab03ed72e71c0a89e45883115c08a62edaae2e9b20988d671dab8845564d",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0052-a578f63604e1",
+      "polynomialAscending": [
+        "-360",
+        "339",
+        "-7",
+        "1"
+      ],
+      "polynomialSha256": "a578f63604e14d2ac3625362aad9b4d4c5b9d596bc9afc8aee4ffe74642a680d",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0053-f5054994f9e0",
+      "polynomialAscending": [
+        "-392",
+        "-208",
+        "3",
+        "1"
+      ],
+      "polynomialSha256": "f5054994f9e0ce2fa15822a59cf7528bc03ff7621e6bf3f444495068f8be09d5",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0054-90b359d2948f",
+      "polynomialAscending": [
+        "-1068",
+        "544",
+        "-14",
+        "1"
+      ],
+      "polynomialSha256": "90b359d2948f7363ee6a8562fd30e0c1d7276343aa619166060414a2aa85f3c7",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0055-eb83c826834e",
+      "polynomialAscending": [
+        "99",
+        "-31",
+        "-4",
+        "1"
+      ],
+      "polynomialSha256": "eb83c826834e964d40a605586df74dd220411941e3bbe56d05caed56b831e408",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0056-784abc960cfc",
+      "polynomialAscending": [
+        "-29",
+        "148",
+        "-4",
+        "1"
+      ],
+      "polynomialSha256": "784abc960cfc1fad70c0b1570c612bfbafabf65978ed9ed97281816f3f46bfc1",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0057-3e0f4eb667ad",
+      "polynomialAscending": [
+        "30",
+        "-120",
+        "-2",
+        "1"
+      ],
+      "polynomialSha256": "3e0f4eb667ad81079a0dbdd3e48228b793c660e17df4ea09a1b246a72fdd94b0",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0058-561443d5c097",
+      "polynomialAscending": [
+        "716",
+        "345",
+        "-12",
+        "1"
+      ],
+      "polynomialSha256": "561443d5c0979c6a2910491237dddb9ab5ca68be3afe0f555dbf1a2172b09699",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0059-6e94786c36b3",
+      "polynomialAscending": [
+        "31",
+        "-168",
+        "2",
+        "1"
+      ],
+      "polynomialSha256": "6e94786c36b380893935ac23afa77bbed62c2a8649808db649b109ec9aefa12f",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0060-5b05394e3234",
+      "polynomialAscending": [
+        "-31",
+        "612",
+        "-12",
+        "1"
+      ],
+      "polynomialSha256": "5b05394e3234cfcdbc401b9ead74dc944cea452c878e6c89c8bf37d98ad0e559",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0061-a3ad84755b34",
+      "polynomialAscending": [
+        "102",
+        "-31",
+        "-4",
+        "1"
+      ],
+      "polynomialSha256": "a3ad84755b345433c751b3a7bef0bf05e40491a59fe1b3134a9f18149d8e28c0",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0062-cc0011bea385",
+      "polynomialAscending": [
+        "-136",
+        "108",
+        "-5",
+        "1"
+      ],
+      "polynomialSha256": "cc0011bea385cf900a46a306da6344aadf5d39ced4532b1f8310694a5e83661e",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0063-d045a43fd413",
+      "polynomialAscending": [
+        "-147",
+        "-92",
+        "1",
+        "1"
+      ],
+      "polynomialSha256": "d045a43fd4137ffba66fbece91f0c6646f25b083bc7f7bae5ddc5fd684daa445",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0064-f446e8f728cd",
+      "polynomialAscending": [
+        "-577",
+        "288",
+        "-10",
+        "1"
+      ],
+      "polynomialSha256": "f446e8f728cd45dca1375b33cb352d19430ab34b1a6a26e56f087681ce8a3c41",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0065-cab34591b516",
+      "polynomialAscending": [
+        "34",
+        "-195",
+        "-2",
+        "1"
+      ],
+      "polynomialSha256": "cab34591b516ccfcd12f3370816e0dae04ae939547203d68497214830936819f",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0066-6f4477c34c30",
+      "polynomialAscending": [
+        "1186",
+        "574",
+        "-16",
+        "1"
+      ],
+      "polynomialSha256": "6f4477c34c306879d2e2854573876e07096d56765ad619b78a5069523060a6da",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0067-1a25d82e26d6",
+      "polynomialAscending": [
+        "71",
+        "-36",
+        "-1",
+        "1"
+      ],
+      "polynomialSha256": "1a25d82e26d67629abb954e877d2f67f9f69401e9bbfa63fea65350a86e594cb",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0068-97f9208d11d6",
+      "polynomialAscending": [
+        "-35",
+        "109",
+        "-6",
+        "1"
+      ],
+      "polynomialSha256": "97f9208d11d6b977c0543da917f7e90640d63f98f6d02ade35009b6bda89ab80",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0069-f64f32b2efdf",
+      "polynomialAscending": [
+        "36",
+        "-110",
+        "1",
+        "1"
+      ],
+      "polynomialSha256": "f64f32b2efdf597f2ee81e2a7bb4b7015f816cb5f376bb55c0c9c96b902fcd81",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0070-4ccfff33782d",
+      "polynomialAscending": [
+        "-376",
+        "348",
+        "-9",
+        "1"
+      ],
+      "polynomialSha256": "4ccfff33782d7bd8e9af317ae3d3072b0e7415dc357ed022b8027e04467ee4a6",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0071-b3e5d6e71e78",
+      "polynomialAscending": [
+        "421",
+        "-200",
+        "2",
+        "1"
+      ],
+      "polynomialSha256": "b3e5d6e71e7877c61fddabc0c781c5a8b6a04ed65335980a51360874017f6bbc",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d3-0072-7261df408700",
+      "polynomialAscending": [
+        "-37",
+        "509",
+        "-10",
+        "1"
+      ],
+      "polynomialSha256": "7261df40870028f5f7ed73fce4def850c3a8ac856a1deca71561d52cf8935c90",
+      "degree": 3
+    },
+    {
+      "id": "admissible-v2-d4-0001-e8a07c77bab0",
+      "polynomialAscending": [
+        "497",
+        "-386",
+        "-112",
+        "2",
+        "1"
+      ],
+      "polynomialSha256": "e8a07c77bab00672df4119207122a3da570c4bf5c5fce65aef8461e918bc5d1f",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0002-9f59ff5f9ff8",
+      "polynomialAscending": [
+        "-1838",
+        "225",
+        "135",
+        "-5",
+        "1"
+      ],
+      "polynomialSha256": "9f59ff5f9ff81e7c01f5802716d77cca45598f3ccc66161cb005a66d201e8926",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0003-ff6582cbff41",
+      "polynomialAscending": [
+        "62528",
+        "-3470",
+        "558",
+        "-14",
+        "1"
+      ],
+      "polynomialSha256": "ff6582cbff410c250fb202f007ea0a1296abd380d10049f6e49d6f6bf09812fd",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0004-1cde3bd19348",
+      "polynomialAscending": [
+        "10077",
+        "198",
+        "-283",
+        "0",
+        "1"
+      ],
+      "polynomialSha256": "1cde3bd19348484d0e28072c5f606de030edd3eea1fed1e68e1cbb288d7b113b",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0005-eef866a09f4a",
+      "polynomialAscending": [
+        "-6496",
+        "-85",
+        "317",
+        "-13",
+        "1"
+      ],
+      "polynomialSha256": "eef866a09f4a7115c7c8c97cc7bb7384a4289e214b168706c1aa4a768c47e9d9",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0006-8d24806068a7",
+      "polynomialAscending": [
+        "398957",
+        "-17952",
+        "1522",
+        "-32",
+        "1"
+      ],
+      "polynomialSha256": "8d24806068a7272d99148b4f7b0385947f52bf95557a2df7c7001a8f6cccce19",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0007-ed1863db273f",
+      "polynomialAscending": [
+        "34025",
+        "-81",
+        "-501",
+        "1",
+        "1"
+      ],
+      "polynomialSha256": "ed1863db273ffe0b4888f56a67b4a410e90e36efc79760caca25302633ac8ae1",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0008-97ad20cdce59",
+      "polynomialAscending": [
+        "-51845",
+        "1296",
+        "559",
+        "-16",
+        "1"
+      ],
+      "polynomialSha256": "97ad20cdce59e3794b5f9346ebdd840395d9984229107579157eaa50e74dc0bb",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0009-383cded97ef1",
+      "polynomialAscending": [
+        "1484259",
+        "-50778",
+        "2926",
+        "-42",
+        "1"
+      ],
+      "polynomialSha256": "383cded97ef190e26ffed3b651307b2cfbaad3d300347f945fd2e7f7991a5ad2",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0010-4b66f1c0a3bc",
+      "polynomialAscending": [
+        "666",
+        "-44",
+        "-69",
+        "0",
+        "1"
+      ],
+      "polynomialSha256": "4b66f1c0a3bc926921d5824956b89ea58aaeaecf24497525a185e75bab544dd9",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0011-90c3ba4fe255",
+      "polynomialAscending": [
+        "-305",
+        "-196",
+        "109",
+        "-6",
+        "1"
+      ],
+      "polynomialSha256": "90c3ba4fe25561433e8cffaf917a83437ee3f1e5a40f56aef9bbd47a49ed0023",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0012-ccb6f301e8d2",
+      "polynomialAscending": [
+        "93243",
+        "-7230",
+        "763",
+        "-24",
+        "1"
+      ],
+      "polynomialSha256": "ccb6f301e8d2f20e6bc5fee649d938832aa97a659923e4bf57ca487da017eb4f",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0013-e59927b2c271",
+      "polynomialAscending": [
+        "5108",
+        "215",
+        "-277",
+        "1",
+        "1"
+      ],
+      "polynomialSha256": "e59927b2c2716887849ab8f7cb669f8f0dcf221118da0247a11197aea9820f78",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0014-d5d896b89b80",
+      "polynomialAscending": [
+        "-12272",
+        "796",
+        "238",
+        "-11",
+        "1"
+      ],
+      "polynomialSha256": "d5d896b89b80971cc17075772a2b590aa184a82e492e078c1c9d8f7b8fc4e427",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0015-f790fa3b9adb",
+      "polynomialAscending": [
+        "403646",
+        "-16074",
+        "1462",
+        "-26",
+        "1"
+      ],
+      "polynomialSha256": "f790fa3b9adbe4a2a44582360a4007194790e9ed60cc4ee56aac77c39f3f326c",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0016-6a7aa4d0cc30",
+      "polynomialAscending": [
+        "23658",
+        "98",
+        "-532",
+        "-2",
+        "1"
+      ],
+      "polynomialSha256": "6a7aa4d0cc30cb3a7752d7d4141c118fa49cd79bebd2d2727b8f6a93f4753d5d",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0017-3851531a9549",
+      "polynomialAscending": [
+        "-29047",
+        "784",
+        "544",
+        "-16",
+        "1"
+      ],
+      "polynomialSha256": "3851531a95499dd05ee19f3598f20bcfd084435a2087777bc6a84c1a80056cd8",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0018-2c89b51e7e84",
+      "polynomialAscending": [
+        "1442560",
+        "-52654",
+        "2979",
+        "-46",
+        "1"
+      ],
+      "polynomialSha256": "2c89b51e7e846a07b7c7be9da0f34e95dcd433f547b39b4a7cd793c5ff3fca1c",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0019-faf45828e734",
+      "polynomialAscending": [
+        "641",
+        "-27",
+        "-79",
+        "3",
+        "1"
+      ],
+      "polynomialSha256": "faf45828e734387719720a57d97d17b779ea66d175a30f4aef042bbe7ce2fbee",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0020-5453e8af37e7",
+      "polynomialAscending": [
+        "-3391",
+        "369",
+        "139",
+        "-9",
+        "1"
+      ],
+      "polynomialSha256": "5453e8af37e7c87a8172d14ba7b16763e0c585af83d32956af793234757b5fb6",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0021-c932aa17b22b",
+      "polynomialAscending": [
+        "62812",
+        "-3256",
+        "554",
+        "-14",
+        "1"
+      ],
+      "polynomialSha256": "c932aa17b22b34287d8c30c184502f19c3a701025db3c3c470732523b45ece61",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0022-19c377b8096b",
+      "polynomialAscending": [
+        "7632",
+        "-140",
+        "-225",
+        "0",
+        "1"
+      ],
+      "polynomialSha256": "19c377b8096bc1338cf77090c9f7651dfcbf2f833cd1fa91d10070ca39044131",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0023-f2f7dc6928cd",
+      "polynomialAscending": [
+        "-9507",
+        "1244",
+        "288",
+        "-5",
+        "1"
+      ],
+      "polynomialSha256": "f2f7dc6928cd7fe9c4e9c1e4508da8fe6c1e4dc194bd8ec93f326fb2fb416309",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0024-7494092ae27c",
+      "polynomialAscending": [
+        "381587",
+        "-12288",
+        "1394",
+        "-22",
+        "1"
+      ],
+      "polynomialSha256": "7494092ae27c630d1532fb8743311e0392cd7cf856df157eea28678b81cb8d86",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0025-6cf375b46cf6",
+      "polynomialAscending": [
+        "26766",
+        "-192",
+        "-482",
+        "3",
+        "1"
+      ],
+      "polynomialSha256": "6cf375b46cf68239d6b49540085c50b6bdccd6ab97367c2efaedfbd3c167e9a4",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0026-9b4c8fe798f6",
+      "polynomialAscending": [
+        "-38444",
+        "2354",
+        "511",
+        "-16",
+        "1"
+      ],
+      "polynomialSha256": "9b4c8fe798f6f47546d9977c8b24fb9a3a0491b8b770eb5dcb06f8612eb9b02f",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0027-94fc84ca4423",
+      "polynomialAscending": [
+        "1484268",
+        "-50778",
+        "2926",
+        "-42",
+        "1"
+      ],
+      "polynomialSha256": "94fc84ca44236619ed3c7a12cf95ecf079add6cde09ffb269ff880720f22dca5",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0028-a1d710949ec7",
+      "polynomialAscending": [
+        "865",
+        "294",
+        "-89",
+        "-6",
+        "1"
+      ],
+      "polynomialSha256": "a1d710949ec78b2aa760013fbfb50a4bd64a12ca589624e801f26fa5f554b62a",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0029-e11d28e7298e",
+      "polynomialAscending": [
+        "-3364",
+        "369",
+        "139",
+        "-9",
+        "1"
+      ],
+      "polynomialSha256": "e11d28e7298e1de1c8e0cb491a9b294796ab311e9bed5d02a740263e2b126c1e",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0030-f125b96b0c3a",
+      "polynomialAscending": [
+        "73465",
+        "-3504",
+        "598",
+        "-16",
+        "1"
+      ],
+      "polynomialSha256": "f125b96b0c3a3e9a61c5485b69ccbb46eaca028835bcea401f64c56befc71fc0",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0031-198c1985d518",
+      "polynomialAscending": [
+        "5777",
+        "504",
+        "-262",
+        "-3",
+        "1"
+      ],
+      "polynomialSha256": "198c1985d518c9bbb03edd17bf1b7b27c9d5920ece9bb8b70909dd39c80c7a71",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0032-13634473c7c3",
+      "polynomialAscending": [
+        "-6677",
+        "453",
+        "307",
+        "-5",
+        "1"
+      ],
+      "polynomialSha256": "13634473c7c355f139fb9ba6a1000fc6382f0c0a00e7c70eb43f3b8504d5e703",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0033-3a0f8bed495f",
+      "polynomialAscending": [
+        "364838",
+        "-12328",
+        "1329",
+        "-22",
+        "1"
+      ],
+      "polynomialSha256": "3a0f8bed495fb4ea5902c7b6142b3f1a0cfa33e9f99d452569c039b286f427fe",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0034-c7ced573ccb0",
+      "polynomialAscending": [
+        "19386",
+        "-420",
+        "-505",
+        "0",
+        "1"
+      ],
+      "polynomialSha256": "c7ced573ccb09f7755dbd3c7ea68d587899826376e987890a78abe84403ada3d",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0035-d855422c5142",
+      "polynomialAscending": [
+        "-33189",
+        "303",
+        "553",
+        "-17",
+        "1"
+      ],
+      "polynomialSha256": "d855422c5142369db4f672cbb65e8454995d54b0972e111c959ee445f8fe1a5f",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0036-6873944e0d6f",
+      "polynomialAscending": [
+        "1665606",
+        "-58800",
+        "3162",
+        "-48",
+        "1"
+      ],
+      "polynomialSha256": "6873944e0d6febe3835f06ed0cbda00aad8766c6adc415e5055fba4bf4b9efc0",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0037-7e86a70d5d7a",
+      "polynomialAscending": [
+        "372",
+        "-276",
+        "-83",
+        "6",
+        "1"
+      ],
+      "polynomialSha256": "7e86a70d5d7a4a022e29b8883ac5606568efc498d429a2df8be919372614d682",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0038-68bd339abf75",
+      "polynomialAscending": [
+        "-2020",
+        "160",
+        "109",
+        "-10",
+        "1"
+      ],
+      "polynomialSha256": "68bd339abf75b974eeb2b8f66703e7606cb85fde16badeba8018a5915c682987",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0039-b24ed0b99932",
+      "polynomialAscending": [
+        "93529",
+        "-6960",
+        "757",
+        "-24",
+        "1"
+      ],
+      "polynomialSha256": "b24ed0b99932322df1b9a7632cfc7e5427e6fe58947ccf9ec01a55f97bd38ee8",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0040-2423c9f17b01",
+      "polynomialAscending": [
+        "3515",
+        "64",
+        "-237",
+        "-4",
+        "1"
+      ],
+      "polynomialSha256": "2423c9f17b0103c59725b3b07f3bb669dadcb93e76e61a9ab6dade74ae707979",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0041-256326272eb6",
+      "polynomialAscending": [
+        "-6778",
+        "-180",
+        "328",
+        "-9",
+        "1"
+      ],
+      "polynomialSha256": "256326272eb644dfd96f1f92edff5f6e8010dc5d4cffaeffc216a39b9d89c215",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0042-c88935241dc7",
+      "polynomialAscending": [
+        "371380",
+        "-18222",
+        "1483",
+        "-32",
+        "1"
+      ],
+      "polynomialSha256": "c88935241dc768d2702e914181cc6bdd8eb8e40c7ac3243b75451355a1033f9c",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0043-13c53121a9c0",
+      "polynomialAscending": [
+        "16928",
+        "-896",
+        "-522",
+        "0",
+        "1"
+      ],
+      "polynomialSha256": "13c53121a9c09b3a61182b554a9d8fd3389d857cd41a73b2789d667f7304085f",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0044-5cd833f3926a",
+      "polynomialAscending": [
+        "-34583",
+        "2784",
+        "538",
+        "-13",
+        "1"
+      ],
+      "polynomialSha256": "5cd833f3926a6f4e0da209f83dd8b57ed5ff2831fd6424f4d6119b99877c9297",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0045-ffed9e062ddb",
+      "polynomialAscending": [
+        "1617064",
+        "-44008",
+        "2906",
+        "-38",
+        "1"
+      ],
+      "polynomialSha256": "ffed9e062ddbea0887cd645fc21676ab19471b46cd7820a3cc0bb65e32a92774",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0046-f23b0e87c99b",
+      "polynomialAscending": [
+        "1791",
+        "242",
+        "-136",
+        "-2",
+        "1"
+      ],
+      "polynomialSha256": "f23b0e87c99b814e3a080f3128aef85381dcc33fef727ab04c9a880be3ef703c",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0047-e83255ae5f8a",
+      "polynomialAscending": [
+        "-1975",
+        "160",
+        "109",
+        "-10",
+        "1"
+      ],
+      "polynomialSha256": "e83255ae5f8af4d02491c5d03961547bf766369dcfa837514faabd083153fceb",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0048-2ce0fa725d27",
+      "polynomialAscending": [
+        "64324",
+        "-3414",
+        "550",
+        "-14",
+        "1"
+      ],
+      "polynomialSha256": "2ce0fa725d276935a8a8f4126b4f8efae2f1fe66b4c425f38f714bc1be72f158",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0049-fed5ac9d3298",
+      "polynomialAscending": [
+        "7166",
+        "-328",
+        "-265",
+        "4",
+        "1"
+      ],
+      "polynomialSha256": "fed5ac9d32984d31a6dbb23e6e0ac4b7a79f3e6ec2f379188ebb35e52c53b209",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0050-ffdec9eb3f3c",
+      "polynomialAscending": [
+        "-15692",
+        "961",
+        "317",
+        "-13",
+        "1"
+      ],
+      "polynomialSha256": "ffdec9eb3f3cb96dfd93577cb8a328c6e639cd330a3e510ffdfa6f1e4b60ee18",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0051-cf15a0c29384",
+      "polynomialAscending": [
+        "424027",
+        "-14784",
+        "1476",
+        "-24",
+        "1"
+      ],
+      "polynomialSha256": "cf15a0c293849df0b98aac240d18b7e1382a6539fe113e207e6d64ccb911a2f5",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0052-a17515a4aac0",
+      "polynomialAscending": [
+        "24613",
+        "-328",
+        "-498",
+        "-1",
+        "1"
+      ],
+      "polynomialSha256": "a17515a4aac0be5428d72f09e24c4afd4aef6c3ebcbe6194a0e65f96a525af0a",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0053-cb4a268001f3",
+      "polynomialAscending": [
+        "-22132",
+        "2062",
+        "484",
+        "-7",
+        "1"
+      ],
+      "polynomialSha256": "cb4a268001f3a4da8c5030fa17a50ef15da03c531503b9ecca29697a84348b5e",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0054-7a1ff42ec32c",
+      "polynomialAscending": [
+        "1538472",
+        "-56160",
+        "3117",
+        "-48",
+        "1"
+      ],
+      "polynomialSha256": "7a1ff42ec32c3cb10935cd4aa6946ecaa57c4e26d20c0f6cb2e86575e9977c8c",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0055-31413aaa31a3",
+      "polynomialAscending": [
+        "749",
+        "172",
+        "-100",
+        "-1",
+        "1"
+      ],
+      "polynomialSha256": "31413aaa31a3ea08e464952acc9540efc89ca42b4748731d6d485e43e02648f5",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0056-e3951752f755",
+      "polynomialAscending": [
+        "-725",
+        "-68",
+        "118",
+        "-9",
+        "1"
+      ],
+      "polynomialSha256": "e3951752f755b169133788ab21007ec359544fea7a8f0de585f0340cf64bd735",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0057-d8e12853a7a8",
+      "polynomialAscending": [
+        "63070",
+        "-3792",
+        "549",
+        "-18",
+        "1"
+      ],
+      "polynomialSha256": "d8e12853a7a8b635c7f22320080d30e3cb6cbf91461a3631204724c9ea97656e",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0058-e878ee8fef2d",
+      "polynomialAscending": [
+        "2571",
+        "0",
+        "-298",
+        "0",
+        "1"
+      ],
+      "polynomialSha256": "e878ee8fef2d91df72ee278825f1887f86bd319a2bd97bb43673f52fe1b44d48",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0059-c4ca020e0530",
+      "polynomialAscending": [
+        "-14277",
+        "588",
+        "243",
+        "-12",
+        "1"
+      ],
+      "polynomialSha256": "c4ca020e0530547ded180fe62f0ecb8705b1b49493beabcac690aab84b7336e1",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0060-1fb5debc8e94",
+      "polynomialAscending": [
+        "389219",
+        "-13290",
+        "1423",
+        "-24",
+        "1"
+      ],
+      "polynomialSha256": "1fb5debc8e94b032131b949708d3140008e823130356d929256038650dcb4775",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0061-76cb31fb151b",
+      "polynomialAscending": [
+        "28192",
+        "128",
+        "-504",
+        "-2",
+        "1"
+      ],
+      "polynomialSha256": "76cb31fb151b23523b86c640620c1263fd8405d9d7261d6d0da5d1bd6a53534b",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0062-555d16a9c8a9",
+      "polynomialAscending": [
+        "-42152",
+        "972",
+        "439",
+        "-12",
+        "1"
+      ],
+      "polynomialSha256": "555d16a9c8a9c3aebc3a035c3d48ae99b076ed918e1839a91b85a7697239ecdd",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0063-81ae5b184116",
+      "polynomialAscending": [
+        "1452705",
+        "-48576",
+        "2872",
+        "-44",
+        "1"
+      ],
+      "polynomialSha256": "81ae5b1841165b01e24bbff5c3b14b7bdd3d7d8dfc5a0bb54096da7bc1e6962f",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0064-dc11fda97b0e",
+      "polynomialAscending": [
+        "1617",
+        "235",
+        "-123",
+        "-3",
+        "1"
+      ],
+      "polynomialSha256": "dc11fda97b0e96a49e5a0988b619748e9f290e33ac1e233be2bd7706322a5d4e",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0065-2092245c93cb",
+      "polynomialAscending": [
+        "-1966",
+        "64",
+        "109",
+        "-4",
+        "1"
+      ],
+      "polynomialSha256": "2092245c93cb7242bcb8f1f9720583f38498a5e410cf10ffce6d7914677662ca",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0066-c224b23f0a5c",
+      "polynomialAscending": [
+        "67966",
+        "-2960",
+        "572",
+        "-12",
+        "1"
+      ],
+      "polynomialSha256": "c224b23f0a5ced0a89054d86bb79e006d576b06b5bde11b845d5a2d3c7d1c70c",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0067-6f7a7a39e0d2",
+      "polynomialAscending": [
+        "1925",
+        "9",
+        "-219",
+        "-1",
+        "1"
+      ],
+      "polynomialSha256": "6f7a7a39e0d2dea6d9a213a6caee76178aba97c698cc5325bafc1348e96409d5",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0068-f16bb51bcc21",
+      "polynomialAscending": [
+        "-12203",
+        "504",
+        "302",
+        "-14",
+        "1"
+      ],
+      "polynomialSha256": "f16bb51bcc215dc84a396626233e18bc003a4d1179d2d4a6537f64ac8bb4e57b",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0069-76131db95256",
+      "polynomialAscending": [
+        "426481",
+        "-14064",
+        "1466",
+        "-24",
+        "1"
+      ],
+      "polynomialSha256": "76131db95256a8db897ed1d159647a67237feb20976a6550a8fe1ab26683893a",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0070-4d0069531e50",
+      "polynomialAscending": [
+        "31644",
+        "-584",
+        "-510",
+        "3",
+        "1"
+      ],
+      "polynomialSha256": "4d0069531e50ca55741961780f5beeac00e3f8e0b8d582bb6391a2165cf86895",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0071-36871d1f5890",
+      "polynomialAscending": [
+        "-18713",
+        "-205",
+        "609",
+        "-15",
+        "1"
+      ],
+      "polynomialSha256": "36871d1f589071e7927657d9f197b03f10fdbb1e95b3819d897baba6fcb8c6ae",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d4-0072-577678ac4ee9",
+      "polynomialAscending": [
+        "1447588",
+        "-41550",
+        "2770",
+        "-38",
+        "1"
+      ],
+      "polynomialSha256": "577678ac4ee961a3f564ff7cc08d63cec1939f3b2ba3330d630918a3cddd584f",
+      "degree": 4
+    },
+    {
+      "id": "admissible-v2-d5-0001-dee2d18d623d",
+      "polynomialAscending": [
+        "11762",
+        "6272",
+        "-256",
+        "-228",
+        "1",
+        "1"
+      ],
+      "polynomialSha256": "dee2d18d623d13692505537c4501d3e90a95e75530f6d8526c3f7345300bd8a1",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0002-f6ed843164a9",
+      "polynomialAscending": [
+        "-4502",
+        "-4356",
+        "233",
+        "85",
+        "-3",
+        "1"
+      ],
+      "polynomialSha256": "f6ed843164a9ed47fa538d7abebe2e01c7adde2e2dcbfd044a58e90848041293",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0003-66ced9dd82cf",
+      "polynomialAscending": [
+        "58403",
+        "54832",
+        "-3028",
+        "524",
+        "-15",
+        "1"
+      ],
+      "polynomialSha256": "66ced9dd82cf09c2b3fcd00f228917e4537ff7c46653ef84f478d20a8237c88d",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0004-a98253cacb39",
+      "polynomialAscending": [
+        "-38019",
+        "39984",
+        "-1492",
+        "-484",
+        "7",
+        "1"
+      ],
+      "polynomialSha256": "a98253cacb39b5cb2f41ff2b98894494c5353d41cfda7a2f078ae55932b66f85",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0005-28f3936551b8",
+      "polynomialAscending": [
+        "46804",
+        "-25778",
+        "707",
+        "263",
+        "-13",
+        "1"
+      ],
+      "polynomialSha256": "28f3936551b86fc660beedf538d074e8c98fce894ff8b13db3fb3f654d7d71c4",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0006-bbc4dcd09783",
+      "polynomialAscending": [
+        "-4",
+        "406210",
+        "-21406",
+        "1599",
+        "-34",
+        "1"
+      ],
+      "polynomialSha256": "bbc4dcd09783e948d91dcf998f5544a7b60e816a90dbd1c3cdff6d05a0cba068",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0007-75a3651708e7",
+      "polynomialAscending": [
+        "5",
+        "216000",
+        "900",
+        "-1140",
+        "-1",
+        "1"
+      ],
+      "polynomialSha256": "75a3651708e75086e2ce8fa67d62cfe80bb0abbc2a4d70089e5e7ae78fb8d68c",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0008-b477bd814f33",
+      "polynomialAscending": [
+        "112495",
+        "-113145",
+        "158",
+        "504",
+        "-18",
+        "1"
+      ],
+      "polynomialSha256": "b477bd814f33d328d7349eced8f7b87a5b5772274545ffc93c09c66d02856354",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0009-9689150422f8",
+      "polynomialAscending": [
+        "1437146",
+        "1390012",
+        "-44251",
+        "2837",
+        "-39",
+        "1"
+      ],
+      "polynomialSha256": "9689150422f861accd21683adfa481d22439dca2798bc218c1c3ca0c3a30a49b",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0010-e365e414ef64",
+      "polynomialAscending": [
+        "-6",
+        "7546",
+        "147",
+        "-203",
+        "-3",
+        "1"
+      ],
+      "polynomialSha256": "e365e414ef643458a0e523f37244554b8209e8631862243c04ef7b220e1444a6",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0011-54080e1d7a82",
+      "polynomialAscending": [
+        "-4865",
+        "-4420",
+        "518",
+        "59",
+        "-6",
+        "1"
+      ],
+      "polynomialSha256": "54080e1d7a82b116cc48d5444170c354b4935e6f5cd242238f9121d08c885e14",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0012-777780e95dc6",
+      "polynomialAscending": [
+        "-7",
+        "66600",
+        "-5100",
+        "641",
+        "-20",
+        "1"
+      ],
+      "polynomialSha256": "777780e95dc6571ef2e06d132ec63606ad7422c409038c383f8f6b1f8ae38fcf",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0013-26640b2b8d34",
+      "polynomialAscending": [
+        "8",
+        "49896",
+        "1494",
+        "-567",
+        "-4",
+        "1"
+      ],
+      "polynomialSha256": "26640b2b8d341e87493ac66b34eab2a3221d728176870f951aa06dc439dc2553",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0014-a1af3f9f25f1",
+      "polynomialAscending": [
+        "47692",
+        "-25460",
+        "467",
+        "179",
+        "-7",
+        "1"
+      ],
+      "polynomialSha256": "a1af3f9f25f1af24db86cd6e15fa8a965c5375cafa8fb3adf823e71bdc8fd408",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0015-6e240eb418cc",
+      "polynomialAscending": [
+        "741869",
+        "332094",
+        "-16420",
+        "1435",
+        "-30",
+        "1"
+      ],
+      "polynomialSha256": "6e240eb418cc091e79b972f4e5071651a6132ac9604879c175821430db6a3764",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0016-49b363a0567e",
+      "polynomialAscending": [
+        "-326153",
+        "165088",
+        "904",
+        "-956",
+        "-2",
+        "1"
+      ],
+      "polynomialSha256": "49b363a0567e5130b18b4747fc0053838bcee5620db4cdb6448ad6efaeaa6e77",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0017-1703db30db78",
+      "polynomialAscending": [
+        "10",
+        "-141824",
+        "2560",
+        "298",
+        "-10",
+        "1"
+      ],
+      "polynomialSha256": "1703db30db78309801cf10a10824d8156632c9b4513a8652dcd9cf22469d063e",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0018-6c8d171301ae",
+      "polynomialAscending": [
+        "2750406",
+        "1301880",
+        "-31276",
+        "2626",
+        "-32",
+        "1"
+      ],
+      "polynomialSha256": "6c8d171301aeb08f86690c78ffcb9a5722ac0be89404c9ed2f8979cd391cee69",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0019-5ce08609f0d0",
+      "polynomialAscending": [
+        "3651",
+        "3438",
+        "-403",
+        "-199",
+        "3",
+        "1"
+      ],
+      "polynomialSha256": "5ce08609f0d0174f964109a883e291a4f72485fd3958847eedf265c8beb1471c",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0020-813cb3d481ad",
+      "polynomialAscending": [
+        "-11",
+        "-4110",
+        "103",
+        "115",
+        "-9",
+        "1"
+      ],
+      "polynomialSha256": "813cb3d481ad777d4a1d9d40dddd6786eababaf38072947194729ccee2325307",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0021-860329487c65",
+      "polynomialAscending": [
+        "118672",
+        "54534",
+        "-1320",
+        "515",
+        "-10",
+        "1"
+      ],
+      "polynomialSha256": "860329487c653b8d221cb65e23bd856c3af73916381db745669a1f024c3b0762",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0022-784e51bdd56b",
+      "polynomialAscending": [
+        "-58332",
+        "28512",
+        "1152",
+        "-412",
+        "-3",
+        "1"
+      ],
+      "polynomialSha256": "784e51bdd56b149fa8d579af8bf6d1320a889a08513b38e1aee068345309624f",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0023-d82249b3f806",
+      "polynomialAscending": [
+        "32188",
+        "-32713",
+        "288",
+        "264",
+        "-15",
+        "1"
+      ],
+      "polynomialSha256": "d82249b3f8060e0f5ab6a55b0f35a33e8a1c2da3c7a222882e97a8794464553b",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0024-0af52bd1f9f8",
+      "polynomialAscending": [
+        "413572",
+        "396291",
+        "-15756",
+        "1508",
+        "-29",
+        "1"
+      ],
+      "polynomialSha256": "0af52bd1f9f85c38790a72849a36717624f500ea7b9a9badc8b02dc59ae931b4",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0025-6b13fade3dda",
+      "polynomialAscending": [
+        "-305356",
+        "156597",
+        "-8",
+        "-982",
+        "2",
+        "1"
+      ],
+      "polynomialSha256": "6b13fade3ddafc49df2dd099db7d159b8e48fb6790a0f3b518ec2d6db35aea1b",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0026-037ad445666c",
+      "polynomialAscending": [
+        "162706",
+        "-84816",
+        "886",
+        "445",
+        "-14",
+        "1"
+      ],
+      "polynomialSha256": "037ad445666ceca4d9f804bd826de297518185c3da784a2c07973d95b8d25319",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0027-38cbdc69ebad",
+      "polynomialAscending": [
+        "-3120595",
+        "1653697",
+        "-52492",
+        "2978",
+        "-42",
+        "1"
+      ],
+      "polynomialSha256": "38cbdc69ebad9af14fcd3d655cd48393f5213421913bce8063e830b440943359",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0028-d653d505a17b",
+      "polynomialAscending": [
+        "6537",
+        "6588",
+        "-182",
+        "-219",
+        "0",
+        "1"
+      ],
+      "polynomialSha256": "d653d505a17bb849b99f410beef23579ce216c1e581b7463635d6f4e8ff53f86",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0029-0e482f084d03",
+      "polynomialAscending": [
+        "3520",
+        "-3452",
+        "-194",
+        "154",
+        "-13",
+        "1"
+      ],
+      "polynomialSha256": "0e482f084d03eb947670f859b967f8b3c6adfa7f263c80d40d22c373abe0cd6b",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0030-a41d7618f8e7",
+      "polynomialAscending": [
+        "84093",
+        "78907",
+        "-4532",
+        "652",
+        "-17",
+        "1"
+      ],
+      "polynomialSha256": "a41d7618f8e7c37c08b8ff9183a8a111335be57b5e672063c415a5422c05399b",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0031-9f5c2297d3dd",
+      "polynomialAscending": [
+        "35657",
+        "35802",
+        "-359",
+        "-523",
+        "-1",
+        "1"
+      ],
+      "polynomialSha256": "9f5c2297d3ddce5fe337159eaa34eadfd6be9ae374a85668ece4c71894c8cd24",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0032-90b6f69706cd",
+      "polynomialAscending": [
+        "-26297",
+        "-24908",
+        "1562",
+        "179",
+        "-10",
+        "1"
+      ],
+      "polynomialSha256": "90b6f69706cdeb20a4550a9ccd8bdf744234bd5bdd46cc4ad19ce10312a408f1",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0033-070f457f1c69",
+      "polynomialAscending": [
+        "-338162",
+        "351412",
+        "-14557",
+        "1349",
+        "-25",
+        "1"
+      ],
+      "polynomialSha256": "070f457f1c691ec95f3339f013700da7190a48e1b4e20b883708f6d884538b3c",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0034-b988ce72a559",
+      "polynomialAscending": [
+        "-389778",
+        "197912",
+        "676",
+        "-1098",
+        "-1",
+        "1"
+      ],
+      "polynomialSha256": "b988ce72a559385742c4c15729aa56f87b984a2e6060f26c3c611c8be2e37173",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0035-32272cb1b6d8",
+      "polynomialAscending": [
+        "-86405",
+        "-84310",
+        "2502",
+        "379",
+        "-8",
+        "1"
+      ],
+      "polynomialSha256": "32272cb1b6d8d8e9e8a21873ff42c8c5922430e25851a7200440ef5273c8af37",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0036-ca8abcbd0594",
+      "polynomialAscending": [
+        "1460586",
+        "1417103",
+        "-40728",
+        "2736",
+        "-37",
+        "1"
+      ],
+      "polynomialSha256": "ca8abcbd059430878ac011df5d26adbe5e330b5463a5d3021007f9509e858e37",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0037-db806c094f6a",
+      "polynomialAscending": [
+        "-14764",
+        "7544",
+        "302",
+        "-189",
+        "-2",
+        "1"
+      ],
+      "polynomialSha256": "db806c094f6a20babed2ad1fc94b27b4a814448bdb9a24e33c2e51f3345d527c",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0038-f30aba343290",
+      "polynomialAscending": [
+        "3030",
+        "-3100",
+        "-47",
+        "99",
+        "-3",
+        "1"
+      ],
+      "polynomialSha256": "f30aba343290cf0e3f8875996ab98cc425969e41fa192982cfffe666a24040f2",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0039-a984ef8f829d",
+      "polynomialAscending": [
+        "-129043",
+        "75676",
+        "-6838",
+        "677",
+        "-24",
+        "1"
+      ],
+      "polynomialSha256": "a984ef8f829d2abeb1450d5aa4fd88945dc66f5ad7b73c4368fa7dae2df91d88",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0040-0ef1bfa0c9c6",
+      "polynomialAscending": [
+        "-52293",
+        "52140",
+        "664",
+        "-529",
+        "-4",
+        "1"
+      ],
+      "polynomialSha256": "0ef1bfa0c9c6dcb1ce9172de20f4f8689ad4659f860bece396d7e85063492ff2",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0041-f5a89f6b4e80",
+      "polynomialAscending": [
+        "-44738",
+        "-43826",
+        "1215",
+        "265",
+        "-15",
+        "1"
+      ],
+      "polynomialSha256": "f5a89f6b4e80ce79acee53e9034ddeb3278c4a82f50fef358f1dec91ff21454a",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0042-538cd0e84f3c",
+      "polynomialAscending": [
+        "-392872",
+        "408888",
+        "-17505",
+        "1497",
+        "-31",
+        "1"
+      ],
+      "polynomialSha256": "538cd0e84f3c83400c7db344eadacf1396e8426a553a7ed8367c17c610831d75",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0043-b4a7946093d7",
+      "polynomialAscending": [
+        "-246041",
+        "123708",
+        "1456",
+        "-901",
+        "0",
+        "1"
+      ],
+      "polynomialSha256": "b4a7946093d75b0cd0454d7c00a0b8225414e11ba7b6d32506c90ffe986dc114",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0044-e00a83699cf9",
+      "polynomialAscending": [
+        "-293783",
+        "-142344",
+        "3036",
+        "358",
+        "-11",
+        "1"
+      ],
+      "polynomialSha256": "e00a83699cf9d32e87bd257f0b49aa50fd5b22308b918c62d37234277185557d",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0045-1bdc4872fa96",
+      "polynomialAscending": [
+        "24",
+        "1589218",
+        "-49038",
+        "2951",
+        "-42",
+        "1"
+      ],
+      "polynomialSha256": "1bdc4872fa9639c507600bca2fc16eec9e7c6bc16a9fd58a99623533c80c6c98",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0046-b082e0852134",
+      "polynomialAscending": [
+        "6840",
+        "2956",
+        "-580",
+        "-171",
+        "2",
+        "1"
+      ],
+      "polynomialSha256": "b082e08521340c76b4b8675f756625244ce652c4aa43ea3b7dca0789a87e242d",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0047-878b467fefa3",
+      "polynomialAscending": [
+        "2765",
+        "-2763",
+        "-102",
+        "134",
+        "-10",
+        "1"
+      ],
+      "polynomialSha256": "878b467fefa3341a9b954d731f9c496565668ec4a07fdc5c73ecd064231c8b14",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0048-a4cd4c2702c5",
+      "polynomialAscending": [
+        "-82281",
+        "88752",
+        "-7224",
+        "752",
+        "-25",
+        "1"
+      ],
+      "polynomialSha256": "a4cd4c2702c5eb3cdf4b659c422643874fec67d384d31338a4f9718a79517d06",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0049-5ceb36cefde0",
+      "polynomialAscending": [
+        "43346",
+        "42598",
+        "-1203",
+        "-479",
+        "3",
+        "1"
+      ],
+      "polynomialSha256": "5ceb36cefde0aae548698bcf7069c0abcd05e8044baab9a96003ee15ebd40fcb",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0050-1a33d0523c74",
+      "polynomialAscending": [
+        "-26",
+        "-33550",
+        "575",
+        "203",
+        "-9",
+        "1"
+      ],
+      "polynomialSha256": "1a33d0523c74ea63ef56006700a1d4b282af5857d4d134698394a20485bfb0b7",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0051-bf1e7209feef",
+      "polynomialAscending": [
+        "27",
+        "380169",
+        "-20058",
+        "1538",
+        "-34",
+        "1"
+      ],
+      "polynomialSha256": "bf1e7209feef12cfde4211eee5e5da6bbca091e6b1dc987518779e6590e2d2b5",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0052-8d8f552e5fa5",
+      "polynomialAscending": [
+        "132300",
+        "132665",
+        "-614",
+        "-954",
+        "-1",
+        "1"
+      ],
+      "polynomialSha256": "8d8f552e5fa56d683a2ebff05ae1cb1e91d31d19bf553c60373148262ad49daa",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0053-ab0ff462d704",
+      "polynomialAscending": [
+        "185304",
+        "-95260",
+        "637",
+        "359",
+        "-13",
+        "1"
+      ],
+      "polynomialSha256": "ab0ff462d70414b27add0b10e019aad4ed9e0e152de38afbcd69687157b9b88e",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0054-003cc3c05ec3",
+      "polynomialAscending": [
+        "1535237",
+        "1479627",
+        "-52588",
+        "3004",
+        "-45",
+        "1"
+      ],
+      "polynomialSha256": "003cc3c05ec31177a6c581c3ba877c242f13461f610e12b1b529edd1e7e97252",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0055-625db2edd9a6",
+      "polynomialAscending": [
+        "-3871",
+        "3875",
+        "206",
+        "-180",
+        "-2",
+        "1"
+      ],
+      "polynomialSha256": "625db2edd9a68e14e5fb44e5b23aac2185327ccb14e4be7e8b94f36ffd4c2a28",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0056-fda1bafacff5",
+      "polynomialAscending": [
+        "-29",
+        "-6760",
+        "907",
+        "99",
+        "-7",
+        "1"
+      ],
+      "polynomialSha256": "fda1bafacff5dd9dfcd31ff4430df898e7cb694861dc17222c15229932838b46",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0057-02b3841f3c12",
+      "polynomialAscending": [
+        "63080",
+        "57472",
+        "-4939",
+        "617",
+        "-21",
+        "1"
+      ],
+      "polynomialSha256": "02b3841f3c1283f5b0f8328a989879f0f13eb0db54a6d6e5c04fe261f6115263",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0058-079809ed96af",
+      "polynomialAscending": [
+        "-63870",
+        "33196",
+        "328",
+        "-483",
+        "-2",
+        "1"
+      ],
+      "polynomialSha256": "079809ed96af5d82fe1ce036cf701552911aed384e272b13a0fa003db2e30cac",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0059-448ad09fbbbe",
+      "polynomialAscending": [
+        "73885",
+        "-41191",
+        "1640",
+        "270",
+        "-14",
+        "1"
+      ],
+      "polynomialSha256": "448ad09fbbbe1059f949d09123b87e69bc615f3d5b5f3ec10d3e03fce4219cf5",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0060-1325c5ce8823",
+      "polynomialAscending": [
+        "-753351",
+        "407748",
+        "-18362",
+        "1461",
+        "-28",
+        "1"
+      ],
+      "polynomialSha256": "1325c5ce88239f1a92435539b484b6642cbc58c36a9694c850db22d434f0a39c",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0061-b811d0c76d51",
+      "polynomialAscending": [
+        "244640",
+        "124544",
+        "-680",
+        "-900",
+        "2",
+        "1"
+      ],
+      "polynomialSha256": "b811d0c76d51ea5fafb0d2639d8c1b794c99364e0ad52f06d6109cc50a39de01",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0062-e42b5e3e47e5",
+      "polynomialAscending": [
+        "288448",
+        "-147838",
+        "1057",
+        "393",
+        "-13",
+        "1"
+      ],
+      "polynomialSha256": "e42b5e3e47e5debc1f11c2375f9a3623b218efa5702e846eeb47622184e3987f",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0063-d03d3599c7a9",
+      "polynomialAscending": [
+        "-1444457",
+        "1484776",
+        "-42997",
+        "2747",
+        "-37",
+        "1"
+      ],
+      "polynomialSha256": "d03d3599c7a9b902eec1473feb6cc1ebb98f89b5f84e5fb0258b2198b318964d",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0064-6e24b982e2e0",
+      "polynomialAscending": [
+        "-33",
+        "3120",
+        "-136",
+        "-177",
+        "0",
+        "1"
+      ],
+      "polynomialSha256": "6e24b982e2e093eb11765e88833f365808dda2ccaef9a5c989134da61e4b6af9",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0065-d3e7dda0a675",
+      "polynomialAscending": [
+        "6034",
+        "-5942",
+        "-143",
+        "91",
+        "-7",
+        "1"
+      ],
+      "polynomialSha256": "d3e7dda0a67560fd4d214e87c9f5dabc14d3570da565340d13aade8476f29279",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0066-04a53f7bdd3a",
+      "polynomialAscending": [
+        "64626",
+        "60524",
+        "-3555",
+        "565",
+        "-15",
+        "1"
+      ],
+      "polynomialSha256": "04a53f7bdd3a104440b8726db90a7a2a871061a4795a29b2e1a37209406908fa",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0067-ebab858a70fb",
+      "polynomialAscending": [
+        "-21853",
+        "21824",
+        "470",
+        "-405",
+        "-2",
+        "1"
+      ],
+      "polynomialSha256": "ebab858a70fb7135316d3bb9b03c3638714fcd758164fd15e54a01f475d3ae1a",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0068-5568ed878481",
+      "polynomialAscending": [
+        "28873",
+        "-29512",
+        "387",
+        "231",
+        "-15",
+        "1"
+      ],
+      "polynomialSha256": "5568ed878481c1847e0f7a9340051a4cb136a34bc017aee0889eb4fe2e9feb4a",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0069-d393559ef73d",
+      "polynomialAscending": [
+        "724838",
+        "335089",
+        "-10900",
+        "1330",
+        "-22",
+        "1"
+      ],
+      "polynomialSha256": "d393559ef73dff6c5dd181a7200a2da2c1853501b5c1aba6287f25255c56ed1d",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0070-ae263464531e",
+      "polynomialAscending": [
+        "-36",
+        "172800",
+        "3600",
+        "-1092",
+        "-4",
+        "1"
+      ],
+      "polynomialSha256": "ae263464531e260b95594189a0efca36c3f3411046e09988011bf5b9bae98b56",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0071-100f2c213c64",
+      "polynomialAscending": [
+        "-163803",
+        "-159744",
+        "4480",
+        "368",
+        "-15",
+        "1"
+      ],
+      "polynomialSha256": "100f2c213c646e30514a09fa2352560742d04afd46abdd6cf7fa5571ee51a1e7",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d5-0072-4912d04fadef",
+      "polynomialAscending": [
+        "-1536653",
+        "1591040",
+        "-57462",
+        "3084",
+        "-47",
+        "1"
+      ],
+      "polynomialSha256": "4912d04fadef856c16830983b26f564e04d60cef0e32a612b95d9f13f4a66354",
+      "degree": 5
+    },
+    {
+      "id": "admissible-v2-d6-0001-09155dba781b",
+      "polynomialAscending": [
+        "-66757",
+        "-41038",
+        "25663",
+        "-436",
+        "-377",
+        "2",
+        "1"
+      ],
+      "polynomialSha256": "09155dba781b2c964f067b44cf9e7b39a75aeda300155d64153fcb140f6a6c72",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0002-b580b5ebcf31",
+      "polynomialAscending": [
+        "37750",
+        "-26620",
+        "-11565",
+        "462",
+        "-28",
+        "-2",
+        "1"
+      ],
+      "polynomialSha256": "b580b5ebcf317c91c4a2a5a557b8a1fcf9b4e6c6b46995dc2b3f9f993a9f6b63",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0003-d58713f9266a",
+      "polynomialAscending": [
+        "-266341",
+        "13736",
+        "64334",
+        "-3370",
+        "559",
+        "-16",
+        "1"
+      ],
+      "polynomialSha256": "d58713f9266a81daf8aae3dfb496355b5b95b5e15957dcb4fba08f4ebd236706",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0004-6e0d461d8c21",
+      "polynomialAscending": [
+        "91227201",
+        "-7572552",
+        "828209",
+        "-36150",
+        "1846",
+        "-38",
+        "1"
+      ],
+      "polynomialSha256": "6e0d461d8c21ff58c8aa16c9beeeaad8a0a227fe6dd61c1c9353d0a8630daf5b",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0005-b30af0fc1951",
+      "polynomialAscending": [
+        "-2472956",
+        "106048",
+        "140088",
+        "122",
+        "-799",
+        "0",
+        "1"
+      ],
+      "polynomialSha256": "b30af0fc195161f7492f222cf3768a033b3b2f069ed5d6808e189389acc00eed",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0006-701252c3429d",
+      "polynomialAscending": [
+        "913948",
+        "-37856",
+        "-59826",
+        "2590",
+        "153",
+        "-14",
+        "1"
+      ],
+      "polynomialSha256": "701252c3429d7b4fa0c9385a035445c8ccb2910c8a53be5ed39533856478aa7f",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0007-4664cfaacf63",
+      "polynomialAscending": [
+        "-11779295",
+        "575900",
+        "428747",
+        "-22186",
+        "1672",
+        "-34",
+        "1"
+      ],
+      "polynomialSha256": "4664cfaacf63816e57ecd353fdfa4c332d2718025b067c7cfd0258de334dc31f",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0008-35f73cdfbdd2",
+      "polynomialAscending": [
+        "1371677771",
+        "-77191744",
+        "5266309",
+        "-153850",
+        "4814",
+        "-66",
+        "1"
+      ],
+      "polynomialSha256": "35f73cdfbdd2f1b6e235ed11e169c0b9a468000f43ba8ffc29ef4f6fcf9d6afd",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0009-9e3410649978",
+      "polynomialAscending": [
+        "-32515554",
+        "-849162",
+        "621787",
+        "138",
+        "-1652",
+        "0",
+        "1"
+      ],
+      "polynomialSha256": "9e3410649978f074b844426f1460f3acd3ba435d9d5f6b2d4dbc3d34833d330e",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0010-83cc54e74a03",
+      "polynomialAscending": [
+        "18856314",
+        "-634496",
+        "-300454",
+        "10938",
+        "27",
+        "-16",
+        "1"
+      ],
+      "polynomialSha256": "83cc54e74a0369006dba6ca4cd6056094aa503bfe9e8904dfc43f547f25509e8",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0011-10e1a0acf484",
+      "polynomialAscending": [
+        "-57019543",
+        "4967730",
+        "1426901",
+        "-41468",
+        "2872",
+        "-38",
+        "1"
+      ],
+      "polynomialSha256": "10e1a0acf4844c27f543955a6f6b16cd260fee753277a89dfe9dd1d41135cd9d",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0012-dd67ed97f563",
+      "polynomialAscending": [
+        "8546653433",
+        "-336359232",
+        "17570408",
+        "-366932",
+        "8721",
+        "-86",
+        "1"
+      ],
+      "polynomialSha256": "dd67ed97f5631f2d07f1881e62339465ab50a5ea3be4f3779e388237e9893e0a",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0013-0cc9987bc7d6",
+      "polynomialAscending": [
+        "-247096",
+        "-22020",
+        "24229",
+        "420",
+        "-326",
+        "0",
+        "1"
+      ],
+      "polynomialSha256": "0cc9987bc7d6351ed5ea8f6196fb09d95fd47c9031486da3c4584d41d9c2912d",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0014-ee1b35eb3c70",
+      "polynomialAscending": [
+        "32472",
+        "20728",
+        "-10932",
+        "862",
+        "33",
+        "-8",
+        "1"
+      ],
+      "polynomialSha256": "ee1b35eb3c700043290c54b95f1d20b7c7cd1fada30065c98bfca4f58963739f",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0015-45107ab50abe",
+      "polynomialAscending": [
+        "-159111",
+        "87384",
+        "74404",
+        "-3262",
+        "606",
+        "-13",
+        "1"
+      ],
+      "polynomialSha256": "45107ab50abe90024f8de53ac2f1c759eb595849527a82785573c2aafb01ace6",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0016-7ff019c8edb5",
+      "polynomialAscending": [
+        "64681751",
+        "-4099304",
+        "587293",
+        "-24096",
+        "1514",
+        "-32",
+        "1"
+      ],
+      "polynomialSha256": "7ff019c8edb5f3bc2e1acce2f4db720c6e78ddb086e49578f547b9fe4fe4aa34",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0017-8caebce7f1f0",
+      "polynomialAscending": [
+        "-3123740",
+        "555625",
+        "174373",
+        "-1514",
+        "-896",
+        "1",
+        "1"
+      ],
+      "polynomialSha256": "8caebce7f1f0f4fad84d6965bdddc2a44bb47c86cb26140f9f6bf62343e047b5",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0018-b94d3d986498",
+      "polynomialAscending": [
+        "1774490",
+        "-114920",
+        "-61941",
+        "2404",
+        "112",
+        "-12",
+        "1"
+      ],
+      "polynomialSha256": "b94d3d9864984f19879fd6fe3ab6159dc7b0db579d00b07d7442484af41c413e",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0019-82d442fc039b",
+      "polynomialAscending": [
+        "-17849989",
+        "1172600",
+        "343108",
+        "-15014",
+        "1454",
+        "-29",
+        "1"
+      ],
+      "polynomialSha256": "82d442fc039bce0ef374de7a2a52d8fbb2baf0e7b72c8addaaa0067ce43c5a09",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0020-35387f335541",
+      "polynomialAscending": [
+        "1215704399",
+        "-56522314",
+        "4422241",
+        "-117568",
+        "4232",
+        "-54",
+        "1"
+      ],
+      "polynomialSha256": "35387f3355418ba107f266bfc65810d0720f0776fed834f669dadad42b8fcbf1",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0021-9bf8976f6a56",
+      "polynomialAscending": [
+        "-19286178",
+        "-1140183",
+        "604681",
+        "4314",
+        "-1628",
+        "-3",
+        "1"
+      ],
+      "polynomialSha256": "9bf8976f6a56209528a89a5585a1edcca6546f73413e2a1f50670196f8afbc98",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0022-1c649dd31b5e",
+      "polynomialAscending": [
+        "13023348",
+        "-57072",
+        "-250052",
+        "5568",
+        "175",
+        "-12",
+        "1"
+      ],
+      "polynomialSha256": "1c649dd31b5e29ac78429646137b7beb62b2c60689b06acf5bf7c904789b508b",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0023-c1db3170bab9",
+      "polynomialAscending": [
+        "-71116487",
+        "935698",
+        "1619638",
+        "-63737",
+        "3251",
+        "-51",
+        "1"
+      ],
+      "polynomialSha256": "c1db3170bab9e00f6fc495d03e9ec9b89ea165f096b2b70d5d82c4bb5451955f",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0024-d27363e5cb2f",
+      "polynomialAscending": [
+        "8578474912",
+        "-293247680",
+        "16589439",
+        "-328640",
+        "8355",
+        "-80",
+        "1"
+      ],
+      "polynomialSha256": "d27363e5cb2f5cdcc786c338c28f49c9132f1d1780043e0956cfcd305cfcdb1e",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0025-fef668aa9a93",
+      "polynomialAscending": [
+        "-52786",
+        "27100",
+        "26748",
+        "-703",
+        "-349",
+        "3",
+        "1"
+      ],
+      "polynomialSha256": "fef668aa9a9375675ee6d2f1f18b3da7930086f7bc707458e58694033f2d8f44",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0026-1b34f96d8dec",
+      "polynomialAscending": [
+        "88316",
+        "64614",
+        "-22631",
+        "1160",
+        "60",
+        "-14",
+        "1"
+      ],
+      "polynomialSha256": "1b34f96d8dec7011fb6872d5699f7b3afa66b796df8c41bd7aa278884d740418",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0027-2bca8c5b1fce",
+      "polynomialAscending": [
+        "-237261",
+        "-142272",
+        "87732",
+        "-6556",
+        "693",
+        "-22",
+        "1"
+      ],
+      "polynomialSha256": "2bca8c5b1fce253cfc87ee6c21030cac2ea21acac09ade835233ee3b1ea7d1cd",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0028-2b3be4205d41",
+      "polynomialAscending": [
+        "74351665",
+        "-4638864",
+        "646042",
+        "-24666",
+        "1567",
+        "-30",
+        "1"
+      ],
+      "polynomialSha256": "2b3be4205d41df7b0b661ee3e8feb087793ff0019b13e72187b9284ff43441e7",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0029-3d92b862dd79",
+      "polynomialAscending": [
+        "-5334320",
+        "151704",
+        "161868",
+        "-1558",
+        "-883",
+        "4",
+        "1"
+      ],
+      "polynomialSha256": "3d92b862dd79a4a54943013a0dd45ae3a3a6d462d8ff928366bfc0100b34bd1d",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0030-f25f812b000b",
+      "polynomialAscending": [
+        "2177684",
+        "150445",
+        "-88839",
+        "3174",
+        "98",
+        "-19",
+        "1"
+      ],
+      "polynomialSha256": "f25f812b000b6a466bf05564e35a12ab3ecf857d908ed899cb98d8ec68301233",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0031-6febfa228bc4",
+      "polynomialAscending": [
+        "-6878447",
+        "301440",
+        "405424",
+        "-18360",
+        "1514",
+        "-30",
+        "1"
+      ],
+      "polynomialSha256": "6febfa228bc4b2b1df86622a6045db47f32f8483ae697e3ae7ac923d2786cb34",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0032-19c4c9241d95",
+      "polynomialAscending": [
+        "1329508623",
+        "-69589808",
+        "5009332",
+        "-139088",
+        "4608",
+        "-60",
+        "1"
+      ],
+      "polynomialSha256": "19c4c9241d9565411a296f1afe0f74c5ac2c6c515572319111e3ea7d143790f8",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0033-04277f694166",
+      "polynomialAscending": [
+        "-15142032",
+        "617115",
+        "548989",
+        "-5406",
+        "-1628",
+        "3",
+        "1"
+      ],
+      "polynomialSha256": "04277f6941668a5cb8e7aacf09e810246ce0b9eb28e2a5b7c1284096d08897f1",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0034-cdf3e1dc8922",
+      "polynomialAscending": [
+        "18547182",
+        "-931520",
+        "-297884",
+        "7093",
+        "127",
+        "-17",
+        "1"
+      ],
+      "polynomialSha256": "cdf3e1dc89225871afe274108ddaeea7b051066f97c767c66f3dc041caa3b910",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0035-803a8610e2d5",
+      "polynomialAscending": [
+        "-59468117",
+        "3409228",
+        "1249462",
+        "-42863",
+        "2749",
+        "-41",
+        "1"
+      ],
+      "polynomialSha256": "803a8610e2d55d471820a59a892022e729810bff41f9158523fb4091f5d4df1d",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0036-549507c3de0f",
+      "polynomialAscending": [
+        "9240688961",
+        "-362467836",
+        "18733633",
+        "-387764",
+        "9074",
+        "-88",
+        "1"
+      ],
+      "polynomialSha256": "549507c3de0fd486a489618bd1b62fc0d65002911a167cf90fdc528014abbfc3",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0037-ec7f87412188",
+      "polynomialAscending": [
+        "-84064",
+        "-17920",
+        "14941",
+        "932",
+        "-266",
+        "-4",
+        "1"
+      ],
+      "polynomialSha256": "ec7f874121887283ad0118a7729df084ff8e5167b268c9abbda99e8276ae1bbd",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0038-6e8577572e2a",
+      "polynomialAscending": [
+        "255180",
+        "-2520",
+        "-13804",
+        "930",
+        "3",
+        "-10",
+        "1"
+      ],
+      "polynomialSha256": "6e8577572e2aa25e0442ae0f78a5b7fad1dc623d6a8faf3cc77be31235ca6615",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0039-d8ff7a3d055b",
+      "polynomialAscending": [
+        "-281104",
+        "-208020",
+        "66999",
+        "-5480",
+        "605",
+        "-20",
+        "1"
+      ],
+      "polynomialSha256": "d8ff7a3d055ba5ebb4cc9741f8c901ce1bff602f700afa0f9403c039bcc438c1",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0040-fbfb416be604",
+      "polynomialAscending": [
+        "103461029",
+        "-9682750",
+        "978597",
+        "-45844",
+        "2112",
+        "-46",
+        "1"
+      ],
+      "polynomialSha256": "fbfb416be60446b56263625c5e713534a96377cbb9ec629e302b2ec2669e9b3a",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0041-cf0868b3e77b",
+      "polynomialAscending": [
+        "-2378822",
+        "427596",
+        "141929",
+        "-4240",
+        "-846",
+        "4",
+        "1"
+      ],
+      "polynomialSha256": "cf0868b3e77bcf9ffd5e19b197fa9dac6e611f1ce211da121981eb3860e4a484",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0042-2bb82bf2d421",
+      "polynomialAscending": [
+        "1268042",
+        "-6864",
+        "-81062",
+        "573",
+        "97",
+        "-9",
+        "1"
+      ],
+      "polynomialSha256": "2bb82bf2d421e3b6bd899f611b4e840ebd1a82fe70f61214063370bada1ce08b",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0043-7d828645c95c",
+      "polynomialAscending": [
+        "-13283977",
+        "565920",
+        "318096",
+        "-14640",
+        "1378",
+        "-30",
+        "1"
+      ],
+      "polynomialSha256": "7d828645c95c61e6bebca7e8599642426f4f27afc7f2518e3c27b04d73e4228b",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0044-9f95ba3ad93f",
+      "polynomialAscending": [
+        "1425590346",
+        "-73811220",
+        "5209839",
+        "-142880",
+        "4671",
+        "-60",
+        "1"
+      ],
+      "polynomialSha256": "9f95ba3ad93f81d82c13cf9403ae27ebe07dba720fefbf1701a636836c37f681",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0045-cba672ad6bfd",
+      "polynomialAscending": [
+        "-20391816",
+        "1529388",
+        "573676",
+        "-4791",
+        "-1637",
+        "3",
+        "1"
+      ],
+      "polynomialSha256": "cba672ad6bfd91dba20d77af55c46c0b2e03fe9def43ac1d50ec96c3aec90fe1",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0046-4d7599de8357",
+      "polynomialAscending": [
+        "21262476",
+        "-526905",
+        "-277971",
+        "7558",
+        "110",
+        "-13",
+        "1"
+      ],
+      "polynomialSha256": "4d7599de8357f7224384fa714e62d62151ccdb9e433ad0360d1b7aa108caf15c",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0047-4d2d452ae1f6",
+      "polynomialAscending": [
+        "-70475695",
+        "2167564",
+        "1298483",
+        "-42276",
+        "2804",
+        "-40",
+        "1"
+      ],
+      "polynomialSha256": "4d2d452ae1f6fe6c37e3cf0988cbff898e4278fa735814838efe0624fe16c214",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0048-c8e11126e1d9",
+      "polynomialAscending": [
+        "9913613745",
+        "-359864554",
+        "18882793",
+        "-375886",
+        "8960",
+        "-84",
+        "1"
+      ],
+      "polynomialSha256": "c8e11126e1d9e6a132b33eb638e794df539d82f6f968cc6bc38124babbb22174",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0049-32356a0bd8ef",
+      "polynomialAscending": [
+        "-286084",
+        "-91613",
+        "30757",
+        "1762",
+        "-392",
+        "-5",
+        "1"
+      ],
+      "polynomialSha256": "32356a0bd8efc91b42abb2410564af6b63709dea7a0d3de04cb39745ed339392",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0050-7d6d9ae35a01",
+      "polynomialAscending": [
+        "82854",
+        "14928",
+        "-12336",
+        "600",
+        "60",
+        "-3",
+        "1"
+      ],
+      "polynomialSha256": "7d6d9ae35a010fccf0bc5de614288f2f9d96636d6bd70133d8d6e4037a6aea95",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0051-bd8aeb58ac73",
+      "polynomialAscending": [
+        "-1381253",
+        "172584",
+        "50648",
+        "-4074",
+        "620",
+        "-21",
+        "1"
+      ],
+      "polynomialSha256": "bd8aeb58ac73a82aaaff7d0951987cb6d71dc7e4a511bf76d45f949d5f6f9ef2",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0052-b9bfd114f3b7",
+      "polynomialAscending": [
+        "87706917",
+        "-7380960",
+        "842564",
+        "-37500",
+        "1921",
+        "-40",
+        "1"
+      ],
+      "polynomialSha256": "b9bfd114f3b7db8ceb57dcbc6fb0149946eb746b093bf686bbe753641b46e4e5",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0053-c867ec10531b",
+      "polynomialAscending": [
+        "-4967972",
+        "3420",
+        "167412",
+        "-59",
+        "-853",
+        "-1",
+        "1"
+      ],
+      "polynomialSha256": "c867ec10531b017ac3dfc5e7d6ca85ffd1092db32b59a0a19e8055fc0e754d63",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0054-8f1806834b7b",
+      "polynomialAscending": [
+        "929732",
+        "-28256",
+        "-59566",
+        "1830",
+        "75",
+        "-4",
+        "1"
+      ],
+      "polynomialSha256": "8f1806834b7b1483a1ad954711923ab68310a8feb04b6ba243a4c5a47b6a716d",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0055-2b2551cf4f3c",
+      "polynomialAscending": [
+        "-12346851",
+        "-804992",
+        "452768",
+        "-22392",
+        "1616",
+        "-31",
+        "1"
+      ],
+      "polynomialSha256": "2b2551cf4f3c58e25001d74107495f1f6247a5510c445c92d6f2806eb08f8553",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0056-c14fa1ea16a3",
+      "polynomialAscending": [
+        "1296548471",
+        "-58513032",
+        "4653473",
+        "-122432",
+        "4366",
+        "-56",
+        "1"
+      ],
+      "polynomialSha256": "c14fa1ea16a37eea4723ce0b6c80a2fb2d99953d7e96098bfe54abf87bc204d7",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0057-39f64009d274",
+      "polynomialAscending": [
+        "-14892470",
+        "-74125",
+        "639725",
+        "2990",
+        "-1786",
+        "-1",
+        "1"
+      ],
+      "polynomialSha256": "39f64009d2742847e8fd332b838a9f162b0cecb3b0783a93cb4fc43311d9c17e",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0058-a26d61b5535b",
+      "polynomialAscending": [
+        "10894380",
+        "672022",
+        "-271907",
+        "6548",
+        "56",
+        "-10",
+        "1"
+      ],
+      "polynomialSha256": "a26d61b5535b67a505bf3eb919b63dee60bbb8eec8ab2df439d9e218ff933989",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0059-8b09c3e919a2",
+      "polynomialAscending": [
+        "-58643969",
+        "7227000",
+        "1001355",
+        "-32044",
+        "2524",
+        "-36",
+        "1"
+      ],
+      "polynomialSha256": "8b09c3e919a2b120a00736f1678edc4f9bb99c6fba8b2a3d06ed3fc807cef747",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0060-d482377ae8c2",
+      "polynomialAscending": [
+        "8334331637",
+        "-298715208",
+        "16515484",
+        "-337240",
+        "8417",
+        "-82",
+        "1"
+      ],
+      "polynomialSha256": "d482377ae8c20cc95db919654430c3461af7732a575f7b514d575c8d2b8eebd9",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0061-f2d3df27de96",
+      "polynomialAscending": [
+        "-299848",
+        "-20734",
+        "20847",
+        "574",
+        "-328",
+        "0",
+        "1"
+      ],
+      "polynomialSha256": "f2d3df27de966c205e3367c4649b3ba489a236d566d9f8c980253ffc3e32f181",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0062-d47fd373c21a",
+      "polynomialAscending": [
+        "43968",
+        "-2908",
+        "-11100",
+        "731",
+        "21",
+        "-1",
+        "1"
+      ],
+      "polynomialSha256": "d47fd373c21a42246b433abcb4e10ebffd8bc7482c7be455663cb7733ba6bf73",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0063-58d878b70110",
+      "polynomialAscending": [
+        "-387159",
+        "-31100",
+        "66306",
+        "-6073",
+        "649",
+        "-23",
+        "1"
+      ],
+      "polynomialSha256": "58d878b701101284f8a8209aad28ac2533ea854252f3d26fe3d161f7946471f2",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0064-bf430b8c95c8",
+      "polynomialAscending": [
+        "77626217",
+        "-7216350",
+        "798645",
+        "-37792",
+        "1896",
+        "-42",
+        "1"
+      ],
+      "polynomialSha256": "bf430b8c95c8b21c96513c64f4f01bd2f3fbc2af705e5e15d35e0abcd5d7a507",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0065-bbf5bcc0b888",
+      "polynomialAscending": [
+        "-3671966",
+        "-207980",
+        "201281",
+        "2224",
+        "-962",
+        "-4",
+        "1"
+      ],
+      "polynomialSha256": "bbf5bcc0b888e8a750e763312af554bb3225d286dd644dcbd3742f762f720fb3",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0066-949b2bdb2cef",
+      "polynomialAscending": [
+        "1457630",
+        "82592",
+        "-66856",
+        "1740",
+        "126",
+        "-17",
+        "1"
+      ],
+      "polynomialSha256": "949b2bdb2cef3c329cf89448c093b82a62efb2dd5af734b0f7f8479f7b90f5e2",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0067-2d627ee83d93",
+      "polynomialAscending": [
+        "-14273965",
+        "516384",
+        "345344",
+        "-13480",
+        "1385",
+        "-24",
+        "1"
+      ],
+      "polynomialSha256": "2d627ee83d9302edab30f4694e7b5f81d25ac5a207d1068f966f459706b089e9",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0068-766011c16513",
+      "polynomialAscending": [
+        "1276993215",
+        "-76428530",
+        "5239829",
+        "-158422",
+        "4900",
+        "-68",
+        "1"
+      ],
+      "polynomialSha256": "766011c16513a98ca81c95ba1887d5b606f805a08ca15eba0ea1e17883e60938",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0069-8dec664da128",
+      "polynomialAscending": [
+        "-18580284",
+        "625704",
+        "671092",
+        "-1914",
+        "-1763",
+        "0",
+        "1"
+      ],
+      "polynomialSha256": "8dec664da1286034b4af489b10b231143e59983b369e0b7ad0129a2bb0457e54",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0070-5218f580c839",
+      "polynomialAscending": [
+        "10315444",
+        "-159054",
+        "-219536",
+        "3785",
+        "135",
+        "-11",
+        "1"
+      ],
+      "polynomialSha256": "5218f580c83988ba2657f1795350bb5548822fe1e0d019c30ac13d667f798df7",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0071-777013305c7a",
+      "polynomialAscending": [
+        "-55860443",
+        "-2425056",
+        "1418288",
+        "-50804",
+        "2844",
+        "-43",
+        "1"
+      ],
+      "polynomialSha256": "777013305c7a4dbc46464e98a49c6d307bfa6d04bbb63fa52df03fc21ac72fbf",
+      "degree": 6
+    },
+    {
+      "id": "admissible-v2-d6-0072-2a55dfe4f6a2",
+      "polynomialAscending": [
+        "9729352063",
+        "-344026640",
+        "18292969",
+        "-354720",
+        "8690",
+        "-80",
+        "1"
+      ],
+      "polynomialSha256": "2a55dfe4f6a26f3f1e205e301898b92ed6d095a39715f389cb284101dc9783fb",
+      "degree": 6
+    }
+  ]
+}

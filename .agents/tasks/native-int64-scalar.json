@@ -1,0 +1,149 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "native-int64-scalar",
+  "title": "Native Int64 Scalar",
+  "lane": "native-compiler",
+  "status": "active",
+  "owner": "codex",
+  "objective": "Add a public checked signed int64 scalar annotation to source-transparent native compilation with safe ingress, locals, calls, returns, comparisons, range/index use, and overflow-checked Python arithmetic",
+  "base_commit": "0c600a514a4aa63e76a9065bab508ce6837a0212",
+  "claims": [
+    "src/lib/sagejs/native.py",
+    "tools/runtime-bootstrap.ts",
+    "tools/resources.ts",
+    "tools/native-kernel/integer-ir.cjs",
+    "tools/native-kernel/ir.cjs",
+    "tools/native-kernel/compiler.cjs",
+    "tools/native-kernel/c-backend.cjs",
+    "tools/native-kernel/word-backend.cjs",
+    "tools/native-kernel/tagged-backend.cjs",
+    "tools/native-kernel/fmpz-backend.cjs",
+    "tools/native-kernel/fmpz-runtime.cjs",
+    "tools/native-kernel/js-backend.cjs",
+    "tools/native-kernel/exact-analysis.cjs",
+    "tools/native-kernel/exact-runtime.cjs",
+    "tools/native-kernel/wasm-bridge.cjs",
+    "tools/native-kernel/wasm-pack-loader.mjs",
+    "tools/native-kernel/int64-operations.cjs",
+    "tools/native-kernel/test/int64-scalar.cjs",
+    "tools/native-kernel/test/int64_scalar_witness.py",
+    "test/ffi.cjs",
+    "test/native-bounded-relations.cjs",
+    "test/native-kernel.cjs",
+    "test/native-live-exact-arena.cjs",
+    "test/native-live-exact-matrix.cjs",
+    "test/native-live-exact-records.cjs",
+    "test/native-rank-four-lattice-workspace.cjs",
+    "test/native-resident-flint-resource.cjs",
+    "test/native-reusable-exact-workspace.cjs",
+    "test/native-sparse-exact-rows.cjs",
+    "test/native-uint64-bitwise.cjs",
+    "test/native-while-control-transfer.cjs",
+    "test/number-field-cubic-fmpz-closure.cjs",
+    "test/number-field-cubic-native-class-number.cjs"
+  ],
+  "dependencies": [
+    "mixed-exact-float-sidecar"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "CPython dynamic same-source execution plus generated JS/C/native differential tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm architecture:check",
+    "pnpm architecture:native",
+    "pnpm architecture:packages",
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "env SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix node --test tools/native-kernel/test/int64-scalar.cjs tools/native-kernel/test/fmpz-word-containers.cjs tools/native-kernel/test/contextual-uint64.cjs tools/native-kernel/test/mixed-exact-float64.cjs tools/native-kernel/test/word-helper-chain.cjs"
+  ],
+  "runs": [
+    {
+      "command": "bash -lc SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix node --test tools/native-kernel/test/int64-scalar.cjs tools/native-kernel/test/fmpz-word-containers.cjs tools/native-kernel/test/contextual-uint64.cjs tools/native-kernel/test/mixed-exact-float64.cjs tools/native-kernel/test/word-helper-chain.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.883,
+      "started_at": "2026-09-15T20:44:24.182Z",
+      "commit": "0c600a514a4aa63e76a9065bab508ce6837a0212",
+      "workspace_fingerprint": "f036441dc3078fc63ed6dd9bfa3c36e9a8abab4208e3ebade4c8b98c497fa095",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix node --test tools/native-kernel/test/int64-scalar.cjs tools/native-kernel/test/fmpz-word-containers.cjs tools/native-kernel/test/contextual-uint64.cjs tools/native-kernel/test/mixed-exact-float64.cjs tools/native-kernel/test/word-helper-chain.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.897,
+      "started_at": "2026-09-15T20:44:51.933Z",
+      "commit": "0c600a514a4aa63e76a9065bab508ce6837a0212",
+      "workspace_fingerprint": "f036441dc3078fc63ed6dd9bfa3c36e9a8abab4208e3ebade4c8b98c497fa095",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.171,
+      "started_at": "2026-09-15T20:45:14.004Z",
+      "commit": "0c600a514a4aa63e76a9065bab508ce6837a0212",
+      "workspace_fingerprint": "f036441dc3078fc63ed6dd9bfa3c36e9a8abab4208e3ebade4c8b98c497fa095",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:packages",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.714,
+      "started_at": "2026-09-15T20:45:17.959Z",
+      "commit": "0c600a514a4aa63e76a9065bab508ce6837a0212",
+      "workspace_fingerprint": "f036441dc3078fc63ed6dd9bfa3c36e9a8abab4208e3ebade4c8b98c497fa095",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 60.145,
+      "started_at": "2026-09-15T20:45:19.442Z",
+      "commit": "0c600a514a4aa63e76a9065bab508ce6837a0212",
+      "workspace_fingerprint": "f036441dc3078fc63ed6dd9bfa3c36e9a8abab4208e3ebade4c8b98c497fa095",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 461.238,
+      "started_at": "2026-09-15T20:46:23.265Z",
+      "commit": "0c600a514a4aa63e76a9065bab508ce6837a0212",
+      "workspace_fingerprint": "f036441dc3078fc63ed6dd9bfa3c36e9a8abab4208e3ebade4c8b98c497fa095",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Adds a public CPython-compatible int64 annotation and checked conversion, fully typed signed-word locals/calls/returns/comparisons/ranges, overflow-safe arithmetic with Python floor division and remainder, direct typed Int64Buffer access, and native/word/tagged/fmpz/JavaScript/Wasm lowering. Existing unannotated Int64Buffer reads retain exact-Integer semantics; an int64 expected context selects the allocation-free path.",
+    "risks": [
+      "Only Linux x64 has been exercised locally; the portable overflow helpers and LLP64 conversion paths still require normal Windows, macOS, and Linux arm64 CI.",
+      "Signed shifts and exponentiation are intentionally outside this first scalar surface.",
+      "The optimizer opportunity manifest becomes stale whenever compiler inputs change and must be regenerated by the integration lane; this lane does not claim generated dashboard artifacts.",
+      "The native-integration package is at 1049999 of its 1050000-byte allowance, so follow-up compiler growth should first recover source weight rather than increase the allowance."
+    ],
+    "next_steps": [
+      "Integrate after agent/mixed-exact-float-sidecar, then regenerate and review the optimizer opportunity dashboard artifacts.",
+      "Run the frozen splitting-degree catalog with explicit int64 locals and Int64Buffer storage to measure promotion-free generated C and kernel time.",
+      "Let platform CI exercise the signed conversion and overflow paths on Windows x64, macOS arm64, and Linux arm64."
+    ]
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "schema": "sagejs.rust-class-group/prepared-multifield-cases-v1",
+  "artifactRevision": "c4d07156194765506d137792732ba5109cd8c87e",
+  "cases": [
+    {
+      "id": "h1-real-cubic",
+      "input": "bench/pari-class-group-rust/qualification/row6-candidate/inputs/h1-neutral-prepared-field.json",
+      "role": "required-h1"
+    },
+    {
+      "id": "row1-index-3-cubic",
+      "input": "bench/pari-class-group-rust/qualification/row6-candidate/inputs/row1-neutral-prepared-field.json",
+      "role": "unseen-by-wasm-pipeline-nontrivial-index-prime"
+    },
+    {
+      "id": "complex-cubic-discriminant-minus-23",
+      "input": "bench/pari-class-group-rust/qualification/row6-candidate/inputs/complex-cubic-minus-23-neutral-prepared-field.json",
+      "role": "additional-complex-signature"
+    }
+  ]
+}

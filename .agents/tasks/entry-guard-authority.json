@@ -1,0 +1,88 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "entry-guard-authority",
+  "title": "Entry Guard Authority",
+  "lane": "native-compiler",
+  "status": "review",
+  "owner": "user",
+  "objective": "Authenticate checked-region dispatch guards and root span facts in graph-derived virtual UInt64 view proofs",
+  "base_commit": "e57b8825cf99347862443905cd9af402210532db",
+  "claims": [
+    "tools/native-kernel/checked-regions.cjs",
+    "tools/native-kernel/tagged-backend.cjs",
+    "tools/native-kernel/test/checked-private-region.cjs",
+    "tools/native-kernel/test/checked_private_region_witness.py"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test tools/native-kernel/test/checked-private-region.cjs tools/native-kernel/test/structural-proof-authority.cjs",
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test tools/native-kernel/test/checked-private-region.cjs tools/native-kernel/test/structural-proof-authority.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 30.307,
+      "started_at": "2026-09-16T15:06:00.535Z",
+      "commit": "c0169198ad6799ba9ec730bbdd9c180f2cfe0d33",
+      "workspace_fingerprint": "684f1e4eac3ef13ecb2326f46e7490b1b3244f9fca4ede48abb5ac2e5b4c880b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.425,
+      "started_at": "2026-09-16T15:06:40.753Z",
+      "commit": "c0169198ad6799ba9ec730bbdd9c180f2cfe0d33",
+      "workspace_fingerprint": "684f1e4eac3ef13ecb2326f46e7490b1b3244f9fca4ede48abb5ac2e5b4c880b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 54.704,
+      "started_at": "2026-09-16T15:06:58.171Z",
+      "commit": "c0169198ad6799ba9ec730bbdd9c180f2cfe0d33",
+      "workspace_fingerprint": "684f1e4eac3ef13ecb2326f46e7490b1b3244f9fca4ede48abb5ac2e5b4c880b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1156.64,
+      "started_at": "2026-09-16T15:08:25.890Z",
+      "commit": "c0169198ad6799ba9ec730bbdd9c180f2cfe0d33",
+      "workspace_fingerprint": "684f1e4eac3ef13ecb2326f46e7490b1b3244f9fca4ede48abb5ac2e5b4c880b",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Graph-derived fixed UInt64 view claims now bind the exact normalized public dispatch guard through a compiler-owned root record on the private entry. Emission validates the root semantics and complete graph snapshot; weakened, removed, retargeted, or partial roots fail closed. Focused hostile tests preserve direct-result optimization and checked fallback behavior.",
+    "risks": [
+      "The root record is compiler-internal enumerable metadata so structural authority can snapshot it; future generic function-metadata rewrites must preserve or deliberately revoke it."
+    ],
+    "next_steps": [
+      "Integrate these commits atop e57b8825c before recording final production splitting-degree evidence."
+    ]
+  }
+}

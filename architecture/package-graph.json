@@ -44,7 +44,7 @@
       "id": "core-runtime",
       "layer": 0,
       "startup": "bootstrap",
-      "max_source_bytes": 903000,
+      "max_source_bytes": 908000,
       "depends_on": [],
       "modules": ["sagejs", "sagejs.runtime"],
       "files": [
@@ -151,7 +151,7 @@
       "id": "native-integration",
       "layer": 1,
       "startup": "lazy",
-      "max_source_bytes": 1050000,
+      "max_source_bytes": 1070000,
       "depends_on": ["core-runtime"],
       "modules": ["sagejs.compiler", "sagejs.native", "sagejs.ffi"],
       "files": [
@@ -295,7 +295,7 @@
       "id": "number-field-algorithms",
       "layer": 5,
       "startup": "lazy",
-      "max_source_bytes": 1200000,
+      "max_source_bytes": 1310000,
       "depends_on": [
         "core-runtime",
         "native-integration",
@@ -421,7 +421,7 @@
       "id": "number-field-global-arithmetic",
       "layer": 7,
       "startup": "lazy",
-      "max_source_bytes": 1720000,
+      "max_source_bytes": 1830000,
       "depends_on": [
         "core-runtime",
         "arithmetic",
@@ -441,6 +441,7 @@
         "sagejs.number_fields.class_unit_analytic",
         "sagejs.number_fields.class_unit_context",
         "sagejs.number_fields.class_unit_groups",
+        "sagejs.number_fields.compact_relation_presentation",
         "sagejs.number_fields.cubic_class_number",
         "sagejs.number_fields.embeddings",
         "sagejs.number_fields.factored_elements",
@@ -457,6 +458,7 @@
         "src/lib/sagejs/number_fields/class_unit_analytic.py",
         "src/lib/sagejs/number_fields/class_unit_context.py",
         "src/lib/sagejs/number_fields/class_unit_groups.py",
+        "src/lib/sagejs/number_fields/compact_relation_presentation.py",
         "src/lib/sagejs/number_fields/cubic_class_number.py",
         "src/lib/sagejs/number_fields/embeddings.py",
         "src/lib/sagejs/number_fields/factored_elements.py",
@@ -464,6 +466,26 @@
         "src/lib/sagejs/number_fields/quadratic_narrow_relations.py",
         "src/lib/sagejs/number_fields/units.py"
       ],
+      "prefixes": []
+    },
+    {
+      "id": "rust-class-group-public-replay",
+      "layer": 8,
+      "startup": "lazy",
+      "max_source_bytes": 175000,
+      "depends_on": [
+        "core-runtime",
+        "arithmetic",
+        "linear-algebra",
+        "numeric-compat",
+        "python-stdlib",
+        "number-field-algorithms",
+        "number-field-prime-arithmetic",
+        "number-field-relation-matrix",
+        "number-field-global-arithmetic"
+      ],
+      "modules": ["sagejs.number_fields.rust_class_group_presentation"],
+      "files": ["src/lib/sagejs/number_fields/rust_class_group_presentation.py"],
       "prefixes": []
     },
     {

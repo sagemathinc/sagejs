@@ -1,0 +1,223 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/rust-class-group-qualification/compact-presentation-certificate-v1.json",
+  "title": "Compact exact Rust presentation certificate",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "qualificationStatus",
+    "sourceInputId",
+    "relationShape",
+    "invariantFactors",
+    "groupOrder",
+    "modularClassMap",
+    "standardGeneratorLifts",
+    "relationDependencies",
+    "latticeIndexEvidence",
+    "verified"
+  ],
+  "properties": {
+    "schema": { "const": "sagejs.rust-class-group/compact-presentation-certificate-v1" },
+    "qualificationStatus": { "const": "closed-exact-lattice-index-certificate" },
+    "sourceInputId": { "type": "string", "minLength": 1 },
+    "relationShape": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rows", "columns"],
+      "properties": {
+        "rows": { "type": "integer", "minimum": 1 },
+        "columns": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "invariantFactors": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/positiveIntegerString" }
+    },
+    "groupOrder": { "$ref": "#/$defs/positiveIntegerString" },
+    "modularClassMap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["moduli", "rows"],
+      "properties": {
+        "moduli": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/positiveIntegerString" }
+        },
+        "rows": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/classMapRow" }
+        }
+      }
+    },
+    "standardGeneratorLifts": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/standardGeneratorLift" }
+    },
+    "relationDependencies": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/relationDependency" }
+    },
+    "latticeIndexEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "squareRowIndicesZeroBased",
+        "surplusRowIndicesZeroBased",
+        "squareDeterminant",
+        "projectedDependencyDeterminant",
+        "dependencySaturation",
+        "fullRelationLatticeIndex"
+      ],
+      "properties": {
+        "squareRowIndicesZeroBased": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "integer", "minimum": 0 },
+          "uniqueItems": true
+        },
+        "surplusRowIndicesZeroBased": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "integer", "minimum": 0 },
+          "uniqueItems": true
+        },
+        "squareDeterminant": { "$ref": "#/$defs/positiveIntegerString" },
+        "projectedDependencyDeterminant": { "$ref": "#/$defs/positiveIntegerString" },
+        "dependencySaturation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["criterion", "selectedMinors", "gcd"],
+          "properties": {
+            "criterion": { "const": "gcd-of-exhibited-maximal-dependency-minors-is-one" },
+            "selectedMinors": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["relationRowIndicesZeroBased", "determinant"],
+                "properties": {
+                  "relationRowIndicesZeroBased": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": { "type": "integer", "minimum": 0 },
+                    "uniqueItems": true
+                  },
+                  "determinant": { "$ref": "#/$defs/positiveIntegerString" }
+                }
+              }
+            },
+            "gcd": { "const": "1" }
+          }
+        },
+        "fullRelationLatticeIndex": { "$ref": "#/$defs/positiveIntegerString" }
+      }
+    },
+    "verified": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "invariantProductEqualsClaimedClassNumber",
+        "classMapAnnihilatesEveryRelation",
+        "standardGeneratorLiftsMapToCoordinateBasis",
+        "generatorOrderWitnessesReplayExactly",
+        "dependencyCountEqualsRowsMinusColumns",
+        "everyDependencyReplaysToZero",
+        "dependencyRankEqualsRowsMinusColumns",
+        "dependencyLatticeIsPrimitive",
+        "dependencyLatticeEqualsIntegralLeftKernel",
+        "projectedDependencyIndexDividesSquareDeterminant",
+        "fullRelationLatticeIndexEqualsGroupOrder"
+      ],
+      "properties": {
+        "invariantProductEqualsClaimedClassNumber": { "const": true },
+        "classMapAnnihilatesEveryRelation": { "const": true },
+        "standardGeneratorLiftsMapToCoordinateBasis": { "const": true },
+        "generatorOrderWitnessesReplayExactly": { "const": true },
+        "dependencyCountEqualsRowsMinusColumns": { "const": true },
+        "everyDependencyReplaysToZero": { "const": true },
+        "dependencyRankEqualsRowsMinusColumns": { "const": true },
+        "dependencyLatticeIsPrimitive": { "const": true },
+        "dependencyLatticeEqualsIntegralLeftKernel": { "const": true },
+        "projectedDependencyIndexDividesSquareDeterminant": { "const": true },
+        "fullRelationLatticeIndexEqualsGroupOrder": { "const": true }
+      }
+    }
+  },
+  "$defs": {
+    "integerString": { "type": "string", "pattern": "^-?(0|[1-9][0-9]*)$" },
+    "positiveIntegerString": { "type": "string", "pattern": "^[1-9][0-9]*$" },
+    "nonzeroIntegerString": { "type": "string", "pattern": "^-?[1-9][0-9]*$" },
+    "combinationTerm": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["relationIndexZeroBased", "coefficient"],
+      "properties": {
+        "relationIndexZeroBased": { "type": "integer", "minimum": 0 },
+        "coefficient": { "$ref": "#/$defs/nonzeroIntegerString" }
+      }
+    },
+    "classMapRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["factorBaseIndexZeroBased", "residues"],
+      "properties": {
+        "factorBaseIndexZeroBased": { "type": "integer", "minimum": 0 },
+        "residues": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "factorBaseLiftTerm": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["factorBaseIndexZeroBased", "coefficient"],
+      "properties": {
+        "factorBaseIndexZeroBased": { "type": "integer", "minimum": 0 },
+        "coefficient": { "$ref": "#/$defs/nonzeroIntegerString" }
+      }
+    },
+    "standardGeneratorLift": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "coordinateZeroBased",
+        "modulus",
+        "factorBaseLift",
+        "orderRelationCombination"
+      ],
+      "properties": {
+        "coordinateZeroBased": { "type": "integer", "minimum": 0 },
+        "modulus": { "$ref": "#/$defs/positiveIntegerString" },
+        "factorBaseLift": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": { "$ref": "#/$defs/factorBaseLiftTerm" }
+        },
+        "orderRelationCombination": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/combinationTerm" }
+        }
+      }
+    },
+    "relationDependency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dependencyIndexZeroBased", "terms"],
+      "properties": {
+        "dependencyIndexZeroBased": { "type": "integer", "minimum": 0 },
+        "terms": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/combinationTerm" }
+        }
+      }
+    }
+  }
+}

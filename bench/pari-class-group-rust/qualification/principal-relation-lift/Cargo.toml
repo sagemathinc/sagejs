@@ -1,0 +1,11 @@
+[package]
+name = "sagejs-principal-relation-lift-qualification"
+version = "0.1.0"
+edition = "2024"
+license = "GPL-2.0-or-later"
+publish = false
+
+[dependencies]
+rug = { version = "1.30", default-features = false, features = ["integer"] }
+sagejs-class-group = { package = "sagejs-pari-class-group-rust-experiment", path = "../..", features = ["flint-normal-form"] }
+serde_json = "1.0"

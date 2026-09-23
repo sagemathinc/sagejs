@@ -1,0 +1,311 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/rust-class-group-qualification/result-evidence-v1.json",
+  "title": "Rust class-group result and evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "resultId", "inputId", "fieldId", "outcome", "requestedProof",
+    "claim", "classGroup", "maps", "units", "evidence", "resourceUse",
+    "implementation"
+  ],
+  "properties": {
+    "schema": { "const": "sagejs.rust-class-group.result-evidence/v1" },
+    "resultId": { "$ref": "common.schema.json#/$defs/contentId" },
+    "inputId": { "$ref": "common.schema.json#/$defs/contentId" },
+    "fieldId": { "$ref": "common.schema.json#/$defs/nonempty" },
+    "outcome": {
+      "enum": ["completed", "resource-limit", "cancelled", "unsupported", "failed"]
+    },
+    "requestedProof": { "$ref": "common.schema.json#/$defs/proofRequest" },
+    "claim": {
+      "oneOf": [
+        { "$ref": "#/$defs/candidateClaim" },
+        { "$ref": "#/$defs/upstreamClaim" },
+        { "$ref": "#/$defs/publicClaim" },
+        { "type": "null" }
+      ]
+    },
+    "classGroup": {
+      "oneOf": [
+        { "$ref": "#/$defs/classGroup" },
+        { "type": "null" }
+      ]
+    },
+    "maps": {
+      "oneOf": [
+        { "$ref": "#/$defs/maps" },
+        { "type": "null" }
+      ]
+    },
+    "units": {
+      "oneOf": [
+        { "$ref": "#/$defs/units" },
+        { "type": "null" }
+      ]
+    },
+    "evidence": {
+      "oneOf": [
+        { "$ref": "#/$defs/evidence" },
+        { "type": "null" }
+      ]
+    },
+    "resourceUse": { "$ref": "#/$defs/resourceUse" },
+    "implementation": { "$ref": "#/$defs/implementation" },
+    "failure": {
+      "oneOf": [
+        { "$ref": "#/$defs/failure" },
+        { "type": "null" }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "outcome": { "const": "completed" } }, "required": ["outcome"] },
+      "then": {
+        "required": ["failure"],
+        "properties": {
+          "claim": { "not": { "type": "null" } },
+          "classGroup": { "not": { "type": "null" } },
+          "evidence": { "not": { "type": "null" } },
+          "failure": { "type": "null" }
+        }
+      },
+      "else": {
+        "required": ["failure"],
+        "properties": {
+          "claim": { "type": "null" },
+          "classGroup": { "type": "null" },
+          "maps": { "type": "null" },
+          "units": { "type": "null" },
+          "evidence": { "type": "null" },
+          "failure": { "$ref": "#/$defs/failure" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "claim": {
+            "type": "object",
+            "properties": { "status": { "const": "publicly-complete" } },
+            "required": ["status"]
+          }
+        },
+        "required": ["claim"]
+      },
+      "then": {
+        "properties": {
+          "maps": { "$ref": "#/$defs/maps" },
+          "units": { "$ref": "#/$defs/units" },
+          "evidence": {
+            "allOf": [
+              { "$ref": "#/$defs/evidence" },
+              {
+                "type": "object",
+                "required": ["completion", "generatorsAndMaps"],
+                "properties": {
+                  "completion": { "$ref": "common.schema.json#/$defs/evidenceBinding" },
+                  "generatorsAndMaps": { "$ref": "common.schema.json#/$defs/evidenceBinding" }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "claim": {
+            "type": "object",
+            "properties": { "proofMode": { "const": "conditional-grh" } },
+            "required": ["proofMode"]
+          }
+        },
+        "required": ["claim"]
+      },
+      "then": {
+        "properties": {
+          "requestedProof": { "const": "conditional-grh" },
+          "claim": {
+            "type": "object",
+            "properties": { "proofAuthority": { "const": "conditional-grh" } }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "claim": {
+            "type": "object",
+            "properties": { "proofMode": { "const": "unconditional" } },
+            "required": ["proofMode"]
+          }
+        },
+        "required": ["claim"]
+      },
+      "then": {
+        "properties": {
+          "requestedProof": { "const": "unconditional" },
+          "claim": {
+            "type": "object",
+            "properties": { "proofAuthority": { "const": "unconditional" } }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "candidateClaim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "publicComplete", "proofAuthority", "reason"],
+      "properties": {
+        "status": { "const": "candidate" },
+        "publicComplete": { "const": false },
+        "proofAuthority": { "const": "none" },
+        "reason": { "$ref": "common.schema.json#/$defs/nonempty" }
+      }
+    },
+    "upstreamClaim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status", "publicComplete", "proofAuthority", "reason", "upstream",
+        "assumptionsSha256"
+      ],
+      "properties": {
+        "status": { "const": "upstream-assumed-correspondence" },
+        "publicComplete": { "const": false },
+        "proofAuthority": { "const": "upstream-assumption" },
+        "reason": { "$ref": "common.schema.json#/$defs/nonempty" },
+        "upstream": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["project", "version", "sourceSha256", "algorithm"],
+          "properties": {
+            "project": { "const": "PARI" },
+            "version": { "const": "2.17.4" },
+            "sourceSha256": { "$ref": "common.schema.json#/$defs/sha256" },
+            "algorithm": { "$ref": "common.schema.json#/$defs/nonempty" }
+          }
+        },
+        "assumptionsSha256": { "$ref": "common.schema.json#/$defs/sha256" }
+      }
+    },
+    "publicClaim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status", "publicComplete", "proofAuthority", "proofMode",
+        "verificationSha256"
+      ],
+      "properties": {
+        "status": { "const": "publicly-complete" },
+        "publicComplete": { "const": true },
+        "proofAuthority": { "enum": ["conditional-grh", "unconditional"] },
+        "proofMode": { "$ref": "common.schema.json#/$defs/proofRequest" },
+        "verificationSha256": { "$ref": "common.schema.json#/$defs/sha256" }
+      }
+    },
+    "classGroup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["classNumber", "invariantFactors", "generatorIdeals"],
+      "properties": {
+        "classNumber": { "$ref": "common.schema.json#/$defs/positiveDecimal" },
+        "invariantFactors": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[2-9][0-9]*$|^[1-9][0-9]{1,}$" }
+        },
+        "generatorIdeals": {
+          "type": "array",
+          "items": { "$ref": "common.schema.json#/$defs/ideal" }
+        }
+      }
+    },
+    "maps": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["construction", "idealToClass", "principality", "verified"],
+      "properties": {
+        "construction": { "enum": ["eager", "lazy-state-retained"] },
+        "idealToClass": { "$ref": "common.schema.json#/$defs/evidenceBinding" },
+        "principality": { "$ref": "common.schema.json#/$defs/evidenceBinding" },
+        "verified": { "const": true }
+      }
+    },
+    "units": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scope", "rank", "torsionOrder", "compactGenerators", "regulator",
+        "saturation", "completeForClaim"
+      ],
+      "properties": {
+        "scope": { "enum": ["completion-only", "compact-complete", "expanded-complete"] },
+        "rank": { "$ref": "common.schema.json#/$defs/nonnegativeInteger" },
+        "torsionOrder": { "$ref": "common.schema.json#/$defs/positiveDecimal" },
+        "compactGenerators": {
+          "type": "array",
+          "items": { "$ref": "common.schema.json#/$defs/evidenceBinding" }
+        },
+        "regulator": { "$ref": "common.schema.json#/$defs/evidenceBinding" },
+        "saturation": { "$ref": "common.schema.json#/$defs/evidenceBinding" },
+        "completeForClaim": { "const": true }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["relationLattice", "smith", "independentChecks"],
+      "properties": {
+        "relationLattice": { "$ref": "common.schema.json#/$defs/evidenceBinding" },
+        "smith": { "$ref": "common.schema.json#/$defs/evidenceBinding" },
+        "completion": { "$ref": "common.schema.json#/$defs/evidenceBinding" },
+        "generatorsAndMaps": { "$ref": "common.schema.json#/$defs/evidenceBinding" },
+        "independentChecks": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "common.schema.json#/$defs/evidenceBinding" }
+        }
+      }
+    },
+    "resourceUse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["wallNanoseconds", "peakLiveBytes", "peakRssBytes", "retries"],
+      "properties": {
+        "wallNanoseconds": { "$ref": "common.schema.json#/$defs/unsignedDecimal" },
+        "peakLiveBytes": { "$ref": "common.schema.json#/$defs/unsignedDecimal" },
+        "peakRssBytes": { "$ref": "common.schema.json#/$defs/unsignedDecimal" },
+        "retries": { "$ref": "common.schema.json#/$defs/nonnegativeInteger" }
+      }
+    },
+    "implementation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["backend", "version", "artifactSha256", "linksPari", "usesOracleInput"],
+      "properties": {
+        "backend": { "const": "sagejs-rust-class-group" },
+        "version": { "$ref": "common.schema.json#/$defs/nonempty" },
+        "artifactSha256": { "$ref": "common.schema.json#/$defs/sha256" },
+        "linksPari": { "const": false },
+        "usesOracleInput": { "const": false }
+      }
+    },
+    "failure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "stage", "message", "partialAnswerPublished"],
+      "properties": {
+        "kind": { "enum": ["resource-limit", "cancelled", "unsupported", "arithmetic", "internal"] },
+        "stage": { "$ref": "common.schema.json#/$defs/stageName" },
+        "message": { "$ref": "common.schema.json#/$defs/nonempty" },
+        "partialAnswerPublished": { "const": false }
+      }
+    }
+  }
+}

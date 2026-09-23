@@ -1,0 +1,241 @@
+{
+  "answerDisclosure": "none",
+  "caseCount": 12,
+  "cases": [
+    {
+      "checks": [],
+      "fieldId": "admissible-v2-d3-0004-d434e138a2ff",
+      "redactedStage": "unit-and-analytic-completion",
+      "status": "failed"
+    },
+    {
+      "checks": [],
+      "fieldId": "generated-d3-0009-bdf9e0243d34",
+      "redactedStage": "unit-and-analytic-completion",
+      "status": "failed"
+    },
+    {
+      "checks": [],
+      "fieldId": "generated-d3-0012-d6fd4141859d",
+      "redactedStage": "unit-and-analytic-completion",
+      "status": "failed"
+    },
+    {
+      "checks": [
+        {
+          "check": "polynomialAscending",
+          "status": "passed"
+        },
+        {
+          "check": "signature",
+          "status": "passed"
+        },
+        {
+          "check": "equationOrderIndex",
+          "status": "passed"
+        },
+        {
+          "check": "fieldDiscriminant",
+          "status": "passed"
+        },
+        {
+          "check": "candidate.classNumber",
+          "status": "passed"
+        },
+        {
+          "check": "candidate.invariantFactors",
+          "status": "passed"
+        },
+        {
+          "check": "completion.classNumber",
+          "status": "passed"
+        },
+        {
+          "check": "completion.invariantFactors",
+          "status": "passed"
+        },
+        {
+          "check": "unitRank",
+          "status": "passed"
+        }
+      ],
+      "fieldId": "generated-d3-0015-8a2ac6c14b3a",
+      "redactedStage": null,
+      "status": "passed"
+    },
+    {
+      "checks": [],
+      "fieldId": "generated-d3-0016-9eec8d96a3f4",
+      "redactedStage": "candidate-authentication",
+      "status": "failed"
+    },
+    {
+      "checks": [],
+      "fieldId": "generated-d3-0017-acafe79505bd",
+      "redactedStage": "candidate-authentication",
+      "status": "failed"
+    },
+    {
+      "checks": [],
+      "fieldId": "generated-d3-0018-d56f2c5a4146",
+      "redactedStage": "candidate-authentication",
+      "status": "failed"
+    },
+    {
+      "checks": [],
+      "fieldId": "generated-d3-0019-d998ace3f59a",
+      "redactedStage": "unit-and-analytic-completion",
+      "status": "failed"
+    },
+    {
+      "checks": [
+        {
+          "check": "polynomialAscending",
+          "status": "passed"
+        },
+        {
+          "check": "signature",
+          "status": "passed"
+        },
+        {
+          "check": "equationOrderIndex",
+          "status": "passed"
+        },
+        {
+          "check": "fieldDiscriminant",
+          "status": "passed"
+        },
+        {
+          "check": "candidate.classNumber",
+          "status": "passed"
+        },
+        {
+          "check": "candidate.invariantFactors",
+          "status": "passed"
+        },
+        {
+          "check": "completion.classNumber",
+          "status": "passed"
+        },
+        {
+          "check": "completion.invariantFactors",
+          "status": "passed"
+        },
+        {
+          "check": "unitRank",
+          "status": "passed"
+        }
+      ],
+      "fieldId": "generated-d3-0020-16d771bab607",
+      "redactedStage": null,
+      "status": "passed"
+    },
+    {
+      "checks": [
+        {
+          "check": "polynomialAscending",
+          "status": "passed"
+        },
+        {
+          "check": "signature",
+          "status": "passed"
+        },
+        {
+          "check": "equationOrderIndex",
+          "status": "passed"
+        },
+        {
+          "check": "fieldDiscriminant",
+          "status": "passed"
+        },
+        {
+          "check": "candidate.classNumber",
+          "status": "passed"
+        },
+        {
+          "check": "candidate.invariantFactors",
+          "status": "passed"
+        },
+        {
+          "check": "completion.classNumber",
+          "status": "passed"
+        },
+        {
+          "check": "completion.invariantFactors",
+          "status": "passed"
+        },
+        {
+          "check": "unitRank",
+          "status": "passed"
+        }
+      ],
+      "fieldId": "generated-d3-0022-a037ad04653f",
+      "redactedStage": null,
+      "status": "passed"
+    },
+    {
+      "checks": [],
+      "fieldId": "generated-d3-0023-853d80c99b79",
+      "redactedStage": "unit-and-analytic-completion",
+      "status": "failed"
+    },
+    {
+      "checks": [],
+      "fieldId": "generated-d3-0034-53bc32dff114",
+      "redactedStage": "candidate-authentication",
+      "status": "failed"
+    }
+  ],
+  "comparisonFields": [
+    "polynomialAscending",
+    "signature",
+    "equationOrderIndex",
+    "fieldDiscriminant",
+    "candidate.classNumber",
+    "candidate.invariantFactors",
+    "completion.classNumber",
+    "completion.invariantFactors",
+    "unitRank"
+  ],
+  "confirmationPolicy": {
+    "confirmationFailureRequiresNewSeedAndVersion": true,
+    "excludeOriginalQualificationPanel": true,
+    "failureCasesRemainPermanentRegressions": true,
+    "fixRequiresUntouchedConfirmationSet": true,
+    "freezeBeforeInitialHeldoutExecution": true,
+    "neverRemoveOrReplaceFailure": true,
+    "schema": "sagejs.rust-class-group/heldout-cubic-confirmation-policy-v1",
+    "seed": "sagejs-rust-class-group-heldout-cubic-confirmation-v1-2026-09-20",
+    "selectionAlgorithm": "qualified-unused-candidates-seeded-sha256-v1"
+  },
+  "degree": 3,
+  "evidenceRole": "post-hoc-strengthened-verifier-replay",
+  "executionReceiptSha256": "9ed956b7017dc84ec73977c046bc7c425e28da1b5815e9d305a5abf58002a60b",
+  "failurePolicy": "never-remove-fix-requires-untouched-confirmation-set",
+  "heldOutCompared": true,
+  "identityCrossChecks": {
+    "binarySha256AndBytes": "matched",
+    "campaignEndAndDuration": "matched",
+    "gitCommit": "matched",
+    "linkageSha256AndNoPari": "matched",
+    "panelSelectionAndConfig": "matched",
+    "sourceClosure": "matched"
+  },
+  "initialBlindEvidence": {
+    "comparisonReceiptSha256": "3c9916a538ee4852b1f2d021a4b243ac1718d8a706a8ef153bb801bd8a921fbd",
+    "executionReceiptSha256": "9ed956b7017dc84ec73977c046bc7c425e28da1b5815e9d305a5abf58002a60b",
+    "policyWasCommittedBeforeExecution": false,
+    "preregistered": false
+  },
+  "oracleIdentitySha256": "e6eb5e0cbd901791cf232ff03d946b1ee4b4a924659616bd24ddc0c02d14742f",
+  "partition": "heldOut",
+  "privateResultsSha256": "6c4981a82b747b1fd5a2dc1e6d253b65058a2bd492b3027e17df846e33a52b06",
+  "rustExecution": "completed-before-private-evidence-opened",
+  "rustExecutionReplayed": false,
+  "schema": "sagejs.rust-class-group/heldout-cubic-oracle-receipt-v1",
+  "status": "failed",
+  "verifierSources": {
+    "configSha256": "1d9fc4d0e6bb8fcf43ed59368f98c81d4048991a24f0b33e43cb9c27de5b6dc8",
+    "verifierSha256": "5905358f96b6fdcefb5962ea3a28b479ad6a430bf8d9f2ba3a7eeb42e29dcd0d"
+  }
+}

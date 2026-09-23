@@ -111,6 +111,11 @@ const algebraicRawOutput = path.join(
   "flint-algebraic.unstripped.wasm",
 );
 const algebraicOutput = path.join(outputDirectory, "flint-algebraic.wasm");
+const classGroupOutput = path.join(outputDirectory, "class-group-core.wasm");
+const classGroupReceiptOutput = path.join(
+  outputDirectory,
+  "class-group-core-receipt.json",
+);
 const curveCoreOutput = path.join(
   outputDirectory,
   "elliptic-lseries-core.c",
@@ -313,6 +318,31 @@ function requirePath(description, filename) {
   }
 }
 
+function discoverClassGroupArtifact() {
+  const explicit = process.env.SAGEJS_CLASS_GROUP_WASM_ARTIFACT;
+  const candidates = [
+    explicit && path.resolve(repositoryRoot, explicit),
+    path.join(repositoryRoot, "packages", "class-groups", "dist", "class-group-core.wasm"),
+    path.join(
+      repositoryRoot,
+      "packages",
+      "class-groups",
+      "target",
+      "wasm32-wasip1",
+      "release",
+      "sagejs_class_groups.wasm",
+    ),
+  ].filter(Boolean);
+  const artifact = candidates.find((filename) => fs.existsSync(filename));
+  if (artifact !== undefined) return artifact;
+  throw new Error(
+    "missing production class-group Wasm reactor; build " +
+      "packages/class-groups/dist/class-group-core.wasm first, or set " +
+      "SAGEJS_CLASS_GROUP_WASM_ARTIFACT to its path\nChecked:\n  " +
+      candidates.join("\n  "),
+  );
+}
+
 function run(command, args) {
   const result = spawnSync(command, args, {
     cwd: repositoryRoot,
@@ -369,6 +399,30 @@ requirePath(
 );
 
 fs.mkdirSync(outputDirectory, { recursive: true });
+const classGroupArtifactSource = discoverClassGroupArtifact();
+if (path.resolve(classGroupArtifactSource) !== path.resolve(classGroupOutput)) {
+  fs.copyFileSync(classGroupArtifactSource, classGroupOutput);
+}
+verifyWasmMemoryContract(
+  classGroupOutput,
+  productionModules.get("class-group").memory,
+);
+const classGroupBytes = fs.readFileSync(classGroupOutput);
+fs.writeFileSync(
+  classGroupReceiptOutput,
+  `${JSON.stringify({
+    schema: "sagejs.class-group-wasm-artifact/v1",
+    artifact: "class-group-core.wasm",
+    abiVersion: 1,
+    bytes: classGroupBytes.byteLength,
+    sha256: createHash("sha256").update(classGroupBytes).digest("hex"),
+    memory: {
+      pageBytes: 65536,
+      initialPages: 256,
+      maximumPages: 4096,
+    },
+  }, null, 2)}\n`,
+);
 {
   const reference = JSON.parse(fs.readFileSync(documentationSource, "utf8"));
   if (reference?.docs?.schema_version !== 1 || !Array.isArray(reference.docs.entries)) {
@@ -1170,6 +1224,7 @@ const receipt = writeProductionReceipt({
     browserMagmaEnvironmentShim,
     ...treeSitterAssets.map((name) => path.join(vendorDirectory, name)),
     ...runtimeHostClosure.map(({ source }) => source),
+    classGroupArtifactSource,
     autoReceiptPolicySource,
     path.join(
       repositoryRoot,

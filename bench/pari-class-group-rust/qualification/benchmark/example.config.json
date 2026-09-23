@@ -1,0 +1,57 @@
+{
+  "schema": "sagejs.rust-class-group/benchmark-config-v1",
+  "benchmarkId": "example-rust-pari-matched-candidate-stage",
+  "boundary": {
+    "kind": "algorithm-stage",
+    "label": "algorithm-stage/relation-and-smith-candidate-v1",
+    "stageName": "factor-base relation collection and Smith candidate invariants",
+    "includedWork": [
+      "prepared integral basis through factor base, relation collection, and Smith candidate invariants"
+    ],
+    "excludedWork": [
+      "polynomial validation and field preparation",
+      "JSON parsing and receipt serialization"
+    ],
+    "proofMode": "candidate-only",
+    "outputPolicy": "candidate class number and normalized invariant factors"
+  },
+  "schedule": "alternating-pairs-v1",
+  "warmupsPerArm": 2,
+  "samplesPerArm": 15,
+  "timeoutMilliseconds": 120000,
+  "seedPrefix": "frozen-corpus-v1",
+  "receiptPath": "example.receipt.json",
+  "evidenceDirectory": "example.evidence",
+  "identityCommands": [
+    { "id": "rustc", "command": ["rustc", "--version", "--verbose"] },
+    { "id": "pari", "command": ["gp", "--version"] }
+  ],
+  "fields": [
+    { "id": "class-number-3", "input": "../../corpus/class-number-3.json" }
+  ],
+  "arms": [
+    {
+      "id": "rust",
+      "implementation": "Rust class-group candidate",
+      "boundaryLabel": "algorithm-stage/relation-and-smith-candidate-v1",
+      "cwd": "../..",
+      "command": ["target/release/sagejs-pari-class-group-rust-experiment", "brute-force-cubic", "{input}"],
+      "durationPointer": "/medianNanoseconds/total",
+      "resultProjection": {
+        "classNumber": "/classNumber",
+        "invariantFactors": "/invariantFactors"
+      }
+    },
+    {
+      "id": "pari",
+      "implementation": "PARI 2.17.4 matched candidate-stage adapter wrapper",
+      "boundaryLabel": "algorithm-stage/relation-and-smith-candidate-v1",
+      "command": ["./invoke-matched-pari-stage-example.sh", "{input}", "{seed}"],
+      "durationPointer": "/kernelNanoseconds",
+      "resultProjection": {
+        "classNumber": "/classNumber",
+        "invariantFactors": "/invariantFactors"
+      }
+    }
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "field3-log-owner-join",
+  "title": "Field3 Log Owner Join",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Authenticate batched field-3 real and complex logarithm owners and fail-atomically join source-order columns into the packed 3x301 raw logarithm owner without inventing missing complex columns",
+  "base_commit": "dec0c5b37e1e01cf01ab5e3b55dc1c5357909952",
+  "claims": [
+    "bench/pari-class-group-port/field3_high_precision_log_join.py",
+    "bench/pari-class-group-port/check_field3_high_precision_log_join.cjs",
+    "bench/pari-class-group-port/field3-high-precision-log-join-audit.md"
+  ],
+  "dependencies": [
+    "field3-real-log-batches"
+  ],
+  "references": [
+    "/home/user/upstream/pari-2.17.4/src/basemath/base3.c"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "qualified real 0:28 owner, qualified 32-selected-column complex prefix, exact source/norm replay, exact scalar identities, synthetic protocol fixtures"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node bench/pari-class-group-port/check_field3_high_precision_log_join.cjs"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_field3_high_precision_log_join.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.373,
+      "started_at": "2026-09-17T13:30:37.881Z",
+      "commit": "dec0c5b37e1e01cf01ab5e3b55dc1c5357909952",
+      "workspace_fingerprint": "45901561475fa696c6c0c527da8f2254db632be9de0768efce2794c4879a5b02",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a strict source-transparent coordinator for the eventual authoritative real and complex field-3 logarithm owners. It authenticates immutable content-addressed owners, independently replays all 301 exact determinant-norm consequences from the frozen sources, checks scalar identities, preserves producer cells without reassociation, and atomically publishes the 6321-cell raw 3x301 owner only after complete validation. The qualified partial corpus and synthetic full-protocol mutations exercise the boundary without fabricating or publishing missing mathematical data.",
+    "risks": [
+      "The complete authoritative complex owner did not yet exist, so the complete-path test uses structural synthetic cells only; they are not mathematical evidence and are never published outside a temporary directory.",
+      "The first real-data complete join still depends on recording the exact byte hashes of the eventual complete real and complex owners.",
+      "The lane remains active rather than review because the coordinator explicitly requested no heavy build; the lane-required baselib/native suites were not run."
+    ],
+    "next_steps": [
+      "After the complex corpus lane publishes all 301 columns, run this coordinator with independently recorded real/complex owner hashes and preserve the resulting immutable raw-log owner identity.",
+      "Use the authenticated raw 3x301 owner as the only C1 input to the retained 301x13 transform and subsequent regulator/LLL/cleanarch/getfu stages."
+    ]
+  }
+}

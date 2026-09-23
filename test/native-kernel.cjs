@@ -288,10 +288,10 @@ const renamedPrimeFieldSourceIr = await lowerSource(
   "renamed-prime-field-source.py",
 );
 
-assert.equal(ir.version, 39);
-assert.equal(scalarExactIr.version, 39);
-assert.equal(scalarFloatIr.version, 39);
-assert.equal(reductionsIr.version, 39);
+assert.equal(ir.version, 46);
+assert.equal(scalarExactIr.version, 46);
+assert.equal(scalarFloatIr.version, 46);
+assert.equal(reductionsIr.version, 46);
 assert.deepEqual(
   scalarFloatIr.functions.map((fn) => [fn.name, fn.kernelKind]),
   [["int_to_float", "float64"], ["float_abs", "float64"]],
@@ -677,7 +677,7 @@ assert.match(
   integerAlgorithmsC,
   /native_native_lcm[\s\S]*native_native_gcd\(status/,
 );
-assert.match(integerAlgorithmsC, /mpz_t sagejs_scratch_0/);
+assert.match(integerAlgorithmsC, /mpz_ptr sagejs_scratch_0/);
 assert.doesNotMatch(integerAlgorithmsC, /mpz_t sagejs_a;/);
 assert.match(integerAlgorithmsC, /mpz_fdiv_q\(/);
 assert.match(integerAlgorithmsC, /mpz_fdiv_r\(/);
@@ -702,14 +702,13 @@ assert.equal(
   ).analysis.backend.kind,
   "gmp",
 );
-await assert.rejects(
-  () =>
-    lowerSource(
+assert.equal(
+  (await lowerSource(
       "def f(field: ComplexField, n: uint64) -> ComplexNumber:\n" +
         "    return field(\"1\", \"0\")\n",
-      "invalid.sage",
-    ),
-  /native function must return a ComplexNumber local/,
+      "return-expression.sage",
+    )).functions[0].body.at(-1).kind,
+  "return",
 );
 await assert.rejects(
   () =>
@@ -1438,7 +1437,7 @@ compileKernel({
   });
   const nativeTateKernel = await compileKernel({
     sourcePath: nativeTatePath,
-    functions: ["tate_large_prime"],
+    functions: ["tate_large_prime", "tate_cubic_root_count"],
     cacheRoot: join(temporary, "native-tate-cache"),
   });
   const nativeP1Kernel = await compileKernel({
@@ -2546,7 +2545,7 @@ const { WASI } = require("node:wasi");
   });
   assert.match(
     readFileSync(integerAlgorithms.modulePath, "utf8"),
-    /sagejs_native_backend !== "bigint"/,
+    /const ([$\w]+) = backend_\w+\([^;]*\);\s*if \(\1 !== "bigint"\)/,
   );
   const integerAlgorithmsModule = require(integerAlgorithms.modulePath);
   const integerAlgorithmsAddon = require(integerAlgorithms.addonPath);

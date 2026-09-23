@@ -183,6 +183,20 @@ export function createWasiHost(options = {}) {
       });
     },
 
+    // Sage.js reactors receive a deliberately empty, deterministic
+    // environment.  In particular, no host credentials or process state cross
+    // the Wasm boundary.
+    environ_get(_environmentPointer, _environmentBytesPointer) {
+      return errno(() => {});
+    },
+
+    environ_sizes_get(countPointer, bytesPointer) {
+      return errno(() => {
+        writeU32(countPointer, 0);
+        writeU32(bytesPointer, 0);
+      });
+    },
+
     fd_close(fd) {
       return errno(() => filesystem.close(fd));
     },

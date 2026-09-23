@@ -1,0 +1,58 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "torsion-final-binding",
+  "title": "Authentic final torsion binding",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "torsion_authority",
+  "objective": "Bind independently derived real-cubic torsion authority to the authentic live final-state field identity without oracle or answer-fixture inputs",
+  "base_commit": "f0d3cfe24d58e46492635fd20c6a24dd5e0c0772",
+  "claims": [
+    "bench/pari-class-group-port/torsion_final_binding.py",
+    "bench/pari-class-group-port/check_torsion_final_binding.cjs",
+    "bench/pari-class-group-port/torsion_final_binding_audit.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Independent torsion authority recomputation and live final-state field identity replay"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_torsion_final_binding.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.094,
+      "started_at": "2026-09-17T03:21:54.206Z",
+      "commit": "f0d3cfe24d58e46492635fd20c6a24dd5e0c0772",
+      "workspace_fingerprint": "41888edf6b327df9db3591eef18f8bf00c3e02f8130a033d21ae28e6887a9dd9",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a narrow final-result composer that takes only the neutral cubic polynomial and the live internal correspondence state, independently recomputes exact torsion, verifies the live field/authority/order/generator, and binds the result to the complete live-state digest. Detached replay recomposes rather than accepting an expected answer; the checker uses no PARI oracle or fixture inputs and rejects ten live-state plus two binding mutations.",
+    "risks": [
+      "The adapter deliberately targets the current internal-correspondence-completion-v1 schema and totally real cubic authority; other signatures require their own roots-of-unity authority.",
+      "Repository-wide arithmetic/native suites are deferred to integration; focused syntax, Ruff, contract, replay, and mutation checks pass."
+    ],
+    "next_steps": [
+      "Feed the authentic internal correspondence payload directly to compose_torsion_final_binding and retain the returned binding in the final immutable result without changing public-completion flags."
+    ]
+  }
+}

@@ -1,0 +1,105 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "field3-result-composer-positive",
+  "title": "Positive field3 correspondence composer",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Connect authentic same-run field3 unit-transform replay to the field-neutral composer and transactionally seal the internal PRECI correspondence without claiming public completion",
+  "base_commit": "0ade36015881371132f026ff23d4059e746d9798",
+  "claims": [
+    "bench/pari-class-group-port/field3_class_unit_result_composer.cjs",
+    "bench/pari-class-group-port/check_field3_class_unit_result_composer.cjs",
+    "bench/pari-class-group-port/field3_class_unit_result_composer_audit.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Exact retained 301x13 field3 transform, relation replay/map, compact-unit replay, and mixed-real torsion replay"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --check bench/pari-class-group-port/field3_class_unit_result_composer.cjs",
+    "node --check bench/pari-class-group-port/check_field3_class_unit_result_composer.cjs",
+    "env SAGEJS_REPLAY_RUNTIME_ROOT=/home/user/sagejs-worktrees/pari-class-group-e2e-integration node bench/pari-class-group-port/check_field3_class_unit_result_composer.cjs",
+    "node bench/pari-class-group-port/check_class_unit_correspondence_result.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "env SAGEJS_REPLAY_RUNTIME_ROOT=/home/user/sagejs-worktrees/pari-class-group-e2e-integration node bench/pari-class-group-port/check_field3_class_unit_result_composer.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 153.585,
+      "started_at": "2026-09-17T11:04:34.069Z",
+      "commit": "0ade36015881371132f026ff23d4059e746d9798",
+      "workspace_fingerprint": "82c427b469b8f72f014cca9c1d2683f9f8d20c190358d576434dfa490874f1e5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check bench/pari-class-group-port/field3_class_unit_result_composer.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.034,
+      "started_at": "2026-09-17T11:07:13.754Z",
+      "commit": "0ade36015881371132f026ff23d4059e746d9798",
+      "workspace_fingerprint": "82c427b469b8f72f014cca9c1d2683f9f8d20c190358d576434dfa490874f1e5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check bench/pari-class-group-port/check_field3_class_unit_result_composer.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.032,
+      "started_at": "2026-09-17T11:07:14.688Z",
+      "commit": "0ade36015881371132f026ff23d4059e746d9798",
+      "workspace_fingerprint": "82c427b469b8f72f014cca9c1d2683f9f8d20c190358d576434dfa490874f1e5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_class_unit_correspondence_result.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.058,
+      "started_at": "2026-09-17T11:07:15.611Z",
+      "commit": "0ade36015881371132f026ff23d4059e746d9798",
+      "workspace_fingerprint": "82c427b469b8f72f014cca9c1d2683f9f8d20c190358d576434dfa490874f1e5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_REPLAY_RUNTIME_ROOT=/home/user/sagejs-worktrees/pari-class-group-e2e-integration node bench/pari-class-group-port/check_field3_class_unit_result_composer.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 155.137,
+      "started_at": "2026-09-17T11:08:17.717Z",
+      "commit": "0ade36015881371132f026ff23d4059e746d9798",
+      "workspace_fingerprint": "2e9b833ad065ac07920bc90a105dd6d06d8f465833f139e745851a5baddd3161",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Connected the authentic same-run 301x13 ancestry to the field-3 composer. The out-of-band replay binds R, T, all principal generators, source-order packed logs, terminal A, the compact 13x2 map, and the two 301-factor unit columns. Exact gates prove R*T=0 and R*(T*U)=0, transfer the previously replayed principal relations, and derive exact norms (+1,+1) without expanding PARI's not_given(PRECI) units. The class presentation also retains the exact HNF ideals for both selected generators. The composer now seals the field-neutral internal correspondence, a separate final authority replays every owner, and publication is atomic/idempotent with public_complete=false. The focused run rejects 23 mutations.",
+    "risks": [
+      "This is correspondence-complete only under the envelope's explicit PARI 2.17.4 and GRH/bound assumptions; it is not independent Sage.js public certification or a unit-saturation proof.",
+      "The materialization remains faithfully not_given(PRECI): units are retained as exact factored products of the 301 principal generators, not expanded power-basis elements.",
+      "Broad strict/native gates are left to the frozen integration checkpoint so this focused lane does not contend with the other active implementation/build lanes."
+    ],
+    "next_steps": [
+      "Cherry-pick this lane after the transform-retention and original composer commits already present at the stated base.",
+      "Run cumulative strict/native/architecture validation on the next frozen integration checkpoint.",
+      "Keep public_complete false until independent Sage.js proof-stage, regulator, and saturation certification are available."
+    ]
+  }
+}

@@ -1,0 +1,115 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-e2e-precision-resource-bridge",
+  "title": "Pari E2e Precision Resource Bridge",
+  "lane": "native-compiler",
+  "status": "review",
+  "owner": "user",
+  "objective": "Audit and minimally prove composition of resident exact Fmpz owners with declared Arb precision retries across a native Python import graph; add compiler machinery only if a minimal reproducer proves it missing",
+  "base_commit": "944a1291113a51b366d293e00c7979c754eeee03",
+  "claims": [
+    "bench/pari-class-group-port/precision_resource_graph_bridge.py",
+    "bench/pari-class-group-port/precision_resource_graph_leaf.py",
+    "bench/pari-class-group-port/check_precision_resource_graph_bridge.cjs",
+    "bench/pari-class-group-port/precision_resource_graph_bridge_audit.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "native"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_precision_resource_graph_bridge.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.984,
+      "started_at": "2026-09-17T00:47:13.082Z",
+      "commit": "944a1291113a51b366d293e00c7979c754eeee03",
+      "workspace_fingerprint": "08eb18d05cc8877c9b6b7b758c88b15dee705bc6b4f76429490f1d8e244c0200",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.154,
+      "started_at": "2026-09-17T00:47:16.727Z",
+      "commit": "944a1291113a51b366d293e00c7979c754eeee03",
+      "workspace_fingerprint": "08eb18d05cc8877c9b6b7b758c88b15dee705bc6b4f76429490f1d8e244c0200",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 57.694,
+      "started_at": "2026-09-17T00:47:29.522Z",
+      "commit": "944a1291113a51b366d293e00c7979c754eeee03",
+      "workspace_fingerprint": "08eb18d05cc8877c9b6b7b758c88b15dee705bc6b4f76429490f1d8e244c0200",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 933.719,
+      "started_at": "2026-09-17T00:48:30.860Z",
+      "commit": "944a1291113a51b366d293e00c7979c754eeee03",
+      "workspace_fingerprint": "d9c10cd5562a40345b9307bb508b7bc4851af7904ec24e978b5159a7d65bb2e3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.076,
+      "started_at": "2026-09-17T01:04:54.306Z",
+      "commit": "944a1291113a51b366d293e00c7979c754eeee03",
+      "workspace_fingerprint": "d9c10cd5562a40345b9307bb508b7bc4851af7904ec24e978b5159a7d65bb2e3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 57.338,
+      "started_at": "2026-09-17T01:05:07.038Z",
+      "commit": "944a1291113a51b366d293e00c7979c754eeee03",
+      "workspace_fingerprint": "d9c10cd5562a40345b9307bb508b7bc4851af7904ec24e978b5159a7d65bb2e3",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Audited the existing native resource graph and demonstrated that it already composes caller-owned exact FmpzMatrix state with imported Arb precision work across a cloned native Python call graph. The focused bridge forces a 32-to-128-bit retry, preserves an arbitrary-precision exact owner, publishes precision-dependent output only after successful recomputation and exact-state revalidation, and matches JavaScript, GMP, native, and independent CPython Decimal enclosure oracles. Invalid over-capacity and aliased-resource calls fail without mutating exact, published, or diagnostic state. No compiler, FFI, or handwritten native change is justified: declared resource identity, ownership, and dynamic fallback already suffice.",
+    "risks": [
+      "The authentic getfu retry trace reaches p2176 and p2240, while its coordinated regulator and elementary-function caps currently range from p1856 through p2048. Supporting a p2240 exponential requires at least p2304 working precision and must widen every dependent cap with a forced-retry regression; this is a separate algorithm-capacity task, not a resource-graph defect.",
+      "Validation was executed on Linux x64. The source-transparent graph uses existing portable declared resources, but Linux ARM64, Windows x64, and macOS ARM64 were not executed in this lane.",
+      "The repository-wide test:changed run reached 222 of 245 unit files before the pre-existing modular-qexp package-graph source-freeze mismatch (expected 66d0..., base reports acf5...), outside this lane's claims. Focused, architecture, strict-Python, and complete native gates pass."
+    ],
+    "next_steps": [
+      "Integrate this reproducer and audit as the ownership contract for composing exact relation/HNF owners with unit-lattice precision retries.",
+      "In a dedicated getfu precision lane, raise regulator, division, square-root, modular-log, logarithm, product, sum, resize, integer-to-real, and exponential capacities coherently through at least p2304, then force and verify the p2176/p2240 retry path.",
+      "Have the shared end-to-end driver retain exact owners as authoritative state, allocate precision-dependent scratch resources per attempt, and copy to published resources only after all exact and enclosure checks pass."
+    ]
+  }
+}

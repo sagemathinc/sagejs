@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-09-17",
+  "diagnosticOnly": true,
+  "qualifiedTiming": false,
+  "integrationBase": "54449ef0f5aae5df58f982fceee24789d9a58073",
+  "profileBase": "a58ca8bd32134e8832082dda45ccac650ef35c43",
+  "experiment": {
+    "root": "pari_connected_relation_hnf",
+    "scratchCapacity": 4096,
+    "description": "Root-owned lazy-initialized mpz_t scratch slots reused by the reachable resident relation-to-HNF graph; ordinary per-function scratch remained as the checked fallback.",
+    "disposition": "rejected-and-reverted"
+  },
+  "provenance": {
+    "fixtureSha256": "8d3b97b1320e31f9091fceb46e2167eb0dc0614cc697cf56ff6475e9547ac8f0",
+    "sourceSha256": "9ac0b2c37f8e9ab6008e97c4cb4be7bc796ced478cd128e0fcb1fb625e0f47ef",
+    "baselineCacheKey": "3c920ee2de92b2282ec0afd2e2c790af15832a96e6fe17ff19ce0c0c61eb3ffa",
+    "framedCacheKey": "3cce570a47800fd077798a1dd43d13b5cb0fd445d21374ce3dd3721c74df1598",
+    "baselineCoreSha256": "222dcb772e6a75873045c256caa7e1deb7ac637165047d31b2c9b2b4d4b8afd3",
+    "framedCoreSha256": "d46a2484a671436d9d60887d436659c902767d5acb8ad4914230988a5b89c1bd",
+    "baselineAddonSha256": "496490b27dd962d29bc65e5a5b70fab4899f2fdc26e13e807615c0a050c67b65",
+    "framedAddonSha256": "4a921d38337ce8b329809630006250efae0bb3573cf6183e4cab2ecb2a7d52bc"
+  },
+  "gate": {
+    "requiredLifecycleReductionFraction": 0.75,
+    "requiredKernelCpuSpeedup": 3.0,
+    "lifecycleExecutionMeasurementQualified": false,
+    "kernelCpuSpeedup": 1.0554433336277311,
+    "passed": false,
+    "reason": "The CPU gate independently failed by a wide margin. Dynamic GMP lifecycle execution counting was therefore not pursued; lexical fallback sites cannot establish the lifecycle gate."
+  },
+  "correctness": {
+    "fields": 4,
+    "alternatingTimedCallsPerVariant": 20,
+    "allClassOutputsMatched": true,
+    "allResidentBufferHashesMatched": true,
+    "fieldOutputSha256": [
+      "37f7b2b5a2a4a84a3a1382c33fec0a41836bc512de49af092c0da0dcae7ab593",
+      "7e76078aa507a07631e8172807e8c272f9050d76f74cabc08abeb955a2b5ba98",
+      "6d9c75eaea05d09e3bc81a320bc050d2f956fde0825e89243b4207a7859c447c",
+      "6d02c48384859c0d0e421581aa866d361cdc205ac11310a1d8260acb13428685"
+    ]
+  },
+  "timing": {
+    "samplesPerField": 5,
+    "baselineCpuMillisecondsPerCall": 2091.8993999999993,
+    "framedCpuMillisecondsPerCall": 1982.01015,
+    "cpuSpeedup": 1.0554433336277311,
+    "baselineWallMillisecondsPerCall": 2230.6971253500014,
+    "framedWallMillisecondsPerCall": 2096.834193849997,
+    "wallSpeedup": 1.0638404943474422
+  },
+  "generatedArtifacts": {
+    "baselineCoreBytes": 45610040,
+    "framedCoreBytes": 45712151,
+    "coreByteDelta": 102111,
+    "baselineAddonBytes": 7281376,
+    "framedAddonBytes": 7453480,
+    "addonByteDelta": 172104,
+    "baselineLexicalMpzInitSitesWholeCore": 2588,
+    "framedLexicalMpzInitSitesWholeCore": 2787,
+    "baselineLexicalMpzClearSitesWholeCore": 5161,
+    "framedLexicalMpzClearSitesWholeCore": 5163
+  },
+  "memory": {
+    "ownerLayoutChanged": false,
+    "bufferOwnersPerField": 202,
+    "logicalLiveBytesByField": [15195936, 15530896, 16063516, 15720636],
+    "fixedCapacityLiveBytesByField": [452177864, 463258104, 481042860, 469706732],
+    "combinedProcessRssBytesAfterAlternatingRun": 680280064,
+    "qualifiedPerVariantRssDeltaAvailable": false
+  },
+  "conclusion": "Root-owned mpz scratch reuse is correct in this prototype but yields only a 1.055x CPU improvement. It does not explain the resident relation-to-HNF performance gap and must not be merged as the campaign optimization."
+}

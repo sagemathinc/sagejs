@@ -1,0 +1,68 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-getfu-sign-phases",
+  "title": "Connected cubic getfu sign phases",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Extend the prepared cubic getfu reconstruction boundary to preserve characteristic-two 0/pi sign phases, factored unit ownership, exact inverse/norm checks, matched source status branches and precision semantics; qualify the smallest genuine mixed-complex case only if the pinned source dependencies are already present.",
+  "base_commit": "dc534fa05e68c330871fd3720718bdfa7c03e8db",
+  "claims": [
+    "bench/pari-class-group-port/unit_reconstruction_signed.py",
+    "bench/pari-class-group-port/check_unit_reconstruction_signed.cjs"
+  ],
+  "dependencies": [
+    "pari-unit-reconstruction-cubic",
+    "pari-unit-lattice-selection"
+  ],
+  "references": [
+    "PARI 2.17.4 src/basemath/buch2.c:getfu",
+    "PARI 2.17.4 src/basemath/alglin1.c:RgM_solve_realimag"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "gmp",
+      "tagged",
+      "Pinned pristine PARI 2.17.4 stage-local source wrapper"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_unit_reconstruction_signed.cjs /home/user/upstream/pari-2.17.4 /home/user/upstream/pari-2.17.4.tar.gz",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.488,
+      "started_at": "2026-09-17T00:15:14.421Z",
+      "commit": "dc534fa05e68c330871fd3720718bdfa7c03e8db",
+      "workspace_fingerprint": "dac5390fa898d47c229cce727062744d6cbd75c57daa6347a891958199cf1151",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Adds an ordinary attributed Python signed totally-real-cubic getfu leaf. It transports cleanarchunit 0/pi parity through the actual rank-two factor, performs signed prepared exponentiation and the existing real solve, preserves atomic factored-unit publication, and matches pristine PARI 2.17.4 on 16 connected source fixtures: 9 successes, 3 PRECI stops, 4 LARGE stops, and 12 signed fixtures. CPython and JavaScript/GMP/tagged native backends agree exactly; successful units also pass independent determinant, inverse-product, and norm-minimization checks.",
+    "risks": [
+      "The phase boundary records 0/pi parity, which is sufficient for the connected cleanarchunit cubic fixtures and final signs; it does not retain arbitrary large integer multiples of pi for adversarial expbitprec metadata outside this prepared boundary.",
+      "The mandatory repository-wide strict/native/build receipts are intentionally deferred to the integration lane."
+    ],
+    "next_steps": [
+      "Connect the preceding cleanarchunit and rank-two lattice stages to this leaf in the shared driver.",
+      "Port PARI's multiprecision mpsincosm1/mpsincos complex exponential dependency before attempting a genuine mixed-signature quartic getfu case."
+    ]
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "real-cubic-getfu-honesty",
+  "title": "Real-cubic getfu honesty audit",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "nf_cxlog_inventory",
+  "objective": "Remove forbidden PARI-oracle runtime p2176/p2240 getfu intermediates or isolate the exact prepared-nf dependency frontier",
+  "base_commit": "176ee7b8bab3f86e54d6b32d1ac5a4123c49f776",
+  "claims": [
+    "bench/pari-class-group-port/real_cubic_getfu_honesty.py",
+    "bench/pari-class-group-port/check_real_cubic_getfu_honesty.cjs",
+    "bench/pari-class-group-port/real_cubic_getfu_honesty_results.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "PARI 2.17.4 buch2.c getfu and nf embedding preparation"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Pinned pristine PARI 2.17.4 audit oracle"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node bench/pari-class-group-port/check_real_cubic_getfu_honesty.cjs /tmp/sagejs-resident-generated-class-3qtnS5/output.json",
+    "python3 -m py_compile bench/pari-class-group-port/real_cubic_getfu_honesty.py"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_real_cubic_getfu_honesty.cjs /tmp/sagejs-resident-generated-class-3qtnS5/output.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.532,
+      "started_at": "2026-09-17T03:03:48.428Z",
+      "commit": "176ee7b8bab3f86e54d6b32d1ac5a4123c49f776",
+      "workspace_fingerprint": "35507ae8685b14c0f4b69cb887e1f630a5e155d14b8f9d5291f3e3a0d92761dc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -m py_compile bench/pari-class-group-port/real_cubic_getfu_honesty.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.058,
+      "started_at": "2026-09-17T03:03:49.604Z",
+      "commit": "176ee7b8bab3f86e54d6b32d1ac5a4123c49f776",
+      "workspace_fingerprint": "35507ae8685b14c0f4b69cb887e1f630a5e155d14b8f9d5291f3e3a0d92761dc",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Derives the authentic cubic zk_multable tensor from neutral polynomial and integral-basis data in ordinary compiled Python; CPython/JS/GMP/tagged match the resident and successful retry fixture exactly. Audits the remaining p2176 log and p2240 embedding oracle dependencies.",
+    "risks": [
+      "The successful getfu composition still receives p2176 logs and the p2240 embedding from the pristine PARI oracle; this lane intentionally does not claim those are honest yet."
+    ],
+    "next_steps": [
+      "Implement source-ordered high-precision cubic root refinement and integral-basis evaluation, then replay owned-generator logs through active HNF and unit transforms."
+    ]
+  }
+}

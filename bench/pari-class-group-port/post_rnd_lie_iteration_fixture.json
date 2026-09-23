@@ -1,0 +1,25 @@
+{
+  "identity": {
+    "pariVersion": "2.17.4",
+    "polynomial": "x^4-2000022*x-2000042",
+    "corridor": "post-rnd HNF append through genuine LIE terminal candidate"
+  },
+  "counts": {
+    "randomLast": 295,
+    "postRandomLast": 296,
+    "lieLast": 301,
+    "action296": 5,
+    "terminalAction": 0
+  },
+  "hashes": {
+    "rng": "98458dc24362074cc00bcb42b59517dd9a68ccb567671dd686bf8413dbbcdd72",
+    "postRecords": "a7312010150aef81299e2f9ce59d0c405451c390f316086e5a2a9e83310ba45b",
+    "postGenerators": "71d4f22ae873ecec233c519bdb09f7d14a58f760a13042d64e767815f7a793d7",
+    "postLogs": "e3733306dc4f180270eaa3588eb64371c184ffb2a7bd69955d9061179e667580",
+    "postHNF": "4ab4348e85bee500b32abb2f8979c8ba22d9a9e99f8bc06bf34a5e5fe9c39304",
+    "lieRecords": "8b3e7d0cd4c63bfcd2db178df83351b375727af101767a8102e13023f98702dc",
+    "lieGenerators": "02879951e44484441e582d625df4d19703a5606d46d1d0b1ee5af35fd4278b73",
+    "lieLogs": "12307639c970bf5a4bee65ac7a6f41f139c2e74cd849bd41f5fdc992c42ec660",
+    "terminalHNF": "755fc460075d60fa8384a6ad6496deaf237d7c23dc28f5111f52d6b3e731e9d6"
+  }
+}

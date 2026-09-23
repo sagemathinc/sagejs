@@ -1,0 +1,78 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-live-h1-dynamic-columns",
+  "title": "Live H1 dynamic compact columns",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Derive the compact-unit factor-column prefix from authenticated live HNF owner state and preserve the authentic h1 bridge across oversized answer-independent storage with mutation rejection.",
+  "base_commit": "398678093d4e7e3883b2a1addc1b07d75381f9ec",
+  "claims": [
+    "bench/pari-class-group-port/live_h1_owner_bridge.py",
+    "bench/pari-class-group-port/check_live_h1_owner_bridge.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Frozen authentic resident H1 owner graph"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_live_h1_owner_bridge.cjs /tmp/sagejs-resident-generated-class-3qtnS5/output.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.523,
+      "started_at": "2026-09-17T04:54:08.242Z",
+      "commit": "398678093d4e7e3883b2a1addc1b07d75381f9ec",
+      "workspace_fingerprint": "3278eb589b71e7450b1eeb488fbd413e857687933d91dbcba716c7e2f6117117",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_h1_outcome_c_live_adapter.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.086,
+      "started_at": "2026-09-17T04:54:18.424Z",
+      "commit": "398678093d4e7e3883b2a1addc1b07d75381f9ec",
+      "workspace_fingerprint": "3278eb589b71e7450b1eeb488fbd413e857687933d91dbcba716c7e2f6117117",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec ruff check bench/pari-class-group-port/live_h1_owner_bridge.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.472,
+      "started_at": "2026-09-17T04:54:19.163Z",
+      "commit": "398678093d4e7e3883b2a1addc1b07d75381f9ec",
+      "workspace_fingerprint": "3278eb589b71e7450b1eeb488fbd413e857687933d91dbcba716c7e2f6117117",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "The live H1 bridge no longer accepts an answer-shaped columns scalar. It derives the compact prefix from hnf_state[1], authenticates that count against the independent accepted-relation equation hnf_state[7] == prep_base_state[2] + hnf_state[1], and rejects inconsistent authority before touching result owners. The focused checker runs the frozen seven-column case in capacity-16 owners, proves unused tails remain untouched, and rejects all three independent dimension mutations in CPython, JavaScript, GMP, and tagged execution.",
+    "risks": [
+      "This narrow handoff intentionally ran focused Linux checks rather than the lane-wide baselib/native suites while integration compiles were active."
+    ],
+    "next_steps": [
+      "Integrate the commit, then let the integration lane run its existing broad qualification and end-to-end replay."
+    ]
+  }
+}

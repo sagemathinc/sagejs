@@ -1,0 +1,84 @@
+{
+  "schema": "sagejs.pari-class-group/h1-preparation-shape-v1",
+  "diagnostic_only": true,
+  "retained_public_change": false,
+  "hypothesis_supported": true,
+  "input_sha256": "22a997866388571cd3c12e1a3ea5c5cc3a7fe89217b253bb0e779007f6fe9b77",
+  "tracked_buffers": [
+    "hnf_cup_arena",
+    "relation_records",
+    "prep_kummer_catalog_tau",
+    "hnf_work_c",
+    "hnf_work_b"
+  ],
+  "baseline": {
+    "inclusive_nanoseconds": "2753604486",
+    "preparation_nanoseconds": "1845356805",
+    "profile_sha256": "46a80b2920342084e7de13f0b59aabc0a80ef7bf6510e687f1993f2b92e5a809",
+    "build_peak_aggregate_rss_kib": 2390424,
+    "build_wall_seconds": 323.165300072,
+    "prep_kummer_catalog_tau": {
+      "reads": "594",
+      "writes": "1188",
+      "logical_read_words": "582",
+      "logical_write_words": "582",
+      "cleared_capacity_words": "4866048"
+    }
+  },
+  "authenticated_capacity_one_control": {
+    "inclusive_nanoseconds": "2311335786",
+    "preparation_nanoseconds": "1459513403",
+    "preparation_improvement": 0.2090887794460974,
+    "profile_sha256": "e6c55bcc461a6d77eb534700f31142a0ab9a6560a5067d0d88269439b7f0ded9",
+    "cleared_capacity_words": "1188"
+  },
+  "noncanonical_no_clear_control": {
+    "inclusive_nanoseconds": "283280637",
+    "preparation_nanoseconds": "158077473",
+    "preparation_improvement": 0.9143377190949259,
+    "inclusive_improvement": 0.8971237015191295,
+    "profile_sha256": "f6fb674f763bc3b07d9ae7a65fe3991485afe3c5f41d60f964c376a0f8e10520",
+    "build_peak_aggregate_rss_kib": 2390268,
+    "build_wall_seconds": 315.81611177
+  },
+  "authority_wired_private_buffer_control": {
+    "compiler_commits": [
+      "8827d22d2",
+      "866dbced1",
+      "2df5a1997"
+    ],
+    "authority": "private-integer-buffer-v1",
+    "root": "pari_fused_h1_matched_flag_zero_root",
+    "buffers": [
+      "prep_kummer_catalog_tau"
+    ],
+    "generated_core_sha256": "fbdec56981b2795c06a71bc1027b1b5b87d970387cad2c91db047b013028089b",
+    "instrumented_core_sha256": "3b9b29b3072b3b3ccc6d3880f620ed71265450ac25c4e3ed3f26156646bfcb8f",
+    "adapter_sha256": "6ada9c1e949d9b361fe7b2a7c516bffdc1349d7e26ff9062ed853b4db23719ab",
+    "addon_sha256": "42129744a234327af62eb3b9382e6d6b57e78c6ec023bbb26537209426a412af",
+    "profile_sha256": "af01046a2e136d73854c56904c6b1b88d629e131e965fb2cd049eb39a5f22ed9",
+    "build_wall_seconds": 333,
+    "build_peak_aggregate_rss_kib": 2441448,
+    "profile_wall_seconds": 5,
+    "profile_peak_aggregate_rss_kib": 1006424,
+    "inclusive_nanoseconds": "2381579814",
+    "preparation_nanoseconds": "1532522604",
+    "preparation_improvement": 0.16952504802993912,
+    "inclusive_improvement": 0.13510461429426943,
+    "tracked_writes": "1188",
+    "tracked_logical_write_words": "582",
+    "tracked_cleared_capacity_words": "0",
+    "partition_closure": 1,
+    "external_closure": 0.9998995746531973,
+    "public_canonicalization": "generated on both root success and failure; focused big-to-small-to-zero raw-hash probe passes",
+    "diagnostic_global_no_clear_patch": false
+  },
+  "exact_evidence": {
+    "relation_sha256": "b0c647186a5fed5317c7135ccf16623a930631382ad7963e12af4ded2db7259a",
+    "compact_sha256": "80cec2acce5b95ec48beff67b800410eedb5e580e25029aa79d4d63dc40b1c2d",
+    "owner_sha256": "a0ae8b44555295c035a3603ce4c18dde8dd174bff80b79d34f61d86423a13b5e",
+    "terminal_rng_sha256": "9b90d634807d362bf99925a13ecb99eb54b867a16f9f3acb335fffcf085e401b",
+    "public_complete": false
+  },
+  "release_blocker": "The safe private authority passes this one fused correctness/profile sample, but broader cross-backend qualification remains required before promotion."
+}

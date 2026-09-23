@@ -1,0 +1,51 @@
+{
+  "schema": "sagejs.class-group-payload-review/v1",
+  "source_revision": "a844096da435220955fa9da2afee1a049d38afa5",
+  "ci_run": "https://github.com/sagemathinc/sagejs/actions/runs/35806606616",
+  "artifact_identity": "sha256:eb1c20c488e548192f62bbb4f98dfc81c37aafc33cb010ad8da85b9801080dbb",
+  "production_manifest_sha256": "29d1637aae99637dfce07777b7d81ab06bdf2c7045df6f9a21614c59210e717e",
+  "command": "node packages/flint-wasm/scripts/browser-wasm-release-artifact.cjs --budget bench/browser-wasm-budget.json --output build/wasm-routine-artifact.json",
+  "totals": {
+    "bytes": 187325255,
+    "gzip_bytes": 28385083,
+    "brotli_bytes": 19431669
+  },
+  "previous_baseline": {
+    "bytes": 169872974,
+    "gzip_bytes": 25354265,
+    "brotli_bytes": 16876678
+  },
+  "added_group": {
+    "id": "class-group",
+    "kind": "specialist",
+    "dependencies": [
+      "eager-core"
+    ],
+    "files": [
+      "class-group-core-receipt.json",
+      "class-group-core.wasm",
+      "runtime/class-group-backend.mjs"
+    ],
+    "compressed_delta": {
+      "bytes": 6332118,
+      "gzip_bytes": 2489501,
+      "brotli_bytes": 1998715
+    },
+    "maximum_compressed_delta": {
+      "gzip_bytes": 2500000,
+      "brotli_bytes": 2200000
+    }
+  },
+  "eager_core": {
+    "compressed_delta": {
+      "bytes": 150632008,
+      "gzip_bytes": 15927170,
+      "brotli_bytes": 9708060
+    },
+    "maximum_compressed_delta": {
+      "gzip_bytes": 17600000,
+      "brotli_bytes": 9800000
+    }
+  },
+  "review": "All 15 authenticated topology groups pass their independent compressed limits. The class-group specialist accounts for 1998715 Brotli bytes and remains lazy; its three files do not enter eager-core. The remaining increase binds authenticated metadata and the runtime loader. Admit the reviewed CI artifact as the new additive-capability baseline without changing the 5% relative-growth allowance or specialist limits. This is payload evidence, not mathematical or cross-platform qualification."
+}

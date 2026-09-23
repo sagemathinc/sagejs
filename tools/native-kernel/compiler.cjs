@@ -366,6 +366,7 @@ function backendFingerprint() {
     [
       readFileSync(__filename),
       readFileSync(join(__dirname, "ir.cjs")),
+      readFileSync(join(__dirname, "native-imports.cjs")),
       readFileSync(join(__dirname, "integer-ir.cjs")),
       readFileSync(join(__dirname, "integer-constants.cjs")),
       readFileSync(join(__dirname, "workspace-bundles.cjs")),
@@ -377,12 +378,16 @@ function backendFingerprint() {
       readFileSync(join(__dirname, "prime-source-optimize.cjs")),
       readFileSync(join(__dirname, "prime-source-backend.cjs")),
       readFileSync(join(__dirname, "uint64-operations.cjs")),
+      readFileSync(join(__dirname, "int64-operations.cjs")),
+      readFileSync(join(__dirname, "checked-bounds-proofs.cjs")),
+      readFileSync(join(__dirname, "checked-regions.cjs")),
       readFileSync(join(__dirname, "provenance.cjs")),
       readFileSync(join(__dirname, "word-backend.cjs")),
       readFileSync(join(__dirname, "tagged-backend.cjs")),
       readFileSync(join(__dirname, "fmpz-backend.cjs")),
       readFileSync(join(__dirname, "core-abi.cjs")),
       readFileSync(join(__dirname, "exact-runtime.cjs")),
+      readFileSync(join(__dirname, "gmp-checkpoint-allocator.cjs")),
       readFileSync(join(__dirname, "fmpz-runtime.cjs")),
       readFileSync(join(__dirname, "c-backend.cjs")),
       readFileSync(join(__dirname, "js-backend.cjs")),
@@ -882,16 +887,223 @@ function bindingGyp(
   };
 }
 
-async function compileKernel(options) {
+function normalizeDiagnosticStageClock(value, ir) {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== "object" || Array.isArray(value)) {
+    throw new TypeError("diagnosticStageClock must be an object");
+  }
+  const allowed = new Set([
+    "function", "markerFunctions", "stages", "maximumVisits",
+  ]);
+  for (const key of Object.keys(value)) {
+    if (!allowed.has(key)) {
+      throw new TypeError(`unknown diagnosticStageClock option ${key}`);
+    }
+  }
+  if (typeof value.function !== "string" ||
+      !/^[A-Za-z_][A-Za-z0-9_]*$/.test(value.function)) {
+    throw new TypeError("diagnosticStageClock.function must be a function name");
+  }
+  if (!Array.isArray(value.stages) || value.stages.length < 2 ||
+      value.stages.length > 64 ||
+      value.stages.some((stage) => typeof stage !== "string" || stage === "")) {
+    throw new TypeError(
+      "diagnosticStageClock.stages must contain 2 to 64 non-empty names",
+    );
+  }
+  if (new Set(value.stages).size !== value.stages.length) {
+    throw new TypeError("diagnosticStageClock stage names must be unique");
+  }
+  const maximumVisits = value.maximumVisits ?? 64;
+  if (!Number.isInteger(maximumVisits) || maximumVisits < value.stages.length ||
+      maximumVisits > 1048576) {
+    throw new TypeError(
+      "diagnosticStageClock.maximumVisits must be an integer from the stage " +
+        "count through 1048576",
+    );
+  }
+  const fn = ir.functions.find((candidate) => candidate.name === value.function);
+  if (fn === undefined || fn.hostCallable === false ||
+      fn.kernelKind !== "integer") {
+    throw new TypeError(
+      "diagnosticStageClock.function must name a public integer kernel",
+    );
+  }
+  const reachable = new Set([value.function]);
+  const pending = [value.function];
+  while (pending.length > 0) {
+    const caller = pending.pop();
+    for (const callee of ir.callGraph?.[caller] || []) {
+      if (reachable.has(callee)) continue;
+      reachable.add(callee);
+      pending.push(callee);
+    }
+  }
+  let markerFunctions = null;
+  if (value.markerFunctions !== undefined) {
+    if (!Array.isArray(value.markerFunctions) || value.markerFunctions.length < 1 ||
+        value.markerFunctions.some(name => typeof name !== "string" ||
+          !/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) ||
+        new Set(value.markerFunctions).size !== value.markerFunctions.length) {
+      throw new TypeError(
+        "diagnosticStageClock.markerFunctions must contain unique function names",
+      );
+    }
+    for (const name of value.markerFunctions) {
+      if (!reachable.has(name)) {
+        throw new TypeError(
+          `diagnosticStageClock marker function ${name} is not reachable`,
+        );
+      }
+    }
+    markerFunctions = new Set(value.markerFunctions);
+  }
+  let markerCount = 0;
+  for (const candidate of ir.functions) {
+    if (!reachable.has(candidate.name)) continue;
+    if (markerFunctions !== null && !markerFunctions.has(candidate.name)) continue;
+    const constants = new Map();
+    const markers = [];
+    const walk = (node) => {
+      if (node === null || typeof node !== "object") return;
+      if (node.kind === "uint64.constant" && typeof node.target === "string") {
+        constants.set(node.target, BigInt(node.value));
+      } else if (node.kind === "diagnostic.stage.switch") {
+        markers.push(node.stage);
+      }
+      for (const child of Object.values(node)) {
+        if (Array.isArray(child)) child.forEach(walk);
+        else walk(child);
+      }
+    };
+    walk(candidate.body);
+    for (const marker of markers) {
+      markerCount += 1;
+      const stage = constants.get(marker);
+      if (stage === undefined || stage >= BigInt(value.stages.length)) {
+        throw new TypeError(
+          `${candidate.name} uses a diagnostic stage outside configured stages`,
+        );
+      }
+    }
+  }
+  if (markerCount === 0) {
+    throw new TypeError(
+      "diagnosticStageClock.function does not reach a diagnostic stage marker",
+    );
+  }
+  return Object.freeze({
+    function: value.function,
+    ...(markerFunctions === null ? {} : {
+      markerFunctions: Object.freeze([...value.markerFunctions]),
+    }),
+    stages: Object.freeze([...value.stages]),
+    maximumVisits,
+  });
+}
+
+const residentKernelBuilds = new Map();
+const RESIDENT_KERNEL_BUILD_LIMIT = 4;
+
+function stableJson(value) {
+  if (value === undefined) return "undefined";
+  if (typeof value === "bigint") return JSON.stringify(`${value}n`);
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  return `{${Object.keys(value).sort().map((key) =>
+    `${JSON.stringify(key)}:${stableJson(value[key])}`).join(",")}}`;
+}
+
+function residentRequestKey(options, sourcePath, cacheRoot) {
+  return stableJson({
+    cacheRoot,
+    sourcePath,
+    functions: options.functions,
+    profileSymbols: options.profileSymbols === true,
+    integerBackends: [...(options.integerBackends || ["tagged", "gmp"])].sort(),
+    automaticSelections: options.automaticSelections ?? {},
+    diagnosticStageClock: options.diagnosticStageClock ?? null,
+  });
+}
+
+function residentCompilerAuthority(ir, options, cacheRoot) {
+  const usesSpecializedPrimeField = ir.functions.some(
+    (fn) => fn.kernelKind === "prime-field-matrix",
+  );
+  const usesSourcePrimeField = ir.functions.some(
+    (fn) => fn.kernelKind === "prime-field-source",
+  );
+  return stableJson({
+    nativeAbi: NATIVE_ABI_VERSION,
+    backend: backendFingerprint(),
+    platform: process.platform,
+    architecture: process.arch,
+    nodeModulesAbi: process.versions.modules,
+    toolchain: toolchainFingerprint(),
+    foreignToolchains: (ir.foreignLibraries || []).map((library) => ({
+      id: library.id,
+      prefix: foreignPrefix(library),
+    })),
+    foreignInputs: foreignCompilationInputs(ir, { cacheRoot }),
+    primeFieldTuning: usesSpecializedPrimeField ? primeFieldTuning() : null,
+    sourceBoundsChecked: usesSourcePrimeField ? sourceBoundsCheck() : null,
+    profileSymbols: options.profileSymbols === true,
+    integerBackends: [...(options.integerBackends || ["tagged", "gmp"])].sort(),
+    mpfr: "4.2.2",
+    mpc: mpcVersion,
+  });
+}
+
+function residentSourcesCurrent(sourcePath, sourceHash, ir) {
+  try {
+    if (sha256(readFileSync(sourcePath, "utf8")) !== sourceHash) return false;
+    for (const dependency of ir.nativeSourceDependencies || []) {
+      const filename = resolve(dependency.path);
+      if (sha256(readFileSync(filename, "utf8")) !== dependency.sha256) {
+        return false;
+      }
+    }
+    return true;
+  } catch (_error) {
+    return false;
+  }
+}
+
+function residentArtifactsCurrent(result) {
+  return [
+    result.addonPath,
+    result.modulePath,
+    result.manifestPath,
+    result.coreSourcePath,
+    result.coreHeaderPath,
+    ...(result.shimSourcePath === null ? [] : [
+      result.shimSourcePath,
+      result.shimHeaderPath,
+    ]),
+  ].every((filename) => existsSync(filename));
+}
+
+function trimResidentKernelBuilds() {
+  if (residentKernelBuilds.size <= RESIDENT_KERNEL_BUILD_LIMIT) return;
+  for (const [key, entry] of residentKernelBuilds) {
+    if (residentKernelBuilds.size <= RESIDENT_KERNEL_BUILD_LIMIT) break;
+    // Never evict an in-flight build: concurrent callers must continue to
+    // share its single compilation and receive the same success or failure.
+    if (entry.settled) residentKernelBuilds.delete(key);
+  }
+}
+
+async function compileKernelFromSource(
+  options,
+  { sourcePath, source, sourceHash, cacheRoot },
+) {
   // Use the physical source identity everywhere the compiler records or
   // hashes a kernel.  macOS exposes its temporary directory through both
   // /var and /private/var; symlinked project roots create the same issue on
   // every host.  Recording the lexical spelling here makes a valid artifact
   // undiscoverable when the runtime imports the same file through another
   // spelling of that path.
-  const sourcePath = realpathSync(resolve(options.sourcePath));
   const sourceKey = options.sourceKey;
-  const source = readFileSync(sourcePath, "utf8");
   if (
     options.profileSymbols !== undefined &&
     typeof options.profileSymbols !== "boolean"
@@ -899,11 +1111,18 @@ async function compileKernel(options) {
     throw new TypeError("profileSymbols must be a boolean when provided");
   }
   const profileSymbols = options.profileSymbols === true;
-  const sourceHash = sha256(source);
-  const cacheRoot = resolve(
-    options.cacheRoot ||
-      join(dirname(sourcePath), ".sagejs-native-kernels"),
-  );
+  const integerBackends = options.integerBackends === undefined
+    ? ["tagged", "gmp"]
+    : options.integerBackends;
+  if (!Array.isArray(integerBackends) || integerBackends.length === 0 ||
+      integerBackends.some((backend) =>
+        backend !== "tagged" && backend !== "gmp"
+      ) || new Set(integerBackends).size !== integerBackends.length) {
+    throw new TypeError(
+      "integerBackends must be a nonempty unique array containing tagged and/or gmp",
+    );
+  }
+  const normalizedIntegerBackends = [...integerBackends].sort();
   const resolveNativeImport = createNativeImportResolver({
     root,
     lowerSource,
@@ -915,6 +1134,10 @@ async function compileKernel(options) {
   });
   const automaticSelections = normalizeAutomaticSelections(
     options.automaticSelections ?? {},
+    ir,
+  );
+  const diagnosticStageClock = normalizeDiagnosticStageClock(
+    options.diagnosticStageClock,
     ir,
   );
   const foreignInputs = foreignCompilationInputs(ir, { cacheRoot });
@@ -945,7 +1168,9 @@ async function compileKernel(options) {
     primeFieldTuning: tuning,
     sourceBoundsChecked,
     profileSymbols,
+    integerBackends: normalizedIntegerBackends,
     automaticSelections,
+    diagnosticStageClock,
     mpfr: "4.2.2",
     mpc: mpcVersion,
   };
@@ -995,6 +1220,7 @@ async function compileKernel(options) {
       moduleIdentity,
       cached: true,
       ir,
+      manifestPath,
       modulePath,
       outputPath,
       coreSourcePath,
@@ -1006,6 +1232,8 @@ async function compileKernel(options) {
       privateFunctions: compatibility.privateFunctions,
       foreignInputs,
       automaticSelections,
+      diagnosticStageClock,
+      integerBackends: normalizedIntegerBackends,
       exceptionShields: exceptionShims === null ? [] :
         exceptionShims.functions.map((fn) => fn.call_plan.symbol),
     };
@@ -1024,7 +1252,11 @@ async function compileKernel(options) {
     );
   }
   mkdirSync(outputPath, { recursive: true });
-  const artifacts = generateArtifacts(ir, { moduleIdentity });
+  const artifacts = generateArtifacts(ir, {
+    moduleIdentity,
+    diagnosticStageClock,
+    integerBackends: normalizedIntegerBackends,
+  });
   const cSource = artifacts.adapterSource;
   const { generatedCSourceMap } = require("./provenance.cjs");
   const cSourceMap = generatedCSourceMap(cSource);
@@ -1054,6 +1286,8 @@ async function compileKernel(options) {
       sourceBoundsChecked,
       profileSymbols,
       automaticSelections,
+      diagnosticStageClock,
+      integerBackends: normalizedIntegerBackends,
       sourceHash,
       sourcePath,
       nativeAbi: compatibility.nativeAbi,
@@ -1075,6 +1309,8 @@ async function compileKernel(options) {
         primeFieldTuning: tuning,
         sourceBoundsChecked,
         automaticSelections,
+        diagnosticStageClock,
+        integerBackends: normalizedIntegerBackends,
         sourcePath,
         cSourceMap,
         coreSourceMap,
@@ -1133,6 +1369,7 @@ async function compileKernel(options) {
     moduleIdentity,
     cached: false,
     ir,
+    manifestPath,
     modulePath,
     outputPath,
     coreSourcePath,
@@ -1144,9 +1381,114 @@ async function compileKernel(options) {
     privateFunctions: compatibility.privateFunctions,
     foreignInputs,
     automaticSelections,
+    diagnosticStageClock,
+    integerBackends: normalizedIntegerBackends,
     exceptionShields: exceptionShims === null ? [] :
       exceptionShims.functions.map((fn) => fn.call_plan.symbol),
   };
+}
+
+async function compileKernel(options) {
+  // A prepared mathematical transaction commonly asks for the same giant
+  // source-transparent graph while warming it and again while entering its
+  // timed phase.  The content-addressed filesystem cache alone used to lower
+  // the complete graph both times before it could discover the existing
+  // addon.  Retain the completed lowering in this process, but validate every
+  // source, compiler/toolchain input and foreign input before reusing it.
+  if (
+    options.profileSymbols !== undefined &&
+    typeof options.profileSymbols !== "boolean"
+  ) {
+    throw new TypeError("profileSymbols must be a boolean when provided");
+  }
+  const sourcePath = realpathSync(resolve(options.sourcePath));
+  const source = readFileSync(sourcePath, "utf8");
+  const sourceHash = sha256(source);
+  const cacheRoot = resolve(
+    options.cacheRoot ||
+      join(dirname(sourcePath), ".sagejs-native-kernels"),
+  );
+  // AbortSignal is request-local authority.  Sharing an in-flight promise
+  // would let one caller cancel another caller's build, or let a resident hit
+  // silently ignore the later caller's cancellation.  Keep signal-bearing
+  // requests on the ordinary content-addressed path.
+  if (options.signal !== undefined) {
+    const result = await compileKernelFromSource(options, {
+      sourcePath,
+      source,
+      sourceHash,
+      cacheRoot,
+    });
+    return { ...result, residentCached: false };
+  }
+  const requestKey = residentRequestKey(
+    options,
+    sourcePath,
+    cacheRoot,
+  );
+  const existing = residentKernelBuilds.get(requestKey);
+  if (existing !== undefined) {
+    const result = await existing.promise;
+    const current = existing.sourceHash === sourceHash &&
+      residentArtifactsCurrent(result) &&
+      residentSourcesCurrent(sourcePath, existing.sourceHash, result.ir) &&
+      residentCompilerAuthority(result.ir, options, cacheRoot) ===
+        existing.authority;
+    if (current) {
+      // Refresh insertion order so the bounded map behaves as an LRU for
+      // completed compilations while preserving promise identity.
+      residentKernelBuilds.delete(requestKey);
+      residentKernelBuilds.set(requestKey, existing);
+      writeDiscoveryIndex(
+        cacheRoot,
+        sourcePath,
+        sourceHash,
+        result.cacheKey,
+        result.moduleIdentity,
+        options.sourceKey,
+        {
+          nativeAbi: result.nativeAbi,
+          foreignDeclarations: result.foreignDeclarations,
+          privateFunctions: result.privateFunctions,
+        },
+      );
+      return { ...result, cached: true, residentCached: true };
+    }
+    if (residentKernelBuilds.get(requestKey) === existing) {
+      residentKernelBuilds.delete(requestKey);
+    }
+    return compileKernel(options);
+  }
+
+  const entry = {
+    promise: null,
+    authority: null,
+    settled: false,
+    sourceHash,
+  };
+  entry.promise = (async () => {
+    const result = await compileKernelFromSource(options, {
+      sourcePath,
+      source,
+      sourceHash,
+      cacheRoot,
+    });
+    entry.authority = residentCompilerAuthority(result.ir, options, cacheRoot);
+    entry.settled = true;
+    trimResidentKernelBuilds();
+    return result;
+  })();
+  residentKernelBuilds.set(requestKey, entry);
+  try {
+    const result = await entry.promise;
+    return { ...result, residentCached: false };
+  } catch (error) {
+    entry.settled = true;
+    if (residentKernelBuilds.get(requestKey) === entry) {
+      residentKernelBuilds.delete(requestKey);
+    }
+    throw error;
+  }
 }
 
 module.exports = {

@@ -1,0 +1,53 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "high-precision-agm-log",
+  "title": "High-precision real AGM logarithm",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement and qualify the PARI 2.17.4 logr_abs to logagmr_abs real AGM logarithm path at 153088 bits in ordinary CPython-parseable Python using packed arithmetic and bounded reused storage",
+  "base_commit": "07942bf661ed50f55be507389f30bb45405deead",
+  "claims": [
+    "bench/pari-class-group-port/high_precision_agm_log.py",
+    "bench/pari-class-group-port/check_high_precision_agm_log.cjs",
+    "bench/pari-class-group-port/high_precision_agm_log_audit.md",
+    "bench/pari-class-group-port/high_precision_agm_log_result.json"
+  ],
+  "dependencies": [],
+  "references": [
+    "PARI 2.17.4 src/basemath/trans1.c logr_abs/logagmr_abs"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Pristine PARI 2.17.4 packed triples across cutoff and representative positive inputs"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Translated and qualified PARI 2.17.4's 153088-bit real AGM logarithm and full high-precision real dispatch in ordinary Python. Seven packed triples match pristine PARI exactly, including both sides of the dispatch cutoff and one authentic field-3 root; CPython, JavaScript, and GMP source paths agree on the representative case.",
+    "risks": [
+      "The gate is intentionally fixed to 153088 bits and Linux is the measured native platform.",
+      "Complex AGM logarithms and arbitrary field-3 complex embeddings remain unimplemented."
+    ],
+    "next_steps": [
+      "Integrate the real logarithm into the field-3 relation-log replay for the remaining real embedding columns.",
+      "Implement the separately bounded logagmcx/agm1cx cut described in the audit before admitting complex relation logs."
+    ]
+  }
+}

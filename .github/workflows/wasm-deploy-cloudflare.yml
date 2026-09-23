@@ -78,6 +78,9 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
+      - name: Require distribution review for the candidate's class-group backend
+        run: node scripts/release/class-group-distribution-eligibility.cjs
+
       - name: Require production deployments to come from main
         if: inputs.target == 'production'
         env:
