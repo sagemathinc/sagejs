@@ -324,6 +324,14 @@ try {
   );
 
   if (!pythonOnly) {
+    const piped = spawnSync(mathExecutable, [], {
+      cwd: temporaryDirectory,
+      encoding: "utf8",
+      input: "print(2 + 3)\n",
+    });
+    assert.equal(piped.status, 0, piped.stderr);
+    assert.equal(piped.stdout.trim(), "5");
+
     const extensionProgram = join(temporaryDirectory, "extension-distribution.py");
     copyFileSync(join(root, "test/fixtures/extension-distribution.py"), extensionProgram);
     assert.equal(

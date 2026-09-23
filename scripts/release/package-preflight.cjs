@@ -18,7 +18,9 @@ try {
   }
   const executable = runtime.runProcess(
     join(context.platformRoot, "bin", `sagejs${context.targetConfig.executableSuffix}`),
-    ["-"],
+    // The standalone CLI reads piped stdin without a filename argument.
+    // Unlike the npm source launcher, it does not accept "-" as an option.
+    [],
     { input: source, cwd: context.directory, timeout: 180_000 },
   );
   if (executable.status !== 0 || executable.stdout.trim() !== "5") {
