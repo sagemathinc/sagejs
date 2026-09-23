@@ -1667,6 +1667,9 @@ jobs:
           ref: ${{ steps.request.outputs.sha }}
           fetch-depth: 0
           path: candidate
+      - name: Require distribution review for the candidate's class-group backend
+        working-directory: candidate
+        run: node scripts/release/class-group-distribution-eligibility.cjs
       - name: Publish the frozen artifact set
         env:
           GH_TOKEN: ${{ github.token }}
