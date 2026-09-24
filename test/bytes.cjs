@@ -140,6 +140,13 @@ for index, source in enumerate(inputs):
 `;
 
 test("raw Punycode codec and error handling agree with CPython without stderr", () => {
+  const version = spawnSync(
+    pythonExecutable(),
+    ["-c", "import sys; print(*sys.version_info[:2])"],
+    { encoding: "utf8" },
+  );
+  assert.equal(version.status, 0, version.stderr);
+  const [major, minor] = version.stdout.trim().split(" ").map(Number);
   const cpython = execute(
     pythonExecutable(),
     ["-X", "utf8", "-"],
@@ -155,18 +162,25 @@ test("raw Punycode codec and error handling agree with CPython without stderr", 
       [resolve(root, "bin", "sagejs"), "--python", filename],
       "",
     );
-    // CPython 3.13 and 3.14 differ only in this error-message punctuation.
     // Keep the codec, exception type, and unsupported handler comparison exact.
-    assert.equal(
-      sagejs.replaceAll(
-        "Unsupported error handling: not-a-handler",
-        "Unsupported error handling not-a-handler",
-      ),
-      cpython.replaceAll(
-        "Unsupported error handling: not-a-handler",
-        "Unsupported error handling not-a-handler",
-      ),
+    const normalize = (output) => output.replaceAll(
+      "Unsupported error handling: not-a-handler",
+      "Unsupported error handling not-a-handler",
     );
+    // Python 3.12's Punycode decoder differs from the 3.13+ codec for
+    // malformed input. Compare all 287 version-independent rows there;
+    // newer references still compare the entire transcript exactly.
+    const stableRows = (output) => normalize(output).split("\n").filter((line) => {
+      if (line.includes("not-a-handler")) return false;
+      const decoded = /^(?:decode|decode-error|error) (\d+) /.exec(line);
+      return !decoded || Number(decoded[1]) < 10;
+    });
+    if (major === 3 && minor < 13) {
+      assert.equal(stableRows(cpython).length, 287);
+      assert.deepEqual(stableRows(sagejs), stableRows(cpython));
+    } else {
+      assert.equal(normalize(sagejs), normalize(cpython));
+    }
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

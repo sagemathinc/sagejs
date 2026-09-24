@@ -1199,6 +1199,9 @@ test("prepared packed Cantor arithmetic is exact in dynamic and native modes", (
       /native__cantor_(?:negate|add)_one|mpz_|SAGEJS_WORD_PROMOTE/,
     );
     const dynamic = run(process.execPath, [sagejs, program], {
+      // The full CPython fallback witness is expensive on shared macOS CI.
+      // Keep it exact, with a bounded allowance for host contention.
+      timeout: 1_200_000,
       env: {
         SAGEJS_NATIVE_CACHE_DIR: cache,
         SAGEJS_NATIVE_DISABLE: "1",
