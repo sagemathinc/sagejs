@@ -353,16 +353,27 @@ test("uint64 bitwise IR is canonical, typed, and inspectable", async () => {
   assert.match(core, /\s<<\s/);
   assert.match(core, /\s>>\s/);
 
+  const integerAnd = await lowerSource(
+    "# sagejs: native-bitwise\n" +
+      "from sagejs.native import native\n" +
+      "@native\n" +
+      "def integer_and(left: Integer, right: Integer) -> Integer:\n" +
+      "    return left & right\n",
+    "integer-bitwise.py",
+  );
+  assert.ok(walkOperations(integerAnd.functions[0].body).some(
+    (operation) => operation.kind === "integer.binary" && operation.operation === "and",
+  ));
   await assert.rejects(
     lowerSource(
       "# sagejs: native-bitwise\n" +
         "from sagejs.native import native\n" +
         "@native\n" +
         "def rejected(left: Integer, right: Integer) -> Integer:\n" +
-        "    return left & right\n",
+        "    return left | right\n",
       "integer-bitwise.py",
     ),
-    /uint64 operator & requires uint64 operands/,
+    /uint64 operator \| requires uint64 operands/,
   );
 });
 
