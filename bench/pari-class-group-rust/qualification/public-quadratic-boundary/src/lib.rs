@@ -35,10 +35,11 @@ use std::fmt;
 mod imaginary;
 
 pub use imaginary::{
-    BinaryQuadraticForm, CompleteImaginaryClassGroup, GENERAL_IMAGINARY_CASES,
-    ImaginaryClassGroupError, PublicImaginaryQuadraticInput, SMALL_IMAGINARY_CASES,
-    compose_reduced_forms, compute_imaginary_class_group,
-    compute_imaginary_class_group_from_coefficients, verify_imaginary_class_group,
+    BinaryQuadraticForm, CompleteImaginaryClassGroup, CompleteImaginaryClassNumber,
+    GENERAL_IMAGINARY_CASES, ImaginaryClassGroupError, PublicImaginaryQuadraticInput,
+    SMALL_IMAGINARY_CASES, compose_reduced_forms, compute_imaginary_class_group,
+    compute_imaginary_class_group_from_coefficients,
+    compute_imaginary_class_number_from_coefficients, verify_imaginary_class_group,
 };
 
 pub const ENGINE_ENTRY_POINT: &str = "prepared_maximal_cubic_factor_base";

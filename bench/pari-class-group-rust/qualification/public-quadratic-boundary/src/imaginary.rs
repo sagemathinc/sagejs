@@ -190,6 +190,15 @@ pub struct CompleteImaginaryClassGroup {
     pub runtime_uses_pari_or_fixture_answers: bool,
 }
 
+/// The unconditional scalar result, computed without constructing a group law.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CompleteImaginaryClassNumber {
+    pub discriminant: i64,
+    pub class_number: usize,
+    pub proof_status: &'static str,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ImaginaryClassGroupError {
     NonMonic,
@@ -222,10 +231,33 @@ pub fn compute_imaginary_class_group_from_coefficients(
     })
 }
 
-pub fn compute_imaginary_class_group(
-    input: PublicImaginaryQuadraticInput,
-) -> Result<CompleteImaginaryClassGroup, ImaginaryClassGroupError> {
-    let [constant, linear, leading] = input.polynomial_ascending;
+/// Count ideal classes directly from the complete reduced-form enumeration.
+///
+/// This deliberately does not compute invariant factors, generators, or a
+/// class map. The same exact reduced-form theorem used by the full-group
+/// route makes the count unconditional.
+pub fn compute_imaginary_class_number_from_coefficients(
+    polynomial_ascending: [i64; 3],
+) -> Result<CompleteImaginaryClassNumber, ImaginaryClassGroupError> {
+    let discriminant = validated_imaginary_discriminant(polynomial_ascending)?;
+    let class_number = count_reduced_forms(discriminant);
+    if class_number > MAXIMUM_REDUCED_FORMS {
+        return Err(ImaginaryClassGroupError::ReducedFormResourceLimit {
+            class_number,
+            maximum: MAXIMUM_REDUCED_FORMS,
+        });
+    }
+    Ok(CompleteImaginaryClassNumber {
+        discriminant,
+        class_number,
+        proof_status: "unconditional-complete",
+    })
+}
+
+fn validated_imaginary_discriminant(
+    polynomial_ascending: [i64; 3],
+) -> Result<i64, ImaginaryClassGroupError> {
+    let [constant, linear, leading] = polynomial_ascending;
     if leading != 1 {
         return Err(ImaginaryClassGroupError::NonMonic);
     }
@@ -241,6 +273,16 @@ pub fn compute_imaginary_class_group(
             absolute_discriminant,
         });
     }
+    fundamental_discriminant(discriminant)
+        .ok_or(ImaginaryClassGroupError::NotFundamentalDiscriminant)?;
+    Ok(discriminant)
+}
+
+pub fn compute_imaginary_class_group(
+    input: PublicImaginaryQuadraticInput,
+) -> Result<CompleteImaginaryClassGroup, ImaginaryClassGroupError> {
+    let [constant, linear, _] = input.polynomial_ascending;
+    let discriminant = validated_imaginary_discriminant(input.polynomial_ascending)?;
     let (squarefree_core, prime_factors) = fundamental_discriminant(discriminant)
         .ok_or(ImaginaryClassGroupError::NotFundamentalDiscriminant)?;
     let irreducibility_prime = (2_u32..=257)
@@ -1026,6 +1068,19 @@ fn gcd_i128(mut left: i128, mut right: i128) -> i128 {
 }
 
 fn enumerate_reduced_forms(discriminant: i64) -> (i64, Vec<BinaryQuadraticForm>) {
+    let mut forms = Vec::new();
+    let bound = visit_reduced_forms(discriminant, |form| forms.push(form));
+    forms.sort_unstable();
+    (bound, forms)
+}
+
+fn count_reduced_forms(discriminant: i64) -> usize {
+    let mut count = 0;
+    visit_reduced_forms(discriminant, |_| count += 1);
+    count
+}
+
+fn visit_reduced_forms(discriminant: i64, mut visit: impl FnMut(BinaryQuadraticForm)) -> i64 {
     let absolute = discriminant.unsigned_abs();
     let mut bound = 0_u64;
     while (bound + 1) * (bound + 1) * 3 <= absolute {
@@ -1038,7 +1093,6 @@ fn enumerate_reduced_forms(discriminant: i64) -> (i64, Vec<BinaryQuadraticForm>)
             primes.push(candidate);
         }
     }
-    let mut forms = Vec::new();
     let signed_bound = i64::try_from(bound).unwrap();
     for b in -signed_bound..=signed_bound {
         let numerator = i128::from(b) * i128::from(b) - i128::from(discriminant);
@@ -1056,12 +1110,11 @@ fn enumerate_reduced_forms(discriminant: i64) -> (i64, Vec<BinaryQuadraticForm>)
                 c: i64::try_from(n / a).unwrap(),
             };
             if form.is_primitive_reduced(discriminant) {
-                forms.push(form);
+                visit(form);
             }
         }
     }
-    forms.sort_unstable();
-    (i64::try_from(bound).unwrap(), forms)
+    i64::try_from(bound).unwrap()
 }
 
 fn integer_square_root(value: u64) -> u64 {
@@ -1235,6 +1288,26 @@ fn gcd(mut left: u64, mut right: u64) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn scalar_class_number_agrees_with_authenticated_group() {
+        for input in SMALL_IMAGINARY_CASES
+            .into_iter()
+            .chain(GENERAL_IMAGINARY_CASES)
+        {
+            let scalar =
+                compute_imaginary_class_number_from_coefficients(input.polynomial_ascending)
+                    .unwrap();
+            let group = compute_imaginary_class_group(input).unwrap();
+            assert_eq!(scalar.discriminant, group.discriminant);
+            assert_eq!(scalar.class_number, group.class_number);
+            assert_eq!(scalar.proof_status, "unconditional-complete");
+        }
+        assert_eq!(
+            compute_imaginary_class_number_from_coefficients([9, 0, 1]),
+            Err(ImaginaryClassGroupError::NotFundamentalDiscriminant)
+        );
+    }
 
     #[test]
     fn computes_trivial_cyclic_and_noncyclic_groups_with_complete_maps() {

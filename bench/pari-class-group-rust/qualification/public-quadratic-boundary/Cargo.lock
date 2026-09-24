@@ -130,6 +130,7 @@ dependencies = [
 name = "sagejs-pari-class-group-rust-experiment"
 version = "0.1.0"
 dependencies = [
+ "gmp-mpfr-sys",
  "rug",
  "serde",
  "serde_json",
