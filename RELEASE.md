@@ -628,6 +628,9 @@ canonical public root archive at `build/release/npm/sagejs.tgz` on each host.
 Set `SAGEJS_NUMERICAL_PRODUCT_ROOT` to that product directory and
 `SAGEJS_NUMERICAL_RUNTIME_REQUIRED=1`; use the required native dependency
 catalog as in CI. This command is not a toolchain provisioning substitute.
+Browser parity derives its receipt source revision from clean Git `HEAD` and
+rejects a conflicting `GITHUB_SHA`, so persistent-host receipts are bound to
+the same exact candidate as workload acceptance without a CI-only environment.
 
 To build a new candidate **for testing**, use
 `pnpm release:run --candidate FULL_SHA --profile preparation` on Linux. This
