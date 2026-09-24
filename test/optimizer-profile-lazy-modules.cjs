@@ -123,6 +123,10 @@ test("profiling bypasses writable lazy caches without reading or rewriting them"
   assert.ok(cacheFile, "ordinary execution should publish a writable module cache");
   const record = JSON.parse(fs.readFileSync(cacheFile, "utf8"));
   record.javascript += '\nρσ_modules["profile_lazy_cache"].VALUE = 999;';
+  // A writable cache is accepted only when its map describes the same code;
+  // discard bytecode compiled from the original source as well.
+  record.pythonSourceMap.generated = record.javascript;
+  delete record.cachedData;
   fs.writeFileSync(cacheFile, JSON.stringify(record));
   assert.equal(run({ action: "evaluate", source }, environment).evaluation.repr, "999");
   const before = fs.readFileSync(cacheFile);
