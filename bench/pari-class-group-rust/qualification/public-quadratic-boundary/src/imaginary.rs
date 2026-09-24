@@ -1094,7 +1094,10 @@ fn visit_reduced_forms(discriminant: i64, mut visit: impl FnMut(BinaryQuadraticF
         }
     }
     let signed_bound = i64::try_from(bound).unwrap();
-    for b in -signed_bound..=signed_bound {
+    // The candidate norm (b²-D)/4 is identical for b and -b. Factor it once,
+    // then visit both reduced orientations when they are distinct. Boundary
+    // forms have only one canonical sign.
+    for b in 0..=signed_bound {
         let numerator = i128::from(b) * i128::from(b) - i128::from(discriminant);
         if numerator % 4 != 0 {
             continue;
@@ -1111,6 +1114,16 @@ fn visit_reduced_forms(discriminant: i64, mut visit: impl FnMut(BinaryQuadraticF
             };
             if form.is_primitive_reduced(discriminant) {
                 visit(form);
+            }
+            if b != 0 {
+                let inverse_orientation = BinaryQuadraticForm {
+                    a: form.a,
+                    b: -form.b,
+                    c: form.c,
+                };
+                if inverse_orientation.is_primitive_reduced(discriminant) {
+                    visit(inverse_orientation);
+                }
             }
         }
     }
