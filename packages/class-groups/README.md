@@ -1,8 +1,9 @@
 # Sage.js class-group core
 
 This package contains the production Rust mathematical core for bounded cubic
-class and unit groups. It is extracted from the qualified Sage.js/PARI 2.17.4
-campaign and preserves the source provenance and GPL notices of that work.
+class and unit groups and unconditional imaginary-quadratic class groups. The
+cubic core is extracted from the qualified Sage.js/PARI 2.17.4 campaign and
+preserves the source provenance and GPL notices of that work.
 
 The current supported mathematical boundary is deliberately narrow:
 
@@ -14,6 +15,9 @@ The current supported mathematical boundary is deliberately narrow:
   enclosures;
 - bounded class coordinates for arbitrary integral ideals against a retained
   completed result.
+- negative fundamental quadratic discriminants with `|D| <= 10^7` and at most
+  20,000 reduced classes; exact reduced forms, invariant factors, generators,
+  representative ideals, and a complete coordinate map for every class.
 
 FLINT 3.6, its integrated Arb implementation, GMP, and MPFR are required
 capabilities. The mathematical API is host-independent and contains no Node,
@@ -59,9 +63,16 @@ an initial 16 MiB and maximum 256 MiB; the product loader independently
 revalidates those limits before instantiation.
 
 The service protocol is ABI 1 and uses one JSON document per native line or
-Wasm call. Requests and responses carry bounded caller IDs. The operations are
-`capability`, `open`, `summary`, `query`, `publication`, and `close`; all
+Wasm call. Requests and responses carry bounded caller IDs. Cubic operations
+are `capability`, `open`, `summary`, `query`, `publication`, and `close`; all
 operations after `open` bind both its generation and opaque decimal handle.
+The independent one-shot operations `imaginary-class-number` and
+`imaginary-class-group` take `polynomialAscending` as three decimal coefficient
+strings of a monic polynomial defining a negative fundamental discriminant.
+They return unconditional results without allocating a resident handle. The
+full-group result includes the exact representative-ideal map and a detached
+reduced-form completeness certificate. Inputs outside the stated domain fail
+with a typed error rather than silently changing proof mode.
 `summary` returns only the sealed field/class-group binding, invariants, and
 canonical exact generator-ideal lattices, avoiding the detached relation graph
 carried by `publication`. An invalid, closed, or stale handle fails with the

@@ -52,6 +52,7 @@ function fakeWorkers({ initialize = true } = {}) {
         return;
       }
       if (message.request?.hang) return;
+      this.lastRequest = message.request;
       let result = { echo: message.request, generation: this.generation };
       const serviceRequest = message.request?.schema ===
         "sagejs.class-groups/service-request-v1";
@@ -71,6 +72,28 @@ function fakeWorkers({ initialize = true } = {}) {
         };
       } else if (serviceRequest && message.request.operation === "close") {
         result = { outcome: "closed", handle: "7" };
+      } else if (serviceRequest && message.request.operation === "imaginary-class-number") {
+        result = {
+          schema: "sagejs.class-groups/service-response-v1",
+          outcome: "complete",
+          operation: "imaginary-class-number",
+          result: { discriminant: -23, classNumber: 3, proofStatus: "unconditional-complete" },
+        };
+      } else if (serviceRequest && message.request.operation === "imaginary-class-group") {
+        result = {
+          schema: "sagejs.class-groups/service-response-v1",
+          outcome: "complete",
+          operation: "imaginary-class-group",
+          result: {
+            discriminant: -23,
+            classNumber: 3,
+            proofStatus: "unconditional-complete",
+            polynomialAscending: [6, -1, 1],
+            invariantFactors: [3],
+            completeClassMap: [{}, {}, {}],
+            runtimeUsesPariOrFixtureAnswers: false,
+          },
+        };
       }
       if (serviceRequest) {
         result = {
@@ -119,6 +142,24 @@ test("the service authenticates configuration and exposes diagnostics", async ()
     await service.close();
   }
   assert.equal(workers[0].terminated, true);
+});
+
+test("imaginary quadratic methods validate exact inputs and return typed results", async () => {
+  const { FakeWorker, workers } = fakeWorkers();
+  const service = new ClassGroupCoreService({ receipt, WorkerConstructor: FakeWorker });
+  try {
+    const scalar = await service.imaginaryClassNumber([6n, -1, "1"]);
+    assert.equal(scalar.classNumber, 3);
+    assert.deepEqual(workers[0].lastRequest.polynomialAscending, ["6", "-1", "1"]);
+    const group = await service.imaginaryClassGroup([6, -1, 1]);
+    assert.deepEqual(group.invariantFactors, [3]);
+    assert.equal(group.completeClassMap.length, 3);
+    await assert.rejects(service.imaginaryClassNumber([5, 0, 1]), /malformed imaginary quadratic result/);
+    await assert.rejects(service.imaginaryClassNumber([1.5, 0, 1]), /safe integers/);
+    await assert.rejects(service.imaginaryClassNumber([2n ** 60n, 0, 1]), /exact JSON integer range/);
+  } finally {
+    await service.close();
+  }
 });
 
 test("abort terminates the synchronous worker and invalidates resident handles", async () => {

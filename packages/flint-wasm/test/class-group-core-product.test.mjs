@@ -93,6 +93,18 @@ test(
       assert.deepEqual(result.completion.invariantFactors, ["6"]);
       assert.equal((await service.diagnostics()).maximumMemoryPages, 4096);
       await session.close();
+
+      const scalar = await service.imaginaryClassNumber([6, -1, 1]);
+      assert.equal(scalar.classNumber, 3);
+      assert.equal(scalar.proofStatus, "unconditional-complete");
+      const group = await service.imaginaryClassGroup([6, -1, 1]);
+      assert.deepEqual(group.invariantFactors, [3]);
+      assert.equal(group.completeClassMap.length, 3);
+      assert.equal(group.proofStatus, "unconditional-complete");
+      await assert.rejects(
+        service.imaginaryClassNumber([9, 0, 1]),
+        (error) => error.category === "invalid-request",
+      );
     } finally {
       await service.close();
     }
