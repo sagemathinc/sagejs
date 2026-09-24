@@ -63,13 +63,17 @@ PARI source and current FLINT addon, builds the Rust and PARI executables,
 rotates three arms over 15 samples per field,
 checks each class number, and writes `class-number-receipt.json`. That receipt
 is diagnostic and explicitly unpromoted; it does not supersede the full-group
-receipt or establish a release speed claim. On the current host, Rust wins on
-the four small fields. After deduplicating `b` and `-b` factorization, it is
-still roughly 3–4 times slower than PARI on the three million-scale
-discriminants. FLINT is within 1.5 times PARI on one such field but 2.8 and
-6.4 times slower on the others, where it materializes more reduced forms.
-This identifies scalar enumeration as a performance target and rules out
-unconditionally routing every input to either current enumerator.
+receipt or establish a release speed claim. The scalar Rust path now sieves
+the candidate norms together, using exact modular square roots to visit only
+prime-divisible residue classes and fixed-size factor storage to avoid one
+allocation per candidate. It counts only canonical reduced divisors and uses
+the fundamental-discriminant precondition to eliminate redundant primitivity
+checks. The retained original enumerator independently agrees on every
+fundamental discriminant through 10,000 and a deterministic spread up to the
+admitted `10^7` boundary. On the current host, the diagnostic panel has Rust
+faster than PARI on six of seven fields and 1.35 times PARI on the remaining
+4,378-class field. This is a substantial scalar improvement, but the receipt
+must still be frozen and promoted before making a release speed claim.
 
 ## Frozen panel and large-class-number selection
 

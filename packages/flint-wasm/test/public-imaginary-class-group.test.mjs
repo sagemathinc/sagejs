@@ -13,11 +13,12 @@ test("public imaginary quadratic class groups retain exact ideals in Wasm", asyn
       "Q = QuadraticField(-23)",
       "[G.order(), G.invariants(), G.proof_status, G.gen().coordinates(),",
       " G(G.gen().ideal()).coordinates(), K.class_number(algorithm='rust'),",
-      " Q.class_number(algorithm='rust'), Q.class_group(algorithm='rust').invariants()]",
+      " Q.class_number(algorithm='rust'), Q.class_group(algorithm='rust').invariants(),",
+      " QuadraticField(-8173415).class_number(algorithm='rust')]",
     ].join("\n"));
     assert.equal(
       answer.repr,
-      "[3, (3,), 'exact-unconditional', (1,), (1,), 3, 3, (3,)]",
+      "[3, (3,), 'exact-unconditional', (1,), (1,), 3, 3, (3,), 4378]",
     );
   } finally {
     await sage.close();

@@ -1213,8 +1213,8 @@
     {
       "file": "src/imaginary.rs",
       "scope": "product-candidate",
-      "sha256": "f75eebbc5d6ca82610d29b52cce0d9112c340bc6771c8c84a5511e9437bc8168",
-      "bytes": 61239,
+      "sha256": "45ac31522aceccd893a39e006969e78b2c8a5656b59ca52140161d8f8ec099ac",
+      "bytes": 67903,
       "copyrightNotices": [
         "Copyright (C) Sage.js contributors."
       ],
@@ -1532,5 +1532,5 @@
     "miriCoverageEstablished": false,
     "productionQualified": false
   },
-  "inventorySha256": "7ede76a10d1363ddfc414c85676df103bbfea39b2738f939af42f4204af3b79a"
+  "inventorySha256": "fb6350ba0658fac6698d471c9aa86d2d0b0397a9041045ac8f8744c12aa0f145"
 }

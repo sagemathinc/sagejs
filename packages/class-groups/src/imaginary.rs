@@ -1074,10 +1074,184 @@ fn enumerate_reduced_forms(discriminant: i64) -> (i64, Vec<BinaryQuadraticForm>)
     (bound, forms)
 }
 
+#[derive(Clone)]
+struct ScalarFactorization {
+    factors: [(u64, u32); 8],
+    len: usize,
+}
+
+impl ScalarFactorization {
+    fn new() -> Self {
+        Self {
+            factors: [(0, 0); 8],
+            len: 0,
+        }
+    }
+
+    fn push(&mut self, factor: (u64, u32)) {
+        // Here n <= (|D| + floor(sqrt(|D|/3))^2)/4 < 3.34 million.
+        // Eight distinct prime factors require at least 9,699,690.
+        self.factors[self.len] = factor;
+        self.len += 1;
+    }
+
+    fn iter(&self) -> impl Iterator<Item = &(u64, u32)> {
+        self.factors[..self.len].iter()
+    }
+}
+
 fn count_reduced_forms(discriminant: i64) -> usize {
+    let absolute = discriminant.unsigned_abs();
+    let bound = integer_square_root(absolute / 3);
+    let maximum_n = (bound * bound + absolute) / 4 + 1;
+    let prime_bound = integer_square_root(maximum_n) as usize;
+    let mut prime_sieve = vec![true; prime_bound + 1];
+    let mut primes = Vec::new();
+    for prime in 2..=prime_bound {
+        if !prime_sieve[prime] {
+            continue;
+        }
+        primes.push(prime as u64);
+        if prime <= prime_bound / prime {
+            for multiple in (prime * prime..=prime_bound).step_by(prime) {
+                prime_sieve[multiple] = false;
+            }
+        }
+    }
+
+    let parity = if discriminant.rem_euclid(4) == 1 {
+        1
+    } else {
+        0
+    };
+    let mut norms = Vec::new();
+    for b in (parity..=bound).step_by(2) {
+        norms.push((b * b + absolute) / 4);
+    }
+    let mut residuals = norms.clone();
+    let mut factors = vec![ScalarFactorization::new(); norms.len()];
+    for (index, residual) in residuals.iter_mut().enumerate() {
+        if *residual % 2 == 0 {
+            let mut exponent = 0;
+            while *residual % 2 == 0 {
+                *residual /= 2;
+                exponent += 1;
+            }
+            factors[index].push((2, exponent));
+        }
+    }
+    for &prime in primes.iter().skip(1) {
+        let residue = discriminant.rem_euclid(prime as i64) as u64;
+        let Some(first_root) = square_root_mod_prime(residue, prime) else {
+            continue;
+        };
+        let other_root = (prime - first_root) % prime;
+        for (root_index, root) in [first_root, other_root].into_iter().enumerate() {
+            if root_index == 1 && first_root == other_root {
+                continue;
+            }
+            let mut b = root;
+            if b % 2 != parity {
+                b += prime;
+            }
+            while b <= bound {
+                let index = ((b - parity) / 2) as usize;
+                let residual = &mut residuals[index];
+                if *residual % prime == 0 {
+                    let mut exponent = 0;
+                    while *residual % prime == 0 {
+                        *residual /= prime;
+                        exponent += 1;
+                    }
+                    factors[index].push((prime, exponent));
+                }
+                b += 2 * prime;
+            }
+        }
+    }
+
     let mut count = 0;
-    visit_reduced_forms(discriminant, |_| count += 1);
+    let mut divisors = Vec::new();
+    for (index, &n) in norms.iter().enumerate() {
+        let b = parity + 2 * index as u64;
+        if residuals[index] > 1 {
+            factors[index].push((residuals[index], 1));
+        }
+        divisors.clear();
+        divisors.push(1_u64);
+        for &(prime, exponent) in factors[index].iter() {
+            let existing = divisors.len();
+            let mut power = 1;
+            for _ in 0..exponent {
+                power *= prime;
+                for divisor_index in 0..existing {
+                    divisors.push(divisors[divisor_index] * power);
+                }
+            }
+        }
+        for &a in &divisors {
+            if a > bound || a < b || a * a > n {
+                continue;
+            }
+            // A nonprimitive form would make a square divide its fundamental
+            // discriminant. For the even case, dividing by four would then
+            // leave a quadratic discriminant, contradicting fundamentality.
+            // Thus every integral form at this discriminant is primitive.
+            count += if b == 0 || b == a || a * a == n { 1 } else { 2 };
+        }
+    }
     count
+}
+
+fn power_mod(mut base: u64, mut exponent: u64, modulus: u64) -> u64 {
+    let mut result = 1;
+    while exponent != 0 {
+        if exponent & 1 != 0 {
+            result = result * base % modulus;
+        }
+        base = base * base % modulus;
+        exponent >>= 1;
+    }
+    result
+}
+
+fn square_root_mod_prime(value: u64, prime: u64) -> Option<u64> {
+    if value == 0 {
+        return Some(0);
+    }
+    if power_mod(value, (prime - 1) / 2, prime) != 1 {
+        return None;
+    }
+    if prime % 4 == 3 {
+        return Some(power_mod(value, (prime + 1) / 4, prime));
+    }
+    let mut odd_part = prime - 1;
+    let mut exponent_of_two = 0;
+    while odd_part % 2 == 0 {
+        odd_part /= 2;
+        exponent_of_two += 1;
+    }
+    let mut nonsquare = 2;
+    while power_mod(nonsquare, (prime - 1) / 2, prime) != prime - 1 {
+        nonsquare += 1;
+    }
+    let mut coefficient = power_mod(nonsquare, odd_part, prime);
+    let mut root = power_mod(value, (odd_part + 1) / 2, prime);
+    let mut remainder = power_mod(value, odd_part, prime);
+    while remainder != 1 {
+        let mut step = 1;
+        let mut squared = remainder * remainder % prime;
+        while squared != 1 {
+            squared = squared * squared % prime;
+            step += 1;
+        }
+        let correction = power_mod(coefficient, 1 << (exponent_of_two - step - 1), prime);
+        root = root * correction % prime;
+        coefficient = correction * correction % prime;
+        remainder = remainder * coefficient % prime;
+        exponent_of_two = step;
+    }
+    Some(root)
 }
 
 fn visit_reduced_forms(discriminant: i64, mut visit: impl FnMut(BinaryQuadraticForm)) -> i64 {
@@ -1313,13 +1487,43 @@ mod tests {
                     .unwrap();
             let group = compute_imaginary_class_group(input).unwrap();
             assert_eq!(scalar.discriminant, group.discriminant);
-            assert_eq!(scalar.class_number, group.class_number);
+            assert_eq!(scalar.class_number, group.class_number, "{}", input.id);
             assert_eq!(scalar.proof_status, "unconditional-complete");
         }
         assert_eq!(
             compute_imaginary_class_number_from_coefficients([9, 0, 1]),
             Err(ImaginaryClassGroupError::NotFundamentalDiscriminant)
         );
+    }
+
+    #[test]
+    fn sieved_scalar_count_matches_exact_form_enumeration() {
+        for absolute in 3..=10_000_i64 {
+            let discriminant = -absolute;
+            if fundamental_discriminant(discriminant).is_none() {
+                continue;
+            }
+            let mut enumerated = 0;
+            visit_reduced_forms(discriminant, |_| enumerated += 1);
+            assert_eq!(
+                count_reduced_forms(discriminant),
+                enumerated,
+                "D={discriminant}"
+            );
+        }
+        for absolute in (1_000_003..=10_000_000_i64).step_by(37_111) {
+            let discriminant = -absolute;
+            if fundamental_discriminant(discriminant).is_none() {
+                continue;
+            }
+            let mut enumerated = 0;
+            visit_reduced_forms(discriminant, |_| enumerated += 1);
+            assert_eq!(
+                count_reduced_forms(discriminant),
+                enumerated,
+                "D={discriminant}"
+            );
+        }
     }
 
     #[test]
