@@ -80,7 +80,24 @@ try {
       assert.match(result.capability.artifactSha256, /^[a-f0-9]{64}$/, name);
       assert.equal(result.diagnostics.maximumMemoryPages, 4096, name);
       assert.equal(result.diagnostics.maximumMemoryBytes, 256 * 1024 * 1024, name);
-      console.log(`PASS ${name}: synchronous authenticated class-group evaluator`);
+      const publicResult = await page.evaluate(async (base) => {
+        const { createSage } = await import(`${base}/kernel.mjs`);
+        const sage = await createSage({ timeout: 120_000 });
+        try {
+          const answer = await sage.evaluate([
+            "R.<x> = QQ[]",
+            "K.<a> = NumberField(x^2 + 23)",
+            "G = K.class_group(algorithm='rust')",
+            "[G.order(), G.invariants(), G.proof_status,",
+            " G(G.gen().ideal()).coordinates(), K.class_number(algorithm='rust')]",
+          ].join("\n"));
+          return answer.repr;
+        } finally {
+          await sage.close();
+        }
+      }, origin);
+      assert.equal(publicResult, "[3, (3,), 'exact-unconditional', (1,), 3]", name);
+      console.log(`PASS ${name}: public unconditional class group and exact ideal map`);
     } finally {
       await browser.close();
     }
