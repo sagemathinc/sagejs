@@ -1208,10 +1208,12 @@ test("prepared packed Cantor arithmetic is exact in dynamic and native modes", (
       },
     });
     const native = run(process.execPath, [sagejs, program], {
-      // Native Windows x64 completed the exact dynamic witness but exceeded
-      // the generic five-minute child limit on this full second replay.
-      // Keep the same assertions and bound the slower host explicitly.
-      timeout: process.platform === "win32" ? 1_200_000 : 300_000,
+      // Native Windows x64 and macOS arm64 completed the exact dynamic witness
+      // but exceeded the generic five-minute child limit on this full replay.
+      // Keep the same assertions and bound the slower hosts explicitly.
+      timeout: ["win32", "darwin"].includes(process.platform)
+        ? 1_200_000
+        : 300_000,
       env: {
         SAGEJS_NATIVE_CACHE_DIR: cache,
       },
