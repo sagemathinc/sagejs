@@ -43,6 +43,28 @@ python3 benchmark/run.py
 The authenticated PARI 2.17.4 control must already exist at
 `../pari-control/build/pari-control`.
 
+## Matched scalar class-number comparison
+
+`run_class_number.py` separately compares the exact scalar Rust count with
+PARI 2.17.4 `qfbclassno(D,0)` on the same frozen panel. Unlike the full-group
+comparison above, neither arm builds class-group invariant factors or ideal
+maps. PARI's pinned documentation explicitly guarantees its Shanks routine
+for `|D| < 2*10^10`; every panel field is below `10^7`, so this is a matched
+*unconditional* class-number comparison. The Rust arm starts with the public
+monic polynomial and repeats validation; PARI starts with its equivalent
+discriminant. Both clocks exclude process startup and JSON serialization.
+
+Run `python3 benchmark/run_class_number.py`. It authenticates the pinned PARI
+source, builds both executables, alternates 15 samples per arm and field,
+checks each class number, and writes `class-number-receipt.json`. That receipt
+is diagnostic and explicitly unpromoted; it does not supersede the full-group
+receipt or establish a release speed claim. On the current host, Rust wins on
+the four small fields but is roughly 5–8 times slower on the three million-scale
+discriminants. This identifies the Rust reduced-form enumeration, not group
+construction, as the next scalar performance target. The existing Sage.js
+native FLINT scalar route needs its own authenticated same-host comparison
+before a public dispatch decision.
+
 ## Frozen panel and large-class-number selection
 
 The panel includes trivial, cyclic, noncyclic, and rank-four groups, plus the

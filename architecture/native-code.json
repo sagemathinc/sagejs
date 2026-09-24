@@ -1970,6 +1970,13 @@
       "provenance_mapping_status": "not-applicable"
     },
     {
+      "path": "bench/pari-class-group-rust/qualification/public-quadratic-boundary/benchmark/pari_class_number.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration",
+      "rationale": "Qualification-only PARI 2.17.4 qfbclassno(D,0) timing control for the frozen imaginary-quadratic panel. It is compiled into a disposable oracle process and is never linked into or shipped with Sage.js."
+    },
+    {
       "path": "bench/pari-class-group-rust/qualification/public-quadratic-boundary/src/bin/benchmark_public.rs",
       "category": "benchmark-reference",
       "review_status": "accepted",
