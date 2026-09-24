@@ -59,14 +59,12 @@ test("resident compile hits preserve provenance and invalidate dependencies", as
   assert.equal(changed.residentCached, false);
   assert.notEqual(changed.cacheKey, first.cacheKey);
 
-  // Windows cannot unlink an addon after it has been loaded into this process.
-  // Evict the on-disk artifact before requiring the rebuilt module.
+  // Windows cannot unlink or replace an addon after it has been loaded into
+  // this process. Exercise both eviction paths before requiring this version.
   rmSync(changed.addonPath);
   const rebuilt = await compileKernel({ sourcePath: entry, cacheRoot });
   assert.equal(rebuilt.residentCached, false);
   assert.equal(rebuilt.cacheKey, changed.cacheKey);
-  assert.equal(require(rebuilt.modulePath).entry.tagged(8n), 22n);
-
   rmSync(rebuilt.manifestPath);
   const remanifested = await compileKernel({ sourcePath: entry, cacheRoot });
   assert.equal(remanifested.residentCached, false);
