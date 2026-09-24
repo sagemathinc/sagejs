@@ -166,6 +166,8 @@ const CLASS_GROUP_OPERATIONS = new Set([
   "publication",
   "query",
   "close",
+  "imaginary-class-number",
+  "imaginary-class-group",
 ]);
 
 const classGroupServiceWorkerSource = String.raw`
@@ -472,7 +474,12 @@ export class NodeClassGroupBackend {
         mathematicalScope: "absolute-monic-cubic-conditional-grh",
         maximumResidentSessions: 4,
         proofModes: ["conditional-grh"],
-        operations: ["capability", "open", "summary", "query", "publication", "close"],
+        imaginaryQuadratic: {
+          proofMode: "unconditional",
+          maximumAbsoluteDiscriminant: 10_000_000,
+          operations: ["imaginary-class-number", "imaginary-class-group"],
+        },
+        operations: [...CLASS_GROUP_OPERATIONS],
         route: "native-resident-worker",
         artifactSha256: this.resource.artifactSha256,
         artifactBytes: this.resource.bytes,
@@ -570,7 +577,8 @@ export class NodeClassGroupBackend {
     if (operation === "capability") return this.capability();
     let serviceRequest = request;
     let sessionKey: string | undefined;
-    if (operation !== "open") {
+    if (operation !== "open" && operation !== "imaginary-class-number" &&
+        operation !== "imaginary-class-group") {
       if (typeof request.generation !== "string" ||
           !/^(0|[1-9][0-9]*)$/.test(request.generation) ||
           typeof request.handle !== "string" ||
@@ -613,7 +621,8 @@ export class NodeClassGroupBackend {
     Atomics.store(control, 2, 0);
     Atomics.store(control, 0, 1);
     Atomics.notify(control, 0);
-    const timeout = operation === "open" ? 120_000 : 30_000;
+    const timeout = operation === "open" || operation === "imaginary-class-group"
+      ? 120_000 : 30_000;
     const waited = Atomics.wait(control, 0, 1, timeout);
     if (waited === "timed-out") {
       this.retireWorker();

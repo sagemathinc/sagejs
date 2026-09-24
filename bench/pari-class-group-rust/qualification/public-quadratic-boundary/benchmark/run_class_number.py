@@ -86,7 +86,9 @@ def build() -> dict:
             FLINT_PACKAGE / "build" / "Release" / "sagejs_flint.manifest.json"
         ),
         "flintAddonManifest": json.loads(
-            (FLINT_PACKAGE / "build" / "Release" / "sagejs_flint.manifest.json").read_text()
+            (
+                FLINT_PACKAGE / "build" / "Release" / "sagejs_flint.manifest.json"
+            ).read_text()
         ),
         "flintControlSourceSha256": digest(FLINT_SAMPLE),
     }
@@ -168,8 +170,12 @@ def main() -> None:
             "system": platform.system(),
             "machine": platform.machine(),
             "processor": platform.processor(),
-            "nodeVersion": subprocess.check_output(["node", "--version"], text=True).strip(),
-            "rustcVersion": subprocess.check_output(["rustc", "--version"], text=True).strip(),
+            "nodeVersion": subprocess.check_output(
+                ["node", "--version"], text=True
+            ).strip(),
+            "rustcVersion": subprocess.check_output(
+                ["rustc", "--version"], text=True
+            ).strip(),
         },
         "semantics": {
             "rust": "exact primitive reduced-form enumeration of a negative fundamental field discriminant",

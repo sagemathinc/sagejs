@@ -73,6 +73,26 @@ They return unconditional results without allocating a resident handle. The
 full-group result includes the exact representative-ideal map and a detached
 reduced-form completeness certificate. Inputs outside the stated domain fail
 with a typed error rather than silently changing proof mode.
+
+The public Sage.js interface currently selects this backend explicitly:
+
+```python
+R.<x> = QQ[]
+K.<a> = NumberField(x^2 + 23)
+G = K.class_group(algorithm="rust")
+G.invariants()                         # (3,)
+G.gen().coordinates()                  # (1,)
+G(G.gen().ideal()).coordinates()       # (1,)
+K.class_number(algorithm="rust")      # 3
+```
+
+`QuadraticField(-23)` and its maximal order accept the same `algorithm="rust"`
+selection. The Rust route uses the maximal-order field discriminant, even
+when the defining polynomial has a nonfundamental discriminant. It is
+unconditional on its admitted `|D| <= 10^7` domain. The existing automatic
+quadratic route remains in place until the full public performance panel and
+Wasm integration are qualified.
+
 `summary` returns only the sealed field/class-group binding, invariants, and
 canonical exact generator-ideal lattices, avoiding the detached relation graph
 carried by `publication`. An invalid, closed, or stale handle fails with the

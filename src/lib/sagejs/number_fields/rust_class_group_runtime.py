@@ -23,6 +23,7 @@ IDEAL_QUERY_RECEIPT_SCHEMA = (
     "sagejs.rust-class-group/public-cubic-arbitrary-ideal-query-receipt-v1"
 )
 COMPACT_SUMMARY_SCHEMA = "sagejs.class-groups/compact-summary-v1"
+IMAGINARY_GROUP_SCHEMA = "sagejs.rust-class-group/complete-imaginary-quadratic-v2"
 
 EXACT_UNCONDITIONAL = "exact-unconditional"
 EXACT_RELATIONS_CONDITIONAL_GRH = "exact-relations-conditional-grh"
@@ -156,6 +157,264 @@ def _capability(backend: Any) -> dict[str, Any]:
     raise RustClassGroupPublicationError(
         "the Rust class-group capability response has the wrong schema"
     )
+
+
+def _imaginary_backend(backend: Any = None) -> tuple[Any, dict[str, Any]]:
+    if backend is None:
+        try:
+            backend = runtime.class_group_backend()
+        except (AttributeError, ImportError, NotImplementedError) as error:
+            raise RustClassGroupCapabilityDecline(
+                "the Rust class-group service is not installed"
+            ) from error
+    if backend is None or not callable(getattr(backend, "call", None)):
+        raise RustClassGroupCapabilityDecline(
+            "the Rust class-group service is not installed"
+        )
+    capability = _capability(backend)
+    imaginary = capability.get("imaginaryQuadratic")
+    if (
+        capability.get("outcome") != "available"
+        or not isinstance(imaginary, dict)
+        or imaginary.get("proofMode") != "unconditional"
+    ):
+        raise RustClassGroupCapabilityDecline(
+            "the installed Rust service does not advertise unconditional imaginary quadratic groups"
+        )
+    _canonical_sha256(capability.get("artifactSha256"), "capability artifact identity")
+    return backend, imaginary
+
+
+def _imaginary_polynomial(field: Any) -> tuple[int, list[str]]:
+    if int(field.degree()) != 2:
+        raise RustClassGroupCapabilityDecline(
+            "the Rust imaginary quadratic service requires an imaginary quadratic field"
+        )
+    discriminant = int(field.discriminant())
+    if discriminant >= 0:
+        raise RustClassGroupCapabilityDecline(
+            "the Rust imaginary quadratic service requires an imaginary quadratic field"
+        )
+    if discriminant % 4 not in (0, 1):
+        raise RustClassGroupPublicationError(
+            "the field has an invalid quadratic discriminant"
+        )
+    if discriminant % 4 == 1:
+        polynomial = [(1 - discriminant) // 4, -1, 1]
+    else:
+        polynomial = [-discriminant // 4, 0, 1]
+    return discriminant, [str(value) for value in polynomial]
+
+
+def rust_imaginary_result(
+    field: Any,
+    *,
+    operation: str,
+    algorithm: str = "auto",
+    options: dict[str, Any] | None = None,
+    backend: Any = None,
+) -> dict[str, Any] | None:
+    """Return an unconditional coefficient-bound imaginary quadratic receipt.
+
+    Only explicit Rust selection dispatches for now; automatic selection
+    remains behind the separate release qualification policy.
+    """
+    if algorithm != "rust" or int(field.degree()) != 2:
+        return None
+    if options is not None and len(options) != 0:
+        raise RustClassGroupCapabilityDecline(
+            "algorithm='rust' does not accept execution-control overrides"
+        )
+    if operation not in ("imaginary-class-number", "imaginary-class-group"):
+        raise ValueError("unknown imaginary quadratic Rust operation")
+    discriminant, polynomial = _imaginary_polynomial(field)
+    backend, capability = _imaginary_backend(backend)
+    if operation not in capability.get("operations", ()):
+        raise RustClassGroupCapabilityDecline(
+            "the installed Rust service does not support " + operation
+        )
+    maximum = capability.get("maximumAbsoluteDiscriminant")
+    if not isinstance(maximum, int) or maximum <= 0:
+        raise RustClassGroupPublicationError(
+            "the Rust service did not publish an imaginary discriminant bound"
+        )
+    if -discriminant > maximum:
+        raise RustClassGroupCapabilityDecline(
+            "the imaginary quadratic discriminant exceeds the Rust service bound"
+        )
+    answer = _call(backend, operation, {"polynomialAscending": polynomial})
+    if answer.get("outcome") != "complete" or answer.get("operation") != operation:
+        raise RustClassGroupPublicationError(
+            "the Rust imaginary quadratic response did not complete the requested operation"
+        )
+    result = answer.get("result")
+    if (
+        not isinstance(result, dict)
+        or result.get("discriminant") != discriminant
+        or result.get("proofStatus") != "unconditional-complete"
+        or not isinstance(result.get("classNumber"), int)
+        or result["classNumber"] < 1
+    ):
+        raise RustClassGroupPublicationError("the Rust imaginary result is malformed")
+    if operation == "imaginary-class-group" and (
+        result.get("schema") != IMAGINARY_GROUP_SCHEMA
+        or result.get("polynomialAscending") != [int(value) for value in polynomial]
+        or result.get("runtimeUsesPariOrFixtureAnswers") is not False
+        or not isinstance(result.get("completeClassMap"), list)
+        or len(result["completeClassMap"]) != result["classNumber"]
+    ):
+        raise RustClassGroupPublicationError(
+            "the Rust imaginary group omitted its complete class map"
+        )
+    return result
+
+
+def _plain_gcd(left: int, right: int) -> int:
+    left, right = abs(left), abs(right)
+    while right:
+        left, right = right, left % right
+    return left
+
+
+def _imaginary_form_data(value: Any, discriminant: int) -> tuple[int, int, int]:
+    if not isinstance(value, dict):
+        raise RustClassGroupPublicationError("the Rust class map has a malformed form")
+    try:
+        a, b, c = value["a"], value["b"], value["c"]
+    except KeyError as error:
+        raise RustClassGroupPublicationError(
+            "the Rust class map has a malformed form"
+        ) from error
+    if (
+        any(type(coefficient) is not int for coefficient in (a, b, c))
+        or a <= 0
+        or abs(b) > a
+        or a > c
+        or ((abs(b) == a or a == c) and b < 0)
+        or b * b - 4 * a * c != discriminant
+        or _plain_gcd(_plain_gcd(a, b), c) != 1
+    ):
+        raise RustClassGroupPublicationError(
+            "the Rust class map contains a nonreduced form"
+        )
+    return a, b, c
+
+
+def validate_imaginary_group_result(
+    result: dict[str, Any], discriminant: int
+) -> tuple[
+    list[tuple[int, int, int]], dict[str, tuple[int, ...]], list[tuple[int, int, int]]
+]:
+    """Check a complete form/coordinate/ideal presentation before Python binds it."""
+    entries = result.get("completeClassMap")
+    invariants = result.get("invariantFactors")
+    generators = result.get("generators")
+    certificate = result.get("certificate")
+    if (
+        result.get("schema") != IMAGINARY_GROUP_SCHEMA
+        or result.get("discriminant") != discriminant
+        or not isinstance(entries, list)
+        or not isinstance(invariants, list)
+        or not isinstance(generators, list)
+        or len(generators) != len(invariants)
+        or not isinstance(certificate, dict)
+        or certificate.get("discriminant") != discriminant
+        or not isinstance(certificate.get("reducedForms"), list)
+        or len(certificate["reducedForms"]) != len(entries)
+    ):
+        raise RustClassGroupPublicationError(
+            "the Rust form certificate changed fields or structure"
+        )
+    order = 1
+    for invariant in invariants:
+        if type(invariant) is not int or invariant <= 1:
+            raise RustClassGroupPublicationError(
+                "the Rust invariant factors are invalid"
+            )
+        order *= invariant
+    if order != len(entries) or order != result.get("classNumber"):
+        raise RustClassGroupPublicationError(
+            "the Rust invariant factors do not give the class number"
+        )
+    linear = -1 if discriminant % 4 == 1 else 0
+    principal = (1, -linear, (linear * linear - discriminant) // 4)
+    forms = []
+    coordinates = {}
+    seen_coordinates = set()
+    for index, entry in enumerate(entries):
+        if not isinstance(entry, dict):
+            raise RustClassGroupPublicationError(
+                "the Rust class map has a malformed entry"
+            )
+        form = _imaginary_form_data(entry.get("form"), discriminant)
+        if certificate["reducedForms"][index] != entry["form"]:
+            raise RustClassGroupPublicationError(
+                "the Rust class map disagrees with its reduced-form certificate"
+            )
+        a, b, _c = form
+        inverse = form if b == 0 or abs(b) == a or a == _c else (a, -b, _c)
+        if entry.get("inverseForm") != {
+            "a": inverse[0],
+            "b": inverse[1],
+            "c": inverse[2],
+        }:
+            raise RustClassGroupPublicationError(
+                "the Rust class map has a wrong inverse"
+            )
+        ideal = entry.get("representativeIdeal")
+        if (
+            not isinstance(ideal, dict)
+            or ideal.get("norm") != a
+            or ideal.get("basisColumns") != [[a, 0], [(linear - b) // 2, 1]]
+        ):
+            raise RustClassGroupPublicationError("the Rust class map has a wrong ideal")
+        vector = entry.get("coordinates")
+        if (
+            not isinstance(vector, list)
+            or len(vector) != len(invariants)
+            or any(
+                type(value) is not int or value < 0 or value >= invariants[position]
+                for position, value in enumerate(vector)
+            )
+        ):
+            raise RustClassGroupPublicationError(
+                "the Rust class map has malformed coordinates"
+            )
+        key = ",".join(str(value) for value in form)
+        vector_key = tuple(vector)
+        if key in coordinates or vector_key in seen_coordinates:
+            raise RustClassGroupPublicationError(
+                "the Rust class map repeats a class or coordinates"
+            )
+        coordinates[key] = vector_key
+        seen_coordinates.add(vector_key)
+        forms.append(form)
+    if coordinates.get(",".join(str(value) for value in principal)) != tuple(
+        0 for _ in invariants
+    ):
+        raise RustClassGroupPublicationError(
+            "the Rust principal class has wrong coordinates"
+        )
+    generator_forms = []
+    for index, generator in enumerate(generators):
+        if not isinstance(generator, dict):
+            raise RustClassGroupPublicationError(
+                "the Rust class-group generator is malformed"
+            )
+        form = _imaginary_form_data(generator.get("form"), discriminant)
+        expected = tuple(
+            1 if position == index else 0 for position in range(len(invariants))
+        )
+        if (
+            coordinates.get(",".join(str(value) for value in form)) != expected
+            or generator.get("coordinates") != list(expected)
+            or generator.get("exactOrder") != invariants[index]
+        ):
+            raise RustClassGroupPublicationError(
+                "the Rust generators disagree with the class map"
+            )
+        generator_forms.append(form)
+    return forms, coordinates, generator_forms
 
 
 def _mathematical_request(field: Any) -> dict[str, Any]:
@@ -625,10 +884,13 @@ def rust_class_group(
 
 __all__ = [
     "HOST_RESPONSE_SCHEMA",
+    "IMAGINARY_GROUP_SCHEMA",
     "RustClassGroupCapabilityDecline",
     "RustClassGroupPublicationError",
     "RustClassGroupServiceError",
     "RustClassGroupSession",
     "rust_class_group",
     "rust_class_unit_context",
+    "rust_imaginary_result",
+    "validate_imaginary_group_result",
 ]

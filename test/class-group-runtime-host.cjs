@@ -34,6 +34,10 @@ lines.on("line", (input) => {
   let result;
   if (request.operation === "open") {
     result = { generation, handle: "1", completion: { outcome: "complete-conditional-grh" }, servicePid: process.pid };
+  } else if (request.operation === "imaginary-class-number") {
+    result = { schema: "sagejs.class-groups/service-response-v1", outcome: "complete",
+      operation: request.operation, result: { discriminant: -23, classNumber: 3,
+        proofStatus: "unconditional-complete" }, servicePid: process.pid };
   } else if (request.generation !== generation || request.handle !== "1") {
     process.stdout.write(JSON.stringify({ schema: "sagejs.class-groups/service-response-v1", abi: 1, id: request.id, ok: false, error: { schema: "sagejs.class-groups/service-response-v1", outcome: "error", category: "stale-handle", operation: request.operation, message: "stale fixture handle" } }) + "\\n");
     return;
@@ -109,12 +113,24 @@ async function main() {
       mathematicalScope: "absolute-monic-cubic-conditional-grh",
       maximumResidentSessions: 4,
       proofModes: ["conditional-grh"],
-      operations: ["capability", "open", "summary", "query", "publication", "close"],
+      imaginaryQuadratic: {
+        proofMode: "unconditional",
+        maximumAbsoluteDiscriminant: 10_000_000,
+        operations: ["imaginary-class-number", "imaginary-class-group"],
+      },
+      operations: ["capability", "open", "summary", "publication", "query", "close",
+        "imaginary-class-number", "imaginary-class-group"],
       route: "native-resident-worker",
       artifactSha256: crypto.createHash("sha256").update(fs.readFileSync(fixture.filename)).digest("hex"),
       artifactBytes: fs.statSync(fixture.filename).size,
     });
     assert.equal(fs.existsSync(fixture.startup), false, "capability probe must stay lazy");
+
+    const imaginary = backend.call("imaginary-class-number", {
+      polynomialAscending: ["6", "-1", "1"],
+    });
+    assert.equal(imaginary.result.classNumber, 3);
+    assert.equal(fs.existsSync(fixture.startup), true);
 
     const opened = backend.call("open", { request: { polynomialAscending: ["-1", "-1", "0", "1"] } });
     assert.match(opened.generation, /^[0-9]+$/);
