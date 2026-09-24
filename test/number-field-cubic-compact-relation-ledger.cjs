@@ -72,7 +72,7 @@ relations_copy = certificate.relations
 relations_copy[0]["row"][0] += 100
 assert certificate.relations[0]["row"][0] == 1
 assert not hasattr(certificate, "_detached_encoding")
-raw = certificate.__dict__["_raw_components"]
+raw = certificate._raw_components
 try:
     raw[2][0]["row"][0] += 100
     raise AssertionError("live certificate internals were not recursively frozen")
