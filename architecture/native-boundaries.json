@@ -14,7 +14,7 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 379,
+    "classified-native-file": 380,
     "declared-ffi": 480,
     "declared-ffi-resource": 37,
     "napi-export": 358,
@@ -10444,6 +10444,14 @@
       "id": "native-file:packages/class-groups/src/ideal_arithmetic.rs",
       "kind": "classified-native-file",
       "path": "packages/class-groups/src/ideal_arithmetic.rs",
+      "disposition": "mathematical-algorithm",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/class-groups/src/imaginary.rs",
+      "kind": "classified-native-file",
+      "path": "packages/class-groups/src/imaginary.rs",
       "disposition": "mathematical-algorithm",
       "review_status": "accepted",
       "lane": "distribution"

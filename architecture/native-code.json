@@ -3164,6 +3164,20 @@
       "provenance_mapping_status": "not-applicable"
     },
     {
+      "path": "packages/class-groups/src/imaginary.rs",
+      "category": "mathematical-algorithm",
+      "review_status": "accepted",
+      "lane": "distribution",
+      "rationale": "First-party exact imaginary-quadratic reduced-form enumeration, composition, class-group structure, and detached certificate verification transferred from the 3,357-field qualified prototype. Bounded negative fundamental discriminants only; production dispatch and Wasm release receipts remain separate gates.",
+      "rust_role": "mathematical-core",
+      "qualification_status": "experimental-qualification",
+      "provenance_class": "original-sagejs",
+      "distribution_status": "review-required-before-distribution",
+      "safety_review": "not-applicable",
+      "safety_rationale": "The architecture scanner finds no unsafe or Rust ABI boundary in this source; any future boundary changes this classification and fails validation.",
+      "provenance_mapping_status": "not-applicable"
+    },
+    {
       "path": "packages/class-groups/src/ideal_arithmetic.rs",
       "category": "mathematical-algorithm",
       "review_status": "accepted",
@@ -3318,7 +3332,7 @@
       "safety_rationale": "Pointer and allocation preconditions are documented at every exported boundary and covered by the exact safety audit receipt.",
       "safety_receipt": {
         "path": "packages/class-groups/safety-audit-receipt.json",
-        "sha256": "a4b9be514a1d9434bf028ae978b61aee64c5e4f56d478792dcefdda6e2826fe3"
+        "sha256": "308fcbd62fd3176f6e2f5b0daf9024bd4dcaa265c03e9be917923ecfb6680609"
       },
       "provenance_mapping_status": "not-applicable"
     },

@@ -57,6 +57,90 @@ fn tiny_request() -> Value {
 }
 
 #[test]
+fn imaginary_quadratic_operations_are_unconditional_and_public() {
+    let mut service = ProductService::new();
+    let capability = call(&mut service, "iq-cap", "capability", json!({}));
+    assert_eq!(
+        capability["result"]["imaginaryQuadratic"]["proofMode"],
+        "unconditional"
+    );
+
+    let number = call(
+        &mut service,
+        "iq-number",
+        "imaginary-class-number",
+        json!({"polynomialAscending": ["6", "-1", "1"]}),
+    );
+    assert_eq!(number["ok"], true, "{number}");
+    assert_eq!(number["result"]["result"]["discriminant"], -23);
+    assert_eq!(number["result"]["result"]["classNumber"], 3);
+    assert_eq!(
+        number["result"]["result"]["proofStatus"],
+        "unconditional-complete"
+    );
+
+    let group = call(
+        &mut service,
+        "iq-group",
+        "imaginary-class-group",
+        json!({"polynomialAscending": ["6", "-1", "1"]}),
+    );
+    assert_eq!(group["ok"], true, "{group}");
+    let result = &group["result"]["result"];
+    assert_eq!(result["classNumber"], 3);
+    assert_eq!(result["invariantFactors"], json!([3]));
+    assert_eq!(result["completeClassMap"].as_array().unwrap().len(), 3);
+    assert_eq!(result["proofStatus"], "unconditional-complete");
+    assert_eq!(result["runtimeUsesPariOrFixtureAnswers"], false);
+    assert!(
+        result["completeClassMap"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|entry| {
+                entry["representativeIdeal"].is_object() && entry["coordinates"].is_array()
+            })
+    );
+}
+
+#[test]
+fn imaginary_quadratic_rejections_are_typed_and_do_not_poison_service() {
+    let mut service = ProductService::new();
+    let invalid = call(
+        &mut service,
+        "bad",
+        "imaginary-class-number",
+        json!({
+            "polynomialAscending": ["9", "0", "1"]
+        }),
+    );
+    assert_eq!(invalid["ok"], false, "{invalid}");
+    assert_eq!(invalid["error"]["category"], "invalid-request");
+
+    let oversized = call(
+        &mut service,
+        "large",
+        "imaginary-class-group",
+        json!({
+            "polynomialAscending": ["2500003", "-1", "1"]
+        }),
+    );
+    assert_eq!(oversized["ok"], false, "{oversized}");
+    assert_eq!(oversized["error"]["category"], "resource-exhausted");
+
+    let valid = call(
+        &mut service,
+        "recover",
+        "imaginary-class-number",
+        json!({
+            "polynomialAscending": ["1", "-1", "1"]
+        }),
+    );
+    assert_eq!(valid["ok"], true, "{valid}");
+    assert_eq!(valid["result"]["result"]["classNumber"], 1);
+}
+
+#[test]
 fn capability_and_errors_have_stable_typed_envelopes() {
     let mut service = ProductService::new();
     let capability = call(&mut service, "1", "capability", json!({}));

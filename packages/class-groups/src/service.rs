@@ -11,13 +11,16 @@ use crate::{
     ArbitraryIdealReductionLimits, CompactPresentationContinuationCache, CompactPresentationLimits,
     CubicAnalyticEvidence, CubicCompletionProofMode, CubicConditionalCompletionError,
     CubicConditionalCompletionOptions, CubicPresentationCandidateLimits,
-    GrhConditionalCompleteCubicClassGroup, MaximalOrderEvidenceStatus, NormalFormLimits,
-    PreparedContinuationLimits, PreparedCubicRelationCollector, PreparedIdealWorkspace,
-    PresentationZeroState, PrincipalElementWitnessState, PublicCubicPreparationLimits,
-    VerifiedCompactPresentation, authenticate_compact_cubic_presentation_candidate_with_cache,
+    GrhConditionalCompleteCubicClassGroup, ImaginaryClassGroupError, MaximalOrderEvidenceStatus,
+    NormalFormLimits, PreparedContinuationLimits, PreparedCubicRelationCollector,
+    PreparedIdealWorkspace, PresentationZeroState, PrincipalElementWitnessState,
+    PublicCubicPreparationLimits, VerifiedCompactPresentation,
+    authenticate_compact_cubic_presentation_candidate_with_cache,
     authenticate_compact_presentation, authenticate_cubic_presentation_candidate,
     complete_cubic_class_group_conditionally_with_context,
-    prepare_cubic_conditional_completion_context, prepare_monic_cubic,
+    compute_imaginary_class_group_from_coefficients,
+    compute_imaginary_class_number_from_coefficients, prepare_cubic_conditional_completion_context,
+    prepare_monic_cubic,
 };
 use rug::Integer;
 use serde::{Deserialize, Serialize};
@@ -1626,6 +1629,16 @@ struct ComputeServiceRequest {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct ImaginaryServiceRequest {
+    schema: String,
+    abi: u32,
+    id: String,
+    operation: String,
+    polynomial_ascending: [String; 3],
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct HandleServiceRequest {
     schema: String,
     abi: u32,
@@ -1896,8 +1909,64 @@ impl ProductService {
             "mathematicalScope": "absolute-monic-cubic-conditional-grh",
             "maximumResidentSessions": MAXIMUM_RESIDENT_SESSIONS as u32,
             "proofModes": ["conditional-grh"],
-            "operations": ["capability", "open", "summary", "query", "publication", "close"],
+            "imaginaryQuadratic": {
+                "proofMode": "unconditional",
+                "maximumAbsoluteDiscriminant": 10_000_000,
+                "operations": ["imaginary-class-number", "imaginary-class-group"],
+            },
+            "operations": ["capability", "open", "summary", "query", "publication", "close", "imaginary-class-number", "imaginary-class-group"],
         })
+    }
+
+    fn imaginary_compute(
+        operation: &str,
+        request: ImaginaryServiceRequest,
+    ) -> Result<Value, ServiceError> {
+        let coefficients = request.polynomial_ascending.map(|value| {
+            value.parse::<i64>().map_err(|_| {
+                ServiceError::new(
+                    ServiceErrorCategory::InvalidRequest,
+                    operation,
+                    "polynomial coefficients must be decimal signed 64-bit integers",
+                )
+            })
+        });
+        let coefficients = coefficients.into_iter().collect::<Result<Vec<_>, _>>()?;
+        let coefficients: [i64; 3] = coefficients.try_into().expect("fixed coefficient count");
+        let result = match operation {
+            "imaginary-class-number" => json!(
+                compute_imaginary_class_number_from_coefficients(coefficients)
+                    .map_err(|error| Self::imaginary_error(operation, error))?
+            ),
+            "imaginary-class-group" => json!(
+                compute_imaginary_class_group_from_coefficients(coefficients)
+                    .map_err(|error| Self::imaginary_error(operation, error))?
+            ),
+            _ => unreachable!("validated imaginary operation"),
+        };
+        Ok(json!({
+            "schema": SERVICE_RESPONSE_SCHEMA,
+            "outcome": "complete",
+            "operation": operation,
+            "result": result,
+        }))
+    }
+
+    fn imaginary_error(operation: &str, error: ImaginaryClassGroupError) -> ServiceError {
+        let category = match error {
+            ImaginaryClassGroupError::DiscriminantResourceLimit { .. }
+            | ImaginaryClassGroupError::ReducedFormResourceLimit { .. } => {
+                ServiceErrorCategory::ResourceExhausted
+            }
+            ImaginaryClassGroupError::NonMonic
+            | ImaginaryClassGroupError::DiscriminantOutsideI64
+            | ImaginaryClassGroupError::NotImaginary
+            | ImaginaryClassGroupError::NotFundamentalDiscriminant => {
+                ServiceErrorCategory::InvalidRequest
+            }
+            _ => ServiceErrorCategory::ComputationFailed,
+        };
+        ServiceError::new(category, operation, error.to_string())
     }
 
     fn execute_value(&mut self, value: Value) -> Result<Value, ServiceError> {
@@ -1964,6 +2033,21 @@ impl ProductService {
                 debug_assert_eq!(request.id, id);
                 debug_assert_eq!(request.operation, operation);
                 self.open(request.request)
+            }
+            "imaginary-class-number" | "imaginary-class-group" => {
+                let request: ImaginaryServiceRequest =
+                    serde_json::from_value(value).map_err(|error| {
+                        ServiceError::new(
+                            ServiceErrorCategory::InvalidRequest,
+                            &operation,
+                            error.to_string(),
+                        )
+                    })?;
+                debug_assert_eq!(request.schema, SERVICE_REQUEST_SCHEMA);
+                debug_assert_eq!(request.abi, SERVICE_ABI_VERSION);
+                debug_assert_eq!(request.id, id);
+                debug_assert_eq!(request.operation, operation);
+                Self::imaginary_compute(&operation, request)
             }
             "query" => {
                 let request: QueryServiceRequest =

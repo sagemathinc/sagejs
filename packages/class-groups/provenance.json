@@ -308,6 +308,16 @@
       "notes": "Original exact normal-form code retaining operation witnesses; mathematical similarity to other HNF/SNF implementations is not source evidence."
     },
     {
+      "path": "packages/class-groups/src/imaginary.rs",
+      "sha256": "f75eebbc5d6ca82610d29b52cce0d9112c340bc6771c8c84a5511e9437bc8168",
+      "classification": "original",
+      "declared_license_expression": "GPL-2.0-or-later",
+      "mapping_status": "not_applicable",
+      "mappings": [],
+      "missing_mapping_explanation": null,
+      "notes": "First-party exact reduced binary quadratic forms, composition, class map, and detached verifier; no translated upstream source body is claimed."
+    },
+    {
       "path": "packages/class-groups/src/ideal_arithmetic.rs",
       "sha256": "4e18797b8b645b761c58b82d73af0a7c30eef0ddd4659f57624f9c3d5b4a9a52",
       "classification": "behavioral_reimplementation",
@@ -345,7 +355,7 @@
     },
     {
       "path": "packages/class-groups/src/lib.rs",
-      "sha256": "b06f5b1f53d9e18b5a071197cddaf7002529f2bbd979a365d9431bf1a88f9bc4",
+      "sha256": "e8234e9ff768b1ddd0f9678f639dc7b7c4fa320e22ec606eed1b864e5913eec3",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
@@ -534,7 +544,7 @@
     },
     {
       "path": "packages/class-groups/src/service.rs",
-      "sha256": "e06bf34b6cad483d8075829595e7e24c1dd4ef2652888d67384ed2ccbd90d450",
+      "sha256": "859d4aa7e75911fe6cedfe62f5963ef6adc44f5f6ac8bfdecd33a1dabf0fddf5",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
