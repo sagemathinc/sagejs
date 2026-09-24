@@ -37,6 +37,8 @@ def witness(value: int) -> int:
         return update(scratch, value)
 `);
   const built = await compileKernel({ sourcePath, functions: ["witness"], cacheRoot: join(directory, "cache") });
+  assert.doesNotMatch(readFileSync(built.coreSourcePath, "utf8"), /\btagged_witness\s*\(/,
+    "arena-backed public core must not call a non-emitted tagged bridge");
   const kernel = require(built.modulePath).witness;
   for (const backend of ["javascript", "gmp", "fmpz"]) {
     for (const value of [0n, -9n, 1n << 300n]) assert.equal(kernel[backend](value), value + 1n);
@@ -237,6 +239,8 @@ def witness(value: int) -> int:
         return outer(scratch, value)
 `);
   const built = await compileKernel({ sourcePath, functions: ["witness"], cacheRoot: join(directory, "cache") });
+  assert.doesNotMatch(readFileSync(built.coreSourcePath, "utf8"), /\btagged_witness\s*\(/,
+    "FFI arena-backed public core must not call a non-emitted tagged bridge");
   const kernel = require(built.modulePath).witness;
   for (const backend of ["javascript", "gmp", "fmpz"]) {
     for (const value of [0n, -9n, 1n << 300n]) assert.equal(kernel[backend](value), value + 1n);
