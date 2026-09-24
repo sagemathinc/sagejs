@@ -3639,6 +3639,11 @@ def ρσ_resolve_callable(value: Any) -> Any:
     """Return a host function or an object's bound type-level `__call__`."""
     if runtime.strict_equal(runtime.jstype(value), "function"):
         return value
+    # Since Python 3.10, staticmethod descriptors are themselves callable.
+    # The wrapper is a host object, but its canonical Python type supplies a
+    # call that forwards to the wrapped function (including keyword handling).
+    if runtime.reflect.apply(ρσ_type, runtime.undefined, [value]) is ρσ_staticmethod:
+        return _builtins_get_member(value, "__func__")
     call_target = ρσ_get_type_slot(value, "__call__")
     if call_target is runtime.undefined:
         raise TypeError(
@@ -3771,6 +3776,8 @@ def ρσ_callable(value: Any) -> _Bool:
         return True
     if value is None or value is runtime.undefined:
         return False
+    if runtime.reflect.apply(ρσ_type, runtime.undefined, [value]) is ρσ_staticmethod:
+        return True
     # Slot presence, not its value or descriptor result, determines callable().
     prototype = ρσ_instance_prototype(runtime.object(value))
     return prototype is not None and runtime.reflect.has(prototype, "__call__")
