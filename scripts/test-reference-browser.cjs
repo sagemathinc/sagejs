@@ -10,10 +10,10 @@ const { spawn } = require("node:child_process");
 const root = join(__dirname, "..", "website");
 const candidates = [
   process.env.CHROMIUM_PATH,
-  "/usr/bin/chromium",
-  "/usr/bin/chromium-browser",
   "/usr/bin/google-chrome",
   "/usr/bin/google-chrome-stable",
+  "/usr/bin/chromium",
+  "/usr/bin/chromium-browser",
 ].filter(Boolean);
 const browser = candidates.find(existsSync);
 
@@ -70,7 +70,7 @@ function runBrowser(url) {
     child.stderr.setEncoding("utf8").on("data", (chunk) => errors += chunk);
     const timeout = setTimeout(() => {
       child.kill("SIGKILL");
-      reject(new Error("reference browser test timed out"));
+      reject(new Error(`reference browser test timed out using ${browser}: ${errors.slice(-4096)}`));
     }, 20_000);
     child.on("error", reject);
     child.on("close", (code) => {
