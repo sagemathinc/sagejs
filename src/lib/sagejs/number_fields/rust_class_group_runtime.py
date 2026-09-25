@@ -342,12 +342,15 @@ def _imaginary_form_data(value: Any, discriminant: int) -> tuple[int, int, int]:
         raise RustClassGroupPublicationError(
             "the Rust class map has a malformed form"
         ) from error
+    absolute_b = abs(b) if type(b) is int else 0
     if (
-        any(type(coefficient) is not int for coefficient in (a, b, c))
+        type(a) is not int
+        or type(b) is not int
+        or type(c) is not int
         or a <= 0
-        or abs(b) > a
+        or absolute_b > a
         or a > c
-        or ((abs(b) == a or a == c) and b < 0)
+        or ((absolute_b == a or a == c) and b < 0)
         or b * b - 4 * a * c != discriminant
         or _plain_gcd(_plain_gcd(a, b), c) != 1
     ):
@@ -398,31 +401,54 @@ def validate_imaginary_group_result(
     forms = []
     coordinates = {}
     seen_coordinates = set()
+    certified_forms = certificate["reducedForms"]
     for index, entry in enumerate(entries):
         if not isinstance(entry, dict):
             raise RustClassGroupPublicationError(
                 "the Rust class map has a malformed entry"
             )
         form = _imaginary_form_data(entry.get("form"), discriminant)
-        if certificate["reducedForms"][index] != entry["form"]:
+        a, b, c = form
+        certified = certified_forms[index]
+        if (
+            not isinstance(certified, dict)
+            or len(certified) != 3
+            or len(entry["form"]) != 3
+            or certified.get("a") != a
+            or certified.get("b") != b
+            or certified.get("c") != c
+        ):
             raise RustClassGroupPublicationError(
                 "the Rust class map disagrees with its reduced-form certificate"
             )
-        a, b, _c = form
-        inverse = form if b == 0 or abs(b) == a or a == _c else (a, -b, _c)
-        if entry.get("inverseForm") != {
-            "a": inverse[0],
-            "b": inverse[1],
-            "c": inverse[2],
-        }:
+        inverse_b = b if b == 0 or abs(b) == a or a == c else -b
+        inverse = entry.get("inverseForm")
+        if (
+            not isinstance(inverse, dict)
+            or len(inverse) != 3
+            or inverse.get("a") != a
+            or inverse.get("b") != inverse_b
+            or inverse.get("c") != c
+        ):
             raise RustClassGroupPublicationError(
                 "the Rust class map has a wrong inverse"
             )
         ideal = entry.get("representativeIdeal")
+        columns = ideal.get("basisColumns") if isinstance(ideal, dict) else None
         if (
             not isinstance(ideal, dict)
+            or len(ideal) != 2
             or ideal.get("norm") != a
-            or ideal.get("basisColumns") != [[a, 0], [(linear - b) // 2, 1]]
+            or not isinstance(columns, list)
+            or len(columns) != 2
+            or not isinstance(columns[0], list)
+            or not isinstance(columns[1], list)
+            or len(columns[0]) != 2
+            or len(columns[1]) != 2
+            or columns[0][0] != a
+            or columns[0][1] != 0
+            or columns[1][0] != (linear - b) // 2
+            or columns[1][1] != 1
         ):
             raise RustClassGroupPublicationError("the Rust class map has a wrong ideal")
         vector = entry.get("coordinates")
@@ -437,7 +463,7 @@ def validate_imaginary_group_result(
             raise RustClassGroupPublicationError(
                 "the Rust class map has malformed coordinates"
             )
-        key = ",".join(str(value) for value in form)
+        key = str(a) + "," + str(b) + "," + str(c)
         vector_key = tuple(vector)
         if key in coordinates or vector_key in seen_coordinates:
             raise RustClassGroupPublicationError(
@@ -459,11 +485,12 @@ def validate_imaginary_group_result(
                 "the Rust class-group generator is malformed"
             )
         form = _imaginary_form_data(generator.get("form"), discriminant)
+        key = str(form[0]) + "," + str(form[1]) + "," + str(form[2])
         expected = tuple(
             1 if position == index else 0 for position in range(len(invariants))
         )
         if (
-            coordinates.get(",".join(str(value) for value in form)) != expected
+            coordinates.get(key) != expected
             or generator.get("coordinates") != list(expected)
             or generator.get("exactOrder") != invariants[index]
             or generator.get("representativeIdeal")

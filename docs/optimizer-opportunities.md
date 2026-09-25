@@ -9,8 +9,8 @@ explicit control source under `bench/optimizer-workloads` at `O2` without execut
 Imports are stubbed, optimizer IR is independently verified, and every loop-bearing
 function, method, or lambda is retained with its exact source location and portable identity.
 
-Input identity: `f79362cddfa491e1e25d1df2da11ea0bf933bb818385253fccb1cb709d7422d6` (745 files, 15208031 bytes).
-Analyzed source bundle: `sha256:dfc49222da9b1a4713fd667d314422caf64a95cef04987752222210878e19dad`; compiler identity: `sha256:9c3ea3a9f72d2393241096df405fd4bee24845598a4959548cb7f81803cea056`.
+Input identity: `4eab43dbacbf61bf2d0b155730fac9c05db7801a915220248d7b1424915ac48c` (745 files, 15208967 bytes).
+Analyzed source bundle: `sha256:f90d53cb702671bdc74e082129967beee41029608addd62d2749ad8da07dbfd7`; compiler identity: `sha256:42c67135864af808629686eac886365b57452b6a51288f9745ec32ec74315a2a`.
 
 The complete machine census is stored outside Git as immutable GitHub Release assets.
 `architecture/optimizer-opportunities.manifest.json` binds its canonical NDJSON logical
@@ -36,11 +36,11 @@ pnpm optimizer:opportunities:query -- sha256:<digest>
 | Library modules compiled | 649 / 649 |
 | Explicit control sources compiled | 13 / 13 |
 | Functions and methods compiled | 17133 |
-| Loop-bearing functions and methods | 5428 |
-| Loops in functions | 15080 |
+| Loop-bearing functions and methods | 5427 |
+| Loops in functions | 15077 |
 | Selected optimized loops | 61 |
-| Compiler-rejected loops | 3604 |
-| Unrecognized loops | 11415 |
+| Compiler-rejected loops | 3603 |
+| Unrecognized loops | 11413 |
 | One-reason compiler near-misses | 281 |
 
 A rejected loop has a stable reason from a domain pass. An unrecognized loop was compiled
@@ -49,11 +49,11 @@ are explicitly heuristic triage signals, not correctness proofs.
 
 ## Static and verified cost evidence
 
-- Potential object-result sites: 100501
-- Collection-allocation sites: 12307
-- Known coercion sites: 20721
+- Potential object-result sites: 100576
+- Collection-allocation sites: 12298
+- Known coercion sites: 20740
 - Potential boundary-call sites: 107
-- Unresolved call sites: 51720
+- Unresolved call sites: 51759
 - Selected-target allocations: 3 known; 57 runtime-dependent
 - Selected-target representation conversions: 3 known; 59 runtime-dependent
 - Selected-target boundary crossings: 0 known; 0 runtime-dependent
@@ -122,14 +122,14 @@ convenience, not a performance ranking.
 
 | Stable reason | Loops | Remediation |
 | --- | ---: | --- |
-| `dashboard.no-current-pass-claimed` | 11415 | No existing mathematical-domain pass proves this loop; profile it before adding a new domain. |
-| `dashboard.dynamic-call-sites` | 10270 | Profile the calls, then inline, hoist, batch, or give the dominant call an authenticated coarse boundary. |
+| `dashboard.no-current-pass-claimed` | 11413 | No existing mathematical-domain pass proves this loop; profile it before adding a new domain. |
+| `dashboard.dynamic-call-sites` | 10268 | Profile the calls, then inline, hoist, batch, or give the dominant call an authenticated coarse boundary. |
 | `dashboard.no-mathematical-domain-evidence` | 9698 | Add precise annotations or an explicit domain contract only after profiling proves this loop matters. |
-| `dashboard.comprehension-loop` | 5624 | Lower the comprehension through a dedicated packed/container representation before scalar optimization. |
+| `dashboard.comprehension-loop` | 5622 | Lower the comprehension through a dedicated packed/container representation before scalar optimization. |
 | `dashboard.indexed-access-sites` | 4008 | Prove shape, element representation, aliasing, and ownership before selecting a packed lowering. |
-| `bounded-integer.dynamic-call` | 2951 | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
+| `bounded-integer.dynamic-call` | 2950 | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
 | `dashboard.control-flow-sites` | 2742 | Canonicalize the branches into a verified operation graph or add a domain-specific control-flow proof. |
-| `bounded-integer.unsupported-iterator` | 2367 | Use a proved built-in `range` iteration shape or add a verifier for the required iterator semantics. |
+| `bounded-integer.unsupported-iterator` | 2366 | Use a proved built-in `range` iteration shape or add a verifier for the required iterator semantics. |
 | `dashboard.nested-loop-sites` | 2223 | Consider a fused multidimensional region with explicit shape and work bounds. |
 | `bounded-integer.mutable-buffer-access` | 2124 | Prove an owner-bound packed buffer, alias discipline, and transactional publication. |
 | `bounded-integer.unsupported-operation:=` | 1840 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
@@ -151,7 +151,7 @@ convenience, not a performance ranking.
 | `bounded-integer.unsupported-power` | 119 | Expand a small fixed power into ordered multiplications or add an exact bounded-power proof. |
 | `bounded-integer.unsupported-operation:===` | 106 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
 | `bounded-integer.unsupported-operation:/` | 93 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
-| `bounded-integer.unsupported-operation:!==` | 66 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
+| `bounded-integer.unsupported-operation:!==` | 65 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
 | `bounded-integer.unsupported-operation:nin` | 54 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
 | `bounded-integer.unsupported-operation:in` | 49 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
 | `bounded-integer.unsupported-operation:&` | 47 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |

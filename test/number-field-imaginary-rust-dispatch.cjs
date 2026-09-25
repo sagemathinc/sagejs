@@ -159,6 +159,30 @@ test("Rust quadratic dispatch rejects a forged generator ideal", async () => {
   assert.equal(answer.repr, "True");
 });
 
+test("quadratic map validation rejects extra certificate, inverse, and ideal data", async () => {
+  const answer = await evaluate([
+    ...fixture,
+    "def rejects_map():",
+    "    try:",
+    "        rust_runtime.validate_imaginary_group_result(result, -23)",
+    "    except rust_runtime.RustClassGroupPublicationError:",
+    "        return True",
+    "    return False",
+    "original_certificate = result['certificate']['reducedForms'][1]",
+    "result['certificate']['reducedForms'][1] = dict(original_certificate, extra=1)",
+    "bad_certificate = rejects_map()",
+    "result['certificate']['reducedForms'][1] = original_certificate",
+    "original_inverse = result['completeClassMap'][1]['inverseForm']",
+    "result['completeClassMap'][1]['inverseForm'] = dict(original_inverse, extra=1)",
+    "bad_inverse = rejects_map()",
+    "result['completeClassMap'][1]['inverseForm'] = original_inverse",
+    "result['completeClassMap'][1]['representativeIdeal']['basisColumns'][1][0] += 1",
+    "bad_ideal = rejects_map()",
+    "[bad_certificate, bad_inverse, bad_ideal]",
+  ]);
+  assert.equal(answer.repr, "[True, True, True]");
+});
+
 test("QuadraticField and its maximal order expose the explicit Rust route", async () => {
   const answer = await evaluate([
     ...fixture,
