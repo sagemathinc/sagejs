@@ -309,7 +309,7 @@
     },
     {
       "path": "packages/class-groups/src/imaginary.rs",
-      "sha256": "9490d4a068d0ec4efbb0458a2d8a19062b634c11cb157065c338600906b52c19",
+      "sha256": "41a49026c8ec5b53c70cb4c3856afbe06d23c6fe2ae01beed59476fe6bc7db78",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",

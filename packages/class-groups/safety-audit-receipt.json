@@ -1213,8 +1213,8 @@
     {
       "file": "src/imaginary.rs",
       "scope": "product-candidate",
-      "sha256": "9490d4a068d0ec4efbb0458a2d8a19062b634c11cb157065c338600906b52c19",
-      "bytes": 95221,
+      "sha256": "41a49026c8ec5b53c70cb4c3856afbe06d23c6fe2ae01beed59476fe6bc7db78",
+      "bytes": 96344,
       "copyrightNotices": [
         "Copyright (C) Sage.js contributors."
       ],
@@ -1489,8 +1489,8 @@
     {
       "file": "tests/service_contract.rs",
       "scope": "product-candidate-test",
-      "sha256": "7430e4ec829af0db6fb6fbb6002ba216e12f51eacdd22aaed2d0cd9082c64e0f",
-      "bytes": 10207,
+      "sha256": "03a22fc478acdfb28579cee48d58b5ff37ad712557f301d843ff871501a29ba6",
+      "bytes": 10211,
       "copyrightNotices": [
         "Copyright (C) Sage.js contributors."
       ],

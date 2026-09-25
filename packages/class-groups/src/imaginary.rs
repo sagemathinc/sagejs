@@ -1552,11 +1552,16 @@ fn visit_sieved_reduced_form_families(
 }
 
 fn sieve_root_patterns(discriminant: i64, bound: u64, parity: u64) -> Vec<SieveRootPattern> {
+    let primes = sieve_candidate_primes(discriminant, bound);
+    root_patterns_for_primes(discriminant, parity, &primes)
+}
+
+fn sieve_candidate_primes(discriminant: i64, bound: u64) -> Vec<u64> {
     let absolute = discriminant.unsigned_abs();
     let maximum_n = (bound * bound + absolute) / 4 + 1;
     let prime_bound = integer_square_root(maximum_n) as usize;
     let mut prime_sieve = vec![true; prime_bound + 1];
-    let mut patterns = Vec::new();
+    let mut primes = Vec::new();
     for prime in 2..=prime_bound {
         if !prime_sieve[prime] {
             continue;
@@ -1569,7 +1574,18 @@ fn sieve_root_patterns(discriminant: i64, bound: u64, parity: u64) -> Vec<SieveR
         if prime == 2 {
             continue;
         }
-        let prime = prime as u64;
+        primes.push(prime as u64);
+    }
+    primes
+}
+
+fn root_patterns_for_primes(
+    discriminant: i64,
+    parity: u64,
+    primes: &[u64],
+) -> Vec<SieveRootPattern> {
+    let mut patterns = Vec::new();
+    for &prime in primes {
         let residue = discriminant.rem_euclid(prime as i64) as u64;
         let Some(first_root) = square_root_mod_prime(residue, prime) else {
             continue;
@@ -1584,6 +1600,28 @@ fn sieve_root_patterns(discriminant: i64, bound: u64, parity: u64) -> Vec<SieveR
         });
     }
     patterns
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn sieve_root_patterns_with_workers(
+    discriminant: i64,
+    bound: u64,
+    parity: u64,
+    workers: usize,
+) -> Vec<SieveRootPattern> {
+    let primes = sieve_candidate_primes(discriminant, bound);
+    let chunk_size = primes.len().div_ceil(workers.max(1));
+    std::thread::scope(|scope| {
+        let mut handles = Vec::new();
+        for chunk in primes.chunks(chunk_size) {
+            handles
+                .push(scope.spawn(move || root_patterns_for_primes(discriminant, parity, chunk)));
+        }
+        handles
+            .into_iter()
+            .flat_map(|handle| handle.join().expect("sieve root worker panicked"))
+            .collect()
+    })
 }
 
 fn visit_sieved_reduced_form_families_range(
@@ -1705,7 +1743,7 @@ fn enumerate_reduced_forms_with_workers(
         0
     };
     let count = ((bound - parity) / 2 + 1) as usize;
-    let patterns = sieve_root_patterns(discriminant, bound, parity);
+    let patterns = sieve_root_patterns_with_workers(discriminant, bound, parity, workers);
     let chunk_size = count.div_ceil(workers);
     let fragments = std::thread::scope(|scope| {
         let mut handles = Vec::new();
