@@ -2075,7 +2075,18 @@
           "status": "partial",
           "notes": "Full endomorphism order over QQ, including repeated factors and integral gluing."
         },
-        "provenance": [],
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath modular abelian variety endomorphism-ring API",
+            "url": "https://doc.sagemath.org/html/en/reference/modabvar/sage/modular/abvar/homspace.html",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "sagejs-original",
+            "source": "Exact endomorphism order from the complete integral Hom lattice"
+          }
+        ],
         "references": [],
         "limitations": [
           "Does not compute geometric endomorphisms over an algebraic closure."
@@ -7212,7 +7223,18 @@
           "status": "partial",
           "notes": "Complete Hom over QQ for the supported weight-two Gamma0 varieties."
         },
-        "provenance": [],
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath modular abelian variety Hom-space API",
+            "url": "https://doc.sagemath.org/html/en/reference/modabvar/sage/modular/abvar/homspace.html",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "sagejs-original",
+            "source": "Exact integral Hom lattice from modular-symbol homology and saturation"
+          }
+        ],
         "references": [],
         "limitations": [
           "Only supported modular abelian varieties over QQ; not a generic categorical Hom constructor."
@@ -16735,7 +16757,18 @@
         "status": "partial",
         "notes": "Full endomorphism order over QQ, including repeated factors and integral gluing."
       },
-      "provenance": [],
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath modular abelian variety endomorphism-ring API",
+          "url": "https://doc.sagemath.org/html/en/reference/modabvar/sage/modular/abvar/homspace.html",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "sagejs-original",
+          "source": "Exact endomorphism order from the complete integral Hom lattice"
+        }
+      ],
       "references": [],
       "limitations": [
         "Does not compute geometric endomorphisms over an algebraic closure."
@@ -28150,7 +28183,18 @@
         "status": "partial",
         "notes": "Complete Hom over QQ for the supported weight-two Gamma0 varieties."
       },
-      "provenance": [],
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath modular abelian variety Hom-space API",
+          "url": "https://doc.sagemath.org/html/en/reference/modabvar/sage/modular/abvar/homspace.html",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "sagejs-original",
+          "source": "Exact integral Hom lattice from modular-symbol homology and saturation"
+        }
+      ],
       "references": [],
       "limitations": [
         "Only supported modular abelian varieties over QQ; not a generic categorical Hom constructor."
@@ -38134,15 +38178,12 @@
       "with_summary": 325,
       "with_tags": 325,
       "with_backend": 325,
-      "with_provenance": 323,
+      "with_provenance": 325,
       "with_compatibility_notes": 325,
       "with_references": 93,
       "markdown_docstrings": 325,
       "invalid_markdown_entries": [],
-      "incomplete_entries": [
-        "End",
-        "Hom"
-      ]
+      "incomplete_entries": []
     },
     "examples": {
       "entries_with_examples": 230,
