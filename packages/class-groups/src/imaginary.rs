@@ -421,7 +421,10 @@ fn cyclic_orbit_from_class_number(
     let factors = factor_usize(class_number);
     let bound = integer_square_root(discriminant.unsigned_abs() / 3) as i64;
     let mut generator = None;
-    for norm in 2_i64..=257 {
+    // Prefer larger split-prime norms for the long orbit: multiplying by a
+    // norm-2, -3, or -5 form repeatedly hits the general lattice product
+    // more often. Keep those three primes as a complete-search fallback.
+    for norm in (7_i64..=257).chain(2..=5) {
         if !is_prime(norm as u64) {
             continue;
         }
@@ -521,7 +524,7 @@ fn rank_two_orbit_from_class_number(
     }
     let factors = factor_usize(order);
     let mut generators = None;
-    for norm in 2_i64..=257 {
+    for norm in (7_i64..=257).chain(2..=5) {
         if !is_prime(norm as u64) {
             continue;
         }
@@ -667,10 +670,11 @@ fn collect_cyclic_orbit_sequential(
 ) -> Result<Vec<(BinaryQuadraticForm, u64)>, ImaginaryClassGroupError> {
     let mut tagged = Vec::with_capacity(order);
     let mut power = principal_form(discriminant);
+    let multiplier = FixedFormMultiplier::new(generator, discriminant);
     for ordinal in 0..=order / 2 {
         push_cyclic_orbit_inverse_pair(&mut tagged, power, ordinal, order)?;
         if ordinal < order / 2 {
-            power = compose_reduced_forms_unchecked(power, generator, discriminant)?;
+            power = multiplier.apply(power)?;
         }
     }
     Ok(tagged)
@@ -702,17 +706,19 @@ fn collect_cyclic_orbit_with_workers(
 ) -> Result<Vec<(BinaryQuadraticForm, u64)>, ImaginaryClassGroupError> {
     let half_span = order / 2 + 1;
     let chunk_size = half_span.div_ceil(workers.max(1));
+    let multiplier = FixedFormMultiplier::new(generator, discriminant);
     let fragments = std::thread::scope(|scope| {
         let mut handles = Vec::new();
         for start in (0..half_span).step_by(chunk_size) {
             let end = (start + chunk_size).min(half_span);
+            let multiplier = &multiplier;
             handles.push(scope.spawn(move || {
                 let mut power = form_power(generator, start, discriminant)?;
                 let mut tagged = Vec::with_capacity(2 * (end - start));
                 for ordinal in start..end {
                     push_cyclic_orbit_inverse_pair(&mut tagged, power, ordinal, order)?;
                     if ordinal + 1 < end {
-                        power = compose_reduced_forms_unchecked(power, generator, discriminant)?;
+                        power = multiplier.apply(power)?;
                     }
                 }
                 Ok(tagged)
@@ -781,12 +787,13 @@ fn collect_rank_two_orbit_sequential(
 ) -> Result<Vec<(BinaryQuadraticForm, [u64; 2])>, ImaginaryClassGroupError> {
     let mut tagged = Vec::with_capacity(2 * order);
     let mut power = principal_form(discriminant);
+    let multiplier = FixedFormMultiplier::new(generator, discriminant);
     for exponent in 0..=order / 2 {
         push_rank_two_orbit_inverse_pair(&mut tagged, power, 0, exponent, order)?;
         let twisted = compose_reduced_forms_unchecked(power, involution, discriminant)?;
         push_rank_two_orbit_inverse_pair(&mut tagged, twisted, 1, exponent, order)?;
         if exponent < order / 2 {
-            power = compose_reduced_forms_unchecked(power, generator, discriminant)?;
+            power = multiplier.apply(power)?;
         }
     }
     Ok(tagged)
@@ -802,10 +809,12 @@ fn collect_rank_two_orbit_with_workers(
 ) -> Result<Vec<(BinaryQuadraticForm, [u64; 2])>, ImaginaryClassGroupError> {
     let half_span = order / 2 + 1;
     let chunk_size = half_span.div_ceil(workers.max(1));
+    let multiplier = FixedFormMultiplier::new(generator, discriminant);
     let fragments = std::thread::scope(|scope| {
         let mut handles = Vec::new();
         for start in (0..half_span).step_by(chunk_size) {
             let end = (start + chunk_size).min(half_span);
+            let multiplier = &multiplier;
             handles.push(scope.spawn(move || {
                 let mut power = form_power(generator, start, discriminant)?;
                 let mut tagged = Vec::with_capacity(4 * (end - start));
@@ -814,7 +823,7 @@ fn collect_rank_two_orbit_with_workers(
                     let twisted = compose_reduced_forms_unchecked(power, involution, discriminant)?;
                     push_rank_two_orbit_inverse_pair(&mut tagged, twisted, 1, exponent, order)?;
                     if exponent + 1 < end {
-                        power = compose_reduced_forms_unchecked(power, generator, discriminant)?;
+                        power = multiplier.apply(power)?;
                     }
                 }
                 Ok(tagged)
@@ -1107,10 +1116,14 @@ fn reduce_form(
             b: i64::try_from(b).map_err(|_| ImaginaryClassGroupError::GroupLawFailure)?,
             c: i64::try_from(c).map_err(|_| ImaginaryClassGroupError::GroupLawFailure)?,
         };
-        return reduced
-            .is_primitive_reduced(discriminant)
-            .then_some(reduced)
-            .ok_or(ImaginaryClassGroupError::GroupLawFailure);
+        // All callers enter with integral forms at a validated fundamental
+        // discriminant. The exact numerator division above preserves that
+        // discriminant; a fundamental discriminant admits no imprimitive
+        // integral form. The reduction loop has established the canonical
+        // inequalities, so repeating the gcd and discriminant checks for
+        // every orbit multiplication is unnecessary.
+        debug_assert!(reduced.is_primitive_reduced(discriminant));
+        return Ok(reduced);
     }
 }
 
@@ -1157,6 +1170,64 @@ fn compose_reduced_forms_unchecked(
         );
     }
     compose_reduced_forms_lattice_unchecked(left, right, discriminant)
+}
+
+/// Reuse the CRT inverse when one operand is a fixed, small prime-norm form.
+/// The non-coprime products still take the general exact lattice path.
+struct FixedFormMultiplier {
+    form: BinaryQuadraticForm,
+    discriminant: i64,
+    parity: i64,
+    right_t: i64,
+    prime_inverses: Option<Vec<i64>>,
+}
+
+impl FixedFormMultiplier {
+    fn new(form: BinaryQuadraticForm, discriminant: i64) -> Self {
+        let parity = discriminant.rem_euclid(2);
+        let prime_inverses = if (2..=257).contains(&form.a) && is_prime(form.a as u64) {
+            let mut inverses = vec![0_i64; form.a as usize];
+            for residue in 1..form.a {
+                let (gcd, inverse) = extended_gcd_i64(residue, form.a);
+                debug_assert_eq!(gcd, 1);
+                inverses[residue as usize] = inverse.rem_euclid(form.a);
+            }
+            Some(inverses)
+        } else {
+            None
+        };
+        Self {
+            form,
+            discriminant,
+            parity,
+            right_t: (-form.b - parity) / 2,
+            prime_inverses,
+        }
+    }
+
+    fn apply(
+        &self,
+        left: BinaryQuadraticForm,
+    ) -> Result<BinaryQuadraticForm, ImaginaryClassGroupError> {
+        let Some(inverses) = &self.prime_inverses else {
+            return compose_reduced_forms_unchecked(left, self.form, self.discriminant);
+        };
+        let inverse = inverses[left.a.rem_euclid(self.form.a) as usize];
+        if inverse == 0 {
+            return compose_reduced_forms_lattice_unchecked(left, self.form, self.discriminant);
+        }
+        let left_t = (-left.b - self.parity) / 2;
+        let a = left.a * self.form.a;
+        let shift = ((self.right_t - left_t) * inverse).rem_euclid(self.form.a);
+        let t = (left_t + left.a * shift).rem_euclid(a);
+        reduce_lattice_form(
+            i128::from(a),
+            i128::from(t),
+            i128::from(self.parity),
+            i128::from(self.discriminant),
+            self.discriminant,
+        )
+    }
 }
 
 /// General rank-two ideal-lattice product, retained as the independent exact
@@ -2880,6 +2951,45 @@ mod tests {
             }
         }
         assert!(checked > 1_000);
+    }
+
+    #[test]
+    fn fixed_prime_form_multiplier_matches_exact_composition() {
+        let mut coprime = 0;
+        let mut noncoprime = 0;
+        for discriminant in [
+            -23,
+            -231,
+            -15_015,
+            -8_173_415,
+            -20_000_000_179,
+            -20_000_011_124,
+            -60_000_000_091,
+        ] {
+            let forms = enumerate_reduced_forms(discriminant).1;
+            let stride = (forms.len() / 256).max(1);
+            for &right in forms
+                .iter()
+                .filter(|form| form.a <= 101 && is_prime(form.a as u64))
+                .take(16)
+            {
+                let multiplier = FixedFormMultiplier::new(right, discriminant);
+                for &left in forms.iter().step_by(stride) {
+                    assert_eq!(
+                        multiplier.apply(left),
+                        compose_reduced_forms_unchecked(left, right, discriminant),
+                        "D={discriminant}, left={left:?}, right={right:?}"
+                    );
+                    if left.a % right.a == 0 {
+                        noncoprime += 1;
+                    } else {
+                        coprime += 1;
+                    }
+                }
+            }
+        }
+        assert!(coprime > 1_000);
+        assert!(noncoprime > 100);
     }
 
     #[test]
