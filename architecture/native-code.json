@@ -3332,7 +3332,7 @@
       "safety_rationale": "Pointer and allocation preconditions are documented at every exported boundary and covered by the exact safety audit receipt.",
       "safety_receipt": {
         "path": "packages/class-groups/safety-audit-receipt.json",
-        "sha256": "731c4a23ef1d40a128d446adc9b1b80789300800ad9e1f4bbd10763fca030347"
+        "sha256": "dbc99527cbe8ca1ba3f12bd57a14c8883fe571c68034f3abcd683d5ccce47d1d"
       },
       "provenance_mapping_status": "not-applicable"
     },

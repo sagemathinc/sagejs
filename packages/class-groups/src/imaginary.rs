@@ -498,7 +498,7 @@ fn cyclic_orbit_from_class_number(
     {
         return Err(ImaginaryClassGroupError::GroupLawFailure);
     }
-    tagged.sort_unstable_by_key(|&(form, _)| form);
+    sort_tagged_forms(&mut tagged, bound as usize);
     if tagged.windows(2).any(|pair| pair[0].0 == pair[1].0) {
         return Err(ImaginaryClassGroupError::GroupLawFailure);
     }
@@ -605,7 +605,7 @@ fn rank_two_orbit_from_class_number(
     {
         return Err(ImaginaryClassGroupError::GroupLawFailure);
     }
-    tagged.sort_unstable_by_key(|&(form, _)| form);
+    sort_tagged_forms(&mut tagged, bound as usize);
     if tagged.windows(2).any(|pair| pair[0].0 == pair[1].0) {
         return Err(ImaginaryClassGroupError::GroupLawFailure);
     }
@@ -2101,6 +2101,38 @@ fn sort_reduced_forms(forms: &mut Vec<BinaryQuadraticForm>, bound: usize) {
     *forms = ordered;
 }
 
+fn sort_tagged_forms<T: Copy>(tagged: &mut Vec<(BinaryQuadraticForm, T)>, bound: usize) {
+    if tagged.len() < 1_000 || bound >= (1 << 18) {
+        tagged.sort_unstable_by_key(|&(form, _)| form);
+        return;
+    }
+    // The guarded reduced-form bound makes b + bound fit in 19 bits.
+    // For fixed D, c is uniquely determined by (a, b), so this key has
+    // exactly the same order as BinaryQuadraticForm's lexicographic order.
+    let key = |form: BinaryQuadraticForm| {
+        debug_assert!(form.a > 0 && form.a as usize <= bound);
+        debug_assert!(form.b >= -(bound as i64) && form.b <= bound as i64);
+        ((form.a as u64) << 19) | ((form.b + bound as i64) as u64)
+    };
+    let mut ordered = vec![tagged[0]; tagged.len()];
+    for shift in [0, 13, 26] {
+        let mut counts = [0_usize; 8192];
+        for &(form, _) in tagged.iter() {
+            counts[((key(form) >> shift) & 8191) as usize] += 1;
+        }
+        let mut next = 0;
+        for count in &mut counts {
+            (next, *count) = (next + *count, next);
+        }
+        for pair in tagged.iter().copied() {
+            let digit = ((key(pair.0) >> shift) & 8191) as usize;
+            ordered[counts[digit]] = pair;
+            counts[digit] += 1;
+        }
+        std::mem::swap(tagged, &mut ordered);
+    }
+}
+
 #[derive(Clone, Copy)]
 struct SieveFactor {
     prime: u64,
@@ -2900,6 +2932,23 @@ mod tests {
         reference.sort_unstable();
         sort_reduced_forms(&mut forms, bound as usize);
         assert_eq!(forms, reference);
+    }
+
+    #[test]
+    fn tagged_radix_sort_matches_lexicographic_sort() {
+        for discriminant in [-15_000_000_315, -60_000_000_091] {
+            let (bound, forms) = enumerate_reduced_forms_sequential(discriminant);
+            let mut tagged = forms
+                .into_iter()
+                .enumerate()
+                .map(|(index, form)| (form, [index as u64, (index % 17) as u64]))
+                .collect::<Vec<_>>();
+            tagged.reverse();
+            let mut reference = tagged.clone();
+            reference.sort_unstable_by_key(|&(form, _)| form);
+            sort_tagged_forms(&mut tagged, bound as usize);
+            assert_eq!(tagged, reference, "D={discriminant}");
+        }
     }
 
     #[test]
