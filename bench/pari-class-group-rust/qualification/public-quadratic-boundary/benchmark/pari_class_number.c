@@ -2,8 +2,8 @@
 // GPL-2.0-or-later, without warranty.
 
 // Qualification-only timing control for PARI 2.17.4 qfbclassno(D,0).
-// The frozen panel has |D| < 10^7, below PARI's documented unconditional
-// |D| < 2*10^10 range for this Shanks implementation.
+// Reject values outside PARI's documented unconditional |D| < 2*10^10
+// range for this Shanks implementation.
 
 #define _POSIX_C_SOURCE 200809L
 #include "pari.h"
@@ -40,7 +40,7 @@ int main(int argc, char **argv)
         return 2;
     }
     discriminant = strtol(argv[1], &end, 10);
-    if (*end != '\0' || discriminant >= 0 || discriminant <= -10000000)
+    if (*end != '\0' || discriminant >= 0 || discriminant <= -20000000000L)
     {
         fputs("expected a frozen-panel negative discriminant\n", stderr);
         return 2;

@@ -80,19 +80,32 @@ The authenticated PARI 2.17.4 control must already exist at
 ## Matched scalar class-number comparison
 
 `run_class_number.py` separately compares the exact scalar Rust count, the
-current source-matched Sage.js FLINT `qfbClassNumber` addon, and PARI 2.17.4
-`qfbclassno(D,0)` on the same frozen panel. Unlike the full-group comparison
-above, none builds class-group invariant factors or ideal maps. PARI's pinned
-documentation explicitly guarantees its Shanks routine
-for `|D| < 2*10^10`; every panel field is below `10^7`, so this is a matched
-*unconditional* class-number comparison. The Rust arm starts with the public
-monic polynomial and repeats validation; PARI and FLINT start with its
-equivalent discriminant. All clocks exclude process startup and JSON
-serialization, but FLINT's clock includes the Node/N-API boundary.
+current source-matched Sage.js FLINT `qfbClassNumber` addon, and PARI 2.17.4.
+On the original seven-field panel, PARI uses `qfbclassno(D,0)` throughout;
+its pinned documentation explicitly guarantees that Shanks routine for
+`|D| < 2*10^10`, and every original-panel field is below `10^7`. The Rust
+arm starts with the public monic polynomial and repeats validation; PARI and
+FLINT start with its equivalent discriminant. All clocks exclude process
+startup and JSON serialization, but FLINT's clock includes the Node/N-API
+boundary.
+
+The v2 scalar campaign uses the already-frozen, diverse `panel-v2.json`.
+Below `2*10^10`, PARI still uses its documented-unconditional Shanks routine.
+Above that bound, the PARI arm projects the class number from the same
+`nfinit0` plus `bnfinit0(...,0)` public call as the full-group campaign.
+That call also computes the full group and, **without `bnfcertify`, is
+GRH-conditional**; the Rust scalar count remains unconditional throughout.
+Consequently the v2 rows are not a single uniform scalar-to-scalar comparison.
+The receipt records the PARI method and computation count for each row. Its
+purpose is to expose both the fast Shanks challenge below the threshold and
+the public full-group baseline above it, without mislabeling either as an
+unconditional PARI oracle.
 
 Build the worktree's FLINT native dependencies and direct addon with
 `pnpm --dir packages/flint build:deps` and `pnpm --dir packages/flint build:addon`.
-Then run `python3 benchmark/run_class_number.py`. It authenticates the pinned
+Then run `python3 benchmark/run_class_number.py` for the original panel or
+`python3 benchmark/run_class_number.py --panel panel-v2.json --receipt class-number-receipt-v2.json`
+for v2. It authenticates the pinned
 PARI source and current FLINT addon, builds the Rust and PARI executables,
 rotates three arms over 15 samples per field,
 checks each class number, and writes `class-number-receipt.json`. That receipt
@@ -107,7 +120,10 @@ fundamental discriminant through 10,000 and a deterministic spread up to the
 frozen panel's old `10^7` boundary. On the current host, the diagnostic panel has Rust
 faster than PARI on six of seven fields and 1.35 times PARI on the remaining
 4,378-class field. This is a substantial scalar improvement, but the receipt
-must still be frozen and promoted before making a release speed claim.
+must still be frozen and promoted before making a release speed claim. The
+current v2 diagnostic also exposes a substantial slow case at the large
+three-prime-factor field; a full-group speed result must not be presented as
+proof that scalar counting is uniformly competitive with PARI's Shanks path.
 
 ## Frozen panel and large-class-number selection
 

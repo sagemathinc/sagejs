@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import pathlib
@@ -24,6 +25,7 @@ from build import load_and_verify_pin  # noqa: E402
 PANEL = HERE / "panel.json"
 RUST = CRATE / "target" / "release" / "benchmark_public"
 PARI = HERE / "build" / "pari-class-number"
+PARI_PUBLIC_CONTROL = PARI_CONTROL / "build" / "pari-control"
 SOURCE = HERE / "pari_class_number.c"
 RECEIPT = HERE / "class-number-receipt.json"
 
@@ -39,6 +41,12 @@ def run_json(command: list[str]) -> dict:
 
 def build() -> dict:
     pin, pari_root = load_and_verify_pin()
+    public_build = subprocess.run(
+        [sys.executable, str(PARI_CONTROL / "build.py")],
+        check=True,
+        text=True,
+        capture_output=True,
+    )
     subprocess.run(
         [
             "cargo",
@@ -76,6 +84,7 @@ def build() -> dict:
     )
     return {
         "pariPin": pin,
+        "pariPublicControlBuild": json.loads(public_build.stdout),
         "pariControlSourceSha256": digest(SOURCE),
         "pariControlBinarySha256": digest(PARI),
         "rustBinarySha256": digest(RUST),
@@ -95,14 +104,38 @@ def build() -> dict:
 
 
 def main() -> None:
-    panel = json.loads(PANEL.read_text())
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--panel", default=PANEL.name)
+    parser.add_argument("--receipt", default=RECEIPT.name)
+    arguments = parser.parse_args()
+    panel_path = (HERE / arguments.panel).resolve()
+    receipt_path = (HERE / arguments.receipt).resolve()
+    if panel_path.parent != HERE or receipt_path.parent != HERE:
+        parser.error("panel and receipt must be files in the benchmark directory")
+    panel = json.loads(panel_path.read_text())
+    assert panel["frozenBeforeTiming"] is True
+    assert panel["samplesPerArmPerField"] >= 15
     identity = build()
+    if any(
+        abs(field["expected"]["discriminant"]) >= 20_000_000_000
+        for field in panel["fields"]
+    ):
+        if not PARI_PUBLIC_CONTROL.is_file():
+            raise SystemExit(
+                "authenticated PARI public control is missing; run ../pari-control/build.py"
+            )
+        identity["pariPublicControlBinarySha256"] = digest(PARI_PUBLIC_CONTROL)
     rows = []
     for field in panel["fields"]:
         coefficients = field["polynomialAscending"]
         discriminant = field["expected"]["discriminant"]
         expected = field["expected"]["classNumber"]
         repetitions = 100 if abs(discriminant) < 100000 else 20
+        pari_method = (
+            "qfbclassno(D,0)"
+            if abs(discriminant) < 20_000_000_000
+            else "nfinit0+bnfinit0(flag=0; GRH-conditional)"
+        )
         timings: dict[str, list[float]] = {"rust": [], "pari": [], "flint": []}
         for sample_index in range(panel["samplesPerArmPerField"]):
             arms = ("rust", "pari", "flint")
@@ -120,8 +153,38 @@ def main() -> None:
                     )
                     answer = sample["result"]["classNumber"]
                 elif arm == "pari":
-                    sample = run_json([str(PARI), str(discriminant), str(repetitions)])
-                    answer = sample["classNumber"]
+                    if pari_method == "qfbclassno(D,0)":
+                        sample = run_json(
+                            [str(PARI), str(discriminant), str(repetitions)]
+                        )
+                        assert (
+                            sample["boundaryLabel"]
+                            == "pari-2.17.4-qfbclassno0-flag-zero-v1"
+                        )
+                        assert sample["discriminant"] == discriminant
+                        answer = sample["classNumber"]
+                        elapsed_per_call = sample["kernelNanoseconds"] / repetitions
+                    else:
+                        sample = run_json(
+                            [
+                                str(PARI_PUBLIC_CONTROL),
+                                "public-call",
+                                field["pariPolynomial"],
+                                field["id"],
+                                str(2_026_092_500 + sample_index),
+                            ]
+                        )
+                        assert sample["boundaryKind"] == "public-call"
+                        assert sample["boundaryLabel"] == panel["boundary"]["pari"]
+                        assert sample["call"]["pariVersion"] == ["2", "17", "4"]
+                        assert sample["detail"]["discriminant"] == str(discriminant)
+                        assert sample["call"]["noPariInProductPath"] is True
+                        assert sample["result"]["invariantFactors"] == [
+                            str(value)
+                            for value in field["expected"]["invariantFactors"]
+                        ]
+                        answer = int(sample["result"]["classNumber"])
+                        elapsed_per_call = int(sample["kernelNanoseconds"])
                 else:
                     sample = run_json(
                         [
@@ -135,7 +198,11 @@ def main() -> None:
                     answer = sample["classNumber"]
                 if answer != expected:
                     raise AssertionError((field["id"], arm, answer, expected))
-                timings[arm].append(sample["kernelNanoseconds"] / repetitions)
+                timings[arm].append(
+                    elapsed_per_call
+                    if arm == "pari"
+                    else sample["kernelNanoseconds"] / repetitions
+                )
         rust_median = statistics.median(timings["rust"])
         pari_median = statistics.median(timings["pari"])
         flint_median = statistics.median(timings["flint"])
@@ -144,7 +211,11 @@ def main() -> None:
                 "fieldId": field["id"],
                 "discriminant": discriminant,
                 "classNumber": expected,
-                "computationsPerSample": repetitions,
+                "rustFlintComputationsPerSample": repetitions,
+                "pariComputationsPerSample": repetitions
+                if pari_method == "qfbclassno(D,0)"
+                else 1,
+                "pariMethod": pari_method,
                 "rustNanosecondsPerCall": timings["rust"],
                 "pariNanosecondsPerCall": timings["pari"],
                 "flintNanosecondsPerCall": timings["flint"],
@@ -162,10 +233,10 @@ def main() -> None:
             file=sys.stderr,
         )
     receipt = {
-        "schema": "sagejs.public-quadratic/class-number-comparison-v2",
+        "schema": "sagejs.public-quadratic/class-number-comparison-v3",
         "promotionStatus": "exploratory-unpromoted",
         "generatedAt": datetime.now(timezone.utc).isoformat(),
-        "panelSha256": digest(PANEL),
+        "panelSha256": digest(panel_path),
         "host": {
             "system": platform.system(),
             "machine": platform.machine(),
@@ -179,15 +250,15 @@ def main() -> None:
         },
         "semantics": {
             "rust": "exact primitive reduced-form enumeration of a negative fundamental field discriminant",
-            "pari": "PARI 2.17.4 qfbclassno(D,0), documented unconditional for |D|<2*10^10",
+            "pari": "PARI 2.17.4 qfbclassno(D,0), documented unconditional when |D|<2*10^10; above that bound, the public nfinit0+bnfinit0(flag=0) class-number projection, which also computes the full group but is GRH-conditional without bnfcertify",
             "flint": "current source-matched Sage.js FLINT N-API qfbClassNumber(D), exact reduced-form enumeration",
             "difference": "Rust starts with monic polynomial coefficients; PARI and FLINT start with the equivalent validated discriminant. Internal per-call timing excludes process startup and JSON serialization.",
         },
         "identity": identity,
         "rows": rows,
     }
-    RECEIPT.write_text(json.dumps(receipt, indent=2) + "\n")
-    print(RECEIPT)
+    receipt_path.write_text(json.dumps(receipt, indent=2) + "\n")
+    print(receipt_path)
 
 
 if __name__ == "__main__":
