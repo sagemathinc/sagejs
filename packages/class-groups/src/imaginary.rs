@@ -959,6 +959,50 @@ fn almost_cyclic_generators(
     Ok(None)
 }
 
+fn assign_form_inverse_pair(
+    forms: &[BinaryQuadraticForm],
+    assigned: &mut [bool],
+    coordinates: &mut [Vec<u64>],
+    form: BinaryQuadraticForm,
+    coordinate: &[u64],
+    invariants: &[usize],
+) -> Result<(), ImaginaryClassGroupError> {
+    if coordinate.len() != invariants.len()
+        || coordinate
+            .iter()
+            .zip(invariants)
+            .any(|(&value, &order)| value >= order as u64)
+    {
+        return Err(ImaginaryClassGroupError::GroupLawFailure);
+    }
+    let index = forms
+        .binary_search(&form)
+        .map_err(|_| ImaginaryClassGroupError::GroupLawFailure)?;
+    if assigned[index] {
+        return Err(ImaginaryClassGroupError::GroupLawFailure);
+    }
+    assigned[index] = true;
+    coordinates[index] = coordinate.to_vec();
+    let inverse_index = forms
+        .binary_search(&form.inverse_reduced()?)
+        .map_err(|_| ImaginaryClassGroupError::GroupLawFailure)?;
+    let inverse_coordinate = coordinate
+        .iter()
+        .zip(invariants)
+        .map(|(&value, &order)| if value == 0 { 0 } else { order as u64 - value })
+        .collect::<Vec<_>>();
+    if inverse_index != index {
+        if assigned[inverse_index] {
+            return Err(ImaginaryClassGroupError::GroupLawFailure);
+        }
+        assigned[inverse_index] = true;
+        coordinates[inverse_index] = inverse_coordinate;
+    } else if inverse_coordinate != coordinate {
+        return Err(ImaginaryClassGroupError::GroupLawFailure);
+    }
+    Ok(())
+}
+
 fn compute_group_structure(
     forms: &[BinaryQuadraticForm],
     discriminant: i64,
@@ -1044,19 +1088,56 @@ fn compute_group_structure(
     if invariants.len() == 1 {
         let generator = generators[0];
         let mut form = principal;
-        for ordinal in 0..forms.len() {
-            let index = forms
-                .binary_search(&form)
-                .map_err(|_| ImaginaryClassGroupError::GroupLawFailure)?;
-            if assigned[index] {
-                return Err(ImaginaryClassGroupError::GroupLawFailure);
+        for ordinal in 0..=forms.len() / 2 {
+            assign_form_inverse_pair(
+                forms,
+                &mut assigned,
+                &mut coordinates,
+                form,
+                &[ordinal as u64],
+                &invariants,
+            )?;
+            if ordinal < forms.len() / 2 {
+                form = compose_reduced_forms_unchecked(form, generator, discriminant)?;
             }
-            assigned[index] = true;
-            coordinates[index] = vec![ordinal as u64];
-            form = compose_reduced_forms_unchecked(form, generator, discriminant)?;
         }
-        if form != principal {
+        if form_power(generator, forms.len(), discriminant)? != principal {
             return Err(ImaginaryClassGroupError::GroupLawFailure);
+        }
+    } else if invariants.len() == 2 && invariants[0] == 2 {
+        // Each power of the large generator and its inverse give two classes;
+        // multiplying each by the independent involution gives the other two.
+        // Uniqueness of all assignments proves the claimed direct product.
+        let involution = generators[0];
+        let generator = generators[1];
+        let order = invariants[1];
+        if form_power(involution, 2, discriminant)? != principal
+            || form_power(generator, order, discriminant)? != principal
+        {
+            return Err(ImaginaryClassGroupError::GroupLawFailure);
+        }
+        let mut power = principal;
+        for exponent in 0..=order / 2 {
+            assign_form_inverse_pair(
+                forms,
+                &mut assigned,
+                &mut coordinates,
+                power,
+                &[0, exponent as u64],
+                &invariants,
+            )?;
+            let twisted = compose_reduced_forms_unchecked(power, involution, discriminant)?;
+            assign_form_inverse_pair(
+                forms,
+                &mut assigned,
+                &mut coordinates,
+                twisted,
+                &[1, exponent as u64],
+                &invariants,
+            )?;
+            if exponent < order / 2 {
+                power = compose_reduced_forms_unchecked(power, generator, discriminant)?;
+            }
         }
     } else {
         let mut generator_powers = Vec::with_capacity(generators.len());
