@@ -1262,12 +1262,28 @@ class FiniteFieldExtensionParent(sage.Parent):
                 self._machineExtensionEq = runtime.reflect.get(
                     element_prototype, "_eq_"
                 )
-                self._machineExtensionMaterialize = runtime.reflect.get(
-                    parent_prototype, "_from_machine_coordinates"
-                )
-                self._machineExtensionIsolated = runtime.reflect.get(
-                    parent_prototype, "_machine_extension_affine_isolated"
-                )
+                for method_name, prefix in (
+                    ("_from_machine_coordinates", "_machineExtensionMaterialize"),
+                    ("_machine_extension_affine_isolated", "_machineExtensionIsolated"),
+                ):
+                    owner = parent_prototype
+                    descriptor = runtime.undefined
+                    while owner is not None:
+                        descriptor = runtime.object.getOwnPropertyDescriptor(
+                            owner, method_name
+                        )
+                        if descriptor is not runtime.undefined:
+                            break
+                        owner = runtime.object.getPrototypeOf(owner)
+                    getter = runtime.reflect.get(descriptor, "get")
+                    method = (
+                        runtime.reflect.get(getter, "__sagejs_unbound_method__")
+                        if getter is not runtime.undefined
+                        else runtime.reflect.get(descriptor, "value")
+                    )
+                    setattr(self, prefix + "Owner", owner)
+                    setattr(self, prefix + "Getter", getter)
+                    setattr(self, prefix, method)
         self._nativeResourceChildren = []
         self._nativeContextStorage: Any = runtime.undefined
         self._legacyNativeContext: Any = runtime.undefined

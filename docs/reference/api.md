@@ -1342,6 +1342,10 @@ sage: End(J0(23)).rank()
 - Sage compatibility: partial — Full endomorphism order over QQ, including repeated factors and integral gluing.
 - Limitations: Does not compute geometric endomorphisms over an algebraic closure.
 
+### Provenance
+
+- `sagejs-original` — Integral endomorphism order from the complete Hom lattice
+
 ## `eta_product`
 
 ```sage
@@ -5109,6 +5113,10 @@ sage: Hom(J0(11), J0(22)).rank()
 - Backends: Sage.js exact newform decomposition, FLINT integral saturation
 - Sage compatibility: partial — Complete Hom over QQ for the supported weight-two Gamma0 varieties.
 - Limitations: Only supported modular abelian varieties over QQ; not a generic categorical Hom constructor.
+
+### Provenance
+
+- `sagejs-original` — Integral Hom lattice from exact newform decomposition and saturation
 
 ## `hue`
 

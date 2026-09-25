@@ -157,7 +157,6 @@ jobs:
           cp "$(node packages/wasm-toolchain/scripts/toolchain.cjs path)/receipt.json" \
             "build/toolchain-${{ matrix.replica }}.json"
           pnpm build
-          packages/class-groups/scripts/build-wasm.sh
           pnpm --dir packages/flint-wasm build
           node packages/flint-wasm/scripts/production-receipt.cjs validate
           node scripts/numerical-product.cjs publish \
@@ -243,7 +242,6 @@ jobs:
           node packages/wasm-toolchain/scripts/probe.cjs \
             > "build/wasi-probe-${{ matrix.platform }}.json"
           pnpm build
-          packages/class-groups/scripts/build-wasm.sh
           pnpm --dir packages/flint-wasm build
           node packages/flint-wasm/scripts/production-receipt.cjs validate
           env -u SAGEJS_NUMERICAL_PRODUCT_ROOT \

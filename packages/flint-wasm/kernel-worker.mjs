@@ -401,6 +401,10 @@ async function initialize(message) {
     throw new Error("Sage.js browser kernel is already initialized");
   }
   evaluatorPromise = instantiateSageEvaluator({
+    // The public package omits the development Rust reactor. The evaluator's
+    // worker default otherwise fetches its receipt; leave the optional
+    // resource absent so class-group requests decline the capability.
+    createClassGroupBackend: async () => undefined,
     mode: message.mode,
     compiler: message.compiler,
     baselib: message.baselib,

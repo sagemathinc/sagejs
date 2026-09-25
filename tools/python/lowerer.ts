@@ -2645,6 +2645,11 @@ export class PythonCstLowerer {
       if (statement instanceof this.compiler.AST_Method) {
         const methodName = statement.name.name;
         if (methodName === "__new__") statement.static = true;
+        // A method defined in this class replaces the inherited descriptor
+        // kind. In particular, a classmethod may override a staticmethod (and
+        // vice versa) without inheriting its receiver convention.
+        delete staticMethods[methodName];
+        delete classMethods[methodName];
         if (statement.static) staticMethods[methodName] = true;
         if (statement.classmethod) classMethods[methodName] = true;
         if (methodName === "__init__") initializer = statement;

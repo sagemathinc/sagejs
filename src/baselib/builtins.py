@@ -819,37 +819,63 @@ def _builtins_class_attribute_resolution(
     # Instances must nevertheless see those descriptors through the class
     # MRO before falling back to inherited prototype methods.
     class_owners = runtime.native_get(owner, "__mro__")
-    if not runtime.array.isArray(class_owners):
+    has_python_mro = runtime.array.isArray(class_owners)
+    if not has_python_mro:
         class_owners = [owner]
+    selected_prototype = runtime.undefined
     for class_owner in class_owners:
         class_descriptor = runtime.object.getOwnPropertyDescriptor(class_owner, name)
-        if class_descriptor is runtime.undefined:
-            continue
-        class_value = runtime.reflect.get(class_descriptor, "value")
-        if _builtins_is_missing_binding(class_value):
-            continue
-        if not (
-            _builtins_has_member(class_value, "__staticmethod__")
-            or _builtins_has_member(class_value, "__classmethod__")
-        ):
-            continue
-        if _builtins_get_member(class_value, "__classmethod__") is True:
-            class_kind = _BUILTINS_DESCRIPTOR_NONDATA
-        elif _builtins_get_member(class_value, "__staticmethod__") is True:
-            class_kind = _BUILTINS_DESCRIPTOR_DIRECT
-        else:
-            class_kind = _BUILTINS_DESCRIPTOR_GENERIC
-        if _builtins_member_is_function(class_value, "__get__"):
-            class_kind = _BUILTINS_DESCRIPTOR_NONDATA
-        cache_entry = runtime.reflect.construct(runtime.array, [])
-        cache_entry.push(_builtins_descriptor_epoch.value)
-        cache_entry.push(class_descriptor)
-        cache_entry.push(class_kind)
-        cache_entry.push(class_value)
-        owner_cache.set(name, cache_entry)
-        return cache_entry
-    prototype = runtime.native_get(owner, "prototype")
-    while prototype is not None and prototype is not runtime.undefined:
+        if class_descriptor is not runtime.undefined:
+            class_value = runtime.reflect.get(class_descriptor, "value")
+            if not _builtins_is_missing_binding(class_value) and (
+                _builtins_has_member(class_value, "__staticmethod__")
+                or _builtins_has_member(class_value, "__classmethod__")
+            ):
+                if _builtins_get_member(class_value, "__classmethod__") is True:
+                    class_kind = _BUILTINS_DESCRIPTOR_NONDATA
+                elif _builtins_get_member(class_value, "__staticmethod__") is True:
+                    class_kind = _BUILTINS_DESCRIPTOR_DIRECT
+                else:
+                    class_kind = _BUILTINS_DESCRIPTOR_GENERIC
+                if _builtins_member_is_function(class_value, "__get__"):
+                    class_kind = _BUILTINS_DESCRIPTOR_NONDATA
+                cache_entry = runtime.reflect.construct(runtime.array, [])
+                cache_entry.push(_builtins_descriptor_epoch.value)
+                cache_entry.push(class_descriptor)
+                cache_entry.push(class_kind)
+                cache_entry.push(class_value)
+                owner_cache.set(name, cache_entry)
+                return cache_entry
+        if has_python_mro:
+            candidate = runtime.native_get(class_owner, "prototype")
+            if candidate is None or candidate is runtime.undefined:
+                continue
+            candidate_descriptor = runtime.object.getOwnPropertyDescriptor(
+                candidate, name
+            )
+            if candidate_descriptor is runtime.undefined:
+                continue
+            candidate_value = runtime.reflect.get(candidate_descriptor, "value")
+            if _builtins_is_missing_binding(candidate_value) and (
+                runtime.reflect.get(candidate_descriptor, "get") is runtime.undefined
+                and runtime.reflect.get(candidate_descriptor, "set")
+                is runtime.undefined
+            ):
+                continue
+            selected_prototype = candidate
+            break
+    # JavaScript's prototype chain follows only the primary base. Python
+    # attribute lookup follows the full C3 MRO, including secondary bases.
+    prototypes = []
+    if has_python_mro:
+        if selected_prototype is not runtime.undefined:
+            prototypes.append(selected_prototype)
+    else:
+        candidate = runtime.native_get(owner, "prototype")
+        while candidate is not None and candidate is not runtime.undefined:
+            prototypes.append(candidate)
+            candidate = runtime.object.getPrototypeOf(candidate)
+    for prototype in prototypes:
         descriptor = runtime.object.getOwnPropertyDescriptor(prototype, name)
         if descriptor is not runtime.undefined:
             descriptor_value = runtime.reflect.get(descriptor, "value")
@@ -857,7 +883,6 @@ def _builtins_class_attribute_resolution(
                 runtime.reflect.get(descriptor, "get") is runtime.undefined
                 and runtime.reflect.get(descriptor, "set") is runtime.undefined
             ):
-                prototype = runtime.object.getPrototypeOf(prototype)
                 continue
             descriptor_kind = _BUILTINS_DESCRIPTOR_GENERIC
             descriptor_target = descriptor_value
@@ -919,7 +944,6 @@ def _builtins_class_attribute_resolution(
             cache_entry.push(descriptor_target)
             owner_cache.set(name, cache_entry)
             return cache_entry
-        prototype = runtime.object.getPrototypeOf(prototype)
     cache_entry = runtime.reflect.construct(runtime.array, [])
     cache_entry.push(_builtins_descriptor_epoch.value)
     cache_entry.push(_BUILTINS_DESCRIPTOR_MISSING)
@@ -3639,6 +3663,11 @@ def ρσ_resolve_callable(value: Any) -> Any:
     """Return a host function or an object's bound type-level `__call__`."""
     if runtime.strict_equal(runtime.jstype(value), "function"):
         return value
+    # Since Python 3.10, staticmethod descriptors are themselves callable.
+    # The wrapper is a host object, but its canonical Python type supplies a
+    # call that forwards to the wrapped function (including keyword handling).
+    if runtime.reflect.apply(ρσ_type, runtime.undefined, [value]) is ρσ_staticmethod:
+        return _builtins_get_member(value, "__func__")
     call_target = ρσ_get_type_slot(value, "__call__")
     if call_target is runtime.undefined:
         raise TypeError(
@@ -3771,6 +3800,8 @@ def ρσ_callable(value: Any) -> _Bool:
         return True
     if value is None or value is runtime.undefined:
         return False
+    if runtime.reflect.apply(ρσ_type, runtime.undefined, [value]) is ρσ_staticmethod:
+        return True
     # Slot presence, not its value or descriptor result, determines callable().
     prototype = ρσ_instance_prototype(runtime.object(value))
     return prototype is not None and runtime.reflect.has(prototype, "__call__")
@@ -4957,6 +4988,16 @@ def _builtins_public_getattr(
 ) -> Any:
     if not runtime.strict_equal(runtime.jstype(name), "string"):
         raise TypeError("attribute name must be string")
+    if _builtins_get_member(value, "__sagejs_super__") is True:
+        # The super proxy has already resolved the descriptor against the
+        # remaining MRO and applied its binding rules.  A second ordinary
+        # instance lookup would bind an inherited staticmethod to the proxy.
+        member = runtime.reflect.get(value, name)
+        if member is not runtime.undefined:
+            return member
+        if default_value is not _BUILTINS_MISSING:
+            return default_value
+        raise AttributeError("'super' object has no attribute '" + name + "'")
     owner = _builtins_attribute_owner(value)
     if _builtins_is_python_class(value):
         metaclass = _builtins_get_member(value, "__python_type__")

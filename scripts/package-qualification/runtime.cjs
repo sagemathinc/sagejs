@@ -267,6 +267,19 @@ function assertArchiveLayout(rootArchive, platformArchive, targetName) {
   }
 
   const rootManifest = archiveJson(rootArchive, "package.json");
+  const releaseLayout = JSON.parse(readFileSync(
+    join(__dirname, "..", "..", "packages", "flint-wasm", "release", "production-layout.json"),
+    "utf8",
+  ));
+  const distributesClassGroup = releaseLayout.modules.some(({ id }) => id === "class-group");
+  if (!distributesClassGroup) {
+    for (const path of [
+      "package/packages/flint-wasm/dist/class-group-core.wasm",
+      "package/packages/flint-wasm/dist/class-group-core-receipt.json",
+    ]) {
+      assert.equal(rootMembers.has(path), false, `excluded reactor leaked into root archive: ${path}`);
+    }
+  }
   assert.equal(rootManifest.name, "@sagemath/sagejs");
   assert.equal(
     rootManifest.optionalDependencies?.[target.packageName],
@@ -300,6 +313,9 @@ function assertArchiveLayout(rootArchive, platformArchive, targetName) {
   const hasService = platformMembers.has(servicePath);
   const hasServiceManifest = platformMembers.has(serviceManifestPath);
   const hasServiceClient = platformMembers.has(serviceClientPath);
+  if (!distributesClassGroup) {
+    assert.equal(hasService, false, "excluded class-group service leaked into platform archive");
+  }
   assert.equal(
     hasService,
     hasServiceManifest,

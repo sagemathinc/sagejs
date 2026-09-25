@@ -224,7 +224,6 @@ jobs:
         run: |
           node packages/wasm-toolchain/scripts/toolchain.cjs prepare
           pnpm build
-          packages/class-groups/scripts/build-wasm.sh
           pnpm --dir packages/flint-wasm build
           node scripts/numerical-product.cjs validate-installed
           node packages/flint-wasm/scripts/production-receipt.cjs validate
@@ -871,7 +870,9 @@ jobs:
         run: pnpm test:portable
 
       - name: Run host integration tests
-        timeout-minutes: 75
+        # Windows cold native integration exceeded 75 minutes during the 0.9.0
+        # release qualification; leave the test suite and its gates intact.
+        timeout-minutes: 120
         run: pnpm release:run --candidate "${{ github.sha }}" --stage integration,integration-performance
 
       - name: Run native addon tests

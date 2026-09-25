@@ -409,7 +409,12 @@ try:
     projection.__dict__["_authentication_snapshot"] = projection.authority_snapshot()
 except (AttributeError, TypeError):
     pass
-assert projection.class_number == 1
+# A direct __dict__ write may mutate the caller-visible field even when
+# ordinary attribute assignment is frozen.  That representation detail is not
+# the authority boundary: an altered projection must be rejected by the cache.
+if projection.class_number != 1:
+    assert projection.class_number == 2
+    assert not projection.matches(K, False)
 content_hash = projection._arithmetic.stable_hash()
 try:
     projection._arithmetic.__dict__["_content_sha256"] = "0" * 64

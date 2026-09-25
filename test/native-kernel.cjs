@@ -2561,6 +2561,7 @@ const { WASI } = require("node:wasi");
     integerAlgorithmsModule.native_identity.backendFor(2n ** 2000n),
     "bigint",
   );
+  assert.equal(integerAlgorithmsModule.native_identity.nativeAvailable, true);
   assert.equal(
     integerAlgorithmsModule.native_gcd.backendFor(92250, 922350),
     "bigint",

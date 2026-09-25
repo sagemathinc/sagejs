@@ -1,5 +1,7 @@
 // sagejs-test-tier: unit
-// sagejs-test-portable: true
+// sagejs-test-portable: false
+// The fake resident service is a Unix shebang executable; Windows distribution
+// rejects this unqualified service and tests that capability boundary elsewhere.
 "use strict";
 
 const assert = require("node:assert/strict");
@@ -96,7 +98,9 @@ function installFakePackage({ corrupt = false, manifest = true } = {}) {
   return packageRoot;
 }
 
-test("authenticates a relocated native artifact and runs the resident protocol", async () => {
+test("authenticates a relocated native artifact and runs the resident protocol", {
+  skip: process.platform === "win32" && "fake service requires a Unix shebang",
+}, async () => {
   const packageRoot = installFakePackage();
   const capability = nativeClassGroupCapability({ packageRoot, target: "linux-x64" });
   assert.equal(capability.available, true);
@@ -147,7 +151,9 @@ test("missing and corrupt artifacts decline as tested capabilities", async () =>
   assert.equal(await createNativeClassGroupService({ capability: corrupt }), undefined);
 });
 
-test("a crashed process rejects its request and restarts without replay", async () => {
+test("a crashed process rejects its request and restarts without replay", {
+  skip: process.platform === "win32" && "fake service requires a Unix shebang",
+}, async () => {
   const capability = nativeClassGroupCapability({
     packageRoot: installFakePackage(),
     target: "linux-x64",
@@ -163,7 +169,9 @@ test("a crashed process rejects its request and restarts without replay", async 
   await service.close();
 });
 
-test("unboxed backend calls are exposed only after authenticated capability handshake", async () => {
+test("unboxed backend calls are exposed only after authenticated capability handshake", {
+  skip: process.platform === "win32" && "fake service requires a Unix shebang",
+}, async () => {
   const capability = nativeClassGroupCapability({
     packageRoot: installFakePackage(),
     target: "linux-x64",

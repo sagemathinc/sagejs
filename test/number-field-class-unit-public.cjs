@@ -290,8 +290,9 @@ artifact.diagnostics["quotient_order"] = 4
 try:
     artifact.certificate._class_number = 4
     raise AssertionError("a frozen cubic certificate accepted mutation")
-except AttributeError as error:
-    assert "read-only" in str(error)
+except (AttributeError, TypeError) as error:
+    assert "read-only" in str(error) or "Cannot redefine property" in str(error)
+assert artifact.certificate.class_number == 3
 assert K.class_number(proof=True) == 3
 artifact.diagnostics["quotient_order"] = 3
 assert K.class_number(proof=True) == 3

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
@@ -31,6 +32,16 @@ const requireEngines = new Set(parseEngineList(
 ));
 const receiptPath = option("--receipt", process.env.SAGEJS_WASM_PARITY_RECEIPT);
 const browserTypes = { chromium, firefox, webkit };
+const git = (args) => execFileSync("git", args, {
+  cwd: repositoryRoot,
+  encoding: "utf8",
+}).trim();
+const sourceRevision = git(["rev-parse", "HEAD"]);
+assert.match(sourceRevision, /^[a-f0-9]{40}$/);
+assert.equal(process.env.GITHUB_SHA ?? sourceRevision, sourceRevision,
+  "browser parity source differs from GITHUB_SHA");
+assert.equal(git(["status", "--porcelain", "--untracked-files=normal"]), "",
+  "browser parity requires a clean source checkout");
 const corpus = await loadParityCorpus();
 const productionCapabilityRoutes = await loadProductionCapabilityRoutes();
 const cases = corpus.cases.filter((item) => tier === "release" || item.tier === "routine");
@@ -38,7 +49,7 @@ const server = await createBrowserWasmServer();
 const receipt = {
   schema_version: 1,
   kind: "sagejs-browser-wasm-parity",
-  source_revision: process.env.GITHUB_SHA ?? null,
+  source_revision: sourceRevision,
   corpus_sha256: sha256(JSON.stringify(corpus)),
   tier,
   created_at: new Date().toISOString(),

@@ -23,7 +23,7 @@ test("private compiler import guards preserve missing and mutable bindings", asy
   }
   const direct = "from binding import value\ndef read():\n    return value\n";
   try {
-    execFileSync(process.env.PYTHON || "python3", ["-c", "def before():\n    return value\ntry:\n    before()\nexcept NameError:\n    pass\nelse:\n    raise AssertionError('missing NameError')\nfrom binding import value\nassert before() == 'seven'\nglobals()['value'] = 'changed'\nassert before() == 'changed'\ndel globals()['value']\ntry:\n    before()\nexcept NameError:\n    pass\nelse:\n    raise AssertionError('deleted binding survived')\n"], { cwd: directory });
+    execFileSync(process.env.PYTHON || (process.platform === "win32" ? "python" : "python3"), ["-c", "def before():\n    return value\ntry:\n    before()\nexcept NameError:\n    pass\nelse:\n    raise AssertionError('missing NameError')\nfrom binding import value\nassert before() == 'seven'\nglobals()['value'] = 'changed'\nassert before() == 'changed'\ndel globals()['value']\ntry:\n    before()\nexcept NameError:\n    pass\nelse:\n    raise AssertionError('deleted binding survived')\n"], { cwd: directory });
     const guarded = compile(direct);
     assert.match(guarded, /ρσ_is_missing_binding\(value\) \? ρσ_resolve_module_name/);
     assert.match(compile("from binding import value as alias\ndef read():\n    return alias\n"), /ρσ_is_missing_binding\(alias\) \? ρσ_resolve_module_name/);

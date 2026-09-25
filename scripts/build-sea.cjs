@@ -18,10 +18,7 @@ const { execFileSync, spawnSync } = require("child_process");
 const { tmpdir } = require("os");
 const { dirname, join, relative } = require("path");
 const {
-  BASELIB_STANDALONE_CACHE_MODULES,
-  BUILTINS_STANDALONE_MODULES,
-  CORE_STANDALONE_MODULES,
-  MATRIX_STANDALONE_MODULES,
+  embeddedStandaloneLibrarySnapshot,
 } = require("../tools/standalone-library.cjs");
 const {
   resolveNumericalRuntimeCapability,
@@ -95,12 +92,7 @@ const nloptBackendArtifact = join(
 );
 
 const embeddedStandaloneLibraryBanner = `globalThis.__sagejs_embedded_standalone_library__ = ${JSON.stringify(
-  {
-    builtins: BUILTINS_STANDALONE_MODULES,
-    core: CORE_STANDALONE_MODULES,
-    matrix: MATRIX_STANDALONE_MODULES,
-    cache: BASELIB_STANDALONE_CACHE_MODULES,
-  },
+  embeddedStandaloneLibrarySnapshot(),
 )};`;
 
 // The release SEA already contains the native Sage.js runtime. Embedding the

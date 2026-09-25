@@ -90,7 +90,7 @@
       "requires": [
         { "id": "kernel:packed-graph-components-production", "route": "receipt-backed-wasm-artifact" }
       ],
-      "source": "G=graphs.CycleGraph(10000)\nC=G.connected_components()\nprint(len(C),len(C[0]))",
+      "source": "G=Graph(10000)\nG.add_cycle(range(10000))\nC=G.connected_components()\nprint(len(C),len(C[0]))",
       "timeout_ms": 180000
     },
     {
@@ -99,7 +99,7 @@
       "requires": [
         { "id": "kernel:packed-graph-shortest-paths-production", "route": "receipt-backed-wasm-artifact" }
       ],
-      "source": "G=graphs.CycleGraph(10000)\npath=G.shortest_path(0,5000)\nH=graphs.CycleGraph(512)\npairs=H.distances_all_pairs()\nprint(len(path),pairs[0][256])",
+      "source": "G=Graph(10000)\nG.add_cycle(range(10000))\npath=G.shortest_path(0,5000)\nH=graphs.CycleGraph(512)\npairs=H.distances_all_pairs()\nprint(len(path),pairs[0][256])",
       "timeout_ms": 180000
     },
     {

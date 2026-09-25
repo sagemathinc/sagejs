@@ -1097,7 +1097,7 @@
       "family": "algebraic-number-theory",
       "source": "packages/class-groups/src/service.rs",
       "disposition": "shared-core",
-      "status": "available",
+      "status": "planned",
       "fallback": "native-resident-service-or-ordinary-exact-cubic",
       "wasm_module": "class-group",
       "public_consumers": [
@@ -1108,13 +1108,13 @@
       "tests": [
         "rust-cubic-class-group-product"
       ],
-      "review_note": "The same bounded Rust service passes exact native/Wasm corpus parity, resident lifecycle and mutation tests, and Chromium, Firefox, and WebKit evaluator execution with a 256 MiB maximum memory contract.",
+      "review_note": "The bounded Rust service passes development corpus and worker tests, but the 0.9.0 public artifact omits it until corresponding-source and relinking evidence is complete.",
       "reviewed": true,
       "shared_core": "packages/class-groups/src/service.rs",
       "availability_evidence": {
         "path": "test/number-field-rust-class-group-release.cjs"
       },
-      "public_explanation": "Absolute monic cubic class groups and units can execute through the receipt-authenticated Rust class-group specialist in browser WebAssembly. Conditional-GRH and unconditional proof authority remain explicit at the public API."
+      "public_explanation": "The Rust cubic class-group specialist remains development-only and is not included in the 0.9.0 public WebAssembly package. Ordinary exact fallbacks remain available where supported."
     },
     {
       "id": "specialist:capability-report-api",

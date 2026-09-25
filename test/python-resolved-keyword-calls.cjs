@@ -52,7 +52,7 @@ test("resolved keyword calls have a CPython oracle", () => {
   assert.ifError(result.error);
   assert.equal(result.status, 0, result.stderr);
   assert.equal(result.stderr, "");
-  assert.equal(result.stdout, "resolved-keyword-calls-ok\n");
+  assert.equal(result.stdout.replaceAll("\r\n", "\n"), "resolved-keyword-calls-ok\n");
 });
 
 for (const mode of ["python", "sage"]) {

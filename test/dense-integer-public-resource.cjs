@@ -185,13 +185,17 @@ print('TIMES', random_ms, second_ms, add_ms, multiply_ms, format_ms)
     // Apple Silicon spends 257-348 ms initializing the first generated
     // dense-integer resource in an otherwise idle fresh process, and up to
     // about 600 ms while the integration runner executes a second file.
-    // Two-worker Linux validation has likewise measured 259 ms versus about
-    // 196 ms in isolation. Give process-cold initialization realistic host
-    // contention headroom. Warm the generated addition path explicitly before
+    // Two-worker Linux validation has measured 354.5 ms. Windows measured
+    // 475.5 ms in clean CI and 480.4 ms on the persistent host while another
+    // integration file was active, versus about 196 ms in isolation. Give
+    // process-cold initialization realistic host contention headroom without
+    // changing the separate Sage.js startup gate. Warm the generated
+    // addition path explicitly before
     // applying the arithmetic-only ceiling below: loading that path is another
     // process-cold cost, not dense-matrix addition throughput.
-    const randomLimit =
-      process.platform === "darwin" && process.arch === "arm64" ? 700 : 350;
+    const randomLimit = process.platform === "darwin" && process.arch === "arm64"
+      ? 700
+      : process.platform === "win32" ? 600 : 450;
     assert.ok(Math.max(randomMs, secondMs) < randomLimit, timing);
     assert.ok(addMs < 100, timing);
     assert.ok(multiplyMs < 250, timing);

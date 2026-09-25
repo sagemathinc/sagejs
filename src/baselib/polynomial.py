@@ -4983,6 +4983,35 @@ class ApproximatePolynomialElement(sage.Element):
                 answer = degree
         return answer
 
+    def __getitem__(self, index: Any) -> Any:
+        """Return a univariate coefficient, or truncate with `f[:stop]`."""
+        if self._parent.ngens() != 1:
+            raise TypeError("coefficient indexing requires a univariate polynomial")
+        if hasattr(index, "__sagejs_slice__"):
+            if index.start is not None or index.step is not None:
+                raise IndexError(
+                    "polynomial slicing with a start or step is not defined"
+                )
+            stop = self.degree() + 1 if index.stop is None else int(index.stop)
+            return self._new(
+                [
+                    [coefficient, exponents]
+                    for coefficient, exponents in self._terms
+                    if exponents[0] < stop
+                ]
+            )
+        if not runtime.is_exact_integer(index):
+            raise TypeError("polynomial coefficient index must be an integer")
+        exact_index = runtime.integer_bigint(index)
+        base = self._parent.base_ring()
+        if exact_index < 0 or exact_index > self.degree():
+            return base(0)
+        position = runtime.number(exact_index)
+        for coefficient, exponents in self._terms:
+            if exponents[0] == position:
+                return coefficient
+        return base(0)
+
     def coefficients(self, sparse: bool = False) -> list[Any]:
         if sparse:
             return [value for value in self.coefficients(False) if value != 0]

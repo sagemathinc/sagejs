@@ -379,7 +379,7 @@ explicit unsupported capability, not claim an unqualified fast path.
 
 `architecture/package-graph.json` currently sets an eleven-sample normalized
 median of 400 ms for development CLI, with a Linux ARM64 override of 525 ms.
-SEA uses 300 ms, Linux x64 350 ms, ARM64 425 ms. Both have a raw hard ceiling of
+SEA uses 300 ms, Linux x64 350 ms, ARM64 435 ms. Both have a raw hard ceiling of
 1,500 ms; empty-start checks use 225 ms normalized and 1,000 ms raw. The checker
 times fresh processes through evaluation/exit and divides by a Node-startup load
 factor. **A pass does not prove an observed interactive prompt below 400 ms.**

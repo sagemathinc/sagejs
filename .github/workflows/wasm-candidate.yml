@@ -61,7 +61,6 @@ jobs:
           node packages/wasm-toolchain/scripts/toolchain.cjs prepare
           node packages/wasm-toolchain/scripts/probe.cjs
           pnpm build
-          packages/class-groups/scripts/build-wasm.sh
           pnpm --dir packages/flint-wasm build
           node packages/flint-wasm/scripts/production-receipt.cjs validate
           node packages/flint-wasm/scripts/browser-wasm-deployment.cjs \

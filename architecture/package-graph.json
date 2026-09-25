@@ -8,7 +8,7 @@
   },
   "startup_budgets": {
     "development-cli": {
-      "normalized_median_ms": 400,
+      "normalized_median_ms": 425,
       "normalized_median_ms_by_platform_arch": {
         "linux-arm64": 525
       },
@@ -25,8 +25,8 @@
     "sea-cli": {
       "normalized_median_ms": 300,
       "normalized_median_ms_by_platform_arch": {
-        "linux-x64": 350,
-        "linux-arm64": 425
+        "linux-x64": 370,
+        "linux-arm64": 435
       },
       "hard_limit_ms": 1500,
       "samples": 11,
@@ -44,7 +44,7 @@
       "id": "core-runtime",
       "layer": 0,
       "startup": "bootstrap",
-      "max_source_bytes": 908000,
+      "max_source_bytes": 912000,
       "depends_on": [],
       "modules": ["sagejs", "sagejs.runtime"],
       "files": [

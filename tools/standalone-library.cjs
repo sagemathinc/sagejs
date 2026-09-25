@@ -185,7 +185,7 @@ const GROEBNER_STANDALONE_MODULES = Object.freeze([
 // runtime-selected implementations explicit without loading them for ordinary
 // polynomial and Groebner standalone programs.
 const EXTENSION_STANDALONE_MODULES = Object.freeze(
-  runtimeSelectedModuleClosure([
+  EMBEDDED_STANDALONE_LIBRARY?.extension ?? runtimeSelectedModuleClosure([
     ...GROEBNER_STANDALONE_MODULES,
     "sagejs.linear_algebra.exact_vector_public",
     ...baselibLazyModules("polynomial.py"),
@@ -194,13 +194,13 @@ const EXTENSION_STANDALONE_MODULES = Object.freeze(
 );
 
 const BASELIB_STANDALONE_MODULES = Object.freeze([
-  ...new Set([
+  ...(EMBEDDED_STANDALONE_LIBRARY?.baselib ?? new Set([
     ...BUILTINS_STANDALONE_MODULES,
     ...baselibLazyModules("byte_strings.py"),
     ...MATRIX_STANDALONE_MODULES,
     ...POLYNOMIAL_STANDALONE_MODULES,
     "sagejs.plotting",
-  ]),
+  ])),
 ]);
 
 // Cache the complete static dependency closure as separate module artifacts.
@@ -216,6 +216,17 @@ const BASELIB_STANDALONE_CACHE_MODULES = Object.freeze(
       "collections.abc",
     ])].sort(),
 );
+
+function embeddedStandaloneLibrarySnapshot() {
+  return {
+    builtins: BUILTINS_STANDALONE_MODULES,
+    core: CORE_STANDALONE_MODULES,
+    matrix: MATRIX_STANDALONE_MODULES,
+    extension: EXTENSION_STANDALONE_MODULES,
+    baselib: BASELIB_STANDALONE_MODULES,
+    cache: BASELIB_STANDALONE_CACHE_MODULES,
+  };
+}
 
 function baselibStandaloneImportPrelude(modules = BASELIB_STANDALONE_MODULES) {
   return modules.map((name) => `import ${name}\n`).join("");
@@ -241,6 +252,7 @@ module.exports = {
   MATRIX_STANDALONE_MODULES,
   POLYNOMIAL_STANDALONE_MODULES,
   baselibStandaloneImportPrelude,
+  embeddedStandaloneLibrarySnapshot,
   moduleClosure,
   runtimeSelectedModuleClosure,
   standaloneRuntimeRequirePrelude,

@@ -13,6 +13,7 @@ const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 const test = require("node:test");
 const { compileKernel } = require("../compiler.cjs");
+const { removeLoadedNativeCache } = require("../../../test/helpers/native-cache-cleanup.cjs");
 
 function sources() {
   const directory = mkdtempSync(join(tmpdir(), "sagejs-resident-compile-"));
@@ -37,7 +38,7 @@ def entry(x: int) -> int:
 
 test("resident compile hits preserve provenance and invalidate dependencies", async (t) => {
   const { directory, entry, helper } = sources();
-  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  t.after(() => removeLoadedNativeCache(directory));
   const cacheRoot = join(directory, "cache");
   const first = await compileKernel({ sourcePath: entry, cacheRoot });
   assert.equal(first.residentCached, false);
@@ -57,14 +58,13 @@ test("resident compile hits preserve provenance and invalidate dependencies", as
   const changed = await compileKernel({ sourcePath: entry, cacheRoot });
   assert.equal(changed.residentCached, false);
   assert.notEqual(changed.cacheKey, first.cacheKey);
-  assert.equal(require(changed.modulePath).entry.tagged(8n), 22n);
 
+  // Windows cannot unlink or replace an addon after it has been loaded into
+  // this process. Exercise both eviction paths before requiring this version.
   rmSync(changed.addonPath);
   const rebuilt = await compileKernel({ sourcePath: entry, cacheRoot });
   assert.equal(rebuilt.residentCached, false);
   assert.equal(rebuilt.cacheKey, changed.cacheKey);
-  assert.equal(require(rebuilt.modulePath).entry.tagged(8n), 22n);
-
   rmSync(rebuilt.manifestPath);
   const remanifested = await compileKernel({ sourcePath: entry, cacheRoot });
   assert.equal(remanifested.residentCached, false);
@@ -83,7 +83,7 @@ test("resident compile hits preserve provenance and invalidate dependencies", as
 
 test("concurrent requests share one resident compilation", async (t) => {
   const { directory, entry } = sources();
-  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  t.after(() => removeLoadedNativeCache(directory));
   const cacheRoot = join(directory, "cache");
   const results = await Promise.all(Array.from({ length: 4 }, () =>
     compileKernel({ sourcePath: entry, cacheRoot })));
@@ -94,7 +94,7 @@ test("concurrent requests share one resident compilation", async (t) => {
 
 test("resident lookup does not bypass option validation", async (t) => {
   const { directory, entry } = sources();
-  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  t.after(() => removeLoadedNativeCache(directory));
   const cacheRoot = join(directory, "cache");
   await compileKernel({ sourcePath: entry, cacheRoot });
   await assert.rejects(
@@ -105,7 +105,7 @@ test("resident lookup does not bypass option validation", async (t) => {
 
 test("resident requests with different function selections stay distinct", async (t) => {
   const { directory, entry } = sources();
-  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  t.after(() => removeLoadedNativeCache(directory));
   const cacheRoot = join(directory, "cache");
   await compileKernel({ sourcePath: entry, cacheRoot });
   const selected = await compileKernel({
@@ -124,7 +124,7 @@ test("resident requests with different function selections stay distinct", async
 
 test("failed resident builds are evicted", async (t) => {
   const { directory, entry } = sources();
-  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  t.after(() => removeLoadedNativeCache(directory));
   const cacheRoot = join(directory, "cache");
   writeFileSync(entry, "this is not valid python source\n");
   await assert.rejects(() => compileKernel({ sourcePath: entry, cacheRoot }));
@@ -142,7 +142,7 @@ test("resident compilations have a bounded least-recently-used lifetime", async 
   const requests = [];
   for (let index = 0; index < 5; index += 1) {
     const { directory, entry } = sources();
-    t.after(() => rmSync(directory, { recursive: true, force: true }));
+    t.after(() => removeLoadedNativeCache(directory));
     requests.push({ entry, cacheRoot: join(directory, "cache") });
   }
   for (const request of requests) {
