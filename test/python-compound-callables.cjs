@@ -16,7 +16,7 @@ test("compound callable fixture passes the CPython oracle", () => {
   assert.ifError(result.error);
   assert.equal(result.status, 0, result.stderr);
   assert.equal(result.stderr, "");
-  assert.equal(result.stdout, "compound-callables-ok\n");
+  assert.equal(result.stdout.replace(/\r\n/g, "\n"), "compound-callables-ok\n");
 });
 
 for (const mode of ["python", "sage"]) {
