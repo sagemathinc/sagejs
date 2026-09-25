@@ -88,8 +88,13 @@ try {
             "R.<x> = QQ[]",
             "K.<a> = NumberField(x^2 + 23)",
             "G = K.class_group(algorithm='rust')",
+            "w = (1+a)/2",
+            "I = K.ideal(2, w)",
+            "J = K.ideal(3, w)",
             "[G.order(), G.invariants(), G.proof_status,",
-            " G(G.gen().ideal()).coordinates(), K.class_number(algorithm='rust'),",
+            " G(G.gen().ideal()).coordinates(), G(I).coordinates(),",
+            " G(J).coordinates(), G(I*J).coordinates(),",
+            " K.class_number(algorithm='rust'),",
             " QuadraticField(-8173415).class_number(algorithm='rust')]",
           ].join("\n"));
           return answer.repr;
@@ -97,7 +102,11 @@ try {
           await sage.close();
         }
       }, origin);
-      assert.equal(publicResult, "[3, (3,), 'exact-unconditional', (1,), 3, 4378]", name);
+      assert.equal(
+        publicResult,
+        "[3, (3,), 'exact-unconditional', (1,), (1,), (2,), (0,), 3, 4378]",
+        name,
+      );
       console.log(`PASS ${name}: public unconditional class group and exact ideal map`);
     } finally {
       await browser.close();
