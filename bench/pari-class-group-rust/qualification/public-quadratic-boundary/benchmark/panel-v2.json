@@ -1,0 +1,104 @@
+{
+  "schema": "sagejs.public-quadratic/benchmark-panel-v2",
+  "frozenBeforeTiming": true,
+  "samplesPerArmPerField": 15,
+  "tinyBatchThroughput": {
+    "fieldIds": ["tiny-trivial-d3", "tiny-cyclic-d47", "tiny-noncyclic-d231", "rank4-d15015"],
+    "computationsPerSample": 100,
+    "samplesPerField": 15,
+    "selection": "The original structural tiny panel is retained without timing-based exclusions."
+  },
+  "boundary": {
+    "rust": "public-coefficients-to-verified-complete-class-group-v1",
+    "pari": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+    "comparison": "Both arms start from the same public monic polynomial. Rust returns a complete imaginary class-group certificate and exact ideal-class map; PARI flag zero also computes rank-zero unit/regulator data. Projection and process startup are excluded."
+  },
+  "selection": {
+    "rule": "Retain the six structurally selected v1 fields but exclude its historically timing-nominated D=-9013587 candidate. For three new odd-prime fields, take the first prime p at or above 20e9, 40e9, and 60e9, respectively, with p mod 4 = 3, and set D=-p. For an even field, take the first prime p at or above 5e9 with p mod 4 = 1 and h(-4p) <= 50000, and set D=-4p. For a genus-rank-two composite field, take the first prime p at or above 1e9 with p mod 4 = 1 and h(-15p) <= 50000, and set D=-15p. The class-number cap is the predeclared Rust resource boundary; no PARI or Rust clock participates in selecting the new fields.",
+    "primeEnumeration": "Increasing exact primes, starting at each inclusive lower bound; draw counts include only primes satisfying the stated residue condition.",
+    "mathematicalOracle": "The independently built PARI 2.17.4 public-call result projection supplied h and invariant factors; its internal clock was discarded during selection and not viewed or used for exclusion.",
+    "selectedPrimes": [20000000179, 40000000003, 60000000091, 5000000281, 1000000021],
+    "selectedDrawsForCappedRules": {"even": 5, "composite": 2},
+    "excludedExploratoryInputs": ["D=-9013587 was timing-nominated for v1", "D=-100000000003 was profiled before v2"],
+    "coverageIntent": "A diverse unconditional full-group comparison, including a genuine PARI 5--100 ms member if the independent campaign medians establish that band; no band is inferred from discriminant size."
+  },
+  "fields": [
+    {
+      "id": "tiny-trivial-d3",
+      "pariPolynomial": "x^2-x+1",
+      "polynomialAscending": [1, -1, 1],
+      "expected": {"discriminant": -3, "classNumber": 1, "invariantFactors": []},
+      "traits": ["tiny", "trivial"]
+    },
+    {
+      "id": "tiny-cyclic-d47",
+      "pariPolynomial": "x^2-x+12",
+      "polynomialAscending": [12, -1, 1],
+      "expected": {"discriminant": -47, "classNumber": 5, "invariantFactors": [5]},
+      "traits": ["tiny", "cyclic"]
+    },
+    {
+      "id": "tiny-noncyclic-d231",
+      "pariPolynomial": "x^2-x+58",
+      "polynomialAscending": [58, -1, 1],
+      "expected": {"discriminant": -231, "classNumber": 12, "invariantFactors": [2, 6]},
+      "traits": ["tiny", "noncyclic"]
+    },
+    {
+      "id": "rank4-d15015",
+      "pariPolynomial": "x^2-x+3754",
+      "polynomialAscending": [3754, -1, 1],
+      "expected": {"discriminant": -15015, "classNumber": 96, "invariantFactors": [2, 2, 2, 12]},
+      "traits": ["rank4", "noncyclic"]
+    },
+    {
+      "id": "near-limit-h1715-d9999991",
+      "pariPolynomial": "x^2-x+2499998",
+      "polynomialAscending": [2499998, -1, 1],
+      "expected": {"discriminant": -9999991, "classNumber": 1715, "invariantFactors": [1715]},
+      "traits": ["v1-near-limit", "cyclic"]
+    },
+    {
+      "id": "near-limit-h4378-d8173415",
+      "pariPolynomial": "x^2-x+2043354",
+      "polynomialAscending": [2043354, -1, 1],
+      "expected": {"discriminant": -8173415, "classNumber": 4378, "invariantFactors": [4378]},
+      "traits": ["v1-near-limit", "cyclic", "class-number-over-4000"]
+    },
+    {
+      "id": "larger-odd-prime-d20000000179",
+      "pariPolynomial": "x^2-x+5000000045",
+      "polynomialAscending": [5000000045, -1, 1],
+      "expected": {"discriminant": -20000000179, "classNumber": 27325, "invariantFactors": [27325]},
+      "traits": ["large-discriminant", "odd-prime", "cyclic"]
+    },
+    {
+      "id": "larger-odd-prime-d40000000003",
+      "pariPolynomial": "x^2-x+10000000001",
+      "polynomialAscending": [10000000001, -1, 1],
+      "expected": {"discriminant": -40000000003, "classNumber": 29199, "invariantFactors": [29199]},
+      "traits": ["large-discriminant", "odd-prime", "cyclic"]
+    },
+    {
+      "id": "larger-odd-prime-d60000000091",
+      "pariPolynomial": "x^2-x+15000000023",
+      "polynomialAscending": [15000000023, -1, 1],
+      "expected": {"discriminant": -60000000091, "classNumber": 42885, "invariantFactors": [42885]},
+      "traits": ["large-discriminant", "odd-prime", "cyclic"]
+    },
+    {
+      "id": "larger-even-d20000001124",
+      "pariPolynomial": "x^2+5000000281",
+      "polynomialAscending": [5000000281, 0, 1],
+      "expected": {"discriminant": -20000001124, "classNumber": 44488, "invariantFactors": [44488]},
+      "traits": ["large-discriminant", "even-fundamental", "cyclic"]
+    },
+    {
+      "id": "larger-composite-d15000000315",
+      "pariPolynomial": "x^2-x+3750000079",
+      "polynomialAscending": [3750000079, -1, 1],
+      "expected": {"discriminant": -15000000315, "classNumber": 33768, "invariantFactors": [2, 16884]},
+      "traits": ["large-discriminant", "three-prime-factors", "noncyclic"]
+    }
+  ]
+}

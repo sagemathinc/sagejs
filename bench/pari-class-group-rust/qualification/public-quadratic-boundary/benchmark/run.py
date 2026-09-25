@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import math
@@ -140,12 +141,12 @@ def execution_context() -> dict:
     }
 
 
-def source_closure(repository: Path) -> dict:
+def source_closure(repository: Path, panel_path: Path) -> dict:
     paths = [
         CRATE / "Cargo.toml",
         CRATE / "Cargo.lock",
         HERE / "run.py",
-        PANEL_PATH,
+        panel_path,
         ROOT_CRATE / "Cargo.toml",
         ROOT_CRATE / "Cargo.lock",
         ROOT_CRATE / "build.rs",
@@ -209,7 +210,15 @@ def verify_pari(sample: dict, field: dict, boundary_label: str) -> None:
 
 
 def main() -> int:
-    panel_bytes = PANEL_PATH.read_bytes()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--panel", default=PANEL_PATH.name)
+    parser.add_argument("--receipt", default=RECEIPT_PATH.name)
+    arguments = parser.parse_args()
+    panel_path = (HERE / arguments.panel).resolve()
+    receipt_path = (HERE / arguments.receipt).resolve()
+    if panel_path.parent != HERE or receipt_path.parent != HERE:
+        parser.error("panel and receipt must be files in the benchmark directory")
+    panel_bytes = panel_path.read_bytes()
     panel = json.loads(panel_bytes)
     assert panel["frozenBeforeTiming"] is True
     count = panel["samplesPerArmPerField"]
@@ -220,7 +229,7 @@ def main() -> int:
         )
 
     repository = Path(command("git", "rev-parse", "--show-toplevel").stdout.strip())
-    source = source_closure(repository)
+    source = source_closure(repository, panel_path)
     build_environment = dict(os.environ)
     build_environment.update({"CARGO_INCREMENTAL": "0", "SOURCE_DATE_EPOCH": "1"})
     builds = []
@@ -461,9 +470,9 @@ def main() -> int:
             "step2": "From a clean checkout of that frozen commit, rerun benchmark/run.py; require promotionEligible=true, matching clean source-closure status, reproducible binary hashes, and all exact checks before separately committing the generated receipt.",
         },
     }
-    temporary = RECEIPT_PATH.with_suffix(".json.tmp")
+    temporary = receipt_path.with_suffix(".json.tmp")
     temporary.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n")
-    os.replace(temporary, RECEIPT_PATH)
+    os.replace(temporary, receipt_path)
     print(json.dumps(receipt["aggregate"], indent=2, sort_keys=True))
     return 0
 

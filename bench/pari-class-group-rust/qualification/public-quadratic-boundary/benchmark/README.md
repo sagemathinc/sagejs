@@ -1,8 +1,11 @@
 # Native public-quadratic benchmark
 
 This is an isolated, reproducible performance qualification of the complete
-imaginary-quadratic route. `panel.json` is the frozen public-input panel;
-`run.py` builds the release adapter, runs 15 fresh-process samples per arm and
+imaginary-quadratic route. `panel.json` is the original frozen public-input
+panel; `panel-v2.json` retains its six structurally selected fields, excludes
+the old timing-nominated candidate, and adds five larger, structurally diverse
+fields selected without timing-based exclusions. `run.py` builds the release
+adapter, runs 15 fresh-process samples per arm and
 field, alternates arm order within each pair, checks every exact output, and
 writes `receipt.json` with raw clocks, medians, ratios, and build identities.
 When run from a dirty integration worktree, the generated receipt is explicitly
@@ -35,11 +38,25 @@ model, process affinity, thread-control environment, available governor/power
 policy data, and before/after load averages. This host was not externally
 isolated, which is disclosed rather than described as quiet.
 
-Run it from this crate with:
+Run the original panel from this crate with:
 
 ```sh
 python3 benchmark/run.py
 ```
+
+Run the extended panel with a separate receipt:
+
+```sh
+python3 benchmark/run.py --panel panel-v2.json --receipt receipt-v2.json
+```
+
+The v2 selection takes the first primes in fixed residue classes above
+specified decimal thresholds. Its even and three-prime-factor branches also
+require class number at most 50,000, the Rust engine's predeclared resource
+cap. The independent PARI control supplied only class numbers and invariant
+factors for selection; no clock was used to choose or exclude a field. The
+selection rule, selected primes, and expected exact outputs are recorded in
+`panel-v2.json`. The earlier profiled `D=-100000000003` is also excluded.
 
 The authenticated PARI 2.17.4 control must already exist at
 `../pari-control/build/pari-control`.
