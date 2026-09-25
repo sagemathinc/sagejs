@@ -105,7 +105,7 @@ test("the handwritten Rust backend has scoped alpha dispatch and remains product
   assert.equal(policy.status, "alpha-automatic-dispatch");
   assert.equal(
     policy.automatic_dispatch,
-    "enabled-for-admitted-cubic-alpha",
+    "enabled-for-admitted-cubic-and-imaginary-quadratic-alpha",
   );
   assert.equal(policy.automatic_dispatch_contract.release_channel, "alpha");
   assert.equal(
@@ -118,6 +118,18 @@ test("the handwritten Rust backend has scoped alpha dispatch and remains product
   );
   assert.equal(
     policy.automatic_dispatch_contract.distribution_gate,
+    "existing-release-provenance-safety-and-license-review",
+  );
+  assert.equal(
+    policy.imaginary_quadratic_automatic_dispatch_contract.proof_authority,
+    "exact-unconditional-complete-reduced-form-enumeration",
+  );
+  assert.equal(
+    policy.imaginary_quadratic_automatic_dispatch_contract.fallback_boundary,
+    "typed-capability-or-resource-decline-before-publication-only",
+  );
+  assert.equal(
+    policy.imaginary_quadratic_automatic_dispatch_contract.distribution_gate,
     "existing-release-provenance-safety-and-license-review",
   );
   assert.deepEqual(policy.implementation.required_adapters, ["native", "wasm"]);
@@ -136,6 +148,22 @@ test("the handwritten Rust backend has scoped alpha dispatch and remains product
   assert.throws(
     () => validateRustMathCorePolicy(widenedAlpha),
     /alpha dispatch must retain its admitted domain/,
+  );
+
+  const widenedQuadratic = structuredClone(rustPolicyManifest);
+  widenedQuadratic.imaginary_quadratic_automatic_dispatch_contract.admitted_domain =
+    "all-quadratic-fields";
+  assert.throws(
+    () => validateRustMathCorePolicy(widenedQuadratic),
+    /imaginary-quadratic alpha dispatch must retain/,
+  );
+
+  const missingQuadraticGate = structuredClone(rustPolicyManifest);
+  delete missingQuadraticGate.imaginary_quadratic_automatic_dispatch_contract
+    .distribution_gate;
+  assert.throws(
+    () => validateRustMathCorePolicy(missingQuadraticGate),
+    /imaginary-quadratic alpha dispatch must retain/,
   );
 
   const missingWasm = structuredClone(rustPolicyManifest);

@@ -9,7 +9,7 @@
   "legacy_candidate_roots": [
     "bench/pari-class-group-rust"
   ],
-  "automatic_dispatch": "enabled-for-admitted-cubic-alpha",
+  "automatic_dispatch": "enabled-for-admitted-cubic-and-imaginary-quadratic-alpha",
   "automatic_dispatch_contract": {
     "release_channel": "alpha",
     "admitted_domain": "absolute-irreducible-cubic-number-fields-accepted-by-public-preparation",
@@ -20,6 +20,16 @@
     "distribution_gate": "existing-release-provenance-safety-and-license-review",
     "production_promotion_receipt_required": true,
     "authorization": "explicit-project-owner-alpha-landing-2026-09-22"
+  },
+  "imaginary_quadratic_automatic_dispatch_contract": {
+    "release_channel": "alpha",
+    "admitted_domain": "negative-fundamental-discriminant-at-most-200000000000-and-at-most-50000-reduced-forms",
+    "proof_authority": "exact-unconditional-complete-reduced-form-enumeration",
+    "fallback_boundary": "typed-capability-or-resource-decline-before-publication-only",
+    "artifact_binding": "authenticated-host-artifact-sha256",
+    "distribution_gate": "existing-release-provenance-safety-and-license-review",
+    "production_promotion_receipt_required": true,
+    "authorization": "project-owner-public-imaginary-quadratic-goal-2026-09-24"
   },
   "public_contract": {
     "semantic_owner": "ordinary-python",

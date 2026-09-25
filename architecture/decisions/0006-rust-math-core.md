@@ -3,6 +3,7 @@
 - Status: accepted for scoped alpha automatic dispatch; production promotion remains receipt-gated
 - Date: 2026-09-20
 - Alpha dispatch amendment: 2026-09-22
+- Imaginary-quadratic alpha dispatch amendment: 2026-09-25
 
 ## Context
 
@@ -30,6 +31,15 @@ authorization does not declare the implementation production-qualified or
 weaken proof semantics: `proof=False` may publish the named conditional-GRH
 authority, while `proof=True` and the default require the authenticated
 unconditional Minkowski suffix.
+
+The subsequent public imaginary-quadratic goal adds a second, separate alpha
+dispatch domain. The specialized Rust engine proves complete class groups by
+exact reduced-form enumeration for negative fundamental discriminants at most
+`2×10^11` in absolute value and at most 50,000 reduced forms. Both proof modes
+receive an unconditional answer. Automatic dispatch uses it only when the
+authenticated native or Wasm service advertises that capability; otherwise
+the existing quadratic route remains available. This amendment does not
+approve distributing the backend or widen the cubic proof contract.
 
 The fail-closed executable form of this decision is
 [`architecture/rust-math-core-policy.json`](../rust-math-core-policy.json).
@@ -212,13 +222,15 @@ status. It must not infer support from a successful dynamic import or from the
 name of a public Python function.
 
 The Rust route may be selected automatically in the alpha release channel for
-the admitted cubic domain recorded in the executable policy. The host must
-authenticate the exact artifact, and automatic fallback is allowed only for a
-typed capability decline before publication. Resource exhaustion,
-cancellation, corrupt success, and any decline after resident publication are
-reported rather than silently changing backends. Production qualification and
-any widening beyond that alpha domain require a receipt authenticating the
-exact artifact and admitted workload. A correct
+the admitted cubic and imaginary-quadratic domains recorded separately in the
+executable policy. The host must authenticate the exact artifact. The cubic
+route retains its typed capability-decline-only fallback rule. The
+imaginary-quadratic route may also restart the established exact quadratic
+algorithm after a pre-publication reduced-form resource-cap decline; no
+published result or intermediate class map is reused. Corrupt success and any
+decline after publication are reported rather than silently changing backends.
+Production qualification and any widening beyond these alpha domains require
+a receipt authenticating the exact artifact and admitted workload. A correct
 Python, generated native, mature-library, or qualified WebAssembly path may be
 declared as fallback when it satisfies the same public request. Fallback is
 chosen before computation or from an authenticated retry checkpoint; there is
