@@ -37,6 +37,16 @@ on:
         required: false
         default: false
         type: boolean
+      resume_publication_run_id:
+        description: Prior failed prepared-publication run with an accepted npm upload
+        required: false
+        default: ""
+        type: string
+      resume_publication_artifact_id:
+        description: Exact retained progress artifact from that run
+        required: false
+        default: ""
+        type: string
   schedule:
     - cron: "17 4 * * 1"
 
@@ -1596,6 +1606,11 @@ jobs:
         run: |
           node control/scripts/release/publish-prepared.cjs admit > "$RUNNER_TEMP/prepared-request.json"
           echo "sha=$(jq -r .sourceRevision "$RUNNER_TEMP/prepared-request.json")" >>"$GITHUB_OUTPUT"
+      - name: Admit paired prior-publication pins
+        env:
+          SAGEJS_RESUME_RUN_ID: ${{ inputs.resume_publication_run_id }}
+          SAGEJS_RESUME_ARTIFACT_ID: ${{ inputs.resume_publication_artifact_id }}
+        run: node control/scripts/release/restore-npm-journal.cjs admit
       - name: Check out the unchanged product source
         uses: actions/checkout@v7
         with:
@@ -1671,6 +1686,22 @@ jobs:
       - name: Require distribution review for the candidate's class-group backend
         working-directory: candidate
         run: node scripts/release/class-group-distribution-eligibility.cjs
+      - name: Download exact prior publication journal
+        if: ${{ inputs.resume_publication_run_id != '' && inputs.resume_publication_artifact_id != '' }}
+        uses: actions/download-artifact@v7
+        with:
+          artifact-ids: ${{ inputs.resume_publication_artifact_id }}
+          run-id: ${{ inputs.resume_publication_run_id }}
+          github-token: ${{ github.token }}
+          merge-multiple: true
+          path: ${{ runner.temp }}/resume-publication
+      - name: Restore accepted npm publication state
+        if: ${{ inputs.resume_publication_run_id != '' && inputs.resume_publication_artifact_id != '' }}
+        run: |
+          node control/scripts/release/restore-npm-journal.cjs \
+            "$RUNNER_TEMP/prepared-request.json" \
+            "$RUNNER_TEMP/resume-publication/_temp/sagejs-prepared-artifacts/publication/npm.json" \
+            "$RUNNER_TEMP/sagejs-prepared-artifacts"
       - name: Publish the frozen artifact set
         env:
           GH_TOKEN: ${{ github.token }}
