@@ -42,7 +42,7 @@ type Parsed = any;
 // Async because also capable of reading to EOF from stdin.
 async function readWholeFile(filename?: string): Promise<string> {
   if (filename) {
-    const { readFile } = await import("fs/promises");
+    const { readFile } = require("fs/promises") as typeof import("fs/promises");
     return (await readFile(filename)).toString();
   }
 
