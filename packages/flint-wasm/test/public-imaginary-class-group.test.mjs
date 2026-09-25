@@ -78,14 +78,17 @@ test("noncyclic medium-band ideal classes retain both coordinates in Wasm", asyn
       "R.<x> = QQ[]",
       "K.<a> = NumberField(x^2-x+3750000079)",
       "G = K.class_group(algorithm='rust')",
+      "I = G.gen(0).ideal()",
+      "J = G.gen(1).ideal()",
       "[G.order(), G.invariants(), G.proof_status,",
       " G(G.gen(0).ideal()).coordinates(),",
       " G(G.gen(1).ideal()).coordinates(),",
-      " G((G.gen(0)*G.gen(1)^17).ideal()).coordinates()]",
+      " G((G.gen(0)*G.gen(1)^17).ideal()).coordinates(),",
+      " G(I*J).coordinates(), G(2*I).coordinates()]",
     ].join("\n"));
     assert.equal(
       answer.repr,
-      "[33768, (2, 16884), 'exact-unconditional', (1, 0), (0, 1), (1, 17)]",
+      "[33768, (2, 16884), 'exact-unconditional', (1, 0), (0, 1), (1, 17), (1, 1), (1, 0)]",
     );
   } finally {
     await sage.close();
