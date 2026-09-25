@@ -18,6 +18,7 @@ use crate::{
 };
 use rug::Integer;
 use serde::Serialize;
+use smallvec::{smallvec, SmallVec};
 use std::{
     collections::{BTreeSet, VecDeque},
     fmt,
@@ -27,6 +28,10 @@ const MAXIMUM_ABSOLUTE_DISCRIMINANT: u64 = 200_000_000_000;
 const MAXIMUM_REDUCED_FORMS: usize = 50_000;
 const RESULT_SCHEMA: &str = "sagejs.rust-class-group/complete-imaginary-quadratic-v2";
 const CERTIFICATE_THEOREM: &str = "primitive reduced positive-definite forms uniquely enumerate proper ideal classes of a negative fundamental discriminant";
+
+/// Most bounded quadratic class groups have one or two invariant factors.
+/// Keep those public coordinates inline while serializing exactly as arrays.
+pub type ClassCoordinates = SmallVec<[u64; 2]>;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct PublicImaginaryQuadraticInput {
@@ -150,7 +155,7 @@ pub struct FormClassMapEntry {
     pub form: BinaryQuadraticForm,
     pub inverse_form: BinaryQuadraticForm,
     /// Coordinates modulo the corresponding invariant factors.
-    pub coordinates: Vec<u64>,
+    pub coordinates: ClassCoordinates,
     pub representative_ideal: IdealRepresentative,
 }
 
@@ -158,7 +163,7 @@ pub struct FormClassMapEntry {
 #[serde(rename_all = "camelCase")]
 pub struct ClassGenerator {
     pub form: BinaryQuadraticForm,
-    pub coordinates: Vec<u64>,
+    pub coordinates: ClassCoordinates,
     pub exact_order: u64,
     pub representative_ideal: IdealRepresentative,
 }
@@ -397,7 +402,7 @@ pub fn compute_imaginary_class_group(
 
 fn materialize_class_map(
     forms: &[BinaryQuadraticForm],
-    coordinates: Vec<Vec<u64>>,
+    coordinates: Vec<ClassCoordinates>,
     invariants: &[u64],
     linear: i64,
 ) -> Result<(Vec<FormClassMapEntry>, Vec<usize>), ImaginaryClassGroupError> {
@@ -500,7 +505,7 @@ fn cyclic_orbit_from_class_number(
     let forms = tagged.iter().map(|&(form, _)| form).collect::<Vec<_>>();
     let coordinates = tagged
         .into_iter()
-        .map(|(_, ordinal)| vec![ordinal])
+        .map(|(_, ordinal)| smallvec![ordinal])
         .collect();
     let generator_index = forms
         .binary_search(&generator)
@@ -607,7 +612,7 @@ fn rank_two_orbit_from_class_number(
     let forms = tagged.iter().map(|&(form, _)| form).collect::<Vec<_>>();
     let coordinates = tagged
         .into_iter()
-        .map(|(_, coordinate)| coordinate.to_vec())
+        .map(|(_, coordinate)| smallvec![coordinate[0], coordinate[1]])
         .collect();
     let involution_index = forms
         .binary_search(&involution)
@@ -940,7 +945,8 @@ fn authenticate_constructed_imaginary_class_group(
     for (position, (actual, &(index, order))) in
         result.generators.iter().zip(generator_indices).enumerate()
     {
-        let mut unit_coordinate = vec![0_u64; invariants.len()];
+        let mut unit_coordinate = ClassCoordinates::new();
+        unit_coordinate.resize(invariants.len(), 0);
         unit_coordinate[position] = 1;
         if index >= forms.len()
             || actual.form != forms[index]
@@ -1104,7 +1110,8 @@ pub fn verify_imaginary_class_group(
             .binary_search(&actual.form)
             .map_err(|_| ImaginaryClassGroupError::InvalidCertificate)?;
         let order = invariants[generator_position];
-        let mut unit_coordinate = vec![0_u64; invariants.len()];
+        let mut unit_coordinate = ClassCoordinates::new();
+        unit_coordinate.resize(invariants.len(), 0);
         unit_coordinate[generator_position] = 1;
         if actual.coordinates != unit_coordinate
             || result.complete_class_map[index].coordinates != unit_coordinate
@@ -1144,7 +1151,7 @@ pub fn verify_imaginary_class_group(
 #[derive(Debug)]
 struct GroupStructure {
     invariants: Vec<u64>,
-    coordinates: Vec<Vec<u64>>,
+    coordinates: Vec<ClassCoordinates>,
     generator_indices: Vec<(usize, u64)>,
 }
 
@@ -1548,7 +1555,7 @@ fn almost_cyclic_generators(
 fn assign_form_inverse_pair(
     forms: &[BinaryQuadraticForm],
     assigned: &mut [bool],
-    coordinates: &mut [Vec<u64>],
+    coordinates: &mut [ClassCoordinates],
     form: BinaryQuadraticForm,
     coordinate: &[u64],
     invariants: &[usize],
@@ -1568,7 +1575,7 @@ fn assign_form_inverse_pair(
         return Err(ImaginaryClassGroupError::GroupLawFailure);
     }
     assigned[index] = true;
-    coordinates[index] = coordinate.to_vec();
+    coordinates[index] = ClassCoordinates::from_slice(coordinate);
     let inverse_index = forms
         .binary_search(&form.inverse_reduced()?)
         .map_err(|_| ImaginaryClassGroupError::GroupLawFailure)?;
@@ -1576,14 +1583,14 @@ fn assign_form_inverse_pair(
         .iter()
         .zip(invariants)
         .map(|(&value, &order)| if value == 0 { 0 } else { order as u64 - value })
-        .collect::<Vec<_>>();
+        .collect::<ClassCoordinates>();
     if inverse_index != index {
         if assigned[inverse_index] {
             return Err(ImaginaryClassGroupError::GroupLawFailure);
         }
         assigned[inverse_index] = true;
         coordinates[inverse_index] = inverse_coordinate;
-    } else if inverse_coordinate != coordinate {
+    } else if inverse_coordinate.as_slice() != coordinate {
         return Err(ImaginaryClassGroupError::GroupLawFailure);
     }
     Ok(())
@@ -1847,7 +1854,7 @@ fn compute_group_structure(
         return Err(ImaginaryClassGroupError::GroupLawFailure);
     }
 
-    let mut coordinates = vec![Vec::new(); forms.len()];
+    let mut coordinates = vec![ClassCoordinates::new(); forms.len()];
     let mut assigned = vec![false; forms.len()];
     if invariants.len() == 1 {
         let generator = generators[0];
@@ -1857,7 +1864,7 @@ fn compute_group_structure(
                     return Err(ImaginaryClassGroupError::GroupLawFailure);
                 }
                 assigned[index] = true;
-                coordinates[index] = vec![ordinal];
+                coordinates[index] = smallvec![ordinal];
             }
         } else {
             let mut form = principal;
@@ -1898,7 +1905,7 @@ fn compute_group_structure(
                     return Err(ImaginaryClassGroupError::GroupLawFailure);
                 }
                 assigned[index] = true;
-                coordinates[index] = coordinate.to_vec();
+                coordinates[index] = ClassCoordinates::from_slice(&coordinate);
             }
         } else {
             let mut power = principal;
@@ -1941,7 +1948,7 @@ fn compute_group_structure(
         }
         for ordinal in 0..forms.len() {
             let mut remaining = ordinal;
-            let mut coordinate = Vec::with_capacity(invariants.len());
+            let mut coordinate = ClassCoordinates::with_capacity(invariants.len());
             let mut form = principal;
             for (position, invariant) in invariants.iter().copied().enumerate() {
                 let value = remaining % invariant;
@@ -2878,7 +2885,7 @@ mod tests {
                 structure
                     .coordinates
                     .iter()
-                    .map(|coordinate| Some(coordinate.clone()))
+                    .map(|coordinate| Some(coordinate.as_slice().to_vec()))
                     .collect::<Vec<_>>()
             );
         }
@@ -3197,7 +3204,7 @@ mod tests {
                 result.complete_class_map[1].inverse_form.c += 1
             }),
             ("coordinates", |result| {
-                result.complete_class_map[1].coordinates = vec![0]
+                result.complete_class_map[1].coordinates = smallvec![0]
             }),
             ("ideal basis", |result| {
                 result.complete_class_map[1]
@@ -3209,7 +3216,7 @@ mod tests {
             }),
             ("generator form", |result| result.generators[0].form.c += 1),
             ("generator coordinates", |result| {
-                result.generators[0].coordinates = vec![0]
+                result.generators[0].coordinates = smallvec![0]
             }),
             ("generator ideal", |result| {
                 result.generators[0].representative_ideal.norm += 1

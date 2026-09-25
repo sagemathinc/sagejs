@@ -6,11 +6,11 @@
   "inputs": {
     "cargo_toml": {
       "path": "packages/class-groups/Cargo.toml",
-      "sha256": "0f1c21e48831183a883972cf71679014e4013651d04e6ebbf7e05be2471d8737"
+      "sha256": "3816eccf748b4521fbd0443048430776322a7be6afa039bcf4c15896ac612a3f"
     },
     "cargo_lock": {
       "path": "packages/class-groups/Cargo.lock",
-      "sha256": "6157c8ea9a89631969193354e2fd9a997ca6aa76f2f1ee0e9d66d0ec1d243db5"
+      "sha256": "1d8feca95469af9404a5a40e7675a13a50c369ec7c8da3cd73a85ee1d05bcd82"
     },
     "build_rs": {
       "path": "packages/class-groups/build.rs",
@@ -309,7 +309,7 @@
     },
     {
       "path": "packages/class-groups/src/imaginary.rs",
-      "sha256": "51a84cf23401108f2d77bce1c3bcb1cfaaff2391da4366b4afa2436c5deb8c07",
+      "sha256": "bec8e3b8a97546812e73020e1956acbe54f56a8a93bbf4dc8940391c775a8dfa",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
