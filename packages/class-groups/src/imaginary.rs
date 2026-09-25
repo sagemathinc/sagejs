@@ -2277,15 +2277,15 @@ fn sieve_candidate_primes(discriminant: i64, bound: u64) -> Vec<u64> {
     let absolute = discriminant.unsigned_abs();
     let maximum_n = (bound * bound + absolute) / 4 + 1;
     let prime_bound = integer_square_root(maximum_n) as usize;
-    let mut prime_sieve = vec![true; prime_bound + 1];
+    let mut prime_sieve = vec![1_u8; prime_bound + 1];
     let mut primes = Vec::new();
     for prime in 2..=prime_bound {
-        if !prime_sieve[prime] {
+        if prime_sieve[prime] == 0 {
             continue;
         }
         if prime <= prime_bound / prime {
             for multiple in (prime * prime..=prime_bound).step_by(prime) {
-                prime_sieve[multiple] = false;
+                prime_sieve[multiple] = 0;
             }
         }
         if prime == 2 {
@@ -2517,11 +2517,19 @@ fn square_root_mod_prime(value: u64, prime: u64) -> Option<u64> {
     if value == 0 {
         return Some(0);
     }
+    if prime % 4 == 3 {
+        let root = power_mod(value, (prime + 1) / 4, prime);
+        return (root * root % prime == value).then_some(root);
+    }
+    if prime % 8 == 5 {
+        let mut root = power_mod(value, (prime + 3) / 8, prime);
+        if root * root % prime != value {
+            root = root * power_mod(2, (prime - 1) / 4, prime) % prime;
+        }
+        return (root * root % prime == value).then_some(root);
+    }
     if power_mod(value, (prime - 1) / 2, prime) != 1 {
         return None;
-    }
-    if prime % 4 == 3 {
-        return Some(power_mod(value, (prime + 1) / 4, prime));
     }
     let mut odd_part = prime - 1;
     let mut exponent_of_two = 0;
@@ -2948,6 +2956,27 @@ mod tests {
             reference.sort_unstable_by_key(|&(form, _)| form);
             sort_tagged_forms(&mut tagged, bound as usize);
             assert_eq!(tagged, reference, "D={discriminant}");
+        }
+    }
+
+    #[test]
+    fn modular_prime_roots_match_exhaustive_residue_sets() {
+        for prime in (3_u64..=997).filter(|prime| is_prime(*prime)) {
+            let mut squares = vec![false; prime as usize];
+            for root in 0..prime {
+                squares[(root * root % prime) as usize] = true;
+            }
+            for value in 0..prime {
+                let root = square_root_mod_prime(value, prime);
+                assert_eq!(
+                    root.is_some(),
+                    squares[value as usize],
+                    "p={prime}, x={value}"
+                );
+                if let Some(root) = root {
+                    assert_eq!(root * root % prime, value, "p={prime}, x={value}");
+                }
+            }
         }
     }
 
