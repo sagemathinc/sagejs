@@ -12,11 +12,6 @@
 //! class. The admitted v2 domain has `|D| <= 2*10^11` and at most 50,000 reduced
 //! forms; all other inputs fail closed.
 
-use crate::{
-    EmbeddingPrecisionState, PreparedNumberFieldData, PreparedNumberFieldValidationError,
-    ValidatedPreparedNumberField,
-};
-use rug::Integer;
 use serde::Serialize;
 use smallvec::{smallvec, SmallVec};
 use std::{
@@ -211,8 +206,6 @@ pub enum ImaginaryClassGroupError {
     NotImaginary,
     DiscriminantResourceLimit { absolute_discriminant: u64 },
     NotFundamentalDiscriminant,
-    NoIrreducibilityWitness,
-    PreparedFieldValidation(PreparedNumberFieldValidationError),
     ReducedFormResourceLimit { class_number: usize, maximum: usize },
     GroupLawFailure,
     InvalidCertificate,
@@ -244,7 +237,7 @@ pub fn compute_imaginary_class_group_from_coefficients(
 pub fn compute_imaginary_class_number_from_coefficients(
     polynomial_ascending: [i64; 3],
 ) -> Result<CompleteImaginaryClassNumber, ImaginaryClassGroupError> {
-    let discriminant = validated_imaginary_discriminant(polynomial_ascending)?;
+    let (discriminant, _, _) = validated_imaginary_discriminant(polynomial_ascending)?;
     let class_number = count_reduced_forms(discriminant);
     if class_number > MAXIMUM_REDUCED_FORMS {
         return Err(ImaginaryClassGroupError::ReducedFormResourceLimit {
@@ -261,7 +254,7 @@ pub fn compute_imaginary_class_number_from_coefficients(
 
 fn validated_imaginary_discriminant(
     polynomial_ascending: [i64; 3],
-) -> Result<i64, ImaginaryClassGroupError> {
+) -> Result<(i64, i64, Vec<u64>), ImaginaryClassGroupError> {
     let [constant, linear, leading] = polynomial_ascending;
     if leading != 1 {
         return Err(ImaginaryClassGroupError::NonMonic);
@@ -278,46 +271,20 @@ fn validated_imaginary_discriminant(
             absolute_discriminant,
         });
     }
-    fundamental_discriminant(discriminant)
+    let (squarefree_core, prime_factors) = fundamental_discriminant(discriminant)
         .ok_or(ImaginaryClassGroupError::NotFundamentalDiscriminant)?;
-    Ok(discriminant)
+    Ok((discriminant, squarefree_core, prime_factors))
 }
 
 pub fn compute_imaginary_class_group(
     input: PublicImaginaryQuadraticInput,
 ) -> Result<CompleteImaginaryClassGroup, ImaginaryClassGroupError> {
-    let [constant, linear, _] = input.polynomial_ascending;
-    let discriminant = validated_imaginary_discriminant(input.polynomial_ascending)?;
-    let (squarefree_core, prime_factors) = fundamental_discriminant(discriminant)
-        .ok_or(ImaginaryClassGroupError::NotFundamentalDiscriminant)?;
-    let irreducibility_prime = (2_u32..=257)
-        .filter(|value| is_prime(u64::from(*value)))
-        .find(|prime| !has_root_mod_prime(input.polynomial_ascending, *prime))
-        .ok_or(ImaginaryClassGroupError::NoIrreducibilityWitness)?;
-
-    let multiplication_table = vec![
-        Integer::from(1),
-        Integer::from(0),
-        Integer::from(0),
-        Integer::from(1),
-        Integer::from(0),
-        Integer::from(1),
-        Integer::from(-constant),
-        Integer::from(-linear),
-    ];
-    let prepared = ValidatedPreparedNumberField::validate(PreparedNumberFieldData {
-        polynomial_ascending: input.polynomial_ascending.map(Integer::from).to_vec(),
-        irreducibility_prime,
-        integral_basis_numerators: vec![1.into(), 0.into(), 0.into(), 1.into()],
-        basis_denominator: Integer::from(1),
-        multiplication_table,
-        discriminant: Integer::from(discriminant),
-        signature: (0, 1),
-        embedding_precision: EmbeddingPrecisionState::Pending { target_bits: 192 },
-        index_primes: vec![],
-    })
-    .map_err(ImaginaryClassGroupError::PreparedFieldValidation)?;
-    debug_assert_eq!(prepared.equation_order_index(), &Integer::from(1));
+    let linear = input.polynomial_ascending[1];
+    // A negative quadratic discriminant proves irreducibility over Q, and
+    // its fundamental discriminant proves Z[alpha] is the maximal order.
+    // No generic prepared-field object is needed by the reduced-form engine.
+    let (discriminant, squarefree_core, prime_factors) =
+        validated_imaginary_discriminant(input.polynomial_ascending)?;
 
     let proved_orbit = if discriminant.unsigned_abs() >= 1_000_000_000 {
         match prime_factors.len() {
@@ -2741,15 +2708,6 @@ fn squarefree_prime_factors(mut value: u64) -> Option<Vec<u64>> {
         answer.push(value);
     }
     Some(answer)
-}
-
-fn has_root_mod_prime(polynomial: [i64; 3], prime: u32) -> bool {
-    (0..prime).any(|root| {
-        let modulus = i128::from(prime);
-        polynomial.iter().rev().fold(0_i128, |value, coefficient| {
-            (value * i128::from(root) + i128::from(*coefficient)).rem_euclid(modulus)
-        }) == 0
-    })
 }
 
 fn is_prime(value: u64) -> bool {
