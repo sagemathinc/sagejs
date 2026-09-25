@@ -1213,8 +1213,8 @@
     {
       "file": "src/imaginary.rs",
       "scope": "product-candidate",
-      "sha256": "20ac9a9a5dc6216d35f5d56eaa0061cacc88a720d507d3adf0115fde3bcc3618",
-      "bytes": 124986,
+      "sha256": "51a84cf23401108f2d77bce1c3bcb1cfaaff2391da4366b4afa2436c5deb8c07",
+      "bytes": 128330,
       "copyrightNotices": [
         "Copyright (C) Sage.js contributors."
       ],

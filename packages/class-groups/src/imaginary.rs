@@ -345,36 +345,29 @@ pub fn compute_imaginary_class_group(
         });
     }
     let ideal = |form: BinaryQuadraticForm| ideal_representative(linear, form);
-    let complete_class_map = forms
-        .iter()
-        .copied()
-        .zip(structure.coordinates.iter().cloned())
-        .map(|(form, class_coordinates)| {
-            Ok(FormClassMapEntry {
-                form,
-                inverse_form: form.inverse_reduced()?,
-                coordinates: class_coordinates,
-                representative_ideal: ideal(form),
-            })
-        })
-        .collect::<Result<Vec<_>, ImaginaryClassGroupError>>()?;
-    let generators = structure
-        .generator_indices
+    let GroupStructure {
+        invariants,
+        coordinates,
+        generator_indices,
+    } = structure;
+    let generators = generator_indices
         .iter()
         .map(|&(index, order)| ClassGenerator {
             form: forms[index],
-            coordinates: structure.coordinates[index].clone(),
+            coordinates: coordinates[index].clone(),
             exact_order: order,
             representative_ideal: ideal(forms[index]),
         })
         .collect();
+    let (complete_class_map, coordinate_ordinals) =
+        materialize_class_map(&forms, coordinates, &invariants, linear)?;
     let answer = CompleteImaginaryClassGroup {
         schema: RESULT_SCHEMA,
         field_id: input.id,
         polynomial_ascending: input.polynomial_ascending,
         discriminant,
         class_number: forms.len(),
-        invariant_factors: structure.invariants.clone(),
+        invariant_factors: invariants.clone(),
         generators,
         complete_class_map,
         certificate: ReducedFormCompletenessCertificate {
@@ -391,13 +384,38 @@ pub fn compute_imaginary_class_group(
     authenticate_constructed_imaginary_class_group(
         input,
         &answer,
-        &structure,
+        &invariants,
+        &generator_indices,
+        &coordinate_ordinals,
         discriminant,
         squarefree_core,
         &prime_factors,
         reduction_bound_a,
     )?;
     Ok(answer)
+}
+
+fn materialize_class_map(
+    forms: &[BinaryQuadraticForm],
+    coordinates: Vec<Vec<u64>>,
+    invariants: &[u64],
+    linear: i64,
+) -> Result<(Vec<FormClassMapEntry>, Vec<usize>), ImaginaryClassGroupError> {
+    if forms.len() != coordinates.len() {
+        return Err(ImaginaryClassGroupError::InvalidCertificate);
+    }
+    let mut entries = Vec::with_capacity(forms.len());
+    let mut ordinals = Vec::with_capacity(forms.len());
+    for (&form, coordinate) in forms.iter().zip(coordinates) {
+        ordinals.push(coordinate_ordinal(&coordinate, invariants, forms.len())?);
+        entries.push(FormClassMapEntry {
+            form,
+            inverse_form: form.inverse_reduced()?,
+            coordinates: coordinate,
+            representative_ideal: ideal_representative(linear, form),
+        });
+    }
+    Ok((entries, ordinals))
 }
 
 /// For a provably cyclic group, its complete reduced-form orbit can serve as
@@ -848,21 +866,23 @@ fn collect_rank_two_orbit_with_workers(
 /// `compute_group_structure` has already traversed the entire group, proved
 /// the generator orders, assigned every mixed-radix coordinate exactly once,
 /// and returned to the principal form. This helper is deliberately private
-/// and receives that private producer-owned witness directly. Serialized or
-/// otherwise untrusted results must use [`verify_imaginary_class_group`],
-/// which independently re-enumerates the forms and replays generator
-/// translations.
+/// and receives the remaining producer-owned witness after the coordinate
+/// vectors have moved into the public map. It checks the map is a coordinate
+/// bijection without replaying every translation. Serialized or otherwise
+/// untrusted results must use [`verify_imaginary_class_group`], which
+/// independently re-enumerates the forms and replays generator translations.
 fn authenticate_constructed_imaginary_class_group(
     input: PublicImaginaryQuadraticInput,
     result: &CompleteImaginaryClassGroup,
-    structure: &GroupStructure,
+    invariants: &[u64],
+    generator_indices: &[(usize, u64)],
+    coordinate_ordinals: &[usize],
     discriminant: i64,
     squarefree_core: i64,
     prime_factors: &[u64],
     reduction_bound_a: i64,
 ) -> Result<(), ImaginaryClassGroupError> {
     let forms = &result.certificate.reduced_forms;
-    let invariants = &structure.invariants;
     let invariant_product = invariants
         .iter()
         .try_fold(1_u64, |product, value| product.checked_mul(*value));
@@ -881,15 +901,16 @@ fn authenticate_constructed_imaginary_class_group(
         || invariants.iter().any(|value| *value <= 1)
         || invariants.windows(2).any(|pair| pair[1] % pair[0] != 0)
         || result.complete_class_map.len() != forms.len()
-        || structure.coordinates.len() != forms.len()
-        || structure.generator_indices.len() != invariants.len()
-        || result.generators.len() != structure.generator_indices.len()
+        || coordinate_ordinals.len() != forms.len()
+        || generator_indices.len() != invariants.len()
+        || result.generators.len() != generator_indices.len()
         || result.proof_status != "unconditional-complete"
         || result.runtime_uses_pari_or_fixture_answers
     {
         return Err(ImaginaryClassGroupError::InvalidCertificate);
     }
     let linear = input.polynomial_ascending[1];
+    let mut seen_coordinates = vec![false; forms.len()];
     for (index, entry) in result.complete_class_map.iter().enumerate() {
         let form = forms[index];
         if entry.form != form
@@ -897,7 +918,7 @@ fn authenticate_constructed_imaginary_class_group(
                 != form
                     .inverse_reduced()
                     .map_err(|_| ImaginaryClassGroupError::InvalidCertificate)?
-            || entry.coordinates != structure.coordinates[index]
+            || entry.coordinates.len() != invariants.len()
             || entry.representative_ideal != ideal_representative(linear, form)
             || !representative_ideal_is_closed(
                 input.polynomial_ascending,
@@ -907,18 +928,24 @@ fn authenticate_constructed_imaginary_class_group(
         {
             return Err(ImaginaryClassGroupError::InvalidCertificate);
         }
+        let coordinate_index = coordinate_ordinal(&entry.coordinates, invariants, forms.len())?;
+        if coordinate_index != coordinate_ordinals[index] {
+            return Err(ImaginaryClassGroupError::InvalidCertificate);
+        }
+        let seen = &mut seen_coordinates[coordinate_index];
+        if std::mem::replace(seen, true) {
+            return Err(ImaginaryClassGroupError::InvalidCertificate);
+        }
     }
-    for (position, (actual, &(index, order))) in result
-        .generators
-        .iter()
-        .zip(&structure.generator_indices)
-        .enumerate()
+    for (position, (actual, &(index, order))) in
+        result.generators.iter().zip(generator_indices).enumerate()
     {
         let mut unit_coordinate = vec![0_u64; invariants.len()];
         unit_coordinate[position] = 1;
-        if actual.form != forms[index]
+        if index >= forms.len()
+            || actual.form != forms[index]
             || actual.coordinates != unit_coordinate
-            || actual.coordinates != structure.coordinates[index]
+            || actual.coordinates != result.complete_class_map[index].coordinates
             || actual.exact_order != order
             || actual.representative_ideal != ideal_representative(linear, forms[index])
         {
@@ -926,6 +953,41 @@ fn authenticate_constructed_imaginary_class_group(
         }
     }
     Ok(())
+}
+
+fn coordinate_ordinal(
+    coordinates: &[u64],
+    invariants: &[u64],
+    group_order: usize,
+) -> Result<usize, ImaginaryClassGroupError> {
+    if coordinates.len() != invariants.len() {
+        return Err(ImaginaryClassGroupError::InvalidCertificate);
+    }
+    let mut ordinal = 0_usize;
+    let mut place = 1_usize;
+    for (&coordinate, &order) in coordinates.iter().zip(invariants) {
+        if coordinate >= order {
+            return Err(ImaginaryClassGroupError::InvalidCertificate);
+        }
+        let digit = usize::try_from(coordinate)
+            .map_err(|_| ImaginaryClassGroupError::InvalidCertificate)?;
+        let radix =
+            usize::try_from(order).map_err(|_| ImaginaryClassGroupError::InvalidCertificate)?;
+        ordinal = ordinal
+            .checked_add(
+                digit
+                    .checked_mul(place)
+                    .ok_or(ImaginaryClassGroupError::InvalidCertificate)?,
+            )
+            .ok_or(ImaginaryClassGroupError::InvalidCertificate)?;
+        place = place
+            .checked_mul(radix)
+            .ok_or(ImaginaryClassGroupError::InvalidCertificate)?;
+    }
+    if ordinal >= group_order {
+        return Err(ImaginaryClassGroupError::InvalidCertificate);
+    }
+    Ok(ordinal)
 }
 
 /// Replay every exact claim using only the public coefficients and certificate.
@@ -3179,6 +3241,14 @@ mod tests {
         let structure =
             compute_group_structure(&pristine.certificate.reduced_forms, pristine.discriminant)
                 .unwrap();
+        let coordinate_ordinals = structure
+            .coordinates
+            .iter()
+            .map(|coordinates| {
+                coordinate_ordinal(coordinates, &structure.invariants, pristine.class_number)
+                    .unwrap()
+            })
+            .collect::<Vec<_>>();
         let discriminant = pristine.discriminant;
         let squarefree_core = pristine.certificate.fundamental_squarefree_core;
         let prime_factors = pristine.certificate.squarefree_core_prime_factors.clone();
@@ -3200,6 +3270,14 @@ mod tests {
             ("theorem", |result| {
                 result.certificate.theorem = "counterfeit theorem"
             }),
+            ("coordinate collision", |result| {
+                result.complete_class_map[1].coordinates =
+                    result.complete_class_map[0].coordinates.clone();
+            }),
+            ("coordinate permutation", |result| {
+                let (first, rest) = result.complete_class_map.split_at_mut(1);
+                std::mem::swap(&mut first[0].coordinates, &mut rest[0].coordinates);
+            }),
         ];
         for (label, counterfeit) in counterfeits {
             let mut result = pristine.clone();
@@ -3208,7 +3286,9 @@ mod tests {
                 authenticate_constructed_imaginary_class_group(
                     input,
                     &result,
-                    &structure,
+                    &structure.invariants,
+                    &structure.generator_indices,
+                    &coordinate_ordinals,
                     discriminant,
                     squarefree_core,
                     &prime_factors,
