@@ -9,8 +9,8 @@ explicit control source under `bench/optimizer-workloads` at `O2` without execut
 Imports are stubbed, optimizer IR is independently verified, and every loop-bearing
 function, method, or lambda is retained with its exact source location and portable identity.
 
-Input identity: `a5dc0000ad94ab14488ef903f113069c0592b361c3bb9f4fa33a9774dbe78702` (745 files, 15206821 bytes).
-Analyzed source bundle: `sha256:1bcb0a83b4f8eba1694ae4c5b0d3c2d3a81e2fd98d8d5daff2c8a08f81893d86`; compiler identity: `sha256:f6ee26802fe90ffc33221e81668b0c5f914ff06e9a67ffaced84f14f2280853b`.
+Input identity: `bf85e0f2e49e99d720145daebe35e00fd57a648e12634bac5acf711da69bf5c5` (745 files, 15207015 bytes).
+Analyzed source bundle: `sha256:1c796b45969b216017658f81ee1a0f476235258616a5d2717d8d4bb107fa55e2`; compiler identity: `sha256:f6ee26802fe90ffc33221e81668b0c5f914ff06e9a67ffaced84f14f2280853b`.
 
 The complete machine census is stored outside Git as immutable GitHub Release assets.
 `architecture/optimizer-opportunities.manifest.json` binds its canonical NDJSON logical
@@ -49,11 +49,11 @@ are explicitly heuristic triage signals, not correctness proofs.
 
 ## Static and verified cost evidence
 
-- Potential object-result sites: 100486
-- Collection-allocation sites: 12303
-- Known coercion sites: 20715
+- Potential object-result sites: 100501
+- Collection-allocation sites: 12307
+- Known coercion sites: 20721
 - Potential boundary-call sites: 107
-- Unresolved call sites: 51713
+- Unresolved call sites: 51720
 - Selected-target allocations: 3 known; 57 runtime-dependent
 - Selected-target representation conversions: 3 known; 59 runtime-dependent
 - Selected-target boundary crossings: 0 known; 0 runtime-dependent
@@ -138,7 +138,7 @@ convenience, not a performance ranking.
 | `dashboard.unsupported-while-loop` | 877 | Prove a finite progress measure and transactional exits before lowering a `while` loop. |
 | `bounded-integer.unsupported-operation:%` | 833 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
 | `bounded-integer.unsupported-operation:<` | 560 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
-| `bounded-integer.unsupported-operation://` | 370 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
+| `bounded-integer.unsupported-operation://` | 371 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
 | `bounded-integer.unsupported-operation:>` | 355 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
 | `bounded-integer.unsupported-operation:&&` | 293 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
 | `bounded-integer.unsupported-operation:||` | 276 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
