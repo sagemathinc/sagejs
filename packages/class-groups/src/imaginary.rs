@@ -920,9 +920,11 @@ fn primary_basis(
 /// Four self-inverse forms prove 2-rank two. If an element has order `h/2`,
 /// its cyclic subgroup has index two. An involution outside that subgroup
 /// intersects it trivially and therefore gives the claimed direct product.
-/// The subsequent complete coordinate traversal independently checks that
-/// these generators reach every enumerated class. This is only a bounded
-/// opportunistic path; the general primary decomposition remains available.
+/// A cyclic subgroup has only one nonidentity involution, so no subgroup
+/// enumeration is needed to identify an independent one. The subsequent
+/// complete coordinate traversal independently checks that these generators
+/// reach every enumerated class. This is only a bounded opportunistic path;
+/// the general primary decomposition remains available.
 fn almost_cyclic_generators(
     forms: &[BinaryQuadraticForm],
     discriminant: i64,
@@ -937,21 +939,17 @@ fn almost_cyclic_generators(
         if form_order(candidate, forms.len(), discriminant)? != target_order {
             continue;
         }
-        let mut subgroup = BTreeSet::new();
-        let mut current = principal;
-        for _ in 0..target_order {
-            if !subgroup.insert(current) {
-                return Err(ImaginaryClassGroupError::GroupLawFailure);
-            }
-            current = compose_reduced_forms_unchecked(current, candidate, discriminant)?;
+        if form_power(candidate, target_order, discriminant)? != principal {
+            return Err(ImaginaryClassGroupError::GroupLawFailure);
         }
-        if current != principal {
+        let subgroup_involution = form_power(candidate, target_order / 2, discriminant)?;
+        if subgroup_involution == principal {
             return Err(ImaginaryClassGroupError::GroupLawFailure);
         }
         if let Some(involution) = involutions
             .iter()
             .copied()
-            .find(|form| *form != principal && !subgroup.contains(form))
+            .find(|form| *form != principal && *form != subgroup_involution)
         {
             return Ok(Some(vec![involution, candidate]));
         }
@@ -1742,6 +1740,34 @@ mod tests {
         assert_eq!(group.invariant_factors, vec![2, 16_884]);
         assert_eq!(group.complete_class_map.len(), group.class_number);
         verify_imaginary_class_group(input, &group).unwrap();
+    }
+
+    #[test]
+    fn almost_cyclic_involution_is_outside_the_large_cyclic_subgroup() {
+        for discriminant in [-231, -15_000_000_315] {
+            let forms = enumerate_reduced_forms(discriminant).1;
+            let involutions = forms
+                .iter()
+                .filter(|form| form.inverse_reduced() == Ok(**form))
+                .copied()
+                .collect::<Vec<_>>();
+            assert_eq!(involutions.len(), 4);
+            let generators = almost_cyclic_generators(&forms, discriminant, &involutions)
+                .unwrap()
+                .unwrap();
+            assert_eq!(
+                form_order(generators[1], forms.len(), discriminant),
+                Ok(forms.len() / 2)
+            );
+            assert_eq!(
+                form_power(generators[0], 2, discriminant),
+                Ok(principal_form(discriminant))
+            );
+            assert_ne!(
+                generators[0],
+                form_power(generators[1], forms.len() / 4, discriminant).unwrap()
+            );
+        }
     }
 
     #[test]
