@@ -9,8 +9,8 @@ explicit control source under `bench/optimizer-workloads` at `O2` without execut
 Imports are stubbed, optimizer IR is independently verified, and every loop-bearing
 function, method, or lambda is retained with its exact source location and portable identity.
 
-Input identity: `cde301b8f35302ef1104a12e82c5d362c075ba6f7eca925bb6e43b7b0e7b7fa0` (745 files, 15194688 bytes).
-Analyzed source bundle: `sha256:95c7035203d6d48f71c44d7a1143cf14fe454e276667af4886f728b2d29a27a0`; compiler identity: `sha256:541989efe0eaf1143eae990ecf7d762ec1003e1825beeffddd7bc224bcd2ffcb`.
+Input identity: `c5024d4031815cb7f4f8087aac5c827d00ed500008ffa14dfd7adb6f5afe51c2` (745 files, 15194882 bytes).
+Analyzed source bundle: `sha256:7b04d78a87be88fa6591a0fc31abe4669ac9b2355e9dc2e2863986342fe33104`; compiler identity: `sha256:9dc001dba0a00d9cb8b9ea107d1855f0a668936ded164ca9d73e07a1cafa11aa`.
 
 The complete machine census is stored outside Git as immutable GitHub Release assets.
 `architecture/optimizer-opportunities.manifest.json` binds its canonical NDJSON logical
@@ -35,7 +35,7 @@ pnpm optimizer:opportunities:query -- sha256:<digest>
 | Source modules compiled | 662 / 662 |
 | Library modules compiled | 649 / 649 |
 | Explicit control sources compiled | 13 / 13 |
-| Functions and methods compiled | 17126 |
+| Functions and methods compiled | 17129 |
 | Loop-bearing functions and methods | 5423 |
 | Loops in functions | 15067 |
 | Selected optimized loops | 61 |

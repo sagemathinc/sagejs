@@ -7,7 +7,6 @@
 
 import { dirname, join, normalize, resolve } from "path";
 import { mkdirSync, realpathSync, writeFileSync } from "fs";
-import { readFile } from "fs/promises";
 import { Script } from "vm";
 import { PythonSourceMap, PythonSourceMapCollector } from "./python/source-map";
 import { mappedPythonScript } from "./python/stack-adapter";
@@ -43,6 +42,7 @@ type Parsed = any;
 // Async because also capable of reading to EOF from stdin.
 async function readWholeFile(filename?: string): Promise<string> {
   if (filename) {
+    const { readFile } = await import("fs/promises");
     return (await readFile(filename)).toString();
   }
 
