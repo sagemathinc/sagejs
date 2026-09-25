@@ -70,6 +70,24 @@ test("automatic imaginary quadratic dispatch uses the unconditional Rust service
   assert.equal(answer.repr, "[3, 3, (3,), 'rust', 'exact-unconditional', (1,)]");
 });
 
+test("automatic imaginary quadratic class groups reuse the validated map", async () => {
+  const answer = await evaluate([
+    ...fixture,
+    "class CountingBackend(Backend):",
+    "    calls = 0",
+    "    def call(self, operation, request):",
+    "        if operation == 'imaginary-class-group':",
+    "            self.calls += 1",
+    "        return super().call(operation, request)",
+    "counting = CountingBackend()",
+    "setattr(runtime, 'class_group_backend', lambda: counting)",
+    "first = K.class_group()",
+    "second = K.class_group()",
+    "[first is second, counting.calls, second.gen().coordinates()]",
+  ]);
+  assert.equal(answer.repr, "[True, 1, (1,)]");
+});
+
 test("automatic imaginary quadratic dispatch falls back only on a pre-publication decline", async () => {
   const answer = await evaluate([
     ...fixture,

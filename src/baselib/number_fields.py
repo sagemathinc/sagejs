@@ -2881,6 +2881,14 @@ class NumberFieldParent(sage.Parent):
         **limits: Any,
     ) -> Any:
         del names
+        use_cache = proof is None and algorithm == "auto" and len(limits) == 0
+        if (
+            use_cache
+            and self._class_group_cache is not runtime.undefined
+            and self.degree() == 2
+            and self.discriminant() < 0
+        ):
+            return self._class_group_cache
         imaginary_rust = _nf_rust_class_group_runtime_module().rust_imaginary_result(
             self,
             operation="imaginary-class-group",
@@ -2888,9 +2896,12 @@ class NumberFieldParent(sage.Parent):
             options=limits,
         )
         if imaginary_rust is not None:
-            return NumberFieldClassGroup(
+            result = NumberFieldClassGroup(
                 self, QuadraticClassGroup(self._quadratic_backend()[0], imaginary_rust)
             )
+            if use_cache:
+                self._class_group_cache = result
+            return result
         rust_group = _nf_rust_class_group_runtime_module().rust_class_group(
             self,
             proof=proof,
@@ -2940,7 +2951,6 @@ class NumberFieldParent(sage.Parent):
                 )
             if bounded.minkowski_factor_base_complete:
                 general_algorithm = "minkowski"
-        use_cache = proof is None and algorithm == "auto" and len(limits) == 0
         if use_cache and self._class_group_cache is not runtime.undefined:
             return self._class_group_cache
         if self._is_tutorial_cubic():
