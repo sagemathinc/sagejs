@@ -16,7 +16,7 @@ test("type-level callable fixture passes CPython", () => {
   assert.ifError(result.error);
   assert.equal(result.status, 0, result.stderr);
   assert.equal(result.stderr, "");
-  assert.equal(result.stdout, "callable-type-slots-ok\n");
+  assert.equal(result.stdout.replace(/\r\n/g, "\n"), "callable-type-slots-ok\n");
 });
 
 for (const mode of ["python", "sage"]) {
