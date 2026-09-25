@@ -1539,11 +1539,74 @@ fn record_sieve_factor(
 }
 
 fn count_reduced_forms(discriminant: i64) -> usize {
+    #[cfg(not(target_arch = "wasm32"))]
+    if let Some(count) = count_reduced_forms_parallel(discriminant) {
+        return count;
+    }
     let mut count = 0;
     visit_sieved_reduced_form_families(discriminant, |_, _, _, both_orientations| {
         count += if both_orientations { 2 } else { 1 };
     });
     count
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn count_reduced_forms_parallel(discriminant: i64) -> Option<usize> {
+    let absolute = discriminant.unsigned_abs();
+    let bound = integer_square_root(absolute / 3);
+    let parity = if discriminant.rem_euclid(4) == 1 {
+        1
+    } else {
+        0
+    };
+    let candidates = ((bound - parity) / 2 + 1) as usize;
+    if candidates < 20_000 {
+        return None;
+    }
+    let workers = std::thread::available_parallelism()
+        .map(|count| count.get().min(8))
+        .unwrap_or(1);
+    (workers >= 2).then(|| count_reduced_forms_with_workers(discriminant, workers))
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn count_reduced_forms_with_workers(discriminant: i64, workers: usize) -> usize {
+    let absolute = discriminant.unsigned_abs();
+    let bound = integer_square_root(absolute / 3);
+    let parity = if discriminant.rem_euclid(4) == 1 {
+        1
+    } else {
+        0
+    };
+    let candidates = ((bound - parity) / 2 + 1) as usize;
+    let patterns = sieve_root_patterns_with_workers(discriminant, bound, parity, workers);
+    let chunk_size = candidates.div_ceil(workers.max(1));
+    std::thread::scope(|scope| {
+        let mut handles = Vec::new();
+        for start in (0..candidates).step_by(chunk_size) {
+            let end = (start + chunk_size).min(candidates);
+            let patterns = &patterns;
+            handles.push(scope.spawn(move || {
+                let mut count = 0;
+                visit_sieved_reduced_form_families_range(
+                    discriminant,
+                    bound,
+                    parity,
+                    patterns,
+                    start,
+                    end,
+                    |_, _, _, both_orientations| {
+                        count += if both_orientations { 2 } else { 1 };
+                    },
+                );
+                count
+            }));
+        }
+        handles
+            .into_iter()
+            .map(|handle| handle.join().expect("quadratic form-count worker panicked"))
+            .sum()
+    })
 }
 
 /// Visit canonical reduced-form families using a sieve of their candidate norms.
@@ -2322,6 +2385,11 @@ mod tests {
                     enumerate_reduced_forms_with_workers(discriminant, workers),
                     reference,
                     "D={discriminant}, workers={workers}"
+                );
+                assert_eq!(
+                    count_reduced_forms_with_workers(discriminant, workers),
+                    reference.1.len(),
+                    "count D={discriminant}, workers={workers}"
                 );
             }
         }

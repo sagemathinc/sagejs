@@ -29,8 +29,9 @@ and the frozen answers are absent from the Rust executable.
 
 For native groups with at least 10,000 classes, Rust builds cyclic and
 `C2 x C(h/2)` maps with up to eight OS threads, bounded by the process's
-reported available parallelism. Native reduced-form enumeration also uses
-up to eight workers when the candidate range has at least 20,000 entries.
+reported available parallelism. Native reduced-form enumeration and scalar
+class-number counting also use up to eight workers when the candidate range
+has at least 20,000 entries.
 Smaller Rust cases and the Wasm target use one thread. PARI's matched call is
 not assigned an equivalent worker pool, so the comparison is wall time, not
 equal total CPU work; the receipt records the host's process affinity.
