@@ -390,6 +390,12 @@ fn materialize_class_map(
     Ok((entries, ordinals))
 }
 
+fn orbit_candidate_norms() -> impl Iterator<Item = i64> {
+    // A moderate split-prime norm reduces costly non-coprime orbit products.
+    // Retain every smaller candidate as an exact fallback if none generates.
+    (31_i64..=257).chain(7..=30).chain(2..=5)
+}
+
 /// For a provably cyclic group, its complete reduced-form orbit can serve as
 /// the completeness certificate. The exact reduced-form count gives `h`;
 /// the order test proves a candidate generates `h` distinct classes, hence
@@ -414,7 +420,7 @@ fn cyclic_orbit_from_class_number(
     // Prefer larger split-prime norms for the long orbit: multiplying by a
     // norm-2, -3, or -5 form repeatedly hits the general lattice product
     // more often. Keep those three primes as a complete-search fallback.
-    for norm in (7_i64..=257).chain(2..=5) {
+    for norm in orbit_candidate_norms() {
         if !is_prime(norm as u64) {
             continue;
         }
@@ -514,7 +520,7 @@ fn rank_two_orbit_from_class_number(
     }
     let factors = factor_usize(order);
     let mut generators = None;
-    for norm in (7_i64..=257).chain(2..=5) {
+    for norm in orbit_candidate_norms() {
         if !is_prime(norm as u64) {
             continue;
         }
@@ -2825,6 +2831,23 @@ mod tests {
         assert_eq!(group.invariant_factors, vec![31_057]);
         assert_eq!(group.complete_class_map.len(), scalar.class_number);
         verify_imaginary_class_group(input, &group).unwrap();
+    }
+
+    #[test]
+    fn orbit_candidate_order_retains_every_small_prime_fallback() {
+        let candidates = orbit_candidate_norms()
+            .filter(|&norm| is_prime(norm as u64))
+            .collect::<Vec<_>>();
+        assert_eq!(candidates.first(), Some(&31));
+        assert_eq!(candidates.last(), Some(&5));
+        let mut sorted = candidates;
+        sorted.sort_unstable();
+        assert_eq!(
+            sorted,
+            (2..=257)
+                .filter(|&norm| is_prime(norm as u64))
+                .collect::<Vec<_>>()
+        );
     }
 
     #[test]
