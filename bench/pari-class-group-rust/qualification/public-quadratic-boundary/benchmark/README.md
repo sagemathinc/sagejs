@@ -77,6 +77,26 @@ selection rule, selected primes, and expected exact outputs are recorded in
 The authenticated PARI 2.17.4 control must already exist at
 `../pari-control/build/pari-control`.
 
+## Public Sage.js latency diagnostic
+
+The promoted comparison above does **not** time `K.class_group()` in the
+Python/Sage.js host. For that separate user-facing boundary, build Sage.js and
+the native class-group service, then run:
+
+```sh
+SAGEJS_CLASS_GROUP_SERVICE="$PWD/packages/class-groups/target/release/class-group-service" \
+  node bench/pari-class-group-rust/qualification/public-quadratic-boundary/benchmark/run-public-sagejs.cjs
+```
+
+This diagnostic uses the frozen v2 field panel and checks every public answer.
+It separately reports the first default call, repeated cached default calls,
+fresh explicit Rust-backed groups, and explicit scalar class numbers. Timings
+include `sage.evaluate` and public host dispatch but exclude kernel startup and
+field construction. Its JSON is **not** a promoted performance receipt and must
+not be divided by the PARI timings above: the boundaries and warmup policies
+differ. Pass a sample count and field ID to narrow a local investigation, for
+example `run-public-sagejs.cjs 3 near-limit-h4378-d8173415`.
+
 ## Matched scalar class-number comparison
 
 `run_class_number.py` separately compares the exact scalar Rust count, the

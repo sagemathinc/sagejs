@@ -201,3 +201,14 @@ test("the native service publishes a noncyclic group with exact ideal-class coor
     "[4, (2, 2), 'exact-unconditional', ((0, 1), (1, 0)), (1, 1), 4]",
   );
 });
+
+test("the native host advertises the product bound above the old ten-million cap", {
+  skip: !process.env.SAGEJS_CLASS_GROUP_SERVICE,
+}, async () => {
+  const answer = await evaluate([
+    "R.<x> = QQ[]",
+    "K.<a> = NumberField(x^2 - x + 3750000079)",
+    "[K.discriminant(), K.class_number(algorithm='rust'), K.class_number()]",
+  ]);
+  assert.equal(answer.repr, "[-15000000315, 33768, 33768]");
+});

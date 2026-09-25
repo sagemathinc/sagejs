@@ -476,7 +476,10 @@ export class NodeClassGroupBackend {
         proofModes: ["conditional-grh"],
         imaginaryQuadratic: {
           proofMode: "unconditional",
-          maximumAbsoluteDiscriminant: 10_000_000,
+          // Match the fail-closed product Rust engine bound. The prior 10^7
+          // host advertisement silently diverted frozen large-panel inputs
+          // to the unrelated legacy class-group algorithm.
+          maximumAbsoluteDiscriminant: 200_000_000_000,
           operations: ["imaginary-class-number", "imaginary-class-group"],
         },
         operations: [...CLASS_GROUP_OPERATIONS],
