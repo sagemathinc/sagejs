@@ -122,7 +122,7 @@ fn imaginary_quadratic_rejections_are_typed_and_do_not_poison_service() {
         "large",
         "imaginary-class-group",
         json!({
-            "polynomialAscending": ["2500003", "-1", "1"]
+            "polynomialAscending": ["50000000003", "-1", "1"]
         }),
     );
     assert_eq!(oversized["ok"], false, "{oversized}");

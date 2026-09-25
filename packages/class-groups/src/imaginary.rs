@@ -1084,6 +1084,101 @@ fn collect_cyclic_map_parallel(
     Ok(None)
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+fn collect_rank_two_map_parallel(
+    forms: &[BinaryQuadraticForm],
+    involution: BinaryQuadraticForm,
+    generator: BinaryQuadraticForm,
+    discriminant: i64,
+) -> Result<Option<Vec<(usize, [u64; 2])>>, ImaginaryClassGroupError> {
+    if forms.len() < 10_000 {
+        return Ok(None);
+    }
+    let workers = std::thread::available_parallelism()
+        .map(|count| count.get().min(8))
+        .unwrap_or(1);
+    if workers < 2 {
+        return Ok(None);
+    }
+    Ok(Some(collect_rank_two_map_with_workers(
+        forms,
+        involution,
+        generator,
+        discriminant,
+        workers,
+    )?))
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn collect_rank_two_map_with_workers(
+    forms: &[BinaryQuadraticForm],
+    involution: BinaryQuadraticForm,
+    generator: BinaryQuadraticForm,
+    discriminant: i64,
+    workers: usize,
+) -> Result<Vec<(usize, [u64; 2])>, ImaginaryClassGroupError> {
+    let order = forms.len() / 2;
+    let half_span = order / 2 + 1;
+    let chunk_size = half_span.div_ceil(workers.max(1));
+    let fragments = std::thread::scope(|scope| {
+        let mut handles = Vec::new();
+        for start in (0..half_span).step_by(chunk_size) {
+            let end = (start + chunk_size).min(half_span);
+            handles.push(scope.spawn(move || {
+                let mut power = form_power(generator, start, discriminant)?;
+                let mut entries = Vec::with_capacity(4 * (end - start));
+                for exponent in start..end {
+                    for (first, form) in [
+                        (0_u64, power),
+                        (
+                            1_u64,
+                            compose_reduced_forms_unchecked(power, involution, discriminant)?,
+                        ),
+                    ] {
+                        let index = forms
+                            .binary_search(&form)
+                            .map_err(|_| ImaginaryClassGroupError::GroupLawFailure)?;
+                        entries.push((index, [first, exponent as u64]));
+                        let inverse_index = forms
+                            .binary_search(&form.inverse_reduced()?)
+                            .map_err(|_| ImaginaryClassGroupError::GroupLawFailure)?;
+                        let inverse_exponent = (order - exponent) % order;
+                        if inverse_index != index {
+                            entries.push((inverse_index, [first, inverse_exponent as u64]));
+                        } else if inverse_exponent != exponent {
+                            return Err(ImaginaryClassGroupError::GroupLawFailure);
+                        }
+                    }
+                    if exponent + 1 < end {
+                        power = compose_reduced_forms_unchecked(power, generator, discriminant)?;
+                    }
+                }
+                Ok(entries)
+            }));
+        }
+        let mut fragments = Vec::with_capacity(handles.len());
+        for handle in handles {
+            fragments.push(
+                handle
+                    .join()
+                    .map_err(|_| ImaginaryClassGroupError::GroupLawFailure)??,
+            );
+        }
+        Ok::<_, ImaginaryClassGroupError>(fragments)
+    })?;
+    Ok(fragments.into_iter().flatten().collect())
+}
+
+#[cfg(target_arch = "wasm32")]
+fn collect_rank_two_map_parallel(
+    _forms: &[BinaryQuadraticForm],
+    _involution: BinaryQuadraticForm,
+    _generator: BinaryQuadraticForm,
+    _discriminant: i64,
+) -> Result<Option<Vec<(usize, [u64; 2])>>, ImaginaryClassGroupError> {
+    Ok(None)
+}
+
 fn compute_group_structure(
     forms: &[BinaryQuadraticForm],
     discriminant: i64,
@@ -1207,27 +1302,39 @@ fn compute_group_structure(
         {
             return Err(ImaginaryClassGroupError::GroupLawFailure);
         }
-        let mut power = principal;
-        for exponent in 0..=order / 2 {
-            assign_form_inverse_pair(
-                forms,
-                &mut assigned,
-                &mut coordinates,
-                power,
-                &[0, exponent as u64],
-                &invariants,
-            )?;
-            let twisted = compose_reduced_forms_unchecked(power, involution, discriminant)?;
-            assign_form_inverse_pair(
-                forms,
-                &mut assigned,
-                &mut coordinates,
-                twisted,
-                &[1, exponent as u64],
-                &invariants,
-            )?;
-            if exponent < order / 2 {
-                power = compose_reduced_forms_unchecked(power, generator, discriminant)?;
+        if let Some(entries) =
+            collect_rank_two_map_parallel(forms, involution, generator, discriminant)?
+        {
+            for (index, coordinate) in entries {
+                if assigned[index] {
+                    return Err(ImaginaryClassGroupError::GroupLawFailure);
+                }
+                assigned[index] = true;
+                coordinates[index] = coordinate.to_vec();
+            }
+        } else {
+            let mut power = principal;
+            for exponent in 0..=order / 2 {
+                assign_form_inverse_pair(
+                    forms,
+                    &mut assigned,
+                    &mut coordinates,
+                    power,
+                    &[0, exponent as u64],
+                    &invariants,
+                )?;
+                let twisted = compose_reduced_forms_unchecked(power, involution, discriminant)?;
+                assign_form_inverse_pair(
+                    forms,
+                    &mut assigned,
+                    &mut coordinates,
+                    twisted,
+                    &[1, exponent as u64],
+                    &invariants,
+                )?;
+                if exponent < order / 2 {
+                    power = compose_reduced_forms_unchecked(power, generator, discriminant)?;
+                }
             }
         }
     } else {
@@ -1348,6 +1455,14 @@ fn gcd_i128(mut left: i128, mut right: i128) -> i128 {
 }
 
 fn enumerate_reduced_forms(discriminant: i64) -> (i64, Vec<BinaryQuadraticForm>) {
+    #[cfg(not(target_arch = "wasm32"))]
+    if let Some(result) = enumerate_reduced_forms_parallel(discriminant) {
+        return result;
+    }
+    enumerate_reduced_forms_sequential(discriminant)
+}
+
+fn enumerate_reduced_forms_sequential(discriminant: i64) -> (i64, Vec<BinaryQuadraticForm>) {
     let mut forms = Vec::new();
     let bound = visit_sieved_reduced_form_families(discriminant, |a, b, c, both_orientations| {
         let form = BinaryQuadraticForm {
@@ -1369,6 +1484,13 @@ struct SieveFactor {
     prime: u64,
     next: u32,
     exponent: u8,
+}
+
+#[derive(Clone, Copy)]
+struct SieveRootPattern {
+    prime: u64,
+    first_index: u64,
+    second_index: Option<u64>,
 }
 
 fn record_sieve_factor(
@@ -1410,29 +1532,73 @@ fn visit_sieved_reduced_form_families(
 ) -> i64 {
     let absolute = discriminant.unsigned_abs();
     let bound = integer_square_root(absolute / 3);
-    let maximum_n = (bound * bound + absolute) / 4 + 1;
-    let prime_bound = integer_square_root(maximum_n) as usize;
-    let mut prime_sieve = vec![true; prime_bound + 1];
-    let mut primes = Vec::new();
-    for prime in 2..=prime_bound {
-        if !prime_sieve[prime] {
-            continue;
-        }
-        primes.push(prime as u64);
-        if prime <= prime_bound / prime {
-            for multiple in (prime * prime..=prime_bound).step_by(prime) {
-                prime_sieve[multiple] = false;
-            }
-        }
-    }
-
     let parity = if discriminant.rem_euclid(4) == 1 {
         1
     } else {
         0
     };
-    let mut norms = Vec::new();
-    for b in (parity..=bound).step_by(2) {
+    let count = ((bound - parity) / 2 + 1) as usize;
+    let patterns = sieve_root_patterns(discriminant, bound, parity);
+    visit_sieved_reduced_form_families_range(
+        discriminant,
+        bound,
+        parity,
+        &patterns,
+        0,
+        count,
+        &mut visit,
+    );
+    bound as i64
+}
+
+fn sieve_root_patterns(discriminant: i64, bound: u64, parity: u64) -> Vec<SieveRootPattern> {
+    let absolute = discriminant.unsigned_abs();
+    let maximum_n = (bound * bound + absolute) / 4 + 1;
+    let prime_bound = integer_square_root(maximum_n) as usize;
+    let mut prime_sieve = vec![true; prime_bound + 1];
+    let mut patterns = Vec::new();
+    for prime in 2..=prime_bound {
+        if !prime_sieve[prime] {
+            continue;
+        }
+        if prime <= prime_bound / prime {
+            for multiple in (prime * prime..=prime_bound).step_by(prime) {
+                prime_sieve[multiple] = false;
+            }
+        }
+        if prime == 2 {
+            continue;
+        }
+        let prime = prime as u64;
+        let residue = discriminant.rem_euclid(prime as i64) as u64;
+        let Some(first_root) = square_root_mod_prime(residue, prime) else {
+            continue;
+        };
+        let other_root = (prime - first_root) % prime;
+        let index_for_root =
+            |root: u64| ((root + prime - parity) % prime) * ((prime + 1) / 2) % prime;
+        patterns.push(SieveRootPattern {
+            prime,
+            first_index: index_for_root(first_root),
+            second_index: (first_root != other_root).then(|| index_for_root(other_root)),
+        });
+    }
+    patterns
+}
+
+fn visit_sieved_reduced_form_families_range(
+    discriminant: i64,
+    bound: u64,
+    parity: u64,
+    patterns: &[SieveRootPattern],
+    start: usize,
+    end: usize,
+    mut visit: impl FnMut(u64, u64, u64, bool),
+) {
+    let absolute = discriminant.unsigned_abs();
+    let mut norms = Vec::with_capacity(end - start);
+    for index in start..end {
+        let b = parity + 2 * index as u64;
         norms.push((b * b + absolute) / 4);
     }
     let mut residuals = norms.clone();
@@ -1448,22 +1614,18 @@ fn visit_sieved_reduced_form_families(
             record_sieve_factor(&mut factor_heads, &mut factors, index, 2, exponent);
         }
     }
-    for &prime in primes.iter().skip(1) {
-        let residue = discriminant.rem_euclid(prime as i64) as u64;
-        let Some(first_root) = square_root_mod_prime(residue, prime) else {
-            continue;
-        };
-        let other_root = (prime - first_root) % prime;
-        for (root_index, root) in [first_root, other_root].into_iter().enumerate() {
-            if root_index == 1 && first_root == other_root {
-                continue;
+    for pattern in patterns {
+        for first_index in [Some(pattern.first_index), pattern.second_index]
+            .into_iter()
+            .flatten()
+        {
+            let prime = pattern.prime;
+            let mut global_index = first_index;
+            if global_index < start as u64 {
+                global_index += (start as u64 - global_index).div_ceil(prime) * prime;
             }
-            let mut b = root;
-            if b % 2 != parity {
-                b += prime;
-            }
-            while b <= bound {
-                let index = ((b - parity) / 2) as usize;
+            while global_index < end as u64 {
+                let index = (global_index - start as u64) as usize;
                 let residual = &mut residuals[index];
                 if *residual % prime == 0 {
                     let mut exponent = 0;
@@ -1473,14 +1635,14 @@ fn visit_sieved_reduced_form_families(
                     }
                     record_sieve_factor(&mut factor_heads, &mut factors, index, prime, exponent);
                 }
-                b += 2 * prime;
+                global_index += prime;
             }
         }
     }
 
     let mut divisors = Vec::new();
     for (index, &n) in norms.iter().enumerate() {
-        let b = parity + 2 * index as u64;
+        let b = parity + 2 * (start + index) as u64;
         if residuals[index] > 1 {
             record_sieve_factor(&mut factor_heads, &mut factors, index, residuals[index], 1);
         }
@@ -1506,7 +1668,82 @@ fn visit_sieved_reduced_form_families(
             visit(a, b, n / a, b != 0 && b != a && a * a != n);
         }
     }
-    bound as i64
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn enumerate_reduced_forms_parallel(discriminant: i64) -> Option<(i64, Vec<BinaryQuadraticForm>)> {
+    let absolute = discriminant.unsigned_abs();
+    let bound = integer_square_root(absolute / 3);
+    let parity = if discriminant.rem_euclid(4) == 1 {
+        1
+    } else {
+        0
+    };
+    let count = ((bound - parity) / 2 + 1) as usize;
+    if count < 20_000 {
+        return None;
+    }
+    let workers = std::thread::available_parallelism()
+        .map(|count| count.get().min(8))
+        .unwrap_or(1);
+    if workers < 2 {
+        return None;
+    }
+    Some(enumerate_reduced_forms_with_workers(discriminant, workers))
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn enumerate_reduced_forms_with_workers(
+    discriminant: i64,
+    workers: usize,
+) -> (i64, Vec<BinaryQuadraticForm>) {
+    let absolute = discriminant.unsigned_abs();
+    let bound = integer_square_root(absolute / 3);
+    let parity = if discriminant.rem_euclid(4) == 1 {
+        1
+    } else {
+        0
+    };
+    let count = ((bound - parity) / 2 + 1) as usize;
+    let patterns = sieve_root_patterns(discriminant, bound, parity);
+    let chunk_size = count.div_ceil(workers);
+    let fragments = std::thread::scope(|scope| {
+        let mut handles = Vec::new();
+        for start in (0..count).step_by(chunk_size) {
+            let end = (start + chunk_size).min(count);
+            let patterns = &patterns;
+            handles.push(scope.spawn(move || {
+                let mut forms = Vec::new();
+                visit_sieved_reduced_form_families_range(
+                    discriminant,
+                    bound,
+                    parity,
+                    patterns,
+                    start,
+                    end,
+                    |a, b, c, both_orientations| {
+                        let form = BinaryQuadraticForm {
+                            a: a as i64,
+                            b: b as i64,
+                            c: c as i64,
+                        };
+                        forms.push(form);
+                        if both_orientations {
+                            forms.push(BinaryQuadraticForm { b: -form.b, ..form });
+                        }
+                    },
+                );
+                forms
+            }));
+        }
+        handles
+            .into_iter()
+            .map(|handle| handle.join().unwrap())
+            .collect::<Vec<_>>()
+    });
+    let mut forms = fragments.into_iter().flatten().collect::<Vec<_>>();
+    forms.sort_unstable();
+    (bound as i64, forms)
 }
 
 fn power_mod(mut base: u64, mut exponent: u64, modulus: u64) -> u64 {
@@ -1844,6 +2081,39 @@ mod tests {
         );
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn parallel_rank_two_map_matches_the_exact_sequential_map() {
+        let discriminant = -15_000_000_315;
+        let forms = enumerate_reduced_forms(discriminant).1;
+        let structure = compute_group_structure(&forms, discriminant).unwrap();
+        assert_eq!(structure.invariants, vec![2, 16_884]);
+        let involution = forms[structure.generator_indices[0].0];
+        let generator = forms[structure.generator_indices[1].0];
+        for workers in [2, 4, 8] {
+            let entries = collect_rank_two_map_with_workers(
+                &forms,
+                involution,
+                generator,
+                discriminant,
+                workers,
+            )
+            .unwrap();
+            let mut parallel = vec![None; forms.len()];
+            for (index, coordinate) in entries {
+                assert!(parallel[index].replace(coordinate.to_vec()).is_none());
+            }
+            assert_eq!(
+                parallel,
+                structure
+                    .coordinates
+                    .iter()
+                    .map(|coordinate| Some(coordinate.clone()))
+                    .collect::<Vec<_>>()
+            );
+        }
+    }
+
     #[test]
     fn computes_a_large_noncyclic_group_with_a_complete_map() {
         let input = PublicImaginaryQuadraticInput {
@@ -1954,6 +2224,30 @@ mod tests {
                 reference_forms.len(),
                 "D={discriminant}"
             );
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn parallel_sieve_matches_sequential_large_fields() {
+        for discriminant in [
+            -8_173_415,
+            -15_000_000_315,
+            -20_000_000_179,
+            -40_000_000_003,
+            -60_000_000_091,
+            -20_000_001_124,
+            -100_000_000_003,
+            -150_000_000_315,
+        ] {
+            let reference = enumerate_reduced_forms_sequential(discriminant);
+            for workers in [2, 4, 8] {
+                assert_eq!(
+                    enumerate_reduced_forms_with_workers(discriminant, workers),
+                    reference,
+                    "D={discriminant}, workers={workers}"
+                );
+            }
         }
     }
 
