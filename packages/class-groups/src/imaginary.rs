@@ -400,10 +400,16 @@ fn materialize_class_map(
             return Err(ImaginaryClassGroupError::InvalidCertificate);
         }
         let representative_ideal = ideal_representative(polynomial[1], form);
-        // If the defining polynomial and the form have the same discriminant,
-        // the remaining constant in alpha*(shift+alpha) is exactly -a*c.
-        // This proves ideal closure without a second divisibility operation.
-        if form.discriminant() != Some(expected_discriminant) {
+        // The input has fundamental discriminant, so an integral form with
+        // that discriminant is automatically primitive. Check canonical
+        // reduction here once, along with the discriminant identity that
+        // proves ideal closure: the remaining constant is exactly -a*c.
+        if form.a <= 0
+            || form.b.unsigned_abs() > form.a as u64
+            || form.a > form.c
+            || ((form.b.unsigned_abs() == form.a as u64 || form.a == form.c) && form.b < 0)
+            || form.discriminant() != Some(expected_discriminant)
+        {
             return Err(ImaginaryClassGroupError::InvalidCertificate);
         }
         entries.push(FormClassMapEntry {
@@ -705,11 +711,8 @@ fn push_cyclic_orbit_inverse_pair(
     form: BinaryQuadraticForm,
     ordinal: usize,
     order: usize,
-    discriminant: i64,
+    _discriminant: i64,
 ) -> Result<(), ImaginaryClassGroupError> {
-    if !form.is_primitive_reduced(discriminant) {
-        return Err(ImaginaryClassGroupError::GroupLawFailure);
-    }
     tagged.push((form_sort_key(form)?, (form.c, ordinal as u64)));
     let inverse = form.inverse_reduced()?;
     let inverse_ordinal = ((order - ordinal) % order) as u64;
@@ -1368,9 +1371,12 @@ fn reduce_bounded_product(
         );
     }
     let mut b = -2 * t - parity;
+    // Here 0 <= t < a, so b lies in (-2a, 0]. Center the first step without
+    // division; only later norm swaps can require a general quotient.
+    if b < -a {
+        b += 2 * a;
+    }
     loop {
-        let quotient = (b + a).div_euclid(2 * a);
-        b -= 2 * quotient * a;
         let numerator = b * b - discriminant;
         if numerator % (4 * a) != 0 {
             return Err(ImaginaryClassGroupError::GroupLawFailure);
@@ -1379,6 +1385,8 @@ fn reduce_bounded_product(
         if a > c {
             a = c;
             b = -b;
+            let quotient = (b + a).div_euclid(2 * a);
+            b -= 2 * quotient * a;
             continue;
         }
         if (b.abs() == a || a == c) && b < 0 {
@@ -2990,6 +2998,15 @@ mod tests {
                 coordinates,
                 &result.invariant_factors,
                 input.polynomial_ascending,
+            ),
+            Err(ImaginaryClassGroupError::InvalidCertificate)
+        );
+        assert_eq!(
+            materialize_class_map(
+                &[BinaryQuadraticForm { a: 1, b: -1, c: 1 }],
+                vec![smallvec![]],
+                &[],
+                SMALL_IMAGINARY_CASES[0].polynomial_ascending,
             ),
             Err(ImaginaryClassGroupError::InvalidCertificate)
         );
