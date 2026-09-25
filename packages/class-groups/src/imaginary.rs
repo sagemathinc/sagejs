@@ -346,8 +346,8 @@ pub fn compute_imaginary_class_group(
             representative_ideal: ideal(forms[index]),
         })
         .collect();
-    let (complete_class_map, coordinate_ordinals) =
-        materialize_class_map(&forms, coordinates, &invariants, linear)?;
+    let complete_class_map =
+        materialize_class_map(&forms, coordinates, &invariants, input.polynomial_ascending)?;
     let answer = CompleteImaginaryClassGroup {
         schema: RESULT_SCHEMA,
         field_id: input.id,
@@ -368,12 +368,11 @@ pub fn compute_imaginary_class_group(
         proof_status: "unconditional-complete",
         runtime_uses_pari_or_fixture_answers: false,
     };
-    authenticate_constructed_imaginary_class_group(
+    authenticate_constructed_metadata(
         input,
         &answer,
         &invariants,
         &generator_indices,
-        &coordinate_ordinals,
         discriminant,
         squarefree_core,
         &prime_factors,
@@ -386,23 +385,35 @@ fn materialize_class_map(
     forms: &[BinaryQuadraticForm],
     coordinates: Vec<ClassCoordinates>,
     invariants: &[u64],
-    linear: i64,
-) -> Result<(Vec<FormClassMapEntry>, Vec<usize>), ImaginaryClassGroupError> {
+    polynomial: [i64; 3],
+) -> Result<Vec<FormClassMapEntry>, ImaginaryClassGroupError> {
     if forms.len() != coordinates.len() {
         return Err(ImaginaryClassGroupError::InvalidCertificate);
     }
     let mut entries = Vec::with_capacity(forms.len());
-    let mut ordinals = Vec::with_capacity(forms.len());
+    let mut seen_coordinates = vec![false; forms.len()];
+    let expected_discriminant = i128::from(polynomial[1]) * i128::from(polynomial[1])
+        - 4 * i128::from(polynomial[0]);
     for (&form, coordinate) in forms.iter().zip(coordinates) {
-        ordinals.push(coordinate_ordinal(&coordinate, invariants, forms.len())?);
+        let ordinal = coordinate_ordinal(&coordinate, invariants, forms.len())?;
+        if std::mem::replace(&mut seen_coordinates[ordinal], true) {
+            return Err(ImaginaryClassGroupError::InvalidCertificate);
+        }
+        let representative_ideal = ideal_representative(polynomial[1], form);
+        // If the defining polynomial and the form have the same discriminant,
+        // the remaining constant in alpha*(shift+alpha) is exactly -a*c.
+        // This proves ideal closure without a second divisibility operation.
+        if form.discriminant() != Some(expected_discriminant) {
+            return Err(ImaginaryClassGroupError::InvalidCertificate);
+        }
         entries.push(FormClassMapEntry {
             form,
             inverse_form: form.inverse_reduced()?,
             coordinates: coordinate,
-            representative_ideal: ideal_representative(linear, form),
+            representative_ideal,
         });
     }
-    Ok((entries, ordinals))
+    Ok(entries)
 }
 
 fn orbit_candidate_norms() -> impl Iterator<Item = i64> {
@@ -882,23 +893,12 @@ fn collect_rank_two_orbit_with_workers(
     Ok(fragments.into_iter().flatten().collect())
 }
 
-/// Authenticate the freshly constructed result against its private exact
-/// construction witness without replaying the group law a second time.
-///
-/// `compute_group_structure` has already traversed the entire group, proved
-/// the generator orders, assigned every mixed-radix coordinate exactly once,
-/// and returned to the principal form. This helper is deliberately private
-/// and receives the remaining producer-owned witness after the coordinate
-/// vectors have moved into the public map. It checks the map is a coordinate
-/// bijection without replaying every translation. Serialized or otherwise
-/// untrusted results must use [`verify_imaginary_class_group`], which
-/// independently re-enumerates the forms and replays generator translations.
-fn authenticate_constructed_imaginary_class_group(
+/// Check the constant-size producer metadata after checked map materialization.
+fn authenticate_constructed_metadata(
     input: PublicImaginaryQuadraticInput,
     result: &CompleteImaginaryClassGroup,
     invariants: &[u64],
     generator_indices: &[(usize, u64)],
-    coordinate_ordinals: &[usize],
     discriminant: i64,
     squarefree_core: i64,
     prime_factors: &[u64],
@@ -923,12 +923,60 @@ fn authenticate_constructed_imaginary_class_group(
         || invariants.iter().any(|value| *value <= 1)
         || invariants.windows(2).any(|pair| pair[1] % pair[0] != 0)
         || result.complete_class_map.len() != forms.len()
-        || coordinate_ordinals.len() != forms.len()
         || generator_indices.len() != invariants.len()
         || result.generators.len() != generator_indices.len()
         || result.proof_status != "unconditional-complete"
         || result.runtime_uses_pari_or_fixture_answers
     {
+        return Err(ImaginaryClassGroupError::InvalidCertificate);
+    }
+    let linear = input.polynomial_ascending[1];
+    for (position, (actual, &(index, order))) in
+        result.generators.iter().zip(generator_indices).enumerate()
+    {
+        let mut unit_coordinate = ClassCoordinates::new();
+        unit_coordinate.resize(invariants.len(), 0);
+        unit_coordinate[position] = 1;
+        if index >= forms.len()
+            || actual.form != forms[index]
+            || actual.coordinates != unit_coordinate
+            || actual.coordinates != result.complete_class_map[index].coordinates
+            || actual.exact_order != order
+            || actual.representative_ideal != ideal_representative(linear, forms[index])
+        {
+            return Err(ImaginaryClassGroupError::InvalidCertificate);
+        }
+    }
+    Ok(())
+}
+
+/// Regression oracle for the producer's former separate map-validation pass.
+/// Production validates each map entry while materializing it. Serialized or
+/// otherwise untrusted results use [`verify_imaginary_class_group`].
+#[cfg(test)]
+fn authenticate_constructed_imaginary_class_group(
+    input: PublicImaginaryQuadraticInput,
+    result: &CompleteImaginaryClassGroup,
+    invariants: &[u64],
+    generator_indices: &[(usize, u64)],
+    coordinate_ordinals: &[usize],
+    discriminant: i64,
+    squarefree_core: i64,
+    prime_factors: &[u64],
+    reduction_bound_a: i64,
+) -> Result<(), ImaginaryClassGroupError> {
+    authenticate_constructed_metadata(
+        input,
+        result,
+        invariants,
+        generator_indices,
+        discriminant,
+        squarefree_core,
+        prime_factors,
+        reduction_bound_a,
+    )?;
+    let forms = &result.certificate.reduced_forms;
+    if coordinate_ordinals.len() != forms.len() {
         return Err(ImaginaryClassGroupError::InvalidCertificate);
     }
     let linear = input.polynomial_ascending[1];
@@ -956,22 +1004,6 @@ fn authenticate_constructed_imaginary_class_group(
         }
         let seen = &mut seen_coordinates[coordinate_index];
         if std::mem::replace(seen, true) {
-            return Err(ImaginaryClassGroupError::InvalidCertificate);
-        }
-    }
-    for (position, (actual, &(index, order))) in
-        result.generators.iter().zip(generator_indices).enumerate()
-    {
-        let mut unit_coordinate = ClassCoordinates::new();
-        unit_coordinate.resize(invariants.len(), 0);
-        unit_coordinate[position] = 1;
-        if index >= forms.len()
-            || actual.form != forms[index]
-            || actual.coordinates != unit_coordinate
-            || actual.coordinates != result.complete_class_map[index].coordinates
-            || actual.exact_order != order
-            || actual.representative_ideal != ideal_representative(linear, forms[index])
-        {
             return Err(ImaginaryClassGroupError::InvalidCertificate);
         }
     }
@@ -2805,6 +2837,9 @@ fn squarefree_prime_factors(mut value: u64) -> Option<Vec<u64>> {
     if value == 0 {
         return None;
     }
+    if is_prime_bounded_by_jaeschke(value) {
+        return Some(vec![value]);
+    }
     let mut answer = Vec::new();
     let mut divisor = 2_u64;
     while divisor <= value / divisor {
@@ -2821,6 +2856,55 @@ fn squarefree_prime_factors(mut value: u64) -> Option<Vec<u64>> {
         answer.push(value);
     }
     Some(answer)
+}
+
+/// The first six prime bases are deterministic below 3,474,749,660,383;
+/// see Jaeschke, Math. Comp. 61 (1993), 915–926. Our admitted discriminants
+/// are at most 200,000,000,000. Larger values fall back to trial division.
+fn is_prime_bounded_by_jaeschke(value: u64) -> bool {
+    const EXACT_BOUND: u64 = 3_474_749_660_383;
+    const BASES: [u64; 6] = [2, 3, 5, 7, 11, 13];
+    if !(2..EXACT_BOUND).contains(&value) {
+        return false;
+    }
+    for base in BASES {
+        if value == base {
+            return true;
+        }
+        if value.is_multiple_of(base) {
+            return false;
+        }
+    }
+    let two_adic_order = (value - 1).trailing_zeros();
+    let odd_part = (value - 1) >> two_adic_order;
+    let modulus = u128::from(value);
+    for base in BASES {
+        let mut exponent = odd_part;
+        let mut factor = u128::from(base);
+        let mut residue = 1_u128;
+        while exponent != 0 {
+            if exponent & 1 != 0 {
+                residue = residue * factor % modulus;
+            }
+            factor = factor * factor % modulus;
+            exponent >>= 1;
+        }
+        if residue == 1 || residue == modulus - 1 {
+            continue;
+        }
+        let mut found_minus_one = false;
+        for _ in 1..two_adic_order {
+            residue = residue * residue % modulus;
+            if residue == modulus - 1 {
+                found_minus_one = true;
+                break;
+            }
+        }
+        if !found_minus_one {
+            return false;
+        }
+    }
+    true
 }
 
 fn is_prime(value: u64) -> bool {
@@ -2850,6 +2934,66 @@ fn gcd(mut left: u64, mut right: u64) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn bounded_miller_rabin_agrees_with_trial_division() {
+        for value in 0..=100_000 {
+            assert_eq!(is_prime_bounded_by_jaeschke(value), is_prime(value), "{value}");
+        }
+        for value in [
+            20_000_001_124,
+            60_000_000_091,
+            15_000_000_315,
+            199_999_999_997,
+            200_000_000_000,
+        ] {
+            assert_eq!(is_prime_bounded_by_jaeschke(value), is_prime(value), "{value}");
+        }
+        assert!(!is_prime_bounded_by_jaeschke(3_474_749_660_383));
+    }
+
+    #[test]
+    fn squarefree_factorization_keeps_composite_and_square_cases() {
+        assert_eq!(squarefree_prime_factors(1), Some(vec![]));
+        assert_eq!(squarefree_prime_factors(0), None);
+        assert_eq!(squarefree_prime_factors(15), Some(vec![3, 5]));
+        assert_eq!(squarefree_prime_factors(45), None);
+        assert_eq!(squarefree_prime_factors(15_000_000_315), Some(vec![3, 5, 1_000_000_021]));
+    }
+
+    #[test]
+    fn map_materialization_rejects_coordinate_collision_and_wrong_discriminant() {
+        let input = SMALL_IMAGINARY_CASES[2];
+        let result = compute_imaginary_class_group(input).unwrap();
+        let forms = result.certificate.reduced_forms;
+        let coordinates = result
+            .complete_class_map
+            .iter()
+            .map(|entry| entry.coordinates.clone())
+            .collect::<Vec<_>>();
+        let mut collision = coordinates.clone();
+        collision[1] = collision[0].clone();
+        assert_eq!(
+            materialize_class_map(
+                &forms,
+                collision,
+                &result.invariant_factors,
+                input.polynomial_ascending,
+            ),
+            Err(ImaginaryClassGroupError::InvalidCertificate)
+        );
+        let mut wrong_forms = forms;
+        wrong_forms[1].c += 1;
+        assert_eq!(
+            materialize_class_map(
+                &wrong_forms,
+                coordinates,
+                &result.invariant_factors,
+                input.polynomial_ascending,
+            ),
+            Err(ImaginaryClassGroupError::InvalidCertificate)
+        );
+    }
 
     #[test]
     fn scalar_class_number_agrees_with_authenticated_group() {
