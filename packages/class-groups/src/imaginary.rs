@@ -314,12 +314,18 @@ pub fn compute_imaginary_class_group(
     .map_err(ImaginaryClassGroupError::PreparedFieldValidation)?;
     debug_assert_eq!(prepared.equation_order_index(), &Integer::from(1));
 
-    let cyclic_orbit = if discriminant.unsigned_abs() >= 1_000_000_000 && prime_factors.len() <= 2 {
-        cyclic_orbit_from_class_number(discriminant)?
+    let proved_orbit = if discriminant.unsigned_abs() >= 1_000_000_000 {
+        match prime_factors.len() {
+            1 | 2 => cyclic_orbit_from_class_number(discriminant)?,
+            3 if discriminant.rem_euclid(4) == 1 => {
+                rank_two_orbit_from_class_number(discriminant, &prime_factors)?
+            }
+            _ => None,
+        }
     } else {
         None
     };
-    let (reduction_bound_a, forms, structure) = if let Some(result) = cyclic_orbit {
+    let (reduction_bound_a, forms, structure) = if let Some(result) = proved_orbit {
         result
     } else {
         let (bound, forms) = enumerate_reduced_forms(discriminant);
@@ -489,6 +495,154 @@ fn cyclic_orbit_from_class_number(
     )))
 }
 
+/// A proved index-two cyclic subgroup plus an involution outside it gives a
+/// complete `C2 x C(h/2)` map. For odd squarefree `D`, forms with `b=a` are
+/// inexpensive exact involution candidates derived from divisors of `|D|`.
+fn rank_two_orbit_from_class_number(
+    discriminant: i64,
+    prime_factors: &[u64],
+) -> Result<Option<(i64, Vec<BinaryQuadraticForm>, GroupStructure)>, ImaginaryClassGroupError> {
+    let class_number = count_reduced_forms(discriminant);
+    if class_number > MAXIMUM_REDUCED_FORMS {
+        return Err(ImaginaryClassGroupError::ReducedFormResourceLimit {
+            class_number,
+            maximum: MAXIMUM_REDUCED_FORMS,
+        });
+    }
+    if class_number < 10_000 || class_number % 4 != 0 {
+        return Ok(None);
+    }
+    let order = class_number / 2;
+    let principal = principal_form(discriminant);
+    let bound = integer_square_root(discriminant.unsigned_abs() / 3) as i64;
+    let involutions = divisor_boundary_involutions(discriminant, prime_factors, bound);
+    if involutions.len() < 3 {
+        return Ok(None);
+    }
+    let factors = factor_usize(order);
+    let mut generators = None;
+    for norm in 2_i64..=257 {
+        if !is_prime(norm as u64) {
+            continue;
+        }
+        for middle in -norm..=norm {
+            let numerator = i128::from(middle) * i128::from(middle) - i128::from(discriminant);
+            let denominator = 4 * i128::from(norm);
+            if numerator % denominator != 0 {
+                continue;
+            }
+            let Ok(last) = i64::try_from(numerator / denominator) else {
+                continue;
+            };
+            let candidate = BinaryQuadraticForm {
+                a: norm,
+                b: middle,
+                c: last,
+            };
+            if !candidate.is_primitive_reduced(discriminant)
+                || form_power(candidate, order, discriminant)? != principal
+            {
+                continue;
+            }
+            let mut full_order = true;
+            for &(prime, _) in &factors {
+                if form_power(candidate, order / prime, discriminant)? == principal {
+                    full_order = false;
+                    break;
+                }
+            }
+            if !full_order {
+                continue;
+            }
+            let subgroup_involution = form_power(candidate, order / 2, discriminant)?;
+            if let Some(involution) = involutions
+                .iter()
+                .copied()
+                .find(|form| *form != principal && *form != subgroup_involution)
+            {
+                generators = Some((involution, candidate));
+                break;
+            }
+        }
+        if generators.is_some() {
+            break;
+        }
+    }
+    let Some((involution, generator)) = generators else {
+        return Ok(None);
+    };
+    let mut tagged = collect_rank_two_orbit(involution, generator, order, discriminant)?;
+    if tagged.len() != class_number
+        || tagged
+            .iter()
+            .any(|(form, _)| form.a > bound || !form.is_primitive_reduced(discriminant))
+    {
+        return Err(ImaginaryClassGroupError::GroupLawFailure);
+    }
+    tagged.sort_unstable_by_key(|&(form, _)| form);
+    if tagged.windows(2).any(|pair| pair[0].0 == pair[1].0) {
+        return Err(ImaginaryClassGroupError::GroupLawFailure);
+    }
+    let forms = tagged.iter().map(|&(form, _)| form).collect::<Vec<_>>();
+    let coordinates = tagged
+        .into_iter()
+        .map(|(_, coordinate)| coordinate.to_vec())
+        .collect();
+    let involution_index = forms
+        .binary_search(&involution)
+        .map_err(|_| ImaginaryClassGroupError::GroupLawFailure)?;
+    let generator_index = forms
+        .binary_search(&generator)
+        .map_err(|_| ImaginaryClassGroupError::GroupLawFailure)?;
+    Ok(Some((
+        bound,
+        forms,
+        GroupStructure {
+            invariants: vec![2, order as u64],
+            coordinates,
+            generator_indices: vec![(involution_index, 2), (generator_index, order as u64)],
+        },
+    )))
+}
+
+fn divisor_boundary_involutions(
+    discriminant: i64,
+    prime_factors: &[u64],
+    bound: i64,
+) -> Vec<BinaryQuadraticForm> {
+    let mut divisors = vec![1_u64];
+    for &prime in prime_factors {
+        let existing = divisors.len();
+        for index in 0..existing {
+            divisors.push(divisors[index] * prime);
+        }
+    }
+    let mut involutions = Vec::new();
+    for divisor in divisors {
+        if divisor > bound as u64 {
+            continue;
+        }
+        let norm = divisor as i64;
+        let numerator = i128::from(norm) * i128::from(norm) - i128::from(discriminant);
+        let denominator = 4 * i128::from(norm);
+        if numerator % denominator != 0 {
+            continue;
+        }
+        let Ok(last) = i64::try_from(numerator / denominator) else {
+            continue;
+        };
+        let form = BinaryQuadraticForm {
+            a: norm,
+            b: norm,
+            c: last,
+        };
+        if form.is_primitive_reduced(discriminant) {
+            involutions.push(form);
+        }
+    }
+    involutions
+}
+
 fn collect_cyclic_orbit(
     generator: BinaryQuadraticForm,
     order: usize,
@@ -558,6 +712,108 @@ fn collect_cyclic_orbit_with_workers(
                 for ordinal in start..end {
                     push_cyclic_orbit_inverse_pair(&mut tagged, power, ordinal, order)?;
                     if ordinal + 1 < end {
+                        power = compose_reduced_forms_unchecked(power, generator, discriminant)?;
+                    }
+                }
+                Ok(tagged)
+            }));
+        }
+        let mut fragments = Vec::with_capacity(handles.len());
+        for handle in handles {
+            fragments.push(
+                handle
+                    .join()
+                    .map_err(|_| ImaginaryClassGroupError::GroupLawFailure)??,
+            );
+        }
+        Ok::<_, ImaginaryClassGroupError>(fragments)
+    })?;
+    Ok(fragments.into_iter().flatten().collect())
+}
+
+fn push_rank_two_orbit_inverse_pair(
+    tagged: &mut Vec<(BinaryQuadraticForm, [u64; 2])>,
+    form: BinaryQuadraticForm,
+    first: u64,
+    exponent: usize,
+    order: usize,
+) -> Result<(), ImaginaryClassGroupError> {
+    tagged.push((form, [first, exponent as u64]));
+    let inverse = form.inverse_reduced()?;
+    let inverse_exponent = ((order - exponent) % order) as u64;
+    if inverse != form {
+        tagged.push((inverse, [first, inverse_exponent]));
+    } else if inverse_exponent != exponent as u64 {
+        return Err(ImaginaryClassGroupError::GroupLawFailure);
+    }
+    Ok(())
+}
+
+fn collect_rank_two_orbit(
+    involution: BinaryQuadraticForm,
+    generator: BinaryQuadraticForm,
+    order: usize,
+    discriminant: i64,
+) -> Result<Vec<(BinaryQuadraticForm, [u64; 2])>, ImaginaryClassGroupError> {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let workers = std::thread::available_parallelism()
+            .map(|count| count.get().min(8))
+            .unwrap_or(1);
+        if order >= 5_000 && workers >= 2 {
+            return collect_rank_two_orbit_with_workers(
+                involution,
+                generator,
+                order,
+                discriminant,
+                workers,
+            );
+        }
+    }
+    collect_rank_two_orbit_sequential(involution, generator, order, discriminant)
+}
+
+fn collect_rank_two_orbit_sequential(
+    involution: BinaryQuadraticForm,
+    generator: BinaryQuadraticForm,
+    order: usize,
+    discriminant: i64,
+) -> Result<Vec<(BinaryQuadraticForm, [u64; 2])>, ImaginaryClassGroupError> {
+    let mut tagged = Vec::with_capacity(2 * order);
+    let mut power = principal_form(discriminant);
+    for exponent in 0..=order / 2 {
+        push_rank_two_orbit_inverse_pair(&mut tagged, power, 0, exponent, order)?;
+        let twisted = compose_reduced_forms_unchecked(power, involution, discriminant)?;
+        push_rank_two_orbit_inverse_pair(&mut tagged, twisted, 1, exponent, order)?;
+        if exponent < order / 2 {
+            power = compose_reduced_forms_unchecked(power, generator, discriminant)?;
+        }
+    }
+    Ok(tagged)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn collect_rank_two_orbit_with_workers(
+    involution: BinaryQuadraticForm,
+    generator: BinaryQuadraticForm,
+    order: usize,
+    discriminant: i64,
+    workers: usize,
+) -> Result<Vec<(BinaryQuadraticForm, [u64; 2])>, ImaginaryClassGroupError> {
+    let half_span = order / 2 + 1;
+    let chunk_size = half_span.div_ceil(workers.max(1));
+    let fragments = std::thread::scope(|scope| {
+        let mut handles = Vec::new();
+        for start in (0..half_span).step_by(chunk_size) {
+            let end = (start + chunk_size).min(half_span);
+            handles.push(scope.spawn(move || {
+                let mut power = form_power(generator, start, discriminant)?;
+                let mut tagged = Vec::with_capacity(4 * (end - start));
+                for exponent in start..end {
+                    push_rank_two_orbit_inverse_pair(&mut tagged, power, 0, exponent, order)?;
+                    let twisted = compose_reduced_forms_unchecked(power, involution, discriminant)?;
+                    push_rank_two_orbit_inverse_pair(&mut tagged, twisted, 1, exponent, order)?;
+                    if exponent + 1 < end {
                         power = compose_reduced_forms_unchecked(power, generator, discriminant)?;
                     }
                 }
@@ -2522,6 +2778,53 @@ mod tests {
         assert_eq!(group.invariant_factors, vec![2, 16_884]);
         assert_eq!(group.complete_class_map.len(), group.class_number);
         verify_imaginary_class_group(input, &group).unwrap();
+    }
+
+    #[test]
+    fn proved_rank_two_orbit_matches_complete_reduced_form_enumeration() {
+        let discriminant = -15_000_000_315;
+        let factors = [3, 5, 1_000_000_021];
+        let (bound, forms, structure) = rank_two_orbit_from_class_number(discriminant, &factors)
+            .unwrap()
+            .expect("frozen rank-two field has an exact index-two orbit");
+        let (reference_bound, reference_forms) = enumerate_reduced_forms(discriminant);
+        assert_eq!(bound, reference_bound);
+        assert_eq!(forms, reference_forms);
+        assert_eq!(structure.invariants, vec![2, 16_884]);
+        let involution = forms[structure.generator_indices[0].0];
+        let generator = forms[structure.generator_indices[1].0];
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let mut sequential =
+                collect_rank_two_orbit_sequential(involution, generator, 16_884, discriminant)
+                    .unwrap();
+            sequential.sort_unstable();
+            for workers in [2, 4, 8] {
+                let mut parallel = collect_rank_two_orbit_with_workers(
+                    involution,
+                    generator,
+                    16_884,
+                    discriminant,
+                    workers,
+                )
+                .unwrap();
+                parallel.sort_unstable();
+                assert_eq!(parallel, sequential);
+            }
+        }
+        for (form, coordinate) in forms
+            .iter()
+            .zip(&structure.coordinates)
+            .step_by((forms.len() / 64).max(1))
+        {
+            let power = form_power(generator, coordinate[1] as usize, discriminant).unwrap();
+            let expected = if coordinate[0] == 0 {
+                power
+            } else {
+                compose_reduced_forms_unchecked(power, involution, discriminant).unwrap()
+            };
+            assert_eq!(*form, expected);
+        }
     }
 
     #[test]
