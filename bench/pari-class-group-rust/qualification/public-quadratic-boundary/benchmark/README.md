@@ -32,6 +32,10 @@ For native groups with at least 10,000 classes, Rust builds cyclic and
 reported available parallelism. Native reduced-form enumeration and scalar
 class-number counting also use up to eight workers when the candidate range
 has at least 20,000 entries.
+For large eligible cyclic fields, the native group route may instead count all
+reduced forms, prove a small prime form has full order, and collect its complete
+reduced-form orbit in parallel. The count and distinct orbit prove completeness;
+fields without such a generator use the general enumerator.
 Smaller Rust cases and the Wasm target use one thread. PARI's matched call is
 not assigned an equivalent worker pool, so the comparison is wall time, not
 equal total CPU work; the receipt records the host's process affinity.

@@ -314,14 +314,30 @@ pub fn compute_imaginary_class_group(
     .map_err(ImaginaryClassGroupError::PreparedFieldValidation)?;
     debug_assert_eq!(prepared.equation_order_index(), &Integer::from(1));
 
-    let (reduction_bound_a, forms) = enumerate_reduced_forms(discriminant);
+    let cyclic_orbit = if discriminant.unsigned_abs() >= 1_000_000_000 && prime_factors.len() <= 2 {
+        cyclic_orbit_from_class_number(discriminant)?
+    } else {
+        None
+    };
+    let (reduction_bound_a, forms, structure) = if let Some(result) = cyclic_orbit {
+        result
+    } else {
+        let (bound, forms) = enumerate_reduced_forms(discriminant);
+        if forms.len() > MAXIMUM_REDUCED_FORMS {
+            return Err(ImaginaryClassGroupError::ReducedFormResourceLimit {
+                class_number: forms.len(),
+                maximum: MAXIMUM_REDUCED_FORMS,
+            });
+        }
+        let structure = compute_group_structure(&forms, discriminant)?;
+        (bound, forms, structure)
+    };
     if forms.len() > MAXIMUM_REDUCED_FORMS {
         return Err(ImaginaryClassGroupError::ReducedFormResourceLimit {
             class_number: forms.len(),
             maximum: MAXIMUM_REDUCED_FORMS,
         });
     }
-    let structure = compute_group_structure(&forms, discriminant)?;
     let ideal = |form: BinaryQuadraticForm| ideal_representative(linear, form);
     let complete_class_map = forms
         .iter()
@@ -376,6 +392,189 @@ pub fn compute_imaginary_class_group(
         reduction_bound_a,
     )?;
     Ok(answer)
+}
+
+/// For a provably cyclic group, its complete reduced-form orbit can serve as
+/// the completeness certificate. The exact reduced-form count gives `h`;
+/// the order test proves a candidate generates `h` distinct classes, hence
+/// every reduced form. The general enumerator remains the fallback.
+fn cyclic_orbit_from_class_number(
+    discriminant: i64,
+) -> Result<Option<(i64, Vec<BinaryQuadraticForm>, GroupStructure)>, ImaginaryClassGroupError> {
+    let class_number = count_reduced_forms(discriminant);
+    if class_number > MAXIMUM_REDUCED_FORMS {
+        return Err(ImaginaryClassGroupError::ReducedFormResourceLimit {
+            class_number,
+            maximum: MAXIMUM_REDUCED_FORMS,
+        });
+    }
+    if class_number < 10_000 {
+        return Ok(None);
+    }
+    let principal = principal_form(discriminant);
+    let factors = factor_usize(class_number);
+    let bound = integer_square_root(discriminant.unsigned_abs() / 3) as i64;
+    let mut generator = None;
+    for norm in 2_i64..=257 {
+        if !is_prime(norm as u64) {
+            continue;
+        }
+        for middle in -norm..=norm {
+            let numerator = i128::from(middle) * i128::from(middle) - i128::from(discriminant);
+            let denominator = 4 * i128::from(norm);
+            if numerator % denominator != 0 {
+                continue;
+            }
+            let last = numerator / denominator;
+            let Ok(last) = i64::try_from(last) else {
+                continue;
+            };
+            let candidate = BinaryQuadraticForm {
+                a: norm,
+                b: middle,
+                c: last,
+            };
+            if !candidate.is_primitive_reduced(discriminant)
+                || form_power(candidate, class_number, discriminant)? != principal
+            {
+                continue;
+            }
+            let mut full_order = true;
+            for &(prime, _) in &factors {
+                if form_power(candidate, class_number / prime, discriminant)? == principal {
+                    full_order = false;
+                    break;
+                }
+            }
+            if full_order {
+                generator = Some(candidate);
+                break;
+            }
+        }
+        if generator.is_some() {
+            break;
+        }
+    }
+    let Some(generator) = generator else {
+        return Ok(None);
+    };
+    let mut tagged = collect_cyclic_orbit(generator, class_number, discriminant)?;
+    if tagged.len() != class_number
+        || tagged
+            .iter()
+            .any(|(form, _)| form.a > bound || !form.is_primitive_reduced(discriminant))
+    {
+        return Err(ImaginaryClassGroupError::GroupLawFailure);
+    }
+    tagged.sort_unstable_by_key(|&(form, _)| form);
+    if tagged.windows(2).any(|pair| pair[0].0 == pair[1].0) {
+        return Err(ImaginaryClassGroupError::GroupLawFailure);
+    }
+    let forms = tagged.iter().map(|&(form, _)| form).collect::<Vec<_>>();
+    let coordinates = tagged
+        .into_iter()
+        .map(|(_, ordinal)| vec![ordinal])
+        .collect();
+    let generator_index = forms
+        .binary_search(&generator)
+        .map_err(|_| ImaginaryClassGroupError::GroupLawFailure)?;
+    Ok(Some((
+        bound,
+        forms,
+        GroupStructure {
+            invariants: vec![class_number as u64],
+            coordinates,
+            generator_indices: vec![(generator_index, class_number as u64)],
+        },
+    )))
+}
+
+fn collect_cyclic_orbit(
+    generator: BinaryQuadraticForm,
+    order: usize,
+    discriminant: i64,
+) -> Result<Vec<(BinaryQuadraticForm, u64)>, ImaginaryClassGroupError> {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let workers = std::thread::available_parallelism()
+            .map(|count| count.get().min(8))
+            .unwrap_or(1);
+        if order >= 10_000 && workers >= 2 {
+            return collect_cyclic_orbit_with_workers(generator, order, discriminant, workers);
+        }
+    }
+    collect_cyclic_orbit_sequential(generator, order, discriminant)
+}
+
+fn collect_cyclic_orbit_sequential(
+    generator: BinaryQuadraticForm,
+    order: usize,
+    discriminant: i64,
+) -> Result<Vec<(BinaryQuadraticForm, u64)>, ImaginaryClassGroupError> {
+    let mut tagged = Vec::with_capacity(order);
+    let mut power = principal_form(discriminant);
+    for ordinal in 0..=order / 2 {
+        push_cyclic_orbit_inverse_pair(&mut tagged, power, ordinal, order)?;
+        if ordinal < order / 2 {
+            power = compose_reduced_forms_unchecked(power, generator, discriminant)?;
+        }
+    }
+    Ok(tagged)
+}
+
+fn push_cyclic_orbit_inverse_pair(
+    tagged: &mut Vec<(BinaryQuadraticForm, u64)>,
+    form: BinaryQuadraticForm,
+    ordinal: usize,
+    order: usize,
+) -> Result<(), ImaginaryClassGroupError> {
+    tagged.push((form, ordinal as u64));
+    let inverse = form.inverse_reduced()?;
+    let inverse_ordinal = ((order - ordinal) % order) as u64;
+    if inverse != form {
+        tagged.push((inverse, inverse_ordinal));
+    } else if inverse_ordinal != ordinal as u64 {
+        return Err(ImaginaryClassGroupError::GroupLawFailure);
+    }
+    Ok(())
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn collect_cyclic_orbit_with_workers(
+    generator: BinaryQuadraticForm,
+    order: usize,
+    discriminant: i64,
+    workers: usize,
+) -> Result<Vec<(BinaryQuadraticForm, u64)>, ImaginaryClassGroupError> {
+    let half_span = order / 2 + 1;
+    let chunk_size = half_span.div_ceil(workers.max(1));
+    let fragments = std::thread::scope(|scope| {
+        let mut handles = Vec::new();
+        for start in (0..half_span).step_by(chunk_size) {
+            let end = (start + chunk_size).min(half_span);
+            handles.push(scope.spawn(move || {
+                let mut power = form_power(generator, start, discriminant)?;
+                let mut tagged = Vec::with_capacity(2 * (end - start));
+                for ordinal in start..end {
+                    push_cyclic_orbit_inverse_pair(&mut tagged, power, ordinal, order)?;
+                    if ordinal + 1 < end {
+                        power = compose_reduced_forms_unchecked(power, generator, discriminant)?;
+                    }
+                }
+                Ok(tagged)
+            }));
+        }
+        let mut fragments = Vec::with_capacity(handles.len());
+        for handle in handles {
+            fragments.push(
+                handle
+                    .join()
+                    .map_err(|_| ImaginaryClassGroupError::GroupLawFailure)??,
+            );
+        }
+        Ok::<_, ImaginaryClassGroupError>(fragments)
+    })?;
+    Ok(fragments.into_iter().flatten().collect())
 }
 
 /// Authenticate the freshly constructed result against its private exact
@@ -2184,6 +2383,64 @@ mod tests {
         assert_eq!(group.invariant_factors, vec![31_057]);
         assert_eq!(group.complete_class_map.len(), scalar.class_number);
         verify_imaginary_class_group(input, &group).unwrap();
+    }
+
+    #[test]
+    fn proven_cyclic_orbits_match_complete_reduced_form_enumeration() {
+        for discriminant in [
+            -20_000_000_179,
+            -40_000_000_003,
+            -60_000_000_091,
+            -20_000_001_124,
+        ] {
+            let (bound, forms, orbit_structure) = cyclic_orbit_from_class_number(discriminant)
+                .unwrap()
+                .expect("frozen cyclic field has a small prime-form generator");
+            let (reference_bound, reference_forms) = enumerate_reduced_forms(discriminant);
+            assert_eq!(bound, reference_bound);
+            assert_eq!(forms, reference_forms);
+            let reference_structure = compute_group_structure(&forms, discriminant).unwrap();
+            assert_eq!(orbit_structure.invariants, reference_structure.invariants);
+            let generator = forms[orbit_structure.generator_indices[0].0];
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                let mut sequential =
+                    collect_cyclic_orbit_sequential(generator, forms.len(), discriminant).unwrap();
+                sequential.sort_unstable();
+                for workers in [2, 4, 8] {
+                    let mut parallel = collect_cyclic_orbit_with_workers(
+                        generator,
+                        forms.len(),
+                        discriminant,
+                        workers,
+                    )
+                    .unwrap();
+                    parallel.sort_unstable();
+                    assert_eq!(parallel, sequential);
+                }
+            }
+            for (form, coordinate) in forms
+                .iter()
+                .zip(&orbit_structure.coordinates)
+                .step_by((forms.len() / 64).max(1))
+            {
+                assert_eq!(
+                    form_power(generator, coordinate[0] as usize, discriminant).unwrap(),
+                    *form
+                );
+            }
+            let linear = if discriminant.rem_euclid(4) == 1 {
+                -1
+            } else {
+                0
+            };
+            let input = PublicImaginaryQuadraticInput {
+                id: "cyclic-orbit-differential",
+                polynomial_ascending: [(linear * linear - discriminant) / 4, linear, 1],
+            };
+            let public = compute_imaginary_class_group(input).unwrap();
+            verify_imaginary_class_group(input, &public).unwrap();
+        }
     }
 
     #[cfg(not(target_arch = "wasm32"))]
