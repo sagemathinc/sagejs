@@ -1475,8 +1475,35 @@ fn enumerate_reduced_forms_sequential(discriminant: i64) -> (i64, Vec<BinaryQuad
             forms.push(BinaryQuadraticForm { b: -form.b, ..form });
         }
     });
-    forms.sort_unstable();
+    sort_reduced_forms(&mut forms, bound as usize);
     (bound, forms)
+}
+
+fn sort_reduced_forms(forms: &mut Vec<BinaryQuadraticForm>, bound: usize) {
+    if forms.len() < 1_000 {
+        forms.sort_unstable();
+        return;
+    }
+    // Reduced forms have 1 <= a <= floor(sqrt(|D|/3)). Counting the first
+    // lexicographic key makes the final per-norm sorts tiny on typical fields.
+    let mut offsets = vec![0_usize; bound + 2];
+    for form in forms.iter() {
+        offsets[form.a as usize + 1] += 1;
+    }
+    for index in 1..offsets.len() {
+        offsets[index] += offsets[index - 1];
+    }
+    let mut cursors = offsets.clone();
+    let mut ordered = vec![BinaryQuadraticForm { a: 0, b: 0, c: 0 }; forms.len()];
+    for form in forms.iter().copied() {
+        let cursor = &mut cursors[form.a as usize];
+        ordered[*cursor] = form;
+        *cursor += 1;
+    }
+    for norm in 1..=bound {
+        ordered[offsets[norm]..offsets[norm + 1]].sort_unstable();
+    }
+    *forms = ordered;
 }
 
 #[derive(Clone, Copy)]
@@ -1780,7 +1807,7 @@ fn enumerate_reduced_forms_with_workers(
             .collect::<Vec<_>>()
     });
     let mut forms = fragments.into_iter().flatten().collect::<Vec<_>>();
-    forms.sort_unstable();
+    sort_reduced_forms(&mut forms, bound as usize);
     (bound as i64, forms)
 }
 
@@ -2150,6 +2177,17 @@ mod tests {
                     .collect::<Vec<_>>()
             );
         }
+    }
+
+    #[test]
+    fn bounded_norm_sort_matches_lexicographic_sort() {
+        let discriminant = -15_000_000_315;
+        let (bound, mut forms) = enumerate_reduced_forms_sequential(discriminant);
+        forms.reverse();
+        let mut reference = forms.clone();
+        reference.sort_unstable();
+        sort_reduced_forms(&mut forms, bound as usize);
+        assert_eq!(forms, reference);
     }
 
     #[test]
