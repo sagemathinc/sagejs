@@ -60,6 +60,61 @@ test("explicit Rust quadratic class group retains exact form coordinates and ide
   );
 });
 
+test("automatic imaginary quadratic dispatch uses the unconditional Rust service", async () => {
+  const answer = await evaluate([
+    ...fixture,
+    "G = K.class_group()",
+    "[K.class_number(), G.order(), G.invariants(), G.algorithm,",
+    " G.proof_status, G(G.gen().ideal()).coordinates()]",
+  ]);
+  assert.equal(answer.repr, "[3, 3, (3,), 'rust', 'exact-unconditional', (1,)]");
+});
+
+test("automatic imaginary quadratic dispatch falls back only on a pre-publication decline", async () => {
+  const answer = await evaluate([
+    ...fixture,
+    "class DecliningBackend(Backend):",
+    "    def call(self, operation, request):",
+    "        if operation == 'capability':",
+    "            return {'schema': rust_runtime.HOST_RESPONSE_SCHEMA, 'outcome': 'available',",
+    "                'artifactSha256': 'a' * 64}",
+    "        raise AssertionError('declined backend must not compute')",
+    "setattr(runtime, 'class_group_backend', lambda: DecliningBackend())",
+    "G = K.class_group()",
+    "[K.class_number(), G.order(), G.proof_status]",
+  ]);
+  assert.equal(answer.repr, "[3, 3, 'exact-unconditional']");
+});
+
+test("automatic imaginary quadratic dispatch honors the service resource cap", async () => {
+  const answer = await evaluate([
+    ...fixture,
+    "class ExhaustedBackend(Backend):",
+    "    def call(self, operation, request):",
+    "        if operation == 'capability':",
+    "            return super().call(operation, request)",
+    "        return {'schema': rust_runtime.HOST_RESPONSE_SCHEMA, 'outcome': 'error',",
+    "            'category': 'resource-exhausted', 'message': 'reduced-form cap'}",
+    "setattr(runtime, 'class_group_backend', lambda: ExhaustedBackend())",
+    "G = K.class_group()",
+    "[G.order(), G.proof_status]",
+  ]);
+  assert.equal(answer.repr, "[3, 'exact-unconditional']");
+});
+
+test("automatic imaginary quadratic dispatch does not hide a forged published map", async () => {
+  const answer = await evaluate([
+    ...fixture,
+    "result['completeClassMap'][1]['coordinates'] = [0]",
+    "try:",
+    "    K.class_group()",
+    "except rust_runtime.RustClassGroupPublicationError:",
+    "    answer = True",
+    "answer",
+  ]);
+  assert.equal(answer.repr, "True");
+});
+
 test("Rust quadratic dispatch rejects a forged map without falling back", async () => {
   const answer = await evaluate([
     ...fixture,

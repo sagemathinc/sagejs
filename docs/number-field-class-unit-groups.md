@@ -153,13 +153,15 @@ generators, or a list of ideal classes. `K.class_group()` and
 `K.narrow_class_group()` materialize the corresponding group presentation
 when it is requested. Imaginary quadratic narrow and ordinary groups coincide.
 
-For an imaginary quadratic field, `algorithm='rust'` explicitly selects the
-shared native/WebAssembly Rust engine:
+For an imaginary quadratic field, the default `auto` route selects the shared
+native/WebAssembly Rust engine when its unconditional capability is available.
+`algorithm='rust'` requires that engine and fails with a typed error if it
+cannot handle the field:
 
 ```sage
 Q = QuadraticField(-23)
-G = Q.class_group(algorithm='rust')
-Q.class_number(algorithm='rust'), G.invariants()
+G = Q.class_group()
+Q.class_number(), G.invariants()
 # (3, (3,))
 G(G.gen().ideal()).coordinates()
 # (1,)
@@ -171,14 +173,15 @@ exact ideal-to-class coordinate map with a replayable completeness certificate.
 The admitted domain is negative fundamental field discriminants with
 `|D| <= 2*10^11` and at most 50,000 reduced forms. Outside that domain, or
 when the exact Rust capability is unavailable, the explicit route raises a
-typed error instead of silently substituting a different algorithm. It has no
-PARI runtime dependency and makes no GRH assumption. `algorithm='auto'`
-continues to follow the quadratic plan below; this release does not silently
-change its selection policy.
+typed error instead of silently substituting a different algorithm. `auto`
+retains the existing quadratic plan on a capability or resource decline, or
+when execution-control limits were supplied; it does not hide a malformed
+published result. The Rust engine has no PARI runtime dependency and makes no
+GRH assumption.
 
 `K.quadratic_class_group_plan(algorithm='auto', narrow=...)` reports the
-selected backend, its reason, the exact enumeration estimate and cap, and
-whether all reduced forms will be materialized. Small discriminants may be
+quadratic fallback backend, its reason, the exact enumeration estimate and cap,
+and whether all reduced forms will be materialized. Small discriminants may be
 settled by exact Minkowski triviality. Within the forms cap, `auto` uses the
 specialized quadratic implementation. Beyond it, ordinary groups use the
 general Buchmann--Hecke relation engine and real narrow groups use its exact

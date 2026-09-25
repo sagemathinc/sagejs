@@ -244,19 +244,27 @@ def rust_imaginary_result(
 ) -> dict[str, Any] | None:
     """Return an unconditional coefficient-bound imaginary quadratic receipt.
 
-    Only explicit Rust selection dispatches for now; automatic selection
-    remains behind the separate release qualification policy.
+    Automatic selection uses the unconditional Rust service when available.
+    An unsupported field or resource decline retains the established route;
+    a malformed published result remains an error rather than a fallback.
     """
-    if algorithm != "rust" or int(field.degree()) != 2:
+    if algorithm not in ("auto", "rust") or int(field.degree()) != 2:
         return None
     if options is not None and len(options) != 0:
-        raise RustClassGroupCapabilityDecline(
-            "algorithm='rust' does not accept execution-control overrides"
-        )
+        if algorithm == "rust":
+            raise RustClassGroupCapabilityDecline(
+                "algorithm='rust' does not accept execution-control overrides"
+            )
+        return None
     if operation not in ("imaginary-class-number", "imaginary-class-group"):
         raise ValueError("unknown imaginary quadratic Rust operation")
-    discriminant, polynomial = _imaginary_polynomial(field)
-    backend, capability = _imaginary_backend(backend)
+    try:
+        discriminant, polynomial = _imaginary_polynomial(field)
+        backend, capability = _imaginary_backend(backend)
+    except RustClassGroupCapabilityDecline:
+        if algorithm == "auto":
+            return None
+        raise
     resident_host = getattr(backend, "_backend", None)
     use_resident_host = resident_host is not None and runtime.strict_equal(
         resident_host,
@@ -272,15 +280,26 @@ def rust_imaginary_result(
             "the Rust service did not publish an imaginary discriminant bound"
         )
     if -discriminant > maximum:
+        if algorithm == "auto":
+            return None
         raise RustClassGroupCapabilityDecline(
             "the imaginary quadratic discriminant exceeds the Rust service bound"
         )
     request = {"polynomialAscending": polynomial}
-    answer = (
-        _imaginary_host_call(operation, request)
-        if use_resident_host
-        else _call(backend, operation, request)
-    )
+    try:
+        answer = (
+            _imaginary_host_call(operation, request)
+            if use_resident_host
+            else _call(backend, operation, request)
+        )
+    except RustClassGroupCapabilityDecline:
+        if algorithm == "auto":
+            return None
+        raise
+    except RustClassGroupServiceError as error:
+        if algorithm == "auto" and error.category == "resource-exhausted":
+            return None
+        raise
     if answer.get("outcome") != "complete" or answer.get("operation") != operation:
         raise RustClassGroupPublicationError(
             "the Rust imaginary quadratic response did not complete the requested operation"
