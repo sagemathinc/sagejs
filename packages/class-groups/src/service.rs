@@ -1911,7 +1911,7 @@ impl ProductService {
             "proofModes": ["conditional-grh"],
             "imaginaryQuadratic": {
                 "proofMode": "unconditional",
-                "maximumAbsoluteDiscriminant": 10_000_000,
+                "maximumAbsoluteDiscriminant": 200_000_000_000_u64,
                 "operations": ["imaginary-class-number", "imaginary-class-group"],
             },
             "operations": ["capability", "open", "summary", "query", "publication", "close", "imaginary-class-number", "imaginary-class-group"],

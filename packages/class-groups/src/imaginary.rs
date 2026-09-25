@@ -9,7 +9,7 @@
 //! rank-two ideal lattices and canonically reduces the result. The resulting
 //! group law drives exact orders, primary decomposition, independent
 //! generators, normalized invariant factors, and a coordinate map for every
-//! class. The admitted v2 domain has `|D| <= 10^7` and at most 20,000 reduced
+//! class. The admitted v2 domain has `|D| <= 2*10^11` and at most 50,000 reduced
 //! forms; all other inputs fail closed.
 
 use crate::{
@@ -23,8 +23,8 @@ use std::{
     fmt,
 };
 
-const MAXIMUM_ABSOLUTE_DISCRIMINANT: u64 = 10_000_000;
-const MAXIMUM_REDUCED_FORMS: usize = 20_000;
+const MAXIMUM_ABSOLUTE_DISCRIMINANT: u64 = 200_000_000_000;
+const MAXIMUM_REDUCED_FORMS: usize = 50_000;
 const RESULT_SCHEMA: &str = "sagejs.rust-class-group/complete-imaginary-quadratic-v2";
 const CERTIFICATE_THEOREM: &str = "primitive reduced positive-definite forms uniquely enumerate proper ideal classes of a negative fundamental discriminant";
 
@@ -681,6 +681,32 @@ fn compose_reduced_forms_unchecked(
 ) -> Result<BinaryQuadraticForm, ImaginaryClassGroupError> {
     let target = i128::from(discriminant);
     let parity = target.rem_euclid(2);
+    let left_t = (-i128::from(left.b) - parity) / 2;
+    let right_t = (-i128::from(right.b) - parity) / 2;
+    let left_a = i128::from(left.a);
+    let right_a = i128::from(right.a);
+    let (common_divisor, inverse, _) = extended_gcd(left_a, right_a);
+    if common_divisor == 1 {
+        // Coprime norm ideals multiply as their intersection. In the
+        // theta-basis, the product's theta root solves the two exact
+        // congruences t' = left_t (mod left_a) and t' = right_t (mod right_a).
+        let a = left_a * right_a;
+        let shift = ((right_t - left_t) * inverse).rem_euclid(right_a);
+        let t = (left_t + left_a * shift).rem_euclid(a);
+        return reduce_lattice_form(a, t, parity, target, discriminant);
+    }
+    compose_reduced_forms_lattice_unchecked(left, right, discriminant)
+}
+
+/// General rank-two ideal-lattice product, retained as the independent exact
+/// oracle for the coprime-norm shortcut.
+fn compose_reduced_forms_lattice_unchecked(
+    left: BinaryQuadraticForm,
+    right: BinaryQuadraticForm,
+    discriminant: i64,
+) -> Result<BinaryQuadraticForm, ImaginaryClassGroupError> {
+    let target = i128::from(discriminant);
+    let parity = target.rem_euclid(2);
     let theta_norm = (parity * parity - target) / 4;
     let left_t = (-i128::from(left.b) - parity) / 2;
     let right_t = (-i128::from(right.b) - parity) / 2;
@@ -718,6 +744,16 @@ fn compose_reduced_forms_unchecked(
         return Err(ImaginaryClassGroupError::GroupLawFailure);
     }
     let t = (lifted_x / projection_gcd).rem_euclid(a);
+    reduce_lattice_form(a, t, parity, target, discriminant)
+}
+
+fn reduce_lattice_form(
+    a: i128,
+    t: i128,
+    parity: i128,
+    target: i128,
+    discriminant: i64,
+) -> Result<BinaryQuadraticForm, ImaginaryClassGroupError> {
     let b = -2 * t - parity;
     let numerator = b * b - target;
     if numerator % (4 * a) != 0 {
@@ -1069,38 +1105,65 @@ fn gcd_i128(mut left: i128, mut right: i128) -> i128 {
 
 fn enumerate_reduced_forms(discriminant: i64) -> (i64, Vec<BinaryQuadraticForm>) {
     let mut forms = Vec::new();
-    let bound = visit_reduced_forms(discriminant, |form| forms.push(form));
+    let bound = visit_sieved_reduced_form_families(discriminant, |a, b, c, both_orientations| {
+        let form = BinaryQuadraticForm {
+            a: a as i64,
+            b: b as i64,
+            c: c as i64,
+        };
+        forms.push(form);
+        if both_orientations {
+            forms.push(BinaryQuadraticForm { b: -form.b, ..form });
+        }
+    });
     forms.sort_unstable();
     (bound, forms)
 }
 
-#[derive(Clone)]
-struct ScalarFactorization {
-    factors: [(u64, u32); 8],
-    len: usize,
+#[derive(Clone, Copy)]
+struct SieveFactor {
+    prime: u64,
+    next: u32,
+    exponent: u8,
 }
 
-impl ScalarFactorization {
-    fn new() -> Self {
-        Self {
-            factors: [(0, 0); 8],
-            len: 0,
-        }
-    }
-
-    fn push(&mut self, factor: (u64, u32)) {
-        // Here n <= (|D| + floor(sqrt(|D|/3))^2)/4 < 3.34 million.
-        // Eight distinct prime factors require at least 9,699,690.
-        self.factors[self.len] = factor;
-        self.len += 1;
-    }
-
-    fn iter(&self) -> impl Iterator<Item = &(u64, u32)> {
-        self.factors[..self.len].iter()
-    }
+fn record_sieve_factor(
+    heads: &mut [u32],
+    factors: &mut Vec<SieveFactor>,
+    norm_index: usize,
+    prime: u64,
+    exponent: u32,
+) {
+    // At the admitted discriminant bound, there are fewer than 130,000
+    // candidate norms and fewer than eleven distinct factors per norm.
+    let next_index = u32::try_from(factors.len()).expect("bounded sieve factor count");
+    factors.push(SieveFactor {
+        prime,
+        next: heads[norm_index],
+        exponent: u8::try_from(exponent).expect("bounded norm exponent"),
+    });
+    heads[norm_index] = next_index;
 }
 
 fn count_reduced_forms(discriminant: i64) -> usize {
+    let mut count = 0;
+    visit_sieved_reduced_form_families(discriminant, |_, _, _, both_orientations| {
+        count += if both_orientations { 2 } else { 1 };
+    });
+    count
+}
+
+/// Visit canonical reduced-form families using a sieve of their candidate norms.
+///
+/// For a fundamental discriminant every integral form at that discriminant is
+/// primitive: a common coefficient divisor would square-divide the field
+/// discriminant. The callback receives the positive orientation and whether
+/// its negative orientation is distinct; the scalar count does not need to
+/// allocate forms, while the full group materializes the exact same families.
+fn visit_sieved_reduced_form_families(
+    discriminant: i64,
+    mut visit: impl FnMut(u64, u64, u64, bool),
+) -> i64 {
     let absolute = discriminant.unsigned_abs();
     let bound = integer_square_root(absolute / 3);
     let maximum_n = (bound * bound + absolute) / 4 + 1;
@@ -1129,7 +1192,8 @@ fn count_reduced_forms(discriminant: i64) -> usize {
         norms.push((b * b + absolute) / 4);
     }
     let mut residuals = norms.clone();
-    let mut factors = vec![ScalarFactorization::new(); norms.len()];
+    let mut factor_heads = vec![u32::MAX; norms.len()];
+    let mut factors = Vec::with_capacity(norms.len() * 3);
     for (index, residual) in residuals.iter_mut().enumerate() {
         if *residual % 2 == 0 {
             let mut exponent = 0;
@@ -1137,7 +1201,7 @@ fn count_reduced_forms(discriminant: i64) -> usize {
                 *residual /= 2;
                 exponent += 1;
             }
-            factors[index].push((2, exponent));
+            record_sieve_factor(&mut factor_heads, &mut factors, index, 2, exponent);
         }
     }
     for &prime in primes.iter().skip(1) {
@@ -1163,44 +1227,42 @@ fn count_reduced_forms(discriminant: i64) -> usize {
                         *residual /= prime;
                         exponent += 1;
                     }
-                    factors[index].push((prime, exponent));
+                    record_sieve_factor(&mut factor_heads, &mut factors, index, prime, exponent);
                 }
                 b += 2 * prime;
             }
         }
     }
 
-    let mut count = 0;
     let mut divisors = Vec::new();
     for (index, &n) in norms.iter().enumerate() {
         let b = parity + 2 * index as u64;
         if residuals[index] > 1 {
-            factors[index].push((residuals[index], 1));
+            record_sieve_factor(&mut factor_heads, &mut factors, index, residuals[index], 1);
         }
         divisors.clear();
         divisors.push(1_u64);
-        for &(prime, exponent) in factors[index].iter() {
+        let mut factor_index = factor_heads[index];
+        while factor_index != u32::MAX {
+            let factor = factors[factor_index as usize];
             let existing = divisors.len();
             let mut power = 1;
-            for _ in 0..exponent {
-                power *= prime;
+            for _ in 0..factor.exponent {
+                power *= factor.prime;
                 for divisor_index in 0..existing {
                     divisors.push(divisors[divisor_index] * power);
                 }
             }
+            factor_index = factor.next;
         }
         for &a in &divisors {
             if a > bound || a < b || a * a > n {
                 continue;
             }
-            // A nonprimitive form would make a square divide its fundamental
-            // discriminant. For the even case, dividing by four would then
-            // leave a quadratic discriminant, contradicting fundamentality.
-            // Thus every integral form at this discriminant is primitive.
-            count += if b == 0 || b == a || a * a == n { 1 } else { 2 };
+            visit(a, b, n / a, b != 0 && b != a && a * a != n);
         }
     }
-    count
+    bound as i64
 }
 
 fn power_mod(mut base: u64, mut exponent: u64, modulus: u64) -> u64 {
@@ -1254,6 +1316,7 @@ fn square_root_mod_prime(value: u64, prime: u64) -> Option<u64> {
     Some(root)
 }
 
+#[cfg(test)]
 fn visit_reduced_forms(discriminant: i64, mut visit: impl FnMut(BinaryQuadraticForm)) -> i64 {
     let absolute = discriminant.unsigned_abs();
     let mut bound = 0_u64;
@@ -1312,6 +1375,7 @@ fn integer_square_root(value: u64) -> u64 {
     root
 }
 
+#[cfg(test)]
 fn positive_divisors(mut value: u64, primes: &[u64]) -> Vec<u64> {
     let mut divisors = vec![1];
     for prime in primes {
@@ -1497,17 +1561,62 @@ mod tests {
     }
 
     #[test]
+    fn computes_a_medium_band_field_with_a_complete_map() {
+        let input = PublicImaginaryQuadraticInput {
+            id: "imaginary-d100000000003-c31057",
+            polynomial_ascending: [25_000_000_001, -1, 1],
+        };
+        let scalar =
+            compute_imaginary_class_number_from_coefficients(input.polynomial_ascending).unwrap();
+        assert_eq!(scalar.discriminant, -100_000_000_003);
+        assert_eq!(scalar.class_number, 31_057);
+        let group = compute_imaginary_class_group(input).unwrap();
+        assert_eq!(group.class_number, scalar.class_number);
+        assert_eq!(group.invariant_factors, vec![31_057]);
+        assert_eq!(group.complete_class_map.len(), scalar.class_number);
+        verify_imaginary_class_group(input, &group).unwrap();
+    }
+
+    #[test]
+    fn coprime_ideal_composition_matches_general_lattice_product() {
+        let mut checked = 0;
+        for discriminant in [-23, -231, -15_015, -8_173_415, -100_000_000_003] {
+            let forms = enumerate_reduced_forms(discriminant).1;
+            let stride = (forms.len() / 64).max(1);
+            for &left in forms.iter().step_by(stride).take(64) {
+                for &right in forms.iter().step_by(stride).take(64) {
+                    if gcd(left.a as u64, right.a as u64) != 1 {
+                        continue;
+                    }
+                    assert_eq!(
+                        compose_reduced_forms_unchecked(left, right, discriminant),
+                        compose_reduced_forms_lattice_unchecked(left, right, discriminant),
+                        "D={discriminant}, left={left:?}, right={right:?}"
+                    );
+                    checked += 1;
+                }
+            }
+        }
+        assert!(checked > 1_000);
+    }
+
+    #[test]
     fn sieved_scalar_count_matches_exact_form_enumeration() {
         for absolute in 3..=10_000_i64 {
             let discriminant = -absolute;
             if fundamental_discriminant(discriminant).is_none() {
                 continue;
             }
-            let mut enumerated = 0;
-            visit_reduced_forms(discriminant, |_| enumerated += 1);
+            let mut reference_forms = Vec::new();
+            let reference_bound =
+                visit_reduced_forms(discriminant, |form| reference_forms.push(form));
+            reference_forms.sort_unstable();
+            let (sieved_bound, sieved_forms) = enumerate_reduced_forms(discriminant);
+            assert_eq!(sieved_bound, reference_bound, "D={discriminant}");
+            assert_eq!(sieved_forms, reference_forms, "D={discriminant}");
             assert_eq!(
                 count_reduced_forms(discriminant),
-                enumerated,
+                reference_forms.len(),
                 "D={discriminant}"
             );
         }
@@ -1516,11 +1625,16 @@ mod tests {
             if fundamental_discriminant(discriminant).is_none() {
                 continue;
             }
-            let mut enumerated = 0;
-            visit_reduced_forms(discriminant, |_| enumerated += 1);
+            let mut reference_forms = Vec::new();
+            let reference_bound =
+                visit_reduced_forms(discriminant, |form| reference_forms.push(form));
+            reference_forms.sort_unstable();
+            let (sieved_bound, sieved_forms) = enumerate_reduced_forms(discriminant);
+            assert_eq!(sieved_bound, reference_bound, "D={discriminant}");
+            assert_eq!(sieved_forms, reference_forms, "D={discriminant}");
             assert_eq!(
                 count_reduced_forms(discriminant),
-                enumerated,
+                reference_forms.len(),
                 "D={discriminant}"
             );
         }

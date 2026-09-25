@@ -1,8 +1,10 @@
 # Public quadratic qualification
 
-This standalone crate answers the degree-2 public-route question without
-editing the active Rust core. It depends on the root experiment crate and uses
-only public polynomial coefficients at runtime.
+This standalone crate answers the degree-2 public-route question using the
+product Rust imaginary-quadratic source directly. It depends on the root
+experiment crate for prepared-field types and uses only public polynomial
+coefficients at runtime. Its benchmark source closure includes the shared
+product source, so qualification cannot silently time an older algorithm copy.
 
 ## Complete imaginary-quadratic engine
 
@@ -11,16 +13,17 @@ The coefficient-only entry point
 unconditionally complete class group for this fail-closed domain:
 
 - integral monic quadratics with negative fundamental discriminant;
-- absolute discriminant at most 10,000,000; and
-- at most 20,000 reduced forms, an explicit memory/work resource cap.
+- absolute discriminant at most 200,000,000,000; and
+- at most 50,000 reduced forms, an explicit memory/work resource cap.
 
 The engine completely enumerates primitive reduced positive-definite binary
 quadratic forms through the exact reduction bound `a <= sqrt(|D|/3)`. The
 classical reduced-form theorem proves that this is one representative per
 proper ideal class. Enumeration factors the exact identity
 `a*c = (b^2-D)/4` for each parity-admissible bounded `b`, avoiding a quadratic
-scan without changing the canonical reduced-form predicate. Exact Gauss
-composition multiplies the forms' rank-two
+scan without changing the canonical reduced-form predicate. The product
+enumerator sieves candidate norms together. Exact Gauss composition uses
+coprime ideal intersections when possible and otherwise multiplies rank-two
 integer ideal lattices, normalizes their lattice index with extended gcds and
 2-by-2 minors, and reduces the resulting form canonically. The engine computes
 orders, primary components, independent generators, normalized invariant
@@ -44,10 +47,10 @@ ignored `pari_broad_differential` test. It covers every 3,043 negative
 fundamental discriminant through absolute discriminant 10,000 and a frozen
 314-case deterministic/random sample through 9,999,991.
 
-The current map domain is the complete set of canonical reduced-form
-representatives. Reduction of an arbitrary caller-supplied ideal into that map
-is not implemented. Inputs with nonfundamental discriminant, excessive
-discriminant, or more than 20,000 reduced forms fail closed.
+The complete map covers canonical reduced-form representatives; the public
+Sage.js quadratic class group also reduces arbitrary caller-supplied ideals
+into that map. Inputs with nonfundamental discriminant, excessive
+discriminant, or more than 50,000 reduced forms fail closed.
 
 The qualification examples cover trivial, cyclic groups through class number
 1,715, and noncyclic `C2 x C2`, `C2 x C4`, `C2 x C6`, and

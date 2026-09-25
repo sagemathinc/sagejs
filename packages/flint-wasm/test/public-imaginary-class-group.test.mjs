@@ -50,3 +50,23 @@ test("large public imaginary class maps cross the Wasm boundary exactly", async 
     await sage.close();
   }
 });
+
+test("medium-band imaginary class maps remain exact in Wasm", async () => {
+  const sage = await createSage({ timeout: 120_000 });
+  try {
+    const answer = await sage.evaluate([
+      "R.<x> = QQ[]",
+      "K.<a> = NumberField(x^2-x+25000000001)",
+      "G = K.class_group(algorithm='rust')",
+      "[G.order(), G.invariants(), G.proof_status,",
+      " G(G.gen().ideal()).coordinates(),",
+      " G((G.gen()^17).ideal()).coordinates()]",
+    ].join("\n"));
+    assert.equal(
+      answer.repr,
+      "[31057, (31057,), 'exact-unconditional', (1,), (17,)]",
+    );
+  } finally {
+    await sage.close();
+  }
+});

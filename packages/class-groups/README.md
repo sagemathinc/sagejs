@@ -15,8 +15,8 @@ The current supported mathematical boundary is deliberately narrow:
   enclosures;
 - bounded class coordinates for arbitrary integral ideals against a retained
   completed result.
-- negative fundamental quadratic discriminants with `|D| <= 10^7` and at most
-  20,000 reduced classes; exact reduced forms, invariant factors, generators,
+- negative fundamental quadratic discriminants with `|D| <= 2*10^11` and at most
+  50,000 reduced classes; exact reduced forms, invariant factors, generators,
   representative ideals, and a complete coordinate map for every class.
 
 FLINT 3.6, its integrated Arb implementation, GMP, and MPFR are required
@@ -89,7 +89,7 @@ K.class_number(algorithm="rust")      # 3
 `QuadraticField(-23)` and its maximal order accept the same `algorithm="rust"`
 selection. The Rust route uses the maximal-order field discriminant, even
 when the defining polynomial has a nonfundamental discriminant. It is
-unconditional on its admitted `|D| <= 10^7` domain. The existing automatic
+unconditional on its admitted `|D| <= 2*10^11` domain. The existing automatic
 quadratic route remains in place until the full public performance panel and
 Wasm integration are qualified.
 

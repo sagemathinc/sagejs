@@ -29,7 +29,8 @@ incremental compilation disabled, a fixed `SOURCE_DATE_EPOCH`, and independent
 target directories. It refuses to proceed unless both binary SHA-256 hashes
 match. Its source-closure digest includes `run.py`, the panel, both Cargo
 manifests and lockfiles, all qualification Rust sources, and every reachable
-root-crate Rust/C source plus its build script. The receipt records the CPU
+root-crate Rust/C source plus its build script, as well as the shared product
+imaginary-quadratic Rust source compiled by the qualification adapter. The receipt records the CPU
 model, process affinity, thread-control environment, available governor/power
 policy data, and before/after load averages. This host was not externally
 isolated, which is disclosed rather than described as quiet.
@@ -65,12 +66,12 @@ checks each class number, and writes `class-number-receipt.json`. That receipt
 is diagnostic and explicitly unpromoted; it does not supersede the full-group
 receipt or establish a release speed claim. The scalar Rust path now sieves
 the candidate norms together, using exact modular square roots to visit only
-prime-divisible residue classes and fixed-size factor storage to avoid one
-allocation per candidate. It counts only canonical reduced divisors and uses
+prime-divisible residue classes and compact linked factor storage to avoid one
+factor-vector allocation per candidate. It counts only canonical reduced divisors and uses
 the fundamental-discriminant precondition to eliminate redundant primitivity
 checks. The retained original enumerator independently agrees on every
 fundamental discriminant through 10,000 and a deterministic spread up to the
-admitted `10^7` boundary. On the current host, the diagnostic panel has Rust
+frozen panel's old `10^7` boundary. On the current host, the diagnostic panel has Rust
 faster than PARI on six of seven fields and 1.35 times PARI on the remaining
 4,378-class field. This is a substantial scalar improvement, but the receipt
 must still be frozen and promoted before making a release speed claim.

@@ -18,6 +18,9 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 CRATE = HERE.parent
 ROOT_CRATE = CRATE.parent.parent
+PRODUCT_IMAGINARY_SOURCE = (
+    ROOT_CRATE.parent.parent / "packages" / "class-groups" / "src" / "imaginary.rs"
+)
 PARI_CONTROL = CRATE.parent / "pari-control" / "build" / "pari-control"
 PARI_IDENTITY = CRATE.parent / "pari-control" / "build" / "build-identity.json"
 PANEL_PATH = HERE / "panel.json"
@@ -146,6 +149,7 @@ def source_closure(repository: Path) -> dict:
         ROOT_CRATE / "Cargo.toml",
         ROOT_CRATE / "Cargo.lock",
         ROOT_CRATE / "build.rs",
+        PRODUCT_IMAGINARY_SOURCE,
     ]
     paths.extend(sorted((CRATE / "src").rglob("*.rs")))
     paths.extend(sorted((ROOT_CRATE / "src").rglob("*.rs")))
