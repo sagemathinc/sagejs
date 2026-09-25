@@ -153,6 +153,29 @@ generators, or a list of ideal classes. `K.class_group()` and
 `K.narrow_class_group()` materialize the corresponding group presentation
 when it is requested. Imaginary quadratic narrow and ordinary groups coincide.
 
+For an imaginary quadratic field, `algorithm='rust'` explicitly selects the
+shared native/WebAssembly Rust engine:
+
+```sage
+Q = QuadraticField(-23)
+G = Q.class_group(algorithm='rust')
+Q.class_number(algorithm='rust'), G.invariants()
+# (3, (3,))
+G(G.gen().ideal()).coordinates()
+# (1,)
+```
+
+The scalar call counts reduced forms without constructing the group map. The
+group call returns unconditional invariant factors, generator ideals, and an
+exact ideal-to-class coordinate map with a replayable completeness certificate.
+The admitted domain is negative fundamental field discriminants with
+`|D| <= 2*10^11` and at most 50,000 reduced forms. Outside that domain, or
+when the exact Rust capability is unavailable, the explicit route raises a
+typed error instead of silently substituting a different algorithm. It has no
+PARI runtime dependency and makes no GRH assumption. `algorithm='auto'`
+continues to follow the quadratic plan below; this release does not silently
+change its selection policy.
+
 `K.quadratic_class_group_plan(algorithm='auto', narrow=...)` reports the
 selected backend, its reason, the exact enumeration estimate and cap, and
 whether all reduced forms will be materialized. Small discriminants may be
