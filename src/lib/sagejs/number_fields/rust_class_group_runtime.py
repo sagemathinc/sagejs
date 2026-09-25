@@ -149,7 +149,15 @@ def _imaginary_host_call(operation: str, request: dict[str, Any]) -> dict[str, A
     envelope = runtime.reflect.apply(
         runtime.reflect.get(host, "call"),
         host,
-        ["classGroup", [operation, runtime.json.parse(encoded)]],
+        [
+            "classGroupCompact"
+            if operation == "imaginary-class-group"
+            and runtime.strict_equal(
+                runtime.reflect.get(host, "classGroupCompactTransport"), True
+            )
+            else "classGroup",
+            [operation, runtime.json.parse(encoded)],
+        ],
     )
     if not runtime.reflect.get(envelope, "ok"):
         error = runtime.reflect.get(envelope, "error")
@@ -313,12 +321,21 @@ def rust_imaginary_result(
         or result["classNumber"] < 1
     ):
         raise RustClassGroupPublicationError("the Rust imaginary result is malformed")
+    packed_map = "completeClassMapPacked" in result
     if operation == "imaginary-class-group" and (
         result.get("schema") != IMAGINARY_GROUP_SCHEMA
         or result.get("polynomialAscending") != [int(value) for value in polynomial]
         or result.get("runtimeUsesPariOrFixtureAnswers") is not False
-        or not isinstance(result.get("completeClassMap"), list)
-        or len(result["completeClassMap"]) != result["classNumber"]
+        or (
+            packed_map and result.get("completeClassMapLength") != result["classNumber"]
+        )
+        or (
+            not packed_map
+            and (
+                not isinstance(result.get("completeClassMap"), list)
+                or len(result["completeClassMap"]) != result["classNumber"]
+            )
+        )
     ):
         raise RustClassGroupPublicationError(
             "the Rust imaginary group omitted its complete class map"
@@ -342,6 +359,12 @@ def _imaginary_form_data(value: Any, discriminant: int) -> tuple[int, int, int]:
         raise RustClassGroupPublicationError(
             "the Rust class map has a malformed form"
         ) from error
+    return _imaginary_form_values(a, b, c, discriminant)
+
+
+def _imaginary_form_values(
+    a: Any, b: Any, c: Any, discriminant: int
+) -> tuple[int, int, int]:
     absolute_b = abs(b) if type(b) is int else 0
     if (
         type(a) is not int
@@ -360,27 +383,84 @@ def _imaginary_form_data(value: Any, discriminant: int) -> tuple[int, int, int]:
     return a, b, c
 
 
+def _imaginary_map_row(entry: Any, rank: int) -> list[Any]:
+    """Project the ordinary service fixture into the validated packed row shape."""
+    if not isinstance(entry, dict):
+        raise RustClassGroupPublicationError("the Rust class map has a malformed entry")
+    form = entry.get("form")
+    inverse = entry.get("inverseForm")
+    ideal = entry.get("representativeIdeal")
+    columns = ideal.get("basisColumns") if isinstance(ideal, dict) else None
+    vector = entry.get("coordinates")
+    if (
+        not isinstance(form, dict)
+        or len(form) != 3
+        or not isinstance(inverse, dict)
+        or len(inverse) != 3
+        or not isinstance(ideal, dict)
+        or len(ideal) != 2
+        or not isinstance(columns, list)
+        or len(columns) != 2
+        or not all(isinstance(column, list) and len(column) == 2 for column in columns)
+        or not isinstance(vector, list)
+        or len(vector) != rank
+    ):
+        raise RustClassGroupPublicationError("the Rust class map has a malformed entry")
+    return [
+        form.get("a"),
+        form.get("b"),
+        form.get("c"),
+        inverse.get("a"),
+        inverse.get("b"),
+        inverse.get("c"),
+        ideal.get("norm"),
+        *columns[0],
+        *columns[1],
+        *vector,
+    ]
+
+
 def validate_imaginary_group_result(
     result: dict[str, Any], discriminant: int
 ) -> tuple[
     list[tuple[int, int, int]], dict[str, tuple[int, ...]], list[tuple[int, int, int]]
 ]:
     """Check a complete form/coordinate/ideal presentation before Python binds it."""
-    entries = result.get("completeClassMap")
+    packed = "completeClassMapPacked" in result
+    packed_entries = result.get("completeClassMapPacked") if packed else None
+    entry_count = (
+        result.get("completeClassMapLength")
+        if packed
+        else len(result["completeClassMap"])
+        if isinstance(result.get("completeClassMap"), list)
+        else None
+    )
+    entries = (
+        range(entry_count) if type(entry_count) is int and entry_count >= 0 else None
+    )
     invariants = result.get("invariantFactors")
     generators = result.get("generators")
     certificate = result.get("certificate")
     if (
         result.get("schema") != IMAGINARY_GROUP_SCHEMA
         or result.get("discriminant") != discriminant
-        or not isinstance(entries, list)
+        or entries is None
         or not isinstance(invariants, list)
         or not isinstance(generators, list)
+        or (
+            packed
+            and (
+                "completeClassMap" in result
+                or not isinstance(packed_entries, list)
+                or len(packed_entries) != entry_count * (11 + len(invariants))
+            )
+        )
+        or (not packed and not isinstance(result.get("completeClassMap"), list))
         or len(generators) != len(invariants)
         or not isinstance(certificate, dict)
         or certificate.get("discriminant") != discriminant
         or not isinstance(certificate.get("reducedForms"), list)
-        or len(certificate["reducedForms"]) != len(entries)
+        or len(certificate["reducedForms"]) != entry_count
     ):
         raise RustClassGroupPublicationError(
             "the Rust form certificate changed fields or structure"
@@ -392,7 +472,7 @@ def validate_imaginary_group_result(
                 "the Rust invariant factors are invalid"
             )
         order *= invariant
-    if order != len(entries) or order != result.get("classNumber"):
+    if order != entry_count or order != result.get("classNumber"):
         raise RustClassGroupPublicationError(
             "the Rust invariant factors do not give the class number"
         )
@@ -402,18 +482,23 @@ def validate_imaginary_group_result(
     coordinates = {}
     seen_coordinates = set()
     certified_forms = certificate["reducedForms"]
-    for index, entry in enumerate(entries):
-        if not isinstance(entry, dict):
+    stride = 11 + len(invariants)
+    for index in entries:
+        row = (
+            packed_entries[index * stride : (index + 1) * stride]
+            if packed
+            else _imaginary_map_row(result["completeClassMap"][index], len(invariants))
+        )
+        if any(type(value) is not int for value in row):
             raise RustClassGroupPublicationError(
-                "the Rust class map has a malformed entry"
+                "the Rust class map has a malformed integer"
             )
-        form = _imaginary_form_data(entry.get("form"), discriminant)
+        form = _imaginary_form_values(row[0], row[1], row[2], discriminant)
         a, b, c = form
         certified = certified_forms[index]
         if (
             not isinstance(certified, dict)
             or len(certified) != 3
-            or len(entry["form"]) != 3
             or certified.get("a") != a
             or certified.get("b") != b
             or certified.get("c") != c
@@ -422,36 +507,19 @@ def validate_imaginary_group_result(
                 "the Rust class map disagrees with its reduced-form certificate"
             )
         inverse_b = b if b == 0 or abs(b) == a or a == c else -b
-        inverse = entry.get("inverseForm")
-        if (
-            not isinstance(inverse, dict)
-            or len(inverse) != 3
-            or inverse.get("a") != a
-            or inverse.get("b") != inverse_b
-            or inverse.get("c") != c
-        ):
+        if row[3] != a or row[4] != inverse_b or row[5] != c:
             raise RustClassGroupPublicationError(
                 "the Rust class map has a wrong inverse"
             )
-        ideal = entry.get("representativeIdeal")
-        columns = ideal.get("basisColumns") if isinstance(ideal, dict) else None
         if (
-            not isinstance(ideal, dict)
-            or len(ideal) != 2
-            or ideal.get("norm") != a
-            or not isinstance(columns, list)
-            or len(columns) != 2
-            or not isinstance(columns[0], list)
-            or not isinstance(columns[1], list)
-            or len(columns[0]) != 2
-            or len(columns[1]) != 2
-            or columns[0][0] != a
-            or columns[0][1] != 0
-            or columns[1][0] != (linear - b) // 2
-            or columns[1][1] != 1
+            row[6] != a
+            or row[7] != a
+            or row[8] != 0
+            or row[9] != (linear - b) // 2
+            or row[10] != 1
         ):
             raise RustClassGroupPublicationError("the Rust class map has a wrong ideal")
-        vector = entry.get("coordinates")
+        vector = row[11:]
         if (
             not isinstance(vector, list)
             or len(vector) != len(invariants)

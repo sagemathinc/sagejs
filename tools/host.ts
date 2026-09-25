@@ -416,6 +416,47 @@ function classGroupHostError(
   return error;
 }
 
+/** A representation-only projection; malformed rows retain the full validator path. */
+function packImaginaryGroupResponse(value: Record<string, unknown>): void {
+  const result = value.result;
+  if (!isPlainRecord(result) || !Array.isArray(result.completeClassMap) ||
+      !Array.isArray(result.invariantFactors) ||
+      Object.hasOwn(result, "completeClassMapPacked")) return;
+  const entries = result.completeClassMap;
+  const rank = result.invariantFactors.length;
+  const packed: number[] = [];
+  for (const entry of entries) {
+    if (!isPlainRecord(entry) || !isPlainRecord(entry.form) ||
+        Object.keys(entry.form).length !== 3 ||
+        !isPlainRecord(entry.inverseForm) ||
+        Object.keys(entry.inverseForm).length !== 3 ||
+        !isPlainRecord(entry.representativeIdeal) ||
+        Object.keys(entry.representativeIdeal).length !== 2 ||
+        !Array.isArray(entry.representativeIdeal.basisColumns) ||
+        entry.representativeIdeal.basisColumns.length !== 2 ||
+        !Array.isArray(entry.representativeIdeal.basisColumns[0]) ||
+        entry.representativeIdeal.basisColumns[0].length !== 2 ||
+        !Array.isArray(entry.representativeIdeal.basisColumns[1]) ||
+        entry.representativeIdeal.basisColumns[1].length !== 2 ||
+        !Array.isArray(entry.coordinates) || entry.coordinates.length !== rank) return;
+    const form = entry.form;
+    const inverse = entry.inverseForm;
+    const ideal = entry.representativeIdeal;
+    const basis = ideal.basisColumns;
+    const fields = [
+      form.a, form.b, form.c,
+      inverse.a, inverse.b, inverse.c,
+      ideal.norm, basis[0][0], basis[0][1], basis[1][0], basis[1][1],
+      ...entry.coordinates,
+    ];
+    if (!fields.every(Number.isSafeInteger)) return;
+    packed.push(...fields as number[]);
+  }
+  result.completeClassMapPacked = packed;
+  result.completeClassMapLength = entries.length;
+  delete result.completeClassMap;
+}
+
 /** Lazy synchronous facade over the resident asynchronous native service. */
 export class NodeClassGroupBackend {
   private worker: Worker | undefined;
@@ -919,6 +960,7 @@ function statValue(value: fs.BigIntStats) {
 }
 
 export class NodeHostAdapter {
+  readonly classGroupCompactTransport = true;
   private currentDirectory = process.cwd();
   private readonly environment: Record<string, string> = Object.create(null);
   private readonly multiprocessing: NodeMultiprocessingAdapter;
@@ -1385,6 +1427,15 @@ export class NodeHostAdapter {
               args[1] as Record<string, unknown>,
             ),
           };
+        case "classGroupCompact": {
+          const operation = String(args[0]);
+          if (operation !== "imaginary-class-group") {
+            throw classGroupHostError("EINVAL", "compact class-group transport requires an imaginary group");
+          }
+          const value = this.classGroups.call(operation, args[1] as Record<string, unknown>);
+          packImaginaryGroupResponse(value);
+          return { ok: true, value };
+        }
         case "multiprocessingCreatePool":
           return {
             ok: true,

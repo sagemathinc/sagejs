@@ -183,6 +183,31 @@ test("quadratic map validation rejects extra certificate, inverse, and ideal dat
   assert.equal(answer.repr, "[True, True, True]");
 });
 
+test("packed resident map validation retains exact forms, ideals, and rejection", async () => {
+  const answer = await evaluate([
+    ...fixture,
+    "packed = dict(result)",
+    "entries = packed.pop('completeClassMap')",
+    "flat = []",
+    "for entry in entries:",
+    "    form, inverse, ideal_data = entry['form'], entry['inverseForm'], entry['representativeIdeal']",
+    "    flat.extend([form['a'], form['b'], form['c'], inverse['a'], inverse['b'], inverse['c'],",
+    "        ideal_data['norm'], *ideal_data['basisColumns'][0],",
+    "        *ideal_data['basisColumns'][1], *entry['coordinates']])",
+    "packed['completeClassMapPacked'] = flat",
+    "packed['completeClassMapLength'] = len(entries)",
+    "forms1, coordinates1, generators1 = rust_runtime.validate_imaginary_group_result(result, -23)",
+    "forms2, coordinates2, generators2 = rust_runtime.validate_imaginary_group_result(packed, -23)",
+    "packed['completeClassMapPacked'][4] = 0",
+    "try:",
+    "    rust_runtime.validate_imaginary_group_result(packed, -23)",
+    "except rust_runtime.RustClassGroupPublicationError:",
+    "    rejects_inverse = True",
+    "[forms1 == forms2, coordinates1 == coordinates2, generators1 == generators2, rejects_inverse]",
+  ]);
+  assert.equal(answer.repr, "[True, True, True, True]");
+});
+
 test("QuadraticField and its maximal order expose the explicit Rust route", async () => {
   const answer = await evaluate([
     ...fixture,

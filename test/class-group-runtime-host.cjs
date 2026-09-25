@@ -38,6 +38,13 @@ lines.on("line", (input) => {
     result = { schema: "sagejs.class-groups/service-response-v1", outcome: "complete",
       operation: request.operation, result: { discriminant: -23, classNumber: 3,
         proofStatus: "unconditional-complete" }, servicePid: process.pid };
+  } else if (request.operation === "imaginary-class-group") {
+    const form = { a: 1, b: 1, c: 1 };
+    result = { schema: "sagejs.class-groups/service-response-v1", outcome: "complete",
+      operation: request.operation, result: { invariantFactors: [],
+        completeClassMap: [{ form, inverseForm: form, coordinates: [],
+          representativeIdeal: { norm: 1, basisColumns: [[1, 0], [-1, 1]] } }] },
+      servicePid: process.pid };
   } else if (request.generation !== generation || request.handle !== "1") {
     process.stdout.write(JSON.stringify({ schema: "sagejs.class-groups/service-response-v1", abi: 1, id: request.id, ok: false, error: { schema: "sagejs.class-groups/service-response-v1", outcome: "error", category: "stale-handle", operation: request.operation, message: "stale fixture handle" } }) + "\\n");
     return;
@@ -131,6 +138,17 @@ async function main() {
     });
     assert.equal(imaginary.result.classNumber, 3);
     assert.equal(fs.existsSync(fixture.startup), true);
+
+    const groupRequest = ["imaginary-class-group", { polynomialAscending: ["1", "-1", "1"] }];
+    const fullGroup = host.call("classGroup", groupRequest);
+    const compactGroup = host.call("classGroupCompact", groupRequest);
+    assert.equal(fullGroup.ok, true);
+    assert.equal(compactGroup.ok, true);
+    assert.equal(fullGroup.value.result.completeClassMap.length, 1);
+    assert.equal(compactGroup.value.result.completeClassMap, undefined);
+    assert.deepEqual(compactGroup.value.result.completeClassMapPacked,
+      [1, 1, 1, 1, 1, 1, 1, 1, 0, -1, 1]);
+    assert.equal(compactGroup.value.result.completeClassMapLength, 1);
 
     const opened = backend.call("open", { request: { polynomialAscending: ["-1", "-1", "0", "1"] } });
     assert.match(opened.generation, /^[0-9]+$/);

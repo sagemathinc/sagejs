@@ -114,6 +114,19 @@ the public representation must avoid repeated dynamic traversal of the
 redundant object graph, or expose a compact/lazy exact map with equally strong
 malformed-publication rejection.
 
+A follow-up Node-host transport projects each checked-structure map entry into
+one flat integer row before the Sage.js Python container conversion. The same
+Python validator checks packed and ordinary responses, while direct host
+callers and browser/Wasm retain the original full response. On the same field,
+three fresh public calls measured 5.41, 5.67, and 5.60 seconds (5.60-second
+median), with exact group and ideal-class checks still enabled. The reduction
+is meaningful but leaves a large public-path gap; this diagnostic is not a
+matched PARI timing or a promotion receipt.
+One-sample public replay across all 11 frozen v2 fields checked every expected
+class number and invariant-factor vector. Its single long-lived Node process
+ended at about 1.42 GB RSS, so peak memory and repeated-field residency remain
+open optimization questions; this is not a Wasm memory claim.
+
 ## Matched scalar class-number comparison
 
 `run_class_number.py` separately compares the exact scalar Rust count, the
