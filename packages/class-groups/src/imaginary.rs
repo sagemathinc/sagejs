@@ -2432,11 +2432,7 @@ fn visit_reduced_forms(discriminant: i64, mut visit: impl FnMut(BinaryQuadraticF
 }
 
 fn integer_square_root(value: u64) -> u64 {
-    let mut root = 0;
-    while (root + 1) <= value / (root + 1) {
-        root += 1;
-    }
-    root
+    value.isqrt()
 }
 
 #[cfg(test)]
