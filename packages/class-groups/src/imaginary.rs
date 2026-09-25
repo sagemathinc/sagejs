@@ -303,16 +303,17 @@ pub fn compute_imaginary_class_group(
 
     let proved_orbit = if discriminant.unsigned_abs() >= 1_000_000_000 {
         match prime_factors.len() {
-            1 | 2 => cyclic_orbit_from_class_number(discriminant)?,
+            1 | 2 => cyclic_orbit_from_class_number(discriminant, linear)?,
             3 if discriminant.rem_euclid(4) == 1 => {
                 rank_two_orbit_from_class_number(discriminant, &prime_factors)?
+                    .map(|(bound, forms, structure)| (bound, forms, structure, None))
             }
             _ => None,
         }
     } else {
         None
     };
-    let (reduction_bound_a, forms, structure) = if let Some(result) = proved_orbit {
+    let (reduction_bound_a, forms, structure, prepared_map) = if let Some(result) = proved_orbit {
         result
     } else {
         let (bound, forms) = enumerate_reduced_forms(discriminant);
@@ -323,7 +324,7 @@ pub fn compute_imaginary_class_group(
             });
         }
         let structure = compute_group_structure(&forms, discriminant)?;
-        (bound, forms, structure)
+        (bound, forms, structure, None)
     };
     if forms.len() > MAXIMUM_REDUCED_FORMS {
         return Err(ImaginaryClassGroupError::ReducedFormResourceLimit {
@@ -341,13 +342,20 @@ pub fn compute_imaginary_class_group(
         .iter()
         .map(|&(index, order)| ClassGenerator {
             form: forms[index],
-            coordinates: coordinates[index].clone(),
+            coordinates: match &prepared_map {
+                Some(map) => map[index].coordinates.clone(),
+                None => coordinates[index].clone(),
+            },
             exact_order: order,
             representative_ideal: ideal(forms[index]),
         })
         .collect();
-    let complete_class_map =
-        materialize_class_map(&forms, coordinates, &invariants, input.polynomial_ascending)?;
+    let complete_class_map = match prepared_map {
+        Some(map) => map,
+        None => {
+            materialize_class_map(&forms, coordinates, &invariants, input.polynomial_ascending)?
+        }
+    };
     let answer = CompleteImaginaryClassGroup {
         schema: RESULT_SCHEMA,
         field_id: input.id,
@@ -392,34 +400,48 @@ fn materialize_class_map(
     }
     let mut entries = Vec::with_capacity(forms.len());
     let mut seen_coordinates = vec![false; forms.len()];
-    let expected_discriminant = i128::from(polynomial[1]) * i128::from(polynomial[1])
-        - 4 * i128::from(polynomial[0]);
+    let expected_discriminant =
+        i128::from(polynomial[1]) * i128::from(polynomial[1]) - 4 * i128::from(polynomial[0]);
     for (&form, coordinate) in forms.iter().zip(coordinates) {
         let ordinal = coordinate_ordinal(&coordinate, invariants, forms.len())?;
         if std::mem::replace(&mut seen_coordinates[ordinal], true) {
             return Err(ImaginaryClassGroupError::InvalidCertificate);
         }
-        let representative_ideal = ideal_representative(polynomial[1], form);
-        // The input has fundamental discriminant, so an integral form with
-        // that discriminant is automatically primitive. Check canonical
-        // reduction here once, along with the discriminant identity that
-        // proves ideal closure: the remaining constant is exactly -a*c.
-        if form.a <= 0
-            || form.b.unsigned_abs() > form.a as u64
-            || form.a > form.c
-            || ((form.b.unsigned_abs() == form.a as u64 || form.a == form.c) && form.b < 0)
-            || form.discriminant() != Some(expected_discriminant)
-        {
-            return Err(ImaginaryClassGroupError::InvalidCertificate);
-        }
-        entries.push(FormClassMapEntry {
+        entries.push(checked_class_map_entry(
             form,
-            inverse_form: form.inverse_reduced()?,
-            coordinates: coordinate,
-            representative_ideal,
-        });
+            coordinate,
+            polynomial[1],
+            expected_discriminant,
+        )?);
     }
     Ok(entries)
+}
+
+#[inline]
+fn checked_class_map_entry(
+    form: BinaryQuadraticForm,
+    coordinates: ClassCoordinates,
+    linear: i64,
+    expected_discriminant: i128,
+) -> Result<FormClassMapEntry, ImaginaryClassGroupError> {
+    // A fundamental discriminant makes every integral form primitive. Check
+    // canonical reduction and the discriminant identity once; the latter
+    // also proves closure of the representative ideal, since its remaining
+    // constant is exactly -a*c.
+    if form.a <= 0
+        || form.b.unsigned_abs() > form.a as u64
+        || form.a > form.c
+        || ((form.b.unsigned_abs() == form.a as u64 || form.a == form.c) && form.b < 0)
+        || form.discriminant() != Some(expected_discriminant)
+    {
+        return Err(ImaginaryClassGroupError::InvalidCertificate);
+    }
+    Ok(FormClassMapEntry {
+        form,
+        inverse_form: form.inverse_reduced()?,
+        coordinates,
+        representative_ideal: ideal_representative(linear, form),
+    })
 }
 
 fn orbit_candidate_norms() -> impl Iterator<Item = i64> {
@@ -434,7 +456,16 @@ fn orbit_candidate_norms() -> impl Iterator<Item = i64> {
 /// every reduced form. The general enumerator remains the fallback.
 fn cyclic_orbit_from_class_number(
     discriminant: i64,
-) -> Result<Option<(i64, Vec<BinaryQuadraticForm>, GroupStructure)>, ImaginaryClassGroupError> {
+    linear: i64,
+) -> Result<
+    Option<(
+        i64,
+        Vec<BinaryQuadraticForm>,
+        GroupStructure,
+        Option<Vec<FormClassMapEntry>>,
+    )>,
+    ImaginaryClassGroupError,
+> {
     let class_number = count_reduced_forms(discriminant);
     if class_number > MAXIMUM_REDUCED_FORMS {
         return Err(ImaginaryClassGroupError::ReducedFormResourceLimit {
@@ -503,14 +534,26 @@ fn cyclic_orbit_from_class_number(
     if tagged.windows(2).any(|pair| pair[0].0 == pair[1].0) {
         return Err(ImaginaryClassGroupError::GroupLawFailure);
     }
-    let forms = tagged
-        .iter()
-        .map(|&(key, (c, _))| form_from_sort_key(key, c))
-        .collect::<Result<Vec<_>, _>>()?;
-    let coordinates = tagged
-        .into_iter()
-        .map(|(_, (_, ordinal))| smallvec![ordinal])
-        .collect();
+    let mut forms = Vec::with_capacity(class_number);
+    let mut complete_class_map = Vec::with_capacity(class_number);
+    let mut seen_coordinates = vec![false; class_number];
+    for (key, (c, ordinal)) in tagged {
+        let form = form_from_sort_key(key, c)?;
+        let coordinate_index =
+            usize::try_from(ordinal).map_err(|_| ImaginaryClassGroupError::InvalidCertificate)?;
+        if coordinate_index >= class_number
+            || std::mem::replace(&mut seen_coordinates[coordinate_index], true)
+        {
+            return Err(ImaginaryClassGroupError::InvalidCertificate);
+        }
+        forms.push(form);
+        complete_class_map.push(checked_class_map_entry(
+            form,
+            smallvec![ordinal],
+            linear,
+            i128::from(discriminant),
+        )?);
+    }
     let generator_index = forms
         .binary_search(&generator)
         .map_err(|_| ImaginaryClassGroupError::GroupLawFailure)?;
@@ -519,9 +562,12 @@ fn cyclic_orbit_from_class_number(
         forms,
         GroupStructure {
             invariants: vec![class_number as u64],
-            coordinates,
+            // The paired prepared map owns every coordinate. `compute` must
+            // use that map rather than materializing an empty coordinate set.
+            coordinates: Vec::new(),
             generator_indices: vec![(generator_index, class_number as u64)],
         },
+        Some(complete_class_map),
     )))
 }
 
@@ -3069,19 +3115,30 @@ mod tests {
     #[test]
     fn proven_cyclic_orbits_match_complete_reduced_form_enumeration() {
         for discriminant in [
-            -20_000_000_179,
+            -20_000_000_179_i64,
             -40_000_000_003,
             -60_000_000_091,
             -20_000_001_124,
         ] {
-            let (bound, forms, orbit_structure) = cyclic_orbit_from_class_number(discriminant)
-                .unwrap()
-                .expect("frozen cyclic field has a small prime-form generator");
+            let linear = if discriminant.rem_euclid(4) == 1 {
+                -1
+            } else {
+                0
+            };
+            let (bound, forms, orbit_structure, prepared_map) =
+                cyclic_orbit_from_class_number(discriminant, linear)
+                    .unwrap()
+                    .expect("frozen cyclic field has a small prime-form generator");
+            let prepared_map = prepared_map.unwrap();
             let (reference_bound, reference_forms) = enumerate_reduced_forms(discriminant);
             assert_eq!(bound, reference_bound);
             assert_eq!(forms, reference_forms);
             let reference_structure = compute_group_structure(&forms, discriminant).unwrap();
             assert_eq!(orbit_structure.invariants, reference_structure.invariants);
+            assert_eq!(prepared_map.len(), forms.len());
+            for (form, entry) in forms.iter().zip(&prepared_map) {
+                assert_eq!(entry.form, *form);
+            }
             let generator = forms[orbit_structure.generator_indices[0].0];
             #[cfg(not(target_arch = "wasm32"))]
             {
@@ -3102,7 +3159,7 @@ mod tests {
             }
             for (form, coordinate) in forms
                 .iter()
-                .zip(&orbit_structure.coordinates)
+                .zip(prepared_map.iter().map(|entry| &entry.coordinates))
                 .step_by((forms.len() / 64).max(1))
             {
                 assert_eq!(
@@ -3110,11 +3167,6 @@ mod tests {
                     *form
                 );
             }
-            let linear = if discriminant.rem_euclid(4) == 1 {
-                -1
-            } else {
-                0
-            };
             let input = PublicImaginaryQuadraticInput {
                 id: "cyclic-orbit-differential",
                 polynomial_ascending: [(linear * linear - discriminant) / 4, linear, 1],
