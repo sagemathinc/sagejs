@@ -97,6 +97,23 @@ not be divided by the PARI timings above: the boundaries and warmup policies
 differ. Pass a sample count and field ID to narrow a local investigation, for
 example `run-public-sagejs.cjs 3 near-limit-h4378-d8173415`.
 
+On 2026-09-25, `larger-composite-d15000000315` (33,768 classes) exposed a
+public-path bottleneck: a fresh full group took roughly 7 seconds, while a
+cached group took about 8 milliseconds and the explicit scalar call about
+14 milliseconds. A phase diagnostic measured about 1.2 seconds for the Rust
+service and transport and 6.3 seconds for independent Python-side validation
+of the complete JSON map. Extracting all 540,288 numeric fields into one flat
+list took about 2.1 seconds; exact type checks over that list took about
+1.0 second; native buffer packing and an isolated source-transparent
+arithmetic validator took about 0.5 seconds. A production-packed `@native`
+prototype still measured a 7.20-second median fresh public call over two
+samples, slightly worse than the preceding roughly 6.9-second call, so it was
+removed. These are exploratory timings, not a promoted PARI comparison.
+They rule out merely compiling the per-row arithmetic as the next speed step:
+the public representation must avoid repeated dynamic traversal of the
+redundant object graph, or expose a compact/lazy exact map with equally strong
+malformed-publication rejection.
+
 ## Matched scalar class-number comparison
 
 `run_class_number.py` separately compares the exact scalar Rust count, the
