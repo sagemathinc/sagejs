@@ -1256,13 +1256,55 @@ impl FixedFormMultiplier {
         let a = left.a * self.form.a;
         let shift = ((self.right_t - left_t) * inverse).rem_euclid(self.form.a);
         let t = (left_t + left.a * shift).rem_euclid(a);
-        reduce_lattice_form(
+        reduce_bounded_product(a, t, self.parity, self.discriminant)
+    }
+}
+
+/// Reduction only swaps in a smaller norm. When the initial norm is below
+/// 70 million and |D| <= 2*10^11, centered b², b²-D, and 4a fit i64.
+/// Fixed-prime orbit products always meet this bound; other compositions use
+/// it when their actual lattice product does too.
+fn reduce_bounded_product(
+    mut a: i64,
+    t: i64,
+    parity: i64,
+    discriminant: i64,
+) -> Result<BinaryQuadraticForm, ImaginaryClassGroupError> {
+    if a <= 0
+        || a >= 70_000_000
+        || t < 0
+        || t >= a
+        || discriminant.unsigned_abs() > MAXIMUM_ABSOLUTE_DISCRIMINANT
+        || !matches!(parity, 0 | 1)
+    {
+        return reduce_lattice_form(
             i128::from(a),
             i128::from(t),
-            i128::from(self.parity),
-            i128::from(self.discriminant),
-            self.discriminant,
-        )
+            i128::from(parity),
+            i128::from(discriminant),
+            discriminant,
+        );
+    }
+    let mut b = -2 * t - parity;
+    loop {
+        let quotient = (b + a).div_euclid(2 * a);
+        b -= 2 * quotient * a;
+        let numerator = b * b - discriminant;
+        if numerator % (4 * a) != 0 {
+            return Err(ImaginaryClassGroupError::GroupLawFailure);
+        }
+        let c = numerator / (4 * a);
+        if a > c {
+            a = c;
+            b = -b;
+            continue;
+        }
+        if (b.abs() == a || a == c) && b < 0 {
+            b = -b;
+        }
+        let reduced = BinaryQuadraticForm { a, b, c };
+        debug_assert!(reduced.is_primitive_reduced(discriminant));
+        return Ok(reduced);
     }
 }
 
@@ -1322,6 +1364,16 @@ fn reduce_lattice_form(
     target: i128,
     discriminant: i64,
 ) -> Result<BinaryQuadraticForm, ImaginaryClassGroupError> {
+    if a > 0
+        && a < 70_000_000
+        && t >= 0
+        && t < a
+        && target == i128::from(discriminant)
+        && discriminant.unsigned_abs() <= MAXIMUM_ABSOLUTE_DISCRIMINANT
+        && matches!(parity, 0 | 1)
+    {
+        return reduce_bounded_product(a as i64, t as i64, parity as i64, discriminant);
+    }
     let b = -2 * t - parity;
     let numerator = b * b - target;
     if numerator % (4 * a) != 0 {
@@ -3088,6 +3140,30 @@ mod tests {
                     if left.a % right.a == 0 {
                         noncoprime += 1;
                     } else {
+                        let parity = discriminant.rem_euclid(2);
+                        let left_t = (-left.b - parity) / 2;
+                        let right_t = (-right.b - parity) / 2;
+                        let inverse = multiplier.prime_inverses.as_ref().unwrap()
+                            [left.a.rem_euclid(right.a) as usize];
+                        let a = left.a * right.a;
+                        let shift = ((right_t - left_t) * inverse).rem_euclid(right.a);
+                        let t = (left_t + left.a * shift).rem_euclid(a);
+                        let b = -2 * t - parity;
+                        let numerator = i128::from(b) * i128::from(b) - i128::from(discriminant);
+                        assert_eq!(numerator % (4 * i128::from(a)), 0);
+                        let wide = reduce_form(
+                            BinaryQuadraticForm {
+                                a,
+                                b,
+                                c: i64::try_from(numerator / (4 * i128::from(a))).unwrap(),
+                            },
+                            discriminant,
+                        );
+                        assert_eq!(
+                            reduce_bounded_product(a, t, parity, discriminant),
+                            wide,
+                            "bounded reduction D={discriminant}, left={left:?}, right={right:?}"
+                        );
                         coprime += 1;
                     }
                 }
