@@ -73,6 +73,19 @@ test("Rust quadratic dispatch rejects a forged map without falling back", async 
   assert.equal(answer.repr, "True");
 });
 
+test("Rust quadratic dispatch rejects a forged generator ideal", async () => {
+  const answer = await evaluate([
+    ...fixture,
+    "result['generators'][0]['representativeIdeal']['norm'] = 1",
+    "try:",
+    "    K.class_group(algorithm='rust')",
+    "except rust_runtime.RustClassGroupPublicationError:",
+    "    answer = True",
+    "answer",
+  ]);
+  assert.equal(answer.repr, "True");
+});
+
 test("QuadraticField and its maximal order expose the explicit Rust route", async () => {
   const answer = await evaluate([
     ...fixture,

@@ -447,6 +447,11 @@ def validate_imaginary_group_result(
             coordinates.get(",".join(str(value) for value in form)) != expected
             or generator.get("coordinates") != list(expected)
             or generator.get("exactOrder") != invariants[index]
+            or generator.get("representativeIdeal")
+            != {
+                "norm": form[0],
+                "basisColumns": [[form[0], 0], [(linear - form[1]) // 2, 1]],
+            }
         ):
             raise RustClassGroupPublicationError(
                 "the Rust generators disagree with the class map"
