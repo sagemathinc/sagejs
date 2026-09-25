@@ -70,3 +70,24 @@ test("medium-band imaginary class maps remain exact in Wasm", async () => {
     await sage.close();
   }
 });
+
+test("noncyclic medium-band ideal classes retain both coordinates in Wasm", async () => {
+  const sage = await createSage({ timeout: 120_000 });
+  try {
+    const answer = await sage.evaluate([
+      "R.<x> = QQ[]",
+      "K.<a> = NumberField(x^2-x+3750000079)",
+      "G = K.class_group(algorithm='rust')",
+      "[G.order(), G.invariants(), G.proof_status,",
+      " G(G.gen(0).ideal()).coordinates(),",
+      " G(G.gen(1).ideal()).coordinates(),",
+      " G((G.gen(0)*G.gen(1)^17).ideal()).coordinates()]",
+    ].join("\n"));
+    assert.equal(
+      answer.repr,
+      "[33768, (2, 16884), 'exact-unconditional', (1, 0), (0, 1), (1, 17)]",
+    );
+  } finally {
+    await sage.close();
+  }
+});

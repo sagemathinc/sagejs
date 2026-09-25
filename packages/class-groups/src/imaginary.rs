@@ -909,6 +909,50 @@ fn primary_basis(
     Ok((factors, selected))
 }
 
+/// Recognize `C2 x C(h/2)` without constructing every primary projection.
+///
+/// Four self-inverse forms prove 2-rank two. If an element has order `h/2`,
+/// its cyclic subgroup has index two. An involution outside that subgroup
+/// intersects it trivially and therefore gives the claimed direct product.
+/// The subsequent complete coordinate traversal independently checks that
+/// these generators reach every enumerated class. This is only a bounded
+/// opportunistic path; the general primary decomposition remains available.
+fn almost_cyclic_generators(
+    forms: &[BinaryQuadraticForm],
+    discriminant: i64,
+    involutions: &[BinaryQuadraticForm],
+) -> Result<Option<Vec<BinaryQuadraticForm>>, ImaginaryClassGroupError> {
+    if forms.len() % 4 != 0 || involutions.len() != 4 {
+        return Ok(None);
+    }
+    let principal = principal_form(discriminant);
+    let target_order = forms.len() / 2;
+    for candidate in forms.iter().copied().take(128) {
+        if form_order(candidate, forms.len(), discriminant)? != target_order {
+            continue;
+        }
+        let mut subgroup = BTreeSet::new();
+        let mut current = principal;
+        for _ in 0..target_order {
+            if !subgroup.insert(current) {
+                return Err(ImaginaryClassGroupError::GroupLawFailure);
+            }
+            current = compose_reduced_forms_unchecked(current, candidate, discriminant)?;
+        }
+        if current != principal {
+            return Err(ImaginaryClassGroupError::GroupLawFailure);
+        }
+        if let Some(involution) = involutions
+            .iter()
+            .copied()
+            .find(|form| *form != principal && !subgroup.contains(form))
+        {
+            return Ok(Some(vec![involution, candidate]));
+        }
+    }
+    Ok(None)
+}
+
 fn compute_group_structure(
     forms: &[BinaryQuadraticForm],
     discriminant: i64,
@@ -921,13 +965,22 @@ fn compute_group_structure(
     // inversion is just canonical coefficient negation, so this exact rank
     // test avoids attempting a full-order composition for every form in the
     // common noncyclic (positive 2-rank) case.
-    let cyclic_possible = forms.len() % 2 != 0
-        || forms
+    let involutions = if forms.len() % 2 == 0 {
+        forms
             .iter()
             .filter(|form| form.inverse_reduced() == Ok(**form))
-            .take(3)
-            .count()
-            == 2;
+            .copied()
+            .take(5)
+            .collect::<Vec<_>>()
+    } else {
+        Vec::new()
+    };
+    let cyclic_possible = forms.len() % 2 != 0 || involutions.len() == 2;
+    let almost_cyclic = if !cyclic_possible && involutions.len() == 4 {
+        almost_cyclic_generators(forms, discriminant, &involutions)?
+    } else {
+        None
+    };
     let (invariants, generators) = if forms.len() == 1 {
         (Vec::new(), Vec::new())
     } else if let Some(generator) = cyclic_possible
@@ -940,6 +993,8 @@ fn compute_group_structure(
         .flatten()
     {
         (vec![forms.len()], vec![generator])
+    } else if let Some(generators) = almost_cyclic {
+        (vec![2, forms.len() / 2], generators)
     } else {
         let mut component_factors = Vec::new();
         let mut component_generators = Vec::new();
@@ -1574,6 +1629,20 @@ mod tests {
         assert_eq!(group.class_number, scalar.class_number);
         assert_eq!(group.invariant_factors, vec![31_057]);
         assert_eq!(group.complete_class_map.len(), scalar.class_number);
+        verify_imaginary_class_group(input, &group).unwrap();
+    }
+
+    #[test]
+    fn computes_a_large_noncyclic_group_with_a_complete_map() {
+        let input = PublicImaginaryQuadraticInput {
+            id: "imaginary-d15000000315-c2xc16884",
+            polynomial_ascending: [3_750_000_079, -1, 1],
+        };
+        let group = compute_imaginary_class_group(input).unwrap();
+        assert_eq!(group.discriminant, -15_000_000_315);
+        assert_eq!(group.class_number, 33_768);
+        assert_eq!(group.invariant_factors, vec![2, 16_884]);
+        assert_eq!(group.complete_class_map.len(), group.class_number);
         verify_imaginary_class_group(input, &group).unwrap();
     }
 
