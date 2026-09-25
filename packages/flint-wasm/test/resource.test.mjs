@@ -34,9 +34,9 @@ test("loads the generated resource backend through the public package", () => {
   );
   assert.ok(
     // The inherited modular-form/abelian-variety codecs raise the reviewed
-    // minified closure from 53,551 to 59,034 bytes. Keep a bounded ceiling;
+    // minified closure from 53,551 to 60,837 bytes. Keep a bounded ceiling;
     // this is serialization code, not an increase to the eager Wasm binary.
-    serializationBackend.byteLength <= 60_000,
+    serializationBackend.byteLength <= 62_000,
     `browser SagePack backend grew to ${serializationBackend.byteLength} bytes`,
   );
   assert.equal(

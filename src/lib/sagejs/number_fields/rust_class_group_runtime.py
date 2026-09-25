@@ -135,6 +135,34 @@ def _call(backend: Any, operation: str, request: dict[str, Any]) -> dict[str, An
     return _response(backend.call(operation, request), operation)
 
 
+def _imaginary_host_call(operation: str, request: dict[str, Any]) -> dict[str, Any]:
+    """Decode the resident imaginary response without reparsing its large JSON map.
+
+    The worker's Rust loader has already parsed and checked its JSON envelope.
+    This narrowly scoped host boundary accepts only safe integer scalars and
+    creates ordinary Python lists/dictionaries in one native traversal.
+    """
+    host = runtime.reflect.get(runtime.global_object, "__sagejs_host__")
+    encoded = runtime.canonical_json_exact(request)
+    if not isinstance(encoded, str):
+        raise TypeError("imaginary class-group request must be exact JSON data")
+    envelope = runtime.reflect.apply(
+        runtime.reflect.get(host, "call"),
+        host,
+        ["classGroup", [operation, runtime.json.parse(encoded)]],
+    )
+    if not runtime.reflect.get(envelope, "ok"):
+        error = runtime.reflect.get(envelope, "error")
+        exception = RuntimeError(runtime.reflect.get(error, "message"))
+        exception.code = runtime.reflect.get(error, "code")
+        raise exception
+    conversion = runtime.reflect.get(runtime.global_object, "ρσ_plain_json_to_python")
+    result = runtime.reflect.apply(
+        conversion, runtime.undefined, [runtime.reflect.get(envelope, "value")]
+    )
+    return _response(result, operation)
+
+
 def _capability(backend: Any) -> dict[str, Any]:
     value = backend.call("capability", {})
     if not isinstance(value, dict):
@@ -229,6 +257,11 @@ def rust_imaginary_result(
         raise ValueError("unknown imaginary quadratic Rust operation")
     discriminant, polynomial = _imaginary_polynomial(field)
     backend, capability = _imaginary_backend(backend)
+    resident_host = getattr(backend, "_backend", None)
+    use_resident_host = resident_host is not None and runtime.strict_equal(
+        resident_host,
+        runtime.reflect.get(runtime.global_object, "__sagejs_host__"),
+    )
     if operation not in capability.get("operations", ()):
         raise RustClassGroupCapabilityDecline(
             "the installed Rust service does not support " + operation
@@ -242,7 +275,12 @@ def rust_imaginary_result(
         raise RustClassGroupCapabilityDecline(
             "the imaginary quadratic discriminant exceeds the Rust service bound"
         )
-    answer = _call(backend, operation, {"polynomialAscending": polynomial})
+    request = {"polynomialAscending": polynomial}
+    answer = (
+        _imaginary_host_call(operation, request)
+        if use_resident_host
+        else _call(backend, operation, request)
+    )
     if answer.get("outcome") != "complete" or answer.get("operation") != operation:
         raise RustClassGroupPublicationError(
             "the Rust imaginary quadratic response did not complete the requested operation"

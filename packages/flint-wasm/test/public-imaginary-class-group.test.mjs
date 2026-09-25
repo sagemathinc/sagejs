@@ -24,3 +24,19 @@ test("public imaginary quadratic class groups retain exact ideals in Wasm", asyn
     await sage.close();
   }
 });
+
+test("large public imaginary class maps cross the Wasm boundary exactly", async () => {
+  const sage = await createSage({ timeout: 120_000 });
+  try {
+    const answer = await sage.evaluate([
+      "R.<x> = QQ[]",
+      "K.<a> = NumberField(x^2-x+2043354)",
+      "G = K.class_group(algorithm='rust')",
+      "[G.order(), G.invariants(), G.proof_status,",
+      " G(G.gen().ideal()).coordinates()]",
+    ].join("\n"));
+    assert.equal(answer.repr, "[4378, (4378,), 'exact-unconditional', (1,)]");
+  } finally {
+    await sage.close();
+  }
+});

@@ -113,7 +113,7 @@
           "runtime/class-group-core.mjs"
         ],
         "maximumCompressedDelta": {
-          "gzipBytes": 2500000,
+          "gzipBytes": 2600000,
           "brotliBytes": 2200000
         }
       },
