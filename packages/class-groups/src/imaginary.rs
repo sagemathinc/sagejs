@@ -680,20 +680,26 @@ fn compose_reduced_forms_unchecked(
     discriminant: i64,
 ) -> Result<BinaryQuadraticForm, ImaginaryClassGroupError> {
     let target = i128::from(discriminant);
-    let parity = target.rem_euclid(2);
-    let left_t = (-i128::from(left.b) - parity) / 2;
-    let right_t = (-i128::from(right.b) - parity) / 2;
-    let left_a = i128::from(left.a);
-    let right_a = i128::from(right.a);
-    let (common_divisor, inverse, _) = extended_gcd(left_a, right_a);
+    let parity = discriminant.rem_euclid(2);
+    let left_t = (-left.b - parity) / 2;
+    let right_t = (-right.b - parity) / 2;
+    let (common_divisor, inverse) = extended_gcd_i64(left.a, right.a);
     if common_divisor == 1 {
         // Coprime norm ideals multiply as their intersection. In the
         // theta-basis, the product's theta root solves the two exact
         // congruences t' = left_t (mod left_a) and t' = right_t (mod right_a).
-        let a = left_a * right_a;
-        let shift = ((right_t - left_t) * inverse).rem_euclid(right_a);
-        let t = (left_t + left_a * shift).rem_euclid(a);
-        return reduce_lattice_form(a, t, parity, target, discriminant);
+        // For an admitted reduced form, a <= sqrt(|D|/3) < 258,200.
+        // Hence these products fit i64 even at the 2*10^11 domain ceiling.
+        let a = left.a * right.a;
+        let shift = ((right_t - left_t) * inverse).rem_euclid(right.a);
+        let t = (left_t + left.a * shift).rem_euclid(a);
+        return reduce_lattice_form(
+            i128::from(a),
+            i128::from(t),
+            i128::from(parity),
+            target,
+            discriminant,
+        );
     }
     compose_reduced_forms_lattice_unchecked(left, right, discriminant)
 }
@@ -1149,6 +1155,17 @@ fn extended_gcd(left: i128, right: i128) -> (i128, i128, i128) {
     } else {
         (old_r, old_s, old_t)
     }
+}
+
+fn extended_gcd_i64(left: i64, right: i64) -> (i64, i64) {
+    let (mut old_r, mut r) = (left, right);
+    let (mut old_s, mut s) = (1_i64, 0_i64);
+    while r != 0 {
+        let quotient = old_r / r;
+        (old_r, r) = (r, old_r - quotient * r);
+        (old_s, s) = (s, old_s - quotient * s);
+    }
+    (old_r, old_s)
 }
 
 fn gcd_i128(mut left: i128, mut right: i128) -> i128 {
@@ -1649,7 +1666,15 @@ mod tests {
     #[test]
     fn coprime_ideal_composition_matches_general_lattice_product() {
         let mut checked = 0;
-        for discriminant in [-23, -231, -15_015, -8_173_415, -100_000_000_003] {
+        for discriminant in [
+            -23,
+            -231,
+            -15_015,
+            -8_173_415,
+            -100_000_000_003,
+            -200_000_000_179,
+            -200_000_011_124,
+        ] {
             let forms = enumerate_reduced_forms(discriminant).1;
             let stride = (forms.len() / 64).max(1);
             for &left in forms.iter().step_by(stride).take(64) {
