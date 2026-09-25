@@ -33,9 +33,14 @@ test("large public imaginary class maps cross the Wasm boundary exactly", async 
       "K.<a> = NumberField(x^2-x+2043354)",
       "G = K.class_group(algorithm='rust')",
       "[G.order(), G.invariants(), G.proof_status,",
-      " G(G.gen().ideal()).coordinates()]",
+      " G(G.gen().ideal()).coordinates(),",
+      " G((G.gen()^2).ideal()).coordinates(),",
+      " G((G.gen()^17).ideal()).coordinates()]",
     ].join("\n"));
-    assert.equal(answer.repr, "[4378, (4378,), 'exact-unconditional', (1,)]");
+    assert.equal(
+      answer.repr,
+      "[4378, (4378,), 'exact-unconditional', (1,), (2,), (17,)]",
+    );
   } finally {
     await sage.close();
   }
