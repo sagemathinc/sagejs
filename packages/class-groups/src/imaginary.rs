@@ -1001,6 +1001,89 @@ fn assign_form_inverse_pair(
     Ok(())
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+fn collect_cyclic_map_parallel(
+    forms: &[BinaryQuadraticForm],
+    generator: BinaryQuadraticForm,
+    discriminant: i64,
+) -> Result<Option<Vec<(usize, u64)>>, ImaginaryClassGroupError> {
+    if forms.len() < 10_000 {
+        return Ok(None);
+    }
+    let workers = std::thread::available_parallelism()
+        .map(|count| count.get().min(8))
+        .unwrap_or(1);
+    if workers < 2 {
+        return Ok(None);
+    }
+    Ok(Some(collect_cyclic_map_with_workers(
+        forms,
+        generator,
+        discriminant,
+        workers,
+    )?))
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn collect_cyclic_map_with_workers(
+    forms: &[BinaryQuadraticForm],
+    generator: BinaryQuadraticForm,
+    discriminant: i64,
+    workers: usize,
+) -> Result<Vec<(usize, u64)>, ImaginaryClassGroupError> {
+    let order = forms.len();
+    let half_span = order / 2 + 1;
+    let chunk_size = half_span.div_ceil(workers);
+    let fragments = std::thread::scope(|scope| {
+        let mut handles = Vec::new();
+        for start in (0..half_span).step_by(chunk_size) {
+            let end = (start + chunk_size).min(half_span);
+            handles.push(scope.spawn(move || {
+                let mut form = form_power(generator, start, discriminant)?;
+                let mut entries = Vec::with_capacity(2 * (end - start));
+                for ordinal in start..end {
+                    let index = forms
+                        .binary_search(&form)
+                        .map_err(|_| ImaginaryClassGroupError::GroupLawFailure)?;
+                    entries.push((index, ordinal as u64));
+                    let inverse_index = forms
+                        .binary_search(&form.inverse_reduced()?)
+                        .map_err(|_| ImaginaryClassGroupError::GroupLawFailure)?;
+                    let inverse_ordinal = (order - ordinal) % order;
+                    if inverse_index != index {
+                        entries.push((inverse_index, inverse_ordinal as u64));
+                    } else if inverse_ordinal != ordinal {
+                        return Err(ImaginaryClassGroupError::GroupLawFailure);
+                    }
+                    if ordinal + 1 < end {
+                        form = compose_reduced_forms_unchecked(form, generator, discriminant)?;
+                    }
+                }
+                Ok(entries)
+            }));
+        }
+        let mut fragments = Vec::with_capacity(handles.len());
+        for handle in handles {
+            fragments.push(
+                handle
+                    .join()
+                    .map_err(|_| ImaginaryClassGroupError::GroupLawFailure)??,
+            );
+        }
+        Ok::<_, ImaginaryClassGroupError>(fragments)
+    })?;
+    Ok(fragments.into_iter().flatten().collect())
+}
+
+#[cfg(target_arch = "wasm32")]
+fn collect_cyclic_map_parallel(
+    _forms: &[BinaryQuadraticForm],
+    _generator: BinaryQuadraticForm,
+    _discriminant: i64,
+) -> Result<Option<Vec<(usize, u64)>>, ImaginaryClassGroupError> {
+    Ok(None)
+}
+
 fn compute_group_structure(
     forms: &[BinaryQuadraticForm],
     discriminant: i64,
@@ -1085,18 +1168,28 @@ fn compute_group_structure(
     let mut assigned = vec![false; forms.len()];
     if invariants.len() == 1 {
         let generator = generators[0];
-        let mut form = principal;
-        for ordinal in 0..=forms.len() / 2 {
-            assign_form_inverse_pair(
-                forms,
-                &mut assigned,
-                &mut coordinates,
-                form,
-                &[ordinal as u64],
-                &invariants,
-            )?;
-            if ordinal < forms.len() / 2 {
-                form = compose_reduced_forms_unchecked(form, generator, discriminant)?;
+        if let Some(entries) = collect_cyclic_map_parallel(forms, generator, discriminant)? {
+            for (index, ordinal) in entries {
+                if assigned[index] {
+                    return Err(ImaginaryClassGroupError::GroupLawFailure);
+                }
+                assigned[index] = true;
+                coordinates[index] = vec![ordinal];
+            }
+        } else {
+            let mut form = principal;
+            for ordinal in 0..=forms.len() / 2 {
+                assign_form_inverse_pair(
+                    forms,
+                    &mut assigned,
+                    &mut coordinates,
+                    form,
+                    &[ordinal as u64],
+                    &invariants,
+                )?;
+                if ordinal < forms.len() / 2 {
+                    form = compose_reduced_forms_unchecked(form, generator, discriminant)?;
+                }
             }
         }
         if form_power(generator, forms.len(), discriminant)? != principal {
@@ -1726,6 +1819,29 @@ mod tests {
         assert_eq!(group.invariant_factors, vec![31_057]);
         assert_eq!(group.complete_class_map.len(), scalar.class_number);
         verify_imaginary_class_group(input, &group).unwrap();
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn parallel_cyclic_map_matches_the_exact_sequential_map() {
+        let discriminant = -9_999_991;
+        let forms = enumerate_reduced_forms(discriminant).1;
+        let sequential = compute_group_structure(&forms, discriminant).unwrap();
+        assert_eq!(sequential.invariants, vec![1_715]);
+        let generator = forms[sequential.generator_indices[0].0];
+        let entries = collect_cyclic_map_with_workers(&forms, generator, discriminant, 4).unwrap();
+        let mut parallel = vec![None; forms.len()];
+        for (index, coordinate) in entries {
+            assert!(parallel[index].replace(coordinate).is_none());
+        }
+        assert_eq!(
+            parallel,
+            sequential
+                .coordinates
+                .iter()
+                .map(|coordinate| Some(coordinate[0]))
+                .collect::<Vec<_>>()
+        );
     }
 
     #[test]

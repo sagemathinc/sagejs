@@ -394,6 +394,7 @@ def main() -> int:
             "pairsPerField": count,
             "alternation": "Rust,PARI on odd one-based pairs; PARI,Rust on even pairs",
             "freshComputation": "Every sample launches a fresh process and reconstructs from public coefficients; neither executable has a result cache.",
+            "nativeThreading": "Rust cyclic map construction for h>=10000 uses up to eight OS workers, capped by available parallelism; other Rust cases and Wasm use one worker. PARI has no matched worker pool, so ratios compare wall time, not equal CPU work.",
             "timing": "Reported kernel clocks exclude process startup and JSON projection. Rust includes coefficient validation, maximal-order preparation, enumeration, group construction, certificate construction, and internal verification. PARI includes nfinit0 plus bnfinit0 flag zero.",
             "correctness": "Every sample is checked for its exact arm-specific boundaryLabel and against the frozen discriminant, class number, and normalized invariant factors before its time is retained.",
             "warmups": 0,

@@ -27,6 +27,12 @@ Both clocks exclude process startup and JSON projection. A new process
 reconstructs the result on every sample; there is no cached-result reuse. PARI
 and the frozen answers are absent from the Rust executable.
 
+For native cyclic groups with at least 10,000 classes, the Rust map builder
+uses up to eight OS threads, bounded by the process's reported available
+parallelism. Other Rust cases and the Wasm target use one thread. PARI's matched
+call is not assigned an equivalent worker pool, so the comparison is wall time,
+not equal total CPU work; the receipt records the host's process affinity.
+
 The runner also builds the retained Rust executable twice with `--locked`,
 incremental compilation disabled, a fixed `SOURCE_DATE_EPOCH`, and independent
 target directories. It refuses to proceed unless both binary SHA-256 hashes
