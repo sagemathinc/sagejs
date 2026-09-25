@@ -101,6 +101,20 @@ test(
       assert.deepEqual(group.invariantFactors, [3]);
       assert.equal(group.completeClassMap.length, 3);
       assert.equal(group.proofStatus, "unconditional-complete");
+
+      const noncyclic = await service.imaginaryClassGroup([21, 0, 1]);
+      assert.equal(noncyclic.discriminant, -84);
+      assert.equal(noncyclic.classNumber, 4);
+      assert.deepEqual(noncyclic.invariantFactors, [2, 2]);
+      assert.equal(noncyclic.completeClassMap.length, 4);
+      assert.deepEqual(
+        new Set(noncyclic.completeClassMap.map(({ coordinates }) => coordinates.join(","))),
+        new Set(["0,0", "0,1", "1,0", "1,1"]),
+      );
+      assert.deepEqual(
+        new Set(noncyclic.generators.map(({ coordinates }) => coordinates.join(","))),
+        new Set(["0,1", "1,0"]),
+      );
       await assert.rejects(
         service.imaginaryClassNumber([9, 0, 1]),
         (error) => error.category === "invalid-request",

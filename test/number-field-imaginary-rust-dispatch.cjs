@@ -164,3 +164,22 @@ test("the native service maps public ideals to unconditional coordinates", {
   ]);
   assert.equal(answer.repr, "[3, (3,), (1,), (1,), 3]");
 });
+
+test("the native service publishes a noncyclic group with exact ideal-class coordinates", {
+  skip: !process.env.SAGEJS_CLASS_GROUP_SERVICE,
+}, async () => {
+  const answer = await evaluate([
+    "R.<x> = QQ[]",
+    "K.<a> = NumberField(x^2 + 21)",
+    "G = K.class_group(algorithm='rust')",
+    "generators = G.gens()",
+    "[G.order(), G.invariants(), G.proof_status,",
+    " tuple(sorted(G(generator.ideal()).coordinates() for generator in generators)),",
+    " G(generators[0].ideal() * generators[1].ideal()).coordinates(),",
+    " len(set(element.coordinates() for element in G))]",
+  ]);
+  assert.equal(
+    answer.repr,
+    "[4, (2, 2), 'exact-unconditional', ((0, 1), (1, 0)), (1, 1), 4]",
+  );
+});
