@@ -43,7 +43,8 @@ lines.on("line", (input) => {
     result = { schema: "sagejs.class-groups/service-response-v1", outcome: "complete",
       operation: request.operation, result: { invariantFactors: [],
         completeClassMap: [{ form, inverseForm: form, coordinates: [],
-          representativeIdeal: { norm: 1, basisColumns: [[1, 0], [-1, 1]] } }] },
+          representativeIdeal: { norm: 1, basisColumns: [[1, 0], [-1, 1]] } }],
+        certificate: { discriminant: -3, reducedForms: [form] } },
       servicePid: process.pid };
   } else if (request.generation !== generation || request.handle !== "1") {
     process.stdout.write(JSON.stringify({ schema: "sagejs.class-groups/service-response-v1", abi: 1, id: request.id, ok: false, error: { schema: "sagejs.class-groups/service-response-v1", outcome: "error", category: "stale-handle", operation: request.operation, message: "stale fixture handle" } }) + "\\n");
@@ -145,10 +146,13 @@ async function main() {
     assert.equal(fullGroup.ok, true);
     assert.equal(compactGroup.ok, true);
     assert.equal(fullGroup.value.result.completeClassMap.length, 1);
+    assert.deepEqual(fullGroup.value.result.certificate.reducedForms, [{ a: 1, b: 1, c: 1 }]);
     assert.equal(compactGroup.value.result.completeClassMap, undefined);
     assert.deepEqual(compactGroup.value.result.completeClassMapPacked,
       [1, 1, 1, 1, 1, 1, 1, 1, 0, -1, 1]);
     assert.equal(compactGroup.value.result.completeClassMapLength, 1);
+    assert.equal(compactGroup.value.result.certificate.reducedForms, undefined);
+    assert.deepEqual(compactGroup.value.result.certificate.reducedFormsPacked, [1, 1, 1]);
 
     const opened = backend.call("open", { request: { polynomialAscending: ["-1", "-1", "0", "1"] } });
     assert.match(opened.generation, /^[0-9]+$/);

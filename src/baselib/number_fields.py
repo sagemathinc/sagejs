@@ -968,8 +968,11 @@ class NumberFieldClassGroup:
         self._element_cache = runtime.map()
         self.proof_status = getattr(group, "proof_status", "exact-unconditional")
         self.algorithm = getattr(group, "algorithm", "quadratic-forms")
-        self.certificate = getattr(group, "certificate", None)
         self.routing_plan = getattr(group, "routing_plan", None)
+
+    @property
+    def certificate(self) -> Any:
+        return getattr(self._group, "certificate", None)
 
     def _wrap(self, element: Any) -> NumberFieldClassGroupElement:
         cached = self._element_cache.get(element)
@@ -1035,9 +1038,10 @@ class NumberFieldClassGroup:
             raise TypeError("the ideal belongs to a different maximal order")
         if value.is_zero():
             raise ValueError("the zero ideal has no ideal class")
-        if self.certificate is not None and getattr(
-            self.certificate, "proves_triviality", False
-        ):
+        certificate = getattr(self._group, "_certificate", runtime.undefined)
+        if certificate is runtime.undefined:
+            certificate = self.certificate
+        if certificate is not None and getattr(certificate, "proves_triviality", False):
             return self.one()
         coefficients = self._field._quadratic_ideal_form(value)
         if hasattr(self._group.one().ideal(), "doubled_coefficients"):
@@ -3841,7 +3845,7 @@ class QuadraticClassGroup:
         self._coordinate_map = None
         self.proof_status = "exact-unconditional"
         self.algorithm = "quadratic-forms"
-        self.certificate = None
+        self._certificate = None
         if rust_result is not None:
             self._load_rust_result(rust_result)
             return
@@ -3897,8 +3901,30 @@ class QuadraticClassGroup:
         ]
         self.proof_status = "exact-unconditional"
         self.algorithm = "rust"
-        self.certificate = result.get("certificate")
+        self._certificate = result.get("certificate")
         self._field._class_number = self._order
+
+    @property
+    def certificate(self) -> dict[str, Any] | None:
+        certificate = self._certificate
+        if certificate is not None and "reducedFormsPacked" in certificate:
+            packed = certificate.get("reducedFormsPacked")
+            if not isinstance(packed, list):
+                raise ArithmeticError("the Rust form certificate is malformed")
+            certificate = dict(certificate)
+            reduced_forms = []
+            for offset in range(0, len(packed), 3):
+                reduced_forms.append(
+                    {
+                        "a": packed[offset],
+                        "b": packed[offset + 1],
+                        "c": packed[offset + 2],
+                    }
+                )
+            certificate.update({"reducedForms": reduced_forms})
+            certificate.pop("reducedFormsPacked")
+            self._certificate = certificate
+        return certificate
 
     def _all_forms(self) -> list[QuadraticBinaryForm]:
         if self._forms is runtime.undefined:

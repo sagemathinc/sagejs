@@ -127,6 +127,17 @@ class number and invariant-factor vector. Its single long-lived Node process
 ended at about 1.42 GB RSS, so peak memory and repeated-field residency remain
 open optimization questions; this is not a Wasm memory claim.
 
+The Node-only compact transport now also packs the independently checked
+reduced-form certificate instead of converting its duplicate object list into
+Python. The public wrapper exposes ordinary certificate records on demand;
+direct host callers and Wasm still receive the full certificate. On this final
+version, the same 33,768-class diagnostic measured 5.51, 5.76, and 5.67 seconds
+for fresh calls (5.67-second median), too close to the preceding 5.60 seconds
+to claim a reliable speedup. A one-sample replay of all 11 frozen fields again
+matched every answer and ended near 1.12 GB RSS in the long-lived Node process;
+the earlier 1.42 GB observation was from a separate run and does not establish
+a controlled memory comparison. Peak Wasm memory remains unmeasured here.
+
 ## Matched scalar class-number comparison
 
 `run_class_number.py` separately compares the exact scalar Rust count, the

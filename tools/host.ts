@@ -422,9 +422,14 @@ function packImaginaryGroupResponse(value: Record<string, unknown>): void {
   if (!isPlainRecord(result) || !Array.isArray(result.completeClassMap) ||
       !Array.isArray(result.invariantFactors) ||
       Object.hasOwn(result, "completeClassMapPacked")) return;
+  const certificate = result.certificate;
+  if (!isPlainRecord(certificate) || !Array.isArray(certificate.reducedForms) ||
+      Object.hasOwn(certificate, "reducedFormsPacked") ||
+      certificate.reducedForms.length !== result.completeClassMap.length) return;
   const entries = result.completeClassMap;
   const rank = result.invariantFactors.length;
   const packed: number[] = [];
+  const packedForms: number[] = [];
   for (const entry of entries) {
     if (!isPlainRecord(entry) || !isPlainRecord(entry.form) ||
         Object.keys(entry.form).length !== 3 ||
@@ -452,9 +457,17 @@ function packImaginaryGroupResponse(value: Record<string, unknown>): void {
     if (!fields.every(Number.isSafeInteger)) return;
     packed.push(...fields as number[]);
   }
+  for (const form of certificate.reducedForms) {
+    if (!isPlainRecord(form) || Object.keys(form).length !== 3 ||
+        !Number.isSafeInteger(form.a) || !Number.isSafeInteger(form.b) ||
+        !Number.isSafeInteger(form.c)) return;
+    packedForms.push(form.a as number, form.b as number, form.c as number);
+  }
   result.completeClassMapPacked = packed;
   result.completeClassMapLength = entries.length;
   delete result.completeClassMap;
+  certificate.reducedFormsPacked = packedForms;
+  delete certificate.reducedForms;
 }
 
 /** Lazy synchronous facade over the resident asynchronous native service. */

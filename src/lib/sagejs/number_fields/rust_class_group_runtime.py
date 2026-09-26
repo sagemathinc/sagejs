@@ -441,6 +441,9 @@ def validate_imaginary_group_result(
     invariants = result.get("invariantFactors")
     generators = result.get("generators")
     certificate = result.get("certificate")
+    packed_certificate = (
+        isinstance(certificate, dict) and "reducedFormsPacked" in certificate
+    )
     if (
         result.get("schema") != IMAGINARY_GROUP_SCHEMA
         or result.get("discriminant") != discriminant
@@ -459,8 +462,21 @@ def validate_imaginary_group_result(
         or len(generators) != len(invariants)
         or not isinstance(certificate, dict)
         or certificate.get("discriminant") != discriminant
-        or not isinstance(certificate.get("reducedForms"), list)
-        or len(certificate["reducedForms"]) != entry_count
+        or (
+            packed_certificate
+            and (
+                "reducedForms" in certificate
+                or not isinstance(certificate.get("reducedFormsPacked"), list)
+                or len(certificate["reducedFormsPacked"]) != 3 * entry_count
+            )
+        )
+        or (
+            not packed_certificate
+            and (
+                not isinstance(certificate.get("reducedForms"), list)
+                or len(certificate["reducedForms"]) != entry_count
+            )
+        )
     ):
         raise RustClassGroupPublicationError(
             "the Rust form certificate changed fields or structure"
@@ -481,7 +497,9 @@ def validate_imaginary_group_result(
     forms = []
     coordinates = {}
     seen_coordinates = set()
-    certified_forms = certificate["reducedForms"]
+    certified_forms = certificate[
+        "reducedFormsPacked" if packed_certificate else "reducedForms"
+    ]
     stride = 11 + len(invariants)
     for index in entries:
         row = (
@@ -495,13 +513,29 @@ def validate_imaginary_group_result(
             )
         form = _imaginary_form_values(row[0], row[1], row[2], discriminant)
         a, b, c = form
-        certified = certified_forms[index]
+        certified = (
+            (
+                certified_forms[3 * index],
+                certified_forms[3 * index + 1],
+                certified_forms[3 * index + 2],
+            )
+            if packed_certificate
+            else certified_forms[index]
+        )
         if (
-            not isinstance(certified, dict)
-            or len(certified) != 3
-            or certified.get("a") != a
-            or certified.get("b") != b
-            or certified.get("c") != c
+            packed_certificate
+            and (
+                any(type(value) is not int for value in certified) or certified != form
+            )
+        ) or (
+            not packed_certificate
+            and (
+                not isinstance(certified, dict)
+                or len(certified) != 3
+                or certified.get("a") != a
+                or certified.get("b") != b
+                or certified.get("c") != c
+            )
         ):
             raise RustClassGroupPublicationError(
                 "the Rust class map disagrees with its reduced-form certificate"

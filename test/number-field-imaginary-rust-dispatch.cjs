@@ -196,16 +196,31 @@ test("packed resident map validation retains exact forms, ideals, and rejection"
     "        *ideal_data['basisColumns'][1], *entry['coordinates']])",
     "packed['completeClassMapPacked'] = flat",
     "packed['completeClassMapLength'] = len(entries)",
+    "packed['certificate'] = dict(result['certificate'])",
+    "packed['certificate']['reducedFormsPacked'] = [value for form in forms for value in (form['a'], form['b'], form['c'])]",
+    "del packed['certificate']['reducedForms']",
     "forms1, coordinates1, generators1 = rust_runtime.validate_imaginary_group_result(result, -23)",
     "forms2, coordinates2, generators2 = rust_runtime.validate_imaginary_group_result(packed, -23)",
+    "packed['certificate']['reducedFormsPacked'][3] = True",
+    "try:",
+    "    rust_runtime.validate_imaginary_group_result(packed, -23)",
+    "except rust_runtime.RustClassGroupPublicationError:",
+    "    rejects_certificate = True",
+    "packed['certificate']['reducedFormsPacked'][3] = 2",
     "packed['completeClassMapPacked'][4] = 0",
     "try:",
     "    rust_runtime.validate_imaginary_group_result(packed, -23)",
     "except rust_runtime.RustClassGroupPublicationError:",
     "    rejects_inverse = True",
-    "[forms1 == forms2, coordinates1 == coordinates2, generators1 == generators2, rejects_inverse]",
+    "packed['completeClassMapPacked'][4] = 1",
+    "result = packed",
+    "group = K.class_group(algorithm='rust')",
+    "packed_before_access = 'reducedFormsPacked' in group._group._certificate",
+    "certificate = group.certificate",
+    "ordinary_certificate = len(certificate['reducedForms']) == 3 and certificate['reducedForms'][1]['a'] == 2 and 'reducedFormsPacked' not in certificate",
+    "[forms1 == forms2, coordinates1 == coordinates2, generators1 == generators2, rejects_certificate, rejects_inverse, packed_before_access, ordinary_certificate]",
   ]);
-  assert.equal(answer.repr, "[True, True, True, True]");
+  assert.equal(answer.repr, "[True, True, True, True, True, True, True]");
 });
 
 test("QuadraticField and its maximal order expose the explicit Rust route", async () => {
