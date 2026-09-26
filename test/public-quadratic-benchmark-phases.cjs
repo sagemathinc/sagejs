@@ -49,6 +49,7 @@ test("phase diagnostic rejects an incomplete map", async () => {
   const sage = {
     async evaluate(source) {
       assert.match(source, /validate_imaginary_group_result/);
+      assert.match(source, /get\('reducedFormsPacked', \[\]\)/);
       return { repr: "[12.5, 8.25, 1.5, 3, 2, 0.5, 0.75, 1]" };
     },
   };

@@ -456,14 +456,26 @@ retaining `core-v2` and the ordinary response. A 30-pair alternating direct
 service probe on the 33,768-class composite field measured 10.91 ms for
 `core-v2` and 8.60 ms for `core-v3`; the response shrank from 1,271,257 to
 647,561 bytes. That is a service/pipe result, not a public-call result. The
-separate frozen 11-field, 15-pair prepared-field public comparison is in
+earlier frozen 11-field, 15-pair prepared-field public comparison is in
 [`public-api-prepared-native-derived-certificate-diagnostic.json`](public-api-prepared-native-derived-certificate-diagnostic.json).
-Its geometric-mean Sage.js/PARI median ratio was 7.63, versus 7.51 in the
-earlier separate-run `core-v2` diagnostic; the composite field was 24.75 ms
-versus PARI's 4.52 ms. The distinct runs and host conditions do not support
-a public-path speedup claim. Exact ideal coordinates and forged-publication
-rejection remain covered by the native dispatch tests; public PARI
-competitiveness remains open.
+Despite that receipt's filename, its native host adapter unconditionally
+overrode the request to `core-v2`. Its geometric-mean Sage.js/PARI median ratio
+was 7.63, versus 7.51 in an earlier separate-run `core-v2` diagnostic; the
+composite field was 24.75 ms versus PARI's 4.52 ms. This receipt therefore
+does not measure the `core-v3` public path and cannot support a public-path
+speedup claim. Exact ideal coordinates and forged-publication rejection remain
+covered by the native dispatch tests; public PARI competitiveness remains open.
+
+The native host now requests `core-v3` for the public imaginary-group route and
+falls back to `core-v2` only when an older service explicitly rejects the new
+transport. The corrected frozen 11-field, 15-pair prepared-field run is in
+[`public-api-prepared-native-v3-host-diagnostic.json`](public-api-prepared-native-v3-host-diagnostic.json).
+All answers match, and the native-route regression test checks that the real
+service returns the derived certificate. The geometric-mean Sage.js/PARI
+median ratio is 6.45; the 33,768-class composite field takes 18.65 ms versus
+PARI's 4.51 ms. The historical host-v2 run measured 7.63 and 24.75 ms versus
+4.52 ms, respectively. These are separate runs, not a controlled paired
+speedup measurement, and Sage.js remains slower than PARI on this panel.
 
 ## Matched scalar class-number comparison
 

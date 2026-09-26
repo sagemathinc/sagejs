@@ -446,6 +446,24 @@ test("the native service maps public ideals to unconditional coordinates", {
   assert.equal(answer.repr, "[3, (3,), (1,), (1,), 3]");
 });
 
+test("the native host requests the derived core certificate", {
+  skip: !process.env.SAGEJS_CLASS_GROUP_SERVICE,
+}, async () => {
+  const answer = await evaluate([
+    "from sagejs.number_fields import rust_class_group_runtime as rust_runtime",
+    "R.<x> = QQ[]",
+    "K.<a> = NumberField(x^2 + 23)",
+    "result = rust_runtime.rust_imaginary_result(K, operation='imaginary-class-group', algorithm='rust')",
+    "certificate = result['certificate']",
+    "G = K.class_group(algorithm='rust')",
+    "[certificate.get('reducedFormsFromCoreMap') is True,",
+    " 'reducedFormsPacked' not in certificate,",
+    " len(result['completeClassMapCorePacked']) == 3 * (2 + len(G.invariants())),",
+    " G(G.gen().ideal()).coordinates()]",
+  ]);
+  assert.equal(answer.repr, "[True, True, True, (1,)]");
+});
+
 test("the resident imaginary service checks capability without the generic JSON adapter", {
   skip: !process.env.SAGEJS_CLASS_GROUP_SERVICE,
 }, async () => {

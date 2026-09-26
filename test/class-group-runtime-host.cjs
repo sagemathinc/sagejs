@@ -13,11 +13,13 @@ const {
   installNodeHost,
 } = require("../dist/tools/host.js");
 
-function fakeService(directory, corrupt = false, wrongId = false, declined = false, badCore = false) {
-  const fixtureName = corrupt ? "corrupt" : wrongId ? "wrong-id" : declined ? "declined" :
+function fakeService(directory, corrupt = false, wrongId = false, declined = false, badCore = false,
+  legacyCompact = false) {
+  const fixtureName = legacyCompact ? "legacy-compact" : corrupt ? "corrupt" : wrongId ? "wrong-id" : declined ? "declined" :
     badCore ? "bad-core" : "normal";
   const filename = path.join(directory, fixtureName + "-service");
   const startup = path.join(directory, fixtureName + "-started");
+  const transportLog = path.join(directory, fixtureName + "-transports");
   const source = `#!/usr/bin/env node
 "use strict";
 const fs = require("node:fs");
@@ -29,6 +31,9 @@ lines.on("line", (input) => {
   let request;
   try { request = JSON.parse(input); }
   catch { return; }
+  if (request.operation === "imaginary-class-group") {
+    fs.appendFileSync(${JSON.stringify(transportLog)}, String(request.transport) + "\\n");
+  }
   if (${JSON.stringify(corrupt)}) {
     process.stdout.write(JSON.stringify({ schema: "wrong", abi: 1, id: request.id, ok: true, result: {} }) + "\\n");
     return;
@@ -43,6 +48,14 @@ lines.on("line", (input) => {
       id: request.id, ok: false, error: { schema: "sagejs.class-groups/service-response-v1",
       outcome: "error", category: "capability-declined", operation: request.operation,
       message: "fixture packed decline" } }) + "\\n");
+    return;
+  }
+  if (request.operation === "imaginary-class-group" && request.transport === "core-v3" &&
+      ${JSON.stringify(legacyCompact)}) {
+    process.stdout.write(JSON.stringify({ schema: "sagejs.class-groups/service-response-v1", abi: 1,
+      id: request.id, ok: false, error: { schema: "sagejs.class-groups/service-response-v1",
+      outcome: "error", category: "invalid-request", operation: request.operation,
+      message: "unsupported imaginary class-group transport" } }) + "\\n");
     return;
   }
   let result;
@@ -60,11 +73,15 @@ lines.on("line", (input) => {
           representativeIdeal: { norm: 1, basisColumns: [[1, 0], [-1, 1]] } }],
         certificate: { discriminant: -3, reducedForms: [form] } },
       servicePid: process.pid };
-    if (request.transport === "core-v2") {
+    if (request.transport === "core-v2" || request.transport === "core-v3") {
       result.result.completeClassMapCorePacked = ${JSON.stringify(badCore)} ? [0, 1] : [1, 1];
       result.result.completeClassMapLength = 1;
       delete result.result.completeClassMap;
-      result.result.certificate.reducedFormsPacked = [1, 1, 1];
+      if (request.transport === "core-v3") {
+        result.result.certificate.reducedFormsFromCoreMap = true;
+      } else {
+        result.result.certificate.reducedFormsPacked = [1, 1, 1];
+      }
       delete result.result.certificate.reducedForms;
     }
   } else if (request.generation !== generation || request.handle !== "1") {
@@ -86,7 +103,7 @@ lines.on("line", (input) => {
 });
 `;
   fs.writeFileSync(filename, source, { mode: 0o700 });
-  return { filename, startup };
+  return { filename, startup, transportLog };
 }
 
 async function assertProcessExited(pid) {
@@ -176,7 +193,8 @@ async function main() {
     assert.equal(compactGroup.value.result.completeClassMapPacked, undefined);
     assert.equal(compactGroup.value.result.completeClassMapLength, 1);
     assert.equal(compactGroup.value.result.certificate.reducedForms, undefined);
-    assert.deepEqual(compactGroup.value.result.certificate.reducedFormsPacked, [1, 1, 1]);
+    assert.equal(compactGroup.value.result.certificate.reducedFormsFromCoreMap, true);
+    assert.equal(compactGroup.value.result.certificate.reducedFormsPacked, undefined);
 
     const opened = backend.call("open", { request: { polynomialAscending: ["-1", "-1", "0", "1"] } });
     assert.match(opened.generation, /^[0-9]+$/);
@@ -284,6 +302,20 @@ async function main() {
     );
     declinedBackend.close();
     await assertProcessExited(Number(fs.readFileSync(declinedFixture.startup, "utf8")));
+
+    const legacyFixture = fakeService(directory, false, false, false, false, true);
+    process.env.SAGEJS_CLASS_GROUP_SERVICE = legacyFixture.filename;
+    const legacyTarget = {};
+    const uninstallLegacy = installNodeHost(legacyTarget);
+    for (let index = 0; index < 2; index += 1) {
+      const response = legacyTarget.__sagejs_host__.call("classGroupCompact", groupRequest);
+      assert.equal(response.ok, true);
+      assert.deepEqual(response.value.result.certificate.reducedFormsPacked, [1, 1, 1]);
+    }
+    assert.deepEqual(fs.readFileSync(legacyFixture.transportLog, "utf8").trim().split("\n"),
+      ["core-v3", "core-v2", "core-v2"]);
+    uninstallLegacy();
+    await assertProcessExited(Number(fs.readFileSync(legacyFixture.startup, "utf8")));
 
     const badCoreFixture = fakeService(directory, false, false, false, true);
     process.env.SAGEJS_CLASS_GROUP_SERVICE = badCoreFixture.filename;

@@ -91,7 +91,7 @@ async function diagnosePhases(sage, expectedClassNumber) {
     "assert len(compact_forms) == len(forms) and len(compact_coordinates) == len(coordinates) and compact_generators == generators",
     "core = 'completeClassMapCorePacked' in result",
     "rows = result['completeClassMapCorePacked'] if core else result['completeClassMapPacked']",
-    "certificate = result['certificate']['reducedFormsPacked']",
+    "certificate = result['certificate'].get('reducedFormsPacked', [])",
     "invariants = result['invariantFactors']",
     "packing_started = time.perf_counter()",
     "packed_rows = _pack_exact_int64(verify_packed_imaginary_map, rows)",

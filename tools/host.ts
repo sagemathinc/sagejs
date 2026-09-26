@@ -339,7 +339,8 @@ function serviceCall(operation, request) {
   return new Promise((resolve, reject) => {
     pending.set(id, {
       resolve, reject,
-      directPacked: operation === "imaginary-class-group" && request.transport === "core-v2",
+      directPacked: operation === "imaginary-class-group" &&
+        (request.transport === "core-v2" || request.transport === "core-v3"),
     });
     child.stdin.write(JSON.stringify(message) + "\n", error => {
       if (!error) return;
@@ -407,7 +408,8 @@ async function main() {
       }
       const response = await serviceCall(envelope.operation, envelope.request);
       if (envelope.operation === "imaginary-class-group" &&
-          envelope.request.transport === "core-v2") {
+          (envelope.request.transport === "core-v2" ||
+            envelope.request.transport === "core-v3")) {
         finishRawServiceResponse(response.raw, response.id);
       } else {
         finish(response.value);
@@ -501,6 +503,27 @@ export class NodeClassGroupBackend {
     { generation: string; handle: string }
   >();
   private closed = false;
+  private compactTransport: "core-v3" | "core-v2" = "core-v3";
+
+  /** Select the smallest authenticated map supported by this installed service. */
+  callCompactImaginary(request: Record<string, unknown>): Record<string, unknown> {
+    const invoke = (transport: "core-v3" | "core-v2") => {
+      const value = this.call("imaginary-class-group", { ...request, transport });
+      validateImaginaryCoreMapResponse(value);
+      return value;
+    };
+    try {
+      return invoke(this.compactTransport);
+    } catch (error) {
+      if (this.compactTransport !== "core-v3" ||
+          (error as NodeJS.ErrnoException).code !== "invalid-request" ||
+          (error as Error).message !== "unsupported imaginary class-group transport") {
+        throw error;
+      }
+      this.compactTransport = "core-v2";
+      return invoke("core-v2");
+    }
+  }
 
   private capabilityDeclined(
     message: string,
@@ -712,7 +735,7 @@ export class NodeClassGroupBackend {
       throw classGroupHostError("EBADMSG", "class-group worker returned a corrupt response");
     }
     const directPacked = operation === "imaginary-class-group" &&
-      serviceRequest.transport === "core-v2";
+      (serviceRequest.transport === "core-v2" || serviceRequest.transport === "core-v3");
     let payload: unknown;
     let expectedServiceId: string | undefined;
     try {
@@ -1509,11 +1532,7 @@ export class NodeHostAdapter {
           if (!isPlainRecord(args[1])) {
             throw new TypeError("class-group request must be a plain object");
           }
-          const value = this.classGroups.call(operation, {
-            ...args[1],
-            transport: "core-v2",
-          });
-          validateImaginaryCoreMapResponse(value);
+          const value = this.classGroups.callCompactImaginary(args[1]);
           return { ok: true, value };
         }
         case "multiprocessingCreatePool":
