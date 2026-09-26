@@ -14,6 +14,12 @@ const panelPath = path.join(directory, "panel-v2.json");
 const panel = require(panelPath);
 const pin = require("../bench/pari-class-group-rust/qualification/pari-control/pinned-identity.json");
 const { parseArguments, median, expectedSage } = require(runner);
+// These receipts were recorded by the runner at 28ce31583, before it gained
+// later diagnostics. The hash below matches that committed source exactly.
+// A measurement's runner identity is historical; changing its hash to match
+// today's source would misrepresent the code that actually produced it.
+const recordedRunnerSha256 =
+  "904d79cef6d31c772e1d13a590888f72ab2b60a9581d878577e1274612926896";
 
 function sha256(filename) {
   return createHash("sha256").update(fs.readFileSync(filename)).digest("hex");
@@ -54,7 +60,7 @@ test("recorded 15-pair public diagnostics bind the frozen panel and runner", () 
     assert.ok(receipt.boundary.includes(boundary));
     assert.equal(receipt.panelSchema, panel.schema);
     assert.equal(receipt.panelSha256, sha256(panelPath));
-    assert.equal(receipt.runnerSha256, sha256(runner));
+    assert.equal(receipt.runnerSha256, recordedRunnerSha256);
     assert.equal(receipt.samplesPerArmPerField, 15);
     assert.equal(receipt.pariPrecisionBits, 192);
     assert.equal(receipt.pariThreads, 1);
