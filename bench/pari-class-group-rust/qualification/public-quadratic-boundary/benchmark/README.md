@@ -422,6 +422,19 @@ was 7.39 (7.78 in the preceding diagnostic). The composite-field median was
 attributing every difference to serialization. This is still a non-promoted
 development-Wasm result, not public PARI competitiveness.
 
+The subsequent owned-allocation reactor removes unchecked guest-pointer
+dereferences and deallocation. Its raw-ABI test rejects forged, wrong-length,
+wrong-kind, and stale pointers, including after deallocation; the full exact
+Wasm group and ideal-map tests still pass. The unchanged 15-pair development
+evaluator benchmark is in
+[`public-api-prepared-development-wasm-owned-abi-diagnostic.json`](public-api-prepared-development-wasm-owned-abi-diagnostic.json).
+All 11 fields again matched exactly, with a 7.27 geometric-mean Sage.js/PARI
+median ratio and a 33.1 ms versus 4.56 ms composite-field median. The
+preceding separate run measured 7.39 and 32.5 ms versus 4.52 ms, so this is
+evidence against a large performance regression, not a controlled speedup.
+The reactor remains outside the production Wasm layout pending independent
+safety and distribution review.
+
 ## Matched scalar class-number comparison
 
 `run_class_number.py` separately compares the exact scalar Rust count, the

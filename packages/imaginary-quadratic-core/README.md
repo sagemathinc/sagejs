@@ -7,9 +7,13 @@ bounded unconditional imaginary-quadratic class-number and complete class-group
 requests. It retains the ordinary exact ideal-class map and the `core-v2`
 packed transport, with the existing class-group Wasm ABI.
 
-The crate is **not** in the production Wasm layout. Its reactor ABI still needs
-a byte-bound safety review, and source/license/notice review remains required
-before any distribution decision. Building it does not satisfy those gates.
+The crate is **not** in the production Wasm layout. The reactor now keeps
+request and response buffers in a bounded owned-allocation table, checks the
+exact pointer, length, and request kind before reading, and rejects forged or
+stale deallocation attempts without dereferencing them. A raw-ABI regression
+exercises these failure cases, but an independent byte-bound safety review and
+source/license/notice review remain required before any distribution decision.
+Building it does not satisfy those gates.
 
 For local verification, run:
 

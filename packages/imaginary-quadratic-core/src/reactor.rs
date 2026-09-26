@@ -15,11 +15,65 @@ pub fn execute_for_test(service: &mut QuadraticService, bytes: &[u8]) -> Vec<u8>
 #[cfg(target_family = "wasm")]
 mod wasm {
     use super::*;
-    use std::alloc::{Layout, alloc, dealloc};
     use std::cell::RefCell;
+    use std::collections::BTreeMap;
+
+    const MAXIMUM_OUTSTANDING_ALLOCATIONS: usize = 8;
+    const MAXIMUM_OUTSTANDING_CAPACITY: usize = 3 * MAXIMUM_RESPONSE_BYTES;
+
+    #[derive(Clone, Copy, PartialEq, Eq)]
+    enum AllocationKind {
+        Request,
+        Response,
+    }
+
+    struct Allocation {
+        bytes: Vec<u8>,
+        kind: AllocationKind,
+    }
+
+    #[derive(Default)]
+    struct Allocations {
+        owned: BTreeMap<u32, Allocation>,
+        capacity: usize,
+    }
+
+    impl Allocations {
+        fn insert(&mut self, mut bytes: Vec<u8>, kind: AllocationKind) -> Option<u32> {
+            if bytes.is_empty()
+                || self.owned.len() >= MAXIMUM_OUTSTANDING_ALLOCATIONS
+                || bytes.capacity() > MAXIMUM_OUTSTANDING_CAPACITY - self.capacity
+            {
+                return None;
+            }
+            let pointer = u32::try_from(bytes.as_mut_ptr() as usize).ok()?;
+            if pointer == 0 || self.owned.contains_key(&pointer) {
+                return None;
+            }
+            self.capacity += bytes.capacity();
+            self.owned.insert(pointer, Allocation { bytes, kind });
+            Some(pointer)
+        }
+
+        fn remove_exact(&mut self, pointer: u32, length: usize) {
+            if self.owned.get(&pointer).map(|item| item.bytes.len()) != Some(length) {
+                return;
+            }
+            if let Some(item) = self.owned.remove(&pointer) {
+                self.capacity -= item.bytes.capacity();
+            }
+        }
+
+        fn request_bytes(&self, pointer: u32, length: usize) -> Option<&[u8]> {
+            let item = self.owned.get(&pointer)?;
+            (item.kind == AllocationKind::Request && item.bytes.len() == length)
+                .then_some(item.bytes.as_slice())
+        }
+    }
 
     thread_local! {
         static SERVICE: RefCell<QuadraticService> = RefCell::new(QuadraticService::new());
+        static ALLOCATIONS: RefCell<Allocations> = RefCell::new(Allocations::default());
     }
 
     fn into_output(bytes: Vec<u8>) -> u64 {
@@ -28,10 +82,13 @@ mod wasm {
         } else {
             br#"{"schema":"sagejs.class-groups/service-response-v1","abi":1,"id":"unknown","ok":false,"error":{"category":"resource-exhausted","operation":"unknown","message":"response exceeds the reactor limit"}}"#.to_vec()
         };
-        let bytes = bytes.into_boxed_slice();
         let length = bytes.len();
-        let pointer = Box::into_raw(bytes) as *mut u8 as usize;
-        ((length as u64) << 32) | pointer as u64
+        let pointer = ALLOCATIONS.with(|allocations| {
+            allocations
+                .borrow_mut()
+                .insert(bytes, AllocationKind::Response)
+        });
+        pointer.map_or(0, |pointer| ((length as u64) << 32) | u64::from(pointer))
     }
 
     // FFI-SAFETY: this query exchanges one fixed-width scalar only.
@@ -40,43 +97,51 @@ mod wasm {
         SERVICE_ABI_VERSION
     }
 
-    // FFI-SAFETY: the caller owns and initializes the bounded allocation.
+    // FFI-SAFETY: only a registered, zero-initialized guest allocation is returned.
     #[unsafe(no_mangle)]
     pub extern "C" fn sagejs_class_group_alloc(length: u32) -> u32 {
         let length = length as usize;
         if length == 0 || length > MAXIMUM_REQUEST_BYTES {
             return 0;
         }
-        let Ok(layout) = Layout::array::<u8>(length) else {
+        let mut bytes = Vec::new();
+        if bytes.try_reserve_exact(length).is_err() {
             return 0;
-        };
-        // SAFETY: dealloc receives this exact pointer and length.
-        unsafe { alloc(layout) as usize as u32 }
+        }
+        bytes.resize(length, 0);
+        ALLOCATIONS.with(|allocations| {
+            allocations
+                .borrow_mut()
+                .insert(bytes, AllocationKind::Request)
+                .unwrap_or(0)
+        })
     }
 
-    // FFI-SAFETY: only the original pointer/length pair is accepted by ABI.
+    // FFI-SAFETY: an exact owned pointer/length pair is required; other inputs
+    // do nothing, and dropping the Vec uses its original allocator and capacity.
     #[unsafe(no_mangle)]
     pub extern "C" fn sagejs_class_group_dealloc(pointer: u32, length: u32) {
         let length = length as usize;
         if pointer == 0 || length == 0 || length > MAXIMUM_RESPONSE_BYTES {
             return;
         }
-        if let Ok(layout) = Layout::array::<u8>(length) {
-            // SAFETY: the host returns the allocation with its original layout.
-            unsafe { dealloc(pointer as usize as *mut u8, layout) };
-        }
+        ALLOCATIONS.with(|allocations| allocations.borrow_mut().remove_exact(pointer, length));
     }
 
-    // FFI-SAFETY: the checked host writes all request bytes into a live guest
-    // allocation, and the borrow ends before the call returns.
+    // FFI-SAFETY: never dereference an unregistered or wrong-length pointer.
+    // The request remains owned and immovable while the service runs synchronously.
     #[unsafe(no_mangle)]
     pub extern "C" fn sagejs_class_group_run_json(pointer: u32, length: u32) -> u64 {
         let length = length as usize;
-        if pointer == 0 || length == 0 || length > MAXIMUM_REQUEST_BYTES {
-            return into_output(QuadraticService::new().execute_json(&[]));
-        }
-        // SAFETY: the host owns an initialized guest allocation of this length.
-        let bytes = unsafe { std::slice::from_raw_parts(pointer as usize as *const u8, length) };
-        SERVICE.with(|service| into_output(service.borrow_mut().execute_json(bytes)))
+        let response = ALLOCATIONS.with(|allocations| {
+            let allocations = allocations.borrow();
+            let request = if pointer != 0 && length != 0 && length <= MAXIMUM_REQUEST_BYTES {
+                allocations.request_bytes(pointer, length)
+            } else {
+                None
+            };
+            SERVICE.with(|service| service.borrow_mut().execute_json(request.unwrap_or(&[])))
+        });
+        into_output(response)
     }
 }

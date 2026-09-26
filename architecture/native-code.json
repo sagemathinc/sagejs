@@ -1750,13 +1750,13 @@
       "category": "public-abi",
       "review_status": "experimental-pending-review",
       "lane": "distribution",
-      "rationale": "Bounded WebAssembly allocation and JSON reactor ABI for the isolated imaginary-quadratic class-group service.",
+      "rationale": "Bounded owned-allocation and JSON reactor ABI for the isolated imaginary-quadratic class-group service.",
       "rust_role": "host-adapter",
       "qualification_status": "experimental-qualification",
       "provenance_class": "original-sagejs",
       "distribution_status": "review-required-before-distribution",
       "safety_review": "pending-documentation",
-      "safety_rationale": "The unsafe allocation, deallocation, and guest-pointer boundaries are explicitly documented in source and require a byte-bound safety audit before distribution.",
+      "safety_rationale": "The safe-Rust owner table checks exact guest pointer, length, and request kind before access and bounds outstanding allocations. Forged, stale, and wrong-length pointer tests pass; independent ABI safety review remains required before distribution.",
       "provenance_mapping_status": "not-applicable"
     },
     {
