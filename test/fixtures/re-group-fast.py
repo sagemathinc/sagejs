@@ -6,6 +6,13 @@ assert match is not None
 for args in [(), (0,), ("first",), (1,), (2,), ("optional",), (0, "first", 2)]:
     print("group", repr(args), repr(match.group(*args)))
 
+try:
+    match.group(group=1)
+except TypeError as error:
+    print("keyword", type(error).__name__)
+else:
+    raise AssertionError("Match.group accepted a keyword argument")
+
 print("span", match.span("first"))
 print("optional span", match.span("optional"))
 for args in [(3,), ("missing",), (-1,)]:
