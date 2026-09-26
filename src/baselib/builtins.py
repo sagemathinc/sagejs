@@ -3051,20 +3051,24 @@ def _builtins_digit_value(character: _Str) -> _Int:
     if 48 <= code <= 57:
         return code - 48
     if 65 <= code <= 90:
-        return code - 65 + 10
+        return code - 55
     if 97 <= code <= 122:
-        return code - 97 + 10
+        return code - 87
     return -1
 
 
 def _builtins_parse_integer(value: _Str, base: Any) -> Any:
     text = runtime.reflect.apply(runtime.string_class.prototype.trim, value, [])
+    if (
+        base is runtime.undefined
+        and len(text) == 1
+        and text in _BUILTINS_DECIMAL_DIGITS
+    ):
+        return runtime.number(text)
     if not text:
         raise ValueError("invalid literal for int()")
-    sign = runtime.bigint(1)
-    if text[0] == "+" or text[0] == "-":
-        if text[0] == "-":
-            sign = runtime.bigint(-1)
+    sign = runtime.bigint(-1 if text[0] == "-" else 1)
+    if text[0] in "+-":
         text = text[1:]
     radix = 10 if base is runtime.undefined else _coerce_int_base(base)
     inferred_base = radix == 0
@@ -3073,15 +3077,15 @@ def _builtins_parse_integer(value: _Str, base: Any) -> Any:
         radix = 10
         if len(text) >= 2 and text[0] == "0":
             marker = text[1]
-            if marker == "x" or marker == "X":
+            if marker in "xX":
                 radix = 16
                 text = text[2:]
                 consumed_prefix = True
-            elif marker == "o" or marker == "O":
+            elif marker in "oO":
                 radix = 8
                 text = text[2:]
                 consumed_prefix = True
-            elif marker == "b" or marker == "B":
+            elif marker in "bB":
                 radix = 2
                 text = text[2:]
                 consumed_prefix = True
@@ -3089,11 +3093,11 @@ def _builtins_parse_integer(value: _Str, base: Any) -> Any:
         marker = text[1]
         if (
             radix == 16
-            and (marker == "x" or marker == "X")
+            and marker in "xX"
             or radix == 8
-            and (marker == "o" or marker == "O")
+            and marker in "oO"
             or radix == 2
-            and (marker == "b" or marker == "B")
+            and marker in "bB"
         ):
             text = text[2:]
     if not text:
@@ -3106,7 +3110,6 @@ def _builtins_parse_integer(value: _Str, base: Any) -> Any:
                 )
     answer = runtime.bigint(0)
     previous_was_digit = False
-    saw_digit = False
     for character in text:
         if character == "_":
             if not previous_was_digit:
@@ -3120,8 +3123,7 @@ def _builtins_parse_integer(value: _Str, base: Any) -> Any:
             )
         answer = answer * runtime.bigint(radix) + runtime.bigint(digit)
         previous_was_digit = True
-        saw_digit = True
-    if not saw_digit or not previous_was_digit:
+    if not previous_was_digit:
         raise ValueError("invalid literal for int()")
     return runtime.normalize_integer(sign * answer)
 
@@ -3181,13 +3183,10 @@ def ρσ_int(value: Any = 0, base: Any = runtime.undefined) -> Any:
         raise ValueError(
             "Invalid literal for int with base " + str(radix) + ": " + str(value)
         )
-    if runtime.strict_equal(
-        ρσ_python_jstype(answer), "number"
-    ) and not runtime.number.isFinite(runtime.number(answer)):
+    number_answer = runtime.strict_equal(ρσ_python_jstype(answer), "number")
+    if number_answer and not runtime.number.isFinite(runtime.number(answer)):
         raise OverflowError("cannot convert float infinity to integer")
-    if runtime.strict_equal(
-        ρσ_python_jstype(answer), "number"
-    ) and not runtime.number.isSafeInteger(runtime.number(answer)):
+    if number_answer and not runtime.number.isSafeInteger(runtime.number(answer)):
         return runtime.bigint(runtime.number(answer))
     return runtime.number(answer)
 
@@ -5132,6 +5131,10 @@ def _builtins_getattr_impl(
             name,
         )
         if runtime.strict_equal(runtime.jstype(python_string_member), "function"):
+            if call_context is not runtime.undefined:
+                call_context[0] = python_string_member
+                call_context[1] = value
+                return runtime.undefined
             bound = python_string_member.bind(value)
             if name in ("split", "rsplit", "encode", "splitlines", "expandtabs"):
                 return ρσ_finish_bound_method(bound, python_string_member, value)

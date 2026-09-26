@@ -46,6 +46,18 @@ assrt.equal('aa', re.sub(r'(?P<a>a)b', r'\g<a>\1', 'ab'))
 assrt.equal('bb', re.sub(r'(?P<a>a)(?P=a)', r'bb', 'aa'))
 assrt.equal('ab', re.sub(r'(.)(?P<a>a)', r'\g<a>\1', 'ba'))
 assrt.deepEqual({'a':'a', 'b':'b'}, re.search(r'(?P<a>a)(?P<b>b)', 'ab').groupdict())
+group_match = re.match(r'(?P<first>a)(?P<optional>b)?', 'a')
+assrt.equal(group_match.group(), 'a')
+assrt.equal(group_match.group(0), 'a')
+assrt.equal(group_match.group('first'), 'a')
+assrt.equal(group_match.group(1), 'a')
+assrt.equal(group_match.group(2), None)
+assrt.equal(group_match.group('optional'), None)
+assrt.deepEqual(group_match.group(0, 'first', 2), ('a', 'a', None))
+assrt.deepEqual(group_match.span('first'), (0, 1))
+assrt.deepEqual(group_match.span('optional'), (-1, -1))
+assrt.throws(def():group_match.group(3);, IndexError)
+assrt.throws(def():group_match.group('missing');, IndexError)
 
 # Test verbose mode literals
 assrt.equal(re.search(///

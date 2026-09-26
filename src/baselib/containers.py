@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Any, List
 
 import sagejs.runtime as runtime
+from bootstrap_shared import ρσ_append_fn
 
 _Str = str
 _CONTAINERS_MISSING = runtime.object.create(None)
@@ -483,9 +484,7 @@ def _list_append(
     value: Any = _CONTAINERS_MISSING,
     *extra: Any,
 ) -> None:
-    if value is _CONTAINERS_MISSING:
-        raise TypeError("append expected 1 argument")
-    if len(extra) != 0:
+    if value is _CONTAINERS_MISSING or len(extra) != 0:
         raise TypeError("append expected 1 argument")
     runtime.reflect.apply(runtime.array.prototype.push, self, [value])
 
@@ -747,18 +746,7 @@ def ρσ_list_constructor(iterable: Any = runtime.undefined) -> Any:
     return list_decorate(answer)
 
 
-def _list_type_append(
-    self: Any,
-    value: Any = _CONTAINERS_MISSING,
-    *extra: Any,
-) -> None:
-    if not runtime.array.isArray(self):
-        raise TypeError(
-            "descriptor 'append' for 'list' objects doesn't apply to this object"
-        )
-    if value is _CONTAINERS_MISSING or len(extra) != 0:
-        raise TypeError("append expected 1 argument")
-    runtime.reflect.apply(_list_append, self, [value])
+_list_type_append = ρσ_append_fn(_list_append)
 
 
 def _container_pop_keyword(
@@ -902,7 +890,7 @@ class SageSet:
 
     @staticmethod
     def _require_set(other: Any) -> Any:
-        if not isinstance(other, SageSet) and not isinstance(other, SageFrozenSet):
+        if not isinstance(other, (SageSet, SageFrozenSet)):
             raise TypeError("set operands must be sets")
         return other
 
@@ -1071,13 +1059,11 @@ class SageFrozenSet:
 
     @staticmethod
     def _from_iterable(other: Any) -> Any:
-        if isinstance(other, SageSet) or isinstance(other, SageFrozenSet):
-            return other
-        return SageSet(other)
+        return SageSet._from_iterable(other)
 
     @staticmethod
     def _require_set(other: Any) -> Any:
-        if not isinstance(other, SageSet) and not isinstance(other, SageFrozenSet):
+        if not isinstance(other, (SageSet, SageFrozenSet)):
             raise TypeError("frozenset operands must be sets")
         return other
 
@@ -1110,6 +1096,11 @@ class SageFrozenSet:
         return True
 
     def issuperset(self, other: Any) -> bool:
+        if runtime.jstype(other) == "string":
+            for value in other:
+                if not self.has(value):
+                    return False
+            return True
         return self._from_iterable(other).issubset(self)
 
     def symmetric_difference(self, other: Any) -> SageFrozenSet:
@@ -1150,7 +1141,7 @@ class SageFrozenSet:
     inspect = __repr__
 
     def __eq__(self, other: object) -> bool:
-        if not isinstance(other, SageSet) and not isinstance(other, SageFrozenSet):
+        if not isinstance(other, (SageSet, SageFrozenSet)):
             return False
         return self.size == other.size and self.issubset(other)
 

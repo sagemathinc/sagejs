@@ -8,12 +8,12 @@ const { runInNewContext } = require("node:vm");
 const test = require("node:test");
 const root = join(__dirname, "..");
 const source = readFileSync(join(root, "src/baselib/bootstrap_shared.py"), "utf8");
-const sharedNames = ["ρσ_machine_extension_method_matches", "ρσ_copy_method_metadata", "ρσ_native_method_adapter", "ρσ_unbound_method_adapter",
+const sharedNames = ["ρσ_machine_extension_method_matches", "ρσ_copy_method_metadata", "ρσ_append_fn", "ρσ_native_method_adapter", "ρσ_unbound_method_adapter",
   "ρσ_exact_integer_add", "ρσ_exact_integer_divmod", "ρσ_exact_shift",
   "ρσ_exact_integer_submul", "ρσ_int_pow",
   "ρσ_check_interrupt", "ρσ_normalize_exception", "ρσ_prepare_method_call",
   "ρσ_attr", "ρσ_interpolate_kwargs", "ρσ_interpolate_kwargs_constructor",
-  "ρσ_synthetic_init_ends_at_object", "ρσ_skip_init"];
+  "ρσ_synthetic_init_ends_at_object", "ρσ_skip_init", "ρσ_positional_default"];
 const names = sharedNames;
 
 // Exercise the native ABI bodies directly; full self-hosted/module
@@ -68,6 +68,106 @@ test("prepared method calls use and invalidate the shared prototype cache", () =
   assert.deepEqual(Array.from(api.ρσ_prepare_method_call(receiver, "method")),
     ["fallback", undefined, false]);
   assert.equal(fallbacks, 2);
+});
+
+test("exact native list append bypasses generic lookup without bypassing mutation", () => {
+  const append = Object.assign(function append(value) { this.push(value); },
+    { __sagejs_native_method__: true });
+  const prototype = { append };
+  const receiver = Object.create(prototype);
+  const brand = new WeakSet([receiver]);
+  const decorator = () => receiver;
+  decorator.__optimizerExactListBrand = brand;
+  decorator.__optimizerExactListPrototype = prototype;
+  let fallbacks = 0;
+  const api = context({
+    ρσ_list_decorate: decorator,
+    _builtins_instance_namespaces: new WeakMap(),
+    _builtins_descriptor_cache: new WeakMap(),
+    _builtins_attribute_owner: () => prototype,
+    _builtins_public_getattr: (_value, _name, _missing, result) => {
+      fallbacks += 1;
+      result[0] = "fallback";
+      return "fallback";
+    },
+    _BUILTINS_MISSING: {},
+  });
+  const prepared = () => Array.from(api.ρσ_prepare_method_call(receiver, "append"));
+  assert.deepEqual(prepared(), [append, receiver, false]);
+  assert.equal(fallbacks, 0);
+
+  receiver.append = () => "assigned";
+  assert.deepEqual(prepared(), ["fallback", undefined, false]);
+  delete receiver.append;
+  Object.defineProperty(prototype, "append", { value: () => "replaced", configurable: true });
+  assert.deepEqual(prepared(), ["fallback", undefined, false]);
+  Object.defineProperty(prototype, "append", { value: append, configurable: true });
+  prototype.__getattribute__ = () => "hooked";
+  assert.deepEqual(prepared(), ["fallback", undefined, false]);
+  delete prototype.__getattribute__;
+  assert.deepEqual(prepared(), [append, receiver, false]);
+  assert.deepEqual(Array.from(api.ρσ_prepare_method_call(Object.create(prototype), "append")),
+    ["fallback", undefined, false]);
+  assert.equal(fallbacks, 4);
+});
+
+test("the original unbound list append respects live class and metaclass changes", () => {
+  const append = function append(receiver, value) { receiver.push(value); };
+  const listConstructor = function listConstructor() {};
+  const metaclass = function metaclass() {};
+  const ordinaryHook = function ordinaryHook() {};
+  Object.defineProperty(listConstructor, "__python_type__", { value: metaclass });
+  listConstructor.append = append;
+  let hook = [undefined, undefined, undefined, ordinaryHook];
+  let fallbacks = 0;
+  const api = context({
+    ρσ_list_constructor: listConstructor,
+    _list_type_append: append,
+    _builtins_object_getattribute: ordinaryHook,
+    _builtins_class_attribute_resolution: () => hook,
+    _builtins_descriptor_cache: new WeakMap(),
+    _builtins_instance_namespaces: new WeakMap(),
+    _builtins_attribute_owner: () => metaclass,
+    _builtins_public_getattr: (_value, _name, _missing, result) => {
+      fallbacks += 1;
+      result[0] = "fallback";
+      return "fallback";
+    },
+    _BUILTINS_MISSING: {},
+  });
+  const prepared = () => Array.from(api.ρσ_prepare_method_call(listConstructor, "append"));
+  assert.deepEqual(prepared(), [append, undefined, false]);
+  assert.equal(fallbacks, 0);
+  listConstructor.append = () => "replaced";
+  assert.deepEqual(prepared(), ["fallback", undefined, false]);
+  delete listConstructor.append;
+  assert.deepEqual(prepared(), ["fallback", undefined, false]);
+  listConstructor.append = append;
+  hook = [undefined, undefined, undefined, () => "custom"];
+  assert.deepEqual(prepared(), ["fallback", undefined, false]);
+  hook = [undefined, undefined, undefined, ordinaryHook];
+  assert.deepEqual(prepared(), [append, undefined, false]);
+  assert.equal(fallbacks, 3);
+});
+
+test("list class append descriptor keeps metadata and validates explicit calls", () => {
+  const api = context();
+  const target = function target() {};
+  target.__annotations__ = { self: "Any", value: "Any" };
+  target.__module__ = "sagejs._baselib.containers";
+  target.__sagejs_native_method__ = true;
+  const append = api.ρσ_append_fn(target);
+  const values = [];
+  assert.equal(append(values, 7), null);
+  assert.deepEqual(values, [7]);
+  assert.equal(append.__name__, "_list_type_append");
+  assert.equal(append.__qualname__, "_list_type_append");
+  assert.equal(append.__module__, target.__module__);
+  assert.deepEqual(Array.from(append.__argnames__), ["self", "value"]);
+  assert.equal(append.__sagejs_native_method__, undefined);
+  assert.throws(() => append(values), /append expected 1 argument/);
+  assert.throws(() => append(values, 1, 2), /append expected 1 argument/);
+  assert.throws(() => append({}, 1), /doesn't apply to this object/);
 });
 
 test("shared attribute stores use only epoch-current unexposed cache entries", () => {

@@ -12,7 +12,7 @@ import sagejs.runtime as runtime
 
 
 def _sum_exact_integer_range(iterable: Any, start: Any) -> Any:
-    """Sum an integer range exactly without materializing or iterating it."""
+    """Sum an integer range exactly."""
     length = iterable._length
     if length == 0:
         return start
@@ -127,23 +127,22 @@ def _map_generator(
     *iterables: Iterable[Any],
 ) -> Iterator[Any]:
     iterators = [iter(iterable) for iterable in iterables]
-    done = False
-    while not done:
-        values = []
-        for iterator in iterators:
-            try:
-                values.append(next(iterator))
-            except StopIteration as error:
-                if len(error.args) == 0:
+    if len(iterators) == 1:
+        for value in iterators[0]:
+            yield func(value)
+    else:
+        exhausted = object()
+        done = False
+        while not done:
+            values = []
+            for iterator in iterators:
+                value = next(iterator, exhausted)
+                if value is exhausted:
                     done = True
                     break
-                else:
-                    raise error  # noqa: B904
-        if not done:
-            try:
+                values.append(value)
+            if not done:
                 yield func(*values)
-            except StopIteration as error:
-                raise error  # noqa: B904
 
 
 def map(

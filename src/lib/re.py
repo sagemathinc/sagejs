@@ -192,9 +192,9 @@ class MatchObject:
             groups = _property(self._match, "groups")
             if groups is None or groups is runtime.undefined:
                 raise IndexError("no such group")
-            value = _property(groups, group, runtime.undefined)
-            if value is runtime.undefined:
+            if not runtime.reflect.has(groups, group):
                 raise IndexError("no such group")
+            value = runtime.reflect.get(groups, group)
             indices = _property(self._indices, "groups")
             pair = _property(indices, group, runtime.undefined)
             return value, pair
@@ -206,13 +206,29 @@ class MatchObject:
         return value, pair
 
     def group(self, *groups):
+        if len(groups) < 2:
+            group = groups[0] if groups else 0
+            if isinstance(group, str):
+                named = _property(self._match, "groups")
+                if named is None or named is runtime.undefined:
+                    raise IndexError("no such group")
+                if not runtime.reflect.has(named, group):
+                    raise IndexError("no such group")
+                value = runtime.reflect.get(named, group)
+            else:
+                index = int(group)
+                if index < 0 or index >= len(self._match):
+                    raise IndexError("no such group")
+                value = self._match[index]
+            # Native RegExp captures are already Python strings or undefined.
+            return None if value is None or value is runtime.undefined else value
         if not groups:
             groups = (0,)
         values = []
         for group in groups:
             value, unused = self._resolve(group)
             values.append(
-                None if value is None or value is runtime.undefined else str(value)
+                None if value is None or value is runtime.undefined else value
             )
         return values[0] if len(values) == 1 else tuple(values)
 
@@ -309,8 +325,18 @@ class RegexObject:
         text = str(string)
         if endpos is None:
             endpos = len(text)
-        answer = self.match(text, pos, endpos)
-        return answer if answer is not None and answer.end() == endpos else None
+        target = text[:endpos]
+        regex = self._native()
+        runtime.reflect.set(regex, "lastIndex", pos)
+        native = runtime.reflect.apply(
+            runtime.reflect.get(regex, "exec"), regex, [target]
+        )
+        if native is None:
+            return None
+        pair = runtime.reflect.get(native, "indices")[0]
+        if pair[0] != pos or pair[1] != endpos:
+            return None
+        return MatchObject(self, native, pos, endpos)
 
     def finditer(self, string, pos=0, endpos=None):
         text = str(string)

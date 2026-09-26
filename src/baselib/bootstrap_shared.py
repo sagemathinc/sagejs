@@ -56,6 +56,18 @@ def ρσ_copy_method_metadata(method, target_function):
     })()"""
 
 
+def ρσ_append_fn(target):
+    return r"""%js (()=>{const f=function(self,value){
+if(!Array.isArray(self))throw new TypeError(
+"descriptor 'append' for 'list' objects doesn't apply to this object");
+if(arguments.length!==2)throw new TypeError("append expected 1 argument");
+Array.prototype.push.call(self,value);return null};
+ρσ_copy_method_metadata(f,target);
+f.__argnames__=["self","value"];
+f.__name__=f.__qualname__="_list_type_append";
+return f})()"""
+
+
 def ρσ_native_method_adapter(target_function):
     return r"""%js (() => {
         function method(...args) {
@@ -174,22 +186,31 @@ def ρσ_normalize_exception(error):
 
 def ρσ_prepare_method_call(value, name):
     return r"""%js (() => {
-        const p=value==null?undefined:Object.getPrototypeOf(value);
-        let c=p===undefined?undefined:_builtins_descriptor_cache.get(p);
-        if(c===undefined){
-            c=_builtins_descriptor_cache.get(_builtins_attribute_owner(value));
-            if(c!==undefined&&p!==undefined)_builtins_descriptor_cache.set(p,c);
+        const O=Object,p=value==null?undefined:O.getPrototypeOf(value);
+        if(name==="append"){
+            if(value===globalThis.ρσ_list_constructor){
+                const m=O.getOwnPropertyDescriptor(value,name)?.value;
+                const t=O.getOwnPropertyDescriptor(value,"__python_type__")?.value;
+                const h=t&&_builtins_class_attribute_resolution(t,"__getattribute__");
+                if(m===globalThis._list_type_append&&(!h||h[3]===_builtins_object_getattribute))return [m,undefined,false];
+            }
+            const d=globalThis.ρσ_list_decorate,b=d?.__optimizerExactListBrand;
+            if(p!==undefined&&b?.has(value)&&p===d.__optimizerExactListPrototype&&
+               !_builtins_instance_namespaces.has(value)&&!O.hasOwn(value,name)&&
+               !O.hasOwn(value,"__getattribute__")&&!O.hasOwn(p,"__getattribute__")){
+                const m=O.getOwnPropertyDescriptor(p,name)?.value;
+                if(m?.__sagejs_native_method__===true)return [m,value,false];
+            }
         }
+        let c=p===undefined?undefined:_builtins_descriptor_cache.get(p);
+        if(c===undefined){c=_builtins_descriptor_cache.get(_builtins_attribute_owner(value));
+            if(c!==undefined&&p!==undefined)_builtins_descriptor_cache.set(p,c)}
         const m=c===undefined?undefined:c.get(name);
         if(m!==undefined&&m[0]===_builtins_descriptor_epoch.value&&m[4]===true){
             const n=_builtins_instance_namespaces.get(value);
-            if((n===undefined||!n.jsmap.has(name))&&!Object.hasOwn(value,name))
-                return [m[3],value,m[5]];
-        }
-        const x=[undefined,undefined,false];
-        const member=_builtins_public_getattr(value,name,_BUILTINS_MISSING,x);
-        if(x[0]===undefined)x[0]=member;
-        return x;
+            if((n===undefined||!n.jsmap.has(name))&&!O.hasOwn(value,name))return [m[3],value,m[5]]}
+        const x=[undefined,undefined,false],member=_builtins_public_getattr(value,name,_BUILTINS_MISSING,x);
+        if(x[0]===undefined)x[0]=member;return x;
     })()"""
 
 
@@ -333,4 +354,14 @@ def ρσ_skip_init(cls, initializer):
             allocator!==_builtins_object_new;
         if(cacheable)cached[2]=answer;
         return answer;
+    })()"""
+
+
+def ρσ_positional_default(target_function, from_end, name):
+    return r"""%js (()=>{
+        const defaults=target_function.__defaults__;
+        if(defaults==null||defaults.length<from_end)
+            throw ρσ_function_argument_error(
+                "missing required argument: "+name,target_function);
+        return defaults[defaults.length-from_end];
     })()"""
