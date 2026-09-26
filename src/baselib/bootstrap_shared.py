@@ -175,6 +175,20 @@ def ρσ_normalize_exception(error):
 def ρσ_prepare_method_call(value, name):
     return r"""%js (() => {
         const p=value==null?undefined:Object.getPrototypeOf(value);
+        if(name==="append"&&p!==undefined){
+            const decorator=globalThis.ρσ_list_decorate;
+            const brand=decorator?.__optimizerExactListBrand;
+            if(brand?.has(value)&&
+               p===decorator.__optimizerExactListPrototype&&
+               !_builtins_instance_namespaces.has(value)&&
+               !Object.hasOwn(value,name)&&
+               !Object.hasOwn(value,"__getattribute__")&&
+               !Object.hasOwn(p,"__getattribute__")){
+                const descriptor=Object.getOwnPropertyDescriptor(p,name);
+                if(descriptor?.value?.__sagejs_native_method__===true)
+                    return [descriptor.value,value,false];
+            }
+        }
         let c=p===undefined?undefined:_builtins_descriptor_cache.get(p);
         if(c===undefined){
             c=_builtins_descriptor_cache.get(_builtins_attribute_owner(value));
