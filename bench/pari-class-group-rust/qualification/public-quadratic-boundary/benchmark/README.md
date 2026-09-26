@@ -241,6 +241,44 @@ comparison or a claim that all of the approximately 8 ms difference is due to
 the worker change. The 11-field public answer panel and exact native-map
 regressions still pass.
 
+## Matched resident public-call diagnostic
+
+`run-public-sagejs-pari.cjs` adds a separate end-to-end diagnostic against the
+authenticated PARI 2.17.4 GP executable. It uses the same frozen 11-field v2
+panel, a resident Sage.js process and a resident GP process, one untimed warmup
+per arm and field, and 15 alternating samples per arm. GP is pinned to PARI
+2.17.4, 192-bit precision, and one thread, matching the authenticated native
+control's policy. Both arms start either
+from the public polynomial or from a prepared field, include interpreter
+evaluation and result projection in the clock, and check the expected field
+discriminant, class number, and invariant factors on every sample. Sage.js also checks its
+unconditional proof status and Rust route. The Sage.js call authenticates and
+retains its complete ideal-class map; PARI additionally computes rank-zero
+unit/regulator data but does not project an entire ideal-class map. Different
+Node/Sage.js and GP IPC costs remain part of this user-facing diagnostic, so
+these are not symmetric algorithmic-kernel timings or a promoted performance
+receipt.
+
+```sh
+SAGEJS_CLASS_GROUP_SERVICE="$PWD/packages/class-groups/target/release/class-group-service" \
+  node bench/pari-class-group-rust/qualification/public-quadratic-boundary/benchmark/run-public-sagejs-pari.cjs \
+  --samples 15 --boundary polynomial --receipt public-api-polynomial-diagnostic.json
+```
+
+The two source-current 2026-09-26 receipts are
+[`public-api-polynomial-diagnostic.json`](public-api-polynomial-diagnostic.json)
+and [`public-api-prepared-diagnostic.json`](public-api-prepared-diagnostic.json).
+For the polynomial-to-public-group boundary, the geometric-mean ratio of
+per-field medians was 22.81 Sage.js/PARI, with a nearest-rank p90 of 43.15 and
+every field between 12.86 and 49.36. The prepared-field boundary measured
+16.85 geometric mean, 24.33 p90, and an 11.03--36.74 field range. These raw
+receipts retain all 15 paired timings per field and the pinned panel, runner,
+Sage.js build, service, GP, and libpari hashes. They demonstrate that the
+public end-to-end route is **not yet PARI-competitive** under this stricter
+resident-process comparison, even though the distinct matched native
+coefficient-to-group target passes. No threshold or panel member was changed
+in response to these measurements.
+
 ## Matched scalar class-number comparison
 
 `run_class_number.py` separately compares the exact scalar Rust count, the
