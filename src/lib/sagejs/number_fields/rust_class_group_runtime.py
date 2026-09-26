@@ -422,7 +422,7 @@ def _imaginary_map_row(entry: Any, rank: int) -> list[Any]:
 
 
 def validate_imaginary_group_result(
-    result: dict[str, Any], discriminant: int
+    result: dict[str, Any], discriminant: int, compact: bool = False
 ) -> tuple[
     list[tuple[int, int, int]], dict[str, tuple[int, ...]], list[tuple[int, int, int]]
 ]:
@@ -511,6 +511,7 @@ def validate_imaginary_group_result(
                 entry_count,
                 discriminant,
                 linear,
+                compact,
             )
         except (TypeError, ValueError, OverflowError) as error:
             raise RustClassGroupPublicationError(

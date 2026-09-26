@@ -97,9 +97,9 @@ not be divided by the PARI timings above: the boundaries and warmup policies
 differ. Pass a sample count and field ID to narrow a local investigation, for
 example `run-public-sagejs.cjs 3 near-limit-h4378-d8173415`.
 Append `--phases` to measure one additional complete Rust-service/host-conversion
-call and one independent Python-side validation of the same field's map. The
-diagnostic runs after the public samples, verifies both form and coordinate
-counts, and reports the two elapsed times separately. It also replays the
+call, materialized Python-side validation, and compact Python-side validation
+of the same field's map. The diagnostic runs after the public samples, verifies
+both form and coordinate counts, and reports the elapsed times separately. It also replays the
 checked native packing, isolated kernel, and Python form/coordinate
 materialization as separate diagnostic phases. It does not isolate
 public group-object binding, alter the frozen matched comparison, or constitute
@@ -197,6 +197,23 @@ show a substantial improvement over the prior 2.650-second three-sample
 median, but still do not establish public PARI parity. The remaining
 materialization of Python forms and coordinate strings is the next measured
 public-boundary target.
+
+The packed verifier can now retain an immutable snapshot of its verified rows
+and expose exact read-only form iteration and binary-search coordinate lookup
+without constructing one Python form tuple and dictionary entry per class.
+Public group construction defers full form-object materialization until a
+caller iterates the group; direct validator callers retain the original
+materialized result by default, and a host without the compiled verifier uses
+the established Python validation fallback. On 2026-09-26, the same 33,768-class
+field took 0.411, 0.405, and 0.393 seconds in three warm fresh public calls
+(0.405-second median), versus the preceding 1.159-second three-sample median.
+The separate phase probe measured 0.354 seconds for warm service/conversion,
+0.813 seconds for materialized validation, and 0.037 seconds for compact
+validation. All 11 frozen v2 fields returned their expected class numbers and
+invariant factors in a one-sample public replay. These are exploratory,
+different-run timings, not a promoted matched PARI comparison. The large
+fresh-call latency is still much higher than PARI's native coefficient-only
+boundary, so public PARI competitiveness remains open.
 
 ## Matched scalar class-number comparison
 

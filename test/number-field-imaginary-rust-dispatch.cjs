@@ -201,6 +201,14 @@ test("packed resident map validation retains exact forms, ideals, and rejection"
     "del packed['certificate']['reducedForms']",
     "forms1, coordinates1, generators1 = rust_runtime.validate_imaginary_group_result(result, -23)",
     "forms2, coordinates2, generators2 = rust_runtime.validate_imaginary_group_result(packed, -23)",
+    "compact_forms, compact_coordinates, compact_generators = rust_runtime.validate_imaginary_group_result(packed, -23, compact=True)",
+    "compact_exact = (len(compact_forms) == 3 and list(compact_forms) == forms1",
+    "    and len(compact_coordinates) == 3 and compact_coordinates.get('2,-1,3') == coordinates1['2,-1,3']",
+    "    and compact_coordinates.get('02,-1,3') is None and '2,-1,3' in compact_coordinates",
+    "    and '2,0,3' not in compact_coordinates and compact_generators == generators1)",
+    "packed['completeClassMapPacked'][23] = 99",
+    "compact_immutable = compact_coordinates.get('2,-1,3') == coordinates1['2,-1,3']",
+    "packed['completeClassMapPacked'][23] = 1",
     "packed['certificate']['reducedFormsPacked'][3] = True",
     "try:",
     "    rust_runtime.validate_imaginary_group_result(packed, -23)",
@@ -224,12 +232,14 @@ test("packed resident map validation retains exact forms, ideals, and rejection"
     "packed['completeClassMapPacked'][4] = 1",
     "result = packed",
     "group = K.class_group(algorithm='rust')",
+    "lazy_forms = not hasattr(group._group, '_forms')",
+    "all_forms = len(list(group)) == 3 and hasattr(group._group, '_forms')",
     "packed_before_access = 'reducedFormsPacked' in group._group._certificate",
     "certificate = group.certificate",
     "ordinary_certificate = len(certificate['reducedForms']) == 3 and certificate['reducedForms'][1]['a'] == 2 and 'reducedFormsPacked' not in certificate",
-    "[forms1 == forms2, coordinates1 == coordinates2, generators1 == generators2, rejects_certificate, rejects_inverse, all(malformed_rows), packed_before_access, ordinary_certificate]",
+    "[forms1 == forms2, coordinates1 == coordinates2, generators1 == generators2, compact_exact, compact_immutable, lazy_forms, all_forms, rejects_certificate, rejects_inverse, all(malformed_rows), packed_before_access, ordinary_certificate]",
   ]);
-  assert.equal(answer.repr, "[True, True, True, True, True, True, True, True]");
+  assert.equal(answer.repr, "[True, True, True, True, True, True, True, True, True, True, True, True]");
 });
 
 test("QuadraticField and its maximal order expose the explicit Rust route", async () => {

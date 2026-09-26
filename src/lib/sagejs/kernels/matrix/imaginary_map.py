@@ -8,7 +8,7 @@ The caller owns the buffers and checks their element types before packing.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Iterator
 
 from sagejs.native import (
     Int64Buffer,
@@ -34,6 +34,77 @@ def _pack_exact_int64(kernel: Any, values: list[int]) -> Any:
     return kernel_int64_buffer(kernel, values)
 
 
+class PackedImaginaryForms:
+    """Read-only reduced-form sequence backed by already verified rows."""
+
+    def __init__(self, rows: tuple[int, ...], stride: int, count: int) -> None:
+        self._rows = rows
+        self._stride = stride
+        self._count = count
+
+    def __len__(self) -> int:
+        return self._count
+
+    def __iter__(self) -> Iterator[tuple[int, int, int]]:
+        for index in range(self._count):
+            offset = index * self._stride
+            yield (
+                self._rows[offset],
+                self._rows[offset + 1],
+                self._rows[offset + 2],
+            )
+
+
+class PackedImaginaryCoordinates:
+    """Exact read-only coordinate lookup over verified sorted form rows."""
+
+    def __init__(self, rows: tuple[int, ...], stride: int, count: int) -> None:
+        self._rows = rows
+        self._stride = stride
+        self._count = count
+
+    def __len__(self) -> int:
+        return self._count
+
+    def _offset(self, key: object) -> int:
+        if type(key) is not str:
+            return -1
+        parts = key.split(",")
+        if len(parts) != 3:
+            return -1
+        try:
+            sought_a, sought_b, sought_c = int(parts[0]), int(parts[1]), int(parts[2])
+        except ValueError:
+            return -1
+        low, high = 0, self._count
+        while low < high:
+            middle = (low + high) // 2
+            offset = middle * self._stride
+            a, b = self._rows[offset], self._rows[offset + 1]
+            if a < sought_a or (a == sought_a and b < sought_b):
+                low = middle + 1
+            else:
+                high = middle
+        if low >= self._count:
+            return -1
+        offset = low * self._stride
+        a, b, c = self._rows[offset], self._rows[offset + 1], self._rows[offset + 2]
+        if (a, b, c) != (sought_a, sought_b, sought_c):
+            return -1
+        if key != str(a) + "," + str(b) + "," + str(c):
+            return -1
+        return offset
+
+    def __contains__(self, key: object) -> bool:
+        return self._offset(key) >= 0
+
+    def get(self, key: object, default: Any = None) -> Any:
+        offset = self._offset(key)
+        if offset < 0:
+            return default
+        return tuple(self._rows[offset + 11 : offset + self._stride])
+
+
 def validate_packed_imaginary_map(
     rows: list[int],
     certificate_forms: list[int],
@@ -41,7 +112,14 @@ def validate_packed_imaginary_map(
     count: int,
     discriminant: int,
     linear: int,
-) -> tuple[list[tuple[int, int, int]], dict[str, tuple[int, ...]]] | None:
+    compact: bool = False,
+) -> (
+    tuple[
+        list[tuple[int, int, int]] | PackedImaginaryForms,
+        dict[str, tuple[int, ...]] | PackedImaginaryCoordinates,
+    ]
+    | None
+):
     """Use the isolated kernel if installed, preserving the Python fallback.
 
     The host packer rejects Boolean, string, and out-of-range values before
@@ -67,6 +145,12 @@ def validate_packed_imaginary_map(
     ):
         raise ValueError("the packed imaginary class map is invalid")
     stride = 11 + len(invariants)
+    if compact:
+        verified_rows = tuple(rows)
+        return (
+            PackedImaginaryForms(verified_rows, stride, count),
+            PackedImaginaryCoordinates(verified_rows, stride, count),
+        )
     forms = []
     coordinates = {}
     for index in range(count):

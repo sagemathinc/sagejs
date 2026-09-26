@@ -3843,6 +3843,7 @@ class QuadraticClassGroup:
         self._order = runtime.undefined
         self._native_cyclic_generator = runtime.undefined
         self._coordinate_map = None
+        self._validated_form_data = None
         self.proof_status = "exact-unconditional"
         self.algorithm = "quadratic-forms"
         self._certificate = None
@@ -3883,13 +3884,12 @@ class QuadraticClassGroup:
         """Bind a complete Rust form map to the ordinary ideal-class API."""
         form_data, coordinates, generator_data = (
             _nf_rust_class_group_runtime_module().validate_imaginary_group_result(
-                result, int(self._discriminant)
+                result, int(self._discriminant), compact=True
             )
         )
         self._principal_form = _quadratic_principal_form(self._discriminant)
-        self._forms = [
-            QuadraticBinaryForm(data[0], data[1], data[2]) for data in form_data
-        ]
+        self._validated_form_data = form_data
+        self._forms = runtime.undefined
         self._order = int(_untyped(result.get("classNumber")))
         self._coordinate_map = coordinates
         self._element_cache = runtime.map()
@@ -3928,7 +3928,13 @@ class QuadraticClassGroup:
 
     def _all_forms(self) -> list[QuadraticBinaryForm]:
         if self._forms is runtime.undefined:
-            self._forms = _quadratic_reduced_forms(self._discriminant)
+            if self._validated_form_data is not None:
+                self._forms = [
+                    QuadraticBinaryForm(data[0], data[1], data[2])
+                    for data in self._validated_form_data
+                ]
+            else:
+                self._forms = _quadratic_reduced_forms(self._discriminant)
             if len(self._forms) != self.order():
                 raise ArithmeticError(
                     "quadratic form enumeration changed the class number"

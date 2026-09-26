@@ -64,6 +64,9 @@ async function diagnosePhases(sage, expectedClassNumber) {
     "received = time.perf_counter()",
     "forms, coordinates, generators = rust_runtime.validate_imaginary_group_result(result, int(K.discriminant()))",
     "validated = time.perf_counter()",
+    "compact_forms, compact_coordinates, compact_generators = rust_runtime.validate_imaginary_group_result(result, int(K.discriminant()), compact=True)",
+    "compact_validated = time.perf_counter()",
+    "assert len(compact_forms) == len(forms) and len(compact_coordinates) == len(coordinates) and compact_generators == generators",
     "rows = result['completeClassMapPacked']",
     "certificate = result['certificate']['reducedFormsPacked']",
     "invariants = result['invariantFactors']",
@@ -85,16 +88,17 @@ async function diagnosePhases(sage, expectedClassNumber) {
     "    rebuilt_coordinates[str(a) + ',' + str(b) + ',' + str(c)] = tuple(rows[offset + 11:offset + stride])",
     "materialized = time.perf_counter()",
     "assert rebuilt_forms == forms and rebuilt_coordinates == coordinates",
-    "[(received - started) * 1000, (validated - received) * 1000, len(forms), len(coordinates), (packed - packing_started) * 1000, (verified - packed) * 1000, (materialized - verified) * 1000]",
+    "[(received - started) * 1000, (validated - received) * 1000, (compact_validated - validated) * 1000, len(forms), len(coordinates), (packed - packing_started) * 1000, (verified - packed) * 1000, (materialized - verified) * 1000]",
   ].join("\n"));
-  const [serviceAndConversionMs, independentValidationMs, forms, coordinates,
+  const [serviceAndConversionMs, independentValidationMs, compactValidationMs, forms, coordinates,
     validatedPackingMs, kernelMs, materializeMs] =
     JSON.parse(response.repr);
   if (forms !== expectedClassNumber || coordinates !== expectedClassNumber ||
-      !Number.isFinite(serviceAndConversionMs) || !Number.isFinite(independentValidationMs)) {
+      !Number.isFinite(serviceAndConversionMs) || !Number.isFinite(independentValidationMs) ||
+      !Number.isFinite(compactValidationMs)) {
     throw new Error("phase diagnostic did not validate the complete class map");
   }
-  return { serviceAndConversionMs, independentValidationMs,
+  return { serviceAndConversionMs, independentValidationMs, compactValidationMs,
     exactMapRecheck: { validatedPackingMs, kernelMs, materializeMs } };
 }
 
