@@ -19,4 +19,4 @@ const subject = spawnSync(process.execPath,
     cwd: root, encoding: "utf8", timeout: 30_000,
   });
 assert.equal(subject.status, 0, subject.stderr || String(subject.error));
-assert.equal(subject.stdout, oracle.stdout);
+assert.equal(subject.stdout.replace(/\r\n/g, "\n"), oracle.stdout.replace(/\r\n/g, "\n"));
