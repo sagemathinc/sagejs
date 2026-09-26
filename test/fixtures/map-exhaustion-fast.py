@@ -26,3 +26,21 @@ def generator():
 
 
 print("generator return", list(map(lambda value: value, generator())))
+
+
+def stop_in_callback(value):
+    raise StopIteration("callback")
+
+
+stopped = map(stop_in_callback, [1, 2])
+try:
+    next(stopped)
+except StopIteration as error:
+    print("callback stop", error.value)
+print("callback list", list(map(stop_in_callback, [1, 2])))
+
+stopped_pair = map(lambda left, right: stop_in_callback(left), [1], [2])
+try:
+    next(stopped_pair)
+except StopIteration as error:
+    print("paired callback stop", error.value)
