@@ -124,9 +124,8 @@ def _map_next(self: Any) -> Any:
 
 def _map_generator(
     func: Any,
-    *iterables: Iterable[Any],
+    iterators: list[Iterator[Any]],
 ) -> Iterator[Any]:
-    iterators = [iter(iterable) for iterable in iterables]
     if len(iterators) == 1:
         for value in iterators[0]:
             yield func(value)
@@ -149,7 +148,9 @@ def map(
     func: Any,
     *iterables: Iterable[Any],
 ) -> Iterator[Any]:
-    iterator = _map_generator(func, *iterables)
+    if not iterables:
+        raise TypeError("map() must have at least two arguments.")
+    iterator = _map_generator(func, [iter(iterable) for iterable in iterables])
     runtime.reflect.set(
         iterator,
         "__map_native_next__",
