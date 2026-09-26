@@ -3059,10 +3059,16 @@ def _builtins_digit_value(character: _Str) -> _Int:
 
 def _builtins_parse_integer(value: _Str, base: Any) -> Any:
     text = runtime.reflect.apply(runtime.string_class.prototype.trim, value, [])
+    if (
+        base is runtime.undefined
+        and len(text) == 1
+        and text in _BUILTINS_DECIMAL_DIGITS
+    ):
+        return runtime.number(text)
     if not text:
         raise ValueError("invalid literal for int()")
     sign = runtime.bigint(1)
-    if text[0] == "+" or text[0] == "-":
+    if text[0] in "+-":
         if text[0] == "-":
             sign = runtime.bigint(-1)
         text = text[1:]
@@ -3073,15 +3079,15 @@ def _builtins_parse_integer(value: _Str, base: Any) -> Any:
         radix = 10
         if len(text) >= 2 and text[0] == "0":
             marker = text[1]
-            if marker == "x" or marker == "X":
+            if marker in "xX":
                 radix = 16
                 text = text[2:]
                 consumed_prefix = True
-            elif marker == "o" or marker == "O":
+            elif marker in "oO":
                 radix = 8
                 text = text[2:]
                 consumed_prefix = True
-            elif marker == "b" or marker == "B":
+            elif marker in "bB":
                 radix = 2
                 text = text[2:]
                 consumed_prefix = True
@@ -3106,7 +3112,6 @@ def _builtins_parse_integer(value: _Str, base: Any) -> Any:
                 )
     answer = runtime.bigint(0)
     previous_was_digit = False
-    saw_digit = False
     for character in text:
         if character == "_":
             if not previous_was_digit:
@@ -3120,8 +3125,7 @@ def _builtins_parse_integer(value: _Str, base: Any) -> Any:
             )
         answer = answer * runtime.bigint(radix) + runtime.bigint(digit)
         previous_was_digit = True
-        saw_digit = True
-    if not saw_digit or not previous_was_digit:
+    if not previous_was_digit:
         raise ValueError("invalid literal for int()")
     return runtime.normalize_integer(sign * answer)
 
