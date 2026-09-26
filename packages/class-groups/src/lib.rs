@@ -25,6 +25,7 @@ mod factor_base;
 mod flint_normal_form;
 mod hnf;
 mod ideal_arithmetic;
+mod imaginary;
 mod numerical_preparation;
 mod pari_random;
 mod polynomial_preparation;
@@ -90,6 +91,16 @@ pub use cubic_presentation::{
 };
 pub use flint_normal_form::FlintDyadicInterval;
 pub use hnf::{BigIntMatrix, NormalFormError, NormalFormLimits};
+pub use imaginary::{
+    BinaryQuadraticForm, ClassGenerator as ImaginaryClassGenerator, CompleteImaginaryClassGroup,
+    CompleteImaginaryClassNumber, FormClassMapEntry as ImaginaryFormClassMapEntry,
+    IdealRepresentative as ImaginaryIdealRepresentative, ImaginaryClassGroupError,
+    PublicImaginaryQuadraticInput,
+    ReducedFormCompletenessCertificate as ImaginaryReducedFormCompletenessCertificate,
+    compose_reduced_forms, compute_imaginary_class_group,
+    compute_imaginary_class_group_from_coefficients,
+    compute_imaginary_class_number_from_coefficients, verify_imaginary_class_group,
+};
 pub use numerical_preparation::{NumericalPreparationError, PreparedCubicEmbedding};
 pub use polynomial_preparation::{
     CubicLocalMaximalityCertificate, CubicMaximalOrderCertificate, PreparedPublicCubic,

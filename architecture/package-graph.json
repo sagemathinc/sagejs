@@ -44,7 +44,7 @@
       "id": "core-runtime",
       "layer": 0,
       "startup": "bootstrap",
-      "max_source_bytes": 912000,
+      "max_source_bytes": 915000,
       "depends_on": [],
       "modules": ["sagejs", "sagejs.runtime"],
       "files": [
@@ -165,7 +165,7 @@
       "id": "arithmetic",
       "layer": 2,
       "startup": "bootstrap",
-      "max_source_bytes": 820000,
+      "max_source_bytes": 822000,
       "depends_on": ["core-runtime", "native-integration"],
       "files": [
         "src/baselib/algebra.py",
@@ -287,15 +287,21 @@
         "arithmetic",
         "linear-algebra"
       ],
-      "modules": ["sagejs.kernels.matrix.class_group_hnf"],
-      "files": ["src/lib/sagejs/kernels/matrix/class_group_hnf.py"],
+      "modules": [
+        "sagejs.kernels.matrix.class_group_hnf",
+        "sagejs.kernels.matrix.imaginary_map"
+      ],
+      "files": [
+        "src/lib/sagejs/kernels/matrix/class_group_hnf.py",
+        "src/lib/sagejs/kernels/matrix/imaginary_map.py"
+      ],
       "prefixes": []
     },
     {
       "id": "number-field-algorithms",
       "layer": 5,
       "startup": "lazy",
-      "max_source_bytes": 1310000,
+      "max_source_bytes": 1316000,
       "depends_on": [
         "core-runtime",
         "native-integration",
@@ -352,7 +358,7 @@
       "id": "number-field-prime-arithmetic",
       "layer": 6,
       "startup": "lazy",
-      "max_source_bytes": 145000,
+      "max_source_bytes": 145500,
       "depends_on": [
         "core-runtime",
         "native-integration",
@@ -811,7 +817,7 @@
       "id": "modular-forms",
       "layer": 4,
       "startup": "bootstrap",
-      "max_source_bytes": 353000,
+      "max_source_bytes": 354000,
       "depends_on": ["core-runtime", "native-integration", "arithmetic", "linear-algebra"],
       "files": [
         "src/baselib/dirichlet.py",

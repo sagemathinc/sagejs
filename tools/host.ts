@@ -166,6 +166,8 @@ const CLASS_GROUP_OPERATIONS = new Set([
   "publication",
   "query",
   "close",
+  "imaginary-class-number",
+  "imaginary-class-group",
 ]);
 
 const classGroupServiceWorkerSource = String.raw`
@@ -278,6 +280,18 @@ function startService() {
   const lines = readline.createInterface({ input: child.stdout, crlfDelay: Infinity });
   lines.on("line", line => {
     if (protocolError !== undefined) return;
+    // The synchronous shared-buffer protocol has at most one request in
+    // flight.  For a large packed response, forward the service's original
+    // JSON to the parent instead of parsing the entire class map twice.  The
+    // parent checks the envelope, including the service id, before use.
+    if (pending.size === 1) {
+      const [packedId, packedSlot] = pending.entries().next().value;
+      if (packedSlot.directPacked) {
+        pending.delete(packedId);
+        packedSlot.resolve({ raw: line, id: packedId });
+        return;
+      }
+    }
     let value;
     try { value = JSON.parse(line); }
     catch { value = corrupt("class-group service wrote non-JSON output"); }
@@ -288,7 +302,7 @@ function startService() {
       return;
     }
     pending.delete(id);
-    try { slot.resolve(validateServiceResponse(value, id)); }
+    try { slot.resolve({ value: validateServiceResponse(value, id), raw: line, id }); }
     catch (error) { slot.reject(error); }
   });
   child.on("error", error => {
@@ -323,7 +337,10 @@ function serviceCall(operation, request) {
     operation,
   };
   return new Promise((resolve, reject) => {
-    pending.set(id, { resolve, reject });
+    pending.set(id, {
+      resolve, reject,
+      directPacked: operation === "imaginary-class-group" && request.transport === "core-v2",
+    });
     child.stdin.write(JSON.stringify(message) + "\n", error => {
       if (!error) return;
       pending.delete(id);
@@ -345,6 +362,20 @@ function finish(value) {
   output.fill(0, 0, Math.min(64, output.length));
   output.set(bytes);
   Atomics.store(control, 2, bytes.length);
+  Atomics.store(control, 0, 2);
+  Atomics.notify(control, 0);
+}
+
+function finishRawServiceResponse(raw, id) {
+  const prefix = encoder.encode(id + "\n");
+  const bytes = encoder.encode(raw);
+  if (prefix.length + bytes.length > output.length) {
+    finish({ __sagejs_worker_error__: recordError(new RangeError("class-group response exceeds the shared buffer")) });
+    return;
+  }
+  output.set(prefix);
+  output.set(bytes, prefix.length);
+  Atomics.store(control, 2, prefix.length + bytes.length);
   Atomics.store(control, 0, 2);
   Atomics.notify(control, 0);
 }
@@ -374,8 +405,13 @@ async function main() {
           !plainRecord(envelope.request)) {
         throw new TypeError("invalid class-group host request");
       }
-      const result = await serviceCall(envelope.operation, envelope.request);
-      finish(result);
+      const response = await serviceCall(envelope.operation, envelope.request);
+      if (envelope.operation === "imaginary-class-group" &&
+          envelope.request.transport === "core-v2") {
+        finishRawServiceResponse(response.raw, response.id);
+      } else {
+        finish(response.value);
+      }
     } catch (error) {
       let bytes = encoder.encode(JSON.stringify({ ok: false, error: recordError(error) }));
       if (bytes.length > output.length) bytes = encoder.encode('{"ok":false,"error":{"code":"ENOBUFS","message":"class-group error exceeds the shared buffer"}}');
@@ -412,6 +448,43 @@ function classGroupHostError(
   error.name = name;
   error.code = code;
   return error;
+}
+
+/** Check the core envelope before the Python/native exact map verifier runs. */
+function validateImaginaryCoreMapResponse(value: Record<string, unknown>): void {
+  const result = value.result;
+  if (!isPlainRecord(result) || !Object.hasOwn(result, "completeClassMapCorePacked")) {
+    throw classGroupHostError("EBADMSG", "imaginary service omitted its core map");
+  }
+  const core = result.completeClassMapCorePacked;
+  const invariants = result.invariantFactors;
+  const count = result.completeClassMapLength;
+  const discriminant = result.discriminant;
+  if (!Array.isArray(core) || !Array.isArray(invariants) ||
+      typeof count !== "number" || !Number.isSafeInteger(count) || count < 1 ||
+      typeof discriminant !== "number" || !Number.isSafeInteger(discriminant) ||
+      discriminant >= 0 || discriminant < -200_000_000_000 ||
+      ![0, -3].includes(discriminant % 4) ||
+      core.length !== count * (2 + invariants.length) ||
+      Object.hasOwn(result, "completeClassMap") ||
+      Object.hasOwn(result, "completeClassMapPacked")) {
+    throw classGroupHostError("EBADMSG", "imaginary core map has a malformed envelope");
+  }
+  const stride = 2 + invariants.length;
+  for (let index = 0; index < count; index += 1) {
+    const offset = index * stride;
+    const a = core[offset];
+    const b = core[offset + 1];
+    if (!Number.isSafeInteger(a) || a <= 0 || !Number.isSafeInteger(b)) {
+      throw classGroupHostError("EBADMSG", "imaginary core map has a malformed form");
+    }
+    for (let position = 0; position < invariants.length; position += 1) {
+      const coordinate = core[offset + 2 + position];
+      if (!Number.isSafeInteger(coordinate)) {
+        throw classGroupHostError("EBADMSG", "imaginary core map has a malformed coordinate");
+      }
+    }
+  }
 }
 
 /** Lazy synchronous facade over the resident asynchronous native service. */
@@ -472,7 +545,15 @@ export class NodeClassGroupBackend {
         mathematicalScope: "absolute-monic-cubic-conditional-grh",
         maximumResidentSessions: 4,
         proofModes: ["conditional-grh"],
-        operations: ["capability", "open", "summary", "query", "publication", "close"],
+        imaginaryQuadratic: {
+          proofMode: "unconditional",
+          // Match the fail-closed product Rust engine bound. The prior 10^7
+          // host advertisement silently diverted frozen large-panel inputs
+          // to the unrelated legacy class-group algorithm.
+          maximumAbsoluteDiscriminant: 200_000_000_000,
+          operations: ["imaginary-class-number", "imaginary-class-group"],
+        },
+        operations: [...CLASS_GROUP_OPERATIONS],
         route: "native-resident-worker",
         artifactSha256: this.resource.artifactSha256,
         artifactBytes: this.resource.bytes,
@@ -570,7 +651,8 @@ export class NodeClassGroupBackend {
     if (operation === "capability") return this.capability();
     let serviceRequest = request;
     let sessionKey: string | undefined;
-    if (operation !== "open") {
+    if (operation !== "open" && operation !== "imaginary-class-number" &&
+        operation !== "imaginary-class-group") {
       if (typeof request.generation !== "string" ||
           !/^(0|[1-9][0-9]*)$/.test(request.generation) ||
           typeof request.handle !== "string" ||
@@ -613,7 +695,8 @@ export class NodeClassGroupBackend {
     Atomics.store(control, 2, 0);
     Atomics.store(control, 0, 1);
     Atomics.notify(control, 0);
-    const timeout = operation === "open" ? 120_000 : 30_000;
+    const timeout = operation === "open" || operation === "imaginary-class-group"
+      ? 120_000 : 30_000;
     const waited = Atomics.wait(control, 0, 1, timeout);
     if (waited === "timed-out") {
       this.retireWorker();
@@ -628,9 +711,22 @@ export class NodeClassGroupBackend {
       this.retireWorker();
       throw classGroupHostError("EBADMSG", "class-group worker returned a corrupt response");
     }
+    const directPacked = operation === "imaginary-class-group" &&
+      serviceRequest.transport === "core-v2";
     let payload: unknown;
+    let expectedServiceId: string | undefined;
     try {
-      payload = JSON.parse(Buffer.from(output.slice(0, length)).toString("utf8"));
+      let response = Buffer.from(output.buffer, output.byteOffset, length).toString("utf8");
+      if (directPacked && !response.startsWith("{")) {
+        const separator = response.indexOf("\n");
+        const id = response.slice(0, separator);
+        if (separator < 0 || !/^host-[1-9][0-9]*$/.test(id) || id.length > 64) {
+          throw new SyntaxError("invalid packed class-group response id");
+        }
+        expectedServiceId = id;
+        response = response.slice(separator + 1);
+      }
+      payload = JSON.parse(response);
     } catch {
       this.retireWorker();
       throw classGroupHostError("EBADMSG", "class-group worker returned invalid JSON");
@@ -643,6 +739,32 @@ export class NodeClassGroupBackend {
     if (!isPlainRecord(payload) || typeof payload.ok !== "boolean") {
       this.retireWorker();
       throw classGroupHostError("EBADMSG", "class-group worker returned an invalid envelope");
+    }
+    if (directPacked) {
+      if (expectedServiceId === undefined) {
+        // An unprefixed response is only the worker's own error envelope.
+        if (payload.ok) {
+          this.retireWorker();
+          throw classGroupHostError("EBADMSG", "class-group worker omitted the service identity");
+        }
+      } else if (payload.schema !== "sagejs.class-groups/service-response-v1" ||
+          payload.abi !== 1 || payload.id !== expectedServiceId) {
+        this.retireWorker();
+        throw classGroupHostError("EBADMSG", "class-group service changed its response identity");
+      }
+      if (expectedServiceId !== undefined && !payload.ok) {
+        const error = payload.error;
+        if (!isPlainRecord(error) ||
+            error.schema !== "sagejs.class-groups/service-response-v1" ||
+            error.outcome !== "error" || typeof error.category !== "string" ||
+            error.operation !== operation || typeof error.message !== "string" ||
+            Object.hasOwn(payload, "result")) {
+          this.retireWorker();
+          throw classGroupHostError("EBADMSG", "class-group service returned an invalid error");
+        }
+        throw classGroupHostError(error.category, error.message,
+          typeof error.name === "string" ? error.name : "ClassGroupServiceError");
+      }
     }
     if (!payload.ok) {
       const error = isPlainRecord(payload.error) ? payload.error : {};
@@ -657,11 +779,16 @@ export class NodeClassGroupBackend {
         typeof error.name === "string" ? error.name : "ClassGroupServiceError",
       );
     }
-    if (!isPlainRecord(payload.value)) {
+    const value = directPacked
+      ? payload.schema === "sagejs.class-groups/service-response-v1" &&
+        payload.abi === 1 && payload.id === expectedServiceId &&
+        !Object.hasOwn(payload, "error") && isPlainRecord(payload.result)
+        ? payload.result : undefined
+      : payload.value;
+    if (!isPlainRecord(value)) {
       this.retireWorker();
       throw classGroupHostError("EBADMSG", "class-group worker returned a non-object result");
     }
-    const value = payload.value;
     if (isPlainRecord(value.__sagejs_worker_error__)) {
       this.retireWorker();
       throw classGroupHostError("EPIPE", "class-group worker failed");
@@ -907,6 +1034,7 @@ function statValue(value: fs.BigIntStats) {
 }
 
 export class NodeHostAdapter {
+  readonly classGroupCompactTransport = true;
   private currentDirectory = process.cwd();
   private readonly environment: Record<string, string> = Object.create(null);
   private readonly multiprocessing: NodeMultiprocessingAdapter;
@@ -1373,6 +1501,21 @@ export class NodeHostAdapter {
               args[1] as Record<string, unknown>,
             ),
           };
+        case "classGroupCompact": {
+          const operation = String(args[0]);
+          if (operation !== "imaginary-class-group") {
+            throw classGroupHostError("EINVAL", "compact class-group transport requires an imaginary group");
+          }
+          if (!isPlainRecord(args[1])) {
+            throw new TypeError("class-group request must be a plain object");
+          }
+          const value = this.classGroups.call(operation, {
+            ...args[1],
+            transport: "core-v2",
+          });
+          validateImaginaryCoreMapResponse(value);
+          return { ok: true, value };
+        }
         case "multiprocessingCreatePool":
           return {
             ok: true,

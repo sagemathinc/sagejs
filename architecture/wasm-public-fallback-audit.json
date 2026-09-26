@@ -1,6 +1,6 @@
 {
   "schema": "sagejs.wasm-public-fallback-audit/v1",
-  "backend_method_count": 538,
+  "backend_method_count": 539,
   "portable_napi_capability_count": 266,
   "same_name_backend_method_count": 131,
   "absent_same_name_backend_method_count": 135,

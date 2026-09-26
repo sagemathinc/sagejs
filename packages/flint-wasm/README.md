@@ -1,5 +1,27 @@
 # Sage.js WebAssembly runtime
 
+The separate receipt-gated class-group specialist exposes unconditional,
+bounded imaginary-quadratic computations without making the evaluator's main
+memory grow. For example:
+
+```js
+import { createClassGroupCore } from "@sagemath/sagejs-flint-wasm/class-group-core";
+
+const core = await createClassGroupCore();
+try {
+  const number = await core.imaginaryClassNumber([6, -1, 1]); // D = -23, h = 3
+  const group = await core.imaginaryClassGroup([6, -1, 1]);
+  // group.invariantFactors is [3]; group.completeClassMap retains ideal representatives.
+} finally {
+  await core.close();
+}
+```
+
+Both methods require a monic polynomial of a negative fundamental
+discriminant with absolute value at most `10^7`; unsupported inputs fail with
+typed errors. Coefficients may be safe JavaScript integers, `bigint`s, or
+canonical decimal strings within the exact JSON range.
+
 This package links Sage.js-owned WebAssembly builds of FLINT, GMP, MPFR, MPC,
 M4RI, ffpoly, and smalljac into a browser-compatible Sage.js evaluator. It compiles and
 evaluates Sage source and exposes integer factorization, primality testing,

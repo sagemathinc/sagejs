@@ -26,6 +26,14 @@
       "specialist-capability"
     ],
     "test_evidence": {
+      "native-imaginary-map-differential": {
+        "differential": true,
+        "paths": [
+          "test/native-imaginary-map-kernel.cjs",
+          "test/number-field-imaginary-rust-dispatch.cjs",
+          "packages/flint-wasm/test/public-imaginary-class-group.test.mjs"
+        ]
+      },
       "rust-cubic-class-group-product": {
         "differential": true,
         "paths": [
@@ -12419,6 +12427,33 @@
         "compiled_functions": 3,
         "fallback_functions": 0,
         "total_functions": 3,
+        "production_pack": true,
+        "fallback_reasons": []
+      }
+    },
+    {
+      "id": "kernel:number-field-imaginary-map-production",
+      "kind": "production-kernel",
+      "family": "number-field-imaginary-map",
+      "source": "src/lib/sagejs/kernels/matrix/imaginary_map.py",
+      "disposition": "compiled-source",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-gmp",
+      "public_consumers": [
+        "number-field-imaginary-class-group"
+      ],
+      "tests": [
+        "native-imaginary-map-differential",
+        "production-kernel-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The receipt-authenticated production pack compiles all 1 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact.",
+      "compiled_coverage": {
+        "compiled_functions": 1,
+        "fallback_functions": 0,
+        "total_functions": 1,
         "production_pack": true,
         "fallback_reasons": []
       }

@@ -157,6 +157,54 @@ def ρσ_canonical_json_exact(source):
     })()"""
 
 
+def ρσ_plain_json_to_python(source):
+    """Convert a parsed JSON value without a second character-by-character parse.
+
+    The class-group reactor has already parsed its own JSON response. Its
+    imaginary-quadratic results contain only safe integer scalars, so reject
+    any other numeric value before constructing Python lists and dictionaries.
+    """
+    return r"""%js (() => {
+        function convert(value, depth) {
+            if (depth > 256) throw new RangeError("JSON response is too deeply nested");
+            if (value === null || typeof value === "string" ||
+                typeof value === "boolean") return value;
+            if (typeof value === "number") {
+                if (!Number.isSafeInteger(value)) {
+                    throw new RangeError("JSON response contains an inexact integer");
+                }
+                return value;
+            }
+            if (Array.isArray(value)) {
+                let allSafeIntegers = true;
+                for (let index = 0; index < value.length; index += 1) {
+                    if (typeof value[index] !== "number" ||
+                        !Number.isSafeInteger(value[index])) {
+                        allSafeIntegers = false;
+                        break;
+                    }
+                }
+                if (allSafeIntegers) return ρσ_list_decorate(value);
+                const output = new Array(value.length);
+                for (let index = 0; index < value.length; index += 1) {
+                    output[index] = convert(value[index], depth + 1);
+                }
+                return ρσ_list_decorate(output);
+            }
+            if (value !== null && typeof value === "object" &&
+                Object.getPrototypeOf(value) === Object.prototype) {
+                const output = ρσ_dict();
+                for (const [key, item] of Object.entries(value)) {
+                    ρσ_dict_storage_setitem(output, key, convert(item, depth + 1));
+                }
+                return output;
+            }
+            throw new TypeError("JSON response contains a non-JSON value");
+        }
+        return convert(source, 0);
+    })()"""
+
+
 def ρσ_output_write(text):
     return r"""%js (
         typeof globalThis.__sagejs_output_write__ === "function"

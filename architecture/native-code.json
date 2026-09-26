@@ -1732,6 +1732,62 @@
       "rationale": "Standalone native differential and allocation-lifecycle witness for the host-neutral analytic batch core; it is not linked into Sage.js."
     },
     {
+      "path": "packages/imaginary-quadratic-core/src/lib.rs",
+      "category": "host-adapter",
+      "review_status": "accepted",
+      "lane": "distribution",
+      "rationale": "Standalone crate root reuses the exact qualified imaginary-quadratic mathematical source without linking the cubic modules or their native dependencies.",
+      "rust_role": "host-adapter",
+      "qualification_status": "experimental-qualification",
+      "provenance_class": "original-sagejs",
+      "distribution_status": "review-required-before-distribution",
+      "safety_review": "not-applicable",
+      "safety_rationale": "This module declaration has no unsafe code or foreign-function ABI; the separate reactor owns its bounded ABI.",
+      "provenance_mapping_status": "not-applicable"
+    },
+    {
+      "path": "packages/imaginary-quadratic-core/src/reactor.rs",
+      "category": "public-abi",
+      "review_status": "experimental-pending-review",
+      "lane": "distribution",
+      "rationale": "Bounded owned-allocation and JSON reactor ABI for the isolated imaginary-quadratic class-group service.",
+      "rust_role": "host-adapter",
+      "qualification_status": "experimental-qualification",
+      "provenance_class": "original-sagejs",
+      "distribution_status": "review-required-before-distribution",
+      "safety_review": "pending-documentation",
+      "safety_rationale": "The safe-Rust owner table checks exact guest pointer, length, and request kind before access and bounds outstanding allocations. Forged, stale, and wrong-length pointer tests pass; independent ABI safety review remains required before distribution.",
+      "provenance_mapping_status": "not-applicable"
+    },
+    {
+      "path": "packages/imaginary-quadratic-core/src/service.rs",
+      "category": "host-adapter",
+      "review_status": "accepted",
+      "lane": "distribution",
+      "rationale": "Bounded imaginary-only service response adapter over the shared mathematical core, with no cubic operation or resident state.",
+      "rust_role": "host-adapter",
+      "qualification_status": "experimental-qualification",
+      "provenance_class": "original-sagejs",
+      "distribution_status": "review-required-before-distribution",
+      "safety_review": "not-applicable",
+      "safety_rationale": "The service parser and serializer use safe Rust and do not expose an unsafe or foreign-function boundary.",
+      "provenance_mapping_status": "not-applicable"
+    },
+    {
+      "path": "packages/imaginary-quadratic-core/tests/service_contract.rs",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "distribution",
+      "rationale": "Standalone regression harness for the isolated quadratic service's exact scalar, full-map, packed-map, and fail-closed operation contracts.",
+      "rust_role": "qualification-harness",
+      "qualification_status": "experimental-qualification",
+      "provenance_class": "original-sagejs",
+      "distribution_status": "qualification-only",
+      "safety_review": "not-applicable",
+      "safety_rationale": "The test module calls only safe public service APIs and contains no foreign-function or unsafe block.",
+      "provenance_mapping_status": "not-applicable"
+    },
+    {
       "path": "packages/graph/src/addon.c",
       "category": "host-adapter",
       "review_status": "audited",
@@ -1968,6 +2024,13 @@
       "safety_review": "not-applicable",
       "safety_rationale": "The architecture scanner finds no unsafe or Rust ABI boundary in this source; any future boundary changes this classification and fails validation.",
       "provenance_mapping_status": "not-applicable"
+    },
+    {
+      "path": "bench/pari-class-group-rust/qualification/public-quadratic-boundary/benchmark/pari_class_number.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration",
+      "rationale": "Qualification-only PARI 2.17.4 qfbclassno(D,0) timing control for the frozen imaginary-quadratic panel. It is compiled into a disposable oracle process and is never linked into or shipped with Sage.js."
     },
     {
       "path": "bench/pari-class-group-rust/qualification/public-quadratic-boundary/src/bin/benchmark_public.rs",
@@ -3157,6 +3220,20 @@
       "provenance_mapping_status": "not-applicable"
     },
     {
+      "path": "packages/class-groups/src/imaginary.rs",
+      "category": "mathematical-algorithm",
+      "review_status": "accepted",
+      "lane": "distribution",
+      "rationale": "First-party exact imaginary-quadratic reduced-form enumeration, composition, class-group structure, and detached certificate verification transferred from the 3,357-field qualified prototype. Bounded negative fundamental discriminants only; production dispatch and Wasm release receipts remain separate gates.",
+      "rust_role": "mathematical-core",
+      "qualification_status": "experimental-qualification",
+      "provenance_class": "original-sagejs",
+      "distribution_status": "review-required-before-distribution",
+      "safety_review": "not-applicable",
+      "safety_rationale": "The architecture scanner finds no unsafe or Rust ABI boundary in this source; any future boundary changes this classification and fails validation.",
+      "provenance_mapping_status": "not-applicable"
+    },
+    {
       "path": "packages/class-groups/src/ideal_arithmetic.rs",
       "category": "mathematical-algorithm",
       "review_status": "accepted",
@@ -3311,7 +3388,7 @@
       "safety_rationale": "Pointer and allocation preconditions are documented at every exported boundary and covered by the exact safety audit receipt.",
       "safety_receipt": {
         "path": "packages/class-groups/safety-audit-receipt.json",
-        "sha256": "a4b9be514a1d9434bf028ae978b61aee64c5e4f56d478792dcefdda6e2826fe3"
+        "sha256": "09134ca914238e171d048839aaa4c28c5cbf3a1ef59f065fe9c0313f533c6470"
       },
       "provenance_mapping_status": "not-applicable"
     },

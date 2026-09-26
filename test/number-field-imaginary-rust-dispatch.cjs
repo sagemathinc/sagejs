@@ -1,0 +1,460 @@
+// sagejs-test-tier: integration
+"use strict";
+
+const assert = require("node:assert/strict");
+const test = require("node:test");
+const { createSage } = require("../dist/tools/kernel.js");
+
+async function evaluate(lines) {
+  const sage = await createSage();
+  try {
+    return await sage.evaluate(lines.join("\n"));
+  } finally {
+    await sage.close();
+  }
+}
+
+const fixture = [
+  "import sagejs.runtime as runtime",
+  "from sagejs.number_fields import rust_class_group_runtime as rust_runtime",
+  "R.<x> = QQ[]",
+  "K.<a> = NumberField(x^2 + 23)",
+  "forms = [{'a': 1, 'b': 1, 'c': 6}, {'a': 2, 'b': -1, 'c': 3}, {'a': 2, 'b': 1, 'c': 3}]",
+  "def ideal(form):",
+  "    return {'basisColumns': [[form['a'], 0], [(-1 - form['b']) // 2, 1]], 'norm': form['a']}",
+  "result = {'schema': rust_runtime.IMAGINARY_GROUP_SCHEMA, 'fieldId': 'public-coefficient-input',",
+  "    'polynomialAscending': [6, -1, 1], 'discriminant': -23, 'classNumber': 3,",
+  "    'invariantFactors': [3], 'generators': [{'form': forms[1], 'coordinates': [1],",
+  "    'exactOrder': 3, 'representativeIdeal': ideal(forms[1])}],",
+  "    'completeClassMap': [{'form': form, 'inverseForm': forms[0] if i == 0 else forms[3-i],",
+  "    'coordinates': [i], 'representativeIdeal': ideal(form)} for i, form in enumerate(forms)],",
+  "    'certificate': {'discriminant': -23, 'reducedForms': forms},",
+  "    'proofStatus': 'unconditional-complete', 'runtimeUsesPariOrFixtureAnswers': False}",
+  "class Backend:",
+  "    def call(self, operation, request):",
+  "        if operation == 'capability':",
+  "            return {'schema': rust_runtime.HOST_RESPONSE_SCHEMA, 'outcome': 'available',",
+  "                'artifactSha256': 'a' * 64, 'imaginaryQuadratic': {'proofMode': 'unconditional',",
+  "                'maximumAbsoluteDiscriminant': 10000000,",
+  "                'operations': ['imaginary-class-number', 'imaginary-class-group']}}",
+  "        assert request['polynomialAscending'] == ['6', '-1', '1']",
+  "        return {'schema': rust_runtime.HOST_RESPONSE_SCHEMA, 'outcome': 'complete',",
+  "            'operation': operation, 'result': result if operation == 'imaginary-class-group'",
+  "            else {'discriminant': -23, 'classNumber': 3, 'proofStatus': 'unconditional-complete'}}",
+  "backend = Backend()",
+  "setattr(runtime, 'class_group_backend', lambda: backend)",
+];
+
+test("parsed numeric service arrays remain exact Python lists without copying", async () => {
+  const answer = await evaluate([
+    "import sagejs.runtime as runtime",
+    "wire = runtime.json.parse('{\"packed\":[1,-2,3],\"mixed\":[1,\"x\",null],\"nested\":[[4,5],[6,7]]}')",
+    "convert = runtime.reflect.get(runtime.global_object, 'ρσ_plain_json_to_python')",
+    "result = runtime.reflect.apply(convert, runtime.undefined, [wire])",
+    "[isinstance(result['packed'], list), result['packed'] == [1, -2, 3],",
+    " result['mixed'] == [1, 'x', None], result['nested'] == [[4, 5], [6, 7]]]",
+  ]);
+  assert.equal(answer.repr, "[True, True, True, True]");
+});
+
+test("compiled imaginary-map packing preserves signed-64-bit word boundaries", async () => {
+  const answer = await evaluate([
+    "import sagejs.runtime as runtime",
+    "from sagejs.kernels.matrix.imaginary_map import verify_packed_imaginary_map",
+    "pack = getattr(verify_packed_imaginary_map, 'packExactInt64Buffer')",
+    "numbers = runtime.json.parse('[-9007199254740991,-4294967297,-4294967296,-1,0,1,4294967296,4294967297,9007199254740991]')",
+    "expected = [-9007199254740991,-4294967297,-4294967296,-1,0,1,4294967296,4294967297,9007199254740991]",
+    "boundary = list(pack(numbers)) == expected",
+    "bigints = list(pack([-(1 << 63), (1 << 63) - 1])) == [-(1 << 63), (1 << 63) - 1]",
+    "rejections = []",
+    "for bad in (True, '1', 1.5, 1 << 63, -(1 << 63) - 1):",
+    "    try:",
+    "        pack([bad])",
+    "        rejections.append(False)",
+    "    except TypeError:",
+    "        rejections.append(True)",
+    "[boundary, bigints, all(rejections)]",
+  ]);
+  assert.equal(answer.repr, "[True, True, True]");
+});
+
+test("explicit Rust quadratic class group retains exact form coordinates and ideals", async () => {
+  const answer = await evaluate([
+    ...fixture,
+    "G = K.class_group(algorithm='rust')",
+    "H = K.class_number(algorithm='rust')",
+    "[(H, G.order(), tuple(G.invariants()), G.algorithm, G.proof_status),",
+    " tuple(G.gen().coordinates()), tuple((G.gen()^2).coordinates()),",
+    " G.gen().ideal().norm(), G(G.gen().ideal()).coordinates()]",
+  ]);
+  assert.equal(
+    answer.repr,
+    "[(3, 3, (3,), 'rust', 'exact-unconditional'), (1,), (2,), 2, (1,)]",
+  );
+});
+
+test("automatic imaginary quadratic dispatch uses the unconditional Rust service", async () => {
+  const answer = await evaluate([
+    ...fixture,
+    "G = K.class_group()",
+    "[K.class_number(), G.order(), G.invariants(), G.algorithm,",
+    " G.proof_status, G(G.gen().ideal()).coordinates()]",
+  ]);
+  assert.equal(answer.repr, "[3, 3, (3,), 'rust', 'exact-unconditional', (1,)]");
+});
+
+test("automatic imaginary quadratic class groups reuse the validated map", async () => {
+  const answer = await evaluate([
+    ...fixture,
+    "class CountingBackend(Backend):",
+    "    calls = 0",
+    "    def call(self, operation, request):",
+    "        if operation == 'imaginary-class-group':",
+    "            self.calls += 1",
+    "        return super().call(operation, request)",
+    "counting = CountingBackend()",
+    "setattr(runtime, 'class_group_backend', lambda: counting)",
+    "first = K.class_group()",
+    "second = K.class_group()",
+    "[first is second, counting.calls, second.gen().coordinates()]",
+  ]);
+  assert.equal(answer.repr, "[True, 1, (1,)]");
+});
+
+test("automatic imaginary quadratic scalars reuse unconditional results", async () => {
+  const answer = await evaluate([
+    ...fixture,
+    "class CountingBackend(Backend):",
+    "    group_calls = 0",
+    "    scalar_calls = 0",
+    "    def call(self, operation, request):",
+    "        if operation == 'imaginary-class-group':",
+    "            self.group_calls += 1",
+    "        if operation == 'imaginary-class-number':",
+    "            self.scalar_calls += 1",
+    "        return super().call(operation, request)",
+    "counting = CountingBackend()",
+    "setattr(runtime, 'class_group_backend', lambda: counting)",
+    "first = K.class_number()",
+    "second = K.class_number()",
+    "group = K.class_group()",
+    "third = K.class_number()",
+    "fresh = K.class_number(algorithm='rust')",
+    "Q = QuadraticField(-23)",
+    "direct_first = Q.class_group()",
+    "direct_second = Q.class_group()",
+    "direct_scalar = Q.class_number()",
+    "direct_fresh = Q.class_number(algorithm='rust')",
+    "[(first, second, third, fresh, counting.scalar_calls, counting.group_calls),",
+    " (direct_first is direct_second, direct_scalar, direct_fresh)]",
+  ]);
+  assert.equal(answer.repr, "[(3, 3, 3, 3, 3, 2), (True, 3, 3)]");
+});
+
+test("automatic imaginary quadratic dispatch falls back only on a pre-publication decline", async () => {
+  const answer = await evaluate([
+    ...fixture,
+    "class DecliningBackend(Backend):",
+    "    def call(self, operation, request):",
+    "        if operation == 'capability':",
+    "            return {'schema': rust_runtime.HOST_RESPONSE_SCHEMA, 'outcome': 'available',",
+    "                'artifactSha256': 'a' * 64}",
+    "        raise AssertionError('declined backend must not compute')",
+    "setattr(runtime, 'class_group_backend', lambda: DecliningBackend())",
+    "G = K.class_group()",
+    "[K.class_number(), G.order(), G.proof_status]",
+  ]);
+  assert.equal(answer.repr, "[3, 3, 'exact-unconditional']");
+});
+
+test("automatic imaginary quadratic dispatch honors the service resource cap", async () => {
+  const answer = await evaluate([
+    ...fixture,
+    "class ExhaustedBackend(Backend):",
+    "    def call(self, operation, request):",
+    "        if operation == 'capability':",
+    "            return super().call(operation, request)",
+    "        return {'schema': rust_runtime.HOST_RESPONSE_SCHEMA, 'outcome': 'error',",
+    "            'category': 'resource-exhausted', 'message': 'reduced-form cap'}",
+    "setattr(runtime, 'class_group_backend', lambda: ExhaustedBackend())",
+    "G = K.class_group()",
+    "[G.order(), G.proof_status]",
+  ]);
+  assert.equal(answer.repr, "[3, 'exact-unconditional']");
+});
+
+test("automatic imaginary quadratic dispatch does not hide a forged published map", async () => {
+  const answer = await evaluate([
+    ...fixture,
+    "result['completeClassMap'][1]['coordinates'] = [0]",
+    "try:",
+    "    K.class_group()",
+    "except rust_runtime.RustClassGroupPublicationError:",
+    "    answer = True",
+    "answer",
+  ]);
+  assert.equal(answer.repr, "True");
+});
+
+test("Rust quadratic dispatch rejects a forged map without falling back", async () => {
+  const answer = await evaluate([
+    ...fixture,
+    "result['completeClassMap'][1]['coordinates'] = [0]",
+    "try:",
+    "    K.class_group(algorithm='rust')",
+    "except rust_runtime.RustClassGroupPublicationError:",
+    "    answer = True",
+    "answer",
+  ]);
+  assert.equal(answer.repr, "True");
+});
+
+test("Rust quadratic dispatch rejects a forged generator ideal", async () => {
+  const answer = await evaluate([
+    ...fixture,
+    "result['generators'][0]['representativeIdeal']['norm'] = 1",
+    "try:",
+    "    K.class_group(algorithm='rust')",
+    "except rust_runtime.RustClassGroupPublicationError:",
+    "    answer = True",
+    "answer",
+  ]);
+  assert.equal(answer.repr, "True");
+});
+
+test("quadratic map validation rejects extra certificate, inverse, and ideal data", async () => {
+  const answer = await evaluate([
+    ...fixture,
+    "def rejects_map():",
+    "    try:",
+    "        rust_runtime.validate_imaginary_group_result(result, -23)",
+    "    except rust_runtime.RustClassGroupPublicationError:",
+    "        return True",
+    "    return False",
+    "original_certificate = result['certificate']['reducedForms'][1]",
+    "result['certificate']['reducedForms'][1] = dict(original_certificate, extra=1)",
+    "bad_certificate = rejects_map()",
+    "result['certificate']['reducedForms'][1] = original_certificate",
+    "original_inverse = result['completeClassMap'][1]['inverseForm']",
+    "result['completeClassMap'][1]['inverseForm'] = dict(original_inverse, extra=1)",
+    "bad_inverse = rejects_map()",
+    "result['completeClassMap'][1]['inverseForm'] = original_inverse",
+    "result['completeClassMap'][1]['representativeIdeal']['basisColumns'][1][0] += 1",
+    "bad_ideal = rejects_map()",
+    "[bad_certificate, bad_inverse, bad_ideal]",
+  ]);
+  assert.equal(answer.repr, "[True, True, True]");
+});
+
+test("packed resident map validation retains exact forms, ideals, and rejection", async () => {
+  const answer = await evaluate([
+    ...fixture,
+    "packed = dict(result)",
+    "entries = packed.pop('completeClassMap')",
+    "flat = []",
+    "for entry in entries:",
+    "    form, inverse, ideal_data = entry['form'], entry['inverseForm'], entry['representativeIdeal']",
+    "    flat.extend([form['a'], form['b'], form['c'], inverse['a'], inverse['b'], inverse['c'],",
+    "        ideal_data['norm'], *ideal_data['basisColumns'][0],",
+    "        *ideal_data['basisColumns'][1], *entry['coordinates']])",
+    "packed['completeClassMapPacked'] = flat",
+    "packed['completeClassMapLength'] = len(entries)",
+    "packed['certificate'] = dict(result['certificate'])",
+    "packed['certificate']['reducedFormsPacked'] = [value for form in forms for value in (form['a'], form['b'], form['c'])]",
+    "del packed['certificate']['reducedForms']",
+    "forms1, coordinates1, generators1 = rust_runtime.validate_imaginary_group_result(result, -23)",
+    "forms2, coordinates2, generators2 = rust_runtime.validate_imaginary_group_result(packed, -23)",
+    "compact_forms, compact_coordinates, compact_generators = rust_runtime.validate_imaginary_group_result(packed, -23, compact=True)",
+    "compact_exact = (len(compact_forms) == 3 and list(compact_forms) == forms1",
+    "    and len(compact_coordinates) == 3 and compact_coordinates.get('2,-1,3') == coordinates1['2,-1,3']",
+    "    and compact_coordinates.get('02,-1,3') is None and '2,-1,3' in compact_coordinates",
+    "    and '2,0,3' not in compact_coordinates and compact_generators == generators1)",
+    "try:",
+    "    packed['completeClassMapPacked'][23] = 99",
+    "except TypeError:",
+    "    compact_immutable = True",
+    "else:",
+    "    compact_immutable = False",
+    "packed['completeClassMapPacked'] = list(packed['completeClassMapPacked'])",
+    "packed['completeClassMapPacked'][23] = 99",
+    "compact_immutable = compact_immutable and compact_coordinates.get('2,-1,3') == coordinates1['2,-1,3']",
+    "packed['completeClassMapPacked'][23] = 1",
+    "packed['certificate']['reducedFormsPacked'][3] = True",
+    "try:",
+    "    rust_runtime.validate_imaginary_group_result(packed, -23)",
+    "except rust_runtime.RustClassGroupPublicationError:",
+    "    rejects_certificate = True",
+    "packed['certificate']['reducedFormsPacked'][3] = 2",
+    "packed['completeClassMapPacked'][4] = 0",
+    "try:",
+    "    rust_runtime.validate_imaginary_group_result(packed, -23)",
+    "except rust_runtime.RustClassGroupPublicationError:",
+    "    rejects_inverse = True",
+    "packed['completeClassMapPacked'][4] = 1",
+    "malformed_rows = []",
+    "for malformed in (True, '1', float(1), 1 << 63):",
+    "    packed['completeClassMapPacked'][4] = malformed",
+    "    try:",
+    "        rust_runtime.validate_imaginary_group_result(packed, -23)",
+    "        malformed_rows.append(False)",
+    "    except rust_runtime.RustClassGroupPublicationError:",
+    "        malformed_rows.append(True)",
+    "packed['completeClassMapPacked'][4] = 1",
+    "result = packed",
+    "group = K.class_group(algorithm='rust')",
+    "lazy_forms = not hasattr(group._group, '_forms')",
+    "all_forms = len(list(group)) == 3 and hasattr(group._group, '_forms')",
+    "packed_before_access = 'reducedFormsPacked' in group._group._certificate",
+    "certificate = group.certificate",
+    "ordinary_certificate = len(certificate['reducedForms']) == 3 and certificate['reducedForms'][1]['a'] == 2 and 'reducedFormsPacked' not in certificate",
+    "[forms1 == forms2, coordinates1 == coordinates2, generators1 == generators2, compact_exact, compact_immutable, lazy_forms, all_forms, rejects_certificate, rejects_inverse, all(malformed_rows), packed_before_access, ordinary_certificate]",
+  ]);
+  assert.equal(answer.repr, "[True, True, True, True, True, True, True, True, True, True, True, True]");
+});
+
+test("core resident map preserves exact ideals with native and Python verification", async () => {
+  const answer = await evaluate([
+    ...fixture,
+    "core = dict(result)",
+    "entries = core.pop('completeClassMap')",
+    "core['completeClassMapCorePacked'] = [value for entry in entries",
+    "    for value in (entry['form']['a'], entry['form']['b'], *entry['coordinates'])]",
+    "core['completeClassMapLength'] = len(entries)",
+    "core['certificate'] = {'discriminant': -23,",
+    "    'reducedFormsPacked': [value for form in forms for value in (form['a'], form['b'], form['c'])]}",
+    "ordinary_forms, ordinary_coordinates, generators = rust_runtime.validate_imaginary_group_result(result, -23)",
+    "native_forms, native_coordinates, native_generators = rust_runtime.validate_imaginary_group_result(core, -23, compact=True)",
+    "native_ok = list(native_forms) == ordinary_forms and len(native_coordinates) == 3",
+    "native_ok = native_ok and native_coordinates.get('2,-1,3') == ordinary_coordinates['2,-1,3']",
+    "native_ok = native_ok and native_coordinates.get('02,-1,3') is None and native_generators == generators",
+    "original_verifier = rust_runtime.validate_packed_imaginary_map",
+    "rust_runtime.validate_packed_imaginary_map = lambda *args: None",
+    "try:",
+    "    fallback_forms, fallback_coordinates, fallback_generators = rust_runtime.validate_imaginary_group_result(core, -23)",
+    "finally:",
+    "    rust_runtime.validate_packed_imaginary_map = original_verifier",
+    "fallback_ok = fallback_forms == ordinary_forms and fallback_coordinates == ordinary_coordinates and fallback_generators == generators",
+    "try:",
+    "    core['completeClassMapCorePacked'][5] = 0",
+    "except TypeError:",
+    "    core_immutable = True",
+    "else:",
+    "    core_immutable = False",
+    "core['completeClassMapCorePacked'] = list(core['completeClassMapCorePacked'])",
+    "core['completeClassMapCorePacked'][5] = 0",
+    "try:",
+    "    rust_runtime.validate_imaginary_group_result(core, -23)",
+    "except rust_runtime.RustClassGroupPublicationError:",
+    "    rejects_duplicate = True",
+    "core['completeClassMapCorePacked'][5] = 1",
+    "result = core",
+    "group = K.class_group(algorithm='rust')",
+    "ideal_ok = group(group.gen().ideal()).coordinates() == (1,) and group.order() == 3",
+    "[native_ok, fallback_ok, core_immutable, rejects_duplicate, ideal_ok]",
+  ]);
+  assert.equal(answer.repr, "[True, True, True, True, True]");
+});
+
+test("advertised compact transport is requested without losing exact ideal maps", async () => {
+  const answer = await evaluate([
+    ...fixture,
+    "core = dict(result)",
+    "entries = core.pop('completeClassMap')",
+    "core['completeClassMapCorePacked'] = [value for entry in entries",
+    "    for value in (entry['form']['a'], entry['form']['b'], *entry['coordinates'])]",
+    "core['completeClassMapLength'] = len(entries)",
+    "core['certificate'] = {'discriminant': -23,",
+    "    'reducedFormsPacked': [value for form in forms for value in (form['a'], form['b'], form['c'])]}",
+    "class CompactBackend(Backend):",
+    "    requested_transport = None",
+    "    def call(self, operation, request):",
+    "        if operation == 'capability':",
+    "            answer = super().call(operation, request)",
+    "            answer['imaginaryQuadratic']['transports'] = ['core-v2']",
+    "            return answer",
+    "        if operation == 'imaginary-class-group':",
+    "            self.requested_transport = request.get('transport')",
+    "            assert self.requested_transport == 'core-v2'",
+    "            return {'schema': rust_runtime.HOST_RESPONSE_SCHEMA, 'outcome': 'complete',",
+    "                'operation': operation, 'result': core}",
+    "        return super().call(operation, request)",
+    "compact_backend = CompactBackend()",
+    "setattr(runtime, 'class_group_backend', lambda: compact_backend)",
+    "G = K.class_group(algorithm='rust')",
+    "[compact_backend.requested_transport, G.order(), G(G.gen().ideal()).coordinates()]",
+  ]);
+  assert.equal(answer.repr, "['core-v2', 3, (1,)]");
+});
+
+test("QuadraticField and its maximal order expose the explicit Rust route", async () => {
+  const answer = await evaluate([
+    ...fixture,
+    "Q = QuadraticField(-23)",
+    "O = Q.ring_of_integers()",
+    "[(Q.class_number(algorithm='rust'), Q.class_group(algorithm='rust').invariants()),",
+    " (O.class_number(algorithm='rust'), O.class_group(algorithm='rust').gen().coordinates())]",
+  ]);
+  assert.equal(answer.repr, "[(3, (3,)), (3, (1,))]");
+});
+
+test("the native service maps public ideals to unconditional coordinates", {
+  skip: !process.env.SAGEJS_CLASS_GROUP_SERVICE,
+}, async () => {
+  const answer = await evaluate([
+    "R.<x> = QQ[]",
+    "K.<a> = NumberField(x^2 + 23)",
+    "G = K.class_group(algorithm='rust')",
+    "[G.order(), G.invariants(), G.gen().coordinates(),",
+    " G(G.gen().ideal()).coordinates(), K.class_number(algorithm='rust')]",
+  ]);
+  assert.equal(answer.repr, "[3, (3,), (1,), (1,), 3]");
+});
+
+test("the resident imaginary service checks capability without the generic JSON adapter", {
+  skip: !process.env.SAGEJS_CLASS_GROUP_SERVICE,
+}, async () => {
+  const answer = await evaluate([
+    "import sagejs.runtime as runtime",
+    "backend = runtime.class_group_backend()",
+    "original_call = backend.call",
+    "def reject_generic_capability(operation, request):",
+    "    if operation == 'capability':",
+    "        raise AssertionError('resident capability used the generic JSON adapter')",
+    "    return original_call(operation, request)",
+    "backend.call = reject_generic_capability",
+    "R.<x> = QQ[]",
+    "K.<a> = NumberField(x^2 + 23)",
+    "[K.class_number(algorithm='rust'), K.class_group(algorithm='rust').invariants()]",
+  ]);
+  assert.equal(answer.repr, "[3, (3,)]");
+});
+
+test("the native service publishes a noncyclic group with exact ideal-class coordinates", {
+  skip: !process.env.SAGEJS_CLASS_GROUP_SERVICE,
+}, async () => {
+  const answer = await evaluate([
+    "R.<x> = QQ[]",
+    "K.<a> = NumberField(x^2 + 21)",
+    "G = K.class_group(algorithm='rust')",
+    "generators = G.gens()",
+    "[G.order(), G.invariants(), G.proof_status,",
+    " tuple(sorted(G(generator.ideal()).coordinates() for generator in generators)),",
+    " G(generators[0].ideal() * generators[1].ideal()).coordinates(),",
+    " len(set(element.coordinates() for element in G))]",
+  ]);
+  assert.equal(
+    answer.repr,
+    "[4, (2, 2), 'exact-unconditional', ((0, 1), (1, 0)), (1, 1), 4]",
+  );
+});
+
+test("the native host advertises the product bound above the old ten-million cap", {
+  skip: !process.env.SAGEJS_CLASS_GROUP_SERVICE,
+}, async () => {
+  const answer = await evaluate([
+    "R.<x> = QQ[]",
+    "K.<a> = NumberField(x^2 - x + 3750000079)",
+    "[K.discriminant(), K.class_number(algorithm='rust'), K.class_number()]",
+  ]);
+  assert.equal(answer.repr, "[-15000000315, 33768, 33768]");
+});

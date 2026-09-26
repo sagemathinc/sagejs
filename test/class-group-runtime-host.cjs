@@ -13,9 +13,11 @@ const {
   installNodeHost,
 } = require("../dist/tools/host.js");
 
-function fakeService(directory, corrupt = false) {
-  const filename = path.join(directory, corrupt ? "corrupt-service" : "class-group-service");
-  const startup = path.join(directory, corrupt ? "corrupt-started" : "started");
+function fakeService(directory, corrupt = false, wrongId = false, declined = false, badCore = false) {
+  const fixtureName = corrupt ? "corrupt" : wrongId ? "wrong-id" : declined ? "declined" :
+    badCore ? "bad-core" : "normal";
+  const filename = path.join(directory, fixtureName + "-service");
+  const startup = path.join(directory, fixtureName + "-started");
   const source = `#!/usr/bin/env node
 "use strict";
 const fs = require("node:fs");
@@ -31,9 +33,40 @@ lines.on("line", (input) => {
     process.stdout.write(JSON.stringify({ schema: "wrong", abi: 1, id: request.id, ok: true, result: {} }) + "\\n");
     return;
   }
+  if (request.operation === "imaginary-class-group" && ${JSON.stringify(wrongId)}) {
+    process.stdout.write(JSON.stringify({ schema: "sagejs.class-groups/service-response-v1", abi: 1,
+      id: "wrong-host-id", ok: true, result: {} }) + "\\n");
+    return;
+  }
+  if (request.operation === "imaginary-class-group" && ${JSON.stringify(declined)}) {
+    process.stdout.write(JSON.stringify({ schema: "sagejs.class-groups/service-response-v1", abi: 1,
+      id: request.id, ok: false, error: { schema: "sagejs.class-groups/service-response-v1",
+      outcome: "error", category: "capability-declined", operation: request.operation,
+      message: "fixture packed decline" } }) + "\\n");
+    return;
+  }
   let result;
   if (request.operation === "open") {
     result = { generation, handle: "1", completion: { outcome: "complete-conditional-grh" }, servicePid: process.pid };
+  } else if (request.operation === "imaginary-class-number") {
+    result = { schema: "sagejs.class-groups/service-response-v1", outcome: "complete",
+      operation: request.operation, result: { discriminant: -23, classNumber: 3,
+        proofStatus: "unconditional-complete" }, servicePid: process.pid };
+  } else if (request.operation === "imaginary-class-group") {
+    const form = { a: 1, b: 1, c: 1 };
+    result = { schema: "sagejs.class-groups/service-response-v1", outcome: "complete",
+      operation: request.operation, result: { discriminant: -3, classNumber: 1, invariantFactors: [],
+        completeClassMap: [{ form, inverseForm: form, coordinates: [],
+          representativeIdeal: { norm: 1, basisColumns: [[1, 0], [-1, 1]] } }],
+        certificate: { discriminant: -3, reducedForms: [form] } },
+      servicePid: process.pid };
+    if (request.transport === "core-v2") {
+      result.result.completeClassMapCorePacked = ${JSON.stringify(badCore)} ? [0, 1] : [1, 1];
+      result.result.completeClassMapLength = 1;
+      delete result.result.completeClassMap;
+      result.result.certificate.reducedFormsPacked = [1, 1, 1];
+      delete result.result.certificate.reducedForms;
+    }
   } else if (request.generation !== generation || request.handle !== "1") {
     process.stdout.write(JSON.stringify({ schema: "sagejs.class-groups/service-response-v1", abi: 1, id: request.id, ok: false, error: { schema: "sagejs.class-groups/service-response-v1", outcome: "error", category: "stale-handle", operation: request.operation, message: "stale fixture handle" } }) + "\\n");
     return;
@@ -109,12 +142,41 @@ async function main() {
       mathematicalScope: "absolute-monic-cubic-conditional-grh",
       maximumResidentSessions: 4,
       proofModes: ["conditional-grh"],
-      operations: ["capability", "open", "summary", "query", "publication", "close"],
+      imaginaryQuadratic: {
+        proofMode: "unconditional",
+        maximumAbsoluteDiscriminant: 200_000_000_000,
+        operations: ["imaginary-class-number", "imaginary-class-group"],
+      },
+      operations: ["capability", "open", "summary", "publication", "query", "close",
+        "imaginary-class-number", "imaginary-class-group"],
       route: "native-resident-worker",
       artifactSha256: crypto.createHash("sha256").update(fs.readFileSync(fixture.filename)).digest("hex"),
       artifactBytes: fs.statSync(fixture.filename).size,
     });
     assert.equal(fs.existsSync(fixture.startup), false, "capability probe must stay lazy");
+
+    const imaginary = backend.call("imaginary-class-number", {
+      polynomialAscending: ["6", "-1", "1"],
+    });
+    assert.equal(imaginary.result.classNumber, 3);
+    assert.equal(fs.existsSync(fixture.startup), true);
+
+    const groupRequest = ["imaginary-class-group", { polynomialAscending: ["1", "-1", "1"] }];
+    const malformedCompact = host.call("classGroupCompact", ["imaginary-class-group", null]);
+    assert.equal(malformedCompact.ok, false);
+    assert.equal(malformedCompact.error.name, "TypeError");
+    const fullGroup = host.call("classGroup", groupRequest);
+    const compactGroup = host.call("classGroupCompact", groupRequest);
+    assert.equal(fullGroup.ok, true);
+    assert.equal(compactGroup.ok, true);
+    assert.equal(fullGroup.value.result.completeClassMap.length, 1);
+    assert.deepEqual(fullGroup.value.result.certificate.reducedForms, [{ a: 1, b: 1, c: 1 }]);
+    assert.equal(compactGroup.value.result.completeClassMap, undefined);
+    assert.deepEqual(compactGroup.value.result.completeClassMapCorePacked, [1, 1]);
+    assert.equal(compactGroup.value.result.completeClassMapPacked, undefined);
+    assert.equal(compactGroup.value.result.completeClassMapLength, 1);
+    assert.equal(compactGroup.value.result.certificate.reducedForms, undefined);
+    assert.deepEqual(compactGroup.value.result.certificate.reducedFormsPacked, [1, 1, 1]);
 
     const opened = backend.call("open", { request: { polynomialAscending: ["-1", "-1", "0", "1"] } });
     assert.match(opened.generation, /^[0-9]+$/);
@@ -189,8 +251,49 @@ async function main() {
       () => corrupt.call("open", { request: {} }),
       (error) => error.code === "EBADMSG",
     );
+    assert.throws(
+      () => corrupt.call("imaginary-class-group", {
+        polynomialAscending: ["1", "-1", "1"], transport: "core-v2",
+      }),
+      (error) => error.code === "EBADMSG",
+    );
     corrupt.close();
     await assertProcessExited(Number(fs.readFileSync(corruptFixture.startup, "utf8")));
+
+    const wrongIdFixture = fakeService(directory, false, true);
+    process.env.SAGEJS_CLASS_GROUP_SERVICE = wrongIdFixture.filename;
+    const wrongIdBackend = new NodeClassGroupBackend();
+    assert.throws(
+      () => wrongIdBackend.call("imaginary-class-group", {
+        polynomialAscending: ["1", "-1", "1"], transport: "core-v2",
+      }),
+      (error) => error.code === "EBADMSG",
+    );
+    wrongIdBackend.close();
+    await assertProcessExited(Number(fs.readFileSync(wrongIdFixture.startup, "utf8")));
+
+    const declinedFixture = fakeService(directory, false, false, true);
+    process.env.SAGEJS_CLASS_GROUP_SERVICE = declinedFixture.filename;
+    const declinedBackend = new NodeClassGroupBackend();
+    assert.throws(
+      () => declinedBackend.call("imaginary-class-group", {
+        polynomialAscending: ["1", "-1", "1"], transport: "core-v2",
+      }),
+      (error) => error.code === "capability-declined" &&
+        error.message === "fixture packed decline",
+    );
+    declinedBackend.close();
+    await assertProcessExited(Number(fs.readFileSync(declinedFixture.startup, "utf8")));
+
+    const badCoreFixture = fakeService(directory, false, false, false, true);
+    process.env.SAGEJS_CLASS_GROUP_SERVICE = badCoreFixture.filename;
+    const badCoreTarget = {};
+    const uninstallBadCore = installNodeHost(badCoreTarget);
+    const badCoreResponse = badCoreTarget.__sagejs_host__.call("classGroupCompact", groupRequest);
+    assert.equal(badCoreResponse.ok, false);
+    assert.equal(badCoreResponse.error.code, "EBADMSG");
+    uninstallBadCore();
+    await assertProcessExited(Number(fs.readFileSync(badCoreFixture.startup, "utf8")));
 
     process.env.SAGEJS_CLASS_GROUP_SERVICE = path.join(directory, "missing");
     const unavailable = new NodeClassGroupBackend();

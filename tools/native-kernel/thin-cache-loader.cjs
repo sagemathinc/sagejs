@@ -91,6 +91,36 @@ function createInt64Buffer(source) {
   return BigInt64Array.from(source, BigInt);
 }
 
+function packExactInt64Buffer(source) {
+  if (!Array.isArray(source)) throw new TypeError("expected a flat exact-integer list");
+  const result = new BigInt64Array(source.length);
+  const words = new Uint32Array(result.buffer, result.byteOffset, result.length * 2);
+  const lowWord = new Uint8Array(new Uint32Array([1]).buffer)[0] === 1 ? 0 : 1;
+  const lower = -(1n << 63n);
+  const upper = 1n << 63n;
+  for (let index = 0; index < source.length; index += 1) {
+    const value = source[index];
+    if (typeof value === "number") {
+      if (!Number.isSafeInteger(value)) {
+        throw new TypeError("expected an exact safe integer");
+      }
+      // A safe Number has an exact signed-64-bit representation. Write its
+      // two's-complement words without allocating one BigInt per map entry.
+      words[2 * index + lowWord] = value >>> 0;
+      words[2 * index + 1 - lowWord] =
+        Math.floor(value / 0x100000000) >>> 0;
+    } else if (typeof value === "bigint") {
+      if (value < lower || value >= upper) {
+        throw new TypeError("exact integer is outside signed 64-bit range");
+      }
+      result[index] = value;
+    } else {
+      throw new TypeError("expected an exact integer");
+    }
+  }
+  return result;
+}
+
 function createFloat64Buffer(source) {
   if (Number.isSafeInteger(source) && source >= 0) return new Float64Array(source);
   return Float64Array.from(source, Number);
@@ -205,6 +235,7 @@ function loadThinCachedKernel(options) {
   invoke.gmp = invoke;
   invoke.createIntegerBuffer = createIntegerBuffer;
   invoke.createInt64Buffer = createInt64Buffer;
+  invoke.packExactInt64Buffer = packExactInt64Buffer;
   invoke.createFloat64Buffer = createFloat64Buffer;
   invoke.nativeAvailable = true;
   invoke.executionMode = "native-thin-cache";
@@ -222,6 +253,7 @@ function loadThinCachedKernel(options) {
 module.exports = {
   createFloat64Buffer,
   createInt64Buffer,
+  packExactInt64Buffer,
   createIntegerBuffer,
   loadThinCachedKernel,
   sha256File,

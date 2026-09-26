@@ -55,6 +55,9 @@ globalThis.fetch = async (input, init = {}) => {
 globalThis.postMessage = (data, transfer = []) => {
   parentPort.postMessage(data, transfer);
 };
+globalThis.close = () => {
+  parentPort.close();
+};
 
 let imported = false;
 const pending = [];
