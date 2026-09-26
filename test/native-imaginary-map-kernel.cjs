@@ -18,6 +18,7 @@ const rows = [
 ];
 const certificate = [1, 1, 6, 2, -1, 3, 2, 1, 3];
 const invariants = [3];
+const coreRows = [1, 1, 0, 2, -1, 1, 2, 1, 2];
 
 function check(module, implementation, input) {
   const packed = (values) => module.verify_packed_imaginary_map.packExactInt64Buffer(values);
@@ -68,6 +69,12 @@ test("native imaginary map verifier agrees with CPython and emitted JavaScript",
       [{ ...pristine, certificate: certificate.map((value, index) => index === 4 ? 1 : value) }, 1],
       [{ ...pristine, invariants: [4] }, 1],
       [{ ...pristine, linear: 0 }, 1],
+      [{ ...pristine, rows: coreRows }, 0],
+      [{ ...pristine, rows: coreRows.map((value, index) => index === 4 ? 0 : value) }, 1],
+      [{ ...pristine, rows: coreRows.map((value, index) => index === 5 ? 2 : value) }, 1],
+      [{ ...pristine, rows: coreRows.map((value, index) => index === 6 ? 0 : value) }, 1],
+      [{ ...pristine, rows: coreRows.map((value, index) => index === 0 ? Number.MAX_SAFE_INTEGER : value) }, 1],
+      [{ ...pristine, rows: coreRows.map((value, index) => index === 1 ? Number.MAX_SAFE_INTEGER : value) }, 1],
     ];
     for (const [input, expected] of cases) {
       assert.equal(pythonCheck(input), expected);

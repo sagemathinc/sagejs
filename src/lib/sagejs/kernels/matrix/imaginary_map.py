@@ -1,8 +1,9 @@
 """Exact checks for a packed imaginary-quadratic form/class map.
 
 The ordinary Python body is the dynamic oracle for the source-transparent
-native kernel.  Rows are ordered by the reduced form `(a, b, c)` and contain
-the form, inverse, integral ideal basis, and invariant-factor coordinates.
+native kernel. Rows are ordered by the reduced form `(a, b, c)`. Full rows
+carry the form, inverse, integral ideal basis, and coordinates; compact core
+rows carry `(a, b)` and coordinates, with the other values derived exactly.
 The caller owns the buffers and checks their element types before packing.
 """
 
@@ -37,10 +38,13 @@ def _pack_exact_int64(kernel: Any, values: list[int]) -> Any:
 class PackedImaginaryForms:
     """Read-only reduced-form sequence backed by already verified rows."""
 
-    def __init__(self, rows: list[int], stride: int, count: int) -> None:
+    def __init__(
+        self, rows: list[int], stride: int, count: int, discriminant: int | None = None
+    ) -> None:
         self._rows = rows
         self._stride = stride
         self._count = count
+        self._discriminant = discriminant
 
     def __len__(self) -> int:
         return self._count
@@ -48,20 +52,26 @@ class PackedImaginaryForms:
     def __iter__(self) -> Iterator[tuple[int, int, int]]:
         for index in range(self._count):
             offset = index * self._stride
+            a, b = self._rows[offset], self._rows[offset + 1]
             yield (
-                self._rows[offset],
-                self._rows[offset + 1],
-                self._rows[offset + 2],
+                a,
+                b,
+                self._rows[offset + 2]
+                if self._discriminant is None
+                else (b * b - self._discriminant) // (4 * a),
             )
 
 
 class PackedImaginaryCoordinates:
     """Exact read-only coordinate lookup over verified sorted form rows."""
 
-    def __init__(self, rows: list[int], stride: int, count: int) -> None:
+    def __init__(
+        self, rows: list[int], stride: int, count: int, discriminant: int | None = None
+    ) -> None:
         self._rows = rows
         self._stride = stride
         self._count = count
+        self._discriminant = discriminant
 
     def __len__(self) -> int:
         return self._count
@@ -88,7 +98,12 @@ class PackedImaginaryCoordinates:
         if low >= self._count:
             return -1
         offset = low * self._stride
-        a, b, c = self._rows[offset], self._rows[offset + 1], self._rows[offset + 2]
+        a, b = self._rows[offset], self._rows[offset + 1]
+        c = (
+            self._rows[offset + 2]
+            if self._discriminant is None
+            else (b * b - self._discriminant) // (4 * a)
+        )
         if (a, b, c) != (sought_a, sought_b, sought_c):
             return -1
         if key != str(a) + "," + str(b) + "," + str(c):
@@ -102,7 +117,8 @@ class PackedImaginaryCoordinates:
         offset = self._offset(key)
         if offset < 0:
             return default
-        return tuple(self._rows[offset + 11 : offset + self._stride])
+        coordinate_offset = 11 if self._discriminant is None else 2
+        return tuple(self._rows[offset + coordinate_offset : offset + self._stride])
 
 
 def validate_packed_imaginary_map(
@@ -144,7 +160,8 @@ def validate_packed_imaginary_map(
         != 0
     ):
         raise ValueError("the packed imaginary class map is invalid")
-    stride = 11 + len(invariants)
+    core = len(rows) == count * (2 + len(invariants))
+    stride = (2 if core else 11) + len(invariants)
     if compact:
         import sagejs.runtime as runtime
 
@@ -155,17 +172,22 @@ def validate_packed_imaginary_map(
         # ideal-class lookup from mutations through the original result.
         verified_rows = runtime.object.freeze(rows)
         return (
-            PackedImaginaryForms(verified_rows, stride, count),
-            PackedImaginaryCoordinates(verified_rows, stride, count),
+            PackedImaginaryForms(
+                verified_rows, stride, count, discriminant if core else None
+            ),
+            PackedImaginaryCoordinates(
+                verified_rows, stride, count, discriminant if core else None
+            ),
         )
     forms = []
     coordinates = {}
     for index in range(count):
         offset = index * stride
-        a, b, c = rows[offset], rows[offset + 1], rows[offset + 2]
+        a, b = rows[offset], rows[offset + 1]
+        c = (b * b - discriminant) // (4 * a) if core else rows[offset + 2]
         forms.append((a, b, c))
         coordinates[str(a) + "," + str(b) + "," + str(c)] = tuple(
-            rows[offset + 11 : offset + stride]
+            rows[offset + (2 if core else 11) : offset + stride]
         )
     return forms, coordinates
 
@@ -179,12 +201,12 @@ def verify_packed_imaginary_map(
     discriminant: int,
     linear: int,
 ) -> int:
-    """Return zero exactly when all packed entries describe a bijective map.
+    """Return zero exactly when all full or core entries describe a bijective map.
 
     This verifies reduced primitive forms, sorted uniqueness, certificate
-    agreement, inverse forms, integral ideal representatives, and coordinate
-    bijectivity.  The ambient result schema and generator records are checked
-    separately by the public Python wrapper.
+    agreement, supplied full-row inverse forms and ideal representatives,
+    derived core-row ideals, and coordinate bijectivity. The ambient result
+    schema and generator records are checked by the public Python wrapper.
     """
     zero = 0
     one = 1
@@ -200,7 +222,12 @@ def verify_packed_imaginary_map(
         return one
     rank = len(invariant_factors)
     count = len(seen_coordinates)
+    core = len(rows) == (2 + rank) * count
     stride = 11 + rank
+    coordinate_offset = 11
+    if core:
+        stride = 2 + rank
+        coordinate_offset = 2
     if (
         count == zero
         or len(certificate_forms) != 3 * count
@@ -228,7 +255,16 @@ def verify_packed_imaginary_map(
         offset = index * stride
         a = rows[offset]
         b = rows[offset + one]
-        c = rows[offset + 2]
+        if core:
+            if a <= zero or a > 258_200 or b < -258_200 or b > 258_200:
+                return one
+            numerator = b * b - discriminant
+            denominator = 4 * a
+            if numerator % denominator != zero:
+                return one
+            c = numerator // denominator
+        else:
+            c = rows[offset + 2]
         absolute_b = b
         if absolute_b < zero:
             absolute_b = -absolute_b
@@ -262,29 +298,31 @@ def verify_packed_imaginary_map(
             or certificate_forms[certificate_offset + 2] != c
         ):
             return one
-        inverse_b = -b
-        if b == zero or absolute_b == a or a == c:
-            inverse_b = b
-        if (
-            rows[offset + 3] != a
-            or rows[offset + 4] != inverse_b
-            or rows[offset + 5] != c
-        ):
+        if (linear - b) % 2 != zero:
             return one
-        if (
-            rows[offset + 6] != a
-            or rows[offset + 7] != a
-            or rows[offset + 8] != zero
-            or rows[offset + 9] != (linear - b) // 2
-            or rows[offset + 10] != one
-            or (linear - b) % 2 != zero
-        ):
-            return one
+        if not core:
+            inverse_b = -b
+            if b == zero or absolute_b == a or a == c:
+                inverse_b = b
+            if (
+                rows[offset + 3] != a
+                or rows[offset + 4] != inverse_b
+                or rows[offset + 5] != c
+            ):
+                return one
+            if (
+                rows[offset + 6] != a
+                or rows[offset + 7] != a
+                or rows[offset + 8] != zero
+                or rows[offset + 9] != (linear - b) // 2
+                or rows[offset + 10] != one
+            ):
+                return one
         ordinal = zero
         multiplier = one
         position = zero
         while position < rank:
-            value = rows[offset + 11 + position]
+            value = rows[offset + coordinate_offset + position]
             factor = invariant_factors[position]
             if value < zero or value >= factor:
                 return one

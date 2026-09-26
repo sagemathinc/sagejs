@@ -450,8 +450,8 @@ function classGroupHostError(
   return error;
 }
 
-/** Restore derivable form and ideal fields before independent exact validation. */
-function expandImaginaryCoreMapResponse(value: Record<string, unknown>): void {
+/** Check the core envelope before the Python/native exact map verifier runs. */
+function validateImaginaryCoreMapResponse(value: Record<string, unknown>): void {
   const result = value.result;
   if (!isPlainRecord(result) || !Object.hasOwn(result, "completeClassMapCorePacked")) {
     throw classGroupHostError("EBADMSG", "imaginary service omitted its core map");
@@ -471,34 +471,20 @@ function expandImaginaryCoreMapResponse(value: Record<string, unknown>): void {
     throw classGroupHostError("EBADMSG", "imaginary core map has a malformed envelope");
   }
   const stride = 2 + invariants.length;
-  const linear = discriminant % 4 === -3 ? -1 : 0;
-  const packed: number[] = [];
   for (let index = 0; index < count; index += 1) {
     const offset = index * stride;
     const a = core[offset];
     const b = core[offset + 1];
-    if (!Number.isSafeInteger(a) || a <= 0 || !Number.isSafeInteger(b) ||
-        !Number.isSafeInteger(b * b - discriminant) ||
-        !Number.isSafeInteger(4 * a)) {
+    if (!Number.isSafeInteger(a) || a <= 0 || !Number.isSafeInteger(b)) {
       throw classGroupHostError("EBADMSG", "imaginary core map has a malformed form");
     }
-    const c = (b * b - discriminant) / (4 * a);
-    const idealOffset = (linear - b) / 2;
-    if (!Number.isSafeInteger(c) || !Number.isSafeInteger(idealOffset)) {
-      throw classGroupHostError("EBADMSG", "imaginary core map has a malformed form");
-    }
-    const inverseB = b === 0 || Math.abs(b) === a || a === c ? b : -b;
-    packed.push(a, b, c, a, inverseB, c, a, a, 0, idealOffset, 1);
     for (let position = 0; position < invariants.length; position += 1) {
       const coordinate = core[offset + 2 + position];
       if (!Number.isSafeInteger(coordinate)) {
         throw classGroupHostError("EBADMSG", "imaginary core map has a malformed coordinate");
       }
-      packed.push(coordinate);
     }
   }
-  result.completeClassMapPacked = packed;
-  delete result.completeClassMapCorePacked;
 }
 
 /** Lazy synchronous facade over the resident asynchronous native service. */
@@ -1527,7 +1513,7 @@ export class NodeHostAdapter {
             ...args[1],
             transport: "core-v2",
           });
-          expandImaginaryCoreMapResponse(value);
+          validateImaginaryCoreMapResponse(value);
           return { ok: true, value };
         }
         case "multiprocessingCreatePool":

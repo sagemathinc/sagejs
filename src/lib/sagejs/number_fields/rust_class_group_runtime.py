@@ -325,16 +325,19 @@ def rust_imaginary_result(
         or result["classNumber"] < 1
     ):
         raise RustClassGroupPublicationError("the Rust imaginary result is malformed")
+    core_map = "completeClassMapCorePacked" in result
     packed_map = "completeClassMapPacked" in result
     if operation == "imaginary-class-group" and (
         result.get("schema") != IMAGINARY_GROUP_SCHEMA
         or result.get("polynomialAscending") != [int(value) for value in polynomial]
         or result.get("runtimeUsesPariOrFixtureAnswers") is not False
+        or (core_map and packed_map)
         or (
-            packed_map and result.get("completeClassMapLength") != result["classNumber"]
+            (core_map or packed_map)
+            and result.get("completeClassMapLength") != result["classNumber"]
         )
         or (
-            not packed_map
+            not (core_map or packed_map)
             and (
                 not isinstance(result.get("completeClassMap"), list)
                 or len(result["completeClassMap"]) != result["classNumber"]
@@ -430,8 +433,13 @@ def validate_imaginary_group_result(
     list[tuple[int, int, int]], dict[str, tuple[int, ...]], list[tuple[int, int, int]]
 ]:
     """Check a complete form/coordinate/ideal presentation before Python binds it."""
-    packed = "completeClassMapPacked" in result
-    packed_entries = result.get("completeClassMapPacked") if packed else None
+    core = "completeClassMapCorePacked" in result
+    packed = core or "completeClassMapPacked" in result
+    packed_entries = (
+        result.get("completeClassMapCorePacked" if core else "completeClassMapPacked")
+        if packed
+        else None
+    )
     entry_count = (
         result.get("completeClassMapLength")
         if packed
@@ -458,8 +466,10 @@ def validate_imaginary_group_result(
             packed
             and (
                 "completeClassMap" in result
+                or (core and "completeClassMapPacked" in result)
                 or not isinstance(packed_entries, list)
-                or len(packed_entries) != entry_count * (11 + len(invariants))
+                or len(packed_entries)
+                != entry_count * ((2 if core else 11) + len(invariants))
             )
         )
         or (not packed and not isinstance(result.get("completeClassMap"), list))
@@ -504,7 +514,7 @@ def validate_imaginary_group_result(
     certified_forms = certificate[
         "reducedFormsPacked" if packed_certificate else "reducedForms"
     ]
-    stride = 11 + len(invariants)
+    stride = (2 if core else 11) + len(invariants)
     if packed and packed_certificate:
         try:
             accelerated = validate_packed_imaginary_map(
@@ -524,11 +534,41 @@ def validate_imaginary_group_result(
             forms, coordinates = accelerated
             entries = range(0)
     for index in entries:
-        row = (
-            packed_entries[index * stride : (index + 1) * stride]
-            if packed
-            else _imaginary_map_row(result["completeClassMap"][index], len(invariants))
-        )
+        if core:
+            core_row = packed_entries[index * stride : (index + 1) * stride]
+            if (
+                any(type(value) is not int for value in core_row)
+                or core_row[0] <= 0
+                or (core_row[1] * core_row[1] - discriminant) % (4 * core_row[0]) != 0
+            ):
+                raise RustClassGroupPublicationError(
+                    "the Rust class map has a malformed core row"
+                )
+            a, b = core_row[:2]
+            c = (b * b - discriminant) // (4 * a)
+            inverse_b = b if b == 0 or abs(b) == a or a == c else -b
+            row = [
+                a,
+                b,
+                c,
+                a,
+                inverse_b,
+                c,
+                a,
+                a,
+                0,
+                (linear - b) // 2,
+                1,
+                *core_row[2:],
+            ]
+        else:
+            row = (
+                packed_entries[index * stride : (index + 1) * stride]
+                if packed
+                else _imaginary_map_row(
+                    result["completeClassMap"][index], len(invariants)
+                )
+            )
         if any(type(value) is not int for value in row):
             raise RustClassGroupPublicationError(
                 "the Rust class map has a malformed integer"

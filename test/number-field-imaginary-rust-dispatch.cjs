@@ -249,6 +249,49 @@ test("packed resident map validation retains exact forms, ideals, and rejection"
   assert.equal(answer.repr, "[True, True, True, True, True, True, True, True, True, True, True, True]");
 });
 
+test("core resident map preserves exact ideals with native and Python verification", async () => {
+  const answer = await evaluate([
+    ...fixture,
+    "core = dict(result)",
+    "entries = core.pop('completeClassMap')",
+    "core['completeClassMapCorePacked'] = [value for entry in entries",
+    "    for value in (entry['form']['a'], entry['form']['b'], *entry['coordinates'])]",
+    "core['completeClassMapLength'] = len(entries)",
+    "core['certificate'] = {'discriminant': -23,",
+    "    'reducedFormsPacked': [value for form in forms for value in (form['a'], form['b'], form['c'])]}",
+    "ordinary_forms, ordinary_coordinates, generators = rust_runtime.validate_imaginary_group_result(result, -23)",
+    "native_forms, native_coordinates, native_generators = rust_runtime.validate_imaginary_group_result(core, -23, compact=True)",
+    "native_ok = list(native_forms) == ordinary_forms and len(native_coordinates) == 3",
+    "native_ok = native_ok and native_coordinates.get('2,-1,3') == ordinary_coordinates['2,-1,3']",
+    "native_ok = native_ok and native_coordinates.get('02,-1,3') is None and native_generators == generators",
+    "original_verifier = rust_runtime.validate_packed_imaginary_map",
+    "rust_runtime.validate_packed_imaginary_map = lambda *args: None",
+    "try:",
+    "    fallback_forms, fallback_coordinates, fallback_generators = rust_runtime.validate_imaginary_group_result(core, -23)",
+    "finally:",
+    "    rust_runtime.validate_packed_imaginary_map = original_verifier",
+    "fallback_ok = fallback_forms == ordinary_forms and fallback_coordinates == ordinary_coordinates and fallback_generators == generators",
+    "try:",
+    "    core['completeClassMapCorePacked'][5] = 0",
+    "except TypeError:",
+    "    core_immutable = True",
+    "else:",
+    "    core_immutable = False",
+    "core['completeClassMapCorePacked'] = list(core['completeClassMapCorePacked'])",
+    "core['completeClassMapCorePacked'][5] = 0",
+    "try:",
+    "    rust_runtime.validate_imaginary_group_result(core, -23)",
+    "except rust_runtime.RustClassGroupPublicationError:",
+    "    rejects_duplicate = True",
+    "core['completeClassMapCorePacked'][5] = 1",
+    "result = core",
+    "group = K.class_group(algorithm='rust')",
+    "ideal_ok = group(group.gen().ideal()).coordinates() == (1,) and group.order() == 3",
+    "[native_ok, fallback_ok, core_immutable, rejects_duplicate, ideal_ok]",
+  ]);
+  assert.equal(answer.repr, "[True, True, True, True, True]");
+});
+
 test("QuadraticField and its maximal order expose the explicit Rust route", async () => {
   const answer = await evaluate([
     ...fixture,

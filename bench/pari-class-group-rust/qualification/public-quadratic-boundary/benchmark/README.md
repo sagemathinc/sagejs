@@ -316,6 +316,18 @@ public median fell from 60.2 to 45.6 ms. The raw result is in
 This is a different-run diagnostic, not a promoted matched performance receipt;
 public PARI competitiveness remains open.
 
+The next diagnostic passes the compact `core-v2` rows directly to the same
+source-transparent exact map verifier; Python derives the omitted form and
+ideal data after verification. This removes the host's full-row expansion
+without changing the public group or Wasm path. On the same frozen 11-field,
+15-pair prepared-field panel, the geometric mean of Sage.js/PARI median ratios
+is 8.44 (previous diagnostic: 9.75), ranging from 4.59 to 22.87. The
+33,768-class composite field's public median is 31.7 ms versus PARI's 4.5 ms.
+The raw diagnostic is
+[`public-api-prepared-direct-core-diagnostic.json`](public-api-prepared-direct-core-diagnostic.json).
+This remains a different-run diagnostic, not a promoted matched performance
+receipt. Public PARI competitiveness remains open.
+
 ## Matched scalar class-number comparison
 
 `run_class_number.py` separately compares the exact scalar Rust count, the

@@ -4566,10 +4566,6 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_allocate_m_543c50dcbffaf96c",
-          "kind": "function"
-        },
-        {
           "name": "sagejs_wasm_allocate_m_55d3fd5e13bd72e5",
           "kind": "function"
         },
@@ -4623,6 +4619,10 @@
         },
         {
           "name": "sagejs_wasm_allocate_m_9fd0300932554166",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_a87966cc9edfe889",
           "kind": "function"
         },
         {
@@ -4695,10 +4695,6 @@
         },
         {
           "name": "sagejs_wasm_call_m_464eb4a545f28e7d_packed_graph_components",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_543c50dcbffaf96c_verify_packed_imaginary_map",
           "kind": "function"
         },
         {
@@ -4966,6 +4962,10 @@
           "kind": "function"
         },
         {
+          "name": "sagejs_wasm_call_m_a87966cc9edfe889_verify_packed_imaginary_map",
+          "kind": "function"
+        },
+        {
           "name": "sagejs_wasm_call_m_bd83c78288721d7d_packed_composite_dedekind_basis_in_place",
           "kind": "function"
         },
@@ -5150,10 +5150,6 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_deallocate_m_543c50dcbffaf96c",
-          "kind": "function"
-        },
-        {
           "name": "sagejs_wasm_deallocate_m_55d3fd5e13bd72e5",
           "kind": "function"
         },
@@ -5210,6 +5206,10 @@
           "kind": "function"
         },
         {
+          "name": "sagejs_wasm_deallocate_m_a87966cc9edfe889",
+          "kind": "function"
+        },
+        {
           "name": "sagejs_wasm_deallocate_m_bd83c78288721d7d",
           "kind": "function"
         },
@@ -5255,10 +5255,6 @@
         },
         {
           "name": "sagejs_wasm_last_message_m_464eb4a545f28e7d",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_last_message_m_543c50dcbffaf96c",
           "kind": "function"
         },
         {
@@ -5318,6 +5314,10 @@
           "kind": "function"
         },
         {
+          "name": "sagejs_wasm_last_message_m_a87966cc9edfe889",
+          "kind": "function"
+        },
+        {
           "name": "sagejs_wasm_last_message_m_bd83c78288721d7d",
           "kind": "function"
         },
@@ -5363,10 +5363,6 @@
         },
         {
           "name": "sagejs_wasm_result_f64_at_m_464eb4a545f28e7d",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_result_f64_at_m_543c50dcbffaf96c",
           "kind": "function"
         },
         {
@@ -5426,6 +5422,10 @@
           "kind": "function"
         },
         {
+          "name": "sagejs_wasm_result_f64_at_m_a87966cc9edfe889",
+          "kind": "function"
+        },
+        {
           "name": "sagejs_wasm_result_f64_at_m_bd83c78288721d7d",
           "kind": "function"
         },
@@ -5471,10 +5471,6 @@
         },
         {
           "name": "sagejs_wasm_result_length_m_464eb4a545f28e7d",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_result_length_m_543c50dcbffaf96c",
           "kind": "function"
         },
         {
@@ -5534,6 +5530,10 @@
           "kind": "function"
         },
         {
+          "name": "sagejs_wasm_result_length_m_a87966cc9edfe889",
+          "kind": "function"
+        },
+        {
           "name": "sagejs_wasm_result_length_m_bd83c78288721d7d",
           "kind": "function"
         },
@@ -5579,10 +5579,6 @@
         },
         {
           "name": "sagejs_wasm_result_limbs_m_464eb4a545f28e7d",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_result_limbs_m_543c50dcbffaf96c",
           "kind": "function"
         },
         {
@@ -5642,6 +5638,10 @@
           "kind": "function"
         },
         {
+          "name": "sagejs_wasm_result_limbs_m_a87966cc9edfe889",
+          "kind": "function"
+        },
+        {
           "name": "sagejs_wasm_result_limbs_m_bd83c78288721d7d",
           "kind": "function"
         },
@@ -5687,10 +5687,6 @@
         },
         {
           "name": "sagejs_wasm_result_sign_m_464eb4a545f28e7d",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_result_sign_m_543c50dcbffaf96c",
           "kind": "function"
         },
         {
@@ -5750,6 +5746,10 @@
           "kind": "function"
         },
         {
+          "name": "sagejs_wasm_result_sign_m_a87966cc9edfe889",
+          "kind": "function"
+        },
+        {
           "name": "sagejs_wasm_result_sign_m_bd83c78288721d7d",
           "kind": "function"
         },
@@ -5795,10 +5795,6 @@
         },
         {
           "name": "sagejs_wasm_result_u64_at_m_464eb4a545f28e7d",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_result_u64_at_m_543c50dcbffaf96c",
           "kind": "function"
         },
         {
@@ -5855,6 +5851,10 @@
         },
         {
           "name": "sagejs_wasm_result_u64_at_m_9fd0300932554166",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_a87966cc9edfe889",
           "kind": "function"
         },
         {

@@ -172,8 +172,8 @@ async function main() {
     assert.equal(fullGroup.value.result.completeClassMap.length, 1);
     assert.deepEqual(fullGroup.value.result.certificate.reducedForms, [{ a: 1, b: 1, c: 1 }]);
     assert.equal(compactGroup.value.result.completeClassMap, undefined);
-    assert.deepEqual(compactGroup.value.result.completeClassMapPacked,
-      [1, 1, 1, 1, 1, 1, 1, 1, 0, -1, 1]);
+    assert.deepEqual(compactGroup.value.result.completeClassMapCorePacked, [1, 1]);
+    assert.equal(compactGroup.value.result.completeClassMapPacked, undefined);
     assert.equal(compactGroup.value.result.completeClassMapLength, 1);
     assert.equal(compactGroup.value.result.certificate.reducedForms, undefined);
     assert.deepEqual(compactGroup.value.result.certificate.reducedFormsPacked, [1, 1, 1]);
