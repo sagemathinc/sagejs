@@ -90,15 +90,22 @@ original_mul = K._machineExtensionMul
 K._machineExtensionMul = None
 K._lastCompilerOptimizationRoute = 'guard-sentinel'
 changed = optimized(10)
+changed_route = K._lastCompilerOptimizationRoute
 K._machineExtensionMul = original_mul
+
+K._from_machine_coordinates = lambda coordinates: K(0)
+K._lastCompilerOptimizationRoute = 'method-shadow-sentinel'
+shadowed = optimized(10)
 
 Q.<y> = PolynomialRing(GF(200003))
 L.<b> = GF(200003^2, modulus=y^2 + y + 1)
-print(changed[0], changed[1], K._lastCompilerOptimizationRoute)
+print(changed[0], changed[1], changed_route)
+print(shadowed[0], shadowed[1], K._lastCompilerOptimizationRoute)
 print(L._machineExtensionDegree)
 `);
     assert.deepEqual(result.stdout.trim().split("\n"), [
       "8*a + 89 9 guard-sentinel",
+      "8*a + 89 9 method-shadow-sentinel",
       "0",
     ]);
   } finally {

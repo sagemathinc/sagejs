@@ -139,7 +139,8 @@ test("CPython oracle records the remaining capture-stack limit incompatibility",
   if (oracle.error?.code === "ENOENT") { t.skip("CPython oracle is unavailable"); return; }
   assert.ifError(oracle.error);
   assert.equal(oracle.status, 0, oracle.stderr);
-  assert.equal(oracle.stdout, "2 ['<module>', 'middle']\n-2 ['middle', 'leaf']\n0 []\n");
+  assert.equal(oracle.stdout.replaceAll("\r\n", "\n"),
+    "2 ['<module>', 'middle']\n-2 ['middle', 'leaf']\n0 []\n");
   const directory = mkdtempSync(join(tmpdir(), "sagejs-traceback-limit-gap-"));
   t.after(() => rmSync(directory, { recursive: true, force: true }));
   const filename = join(directory, "case.py");
@@ -172,7 +173,7 @@ test("CPython distinguishes a lambda binder from nested lambda body failures", (
   if (result.error?.code === "ENOENT") { t.skip("CPython oracle is unavailable"); return; }
   assert.ifError(result.error);
   assert.equal(result.status, 0, result.stderr);
-  assert.equal(result.stdout, "invoke 1\n<lambda> 3\n");
+  assert.equal(result.stdout.replaceAll("\r\n", "\n"), "invoke 1\n<lambda> 3\n");
   // Sage's paired fresh/cache regression above preserves binder caller `invoke`
   // and body evidence as generated frames; it does not claim Python body naming.
 });

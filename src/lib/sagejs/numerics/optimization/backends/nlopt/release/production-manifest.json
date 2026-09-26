@@ -30,7 +30,7 @@
     "test/numerical-p3-backends/browser-resource.test.mjs": "fb2b4a1eb0431cf18ebed85e2cbdd4e3eae65e8d0e9d324055f0d8e479885d34",
     "test/numerical-p3-nlopt/abi-fuzz.test.mjs": "91bb9edb5561cf0d2483b644620f6266ed3b052ad2257d88f2d2d538e71db875",
     "test/numerical-p3-nlopt/backend.test.mjs": "f5ea7032ff48f0ce56ad8b299b1a289a19ffd83eedb0318310155c5fd6543024",
-    "test/numerical-p3-nlopt/browser.mjs": "bc30d8355c73117b620fcfc7929b2aea926cbabe8855c541a27980bb3c04aff3",
+    "test/numerical-p3-nlopt/browser.mjs": "6333c5e67e99f946aaea10de794243b2d7dd9efe904a205e24583a5834411391",
     "test/numerical-p3-nlopt/portable-smoke.mjs": "9dee55740dbd4bfad62e911af8dec1945963587c4635a4905489cff7bc8d8813",
     "test/numerical-p3-nlopt/public-browser.mjs": "0495e35cd6432e07cb36830add0b154444b7c3d23fc907b10b09272532442026",
     "test/numerical-p3-nlopt/public-integration.cjs": "83e717d7e375ee003a3d7f57177a44993bc4b13022e5ae1993447e9ffcc64b87",
@@ -40,7 +40,7 @@
   },
   "public_semantics_bundle": {
     "encoding": "sorted-repository-path-nul-sha256-nul/v1",
-    "sha256": "32d69185cfa0322b14378746d525669d39baf209b539e2d0cef8ac750ac77da9"
+    "sha256": "484bc0a57b6ffe71ab9fdfa4696be2c2bff88ccce21a05f9545cbba66c4ec1bc"
   },
   "qualification_tooling_files": {
     "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/collect-evidence.cjs": "f99aed93937473cd43c6ea7150b641c98230fbbe4c1a4bf8f5a99c90169563c5",
@@ -48,7 +48,7 @@
     "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/oracle-summary.json": "9a95b55caaa709fd2d26c38c771091b26b125996511d879ef3794e7e5584f9aa",
     "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/oracle.py": "b56e6e1c4b07653567fd0c8ec98bd99305584129940f3633d662b0df4f22f26e",
     "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/run.mjs": "f9a5187deb30b076567249e84d42bb06b993563c7c00ad53444d9b5a6e6df3f9",
-    "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/selection-v1.json": "606aa0209679751a3b53d877a1a3f2e3e8ea764c1c953e3ac4c28cb9db58d4b8",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/selection-v1.json": "1c1300fe4ca979619b37e05208acfc7541c69bacace67e4d8cf5dab3cef36e1d",
     "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/verify-platform-enrollment.cjs": "f05f8cf0c0cd0ce920037706d38e9c9968721952b244beb2e04ecbd4073c8229",
     "src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/promote-qualification.cjs": "425dda513c10e8cca8bcc05c35c3ad4d9674d889ea0adeb97139e35056d3d4bb",
     "src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/verify-release.cjs": "e420621056652b10fc83fda617621efb27df5a599b7217483472716cf3e8bcdc",
@@ -56,7 +56,7 @@
   },
   "qualification_tooling_bundle": {
     "encoding": "sorted-repository-path-nul-sha256-nul/v1",
-    "sha256": "b92e16e8916f7ace284e7bd01a41d6bffd3bc6a65b8191b8a7c55a585aa38167"
+    "sha256": "48cea749dfbe0c9a767450a9edefe9f5629c35d5922876fe31a4357c86d04a98"
   },
   "toolchain": {
     "identity": "cf0d77f0da1a0c8f4197b55f4b9d711c19a0affa8d3f62ee8dc2074daec13140",
@@ -84,12 +84,35 @@
   },
   "selection": "explicit-only",
   "qualification": {
-    "status": "pending_source_current_requalification",
-    "reason": "The integrated class-group runtime and evaluator resources change the public semantics closure; historical receipts are retained but are not qualification of this combined source.",
-    "public_semantics_bundle_sha256": "32d69185cfa0322b14378746d525669d39baf209b539e2d0cef8ac750ac77da9",
-    "qualification_tooling_bundle_sha256": "b92e16e8916f7ace284e7bd01a41d6bffd3bc6a65b8191b8a7c55a585aa38167",
-    "selection_sha256": "606aa0209679751a3b53d877a1a3f2e3e8ea764c1c953e3ac4c28cb9db58d4b8",
+    "status": "qualified",
+    "candidate_commit": "e62ee9ae82bea4ecbc8bf0c2e750e66629efb0f4",
+    "summary_sha256": "36c58448b4f2da8382522cc6909c6b452113e07e3669d70be5c9cc389fb413c1",
+    "summary_bytes": 121690,
+    "public_semantics_bundle_sha256": "484bc0a57b6ffe71ab9fdfa4696be2c2bff88ccce21a05f9545cbba66c4ec1bc",
+    "qualification_tooling_bundle_sha256": "48cea749dfbe0c9a767450a9edefe9f5629c35d5922876fe31a4357c86d04a98",
+    "selection_sha256": "1c1300fe4ca979619b37e05208acfc7541c69bacace67e4d8cf5dab3cef36e1d",
+    "corpus_sha256": "151aab999ac1114770503050b3bb1d57f04af940b30468db3430254485f3521f",
     "oracle_sha256": "9a95b55caaa709fd2d26c38c771091b26b125996511d879ef3794e7e5584f9aa",
-    "invalidated_summary": "qualification-v1.json"
+    "source_closure_sha256": "ec28311770601dc8b7e36c679dde82def61c8d46440e0cf63c17698df9f1e00e",
+    "artifact_sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb",
+    "artifact_bytes": 72592,
+    "case_execution_sha256": "b3dff723758e9bdc2201a0565454703c3a15156d2a50b1cc66d50586257011d7",
+    "campaign_challenge": "25f0e5c0d329591b828d050c96bb3c51129acadab671958d56236e144da7b5c3",
+    "evidence_receipts_sha256": {
+      "sanitizer": "a480c3ca86e9b34aef04ed976217c450d27862bd05eb56f7fe847bdea4deaa98",
+      "destructive-wasm": "ea88b43face768066419a6a40a53f38107d8e398e565cbb2b0f5acf5bf032792",
+      "browser-lifecycle": "af95bd31a7242b12483fc23e90538396c2f77b42a169e2ceedabf49bf46686fd",
+      "public-integration": "0910e40b0916dfbe4833962fcddfc8a340095aa7a8550adc005e0b102357c9d9",
+      "resource-corruption": "7233c0661c53a06510dab64db29a8a2b06dcd78afce9f539d973dfa7e87e2ef1",
+      "relocation": "fcea3cc37e312819ae63bed4ff3a21721c77602db150786036147cffa041c532",
+      "sea": "b1368706e4ef227b76a984ea306a96f2c534a8854185464628cabfabceaec3c9"
+    },
+    "portable_receipts_sha256": {
+      "linux-x64": "b3dff723758e9bdc2201a0565454703c3a15156d2a50b1cc66d50586257011d7",
+      "linux-arm64": "1f49a266ddd2004543c700e76e6b0bf588386e84710e4d3b4f97e97490371fe8",
+      "macos-arm64": "906214366685596ea801108ff49b03e30f64f0baf6013f68e3112153ac6a8f49",
+      "windows-x64": "afc78db7d27f009450e1026be86f726c02ae939d0749cead0b570b6b62e56070"
+    },
+    "historical_cobyla_status": "excluded-not-qualified"
   }
 }

@@ -55,3 +55,29 @@ test("approximate polynomial rings support tutorial arithmetic", async () => {
     await session.close();
   }
 });
+
+test("AA polynomial coefficients and matrix characteristic polynomials are subscriptable", async () => {
+  const session = await createSage();
+  try {
+    const result = await session.evaluate([
+      "P.<x> = PolynomialRing(AA)",
+      "p = AA(2)*x^2 + AA(3)",
+      "assert [p[k] for k in [-10, -1, 0, 1, 2, 3, 2^100]] == [AA(0), AA(0), AA(3), AA(0), AA(2), AA(0), AA(0)]",
+      "assert p[:2] == P(3) and p[:-1] == P(0)",
+      "try:",
+      "    p[QQ(1, 2)]",
+      "    raise AssertionError('nonintegral coefficient index accepted')",
+      "except TypeError:",
+      "    pass",
+      "R.<y> = QQ[]",
+      "r = (y^2-2).roots(AA, multiplicities=False)[1]",
+      "M = matrix(AA, 8, 8, lambda i,j: r if i==j else AA((i+2*j)%5-2))",
+      "q = (M*M).charpoly()",
+      "assert q[0] == q(AA(0))",
+      "True",
+    ].join("\n"));
+    assert.equal(result.repr, "True");
+  } finally {
+    await session.close();
+  }
+});

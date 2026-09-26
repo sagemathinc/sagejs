@@ -42,6 +42,13 @@ independent macOS inspection, and numerical evidence before any publication.
 the same `prepared_request` JSON. Recovery submits that exact request again:
 the consumer reauthenticates its inputs and reconciles public state. It must not
 select a newer run, download artifacts by name, or rerun a producer job.
+If npm accepted an upload but the version is still absent from the public
+registry, restore the exact failed attempt's retained npm journal using
+`resume_publication_run_id` and `resume_publication_artifact_id` on `ci.yml`.
+Do not submit a cold retry while an accepted immutable version is still
+invisible: the journal is what prevents a second upload attempt. The restored
+journal is only a checkpoint hint; exact product bytes and public registry
+versions are verified again before any release pointer advances.
 The legacy `publish-release` and `recover-publish` jobs are retired.
 
 If every native producer passed but the final numerical gate failed because an
@@ -244,6 +251,18 @@ For a tagged producer, use its exact tag as `sourceRef`, `push` as `sourceEvent`
 and `release` as `purpose`. Verification can run before a tag exists. Publication
 requires an already existing matching tag, matching package version and source
 ancestry in `origin/main`; it never creates or moves a tag.
+
+For an accepted npm publish that is still invisible after the controller's
+registry deadline, get the *failed publisher run ID* and its retained
+`sagejs-publish-prepared-attempt-N` artifact ID, then dispatch `ci.yml` again
+with the unchanged `prepared_request`, `publish_prepared=true`, and both
+`resume_publication_run_id` and `resume_publication_artifact_id`. The action
+downloads that exact artifact, restores only its bounded npm journal, and the
+controller validates the journal against the reauthenticated five tarballs.
+The public registry still has to expose every matching immutable version before
+the GitHub release or website pointer can advance. Do not use a prior artifact
+from another tag or source, or retry without the accepted-write journal while
+the version remains invisible.
 
 `scripts/release/publish-prepared.cjs` checks out no code itself. The workflow
 provides separate control and isolated product clones; installs only control
@@ -628,6 +647,9 @@ canonical public root archive at `build/release/npm/sagejs.tgz` on each host.
 Set `SAGEJS_NUMERICAL_PRODUCT_ROOT` to that product directory and
 `SAGEJS_NUMERICAL_RUNTIME_REQUIRED=1`; use the required native dependency
 catalog as in CI. This command is not a toolchain provisioning substitute.
+Browser parity derives its receipt source revision from clean Git `HEAD` and
+rejects a conflicting `GITHUB_SHA`, so persistent-host receipts are bound to
+the same exact candidate as workload acceptance without a CI-only environment.
 
 To build a new candidate **for testing**, use
 `pnpm release:run --candidate FULL_SHA --profile preparation` on Linux. This

@@ -1344,8 +1344,7 @@ sage: End(J0(23)).rank()
 
 ### Provenance
 
-- `sage-derived` — [SageMath modular abelian variety endomorphism-ring API](https://doc.sagemath.org/html/en/reference/modabvar/sage/modular/abvar/homspace.html); license GPL-2.0-or-later
-- `sagejs-original` — Exact endomorphism order from the complete integral Hom lattice
+- `sagejs-original` — Integral endomorphism order from the complete Hom lattice
 
 ## `eta_product`
 
@@ -5117,8 +5116,7 @@ sage: Hom(J0(11), J0(22)).rank()
 
 ### Provenance
 
-- `sage-derived` — [SageMath modular abelian variety Hom-space API](https://doc.sagemath.org/html/en/reference/modabvar/sage/modular/abvar/homspace.html); license GPL-2.0-or-later
-- `sagejs-original` — Exact integral Hom lattice from modular-symbol homology and saturation
+- `sagejs-original` — Integral Hom lattice from exact newform decomposition and saturation
 
 ## `hue`
 

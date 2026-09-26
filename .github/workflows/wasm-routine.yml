@@ -95,7 +95,6 @@ jobs:
           node packages/wasm-toolchain/scripts/toolchain.cjs prepare
           node packages/wasm-toolchain/scripts/probe.cjs
           pnpm build
-          packages/class-groups/scripts/build-wasm.sh
           pnpm --dir packages/flint-wasm build
 
       - name: Validate content identity and release payload

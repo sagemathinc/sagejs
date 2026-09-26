@@ -11,7 +11,7 @@
   "files": [
     {
       "path": "architecture/package-graph.json",
-      "sha256": "03d6080252b89a59b4d4f481069a94642ee15e8af9002859865ff5923dda64be"
+      "sha256": "8ed92617a641092df8fd77ad296ba3e342fab3dde0850a575ed349e25ca25222"
     },
     {
       "path": "bench/modular/qexp-correctness/README.md",
@@ -67,7 +67,7 @@
     },
     {
       "path": "src/baselib/modular.py",
-      "sha256": "3ebd71a59be1bf9dc93793da578a895bb6a002092d8d9fa08e259e9c319d1112"
+      "sha256": "27533a7b37afce72218a2d17972127186bc0775cee91e9578e2e9bae660e1dc6"
     },
     {
       "path": "src/lib/sagejs/modular_forms/__init__.py",
@@ -158,5 +158,5 @@
       "sha256": "231f286f6f8a394367dc6ac22be048506a0118a901f23ad1b60a9c96aa9b2136"
     }
   ],
-  "bundle_sha256": "4cdd98022a6ad093c65f9e0e9add25c4562ebc9db226eda8c3acea0f906007c5"
+  "bundle_sha256": "0ae453375fd521b9d4afd27ef4de206b38714a30972bc2d4b9deea1f7223b650"
 }

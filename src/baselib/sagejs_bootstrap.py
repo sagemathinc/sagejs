@@ -1924,7 +1924,6 @@ def ρσ_prepare_machine_field_region(
         }
 
         const extensionPrototype = parent._machineExtensionElementPrototype;
-        const parentPrototype = Object.getPrototypeOf(parent);
         const degree = parent._machineExtensionDegree;
         const modulusCoefficients = parent._machineExtensionModulusCoefficients;
         if (!ρσ_machine_extension_context_matches(
@@ -1937,8 +1936,11 @@ def ρσ_prepare_machine_field_region(
             !(tupleBrand instanceof WeakSet) ||
             !tupleBrand.has(modulusCoefficients) ||
             modulusCoefficients.length !== degree ||
-            parentPrototype?._from_machine_coordinates !==
-                parent._machineExtensionMaterialize) {
+            !ρσ_machine_extension_method_matches(
+                parent, "_from_machine_coordinates",
+                parent._machineExtensionMaterializeOwner,
+                parent._machineExtensionMaterializeGetter,
+                parent._machineExtensionMaterialize)) {
             return reject("extension-parent-contract-mismatch");
         }
         if ((required(ADD) && extensionPrototype?._add_ !== parent._machineExtensionAdd) ||
@@ -2185,7 +2187,6 @@ def ρσ_fast_machine_residue_recurrence(accumulator, multiplier, increment, cou
         }
 
         const extensionPrototype = parent._machineExtensionElementPrototype;
-        const parentPrototype = Object.getPrototypeOf(parent);
         const materialize = parent._machineExtensionMaterialize;
         const isolated = parent._machineExtensionIsolated;
         const modulusCoefficients = parent._machineExtensionModulusCoefficients;
@@ -2203,8 +2204,14 @@ def ρσ_fast_machine_residue_recurrence(accumulator, multiplier, increment, cou
             Object.getPrototypeOf(increment) !== extensionPrototype ||
             extensionPrototype?._mul_ !== parent._machineExtensionMul ||
             extensionPrototype?._add_ !== parent._machineExtensionAdd ||
-            parentPrototype?._from_machine_coordinates !== materialize ||
-            parentPrototype?._machine_extension_affine_isolated !== isolated) {
+            !ρσ_machine_extension_method_matches(
+                parent, "_from_machine_coordinates",
+                parent._machineExtensionMaterializeOwner,
+                parent._machineExtensionMaterializeGetter, materialize) ||
+            !ρσ_machine_extension_method_matches(
+                parent, "_machine_extension_affine_isolated",
+                parent._machineExtensionIsolatedOwner,
+                parent._machineExtensionIsolatedGetter, isolated)) {
             return null;
         }
         const prime = parent._machineExtensionPrime;

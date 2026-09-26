@@ -134,6 +134,7 @@ const executablePath = [
   "/usr/bin/chromium",
   "/usr/bin/chromium-browser",
   "/usr/bin/google-chrome",
+  chromium.executablePath(),
 ].find((path) => path && existsSync(path));
 if (executablePath == null) throw new Error("Chromium executable not found");
 

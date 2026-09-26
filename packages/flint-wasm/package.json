@@ -17,11 +17,6 @@
       "import": "./curve-backend.mjs",
       "default": "./curve-backend.mjs"
     },
-    "./class-group-core": {
-      "types": "./class-group-core.d.ts",
-      "import": "./class-group-core.mjs",
-      "default": "./class-group-core.mjs"
-    },
     "./dirichlet-group": "./dirichlet-group.mjs",
     "./evaluator": "./evaluator.mjs",
     "./m4ri": "./m4ri.mjs",
@@ -52,8 +47,6 @@
     "dist/extension-resource-manifest.json",
     "dist/extension-resource-receipt.json",
     "dist/flint-algebraic.wasm",
-    "dist/class-group-core.wasm",
-    "dist/class-group-core-receipt.json",
     "dist/native-kernels/",
     "dist/wasm-pack-loader.mjs",
     "dist/ffi-production-closure.json",

@@ -245,7 +245,10 @@ try {
       SAGEJS_FORBID_MATRIX_NAPI: "1",
       SAGEJS_NATIVE_CACHE_DIR: join(temporary, "native-cache"),
     },
-    timeout: 60_000,
+    // The 500x500 interpreted reference loops can exceed one minute on a
+    // shared Windows runner. Keep the numerical ratchets above unchanged;
+    // this limit only bounds the enclosing fresh-process test.
+    timeout: 240_000,
   });
   if (result.error) throw result.error;
   assert.equal(result.status, 0, result.stderr || result.stdout);

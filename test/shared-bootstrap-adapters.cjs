@@ -8,7 +8,7 @@ const { runInNewContext } = require("node:vm");
 const test = require("node:test");
 const root = join(__dirname, "..");
 const source = readFileSync(join(root, "src/baselib/bootstrap_shared.py"), "utf8");
-const sharedNames = ["ρσ_copy_method_metadata", "ρσ_native_method_adapter", "ρσ_unbound_method_adapter",
+const sharedNames = ["ρσ_machine_extension_method_matches", "ρσ_copy_method_metadata", "ρσ_native_method_adapter", "ρσ_unbound_method_adapter",
   "ρσ_exact_integer_add", "ρσ_exact_integer_divmod", "ρσ_exact_shift",
   "ρσ_exact_integer_submul", "ρσ_int_pow",
   "ρσ_check_interrupt", "ρσ_normalize_exception", "ρσ_prepare_method_call",

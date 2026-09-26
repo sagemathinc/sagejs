@@ -66,6 +66,9 @@ class ClassBody:
 
 
 assert ClassBody.answer == ("shadow", (), {"flag": 3})
+wrapped = staticmethod(shadow)
+assert callable(wrapped)
+assert wrapped(4, flag=5) == ("shadow", (4,), {"flag": 5})
 
 isinstance = shadow
 assert isinstance() == ("shadow", (), {})

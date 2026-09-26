@@ -20,11 +20,11 @@
     },
     "parity_corpus": {
       "path": "test/browser-wasm-parity-corpus.json",
-      "sha256": "88117a071e818d3bef7da9bd8be1247832d1c48120b8f1e563333ba8d5d00be3"
+      "sha256": "c55e5ad14baaa8ee85ff7168e81cc7662d0ec33b773ae948b2fe4f4457d60347"
     },
     "capability_report": {
       "path": "architecture/wasm-capabilities-report.json",
-      "sha256": "4666bdbb957305a386ac8eecbd69cb30918ccdb51c715bc6fe2b5fc109028922"
+      "sha256": "25a6dbed96a72265d3d62fc0d952c642cdb78a7aa81095ba9543fea4ac3326f6"
     },
     "kernel_coverage": {
       "path": "packages/flint-wasm/release/production-kernel-coverage.json",
@@ -32,7 +32,7 @@
     },
     "performance_cases": {
       "path": "bench/browser-wasm-performance-cases.json",
-      "sha256": "094fd0fd204614fe01125eb2755e33d4d181e52a84cbb746db14a08010ba50e9"
+      "sha256": "41cbd8b141720a0a1162bc854a6214541032e29a02f5152e697cd55198e64a42"
     },
     "route_receipts": [],
     "rejected_route_receipts": [],
@@ -59,9 +59,10 @@
         "shared-core": 51
       },
       "by_status": {
-        "available": 628,
+        "available": 627,
         "desktop-only": 47,
-        "fallback": 433
+        "fallback": 433,
+        "planned": 1
       }
     },
     "kernel_coverage_totals": {

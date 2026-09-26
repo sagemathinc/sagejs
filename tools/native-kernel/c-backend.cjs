@@ -3667,6 +3667,18 @@ ${cleanup.join("\n")}
 }`;
 }
 
+function taggedBridgeCandidate(fn) {
+  return !fn.params.some((param) => isLiveExactOwnerType(param.type)) &&
+    !fn.locals.some((local) => local.type === "NativeWorkspaceArena") &&
+    fn.analysis?.fmpzExact?.hostBoundary !==
+      "none-internal-borrowed-aggregate-only";
+}
+
+function taggedBridgeEntry(fn) {
+  return taggedBridgeCandidate(fn) &&
+    fn.analysis?.backend?.requiresExactWorkspace !== true;
+}
+
 function emitExactWrappers(fn, options = {}) {
   const diagnosticStageClock =
     options.diagnosticStageClock?.function === fn.name;
@@ -3687,7 +3699,8 @@ function emitExactWrappers(fn, options = {}) {
     fn.locals.some((local) => isLiveExactOwnerType(local.type)) ||
     fn.analysis?.backend?.requiresExactWorkspace === true;
   if (fn.analysis?.backend?.kind === "fmpz" || ownsDirectExactStorage) {
-    const taggedWrapper = fn.analysis?.backend?.kind === "fmpz"
+    const taggedWrapper = fn.analysis?.backend?.kind === "fmpz" &&
+      taggedBridgeEntry(fn)
       ? [emitTaggedWrapper(fn, {
         wrapper: `compiled_${fn.name}_tagged`,
       })]
@@ -5514,7 +5527,11 @@ ${cleanup.join("\n")}
     return sagejs_core_ok;
 }`;
   }
-  if (fn.analysis?.backend?.kind === "tagged") {
+  // Arena-backed functions can have tagged scalar analysis while their tagged
+  // bridge is intentionally omitted. The public core must call an emitted
+  // function, never a missing tagged symbol tolerated by a permissive linker.
+  if (fn.analysis?.backend?.kind === "tagged" &&
+      options.taggedBridges?.has(fn.name)) {
     const declarations = ["    int sagejs_core_ok;"];
     const initialization = [];
     const cleanup = [];
@@ -6034,14 +6051,8 @@ function generateHostCore(ir, options = {}) {
   // Scalar dependency-only functions still need internal tagged/word bodies.
   // Host export selection is distinct from representation eligibility: live
   // owned and fmpz-only aggregate borrows continue to use their direct core.
-  const taggedBridgeCandidates = exact.filter((fn) =>
-    !fn.params.some((param) => isLiveExactOwnerType(param.type)) &&
-    !fn.locals.some((local) => local.type === "NativeWorkspaceArena") &&
-    fn.analysis?.fmpzExact?.hostBoundary !== "none-internal-borrowed-aggregate-only"
-  );
-  const bridgeFunctions = taggedBridgeCandidates.filter((fn) =>
-    fn.analysis?.backend?.requiresExactWorkspace !== true
-  );
+  const taggedBridgeCandidates = exact.filter(taggedBridgeCandidate);
+  const bridgeFunctions = taggedBridgeCandidates.filter(taggedBridgeEntry);
   const taggedBridgeFunctions = [...bridgeFunctions];
   const taggedBridgeNames = new Set(
     taggedBridgeFunctions.map((fn) => fn.name),
@@ -6128,9 +6139,15 @@ function generateHostCore(ir, options = {}) {
       ...options,
       privateIntegerBuffers: privateBuffers,
     })),
-    ...exactEntries.map((fn) => publicCoreFunction(fn, { tagged: emitTagged })),
+    ...exactEntries.map((fn) => publicCoreFunction(fn, {
+      tagged: emitTagged,
+      taggedBridges: taggedBridgeNames,
+    })),
     ...privateCoreAdapters.map((fn) =>
-      publicCoreFunction(fn, { tagged: emitTagged })
+      publicCoreFunction(fn, {
+        tagged: emitTagged,
+        taggedBridges: taggedBridgeNames,
+      })
         .replace(/^int sagejs_kernel_/m, "static int sagejs_kernel_")
     ),
     ...floats.map(emitFloat64CoreFunction),
@@ -6396,7 +6413,8 @@ static int get_precision(
     return fn.kernelKind === "integer"
       ? [
         ...(emitTagged ? [ordinary] : []),
-        ...(emitTagged && fn.analysis?.backend?.kind === "fmpz" ? [
+        ...(emitTagged && fn.analysis?.backend?.kind === "fmpz" &&
+          taggedBridgeEntry(fn) ? [
           `        {${cString(`${fn.name}$tagged`)}, NULL, ` +
             `compiled_${fn.name}_tagged, NULL, NULL, NULL, napi_default, NULL}`,
         ] : []),

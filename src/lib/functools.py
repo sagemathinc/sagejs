@@ -31,9 +31,21 @@ class partial:
             combined.update(keywords)
             keywords = combined
             function = function.func
-        runtime.object.defineProperty(self, "func", {"value": function})
-        runtime.object.defineProperty(self, "args", {"value": tuple(args)})
-        runtime.object.defineProperty(self, "keywords", {"value": dict(keywords)})
+        runtime.object.defineProperty(self, "_func", {"value": function})
+        runtime.object.defineProperty(self, "_args", {"value": tuple(args)})
+        runtime.object.defineProperty(self, "_keywords", {"value": dict(keywords)})
+
+    @property
+    def func(self):
+        return self._func
+
+    @property
+    def args(self):
+        return self._args
+
+    @property
+    def keywords(self):
+        return self._keywords
 
     def __call__(self, *args, **keywords):
         combined = dict(self.keywords)

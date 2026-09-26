@@ -2140,6 +2140,8 @@ if (!nativeAddonDisabled) {
 
 const compiledIntegerBackends = Object.freeze(${JSON.stringify(integerBackends)});
 function availableExactBackend(backend) {
+  // BigInt is the JavaScript fallback, not a compiled native backend.
+  if (backend === "bigint") return "bigint";
   if (backend === "fmpz") backend = "tagged";
   if (compiledIntegerBackends.includes(backend)) return backend;
   if (compiledIntegerBackends.includes("gmp")) return "gmp";

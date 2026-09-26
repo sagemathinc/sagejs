@@ -6,7 +6,7 @@
  * architecture, then compiles the unchanged source normally.
  */
 
-import { mkdirSync, realpathSync, statSync } from "fs";
+import { lstatSync, mkdirSync, realpathSync, statSync, unlinkSync } from "fs";
 import { homedir } from "os";
 import { dirname, join, resolve } from "path";
 import { createRequire } from "module";
@@ -1297,6 +1297,17 @@ export function runRuntimeBootstrap(
         try {
           cachedData = moduleScript.createCachedData();
           mkdirSync(dirname(cacheFilename), { recursive: true });
+          if (process.platform === "win32") {
+            // Windows cache publication is first-writer-wins to avoid exposing
+            // partially replaced files to concurrent readers. Remove an old
+            // regular-file entry before refreshing rejected bytecode or a
+            // malformed source map; otherwise that stale entry wins forever.
+            // A competing reader may still use its already-open complete file.
+            try {
+              const existing = lstatSync(cacheFilename);
+              if (existing.isFile() && !existing.isSymbolicLink()) unlinkSync(cacheFilename);
+            } catch (_error) {}
+          }
           atomicWriteCacheFileSync(cacheFilename, JSON.stringify({
             version: compiler.get_compiler_version(),
             signature: sourceHash,

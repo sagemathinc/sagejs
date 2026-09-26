@@ -1,8 +1,26 @@
 """Shared host adapters for both compiler and Sage/Python bootstrap runtimes.
 
-These unchanged native ABI and interruption primitives must be initialized
+These native ABI, method-identity, and interruption primitives must be initialized
 before builtins. They have no private state or mathematical implementation.
 """
+
+
+def ρσ_machine_extension_method_matches(parent, name, owner, getter, method):
+    """Authenticate an unbound method despite fresh bound-wrapper lookups."""
+    return r"""%js (() => {
+        if (typeof method !== "function") return false;
+        let cursor = parent;
+        while (cursor !== null) {
+            const descriptor = Object.getOwnPropertyDescriptor(cursor, name);
+            if (descriptor !== undefined) {
+                return cursor === owner && descriptor.get === getter &&
+                    (getter === undefined ? descriptor.value === method :
+                     getter.__sagejs_unbound_method__ === method);
+            }
+            cursor = Object.getPrototypeOf(cursor);
+        }
+        return false;
+    })()"""
 
 
 def ρσ_copy_method_metadata(method, target_function):

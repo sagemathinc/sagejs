@@ -36,8 +36,7 @@ function plan(profile = "native", selected, target = targetForHost()) {
     // dist as the browser stage's input.
     stage("public-runtime", "build", [["pnpm", "build"], ["pnpm", "python:precompile:run"]],
       { inputs: ["build/authenticated-numerical-product"], outputs: ["dist"], sourceSubmodules: parserSubmodules }),
-    stage("public-build", "build", [["packages/class-groups/scripts/build-wasm.sh"],
-      ["pnpm", "--dir", "packages/flint-wasm", "build"],
+    stage("public-build", "build", [["pnpm", "--dir", "packages/flint-wasm", "build"],
       ["node", "scripts/numerical-product.cjs", "validate-installed"],
       ["node", "packages/flint-wasm/scripts/production-receipt.cjs", "validate"],
       ["node", "packages/flint-wasm/scripts/browser-wasm-release-artifact.cjs", "--dist", "packages/flint-wasm/dist",
@@ -63,11 +62,9 @@ function plan(profile = "native", selected, target = targetForHost()) {
     stage("jupyter", "installation", [["pnpm", "test:jupyter:sea"]], { inputs: [...runtime, "build/sea"] }),
     stage("sea", "packaging", [["pnpm", "test:sea:reuse"]], { outputs: ["build/sea"] }),
     stage("npm", "packaging", [
-      ...(target === "windows-x64" ? [] : [["packages/class-groups/scripts/build-native.sh"]]),
       ["node", "scripts/build-npm-platform-package.cjs", target,
         `build/sea/sagejs${target === "windows-x64" ? ".exe" : ""}`,
-        `build/sea/sagepython${target === "windows-x64" ? ".exe" : ""}`,
-        ...(target === "windows-x64" ? [] : ["packages/class-groups/target/release/class-group-service"])],
+        `build/sea/sagepython${target === "windows-x64" ? ".exe" : ""}`],
     ],
     { inputs: ["build/sea", "build/release/npm/sagejs.tgz"], outputs: [`build/release/npm/sagejs-${target}.tgz`] }),
     stage("package-install", "installation", [["node", "scripts/release/package-preflight.cjs"]],

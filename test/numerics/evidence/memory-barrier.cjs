@@ -4,6 +4,8 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { spawn } = require("node:child_process");
 const { once } = require("node:events");
+const fs = require("node:fs");
+const path = require("node:path");
 const { setTimeout: delay } = require("node:timers/promises");
 const { createExitBarrier, verifyChildObservation } = require("../../../scripts/package-qualification/memory-barrier.cjs");
 const preload = require.resolve("../../../scripts/package-qualification/memory-barrier.cjs");
@@ -23,6 +25,19 @@ async function waitReady(barrier) {
   }
   throw new Error("subject did not reach exit boundary");
 }
+
+test("a readiness marker is invisible until its token is complete", () => {
+  const barrier = createExitBarrier();
+  try {
+    const filename = path.join(barrier.options.directory, `1-00000000-0000-4000-8000-000000000000.ready`);
+    const pending = `${filename}.pending`;
+    fs.writeFileSync(pending, barrier.options.token.slice(0, 8));
+    assert.deepEqual(barrier.ready(), []);
+    fs.writeFileSync(pending, barrier.options.token);
+    fs.renameSync(pending, filename);
+    assert.deepEqual(barrier.ready(), [{ name: path.basename(filename), pid: 1 }]);
+  } finally { barrier.dispose(); }
+});
 
 for (const explicit of [false, true]) {
   test(`short real child stays resident until observed; explicit exit=${explicit}`, async () => {
