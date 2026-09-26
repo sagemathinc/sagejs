@@ -3,6 +3,35 @@ const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 const authenticatedCapabilities = new WeakMap();
 const WASM32_MAX_ALLOCATION = 0xffff_ffff;
+const lowInt64Word = new Uint8Array(new Uint32Array([1]).buffer)[0] === 1 ? 0 : 1;
+
+/** Copy exact Python/JS integers into owned signed words before Wasm ingress. */
+export function packExactInt64Buffer(source) {
+  if (!Array.isArray(source)) throw new TypeError("expected a flat exact-integer list");
+  const result = new BigInt64Array(source.length);
+  const words = new Uint32Array(result.buffer, result.byteOffset, result.length * 2);
+  const lower = -(1n << 63n);
+  const upper = 1n << 63n;
+  for (let index = 0; index < source.length; index += 1) {
+    const value = source[index];
+    if (typeof value === "number") {
+      if (!Number.isSafeInteger(value)) {
+        throw new TypeError("expected an exact safe integer");
+      }
+      words[2 * index + lowInt64Word] = value >>> 0;
+      words[2 * index + 1 - lowInt64Word] =
+        Math.floor(value / 0x100000000) >>> 0;
+    } else if (typeof value === "bigint") {
+      if (value < lower || value >= upper) {
+        throw new TypeError("exact integer is outside signed 64-bit range");
+      }
+      result[index] = value;
+    } else {
+      throw new TypeError("expected an exact integer");
+    }
+  }
+  return result;
+}
 
 function equalStrings(left, right) {
   return Array.isArray(left) && Array.isArray(right) &&
@@ -429,7 +458,11 @@ function makeMarshaller(instance, runtime, resourceBridge) {
       return [address, length];
     }
     const signed = type === "Int64Buffer";
-    const values = Array.from(argument, (value) => BigInt(value));
+    // Do not hold a view into this same guest memory across an allocation,
+    // which may grow and detach that view.
+    const directSigned = signed && argument instanceof BigInt64Array &&
+      argument.buffer !== instance.exports.memory.buffer;
+    const values = directSigned ? argument : Array.from(argument, (value) => BigInt(value));
     const address = alloc(bytesFor(values.length, 8, type), type);
     const view = signed
       ? new BigInt64Array(instance.exports.memory.buffer, address, values.length)
@@ -439,8 +472,12 @@ function makeMarshaller(instance, runtime, resourceBridge) {
       const current = signed
         ? new BigInt64Array(instance.exports.memory.buffer, address, values.length)
         : new BigUint64Array(instance.exports.memory.buffer, address, values.length);
-      for (let index = 0; index < values.length; index += 1) {
-        setTarget(argument, index, current[index]);
+      if (directSigned) {
+        argument.set(current);
+      } else {
+        for (let index = 0; index < values.length; index += 1) {
+          setTarget(argument, index, current[index]);
+        }
       }
     });
     return [address, values.length];
@@ -622,6 +659,9 @@ function callable(instance, kernel, fn, resourceBridge) {
     automaticSelection: { value: receipt ?? null },
     automaticSelectionAccepted: { value: automaticSelectionAccepted },
   };
+  if (bridge.parameters.some((parameter) => parameter.type === "Int64Buffer")) {
+    properties.packExactInt64Buffer = { value: packExactInt64Buffer };
+  }
   let result = invoke;
   if (automaticSelectionAccepted !== null) {
     const bindFallback = (fallback) => {

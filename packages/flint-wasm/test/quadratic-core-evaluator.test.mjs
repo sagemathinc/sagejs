@@ -64,6 +64,7 @@ test("the isolated quadratic reactor serves Sage-mode ideal classes in Wasm", {
     });
     const tiny = await evaluator.evaluate([
       "from sagejs.number_fields import rust_class_group_runtime as rust_runtime",
+      "from sagejs.kernels.matrix.imaginary_map import verify_packed_imaginary_map",
       "R.<x> = QQ[]",
       "K.<a> = NumberField(x^2-x+6)",
       "G = K.class_group(algorithm='rust')",
@@ -73,10 +74,18 @@ test("the isolated quadratic reactor serves Sage-mode ideal classes in Wasm", {
       " G(G.gen().ideal()).coordinates(), G(I).coordinates(),",
       " K.class_number(algorithm='rust'), K.class_group().algorithm,",
       " 'completeClassMapCorePacked' in rust_runtime.rust_imaginary_result(",
-      " K, operation='imaginary-class-group', algorithm='rust')]",
+      " K, operation='imaginary-class-group', algorithm='rust'),",
+      " callable(getattr(verify_packed_imaginary_map, 'packExactInt64Buffer', None))]",
     ].join("\n"));
     assert.equal(tiny.repr,
-      "[3, (3,), 'exact-unconditional', (1,), (1,), 3, 'rust', True]");
+      "[3, (3,), 'exact-unconditional', (1,), (1,), 3, 'rust', True, True]");
+    await assert.rejects(evaluator.evaluate([
+      "forged = rust_runtime.rust_imaginary_result(",
+      " K, operation='imaginary-class-group', algorithm='rust')",
+      "forged['completeClassMapCorePacked'][0] = True",
+      "rust_runtime.validate_imaginary_group_result(",
+      " forged, K.discriminant(), compact=True)",
+    ].join("\n")), /failed exact packed verification/);
 
     const large = await evaluator.evaluate([
       "K.<a> = NumberField(x^2-x+3750000079)",
@@ -91,6 +100,25 @@ test("the isolated quadratic reactor serves Sage-mode ideal classes in Wasm", {
     assert.equal(large.repr,
       "[33768, (2, 16884), 'exact-unconditional', " +
       "(1, 0), (0, 1), (1, 1), (1, 0), 33768]");
+
+    const panel = JSON.parse(await readFile(new URL(
+      "../../../bench/pari-class-group-rust/qualification/" +
+      "public-quadratic-boundary/benchmark/panel-v2.json",
+      import.meta.url,
+    )));
+    for (const field of panel.fields) {
+      const answer = await evaluator.evaluate([
+        `K.<a> = NumberField(${field.pariPolynomial})`,
+        "G = K.class_group(algorithm='rust')",
+        "[K.discriminant(), G.order(), G.invariants(), G.proof_status]",
+      ].join("\n"));
+      const factors = field.expected.invariantFactors;
+      const tuple = factors.length === 0 ? "()"
+        : `(${factors.join(", ")}${factors.length === 1 ? "," : ""})`;
+      assert.equal(answer.repr,
+        `[${field.expected.discriminant}, ${field.expected.classNumber}, ` +
+        `${tuple}, 'exact-unconditional']`, field.id);
+    }
   } finally {
     evaluator?.terminate();
     await session?.close();

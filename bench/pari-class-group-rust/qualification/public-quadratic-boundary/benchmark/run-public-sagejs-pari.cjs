@@ -289,4 +289,12 @@ if (require.main === module) {
   });
 }
 
-module.exports = { parseArguments, median, expectedSage };
+module.exports = {
+  parseArguments,
+  median,
+  expectedSage,
+  sha256,
+  verifyPariIdentity,
+  ResidentGp,
+  timePari,
+};

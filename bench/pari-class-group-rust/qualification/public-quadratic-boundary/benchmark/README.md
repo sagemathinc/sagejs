@@ -375,6 +375,27 @@ for PARI (previous Sage.js median: 29.0 ms). See
 This is a different-run diagnostic, not a controlled attribution or a promoted
 matched receipt; the public PARI-competitiveness target remains open.
 
+### Development-only Wasm evaluator diagnostic
+
+The standalone imaginary-quadratic reactor can be injected into a local
+Sage-mode evaluator without adding it to the production Wasm layout. After
+building the candidate reactor and complete Wasm evaluator assets, run the
+same frozen-panel, alternating-arm comparison against pinned PARI 2.17.4:
+
+```sh
+sh packages/imaginary-quadratic-core/scripts/build-wasm.sh
+pnpm build:wasm
+node bench/pari-class-group-rust/qualification/public-quadratic-boundary/benchmark/run-development-wasm-pari.mjs \
+  --samples 15 --boundary prepared \
+  --receipt public-api-prepared-development-wasm-ingress-diagnostic.json
+```
+
+The runner records artifact and build hashes, load, raw clocks, and exact
+answers. It deliberately labels this as development-only: the ordinary public
+Wasm kernel still declines the unreviewed reactor, and this direct evaluator
+omits the outer kernel-worker IPC. Thus even a favorable result would not
+establish public release eligibility or a promoted performance claim.
+
 ## Matched scalar class-number comparison
 
 `run_class_number.py` separately compares the exact scalar Rust count, the
