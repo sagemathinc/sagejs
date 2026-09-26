@@ -96,6 +96,12 @@ field construction. Its JSON is **not** a promoted performance receipt and must
 not be divided by the PARI timings above: the boundaries and warmup policies
 differ. Pass a sample count and field ID to narrow a local investigation, for
 example `run-public-sagejs.cjs 3 near-limit-h4378-d8173415`.
+Append `--phases` to measure one additional complete Rust-service/host-conversion
+call and one independent Python-side validation of the same field's map. The
+diagnostic runs after the public samples, verifies both form and coordinate
+counts, and reports the two elapsed times separately. It does not isolate
+public group-object binding, alter the frozen matched comparison, or constitute
+a release performance receipt.
 
 On 2026-09-25, `larger-composite-d15000000315` (33,768 classes) exposed a
 public-path bottleneck: a fresh full group took roughly 7 seconds, while a
@@ -137,6 +143,27 @@ to claim a reliable speedup. A one-sample replay of all 11 frozen fields again
 matched every answer and ended near 1.12 GB RSS in the long-lived Node process;
 the earlier 1.42 GB observation was from a separate run and does not establish
 a controlled memory comparison. Peak Wasm memory remains unmeasured here.
+
+On 2026-09-26, a fresh process measuring the 33,768-class
+`larger-composite-d15000000315` row reported 5.58 seconds for one fresh
+explicit public group call. An in-process phase probe on that row measured
+0.906 seconds for the Rust service plus host conversion, followed by 5.356
+seconds in `validate_imaginary_group_result`. A separate three-sample public
+run had a 5.46-second fresh-call median after a prototype that emitted flat
+rows from Rust, compared with 5.62 seconds after deferring construction of
+public form objects. Those are different short runs, not a controlled speedup:
+both prototypes were removed because neither addressed the dominant validator
+cost. A diagnostic that bypassed only the per-form gcd checks reduced one
+validation from 5.347 to 5.046 seconds; the bypass was not retained. The next
+public-path optimization must handle independent complete-map validation and
+compact exact coordinate lookup together, while preserving forged-publication
+rejection, detached certificates, native and Wasm behavior, and arbitrary
+ideal-class queries. Merely changing the JSON row shape or delaying public
+form objects does not establish PARI competitiveness.
+The retained `--phases` mode, run after one public sample of that large field,
+reported 0.387 seconds for the warm service/conversion phase and 5.026 seconds
+for independent validation. Its boundary differs from the first-call probe,
+but confirms which phase dominates after warmup.
 
 ## Matched scalar class-number comparison
 

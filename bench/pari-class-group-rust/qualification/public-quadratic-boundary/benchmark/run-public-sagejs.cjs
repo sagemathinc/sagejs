@@ -11,16 +11,20 @@ const panel = require("./panel-v2.json");
 const { createSage } = require(path.join(root, "dist/tools/kernel.js"));
 
 function parseArguments(args) {
-  if (args.length > 2) throw new Error("usage: run-public-sagejs.cjs [samples] [field-id]");
-  const samples = args[0] === undefined ? 5 : Number(args[0]);
+  const phases = args.includes("--phases");
+  const positional = args.filter((value) => value !== "--phases");
+  if (positional.length > 2 || args.length !== positional.length + Number(phases)) {
+    throw new Error("usage: run-public-sagejs.cjs [samples] [field-id] [--phases]");
+  }
+  const samples = positional[0] === undefined ? 5 : Number(positional[0]);
   if (!Number.isSafeInteger(samples) || samples < 1 || samples > 30) {
     throw new Error("samples must be an integer from 1 through 30");
   }
-  const fields = args[1]
-    ? panel.fields.filter((field) => field.id === args[1])
+  const fields = positional[1]
+    ? panel.fields.filter((field) => field.id === positional[1])
     : panel.fields;
-  if (fields.length === 0) throw new Error(`unknown frozen field: ${args[1]}`);
-  return { samples, fields };
+  if (fields.length === 0) throw new Error(`unknown frozen field: ${positional[1]}`);
+  return { samples, fields, phases };
 }
 
 function expectedGroup(field) {
@@ -49,8 +53,28 @@ async function timed(sage, code, expected) {
   return nanoseconds;
 }
 
+async function diagnosePhases(sage, expectedClassNumber) {
+  const response = await sage.evaluate([
+    "import time",
+    "from sagejs.number_fields import rust_class_group_runtime as rust_runtime",
+    "started = time.perf_counter()",
+    "result = rust_runtime.rust_imaginary_result(K, operation='imaginary-class-group', algorithm='rust')",
+    "received = time.perf_counter()",
+    "forms, coordinates, generators = rust_runtime.validate_imaginary_group_result(result, int(K.discriminant()))",
+    "validated = time.perf_counter()",
+    "[(received - started) * 1000, (validated - received) * 1000, len(forms), len(coordinates)]",
+  ].join("\n"));
+  const [serviceAndConversionMs, independentValidationMs, forms, coordinates] =
+    JSON.parse(response.repr);
+  if (forms !== expectedClassNumber || coordinates !== expectedClassNumber ||
+      !Number.isFinite(serviceAndConversionMs) || !Number.isFinite(independentValidationMs)) {
+    throw new Error("phase diagnostic did not validate the complete class map");
+  }
+  return { serviceAndConversionMs, independentValidationMs };
+}
+
 async function main() {
-  const { samples, fields } = parseArguments(process.argv.slice(2));
+  const { samples, fields, phases } = parseArguments(process.argv.slice(2));
   const service = process.env.SAGEJS_CLASS_GROUP_SERVICE;
   if (!service || !path.isAbsolute(service) || !fs.existsSync(service)) {
     throw new Error("set SAGEJS_CLASS_GROUP_SERVICE to the built native service path");
@@ -74,6 +98,9 @@ async function main() {
         fresh.push(await timed(sage, freshCall, expected));
         scalar.push(await timed(sage, scalarCall, String(field.expected.classNumber)));
       }
+      const phaseDiagnostic = phases
+        ? await diagnosePhases(sage, field.expected.classNumber)
+        : undefined;
       results.push({
         fieldId: field.id,
         discriminant: field.expected.discriminant,
@@ -87,6 +114,7 @@ async function main() {
         scalarExplicitNanoseconds: scalar,
         scalarExplicitMedianNanoseconds: median(scalar),
         rssAfterFieldBytes: process.memoryUsage().rss,
+        ...(phaseDiagnostic === undefined ? {} : { phaseDiagnostic }),
       });
       process.stderr.write(`${JSON.stringify(results[results.length - 1])}\n`);
     }
@@ -102,6 +130,7 @@ async function main() {
     node: process.version,
     platform: `${process.platform}-${process.arch}`,
     samplesPerField: samples,
+    phaseDiagnosticEnabled: phases,
     results,
   }, null, 2)}\n`);
 }
@@ -113,4 +142,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { parseArguments, expectedGroup, median };
+module.exports = { parseArguments, expectedGroup, median, diagnosePhases };
