@@ -141,6 +141,9 @@ async function main() {
     assert.equal(fs.existsSync(fixture.startup), true);
 
     const groupRequest = ["imaginary-class-group", { polynomialAscending: ["1", "-1", "1"] }];
+    const malformedCompact = host.call("classGroupCompact", ["imaginary-class-group", null]);
+    assert.equal(malformedCompact.ok, false);
+    assert.equal(malformedCompact.error.name, "TypeError");
     const fullGroup = host.call("classGroup", groupRequest);
     const compactGroup = host.call("classGroupCompact", groupRequest);
     assert.equal(fullGroup.ok, true);

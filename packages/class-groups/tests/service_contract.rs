@@ -101,6 +101,73 @@ fn imaginary_quadratic_operations_are_unconditional_and_public() {
                 entry["representativeIdeal"].is_object() && entry["coordinates"].is_array()
             })
     );
+
+    let packed = call(
+        &mut service,
+        "iq-group-packed",
+        "imaginary-class-group",
+        json!({"polynomialAscending": ["6", "-1", "1"], "transport": "packed-v1"}),
+    );
+    assert_eq!(packed["ok"], true, "{packed}");
+    let mut expected = result.clone();
+    let entries = expected["completeClassMap"].as_array().unwrap().clone();
+    let mut rows = Vec::new();
+    for entry in &entries {
+        for value in [
+            &entry["form"]["a"],
+            &entry["form"]["b"],
+            &entry["form"]["c"],
+            &entry["inverseForm"]["a"],
+            &entry["inverseForm"]["b"],
+            &entry["inverseForm"]["c"],
+            &entry["representativeIdeal"]["norm"],
+            &entry["representativeIdeal"]["basisColumns"][0][0],
+            &entry["representativeIdeal"]["basisColumns"][0][1],
+            &entry["representativeIdeal"]["basisColumns"][1][0],
+            &entry["representativeIdeal"]["basisColumns"][1][1],
+        ] {
+            rows.push(value.clone());
+        }
+        rows.extend(entry["coordinates"].as_array().unwrap().iter().cloned());
+    }
+    expected.as_object_mut().unwrap().remove("completeClassMap");
+    expected["completeClassMapPacked"] = json!(rows);
+    expected["completeClassMapLength"] = json!(entries.len());
+    let forms = expected["certificate"]["reducedForms"]
+        .as_array()
+        .unwrap()
+        .clone();
+    let mut packed_forms = Vec::new();
+    for form in &forms {
+        packed_forms.extend([form["a"].clone(), form["b"].clone(), form["c"].clone()]);
+    }
+    expected["certificate"]
+        .as_object_mut()
+        .unwrap()
+        .remove("reducedForms");
+    expected["certificate"]["reducedFormsPacked"] = json!(packed_forms);
+    assert_eq!(packed["result"]["result"], expected);
+
+    let literal_unknown_id = call(
+        &mut service,
+        "unknown",
+        "imaginary-class-group",
+        json!({"polynomialAscending": ["6", "-1", "1"], "transport": "packed-v1"}),
+    );
+    assert_eq!(literal_unknown_id["ok"], true);
+    assert_eq!(literal_unknown_id["id"], "unknown");
+
+    let unsupported_transport = call(
+        &mut service,
+        "iq-group-bad-transport",
+        "imaginary-class-group",
+        json!({"polynomialAscending": ["6", "-1", "1"], "transport": "unknown"}),
+    );
+    assert_eq!(unsupported_transport["ok"], false);
+    assert_eq!(
+        unsupported_transport["error"]["category"],
+        "invalid-request"
+    );
 }
 
 #[test]

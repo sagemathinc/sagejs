@@ -8,10 +8,11 @@
 //! four public polynomial coefficients.
 
 use crate::{
-    ArbitraryIdealReductionLimits, CompactPresentationContinuationCache, CompactPresentationLimits,
-    CubicAnalyticEvidence, CubicCompletionProofMode, CubicConditionalCompletionError,
-    CubicConditionalCompletionOptions, CubicPresentationCandidateLimits,
-    GrhConditionalCompleteCubicClassGroup, ImaginaryClassGroupError, MaximalOrderEvidenceStatus,
+    ArbitraryIdealReductionLimits, BinaryQuadraticForm, CompactPresentationContinuationCache,
+    CompactPresentationLimits, CompleteImaginaryClassGroup, CubicAnalyticEvidence,
+    CubicCompletionProofMode, CubicConditionalCompletionError, CubicConditionalCompletionOptions,
+    CubicPresentationCandidateLimits, GrhConditionalCompleteCubicClassGroup,
+    ImaginaryClassGroupError, ImaginaryFormClassMapEntry, MaximalOrderEvidenceStatus,
     NormalFormLimits, PreparedContinuationLimits, PreparedCubicRelationCollector,
     PreparedIdealWorkspace, PresentationZeroState, PrincipalElementWitnessState,
     PublicCubicPreparationLimits, VerifiedCompactPresentation,
@@ -23,6 +24,7 @@ use crate::{
     prepare_monic_cubic,
 };
 use rug::Integer;
+use serde::ser::SerializeSeq;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::sync::OnceLock;
@@ -1635,6 +1637,129 @@ struct ImaginaryServiceRequest {
     id: String,
     operation: String,
     polynomial_ascending: [String; 3],
+    #[serde(default)]
+    transport: Option<String>,
+}
+
+/// Flat transport is an internal representation choice, never proof authority.
+/// The detached verifier and the public Python wrapper check every emitted row.
+struct PackedImaginaryRows<'a>(&'a [ImaginaryFormClassMapEntry]);
+
+impl Serialize for PackedImaginaryRows<'_> {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let rank = self.0.first().map_or(0, |entry| entry.coordinates.len());
+        let mut output = serializer.serialize_seq(Some(self.0.len() * (11 + rank)))?;
+        for entry in self.0 {
+            let form = &entry.form;
+            let inverse = &entry.inverse_form;
+            let ideal = &entry.representative_ideal;
+            for value in [
+                form.a,
+                form.b,
+                form.c,
+                inverse.a,
+                inverse.b,
+                inverse.c,
+                ideal.norm,
+                ideal.basis_columns[0][0],
+                ideal.basis_columns[0][1],
+                ideal.basis_columns[1][0],
+                ideal.basis_columns[1][1],
+            ] {
+                output.serialize_element(&value)?;
+            }
+            for value in &entry.coordinates {
+                output.serialize_element(value)?;
+            }
+        }
+        output.end()
+    }
+}
+
+struct PackedImaginaryForms<'a>(&'a [BinaryQuadraticForm]);
+
+impl Serialize for PackedImaginaryForms<'_> {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut output = serializer.serialize_seq(Some(self.0.len() * 3))?;
+        for form in self.0 {
+            output.serialize_element(&form.a)?;
+            output.serialize_element(&form.b)?;
+            output.serialize_element(&form.c)?;
+        }
+        output.end()
+    }
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct PackedImaginaryCertificate<'a> {
+    discriminant: i64,
+    fundamental_squarefree_core: i64,
+    squarefree_core_prime_factors: &'a [u64],
+    reduction_bound_a: i64,
+    reduced_forms_packed: PackedImaginaryForms<'a>,
+    theorem: &'static str,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct PackedImaginaryGroup<'a> {
+    schema: &'static str,
+    field_id: &'static str,
+    polynomial_ascending: &'a [i64; 3],
+    discriminant: i64,
+    class_number: usize,
+    invariant_factors: &'a [u64],
+    generators: &'a [crate::ImaginaryClassGenerator],
+    complete_class_map_packed: PackedImaginaryRows<'a>,
+    complete_class_map_length: usize,
+    certificate: PackedImaginaryCertificate<'a>,
+    proof_status: &'static str,
+    runtime_uses_pari_or_fixture_answers: bool,
+}
+
+impl<'a> From<&'a CompleteImaginaryClassGroup> for PackedImaginaryGroup<'a> {
+    fn from(group: &'a CompleteImaginaryClassGroup) -> Self {
+        let certificate = &group.certificate;
+        Self {
+            schema: group.schema,
+            field_id: group.field_id,
+            polynomial_ascending: &group.polynomial_ascending,
+            discriminant: group.discriminant,
+            class_number: group.class_number,
+            invariant_factors: &group.invariant_factors,
+            generators: &group.generators,
+            complete_class_map_packed: PackedImaginaryRows(&group.complete_class_map),
+            complete_class_map_length: group.complete_class_map.len(),
+            certificate: PackedImaginaryCertificate {
+                discriminant: certificate.discriminant,
+                fundamental_squarefree_core: certificate.fundamental_squarefree_core,
+                squarefree_core_prime_factors: &certificate.squarefree_core_prime_factors,
+                reduction_bound_a: certificate.reduction_bound_a,
+                reduced_forms_packed: PackedImaginaryForms(&certificate.reduced_forms),
+                theorem: certificate.theorem,
+            },
+            proof_status: group.proof_status,
+            runtime_uses_pari_or_fixture_answers: group.runtime_uses_pari_or_fixture_answers,
+        }
+    }
+}
+
+#[derive(Serialize)]
+struct PackedImaginaryOperationResult<'a> {
+    schema: &'static str,
+    outcome: &'static str,
+    operation: &'static str,
+    result: PackedImaginaryGroup<'a>,
+}
+
+#[derive(Serialize)]
+struct PackedImaginaryServiceResponse<'a> {
+    schema: &'static str,
+    abi: u32,
+    id: &'a str,
+    ok: bool,
+    result: PackedImaginaryOperationResult<'a>,
 }
 
 #[derive(Deserialize)]
@@ -1918,11 +2043,11 @@ impl ProductService {
         })
     }
 
-    fn imaginary_compute(
+    fn imaginary_coefficients(
         operation: &str,
-        request: ImaginaryServiceRequest,
-    ) -> Result<Value, ServiceError> {
-        let coefficients = request.polynomial_ascending.map(|value| {
+        polynomial_ascending: [String; 3],
+    ) -> Result<[i64; 3], ServiceError> {
+        let coefficients = polynomial_ascending.map(|value| {
             value.parse::<i64>().map_err(|_| {
                 ServiceError::new(
                     ServiceErrorCategory::InvalidRequest,
@@ -1932,7 +2057,21 @@ impl ProductService {
             })
         });
         let coefficients = coefficients.into_iter().collect::<Result<Vec<_>, _>>()?;
-        let coefficients: [i64; 3] = coefficients.try_into().expect("fixed coefficient count");
+        Ok(coefficients.try_into().expect("fixed coefficient count"))
+    }
+
+    fn imaginary_compute(
+        operation: &str,
+        request: ImaginaryServiceRequest,
+    ) -> Result<Value, ServiceError> {
+        if request.transport.is_some() {
+            return Err(ServiceError::new(
+                ServiceErrorCategory::InvalidRequest,
+                operation,
+                "unsupported imaginary class-group transport",
+            ));
+        }
+        let coefficients = Self::imaginary_coefficients(operation, request.polynomial_ascending)?;
         let result = match operation {
             "imaginary-class-number" => json!(
                 compute_imaginary_class_number_from_coefficients(coefficients)
@@ -1950,6 +2089,22 @@ impl ProductService {
             "operation": operation,
             "result": result,
         }))
+    }
+
+    fn imaginary_compute_packed(
+        request: ImaginaryServiceRequest,
+    ) -> Result<CompleteImaginaryClassGroup, ServiceError> {
+        let operation = "imaginary-class-group";
+        if request.transport.as_deref() != Some("packed-v1") {
+            return Err(ServiceError::new(
+                ServiceErrorCategory::InvalidRequest,
+                operation,
+                "unsupported imaginary class-group transport",
+            ));
+        }
+        let coefficients = Self::imaginary_coefficients(operation, request.polynomial_ascending)?;
+        compute_imaginary_class_group_from_coefficients(coefficients)
+            .map_err(|error| Self::imaginary_error(operation, error))
     }
 
     fn imaginary_error(operation: &str, error: ImaginaryClassGroupError) -> ServiceError {
@@ -2130,7 +2285,64 @@ impl ProductService {
             .filter(|id| !id.is_empty() && id.len() <= 128)
             .unwrap_or("unknown")
             .to_owned();
+        if value.get("schema").and_then(Value::as_str) == Some(SERVICE_REQUEST_SCHEMA)
+            && value.get("abi").and_then(Value::as_u64) == Some(u64::from(SERVICE_ABI_VERSION))
+            && value
+                .get("id")
+                .and_then(Value::as_str)
+                .is_some_and(|id| !id.is_empty() && id.len() <= 128)
+            && value.get("operation").and_then(Value::as_str) == Some("imaginary-class-group")
+            && value.get("transport").and_then(Value::as_str) == Some("packed-v1")
+        {
+            let result = serde_json::from_value::<ImaginaryServiceRequest>(value)
+                .map_err(|error| {
+                    ServiceError::new(
+                        ServiceErrorCategory::InvalidRequest,
+                        "imaginary-class-group",
+                        error.to_string(),
+                    )
+                })
+                .and_then(Self::imaginary_compute_packed);
+            return match result {
+                Ok(group) => serialize_packed_imaginary_result(&id, &group),
+                Err(error) => serialize_service_result(&id, Err(error)),
+            };
+        }
         serialize_service_result(&id, self.execute_value(value))
+    }
+}
+
+fn serialize_packed_imaginary_result(id: &str, group: &CompleteImaginaryClassGroup) -> Vec<u8> {
+    let response = PackedImaginaryServiceResponse {
+        schema: SERVICE_RESPONSE_SCHEMA,
+        abi: SERVICE_ABI_VERSION,
+        id,
+        ok: true,
+        result: PackedImaginaryOperationResult {
+            schema: SERVICE_RESPONSE_SCHEMA,
+            outcome: "complete",
+            operation: "imaginary-class-group",
+            result: PackedImaginaryGroup::from(group),
+        },
+    };
+    match serde_json::to_vec(&response) {
+        Ok(bytes) if bytes.len() <= MAXIMUM_RESPONSE_BYTES => bytes,
+        Ok(_) => serialize_service_result(
+            id,
+            Err(ServiceError::new(
+                ServiceErrorCategory::ResourceExhausted,
+                "imaginary-class-group",
+                "response exceeds the service byte limit",
+            )),
+        ),
+        Err(_) => serialize_service_result(
+            id,
+            Err(ServiceError::new(
+                ServiceErrorCategory::ComputationFailed,
+                "imaginary-class-group",
+                "could not serialize packed class-group response",
+            )),
+        ),
     }
 }
 

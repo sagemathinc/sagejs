@@ -215,6 +215,21 @@ different-run timings, not a promoted matched PARI comparison. The large
 fresh-call latency is still much higher than PARI's native coefficient-only
 boundary, so public PARI competitiveness remains open.
 
+A private `packed-v1` service transport now streams the same authenticated
+class-group map and reduced-form certificate as flat integer arrays directly
+from Rust. The ordinary service response remains unchanged; the Node public
+route independently validates every packed row before publishing the group.
+For `larger-composite-d15000000315`, three warm fresh explicit public calls
+measured 0.0933, 0.0947, and 0.0914 seconds (0.0933-second median). The
+preceding short run's median was 0.405 seconds, so these exploratory runs
+suggest a large transport improvement, not a controlled release comparison.
+The separate warm service/conversion probe measured 0.050 seconds; compact
+validation measured 0.033 seconds. A one-sample public replay across all 11
+frozen v2 fields again returned the expected class numbers and invariant
+factors. Exact native ideal-map and counterfeit-publication tests passed.
+The matched Rust/PARI coefficient boundary and the public Sage.js boundary
+remain different, and public PARI competitiveness is still unproven.
+
 ## Matched scalar class-number comparison
 
 `run_class_number.py` separately compares the exact scalar Rust count, the

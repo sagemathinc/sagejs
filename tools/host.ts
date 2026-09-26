@@ -1445,7 +1445,13 @@ export class NodeHostAdapter {
           if (operation !== "imaginary-class-group") {
             throw classGroupHostError("EINVAL", "compact class-group transport requires an imaginary group");
           }
-          const value = this.classGroups.call(operation, args[1] as Record<string, unknown>);
+          if (!isPlainRecord(args[1])) {
+            throw new TypeError("class-group request must be a plain object");
+          }
+          const value = this.classGroups.call(operation, {
+            ...args[1],
+            transport: "packed-v1",
+          });
           packImaginaryGroupResponse(value);
           return { ok: true, value };
         }

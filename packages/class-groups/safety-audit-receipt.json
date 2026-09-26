@@ -1357,8 +1357,8 @@
     {
       "file": "src/service.rs",
       "scope": "product-candidate",
-      "sha256": "cbb8894d0ef28dfddd1e8370e42acaf203195ecc127c8b036ee454690fbf1e52",
-      "bytes": 116482,
+      "sha256": "5cdabdc4cfada458ed14c241d29ee6f61738a66f8875b4f10f4ff96e81f9d240",
+      "bytes": 124525,
       "copyrightNotices": [
         "Copyright (C) Sage.js contributors."
       ],
@@ -1489,8 +1489,8 @@
     {
       "file": "tests/service_contract.rs",
       "scope": "product-candidate-test",
-      "sha256": "03a22fc478acdfb28579cee48d58b5ff37ad712557f301d843ff871501a29ba6",
-      "bytes": 10211,
+      "sha256": "a3bfd6c5043d7e76678f9e80f6fc4a51b93685395e36298e50b9ee9069527103",
+      "bytes": 12684,
       "copyrightNotices": [
         "Copyright (C) Sage.js contributors."
       ],
@@ -1505,9 +1505,9 @@
       "scope": "product-build-support",
       "sha256": "1d8feca95469af9404a5a40e7675a13a50c369ec7c8da3cd73a85ee1d05bcd82",
       "kind": "cargo-lock",
-      "packageCount": 28,
+      "packageCount": 29,
       "sourceCounts": {
-        "registry": 27,
+        "registry": 28,
         "git": 0,
         "localOrUnspecified": 1,
         "other": 0
@@ -1532,5 +1532,5 @@
     "miriCoverageEstablished": false,
     "productionQualified": false
   },
-  "inventorySha256": "fb6350ba0658fac6698d471c9aa86d2d0b0397a9041045ac8f8744c12aa0f145"
+  "inventorySha256": "201dfc56077c84082d58086db2fbba041faab313c9951c4d65c96e56fc642c4b"
 }
