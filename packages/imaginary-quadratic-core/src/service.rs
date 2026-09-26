@@ -154,6 +154,49 @@ impl<'a> From<&'a CompleteImaginaryClassGroup> for PackedGroup<'a> {
     }
 }
 
+#[derive(Serialize)]
+struct PackedGroupResult<'a> {
+    schema: &'static str,
+    outcome: &'static str,
+    operation: &'a str,
+    result: PackedGroup<'a>,
+}
+
+#[derive(Serialize)]
+struct PackedGroupEnvelope<'a> {
+    schema: &'static str,
+    abi: u32,
+    id: &'a str,
+    ok: bool,
+    result: PackedGroupResult<'a>,
+}
+
+fn packed_group_envelope(
+    id: &str,
+    operation: &str,
+    group: &CompleteImaginaryClassGroup,
+) -> Vec<u8> {
+    // Serialize the already authenticated compact presentation directly.
+    // Materializing it as a serde_json::Value duplicates tens of thousands
+    // of rows in Wasm before the envelope is finally written to bytes.
+    let response = PackedGroupEnvelope {
+        schema: SERVICE_RESPONSE_SCHEMA,
+        abi: SERVICE_ABI_VERSION,
+        id,
+        ok: true,
+        result: PackedGroupResult {
+            schema: SERVICE_RESPONSE_SCHEMA,
+            outcome: "complete",
+            operation,
+            result: PackedGroup::from(group),
+        },
+    };
+    bounded_response(
+        id,
+        serde_json::to_vec(&response).expect("fixed packed group response shape"),
+    )
+}
+
 fn mathematical_error(operation: &str, error: ImaginaryClassGroupError) -> ServiceError {
     let category = match error {
         ImaginaryClassGroupError::DiscriminantResourceLimit { .. }
@@ -384,13 +427,7 @@ impl QuadraticService {
             Err(error) => return envelope(&id, Err(mathematical_error(&operation, error))),
         };
         if request.transport.as_deref() == Some("core-v2") {
-            let response = json!({
-                "schema": SERVICE_RESPONSE_SCHEMA,
-                "outcome": "complete",
-                "operation": operation,
-                "result": PackedGroup::from(&result),
-            });
-            envelope(&id, Ok(response))
+            packed_group_envelope(&id, &operation, &result)
         } else {
             let response = json!({
                 "schema": SERVICE_RESPONSE_SCHEMA,
@@ -399,6 +436,32 @@ impl QuadraticService {
                 "result": result,
             });
             envelope(&id, Ok(response))
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn direct_core_envelope_matches_the_original_json_value_shape() {
+        for polynomial in [[6, -1, 1], [58, -1, 1]] {
+            let group = compute_imaginary_class_group_from_coefficients(polynomial).unwrap();
+            let direct = packed_group_envelope("test-id", "imaginary-class-group", &group);
+            let original = envelope(
+                "test-id",
+                Ok(json!({
+                    "schema": SERVICE_RESPONSE_SCHEMA,
+                    "outcome": "complete",
+                    "operation": "imaginary-class-group",
+                    "result": PackedGroup::from(&group),
+                })),
+            );
+            assert_eq!(
+                serde_json::from_slice::<Value>(&direct).unwrap(),
+                serde_json::from_slice::<Value>(&original).unwrap(),
+            );
         }
     }
 }

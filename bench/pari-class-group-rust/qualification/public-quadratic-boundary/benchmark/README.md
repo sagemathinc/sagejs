@@ -409,6 +409,19 @@ importantly, the injected reactor and missing outer worker boundary make this
 a development diagnostic, not a claim of public Wasm availability or PARI
 competitiveness.
 
+The compact `core-v2` response now serializes the already verified Rust group
+directly into its bounded service envelope instead of first materializing a
+large intermediate JSON value. A contract test compares the direct and former
+JSON-value shapes. In separate 31-call direct reactor probes of the
+33,768-class field, the medians were 21.5 ms before and 17.4 ms after this
+change. The frozen 15-pair development evaluator comparison is recorded in
+[`public-api-prepared-development-wasm-direct-serialization-diagnostic.json`](public-api-prepared-development-wasm-direct-serialization-diagnostic.json):
+all 11 exact answers matched, and the geometric-mean Sage.js/PARI median ratio
+was 7.39 (7.78 in the preceding diagnostic). The composite-field median was
+32.5 ms versus PARI's 4.52 ms. Host load and separate-run effects preclude
+attributing every difference to serialization. This is still a non-promoted
+development-Wasm result, not public PARI competitiveness.
+
 ## Matched scalar class-number comparison
 
 `run_class_number.py` separately compares the exact scalar Rust count, the
