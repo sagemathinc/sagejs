@@ -890,7 +890,7 @@ class SageSet:
 
     @staticmethod
     def _require_set(other: Any) -> Any:
-        if not isinstance(other, SageSet) and not isinstance(other, SageFrozenSet):
+        if not isinstance(other, (SageSet, SageFrozenSet)):
             raise TypeError("set operands must be sets")
         return other
 
@@ -1059,13 +1059,11 @@ class SageFrozenSet:
 
     @staticmethod
     def _from_iterable(other: Any) -> Any:
-        if isinstance(other, SageSet) or isinstance(other, SageFrozenSet):
-            return other
-        return SageSet(other)
+        return SageSet._from_iterable(other)
 
     @staticmethod
     def _require_set(other: Any) -> Any:
-        if not isinstance(other, SageSet) and not isinstance(other, SageFrozenSet):
+        if not isinstance(other, (SageSet, SageFrozenSet)):
             raise TypeError("frozenset operands must be sets")
         return other
 
@@ -1098,6 +1096,11 @@ class SageFrozenSet:
         return True
 
     def issuperset(self, other: Any) -> bool:
+        if runtime.jstype(other) == "string":
+            for value in other:
+                if not self.has(value):
+                    return False
+            return True
         return self._from_iterable(other).issubset(self)
 
     def symmetric_difference(self, other: Any) -> SageFrozenSet:
@@ -1138,7 +1141,7 @@ class SageFrozenSet:
     inspect = __repr__
 
     def __eq__(self, other: object) -> bool:
-        if not isinstance(other, SageSet) and not isinstance(other, SageFrozenSet):
+        if not isinstance(other, (SageSet, SageFrozenSet)):
             return False
         return self.size == other.size and self.issubset(other)
 

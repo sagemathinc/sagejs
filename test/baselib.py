@@ -505,6 +505,15 @@ def test_sets():
     assrt.ok({1, 2}.issuperset({1, 2}))
     assrt.ok({1, 2}.issuperset({1}))
     assrt.ok(not {1}.issuperset({2}))
+    frozen = frozenset("abc")
+    assrt.equal(len(frozen), 3)
+    assrt.equal(frozen.length, 3)
+    assrt.equal(frozen.size, 3)
+    assrt.ok("a" in frozen)
+    assrt.deepEqual(sorted(list(frozen)), ["a", "b", "c"])
+    assrt.ok(frozen.issuperset("caba"))
+    assrt.ok(not frozen.issuperset("cabd"))
+    assrt.ok(frozen.issuperset(["a", "b"]))
     a = set()
 
     def apop():
