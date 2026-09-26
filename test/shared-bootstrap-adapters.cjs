@@ -70,6 +70,47 @@ test("prepared method calls use and invalidate the shared prototype cache", () =
   assert.equal(fallbacks, 2);
 });
 
+test("exact native list append bypasses generic lookup without bypassing mutation", () => {
+  const append = Object.assign(function append(value) { this.push(value); },
+    { __sagejs_native_method__: true });
+  const prototype = { append };
+  const receiver = Object.create(prototype);
+  const brand = new WeakSet([receiver]);
+  const decorator = () => receiver;
+  decorator.__optimizerExactListBrand = brand;
+  decorator.__optimizerExactListPrototype = prototype;
+  let fallbacks = 0;
+  const api = context({
+    ρσ_list_decorate: decorator,
+    _builtins_instance_namespaces: new WeakMap(),
+    _builtins_descriptor_cache: new WeakMap(),
+    _builtins_attribute_owner: () => prototype,
+    _builtins_public_getattr: (_value, _name, _missing, result) => {
+      fallbacks += 1;
+      result[0] = "fallback";
+      return "fallback";
+    },
+    _BUILTINS_MISSING: {},
+  });
+  const prepared = () => Array.from(api.ρσ_prepare_method_call(receiver, "append"));
+  assert.deepEqual(prepared(), [append, receiver, false]);
+  assert.equal(fallbacks, 0);
+
+  receiver.append = () => "assigned";
+  assert.deepEqual(prepared(), ["fallback", undefined, false]);
+  delete receiver.append;
+  Object.defineProperty(prototype, "append", { value: () => "replaced", configurable: true });
+  assert.deepEqual(prepared(), ["fallback", undefined, false]);
+  Object.defineProperty(prototype, "append", { value: append, configurable: true });
+  prototype.__getattribute__ = () => "hooked";
+  assert.deepEqual(prepared(), ["fallback", undefined, false]);
+  delete prototype.__getattribute__;
+  assert.deepEqual(prepared(), [append, receiver, false]);
+  assert.deepEqual(Array.from(api.ρσ_prepare_method_call(Object.create(prototype), "append")),
+    ["fallback", undefined, false]);
+  assert.equal(fallbacks, 4);
+});
+
 test("shared attribute stores use only epoch-current unexposed cache entries", () => {
   const prototype = {};
   const receiver = Object.create(prototype);
