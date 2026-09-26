@@ -1643,29 +1643,15 @@ struct ImaginaryServiceRequest {
 
 /// Flat transport is an internal representation choice, never proof authority.
 /// The detached verifier and the public Python wrapper check every emitted row.
-struct PackedImaginaryRows<'a>(&'a [ImaginaryFormClassMapEntry]);
+struct PackedImaginaryCoreRows<'a>(&'a [ImaginaryFormClassMapEntry]);
 
-impl Serialize for PackedImaginaryRows<'_> {
+impl Serialize for PackedImaginaryCoreRows<'_> {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let rank = self.0.first().map_or(0, |entry| entry.coordinates.len());
-        let mut output = serializer.serialize_seq(Some(self.0.len() * (11 + rank)))?;
+        let mut output = serializer.serialize_seq(Some(self.0.len() * (2 + rank)))?;
         for entry in self.0 {
             let form = &entry.form;
-            let inverse = &entry.inverse_form;
-            let ideal = &entry.representative_ideal;
-            for value in [
-                form.a,
-                form.b,
-                form.c,
-                inverse.a,
-                inverse.b,
-                inverse.c,
-                ideal.norm,
-                ideal.basis_columns[0][0],
-                ideal.basis_columns[0][1],
-                ideal.basis_columns[1][0],
-                ideal.basis_columns[1][1],
-            ] {
+            for value in [form.a, form.b] {
                 output.serialize_element(&value)?;
             }
             for value in &entry.coordinates {
@@ -1711,7 +1697,7 @@ struct PackedImaginaryGroup<'a> {
     class_number: usize,
     invariant_factors: &'a [u64],
     generators: &'a [crate::ImaginaryClassGenerator],
-    complete_class_map_packed: PackedImaginaryRows<'a>,
+    complete_class_map_core_packed: PackedImaginaryCoreRows<'a>,
     complete_class_map_length: usize,
     certificate: PackedImaginaryCertificate<'a>,
     proof_status: &'static str,
@@ -1729,7 +1715,7 @@ impl<'a> From<&'a CompleteImaginaryClassGroup> for PackedImaginaryGroup<'a> {
             class_number: group.class_number,
             invariant_factors: &group.invariant_factors,
             generators: &group.generators,
-            complete_class_map_packed: PackedImaginaryRows(&group.complete_class_map),
+            complete_class_map_core_packed: PackedImaginaryCoreRows(&group.complete_class_map),
             complete_class_map_length: group.complete_class_map.len(),
             certificate: PackedImaginaryCertificate {
                 discriminant: certificate.discriminant,
@@ -2095,7 +2081,7 @@ impl ProductService {
         request: ImaginaryServiceRequest,
     ) -> Result<CompleteImaginaryClassGroup, ServiceError> {
         let operation = "imaginary-class-group";
-        if request.transport.as_deref() != Some("packed-v1") {
+        if request.transport.as_deref() != Some("core-v2") {
             return Err(ServiceError::new(
                 ServiceErrorCategory::InvalidRequest,
                 operation,
@@ -2292,7 +2278,7 @@ impl ProductService {
                 .and_then(Value::as_str)
                 .is_some_and(|id| !id.is_empty() && id.len() <= 128)
             && value.get("operation").and_then(Value::as_str) == Some("imaginary-class-group")
-            && value.get("transport").and_then(Value::as_str) == Some("packed-v1")
+            && value.get("transport").and_then(Value::as_str) == Some("core-v2")
         {
             let result = serde_json::from_value::<ImaginaryServiceRequest>(value)
                 .map_err(|error| {

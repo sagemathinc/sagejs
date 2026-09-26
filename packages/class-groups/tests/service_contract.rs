@@ -106,32 +106,19 @@ fn imaginary_quadratic_operations_are_unconditional_and_public() {
         &mut service,
         "iq-group-packed",
         "imaginary-class-group",
-        json!({"polynomialAscending": ["6", "-1", "1"], "transport": "packed-v1"}),
+        json!({"polynomialAscending": ["6", "-1", "1"], "transport": "core-v2"}),
     );
     assert_eq!(packed["ok"], true, "{packed}");
     let mut expected = result.clone();
     let entries = expected["completeClassMap"].as_array().unwrap().clone();
-    let mut rows = Vec::new();
+    let mut core_rows = Vec::new();
     for entry in &entries {
-        for value in [
-            &entry["form"]["a"],
-            &entry["form"]["b"],
-            &entry["form"]["c"],
-            &entry["inverseForm"]["a"],
-            &entry["inverseForm"]["b"],
-            &entry["inverseForm"]["c"],
-            &entry["representativeIdeal"]["norm"],
-            &entry["representativeIdeal"]["basisColumns"][0][0],
-            &entry["representativeIdeal"]["basisColumns"][0][1],
-            &entry["representativeIdeal"]["basisColumns"][1][0],
-            &entry["representativeIdeal"]["basisColumns"][1][1],
-        ] {
-            rows.push(value.clone());
-        }
-        rows.extend(entry["coordinates"].as_array().unwrap().iter().cloned());
+        core_rows.push(entry["form"]["a"].clone());
+        core_rows.push(entry["form"]["b"].clone());
+        core_rows.extend(entry["coordinates"].as_array().unwrap().iter().cloned());
     }
     expected.as_object_mut().unwrap().remove("completeClassMap");
-    expected["completeClassMapPacked"] = json!(rows);
+    expected["completeClassMapCorePacked"] = json!(core_rows);
     expected["completeClassMapLength"] = json!(entries.len());
     let forms = expected["certificate"]["reducedForms"]
         .as_array()
@@ -152,7 +139,7 @@ fn imaginary_quadratic_operations_are_unconditional_and_public() {
         &mut service,
         "unknown",
         "imaginary-class-group",
-        json!({"polynomialAscending": ["6", "-1", "1"], "transport": "packed-v1"}),
+        json!({"polynomialAscending": ["6", "-1", "1"], "transport": "core-v2"}),
     );
     assert_eq!(literal_unknown_id["ok"], true);
     assert_eq!(literal_unknown_id["id"], "unknown");

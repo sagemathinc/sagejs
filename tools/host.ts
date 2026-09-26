@@ -339,7 +339,7 @@ function serviceCall(operation, request) {
   return new Promise((resolve, reject) => {
     pending.set(id, {
       resolve, reject,
-      directPacked: operation === "imaginary-class-group" && request.transport === "packed-v1",
+      directPacked: operation === "imaginary-class-group" && request.transport === "core-v2",
     });
     child.stdin.write(JSON.stringify(message) + "\n", error => {
       if (!error) return;
@@ -407,7 +407,7 @@ async function main() {
       }
       const response = await serviceCall(envelope.operation, envelope.request);
       if (envelope.operation === "imaginary-class-group" &&
-          envelope.request.transport === "packed-v1") {
+          envelope.request.transport === "core-v2") {
         finishRawServiceResponse(response.raw, response.id);
       } else {
         finish(response.value);
@@ -450,58 +450,55 @@ function classGroupHostError(
   return error;
 }
 
-/** A representation-only projection; malformed rows retain the full validator path. */
-function packImaginaryGroupResponse(value: Record<string, unknown>): void {
+/** Restore derivable form and ideal fields before independent exact validation. */
+function expandImaginaryCoreMapResponse(value: Record<string, unknown>): void {
   const result = value.result;
-  if (!isPlainRecord(result) || !Array.isArray(result.completeClassMap) ||
-      !Array.isArray(result.invariantFactors) ||
-      Object.hasOwn(result, "completeClassMapPacked")) return;
-  const certificate = result.certificate;
-  if (!isPlainRecord(certificate) || !Array.isArray(certificate.reducedForms) ||
-      Object.hasOwn(certificate, "reducedFormsPacked") ||
-      certificate.reducedForms.length !== result.completeClassMap.length) return;
-  const entries = result.completeClassMap;
-  const rank = result.invariantFactors.length;
-  const packed: number[] = [];
-  const packedForms: number[] = [];
-  for (const entry of entries) {
-    if (!isPlainRecord(entry) || !isPlainRecord(entry.form) ||
-        Object.keys(entry.form).length !== 3 ||
-        !isPlainRecord(entry.inverseForm) ||
-        Object.keys(entry.inverseForm).length !== 3 ||
-        !isPlainRecord(entry.representativeIdeal) ||
-        Object.keys(entry.representativeIdeal).length !== 2 ||
-        !Array.isArray(entry.representativeIdeal.basisColumns) ||
-        entry.representativeIdeal.basisColumns.length !== 2 ||
-        !Array.isArray(entry.representativeIdeal.basisColumns[0]) ||
-        entry.representativeIdeal.basisColumns[0].length !== 2 ||
-        !Array.isArray(entry.representativeIdeal.basisColumns[1]) ||
-        entry.representativeIdeal.basisColumns[1].length !== 2 ||
-        !Array.isArray(entry.coordinates) || entry.coordinates.length !== rank) return;
-    const form = entry.form;
-    const inverse = entry.inverseForm;
-    const ideal = entry.representativeIdeal;
-    const basis = ideal.basisColumns;
-    const fields = [
-      form.a, form.b, form.c,
-      inverse.a, inverse.b, inverse.c,
-      ideal.norm, basis[0][0], basis[0][1], basis[1][0], basis[1][1],
-      ...entry.coordinates,
-    ];
-    if (!fields.every(Number.isSafeInteger)) return;
-    packed.push(...fields as number[]);
+  if (!isPlainRecord(result) || !Object.hasOwn(result, "completeClassMapCorePacked")) {
+    throw classGroupHostError("EBADMSG", "imaginary service omitted its core map");
   }
-  for (const form of certificate.reducedForms) {
-    if (!isPlainRecord(form) || Object.keys(form).length !== 3 ||
-        !Number.isSafeInteger(form.a) || !Number.isSafeInteger(form.b) ||
-        !Number.isSafeInteger(form.c)) return;
-    packedForms.push(form.a as number, form.b as number, form.c as number);
+  const core = result.completeClassMapCorePacked;
+  const invariants = result.invariantFactors;
+  const count = result.completeClassMapLength;
+  const discriminant = result.discriminant;
+  if (!Array.isArray(core) || !Array.isArray(invariants) ||
+      typeof count !== "number" || !Number.isSafeInteger(count) || count < 1 ||
+      typeof discriminant !== "number" || !Number.isSafeInteger(discriminant) ||
+      discriminant >= 0 || discriminant < -200_000_000_000 ||
+      ![0, -3].includes(discriminant % 4) ||
+      core.length !== count * (2 + invariants.length) ||
+      Object.hasOwn(result, "completeClassMap") ||
+      Object.hasOwn(result, "completeClassMapPacked")) {
+    throw classGroupHostError("EBADMSG", "imaginary core map has a malformed envelope");
+  }
+  const stride = 2 + invariants.length;
+  const linear = discriminant % 4 === -3 ? -1 : 0;
+  const packed: number[] = [];
+  for (let index = 0; index < count; index += 1) {
+    const offset = index * stride;
+    const a = core[offset];
+    const b = core[offset + 1];
+    if (!Number.isSafeInteger(a) || a <= 0 || !Number.isSafeInteger(b) ||
+        !Number.isSafeInteger(b * b - discriminant) ||
+        !Number.isSafeInteger(4 * a)) {
+      throw classGroupHostError("EBADMSG", "imaginary core map has a malformed form");
+    }
+    const c = (b * b - discriminant) / (4 * a);
+    const idealOffset = (linear - b) / 2;
+    if (!Number.isSafeInteger(c) || !Number.isSafeInteger(idealOffset)) {
+      throw classGroupHostError("EBADMSG", "imaginary core map has a malformed form");
+    }
+    const inverseB = b === 0 || Math.abs(b) === a || a === c ? b : -b;
+    packed.push(a, b, c, a, inverseB, c, a, a, 0, idealOffset, 1);
+    for (let position = 0; position < invariants.length; position += 1) {
+      const coordinate = core[offset + 2 + position];
+      if (!Number.isSafeInteger(coordinate)) {
+        throw classGroupHostError("EBADMSG", "imaginary core map has a malformed coordinate");
+      }
+      packed.push(coordinate);
+    }
   }
   result.completeClassMapPacked = packed;
-  result.completeClassMapLength = entries.length;
-  delete result.completeClassMap;
-  certificate.reducedFormsPacked = packedForms;
-  delete certificate.reducedForms;
+  delete result.completeClassMapCorePacked;
 }
 
 /** Lazy synchronous facade over the resident asynchronous native service. */
@@ -729,7 +726,7 @@ export class NodeClassGroupBackend {
       throw classGroupHostError("EBADMSG", "class-group worker returned a corrupt response");
     }
     const directPacked = operation === "imaginary-class-group" &&
-      serviceRequest.transport === "packed-v1";
+      serviceRequest.transport === "core-v2";
     let payload: unknown;
     let expectedServiceId: string | undefined;
     try {
@@ -1528,9 +1525,9 @@ export class NodeHostAdapter {
           }
           const value = this.classGroups.call(operation, {
             ...args[1],
-            transport: "packed-v1",
+            transport: "core-v2",
           });
-          packImaginaryGroupResponse(value);
+          expandImaginaryCoreMapResponse(value);
           return { ok: true, value };
         }
         case "multiprocessingCreatePool":

@@ -215,7 +215,7 @@ different-run timings, not a promoted matched PARI comparison. The large
 fresh-call latency is still much higher than PARI's native coefficient-only
 boundary, so public PARI competitiveness remains open.
 
-A private `packed-v1` service transport now streams the same authenticated
+A previous private `packed-v1` service transport streamed the same authenticated
 class-group map and reduced-form certificate as flat integer arrays directly
 from Rust. The ordinary service response remains unchanged; the Node public
 route independently validates every packed row before publishing the group.
@@ -300,6 +300,21 @@ probes and must not be added as one call latency. They locate the remaining
 large-field cost in transport and exact map verification, not just in the
 Sage.js cell compiler. They are diagnostic observations, not a new frozen
 performance receipt or permission to omit independent malformed-map checks.
+
+The internal `core-v2` transport now sends only each reduced form's `a`, `b`,
+and exact class coordinates. The Node host reconstructs the derivable `c`,
+inverse form, and ideal basis before the unchanged independent exact map
+verifier checks the complete group. The ordinary service response and Wasm
+mathematical path remain unchanged. For the 33,768-class field, the serialized
+service response shrank from 2.84 MB to 1.27 MB; separate nine-sample warm
+probes measured about 13.8 ms for service/pipe and 5.3 ms for JSON parsing,
+versus 18.9 ms and 12.0 ms respectively for `packed-v1`. On the frozen
+15-pair prepared-field public diagnostic, the geometric mean of per-field
+Sage.js/PARI median ratios fell from 11.13 to 9.75. The composite field's
+public median fell from 60.2 to 45.6 ms. The raw result is in
+[`public-api-prepared-core-diagnostic.json`](public-api-prepared-core-diagnostic.json).
+This is a different-run diagnostic, not a promoted matched performance receipt;
+public PARI competitiveness remains open.
 
 ## Matched scalar class-number comparison
 

@@ -13,8 +13,9 @@ const {
   installNodeHost,
 } = require("../dist/tools/host.js");
 
-function fakeService(directory, corrupt = false, wrongId = false, declined = false) {
-  const fixtureName = corrupt ? "corrupt" : wrongId ? "wrong-id" : declined ? "declined" : "normal";
+function fakeService(directory, corrupt = false, wrongId = false, declined = false, badCore = false) {
+  const fixtureName = corrupt ? "corrupt" : wrongId ? "wrong-id" : declined ? "declined" :
+    badCore ? "bad-core" : "normal";
   const filename = path.join(directory, fixtureName + "-service");
   const startup = path.join(directory, fixtureName + "-started");
   const source = `#!/usr/bin/env node
@@ -54,11 +55,18 @@ lines.on("line", (input) => {
   } else if (request.operation === "imaginary-class-group") {
     const form = { a: 1, b: 1, c: 1 };
     result = { schema: "sagejs.class-groups/service-response-v1", outcome: "complete",
-      operation: request.operation, result: { invariantFactors: [],
+      operation: request.operation, result: { discriminant: -3, classNumber: 1, invariantFactors: [],
         completeClassMap: [{ form, inverseForm: form, coordinates: [],
           representativeIdeal: { norm: 1, basisColumns: [[1, 0], [-1, 1]] } }],
         certificate: { discriminant: -3, reducedForms: [form] } },
       servicePid: process.pid };
+    if (request.transport === "core-v2") {
+      result.result.completeClassMapCorePacked = ${JSON.stringify(badCore)} ? [0, 1] : [1, 1];
+      result.result.completeClassMapLength = 1;
+      delete result.result.completeClassMap;
+      result.result.certificate.reducedFormsPacked = [1, 1, 1];
+      delete result.result.certificate.reducedForms;
+    }
   } else if (request.generation !== generation || request.handle !== "1") {
     process.stdout.write(JSON.stringify({ schema: "sagejs.class-groups/service-response-v1", abi: 1, id: request.id, ok: false, error: { schema: "sagejs.class-groups/service-response-v1", outcome: "error", category: "stale-handle", operation: request.operation, message: "stale fixture handle" } }) + "\\n");
     return;
@@ -245,7 +253,7 @@ async function main() {
     );
     assert.throws(
       () => corrupt.call("imaginary-class-group", {
-        polynomialAscending: ["1", "-1", "1"], transport: "packed-v1",
+        polynomialAscending: ["1", "-1", "1"], transport: "core-v2",
       }),
       (error) => error.code === "EBADMSG",
     );
@@ -257,7 +265,7 @@ async function main() {
     const wrongIdBackend = new NodeClassGroupBackend();
     assert.throws(
       () => wrongIdBackend.call("imaginary-class-group", {
-        polynomialAscending: ["1", "-1", "1"], transport: "packed-v1",
+        polynomialAscending: ["1", "-1", "1"], transport: "core-v2",
       }),
       (error) => error.code === "EBADMSG",
     );
@@ -269,13 +277,23 @@ async function main() {
     const declinedBackend = new NodeClassGroupBackend();
     assert.throws(
       () => declinedBackend.call("imaginary-class-group", {
-        polynomialAscending: ["1", "-1", "1"], transport: "packed-v1",
+        polynomialAscending: ["1", "-1", "1"], transport: "core-v2",
       }),
       (error) => error.code === "capability-declined" &&
         error.message === "fixture packed decline",
     );
     declinedBackend.close();
     await assertProcessExited(Number(fs.readFileSync(declinedFixture.startup, "utf8")));
+
+    const badCoreFixture = fakeService(directory, false, false, false, true);
+    process.env.SAGEJS_CLASS_GROUP_SERVICE = badCoreFixture.filename;
+    const badCoreTarget = {};
+    const uninstallBadCore = installNodeHost(badCoreTarget);
+    const badCoreResponse = badCoreTarget.__sagejs_host__.call("classGroupCompact", groupRequest);
+    assert.equal(badCoreResponse.ok, false);
+    assert.equal(badCoreResponse.error.code, "EBADMSG");
+    uninstallBadCore();
+    await assertProcessExited(Number(fs.readFileSync(badCoreFixture.startup, "utf8")));
 
     process.env.SAGEJS_CLASS_GROUP_SERVICE = path.join(directory, "missing");
     const unavailable = new NodeClassGroupBackend();
