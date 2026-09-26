@@ -2105,6 +2105,7 @@ class NumberFieldParent(sage.Parent):
         # that boundary, so use an ordinary optional value here.
         self._bounded_cubic_class_number_artifact = None
         self._class_group_cache = runtime.undefined
+        self._imaginary_quadratic_class_number_cache = runtime.undefined
         self._narrow_class_group_cache = runtime.undefined
         self._zeta_function_cache = runtime.map()
         self._archimedean_data_cache = runtime.undefined
@@ -2905,6 +2906,7 @@ class NumberFieldParent(sage.Parent):
             )
             if use_cache:
                 self._class_group_cache = result
+                self._imaginary_quadratic_class_number_cache = result.order()
             return result
         rust_group = _nf_rust_class_group_runtime_module().rust_class_group(
             self,
@@ -3063,6 +3065,18 @@ class NumberFieldParent(sage.Parent):
         algorithm: str = "auto",
         **limits: Any,
     ) -> int:
+        use_imaginary_cache = (
+            proof is None
+            and algorithm == "auto"
+            and len(limits) == 0
+            and self.degree() == 2
+            and self.discriminant() < 0
+        )
+        if (
+            use_imaginary_cache
+            and self._imaginary_quadratic_class_number_cache is not runtime.undefined
+        ):
+            return int(self._imaginary_quadratic_class_number_cache)
         imaginary_rust = _nf_rust_class_group_runtime_module().rust_imaginary_result(
             self,
             operation="imaginary-class-number",
@@ -3070,7 +3084,10 @@ class NumberFieldParent(sage.Parent):
             options=limits,
         )
         if imaginary_rust is not None:
-            return int(_untyped(imaginary_rust.get("classNumber")))
+            answer = int(_untyped(imaginary_rust.get("classNumber")))
+            if use_imaginary_cache:
+                self._imaginary_quadratic_class_number_cache = answer
+            return answer
         rust_context = _nf_rust_class_group_runtime_module().rust_class_unit_context(
             self,
             proof=proof,
@@ -4321,11 +4338,16 @@ class QuadraticField_class(sage.Parent):
     maximal_order = ring_of_integers
 
     def class_group(self, algorithm: str = "auto") -> QuadraticClassGroup:
+        if algorithm == "auto" and self._class_group is not runtime.undefined:
+            return self._class_group
         rust_result = _nf_rust_class_group_runtime_module().rust_imaginary_result(
             self, operation="imaginary-class-group", algorithm=algorithm
         )
         if rust_result is not None:
-            return QuadraticClassGroup(self, rust_result)
+            group = QuadraticClassGroup(self, rust_result)
+            if algorithm == "auto":
+                self._class_group = group
+            return group
         if algorithm not in ("auto", "quadratic-forms"):
             raise ValueError("unknown imaginary quadratic class-group algorithm")
         if self._class_group is runtime.undefined:
@@ -4333,11 +4355,16 @@ class QuadraticField_class(sage.Parent):
         return self._class_group
 
     def class_number(self, algorithm: str = "auto") -> Any:
+        if algorithm == "auto" and self._class_number is not runtime.undefined:
+            return self._class_number
         rust_result = _nf_rust_class_group_runtime_module().rust_imaginary_result(
             self, operation="imaginary-class-number", algorithm=algorithm
         )
         if rust_result is not None:
-            return rust_result.get("classNumber")
+            answer = rust_result.get("classNumber")
+            if algorithm == "auto":
+                self._class_number = answer
+            return answer
         if algorithm not in ("auto", "quadratic-forms"):
             raise ValueError("unknown imaginary quadratic class-number algorithm")
         if self._class_number is runtime.undefined:

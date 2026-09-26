@@ -121,6 +121,36 @@ test("automatic imaginary quadratic class groups reuse the validated map", async
   assert.equal(answer.repr, "[True, 1, (1,)]");
 });
 
+test("automatic imaginary quadratic scalars reuse unconditional results", async () => {
+  const answer = await evaluate([
+    ...fixture,
+    "class CountingBackend(Backend):",
+    "    group_calls = 0",
+    "    scalar_calls = 0",
+    "    def call(self, operation, request):",
+    "        if operation == 'imaginary-class-group':",
+    "            self.group_calls += 1",
+    "        if operation == 'imaginary-class-number':",
+    "            self.scalar_calls += 1",
+    "        return super().call(operation, request)",
+    "counting = CountingBackend()",
+    "setattr(runtime, 'class_group_backend', lambda: counting)",
+    "first = K.class_number()",
+    "second = K.class_number()",
+    "group = K.class_group()",
+    "third = K.class_number()",
+    "fresh = K.class_number(algorithm='rust')",
+    "Q = QuadraticField(-23)",
+    "direct_first = Q.class_group()",
+    "direct_second = Q.class_group()",
+    "direct_scalar = Q.class_number()",
+    "direct_fresh = Q.class_number(algorithm='rust')",
+    "[(first, second, third, fresh, counting.scalar_calls, counting.group_calls),",
+    " (direct_first is direct_second, direct_scalar, direct_fresh)]",
+  ]);
+  assert.equal(answer.repr, "[(3, 3, 3, 3, 3, 2), (True, 3, 3)]");
+});
+
 test("automatic imaginary quadratic dispatch falls back only on a pre-publication decline", async () => {
   const answer = await evaluate([
     ...fixture,
