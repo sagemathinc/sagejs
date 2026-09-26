@@ -615,9 +615,10 @@ impl QualifiedCubic {
         let generator_orders = presentation
             .generator_orders()
             .iter()
-            .map(|evidence| {
+            .enumerate()
+            .map(|(coordinate, evidence)| {
                 json!({
-                    "coordinateZeroBased": evidence.smith_position,
+                    "coordinateZeroBased": coordinate,
                     "invariantFactor": evidence.invariant_factor.to_string(),
                     "factorBaseLift": sparse_integer_vector(&evidence.factor_base_exponents),
                     "orderRelationCombination": sparse_integer_vector(
@@ -2431,6 +2432,10 @@ mod tests {
             publication["presentation"]["invariantFactors"],
             json!(["2"])
         );
+        assert_eq!(
+            publication["presentation"]["generatorOrders"][0]["coordinateZeroBased"],
+            0
+        );
         let summary = qualified.compact_summary().unwrap();
         assert_eq!(summary["schema"], COMPACT_SUMMARY_SCHEMA);
         assert_eq!(summary["classNumber"], "2");
@@ -2557,6 +2562,22 @@ mod tests {
                 .certificate
                 .quotient_factor_base_exponents
                 .is_empty()
+        );
+    }
+
+    #[test]
+    fn publication_uses_class_coordinates_not_raw_smith_positions() {
+        let mut completion_request = request(100_000);
+        completion_request.polynomial_ascending = ["-1".into(), "4".into(), "0".into(), "1".into()];
+        let qualified = qualify_with_state(completion_request).unwrap();
+        assert_eq!(qualified.completed.invariant_factors(), &[Integer::from(2)]);
+        let orders = qualified.completed.presentation().generator_orders();
+        assert_eq!(orders.len(), 1);
+        assert_ne!(orders[0].smith_position, 0);
+        let publication = qualified.publication_bundle().unwrap();
+        assert_eq!(
+            publication["presentation"]["generatorOrders"][0]["coordinateZeroBased"],
+            0
         );
     }
 

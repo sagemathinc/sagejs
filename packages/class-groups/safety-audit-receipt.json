@@ -1357,8 +1357,8 @@
     {
       "file": "src/service.rs",
       "scope": "product-candidate",
-      "sha256": "8a716d2f6266d5e38b69902992b3365ec0ef5c3e060f58434859c0122e08dbb7",
-      "bytes": 124137,
+      "sha256": "ac567f192edda2a223a6ab8d6499dad232ad230dc48d81d6a3a92a81e70291ac",
+      "bytes": 125054,
       "copyrightNotices": [
         "Copyright (C) Sage.js contributors."
       ],
@@ -1532,5 +1532,5 @@
     "miriCoverageEstablished": false,
     "productionQualified": false
   },
-  "inventorySha256": "9dac366ec758564e3e10e9c1c8cdf2b46d39a7654bc122b5bbdff56d50d1fef7"
+  "inventorySha256": "68d5437a103ba5c803e70a52e1c3aa6bcef9baf30e698b81af6e8b408672de10"
 }
