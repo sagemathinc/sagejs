@@ -25,13 +25,19 @@ test("phase diagnostic rejects an incomplete map", async () => {
   const sage = {
     async evaluate(source) {
       assert.match(source, /validate_imaginary_group_result/);
-      return { repr: "[12.5, 8.25, 3, 2]" };
+      return { repr: "[12.5, 8.25, 1.5, 3, 2, 0.5, 0.75, 1]" };
     },
   };
   await assert.rejects(diagnosePhases(sage, 3), /complete class map/);
-  sage.evaluate = async () => ({ repr: "[12.5, 8.25, 3, 3]" });
+  sage.evaluate = async () => ({ repr: "[12.5, 8.25, 1.5, 3, 3, 0.5, 0.75, 1]" });
   assert.deepEqual(await diagnosePhases(sage, 3), {
     serviceAndConversionMs: 12.5,
     independentValidationMs: 8.25,
+    compactValidationMs: 1.5,
+    exactMapRecheck: {
+      validatedPackingMs: 0.5,
+      kernelMs: 0.75,
+      materializeMs: 1,
+    },
   });
 });
