@@ -165,6 +165,22 @@ reported 0.387 seconds for the warm service/conversion phase and 5.026 seconds
 for independent validation. Its boundary differs from the first-call probe,
 but confirms which phase dominates after warmup.
 
+A source-transparent packed-map verifier now checks the sorted reduced forms,
+certificate, inverse forms, integral ideal representatives, and coordinate
+bijection in one isolated native pass. Its ordinary CPython body and emitted
+JavaScript path are differential oracles; the prior Python validator remains
+the fallback if the compiled kernel is unavailable. On the same large field,
+three warm fresh explicit public calls measured 2.650, 2.691, and 2.609
+seconds (2.650-second median), versus the preceding source-matched 5.613-second
+single fresh call. The phase diagnostic measured 0.355 seconds for service and
+conversion and 2.210 seconds for validation including buffer packing and map
+materialization. One-sample replay across all 11 frozen v2 fields still
+matched every class number and invariant-factor vector; focused counterfeit
+and exact ideal-coordinate tests also passed. This is a substantial public-path
+improvement, not yet a matched PARI comparison or public PARI competitiveness.
+The remaining Python coordinate-dictionary/form materialization and bulk
+transport warrant a compact exact lookup design rather than weakened checks.
+
 ## Matched scalar class-number comparison
 
 `run_class_number.py` separately compares the exact scalar Rust count, the

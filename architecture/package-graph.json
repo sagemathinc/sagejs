@@ -287,8 +287,14 @@
         "arithmetic",
         "linear-algebra"
       ],
-      "modules": ["sagejs.kernels.matrix.class_group_hnf"],
-      "files": ["src/lib/sagejs/kernels/matrix/class_group_hnf.py"],
+      "modules": [
+        "sagejs.kernels.matrix.class_group_hnf",
+        "sagejs.kernels.matrix.imaginary_map"
+      ],
+      "files": [
+        "src/lib/sagejs/kernels/matrix/class_group_hnf.py",
+        "src/lib/sagejs/kernels/matrix/imaginary_map.py"
+      ],
       "prefixes": []
     },
     {

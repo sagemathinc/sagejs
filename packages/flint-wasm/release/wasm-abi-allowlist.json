@@ -4622,6 +4622,10 @@
           "kind": "function"
         },
         {
+          "name": "sagejs_wasm_allocate_m_af751dd8ea2d60ce",
+          "kind": "function"
+        },
+        {
           "name": "sagejs_wasm_allocate_m_bd83c78288721d7d",
           "kind": "function"
         },
@@ -4958,6 +4962,10 @@
           "kind": "function"
         },
         {
+          "name": "sagejs_wasm_call_m_af751dd8ea2d60ce_verify_packed_imaginary_map",
+          "kind": "function"
+        },
+        {
           "name": "sagejs_wasm_call_m_bd83c78288721d7d_packed_composite_dedekind_basis_in_place",
           "kind": "function"
         },
@@ -5198,6 +5206,10 @@
           "kind": "function"
         },
         {
+          "name": "sagejs_wasm_deallocate_m_af751dd8ea2d60ce",
+          "kind": "function"
+        },
+        {
           "name": "sagejs_wasm_deallocate_m_bd83c78288721d7d",
           "kind": "function"
         },
@@ -5299,6 +5311,10 @@
         },
         {
           "name": "sagejs_wasm_last_message_m_9fd0300932554166",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_af751dd8ea2d60ce",
           "kind": "function"
         },
         {
@@ -5406,6 +5422,10 @@
           "kind": "function"
         },
         {
+          "name": "sagejs_wasm_result_f64_at_m_af751dd8ea2d60ce",
+          "kind": "function"
+        },
+        {
           "name": "sagejs_wasm_result_f64_at_m_bd83c78288721d7d",
           "kind": "function"
         },
@@ -5507,6 +5527,10 @@
         },
         {
           "name": "sagejs_wasm_result_length_m_9fd0300932554166",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_af751dd8ea2d60ce",
           "kind": "function"
         },
         {
@@ -5614,6 +5638,10 @@
           "kind": "function"
         },
         {
+          "name": "sagejs_wasm_result_limbs_m_af751dd8ea2d60ce",
+          "kind": "function"
+        },
+        {
           "name": "sagejs_wasm_result_limbs_m_bd83c78288721d7d",
           "kind": "function"
         },
@@ -5718,6 +5746,10 @@
           "kind": "function"
         },
         {
+          "name": "sagejs_wasm_result_sign_m_af751dd8ea2d60ce",
+          "kind": "function"
+        },
+        {
           "name": "sagejs_wasm_result_sign_m_bd83c78288721d7d",
           "kind": "function"
         },
@@ -5819,6 +5851,10 @@
         },
         {
           "name": "sagejs_wasm_result_u64_at_m_9fd0300932554166",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_af751dd8ea2d60ce",
           "kind": "function"
         },
         {

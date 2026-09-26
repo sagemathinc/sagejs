@@ -15,6 +15,7 @@ from __future__ import annotations
 from typing import Any
 
 import sagejs.runtime as runtime
+from sagejs.kernels.matrix.imaginary_map import validate_packed_imaginary_map
 
 
 HOST_RESPONSE_SCHEMA = "sagejs.class-groups/service-response-v1"
@@ -501,6 +502,23 @@ def validate_imaginary_group_result(
         "reducedFormsPacked" if packed_certificate else "reducedForms"
     ]
     stride = 11 + len(invariants)
+    if packed and packed_certificate:
+        try:
+            accelerated = validate_packed_imaginary_map(
+                packed_entries,
+                certified_forms,
+                invariants,
+                entry_count,
+                discriminant,
+                linear,
+            )
+        except (TypeError, ValueError, OverflowError) as error:
+            raise RustClassGroupPublicationError(
+                "the Rust class map failed exact packed verification"
+            ) from error
+        if accelerated is not None:
+            forms, coordinates = accelerated
+            entries = range(0)
     for index in entries:
         row = (
             packed_entries[index * stride : (index + 1) * stride]
