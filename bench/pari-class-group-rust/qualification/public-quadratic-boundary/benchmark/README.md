@@ -104,6 +104,10 @@ checked native packing, isolated kernel, and Python form/coordinate
 materialization as separate diagnostic phases. It does not isolate
 public group-object binding, alter the frozen matched comparison, or constitute
 a release performance receipt.
+For the native resident route it additionally measures a second, independent
+compact host call and the subsequent parsed-JSON-to-Python conversion
+separately. These are diagnostic calls under different warmup conditions, not
+additive parts of one public sample.
 The same optional mode also records separate parent-observed wall and
 worker-reported execution medians for an empty cell, a fresh explicit group,
 and an explicit scalar. The difference includes compilation, worker messaging,

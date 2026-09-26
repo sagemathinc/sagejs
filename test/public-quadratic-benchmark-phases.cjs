@@ -50,13 +50,16 @@ test("phase diagnostic rejects an incomplete map", async () => {
     async evaluate(source) {
       assert.match(source, /validate_imaginary_group_result/);
       assert.match(source, /get\('reducedFormsPacked', \[\]\)/);
-      return { repr: "[12.5, 8.25, 1.5, 3, 2, 0.5, 0.75, 1]" };
+      assert.match(source, /\['classGroupCompact', \['imaginary-class-group', encoded_request\]\]/);
+      return { repr: "[12.5, 8.25, 1.5, 3, 2, 0.5, 0.75, 1, 9.5, 3]" };
     },
   };
   await assert.rejects(diagnosePhases(sage, 3), /complete class map/);
-  sage.evaluate = async () => ({ repr: "[12.5, 8.25, 1.5, 3, 3, 0.5, 0.75, 1]" });
+  sage.evaluate = async () => ({ repr: "[12.5, 8.25, 1.5, 3, 3, 0.5, 0.75, 1, 9.5, 3]" });
   assert.deepEqual(await diagnosePhases(sage, 3), {
     serviceAndConversionMs: 12.5,
+    hostServiceMs: 9.5,
+    pythonConversionMs: 3,
     independentValidationMs: 8.25,
     compactValidationMs: 1.5,
     exactMapRecheck: {

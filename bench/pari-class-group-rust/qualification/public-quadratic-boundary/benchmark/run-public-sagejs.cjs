@@ -78,6 +78,7 @@ async function diagnoseEvaluationBoundary(sage, freshCall, groupExpected, scalar
 async function diagnosePhases(sage, expectedClassNumber) {
   const response = await sage.evaluate([
     "import time",
+    "import sagejs.runtime as runtime",
     "from sagejs.number_fields import rust_class_group_runtime as rust_runtime",
     "from sagejs.kernels.matrix.imaginary_map import verify_packed_imaginary_map, _pack_exact_int64",
     "from sagejs.native import kernel_uint64_zeros",
@@ -112,17 +113,32 @@ async function diagnosePhases(sage, expectedClassNumber) {
     "    rebuilt_coordinates[str(a) + ',' + str(b) + ',' + str(c)] = tuple(rows[offset + (2 if core else 11):offset + stride])",
     "materialized = time.perf_counter()",
     "assert rebuilt_forms == forms and rebuilt_coordinates == coordinates",
-    "[(received - started) * 1000, (validated - received) * 1000, (compact_validated - validated) * 1000, len(forms), len(coordinates), (packed - packing_started) * 1000, (verified - packed) * 1000, (materialized - verified) * 1000]",
+    "host = runtime.reflect.get(runtime.global_object, '__sagejs_host__')",
+    "request = {'polynomialAscending': rust_runtime._imaginary_polynomial(K)[1]}",
+    "encoded_request = runtime.json.parse(runtime.canonical_json_exact(request))",
+    "host_started = time.perf_counter()",
+    "envelope = runtime.reflect.apply(runtime.reflect.get(host, 'call'), host,",
+    "    ['classGroupCompact', ['imaginary-class-group', encoded_request]])",
+    "host_finished = time.perf_counter()",
+    "assert runtime.reflect.get(envelope, 'ok')",
+    "plain_response = runtime.reflect.get(envelope, 'value')",
+    "converter = runtime.reflect.get(runtime.global_object, 'ρσ_plain_json_to_python')",
+    "converted_response = runtime.reflect.apply(converter, runtime.undefined, [plain_response])",
+    "conversion_finished = time.perf_counter()",
+    "assert converted_response['result']['classNumber'] == len(forms)",
+    "[(received - started) * 1000, (validated - received) * 1000, (compact_validated - validated) * 1000, len(forms), len(coordinates), (packed - packing_started) * 1000, (verified - packed) * 1000, (materialized - verified) * 1000, (host_finished - host_started) * 1000, (conversion_finished - host_finished) * 1000]",
   ].join("\n"));
   const [serviceAndConversionMs, independentValidationMs, compactValidationMs, forms, coordinates,
-    validatedPackingMs, kernelMs, materializeMs] =
+    validatedPackingMs, kernelMs, materializeMs, hostServiceMs, pythonConversionMs] =
     JSON.parse(response.repr);
   if (forms !== expectedClassNumber || coordinates !== expectedClassNumber ||
       !Number.isFinite(serviceAndConversionMs) || !Number.isFinite(independentValidationMs) ||
-      !Number.isFinite(compactValidationMs)) {
+      !Number.isFinite(compactValidationMs) || !Number.isFinite(hostServiceMs) ||
+      !Number.isFinite(pythonConversionMs)) {
     throw new Error("phase diagnostic did not validate the complete class map");
   }
-  return { serviceAndConversionMs, independentValidationMs, compactValidationMs,
+  return { serviceAndConversionMs, hostServiceMs, pythonConversionMs,
+    independentValidationMs, compactValidationMs,
     exactMapRecheck: { validatedPackingMs, kernelMs, materializeMs } };
 }
 
