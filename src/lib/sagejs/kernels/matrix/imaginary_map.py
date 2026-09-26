@@ -37,7 +37,7 @@ def _pack_exact_int64(kernel: Any, values: list[int]) -> Any:
 class PackedImaginaryForms:
     """Read-only reduced-form sequence backed by already verified rows."""
 
-    def __init__(self, rows: tuple[int, ...], stride: int, count: int) -> None:
+    def __init__(self, rows: list[int], stride: int, count: int) -> None:
         self._rows = rows
         self._stride = stride
         self._count = count
@@ -58,7 +58,7 @@ class PackedImaginaryForms:
 class PackedImaginaryCoordinates:
     """Exact read-only coordinate lookup over verified sorted form rows."""
 
-    def __init__(self, rows: tuple[int, ...], stride: int, count: int) -> None:
+    def __init__(self, rows: list[int], stride: int, count: int) -> None:
         self._rows = rows
         self._stride = stride
         self._count = count
@@ -146,7 +146,14 @@ def validate_packed_imaginary_map(
         raise ValueError("the packed imaginary class map is invalid")
     stride = 11 + len(invariants)
     if compact:
-        verified_rows = tuple(rows)
+        import sagejs.runtime as runtime
+
+        # Compact publication takes ownership of the verified flat map. The
+        # kernel and this freeze run synchronously, so no writer can change a
+        # checked row between them. Keeping the decorated array avoids a
+        # second O(class number) copy, while freezing protects every later
+        # ideal-class lookup from mutations through the original result.
+        verified_rows = runtime.object.freeze(rows)
         return (
             PackedImaginaryForms(verified_rows, stride, count),
             PackedImaginaryCoordinates(verified_rows, stride, count),
