@@ -50,7 +50,28 @@ cargo metadata --locked --format-version 1 \
   --manifest-path packages/imaginary-quadratic-core/Cargo.toml
 cargo tree --locked --target wasm32-wasip1 --edges normal \
   --manifest-path packages/imaginary-quadratic-core/Cargo.toml
+node --test packages/imaginary-quadratic-core/test/distribution-audit.test.mjs
+node packages/imaginary-quadratic-core/scripts/audit-distribution.mjs
 ```
+
+The read-only audit emits a JSON build-closure inventory for the **exact
+development artifact** it is given. It refuses unexpected imports/exports or
+memory limits; resolves the `wasm32-wasip1` Cargo graph offline with the
+lockfile; verifies every registry `.crate` archive against its locked SHA-256;
+and hashes root license/notice files extracted from those archives. It also
+records first-party source/build-script hashes, compiler identity, linker
+hash, artifact hash, and the build flags. The CI test runs immediately after
+building the development reactor. This is a reproducible review input, **not**
+an artifact-derived SBOM, proof of which dependency code survived linking, a
+license compatibility conclusion, or permission to publish these bytes.
+
+For example, the 2026-09-26 local `wasm32-wasip1` build with Rust 1.98.1
+produced 346,194 bytes with SHA-256
+`44e93a7848a61606c40c751bb053e3fc6cb3e7f80b02bbf77509980e0f1b5388`.
+An independent offline target-directory rebuild with the same pinned compiler,
+linker, lockfile, and flags was byte-identical. That observation is about
+these exact development inputs, not a claim of cross-host reproducibility or
+a substitute for the final shipped-artifact review.
 
 The evaluator test injects the development artifact and exercises exact
 ideal-class coordinates; the ordinary distributed Wasm kernel still declines

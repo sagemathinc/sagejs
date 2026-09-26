@@ -72,6 +72,8 @@ jobs:
         run: node packages/wasm-toolchain/scripts/toolchain.cjs prepare
       - name: Build the isolated development reactor
         run: sh packages/imaginary-quadratic-core/scripts/build-wasm.sh
+      - name: Audit the development artifact and locked source closure
+        run: node --test packages/imaginary-quadratic-core/test/distribution-audit.test.mjs
       - name: Replay complete ideal maps through the Wasm worker
         run: node --test packages/flint-wasm/test/quadratic-core-product.test.mjs
       - name: Build the Sage-mode Wasm evaluator
