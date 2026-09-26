@@ -290,7 +290,7 @@ function startService() {
       return;
     }
     pending.delete(id);
-    try { slot.resolve(validateServiceResponse(value, id)); }
+    try { slot.resolve({ value: validateServiceResponse(value, id), raw: line }); }
     catch (error) { slot.reject(error); }
   });
   child.on("error", error => {
@@ -351,6 +351,18 @@ function finish(value) {
   Atomics.notify(control, 0);
 }
 
+function finishRawServiceResponse(raw) {
+  const bytes = encoder.encode(raw);
+  if (bytes.length > output.length) {
+    finish({ __sagejs_worker_error__: recordError(new RangeError("class-group response exceeds the shared buffer")) });
+    return;
+  }
+  output.set(bytes);
+  Atomics.store(control, 2, bytes.length);
+  Atomics.store(control, 0, 2);
+  Atomics.notify(control, 0);
+}
+
 async function waitUntilChanged(expected) {
   while (Atomics.load(control, 0) === expected) {
     const waiter = Atomics.waitAsync(control, 0, expected);
@@ -376,8 +388,13 @@ async function main() {
           !plainRecord(envelope.request)) {
         throw new TypeError("invalid class-group host request");
       }
-      const result = await serviceCall(envelope.operation, envelope.request);
-      finish(result);
+      const response = await serviceCall(envelope.operation, envelope.request);
+      if (envelope.operation === "imaginary-class-group" &&
+          envelope.request.transport === "packed-v1") {
+        finishRawServiceResponse(response.raw);
+      } else {
+        finish(response.value);
+      }
     } catch (error) {
       let bytes = encoder.encode(JSON.stringify({ ok: false, error: recordError(error) }));
       if (bytes.length > output.length) bytes = encoder.encode('{"ok":false,"error":{"code":"ENOBUFS","message":"class-group error exceeds the shared buffer"}}');
@@ -696,7 +713,7 @@ export class NodeClassGroupBackend {
     }
     let payload: unknown;
     try {
-      payload = JSON.parse(Buffer.from(output.slice(0, length)).toString("utf8"));
+      payload = JSON.parse(Buffer.from(output.buffer, output.byteOffset, length).toString("utf8"));
     } catch {
       this.retireWorker();
       throw classGroupHostError("EBADMSG", "class-group worker returned invalid JSON");
@@ -723,11 +740,18 @@ export class NodeClassGroupBackend {
         typeof error.name === "string" ? error.name : "ClassGroupServiceError",
       );
     }
-    if (!isPlainRecord(payload.value)) {
+    const directPacked = operation === "imaginary-class-group" &&
+      serviceRequest.transport === "packed-v1";
+    const value = directPacked
+      ? payload.schema === "sagejs.class-groups/service-response-v1" &&
+        payload.abi === 1 && typeof payload.id === "string" &&
+        !Object.hasOwn(payload, "error") && isPlainRecord(payload.result)
+        ? payload.result : undefined
+      : payload.value;
+    if (!isPlainRecord(value)) {
       this.retireWorker();
       throw classGroupHostError("EBADMSG", "class-group worker returned a non-object result");
     }
-    const value = payload.value;
     if (isPlainRecord(value.__sagejs_worker_error__)) {
       this.retireWorker();
       throw classGroupHostError("EPIPE", "class-group worker failed");

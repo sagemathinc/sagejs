@@ -230,6 +230,17 @@ factors. Exact native ideal-map and counterfeit-publication tests passed.
 The matched Rust/PARI coefficient boundary and the public Sage.js boundary
 remain different, and public PARI competitiveness is still unproven.
 
+The resident Node worker can now copy its already envelope-validated packed
+service response directly into shared memory, avoiding a second JSON
+serialization of the full map. On the same large composite field, a fresh
+five-sample public baseline before this change measured 0.0924 seconds median;
+the source-current 15-sample run measured 0.0844 seconds median. A separate
+five-sample phase run measured 0.0479 seconds for warm service/conversion.
+These are exploratory different-run observations, not a controlled PARI
+comparison or a claim that all of the approximately 8 ms difference is due to
+the worker change. The 11-field public answer panel and exact native-map
+regressions still pass.
+
 ## Matched scalar class-number comparison
 
 `run_class_number.py` separately compares the exact scalar Rust count, the

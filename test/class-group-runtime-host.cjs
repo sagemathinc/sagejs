@@ -230,6 +230,12 @@ async function main() {
       () => corrupt.call("open", { request: {} }),
       (error) => error.code === "EBADMSG",
     );
+    assert.throws(
+      () => corrupt.call("imaginary-class-group", {
+        polynomialAscending: ["1", "-1", "1"], transport: "packed-v1",
+      }),
+      (error) => error.code === "EBADMSG",
+    );
     corrupt.close();
     await assertProcessExited(Number(fs.readFileSync(corruptFixture.startup, "utf8")));
 
