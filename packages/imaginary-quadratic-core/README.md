@@ -16,6 +16,9 @@ For local verification, run:
 ```sh
 cargo test --locked --manifest-path packages/imaginary-quadratic-core/Cargo.toml
 sh packages/imaginary-quadratic-core/scripts/build-wasm.sh
+node --test packages/flint-wasm/test/quadratic-core-product.test.mjs
+pnpm build:wasm
+node --test packages/flint-wasm/test/quadratic-core-evaluator.test.mjs
 ```
 
 The service contract test covers the frozen 11-field quadratic panel, including
@@ -23,4 +26,7 @@ each packed form and coordinate against the ordinary exact map. The build uses
 the repository's authenticated Wasm toolchain and writes only under this
 package's ignored `target/` directory. The resulting module can be passed to
 `instantiateClassGroupCore` for direct development testing; it is not staged
-by the release packager.
+by the release packager. The evaluator test explicitly injects that local
+module into an isolated Sage-mode evaluator, checking exact ideal coordinates
+and `core-v2` transport; the ordinary public Wasm kernel still declines the
+unreviewed reactor.
