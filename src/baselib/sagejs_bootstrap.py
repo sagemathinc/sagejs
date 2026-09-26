@@ -176,6 +176,15 @@ def ρσ_plain_json_to_python(source):
                 return value;
             }
             if (Array.isArray(value)) {
+                let allSafeIntegers = true;
+                for (let index = 0; index < value.length; index += 1) {
+                    if (typeof value[index] !== "number" ||
+                        !Number.isSafeInteger(value[index])) {
+                        allSafeIntegers = false;
+                        break;
+                    }
+                }
+                if (allSafeIntegers) return ρσ_list_decorate(value);
                 const output = new Array(value.length);
                 for (let index = 0; index < value.length; index += 1) {
                     output[index] = convert(value[index], depth + 1);

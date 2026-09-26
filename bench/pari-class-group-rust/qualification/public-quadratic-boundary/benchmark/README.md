@@ -328,6 +328,15 @@ The raw diagnostic is
 This remains a different-run diagnostic, not a promoted matched performance
 receipt. Public PARI competitiveness remains open.
 
+The parsed service arrays can be decorated as checked Python lists in place,
+avoiding a second allocation and element-by-element copy before exact map
+verification. A subsequent frozen 15-pair diagnostic measured an 8.23
+geometric-mean Sage.js/PARI ratio (8.44 in the preceding diagnostic); the
+33,768-class composite median was 29.0 ms (previously 31.7 ms). See
+[`public-api-prepared-inplace-conversion-diagnostic.json`](public-api-prepared-inplace-conversion-diagnostic.json).
+These are separate-run diagnostics, not a promoted matched speedup claim, and
+the public competitiveness target remains open.
+
 ## Matched scalar class-number comparison
 
 `run_class_number.py` separately compares the exact scalar Rust count, the

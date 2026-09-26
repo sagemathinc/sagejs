@@ -45,6 +45,18 @@ const fixture = [
   "setattr(runtime, 'class_group_backend', lambda: backend)",
 ];
 
+test("parsed numeric service arrays remain exact Python lists without copying", async () => {
+  const answer = await evaluate([
+    "import sagejs.runtime as runtime",
+    "wire = runtime.json.parse('{\"packed\":[1,-2,3],\"mixed\":[1,\"x\",null],\"nested\":[[4,5],[6,7]]}')",
+    "convert = runtime.reflect.get(runtime.global_object, 'ρσ_plain_json_to_python')",
+    "result = runtime.reflect.apply(convert, runtime.undefined, [wire])",
+    "[isinstance(result['packed'], list), result['packed'] == [1, -2, 3],",
+    " result['mixed'] == [1, 'x', None], result['nested'] == [[4, 5], [6, 7]]]",
+  ]);
+  assert.equal(answer.repr, "[True, True, True, True]");
+});
+
 test("explicit Rust quadratic class group retains exact form coordinates and ideals", async () => {
   const answer = await evaluate([
     ...fixture,
