@@ -573,6 +573,26 @@ bytes and current integrated core source is 902,417/903,000. Keyword paths still
 `agents/python-default-tail-keyword-prologue.md`; this branch is now the direct
 follow-up to merged PR #317.
 
+**2026-09-18 omitted-positional-default replay:** keyword calls which omit
+a positional parameter repeatedly entered a compiled-Python shared helper to
+read and index the live `__defaults__` tuple. Moving exactly that helper's
+native property/check/index/error boundary to raw JavaScript improves one
+omitted default by 23.54% positionally, 17.47% through keyword dispatch, and
+15.02% through an immediate method. Four omissions improve 31.93%; supplied-
+default controls remain within 1.1%. Live default replacement, short/null
+defaults, and the existing argument error path remain tested. Core source falls
+to 902,028/903,000 bytes and the artifact shrinks 193 bytes. Residual positional,
+keyword-function, and method gaps are still 7.52x, 12.03x, and 12.52x CPython,
+so M5 remains open. Differential, default, mutation, traitlets,
+attrs/decorator, strict, docs, and merge gates pass. The local startup
+measurement remains above the unchanged budget and is not a receipt. Exact
+evidence is in `agents/python-positional-default-native.md`. PR #318 has since
+merged the constructor and keyword-prologue prerequisites. The 2026-09-26
+replay against current main relocates the native helper to the checked shared
+host boundary; its fresh absolute comparison still exposes an 11.21x CPython
+keyword-method gap and an 11.31x keyword-construction gap. The 2026-09-18
+paired speedups above are historical, not a current-main A/B receipt.
+
 Continue next with integration-aware qualification, the receiver-lookup campaign,
 and true handled-exception ownership. Generator/coroutine suspension makes a
 single global active-exception pointer unsafe: preserve owned handlers while
