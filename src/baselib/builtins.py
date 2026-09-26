@@ -3051,9 +3051,9 @@ def _builtins_digit_value(character: _Str) -> _Int:
     if 48 <= code <= 57:
         return code - 48
     if 65 <= code <= 90:
-        return code - 65 + 10
+        return code - 55
     if 97 <= code <= 122:
-        return code - 97 + 10
+        return code - 87
     return -1
 
 
@@ -3067,10 +3067,8 @@ def _builtins_parse_integer(value: _Str, base: Any) -> Any:
         return runtime.number(text)
     if not text:
         raise ValueError("invalid literal for int()")
-    sign = runtime.bigint(1)
+    sign = runtime.bigint(-1 if text[0] == "-" else 1)
     if text[0] in "+-":
-        if text[0] == "-":
-            sign = runtime.bigint(-1)
         text = text[1:]
     radix = 10 if base is runtime.undefined else _coerce_int_base(base)
     inferred_base = radix == 0
@@ -3095,11 +3093,11 @@ def _builtins_parse_integer(value: _Str, base: Any) -> Any:
         marker = text[1]
         if (
             radix == 16
-            and (marker == "x" or marker == "X")
+            and marker in "xX"
             or radix == 8
-            and (marker == "o" or marker == "O")
+            and marker in "oO"
             or radix == 2
-            and (marker == "b" or marker == "B")
+            and marker in "bB"
         ):
             text = text[2:]
     if not text:
@@ -3185,13 +3183,10 @@ def ρσ_int(value: Any = 0, base: Any = runtime.undefined) -> Any:
         raise ValueError(
             "Invalid literal for int with base " + str(radix) + ": " + str(value)
         )
-    if runtime.strict_equal(
-        ρσ_python_jstype(answer), "number"
-    ) and not runtime.number.isFinite(runtime.number(answer)):
+    number_answer = runtime.strict_equal(ρσ_python_jstype(answer), "number")
+    if number_answer and not runtime.number.isFinite(runtime.number(answer)):
         raise OverflowError("cannot convert float infinity to integer")
-    if runtime.strict_equal(
-        ρσ_python_jstype(answer), "number"
-    ) and not runtime.number.isSafeInteger(runtime.number(answer)):
+    if number_answer and not runtime.number.isSafeInteger(runtime.number(answer)):
         return runtime.bigint(runtime.number(answer))
     return runtime.number(answer)
 
@@ -5136,6 +5131,10 @@ def _builtins_getattr_impl(
             name,
         )
         if runtime.strict_equal(runtime.jstype(python_string_member), "function"):
+            if call_context is not runtime.undefined:
+                call_context[0] = python_string_member
+                call_context[1] = value
+                return runtime.undefined
             bound = python_string_member.bind(value)
             if name in ("split", "rsplit", "encode", "splitlines", "expandtabs"):
                 return ρσ_finish_bound_method(bound, python_string_member, value)
