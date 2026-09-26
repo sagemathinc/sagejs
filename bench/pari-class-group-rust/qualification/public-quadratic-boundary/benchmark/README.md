@@ -104,6 +104,23 @@ checked native packing, isolated kernel, and Python form/coordinate
 materialization as separate diagnostic phases. It does not isolate
 public group-object binding, alter the frozen matched comparison, or constitute
 a release performance receipt.
+The same optional mode also records separate parent-observed wall and
+worker-reported execution medians for an empty cell, a fresh explicit group,
+and an explicit scalar. The difference includes compilation, worker messaging,
+and result handling; it is not attributed to any single component, and these
+extra calls are outside the standard public samples.
+
+An exploratory three-sample replay on 2026-09-26 covered all 11 frozen v2
+fields with this extra probe. For `D=-47` and `D=-231`, a fresh explicit group
+had 7.8--7.9 ms parent-observed medians and 2.4--2.7 ms worker execution
+medians; an empty cell cost about 2.6 ms at the parent boundary. For the five
+fields with 27,325--44,488 classes, fresh group medians ranged from 20.8 to
+31.6 ms at the parent boundary and 15.7 to 26.6 ms in worker execution.
+These short, unpaired phase probes do not establish a speedup or replace the
+15-pair PARI diagnostic. They show that small fields have substantial fixed
+evaluation overhead, while large-field work is dominated by computation and
+transport inside the execution boundary. Neither finding permits omitting
+complete-map verification.
 
 On 2026-09-25, `larger-composite-d15000000315` (33,768 classes) exposed a
 public-path bottleneck: a fresh full group took roughly 7 seconds, while a

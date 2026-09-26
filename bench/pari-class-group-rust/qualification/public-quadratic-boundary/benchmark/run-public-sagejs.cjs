@@ -43,14 +43,36 @@ function median(values) {
     : (ordered[middle - 1] + ordered[middle]) / 2;
 }
 
-async function timed(sage, code, expected) {
+async function timedBoundary(sage, code, expected) {
   const start = performance.now();
   const response = await sage.evaluate(code);
-  const nanoseconds = Math.round((performance.now() - start) * 1_000_000);
+  const wallNanoseconds = Math.round((performance.now() - start) * 1_000_000);
   if (response.repr !== expected) {
     throw new Error(`wrong public answer: expected ${expected}, got ${response.repr}`);
   }
-  return nanoseconds;
+  const executionNanoseconds = Math.round(response.durationMs * 1_000_000);
+  if (!Number.isSafeInteger(executionNanoseconds) || executionNanoseconds < 0) {
+    throw new Error("the evaluator omitted its execution-only duration");
+  }
+  return { wallNanoseconds, executionNanoseconds };
+}
+
+async function timed(sage, code, expected) {
+  return (await timedBoundary(sage, code, expected)).wallNanoseconds;
+}
+
+async function diagnoseEvaluationBoundary(sage, freshCall, groupExpected, scalarCall,
+  scalarExpected, samples) {
+  const measurements = { empty: [], freshGroup: [], scalar: [] };
+  for (let index = 0; index < samples; index += 1) {
+    measurements.empty.push(await timedBoundary(sage, "0", "0"));
+    measurements.freshGroup.push(await timedBoundary(sage, freshCall, groupExpected));
+    measurements.scalar.push(await timedBoundary(sage, scalarCall, scalarExpected));
+  }
+  return Object.fromEntries(Object.entries(measurements).map(([name, values]) => [name, {
+    wallMedianNanoseconds: median(values.map((value) => value.wallNanoseconds)),
+    executionMedianNanoseconds: median(values.map((value) => value.executionNanoseconds)),
+  }]));
 }
 
 async function diagnosePhases(sage, expectedClassNumber) {
@@ -129,6 +151,12 @@ async function main() {
         fresh.push(await timed(sage, freshCall, expected));
         scalar.push(await timed(sage, scalarCall, String(field.expected.classNumber)));
       }
+      const evaluationBoundary = phases
+        ? await diagnoseEvaluationBoundary(
+          sage, freshCall, expected, scalarCall,
+          String(field.expected.classNumber), samples,
+        )
+        : undefined;
       const phaseDiagnostic = phases
         ? await diagnosePhases(sage, field.expected.classNumber)
         : undefined;
@@ -146,6 +174,7 @@ async function main() {
         scalarExplicitMedianNanoseconds: median(scalar),
         rssAfterFieldBytes: process.memoryUsage().rss,
         ...(phaseDiagnostic === undefined ? {} : { phaseDiagnostic }),
+        ...(evaluationBoundary === undefined ? {} : { evaluationBoundary }),
       });
       process.stderr.write(`${JSON.stringify(results[results.length - 1])}\n`);
     }
@@ -157,7 +186,7 @@ async function main() {
     panelSchema: panel.schema,
     promotedPerformanceReceipt: false,
     boundary: "warm-node-kernel-evaluate-public-sagejs-call-v1",
-    caveat: "Includes public Python/Sage.js dispatch, exact host map validation, and kernel evaluation overhead; excludes kernel startup and field construction. Not directly comparable to the promoted Rust/PARI coefficient boundary.",
+    caveat: "Includes public Python/Sage.js dispatch, exact host map validation, and kernel evaluation overhead; excludes kernel startup and field construction. The optional evaluation-boundary probe separates parent-observed wall time from the evaluator's execution-only duration; their difference is not attributed to any one phase. Not directly comparable to the promoted Rust/PARI coefficient boundary.",
     node: process.version,
     platform: `${process.platform}-${process.arch}`,
     samplesPerField: samples,
@@ -173,4 +202,5 @@ if (require.main === module) {
   });
 }
 
-module.exports = { parseArguments, expectedGroup, median, diagnosePhases };
+module.exports = { parseArguments, expectedGroup, median, timedBoundary,
+  diagnosePhases, diagnoseEvaluationBoundary };
