@@ -13,7 +13,8 @@ const sharedNames = ["ρσ_machine_extension_method_matches", "ρσ_copy_method_
   "ρσ_exact_integer_submul", "ρσ_int_pow",
   "ρσ_check_interrupt", "ρσ_normalize_exception", "ρσ_prepare_method_call",
   "ρσ_attr", "ρσ_interpolate_kwargs", "ρσ_interpolate_kwargs_constructor",
-  "ρσ_synthetic_init_ends_at_object", "ρσ_skip_init", "ρσ_positional_default"];
+  "ρσ_synthetic_init_ends_at_object", "ρσ_skip_init", "ρσ_positional_default",
+  "ρσ_call_keyword_initializer"];
 const names = sharedNames;
 
 // Exercise the native ABI bodies directly; full self-hosted/module
@@ -30,6 +31,46 @@ function context(overrides = {}) {
   const globals = { KeyboardInterrupt, ρσ_exception_value: (value) => value, ...overrides };
   return runInNewContext(`${declarations.join("\n")}; ({${names.join(",")}, globalThis})`, globals);
 }
+
+test("keyword initializer adapter copies arguments and binds only unbound descriptors", () => {
+  const calls = [];
+  const match = source.match(
+    /^def ρσ_call_keyword_initializer\(([^)]*)\):[^]*?return r"""%js ([^]*?)"""/m,
+  );
+  assert.ok(match);
+  const api = runInNewContext(`function ρσ_call_keyword_initializer(${match[1]}) {
+    return ${match[2]};
+  }; ({ρσ_call_keyword_initializer})`, {
+    ρσ_interpolate_kwargs: (receiver, initializer, args) => {
+      calls.push({ receiver, initializer, args: Array.from(args) });
+      return 17;
+    },
+  });
+  const instance = {};
+  const packet = { left: 4 };
+  const supplied = [packet];
+  const ordinary = function ordinary() {};
+  assert.equal(api.ρσ_call_keyword_initializer(ordinary, instance, supplied), 17);
+  assert.equal(calls[0].receiver, instance);
+  assert.deepEqual(calls[0].args, supplied);
+
+  const unbound = function unbound() {};
+  unbound.__python_descriptor__ = true;
+  assert.equal(api.ρσ_call_keyword_initializer(unbound, instance, supplied), 17);
+  assert.equal(calls[1].receiver, undefined);
+  assert.deepEqual(calls[1].args, [instance, packet]);
+  assert.deepEqual(supplied, [packet], "the allocator's argument packet is not mutated");
+
+  for (const flag of ["__self__", "__staticmethod__", "__sagejs_native_method__",
+    "__sagejs_method_signature_excludes_self__"]) {
+    const initializer = function assigned() {};
+    initializer.__python_descriptor__ = true;
+    initializer[flag] = flag === "__self__" ? instance : true;
+    api.ρσ_call_keyword_initializer(initializer, instance, supplied);
+    assert.equal(calls.at(-1).receiver, instance, flag);
+    assert.deepEqual(calls.at(-1).args, [packet], flag);
+  }
+});
 
 test("prepared method calls use and invalidate the shared prototype cache", () => {
   const prototype = {};

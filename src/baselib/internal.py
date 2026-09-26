@@ -54,20 +54,6 @@ def _internal_initializer_needs_self(initializer: Any) -> bool:
     )
 
 
-def ρσ_call_keyword_initializer(
-    initializer: Any, instance: Any, supplied_args: Any
-) -> Any:
-    # Allocation copied its packet; initialization is the final consumer.
-    call_args = runtime.reflect.apply(runtime.array.prototype.slice, supplied_args, [])
-    receiver = instance
-    if _internal_initializer_needs_self(initializer):
-        call_args.unshift(instance)
-        receiver = runtime.undefined
-    return ρσ_interpolate_kwargs(  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
-        receiver, initializer, call_args
-    )
-
-
 def _internal_type_is(actual: Any, expected: str) -> bool:
     return runtime.strict_equal(actual, expected)
 

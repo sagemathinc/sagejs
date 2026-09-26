@@ -601,6 +601,16 @@ boundaries separately from traceback chains and exception chaining; avoid work
 on every ordinary function call. Keep source budgets unchanged and account for
 all helpers. The remaining M3–M6 acceptance requirements below still apply.
 
+**2026-09-26 keyword-initializer adapter checkpoint:** on top of PR #325, moving
+the constructor's keyword-only initializer adapter to the checked shared-host
+boundary improves isolated keyword initialization by 11.14% and field-bearing
+keyword construction by 3.28% in six-process alternating measurements;
+positional and no-op controls are flat. The 505-case CPython differential,
+focused initializer tests, eight routine phases, architecture checks, source
+budget, and startup gate pass. This is a narrow layer removal, not closure of
+the broader field-store or method-lookup cliffs. Exact evidence is in
+`agents/python-keyword-initializer-native.md`.
+
 Existing assets to reuse:
 
 - `scripts/audit-python-grammar.cjs`

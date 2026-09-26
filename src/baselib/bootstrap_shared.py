@@ -344,3 +344,20 @@ def ρσ_positional_default(target_function, from_end, name):
                 "missing required argument: "+name,target_function);
         return defaults[defaults.length-from_end];
     })()"""
+
+
+def ρσ_call_keyword_initializer(initializer, instance, supplied_args):
+    return r"""%js (()=>{
+        // Allocation may have consumed its copy; initialization owns this packet.
+        const call_args=Array.prototype.slice.call(supplied_args);
+        const needs_self=initializer.__python_descriptor__===true&&
+            initializer.__self__===undefined&&
+            initializer.__staticmethod__!==true&&
+            initializer.__sagejs_native_method__!==true&&
+            initializer.__sagejs_method_signature_excludes_self__!==true;
+        if(needs_self){
+            call_args.unshift(instance);
+            return ρσ_interpolate_kwargs(undefined,initializer,call_args);
+        }
+        return ρσ_interpolate_kwargs(instance,initializer,call_args);
+    })()"""
