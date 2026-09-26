@@ -3,6 +3,16 @@ import re
 match = re.match(r"(?P<first>a)(?P<optional>b)?", "a")
 assert match is not None
 
+
+class GroupName(str):
+    def __str__(self):
+        return "optional"
+
+
+print("str subclass", repr(match.group(GroupName("first"))))
+print("str subclass multiple", repr(match.group(GroupName("first"), "optional")))
+print("str subclass span", match.span(GroupName("first")))
+
 for args in [(), (0,), ("first",), (1,), (2,), ("optional",), (0, "first", 2)]:
     print("group", repr(args), repr(match.group(*args)))
 
