@@ -40,7 +40,7 @@ test("the development class-group reactor is excluded from the production layout
 
 const artifact = productionArtifact();
 test(
-  "the extracted production reactor instantiates and completes a small cubic through the worker",
+  "the development reactor completes cubic and exact imaginary-quadratic groups in Wasm",
   { skip: artifact ? false : "requires the class-group-rust-core lane to build packages/class-groups/dist/class-group-core.wasm" },
   async () => {
     const bytes = new Uint8Array(await readFile(artifact));
@@ -103,6 +103,28 @@ test(
         new Set(noncyclic.generators.map(({ coordinates }) => coordinates.join(","))),
         new Set(["0,1", "1,0"]),
       );
+
+      for (const [polynomial, classNumber, invariants] of [
+        [[2043354, -1, 1], 4378, [4378]],
+        [[25000000001, -1, 1], 31057, [31057]],
+        [[3750000079, -1, 1], 33768, [2, 16884]],
+      ]) {
+        const complete = await service.imaginaryClassGroup(polynomial);
+        assert.equal(complete.classNumber, classNumber);
+        assert.deepEqual(complete.invariantFactors, invariants);
+        assert.equal(complete.proofStatus, "unconditional-complete");
+        assert.equal(complete.completeClassMap.length, classNumber);
+        assert.equal(
+          new Set(complete.completeClassMap.map(({ coordinates }) =>
+            coordinates.join(","))).size,
+          classNumber,
+        );
+        assert.deepEqual(
+          complete.generators.map(({ coordinates }) => coordinates),
+          invariants.map((_, index) =>
+            invariants.map((__, coordinate) => Number(index === coordinate))),
+        );
+      }
       await assert.rejects(
         service.imaginaryClassNumber([9, 0, 1]),
         (error) => error.category === "invalid-request",

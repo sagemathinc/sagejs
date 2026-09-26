@@ -1,9 +1,41 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { createSage } from "../node-kernel.mjs";
 
-test("public imaginary quadratic class groups retain exact ideals in Wasm", async () => {
+const productionLayout = JSON.parse(readFileSync(
+  new URL("../release/production-layout.json", import.meta.url),
+  "utf8",
+));
+const distributed = productionLayout.modules.some(({ id }) => id === "class-group");
+
+test("the public Wasm kernel declines the unapproved Rust class-group reactor", {
+  skip: distributed && "the public package includes the class-group reactor",
+}, async () => {
+  const sage = await createSage({ timeout: 120_000 });
+  try {
+    await assert.rejects(
+      sage.evaluate([
+        "R.<x> = QQ[]",
+        "K.<a> = NumberField(x^2 + 23)",
+        "K.class_group(algorithm='rust')",
+      ].join("\n")),
+      (error) => error?.name === "RustClassGroupCapabilityDecline" &&
+        /reactor is unavailable/.test(error.message),
+    );
+  } finally {
+    await sage.close();
+  }
+});
+
+// These acceptance cases activate automatically when the reviewed production
+// layout includes the class-group reactor.
+const pendingPublicDistribution = {
+  skip: !distributed && "class-group reactor has not cleared distribution eligibility",
+};
+
+test("public imaginary quadratic class groups retain exact ideals in Wasm", pendingPublicDistribution, async () => {
   const sage = await createSage({ timeout: 120_000 });
   try {
     const answer = await sage.evaluate([
@@ -35,7 +67,7 @@ test("public imaginary quadratic class groups retain exact ideals in Wasm", asyn
   }
 });
 
-test("large public imaginary class maps cross the Wasm boundary exactly", async () => {
+test("large public imaginary class maps cross the Wasm boundary exactly", pendingPublicDistribution, async () => {
   const sage = await createSage({ timeout: 120_000 });
   try {
     const answer = await sage.evaluate([
@@ -56,7 +88,7 @@ test("large public imaginary class maps cross the Wasm boundary exactly", async 
   }
 });
 
-test("medium-band imaginary class maps remain exact in Wasm", async () => {
+test("medium-band imaginary class maps remain exact in Wasm", pendingPublicDistribution, async () => {
   const sage = await createSage({ timeout: 120_000 });
   try {
     const answer = await sage.evaluate([
@@ -76,7 +108,7 @@ test("medium-band imaginary class maps remain exact in Wasm", async () => {
   }
 });
 
-test("noncyclic medium-band ideal classes retain both coordinates in Wasm", async () => {
+test("noncyclic medium-band ideal classes retain both coordinates in Wasm", pendingPublicDistribution, async () => {
   const sage = await createSage({ timeout: 120_000 });
   try {
     const answer = await sage.evaluate([

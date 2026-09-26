@@ -90,23 +90,6 @@
     "schema": "sagejs.wasm-artifact-topology/v1",
     "groups": [
       {
-        "id": "class-group",
-        "kind": "specialist",
-        "dependencies": ["eager-core"],
-        "assets": [
-          "class-group-core-receipt.json",
-          "class-group-core.wasm",
-          "runtime/class-group-core-loader.mjs",
-          "runtime/class-group-core-worker.mjs",
-          "runtime/class-group-core.d.ts",
-          "runtime/class-group-core.mjs"
-        ],
-        "maximumCompressedDelta": {
-          "gzipBytes": 2600000,
-          "brotliBytes": 2200000
-        }
-      },
-      {
         "id": "extension-multivariate",
         "kind": "specialist",
         "dependencies": ["eager-core"],
