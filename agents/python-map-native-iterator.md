@@ -18,12 +18,19 @@ callable resolution; callable objects still resolve their type-level
 shared host-runtime primitive, including in browser builds, not a mathematical
 algorithm or a new Wasm ABI.
 
+The built-in imports the helper from `bootstrap_shared` directly. Exporting it
+through `sagejs.runtime` changed `runtime.py`, a file pinned by the qualified
+NLopt public-semantics bundle, and caused Chromium CI's numerical reactor
+build to fail before browser tests ran. Direct bootstrap import keeps that
+pinned file byte-for-byte unchanged; all 21 pinned source hashes match the
+manifest. No NLopt qualification budget or digest was revised.
+
 `test/python-map-exhaustion-fast.cjs` differentially checks CPython for eager
 source setup, valued and transient stops, callback and source errors,
 resumption, multiple inputs, and callable-class mutation. The full 508-case
 Python conformance corpus matches its existing baseline. The Linux routine
 gate passes, including the unchanged startup and package-source budgets;
-core-runtime is 911,845 / 912,000 bytes. Browser and other-platform CI remain
+core-runtime is 911,864 / 912,000 bytes. Browser and other-platform CI remain
 PR checks.
 
 On Linux x64 with Node 26.10.0 and CPython 3.14.4, the pinned

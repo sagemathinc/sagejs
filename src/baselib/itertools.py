@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import Any, Callable, Iterable, Iterator
 
 import sagejs.runtime as runtime
+from bootstrap_shared import ρσ_native_map_iterator
 
 
 def _sum_exact_integer_range(iterable: Any, start: Any) -> Any:
@@ -117,7 +118,9 @@ def map(
 ) -> Iterator[Any]:
     if not iterables:
         raise TypeError("map() must have at least two arguments.")
-    return runtime.native_map_iterator(func, [iter(iterable) for iterable in iterables])
+    return ρσ_native_map_iterator(  # pyright: ignore[reportReturnType]
+        func, [iter(iterable) for iterable in iterables]
+    )
 
 
 def filter(

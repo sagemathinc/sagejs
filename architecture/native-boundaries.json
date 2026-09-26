@@ -18,7 +18,7 @@
     "declared-ffi": 480,
     "declared-ffi-resource": 37,
     "napi-export": 358,
-    "runtime-intrinsic": 149,
+    "runtime-intrinsic": 148,
     "rust-abi-export": 38,
     "rust-abi-import": 74,
     "wasm-export": 74
@@ -13134,14 +13134,6 @@
       "path": "tools/python/contract.ts",
       "export": "native_lt",
       "symbol": "ρσ_native_lt",
-      "disposition": "runtime-primitive"
-    },
-    {
-      "id": "runtime:native_map_iterator",
-      "kind": "runtime-intrinsic",
-      "path": "tools/python/contract.ts",
-      "export": "native_map_iterator",
-      "symbol": "ρσ_native_map_iterator",
       "disposition": "runtime-primitive"
     },
     {
