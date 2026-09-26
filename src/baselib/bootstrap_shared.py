@@ -56,6 +56,18 @@ def ρσ_copy_method_metadata(method, target_function):
     })()"""
 
 
+def ρσ_append_fn(target):
+    return r"""%js (()=>{const f=function(self,value){
+if(!Array.isArray(self))throw new TypeError(
+"descriptor 'append' for 'list' objects doesn't apply to this object");
+if(arguments.length!==2)throw new TypeError("append expected 1 argument");
+Array.prototype.push.call(self,value);return null};
+ρσ_copy_method_metadata(f,target);
+f.__argnames__=["self","value"];
+f.__name__=f.__qualname__="_list_type_append";
+return f})()"""
+
+
 def ρσ_native_method_adapter(target_function):
     return r"""%js (() => {
         function method(...args) {

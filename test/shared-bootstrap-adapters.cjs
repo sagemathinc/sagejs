@@ -8,7 +8,7 @@ const { runInNewContext } = require("node:vm");
 const test = require("node:test");
 const root = join(__dirname, "..");
 const source = readFileSync(join(root, "src/baselib/bootstrap_shared.py"), "utf8");
-const sharedNames = ["ρσ_machine_extension_method_matches", "ρσ_copy_method_metadata", "ρσ_native_method_adapter", "ρσ_unbound_method_adapter",
+const sharedNames = ["ρσ_machine_extension_method_matches", "ρσ_copy_method_metadata", "ρσ_append_fn", "ρσ_native_method_adapter", "ρσ_unbound_method_adapter",
   "ρσ_exact_integer_add", "ρσ_exact_integer_divmod", "ρσ_exact_shift",
   "ρσ_exact_integer_submul", "ρσ_int_pow",
   "ρσ_check_interrupt", "ρσ_normalize_exception", "ρσ_prepare_method_call",
@@ -148,6 +148,26 @@ test("the original unbound list append respects live class and metaclass changes
   hook = [undefined, undefined, undefined, ordinaryHook];
   assert.deepEqual(prepared(), [append, undefined, false]);
   assert.equal(fallbacks, 3);
+});
+
+test("list class append descriptor keeps metadata and validates explicit calls", () => {
+  const api = context();
+  const target = function target() {};
+  target.__annotations__ = { self: "Any", value: "Any" };
+  target.__module__ = "sagejs._baselib.containers";
+  target.__sagejs_native_method__ = true;
+  const append = api.ρσ_append_fn(target);
+  const values = [];
+  assert.equal(append(values, 7), null);
+  assert.deepEqual(values, [7]);
+  assert.equal(append.__name__, "_list_type_append");
+  assert.equal(append.__qualname__, "_list_type_append");
+  assert.equal(append.__module__, target.__module__);
+  assert.deepEqual(Array.from(append.__argnames__), ["self", "value"]);
+  assert.equal(append.__sagejs_native_method__, undefined);
+  assert.throws(() => append(values), /append expected 1 argument/);
+  assert.throws(() => append(values, 1, 2), /append expected 1 argument/);
+  assert.throws(() => append({}, 1), /doesn't apply to this object/);
 });
 
 test("shared attribute stores use only epoch-current unexposed cache entries", () => {
