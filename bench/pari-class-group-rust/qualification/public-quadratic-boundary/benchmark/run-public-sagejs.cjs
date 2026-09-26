@@ -57,20 +57,45 @@ async function diagnosePhases(sage, expectedClassNumber) {
   const response = await sage.evaluate([
     "import time",
     "from sagejs.number_fields import rust_class_group_runtime as rust_runtime",
+    "from sagejs.kernels.matrix.imaginary_map import verify_packed_imaginary_map, _pack_exact_int64",
+    "from sagejs.native import kernel_uint64_zeros",
     "started = time.perf_counter()",
     "result = rust_runtime.rust_imaginary_result(K, operation='imaginary-class-group', algorithm='rust')",
     "received = time.perf_counter()",
     "forms, coordinates, generators = rust_runtime.validate_imaginary_group_result(result, int(K.discriminant()))",
     "validated = time.perf_counter()",
-    "[(received - started) * 1000, (validated - received) * 1000, len(forms), len(coordinates)]",
+    "rows = result['completeClassMapPacked']",
+    "certificate = result['certificate']['reducedFormsPacked']",
+    "invariants = result['invariantFactors']",
+    "packing_started = time.perf_counter()",
+    "packed_rows = _pack_exact_int64(verify_packed_imaginary_map, rows)",
+    "packed_certificate = _pack_exact_int64(verify_packed_imaginary_map, certificate)",
+    "packed_invariants = _pack_exact_int64(verify_packed_imaginary_map, invariants)",
+    "seen = kernel_uint64_zeros(verify_packed_imaginary_map, result['completeClassMapLength'])",
+    "packed = time.perf_counter()",
+    "assert verify_packed_imaginary_map(packed_rows, packed_certificate, packed_invariants, seen, int(K.discriminant()), -1 if int(K.discriminant()) % 4 == 1 else 0) == 0",
+    "verified = time.perf_counter()",
+    "stride = 11 + len(invariants)",
+    "rebuilt_forms = []",
+    "rebuilt_coordinates = {}",
+    "for index in range(result['completeClassMapLength']):",
+    "    offset = index * stride",
+    "    a, b, c = rows[offset], rows[offset + 1], rows[offset + 2]",
+    "    rebuilt_forms.append((a, b, c))",
+    "    rebuilt_coordinates[str(a) + ',' + str(b) + ',' + str(c)] = tuple(rows[offset + 11:offset + stride])",
+    "materialized = time.perf_counter()",
+    "assert rebuilt_forms == forms and rebuilt_coordinates == coordinates",
+    "[(received - started) * 1000, (validated - received) * 1000, len(forms), len(coordinates), (packed - packing_started) * 1000, (verified - packed) * 1000, (materialized - verified) * 1000]",
   ].join("\n"));
-  const [serviceAndConversionMs, independentValidationMs, forms, coordinates] =
+  const [serviceAndConversionMs, independentValidationMs, forms, coordinates,
+    validatedPackingMs, kernelMs, materializeMs] =
     JSON.parse(response.repr);
   if (forms !== expectedClassNumber || coordinates !== expectedClassNumber ||
       !Number.isFinite(serviceAndConversionMs) || !Number.isFinite(independentValidationMs)) {
     throw new Error("phase diagnostic did not validate the complete class map");
   }
-  return { serviceAndConversionMs, independentValidationMs };
+  return { serviceAndConversionMs, independentValidationMs,
+    exactMapRecheck: { validatedPackingMs, kernelMs, materializeMs } };
 }
 
 async function main() {

@@ -20,9 +20,7 @@ const certificate = [1, 1, 6, 2, -1, 3, 2, 1, 3];
 const invariants = [3];
 
 function check(module, implementation, input) {
-  const packed = (values) => module.createIntegerBuffer(
-    values.length, 2, values.map(BigInt),
-  );
+  const packed = (values) => module.verify_packed_imaginary_map.packExactInt64Buffer(values);
   const seen = module.createUInt64Buffer(certificate.length / 3);
   return Number(implementation(
     packed(input.rows), packed(input.certificate), packed(input.invariants),
@@ -58,6 +56,9 @@ test("native imaginary map verifier agrees with CPython and emitted JavaScript",
     });
     const module = require(compiled.modulePath);
     const kernel = module.verify_packed_imaginary_map;
+    for (const malformed of [true, "1", 1.5, 1n << 63n]) {
+      assert.throws(() => kernel.packExactInt64Buffer([malformed]), TypeError);
+    }
     const pristine = { rows, certificate, invariants, discriminant: -23, linear: -1 };
     const cases = [
       [pristine, 0],

@@ -91,6 +91,30 @@ function createInt64Buffer(source) {
   return BigInt64Array.from(source, BigInt);
 }
 
+function packExactInt64Buffer(source) {
+  if (!Array.isArray(source)) throw new TypeError("expected a flat exact-integer list");
+  const result = new BigInt64Array(source.length);
+  const lower = -(1n << 63n);
+  const upper = 1n << 63n;
+  for (let index = 0; index < source.length; index += 1) {
+    const value = source[index];
+    if (typeof value === "number") {
+      if (!Number.isSafeInteger(value)) {
+        throw new TypeError("expected an exact safe integer");
+      }
+      result[index] = BigInt(value);
+    } else if (typeof value === "bigint") {
+      if (value < lower || value >= upper) {
+        throw new TypeError("exact integer is outside signed 64-bit range");
+      }
+      result[index] = value;
+    } else {
+      throw new TypeError("expected an exact integer");
+    }
+  }
+  return result;
+}
+
 function createFloat64Buffer(source) {
   if (Number.isSafeInteger(source) && source >= 0) return new Float64Array(source);
   return Float64Array.from(source, Number);
@@ -205,6 +229,7 @@ function loadThinCachedKernel(options) {
   invoke.gmp = invoke;
   invoke.createIntegerBuffer = createIntegerBuffer;
   invoke.createInt64Buffer = createInt64Buffer;
+  invoke.packExactInt64Buffer = packExactInt64Buffer;
   invoke.createFloat64Buffer = createFloat64Buffer;
   invoke.nativeAvailable = true;
   invoke.executionMode = "native-thin-cache";
@@ -222,6 +247,7 @@ function loadThinCachedKernel(options) {
 module.exports = {
   createFloat64Buffer,
   createInt64Buffer,
+  packExactInt64Buffer,
   createIntegerBuffer,
   loadThinCachedKernel,
   sha256File,

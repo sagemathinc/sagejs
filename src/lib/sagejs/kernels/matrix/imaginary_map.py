@@ -8,15 +8,30 @@ The caller owns the buffers and checks their element types before packing.
 
 from __future__ import annotations
 
+from typing import Any
+
 from sagejs.native import (
-    IntegerBuffer,
+    Int64Buffer,
     UInt64Buffer,
     is_compiled,
-    kernel_integer_buffer,
+    kernel_int64_buffer,
     kernel_uint64_zeros,
     native,
     uint64,
 )
+
+
+def _pack_exact_int64(kernel: Any, values: list[int]) -> Any:
+    """Reject coercions while packing; keep the ordinary Python fallback."""
+    factory = getattr(kernel, "packExactInt64Buffer", None)
+    if callable(factory):
+        return factory(values)
+    if any(
+        type(value) is not int or value < -(1 << 63) or value >= (1 << 63)
+        for value in values
+    ):
+        raise ValueError("the packed imaginary class map has a malformed integer")
+    return kernel_int64_buffer(kernel, values)
 
 
 def validate_packed_imaginary_map(
@@ -29,21 +44,15 @@ def validate_packed_imaginary_map(
 ) -> tuple[list[tuple[int, int, int]], dict[str, tuple[int, ...]]] | None:
     """Use the isolated kernel if installed, preserving the Python fallback.
 
-    Type checks precede buffer packing because numeric buffers coerce Boolean
-    and string values before the source-transparent validator sees them.
+    The host packer rejects Boolean, string, and out-of-range values before
+    they can be coerced into signed integer storage.
     """
     kernel = verify_packed_imaginary_map
     if not is_compiled(kernel):
         return None
-    if (
-        any(type(value) is not int for value in rows)
-        or any(type(value) is not int for value in certificate_forms)
-        or any(type(value) is not int for value in invariants)
-    ):
-        raise ValueError("the packed imaginary class map has a malformed integer")
-    packed_rows = kernel_integer_buffer(kernel, rows)
-    packed_certificate = kernel_integer_buffer(kernel, certificate_forms)
-    packed_invariants = kernel_integer_buffer(kernel, invariants)
+    packed_rows = _pack_exact_int64(kernel, rows)
+    packed_certificate = _pack_exact_int64(kernel, certificate_forms)
+    packed_invariants = _pack_exact_int64(kernel, invariants)
     seen = kernel_uint64_zeros(kernel, count)
     if (
         kernel(
@@ -72,9 +81,9 @@ def validate_packed_imaginary_map(
 
 @native
 def verify_packed_imaginary_map(
-    rows: IntegerBuffer,
-    certificate_forms: IntegerBuffer,
-    invariant_factors: IntegerBuffer,
+    rows: Int64Buffer,
+    certificate_forms: Int64Buffer,
+    invariant_factors: Int64Buffer,
     seen_coordinates: UInt64Buffer,
     discriminant: int,
     linear: int,

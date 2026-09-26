@@ -213,14 +213,23 @@ test("packed resident map validation retains exact forms, ideals, and rejection"
     "except rust_runtime.RustClassGroupPublicationError:",
     "    rejects_inverse = True",
     "packed['completeClassMapPacked'][4] = 1",
+    "malformed_rows = []",
+    "for malformed in (True, '1', float(1), 1 << 63):",
+    "    packed['completeClassMapPacked'][4] = malformed",
+    "    try:",
+    "        rust_runtime.validate_imaginary_group_result(packed, -23)",
+    "        malformed_rows.append(False)",
+    "    except rust_runtime.RustClassGroupPublicationError:",
+    "        malformed_rows.append(True)",
+    "packed['completeClassMapPacked'][4] = 1",
     "result = packed",
     "group = K.class_group(algorithm='rust')",
     "packed_before_access = 'reducedFormsPacked' in group._group._certificate",
     "certificate = group.certificate",
     "ordinary_certificate = len(certificate['reducedForms']) == 3 and certificate['reducedForms'][1]['a'] == 2 and 'reducedFormsPacked' not in certificate",
-    "[forms1 == forms2, coordinates1 == coordinates2, generators1 == generators2, rejects_certificate, rejects_inverse, packed_before_access, ordinary_certificate]",
+    "[forms1 == forms2, coordinates1 == coordinates2, generators1 == generators2, rejects_certificate, rejects_inverse, all(malformed_rows), packed_before_access, ordinary_certificate]",
   ]);
-  assert.equal(answer.repr, "[True, True, True, True, True, True, True]");
+  assert.equal(answer.repr, "[True, True, True, True, True, True, True, True]");
 });
 
 test("QuadraticField and its maximal order expose the explicit Rust route", async () => {

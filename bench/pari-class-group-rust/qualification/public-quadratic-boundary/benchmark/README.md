@@ -99,7 +99,9 @@ example `run-public-sagejs.cjs 3 near-limit-h4378-d8173415`.
 Append `--phases` to measure one additional complete Rust-service/host-conversion
 call and one independent Python-side validation of the same field's map. The
 diagnostic runs after the public samples, verifies both form and coordinate
-counts, and reports the two elapsed times separately. It does not isolate
+counts, and reports the two elapsed times separately. It also replays the
+checked native packing, isolated kernel, and Python form/coordinate
+materialization as separate diagnostic phases. It does not isolate
 public group-object binding, alter the frozen matched comparison, or constitute
 a release performance receipt.
 
@@ -180,6 +182,21 @@ and exact ideal-coordinate tests also passed. This is a substantial public-path
 improvement, not yet a matched PARI comparison or public PARI competitiveness.
 The remaining Python coordinate-dictionary/form materialization and bulk
 transport warrant a compact exact lookup design rather than weakened checks.
+
+A subsequent checked signed-64-bit ingress fuses exact-element validation and
+buffer packing in the native-kernel host adapter. This is sound for the
+quadratic service's bounded discriminant domain; nonintegers, Boolean and
+string coercions, and signed-64-bit overflow are rejected before the isolated
+kernel receives a row. The compiler's ordinary Python fallback remains
+available. On the same 33,768-class field, three warm fresh public calls
+measured 1.159, 1.127, and 1.192 seconds (1.159-second median). One phase
+probe measured 0.361 seconds for service/conversion and 0.742 seconds for
+independent validation; the separate replay measured 0.013 seconds for
+checked packing and 0.003 seconds for the isolated kernel. These short runs
+show a substantial improvement over the prior 2.650-second three-sample
+median, but still do not establish public PARI parity. The remaining
+materialization of Python forms and coordinate strings is the next measured
+public-boundary target.
 
 ## Matched scalar class-number comparison
 
