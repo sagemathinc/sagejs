@@ -137,7 +137,7 @@ def _call(backend: Any, operation: str, request: dict[str, Any]) -> dict[str, An
 
 
 def _imaginary_host_call(operation: str, request: dict[str, Any]) -> dict[str, Any]:
-    """Decode the resident imaginary response without reparsing its large JSON map.
+    """Decode a resident service response without reparsing its JSON document.
 
     The worker's Rust loader has already parsed and checked its JSON envelope.
     This narrowly scoped host boundary accepts only safe integer scalars and
@@ -196,7 +196,7 @@ def _capability(backend: Any) -> dict[str, Any]:
     )
 
 
-def _imaginary_backend(backend: Any = None) -> tuple[Any, dict[str, Any]]:
+def _imaginary_backend(backend: Any = None) -> tuple[Any, dict[str, Any], bool]:
     if backend is None:
         try:
             backend = runtime.class_group_backend()
@@ -208,7 +208,15 @@ def _imaginary_backend(backend: Any = None) -> tuple[Any, dict[str, Any]]:
         raise RustClassGroupCapabilityDecline(
             "the Rust class-group service is not installed"
         )
-    capability = _capability(backend)
+    resident_host = getattr(backend, "_backend", None)
+    use_resident_host = resident_host is not None and runtime.strict_equal(
+        resident_host, runtime.reflect.get(runtime.global_object, "__sagejs_host__")
+    )
+    capability = (
+        _imaginary_host_call("capability", {})
+        if use_resident_host
+        else _capability(backend)
+    )
     imaginary = capability.get("imaginaryQuadratic")
     if (
         capability.get("outcome") != "available"
@@ -219,7 +227,7 @@ def _imaginary_backend(backend: Any = None) -> tuple[Any, dict[str, Any]]:
             "the installed Rust service does not advertise unconditional imaginary quadratic groups"
         )
     _canonical_sha256(capability.get("artifactSha256"), "capability artifact identity")
-    return backend, imaginary
+    return backend, imaginary, use_resident_host
 
 
 def _imaginary_polynomial(field: Any) -> tuple[int, list[str]]:
@@ -269,16 +277,11 @@ def rust_imaginary_result(
         raise ValueError("unknown imaginary quadratic Rust operation")
     try:
         discriminant, polynomial = _imaginary_polynomial(field)
-        backend, capability = _imaginary_backend(backend)
+        backend, capability, use_resident_host = _imaginary_backend(backend)
     except RustClassGroupCapabilityDecline:
         if algorithm == "auto":
             return None
         raise
-    resident_host = getattr(backend, "_backend", None)
-    use_resident_host = resident_host is not None and runtime.strict_equal(
-        resident_host,
-        runtime.reflect.get(runtime.global_object, "__sagejs_host__"),
-    )
     if operation not in capability.get("operations", ()):
         raise RustClassGroupCapabilityDecline(
             "the installed Rust service does not support " + operation

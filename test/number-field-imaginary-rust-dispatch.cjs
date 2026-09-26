@@ -273,6 +273,25 @@ test("the native service maps public ideals to unconditional coordinates", {
   assert.equal(answer.repr, "[3, (3,), (1,), (1,), 3]");
 });
 
+test("the resident imaginary service checks capability without the generic JSON adapter", {
+  skip: !process.env.SAGEJS_CLASS_GROUP_SERVICE,
+}, async () => {
+  const answer = await evaluate([
+    "import sagejs.runtime as runtime",
+    "backend = runtime.class_group_backend()",
+    "original_call = backend.call",
+    "def reject_generic_capability(operation, request):",
+    "    if operation == 'capability':",
+    "        raise AssertionError('resident capability used the generic JSON adapter')",
+    "    return original_call(operation, request)",
+    "backend.call = reject_generic_capability",
+    "R.<x> = QQ[]",
+    "K.<a> = NumberField(x^2 + 23)",
+    "[K.class_number(algorithm='rust'), K.class_group(algorithm='rust').invariants()]",
+  ]);
+  assert.equal(answer.repr, "[3, (3,)]");
+});
+
 test("the native service publishes a noncyclic group with exact ideal-class coordinates", {
   skip: !process.env.SAGEJS_CLASS_GROUP_SERVICE,
 }, async () => {
