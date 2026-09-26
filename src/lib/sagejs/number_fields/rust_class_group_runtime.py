@@ -299,12 +299,11 @@ def rust_imaginary_result(
         )
     request = {"polynomialAscending": polynomial}
     transports = capability.get("transports")
-    if (
-        operation == "imaginary-class-group"
-        and isinstance(transports, list)
-        and "core-v2" in transports
-    ):
-        request["transport"] = "core-v2"
+    if operation == "imaginary-class-group" and isinstance(transports, list):
+        if "core-v3" in transports:
+            request["transport"] = "core-v3"
+        elif "core-v2" in transports:
+            request["transport"] = "core-v2"
     try:
         answer = (
             _imaginary_host_call(operation, request)
@@ -460,8 +459,10 @@ def validate_imaginary_group_result(
     invariants = result.get("invariantFactors")
     generators = result.get("generators")
     certificate = result.get("certificate")
-    packed_certificate = (
-        isinstance(certificate, dict) and "reducedFormsPacked" in certificate
+    packed_cert = isinstance(certificate, dict) and "reducedFormsPacked" in certificate
+    from_core_map = (
+        isinstance(certificate, dict)
+        and certificate.get("reducedFormsFromCoreMap") is True
     )
     if (
         result.get("schema") != IMAGINARY_GROUP_SCHEMA
@@ -484,7 +485,10 @@ def validate_imaginary_group_result(
         or not isinstance(certificate, dict)
         or certificate.get("discriminant") != discriminant
         or (
-            packed_certificate
+            from_core_map and (not core or packed_cert or "reducedForms" in certificate)
+        )
+        or (
+            packed_cert
             and (
                 "reducedForms" in certificate
                 or not isinstance(certificate.get("reducedFormsPacked"), list)
@@ -492,7 +496,8 @@ def validate_imaginary_group_result(
             )
         )
         or (
-            not packed_certificate
+            not packed_cert
+            and not from_core_map
             and (
                 not isinstance(certificate.get("reducedForms"), list)
                 or len(certificate["reducedForms"]) != entry_count
@@ -518,11 +523,13 @@ def validate_imaginary_group_result(
     forms = []
     coordinates = {}
     seen_coordinates = set()
-    certified_forms = certificate[
-        "reducedFormsPacked" if packed_certificate else "reducedForms"
-    ]
+    certified_forms = (
+        []
+        if from_core_map
+        else certificate["reducedFormsPacked" if packed_cert else "reducedForms"]
+    )
     stride = (2 if core else 11) + len(invariants)
-    if packed and packed_certificate:
+    if packed and (packed_cert or from_core_map):
         try:
             accelerated = validate_packed_imaginary_map(
                 packed_entries,
@@ -588,16 +595,19 @@ def validate_imaginary_group_result(
                 certified_forms[3 * index + 1],
                 certified_forms[3 * index + 2],
             )
-            if packed_certificate
+            if packed_cert
+            else form
+            if from_core_map
             else certified_forms[index]
         )
         if (
-            packed_certificate
+            packed_cert
             and (
                 any(type(value) is not int for value in certified) or certified != form
             )
         ) or (
-            not packed_certificate
+            not packed_cert
+            and not from_core_map
             and (
                 not isinstance(certified, dict)
                 or len(certified) != 3

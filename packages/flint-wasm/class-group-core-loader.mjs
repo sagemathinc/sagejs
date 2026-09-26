@@ -243,7 +243,10 @@ export async function instantiateClassGroupCore(bytes) {
         outputLength,
         MAX_OUTPUT_BYTES,
         "output",
-      ).slice();
+      );
+      // TextDecoder copies into an immutable JS string before either Wasm
+      // allocation is released in finally. A second Uint8Array copy here
+      // only duplicates the (potentially megabyte-sized) result buffer.
       return JSON.parse(decoder.decode(output));
     } finally {
       if (outputPointer !== 0 && outputLength !== 0) dealloc(outputPointer, outputLength);

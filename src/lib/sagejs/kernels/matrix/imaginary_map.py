@@ -228,10 +228,11 @@ def verify_packed_imaginary_map(
     if core:
         stride = 2 + rank
         coordinate_offset = 2
+    derived_certificate = core and len(certificate_forms) == zero
     if (
         count == zero
-        or len(certificate_forms) != 3 * count
         or len(rows) != stride * count
+        or (not derived_certificate and len(certificate_forms) != 3 * count)
     ):
         return one
     product = one
@@ -291,13 +292,14 @@ def verify_packed_imaginary_map(
             return one
         previous_a = a
         previous_b = b
-        certificate_offset = 3 * index
-        if (
-            certificate_forms[certificate_offset] != a
-            or certificate_forms[certificate_offset + one] != b
-            or certificate_forms[certificate_offset + 2] != c
-        ):
-            return one
+        if not derived_certificate:
+            certificate_offset = 3 * index
+            if (
+                certificate_forms[certificate_offset] != a
+                or certificate_forms[certificate_offset + one] != b
+                or certificate_forms[certificate_offset + 2] != c
+            ):
+                return one
         if (linear - b) % 2 != zero:
             return one
         if not core:

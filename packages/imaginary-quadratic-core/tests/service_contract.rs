@@ -38,7 +38,7 @@ fn exposes_only_the_bounded_quadratic_capability() {
     );
     assert_eq!(
         capability["result"]["imaginaryQuadratic"]["transports"],
-        json!(["core-v2"])
+        json!(["core-v3", "core-v2"])
     );
     assert_eq!(
         capability["result"]["operations"],
@@ -62,7 +62,10 @@ fn computes_full_and_core_maps_with_the_same_exact_answer() {
     let mut packed_request = request("imaginary-class-group", polynomial);
     packed_request["transport"] = json!("core-v2");
     let packed = call(&mut service, packed_request);
-    for response in [&scalar, &full, &packed] {
+    let mut compact_request = request("imaginary-class-group", polynomial);
+    compact_request["transport"] = json!("core-v3");
+    let compact = call(&mut service, compact_request);
+    for response in [&scalar, &full, &packed, &compact] {
         assert_eq!(response["ok"], true);
         assert_eq!(response["result"]["result"]["discriminant"], -23);
         assert_eq!(response["result"]["result"]["classNumber"], 3);
@@ -73,6 +76,20 @@ fn computes_full_and_core_maps_with_the_same_exact_answer() {
     }
     assert_eq!(full["result"]["result"]["invariantFactors"], json!([3]));
     assert_eq!(packed["result"]["result"]["invariantFactors"], json!([3]));
+    assert_eq!(compact["result"]["result"]["invariantFactors"], json!([3]));
+    assert_eq!(
+        compact["result"]["result"]["completeClassMapCorePacked"],
+        packed["result"]["result"]["completeClassMapCorePacked"]
+    );
+    assert_eq!(
+        compact["result"]["result"]["certificate"]["reducedFormsFromCoreMap"],
+        true
+    );
+    assert!(
+        compact["result"]["result"]["certificate"]
+            .get("reducedFormsPacked")
+            .is_none()
+    );
     assert_eq!(
         full["result"]["result"]["completeClassMap"]
             .as_array()

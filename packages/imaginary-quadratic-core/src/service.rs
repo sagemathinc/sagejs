@@ -106,7 +106,10 @@ struct PackedCertificate<'a> {
     fundamental_squarefree_core: i64,
     squarefree_core_prime_factors: &'a [u64],
     reduction_bound_a: i64,
-    reduced_forms_packed: PackedForms<'a>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    reduced_forms_packed: Option<PackedForms<'a>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    reduced_forms_from_core_map: Option<bool>,
     theorem: &'static str,
 }
 
@@ -127,8 +130,8 @@ struct PackedGroup<'a> {
     runtime_uses_pari_or_fixture_answers: bool,
 }
 
-impl<'a> From<&'a CompleteImaginaryClassGroup> for PackedGroup<'a> {
-    fn from(group: &'a CompleteImaginaryClassGroup) -> Self {
+impl<'a> PackedGroup<'a> {
+    fn from_group(group: &'a CompleteImaginaryClassGroup, derived_certificate: bool) -> Self {
         let certificate = &group.certificate;
         Self {
             schema: group.schema,
@@ -145,7 +148,9 @@ impl<'a> From<&'a CompleteImaginaryClassGroup> for PackedGroup<'a> {
                 fundamental_squarefree_core: certificate.fundamental_squarefree_core,
                 squarefree_core_prime_factors: &certificate.squarefree_core_prime_factors,
                 reduction_bound_a: certificate.reduction_bound_a,
-                reduced_forms_packed: PackedForms(&certificate.reduced_forms),
+                reduced_forms_packed: (!derived_certificate)
+                    .then(|| PackedForms(&certificate.reduced_forms)),
+                reduced_forms_from_core_map: derived_certificate.then_some(true),
                 theorem: certificate.theorem,
             },
             proof_status: group.proof_status,
@@ -175,6 +180,7 @@ fn packed_group_envelope(
     id: &str,
     operation: &str,
     group: &CompleteImaginaryClassGroup,
+    derived_certificate: bool,
 ) -> Vec<u8> {
     // Serialize the already authenticated compact presentation directly.
     // Materializing it as a serde_json::Value duplicates tens of thousands
@@ -188,7 +194,7 @@ fn packed_group_envelope(
             schema: SERVICE_RESPONSE_SCHEMA,
             outcome: "complete",
             operation,
-            result: PackedGroup::from(group),
+            result: PackedGroup::from_group(group, derived_certificate),
         },
     };
     bounded_response(
@@ -358,7 +364,7 @@ impl QuadraticService {
                         "proofMode": "unconditional",
                         "maximumAbsoluteDiscriminant": 200_000_000_000_u64,
                         "operations": ["imaginary-class-number", "imaginary-class-group"],
-                        "transports": ["core-v2"],
+                        "transports": ["core-v3", "core-v2"],
                     },
                     "operations": ["capability", "imaginary-class-number", "imaginary-class-group"],
                 })),
@@ -393,6 +399,7 @@ impl QuadraticService {
         debug_assert_eq!(request.operation, operation);
         if (operation == "imaginary-class-group"
             && request.transport.as_deref() != Some("core-v2")
+            && request.transport.as_deref() != Some("core-v3")
             && request.transport.is_some())
             || (operation == "imaginary-class-number" && request.transport.is_some())
         {
@@ -426,8 +433,13 @@ impl QuadraticService {
             Ok(result) => result,
             Err(error) => return envelope(&id, Err(mathematical_error(&operation, error))),
         };
-        if request.transport.as_deref() == Some("core-v2") {
-            packed_group_envelope(&id, &operation, &result)
+        if matches!(request.transport.as_deref(), Some("core-v2" | "core-v3")) {
+            packed_group_envelope(
+                &id,
+                &operation,
+                &result,
+                request.transport.as_deref() == Some("core-v3"),
+            )
         } else {
             let response = json!({
                 "schema": SERVICE_RESPONSE_SCHEMA,
@@ -448,14 +460,14 @@ mod tests {
     fn direct_core_envelope_matches_the_original_json_value_shape() {
         for polynomial in [[6, -1, 1], [58, -1, 1]] {
             let group = compute_imaginary_class_group_from_coefficients(polynomial).unwrap();
-            let direct = packed_group_envelope("test-id", "imaginary-class-group", &group);
+            let direct = packed_group_envelope("test-id", "imaginary-class-group", &group, false);
             let original = envelope(
                 "test-id",
                 Ok(json!({
                     "schema": SERVICE_RESPONSE_SCHEMA,
                     "outcome": "complete",
                     "operation": "imaginary-class-group",
-                    "result": PackedGroup::from(&group),
+                    "result": PackedGroup::from_group(&group, false),
                 })),
             );
             assert_eq!(

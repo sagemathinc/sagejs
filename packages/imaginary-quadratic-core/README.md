@@ -5,7 +5,15 @@ the existing class-group service, but does not include the cubic algorithms or
 their GMP, MPFR, and FLINT dependency closure. Its narrow service accepts only
 bounded unconditional imaginary-quadratic class-number and complete class-group
 requests. It retains the ordinary exact ideal-class map and the `core-v2`
-packed transport, with the existing class-group Wasm ABI.
+packed transport, with the existing class-group Wasm ABI. The development-only
+`core-v3` transport sends the sorted `(a, b, coordinates...)` map once instead
+of also sending a second array of every reduced form. Its certificate marks
+the reduced-form list as derived from that map: the public verifier still
+checks every reduced primitive form, map order, coordinate bijection, and
+generators, and ordinary certificate records are materialized on demand.
+The source algorithm still proves completeness by its exact reduced-form count
+and orbit construction; the duplicate `core-v2` certificate array was not an
+independent host-side enumeration.
 
 The crate is **not** in the production Wasm layout. The reactor now keeps
 request and response buffers in a bounded owned-allocation table, checks the
@@ -32,5 +40,5 @@ package's ignored `target/` directory. The resulting module can be passed to
 `instantiateClassGroupCore` for direct development testing; it is not staged
 by the release packager. The evaluator test explicitly injects that local
 module into an isolated Sage-mode evaluator, checking exact ideal coordinates
-and `core-v2` transport; the ordinary public Wasm kernel still declines the
+and `core-v3` transport; the ordinary public Wasm kernel still declines the
 unreviewed reactor.

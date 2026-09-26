@@ -75,10 +75,12 @@ test("the isolated quadratic reactor serves Sage-mode ideal classes in Wasm", {
       " K.class_number(algorithm='rust'), K.class_group().algorithm,",
       " 'completeClassMapCorePacked' in rust_runtime.rust_imaginary_result(",
       " K, operation='imaginary-class-group', algorithm='rust'),",
-      " callable(getattr(verify_packed_imaginary_map, 'packExactInt64Buffer', None))]",
+      " callable(getattr(verify_packed_imaginary_map, 'packExactInt64Buffer', None)),",
+      " len(G.certificate['reducedForms']),",
+      " 'reducedFormsFromCoreMap' not in G.certificate]",
     ].join("\n"));
     assert.equal(tiny.repr,
-      "[3, (3,), 'exact-unconditional', (1,), (1,), 3, 'rust', True, True]");
+      "[3, (3,), 'exact-unconditional', (1,), (1,), 3, 'rust', True, True, 3, True]");
     await assert.rejects(evaluator.evaluate([
       "forged = rust_runtime.rust_imaginary_result(",
       " K, operation='imaginary-class-group', algorithm='rust')",

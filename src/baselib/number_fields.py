@@ -3924,24 +3924,16 @@ class QuadraticClassGroup:
     @property
     def certificate(self) -> dict[str, Any] | None:
         certificate = self._certificate
-        if certificate is not None and "reducedFormsPacked" in certificate:
-            packed = certificate.get("reducedFormsPacked")
-            if not isinstance(packed, list):
-                raise ArithmeticError("the Rust form certificate is malformed")
-            certificate = dict(certificate)
-            reduced_forms = []
-            for offset in range(0, len(packed), 3):
-                reduced_forms.append(
-                    {
-                        "a": packed[offset],
-                        "b": packed[offset + 1],
-                        "c": packed[offset + 2],
-                    }
+        if certificate is not None and (
+            "reducedFormsPacked" in certificate
+            or certificate.get("reducedFormsFromCoreMap") is True
+        ):
+            self._certificate = (
+                _nf_class_group_maps_module().expand_imaginary_certificate(
+                    certificate, self._validated_form_data
                 )
-            certificate.update({"reducedForms": reduced_forms})
-            certificate.pop("reducedFormsPacked")
-            self._certificate = certificate
-        return certificate
+            )
+        return self._certificate
 
     def _all_forms(self) -> list[QuadraticBinaryForm]:
         if self._forms is runtime.undefined:

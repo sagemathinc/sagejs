@@ -4521,7 +4521,7 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_allocate_m_a87966cc9edfe889",
+          "name": "sagejs_wasm_allocate_m_b89cd2a5e6931ab4",
           "kind": "function"
         },
         {
@@ -4861,7 +4861,7 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_a87966cc9edfe889_verify_packed_imaginary_map",
+          "name": "sagejs_wasm_call_m_b89cd2a5e6931ab4_verify_packed_imaginary_map",
           "kind": "function"
         },
         {
@@ -5105,7 +5105,7 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_deallocate_m_a87966cc9edfe889",
+          "name": "sagejs_wasm_deallocate_m_b89cd2a5e6931ab4",
           "kind": "function"
         },
         {
@@ -5213,7 +5213,7 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_last_message_m_a87966cc9edfe889",
+          "name": "sagejs_wasm_last_message_m_b89cd2a5e6931ab4",
           "kind": "function"
         },
         {
@@ -5321,7 +5321,7 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_f64_at_m_a87966cc9edfe889",
+          "name": "sagejs_wasm_result_f64_at_m_b89cd2a5e6931ab4",
           "kind": "function"
         },
         {
@@ -5429,7 +5429,7 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_length_m_a87966cc9edfe889",
+          "name": "sagejs_wasm_result_length_m_b89cd2a5e6931ab4",
           "kind": "function"
         },
         {
@@ -5537,7 +5537,7 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_limbs_m_a87966cc9edfe889",
+          "name": "sagejs_wasm_result_limbs_m_b89cd2a5e6931ab4",
           "kind": "function"
         },
         {
@@ -5645,7 +5645,7 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_sign_m_a87966cc9edfe889",
+          "name": "sagejs_wasm_result_sign_m_b89cd2a5e6931ab4",
           "kind": "function"
         },
         {
@@ -5753,7 +5753,7 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_u64_at_m_a87966cc9edfe889",
+          "name": "sagejs_wasm_result_u64_at_m_b89cd2a5e6931ab4",
           "kind": "function"
         },
         {

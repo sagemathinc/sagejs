@@ -355,6 +355,42 @@ test("core resident map preserves exact ideals with native and Python verificati
   assert.equal(answer.repr, "[True, True, True, True, True]");
 });
 
+test("derived core certificate retains exact maps and rejects forged rows", async () => {
+  const answer = await evaluate([
+    ...fixture,
+    "core = dict(result)",
+    "entries = core.pop('completeClassMap')",
+    "core['completeClassMapCorePacked'] = [value for entry in entries",
+    "    for value in (entry['form']['a'], entry['form']['b'], *entry['coordinates'])]",
+    "core['completeClassMapLength'] = len(entries)",
+    "core['certificate'] = {'discriminant': -23, 'reducedFormsFromCoreMap': True}",
+    "ordinary_forms, ordinary_coordinates, generators = rust_runtime.validate_imaginary_group_result(result, -23)",
+    "derived_forms, derived_coordinates, derived_generators = rust_runtime.validate_imaginary_group_result(core, -23, compact=True)",
+    "same = list(derived_forms) == ordinary_forms and derived_coordinates.get('2,-1,3') == ordinary_coordinates['2,-1,3'] and derived_generators == generators",
+    "core['certificate']['reducedFormsFromCoreMap'] = 1",
+    "try:",
+    "    rust_runtime.validate_imaginary_group_result(core, -23)",
+    "    rejects_marker = False",
+    "except rust_runtime.RustClassGroupPublicationError:",
+    "    rejects_marker = True",
+    "core['certificate']['reducedFormsFromCoreMap'] = True",
+    "core['completeClassMapCorePacked'] = list(core['completeClassMapCorePacked'])",
+    "core['completeClassMapCorePacked'][4] = 0",
+    "try:",
+    "    rust_runtime.validate_imaginary_group_result(core, -23)",
+    "    rejects_row = False",
+    "except rust_runtime.RustClassGroupPublicationError:",
+    "    rejects_row = True",
+    "core['completeClassMapCorePacked'][4] = -1",
+    "result = core",
+    "group = K.class_group(algorithm='rust')",
+    "certificate = group.certificate",
+    "public_certificate = len(certificate['reducedForms']) == 3 and certificate['reducedForms'][1] == {'a': 2, 'b': -1, 'c': 3} and 'reducedFormsFromCoreMap' not in certificate",
+    "[same, rejects_marker, rejects_row, public_certificate, group(group.gen().ideal()).coordinates()]",
+  ]);
+  assert.equal(answer.repr, "[True, True, True, True, (1,)]");
+});
+
 test("advertised compact transport is requested without losing exact ideal maps", async () => {
   const answer = await evaluate([
     ...fixture,

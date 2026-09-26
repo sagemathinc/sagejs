@@ -3947,6 +3947,29 @@ adapt_and_seal_public_class_group_projection = (
 )
 
 
+def expand_imaginary_certificate(
+    certificate: dict[str, Any], forms: Any
+) -> dict[str, Any]:
+    """Materialize ordinary reduced-form records only on certificate access."""
+    if "reducedFormsPacked" in certificate:
+        packed = certificate["reducedFormsPacked"]
+        if not isinstance(packed, list) or len(packed) % 3 != 0:
+            raise ArithmeticError("the Rust form certificate is malformed")
+        triples = (
+            (packed[offset], packed[offset + 1], packed[offset + 2])
+            for offset in range(0, len(packed), 3)
+        )
+    elif certificate.get("reducedFormsFromCoreMap") is True:
+        triples = iter(forms)
+    else:
+        return certificate
+    expanded = dict(certificate)
+    expanded["reducedForms"] = [{"a": a, "b": b, "c": c} for a, b, c in triples]
+    expanded.pop("reducedFormsPacked", None)
+    expanded.pop("reducedFormsFromCoreMap", None)
+    return expanded
+
+
 __all__ = [
     "IdealClassDiscreteLog",
     "IdealClassElement",
@@ -3959,6 +3982,7 @@ __all__ = [
     "class_group_projection_from_engine_result",
     "class_group_from_context",
     "class_group_from_minkowski_result",
+    "expand_imaginary_certificate",
     "public_class_group_projection_view",
     "seal_public_class_group_projection",
 ]

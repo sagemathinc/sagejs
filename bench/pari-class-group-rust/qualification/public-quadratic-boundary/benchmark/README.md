@@ -435,6 +435,22 @@ evidence against a large performance regression, not a controlled speedup.
 The reactor remains outside the production Wasm layout pending independent
 safety and distribution review.
 
+The development-only `core-v3` transport removes the second wire copy of the
+reduced forms. Its certificate names the sorted, complete core map as its
+source; the source-transparent validator still checks each reduced primitive
+form, coordinate bijection, and generator, and the ordinary certificate is
+expanded only when requested. On the 33,768-class field the JSON response
+shrunk from 1,271,260 to 647,564 bytes. An alternating 50-call-per-arm direct
+Wasm probe gave 16.13 ms for `core-v2` and 12.49 ms for `core-v3` medians. The
+separate frozen 15-pair Sage-mode/PARI run is recorded in
+[`public-api-prepared-development-wasm-derived-certificate-diagnostic.json`](public-api-prepared-development-wasm-derived-certificate-diagnostic.json).
+All 11 answers matched; its geometric-mean median ratio was 6.87, versus 7.27
+in the preceding run. The composite-field median was 27.5 ms versus PARI's
+4.55 ms; the preceding run was 33.1 ms versus 4.56 ms. The direct probe is
+paired, but the two Sage-mode receipts were recorded separately under
+different conditions. Neither is a public Wasm release or a PARI-competitive
+result. The production distribution review remains pending.
+
 ## Matched scalar class-number comparison
 
 `run_class_number.py` separately compares the exact scalar Rust count, the
