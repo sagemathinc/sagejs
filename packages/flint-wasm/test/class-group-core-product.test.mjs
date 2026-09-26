@@ -89,6 +89,15 @@ test(
       assert.deepEqual(group.invariantFactors, [3]);
       assert.equal(group.completeClassMap.length, 3);
       assert.equal(group.proofStatus, "unconditional-complete");
+      const capability = await service.call("capability");
+      assert.deepEqual(capability.imaginaryQuadratic.transports, ["core-v3", "core-v2"]);
+      const compact = (await service.call("imaginary-class-group", {
+        polynomialAscending: ["6", "-1", "1"], transport: "core-v3",
+      })).result;
+      assert.equal(compact.completeClassMapLength, 3);
+      assert.deepEqual(compact.completeClassMapCorePacked, [1, 1, 0, 2, -1, 1, 2, 1, 2]);
+      assert.equal(compact.certificate.reducedFormsFromCoreMap, true);
+      assert.equal("reducedFormsPacked" in compact.certificate, false);
 
       const noncyclic = await service.imaginaryClassGroup([21, 0, 1]);
       assert.equal(noncyclic.discriminant, -84);

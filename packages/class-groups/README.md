@@ -73,8 +73,14 @@ They return unconditional results without allocating a resident handle. The
 full-group result includes the exact representative-ideal map and a detached
 reduced-form completeness certificate. Inputs outside the stated domain fail
 with a typed error rather than silently changing proof mode.
+The internal `core-v3` group transport sends the sorted `(a, b, coordinates...)`
+map once and derives the reduced-form certificate from that verified map.
+`core-v2` retains its separately packed form list for older hosts; the ordinary
+response retains its full public structure. These encodings change neither
+the mathematical proof nor the exact ideal-class map.
 
-The public Sage.js interface currently selects this backend explicitly:
+The public Sage.js interface selects this backend automatically when its
+capability is present, and also allows an explicit request:
 
 ```python
 R.<x> = QQ[]

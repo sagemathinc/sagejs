@@ -451,6 +451,20 @@ paired, but the two Sage-mode receipts were recorded separately under
 different conditions. Neither is a public Wasm release or a PARI-competitive
 result. The production distribution review remains pending.
 
+The native product service now advertises the same `core-v3` transport, while
+retaining `core-v2` and the ordinary response. A 30-pair alternating direct
+service probe on the 33,768-class composite field measured 10.91 ms for
+`core-v2` and 8.60 ms for `core-v3`; the response shrank from 1,271,257 to
+647,561 bytes. That is a service/pipe result, not a public-call result. The
+separate frozen 11-field, 15-pair prepared-field public comparison is in
+[`public-api-prepared-native-derived-certificate-diagnostic.json`](public-api-prepared-native-derived-certificate-diagnostic.json).
+Its geometric-mean Sage.js/PARI median ratio was 7.63, versus 7.51 in the
+earlier separate-run `core-v2` diagnostic; the composite field was 24.75 ms
+versus PARI's 4.52 ms. The distinct runs and host conditions do not support
+a public-path speedup claim. Exact ideal coordinates and forged-publication
+rejection remain covered by the native dispatch tests; public PARI
+competitiveness remains open.
+
 ## Matched scalar class-number comparison
 
 `run_class_number.py` separately compares the exact scalar Rust count, the

@@ -66,7 +66,7 @@ fn imaginary_quadratic_operations_are_unconditional_and_public() {
     );
     assert_eq!(
         capability["result"]["imaginaryQuadratic"]["transports"],
-        json!(["core-v2"])
+        json!(["core-v3", "core-v2"])
     );
 
     let number = call(
@@ -138,6 +138,21 @@ fn imaginary_quadratic_operations_are_unconditional_and_public() {
         .remove("reducedForms");
     expected["certificate"]["reducedFormsPacked"] = json!(packed_forms);
     assert_eq!(packed["result"]["result"], expected);
+
+    let derived = call(
+        &mut service,
+        "iq-group-derived",
+        "imaginary-class-group",
+        json!({"polynomialAscending": ["6", "-1", "1"], "transport": "core-v3"}),
+    );
+    assert_eq!(derived["ok"], true, "{derived}");
+    let mut expected_derived = expected.clone();
+    expected_derived["certificate"]
+        .as_object_mut()
+        .unwrap()
+        .remove("reducedFormsPacked");
+    expected_derived["certificate"]["reducedFormsFromCoreMap"] = json!(true);
+    assert_eq!(derived["result"]["result"], expected_derived);
 
     let literal_unknown_id = call(
         &mut service,

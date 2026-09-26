@@ -1684,7 +1684,10 @@ struct PackedImaginaryCertificate<'a> {
     fundamental_squarefree_core: i64,
     squarefree_core_prime_factors: &'a [u64],
     reduction_bound_a: i64,
-    reduced_forms_packed: PackedImaginaryForms<'a>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    reduced_forms_packed: Option<PackedImaginaryForms<'a>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    reduced_forms_from_core_map: Option<bool>,
     theorem: &'static str,
 }
 
@@ -1705,8 +1708,8 @@ struct PackedImaginaryGroup<'a> {
     runtime_uses_pari_or_fixture_answers: bool,
 }
 
-impl<'a> From<&'a CompleteImaginaryClassGroup> for PackedImaginaryGroup<'a> {
-    fn from(group: &'a CompleteImaginaryClassGroup) -> Self {
+impl<'a> PackedImaginaryGroup<'a> {
+    fn from_group(group: &'a CompleteImaginaryClassGroup, derived_certificate: bool) -> Self {
         let certificate = &group.certificate;
         Self {
             schema: group.schema,
@@ -1723,7 +1726,9 @@ impl<'a> From<&'a CompleteImaginaryClassGroup> for PackedImaginaryGroup<'a> {
                 fundamental_squarefree_core: certificate.fundamental_squarefree_core,
                 squarefree_core_prime_factors: &certificate.squarefree_core_prime_factors,
                 reduction_bound_a: certificate.reduction_bound_a,
-                reduced_forms_packed: PackedImaginaryForms(&certificate.reduced_forms),
+                reduced_forms_packed: (!derived_certificate)
+                    .then(|| PackedImaginaryForms(&certificate.reduced_forms)),
+                reduced_forms_from_core_map: derived_certificate.then_some(true),
                 theorem: certificate.theorem,
             },
             proof_status: group.proof_status,
@@ -2025,7 +2030,7 @@ impl ProductService {
                 "proofMode": "unconditional",
                 "maximumAbsoluteDiscriminant": 200_000_000_000_u64,
                 "operations": ["imaginary-class-number", "imaginary-class-group"],
-                "transports": ["core-v2"],
+                "transports": ["core-v3", "core-v2"],
             },
             "operations": ["capability", "open", "summary", "query", "publication", "close", "imaginary-class-number", "imaginary-class-group"],
         })
@@ -2083,7 +2088,7 @@ impl ProductService {
         request: ImaginaryServiceRequest,
     ) -> Result<CompleteImaginaryClassGroup, ServiceError> {
         let operation = "imaginary-class-group";
-        if request.transport.as_deref() != Some("core-v2") {
+        if !matches!(request.transport.as_deref(), Some("core-v2" | "core-v3")) {
             return Err(ServiceError::new(
                 ServiceErrorCategory::InvalidRequest,
                 operation,
@@ -2280,8 +2285,13 @@ impl ProductService {
                 .and_then(Value::as_str)
                 .is_some_and(|id| !id.is_empty() && id.len() <= 128)
             && value.get("operation").and_then(Value::as_str) == Some("imaginary-class-group")
-            && value.get("transport").and_then(Value::as_str) == Some("core-v2")
+            && matches!(
+                value.get("transport").and_then(Value::as_str),
+                Some("core-v2" | "core-v3")
+            )
         {
+            let derived_certificate =
+                value.get("transport").and_then(Value::as_str) == Some("core-v3");
             let result = serde_json::from_value::<ImaginaryServiceRequest>(value)
                 .map_err(|error| {
                     ServiceError::new(
@@ -2292,7 +2302,7 @@ impl ProductService {
                 })
                 .and_then(Self::imaginary_compute_packed);
             return match result {
-                Ok(group) => serialize_packed_imaginary_result(&id, &group),
+                Ok(group) => serialize_packed_imaginary_result(&id, &group, derived_certificate),
                 Err(error) => serialize_service_result(&id, Err(error)),
             };
         }
@@ -2300,7 +2310,11 @@ impl ProductService {
     }
 }
 
-fn serialize_packed_imaginary_result(id: &str, group: &CompleteImaginaryClassGroup) -> Vec<u8> {
+fn serialize_packed_imaginary_result(
+    id: &str,
+    group: &CompleteImaginaryClassGroup,
+    derived_certificate: bool,
+) -> Vec<u8> {
     let response = PackedImaginaryServiceResponse {
         schema: SERVICE_RESPONSE_SCHEMA,
         abi: SERVICE_ABI_VERSION,
@@ -2310,7 +2324,7 @@ fn serialize_packed_imaginary_result(id: &str, group: &CompleteImaginaryClassGro
             schema: SERVICE_RESPONSE_SCHEMA,
             outcome: "complete",
             operation: "imaginary-class-group",
-            result: PackedImaginaryGroup::from(group),
+            result: PackedImaginaryGroup::from_group(group, derived_certificate),
         },
     };
     match serde_json::to_vec(&response) {
